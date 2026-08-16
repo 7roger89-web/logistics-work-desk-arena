@@ -30,7 +30,8 @@ CATEGORY_OPERATIONAL = "OPERATIONAL"
 CATEGORY_DOCUMENT = "DOCUMENT"
 CATEGORY_DATA = "DATA QUALITY"
 CATEGORY_FINANCIAL = "FINANCIAL"
-CATEGORIES = (CATEGORY_OPERATIONAL, CATEGORY_DOCUMENT, CATEGORY_DATA, CATEGORY_FINANCIAL)
+CATEGORY_COMMERCIAL = "COMMERCIAL"
+CATEGORIES = (CATEGORY_OPERATIONAL, CATEGORY_DOCUMENT, CATEGORY_DATA, CATEGORY_FINANCIAL, CATEGORY_COMMERCIAL)
 
 STATUS_CRITICAL = "CRITICAL"
 STATUS_ATTENTION = "NEEDS ATTENTION"
@@ -620,10 +621,109 @@ def _target_sort_key(item: Mapping[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _add_commercial_items(
+    items: list[dict[str, Any]],
+    *,
+    agreements: Mapping[str, Mapping[str, Any]] | None,
+    quotes: Mapping[str, Mapping[str, Any]] | None,
+) -> None:
+    """LOG-C13: surface blocked commercial handoff signals as read-only review items.
+
+    No ledger or persistence call happens here; signals come only from the
+    read-only `handoff_readiness` evaluation of stored agreements and quotes.
+    """
+
+    from core.commercial_agreements import (
+        agreements_for_quote,
+        agreements_for_shipment,
+        build_agreement_from_quote,
+        handoff_readiness,
+    )
+
+    agreements = agreements if isinstance(agreements, Mapping) else {}
+    quotes = quotes if isinstance(quotes, Mapping) else {}
+
+    for agreement in (value for value in agreements.values() if isinstance(value, Mapping)):
+        if _text(agreement.get("status")) == "VOID":
+            continue
+        agreement_id = _text(agreement.get("agreement_id"))
+        customer = _text(agreement.get("customer_name"))
+        quote_id = _text(agreement.get("quote_id"))
+        reference = _text(agreement.get("agreement_no"))
+        linked_quote = _quote_for_agreement(quotes, quote_id)
+        shipment_id = ", ".join(str(entry) for entry in (agreement.get("shipment_ids") or []))
+        if not shipment_id:
+            shipment_id = _text(linked_quote.get("shipment_id"), "")
+        readiness = handoff_readiness(agreement)
+        state = readiness.get("state", "")
+        if state == "READY_FOR_OPERATIONS":
+            continue
+        reason = readiness.get("reasons", [""])[0] if readiness.get("reasons") else "Thỏa thuận chưa đạt trạng thái bàn giao."
+        items.append(
+            _item(
+                shipment_id=shipment_id or agreement_id,
+                customer=customer,
+                owner="Sale",
+                entity={"factory": UNKNOWN, "partner": UNKNOWN},
+                code="COMMERCIAL_AGREEMENT",
+                category=CATEGORY_COMMERCIAL,
+                status=STATUS_WAITING if state == "NEEDS_COMMERCIAL_REVIEW" else STATUS_ATTENTION,
+                title=f"Thỏa thuận thương mại chưa sẵn sàng bàn giao · {reference}",
+                reason=reason,
+                next_action="Mở 'Thỏa Thuận & Bàn Giao' → chi tiết thỏa thuận → xử lý trạng thái & bằng chứng.",
+                source="core.commercial_agreements.handoff_readiness (read-only)",
+                evidence=_text(agreement.get("status")),
+                target=_target("agreement", agreement_id, shipment_id=shipment_id or agreement_id),
+                detail_key=agreement_id,
+            )
+        )
+
+    for quote in (value for value in quotes.values() if isinstance(value, Mapping)):
+        status = _text(quote.get("status"), "").upper()
+        if status not in ("ACCEPTED", "READY_TO_CREATE_SHIPMENT", "APPROVED"):
+            continue
+        quote_id = _text(quote.get("id"))
+        customer = _text(quote.get("customer_name"))
+        reference = _text(quote.get("quote_no"))
+        shipment_id = _text(quote.get("shipment_id"), "")
+        linked = agreements_for_quote(quote_id, agreements)
+        if not linked and shipment_id:
+            linked = agreements_for_shipment(shipment_id, agreements)
+        if [agreement for agreement in linked if _text(agreement.get("status")) != "REVISED"]:
+            continue
+        items.append(
+            _item(
+                shipment_id=shipment_id or quote_id,
+                customer=customer,
+                owner="Sale",
+                entity={"factory": UNKNOWN, "partner": UNKNOWN},
+                code="COMMERCIAL_QUOTE_UNCOVERED",
+                category=CATEGORY_COMMERCIAL,
+                status=STATUS_ATTENTION,
+                title=f"Báo giá đã chốt chưa có thỏa thuận thương mại · {reference}",
+                reason="Báo giá đang ở trạng thái đã chốt nhưng chưa có thỏa thuận thương mại (agreement) nào — vận hành chưa có điều khoản bàn giao.",
+                next_action="Mở 'Thỏa Thuận & Bàn Giao' → 'Tạo thỏa thuận từ báo giá đã chốt' → xử lý bàn giao.",
+                source="quotes store status (read-only)",
+                evidence=status,
+                target=_target("quote", quote_id, shipment_id=shipment_id or quote_id),
+                detail_key=quote_id,
+            )
+        )
+
+
+def _quote_for_agreement(quotes: Mapping[str, Mapping[str, Any]], quote_id: str) -> Mapping[str, Any]:
+    for quote in (quotes.values() if isinstance(quotes, Mapping) else ()):
+        if isinstance(quote, Mapping) and _text(quote.get("id"), "") == _text(quote_id):
+            return quote
+    return {}
+
+
 def build_review_queue_items(
     shipments: Mapping[str, Mapping[str, Any]] | Iterable[Mapping[str, Any]],
     *,
     today: date | None = None,
+    agreements: Mapping[str, Mapping[str, Any]] | None = None,
+    quotes: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Build actionable review items without mutating shipment inputs."""
 
@@ -641,6 +741,8 @@ def build_review_queue_items(
         _add_document_items(items, dashboard, workspace, entity=entity)
         _add_data_quality_items(items, shipment, dashboard, entity=entity)
         _add_financial_items(items, dashboard, entity=entity)
+
+    _add_commercial_items(items, agreements=agreements, quotes=quotes)
 
     # Deduplicate only exact signal identities. Distinct reasons remain visible.
     deduplicated: dict[str, dict[str, Any]] = {}
@@ -700,6 +802,7 @@ def summarize_review_queue(items: Iterable[Mapping[str, Any]]) -> dict[str, int]
 
 __all__ = [
     "CATEGORIES",
+    "CATEGORY_COMMERCIAL",
     "CATEGORY_DATA",
     "CATEGORY_DOCUMENT",
     "CATEGORY_FINANCIAL",

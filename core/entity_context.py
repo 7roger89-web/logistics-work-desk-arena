@@ -138,6 +138,9 @@ def build_customer_context(
     customer_id: str,
     customer: Mapping[str, Any] | None,
     shipments: Mapping[str, Mapping[str, Any]] | Iterable[Mapping[str, Any]],
+    *,
+    quotes: Mapping[str, Mapping[str, Any]] | None = None,
+    agreements: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build one customer workspace without changing customer or shipment data."""
 
@@ -148,6 +151,9 @@ def build_customer_context(
         for shipment in _shipment_rows(shipments)
         if _customer_match(shipment, customer_id, customer_name)
     ]
+    # LOG-C13: add related quotations and agreements (read-only projections).
+    customer_quotations = _customer_quotation_rows(quotes, customer_id, customer_name)
+    customer_agreements = _customer_agreement_rows(agreements, customer_id, customer_name)
     related.sort(key=lambda row: str(row.get("shipment_id")))
     active = [row for row in related if row.get("status_code") not in {"done", "cancel"}]
     attention = [row for row in related if row.get("attention") not in (None, UNKNOWN)]
@@ -156,6 +162,8 @@ def build_customer_context(
         "email": customer.get("email"),
         "address": customer.get("address"),
     }.items() if value in (None, "")]
+    active_agreements = [row for row in customer_agreements if row.get("status_code") not in {"VOID"}]
+    active_quotations = [row for row in customer_quotations if row.get("status_code") not in {"REJECTED", "EXPIRED"}]
     return {
         "entity_type": "customer",
         "entity_key": customer_id or customer_name,
@@ -178,9 +186,84 @@ def build_customer_context(
         "active_shipments": active,
         "attention_shipments": attention,
         "history_shipments": [row for row in related if row not in active],
+        "quotations": customer_quotations,
+        "active_quotations": active_quotations,
+        "agreements": customer_agreements,
+        "active_agreements": active_agreements,
         "gaps": gaps or ["No known customer master gaps"],
         "read_only": True,
     }
+
+
+def _quotation_row(quote: Mapping[str, Any]) -> dict[str, Any]:
+    snapshot = quote.get("calculation") or {}
+    return {
+        "quote_id": _text(quote.get("id")),
+        "quote_reference": _text(quote.get("quote_no")),
+        "status_code": _text(quote.get("status")),
+        "version": str(quote.get("version", 1)),
+        "route": f"{_text(quote.get('origin'), '')} → {_text(quote.get('destination'), '')}" or UNKNOWN,
+        "price_snapshot_vnd": snapshot.get("selling_price_total_vnd", 0),
+        "margin_snapshot_vnd": snapshot.get("estimated_margin_vnd", 0),
+        "shipment_id": _text(quote.get("shipment_id"), "Chưa tạo lô"),
+        "source": "quotes store; estimate only, not Finance Ledger",
+    }
+
+
+def _customer_quotation_rows(
+    quotes: Mapping[str, Mapping[str, Any]] | None,
+    customer_id: str,
+    customer_name: str,
+) -> list[dict[str, Any]]:
+    if not isinstance(quotes, Mapping):
+        return []
+    rows = [
+        _quotation_row(quote)
+        for quote in quotes.values()
+        if isinstance(quote, Mapping)
+        and _customer_match(quote, customer_id, customer_name)
+    ]
+    rows.sort(key=lambda row: str(row.get("quote_reference")))
+    return rows
+
+
+def _agreement_row(agreement: Mapping[str, Any]) -> dict[str, Any]:
+    snapshot = agreement.get("commercial_snapshot") or {}
+    readiness = agreement.get("readiness") or {}
+    return {
+        "agreement_id": _text(agreement.get("agreement_id")),
+        "agreement_reference": _text(agreement.get("agreement_no")),
+        "status_code": _text(agreement.get("status")),
+        "version": str(agreement.get("version", 1)),
+        "quote_reference": _text(agreement.get("quote_reference"), "Chưa liên kết báo giá"),
+        "incoterm": _text(snapshot.get("incoterm"), UNKNOWN),
+        "services_sold": ", ".join(
+            _text(line.get("service_name"))
+            for line in snapshot.get("service_lines") or []
+            if isinstance(line, Mapping) and _text(line.get("service_name"))
+        ) or UNKNOWN,
+        "required_date": _text(snapshot.get("expected_delivery_date"), UNKNOWN),
+        "shipments": ", ".join(str(item) for item in agreement.get("shipment_ids") or []) or "Chưa liên kết",
+        "handoff_readiness": _text(readiness.get("label"), "UNKNOWN"),
+        "source": "agreements store; commercial terms only, no ledger mutation",
+    }
+
+
+def _customer_agreement_rows(
+    agreements: Mapping[str, Mapping[str, Any]] | None,
+    customer_id: str,
+    customer_name: str,
+) -> list[dict[str, Any]]:
+    if not isinstance(agreements, Mapping):
+        return []
+    rows = [
+        _agreement_row(agreement)
+        for agreement in agreements.values()
+        if isinstance(agreement, Mapping)
+        and _customer_match(agreement, customer_id, customer_name)
+    ]
+    rows.sort(key=lambda row: str(row.get("agreement_reference")))
+    return rows
 
 
 def _factory_name(item: Mapping[str, Any]) -> str:
@@ -358,13 +441,15 @@ def build_entity_context(
     *,
     customers: Mapping[str, Mapping[str, Any]],
     shipments: Mapping[str, Mapping[str, Any]] | Iterable[Mapping[str, Any]],
+    quotes: Mapping[str, Mapping[str, Any]] | None = None,
+    agreements: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch the public entity context contract."""
 
     normalized = str(entity_type or "").casefold()
     if normalized == "customer":
         customer = customers.get(entity_key) if isinstance(customers, Mapping) else None
-        return build_customer_context(entity_key, customer, shipments)
+        return build_customer_context(entity_key, customer, shipments, quotes=quotes, agreements=agreements)
     if normalized == "factory":
         return build_factory_context(entity_key, shipments)
     if normalized == "partner":

@@ -114,6 +114,8 @@ def ui_shipment_detail_tabs(sid, ship):
         proxy_payments=st.session_state.get("db_proxy", {}),
         entrustments=st.session_state.get("db_entrustments", {}),
         read_errors=related_read_errors,
+        agreements=st.session_state.get("db_agreements", {}),
+        quotes=st.session_state.get("db_quotes", {}),
     )
     audit_rows = load_audit_logs("shipment", sid, limit=30)
     workspace_view = build_shipment_workspace_view(ship, financial_view=shipment_360)

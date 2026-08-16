@@ -239,6 +239,23 @@ def _payment_rows(view: Mapping[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _offer_agreement_link(commercial: Mapping[str, Any]) -> None:
+    """Offer navigation to the linked commercial agreement without mutating data."""
+
+    agreement_id = commercial.get("agreement_id") or ""
+    if not agreement_id:
+        return
+    if st.button(
+        f"Mở Thỏa Thuận & Bàn Giao · {_workspace_value(commercial.get('agreement_reference'))}",
+        key=f"shp360_open_agreement_{agreement_id}",
+        use_container_width=True,
+    ):
+        import streamlit as st
+        st.session_state.agreement_detail_id = str(agreement_id)
+        st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+        st.rerun()
+
+
 def render_shipment_360_summary(view: Mapping[str, Any]) -> None:
     """Render the read model without any input or persistence control."""
 
@@ -248,6 +265,9 @@ def render_shipment_360_summary(view: Mapping[str, Any]) -> None:
         f"Khách hàng: **{view.get('customer') or 'UNKNOWN'}** · "
         "Chỉ đọc — số liệu có nguồn hoặc được đánh dấu UNKNOWN"
     )
+    commercial = view.get("commercial") or {}
+    if commercial.get("agreement_id"):
+        _offer_agreement_link(commercial)
 
     receivable = view.get("receivable") or {}
     r1, r2, r3 = st.columns(3)
@@ -323,3 +343,28 @@ def render_shipment_360_summary(view: Mapping[str, Any]) -> None:
             st.dataframe(payment_rows, hide_index=True, use_container_width=True)
         else:
             st.caption("Chưa có payment row trong data.3.4.payments.")
+
+    with st.expander("🤝 Bối cảnh thương mại (báo giá · thỏa thuận · bàn giao)", expanded=False):
+        commercial = view.get("commercial") or {}
+        if commercial:
+            st.dataframe(
+                [
+                    {
+                        "Báo giá": commercial.get("quote_reference", UNKNOWN),
+                        "Thỏa thuận": commercial.get("agreement_reference", UNKNOWN),
+                        "Trạng thái thỏa thuận": commercial.get("agreement_status", UNKNOWN),
+                        "Incoterm": commercial.get("incoterm", UNKNOWN),
+                        "Dịch vụ đã bán": commercial.get("services_sold", UNKNOWN),
+                        "Khách cần giao": commercial.get("required_date", UNKNOWN),
+                        "Bàn giao": commercial.get("handoff_readiness_label", UNKNOWN),
+                    }
+                ],
+                hide_index=True,
+                use_container_width=True,
+            )
+            if commercial.get("handoff_readiness_label") not in (None, "", "UNKNOWN"):
+                for reason in commercial.get("handoff_reasons") or []:
+                    st.info(reason)
+            st.caption("Thương mại chỉ đọc từ quotes/agreements; không tạo hay sửa số liệu Finance Ledger từ đây.")
+        else:
+            st.caption("UNKNOWN — chưa tìm thấy báo giá/thỏa thuận liên kết với lô này.")

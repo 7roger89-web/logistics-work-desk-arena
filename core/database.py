@@ -197,6 +197,7 @@ def ensure_indexes() -> bool:
         (db.contracts, "normalized_no", {"unique": True, "name": "uq_contract_normalized_no", "partialFilterExpression": {"normalized_no": {"$type": "string"}}}),
         (db.contract_transactions, [("contract_id", 1), ("transaction_type", 1), ("date", -1)], {"name": "ix_contract_transaction"}),
         (db.proxy_payments, "id", {"unique": True, "name": "uq_proxy_payment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.agreements, "agreement_id", {"unique": True, "name": "uq_agreement_id", "partialFilterExpression": {"agreement_id": {"$type": "string"}}}),
         (db.rate_cards, "id", {"unique": True, "name": "uq_rate_card_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.entrustments, "id", {"unique": True, "name": "uq_entrustment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.knowledge_base, "id", {"unique": True, "name": "uq_kb_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
@@ -1018,6 +1019,16 @@ def load_quotes() -> dict[str, dict[str, Any]]:
 
 def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
     return all(_save_document("quotes", document) for document in quotes_dict.values())
+
+
+def load_agreements() -> dict[str, dict[str, Any]]:
+    """Load LOG-C13 commercial agreements (agreed commercial terms, not finance)."""
+    return _load_dict("agreements", query={"is_deleted": {"$ne": True}})
+
+
+def save_agreements_to_cloud(agreements_dict: Mapping[str, dict[str, Any]]) -> bool:
+    """Upsert commercial agreements. 0 canonical finance writes by contract."""
+    return all(_save_document("agreements", document) for document in agreements_dict.values())
 
 
 def load_rate_cards() -> dict[str, dict[str, Any]]:

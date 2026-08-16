@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core.database import ensure_indexes, load_contracts, load_customers, load_data, load_rate_cards
+from core.database import ensure_indexes, load_agreements, load_contracts, load_customers, load_data, load_rate_cards
 
 
 def initialize_state() -> None:
@@ -12,6 +12,7 @@ def initialize_state() -> None:
         "db_shipments": {},
         "db_customers": {},
         "db_contracts": {},
+        "db_agreements": {},
         "db_rate_cards": {},
         "data_loaded": False,
         "needs_refresh": False,
@@ -29,6 +30,7 @@ def refresh_core_data(force: bool = False) -> None:
     st.session_state.db_shipments = load_data()
     st.session_state.db_customers = load_customers()
     st.session_state.db_contracts = load_contracts()
+    st.session_state.db_agreements = load_agreements()
     st.session_state.db_rate_cards = load_rate_cards()
     st.session_state.pop("db_reporting_shipments", None)
     st.session_state.pop("db_archive", None)

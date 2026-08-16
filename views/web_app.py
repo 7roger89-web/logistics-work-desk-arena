@@ -41,6 +41,7 @@ ROUTES: tuple[Route, ...] = (
     Route("KhÃ¡ch HÃ ng", "ðŸ‘¥", "customers", "views.customers", "ui_customers"),
     Route("Entity Context", "ðŸ§­", "dashboard", "views.entity_context", "ui_entity_context"),
     Route("Sales & BÃ¡o GiÃ¡", "ðŸ¤", "sales", "views.quotations", "ui_sales_module"),
+    Route("Thá»a Thuáº­n & BÃ n Giao", "ðŸ¤", "sales", "views.agreements", "ui_agreements_module"),
     Route("Há»£p Äá»“ng", "ðŸ“œ", "contracts", "views.contracts", "ui_contracts_management"),
     Route("Thu Tiá»n & CÃ´ng Ná»£", "ðŸ’°", "receivables", "views.finance", "ui_receivables_management"),
     Route("Finance Review", "FR", "receivables", "views.finance_review", "ui_finance_review"),
@@ -62,7 +63,7 @@ NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "COMMERCIAL CONTEXT",
-        ("KhÃ¡ch HÃ ng", "Entity Context", "Sales & BÃ¡o GiÃ¡", "Há»£p Äá»“ng"),
+        ("KhÃ¡ch HÃ ng", "Entity Context", "Sales & BÃ¡o GiÃ¡", "Thá»a Thuáº­n & BÃ n Giao", "Há»£p Äá»“ng"),
     ),
     (
         "FINANCE & REVIEW",

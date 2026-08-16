@@ -148,6 +148,77 @@ def _render_customer(view: Mapping[str, Any]) -> None:
         _render_shipment_rows(list(view.get("attention_shipments") or []), "customer_attention")
     with st.expander(f"Historical shipment context ({len(view.get('history_shipments') or [])})", expanded=False):
         _render_shipment_rows(list(view.get("history_shipments") or []), "customer_history")
+    with st.expander(f"Báo giá đã chốt ({len(view.get('active_quotations') or [])})", expanded=bool(view.get("active_quotations"))):
+        _render_customer_quotation_rows(list(view.get("active_quotations") or []), "customer_quote")
+    with st.expander(f"Thỏa thuận thương mại ({len(view.get('active_agreements') or [])})", expanded=bool(view.get("active_agreements"))):
+        _render_customer_agreement_rows(list(view.get("active_agreements") or []), "customer_agr")
+
+
+def _render_customer_quotation_rows(rows: list[Mapping[str, Any]], key_prefix: str) -> None:
+    if not rows:
+        st.caption("UNKNOWN — chưa có báo giá liên quan trong dữ liệu hiện tại.")
+        return
+    st.dataframe(
+        [
+            {
+                "Mã báo giá": _value(row.get("quote_reference")),
+                "Phiên bản": _value(row.get("version")),
+                "Trạng thái": _value(row.get("status_code")),
+                "Tuyến": _value(row.get("route")),
+                "Giá báo khách (VND)": row.get("price_snapshot_vnd"),
+                "Lô liên kết": _value(row.get("shipment_id")),
+            }
+            for row in rows
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    for index, row in enumerate(rows):
+        button_col, note_col = st.columns([1.4, 4.6])
+        if button_col.button(
+            f"Mở Sales & Báo Giá · {_value(row.get('quote_reference'))}",
+            key=f"{key_prefix}_open_{index}_{row.get('quote_id')}",
+            use_container_width=True,
+        ):
+            st.session_state.quote_detail_id = str(row.get("quote_id"))
+            st.session_state.active_page = "Sales & Báo Giá"
+            st.rerun()
+        note_col.caption(f"source: {_value(row.get('source'))}")
+
+
+def _render_customer_agreement_rows(rows: list[Mapping[str, Any]], key_prefix: str) -> None:
+    if not rows:
+        st.caption("UNKNOWN — chưa có thỏa thuận thương mại liên quan trong dữ liệu hiện tại.")
+        return
+    st.dataframe(
+        [
+            {
+                "Mã thỏa thuận": _value(row.get("agreement_reference")),
+                "Phiên bản": _value(row.get("version")),
+                "Trạng thái": _value(row.get("status_code")),
+                "Báo giá": _value(row.get("quote_reference")),
+                "Incoterm": _value(row.get("incoterm")),
+                "Dịch vụ đã bán": _value(row.get("services_sold")),
+                "Khách cần giao": _value(row.get("required_date")),
+                "Bàn giao": _value(row.get("handoff_readiness")),
+                "Shipment": _value(row.get("shipments")),
+            }
+            for row in rows
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    for index, row in enumerate(rows):
+        button_col, note_col = st.columns([1.4, 4.6])
+        if button_col.button(
+            f"Mở Thỏa Thuận & Bàn Giao · {_value(row.get('agreement_reference'))}",
+            key=f"{key_prefix}_open_{index}_{row.get('agreement_id')}",
+            use_container_width=True,
+        ):
+            st.session_state.agreement_detail_id = str(row.get("agreement_id"))
+            st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+            st.rerun()
+        note_col.caption(f"source: {_value(row.get('source'))}")
 
 
 def _render_factory(view: Mapping[str, Any]) -> None:
@@ -310,12 +381,16 @@ def ui_entity_context() -> None:
             _go_dashboard()
     nav_col.caption("Read-only context · source-bound fields · no entity CRUD")
 
+    quotes = st.session_state.get("db_quotes") or {}
+    agreements = st.session_state.get("db_agreements") or {}
     try:
         view = build_entity_context(
             request["entity_type"],
             request["entity_key"],
             customers=customers,
             shipments=shipments,
+            quotes=quotes,
+            agreements=agreements,
         )
     except ValueError:
         st.error("Entity type không được hỗ trợ.")
