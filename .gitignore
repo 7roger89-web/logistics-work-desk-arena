@@ -1,0 +1,46 @@
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.streamlit/secrets*.toml
+!.streamlit/secrets.toml.example
+google_key.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Python/runtime state
+__pycache__/
+*.py[cod]
+*.log
+.tmp/
+.tmp_*
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated test/browser artifacts
+test-results/
+playwright-report/
+
+# Local data and backups
+tariff.db
+data/*.db
+.p2p/install-backups/
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.bak
+*.backup
+
+# Machine-specific agent/editor state
+.agents/
+.claude/
+.codex/
+.anvien/

@@ -1,0 +1,235 @@
+"""Tiện ích dùng chung, không chứa nghiệp vụ riêng của giao diện."""
+from __future__ import annotations
+
+import html
+import json
+import logging
+import re
+import sqlite3
+from datetime import date, datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from pathlib import Path
+from typing import Any
+from urllib.parse import quote_plus
+
+import pandas as pd
+try:
+    import streamlit as st
+except ImportError:
+    st = None  # type: ignore[assignment]
+
+from core.config import CARRIER_LINKS, GEMINI_API_KEYS, GEMINI_MODEL, TARIFF_DB_PATH
+
+LOGGER = logging.getLogger("logistics_pro")
+MONEY_QUANT = Decimal("0.01")
+
+
+def to_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
+    """Parse tiền an toàn, hỗ trợ định dạng 1,234,567 và 1.234.567."""
+    if value is None or isinstance(value, bool):
+        return default
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+
+    raw = str(value).strip()
+    if not raw:
+        return default
+    cleaned = re.sub(r"[^0-9,\.\-]", "", raw)
+    if cleaned in {"", "-", ".", ","}:
+        return default
+
+    try:
+        if "," in cleaned and "." in cleaned:
+            # Ký tự xuất hiện sau cùng được coi là dấu thập phân khi có 1-2 số phía sau.
+            last_comma, last_dot = cleaned.rfind(","), cleaned.rfind(".")
+            decimal_sep = "," if last_comma > last_dot else "."
+            integer_sep = "." if decimal_sep == "," else ","
+            tail = cleaned.split(decimal_sep)[-1]
+            if len(tail) <= 2:
+                cleaned = cleaned.replace(integer_sep, "").replace(decimal_sep, ".")
+            else:
+                cleaned = cleaned.replace(",", "").replace(".", "")
+        elif cleaned.count(",") > 1 or cleaned.count(".") > 1:
+            cleaned = cleaned.replace(",", "").replace(".", "")
+        elif "," in cleaned:
+            head, tail = cleaned.rsplit(",", 1)
+            cleaned = f"{head.replace(',', '')}.{tail}" if len(tail) <= 2 else cleaned.replace(",", "")
+        elif "." in cleaned:
+            head, tail = cleaned.rsplit(".", 1)
+            if len(tail) == 3 and len(head.replace("-", "")) >= 1:
+                cleaned = cleaned.replace(".", "")
+        return Decimal(cleaned)
+    except (InvalidOperation, ValueError):
+        return default
+
+
+def safe_float(value: Any) -> float:
+    return float(to_decimal(value))
+
+
+def money_round(value: Any, currency: str = "VND") -> Decimal:
+    amount = to_decimal(value)
+    quant = Decimal("1") if currency.upper() == "VND" else MONEY_QUANT
+    return amount.quantize(quant, rounding=ROUND_HALF_UP)
+
+
+def parse_date_optional(value: Any) -> date | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    raw = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(raw[:19] if "%H" in fmt else raw[:10], fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def parse_date(value: Any, default: date | None = None) -> date:
+    return parse_date_optional(value) or default or date.today()
+
+
+def get_shipment_business_date(shipment: Any) -> date | None:
+    """Return a shipment business date without inventing a date.
+
+    The nested document date is authoritative; the top-level value is only a
+    backwards-compatible fallback because it is normally a persistence
+    timestamp. Missing or malformed values stay ``None`` for bounded filters.
+    """
+    if not isinstance(shipment, dict):
+        return None
+    data = shipment.get("data")
+    section = data.get("0.0") if isinstance(data, dict) else None
+    if isinstance(section, dict):
+        nested = parse_date_optional(section.get("created_at"))
+        if nested is not None:
+            return nested
+    return parse_date_optional(shipment.get("created_at"))
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def mark_changed(resource: str = "shipments") -> None:
+    if st is None:
+        return
+    st.session_state.needs_refresh = True
+    dirty = st.session_state.setdefault("dirty_resources", set())
+    dirty.add(resource)
+
+
+def log_error(error: Exception | str, context: str = "") -> None:
+    LOGGER.exception("%s: %s", context, error) if isinstance(error, Exception) else LOGGER.error("%s: %s", context, error)
+
+
+def escape_html(value: Any) -> str:
+    return html.escape(str(value or ""), quote=True)
+
+
+def get_tracking_url(carrier: str, ref_no: str) -> str:
+    ref = quote_plus(str(ref_no).strip())
+    template = CARRIER_LINKS.get(carrier)
+    if template:
+        return template.format(ref=ref)
+    # Air cargo fallback: tìm theo AWB trên Google thay vì tạo URL hãng không chắc chắn.
+    return f"https://www.google.com/search?q={quote_plus(f'{carrier} cargo tracking {ref_no}') }"
+
+
+def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
+    if not keyword or len(keyword.strip()) < 2:
+        return pd.DataFrame()
+    db_path = Path(TARIFF_DB_PATH)
+    if not db_path.exists():
+        return pd.DataFrame()
+    try:
+        with sqlite3.connect(db_path) as conn:
+            search_term = f"%{keyword.strip()}%"
+            query = '''
+                SELECT * FROM tariff_table
+                WHERE "Mã HS" LIKE ?
+                   OR "Mô tả tiếng Việt" LIKE ?
+                   OR "Mô tả tiếng Anh" LIKE ?
+                LIMIT ?
+            '''
+            return pd.read_sql_query(query, conn, params=(search_term, search_term, search_term, int(limit)))
+    except (sqlite3.Error, pd.errors.DatabaseError) as exc:
+        log_error(exc, "fast_search_tariff")
+        return pd.DataFrame()
+
+
+HS_RESPONSE_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "stt": {"type": "integer"},
+            "input_name": {"type": "string"},
+            "hs_code": {"type": "string"},
+            "vnaccs_name": {"type": "string"},
+            "english_name": {"type": "string"},
+            "rule": {"type": "string"},
+            "reasoning": {"type": "string"},
+            "note": {"type": "string"},
+            "confidence": {"type": "number"},
+            "requires_human_review": {"type": "boolean"},
+            "missing_information": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["stt", "input_name", "hs_code", "vnaccs_name", "english_name", "rule", "reasoning", "note", "confidence", "requires_human_review", "missing_information"],
+    },
+}
+
+
+def get_ai_response_hs_batch(text: str) -> list[dict[str, Any]]:
+    """Gọi Gemini bằng Google GenAI SDK, hỗ trợ danh sách key dự phòng."""
+    if not str(text).strip():
+        return []
+    if not GEMINI_API_KEYS:
+        raise RuntimeError(
+            "Chưa cấu hình Gemini. Dùng [gemini].api_key, [gemini].api_keys "
+            "hoặc GEMINI_KEYS trong secrets.toml."
+        )
+    try:
+        from google import genai
+        from google.genai import types
+        from core.prompts import HS_CLASSIFICATION_PROMPT
+    except ImportError as exc:
+        raise RuntimeError("Thiếu thư viện google-genai. Hãy cài requirements.txt của gói nâng cấp.") from exc
+
+    failures: list[str] = []
+    for index, api_key in enumerate(GEMINI_API_KEYS, start=1):
+        try:
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=HS_CLASSIFICATION_PROMPT.format(user_input=text),
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=HS_RESPONSE_SCHEMA,
+                    temperature=0.1,
+                ),
+            )
+            payload = json.loads(response.text or "[]")
+            if not isinstance(payload, list):
+                raise ValueError("Gemini không trả về JSON Array.")
+            return payload
+        except Exception as exc:
+            failures.append(f"key #{index}: {type(exc).__name__}: {str(exc)[:240]}")
+
+    raise RuntimeError("Tất cả Gemini API key đều thất bại. " + " | ".join(failures))
+
+
+def load_cbpg_rules() -> dict[str, Any]:
+    """Điểm mở rộng cho rule versioning; rule đang dùng vẫn nằm trong tariff view."""
+    return {"version": "legacy-2026-01", "requires_human_review": True}
+
+
+def send_telegram_msg(message: str) -> bool:
+    from core.notifications import enqueue_raw_notification
+    return enqueue_raw_notification(message)
