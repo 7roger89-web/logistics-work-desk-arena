@@ -5,7 +5,7 @@
   "baseline_sha": "05fa77741709f59a2c0d8cefb743bc30e65e766d",
   "current_git_sha": "a13fc40",
   "current_branch": "log-lg01-multi-user-internal-rc",
-  "current_task": "LG01-T05",
+  "current_task": "LG01-T06",
   "dynamic_task_graph": [
     {
       "id": "LG01-T00",
@@ -78,14 +78,16 @@
     "LG01-T01",
     "LG01-T02",
     "LG01-T03",
-    "LG01-T04"
+    "LG01-T04",
+    "LG01-T05"
   ],
   "task_statuses": {
     "LG01-T00": "DONE",
     "LG01-T01": "DONE",
     "LG01-T02": "DONE",
     "LG01-T03": "DONE",
-    "LG01-T04": "DONE"
+    "LG01-T04": "DONE",
+    "LG01-T05": "DONE"
   },
   "dependencies": {
     "LG01-T01": [
@@ -149,7 +151,7 @@
     "new_dependencies": 0
   },
   "blockers": [],
-  "next_safe_task": "LG01-T02",
+  "next_safe_task": "LG01-T06",
   "owner_gate": {
     "status": "NONE_OPEN",
     "anticipated": [
@@ -169,5 +171,8 @@
     "creds_on_disk": "real credentials in untracked .streamlit/secrets.toml; NOT in git; handled per CHECKPOINT_SECURITY_ENVIRONMENT"
   },
   "c15_classification": "CURRENT_ROOT_VERIFIED",
-  "last_updated": "2026-08-17T10:08:00Z"
+  "last_updated": "2026-08-17T10:08:00Z",
+  "evidence": {
+    "LG01-T05": "docs/goals/LOG-LG01/evidence/w3_write_safety_audit.md"
+  }
 }
