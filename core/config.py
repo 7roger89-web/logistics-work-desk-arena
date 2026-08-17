@@ -166,8 +166,48 @@ MONGO_DB_NAME = get_setting(
     "MONGO_DB_NAME",
     ("mongo", "database"),
     "MONGO_DB_NAME",
-    default="logistics_db",
+    default="",
 )
+
+# LG01 (W1): fail-closed data boundary. App chỉ được ghi vào các database
+# được phép liệt kê rõ ràng; URI thiếu hoặc tên DB ngoài danh sách sẽ FAIL.
+MONGO_ALLOWED_DB_NAMES = get_list_setting(
+    "MONGO_ALLOWED_DB_NAMES",
+    ("mongo", "allowed_databases"),
+    "MONGO_ALLOWED_DB_NAMES",
+)
+if not MONGO_ALLOWED_DB_NAMES:
+    MONGO_ALLOWED_DB_NAMES = ["logistics_workdesk_logc14", "logistics_workdesk_LG01_E2E"]
+ENV_IDENTITY = get_setting(    "ENV_IDENTITY", ("env", "identity"),
+    "ENV_IDENTITY", default="DEV")
+
+_PRODUCTION_DB_NAMES = frozenset({"logistics_db"})
+
+
+def validate_mongo_identity() -> None:
+    """Fail-closed guard: kiểm MONGO_URI + MONGO_DB_NAME trước khi app hoạt động."""
+    if not MONGO_URI:
+        raise RuntimeError(
+            "Chưa cấu hình MongoDB. Thêm [mongo].uri hoặc MONGO_URI vào "
+            ".streamlit/secrets.toml, hoặc đặt biến môi trường MONGO_URI."
+        )
+    db_name = str(MONGO_DB_NAME or "").strip()
+    if not db_name:
+        raise RuntimeError(
+            "Chưa cấu hình [mongo].database / MONGO_DB_NAME. Không dùng giá trị "
+            "mặc định; đặt tên database phát triển tường minh."
+        )
+    if db_name in _PRODUCTION_DB_NAMES:
+        raise RuntimeError(
+            f"MONGO_DB_NAME={db_name} là tên database PRODUCTION. "
+            "App phát triển không được kết nối database sản xuất."
+        )
+    if db_name not in MONGO_ALLOWED_DB_NAMES:
+        raise RuntimeError(
+            f"MONGO_DB_NAME={db_name} không thuộc danh sách MONGO_ALLOWED_DB_NAMES "
+            f"{MONGO_ALLOWED_DB_NAMES}. Chỉnh secrets hoặc biến MONGO_ALLOWED_DB_NAMES."
+        )
+
 
 _single_gemini_key = get_setting(
     "GEMINI_API_KEY",
