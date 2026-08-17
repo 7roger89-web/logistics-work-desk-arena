@@ -3,7 +3,7 @@
   "goal_name": "Multi-User Internal Release Candidate",
   "objective": "Convert the verified Logistics Work Desk candidate lineage into a coherent, multi-user-safe, environment-safe, evidence-backed, beginner-usable INTERNAL RELEASE CANDIDATE ready for a final Owner release decision. NOT a production release.",
   "baseline_sha": "05fa77741709f59a2c0d8cefb743bc30e65e766d",
-  "current_git_sha": "db1219f",
+  "current_git_sha": "a13fc40",
   "current_branch": "log-lg01-multi-user-internal-rc",
   "current_task": "LG01-T04",
   "dynamic_task_graph": [
