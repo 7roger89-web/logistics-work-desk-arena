@@ -3,9 +3,9 @@
   "goal_name": "Multi-User Internal Release Candidate",
   "objective": "Convert the verified Logistics Work Desk candidate lineage into a coherent, multi-user-safe, environment-safe, evidence-backed, beginner-usable INTERNAL RELEASE CANDIDATE ready for a final Owner release decision. NOT a production release.",
   "baseline_sha": "05fa77741709f59a2c0d8cefb743bc30e65e766d",
-  "current_git_sha": "a13fc40",
+  "current_git_sha": "cb371a5",
   "current_branch": "log-lg01-multi-user-internal-rc",
-  "current_task": "LG01-T07",
+  "current_task": "LG01-T08",
   "dynamic_task_graph": [
     {
       "id": "LG01-T00",
@@ -80,7 +80,8 @@
     "LG01-T01",
     "LG01-T05",
     "LG01-T04",
-    "LG01-T02"
+    "LG01-T02",
+    "LG01-T07"
   ],
   "task_statuses": {
     "LG01-T00": "DONE",
@@ -89,7 +90,8 @@
     "LG01-T03": "DONE",
     "LG01-T04": "DONE",
     "LG01-T05": "DONE",
-    "LG01-T06": "DONE"
+    "LG01-T06": "DONE",
+    "LG01-T07": "DONE"
   },
   "dependencies": {
     "LG01-T01": [
@@ -173,7 +175,7 @@
     "creds_on_disk": "real credentials in untracked .streamlit/secrets.toml; NOT in git; handled per CHECKPOINT_SECURITY_ENVIRONMENT"
   },
   "c15_classification": "CURRENT_ROOT_VERIFIED",
-  "last_updated": "2026-08-17T10:08:00Z",
+  "last_updated": "2026-08-17T18:36:00+07:00",
   "evidence": {
     "LG01-T05": "docs/goals/LOG-LG01/evidence/w3_write_safety_audit.md"
   }
