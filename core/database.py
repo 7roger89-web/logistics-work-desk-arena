@@ -29,7 +29,8 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
-from core.config import GETFLY_SERVICES_LIST, MONGO_DB_NAME, MONGO_URI, is_streamlit_runtime
+from core.config import GETFLY_SERVICES_LIST, MONGO_URI, is_streamlit_runtime
+import core.config as _core_config
 from core.logic import apply_financial_snapshot, calculate_from_shipment
 from core.utils import safe_float, to_decimal, utc_now
 from core.validators import validate_shipment
@@ -179,8 +180,11 @@ def init_connection() -> pymongo.MongoClient | None:
 
 
 def get_db():
+    # Đọc MONGO_DB_NAME qua module core.config mỗi lần gọi để cho phép runtime
+    # override an toàn (ví dụ: kiểm thử trên database riêng); app vẫn dùng secrets
+    # theo thứ tự ưu tiên mặc định, không bị thay đổi.
     client = init_connection()
-    return client[MONGO_DB_NAME] if client is not None else None
+    return client[str(_core_config.MONGO_DB_NAME)] if client is not None else None
 
 
 def ensure_indexes() -> bool:
@@ -217,6 +221,8 @@ def ensure_indexes() -> bool:
         (db.financial_allocations, "id", {"unique": True, "name": "uq_financial_allocation_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.financial_allocations, [("transaction_id", 1), ("status", 1)], {"name": "ix_financial_allocation_transaction"}),
         (db.financial_allocations, [("obligation_id", 1), ("status", 1)], {"name": "ix_financial_allocation_obligation"}),
+        (db.users, "username", {"unique": True, "name": "uq_users_username", "partialFilterExpression": {"username": {"$type": "string"}}}),
+        (db.users, [("role", 1), ("active", 1)], {"name": "ix_user_role_active"}),
     ]
     all_ok = True
     errors: list[str] = []
@@ -1237,3 +1243,90 @@ def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
         _audit(db, "proxy_payment", payment_id, "soft_delete", before=old, after={"reason": reason})
         return True
     return False
+
+
+# ---------------------------------------------------------------- users LOG-C15
+# User identity store: mỗi user là một document trong collection `users`,
+# khóa `username` unique (index uq_users_username). Mọi thao tác admin
+# (tạo/đổi quyền/vô hiệu hóa/xóa) đều ghi audit log với actor đã xác thực.
+
+def load_users() -> dict[str, dict[str, Any]]:
+    """Toàn bộ user documents (gồm password_hash — chỉ core.auth dùng để xác thực)."""
+    db = get_db()
+    if db is None:
+        return {}
+    return {
+        str(doc["username"]): {k: v for k, v in doc.items() if k != "_id"}
+        for doc in db.users.find({}, {"_id": 0})
+        if doc.get("username") and not doc.get("is_deleted")
+    }
+
+
+def save_user(document: dict[str, Any]) -> bool:
+    """Tạo hoặc cập nhật user theo khóa username; ghi audit."""
+    db = get_db()
+    if db is None or not document.get("username"):
+        return False
+    try:
+        safe = {k: v for k, v in document.items() if k != "_id"}
+        db.users.update_one(
+            {"username": str(document["username"])},
+            {"$set": safe},
+            upsert=True,
+        )
+        _audit(db, "user", str(document["username"]), "create", after=safe)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.exception("save_user failed")
+        return False
+
+
+def update_user(username: str, document: dict[str, Any]) -> bool:
+    """Cập nhật toàn bộ document user đã tồn tại; không tạo mới.
+
+    Dùng update_one với $set (giữ nguyên _id gốc) thay vì replace_one —
+    replace_one sẽ cố ghi đè _id immutable gây WriteError.
+    """
+    db = get_db()
+    if db is None or not document.get("username"):
+        return False
+    safe = {k: v for k, v in document.items() if k != "_id"}
+    try:
+        result = db.users.update_one({"username": str(username)}, {"$set": safe})
+        _audit(db, "user", str(username), "update", after=safe)
+        return bool(result.matched_count)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.exception("update_user failed")
+        return False
+
+
+def delete_user(username: str, actor: str = "system") -> bool:
+    """Soft delete user (giữ audit trail); hard delete chỉ khi is_deleted sẵn."""
+    db = get_db()
+    if db is None:
+        return False
+    old = db.users.find_one({"username": str(username)}, {"_id": 0})
+    if old is None:
+        return False
+    if old.get("is_deleted"):
+        result = db.users.delete_one({"username": str(username)})
+        if result.deleted_count:
+            _audit(db, "user", str(username), "hard_delete", before=old, actor=actor)
+            return True
+        return False
+    result = db.users.update_one(
+        {"username": str(username)},
+        {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": str(actor)}},
+    )
+    if result.modified_count:
+        _audit(db, "user", str(username), "soft_delete", before=old, actor=actor)
+        return True
+    return False
+
+
+def redact_for_audit(document: dict[str, Any]) -> dict[str, Any]:
+    """Bản sao document không chứa password material cho audit/public view."""
+    cleaned = dict(document)
+    for key in ("password_hash", "password"):
+        cleaned.pop(key, None)
+    return cleaned

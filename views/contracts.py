@@ -26,6 +26,7 @@ from core.database import (
     save_proxy_payment,
     save_shipment_atomic,
 )
+from core.auth import has_write_permission
 from core.logic import calculate_from_shipment
 from core.utils import safe_float
 
@@ -194,7 +195,9 @@ def _render_shipment_links(contract_id: str, shipments_db: dict) -> list[dict]:
         key=f"contract_shipments_{contract_id}",
         help="Một hợp đồng có thể gắn nhiều lô hàng. Liên kết trực tiếp được lưu ở contract_id; dữ liệu entrustment cũ vẫn được đọc.",
     )
-    if st.button("💾 Lưu liên kết lô hàng", key=f"save_contract_shipments_{contract_id}", type="primary"):
+    if st.button("💾 Lưu liên kết lô hàng", key=f"save_contract_shipments_{contract_id}", type="primary", disabled=not has_write_permission("sales_write")):
+        if not has_write_permission("sales_write"):
+            st.warning("Bạn không có quyền sửa hợp đồng.")
         failures = []
         for sid, shipment in shipments_db.items():
             should_link = sid in selected
@@ -256,7 +259,9 @@ def _render_contract_finance(item: dict, contracts_db: dict, proxy_db: dict, ent
             bank_amount = c2.number_input("Số tiền ngoại tệ", min_value=0.0, step=100.0, format="%.2f")
             bank_currency = c3.selectbox("Loại tiền", ["USD", "EUR", "CNY", "VND"])
             bank_note = st.text_input("Số lệnh chi / ghi chú ngân hàng")
-            if st.form_submit_button("➕ Ghi nhận chuyển khoản"):
+            if st.form_submit_button("➕ Ghi nhận chuyển khoản", disabled=not has_write_permission("sales_write")):
+                if not has_write_permission("sales_write"):
+                    st.warning("Bạn không có quyền sửa hợp đồng.")
                 if bank_amount <= 0:
                     st.error("Số tiền phải lớn hơn 0.")
                 else:
@@ -284,7 +289,9 @@ def _render_contract_finance(item: dict, contracts_db: dict, proxy_db: dict, ent
             proxy_paid = st.number_input("Ngoại tệ đã chuyển", min_value=0.0, step=100.0, format="%.2f")
             proxy_beneficiary = st.text_input("Nhà máy / đại lý thụ hưởng")
             proxy_note = st.text_input("Ghi chú thanh toán hộ")
-            if st.form_submit_button("➕ Ghi nhận thanh toán hộ"):
+            if st.form_submit_button("➕ Ghi nhận thanh toán hộ", disabled=not has_write_permission("sales_write")):
+                if not has_write_permission("sales_write"):
+                    st.warning("Bạn không có quyền sửa hợp đồng.")
                 if not proxy_customer.strip() or proxy_vnd <= 0:
                     st.error("Cần người gửi và số VNĐ đã nhận.")
                 else:
@@ -308,7 +315,9 @@ def _render_contract_finance(item: dict, contracts_db: dict, proxy_db: dict, ent
             wallet_date = c2.date_input("Ngày nạp", date.today())
             wallet_amount = c3.number_input("Số tiền ký quỹ (VNĐ)", min_value=0.0, step=100000.0, format="%.0f")
             wallet_note = st.text_input("Ghi chú ví ký quỹ")
-            if st.form_submit_button("➕ Ghi nhận nạp ví"):
+            if st.form_submit_button("➕ Ghi nhận nạp ví", disabled=not has_write_permission("sales_write")):
+                if not has_write_permission("sales_write"):
+                    st.warning("Bạn không có quyền sửa hợp đồng.")
                 if wallet_amount <= 0:
                     st.error("Số tiền ký quỹ phải lớn hơn 0.")
                 else:
@@ -349,19 +358,22 @@ def ui_contracts_management() -> None:
             new_value = c4.number_input("Tổng giá trị", min_value=0.0, step=1000.0, format="%.2f")
             new_currency = c5.selectbox("Loại tiền", ["USD", "EUR", "VND", "CNY"])
             new_note = c6.text_input("Điều khoản / ghi chú")
-            if st.form_submit_button("🚀 Lưu hợp đồng", type="primary"):
-                contract_id = new_no.strip().upper()
-                if not contract_id or not new_client.strip():
-                    st.error("Cần số hợp đồng và đối tác.")
-                elif any(normalize_contract_no(existing) == normalize_contract_no(contract_id) for existing in contracts_db):
-                    st.error("Số hợp đồng này đã tồn tại.")
+            if st.form_submit_button("🚀 Lưu hợp đồng", type="primary", disabled=not has_write_permission("sales_write")):
+                if not has_write_permission("sales_write"):
+                    st.warning("Bạn không có quyền sửa hợp đồng.")
                 else:
-                    item = {"id": contract_id, "contract_no": contract_id, "normalized_no": normalize_contract_no(contract_id), "date": str(new_date), "client": new_client.strip(), "value": new_value, "currency": new_currency, "note": new_note.strip(), "details": {"transactions": []}, "linked_shipment_ids": []}
-                    if _save_contract_and_refresh(item, contracts_db):
-                        st.success(f"Đã đăng ký {contract_id}.")
-                        st.rerun()
+                    contract_id = new_no.strip().upper()
+                    if not contract_id or not new_client.strip():
+                        st.error("Cần số hợp đồng và đối tác.")
+                    elif any(normalize_contract_no(existing) == normalize_contract_no(contract_id) for existing in contracts_db):
+                        st.error("Số hợp đồng này đã tồn tại.")
                     else:
-                        st.error("Không lưu được hợp đồng.")
+                        item = {"id": contract_id, "contract_no": contract_id, "normalized_no": normalize_contract_no(contract_id), "date": str(new_date), "client": new_client.strip(), "value": new_value, "currency": new_currency, "note": new_note.strip(), "details": {"transactions": []}, "linked_shipment_ids": []}
+                        if _save_contract_and_refresh(item, contracts_db):
+                            st.success(f"Đã đăng ký {contract_id}.")
+                            st.rerun()
+                        else:
+                            st.error("Không lưu được hợp đồng.")
 
     if not contracts_db:
         st.info("Hiện tại chưa có hợp đồng nào.")
@@ -389,7 +401,9 @@ def ui_contracts_management() -> None:
     with terms_tab:
         new_value = st.number_input("Điều chỉnh giá trị theo phụ lục", value=safe_float(item.get("value", 0)), key=f"contract_value_{contract_id}")
         new_note = st.text_area("Ghi chú / điều khoản", value=item.get("note", ""), key=f"contract_note_{contract_id}")
-        if st.button("💾 Cập nhật phụ lục", key=f"save_contract_terms_{contract_id}"):
+        if st.button("💾 Cập nhật phụ lục", key=f"save_contract_terms_{contract_id}", disabled=not has_write_permission("sales_write")):
+            if not has_write_permission("sales_write"):
+                st.warning("Bạn không có quyền sửa hợp đồng.")
             item["value"] = new_value
             item["note"] = new_note.strip()
             if _save_contract_and_refresh(item, contracts_db):

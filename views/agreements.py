@@ -32,6 +32,7 @@ from core.commercial_agreements import (
     prepare_agreement_for_persistence,
     transition_agreement,
 )
+from core.auth import has_write_permission
 from core.database import load_agreements, save_agreements_to_cloud
 
 
@@ -199,7 +200,15 @@ def _render_new_agreement() -> None:
             "services": snapshot["commercial_snapshot"]["service_lines"],
         })
     st.caption("Nhấn nút dưới đây sẽ tạo thỏa thuận DRAFT giữ nguyên snapshot trên.")
-    if st.button("Tạo thỏa thuận từ báo giá này", type="primary", key="agr_create_from_quote"):
+    if st.button(
+        "Tạo thỏa thuận từ báo giá này",
+        type="primary",
+        key="agr_create_from_quote",
+        disabled=not has_write_permission("commercial_write"),
+    ):
+        if not has_write_permission("commercial_write"):
+            st.error("Bạn không có quyền tạo thỏa thuận. Liên hệ người quản trị.")
+            st.stop()
         if _persist_agreement(snapshot):
             st.success(f"Đã tạo thỏa thuận {snapshot['agreement_no']} (DRAFT) từ báo giá {quote.get('quote_no')}.")
             st.rerun()
@@ -364,7 +373,14 @@ def _render_agreement_detail() -> None:
                 default=[str(item) for item in agreement.get("shipment_ids") or []],
                 key="agr_linked_shipments",
             )
-            if st.form_submit_button("Cập nhật liên kết lô", type="primary"):
+            if st.form_submit_button(
+                "Cập nhật liên kết lô",
+                type="primary",
+                disabled=not has_write_permission("commercial_write"),
+            ):
+                if not has_write_permission("commercial_write"):
+                    st.error("Bạn không có quyền cập nhật liên kết lô. Liên hệ người quản trị.")
+                    st.stop()
                 agreement["shipment_ids"] = list(dict.fromkeys(str(item) for item in linked if item in shipments))
                 if _persist_agreement(agreement):
                     st.success("Đã cập nhật liên kết lô vận chuyển.")
@@ -394,7 +410,14 @@ def _render_revision_dialog(agreement: dict[str, Any]) -> bool:
     with st.form("agr_revision"):
         st.caption("Tạo bản nháp sửa đổi. Bản thỏa thuận đã đồng ý được giữ nguyên làm lịch sử.")
         note = st.text_input("Lý do sửa điều khoản", key="agr_revision_reason")
-        if st.form_submit_button("Tạo bản sửa đổi (revision draft)", type="primary"):
+        if st.form_submit_button(
+            "Tạo bản sửa đổi (revision draft)",
+            type="primary",
+            disabled=not has_write_permission("commercial_write"),
+        ):
+            if not has_write_permission("commercial_write"):
+                st.error("Bạn không có quyền sửa điều khoản thỏa thuận. Liên hệ người quản trị.")
+                st.stop()
             if not note.strip():
                 st.error("Cần ghi rõ lý do sửa điều khoản.")
                 return False

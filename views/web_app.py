@@ -17,7 +17,7 @@ from typing import Callable
 
 import streamlit as st
 
-from core.auth import has_permission, logout, require_login
+from core.auth import has_permission, has_write_permission, logout, require_login
 from core.config import AUTH_REQUIRED
 from core.database import load_archived_data
 from core.state import initialize_state, refresh_core_data
@@ -50,6 +50,8 @@ ROUTES: tuple[Route, ...] = (
     Route("Tra Cá»©u Thuáº¿", "ðŸ”Ž", "tariff", "views.tariff", "ui_super_tariff_hub"),
     Route("Tracking", "ðŸŒ", "tracking", "views.tracking", "ui_tracking_tool"),
     Route("Sá»• Tay Kinh Nghiá»‡m", "ðŸ“”", "knowledge", "views.knowledge_base", "ui_knowledge_base"),
+    # MÃ n hÃ¬nh quáº£n lá»‹ tÃ i khoáº£n, chá»‰ dÃ nh cho vai trÃ² admin.
+    Route("NgÆ°á»i DÃ¹ng", "ðŸ‘¤", "admin", "views.web_app", "_render_user_management"),
 )
 
 
@@ -72,6 +74,10 @@ NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "TOOLS & REFERENCE",
         ("Tra Cá»©u Thuáº¿", "Sá»• Tay Kinh Nghiá»‡m"),
+    ),
+    (
+        "ADMINISTRATION",
+        ("NgÆ°á»i DÃ¹ng",),
     ),
 )
 
@@ -268,8 +274,135 @@ def _render_route(route: Route) -> None:
         )
 
 
+def _assert_route_access(current_user: dict[str, str], route: Route) -> None:
+    """Kiá»ƒm soÃ¡t quyá»n tuyáº¿n tuyá»‡n quyá»n táº¡i biÃªn giao diá»‡n.
+
+    sidebar chá»‰ hiá»ƒn thá»‹ cÃ¡c tuyáº¿n Ä‘Æ°á»£c phÃ©p, nhÆ°ng ngÆ°á»i dÃ¹ng cÃ³ thá»ƒ cá»‘
+    gáº¯ng thay Ä‘á»•i ``st.session_state.active_page`` trá»±c tiáº¿p. Kiá»ƒm tra nÃ y tá»« chá»‘i
+    truy cáº­p khi tÃ i khoáº£n khÃ´ng cÃ³ quyá»n tuyáº¿n, khÃ´ng quan trá»ng trang tháº­
+    trÃªn Ä‘Æ°á»£c lá»±a chá»n nhÆ° tháº¿ nÃ o.
+    """
+    user = current_user or {}
+    role = str(user.get("role", "viewer")).lower()
+    if has_write_permission(route.permission) or has_permission(route.permission):
+        return
+    if role == "admin" or (user.get("username") and route.permission in ("dashboard", "tariff", "tracking", "knowledge")):
+        return
+    st.error(
+        f"TÃ i khoáº£n **{user.get('display_name', user.get('username', '?'))}** "
+        f"khÃ´ng cÃ³ quyá»n má»Ÿ mÃ n hÃ¬nh **{route.label}**. "
+        "LiÃªn há»‡ ngÆ°á»i quáº£n trá»‹ náº¿u cáº§n truy cáº­p."
+    )
+    if st.button("Vá» Dashboard", key="route_access_denied_home"):
+        st.session_state.active_page = "Dashboard"
+        st.rerun()
+    st.stop()
+
+
+# ------------------------------------------------------------------ user management
+def _render_user_management() -> None:
+    """MÃ n hÃ¬nh quáº£n lá»‹ tÃ i khoáº£n (chá»‰ Admin). Admin cÅ©ng cÃ³ quyá»n toÃ n trá»ng."""
+    from core.database import delete_user, load_users, update_user  # noqa: PLC0415
+    from core.users import SUPPORTED_ROLES, UserError  # noqa: PLC0415
+
+    st.subheader("Quáº£n lá»‹ ngÆ°á»i dÃ¹ng")
+    st.caption(
+        "Chá»‰ ngÆ°á»i quáº£n trá»‹ má»›i xem Ä‘Æ°á»£c mÃ n hÃ¬nh nÃ y. Viá»‡c tÃ o/vÃ´ hiá»‡u hÃ³a tÃ i khoáº£n "
+        "Ä‘Æ°á»£c ghi nháº­n trong nháº­t kÃ½ kiá»ƒm toÃ¡n."
+    )
+    users = load_users()
+    if not users:
+        st.info("ChÆ°a cÃ³ tÃ i khoáº£n nÃ o.")
+        return
+
+    st.markdown("**CÃ¡c tÃ i khoáº£n hiá»‡n cÃ³**")
+    for uname, doc in users.items():
+        if doc.get("is_deleted"):
+            continue
+        with st.expander(
+            f"{doc.get('display_name', uname)} â€¢ {doc.get('username')} â€¢ {doc.get('role', '?')}",
+            expanded=False,
+        ):
+            st.caption(
+                f"Tráº¡ng thÃ¡i: {'Hoáº¡t Ä‘á»™ng' if doc.get('active', True) else 'VÃ´ hiá»‡u hÃ³a'} "
+                f"Â· tráº£ vá» cuá»‘i: {doc.get('last_login_at') or 'chÆ°a Ä‘Äƒng nháº­p'}"
+            )
+            new_role = st.selectbox(
+                "Vai trÃ²",
+                list(SUPPORTED_ROLES),
+                index=list(SUPPORTED_ROLES).index(str(doc.get("role", "support")).lower())
+                if str(doc.get("role", "support")).lower() in SUPPORTED_ROLES
+                else 0,
+                key=f"um_role_{uname}",
+            )
+            active = st.checkbox("Hoáº¡t Ä‘á»™ng", value=bool(doc.get("active", True)), key=f"um_active_{uname}")
+            c1, c2 = st.columns(2)
+            if c1.button("Ä€p dá»¥ng thay Ä‘á»•i", key=f"um_apply_{uname}"):
+                result = update_user(
+                    username=uname,
+                    payload={"role": new_role, "active": active},
+                    actor=str(current_user().get("username", "admin")),
+                )
+                if result:
+                    st.success("Ä€p dá»¥ng thÃ nh cÃ´ng.")
+                    st.rerun()
+                st.error("KhÃ´ng Ä‘á»•i Ä‘Æ°á»£c tÃ i khoáº£n.")
+            if c2.button("XÃ³a tÃ i khoáº£n", key=f"um_del_{uname}", type="secondary"):
+                if uname == str(current_user().get("username")):
+                    st.warning("KhÃ´ng thá»ƒ xÃ³a tÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p.")
+                elif delete_user(uname, actor=str(current_user().get("username", "admin"))):
+                    st.success("Ä€ thá»ƒ xÃ³a tÃ i khoáº£n.")
+                    st.rerun()
+
+    with st.expander("Táº¡o tÃ i khoáº£n má»›i", expanded=False):
+        username = st.text_input("TÃªn Ä‘Äƒng nháº­p (3-30 kÃ½ tá»±, chá»¯ thÆ°á»ng)", key="um_new_username").strip().lower()
+        display_name = st.text_input("TÃªn hiá»ƒn thá»‹", key="um_new_display").strip()
+        email = st.text_input("Email (khÃ´ng báº¯t buá»™c)", key="um_new_email").strip().lower()
+        role = st.selectbox("Vai trÃ²", list(SUPPORTED_ROLES), index=1, key="um_new_role")
+        password = st.text_input("Máº­t kháº£u (tá»‘i thiá»ƒu 8 kÃ½ tá»±)", type="password", key="um_new_password")
+        confirm = st.text_input("Nháº­p láº¡i máº­t kháº£u", type="password", key="um_new_confirm")
+        if st.button("Táº¡o tÃ i khoáº£n", type="primary", key="um_new_submit"):
+            _create_user_from_admin(username, display_name, email, role, password, confirm)
+
+
+# ----------------------------------------------------------------- admin helpers
+def _create_user_from_admin(
+    username: str,
+    display_name: str,
+    email: str,
+    role: str,
+    password: str,
+    confirm: str,
+) -> bool:
+    from core.database import save_user  # noqa: PLC0415
+    from core.users import build_user_document, UserError  # noqa: PLC0415
+
+    if password != confirm:
+        st.error("Máº­t kháº£u xÃ¡c nháº­n khÃ´ng khá»›p.")
+        return False
+    try:
+        document = build_user_document(
+            username=username,
+            password=password,
+            display_name=display_name or username,
+            role=role,
+            created_by=str(current_user().get("username", "admin")),
+        )
+        if email:
+            document["email"] = email
+    except UserError as exc:
+        st.error(str(exc))
+        return False
+    if not save_user(document):
+        st.error("KhÃ´ng lÆ°u Ä‘Æ°á»£c tÃ i khoáº£n. Kiá»ƒm tra káº¿t ná»‘i database.")
+        return False
+    st.success(f"Ä€ táº¡o tÃ i khoáº£n **{username}** vá»›i vai trÃ² {role}.")
+    st.rerun()
+    return True
+
+
 def main() -> None:
-    """Render toÃ n bá»™ á»©ng dá»¥ng trong má»—i láº§n Streamlit rerun."""
+    """Render toÃ n bá»™ á»©ng dá»¥ng trong má»—i láº§n Streamlit rerun."""
     _configure_page()
     initialize_state()
 
@@ -289,5 +422,9 @@ def main() -> None:
 
     routes = _visible_routes()
     route = _render_sidebar(current_user, routes)
-    _render_route(route)
+    _assert_route_access(current_user, route)
+    if route.label == "NgÆ°á»i dÃ¹ng":
+        _render_user_management()
+    else:
+        _render_route(route)
 
