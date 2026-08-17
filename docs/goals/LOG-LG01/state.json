@@ -5,7 +5,7 @@
   "baseline_sha": "05fa77741709f59a2c0d8cefb743bc30e65e766d",
   "current_git_sha": "cb371a5",
   "current_branch": "log-lg01-multi-user-internal-rc",
-  "current_task": "LG01-T11",
+  "current_task": "LG01-T12",
   "dynamic_task_graph": [
     {
       "id": "LG01-T00",
@@ -83,7 +83,8 @@
     "LG01-T02",
     "LG01-T07",
     "LG01-T09",
-    "LG01-T10"
+    "LG01-T10",
+    "LG01-T12"
   ],
   "task_statuses": {
     "LG01-T00": "DONE",
@@ -95,7 +96,8 @@
     "LG01-T06": "DONE",
     "LG01-T07": "DONE",
     "LG01-T09": "DONE",
-    "LG01-T10": "DONE"
+    "LG01-T10": "DONE",
+    "LG01-T12": "DONE"
   },
   "dependencies": {
     "LG01-T01": [
@@ -159,7 +161,7 @@
     "new_dependencies": 0
   },
   "blockers": [],
-  "next_safe_task": "LG01-T11",
+  "next_safe_task": "NONE",
   "owner_gate": {
     "status": "NONE_OPEN",
     "anticipated": [
@@ -182,5 +184,6 @@
   "last_updated": "2026-08-17T18:36:00+07:00",
   "evidence": {
     "LG01-T05": "docs/goals/LOG-LG01/evidence/w3_write_safety_audit.md"
-  }
+  },
+  "terminal_status": "READY_FOR_OWNER_RELEASE_GATE"
 }
