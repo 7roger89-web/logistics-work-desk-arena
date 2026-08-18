@@ -373,7 +373,7 @@ def ui_entity_context() -> None:
     st.subheader(f"{entity_label} · {_value(request['entity_key'])}")
     back_col, nav_col = st.columns([1.4, 4.6])
     if request["return_shipment_id"]:
-        if back_col.button("← Back to Shipment 360", key="entity_back_shipment", use_container_width=True):
+        if back_col.button("← Về Lô hàng 360", key="entity_back_shipment", use_container_width=True):
             _open_shipment(request["return_shipment_id"])
     else:
         back_label = "← Quay lại Việc Cần Xử Lý" if request.get("return_page") == "Việc Cần Xử Lý" else "← Quay lại Trang Tổng Quan"
