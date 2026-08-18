@@ -1,4 +1,4 @@
-"""One-command helper: tao .streamlit/secrets.toml chuan cho production cutover.
+r"""One-command helper: tao .streamlit/secrets.toml chuan cho production cutover.
 
 Doc file secrets.toml CU dang hoat dong cua Owner (chua key Gemini/Telegram
 that), them/cap nhat phan [mongo] voi production URI va bat [auth].required.
@@ -19,7 +19,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[4]  # tools -> LOG-LG02 -> goals -> docs -> repo root
 STREAMLIT_DIR = REPO / ".streamlit"
 SECRETS = STREAMLIT_DIR / "secrets.toml"
 
