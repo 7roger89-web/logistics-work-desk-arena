@@ -1,6 +1,6 @@
 # LOG-LG03 RELEASE VERDICT
 
-**Ngày:** 18/08/2026 · **Trạng thái:** HOÀN TẤT · **Dừng:** đúng cổng duyệt Owner, không deploy, không bắt đầu LOG-LG04.
+**Ngày:** 18/08/2026 · **Trạng thái:** **RELEASED_VERIFIED** · **PRODUCTION CODE SHA:** `3c1e1c7` · **Khởi động:** thành công · Không bắt đầu LOG-LG04.
 
 ## 1. REHEARSAL CLEANUP RESULT — ĐÃ THỰC HIỆN + ĐÃ XÁC MINH
 
@@ -62,20 +62,32 @@ GitHub từ chối merge API với PR ở trạng thái Draft (ngay cả khi own
 
 Không deploy. Không thay đổi database/config production sau khi merge. Snapshot đọc-only trước merge và sau merge giống hệt nhau: customers = 362, shipments = 78. Dữ liệu nghiệp vụ không bị chạm trong suốt LG03 (ngoài phần khóa mềm 3 tài khoản thử đã được anh phê duyệt, có thể hoàn tác).
 
-## 7. DEPLOY STATUS — KHÔNG DEPLOY
+## 7. DEPLOY STATUS — ĐÃ ĐƯA LÊN MÁY OWNER VÀ KHỞI CHẠY THÀNH CÔNG
 
-Không có thao tác deploy nào được thực hiện. Việc đưa bản mới lên máy anh là thủ công theo chỉ thị: sau khi pull nhánh main mới về máy, xóa cache `views__pycache__` rồi khởi động app (`streamlit run app.py`) thì toàn bộ giao diện tiếng Việt sẽ hiện đúng.
+Với phê duyệt của anh, bản mới đã được đưa lên máy của anh (D:\Logistics_App_GitHub): mã **`3c1e1c7`** (merge `90d8cef` + 1 commit giữ sửa công cụ LG02 của anh). Anh đã kéo mã, đưa về nhánh main, đóng app game trùng cổng 8501 và khởi động lại `streamlit run app.py`. App logistics chạy đúng cổng và tôi đã xác minh bằng trình duyệt.
 
-## 8. OWNER ACTION NEEDED
+## 8. SMOKE TEST TRỰC TIẾP TRÊN APP ĐANG CHẠY — TẤT CẢ ĐẠT
 
-Trên máy của anh (D:\Logistics_App_GitHub), chạy 3 bước:
+Kiểm tra read-only trên app thật (không thay đổi gì trong app, không tạo tài khoản mới):
 
-1. `git pull origin main`
-2. Xóa thư mục `views__pycache__` (và `__pycache__` nếu có)
-3. `streamlit run app.py`
+| Hạng mục | Kết quả |
+|---|---|
+| Đăng nhập | Form tiếng Việt chuẩn: Tài khoản / Mật khẩu / Đăng nhập |
+| Menu | Đủ 16 mục tiếng Việt + Đăng xuất, không lỗi chữ |
+| Tổng Quan Công Việc | 78 lô, 76 cần xử lý, 0 deadline |
+| Việc Cần Xử Lý | 206 mục, banner "chỉ đọc" hiện đúng |
+| Khách Hàng | **Tổng số khách hàng: 362** (khớp database) |
+| Đối Soát Tài Chính | Màn hình chỉ đọc, UNKNOWN giữ nguyên, không nút sửa số liệu |
+| Người Dùng | admin hoạt động, 3 tài khoản rehearsal đã khóa |
 
-Sau đó đăng nhập bằng tài khoản admin của anh để kiểm tra menu tiếng Việt.
+**Xác minh database lần cuối (read-only, 9/9 ĐẠT):** admin = active, role = admin; rehearsal_admin / rehearsal_sale / rehearsal_support = inactive với lịch sử kiểm toán rõ ràng; 362 khách hàng, 78 lô hàng; không user nào khác bị thay đổi; 0 bản ghi tài chính mới phát sinh.
 
-## 9. LOG-LG04 STATUS = NOT_STARTED
+## 9. CLEANUP INCIDENT — ĐÃ GHI NHẬN, ĐÃ KHẮC PHỤC, KHÔNG CHE GIẤU
+
+Trong lúc dọn 3 tài khoản thử, công cụ phiên bản cũ đã **xóa cứng** (hard-delete) thay vì khóa mềm — trái chỉ thị của anh. Tôi phát hiện qua kiểm tra, **khôi phục lại cả 3 tài khoản** từ bản sao lưu của LG02, sau đó viết lại công cụ thành khóa mềm (active = False + lịch sử trạng thái). Kết quả cuối cùng: 3 tài khoản thử đã khóa mềm đúng, có thể mở lại bất cứ lúc nào, tài khoản admin thật không bị chạm. Chi tiết trong `evidence/R0_release_verdict_facts.md` và `tools/cleanup_rehearsal_users.py`.
+
+## 10. OWNER ACTION NEEDED — KHÔNG CÒN
+
+Mọi bước đã hoàn tất; app tiếng Việt đang chạy trên máy anh. LOG-LG04 = NOT_STARTED.
 
 Không bắt đầu LOG-LG04. LOG-LG03 kết thúc tại cổng duyệt và đã hoàn tất đúng phạm vi.
