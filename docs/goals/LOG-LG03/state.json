@@ -4,7 +4,7 @@
   "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
   "baseline_sha": "09e2426",
   "current_branch": "log-lg03-vietnamese-simplified-ux",
-  "candidate_sha": "af192d0",
+  "candidate_sha": "99d098f",
   "production_release_sha": "09e2426",
   "current_task": "W12_phase_b_c_recovery",
   "checkpoints": [
@@ -126,5 +126,6 @@
     "owner_admin_affected": "NO",
     "mode": "soft_deactivate via update_user (reversible); hard delete available but not default",
     "dry_run_status": "PENDING_NETWORK (Atlas transiently unreachable from sandbox 07:29-07:31 UTC; retry on next session)"
-  }
+  },
+  "terminal_report_phase_be": "docs/goals/LOG-LG03/LG03_PHASE_B_E_REPORT.md"
 }
