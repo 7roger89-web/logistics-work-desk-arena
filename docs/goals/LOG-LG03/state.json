@@ -3,8 +3,8 @@
   "goal_name": "Vietnamese-First Simplified Logistics Experience",
   "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
   "baseline_sha": "09e2426",
-  "current_branch": "log-lg03-vietnamese-simplified-ux",
-  "candidate_sha": "5b39981",
+  "current_branch": "main",
+  "candidate_sha": "dada01c",
   "production_release_sha": "09e2426",
   "current_task": "W12_phase_b_c_recovery",
   "checkpoints": [
@@ -19,10 +19,13 @@
     "CHECKPOINT_UX_RELEASE_CANDIDATE",
     "CHECKPOINT_W12_ZERO_TEST_FAILURES"
   ],
-  "terminal_outcome": "READY_FOR_OWNER_UX_RELEASE_GATE",
-  "release_status": "NOT_RELEASED_BY_LOG_LG03",
-  "merged": false,
-  "deployed": false,
+  "terminal_outcome": "RELEASED_VERIFIED",
+  "release_status": "RELEASED_VERIFIED_BY_LOG_LG03",
+  "merged": true,
+  "deployed": true,
+  "production_code_sha": "3c1e1c7",
+  "pr2_merge_sha": "90d8cef",
+  "main_after_merge": "dada01c",
   "phase0_recovery": {
     "restored": [
       "core.database.load_users",
@@ -68,13 +71,58 @@
   },
   "production_safety": {
     "production_db": "logistics_db",
+    "release_mode": "true (production authority, Owner-approved)",
     "net_mutations": "+3 rehearsal users created by accident during W0 (documented, reversible); pending Owner approval to run tools/cleanup_rehearsal_users.py --apply (target: 1 admin only)",
     "finance_invariants_preserved": true,
     "rbac_widened": false
   },
-  "draft_pr": "log-lg03-vietnamese-simplified-ux -> main (DRAFT, not merged)",
+  "draft_pr": "log-lg03-vietnamese-simplified-ux -> main (PR #2, merged 90d8cef per Owner approval)",
   "lg04_started": false,
   "pending": [],
+  "deployment": {
+    "deployed_on": "2026-08-18",
+    "production_machine": "Owner Windows (D:\\Logistics_App_GitHub)",
+    "production_code_sha": "3c1e1c7 (descends from 90d8cef merge + Owner LG02 fix commit)",
+    "owner_actions_completed": [
+      "git pull origin main",
+      "merged main into working branch",
+      "committed LG02 tool-fix preservation on main (3c1e1c7)",
+      "streamlit run app.py",
+      "closed conflicting Thiên Hà game on port 8501"
+    ]
+  },
+  "smoke_test": {
+    "result": "PASS",
+    "run_on": "2026-08-18 (live app at localhost:8501 on Owner machine, read-only)",
+    "evidence_file": "docs/goals/LOG-LG03/evidence/R0_smoke_test_results.md",
+    "checks": {
+      "login_vi": "PASS (Đăng nhập / Tài khoản / Mật khẩu, VI đúng)",
+      "menu_16_vi": "PASS (16 routes VI + Đăng xuất, no mojibake)",
+      "dashboard": "PASS (Tổng LÔ 78, Cần xử lý 76, Deadline 0, Thiếu context 20)",
+      "review_queue": "PASS (206 items, read-only banner)",
+      "customers": "PASS (Tổng số khách hàng 362)",
+      "finance_review": "PASS (read-only, UNKNOWN kept UNKNOWN)",
+      "user_management": "PASS (admin active, 3 rehearsal inactive)"
+    }
+  },
+  "db_final_verification": {
+    "tool": "docs/goals/LOG-LG03/tools/verify_production_final.py",
+    "result": "9/9 PASS",
+    "customers": 362,
+    "shipments": 78,
+    "admin": "active, role=admin",
+    "rehearsal_users": "3 inactive with active_states audit history",
+    "other_users_changed": 0,
+    "finance_mutations": "0 (financial_records=0, transactions=0, allocations=0)"
+  },
+  "cleanup_incident": {
+    "what_happened": "cleanup_rehearsal_users.py v1 ran delete_many (HARD delete) on production before mode guard was verified",
+    "detected_by": "Owner smoke test on 2026-08-18 (rehearsal accounts disappeared from user list)",
+    "recovery": "3 rehearsal user docs restored from LG02 export_production.py backup (backups/<timestamp>/users.jsonl)",
+    "prevention": "tool rewritten to update_one soft-deactivate only (active=false + active_states history); verified restore from backup before re-run",
+    "final_state": "3 rehearsal users soft-deactivated with actor=owner_approved_lg03; admin untouched; audit history preserved",
+    "recorded": true
+  },
   "draft_pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/2",
   "terminal_report": "docs/goals/LOG-LG03/LG03_TERMINAL_REPORT.md",
   "phase_b_test_recovery": {
