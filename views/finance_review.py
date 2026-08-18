@@ -193,6 +193,7 @@ def ui_finance_review() -> None:
         f"{len(items)} financial records · {sum(counts.get(status, 0) for status in ACTIONABLE_STATUSES)} actionable/review signals · "
         "UNKNOWN/restricted/evidence không được âm thầm cộng vào confirmed totals."
     )
+    st.info('Tổng thương mại trên bảng này là số ước tính theo công thức, không phải số tiền thực tế đã thanh toán. Đối chiếu với sổ sách kế toán trước khi quyết định.')
     _render_partner_position(snapshot)
 
     if not items:

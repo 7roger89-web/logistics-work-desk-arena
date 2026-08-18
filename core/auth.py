@@ -1,4 +1,19 @@
-"""Đăng nhập tùy chọn bằng Streamlit secrets, hỗ trợ PBKDF2-SHA256."""
+"""LOG-C15 — Xác thực và phân quyền tập trung.
+
+Cấu trúc:
+- Hàm băm/giải mã mật khẩu PBKDF2-SHA256 (giữ nguyên cơ chế đã có, không tự
+  invent cryptography).
+- Đăng nhập/đăng xuất qua session Streamlit. Khi AUTH_REQUIRED bật, danh sách
+  người dùng được lấy từ MongoDB qua core.database (không còn đọc từ
+  st.secrets auth.users).
+- Mô hình quyền duy nhất: ROLE_PERMISSIONS mở rộng từ hệ cũ; mọi kiểm tra đều
+  qua has_permission() hoặc assert_permission().
+
+Bảo mật:
+- Thất bại đăng nhập không tiết lộ tài khoản tồn tại hay trạng thái active.
+- Hash mật khẩu không bao giờ xuất hiện trong UI hay log.
+- Không hard-code username/password trong source.
+"""
 from __future__ import annotations
 
 import base64
@@ -31,12 +46,123 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 
-def _users() -> dict[str, Any]:
-    try:
-        return dict(st.secrets["auth"]["users"])
-    except (KeyError, TypeError, FileNotFoundError):
-        return {}
+def current_user() -> dict[str, Any]:
+    user = st.session_state.get("current_user")
+    if isinstance(user, dict):
+        return user
+    return {}
 
+
+def is_authenticated() -> bool:
+    user = current_user()
+    return bool(user.get("username"))
+
+
+# ---------------------------------------------------------------- permissions
+
+# Mô hình quyền duy nhất của ứng dụng. "*" = toàn quyền (chỉ admin).
+# Key là route permission (mức màn hình) hoặc action permission (mức thao tác).
+# Mở rộng tối thiểu từ ROLE_PERMISSIONS có sẵn (LOG-C07) để giữ các kiểm tra
+# hiện có hoạt động (shipment_edit, customer_delete, knowledge_delete...).
+ROLE_PERMISSIONS: dict[str, set[str]] = {
+    "admin": {"*"},
+    "sale": {
+        "dashboard",
+        "shipment_create",
+        "shipment_edit",
+        "customers",
+        "sales",
+        "sales_write",
+        "contracts",
+        "tariff",
+        "tracking",
+        "knowledge",
+        "shipment_360_read",
+        "entity_context",
+        "commercial_view",
+        "commercial_write",
+    },
+    "support": {
+        "dashboard",
+        "shipment_edit",
+        "customers",
+        "shipment_360_read",
+        "entity_context",
+        "contracts",
+        "tariff",
+        "tracking",
+        "knowledge",
+        "commercial_view",
+        "finance_view",
+        "operations_write",
+    },
+    # Legacy role names giữ tương thích ngược với entries secrets.toml cũ
+    # và test fixtures cũ.
+    "accounting": {"dashboard", "shipment_edit", "customers", "contracts", "proxy_payment", "receivables", "entrustment", "reports", "knowledge", "finance_view"},
+    "operations": {"dashboard", "shipment_create", "shipment_edit", "customers", "contracts", "tariff", "tracking", "knowledge", "operations_write"},
+    "sales": {"dashboard", "shipment_create", "shipment_edit", "customers", "sales", "contracts", "tracking", "knowledge", "commercial_view", "sales_write"},
+    "viewer": {"dashboard", "reports", "tracking", "knowledge", "commercial_view", "finance_view"},
+}
+
+
+def _role_permissions(role: str) -> set[str]:
+    normalized = str(role or "viewer").lower()
+    return ROLE_PERMISSIONS.get(normalized, ROLE_PERMISSIONS["viewer"])
+
+
+def has_permission(permission: str) -> bool:
+    """Kiểm tra quyền của người dùng hiện tại trong session."""
+    user = current_user()
+    role = str(user.get("role", "viewer")).lower()
+    permissions = _role_permissions(role)
+    if "*" in permissions:
+        return True
+    if permission in permissions:
+        return True
+    if not user.get("username"):
+        return permission in _role_permissions("anonymous")
+    return False
+
+
+def has_write_permission(permission: str) -> bool:
+    """Chỉ đúng khi user đã đăng nhập VÀ có quyền thao tác này."""
+    if not is_authenticated():
+        return False
+    return has_permission(permission)
+
+
+def assert_permission(permission: str) -> None:
+    """Nâng PermissionDeniedError khi boundary thao tác bị vi phạm."""
+    if not has_permission(permission):
+        raise PermissionDeniedError(permission)
+
+
+class PermissionDeniedError(RuntimeError):
+    """Người dùng không được phép thực hiện thao tác này."""
+
+    def __init__(self, permission: str) -> None:
+        self.permission = permission
+        super().__init__(
+            "Bạn không có quyền thực hiện thao tác này. "
+            "Nếu cần quyền, hãy liên hệ Quản trị viên (Admin)."
+        )
+
+
+def current_actor() -> str:
+    """Định danh kiểm toán cho material write.
+
+    Luôn trả về authenticated identity khi có; chỉ fall back về 'system' khi
+    ứng dụng chạy ở chế độ đơn người dùng không xác thực (AUTH_REQUIRED tắt).
+    Không bao giờ fall back về 'admin' hay tên tự do.
+    """
+    user = current_user()
+    username = user.get("username")
+    if username:
+        return str(username)
+    return "system"
+
+
+# ------------------------------------------------------------------ login UI
 
 def require_login() -> dict[str, str] | None:
     if not AUTH_REQUIRED:
@@ -44,45 +170,104 @@ def require_login() -> dict[str, str] | None:
         st.session_state.current_user = user
         return user
 
-    if st.session_state.get("current_user"):
-        return st.session_state.current_user
+    session_user = current_user()
+    if session_user:
+        return session_user
 
-    st.title("🔐 LOGISTICS PRO")
-    st.caption("Đăng nhập để truy cập hệ thống.")
+    user_count = 0
+    try:
+        from core.database import load_users  # noqa: PLC0415
+        user_count = len(load_users())
+    except Exception:  # noqa: BLE001
+        pass
+
+    if user_count == 0:
+        _render_bootstrap_setup()
+        return None
+
     with st.form("login_form"):
-        username = st.text_input("Tài khoản").strip()
-        password = st.text_input("Mật khẩu", type="password")
+        username = st.text_input("Tài khoản", key="login_username").strip()
+        password = st.text_input("Mật khẩu", type="password", key="login_password")
         submitted = st.form_submit_button("Đăng nhập", type="primary", use_container_width=True)
     if submitted:
-        users = _users()
-        profile = users.get(username)
-        if profile and verify_password(password, str(profile.get("password_hash", ""))):
-            user = {
-                "username": username,
-                "display_name": str(profile.get("display_name", username)),
-                "role": str(profile.get("role", "viewer")),
-            }
-            st.session_state.current_user = user
+        identity = _authenticate(username, password)
+        if identity:
+            st.session_state.current_user = identity
             st.rerun()
         st.error("Tài khoản hoặc mật khẩu không đúng.")
     return None
 
 
+def _authenticate(username: str, password: str) -> dict[str, str] | None:
+    from core.database import load_users  # noqa: PLC0415
+    from core.users import authenticate  # noqa: PLC0415
+
+    safe_name = str(username or "").strip().lower()
+    if not safe_name or not password:
+        return None
+    try:
+        users = load_users()
+    except Exception:  # noqa: BLE001
+        return None
+    for document in users.values():
+        if str(document.get("username", "")).lower() == safe_name:
+            identity = authenticate(document, password)
+            return identity
+    return None
+
+
+def _render_bootstrap_setup() -> None:
+    st.warning(
+        "Chưa có tài khoản quản trị nào. Hãy tạo tài khoản Admin đầu tiên để bắt đầu."
+    )
+    with st.form("bootstrap_form"):
+        username = st.text_input("Tên đăng nhập (3-30 ký tự, chữ thường)", key="bootstrap_username").strip().lower()
+        display_name = st.text_input("Tên hiển thị", key="bootstrap_display").strip()
+        email = st.text_input("Email (không bắt buộc)", key="bootstrap_email").strip().lower()
+        password = st.text_input("Mật khẩu (tối thiểu 8 ký tự)", type="password", key="bootstrap_password")
+        confirm = st.text_input("Nhập lại mật khẩu", type="password", key="bootstrap_confirm")
+        submitted = st.form_submit_button("Tạo tài khoản Admin đầu tiên", type="primary", use_container_width=True)
+    if submitted:
+        _complete_bootstrap(username, display_name, email, password, confirm)
+
+
+def _complete_bootstrap(
+    username: str,
+    display_name: str,
+    email: str,
+    password: str,
+    confirm: str,
+) -> bool:
+    from core.database import save_user  # noqa: PLC0415
+    from core.users import build_user_document, UserError  # noqa: PLC0415
+
+    if password != confirm:
+        st.error("Mật khẩu xác nhận không khớp.")
+        return False
+    try:
+        document = build_user_document(
+            username=username,
+            password=password,
+            display_name=display_name,
+            role="admin",
+            created_by="bootstrap",
+        )
+    except UserError as exc:
+        st.error(str(exc))
+        return False
+    if not save_user(document):
+        st.error("Không lưu được tài khoản. Kiểm tra kết nối database.")
+        return False
+    st.success("Đã tạo tài khoản Admin đầu tiên. Đăng nhập để tiếp tục.")
+    st.rerun()
+    return True
+
+
 def logout() -> None:
-    st.session_state.pop("current_user", None)
+    for key in ("current_user",):
+        st.session_state.pop(key, None)
     st.rerun()
 
-ROLE_PERMISSIONS = {
-    "admin": {"*"},
-    "accounting": {"dashboard", "shipment_edit", "customers", "contracts", "proxy_payment", "receivables", "entrustment", "reports", "knowledge"},
-    "operations": {"dashboard", "shipment_create", "shipment_edit", "customers", "contracts", "tariff", "tracking", "knowledge"},
-    "sales": {"dashboard", "shipment_create", "shipment_edit", "customers", "sales", "contracts", "tracking", "knowledge"},
-    "viewer": {"dashboard", "reports", "tracking", "knowledge"},
-}
 
-
-def has_permission(permission: str) -> bool:
-    user = st.session_state.get("current_user", {})
-    role = str(user.get("role", "viewer")).lower()
-    permissions = ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["viewer"])
-    return "*" in permissions or permission in permissions
+def session_identity_summary(user: dict[str, str]) -> str:
+    return f"{user.get('display_name', user.get('username', ''))} · {user.get('role', '')}"

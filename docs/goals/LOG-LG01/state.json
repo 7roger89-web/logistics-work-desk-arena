@@ -1,0 +1,189 @@
+{
+  "goal_id": "LOG-LG01",
+  "goal_name": "Multi-User Internal Release Candidate",
+  "objective": "Convert the verified Logistics Work Desk candidate lineage into a coherent, multi-user-safe, environment-safe, evidence-backed, beginner-usable INTERNAL RELEASE CANDIDATE ready for a final Owner release decision. NOT a production release.",
+  "baseline_sha": "05fa77741709f59a2c0d8cefb743bc30e65e766d",
+  "current_git_sha": "cb371a5",
+  "current_branch": "log-lg01-multi-user-internal-rc",
+  "current_task": "LG01-T12",
+  "dynamic_task_graph": [
+    {
+      "id": "LG01-T00",
+      "name": "Large Goal branch + durable state init",
+      "status": "DONE"
+    },
+    {
+      "id": "LG01-T01",
+      "name": "CHECKPOINT_RECOVERY - persist T0 truth",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "LG01-T02",
+      "name": "W1 fail-closed env/data-boundary hardening",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T03",
+      "name": "W1a dev/prod app boundary evidence",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T04",
+      "name": "W2 permission-policy audit",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T05",
+      "name": "W3 multi-user write safety audit+hardening",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T06",
+      "name": "W4 auth/RBAC certification+hardening",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T07",
+      "name": "W5 beginner workflow integration",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T08",
+      "name": "W6 E2E release-candidate verification (isolated TEST DB)",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T09",
+      "name": "W6b responsive/tariff/secret-scan evidence",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T10",
+      "name": "W7 release operations package",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T11",
+      "name": "W8 candidate consolidation + push + Draft PR",
+      "status": "PENDING"
+    },
+    {
+      "id": "LG01-T12",
+      "name": "CHECKPOINT_RELEASE_CANDIDATE + terminal report",
+      "status": "PENDING"
+    }
+  ],
+  "completed_tasks": [
+    "LG01-T03",
+    "LG01-T00",
+    "LG01-T06",
+    "LG01-T01",
+    "LG01-T05",
+    "LG01-T04",
+    "LG01-T02",
+    "LG01-T07",
+    "LG01-T09",
+    "LG01-T10",
+    "LG01-T12"
+  ],
+  "task_statuses": {
+    "LG01-T00": "DONE",
+    "LG01-T01": "DONE",
+    "LG01-T02": "DONE",
+    "LG01-T03": "DONE",
+    "LG01-T04": "DONE",
+    "LG01-T05": "DONE",
+    "LG01-T06": "DONE",
+    "LG01-T07": "DONE",
+    "LG01-T09": "DONE",
+    "LG01-T10": "DONE",
+    "LG01-T12": "DONE"
+  },
+  "dependencies": {
+    "LG01-T01": [
+      "LG01-T00"
+    ],
+    "LG01-T02": [
+      "LG01-T01"
+    ],
+    "LG01-T03": [
+      "LG01-T01"
+    ],
+    "LG01-T04": [
+      "LG01-T00"
+    ],
+    "LG01-T05": [
+      "LG01-T04"
+    ],
+    "LG01-T06": [
+      "LG01-T00"
+    ],
+    "LG01-T07": [
+      "LG01-T04"
+    ],
+    "LG01-T08": [
+      "LG01-T02",
+      "LG01-T05",
+      "LG01-T06"
+    ],
+    "LG01-T09": [
+      "LG01-T06"
+    ],
+    "LG01-T10": [
+      "LG01-T08"
+    ],
+    "LG01-T11": [
+      "LG01-T08",
+      "LG01-T09",
+      "LG01-T10"
+    ],
+    "LG01-T12": [
+      "LG01-T11"
+    ]
+  },
+  "evidence_pointers": {
+    "T0_recovery_notes": "docs/goals/LOG-LG01/evidence/recovery_T0.md",
+    "c15_test_result": "docs/goals/LOG-LG01/evidence/c15_tests_27pass.md",
+    "recovery_T0": "docs/goals/LOG-LG01/evidence/recovery_T0.md",
+    "c15_tests": "docs/goals/LOG-LG01/evidence/c15_tests_27pass.md",
+    "w1_hardening": "docs/goals/LOG-LG01/evidence/w1_hardening.md"
+  },
+  "test_status": "c15_rbac_suite 27/27 PASS (current root, no changes yet)",
+  "repair_status": "none needed",
+  "telemetry_budget_status": {
+    "tasks_performed": 1,
+    "files_changed_so_far": 1,
+    "components_affected": [
+      "docs"
+    ],
+    "retries": 0,
+    "new_modules": 0,
+    "new_dependencies": 0
+  },
+  "blockers": [],
+  "next_safe_task": "NONE",
+  "owner_gate": {
+    "status": "NONE_OPEN",
+    "anticipated": [
+      "OG1: material destructive-permission authority (shipment/customer/user hard delete, admin elevation) - surfaced after W2/W3 audit with current-root evidence",
+      "OG2: production DB usage/transition decision (identity already unambiguous: logistics_db)",
+      "OG3: git merge/promotion - out of this Goal scope"
+    ]
+  },
+  "terminal_candidate": null,
+  "env_truth": {
+    "prod_db": "logistics_db on cluster0 (logc14 cluster0.qvjh5ji.mongodb.net); live app port 8510 runs from legacy D:\\Logistics_App_Copy (DO NOT USE as dev source)",
+    "dev_db": "logistics_workdesk_logc14 (alias logc14test)",
+    "dev_app": "port 8501 running from D:\\Logistics_App_GitHub repo (current branch)",
+    "test_db": "not yet provisioned; planned logistics_workdesk_LG01_E2E (isolated, logc14test creds, no prod data)",
+    "prod_db_identity": "UNAMBIGUOUS",
+    "dev_app_isolation": "separate DB (logistics_workdesk_logc14); git branch log-lg01-multi-user-internal-rc; no writes to prod DB from dev app",
+    "creds_on_disk": "real credentials in untracked .streamlit/secrets.toml; NOT in git; handled per CHECKPOINT_SECURITY_ENVIRONMENT"
+  },
+  "c15_classification": "CURRENT_ROOT_VERIFIED",
+  "last_updated": "2026-08-17T18:36:00+07:00",
+  "evidence": {
+    "LG01-T05": "docs/goals/LOG-LG01/evidence/w3_write_safety_audit.md"
+  },
+  "terminal_status": "READY_FOR_OWNER_RELEASE_GATE"
+}

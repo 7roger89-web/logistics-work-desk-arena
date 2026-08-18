@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from core.auth import has_write_permission
 from core.config import GETFLY_SERVICES_LIST
 from core.database import (
     generate_shipment_id,
@@ -234,7 +235,10 @@ def _render_quote_detail() -> None:
     if actions:
         cols = st.columns(len(actions))
         for col, (label, target) in zip(cols, actions):
-            if col.button(label, key=f"quote_transition_{target}"):
+            if col.button(label, key=f"quote_transition_{target}", disabled=not has_write_permission("sales_write")):
+                if not has_write_permission("sales_write"):
+                    st.warning("Bạn không có quyền thay đổi báo giá.")
+                    continue
                 try:
                     updated = transition_quote(quote, target, actor=str(st.session_state.get("current_user", {}).get("username", "SALE")))
                 except ValueError as exc:
@@ -252,7 +256,10 @@ def _render_create_shipment(quote: dict[str, Any]) -> None:
         st.success(f"ÄÃ£ liÃªn káº¿t shipment {quote['shipment_id']}. Retry sáº½ khÃ´ng táº¡o thÃªm lÃ´.")
         return
     st.info("HÃ nh Ä‘á»™ng nÃ y chá»‰ táº¡o shipment draft, giá»¯ quote reference vÃ  khÃ´ng ghi sá»• tÃ i chÃ­nh.")
-    if not st.button("Táº¡o / prefill shipment draft", type="primary", key="quote_create_shipment"):
+    if not st.button("Táº¡o / prefill shipment draft", type="primary", key="quote_create_shipment", disabled=not has_write_permission("sales_write")):
+        return
+    if not has_write_permission("sales_write"):
+        st.warning("Bạn không có quyền thay đổi báo giá.")
         return
     shipments = st.session_state.get("db_shipments", {})
     existing = next((item for item in shipments.values() if item.get("quote_id") == quote.get("id") or item.get("quote_reference") == quote.get("quote_no")), None)

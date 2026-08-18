@@ -6,6 +6,7 @@ from uuid import uuid4
 
 # --- IMPORTS ---
 from core.config import INCOTERMS, STATUS_OPTIONS, STATUS_MAP_INV, STATUS_MAP_FWD, GETFLY_SERVICES_LIST
+from core.auth import has_write_permission
 from core.utils import mark_changed, parse_date, safe_float
 from core.logic import calculate_shipment_financials, apply_financial_snapshot
 from core.validators import validate_shipment
@@ -52,8 +53,10 @@ def ui_create_new_shipment():
         create_date = c3.date_input("Ngày chứng từ", value=date.today())
         init_note = c4.text_input("Ghi chú nội bộ")
 
-        if st.button("🚀 Khởi tạo", type="primary"):
-            if code and customer_id != "--Chọn--" and cust:
+        if st.button("🚀 Khởi tạo", type="primary", disabled=not has_write_permission("shipment_create")):
+            if not has_write_permission("shipment_create"):
+                st.warning("Bạn không có quyền tạo lô hàng.")
+            elif code and customer_id != "--Chọn--" and cust:
                 if 'db_shipments' in st.session_state and code in st.session_state.db_shipments:
                     st.error("Mã lô này đã tồn tại!"); return
 
@@ -114,6 +117,8 @@ def ui_shipment_detail_tabs(sid, ship):
         proxy_payments=st.session_state.get("db_proxy", {}),
         entrustments=st.session_state.get("db_entrustments", {}),
         read_errors=related_read_errors,
+        agreements=st.session_state.get("db_agreements", {}),
+        quotes=st.session_state.get("db_quotes", {}),
     )
     audit_rows = load_audit_logs("shipment", sid, limit=30)
     workspace_view = build_shipment_workspace_view(ship, financial_view=shipment_360)

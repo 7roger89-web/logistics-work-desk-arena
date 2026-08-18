@@ -20,6 +20,66 @@ _RECEIVABLE_SOURCE = "core.logic.calculate_from_shipment / data.3.4.details+paym
 _AGENCY_SOURCE = "views.reports agency rule / data.3.4.agency"
 
 
+def _text(value: Any, default: str = UNKNOWN) -> str:
+    if value is None or value == "":
+        return default
+    return str(value).strip() or default
+
+
+def _customer_key(mapping: Mapping[str, Any]) -> str:
+    return str(mapping.get("customer_id") or mapping.get("customer") or mapping.get("client") or "").strip().casefold()
+
+
+def _commercial_context(
+    shipment_id: str,
+    customer: str,
+    agreements: Any,
+    quotes: Any,
+) -> dict[str, Any]:
+    """Read-only commercial context for a shipment from the agreements/quotes stores."""
+
+    if not isinstance(agreements, Mapping) and not isinstance(quotes, Mapping):
+        return {}
+    customer_key = customer.casefold()
+    linked_agreements: list[Mapping[str, Any]] = []
+    for item in (agreements.values() if isinstance(agreements, Mapping) else ()):
+        if not isinstance(item, Mapping):
+            continue
+        if shipment_id in {str(entry) for entry in (item.get("shipment_ids") or [])}:
+            linked_agreements.append(item)
+            continue
+        if _customer_key(item) and _customer_key(item) == customer_key:
+            linked_agreements.append(item)
+    agreement = linked_agreements[0] if linked_agreements else {}
+    if not agreement and isinstance(quotes, Mapping):
+        for item in quotes.values():
+            if isinstance(item, Mapping) and str(item.get("shipment_id", "")).strip().casefold() == shipment_id.casefold():
+                agreement = {"quote_only": True, "quote": item}
+                break
+
+    snapshot = _as_mapping(agreement.get("commercial_snapshot")) or {}
+    readiness = _as_mapping(agreement.get("readiness")) or {}
+    if not agreement:
+        return {}
+    return {
+        "shipment_id": shipment_id,
+        "agreement_id": _text(agreement.get("agreement_id"), ""),
+        "agreement_reference": _text(agreement.get("agreement_no")),
+        "agreement_status": _text(agreement.get("status")),
+        "quote_reference": _text(agreement.get("quote_reference")),
+        "incoterm": _text(snapshot.get("incoterm")),
+        "services_sold": ", ".join(
+            _text(line.get("service_name"))
+            for line in snapshot.get("service_lines") or []
+            if isinstance(line, Mapping)
+        ) or UNKNOWN,
+        "required_date": _text(snapshot.get("expected_delivery_date")),
+        "handoff_readiness_label": _text(readiness.get("label"), ""),
+        "handoff_reasons": list(readiness.get("reasons") or []),
+        "source": "agreements/quotes stores; estimate only, not Finance Ledger",
+    }
+
+
 def _as_mapping(value: Any) -> Mapping[str, Any] | None:
     return value if isinstance(value, Mapping) else None
 
@@ -452,6 +512,8 @@ def build_shipment_360_summary(
     proxy_payments: Any = None,
     entrustments: Any = None,
     read_errors: Iterable[str] | None = None,
+    agreements: Any = None,
+    quotes: Any = None,
 ) -> dict[str, Any]:
     """Build a source-labelled, non-mutating Shipment 360 read model."""
 
@@ -597,10 +659,14 @@ def build_shipment_360_summary(
     ]
     money_map = _money_map(shipment_id, customer, receivable, payable, relationships)
 
+    # LOG-C13: commercial context is read-only; no ledger mutation.
+    commercial = _commercial_context(shipment_id, customer, agreements, quotes)
+
     return {
         "shipment_id": shipment_id,
         "customer": customer,
         "currency": currency,
+        "commercial": commercial,
         "operational_status": operational_status,
         "financial_status": financial_status,
         "closure_status": "CHƯA THỂ TẤT TOÁN — CHƯA ĐỦ DỮ LIỆU ĐỐI SOÁT",

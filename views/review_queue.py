@@ -8,6 +8,7 @@ from typing import Any
 import streamlit as st
 
 from core.review_queue import (
+    CATEGORY_COMMERCIAL,
     CATEGORY_FINANCIAL,
     CATEGORIES,
     STATUSES,
@@ -146,7 +147,9 @@ def ui_review_queue() -> None:
         st.info("Chưa có shipment data để xây review queue.")
         return
 
-    items = build_review_queue_items(shipments)
+    quotes = st.session_state.get("db_quotes") or {}
+    agreements = st.session_state.get("db_agreements") or {}
+    items = build_review_queue_items(shipments, agreements=agreements, quotes=quotes)
     summary = summarize_review_queue(items)
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Cần xử lý", summary["total"])
@@ -227,7 +230,28 @@ def ui_review_queue() -> None:
     if selected.get("category") == CATEGORY_FINANCIAL:
         if b3.button("Open Finance Review", use_container_width=True, key="review_open_finance"):
             _open_finance_review(selected)
+    elif selected.get("category") == CATEGORY_COMMERCIAL:
+        if b3.button("Open Thỏa Thuận & Bàn Giao", use_container_width=True, key="review_open_commercial"):
+            _open_commercial(selected)
     else:
         b3.caption("Workspace navigation is read-only; no resolve or financial mutation.")
+
+
+def _open_commercial(item: Mapping[str, Any]) -> None:
+    """Navigate to the commercial agreement/quote targeted by a COMMERCIAL review item."""
+
+    target = item.get("target") or {}
+    kind = target.get("kind")
+    key = _value(target.get("key"))
+    if kind == "agreement":
+        st.session_state.agreement_detail_id = key
+        st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+        st.rerun()
+    if kind == "quote":
+        st.session_state.quote_detail_id = key
+        st.session_state.active_page = "Sales & Báo Giá"
+        st.rerun()
+    st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+    st.rerun()
 
 __all__ = ["ui_review_queue"]
