@@ -1,8 +1,8 @@
 """Remove the 3 rehearsal test users from the production database (LG03 W11).
 
 SAFETY CONTRACT (read-only until explicit run):
-- Dry-run mode by default (--dry-run); prints what would be deleted, mutates NOTHING.
-- With --apply: deletes ONLY documents whose username is exactly one of
+- Dry-run mode by default (--dry-run); prints what would be soft-deactivated, mutates NOTHING.
+- With --apply: SOFT-DEACTIVATES (active=False + history appended) ONLY users whose username is exactly one of
   REHEARSAL_USERNAMES. Admin account (username='admin') is NEVER touched.
 - Before deletion, prints per-user document summary (no password hashes printed).
 - Refuses to run if production DB is not detected as logistics_db on the Atlas
@@ -65,16 +65,15 @@ def main() -> int:
         return 0
 
     print(f"\nAPPLY: đang xóa {len(found)} tài khoản rehearsal...")
-    result = users_col.delete_many({"username": {"$in": REHEARSAL_USERNAMES}})
-    print(f"Đã xóa: {result.deleted_count} tài khoản.")
-
-    # Verify: only admin-family accounts remain
-    remaining = [d["username"] for d in users_col.find({}, {"username": 1, "_id": 0})]
-    print(f"Còn lại trong users collection: {remaining}")
-    admin_exists = users_col.find_one({"username": "admin"}) is not None
-    print(f"Tài khoản admin của Owner còn nguyên: {admin_exists}")
-    return 0 if admin_exists else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    print(f"\nAPPLY: đang khóa mềm (soft-deactivate) {len(found)} tài khoản rehearsal...")
+    note = "soft-deactivated by OWNER approval LOG-LG03 (cleanup of test accounts; reversible)"
+    for d in found:
+        state = {"active": False, "actor": "owner_approved_lg03", "note": note}
+        res = users_col.update_one(
+            {"username": d["username"]},
+            {"$set": {"active": False}, "$push": {"active_states": state}},
+        )
+        if res.modified_count == 1:
+            print(f"Đã khóa mềm: {d['username']}")
+        else:
+            print(f"KHONG DOI DUOC (can kiem tra): {d['username']}")
