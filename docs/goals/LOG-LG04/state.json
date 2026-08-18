@@ -6,8 +6,9 @@
   "baseline_sha": "aa5cef4",
   "production_code_sha_baseline": "3c1e1c7 (Owner machine main after LG03 release)",
   "current_branch": "log-lg04-daily-work-simplification",
-  "candidate_sha": null,
-  "current_task": "T0_recovery_and_feedback_audit",
+  "candidate_sha": "8769883",
+  "current_task": "T5_release_gate",
+  "release_gate_version": "READY_FOR_OWNER_LG04_RELEASE_GATE",
   "terminal_outcome": null,
   "release_status": null,
   "merged": false,
@@ -29,12 +30,26 @@
     "F_quotation: quá nhiều trường; ô nhập không kẻ khung",
     "G_handoff: không hiểu 'tạo thỏa thuận từ báo giá' -> 'chi tiết bàn giao' để làm gì"
   ],
-  "classification": {},
+  "classification": {
+    "primary_work": ["export/pickup", "import/delivery", "finance input", "next action card"],
+    "reference": ["partner/agent blocks", "shipment history", "documents table", "signals"],
+    "audit_technical": ["factory lot block (hidden when empty)", "audit trails"]
+  },
   "pilot": {
     "test_shipment_id": null,
-    "test_data_mode": "rehearsal only, production read-only"
+    "test_data_mode": "rehearsal only, production read-only",
+    "changes": ["core/next_action_card.py (new)", "views/shipment_360.py (rewrite workspace)", "views/shipment.py (anchors + finance input-first)", "views/quotations.py (bordered rows + advanced expander)", "views/agreements.py (4-step journey + plain labels)"]
   },
-  "qa": {},
+  "qa": {
+    "regression": "226 passed / 28 skipped / 0 failed (9 new LG04 UI tests)",
+    "mojibake": "CLEAN (5 changed files)",
+    "secrets": "CLEAN",
+    "ast": "CLEAN",
+    "rbac_oracles": "50 passed (rbac/finance/oracle test subset)",
+    "visual_qa": "IN_PROGRESS via My Browser (owner browser intermittently offline 2026-08-18)"
+  },
+  "candidate_sha": "8769883",
+  "branch_sha": "8769883 (log-lg04-daily-work-simplification)",
   "production_safety": {
     "production_db": "logistics_db",
     "writes": "NONE during dev/QA; test environment only"
