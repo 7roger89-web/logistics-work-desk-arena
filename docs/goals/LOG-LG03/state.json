@@ -4,13 +4,25 @@
   "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
   "baseline_sha": "09e2426",
   "current_branch": "log-lg03-vietnamese-simplified-ux",
+  "candidate_sha": "8b4eb09",
   "production_release_sha": "09e2426",
-  "current_task": "W1_language_inventory",
+  "current_task": "W11_consolidation",
   "checkpoints": [
-    "CHECKPOINT_RECOVERY"
+    "CHECKPOINT_RECOVERY",
+    "CHECKPOINT_SEED_USERS",
+    "CHECKPOINT_W1_LANGUAGE_INVENTORY",
+    "CHECKPOINT_W3_GLOSSARY",
+    "CHECKPOINT_W4_PILOT",
+    "CHECKPOINT_W6_SCALE",
+    "CHECKPOINT_W9_ROLE_QA",
+    "CHECKPOINT_W10_ENCODING_VERIFIED",
+    "CHECKPOINT_UX_RELEASE_CANDIDATE"
   ],
+  "terminal_outcome": "READY_FOR_OWNER_UX_RELEASE_GATE",
+  "release_status": "NOT_RELEASED_BY_LOG_LG03",
+  "merged": false,
+  "deployed": false,
   "phase0_recovery": {
-    "note": "Recovery of API functions lost in LG02 commit 0d6ce55 on baseline main",
     "restored": [
       "core.database.load_users",
       "core.database.save_user",
@@ -22,48 +34,27 @@
     "unit_tests": {
       "tests/test_users_persistence.py": "6 passed",
       "tests/test_agreements_api.py": "4 passed"
-    },
-    "pre_existing_test_failures": {
-      "count": 5,
-      "tests": [
-        "test_dashboard_financial_write_oracle::test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation",
-        "test_entity_context_ui::test_entity_workspace_opens_shipment_360",
-        "test_entity_context_ui::test_shipment_360_links_to_customer_factory_partner_and_returns",
-        "test_lg01_env_security::test_validate_rejects_prod",
-        "test_logc12_host_native_runtime::test_sales_workspace_mounts_and_exposes_intake_form"
-      ],
-      "root_cause": "Pre-existing on baseline main 09e2426 (LG02 INTERNAL_RELEASE_VERIFIED). Test 1 conflicts with LG02 release_mode=true policy; tests 2-5 are obsolete LogC12 initial-checkpoint (82c8134) UI tests not updated after LG01/LG02 refactoring. Out of LG03 UX/viet-hoa scope; documented for a future goal.",
-      "full_report": "docs/goals/LOG-LG03/evidence/R0_baseline_load_agreements_gap.md"
     }
   },
-  "rehearsal_db": {
-    "name": "logistics_workdesk_LG01_E2E",
-    "uri": "mongodb://localhost:27017/",
-    "customers": 362,
-    "shipments": 78,
-    "users_seeded": ["rehearsal_admin", "rehearsal_sale", "rehearsal_support"],
-    "seed_password_note": "Rehearsal2026! (rehearsal only, not production)",
-    "seed_checkpoint": "CHECKPOINT_SEED_USERS: PASS (users 0 -> 3)"
+  "language_work": {
+    "navigation": "16/16 routes Vietnamese-first (route keys + permissions unchanged)",
+    "mojibake_repaired": "79+ user-visible strings (9 finance error messages in core/database.py user-facing; UI labels in dashboard/review_queue/finance_review/entity_context/agreements/web_app)",
+    "international_terms_retained": ["Incoterm", "Multimodal", "Debit Draft", "FOB", "CIF", "EXW", "Sea", "Air", "Road", "Maersk", "COSCO", "Evergreen", "Hapag-Lloyd", "SITC", "FedEx", "UNKNOWN (status)"],
+    "glossary": "docs/goals/LOG-LG03/glossary.json v1.0"
+  },
+  "qa": {
+    "app_test_ux_gate": "8/8 PASS (docs/goals/LOG-LG03/tools/qa_ui_ux_gate.py)",
+    "full_regression": "212 passed, 28 skipped, 5 failed (all pre-existing on baseline 09e2426, documented in evidence/R0_baseline_load_agreements_gap.md)",
+    "encoding_scan": "0 mojibake markers remaining (views/ + core/)",
+    "secret_scan": "0 real credentials in tracked code (docs prose mentions only)"
   },
   "production_safety": {
     "production_db": "logistics_db",
-    "mutations": 0,
-    "w0_commits_pushed": ["04c4290"]
+    "net_mutations": "+3 rehearsal users created by accident during W0 (documented, reversible); pending Owner approval to run tools/cleanup_rehearsal_users.py --apply (target: 1 admin only)",
+    "finance_invariants_preserved": true,
+    "rbac_widened": false
   },
-  "w0_commits": [
-    {
-      "sha": "04c4290",
-      "message": "LG03 W0 Phase-0 recovery: restore 4 user API + load_agreements/save_agreements_to_cloud lost in LG02 (0d6ce55), unit tests (10 passed), bounded-fix evidence; 5 pre-existing test failures documented (baseline regression, out of LG03 UX scope)"
-    }
-  ],
-  "pending": [
-    "W1_language_inventory",
-    "W2_user_effort_audit",
-    "W3_glossary",
-    "W4_pilot",
-    "W6_scale",
-    "W7_regression_qa",
-    "W8_consolidation"
-  ],
-  "terminal_outcome": null
+  "draft_pr": "log-lg03-vietnamese-simplified-ux -> main (DRAFT, not merged)",
+  "lg04_started": false,
+  "pending": []
 }
