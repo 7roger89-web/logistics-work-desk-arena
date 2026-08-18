@@ -18,7 +18,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from core.config import get_db
+from core.database import get_db
 from core.users import build_user_document
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
