@@ -4,7 +4,7 @@
   "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
   "baseline_sha": "09e2426",
   "current_branch": "log-lg03-vietnamese-simplified-ux",
-  "candidate_sha": "8b4eb09",
+  "candidate_sha": "ce69e2a",
   "production_release_sha": "09e2426",
   "current_task": "W11_consolidation",
   "checkpoints": [
