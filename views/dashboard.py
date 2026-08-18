@@ -229,7 +229,7 @@ def _render_shipment_workdesk(all_ships, rows):
     """Render the shipment-first read-only operations queue."""
 
     st.markdown(
-        "<div class='ops-section-kicker'>PRIMARY WORK SURFACE · SHIPMENT QUEUE</div>"
+        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>"
         "<h2 class='ops-section-title'>Lô hàng cần xử lý</h2>",
         unsafe_allow_html=True,
     )
@@ -243,7 +243,7 @@ def _render_shipment_workdesk(all_ships, rows):
           <div><span class='ops-summary-label'>TỔNG LÔ</span><strong>{summary['total']}</strong><small>trong phạm vi hiện tại</small></div>
           <div class='ops-summary-focus'><span class='ops-summary-label'>CẦN XỬ LÝ</span><strong>{action_count}</strong><small>cảnh báo ưu tiên</small></div>
           <div><span class='ops-summary-label'>DEADLINE</span><strong>{summary['deadline_soon']}</strong><small>sắp hoặc quá hạn</small></div>
-          <div><span class='ops-summary-label'>FINANCE ATTENTION</span><strong>{summary['financial_attention']}</strong><small>không phải số đã chốt</small></div>
+          <div><span class='ops-summary-label'>TÀI CHÍNH CẦN THEO DÕI</span><strong>{summary['financial_attention']}</strong><small>không phải số đã chốt</small></div>
           <div><span class='ops-summary-label'>THIẾU CONTEXT</span><strong>{summary['missing_info']}</strong><small>cần bổ sung dữ liệu</small></div>
         </div>
         """,
@@ -384,7 +384,7 @@ def _render_shipment_workdesk(all_ships, rows):
                 with st.expander("Vì sao ra số này?", expanded=False):
                     _render_financial_explanation(row)
             with c_action:
-                st.markdown("**MỞ SHIPMENT 360**")
+                st.markdown("**MỞ HỒ SƠ LÔ 360°**")
                 if st.button(sid, key=f"dashboard_open_360_{sid}", help="Mở Shipment 360", use_container_width=True):
                     st.session_state.active_shipment_id = sid
                     st.session_state.dashboard_active_shipment_id = sid
@@ -393,7 +393,7 @@ def _render_shipment_workdesk(all_ships, rows):
             if top_alert:
                 severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
                 st.markdown(
-                    f"<div class='ops-next-action'>{severity_icon} <strong>Next action:</strong> {escape_html(top_alert.get('label'))} — "
+                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
                     f"{escape_html(top_alert.get('detail'))}</div>",
                     unsafe_allow_html=True,
                 )
@@ -442,9 +442,9 @@ def ui_dashboard():
     # ==============================================================
     c1, c_btn1, c_btn2, c_tog = st.columns([2.5, 1.2, 1.2, 1.1])
     c1.markdown(
-        "<div class='ops-section-kicker'>LOGISTICS OPERATIONS WORKSPACE</div>"
-        "<h1 class='ops-section-title ops-page-title'>Shipment control room</h1>"
-        "<div style='color:#667085;font-size:0.82rem;'>Queue lô hàng là mặt tiền · Finance là context có nguồn</div>",
+        "<div class='ops-section-kicker'>KHU VỰC QUẢN LÝ VẬN HÀNH</div>"
+        "<h1 class='ops-section-title ops-page-title'>Phòng điều khiển lô hàng</h1>"
+        "<div style='color:#667085;font-size:0.82rem;'>Bảng việc là mặt tiền · Tài chính là bối cảnh có nguồn</div>",
         unsafe_allow_html=True,
     )
     if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True): quick_assign_task_dialog()
@@ -636,10 +636,10 @@ def ui_dashboard():
                     st.session_state.active_shipment_id = None
                     st.session_state.dashboard_active_shipment_id = None
                     if return_to_finance:
-                        st.session_state.active_page = "Finance Review"
+                        st.session_state.active_page = "Đối Soát Tài Chính"
                         st.session_state.finance_review_return = False
                     elif return_to_queue:
-                        st.session_state.active_page = "Review Queue"
+                        st.session_state.active_page = "Việc Cần Xử Lý"
                         st.session_state.review_queue_return = False
                     st.rerun()
 

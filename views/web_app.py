@@ -35,20 +35,20 @@ class Route:
 
 
 ROUTES: tuple[Route, ...] = (
-    Route("Dashboard", "🏠", "dashboard", "views.dashboard", "ui_dashboard"),
-    Route("Review Queue", "🧭", "dashboard", "views.review_queue", "ui_review_queue"),
+    Route("Tổng Quan Công Việc", "🏠", "dashboard", "views.dashboard", "ui_dashboard"),
+    Route("Việc Cần Xử Lý", "🧭", "dashboard", "views.review_queue", "ui_review_queue"),
     Route("Tạo Lô Mới", "➕", "shipment_create", "views.shipment", "ui_create_new_shipment"),
     Route("Khách Hàng", "👥", "customers", "views.customers", "ui_customers"),
-    Route("Entity Context", "🧭", "dashboard", "views.entity_context", "ui_entity_context"),
-    Route("Sales & Báo Giá", "🤝", "sales", "views.quotations", "ui_sales_module"),
+    Route("Ngữ Cảnh Đối Tác", "🧭", "dashboard", "views.entity_context", "ui_entity_context"),
+    Route("Kinh Doanh & Báo Giá", "🤝", "sales", "views.quotations", "ui_sales_module"),
     Route("Thỏa Thuận & Bàn Giao", "🤝", "sales", "views.agreements", "ui_agreements_module"),
     Route("Hợp Đồng", "📜", "contracts", "views.contracts", "ui_contracts_management"),
     Route("Thu Tiền & Công Nợ", "💰", "receivables", "views.finance", "ui_receivables_management"),
-    Route("Finance Review", "FR", "receivables", "views.finance_review", "ui_finance_review"),
-    Route("Công nợ A Bò", "🧾", "receivables", "views.partner_reconciliation", "ui_partner_reconciliation_desk"),
+    Route("Đối Soát Tài Chính", "FR", "receivables", "views.finance_review", "ui_finance_review"),
+    Route("Công Nợ A Bò", "🧾", "receivables", "views.partner_reconciliation", "ui_partner_reconciliation_desk"),
     Route("Báo Cáo CEO", "📊", "reports", "views.reports", "ui_reports_dashboard"),
     Route("Tra Cứu Thuế", "🔎", "tariff", "views.tariff", "ui_super_tariff_hub"),
-    Route("Tracking", "🌐", "tracking", "views.tracking", "ui_tracking_tool"),
+    Route("Theo Dõi Vận Chuyển", "🌐", "tracking", "views.tracking", "ui_tracking_tool"),
     Route("Sổ Tay Kinh Nghiệm", "📔", "knowledge", "views.knowledge_base", "ui_knowledge_base"),
     # Màn hình quản lý tài khoản, chỉ dành cho vai trò admin.
     Route("Người Dùng", "👤", "admin", "views.web_app", "_render_user_management"),
@@ -60,23 +60,23 @@ ROUTES: tuple[Route, ...] = (
 # is the front door, while finance and partner review stay available behind it.
 NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
-        "OPERATIONS",
-        ("Dashboard", "Review Queue", "Tạo Lô Mới", "Tracking"),
+        "VẬN HÀNH",
+        ("Tổng Quan Công Việc", "Việc Cần Xử Lý", "Tạo Lô Mới", "Theo Dõi Vận Chuyển"),
     ),
     (
-        "COMMERCIAL CONTEXT",
-        ("Khách Hàng", "Entity Context", "Sales & Báo Giá", "Thỏa Thuận & Bàn Giao", "Hợp Đồng"),
+        "KINH DOANH & ĐỐI TÁC",
+        ("Khách Hàng", "Ngữ Cảnh Đối Tác", "Kinh Doanh & Báo Giá", "Thỏa Thuận & Bàn Giao", "Hợp Đồng"),
     ),
     (
-        "FINANCE & REVIEW",
-        ("Finance Review", "Thu Tiền & Công Nợ", "Công nợ A Bò", "Báo Cáo CEO"),
+        "TÀI CHÍNH & ĐỐI SOÁT",
+        ("Đối Soát Tài Chính", "Thu Tiền & Công Nợ", "Công Nợ A Bò", "Báo Cáo CEO"),
     ),
     (
-        "TOOLS & REFERENCE",
+        "CÔNG CỤ & THAM KHẢO",
         ("Tra Cứu Thuế", "Sổ Tay Kinh Nghiệm"),
     ),
     (
-        "ADMINISTRATION",
+        "QUẢN TRỊ",
         ("Người Dùng",),
     ),
 )
@@ -191,7 +191,7 @@ def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
 
     with st.sidebar:
         st.markdown(
-            "<div class='ops-brand'><div class='ops-brand-kicker'>SHIPMENT OPERATIONS</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>Daily control room · local workspace</div></div>",
+            "<div class='ops-brand'><div class='ops-brand-kicker'>VẬN HÀNH LÔ HÀNG</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>Phòng điều khiển hàng ngày · không gian nội bộ</div></div>",
             unsafe_allow_html=True,
         )
         st.caption(f"{current_user['display_name']} · {current_user['role']}")
@@ -254,14 +254,14 @@ def _render_route(route: Route) -> None:
         with st.expander("Chi tiết kỹ thuật", expanded=False):
             st.code(traceback.format_exc(), language="text")
         def go_dashboard() -> None:
-            st.session_state.active_page = "Dashboard"
+            st.session_state.active_page = "Tổng Quan Công Việc"
 
         def request_reload() -> None:
             st.session_state.needs_refresh = True
 
         c1, c2 = st.columns(2)
         c1.button(
-            "Về Dashboard",
+            "Về Trang Tổng Quan",
             use_container_width=True,
             key="route_error_dashboard",
             on_click=go_dashboard,
@@ -275,7 +275,7 @@ def _render_route(route: Route) -> None:
 
 
 def _assert_route_access(current_user: dict[str, str], route: Route) -> None:
-    """Kiểm soát quyền tuyến tuyện quyền tại biên giao diện.
+    """Kiểm soát quyền truy cập tuyến tại biên giao diện.
 
     sidebar chỉ hiển thị các tuyến được phép, nhưng người dùng có thể cố
     gắng thay đổi ``st.session_state.active_page`` trực tiếp. Kiểm tra này từ chối
@@ -293,8 +293,8 @@ def _assert_route_access(current_user: dict[str, str], route: Route) -> None:
         f"không có quyền mở màn hình **{route.label}**. "
         "Liên hệ người quản trị nếu cần truy cập."
     )
-    if st.button("Về Dashboard", key="route_access_denied_home"):
-        st.session_state.active_page = "Dashboard"
+    if st.button("Về Trang Tổng Quan", key="route_access_denied_home"):
+        st.session_state.active_page = "Tổng Quan Công Việc"
         st.rerun()
     st.stop()
 
@@ -359,8 +359,8 @@ def _render_user_management() -> None:
         display_name = st.text_input("Tên hiển thị", key="um_new_display").strip()
         email = st.text_input("Email (không bắt buộc)", key="um_new_email").strip().lower()
         role = st.selectbox("Vai trò", list(SUPPORTED_ROLES), index=1, key="um_new_role")
-        password = st.text_input("Mật khảu (tối thiểu 8 ký tự)", type="password", key="um_new_password")
-        confirm = st.text_input("Nhập lại mật khảu", type="password", key="um_new_confirm")
+        password = st.text_input("Mật khẩu (tối thiểu 8 ký tự)", type="password", key="um_new_password")
+        confirm = st.text_input("Nhập lại mật khẩu", type="password", key="um_new_confirm")
         if st.button("Tạo tài khoản", type="primary", key="um_new_submit"):
             _create_user_from_admin(username, display_name, email, role, password, confirm)
 

@@ -1,0 +1,131 @@
+{
+  "goal_id": "LOG-LG03",
+  "goal_name": "Vietnamese-First Simplified Logistics Experience",
+  "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
+  "baseline_sha": "09e2426",
+  "current_branch": "log-lg03-vietnamese-simplified-ux",
+  "candidate_sha": "5b39981",
+  "production_release_sha": "09e2426",
+  "current_task": "W12_phase_b_c_recovery",
+  "checkpoints": [
+    "CHECKPOINT_RECOVERY",
+    "CHECKPOINT_SEED_USERS",
+    "CHECKPOINT_W1_LANGUAGE_INVENTORY",
+    "CHECKPOINT_W3_GLOSSARY",
+    "CHECKPOINT_W4_PILOT",
+    "CHECKPOINT_W6_SCALE",
+    "CHECKPOINT_W9_ROLE_QA",
+    "CHECKPOINT_W10_ENCODING_VERIFIED",
+    "CHECKPOINT_UX_RELEASE_CANDIDATE",
+    "CHECKPOINT_W12_ZERO_TEST_FAILURES"
+  ],
+  "terminal_outcome": "READY_FOR_OWNER_UX_RELEASE_GATE",
+  "release_status": "NOT_RELEASED_BY_LOG_LG03",
+  "merged": false,
+  "deployed": false,
+  "phase0_recovery": {
+    "restored": [
+      "core.database.load_users",
+      "core.database.save_user",
+      "core.database.update_user",
+      "core.database.delete_user",
+      "core.database.load_agreements",
+      "core.database.save_agreements_to_cloud"
+    ],
+    "unit_tests": {
+      "tests/test_users_persistence.py": "6 passed",
+      "tests/test_agreements_api.py": "4 passed"
+    }
+  },
+  "language_work": {
+    "navigation": "16/16 routes Vietnamese-first (route keys + permissions unchanged)",
+    "mojibake_repaired": "79+ user-visible strings (9 finance error messages in core/database.py user-facing; UI labels in dashboard/review_queue/finance_review/entity_context/agreements/web_app)",
+    "international_terms_retained": [
+      "Incoterm",
+      "Multimodal",
+      "Debit Draft",
+      "FOB",
+      "CIF",
+      "EXW",
+      "Sea",
+      "Air",
+      "Road",
+      "Maersk",
+      "COSCO",
+      "Evergreen",
+      "Hapag-Lloyd",
+      "SITC",
+      "FedEx",
+      "UNKNOWN (status)"
+    ],
+    "glossary": "docs/goals/LOG-LG03/glossary.json v1.0"
+  },
+  "qa": {
+    "app_test_ux_gate": "8/8 PASS (docs/goals/LOG-LG03/tools/qa_ui_ux_gate.py)",
+    "full_regression": "212 passed, 28 skipped, 5 failed (all pre-existing on baseline 09e2426, documented in evidence/R0_baseline_load_agreements_gap.md)",
+    "encoding_scan": "0 mojibake markers remaining (views/ + core/)",
+    "secret_scan": "0 real credentials in tracked code (docs prose mentions only)"
+  },
+  "production_safety": {
+    "production_db": "logistics_db",
+    "net_mutations": "+3 rehearsal users created by accident during W0 (documented, reversible); pending Owner approval to run tools/cleanup_rehearsal_users.py --apply (target: 1 admin only)",
+    "finance_invariants_preserved": true,
+    "rbac_widened": false
+  },
+  "draft_pr": "log-lg03-vietnamese-simplified-ux -> main (DRAFT, not merged)",
+  "lg04_started": false,
+  "pending": [],
+  "draft_pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/2",
+  "terminal_report": "docs/goals/LOG-LG03/LG03_TERMINAL_REPORT.md",
+  "phase_b_test_recovery": {
+    "baseline_at_lg03_start": "208 passed / 28 skipped / 5 failed (5 pre-existing)",
+    "final_full_suite": "217 passed / 28 skipped / 0 FAILED",
+    "stability": "3 consecutive full-suite runs identical (217/28/0)",
+    "rbac_test": "test_logc15_auth_rbac 27 passed",
+    "lg03_ux_gate": "8/8 PASS (qa_ui_ux_gate.py: admin/sale/support role visibility + Vietnamese labels)",
+    "fixes": [
+      {
+        "test": "test_lg01_env_security",
+        "root_cause": "test patched only MONGO_DB_NAME, not release flag; fails under LG02 release_mode=true env",
+        "fix": "patch MONGO_RELEASE_MODE=False in test; proves fail-closed default + authorized-production contracts; test-only"
+      },
+      {
+        "test": "test_entity_context_ui x2",
+        "root_cause": "fixture user not stored in st.session_state.current_user -> has_permission False; EN label expectation; DB connection coupling",
+        "fix": "_login_fixture side_effect stores user; labels aligned to approved VN UI; init_connection DB patch; ExitStack kept alive across reruns; test-only"
+      },
+      {
+        "test": "test_logc12_host_native_runtime",
+        "root_cause": "active_page/nav refs old EN label 'Sales & Báo Giá'; stack died before 2nd run",
+        "fix": "VN label 'Kinh doanh & Báo giá'; stack scope fixed; verification strength preserved (mounted intake form with real button keys)"
+      },
+      {
+        "test": "test_dashboard_financial_write_oracle",
+        "root_cause": "next-action label changed to VN 'Việc tiếp theo' in LG03",
+        "fix": "assertion accepts both strings; oracle strength unchanged (deterministic next-action alert)"
+      }
+    ],
+    "no_weakening": "All fixes are test-only or approved-VN-label alignment; zero product logic change; zero permission widen",
+    "polluter_note": "test_partner_reconciliation_desk_write_oracle.py (pre-existing, LOG-C12) exposes local-name patch bug; NOT modified (out of LG03 scope)"
+  },
+  "phase_c_verification": {
+    "verify_phase_c_tool": "docs/goals/LOG-LG03/tools/verify_phase_c.py",
+    "mojibake_markers": "0 in core/ + views/",
+    "utf8_validity": "0 invalid files (repo-wide *.py)",
+    "fffd": "0 files with U+FFFD",
+    "secret_scan": "no credentials/URI in source",
+    "ast_compile": "all core/ + views/ parse"
+  },
+  "cleanup_tool": {
+    "path": "docs/goals/LOG-LG03/tools/cleanup_rehearsal_users.py",
+    "targets": [
+      "rehearsal_admin",
+      "rehearsal_sale",
+      "rehearsal_support"
+    ],
+    "owner_admin_affected": "NO",
+    "mode": "soft_deactivate via update_user (reversible); hard delete available but not default",
+    "dry_run_status": "PENDING_NETWORK (Atlas transiently unreachable from sandbox 07:29-07:31 UTC; retry on next session)"
+  },
+  "terminal_report_phase_be": "docs/goals/LOG-LG03/LG03_PHASE_B_E_REPORT.md"
+}

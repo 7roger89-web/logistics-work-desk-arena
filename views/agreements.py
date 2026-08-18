@@ -296,7 +296,7 @@ def _render_agreement_detail() -> None:
             "truong_thanh": [line[2:].strip() for line in edited_tt.split("\n") if line.strip().startswith("- ")],
             "customer_provides": [line[2:].strip() for line in edited_cp.split("\n") if line.strip().startswith("- ")],
         }
-        st.markdown("#### Unresolved issue thương mại")
+        st.markdown("#### Vấn đề chưa xử lý (thương mại)")
         issues_text = "\n".join(f"- {item}" for item in agreement.get("unresolved_issues") or [])
         edited_issues = st.text_area("Chưa giải quyết (mỗi dòng một issue)", value=issues_text, height=80, key="agr_unresolved")
         agreement["unresolved_issues"] = [line[2:].strip() for line in edited_issues.split("\n") if line.strip().startswith("- ")]

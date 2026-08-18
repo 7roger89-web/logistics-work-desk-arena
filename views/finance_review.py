@@ -76,7 +76,7 @@ def _open_shipment(item: Mapping[str, Any]) -> None:
              or (isinstance(shipment, Mapping) and str(shipment.get("shipment_id") or shipment.get("id") or "").casefold() == shipment_id.casefold())),
             shipment_id,
         )
-    st.session_state.active_page = "Dashboard"
+    st.session_state.active_page = "Tổng Quan Công Việc"
     st.session_state.active_shipment_id = resolved
     st.session_state.dashboard_active_shipment_id = resolved
     st.session_state.finance_review_return = True
@@ -91,11 +91,11 @@ def _open_entity(item: Mapping[str, Any]) -> None:
     if entity_type not in {"customer", "partner", "factory"} or not entity_key:
         st.info("Entity mapping UNKNOWN — chưa có source-bound context để mở.")
         return
-    open_entity_context(entity_type, entity_key, return_page="Finance Review")
+    open_entity_context(entity_type, entity_key, return_page="Đối Soát Tài Chính")
 
 
 def _back_to_queue() -> None:
-    st.session_state.active_page = "Review Queue"
+    st.session_state.active_page = "Việc Cần Xử Lý"
     st.session_state.finance_review_return = False
     st.session_state.review_queue_return = False
     st.rerun()
@@ -141,7 +141,7 @@ def _render_partner_position(snapshot: Mapping[str, Any]) -> None:
 
 def ui_finance_review() -> None:
     st.markdown("<div class='review-kicker'>FINANCIAL CONTROL · READ-ONLY INVESTIGATION</div>", unsafe_allow_html=True)
-    st.title("Finance Review")
+    st.title("Đối Soát Tài Chính")
     st.caption(
         "Ai phải trả ai, bao nhiêu, tiền tệ gì, đã allocation thế nào và vì sao ra số này. "
         "Canonical ledger là source of truth; không có nút sửa số dư, Resolve hay auto-allocation."

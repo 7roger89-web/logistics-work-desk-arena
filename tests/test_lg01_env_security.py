@@ -10,15 +10,22 @@ class LG01EnvSecurityTests(unittest.TestCase):
         c.validate_mongo_identity()
 
     def test_validate_rejects_prod(self):
+        # Fail-closed contract: logistics_db MUST be rejected unless the Owner
+        # explicitly authorizes production release mode (MONGO_RELEASE_MODE).
+        # Patch both the db name AND the release flag so this test proves the
+        # DEFAULT (fail-closed) behavior, independent of local secrets.toml.
         import core.config as c
-        old = c.MONGO_DB_NAME
+        old_db = c.MONGO_DB_NAME
+        old_mode = c.MONGO_RELEASE_MODE
         c.MONGO_DB_NAME = 'logistics_db'
+        c.MONGO_RELEASE_MODE = False
         try:
             with self.assertRaises(RuntimeError) as ctx:
                 c.validate_mongo_identity()
             self.assertIn('PRODUCTION', str(ctx.exception))
         finally:
-            c.MONGO_DB_NAME = old
+            c.MONGO_DB_NAME = old_db
+            c.MONGO_RELEASE_MODE = old_mode
 
     def test_validate_rejects_empty_db(self):
         import core.config as c

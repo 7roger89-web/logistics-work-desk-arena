@@ -95,7 +95,7 @@ def _mode_navigation() -> str:
         return mode
     st.markdown("### Tác vụ LOG-C05")
     st.caption("Mở báo cáo quản lý hoặc Debit Draft được tính từ cùng projection canonical; không nhập tay tổng debit.")
-    if st.button("Historical Review", key="log_c06_open_historical_review"):
+    if st.button("Rà soát lịch sử", key="log_c06_open_historical_review"):
         _set_partner_view("historical_review")
     if st.button("Báo cáo Sếp", key="log_c05_open_report"):
         _set_partner_view("report")

@@ -133,17 +133,17 @@ def render_shipment_workspace(
         )
         link_columns = st.columns(3)
         customer_key = _workspace_value(view.get("customer_id"))
-        if customer not in (UNKNOWN, "") and link_columns[0].button("Open Customer 360", key=f"shipment_customer_context_{shipment_id}", use_container_width=True):
+        if customer not in (UNKNOWN, "") and link_columns[0].button("Mở hồ sơ Khách hàng 360", key=f"shipment_customer_context_{shipment_id}", use_container_width=True):
             open_entity_context("customer", customer_key if customer_key != UNKNOWN else customer, return_shipment_id=shipment_id)
         factory_names = sorted({
             _workspace_value(row.get("factory"))
             for row in view.get("factory_lots", [])
             if isinstance(row, Mapping) and _workspace_value(row.get("factory")) != UNKNOWN
         })
-        if factory_names and link_columns[1].button("Open Factory / Supplier 360", key=f"shipment_factory_context_{shipment_id}", use_container_width=True):
+        if factory_names and link_columns[1].button("Mở hồ sơ Nhà máy/NCC 360", key=f"shipment_factory_context_{shipment_id}", use_container_width=True):
             open_entity_context("factory", factory_names[0], return_shipment_id=shipment_id)
         partner_name = _workspace_value(context.get("agent"))
-        if partner_name != UNKNOWN and link_columns[2].button("Open Partner / Agent 360", key=f"shipment_partner_context_{shipment_id}", use_container_width=True):
+        if partner_name != UNKNOWN and link_columns[2].button("Mở hồ sơ Đại lý 360", key=f"shipment_partner_context_{shipment_id}", use_container_width=True):
             open_entity_context("partner", partner_name, return_shipment_id=shipment_id)
 
     lots = [row for row in view.get("factory_lots", []) if isinstance(row, Mapping)]

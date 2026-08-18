@@ -18,6 +18,7 @@ from core.review_queue import (
     STATUS_WAITING,
     build_review_queue_items,
     filter_review_queue_items,
+    label_vi,
     summarize_review_queue,
 )
 from core.shipment_360 import UNKNOWN
@@ -52,7 +53,7 @@ def _open_shipment(item: Mapping[str, Any]) -> None:
     target = item.get("target") or {}
     requested = _value(target.get("shipment_id") or item.get("shipment_id"))
     resolved = _resolve_shipment_id(requested)
-    st.session_state.active_page = "Dashboard"
+    st.session_state.active_page = "Tổng Quan Công Việc"
     st.session_state.active_shipment_id = resolved
     st.session_state.dashboard_active_shipment_id = resolved
     st.session_state.review_queue_return = True
@@ -76,13 +77,13 @@ def _open_entity(item: Mapping[str, Any]) -> None:
         st.info("Entity context UNKNOWN — chưa có mapping source-bound để mở.")
         return
     entity_type, entity_key = target
-    open_entity_context(entity_type, entity_key, return_page="Review Queue")
+    open_entity_context(entity_type, entity_key, return_page="Việc Cần Xử Lý")
 
 
 def _open_finance_review(item: Mapping[str, Any]) -> None:
     shipment_id = _value(item.get("shipment_id"), "")
-    st.session_state.active_page = "Finance Review"
-    st.session_state.finance_review_scope = "shipment" if shipment_id else "Táº¥t cáº£"
+    st.session_state.active_page = "Đối Soát Tài Chính"
+    st.session_state.finance_review_scope = "shipment" if shipment_id else "Tất cả"
     st.session_state.finance_review_target = shipment_id
     st.session_state.finance_review_return = False
     st.rerun()
@@ -97,20 +98,20 @@ def _table_rows(items: list[Mapping[str, Any]]) -> list[dict[str, str]]:
         context = f"{_value(item.get('customer'))} · Sale {_value(item.get('owner'))}"
         entity_bits = []
         if _value(item.get("factory")) != UNKNOWN:
-            entity_bits.append(f"Factory: {_value(item.get('factory'))}")
+            entity_bits.append(f"Xưởng: {_value(item.get('factory'))}")
         if _value(item.get("partner")) != UNKNOWN:
-            entity_bits.append(f"Partner: {_value(item.get('partner'))}")
+            entity_bits.append(f"Đối tác: {_value(item.get('partner'))}")
         if entity_bits:
             context += " · " + " · ".join(entity_bits)
         rows.append(
             {
-                "Mức": _value(item.get("status")),
-                "Nhóm": _value(item.get("category")),
+                "Mức": label_vi(_value(item.get("status"))),
+                "Nhóm": label_vi(_value(item.get("category"))),
                 "Việc cần xử lý": _value(item.get("title")),
                 "Shipment": _value(item.get("shipment_id")),
-                "Context": context,
-                "Next action": _value(item.get("next_action")),
-                "Evidence / source": _value(item.get("evidence")),
+                "Bối cảnh": context,
+                "Việc tiếp theo": _value(item.get("next_action")),
+                "Evidence / nguồn": _value(item.get("evidence")),
             }
         )
     return rows
@@ -133,8 +134,8 @@ def ui_review_queue() -> None:
         """,
         unsafe_allow_html=True,
     )
-    st.markdown("<div class='review-kicker'>ACTIONABLE WORK · DOCUMENTS + EXCEPTIONS</div>", unsafe_allow_html=True)
-    st.markdown("<h1 class='review-title'>Documents & Review Queue</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='review-kicker'>VIỆC CẦN XỬ LÝ · CHỨNG TỪ + BẤT THƯỜNG</div>", unsafe_allow_html=True)
+    st.markdown("<h1 class='review-title'>Chứng Từ & Việc Cần Xử Lý</h1>", unsafe_allow_html=True)
     st.markdown(
         "<div class='review-note'><strong>Đây là work queue, không phải danh sách cảnh báo.</strong> "
         "Mỗi dòng có lý do, next action, nguồn/evidence và nơi mở để xử lý. UNKNOWN vẫn là UNKNOWN; queue không tự kết luận document completeness.</div>",
@@ -153,13 +154,15 @@ def ui_review_queue() -> None:
     summary = summarize_review_queue(items)
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Cần xử lý", summary["total"])
-    m2.metric("Critical", summary["critical"])
-    m3.metric("Needs attention", summary["attention"])
-    m4.metric("Waiting", summary["waiting"])
-    m5.metric("Shipments", summary["shipments"])
+    m2.metric("Nghiêm trọng", summary["critical"])
+    m3.metric("Cần chú ý", summary["attention"])
+    m4.metric("Đang chờ", summary["waiting"])
+    m5.metric("Số lô hàng", summary["shipments"])
 
-    categories = ["Tất cả"] + list(CATEGORIES)
-    statuses = ["Tất cả"] + list(STATUSES)
+    categories = ["Tất cả"] + [label_vi(c) for c in CATEGORIES]
+    _cat_by_vi = {label_vi(c): c for c in CATEGORIES}
+    statuses = ["Tất cả"] + [label_vi(c) for c in STATUSES]
+    _st_by_vi = {label_vi(c): c for c in STATUSES}
     shipment_options = ["Tất cả"] + sorted({_value(item.get("shipment_id")) for item in items})
     customer_options = ["Tất cả"] + sorted({_value(item.get("customer")) for item in items})
     factory_options = ["Tất cả"] + sorted({_value(item.get("factory")) for item in items if _value(item.get("factory")) != UNKNOWN})
@@ -167,38 +170,42 @@ def ui_review_queue() -> None:
 
     # Keep the work table in the first viewport; filters stay one click away
     # in a popover instead of becoming the primary page content.
-    with st.popover("🔎 Search & filter", use_container_width=True):
-        search = st.text_input("Tìm theo shipment, customer, reason, next action, source", key="review_queue_search")
+    with st.popover("🔎 Tìm kiếm & lọc", use_container_width=True):
+        search = st.text_input("Tìm theo shipment, customer, reason, việc tiếp theo, source", key="review_queue_search")
         f1, f2, f3 = st.columns(3)
-        category = f1.selectbox("Category", categories, key="review_queue_category")
-        status = f2.selectbox("Status", statuses, key="review_queue_status")
-        severity = f3.selectbox("Severity", ["Tất cả", STATUS_CRITICAL, STATUS_ATTENTION, STATUS_WAITING, STATUS_REVIEW], key="review_queue_severity")
+        category = f1.selectbox("Nhóm", categories, key="review_queue_category")
+        status = f2.selectbox("Trạng thái", statuses, key="review_queue_status")
+        severity = f3.selectbox("Mức độ", ["Tất cả", label_vi(STATUS_CRITICAL), label_vi(STATUS_ATTENTION), label_vi(STATUS_WAITING), label_vi(STATUS_REVIEW)], key="review_queue_severity")
         f4, f5, f6, f7 = st.columns(4)
-        shipment_id = f4.selectbox("Shipment", shipment_options, key="review_queue_shipment")
-        customer = f5.selectbox("Customer", customer_options, key="review_queue_customer")
-        factory = f6.selectbox("Factory", factory_options, key="review_queue_factory")
-        partner = f7.selectbox("Partner", partner_options, key="review_queue_partner")
+        shipment_id = f4.selectbox("Lô hàng", shipment_options, key="review_queue_shipment")
+        customer = f5.selectbox("Khách hàng", customer_options, key="review_queue_customer")
+        factory = f6.selectbox("Xưởng", factory_options, key="review_queue_factory")
+        partner = f7.selectbox("Đối tác", partner_options, key="review_queue_partner")
 
+    filter_category = _cat_by_vi.get(category, category)
+    filter_status = _st_by_vi.get(status, status)
+    filter_severity = {label_vi(STATUS_CRITICAL): STATUS_CRITICAL, label_vi(STATUS_ATTENTION): STATUS_ATTENTION,
+                       label_vi(STATUS_WAITING): STATUS_WAITING, label_vi(STATUS_REVIEW): STATUS_REVIEW}.get(severity, severity)
     filtered = filter_review_queue_items(
         items,
         search=search,
-        category=category,
-        status=status,
-        severity=severity,
+        category=filter_category,
+        status=filter_status,
+        severity=filter_severity,
         shipment_id=shipment_id,
         customer=customer,
         factory=factory,
         partner=partner,
     )
     st.markdown(
-        f"**{len(filtered)} / {len(items)} work items** · filter không làm thay đổi source data · "
+        f"**{len(filtered)} / {len(items)} mục** · bộ lọc không làm thay đổi dữ liệu nguồn · "
         "mở một dòng để xem reason và đi đúng workspace."
     )
     if not filtered:
         if any((search, category != "Tất cả", status != "Tất cả", severity != "Tất cả", shipment_id != "Tất cả", customer != "Tất cả", factory != "Tất cả", partner != "Tất cả")):
-            st.info("Không có review item phù hợp với bộ lọc. Đây không có nghĩa là toàn hệ thống đã complete.")
+            st.info("Không có mục phù hợp với bộ lọc. Đây không có nghĩa là toàn hệ thống đã hoàn tất.")
         else:
-            st.success("Không có actionable review item từ các source hiện tại.")
+            st.success("Không có mục cần xử lý từ các source hiện tại.")
         return
 
     st.dataframe(_table_rows(filtered), hide_index=True, use_container_width=True, height=min(620, 110 + len(filtered) * 42))
@@ -208,7 +215,7 @@ def ui_review_queue() -> None:
         selected_id = item_ids[0]
         st.session_state.review_selected_item = selected_id
     selected_id = st.selectbox(
-        "Chọn work item để xem chi tiết / mở workspace",
+        "Chọn mục để xem chi tiết / mở workspace",
         item_ids,
         index=item_ids.index(selected_id),
         format_func=lambda value: _status_label(next(item for item in filtered if item.get("item_id") == value)),
@@ -218,23 +225,23 @@ def ui_review_queue() -> None:
     st.markdown(
         f"<div class='review-action'><strong>{_value(selected.get('status'))} · {_value(selected.get('title'))}</strong><br>"
         f"Lý do: {_value(selected.get('reason'))}<br>"
-        f"Next action: {_value(selected.get('next_action'))}<br>"
+        f"Việc tiếp theo: {_value(selected.get('next_action'))}<br>"
         f"Nguồn: {_value(selected.get('source'))} · Evidence: {_value(selected.get('evidence'))}</div>",
         unsafe_allow_html=True,
     )
     b1, b2, b3 = st.columns([1.35, 1.35, 3.3])
-    if b1.button("Open Shipment 360", type="primary", use_container_width=True, key="review_open_shipment"):
+    if b1.button("Mở Hồ Sơ Lô 360°", type="primary", use_container_width=True, key="review_open_shipment"):
         _open_shipment(selected)
-    if b2.button("Open Entity Context", use_container_width=True, key="review_open_entity"):
+    if b2.button("Mở Ngữ Cảnh Đối Tác", use_container_width=True, key="review_open_entity"):
         _open_entity(selected)
     if selected.get("category") == CATEGORY_FINANCIAL:
-        if b3.button("Open Finance Review", use_container_width=True, key="review_open_finance"):
+        if b3.button("Mở Đối Soát Tài Chính", use_container_width=True, key="review_open_finance"):
             _open_finance_review(selected)
     elif selected.get("category") == CATEGORY_COMMERCIAL:
-        if b3.button("Open Thỏa Thuận & Bàn Giao", use_container_width=True, key="review_open_commercial"):
+        if b3.button("Mở Thỏa Thuận & Bàn Giao", use_container_width=True, key="review_open_commercial"):
             _open_commercial(selected)
     else:
-        b3.caption("Workspace navigation is read-only; no resolve or financial mutation.")
+        b3.caption("Điều hướng workspace chỉ đọc; không có nút Resolve và không thay đổi dữ liệu tài chính.")
 
 
 def _open_commercial(item: Mapping[str, Any]) -> None:
@@ -249,7 +256,7 @@ def _open_commercial(item: Mapping[str, Any]) -> None:
         st.rerun()
     if kind == "quote":
         st.session_state.quote_detail_id = key
-        st.session_state.active_page = "Sales & Báo Giá"
+        st.session_state.active_page = "Kinh Doanh & Báo Giá"
         st.rerun()
     st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
     st.rerun()

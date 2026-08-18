@@ -48,6 +48,25 @@ SEVERITY_ORDER = {
     STATUS_INFO: 4,
 }
 
+# LG03 W4: nhãn hiển thị tiếng Việt cho các hằng số nghiệp vụ. Giá trị lưu trữ giữ nguyên tiếng Anh để bảo toàn dữ liệu.
+REVIEW_QUEUE_LABELS: dict[str, str] = {
+    "CRITICAL": "Nghiêm trọng",
+    "NEEDS ATTENTION": "Cần chú ý",
+    "WAITING": "Đang chờ",
+    "REVIEW": "Cần rà soát",
+    "INFO": "Thông tin",
+    "OPERATIONAL": "Vận hành",
+    "DOCUMENT": "Chứng từ",
+    "DATA QUALITY": "Chất lượng dữ liệu",
+    "FINANCIAL": "Tài chính",
+    "COMMERCIAL": "Kinh doanh",
+}
+
+
+def label_vi(value: str) -> str:
+    """Trả về nhãn tiếng Việt cho giá trị nghiệp vụ review queue; giữ nguyên nếu không có mapping."""
+    return REVIEW_QUEUE_LABELS.get(value, value)
+
 _ACTIVE_STATUSES = {"active", "pending", "wait", "waiting", "in_progress", "processing"}
 _KNOWN_DOCUMENT_TOKENS = ("known", "present", "available", "uploaded", "có dữ liệu", "đã có", "complete")
 _WAITING_DOCUMENT_TOKENS = ("waiting", "wait", "pending", "awaiting", "đang chờ", "chờ")
