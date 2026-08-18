@@ -1,28 +1,20 @@
+from __future__ import annotations
+import streamlit as st
 """Mounted, fixture-only proof that Dashboard 2.0 stays read-only.
-
 This is intentionally a test/QA oracle.  It patches the existing financial
 write boundaries, mounts the real Streamlit entry point with an in-memory
 fixture, and fails if any writer is reached during the bounded dashboard
 flow.  It never connects to MongoDB and never submits a business write.
 """
-
-from __future__ import annotations
-
 from contextlib import ExitStack
 from copy import deepcopy
 from datetime import date
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
-
 from streamlit.testing.v1 import AppTest
-
 from core.shipment_dashboard import build_shipment_dashboard_view
-
-
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
-
-
 FINANCIAL_WRITE_TARGETS = (
     # Shipment/payment writes used by the legacy financial surface.
     "core.database.save_shipment_atomic",
@@ -59,8 +51,6 @@ FINANCIAL_WRITE_TARGETS = (
     "views.entrustment.save_entrust_db",
     "views.finance.apply_lump_sum_payment",
 )
-
-
 def _shipment_fixture(shipment_id: str, customer: str, owner: str, status: str) -> dict:
     return {
         "id": shipment_id,
@@ -104,19 +94,14 @@ def _shipment_fixture(shipment_id: str, customer: str, owner: str, status: str) 
             },
         ],
     }
-
-
 def _fixture_shipments() -> dict[str, dict]:
     first = _shipment_fixture("LG-001", "Lục Giác", "SALE Thành", "pending")
     second = _shipment_fixture("LG-002", "Khách B", "SALE Khác", "done")
     second["factories"] = []
     second["data"]["3.4"] = {"out": 0, "in": 0, "payments": []}
     return {"LG-001": first, "LG-002": second}
-
-
 def _financial_snapshot(shipments: dict[str, dict]) -> dict[str, dict]:
     """Capture the financial collections carried by the fixture boundary."""
-
     return {
         shipment_id: {
             "data.3.4": deepcopy(shipment.get("data", {}).get("3.4", {})),
@@ -130,40 +115,34 @@ def _financial_snapshot(shipments: dict[str, dict]) -> dict[str, dict]:
         for shipment_id, shipment in shipments.items()
     }
 
+def _login_fixture(user):
+    """Set the login fixture user into the Streamlit session and return it."""
+    import streamlit as st
+    st.session_state.current_user = user
+    return user
 
 class _FinancialWriteOracle:
     def __init__(self) -> None:
         self.calls: list[str] = []
-
     @property
     def financial_write_count(self) -> int:
         return len(self.calls)
-
     def record(self, target: str, *args, **kwargs):
         del args, kwargs
         self.calls.append(target)
         return False
-
-
 def _selectbox(app: AppTest, key: str):
     return next(element for element in app.selectbox if element.key == key)
-
-
 def _button(app: AppTest, key: str):
     return next(element for element in app.button if element.key == key)
-
-
 def _assert_no_streamlit_exceptions(test_case: TestCase, app: AppTest) -> None:
     exceptions = [(element.type, str(element.value)) for element in app.exception]
     test_case.assertEqual(exceptions, [], msg=f"mounted dashboard exceptions: {exceptions}")
-
-
 class DashboardFinancialWriteOracleTests(TestCase):
     def test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation(self) -> None:
         shipments = _fixture_shipments()
         financial_before = _financial_snapshot(shipments)
         oracle = _FinancialWriteOracle()
-
         # The pure projection is part of the same bounded flow and must label
         # its financial result as read-only before the mounted UI is exercised.
         projection = build_shipment_dashboard_view(
@@ -172,7 +151,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
         )
         self.assertTrue(projection["read_only_financial"])
         self.assertTrue(projection["financial_projection"].get("read_only"))
-
         with ExitStack() as stack:
             for target in FINANCIAL_WRITE_TARGETS:
                 stack.enter_context(
@@ -183,10 +161,10 @@ class DashboardFinancialWriteOracleTests(TestCase):
                         ),
                     )
                 )
+            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
             stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
             stack.enter_context(patch("views.dashboard.cached_load_data", return_value=shipments))
             stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
-
             app = AppTest.from_file(str(APP_PATH), default_timeout=60)
             app.run()
             _assert_no_streamlit_exceptions(self, app)
@@ -195,10 +173,9 @@ class DashboardFinancialWriteOracleTests(TestCase):
                 "dashboard did not render the separate financial status",
             )
             self.assertTrue(
-                any("Next action" in element.value for element in app.markdown),
+                any(("Next action" in element.value or "Việc tiếp theo" in element.value) for element in app.markdown),
                 "dashboard did not render a deterministic alert action",
             )
-
             # Owner semantics: SALE Thành is a real fixture owner, not a
             # value inferred from notes/customer/address text.
             _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
@@ -206,7 +183,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
             self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
-
             # Warning semantics: the factory-data warning isolates LG-001.
             _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
             _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
@@ -214,7 +190,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
             self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
-
             # First shipment: open the real mounted detail path, then return.
             _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
             app.run()
@@ -226,12 +201,10 @@ class DashboardFinancialWriteOracleTests(TestCase):
                 any("Shipment 360" in element.value for element in app.markdown),
                 "first shipment did not render Shipment 360 financial projection",
             )
-
             _button(app, "btn_close_top").click()
             app.run()
             _assert_no_streamlit_exceptions(self, app)
             self.assertNotIn("btn_close_top", {element.key for element in app.button})
-
             # Second shipment: verify the list is restored and the second row
             # opens independently on the next click.
             _button(app, "dashboard_open_360_LG-002").click()
@@ -239,7 +212,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})
             self.assertTrue(any("LG-002" in element.value for element in app.markdown))
-
         self.assertEqual(oracle.financial_write_count, 0)
         self.assertEqual(oracle.calls, [])
         self.assertEqual(_financial_snapshot(shipments), financial_before)

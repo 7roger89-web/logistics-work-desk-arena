@@ -1,8 +1,8 @@
 {
  "summary": {
-  "ENGLISH_USER_VISIBLE": 12920,
-  "VIETNAMESE_OK": 2858,
-  "MOJIBAKE": 48
+  "ENGLISH_USER_VISIBLE": 12868,
+  "VIETNAMESE_OK": 2958,
+  "MOJIBAKE": 21
  },
  "items": [
   {
@@ -5577,7 +5577,7 @@
    "file": "views/dashboard.py",
    "line": 232,
    "cat": "VIETNAMESE_OK",
-   "text": "<div class='ops-section-kicker'>PRIMARY WORK SURFACE · SHIPMENT QUEUE</div><h2 class='ops-section-title'>Lô hàng cần xử lý</h2>"
+   "text": "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div><h2 class='ops-section-title'>Lô hàng cần xử lý</h2>"
   },
   {
    "file": "views/dashboard.py",
@@ -5913,7 +5913,7 @@
    "file": "views/dashboard.py",
    "line": 245,
    "cat": "VIETNAMESE_OK",
-   "text": "</strong><small>sắp hoặc quá hạn</small></div>\n          <div><span class='ops-summary-label'>FINANCE ATTENTION</span><strong>"
+   "text": "</strong><small>sắp hoặc quá hạn</small></div>\n          <div><span class='ops-summary-label'>TÀI CHÍNH CẦN THEO DÕI</span><strong>"
   },
   {
    "file": "views/dashboard.py",
@@ -6794,8 +6794,8 @@
   {
    "file": "views/dashboard.py",
    "line": 387,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "**MỞ SHIPMENT 360**"
+   "cat": "VIETNAMESE_OK",
+   "text": "**MỞ HỒ SƠ LÔ 360°**"
   },
   {
    "file": "views/dashboard.py",
@@ -7130,8 +7130,8 @@
   {
    "file": "views/dashboard.py",
    "line": 396,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": " <strong>Next action:</strong> "
+   "cat": "VIETNAMESE_OK",
+   "text": " <strong>Việc tiếp theo:</strong> "
   },
   {
    "file": "views/dashboard.py",
@@ -7244,8 +7244,8 @@
   {
    "file": "views/dashboard.py",
    "line": 639,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/dashboard.py",
@@ -7610,8 +7610,8 @@
   {
    "file": "views/dashboard.py",
    "line": 642,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/dashboard.py",
@@ -8444,14 +8444,14 @@
   {
    "file": "views/entity_context.py",
    "line": 32,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Entity Context"
+   "cat": "VIETNAMESE_OK",
+   "text": "Ngữ Cảnh Đối Tác"
   },
   {
    "file": "views/entity_context.py",
    "line": 70,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/entity_context.py",
@@ -8522,20 +8522,20 @@
   {
    "file": "views/entity_context.py",
    "line": 54,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/entity_context.py",
    "line": 55,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/entity_context.py",
    "line": 73,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/entity_context.py",
@@ -8618,8 +8618,8 @@
   {
    "file": "views/entity_context.py",
    "line": 372,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Entity Context"
+   "cat": "VIETNAMESE_OK",
+   "text": "Ngữ Cảnh Đối Tác"
   },
   {
    "file": "views/entity_context.py",
@@ -8757,7 +8757,7 @@
    "file": "views/entity_context.py",
    "line": 184,
    "cat": "VIETNAMESE_OK",
-   "text": "Sales & Báo Giá"
+   "text": "Kinh Doanh & Báo Giá"
   },
   {
    "file": "views/entity_context.py",
@@ -8918,14 +8918,14 @@
   {
    "file": "views/entity_context.py",
    "line": 379,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "← Back to Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "← Quay lại Việc Cần Xử Lý"
   },
   {
    "file": "views/entity_context.py",
    "line": 379,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "← Back to Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "← Quay lại Trang Tổng Quan"
   },
   {
    "file": "views/entity_context.py",
@@ -9332,20 +9332,20 @@
   {
    "file": "views/entity_context.py",
    "line": 372,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Customer 360"
+   "cat": "VIETNAMESE_OK",
+   "text": "Khách hàng 360"
   },
   {
    "file": "views/entity_context.py",
    "line": 372,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Factory / Supplier 360"
+   "cat": "VIETNAMESE_OK",
+   "text": "Xưởng / Nhà cung cấp 360"
   },
   {
    "file": "views/entity_context.py",
    "line": 372,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Partner / Agent 360"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối tác / Đại lý 360"
   },
   {
    "file": "views/entity_context.py",
@@ -9356,8 +9356,8 @@
   {
    "file": "views/entity_context.py",
    "line": 379,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/entity_context.py",
@@ -11492,14 +11492,14 @@
   {
    "file": "views/finance_review.py",
    "line": 79,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/finance_review.py",
    "line": 98,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/finance_review.py",
@@ -11522,8 +11522,8 @@
   {
    "file": "views/finance_review.py",
    "line": 144,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/finance_review.py",
@@ -11762,8 +11762,8 @@
   {
    "file": "views/finance_review.py",
    "line": 94,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/finance_review.py",
@@ -22903,31 +22903,151 @@
   },
   {
    "file": "views/review_queue.py",
-   "line": 55,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "line": 56,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/review_queue.py",
-   "line": 84,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "line": 85,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/review_queue.py",
-   "line": 120,
+   "line": 121,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "Render the actionable review queue without adding a writer."
   },
   {
    "file": "views/review_queue.py",
-   "line": 241,
+   "line": 248,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "Navigate to the commercial agreement/quote targeted by a COMMERCIAL review item."
   },
   {
    "file": "views/review_queue.py",
-   "line": 254,
+   "line": 261,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thỏa Thuận & Bàn Giao"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 264,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ui_review_queue"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 65,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "entity"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 86,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 86,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 137,
+   "cat": "VIETNAMESE_OK",
+   "text": "<div class='review-kicker'>VIỆC CẦN XỬ LÝ · CHỨNG TỪ + BẤT THƯỜNG</div>"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 138,
+   "cat": "VIETNAMESE_OK",
+   "text": "<h1 class='review-title'>Chứng Từ & Việc Cần Xử Lý</h1>"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 140,
+   "cat": "VIETNAMESE_OK",
+   "text": "<div class='review-note'><strong>Đây là work queue, không phải danh sách cảnh báo.</strong> Mỗi dòng có lý do, next action, nguồn/evidence và nơi mở đ"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 144,
+   "cat": "VIETNAMESE_OK",
+   "text": "Read-only projection · không có nút Resolve · không thay đổi ledger, payment, allocation, FX hay historical data."
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 156,
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần xử lý"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 157,
+   "cat": "VIETNAMESE_OK",
+   "text": "Nghiêm trọng"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 158,
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần chú ý"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 159,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đang chờ"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 160,
+   "cat": "VIETNAMESE_OK",
+   "text": "Số lô hàng"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 213,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_selected_item"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 218,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chọn mục để xem chi tiết / mở workspace"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 233,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Hồ Sơ Lô 360°"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 235,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Ngữ Cảnh Đối Tác"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 251,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "kind"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 253,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "agreement"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 255,
    "cat": "VIETNAMESE_OK",
    "text": "Thỏa Thuận & Bàn Giao"
   },
@@ -22935,149 +23055,23 @@
    "file": "views/review_queue.py",
    "line": 257,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ui_review_queue"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 64,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "entity"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 85,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 85,
-   "cat": "MOJIBAKE",
-   "text": "Táº¥t cáº£"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 136,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "<div class='review-kicker'>ACTIONABLE WORK · DOCUMENTS + EXCEPTIONS</div>"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 137,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "<h1 class='review-title'>Documents & Review Queue</h1>"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 139,
-   "cat": "VIETNAMESE_OK",
-   "text": "<div class='review-note'><strong>Đây là work queue, không phải danh sách cảnh báo.</strong> Mỗi dòng có lý do, next action, nguồn/evidence và nơi mở đ"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 143,
-   "cat": "VIETNAMESE_OK",
-   "text": "Read-only projection · không có nút Resolve · không thay đổi ledger, payment, allocation, FX hay historical data."
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 155,
-   "cat": "VIETNAMESE_OK",
-   "text": "Cần xử lý"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 156,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Critical"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 157,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Needs attention"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 158,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Waiting"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 159,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Shipments"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 206,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_selected_item"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 211,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chọn work item để xem chi tiết / mở workspace"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 226,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Open Shipment 360"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 228,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Open Entity Context"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 244,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "kind"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 246,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "agreement"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 248,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thỏa Thuận & Bàn Giao"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 250,
-   "cat": "ENGLISH_USER_VISIBLE",
    "text": "quote"
   },
   {
    "file": "views/review_queue.py",
-   "line": 252,
+   "line": 259,
    "cat": "VIETNAMESE_OK",
-   "text": "Sales & Báo Giá"
+   "text": "Kinh Doanh & Báo Giá"
   },
   {
    "file": "views/review_queue.py",
-   "line": 34,
+   "line": 35,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "db_shipments"
   },
   {
    "file": "views/review_queue.py",
-   "line": 52,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "target"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 63,
+   "line": 53,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "target"
   },
@@ -23085,121 +23079,121 @@
    "file": "views/review_queue.py",
    "line": 64,
    "cat": "ENGLISH_USER_VISIBLE",
+   "text": "target"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 65,
+   "cat": "ENGLISH_USER_VISIBLE",
    "text": "kind"
   },
   {
    "file": "views/review_queue.py",
-   "line": 66,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "views/review_queue.py",
    "line": 67,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "customer"
   },
   {
    "file": "views/review_queue.py",
-   "line": 67,
+   "line": 68,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 68,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "factory"
   },
   {
    "file": "views/review_queue.py",
-   "line": 67,
+   "line": 68,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "views/review_queue.py",
-   "line": 76,
+   "line": 77,
    "cat": "VIETNAMESE_OK",
    "text": "Entity context UNKNOWN — chưa có mapping source-bound để mở."
   },
   {
    "file": "views/review_queue.py",
-   "line": 79,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "line": 80,
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/review_queue.py",
-   "line": 83,
+   "line": 84,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipment_id"
   },
   {
    "file": "views/review_queue.py",
-   "line": 90,
+   "line": 91,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "status"
   },
   {
    "file": "views/review_queue.py",
-   "line": 97,
+   "line": 98,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": " · Sale "
   },
   {
    "file": "views/review_queue.py",
-   "line": 145,
+   "line": 146,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "db_shipments"
   },
   {
    "file": "views/review_queue.py",
-   "line": 147,
+   "line": 148,
    "cat": "VIETNAMESE_OK",
    "text": "Chưa có shipment data để xây review queue."
   },
   {
    "file": "views/review_queue.py",
-   "line": 150,
+   "line": 151,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "db_quotes"
   },
   {
    "file": "views/review_queue.py",
-   "line": 151,
+   "line": 152,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "db_agreements"
   },
   {
    "file": "views/review_queue.py",
-   "line": 155,
+   "line": 156,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "total"
   },
   {
    "file": "views/review_queue.py",
-   "line": 156,
+   "line": 157,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "critical"
   },
   {
    "file": "views/review_queue.py",
-   "line": 157,
+   "line": 158,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "attention"
   },
   {
    "file": "views/review_queue.py",
-   "line": 158,
+   "line": 159,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "waiting"
   },
   {
    "file": "views/review_queue.py",
-   "line": 159,
+   "line": 160,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipments"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 161,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
   },
   {
    "file": "views/review_queue.py",
@@ -23209,19 +23203,7 @@
   },
   {
    "file": "views/review_queue.py",
-   "line": 163,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
    "line": 164,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 165,
    "cat": "VIETNAMESE_OK",
    "text": "Tất cả"
   },
@@ -23233,529 +23215,349 @@
   },
   {
    "file": "views/review_queue.py",
-   "line": 170,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "🔎 Search & filter"
+   "line": 167,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
   },
   {
    "file": "views/review_queue.py",
-   "line": 171,
+   "line": 168,
    "cat": "VIETNAMESE_OK",
-   "text": "Tìm theo shipment, customer, reason, next action, source"
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 169,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
   },
   {
    "file": "views/review_queue.py",
    "line": 173,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Category"
+   "cat": "VIETNAMESE_OK",
+   "text": "🔎 Tìm kiếm & lọc"
   },
   {
    "file": "views/review_queue.py",
    "line": 174,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Status"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 175,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Severity"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 177,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Shipment"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 178,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Customer"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 179,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Factory"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 180,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Partner"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 194,
    "cat": "VIETNAMESE_OK",
-   "text": " work items** · filter không làm thay đổi source data · mở một dòng để xem reason và đi đúng workspace."
+   "text": "Tìm theo shipment, customer, reason, việc tiếp theo, source"
   },
   {
    "file": "views/review_queue.py",
-   "line": 215,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_selected_item"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 219,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "<div class='review-action'><strong>"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 219,
-   "cat": "VIETNAMESE_OK",
-   "text": "</strong><br>Lý do: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 220,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "<br>Next action: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 221,
-   "cat": "VIETNAMESE_OK",
-   "text": "<br>Nguồn: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 222,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": " · Evidence: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 222,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "</div>"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 226,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "primary"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 226,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_open_shipment"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 228,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_open_entity"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 230,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "category"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 231,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Open Finance Review"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 243,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "target"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 245,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "key"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 53,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 53,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 65,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "key"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 67,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 67,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 67,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 107,
-   "cat": "VIETNAMESE_OK",
-   "text": "Mức"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 108,
+   "line": 176,
    "cat": "VIETNAMESE_OK",
    "text": "Nhóm"
   },
   {
    "file": "views/review_queue.py",
-   "line": 109,
-   "cat": "VIETNAMESE_OK",
-   "text": "Việc cần xử lý"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 110,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Shipment"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 111,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Context"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 112,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Next action"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 113,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Evidence / source"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 171,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_search"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 173,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_category"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 174,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_status"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 175,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 175,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_severity"
-  },
-  {
-   "file": "views/review_queue.py",
    "line": 177,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_shipment"
+   "cat": "VIETNAMESE_OK",
+   "text": "Trạng thái"
   },
   {
    "file": "views/review_queue.py",
    "line": 178,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_customer"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 179,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_factory"
+   "cat": "VIETNAMESE_OK",
+   "text": "Mức độ"
   },
   {
    "file": "views/review_queue.py",
    "line": 180,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_queue_partner"
+   "cat": "VIETNAMESE_OK",
+   "text": "Lô hàng"
   },
   {
    "file": "views/review_queue.py",
-   "line": 199,
+   "line": 181,
    "cat": "VIETNAMESE_OK",
-   "text": "Không có review item phù hợp với bộ lọc. Đây không có nghĩa là toàn hệ thống đã complete."
+   "text": "Khách hàng"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 182,
+   "cat": "VIETNAMESE_OK",
+   "text": "Xưởng"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 183,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối tác"
   },
   {
    "file": "views/review_queue.py",
    "line": 201,
    "cat": "VIETNAMESE_OK",
-   "text": "Không có actionable review item từ các source hiện tại."
+   "text": " mục** · bộ lọc không làm thay đổi dữ liệu nguồn · mở một dòng để xem reason và đi đúng workspace."
   },
   {
    "file": "views/review_queue.py",
-   "line": 205,
+   "line": 222,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "item_id"
+   "text": "review_selected_item"
   },
   {
    "file": "views/review_queue.py",
-   "line": 231,
+   "line": 226,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_open_finance"
+   "text": "<div class='review-action'><strong>"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 226,
+   "cat": "VIETNAMESE_OK",
+   "text": "</strong><br>Lý do: "
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 227,
+   "cat": "VIETNAMESE_OK",
+   "text": "<br>Việc tiếp theo: "
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 228,
+   "cat": "VIETNAMESE_OK",
+   "text": "<br>Nguồn: "
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 229,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": " · Evidence: "
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 229,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "</div>"
   },
   {
    "file": "views/review_queue.py",
    "line": 233,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "category"
+   "text": "primary"
   },
   {
    "file": "views/review_queue.py",
-   "line": 234,
-   "cat": "VIETNAMESE_OK",
-   "text": "Open Thỏa Thuận & Bàn Giao"
+   "line": 233,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_open_shipment"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 235,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_open_entity"
   },
   {
    "file": "views/review_queue.py",
    "line": 237,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Workspace navigation is read-only; no resolve or financial mutation."
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 91,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "title"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 91,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 99,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 100,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Factory: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 101,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 102,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Partner: "
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 198,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 234,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review_open_commercial"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 97,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 97,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 107,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 108,
-   "cat": "ENGLISH_USER_VISIBLE",
    "text": "category"
   },
   {
    "file": "views/review_queue.py",
-   "line": 109,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "title"
+   "line": 238,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Đối Soát Tài Chính"
   },
   {
    "file": "views/review_queue.py",
-   "line": 110,
+   "line": 250,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
+   "text": "target"
   },
   {
    "file": "views/review_queue.py",
-   "line": 112,
+   "line": 252,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action"
+   "text": "key"
   },
   {
    "file": "views/review_queue.py",
-   "line": 113,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "evidence"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 163,
+   "line": 54,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipment_id"
   },
   {
    "file": "views/review_queue.py",
-   "line": 164,
+   "line": 54,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 66,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "key"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 68,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "customer"
   },
   {
    "file": "views/review_queue.py",
-   "line": 165,
+   "line": 68,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "factory"
   },
   {
    "file": "views/review_queue.py",
-   "line": 166,
+   "line": 68,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "views/review_queue.py",
-   "line": 217,
+   "line": 108,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mức"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 109,
+   "cat": "VIETNAMESE_OK",
+   "text": "Nhóm"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 110,
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc cần xử lý"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 111,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Shipment"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 112,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bối cảnh"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 113,
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc tiếp theo"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 114,
+   "cat": "VIETNAMESE_OK",
+   "text": "Evidence / nguồn"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 174,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_search"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 176,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_category"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 177,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_status"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 178,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 178,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_severity"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 180,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_shipment"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 181,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_customer"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 182,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_factory"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 183,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review_queue_partner"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 206,
+   "cat": "VIETNAMESE_OK",
+   "text": "Không có mục phù hợp với bộ lọc. Đây không có nghĩa là toàn hệ thống đã hoàn tất."
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 208,
+   "cat": "VIETNAMESE_OK",
+   "text": "Không có mục cần xử lý từ các source hiện tại."
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 212,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "item_id"
   },
   {
    "file": "views/review_queue.py",
-   "line": 219,
+   "line": 238,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
+   "text": "review_open_finance"
   },
   {
    "file": "views/review_queue.py",
-   "line": 219,
+   "line": 240,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "category"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 241,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Thỏa Thuận & Bàn Giao"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 244,
+   "cat": "VIETNAMESE_OK",
+   "text": "Điều hướng workspace chỉ đọc; không có nút Resolve và không thay đổi dữ liệu tài chính."
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 92,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "title"
   },
   {
    "file": "views/review_queue.py",
-   "line": 220,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reason"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 221,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 222,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 222,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "evidence"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 45,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "id"
-  },
-  {
-   "file": "views/review_queue.py",
-   "line": 45,
+   "line": 92,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipment_id"
   },
@@ -23767,25 +23569,223 @@
   },
   {
    "file": "views/review_queue.py",
+   "line": 101,
+   "cat": "VIETNAMESE_OK",
+   "text": "Xưởng: "
+  },
+  {
+   "file": "views/review_queue.py",
    "line": 102,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "views/review_queue.py",
-   "line": 165,
+   "line": 103,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối tác: "
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 205,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 241,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
+   "text": "review_open_commercial"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 98,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 98,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 110,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "title"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 111,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 113,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 114,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "evidence"
   },
   {
    "file": "views/review_queue.py",
    "line": 166,
    "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 167,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 168,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 169,
+   "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "views/review_queue.py",
-   "line": 214,
+   "line": 224,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "item_id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 226,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 226,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "title"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 227,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reason"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 228,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 229,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 229,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "evidence"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 46,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 46,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 108,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 109,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "category"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 101,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 103,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 168,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 169,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "views/review_queue.py",
+   "line": 221,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "item_id"
   },
@@ -25928,8 +25928,8 @@
   {
    "file": "views/shipment.py",
    "line": 496,
-   "cat": "MOJIBAKE",
-   "text": "Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c xoÃ¡ Ãªm. HÃ£y dÃ¹ng correction/reversal cÃ³ audit."
+   "cat": "VIETNAMESE_OK",
+   "text": "Lịch sử thanh toán không được xóa âm. Hãy dùng correction/reversal có audit."
   },
   {
    "file": "views/shipment.py",
@@ -31802,8 +31802,8 @@
   {
    "file": "views/web_app.py",
    "line": 38,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/web_app.py",
@@ -31826,8 +31826,8 @@
   {
    "file": "views/web_app.py",
    "line": 39,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/web_app.py",
@@ -31898,8 +31898,8 @@
   {
    "file": "views/web_app.py",
    "line": 42,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Entity Context"
+   "cat": "VIETNAMESE_OK",
+   "text": "Ngữ Cảnh Đối Tác"
   },
   {
    "file": "views/web_app.py",
@@ -31923,7 +31923,7 @@
    "file": "views/web_app.py",
    "line": 43,
    "cat": "VIETNAMESE_OK",
-   "text": "Sales & Báo Giá"
+   "text": "Kinh Doanh & Báo Giá"
   },
   {
    "file": "views/web_app.py",
@@ -32018,8 +32018,8 @@
   {
    "file": "views/web_app.py",
    "line": 47,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/web_app.py",
@@ -32049,7 +32049,7 @@
    "file": "views/web_app.py",
    "line": 48,
    "cat": "VIETNAMESE_OK",
-   "text": "Công nợ A Bò"
+   "text": "Công Nợ A Bò"
   },
   {
    "file": "views/web_app.py",
@@ -32120,8 +32120,8 @@
   {
    "file": "views/web_app.py",
    "line": 51,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Tracking"
+   "cat": "VIETNAMESE_OK",
+   "text": "Theo Dõi Vận Chuyển"
   },
   {
    "file": "views/web_app.py",
@@ -32192,32 +32192,32 @@
   {
    "file": "views/web_app.py",
    "line": 63,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "OPERATIONS"
+   "cat": "VIETNAMESE_OK",
+   "text": "VẬN HÀNH"
   },
   {
    "file": "views/web_app.py",
    "line": 67,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "COMMERCIAL CONTEXT"
+   "cat": "VIETNAMESE_OK",
+   "text": "KINH DOANH & ĐỐI TÁC"
   },
   {
    "file": "views/web_app.py",
    "line": 71,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FINANCE & REVIEW"
+   "cat": "VIETNAMESE_OK",
+   "text": "TÀI CHÍNH & ĐỐI SOÁT"
   },
   {
    "file": "views/web_app.py",
    "line": 75,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "TOOLS & REFERENCE"
+   "cat": "VIETNAMESE_OK",
+   "text": "CÔNG CỤ & THAM KHẢO"
   },
   {
    "file": "views/web_app.py",
    "line": 79,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ADMINISTRATION"
+   "text": "QUẢN TRỊ"
   },
   {
    "file": "views/web_app.py",
@@ -32229,13 +32229,13 @@
    "file": "views/web_app.py",
    "line": 296,
    "cat": "VIETNAMESE_OK",
-   "text": "Về Dashboard"
+   "text": "Về Trang Tổng Quan"
   },
   {
    "file": "views/web_app.py",
    "line": 297,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/web_app.py",
@@ -32270,14 +32270,14 @@
   {
    "file": "views/web_app.py",
    "line": 64,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/web_app.py",
    "line": 64,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Review Queue"
+   "cat": "VIETNAMESE_OK",
+   "text": "Việc Cần Xử Lý"
   },
   {
    "file": "views/web_app.py",
@@ -32288,8 +32288,8 @@
   {
    "file": "views/web_app.py",
    "line": 64,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Tracking"
+   "cat": "VIETNAMESE_OK",
+   "text": "Theo Dõi Vận Chuyển"
   },
   {
    "file": "views/web_app.py",
@@ -32300,14 +32300,14 @@
   {
    "file": "views/web_app.py",
    "line": 68,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Entity Context"
+   "cat": "VIETNAMESE_OK",
+   "text": "Ngữ Cảnh Đối Tác"
   },
   {
    "file": "views/web_app.py",
    "line": 68,
    "cat": "VIETNAMESE_OK",
-   "text": "Sales & Báo Giá"
+   "text": "Kinh Doanh & Báo Giá"
   },
   {
    "file": "views/web_app.py",
@@ -32324,8 +32324,8 @@
   {
    "file": "views/web_app.py",
    "line": 72,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Finance Review"
+   "cat": "VIETNAMESE_OK",
+   "text": "Đối Soát Tài Chính"
   },
   {
    "file": "views/web_app.py",
@@ -32337,7 +32337,7 @@
    "file": "views/web_app.py",
    "line": 72,
    "cat": "VIETNAMESE_OK",
-   "text": "Công nợ A Bò"
+   "text": "Công Nợ A Bò"
   },
   {
    "file": "views/web_app.py",
@@ -32469,13 +32469,13 @@
    "file": "views/web_app.py",
    "line": 362,
    "cat": "VIETNAMESE_OK",
-   "text": "Mật khảu (tối thiểu 8 ký tự)"
+   "text": "Mật khẩu (tối thiểu 8 ký tự)"
   },
   {
    "file": "views/web_app.py",
    "line": 363,
    "cat": "VIETNAMESE_OK",
-   "text": "Nhập lại mật khảu"
+   "text": "Nhập lại mật khẩu"
   },
   {
    "file": "views/web_app.py",
@@ -32558,14 +32558,14 @@
   {
    "file": "views/web_app.py",
    "line": 257,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Dashboard"
+   "cat": "VIETNAMESE_OK",
+   "text": "Tổng Quan Công Việc"
   },
   {
    "file": "views/web_app.py",
    "line": 264,
    "cat": "VIETNAMESE_OK",
-   "text": "Về Dashboard"
+   "text": "Về Trang Tổng Quan"
   },
   {
    "file": "views/web_app.py",
@@ -37544,8 +37544,8 @@
   {
    "file": "core/database.py",
    "line": 82,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB khÃ´ng cung cáº¥p transaction cho financial write."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB không cung cấp transaction cho financial write."
   },
   {
    "file": "core/database.py",
@@ -37587,13 +37587,13 @@
    "file": "core/database.py",
    "line": 136,
    "cat": "MOJIBAKE",
-   "text": "Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c thÃªm/xoÃ¡ trÃ¹c tiáº¿p."
+   "text": "Lá»‹ch sử thanh toán không được thêm/xoá trùc tiếp."
   },
   {
    "file": "core/database.py",
    "line": 148,
    "cat": "MOJIBAKE",
-   "text": "Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c Ä‘á»•i ID hoáº·c xoÃ¡."
+   "text": "Lá»‹ch sử thanh toán không được Ä‘á»•i ID hoặc xoá."
   },
   {
    "file": "core/database.py",
@@ -38006,14 +38006,14 @@
   {
    "file": "core/database.py",
    "line": 479,
-   "cat": "MOJIBAKE",
-   "text": "Khoáº£n thu pháº£i cÃ³ shipment_id vÃ  request identity."
+   "cat": "VIETNAMESE_OK",
+   "text": "Khoản thu phải có shipment_id và request identity."
   },
   {
    "file": "core/database.py",
    "line": 482,
-   "cat": "MOJIBAKE",
-   "text": "Sá»‘ tiá»n thanh toÃ¡n pháº£i lá»›n hÆ¡n 0."
+   "cat": "VIETNAMESE_OK",
+   "text": "Số tiền thanh toán phải lớn hơn 0."
   },
   {
    "file": "core/database.py",
@@ -38024,20 +38024,20 @@
   {
    "file": "core/database.py",
    "line": 491,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB chÆ°a sáºµn sÃ ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB chưa sẵn sàng."
   },
   {
    "file": "core/database.py",
    "line": 501,
    "cat": "MOJIBAKE",
-   "text": "Khoáº£n thu Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³."
+   "text": "Khoản thu Đã được xử lý trÆ°á»›c Ä‘ó."
   },
   {
    "file": "core/database.py",
    "line": 631,
-   "cat": "MOJIBAKE",
-   "text": "Correction pháº£i cÃ³ original, request identity vÃ  reason."
+   "cat": "VIETNAMESE_OK",
+   "text": "Correction phải có original, request identity và reason."
   },
   {
    "file": "core/database.py",
@@ -38066,14 +38066,14 @@
   {
    "file": "core/database.py",
    "line": 643,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB chÆ°a sáºµn sÃ ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB chưa sẵn sàng."
   },
   {
    "file": "core/database.py",
    "line": 653,
    "cat": "MOJIBAKE",
-   "text": "Correction Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³."
+   "text": "Correction Đã được xử lý trÆ°á»›c Ä‘ó."
   },
   {
    "file": "core/database.py",
@@ -38246,26 +38246,26 @@
   {
    "file": "core/database.py",
    "line": 957,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB chÆ°a sáºµn sÃ ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB chưa sẵn sàng."
   },
   {
    "file": "core/database.py",
    "line": 960,
    "cat": "MOJIBAKE",
-   "text": "Thanh toÃ¡n há»™ cáº§n cÃ³ mÃ£ giao dá»‹ch."
+   "text": "Thanh toán há»™ cần có mã giao dịch."
   },
   {
    "file": "core/database.py",
    "line": 963,
    "cat": "MOJIBAKE",
-   "text": "Thanh toÃ¡n há»™ cáº§n cÃ³ mÃ£ há»£p Ä‘á»“ng."
+   "text": "Thanh toán há»™ cần có mã hợp đồng."
   },
   {
    "file": "core/database.py",
    "line": 976,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB khÃ´ng cung cáº¥p transaction cho giao dá»‹ch há»£p Ä‘á»“ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB không cung cấp transaction cho giao dịch hợp đồng."
   },
   {
    "file": "core/database.py",
@@ -38348,20 +38348,20 @@
   {
    "file": "core/database.py",
    "line": 1101,
-   "cat": "MOJIBAKE",
-   "text": "Entrustment batch pháº£i cÃ³ request identity."
+   "cat": "VIETNAMESE_OK",
+   "text": "Entrustment batch phải có request identity."
   },
   {
    "file": "core/database.py",
    "line": 1105,
-   "cat": "MOJIBAKE",
-   "text": "MongoDB chÆ°a sáºµn sÃ ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "MongoDB chưa sẵn sàng."
   },
   {
    "file": "core/database.py",
    "line": 1116,
-   "cat": "MOJIBAKE",
-   "text": "Entrustment request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho batch khÃ¡c."
+   "cat": "VIETNAMESE_OK",
+   "text": "Entrustment request identity Đã được dùng cho batch khác."
   },
   {
    "file": "core/database.py",
@@ -38541,13 +38541,13 @@
    "file": "core/database.py",
    "line": 132,
    "cat": "MOJIBAKE",
-   "text": "Khoáº£n thu má»›i pháº£i cÃ³ request identity."
+   "text": "Khoản thu má»›i phải có request identity."
   },
   {
    "file": "core/database.py",
    "line": 142,
    "cat": "MOJIBAKE",
-   "text": "Lá»‹ch sá»­ thanh toÃ¡n cÅ© khÃ´ng Ä‘Æ°á»£c ghi ÄÃ¨."
+   "text": "Lá»‹ch sử thanh toán cũ không được ghi Äè."
   },
   {
    "file": "core/database.py",
@@ -39332,14 +39332,14 @@
   {
    "file": "core/database.py",
    "line": 499,
-   "cat": "MOJIBAKE",
-   "text": "Request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho financial action khÃ¡c."
+   "cat": "VIETNAMESE_OK",
+   "text": "Request identity Đã được dùng cho financial action khác."
   },
   {
    "file": "core/database.py",
    "line": 609,
    "cat": "MOJIBAKE",
-   "text": "Financial action request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c."
+   "text": "Financial action request bị trùng nhưng không Ä‘ọc lại được."
   },
   {
    "file": "core/database.py",
@@ -39356,8 +39356,8 @@
   {
    "file": "core/database.py",
    "line": 651,
-   "cat": "MOJIBAKE",
-   "text": "Correction request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho ná»™i dung khÃ¡c."
+   "cat": "VIETNAMESE_OK",
+   "text": "Correction request identity Đã được dùng cho nội dung khác."
   },
   {
    "file": "core/database.py",
@@ -39369,7 +39369,7 @@
    "file": "core/database.py",
    "line": 737,
    "cat": "MOJIBAKE",
-   "text": "Correction request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c."
+   "text": "Correction request bị trùng nhưng không Ä‘ọc lại được."
   },
   {
    "file": "core/database.py",
@@ -39765,7 +39765,7 @@
    "file": "core/database.py",
    "line": 1163,
    "cat": "MOJIBAKE",
-   "text": "Entrustment request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c."
+   "text": "Entrustment request bị trùng nhưng không Ä‘ọc lại được."
   },
   {
    "file": "core/database.py",
@@ -39974,14 +39974,14 @@
   {
    "file": "core/database.py",
    "line": 151,
-   "cat": "MOJIBAKE",
-   "text": "Thanh toÃ¡n "
+   "cat": "VIETNAMESE_OK",
+   "text": "Thanh toán "
   },
   {
    "file": "core/database.py",
    "line": 151,
-   "cat": "MOJIBAKE",
-   "text": " pháº£i Ä‘Æ°á»£c correction/reversal cÃ³ audit."
+   "cat": "VIETNAMESE_OK",
+   "text": " phải được correction/reversal có audit."
   },
   {
    "file": "core/database.py",
@@ -40472,8 +40472,8 @@
   {
    "file": "core/database.py",
    "line": 604,
-   "cat": "MOJIBAKE",
-   "text": "ÄÃ£ ghi nháº­n khoáº£n thu."
+   "cat": "VIETNAMESE_OK",
+   "text": "Đã ghi nhận khoản thu."
   },
   {
    "file": "core/database.py",
@@ -40700,8 +40700,8 @@
   {
    "file": "core/database.py",
    "line": 732,
-   "cat": "MOJIBAKE",
-   "text": "ÄÃ£ ghi correction/reversal cÃ³ liÃªn káº¿t."
+   "cat": "VIETNAMESE_OK",
+   "text": "Đã ghi correction/reversal có liên kết."
   },
   {
    "file": "core/database.py",
@@ -41714,8 +41714,8 @@
   {
    "file": "core/database.py",
    "line": 984,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng lÆ°u Ä‘Æ°á»£c thanh toÃ¡n há»™."
+   "cat": "VIETNAMESE_OK",
+   "text": "Không lưu được thanh toán hộ."
   },
   {
    "file": "core/database.py",
@@ -41756,8 +41756,8 @@
   {
    "file": "core/database.py",
    "line": 1002,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng lÆ°u Ä‘Æ°á»£c giao dá»‹ch há»£p Ä‘á»“ng."
+   "cat": "VIETNAMESE_OK",
+   "text": "Không lưu được giao dịch hợp đồng."
   },
   {
    "file": "core/database.py",
@@ -41996,8 +41996,8 @@
   {
    "file": "core/database.py",
    "line": 512,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng tÃ¬m tháº¥y lÃ´ "
+   "cat": "VIETNAMESE_OK",
+   "text": "Không tìm thấy lô "
   },
   {
    "file": "core/database.py",
@@ -42009,7 +42009,7 @@
    "file": "core/database.py",
    "line": 535,
    "cat": "MOJIBAKE",
-   "text": "Khoáº£n thu Ä‘Ã£ tá»“n táº¡i vÃ  Ä‘Æ°á»£c khÃ³a theo request identity."
+   "text": "Khoản thu Đã tá»“n tại và được khóa theo request identity."
   },
   {
    "file": "core/database.py",
@@ -42110,14 +42110,14 @@
   {
    "file": "core/database.py",
    "line": 663,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng tÃ¬m tháº¥y lÃ´ "
+   "cat": "VIETNAMESE_OK",
+   "text": "Không tìm thấy lô "
   },
   {
    "file": "core/database.py",
    "line": 668,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng tÃ¬m tháº¥y payment "
+   "cat": "VIETNAMESE_OK",
+   "text": "Không tìm thấy payment "
   },
   {
    "file": "core/database.py",
@@ -42128,8 +42128,8 @@
   {
    "file": "core/database.py",
    "line": 670,
-   "cat": "MOJIBAKE",
-   "text": " Ä‘Ã£ Ä‘Æ°á»£c reversal trÆ°á»›c Ä‘Ã³."
+   "cat": "VIETNAMESE_OK",
+   "text": " Đã được reversal trước đó."
   },
   {
    "file": "core/database.py",
@@ -42392,8 +42392,8 @@
   {
    "file": "core/database.py",
    "line": 520,
-   "cat": "MOJIBAKE",
-   "text": "Request identity Ä‘Ã£ cÃ³ ná»™i dung khÃ¡c."
+   "cat": "VIETNAMESE_OK",
+   "text": "Request identity Đã có nội dung khác."
   },
   {
    "file": "core/database.py",
@@ -42524,8 +42524,8 @@
   {
    "file": "core/database.py",
    "line": 1131,
-   "cat": "MOJIBAKE",
-   "text": "KhÃ´ng lÆ°u Ä‘Æ°á»£c entrustment "
+   "cat": "VIETNAMESE_OK",
+   "text": "Không lưu được entrustment "
   },
   {
    "file": "core/database.py",
@@ -85165,339 +85165,711 @@
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 53,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "CRITICAL"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 54,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "NEEDS ATTENTION"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 55,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "WAITING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 56,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "REVIEW"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 57,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "INFO"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 58,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "OPERATIONAL"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 59,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DOCUMENT"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 60,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DATA QUALITY"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 61,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FINANCIAL"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 62,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "COMMERCIAL"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 53,
+   "cat": "VIETNAMESE_OK",
+   "text": "Nghiêm trọng"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 54,
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần chú ý"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 55,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đang chờ"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 56,
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần rà soát"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 57,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thông tin"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 58,
+   "cat": "VIETNAMESE_OK",
+   "text": "Vận hành"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 59,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chứng từ"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 60,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chất lượng dữ liệu"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 61,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tài chính"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 62,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Kinh doanh"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 67,
+   "cat": "VIETNAMESE_OK",
+   "text": "Trả về nhãn tiếng Việt cho giá trị nghiệp vụ review queue; giữ nguyên nếu không có mapping."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "active"
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "pending"
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "wait"
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "waiting"
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "in_progress"
   },
   {
    "file": "core/review_queue.py",
-   "line": 51,
+   "line": 70,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "processing"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "known"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "present"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "available"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "uploaded"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "VIETNAMESE_OK",
    "text": "có dữ liệu"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "VIETNAMESE_OK",
    "text": "đã có"
   },
   {
    "file": "core/review_queue.py",
-   "line": 52,
+   "line": 71,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "complete"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "waiting"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "wait"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "pending"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "awaiting"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "VIETNAMESE_OK",
    "text": "đang chờ"
   },
   {
    "file": "core/review_queue.py",
-   "line": 53,
+   "line": 72,
    "cat": "VIETNAMESE_OK",
    "text": "chờ"
   },
   {
    "file": "core/review_queue.py",
-   "line": 54,
+   "line": 73,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "missing"
   },
   {
    "file": "core/review_queue.py",
-   "line": 54,
+   "line": 73,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "not found"
   },
   {
    "file": "core/review_queue.py",
-   "line": 54,
+   "line": 73,
    "cat": "VIETNAMESE_OK",
    "text": "chưa có"
   },
   {
    "file": "core/review_queue.py",
-   "line": 54,
+   "line": 73,
    "cat": "VIETNAMESE_OK",
    "text": "thiếu"
   },
   {
    "file": "core/review_queue.py",
-   "line": 54,
+   "line": 73,
    "cat": "VIETNAMESE_OK",
    "text": "không có"
   },
   {
    "file": "core/review_queue.py",
-   "line": 55,
+   "line": 74,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "unknown"
   },
   {
    "file": "core/review_queue.py",
-   "line": 55,
+   "line": 74,
    "cat": "VIETNAMESE_OK",
    "text": "chưa rõ"
   },
   {
    "file": "core/review_queue.py",
-   "line": 55,
+   "line": 74,
    "cat": "VIETNAMESE_OK",
    "text": "chưa xác định"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "issue"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "problem"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "hold"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "blocked"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "delay"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "error"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "exception"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "incident"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "VIETNAMESE_OK",
    "text": "lỗi"
   },
   {
    "file": "core/review_queue.py",
-   "line": 56,
+   "line": 75,
    "cat": "VIETNAMESE_OK",
    "text": "vướng"
   },
   {
    "file": "core/review_queue.py",
-   "line": 115,
+   "line": 134,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "unknown"
   },
   {
    "file": "core/review_queue.py",
-   "line": 630,
+   "line": 649,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "LOG-C13: surface blocked commercial handoff signals as read-only review items.\n\n    No ledger or persistence call happens here; signals come only from"
   },
   {
    "file": "core/review_queue.py",
-   "line": 728,
+   "line": 747,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "Build actionable review items without mutating shipment inputs."
   },
   {
    "file": "core/review_queue.py",
-   "line": 766,
+   "line": 785,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "Filter review items without changing their order or contents."
   },
   {
    "file": "core/review_queue.py",
-   "line": 804,
+   "line": 823,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORIES"
   },
   {
    "file": "core/review_queue.py",
-   "line": 805,
+   "line": 824,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORY_COMMERCIAL"
   },
   {
    "file": "core/review_queue.py",
-   "line": 806,
+   "line": 825,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORY_DATA"
   },
   {
    "file": "core/review_queue.py",
-   "line": 807,
+   "line": 826,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORY_DOCUMENT"
   },
   {
    "file": "core/review_queue.py",
-   "line": 808,
+   "line": 827,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORY_FINANCIAL"
   },
   {
    "file": "core/review_queue.py",
-   "line": 809,
+   "line": 828,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "CATEGORY_OPERATIONAL"
   },
   {
    "file": "core/review_queue.py",
-   "line": 810,
+   "line": 829,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUSES"
   },
   {
    "file": "core/review_queue.py",
-   "line": 811,
+   "line": 830,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUS_ATTENTION"
   },
   {
    "file": "core/review_queue.py",
-   "line": 812,
+   "line": 831,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUS_CRITICAL"
   },
   {
    "file": "core/review_queue.py",
-   "line": 813,
+   "line": 832,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUS_INFO"
   },
   {
    "file": "core/review_queue.py",
-   "line": 814,
+   "line": 833,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUS_REVIEW"
   },
   {
    "file": "core/review_queue.py",
-   "line": 815,
+   "line": 834,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "STATUS_WAITING"
   },
   {
    "file": "core/review_queue.py",
-   "line": 816,
+   "line": 835,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "build_review_queue_items"
   },
   {
    "file": "core/review_queue.py",
-   "line": 817,
+   "line": 836,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "filter_review_queue_items"
   },
   {
    "file": "core/review_queue.py",
-   "line": 818,
+   "line": 837,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "summarize_review_queue"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 127,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "unknown"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 129,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "known"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 131,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "waiting"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 133,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 156,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 157,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 158,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 159,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 160,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory_key"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 161,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner_key"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 166,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "kind"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 166,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "key"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 166,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 187,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "item_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 188,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 189,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 190,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 191,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 192,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 193,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "category"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 194,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 195,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "severity_rank"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 196,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "title"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 197,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reason"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 198,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 199,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 200,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "evidence"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 201,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "target"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 202,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "read_only"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 220,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "finance"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 234,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "alerts"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 399,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "documents"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 813,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "total"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 814,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "critical"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 815,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "attention"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 816,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "waiting"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 817,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "review"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 818,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipments"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 90,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "data"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 108,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "None"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 108,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "none"
   },
   {
    "file": "core/review_queue.py",
@@ -85507,1891 +85879,1465 @@
   },
   {
    "file": "core/review_queue.py",
-   "line": 110,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "known"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 112,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "waiting"
-  },
-  {
-   "file": "core/review_queue.py",
    "line": 114,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 137,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 138,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 139,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 140,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 141,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory_key"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 142,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner_key"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 147,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "kind"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 147,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "key"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 147,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 168,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "item_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 169,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 170,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 171,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 172,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 173,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 174,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "category"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 175,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 176,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "severity_rank"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 177,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "title"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 178,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reason"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 179,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 180,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 181,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "evidence"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 182,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "target"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 183,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "read_only"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 201,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "finance"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 215,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "alerts"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 380,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "documents"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 794,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "total"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 795,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "critical"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 796,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "attention"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 797,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "waiting"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 798,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "review"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 799,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipments"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 71,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "data"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 89,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "None"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 89,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "none"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 89,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "unknown"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 95,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "true"
   },
   {
    "file": "core/review_queue.py",
-   "line": 95,
+   "line": 114,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "yes"
   },
   {
    "file": "core/review_queue.py",
-   "line": 95,
+   "line": 114,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "required"
   },
   {
    "file": "core/review_queue.py",
-   "line": 95,
+   "line": 114,
    "cat": "VIETNAMESE_OK",
    "text": "có"
   },
   {
    "file": "core/review_queue.py",
-   "line": 95,
+   "line": 114,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "co"
   },
   {
    "file": "core/review_queue.py",
-   "line": 99,
+   "line": 118,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "is_complete"
   },
   {
    "file": "core/review_queue.py",
-   "line": 130,
+   "line": 149,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "context"
   },
   {
    "file": "core/review_queue.py",
-   "line": 133,
+   "line": 152,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "agent"
   },
   {
    "file": "core/review_queue.py",
-   "line": 134,
+   "line": 153,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "customer"
   },
   {
    "file": "core/review_queue.py",
-   "line": 135,
+   "line": 154,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "customer_id"
   },
   {
    "file": "core/review_queue.py",
-   "line": 172,
+   "line": 191,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "factory"
   },
   {
    "file": "core/review_queue.py",
-   "line": 173,
+   "line": 192,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "core/review_queue.py",
-   "line": 190,
+   "line": 209,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "overdue"
   },
   {
    "file": "core/review_queue.py",
-   "line": 190,
+   "line": 209,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "risk"
   },
   {
    "file": "core/review_queue.py",
-   "line": 194,
+   "line": 213,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "promised"
   },
   {
    "file": "core/review_queue.py",
-   "line": 194,
+   "line": 213,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "next_action"
   },
   {
    "file": "core/review_queue.py",
-   "line": 203,
+   "line": 222,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "missing_customer"
   },
   {
    "file": "core/review_queue.py",
-   "line": 214,
+   "line": 233,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 218,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ALERT"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 219,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "finance"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 223,
-   "cat": "VIETNAMESE_OK",
-   "text": "Cần kiểm tra"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 251,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 252,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 253,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 276,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ready_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 277,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory_ready_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 277,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ready_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 299,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "weight"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 299,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "gross_weight"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 299,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "weight_kg"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 300,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "cbm"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 300,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "volume"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 300,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "volume_cbm"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 301,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "required_fields_missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 301,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "missing_required_fields"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 326,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 326,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_step"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 326,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "action_required"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customs_issue"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "VIETNAMESE_OK",
-   "text": "Vướng mắc hải quan"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "delivery_issue"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "VIETNAMESE_OK",
-   "text": "Vướng mắc giao hàng"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "operational_issue"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 346,
-   "cat": "VIETNAMESE_OK",
-   "text": "Vướng mắc vận hành"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 375,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 376,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 377,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 383,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chứng từ"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 387,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "known"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 391,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "waiting"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 477,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 478,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 479,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 480,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 484,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 504,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "legacy_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 504,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "legacy_identifier"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 504,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "getfly_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 504,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 505,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "resolved_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 505,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "canonical_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 505,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "mapping_status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 525,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "required_fields_missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 525,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "missing_required_fields"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 553,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 554,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 555,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 556,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "financial_projection"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 557,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "financial_flag"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 561,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Canonical financial review-required"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 562,
-   "cat": "VIETNAMESE_OK",
-   "text": "Projection cho thấy khoản tài chính còn mở; đây không phải thao tác thanh toán."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 590,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "unallocated"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 590,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FINANCIAL_UNALLOCATED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 590,
-   "cat": "VIETNAMESE_OK",
-   "text": "Có khoản chưa phân bổ"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 590,
-   "cat": "VIETNAMESE_OK",
-   "text": "Kiểm tra allocation source hiện có."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 591,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "unreconciled"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 591,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FINANCIAL_RECONCILIATION"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 591,
-   "cat": "VIETNAMESE_OK",
-   "text": "Cần reconciliation"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 591,
-   "cat": "VIETNAMESE_OK",
-   "text": "Kiểm tra read model đối soát hiện có."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 592,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "unconfirmed_costs"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 592,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FINANCIAL_COST_EVIDENCE"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 592,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu evidence chi phí"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 592,
-   "cat": "VIETNAMESE_OK",
-   "text": "Kiểm tra evidence chi phí; không tự ghi nhận."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 647,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "VOID"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 658,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "state"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 659,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "READY_FOR_OPERATIONS"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 661,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thỏa thuận chưa đạt trạng thái bàn giao."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 126,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 126,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 131,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory_lots"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 188,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "info"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 218,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "code"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 223,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "label"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 255,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory_lots"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 325,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action_due"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 325,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "action_due_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 325,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action_deadline"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 383,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "document"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 384,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 385,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "required"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 386,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 409,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 484,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chưa có khách hàng"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 565,
-   "cat": "VIETNAMESE_OK",
-   "text": "Cần đối soát tài chính"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 566,
-   "cat": "VIETNAMESE_OK",
-   "text": "Projection yêu cầu kiểm tra đối soát trước khi tin cậy số liệu."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 569,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tài chính UNKNOWN"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 570,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chưa đủ dữ liệu/read model để kết luận trạng thái tài chính."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 617,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "severity_rank"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 618,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "category"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 619,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 620,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "item_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 649,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "agreement_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 650,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer_name"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 651,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "quote_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 652,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "agreement_no"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 661,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reasons"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 683,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ACCEPTED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 683,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "READY_TO_CREATE_SHIPMENT"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 683,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "APPROVED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 685,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 686,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer_name"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 687,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "quote_no"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 688,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 63,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "none"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 63,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "nan"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 63,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "null"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 80,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "None"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 80,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "none"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 101,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "active"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 132,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 182,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 188,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "severity"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 189,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "code"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 264,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FACTORY_CONTACT_MISSING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 267,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu factory contact"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 268,
-   "cat": "VIETNAMESE_OK",
-   "text": "Có factory/lot nhưng chưa có pickup contact để Support phối hợp."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 269,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bổ sung contact nhà máy cho lot liên quan."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 270,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.factories[*].pickup_contact"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 271,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.factories[*]"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 272,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory-contact"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 285,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FACTORY_READY_MISSING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 288,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu ready date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 289,
-   "cat": "VIETNAMESE_OK",
-   "text": "Shipment có factory/lot nhưng chưa có mốc sẵn sàng để lập kế hoạch pickup."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 290,
-   "cat": "VIETNAMESE_OK",
-   "text": "Xác nhận ready date với nhà máy."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 291,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.factories[*].ready_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 292,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.factories[*]"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 293,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ready-date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 313,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "WEIGHT_CBM_MISSING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 316,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu weight / CBM"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 317,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chưa có weight hoặc CBM để hoàn thiện dữ liệu vận hành của lô."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 318,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bổ sung weight/CBM từ factory hoặc bộ phận vận hành."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 319,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment route/structured logistics fields"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 320,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "weight, gross_weight, cbm, volume"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 321,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "weight-cbm"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 334,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "NEXT_ACTION_OVERDUE"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 337,
-   "cat": "VIETNAMESE_OK",
-   "text": "Next action quá hạn"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 340,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.next_action_due"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 341,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.next_action + shipment.next_action_due"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 342,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next-action"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 439,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "DOCUMENT_UNKNOWN"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 442,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chứng từ UNKNOWN"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 444,
-   "cat": "VIETNAMESE_OK",
-   "text": "Mở Shipment 360 và kiểm tra evidence hiện có."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 445,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "core.shipment_workspace document projection"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 447,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "unknown"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 457,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "DOCUMENT_EVIDENCE_MISSING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 460,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu evidence reference"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 461,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chứng từ được ghi nhận nhưng chưa có reference/evidence để kiểm tra lại."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 463,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment documents/document_registry"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 464,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "document.source / document.evidence / document.uri"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 465,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "evidence"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 491,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "CUSTOMER_MAPPING_UNRESOLVED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 494,
-   "cat": "VIETNAMESE_OK",
-   "text": "Entity mapping chưa resolve"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 495,
-   "cat": "VIETNAMESE_OK",
-   "text": "Shipment có tên khách nhưng chưa có customer_id source-bound."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 496,
-   "cat": "VIETNAMESE_OK",
-   "text": "Kiểm tra Customer Context; không tự suy đoán mapping."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 497,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.customer_id / shipment.customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 498,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.customer_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 500,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 513,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "LEGACY_IDENTIFIER_REVIEW"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 516,
-   "cat": "VIETNAMESE_OK",
-   "text": "Legacy identifier cần kiểm tra"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 518,
-   "cat": "VIETNAMESE_OK",
-   "text": "Kiểm tra provenance trước khi mở hoặc liên kết dữ liệu."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 519,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment legacy/source identifier"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 520,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "legacy_id / canonical_id / mapping_status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 521,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "legacy"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 527,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "field"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 534,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "REQUIRED_STRUCTURED_DATA_MISSING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 537,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu structured data bắt buộc"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 539,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bổ sung đúng structured fields; không thay bằng text tự do."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 540,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.required_fields_missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 541,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment.required_fields_missing"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 542,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "required-fields"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 577,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "FINANCIAL_STATUS"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 582,
-   "cat": "VIETNAMESE_OK",
-   "text": "Mở Shipment 360 → finance projection để xem nguồn và lý do."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 595,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 595,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "UNKNOWN"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 595,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "value"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 647,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 656,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 661,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reasons"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 666,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Sale"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 668,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "COMMERCIAL_AGREEMENT"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 673,
-   "cat": "VIETNAMESE_OK",
-   "text": "Mở 'Thỏa Thuận & Bàn Giao' → chi tiết thỏa thuận → xử lý trạng thái & bằng chứng."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 674,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "core.commercial_agreements.handoff_readiness (read-only)"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 692,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "REVISED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 698,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Sale"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 700,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "COMMERCIAL_QUOTE_UNCOVERED"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 704,
-   "cat": "VIETNAMESE_OK",
-   "text": "Báo giá đang ở trạng thái đã chốt nhưng chưa có thỏa thuận thương mại (agreement) nào — vận hành chưa có điều khoản bàn giao."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 705,
-   "cat": "VIETNAMESE_OK",
-   "text": "Mở 'Thỏa Thuận & Bàn Giao' → 'Tạo thỏa thuận từ báo giá đã chốt' → xử lý bàn giao."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 706,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "quotes store status (read-only)"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 737,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "financial_projection"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 750,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "item_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 771,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 771,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "__all__"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 777,
-   "cat": "VIETNAMESE_OK",
-   "text": "Tất cả"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 777,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "__all__"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 83,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "None"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 83,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "none"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 101,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "operational_status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 276,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "ready_date"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 303,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "weight"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 303,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "cbm"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 338,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bước tiếp theo '"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 338,
-   "cat": "VIETNAMESE_OK",
-   "text": "' có hạn "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 398,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "DOCUMENT_WAITING"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 443,
-   "cat": "VIETNAMESE_OK",
-   "text": "Có "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 443,
-   "cat": "VIETNAMESE_OK",
-   "text": " mục chứng từ chưa có trạng thái chuẩn; không thể kết luận đầy đủ."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 462,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bổ sung reference evidence cho: "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 499,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "entity"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 517,
-   "cat": "VIETNAMESE_OK",
-   "text": "Nguồn có identifier '"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 517,
-   "cat": "VIETNAMESE_OK",
-   "text": "' nhưng chưa có mapping canonical rõ ràng."
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 538,
-   "cat": "VIETNAMESE_OK",
-   "text": "Các trường source đánh dấu thiếu: "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 583,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "core.shipment_360 financial projection"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 584,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "read-only projection"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 667,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 667,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 671,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thỏa thuận thương mại chưa sẵn sàng bàn giao · "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 676,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "agreement"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 682,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 699,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 699,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 703,
-   "cat": "VIETNAMESE_OK",
-   "text": "Báo giá đã chốt chưa có thỏa thuận thương mại · "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 708,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "quote"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 716,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 775,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "category"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 775,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 777,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 779,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 779,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 781,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 781,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "partner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 799,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 132,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "factory"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 227,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "customer"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 228,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 234,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "detail"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 236,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
   },
   {
    "file": "core/review_queue.py",
    "line": 237,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
+   "text": "ALERT"
   },
   {
    "file": "core/review_queue.py",
-   "line": 257,
+   "line": 238,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "pickup_contact"
+   "text": "finance"
   },
   {
    "file": "core/review_queue.py",
-   "line": 306,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "booking_no"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 360,
+   "line": 242,
    "cat": "VIETNAMESE_OK",
-   "text": "Mở Shipment 360 để kiểm tra "
+   "text": "Cần kiểm tra"
   },
   {
    "file": "core/review_queue.py",
-   "line": 361,
+   "line": 270,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment."
+   "text": "shipment_id"
   },
   {
    "file": "core/review_queue.py",
-   "line": 362,
+   "line": 271,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment."
+   "text": "customer"
   },
   {
    "file": "core/review_queue.py",
-   "line": 401,
+   "line": 272,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 295,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ready_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 296,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory_ready_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 296,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ready_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 318,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "weight"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 318,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "gross_weight"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 318,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "weight_kg"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 319,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "cbm"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 319,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "volume"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 319,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "volume_cbm"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 320,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "required_fields_missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 320,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "missing_required_fields"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 345,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 345,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_step"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 345,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "action_required"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customs_issue"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
    "cat": "VIETNAMESE_OK",
-   "text": "Đang chờ "
+   "text": "Vướng mắc hải quan"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "delivery_issue"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
+   "cat": "VIETNAMESE_OK",
+   "text": "Vướng mắc giao hàng"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "operational_issue"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 365,
+   "cat": "VIETNAMESE_OK",
+   "text": "Vướng mắc vận hành"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 394,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 395,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 396,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
   },
   {
    "file": "core/review_queue.py",
    "line": 402,
    "cat": "VIETNAMESE_OK",
-   "text": "Trạng thái chứng từ: "
+   "text": "Chứng từ"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 406,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "known"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 410,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "waiting"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 496,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 497,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 498,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 499,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 503,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 523,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "legacy_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 523,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "legacy_identifier"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 523,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "getfly_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 523,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 524,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "resolved_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 524,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "canonical_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 524,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "mapping_status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 544,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "required_fields_missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 544,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "missing_required_fields"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 572,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 573,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 574,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 575,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "financial_projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 576,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "financial_flag"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 580,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Canonical financial review-required"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 581,
+   "cat": "VIETNAMESE_OK",
+   "text": "Projection cho thấy khoản tài chính còn mở; đây không phải thao tác thanh toán."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 609,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "unallocated"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 609,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FINANCIAL_UNALLOCATED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 609,
+   "cat": "VIETNAMESE_OK",
+   "text": "Có khoản chưa phân bổ"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 609,
+   "cat": "VIETNAMESE_OK",
+   "text": "Kiểm tra allocation source hiện có."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 610,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "unreconciled"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 610,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FINANCIAL_RECONCILIATION"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 610,
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần reconciliation"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 610,
+   "cat": "VIETNAMESE_OK",
+   "text": "Kiểm tra read model đối soát hiện có."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 611,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "unconfirmed_costs"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 611,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FINANCIAL_COST_EVIDENCE"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 611,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu evidence chi phí"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 611,
+   "cat": "VIETNAMESE_OK",
+   "text": "Kiểm tra evidence chi phí; không tự ghi nhận."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 666,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "VOID"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 677,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "state"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 678,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "READY_FOR_OPERATIONS"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 680,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thỏa thuận chưa đạt trạng thái bàn giao."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 145,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 145,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 150,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory_lots"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 207,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "info"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 237,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "code"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 242,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "label"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 274,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory_lots"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 344,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action_due"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 344,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "action_due_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 344,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action_deadline"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 402,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "document"
   },
   {
    "file": "core/review_queue.py",
    "line": 403,
-   "cat": "VIETNAMESE_OK",
-   "text": "Theo dõi người cung cấp "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 416,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "DOCUMENT_MISSING"
+   "text": "status"
   },
   {
    "file": "core/review_queue.py",
-   "line": 446,
+   "line": 404,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "documents_status"
+   "text": "required"
   },
   {
    "file": "core/review_queue.py",
-   "line": 583,
+   "line": 405,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "source"
   },
   {
    "file": "core/review_queue.py",
+   "line": 428,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 503,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chưa có khách hàng"
+  },
+  {
+   "file": "core/review_queue.py",
    "line": 584,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "read_only"
+   "cat": "VIETNAMESE_OK",
+   "text": "Cần đối soát tài chính"
   },
   {
    "file": "core/review_queue.py",
-   "line": 608,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "Shipment 360 financial projection"
+   "line": 585,
+   "cat": "VIETNAMESE_OK",
+   "text": "Projection yêu cầu kiểm tra đối soát trước khi tin cậy số liệu."
   },
   {
    "file": "core/review_queue.py",
-   "line": 654,
+   "line": 588,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tài chính UNKNOWN"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 589,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chưa đủ dữ liệu/read model để kết luận trạng thái tài chính."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 636,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "shipment_ids"
+   "text": "severity_rank"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 637,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "category"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 638,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 639,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "item_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 668,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "agreement_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 669,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer_name"
   },
   {
    "file": "core/review_queue.py",
    "line": 670,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "NEEDS_COMMERCIAL_REVIEW"
+   "text": "quote_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 671,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "agreement_no"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 680,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reasons"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 702,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ACCEPTED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 702,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "READY_TO_CREATE_SHIPMENT"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 702,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "APPROVED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 704,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 705,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer_name"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 706,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "quote_no"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 707,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 82,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "none"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 82,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "nan"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 82,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "null"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 99,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "None"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 99,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "none"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 120,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "active"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 151,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 201,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 207,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "severity"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 208,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "code"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 283,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FACTORY_CONTACT_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 286,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu factory contact"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 287,
+   "cat": "VIETNAMESE_OK",
+   "text": "Có factory/lot nhưng chưa có pickup contact để Support phối hợp."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 288,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bổ sung contact nhà máy cho lot liên quan."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 289,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.factories[*].pickup_contact"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 290,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.factories[*]"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 291,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory-contact"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 304,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FACTORY_READY_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 307,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu ready date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 308,
+   "cat": "VIETNAMESE_OK",
+   "text": "Shipment có factory/lot nhưng chưa có mốc sẵn sàng để lập kế hoạch pickup."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 309,
+   "cat": "VIETNAMESE_OK",
+   "text": "Xác nhận ready date với nhà máy."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 310,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.factories[*].ready_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 311,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.factories[*]"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 312,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ready-date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 332,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "WEIGHT_CBM_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 335,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu weight / CBM"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 336,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chưa có weight hoặc CBM để hoàn thiện dữ liệu vận hành của lô."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 337,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bổ sung weight/CBM từ factory hoặc bộ phận vận hành."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 338,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment route/structured logistics fields"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 339,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "weight, gross_weight, cbm, volume"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 340,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "weight-cbm"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 353,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "NEXT_ACTION_OVERDUE"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 356,
+   "cat": "VIETNAMESE_OK",
+   "text": "Next action quá hạn"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 359,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.next_action_due"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 360,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.next_action + shipment.next_action_due"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 361,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next-action"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 458,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DOCUMENT_UNKNOWN"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 461,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chứng từ UNKNOWN"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 463,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Shipment 360 và kiểm tra evidence hiện có."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 464,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "core.shipment_workspace document projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 466,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "unknown"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 476,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DOCUMENT_EVIDENCE_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 479,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu evidence reference"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 480,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chứng từ được ghi nhận nhưng chưa có reference/evidence để kiểm tra lại."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 482,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment documents/document_registry"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 483,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "document.source / document.evidence / document.uri"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 484,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "evidence"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 510,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "CUSTOMER_MAPPING_UNRESOLVED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 513,
+   "cat": "VIETNAMESE_OK",
+   "text": "Entity mapping chưa resolve"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 514,
+   "cat": "VIETNAMESE_OK",
+   "text": "Shipment có tên khách nhưng chưa có customer_id source-bound."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 515,
+   "cat": "VIETNAMESE_OK",
+   "text": "Kiểm tra Customer Context; không tự suy đoán mapping."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 516,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.customer_id / shipment.customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 517,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.customer_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 519,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 532,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "LEGACY_IDENTIFIER_REVIEW"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 535,
+   "cat": "VIETNAMESE_OK",
+   "text": "Legacy identifier cần kiểm tra"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 537,
+   "cat": "VIETNAMESE_OK",
+   "text": "Kiểm tra provenance trước khi mở hoặc liên kết dữ liệu."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 538,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment legacy/source identifier"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 539,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "legacy_id / canonical_id / mapping_status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 540,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "legacy"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 546,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "field"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 553,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "REQUIRED_STRUCTURED_DATA_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 556,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu structured data bắt buộc"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 558,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bổ sung đúng structured fields; không thay bằng text tự do."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 559,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.required_fields_missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 560,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment.required_fields_missing"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 561,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "required-fields"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 596,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "FINANCIAL_STATUS"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 601,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Shipment 360 → finance projection để xem nguồn và lý do."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 614,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 614,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "UNKNOWN"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 614,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "value"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 666,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
   },
   {
    "file": "core/review_queue.py",
    "line": 675,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 680,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reasons"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 685,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Sale"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 687,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "COMMERCIAL_AGREEMENT"
   },
   {
    "file": "core/review_queue.py",
    "line": 692,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở 'Thỏa Thuận & Bàn Giao' → chi tiết thỏa thuận → xử lý trạng thái & bằng chứng."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 693,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "core.commercial_agreements.handoff_readiness (read-only)"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 711,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "REVISED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 717,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Sale"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 719,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "COMMERCIAL_QUOTE_UNCOVERED"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 723,
+   "cat": "VIETNAMESE_OK",
+   "text": "Báo giá đang ở trạng thái đã chốt nhưng chưa có thỏa thuận thương mại (agreement) nào — vận hành chưa có điều khoản bàn giao."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 724,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở 'Thỏa Thuận & Bàn Giao' → 'Tạo thỏa thuận từ báo giá đã chốt' → xử lý bàn giao."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 725,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "quotes store status (read-only)"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 756,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "financial_projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 769,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "item_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 790,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 790,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "__all__"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 796,
+   "cat": "VIETNAMESE_OK",
+   "text": "Tất cả"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 796,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "__all__"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 102,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "None"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 102,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "none"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 120,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "operational_status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 295,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "ready_date"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 322,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "weight"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 322,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "cbm"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 357,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bước tiếp theo '"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 357,
+   "cat": "VIETNAMESE_OK",
+   "text": "' có hạn "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 417,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DOCUMENT_WAITING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 462,
+   "cat": "VIETNAMESE_OK",
+   "text": "Có "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 462,
+   "cat": "VIETNAMESE_OK",
+   "text": " mục chứng từ chưa có trạng thái chuẩn; không thể kết luận đầy đủ."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 481,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bổ sung reference evidence cho: "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 518,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "entity"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 536,
+   "cat": "VIETNAMESE_OK",
+   "text": "Nguồn có identifier '"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 536,
+   "cat": "VIETNAMESE_OK",
+   "text": "' nhưng chưa có mapping canonical rõ ràng."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 557,
+   "cat": "VIETNAMESE_OK",
+   "text": "Các trường source đánh dấu thiếu: "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 602,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "core.shipment_360 financial projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 603,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "read-only projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 686,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 686,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 690,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thỏa thuận thương mại chưa sẵn sàng bàn giao · "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 695,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "agreement"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 701,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "status"
   },
   {
    "file": "core/review_queue.py",
-   "line": 795,
+   "line": 718,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 718,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 722,
+   "cat": "VIETNAMESE_OK",
+   "text": "Báo giá đã chốt chưa có thỏa thuận thương mại · "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 727,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "quote"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 735,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 794,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "category"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 794,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "status"
   },
@@ -87403,133 +87349,313 @@
   },
   {
    "file": "core/review_queue.py",
-   "line": 797,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
    "line": 798,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 419,
-   "cat": "VIETNAMESE_OK",
-   "text": "Thiếu "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 420,
-   "cat": "VIETNAMESE_OK",
-   "text": "Chứng từ đang ở trạng thái "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 421,
-   "cat": "VIETNAMESE_OK",
-   "text": "Bổ sung hoặc yêu cầu cung cấp "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 608,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "source"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 609,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reason"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 606,
-   "cat": "VIETNAMESE_OK",
-   "text": "Projection ghi nhận giá trị "
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 784,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "item_id"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 784,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "shipment_id"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 798,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "customer"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
-   "cat": "ENGLISH_USER_VISIBLE",
-   "text": "owner"
-  },
-  {
-   "file": "core/review_queue.py",
-   "line": 784,
+   "line": 800,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "factory"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 800,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "partner"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 818,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "title"
+   "text": "shipment_id"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 151,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "reason"
+   "text": "factory"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 246,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "next_action"
+   "text": "customer"
   },
   {
    "file": "core/review_queue.py",
-   "line": 784,
+   "line": 247,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 253,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "detail"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 255,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "source"
   },
   {
    "file": "core/review_queue.py",
-   "line": 402,
+   "line": 256,
    "cat": "ENGLISH_USER_VISIBLE",
-   "text": "status"
+   "text": "source"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 276,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "pickup_contact"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 325,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "booking_no"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 379,
+   "cat": "VIETNAMESE_OK",
+   "text": "Mở Shipment 360 để kiểm tra "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 380,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment."
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 381,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment."
   },
   {
    "file": "core/review_queue.py",
    "line": 420,
+   "cat": "VIETNAMESE_OK",
+   "text": "Đang chờ "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 421,
+   "cat": "VIETNAMESE_OK",
+   "text": "Trạng thái chứng từ: "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 422,
+   "cat": "VIETNAMESE_OK",
+   "text": "Theo dõi người cung cấp "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 435,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "DOCUMENT_MISSING"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 465,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "documents_status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 602,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 603,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "read_only"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 627,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "Shipment 360 financial projection"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 673,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_ids"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 689,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "NEEDS_COMMERCIAL_REVIEW"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 694,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "status"
   },
   {
    "file": "core/review_queue.py",
-   "line": 606,
+   "line": 711,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 814,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 815,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 816,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 817,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 438,
+   "cat": "VIETNAMESE_OK",
+   "text": "Thiếu "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 439,
+   "cat": "VIETNAMESE_OK",
+   "text": "Chứng từ đang ở trạng thái "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 440,
+   "cat": "VIETNAMESE_OK",
+   "text": "Bổ sung hoặc yêu cầu cung cấp "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 627,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 628,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reason"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 625,
+   "cat": "VIETNAMESE_OK",
+   "text": "Projection ghi nhận giá trị "
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "item_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "shipment_id"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "customer"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "owner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "factory"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "partner"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "title"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "reason"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "next_action"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 803,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "source"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 421,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 439,
+   "cat": "ENGLISH_USER_VISIBLE",
+   "text": "status"
+  },
+  {
+   "file": "core/review_queue.py",
+   "line": 625,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "value"
   },
   {
    "file": "core/review_queue.py",
-   "line": 606,
+   "line": 625,
    "cat": "ENGLISH_USER_VISIBLE",
    "text": "currency"
   },

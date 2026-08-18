@@ -362,3 +362,84 @@ KEY FACTS CHO BÁO CÁO:
 - Exposed QA URL: https://8501-ir597s8ybmcfhscghlmcb-9d796d59.sg1.manus.computer (tạm thời).
 - Production DB baseline: users=1 admin, customers=362, shipments=78 (trước +3 rehearsal).
 - Secret scan: chỉ hits trong docs/ (text mô tả), không credential thật trong code.
+
+
+## CONTINUATION LG03 (2026-08-18, sau terminal + recovery prompt mới)
+- Phase A proven: LOCAL HEAD = remote HEAD = af192d0; MAIN = 09e2426; merge-base --is-ancestor 6fb8a84 af192d0 = YES (clean chain); 09e2426 → ... → 6fb8a84 = YES (main ancestor, no rebase/squash). PR#2 head = af192d0, draft, not merged (GitHub API). Remote stale 6fb8a84 đã fix bằng fetch+push: origin branch = af192d0.
+- Git truth reconcile: LG03_IMPLEMENTATION_SHA = 8b4eb09..6fb8a84 range; LG03_RECOVERY_EVIDENCE_SHA = af192d0 (evidence-only commit "recovery capsule"); CURRENT_PR_HEAD = FINAL_RELEASE_CANDIDATE_SHA = af192d0. Không conflict.
+- Task mới (prompt tiếp): đóng 5 test failure với fix nhỏ đúng chuẩn (không skip/delete/weaken; mục tiêu 0 FAILED); giữ finance oracle; reconcile state.json SHA; dry-run cleanup tool + phân loại action (SOFT_DEACTIVATE vs HARD_DELETE — tool hiện tại dùng delete_one → HARD_DELETE, cần chuyển sang soft deactivate dùng update_user/active_states nếu có, không phát minh subsystem); terminal pre-merge report (mục 8). KHÔNG merge, KHÔNG apply cleanup, KHÔNG deploy, KHÔNG LG04.
+- 5 failures: (1) test_dashboard_financial_write_oracle::test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation — kiểm tra fixture release_mode; (2)(3) test_entity_context_ui::test_entity_workspace_opens_shipment_360 + test_shipment_360_links_to_customer_factory_partner_and_returns — old "Customer 360" EN expectation vs VN UI "Hồ sơ Khách hàng 360" (đã sửa 1 lần nhưng test vẫn fail — AppTest cần DB/mocked env?); (4) test_lg01_env_security::test_validate_rejects_prod — release_mode=true policy conflict; (5) test_logc12_host_native_runtime::test_sales_workspace_mounts_and_exposes_intake_form — obsolete LogC12 UI test.
+- Evidence gốc nhân: docs/goals/LOG-LG03/evidence/R0_baseline_load_agreements_gap.md (dòng ~40).
+- Untracked LG02 evidence/tools nhiều file trong docs/goals/LOG-LG02/evidence + tools/ (để untracked, không commit — chúng là artifacts recovery LG02, không thuộc LG03 scope; cân nhắc không đưa vào PR).
+- Modified: docs/goals/LOG-LG03/evidence/W1_raw_strings.json (94965 dòng raw scan — không quan trọng, cân nhắc rm khỏi git tracking nếu uncommitted? Nó untracked? status shows " M" = modified tracked — lớn không cần thiết, xem xét git restore).
+
+
+## PHASE B (đóng 5 test) — trạng thái 2026-08-18
+- #4 env_security test_validate_rejects_prod: ĐÃ FIX (patch cả MONGO_DB_NAME + MONGO_RELEASE_MODE=False trong test, giữ 2 contract fail-closed + authorized production). 7/7 PASS. File: tests/test_lg01_env_security.py.
+- #1 dashboard oracle: chẩn đoán — AppTest chạy với secrets production → connection warning "MongoDB connection failed" (transient Atlas replica set) → dashboard fallback hiển thị trang rỗng/ít markdown (n markdown: 1) → assertion "Tài chính:" fail. LG-001 fixture: financial_label="UNKNOWN", flag=unknown (không có financial_obligations). Badge "Tài chính:" ở views/dashboard.py:382 ĐÚNG trong code, chỉ không render khi fallback. Test KHÔNG nên phụ thuộc DB thật: cần patch init_connection/get_db hoặc mock load_shipments path. Fix nhỏ đúng chuẩn: patch thêm "core.database.get_db" (return None) hoặc dùng monkeypatch env. Cần xem app.py flow: if cached_load_data patched, dashboard còn gọi gì vào DB? (có thể sidebar/require_login load_users → get_db). Fix candidate: stack.enter_context(patch("core.database.get_db", side_effect=RuntimeError("tests")))? Không — side_effect exception có thể gây exception trong app. Better: mock get_db trả về MagicMock(db). Hoặc mock views.web_app.get_db. Kiểm tra app.py/web_app.py: refresh_core_data patched, nhưng còn require_login/load_users ở sidebar.
+- #2,#3 entity_context_ui: AppTest không mock DB → kết nối Atlas thật khi chạy riêng → fail connection (chứ không phải label). Label "Hồ sơ Khách hàng 360" đã đổi đúng trong views/entity_context.py trước đó; test cũ đã edit 1 lần (check test assertions hiện tại: có thể vẫn grep 'Customer 360'?). Cần xem nội dung test hiện tại.
+- #5 logc12 host native runtime: app.py chạy AppTest với secrets production (Atlas) + DB thật → ServerSelectionTimeout hoặc fail label. Cần xem test code hiện tại.
+- Hướng fix chung cho #1,#2,#3,#5: môi trường test cần DB mock; fix nhỏ: patch core.database.get_db trong các test AppTest (không weaken assertion).
+- Lưu ý môi trường sandbox: Atlas reachable (test suite 212 passed chạy được, failures không do DB timeout mà do assertion). #1 fail ở assertion markdown, không exception.
+
+
+## PHASE B cập nhật 2 (2026-08-18 07:11)
+Tiến độ: #4 env_security PASS (7/7). #5 logc12 PASS (label VN "Kinh doanh & Báo giá" + patches trong ExitStack cho cả 2 lần app.run). #2 entity_context test 1 PASS. Còn 2 failing:
+1. test_shipment_360_links... (entity_context_ui line 92): assertion keys `shipment_customer_context_S-001` etc missing — cần debug xem dashboard sau click dashboard_open_360_S-001 render gì (có thể cần patch views.shipment.load... khác hoặc shipment detail không render context buttons do thiếu dữ liệu fixture). Debug: dump button keys sau click.
+2. test_dashboard_financial_write_oracle line 198: "Next action" not in markdown — dashboard LG03 đã đổi nhãn next-action "Việc tiếp theo" (VN) trong Pilot; test assertion cũ EN. Fix nhỏ: thêm "Việc tiếp theo" vào kiểm tra (2 chuỗi chấp nhận) — KHÔNG weaken oracle, chỉ cập nhật label expectation theo approved VN UI.
+- Lưu ý: tất cả sửa test-only, giữ nguyên code sản phẩm (trừ không gì bị đổi logic).
+- File đã sửa: tests/test_lg01_env_security.py (fix #4), tests/test_entity_context_ui.py (DB+auth patches), tests/test_logc12_host_native_runtime.py (VN label + stack scope), tests/test_dashboard_financial_write_oracle.py (đã sed thêm require_login patch — cần sửa line 198 assertion cho "Việc tiếp theo").
+- Sau đó: full pytest → mục tiêu 0 FAILED; rồi Phase C (RBAC test logc15 + LG03 qa gate + mojibake scan); Phase D (state.json SHA reconcile: LG03_IMPLEMENTATION_SHA range, LG03_RECOVERY_EVIDENCE_SHA=af192d0, PR head=af192d0); dry-run cleanup tool (`PYTHONPATH=. python3 docs/goals/LOG-LG03/tools/cleanup_rehearsal_users.py` default dry-run, verify targets = 3 rehearsal, OWNER_ADMIN_AFFECTED=NO); phân loại action: tool hiện dùng delete_one → HARD_DELETE — chuyển sang SOFT_DEACTIVATE qua update_user active_state nếu tồn tại (grep update_user/deactivate trong core/database.py hoặc users.py) để giữ provenance; KHÔNG apply khi chưa có approval Owner.
+- Phase E: terminal pre-merge report gồm 17 mục (RELEASE-GATE VERDICT, MAIN SHA 09e2426, FINAL PR#2 HEAD, PROVENANCE RESULT (chain 09e2426→...→6fb8a84→af192d0 sạch), 5 ROOT CAUSES, TEST FIXES, FULL REGRESSION, RBAC, FINANCE ORACLE, MOJIBAKE, PRODUCTION MUTATION = 0 (dùng probe tool), DRY-RUN RESULT, CLEANUP ACTION TYPE, OWNER ADMIN SAFETY, PR STATUS, EXACT OWNER ACTION: "duyệt PR" hoặc "xóa rehearsal"). "TÔI CÓ CẦN LÀM GÌ KHÔNG?" trả lời: 2 việc tùy chọn, không bắt buộc.
+
+
+## PHASE B cập nhật 3 (2026-08-18 07:15)
+- Test cuối còn failing: test_shipment_360_links... (entity_context_ui). DIAGNOSIS:
+  - Dashboard click dashboard_open_360_S-001 MỞ INLINE detail panel trong tab 📋 DASHBOARD (buttons: btn_save_top, btn_del_top, btn_close_top) — KHÔNG còn chuyển sang màn workspace cũ.
+  - ui_shipment_detail_tabs(active_sid, ship) tại dashboard.py:657 render(render_shipment_workspace(...)) với buttons shipment_customer_context_S-001... NHƯNG chỉ khi can_edit=True.
+  - Với require_login fixture (role admin), can_edit = has_permission("shipment_edit") → ROLE_PERMISSIONS["admin"] có "*"... thực ra admin role có full quyền → can_edit True, tabs render.
+  - Thực tế debug: sau click, các context buttons KHÔNG có trong DOM. Nguyên nhân có thể: ui_shipment_detail_tabs render bên trong st.tabs(["📋 DASHBOARD", "🏆 TOP KHÁCH", "🔗 GETFLY", "💰 HOA HỒNG"]) — Streamlit tabs content render ngay cả khi tab không active (toàn bộ code chạy mỗi rerun). Vậy phải có exception khác → but exceptions=0.
+  - KHẢ NĂNG CAO: build_shipment_workspace_view / render_shipment_workspace không render context buttons do view data mapping differs — hoặc shipment.py load proxy/entrustments patches missing: test patches views.shipment.load_proxy_payments etc but ui_shipment_detail_tabs runs in views.shipment module → patch OK.
+  - GỢI Ý FIX ĐÚNG (nhỏ nhất, đúng chuẩn): cập nhật test cho hành vi hiện tại: click dashboard_open_360 → inline detail panel mở (assert btn_save_top/btn_close_top), rồi mở entity context qua đường khác. Hoặc patch thêm views.dashboard.has_permission? Không cần.
+  - QUYẾT ĐỊNH: chỉnh test khớp với hành vi hiện tại của app (UI đã được LG03 thay đổi hợp pháp — workspace 360 giờ là inline panel trong dashboard): test 1 đã xác minh mở panel; test 2 xác minh entity_context page + quay về. Sửa test 2: xác minh inline panel + context buttons khi ui_shipment_detail_tabs render. Để xác nhận render, tôi cần kiểm tra: maybe issue là `can_edit` False vì session_state.current_user không tồn tại khi has_permission chạy trong dashboard module (core.auth.current_user reads st.session_state; my patched require_login sets st.session_state.current_user → should exist).
+  - CẦN CHECK THỬ: trong debug_360_v2, sau click print markdown chứa "MỞ HỒ SƠ LÔ 360" hay không + dump text_input keys để biết ui_shipment_detail_tabs có render không.
+- Đã done trước đó:
+  - test_lg01_env_security.py fix #4 PASS (7/7) ✓
+  - test_logc12_host_native_runtime.py fix VN label + stack scope + init_connection patch PASS ✓
+  - test_dashboard_financial_write_oracle.py fix VN next-action label PASS ✓
+  - test_entity_context_ui test 1 PASS ✓
+  - Scale VN: views/shipment_360.py 3 nút "Mở hồ sơ Khách hàng 360 / Nhà máy/NCC 360 / Đại lý 360"; views/entity_context.py "← Về Lô hàng 360" ✓
+- Sau khi xong: full pytest → 0 FAILED (5 pre-existing vẫn là 5? KHÔNG — mục tiêu Phase B contract: đạt 0 FAILED bằng cách đóng cả 5; 2 tests env_security (1) + logc12 (4) — tổng 5: đã fix hết ✓)
+- Phase C còn lại: RBAC test (tests/test_logc15_auth_rbac.py) + LG03 QA gate tool + mojibake scan repo-wide.
+- Phase D: state.json SHA reconcile (LG03_PR#2_HEAD=af192d0), dry-run cleanup tool, HARD_DELETE→SOFT_DEACTIVATE phân tích, OWNER ADMIN SAFETY.
+- Phase E: terminal report 17 mục.
+
+
+## PHASE B cập nhật 4 (2026-08-18 07:17)
+- Debug v3 cho thấy: sau click dashboard_open_360_S-001, detail panel render (#### 📂 S-001, btn_save_top/del/close) nhưng KHÔNG có ui_shipment_detail_tabs content (context buttons, tabs inputs).
+- can_edit = has_permission("shipment_edit") trong dashboard.py:617. _role_permissions("admin") = {"*"} nên should True... NHƯNG debug output cho thấy panel chỉ có save/del/close + json — nghĩa là can_edit False (else branch: st.info "Tài khoản hiện tại chỉ có quyền xem" + st.json). Wait — output không có st.info đó! Thực tế output có btn_save_top (disabled=False render) — có nghĩa can_edit True nhưng ui_shipment_detail_tabs content bị ẩn/lỗi.
+- UIỂN XÁC ĐỊNH: render_shipment_workspace trong shipment_360.py render context buttons bên trong `with st.expander("👥 Khách hàng · nhà máy · pickup · delivery", expanded=True)` — nhưng expander content không trả về trong app.button nếu... Streamlit AppTest vẫn collect. Hmm.
+- CHỜ — nhìn kỹ debug: không có st.info "chỉ có quyền xem" → can_edit True. ui_shipment_detail_tabs(active_sid, ship_data) được gọi → render_shipment_workspace → context buttons SHOULD exist. TRỪ KHI ui_shipment_detail_tabs ném exception không bắt → but exceptions=0.
+- KHẢ NĂNG MỚI: render_shipment_workspace raises → but exception=0. Hoặc buttons render với key None (BTN:None x4 trong output = 4 buttons with None keys) — context buttons có use_container_width=True, key set → không None.
+- CẦN LÀM: grep shipment_360.py cho BTN:None (4 buttons None) và kiểm tra tại sao context buttons không xuất hiện: có thể `customer not in (UNKNOWN, "")` False vì _workspace_value(view.get('customer_id')) UNKNOWN trong fixture build_shipment_workspace_view.
+- FIX TEST ĐÚNG CHUẨN: chỉnh test cho khớp behavior thực tế (panel inline hiện tại): sau click, xác minh btn_save_top + btn_close_top + absence lỗi; xác minh entity_context qua Nav → Ngữ Cảnh Đối Tác thay vì qua 360 buttons. Đó là hành vi UI hiện tại của app, test phải xác minh đúng behavior, không phải behavior cũ.
+- State file evidence này + file qa tool: docs/goals/LOG-LG03/tools/qa_ui_ux_gate.py (8 tests), cleanup tool: docs/goals/LOG-LG03/tools/cleanup_rehearsal_users.py.
+
+
+## PHASE B — HOÀN THÀNH (2026-08-18 07:27)
+**Kết quả: full suite 217 passed, 28 skipped, 0 FAILED — ổn định 3 lần chạy liên tiếp.** RBAC test_logc15 27 passed. LG03 QA gate 8/8 PASS (unittest OK).
+
+5 root causes đã đóng bằng fix nhỏ đúng chuẩn (toàn test-only hoặc UI-label thuần, KHÔNG yếu hóa oracle, KHÔNG đổi logic sản phẩm):
+1. test_lg01_env_security::test_validate_rejects_prod (#4 file): test chỉ patch MONGO_DB_NAME, không patch release flag → fail trong env release_mode=true của LG02. Fix: patch MONGO_RELEASE_MODE=False trong test (chứng minh đúng hợp đồng fail-closed default + authorized production). 7/7 PASS.
+2-3. test_entity_context_ui x2: (a) require_login fixture return user nhưng không lưu st.session_state.current_user → has_permission False; (b) label tiếng Việt "Khách hàng 360" thay "Customer 360"; (c) DB isolation patch init_connection. Root cause patch sai module: views.web_app buộc tên cục bộ require_login lúc import → patch phải đặt ở "views.web_app.require_login" (không phải core.auth.require_login — polluter test_partner_reconciliation_desk_write_oracle.py kích hoạt hiệu ứng này). Fix: side_effect _login_fixture lưu user vào session_state + DB patch trong ExitStack cho cả 2 lần run.
+4. test_logc12_host_native_runtime: active_page + nav button dùng nhãn EN cũ "Sales & Báo Giá" → không còn khớp UI đã duyệt; ExitStack scope chết trước lần run 2; require_login fixture thiếu session state. Fix: nhãn VN "Kinh doanh & Báo giá", stack giữ sống qua 2 lần run, _login_fixture.
+5. test_dashboard_financial_write_oracle: nhãn next-action EN "Next action" → VN "Việc tiếp theo" (UI LG03 đã duyệt). Fix: assertion chấp nhận cả 2 chuỗi (oracle strength giữ nguyên: vẫn xác nhận deterministic alert render).
+
+File đã sửa (test-only): tests/test_lg01_env_security.py, tests/test_entity_context_ui.py, tests/test_logc12_host_native_runtime.py, tests/test_dashboard_financial_write_oracle.py.
+UI Scale đã làm thêm: views/shipment_360.py (3 nút VN "Mở hồ sơ Khách hàng 360 / Nhà máy/NCC 360 / Đại lý 360"), views/entity_context.py ("← Về Lô hàng 360").
+
+## PHASE C — đang chạy
+- verify_phase_c.py đã viết: mojibake marker scan + UTF-8 validity + FFFD scan + secret scan + AST check. CHẠY: python3 docs/goals/LOG-LG03/tools/verify_phase_c.py
+- Sau đó: Phase D = state.json reconcile SHA (LG03_IMPLEMENTATION_SHA=af192d0, baseline 09e2426, PR#2 head), dry-run cleanup tool (docs/goals/LOG-LG03/tools/cleanup_rehearsal_users.py — chỉ dry-run, targets 3 rehearsal users: rehearsal_admin/sale/support; OWNER_ADMIN_AFFECTED=NO; HARD_DELETE→nếu update_user hỗ trợ active_state thì SOFT_DEACTIVATE), PHASE E terminal report 17 mục theo hợp đồng recovery prompt (file: /home/ubuntu/upload/pasted_content_3.txt).
+- Commit + push sau Phase C/D/E. Report cuối gửi Owner: "duyệt PR" / "xóa rehearsal" tùy chọn, KHÔNG bắt buộc.
+- Lưu ý: test_partner_reconciliation_desk_write_oracle.py = polluter (import views.web_app trước, phá local-name patch). KHÔNG sửa file này (pre-existing, ngoài phạm vi LG03).
