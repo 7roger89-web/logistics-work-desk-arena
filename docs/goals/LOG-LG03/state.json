@@ -39,7 +39,24 @@
   "language_work": {
     "navigation": "16/16 routes Vietnamese-first (route keys + permissions unchanged)",
     "mojibake_repaired": "79+ user-visible strings (9 finance error messages in core/database.py user-facing; UI labels in dashboard/review_queue/finance_review/entity_context/agreements/web_app)",
-    "international_terms_retained": ["Incoterm", "Multimodal", "Debit Draft", "FOB", "CIF", "EXW", "Sea", "Air", "Road", "Maersk", "COSCO", "Evergreen", "Hapag-Lloyd", "SITC", "FedEx", "UNKNOWN (status)"],
+    "international_terms_retained": [
+      "Incoterm",
+      "Multimodal",
+      "Debit Draft",
+      "FOB",
+      "CIF",
+      "EXW",
+      "Sea",
+      "Air",
+      "Road",
+      "Maersk",
+      "COSCO",
+      "Evergreen",
+      "Hapag-Lloyd",
+      "SITC",
+      "FedEx",
+      "UNKNOWN (status)"
+    ],
     "glossary": "docs/goals/LOG-LG03/glossary.json v1.0"
   },
   "qa": {
@@ -56,5 +73,7 @@
   },
   "draft_pr": "log-lg03-vietnamese-simplified-ux -> main (DRAFT, not merged)",
   "lg04_started": false,
-  "pending": []
+  "pending": [],
+  "draft_pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/2",
+  "terminal_report": "docs/goals/LOG-LG03/LG03_TERMINAL_REPORT.md"
 }
