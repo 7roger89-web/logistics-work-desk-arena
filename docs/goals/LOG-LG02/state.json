@@ -50,7 +50,8 @@
     "CHECKPOINT_PR1_MERGED"
   ],
   "blockers": [],
-  "last_updated": "2026-08-18T04:00:00Z",
+  "last_updated": "2026-08-18T04:15:00Z",
   "token_note": "GitHub PAT stored in /home/ubuntu/upload/pasted_file_vZOrYO_token-manus-new.txt (user-provided, read/write repo access); never commit to Git",
-  "cutover_outcome": "INTERNAL_RELEASE_VERIFIED_2026-08-18: production logistics_db read-verified (362 customers, 78 shipments intact, finance canonical collections 0 docs); mojibake in views/web_app.py fixed (451 chars, tools/fix_mojibake.py); first admin bootstrapped headlessly (users=1, verify_admin_smoke.py PASS); sandbox app restarts clean with correct Vietnamese UI; PR #1 merged into main 83a567c. Owner must git pull branch + restart local app; his .streamlit/secrets.toml needs [auth] required=true (re-run setup_production_config.py) to see multi-user login instead of Local Admin banner"
+  "cutover_outcome": "INTERNAL_RELEASE_VERIFIED_2026-08-18: production logistics_db read-verified (362 customers, 78 shipments intact, finance canonical collections 0 docs); mojibake in views/web_app.py fixed (451 chars, tools/fix_mojibake.py); first admin bootstrapped headlessly (users=1, verify_admin_smoke.py PASS); sandbox app restarts clean with correct Vietnamese UI; PR #1 merged into main 83a567c. Owner must git pull branch + restart local app; his .streamlit/secrets.toml needs [auth] required=true (re-run setup_production_config.py) to see multi-user login instead of Local Admin banner",
+  "released_main_sha": "724ea38"
 }
