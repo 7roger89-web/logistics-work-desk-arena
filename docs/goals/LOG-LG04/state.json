@@ -55,5 +55,8 @@
     "writes": "NONE during dev/QA; test environment only"
   },
   "lg05_started": false,
-  "pending": []
+  "pr_number": 3,
+  "pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/3",
+  "pr_state": "draft, open",
+  "pending": ["Owner review gate", "visual QA retry via My Browser when owner browser is stable"]
 }
