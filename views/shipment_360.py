@@ -151,6 +151,140 @@ def render_primary_work_cards(view: Mapping[str, Any]) -> None:
                 )
 
 
+def _render_primary_work_areas(view: Mapping[str, Any], shipment_id: str) -> None:
+    """LOG-LG04 R2: 3 khối việc chính hiển thị trực tiếp ở đầu workspace.
+
+    Mỗi khối có: tiêu đề + tóm tắt trạng thái + trường thiếu (nếu có) + nút "Cập nhật".
+    Nút "Cập nhật" không phải thẻ nhảy — nó là hành động trực tiếp trong khối việc.
+    Khi bấm, app chuyển sang trang chi tiết với tab đúng đã mở sẵn.
+    """
+
+    st.markdown(
+        """
+        <style>
+        .lg04-work-area { border: 1px solid #D0D7DE; border-radius: 10px;
+            background: #FFFFFF; padding: .8rem .9rem; margin-bottom: .8rem; }
+        .lg04-work-area .area-header { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+        .lg04-work-area .area-title { color: #102A43; font-size: 1.05rem; font-weight: 800; }
+        .lg04-work-area .area-status { color: #18794E; font-size: .82rem; font-weight: 600; }
+        .lg04-work-area .area-missing { color: #9A6700; font-size: .8rem; margin-top: .3rem; }
+        .lg04-work-area .area-summary { color: #475467; font-size: .82rem; margin-top: .2rem; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    areas = [
+        {
+            "title": "🚛 Lấy hàng & Xuất khẩu",
+            "section": "export",
+            "summary": _area_summary_export(view),
+            "missing": _area_missing_export(view),
+        },
+        {
+            "title": "🛃 Nhập khẩu & Giao hàng",
+            "section": "import",
+            "summary": _area_summary_import(view),
+            "missing": _area_missing_import(view),
+        },
+        {
+            "title": "💰 Chi phí & Công nợ",
+            "section": "finance",
+            "summary": _area_summary_finance(view),
+            "missing": _area_missing_finance(view),
+        },
+    ]
+
+    for area in areas:
+        with st.container():
+            st.markdown(
+                f"""
+                <div class='lg04-work-area'>
+                    <div class='area-header'>
+                        <span class='area-title'>{area['title']}</span>
+                    </div>
+                    <div class='area-summary'>{area['summary']}</div>
+                    {f"<div class='area-missing'>{area['missing']}</div>" if area['missing'] else ""}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            c_left, c_right = st.columns([5, 1])
+            c_left.caption("Bấm \"Cập nhật\" để mở phần nhập liệu tương ứng")
+            if c_right.button("Cập nhật", key=f"lg04_r2_update_{area['section']}_{shipment_id}", use_container_width=True):
+                st.session_state.active_shipment_section = area["section"]
+                st.rerun()
+
+
+def _area_summary_export(view: Mapping[str, Any]) -> str:
+    route = view.get("route") or {}
+    mode = _workspace_value(route.get("mode"))
+    booking = _workspace_value(route.get("booking"))
+    mbl = _workspace_value(route.get("mbl"))
+    etd = _workspace_value(route.get("etd"))
+    pol = _workspace_value(route.get("pol"))
+    pod = _workspace_value(route.get("pod"))
+    status = _workspace_value(view.get("operational_status_label"))
+    return f"Mode: {mode} · Booking: {booking} · MBL: {mbl} · ETD: {etd} · {pol} → {pod} · Trạng thái: {status}"
+
+
+def _area_missing_export(view: Mapping[str, Any]) -> str:
+    route = view.get("route") or {}
+    missing = []
+    if not route.get("booking"):
+        missing.append("Booking No")
+    if not route.get("mbl"):
+        missing.append("MBL")
+    if not route.get("etd"):
+        missing.append("ETD")
+    if missing:
+        return f"⚠️ Thiếu: {', '.join(missing)}"
+    return ""
+
+
+def _area_summary_import(view: Mapping[str, Any]) -> str:
+    arrival = _workspace_value(view.get("arrival_date"))
+    free_time = _workspace_value(view.get("free_time_remaining"))
+    tk_no = _workspace_value(view.get("tk_no"))
+    delivery = _workspace_value(view.get("delivery_status"))
+    return f"ETA: {arrival} · Free time: {free_time} ngày · TK HQ: {tk_no} · Giao hàng: {delivery}"
+
+
+def _area_missing_import(view: Mapping[str, Any]) -> str:
+    missing = []
+    if not view.get("arrival_date"):
+        missing.append("ETA")
+    if not view.get("free_time") and view.get("free_time_remaining") in (None, "", UNKNOWN):
+        missing.append("Free time")
+    if not view.get("tk_no"):
+        missing.append("Số TK HQ")
+    if missing:
+        return f"⚠️ Thiếu: {', '.join(missing)}"
+    return ""
+
+
+def _area_summary_finance(view: Mapping[str, Any]) -> str:
+    recv = view.get("receivable") or {}
+    pay = view.get("payable") or {}
+    receivable = _workspace_value(recv.get("total"))
+    outstanding_recv = _workspace_value(recv.get("outstanding"))
+    payable = _workspace_value(pay.get("total"))
+    outstanding_pay = _workspace_value(pay.get("outstanding"))
+    fin_status = _workspace_value(view.get("financial_status"))
+    return f"Phải thu: {receivable} (còn {outstanding_recv}) · Phải trả: {payable} (còn {outstanding_pay}) · Trạng thái: {fin_status}"
+
+
+def _area_missing_finance(view: Mapping[str, Any]) -> str:
+    missing = []
+    route = view.get("route") or {}
+    details = (view.get("financial_details") or []) if isinstance(view.get("financial_details"), list) else []
+    if not details:
+        missing.append("Chi phí / giá bán")
+    if missing:
+        return f"⚠️ Thiếu: {', '.join(missing)}"
+    return ""
+
+
 def render_shipment_workspace(
     view: Mapping[str, Any],
     *,
@@ -194,7 +328,7 @@ def render_shipment_workspace(
         unsafe_allow_html=True,
     )
 
-    # ---- LOG-LG04: Việc tiếp theo nổi bật (Ý 3) ----
+    # ---- LOG-LG04 R2: Việc tiếp theo nổi bật ----
     action = dict(view.get("next_action") or {})
     free_severity, free_detail = _free_time_status(view)
     if free_severity and action.get("severity") not in ("critical", "warning"):
@@ -208,8 +342,8 @@ def render_shipment_workspace(
         }
     render_next_action_card(action, anchor="lg04_tab_export")
 
-    # ---- LOG-LG04: 3 thẻ việc chính (Ý 1) ----
-    render_primary_work_cards(view)
+    # ---- LOG-LG04 R2: 3 khối việc chính — hiển thị trực tiếp, không phải thẻ nhảy ----
+    _render_primary_work_areas(view, shipment_id)
 
     s1, s2, s3, s4, s5 = st.columns(5)
     for column in (s1, s2, s3, s4, s5):
@@ -234,7 +368,7 @@ def render_shipment_workspace(
         st.caption("Không có cảnh báo nào khác ngoài việc tiếp theo ở trên.")
 
     # ---- LOG-LG04: khối đối tác thu gọn + giải thích (Ý 4, Ý 8) ----
-    with st.expander("👥 Ai tham gia lô hàng này", expanded=False):
+    with st.expander("📞 Liên hệ nhanh", expanded=False):
         st.caption(
             "Thông tin liên hệ của các bên tham gia lô hàng (khách hàng, người giao hàng, "
             "địa chỉ lấy hàng / giao hàng, người nhận). Dùng để gọi điện và đi lấy hàng/giao hàng. "
@@ -294,12 +428,17 @@ def render_shipment_workspace(
             ]
             st.dataframe(lots_display, hide_index=True, use_container_width=True)
 
-    # ---- LOG-LG04: chứng từ dạng danh sách 1 dòng (Ý 2) ----
+    # ---- LOG-LG04 R2: chứng từ dạng tín hiệu ngắn + "Xem chứng từ" ----
     documents = [row for row in view.get("documents", []) if isinstance(row, Mapping)]
     documents_status = _workspace_value(view.get("documents_status"))
-    if documents:
-        with st.expander(f"📄 Chứng từ ({documents_status})", expanded=False):
-            st.caption("Trạng thái phản ánh dữ liệu hiện có trong lô; các mục cần bổ sung sẽ hiện ở việc tiếp theo.")
+    missing_docs = [
+        row.get("document", "Chứng từ")
+        for row in documents
+        if isinstance(row, Mapping) and (row.get("status") in ("CHƯA CÓ DỮ LIỆU", UNKNOWN, None) or not row.get("status"))
+    ]
+    if missing_docs:
+        with st.expander(f"❌ Thiếu {len(missing_docs)} chứng từ: {', '.join(missing_docs)} — Xem chứng từ", expanded=False):
+            st.caption("Các chứng từ cần bổ sung để lô hàng tiến hành đúng hạn.")
             for row in documents:
                 status = row.get("status") or "UNKNOWN"
                 status_tag = "✅ Có" if status == "CÓ DỮ LIỆU" else ("❓ Chưa có" if status in ("CHƯA CÓ DỮ LIỆU", UNKNOWN) else status)
@@ -307,8 +446,10 @@ def render_shipment_workspace(
                     f"**{row.get('document', 'Chứng từ')}** — {status_tag}"
                     + (f" · {row.get('step', '')}" if row.get("step") else ""),
                 )
-            with st.expander("Xem bảng chi tiết từng chứng từ", expanded=False):
-                st.dataframe(documents, hide_index=True, use_container_width=True)
+    elif documents:
+        st.success(f"✅ Đủ {len(documents)} chứng từ")
+        with st.expander("Xem chi tiết chứng từ", expanded=False):
+            st.dataframe(documents, hide_index=True, use_container_width=True)
     else:
         st.caption(f"Chứng từ ({documents_status}): chưa có dữ liệu chứng từ trong lô.")
 

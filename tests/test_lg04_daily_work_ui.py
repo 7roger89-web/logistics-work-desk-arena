@@ -1,8 +1,8 @@
-"""LOG-LG04 QA — đơn giản hóa không gian làm việc lô hàng.
+"""LOG-LG04 R2 QA — đơn giản hóa không gian làm việc lô hàng.
 
-Kiểm tra UI không gian làm việc (W1-W6): việc tiếp theo nổi bật, 3 thẻ việc
-chính, khối đối tác thu gọn + giải thích, form dịch vụ kẻ khung, hành trình
-4 bước, UNKNOWN != ZERO giữ nguyên ở tài chính.
+Kiểm tra UI không gian làm việc (W1-W6): việc tiếp theo nổi bật, 3 khối
+việc chính hiển thị trực tiếp (không thẻ nhảy), khối đối tác đổi tên
+"Liên hệ nhanh", form dịch vụ kẻ khung, hành trình 4 bước.
 """
 
 from __future__ import annotations
@@ -23,7 +23,10 @@ def _base_view(**overrides) -> dict:
             "pol": "Cát Lái", "pod": "Port Klang", "mode": "Sea",
             "incoterm": "FOB", "booking": "BK-001", "carrier": "CMA",
             "vessel": "V123", "container": "MSKU1234",
+            "mbl": "MBL-001", "etd": "2026-08-25",
         },
+        "arrival_date": "2026-08-26",
+        "tk_no": "TK-001",
         "operational_status_label": "Đang lấy hàng",
         "financial_status": "Chưa đóng",
         "financial_label": "Còn thu",
@@ -50,9 +53,17 @@ def _base_view(**overrides) -> dict:
             "receiver": "Người nhận mẫu",
         },
         "factory_lots": [],
-        "documents": [],
-        "documents_status": "Chưa có dữ liệu",
+        "documents": [
+            {"document": "Booking", "status": "CÓ DỮ LIỆU", "step": ""},
+            {"document": "MBL", "status": "CÓ DỮ LIỆU", "step": ""},
+            {"document": "House BL", "status": "CHƯA CÓ DỮ LIỆU", "step": ""},
+            {"document": "Invoice", "status": "CHƯA CÓ DỮ LIỆU", "step": ""},
+        ],
+        "documents_status": "Có dữ liệu",
         "timeline": [],
+        "receivable": {"total": "5.000.000", "outstanding": "2.000.000"},
+        "payable": {"total": "3.000.000", "outstanding": "1.000.000"},
+        "financial_details": [{"service": "Cước biển", "cost": "1.000.000"}],
     }
     view.update(overrides)
     return view
@@ -88,16 +99,25 @@ class Lg04WorkspaceUITests(unittest.TestCase):
         test.run()
         return test
 
-    def test_primary_work_cards_render_three_labels(self) -> None:
+    def test_primary_work_areas_render_three_labels(self) -> None:
         test = self._render()
         self.assertFalse(test.exception, msg=str(test.exception))
         joined = "\n".join(m.value or "" for m in test.markdown)
         for expected in ("Lấy hàng & Xuất khẩu", "Nhập khẩu & Giao hàng", "Chi phí & Công nợ"):
             self.assertIn(expected, joined, f"Missing label: {expected}")
-        # 3 nút nhảy tới khối nhập liệu (label "Mở ...")
+
+    def test_primary_work_areas_have_update_buttons(self) -> None:
+        test = self._render()
+        self.assertFalse(test.exception, msg=str(test.exception))
         btn_labels = {b.label for b in test.button if b.label}
-        for expected in ("Mở Xuất khẩu", "Mở Nhập khẩu & Giao hàng", "Mở Chi phí"):
-            self.assertIn(expected, btn_labels, f"Missing button: {expected}")
+        for expected in ("Cập nhật",):
+            self.assertIn(expected, btn_labels)
+        btn_keys = {b.key for b in test.button}
+        for section in ("export", "import", "finance"):
+            self.assertTrue(
+                any(f"lg04_r2_update_{section}_S-001" in k for k in btn_keys),
+                f"Missing update button key for {section}",
+            )
 
     def test_next_action_card_prominent_with_action(self) -> None:
         test = self._render()
@@ -107,7 +127,7 @@ class Lg04WorkspaceUITests(unittest.TestCase):
         self.assertIn("Xác nhận lấy hàng với nhà máy", joined)
         # Card có viền 3px theo severity + nút Xử lý ngay
         keys = {b.key for b in test.button}
-        self.assertIn("lg04_next_action_jump_lg04_tab_export", keys)
+        self.assertTrue(any("lg04_next_action_jump" in k for k in keys))
         self.assertTrue(any("border: 3px solid" in (m.value or "") for m in test.markdown))
 
     def test_free_time_expiring_overrides_next_action(self) -> None:
@@ -115,19 +135,26 @@ class Lg04WorkspaceUITests(unittest.TestCase):
         self.assertFalse(test.exception, msg=str(test.exception))
         joined = "\n".join(m.value or "" for m in test.markdown)
         self.assertIn("Đã quá hạn free time", joined)
+        # Severity label should be "KHẨN CẤP / QUÁ HẠN" not "NGHIÊM TRỌNG"
+        self.assertIn("KHẨN CẤP / QUÁ HẠN", joined)
 
-    def test_partner_block_collapsed_with_explanation(self) -> None:
+    def test_partner_block_renamed_lien_he_nhanh(self) -> None:
         test = self._render()
         self.assertFalse(test.exception, msg=str(test.exception))
         labels = [e.label for e in test.expander if e.label]
-        self.assertIn("👥 Ai tham gia lô hàng này", labels)
-        # Khối hàng từ nhà máy ẩn khi không có dữ liệu (Ý 6) — chỉ hiện expander lịch sử + đối tác
-        self.assertNotIn("🏭 Hàng từ nhà máy (0)", labels)
-        # Work-jump buttons phải hiện đầy đủ 3 mục (Ý 1)
-        keys = {b.key for b in test.button}
-        self.assertIn("lg04_work_jump_lg04_tab_export", keys)
-        self.assertIn("lg04_work_jump_lg04_tab_import", keys)
-        self.assertIn("lg04_work_jump_lg04_tab_finance", keys)
+        self.assertIn("📞 Liên hệ nhanh", labels)
+        self.assertNotIn("👥 Ai tham gia lô hàng này", labels)
+
+    def test_documents_show_missing_signal(self) -> None:
+        test = self._render()
+        self.assertFalse(test.exception, msg=str(test.exception))
+        labels = [e.label for e in test.expander if e.label]
+        # 2 documents are missing: House BL, Invoice
+        self.assertTrue(any("❌ Thiếu 2 chứng từ" in l for l in labels))
+        # The missing docs names should appear
+        joined = "\n".join(m.value or "" for m in test.markdown)
+        self.assertIn("House BL", joined)
+        self.assertIn("Invoice", joined)
 
     def test_partner_expander_contains_plain_vietnamese_explainer(self) -> None:
         test = self._render()
@@ -141,8 +168,22 @@ class Lg04WorkspaceUITests(unittest.TestCase):
         joined = "\n".join((m.value or "") for m in test.markdown)
         self.assertIn("UNKNOWN", joined)
 
+    def test_export_area_shows_missing_booking(self) -> None:
+        test = self._render(route={"pol": "Cát Lái", "pod": "Port Klang", "mode": "Sea"})
+        self.assertFalse(test.exception, msg=str(test.exception))
+        joined = "\n".join(m.value or "" for m in test.markdown)
+        self.assertIn("⚠️ Thiếu: Booking No", joined)
+
+    def test_finance_area_shows_missing_costs(self) -> None:
+        test = self._render(financial_details=[])
+        self.assertFalse(test.exception, msg=str(test.exception))
+        joined = "\n".join(m.value or "" for m in test.markdown)
+        self.assertIn("⚠️ Thiếu: Chi phí / giá bán", joined)
+
+
+class Lg04TabsIntegrationTests(unittest.TestCase):
     def test_tabs_jump_to_finance_when_section_requested(self) -> None:
-        """Nhấn 'Mở Chi phí' ở workspace phải mở đúng tab FINANCE."""
+        """Nhấn 'Cập nhật' ở khối Chi phí phải mở đúng tab FINANCE."""
         patches = [
             patch("core.database.init_connection", return_value=None),
             patch("views.shipment.load_proxy_payments", return_value={}),

@@ -44,10 +44,11 @@ from core.users import (
     set_active,
 )
 
+# Owner-approved (2026-08-18): Support now has finance_write for shipment-level work.
 SUPPORT_ONLY_READ = frozenset({
     "dashboard", "shipment_edit", "customers", "shipment_360_read",
     "entity_context", "contracts", "tariff", "tracking", "knowledge",
-    "commercial_view", "finance_view", "operations_write",
+    "commercial_view", "finance_view", "finance_write", "operations_write",
 })
 
 
@@ -209,13 +210,16 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertEqual(set(SUPPORTED_ROLES), {"admin", "sale", "support"})
         self.assertEqual(set(ROLE_PERMISSIONS["admin"]), {"*"})
 
+    # Owner-approved (2026-08-18): support now holds finance_write for shipment-level work
     def test_support_is_read_only_on_finance_and_admin(self) -> None:
         self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_ONLY_READ)
-        for forbidden in ("finance_write", "receivables", "admin_write",
+        for forbidden in ("receivables", "admin_write",
                           "finance_review_write", "proxy_payment_delete",
                           "commercial_write", "sales_write"):
             self.assertNotIn(forbidden, ROLE_PERMISSIONS["support"],
                              f"support must not hold {forbidden}")
+    def test_support_can_write_shipment_finance(self) -> None:
+        self.assertIn("finance_write", ROLE_PERMISSIONS["support"])
 
     def test_sale_cannot_touch_finance_writes_or_admin(self) -> None:
         sale = ROLE_PERMISSIONS["sale"]

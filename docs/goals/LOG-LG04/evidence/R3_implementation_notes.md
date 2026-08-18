@@ -135,3 +135,14 @@ Tiếp theo: check tabs FINANCE input-first (mở tab FINANCE), sau đó xem quo
 ## UX PREVIEW — note về W4 (FINANCE tab)
 
 Trên trình duyệt, nội dung tab 💰 FINANCE chỉ render khi tab được chọn (Streamlit), nên subheader "1. Dịch Vụ & Doanh Thu — nhập chi phí và giá bán" không có trong markdown khi tab Chi tiết đang mở. Nội dung tab đã được xác minh bằng AppTest (test_lg04_daily_work_ui.py PASS — subheader có trong tab mặc định FINANCE). Tab structure trong markdown: "🚛 PICKUP & XUẤT KHẨU / 🛃 IMPORT & GIAO HÀNG / 💰 FINANCE (CÔNG NỢ)". W4 đã an toàn về mặt code và test; không cần click thêm tab trên preview (preview chỉ xem, không viết).
+
+
+## LOG-LG04 R2 — RECOVERY OF CURRENT TRUTH (2026-08-18)
+
+Xác minh hiện trạng trước khi thực hiện R2 (Action-First):
+- Branch: `log-lg04-daily-work-simplification`
+- HEAD SHA: `8b3a2da` (đã commit báo cáo preview cũ)
+- PR #3: Open, Draft, HEAD = `8b3a2da`
+- Trạng thái Owner machine: App production chạy 8501 (SHA `3c1e1c7`), App preview chạy 8502 (SHA `8b3a2da`).
+- Dữ liệu: 362 customers, 78 shipments.
+Quyết định: Thực hiện R2 trực tiếp trên branch này, sau đó cập nhật PR #3 và đẩy lên máy Owner cổng 8502 để preview lại.

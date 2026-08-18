@@ -463,7 +463,7 @@ def ui_dashboard():
         time_mode = f2.selectbox(
             "Khoảng thời gian:", 
             ["Tháng này", "Tháng trước", "Năm nay", "Thời gian khác", "Tất cả"], 
-            index=4,
+            index=0,  # Owner requirement: default = Tháng này
             key="dashboard_time_mode",
         )
 

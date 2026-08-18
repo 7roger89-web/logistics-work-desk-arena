@@ -94,6 +94,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "knowledge",
         "commercial_view",
         "finance_view",
+        "finance_write",  # Owner-approved (2026-08-18): shipment-level finance work (actual costs, payment confirmation, receivable/payable updates, reconciliation)
         "operations_write",
     },
     # Legacy role names giữ tương thích ngược với entries secrets.toml cũ

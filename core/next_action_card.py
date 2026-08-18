@@ -24,19 +24,19 @@ _ACTION_THEME = {
         "border": "#C81E1E",
         "bg": "#FDECEC",
         "icon": "🚨",
-        "level": "NGHIÊM TRỌNG",
+        "level": "KHẨN CẤP / QUÁ HẠN",
     },
     "warning": {
         "border": "#B45309",
         "bg": "#FEF3E2",
         "icon": "⏰",
-        "level": "CẦN XỬ LÝ SỚM",
+        "level": "CẦN XỬ LÝ",
     },
     "normal": {
         "border": "#0B6E99",
         "bg": "#F0F7FA",
         "icon": "✅",
-        "level": "CÔNG VIỆC TIẾP THEO",
+        "level": "BÌNH THƯỜNG",
     },
     "info": {
         "border": "#475467",

@@ -58,6 +58,7 @@ def _shipment_fixture(shipment_id: str, customer: str, owner: str, status: str) 
         "customer": customer,
         "status": status,
         "internal_sale_owner": owner,
+        "created_at": "2026-08-14",  # Owner requirement: default "Tháng này" filter
         "assigned_date": "2026-08-01",
         "incoterm": "EXW",
         "production_expectation_days": 14,
