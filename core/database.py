@@ -79,7 +79,7 @@ def _transaction_client(db):
     """Return a session-capable client or fail closed for money writes."""
     client = getattr(db, "client", None)
     if client is None or not callable(getattr(client, "start_session", None)):
-        _set_last_error("MongoDB khÃ´ng cung cáº¥p transaction cho financial write.")
+        _set_last_error("MongoDB không cung cấp transaction cho financial write.")
         return None
     return client
 
@@ -129,26 +129,26 @@ def _payment_history_is_unchanged(old: Mapping[str, Any] | None, new: Mapping[st
 
     if old is None:
         if any(not str(row.get("request_id") or "").strip() for row in new_rows):
-            return False, "Khoáº£n thu má»›i pháº£i cÃ³ request identity.",
+            return False, "Khoản thu má»›i phải có request identity.",
         return True, ""
 
     if len(old_rows) != len(new_rows):
-        return False, "Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c thÃªm/xoÃ¡ trÃ¹c tiáº¿p.",
+        return False, "Lá»‹ch sử thanh toán không được thêm/xoá trùc tiếp.",
 
     old_ids = [str(row.get("id") or "") for row in old_rows]
     new_ids = [str(row.get("id") or "") for row in new_rows]
     if any(not value for value in old_ids + new_ids):
         if _financial_fingerprint(old_rows) != _financial_fingerprint(new_rows):
-            return False, "Lá»‹ch sá»­ thanh toÃ¡n cÅ© khÃ´ng Ä‘Æ°á»£c ghi ÄÃ¨.",
+            return False, "Lá»‹ch sử thanh toán cũ không được ghi Äè.",
         return True, ""
 
     old_by_id = {row_id: row for row_id, row in zip(old_ids, old_rows)}
     new_by_id = {row_id: row for row_id, row in zip(new_ids, new_rows)}
     if set(old_by_id) != set(new_by_id):
-        return False, "Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c Ä‘á»•i ID hoáº·c xoÃ¡.",
+        return False, "Lá»‹ch sử thanh toán không được Ä‘á»•i ID hoặc xoá.",
     for payment_id, old_row in old_by_id.items():
         if _financial_fingerprint(old_row) != _financial_fingerprint(new_by_id[payment_id]):
-            return False, f"Thanh toÃ¡n {payment_id} pháº£i Ä‘Æ°á»£c correction/reversal cÃ³ audit.",
+            return False, f"Thanh toán {payment_id} phải được correction/reversal có audit.",
     return True, ""
 
 
@@ -476,10 +476,10 @@ def save_direct_shipment_payment(
     request_id = str(payment.get("request_id") or payment.get("idempotency_key") or "").strip()
     amount = to_decimal(payment.get("amount"))
     if not sid or not request_id:
-        _set_last_error("Khoáº£n thu pháº£i cÃ³ shipment_id vÃ  request identity.")
+        _set_last_error("Khoản thu phải có shipment_id và request identity.")
         return False, {}, get_last_db_error()
     if amount <= 0:
-        _set_last_error("Sá»‘ tiá»n thanh toÃ¡n pháº£i lá»›n hÆ¡n 0.")
+        _set_last_error("Số tiền thanh toán phải lớn hơn 0.")
         return False, {}, get_last_db_error()
 
     payment["request_id"] = request_id
@@ -488,7 +488,7 @@ def save_direct_shipment_payment(
     fingerprint = _direct_payment_fingerprint(sid, payment)
     db = get_db()
     if db is None:
-        _set_last_error("MongoDB chÆ°a sáºµn sÃ ng.")
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False, {}, get_last_db_error()
     client = _transaction_client(db)
     if client is None:
@@ -496,9 +496,9 @@ def save_direct_shipment_payment(
 
     def _existing_result(existing: Mapping[str, Any]) -> tuple[bool, dict[str, Any], str]:
         if existing.get("action_type") != "direct_shipment_payment" or existing.get("fingerprint") != fingerprint:
-            _set_last_error("Request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho financial action khÃ¡c.")
+            _set_last_error("Request identity Đã được dùng cho financial action khác.")
             return False, {}, get_last_db_error()
-        return True, dict(existing.get("result") or {}), "Khoáº£n thu Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³."
+        return True, dict(existing.get("result") or {}), "Khoản thu Đã được xử lý trÆ°á»›c Ä‘ó."
 
     try:
         with client.start_session() as session:
@@ -509,7 +509,7 @@ def save_direct_shipment_payment(
 
                 old = db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}, {"_id": 0}, session=session)
                 if not old:
-                    raise RuntimeError(f"KhÃ´ng tÃ¬m tháº¥y lÃ´ {sid}.")
+                    raise RuntimeError(f"Không tìm thấy lô {sid}.")
                 finance = old.setdefault("data", {}).setdefault("3.4", {})
                 payments = finance.setdefault("payments", [])
                 for existing_payment in payments:
@@ -517,7 +517,7 @@ def save_direct_shipment_payment(
                         continue
                     if str(existing_payment.get("request_id") or "").strip() == request_id:
                         if _direct_payment_fingerprint(sid, existing_payment) != fingerprint:
-                            raise RuntimeError("Request identity Ä‘Ã£ cÃ³ ná»™i dung khÃ¡c.")
+                            raise RuntimeError("Request identity Đã có nội dung khác.")
                         result = _payment_result(sid, existing_payment)
                         db.financial_action_requests.insert_one(
                             {
@@ -532,7 +532,7 @@ def save_direct_shipment_payment(
                             },
                             session=session,
                         )
-                        return True, result, "Khoáº£n thu Ä‘Ã£ tá»“n táº¡i vÃ  Ä‘Æ°á»£c khÃ³a theo request identity."
+                        return True, result, "Khoản thu Đã tá»“n tại và được khóa theo request identity."
 
                 ship = copy.deepcopy(old)
                 ship.pop("_id", None)
@@ -601,12 +601,12 @@ def save_direct_shipment_payment(
                     {"shipment_id": sid, "payment_id": saved_payment["id"], "request_id": request_id},
                     session=session,
                 )
-                return True, result, "ÄÃ£ ghi nháº­n khoáº£n thu."
+                return True, result, "Đã ghi nhận khoản thu."
     except DuplicateKeyError:
         existing = db.financial_action_requests.find_one({"request_id": request_id})
         if existing:
             return _existing_result(existing)
-        _set_last_error("Financial action request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c.")
+        _set_last_error("Financial action request bị trùng nhưng không Ä‘ọc lại được.")
         return False, {}, get_last_db_error()
     except (PyMongoError, ConcurrentUpdateError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_direct_shipment_payment failed")
@@ -628,7 +628,7 @@ def save_direct_payment_correction(
     request_id = str(correction_request_id or "").strip()
     reason = str(reason or "").strip()
     if not sid or not pid or not request_id or not reason:
-        _set_last_error("Correction pháº£i cÃ³ original, request identity vÃ  reason.")
+        _set_last_error("Correction phải có original, request identity và reason.")
         return False, {}, get_last_db_error()
     fingerprint = _financial_fingerprint(
         {
@@ -640,7 +640,7 @@ def save_direct_payment_correction(
     )
     db = get_db()
     if db is None:
-        _set_last_error("MongoDB chÆ°a sáºµn sÃ ng.")
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False, {}, get_last_db_error()
     client = _transaction_client(db)
     if client is None:
@@ -648,9 +648,9 @@ def save_direct_payment_correction(
 
     def _existing_correction(existing: Mapping[str, Any]) -> tuple[bool, dict[str, Any], str]:
         if existing.get("fingerprint") != fingerprint:
-            _set_last_error("Correction request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho ná»™i dung khÃ¡c.")
+            _set_last_error("Correction request identity Đã được dùng cho nội dung khác.")
             return False, {}, get_last_db_error()
-        return True, dict(existing.get("result") or {}), "Correction Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³."
+        return True, dict(existing.get("result") or {}), "Correction Đã được xử lý trÆ°á»›c Ä‘ó."
 
     try:
         with client.start_session() as session:
@@ -660,14 +660,14 @@ def save_direct_payment_correction(
                     return _existing_correction(existing)
                 old = db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}, {"_id": 0}, session=session)
                 if not old:
-                    raise RuntimeError(f"KhÃ´ng tÃ¬m tháº¥y lÃ´ {sid}.")
+                    raise RuntimeError(f"Không tìm thấy lô {sid}.")
                 ship = copy.deepcopy(old)
                 payments = ship.setdefault("data", {}).setdefault("3.4", {}).setdefault("payments", [])
                 target = next((row for row in payments if isinstance(row, Mapping) and str(row.get("id") or "") == pid), None)
                 if target is None:
-                    raise RuntimeError(f"KhÃ´ng tÃ¬m tháº¥y payment {pid}.")
+                    raise RuntimeError(f"Không tìm thấy payment {pid}.")
                 if str(target.get("status") or "").strip().lower() in _INACTIVE_PAYMENT_STATUSES or target.get("is_reversed"):
-                    raise RuntimeError(f"Payment {pid} Ä‘Ã£ Ä‘Æ°á»£c reversal trÆ°á»›c Ä‘Ã³.")
+                    raise RuntimeError(f"Payment {pid} Đã được reversal trước đó.")
                 original = copy.deepcopy(dict(target))
                 correction_id = f"CORR-{uuid4().hex.upper()}"
                 target["status"] = "reversed"
@@ -729,12 +729,12 @@ def save_direct_payment_correction(
                     {"shipment_id": sid, "payment_id": pid, "correction_id": correction_id},
                     session=session,
                 )
-                return True, result, "ÄÃ£ ghi correction/reversal cÃ³ liÃªn káº¿t."
+                return True, result, "Đã ghi correction/reversal có liên kết."
     except DuplicateKeyError:
         existing = db.financial_corrections.find_one({"correction_request_id": request_id})
         if existing:
             return _existing_correction(existing)
-        _set_last_error("Correction request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c.")
+        _set_last_error("Correction request bị trùng nhưng không Ä‘ọc lại được.")
         return False, {}, get_last_db_error()
     except (PyMongoError, ConcurrentUpdateError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_direct_payment_correction failed")
@@ -954,13 +954,13 @@ def save_contract_proxy_payment_atomic(
     """
     db = get_db()
     if db is None:
-        _set_last_error("MongoDB chÆ°a sáºµn sÃ ng.")
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False
     if not payment_document.get("id") or not transaction_document.get("id"):
-        _set_last_error("Thanh toÃ¡n há»™ cáº§n cÃ³ mÃ£ giao dá»‹ch.")
+        _set_last_error("Thanh toán há»™ cần có mã giao dịch.")
         return False
     if not payment_document.get("contract_id") or not transaction_document.get("contract_id"):
-        _set_last_error("Thanh toÃ¡n há»™ cáº§n cÃ³ mÃ£ há»£p Ä‘á»“ng.")
+        _set_last_error("Thanh toán há»™ cần có mã hợp đồng.")
         return False
 
     payment = copy.deepcopy(payment_document)
@@ -973,7 +973,7 @@ def save_contract_proxy_payment_atomic(
 
     client = getattr(db, "client", None)
     if client is None or not hasattr(client, "start_session"):
-        _set_last_error("MongoDB khÃ´ng cung cáº¥p transaction cho giao dá»‹ch há»£p Ä‘á»“ng.")
+        _set_last_error("MongoDB không cung cấp transaction cho giao dịch hợp đồng.")
         return False
 
     try:
@@ -981,7 +981,7 @@ def save_contract_proxy_payment_atomic(
             with session.start_transaction():
                 old_payment = db.proxy_payments.find_one({"id": payment["id"]}, {"_id": 0}, session=session)
                 if not _save_document("proxy_payments", payment, db=db, session=session):
-                    raise RuntimeError("KhÃ´ng lÆ°u Ä‘Æ°á»£c thanh toÃ¡n há»™.")
+                    raise RuntimeError("Không lưu được thanh toán hộ.")
                 _audit(
                     db,
                     "proxy_payment",
@@ -999,7 +999,7 @@ def save_contract_proxy_payment_atomic(
                     session=session,
                 )
                 if not _save_document("contract_transactions", transaction, db=db, session=session):
-                    raise RuntimeError("KhÃ´ng lÆ°u Ä‘Æ°á»£c giao dá»‹ch há»£p Ä‘á»“ng.")
+                    raise RuntimeError("Không lưu được giao dịch hợp đồng.")
                 _audit(
                     db,
                     "contract_transaction",
@@ -1098,11 +1098,11 @@ def save_entrustment_book(
         return True
     stable_request_id = str(request_id or "").strip()
     if not stable_request_id:
-        _set_last_error("Entrustment batch pháº£i cÃ³ request identity.")
+        _set_last_error("Entrustment batch phải có request identity.")
         return False
     db = get_db()
     if db is None:
-        _set_last_error("MongoDB chÆ°a sáºµn sÃ ng.")
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False
     client = _transaction_client(db)
     if client is None:
@@ -1113,7 +1113,7 @@ def save_entrustment_book(
         if existing.get("action_type") == "entrustment_batch" and existing.get("fingerprint") == fingerprint:
             _set_last_error("")
             return True
-        _set_last_error("Entrustment request identity Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho batch khÃ¡c.")
+        _set_last_error("Entrustment request identity Đã được dùng cho batch khác.")
         return False
 
     try:
@@ -1128,7 +1128,7 @@ def save_entrustment_book(
                     payload["id"] = str(code)
                     old = db.entrustments.find_one({"id": str(code)}, {"_id": 0}, session=session)
                     if not _save_document("entrustments", payload, db=db, session=session):
-                        raise RuntimeError(f"KhÃ´ng lÆ°u Ä‘Æ°á»£c entrustment {code}.")
+                        raise RuntimeError(f"Không lưu được entrustment {code}.")
                     _audit(
                         db,
                         "entrustment",
@@ -1160,7 +1160,7 @@ def save_entrustment_book(
         existing = db.financial_action_requests.find_one({"request_id": stable_request_id})
         if existing:
             return _matches_existing(existing)
-        _set_last_error("Entrustment request bá»‹ trÃ¹ng nhÆ°ng khÃ´ng Ä‘á»c láº¡i Ä‘Æ°á»£c.")
+        _set_last_error("Entrustment request bị trùng nhưng không Ä‘ọc lại được.")
         return False
     except (PyMongoError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_entrustment_book failed")

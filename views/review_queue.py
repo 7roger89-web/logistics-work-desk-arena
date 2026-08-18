@@ -82,7 +82,7 @@ def _open_entity(item: Mapping[str, Any]) -> None:
 def _open_finance_review(item: Mapping[str, Any]) -> None:
     shipment_id = _value(item.get("shipment_id"), "")
     st.session_state.active_page = "Finance Review"
-    st.session_state.finance_review_scope = "shipment" if shipment_id else "Táº¥t cáº£"
+    st.session_state.finance_review_scope = "shipment" if shipment_id else "Tất cả"
     st.session_state.finance_review_target = shipment_id
     st.session_state.finance_review_return = False
     st.rerun()

@@ -493,7 +493,7 @@ def ui_shipment_detail_tabs(sid, ship):
                 if cc[3].button("x", key=f"{prefix}_del_pay_{idx}"): pay_remove.append(idx)
             
             if pay_remove:
-                st.warning("Lá»‹ch sá»­ thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c xoÃ¡ Ãªm. HÃ£y dÃ¹ng correction/reversal cÃ³ audit.")
+                st.warning("Lịch sử thanh toán không được xóa âm. Hãy dùng correction/reversal có audit.")
 
             with st.expander("➕ Nhập thanh toán mới"):
                 pp1, pp2 = st.columns(2)
