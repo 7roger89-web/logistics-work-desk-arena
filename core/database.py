@@ -129,23 +129,23 @@ def _payment_history_is_unchanged(old: Mapping[str, Any] | None, new: Mapping[st
 
     if old is None:
         if any(not str(row.get("request_id") or "").strip() for row in new_rows):
-            return False, "Khoản thu má»›i phải có request identity.",
+            return False, "Khoản thu mới phải có request identity.",
         return True, ""
 
     if len(old_rows) != len(new_rows):
-        return False, "Lá»‹ch sử thanh toán không được thêm/xoá trùc tiếp.",
+        return False, "Lịch sử thanh toán không được thêm/xoá trực tiếp.",
 
     old_ids = [str(row.get("id") or "") for row in old_rows]
     new_ids = [str(row.get("id") or "") for row in new_rows]
     if any(not value for value in old_ids + new_ids):
         if _financial_fingerprint(old_rows) != _financial_fingerprint(new_rows):
-            return False, "Lá»‹ch sử thanh toán cũ không được ghi Äè.",
+            return False, "Lịch sử thanh toán cũ không được ghi đè.",
         return True, ""
 
     old_by_id = {row_id: row for row_id, row in zip(old_ids, old_rows)}
     new_by_id = {row_id: row for row_id, row in zip(new_ids, new_rows)}
     if set(old_by_id) != set(new_by_id):
-        return False, "Lá»‹ch sử thanh toán không được Ä‘á»•i ID hoặc xoá.",
+        return False, "Lịch sử thanh toán không được đổi ID hoặc xoá.",
     for payment_id, old_row in old_by_id.items():
         if _financial_fingerprint(old_row) != _financial_fingerprint(new_by_id[payment_id]):
             return False, f"Thanh toán {payment_id} phải được correction/reversal có audit.",
@@ -498,7 +498,7 @@ def save_direct_shipment_payment(
         if existing.get("action_type") != "direct_shipment_payment" or existing.get("fingerprint") != fingerprint:
             _set_last_error("Request identity Đã được dùng cho financial action khác.")
             return False, {}, get_last_db_error()
-        return True, dict(existing.get("result") or {}), "Khoản thu Đã được xử lý trÆ°á»›c Ä‘ó."
+        return True, dict(existing.get("result") or {}), "Khoản thu Đã được xử lý trước đó."
 
     try:
         with client.start_session() as session:
@@ -532,7 +532,7 @@ def save_direct_shipment_payment(
                             },
                             session=session,
                         )
-                        return True, result, "Khoản thu Đã tá»“n tại và được khóa theo request identity."
+                        return True, result, "Khoản thu Đã tồn tại và được khóa theo request identity."
 
                 ship = copy.deepcopy(old)
                 ship.pop("_id", None)
@@ -650,7 +650,7 @@ def save_direct_payment_correction(
         if existing.get("fingerprint") != fingerprint:
             _set_last_error("Correction request identity Đã được dùng cho nội dung khác.")
             return False, {}, get_last_db_error()
-        return True, dict(existing.get("result") or {}), "Correction Đã được xử lý trÆ°á»›c Ä‘ó."
+        return True, dict(existing.get("result") or {}), "Correction Đã được xử lý trước đó."
 
     try:
         with client.start_session() as session:
@@ -957,10 +957,10 @@ def save_contract_proxy_payment_atomic(
         _set_last_error("MongoDB chưa sẵn sàng.")
         return False
     if not payment_document.get("id") or not transaction_document.get("id"):
-        _set_last_error("Thanh toán há»™ cần có mã giao dịch.")
+        _set_last_error("Thanh toán hộ cần có mã giao dịch.")
         return False
     if not payment_document.get("contract_id") or not transaction_document.get("contract_id"):
-        _set_last_error("Thanh toán há»™ cần có mã hợp đồng.")
+        _set_last_error("Thanh toán hộ cần có mã hợp đồng.")
         return False
 
     payment = copy.deepcopy(payment_document)
