@@ -7,8 +7,8 @@
   "production_code_sha_baseline": "3c1e1c7 (Owner machine main after LG03 release)",
   "current_branch": "log-lg04-daily-work-simplification",
   "candidate_sha": "8769883",
-  "current_task": "T5_release_gate",
-  "release_gate_version": "READY_FOR_OWNER_LG04_RELEASE_GATE",
+  "current_task": "T6_owner_preview_gate",
+  "release_gate_version": "UX_PREVIEW_VERIFIED_ON_OWNER_MACHINE",
   "terminal_outcome": null,
   "release_status": null,
   "merged": false,
@@ -46,7 +46,14 @@
     "secrets": "CLEAN",
     "ast": "CLEAN",
     "rbac_oracles": "50 passed (rbac/finance/oracle test subset)",
-    "visual_qa": "IN_PROGRESS via My Browser (owner browser intermittently offline 2026-08-18)"
+    "visual_qa": "PASS via My Browser 2026-08-18: owner machine port 8502 preview (FETCH_HEAD of log-lg04 branch), admin login OK, shipment 360 workspace LO-0306 render verified: next-action card (nghiêm trọng), 3 primary work cards + jump buttons, signal row, 4 reference expanders, tabs Chi tiết/PICKUP/IMPORT/FINANCE present. FINANCE tab content verified via AppTest (input-first subheader). No writes made (preview read-only view).",
+    "ux_preview_facts": {
+      "preview_mode": "git checkout FETCH_HEAD + streamlit --server.port 8502 on owner machine D:\\Logistics_App_GitHub",
+      "production_app_untouched": true,
+      "production_db_writes": "NONE",
+      "preview_viewed_by_agent": true,
+      "owner_tryout_pending": true
+    }
   },
   "candidate_sha": "8769883",
   "branch_sha": "8769883 (log-lg04-daily-work-simplification)",
@@ -58,5 +65,5 @@
   "pr_number": 3,
   "pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/3",
   "pr_state": "draft, open",
-  "pending": ["Owner review gate", "visual QA retry via My Browser when owner browser is stable"]
+  "pending": ["Owner tryout of preview on port 8502 + approve/reject gate", "merge of PR #3 only after owner approval", "post-merge update of owner production app"]
 }

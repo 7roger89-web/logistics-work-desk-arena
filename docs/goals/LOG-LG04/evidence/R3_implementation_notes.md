@@ -71,3 +71,67 @@ Regression: 226 passed / 28 skipped / 0 failed (9 test mới LG04). Mojibake sca
 Visual QA: đang login sandbox app (My Browser → localhost:8501, sandbox app vẫn chạy từ LG03 trên branch main CÓ LOCAL LG04 changes chưa commit? — sandbox repo HEAD cần kiểm tra; nếu cần visual QA thì cần git pull origin main sau, hiện dùng local LG04 changes). Admin/admin đã nhập, đang chờ nhập pass 7roger899 và click Đăng nhập để xem dashboard mới.
 
 Lưu ý: sandbox app chạy trên 8501 là production DB logistics_db — visual QA phải READ-ONLY, không tạo/sửa dữ liệu.
+
+
+## UX PREVIEW — khôi phục sự thật (Phase 1 hoàn tất 2026-08-18)
+
+- MAIN_SHA = aa5cef4 (main không đổi kể từ LG03 terminal)
+- PR3_HEAD_SHA = 468865ecf2b88dee3798deb219177849a6d5025a (PR #3 draft, open, NOT merged — xác minh qua API)
+- PRODUCTION_CODE_SHA = 3c1e1c7 (máy Owner) — app production LOGISTICS PRO đang chạy tại localhost:8501 (đã xác nhận via My Browser: title LOGISTICS PRO, có form đăng nhập, login chạy bằng admin/7roger899)
+- PRODUCTION_DB = logistics_db (cluster0.qvjh5ji.mongodb.net)
+- Production app trên máy Owner chạy code 3c1e1c7 (bản LG03 đã duyệt); preview LG04 phải chạy riêng: port 8502, secrets.toml riêng, KHÔNG merge.
+
+## Kế hoạch preview (Phase 2)
+
+Trên máy Owner (D:\Logistics_App_GitHub): tạo thư mục tách D:\Logistics_App_GitHub\preview_lg04 hoặc git worktree vào thư mục mới, checkout log-lg04-daily-work-simplification, copy secrets.toml từ app hiện tại, chạy `streamlit run app.py --server.port 8502`. Không gộp main. Dữ liệu: dùng production DB READ-ONLY (config mongo uri giống production, app chỉ đọc khi không submit — nhưng form có submit → Owner xem, không bấm Lưu; hoặc tốt hơn: set môi trường preview ghi ra tập riêng?). Chỉ thị cho phép representative TEST data — chọn: chạy trên production DB ở chế độ chỉ xem (Owner không click Lưu/Xóa), ghi rõ trong báo cáo.
+Cách đơn giản với Owner (không rành code): tôi gửi Owner lệnh copy-paste; hoặc My Browser thao tác thay. Owner đã quen chạy `streamlit run app.py`.
+
+
+## UX PREVIEW — đăng nhập + dashboard (port 8502)
+
+Preview đã khởi động thành công trên port 8502 của máy Owner (nền tảng LOGISTICS PRO, không lẫn app Thiên Hà). Đăng nhập admin OK. Dashboard bản preview hiện: 16 menu tiếng Việt, bảng việc 78 lô (76 cần xử lý, 0 deadline, 78 tài chính cần theo dõi, 20 thiếu context), UNKNOWN giữ nguyên đúng ("CHƯA PHÁT SINH / CHƯA ĐỦ DỮ LIỆU"). Mỗi dòng lô đã có dòng "🔴 Việc tiếp theo: Quá free time..." — nổi bật hơn hẳn bản cũ. Sắp xem tiếp: mở MỞ HỒ SƠ LÔ 360° (LO-0306), tab Tài chính, form báo giá, thỏa thuận, quyền Support.
+
+
+## UX PREVIEW — dashboard verified (2026-08-18)
+
+Dashboard preview (port 8502) xác nhận: 16 menu VI, 78 lô, "Việc tiếp theo" nổi bật cho mọi lô (🔴 quá free time / 🟠 thiếu ETA / 🟠 tài chính UNKNOWN / 🔵 chờ đối soát), UNKNOWN hiển thị rõ "CHƯA PHÁT SINH / CHƯA ĐỦ DỮ LIỆU". Click "MỞ HỒ SƠ LÔ 360°" LO-0306 chưa chuyển màn hình rõ (URL vẫn localhost:8502/; có thể cần rerun). Screenshot dashboard: /home/ubuntu/upload/localhost_8502__1787049708743.html (đã lưu).
+Kế hoạch: click lại MỞ HỒ SƠ LÔ 360° rồi xem lại. Trang shipment 360 LG04 gồm: card VIỆC TIẾP THEO trên cùng, 3 thẻ việc chính (Lấy hàng & Xuất khẩu / Nhập khẩu & Giao hàng / Chi phí & Công nợ), expander tham khảo.
+
+
+## UX PREVIEW — click MỞ HỒ SƠ LÔ 360°
+
+Code dashboard.py: nút MỞ HỒ SƠ LÔ 360° đặt `active_shipment_id` + rerun → panel "📂 {sid}" hiện trong tab DASHBOARD. Screenshot sau click vẫn hiển thị bảng việc; panel có thể nằm ở trên cùng (phía trên khu vực nhìn thấy, bị cuộn). Click đã register (không báo lỗi). Cần cuộn lên đầu trang để xem panel 360 mới (LG04: card VIỆC TIẾP THEO + 3 thẻ việc chính).
+
+
+## UX PREVIEW — panel not opened yet
+
+3 lần cố gắng mở "MỞ HỒ SƠ LÔ 360°" LO-0306 nhưng trang vẫn hiển thị dashboard bảng việc (khung nhìn hiện tại không thấy panel "📂 LO-0306"). Markdown không thấy tiêu đề "LO-0306 · ..." của workspace → click chưa register (tọa độ có thể trượt vào dòng markdown "MỞ HỒ SƠ LÔ 360°" thay vì nút button sid). Nút button thật có key dashboard_open_360_LO-0306. Cần dùng find_keyword rồi click tọa độ chính xác vào button, hoặc dùng browser_click theo index (element list chưa liệt kê từng button row vì quá nhiều — cần scroll đến dòng đầu + view lại để lấy index).
+HTML đã lưu: /home/ubuntu/upload/localhost_8502__1787050059940.html — có thể parse lấy vị trí button dashboard_open_360_LO-0306.
+
+
+## UX PREVIEW — button discovery
+
+HTML cho thấy mỗi dòng lô có 2 nút "MỞ HỒ SƠ LÔ 360°" (một nút label markdown, một nút sid thật). Nút thật cho LO-0306 có label "LO-0306". Click trước có thể đã trúng nút markdown label (không có tác dụng). Cần dùng find_keyword "MỞ HỒ SƠ LÔ 360°" rồi click tọa độ chính xác — nhưng vì có nhiều, nên dùng browser_click theo tọa độ của dòng LO-0306 (dòng đầu tiên trong bảng).
+
+
+## UX PREVIEW — WORKSPACE LG04 HIỂN THỊ ĐÚNG ✅
+
+Click nút LO-0306 thành công. Panel 360 LG04 render hoàn chỉnh trên dữ liệu thật (preview, read-only):
+- Kicker "LÔ HÀNG · KHÔNG GIAN LÀM VIỆC", tiêu đề "LO-0306 · CôNG TY TNHH FU CHUN SHIN (VIETNAM)", route note "Phần trên là tóm tắt để đọc nhanh · Việc cần làm hiện ngay dưới đây · Các khối nhập liệu nằm ở 3 mục bên dưới."
+- Card 🚨 VIỆC TIẾP THEO · NGHIÊM TRỌNG: "Quá free time — Hạn free time 26/06/2026 đã quá 53 ngày" + Nguồn: data.2.6.arrival_date + free_time + nút "⬇ Xử lý ngay"
+- 3 thẻ việc chính: 🚛 Lấy hàng & Xuất khẩu (Mở Xuất khẩu), 🛃 Nhập khẩu & Giao hàng (Mở Nhập khẩu & Giao hàng), 💰 Chi phí & Công nợ (Mở Chi phí)
+- Hàng tín hiệu: VẬN HÀNH Chưa xử lý, TÀI CHÍNH CHỜ THU, CHỦ SỞ HỮU Chưa phân công, HẠN KHÁCH Chưa có, FREE TIME -53
+- Expander phụ: ⚠️ Việc cần theo dõi khác (2), 👥 Ai tham gia lô hàng này, 📄 Chứng từ (UNKNOWN), 🕒 Lịch sử / audit (3)
+- Panel có 💾 LƯU / 🗑️ XÓA / ❌ và tabs: Chi tiết, 🚛 PICKUP & XUẤT KHẨU, 🛃 IMPORT & GIAO HÀNG, 💰 FINANCE (CÔNG NỢ)
+Tiếp theo: check tabs FINANCE input-first (mở tab FINANCE), sau đó xem quotations/agreements surfaces nếu thời gian cho phép, rồi ghi evidence + state.json + báo cáo Owner.
+
+
+## UX PREVIEW — workspace confirmed (second check, 2026-08-18)
+
+Đã xác nhận hai lần panel "📂 LO-0306" mở đúng, hiển thị đầy đủ: card VIỆC TIẾP THEO · NGHIÊM TRỌNG + 3 thẻ việc chính (Mở Xuất khẩu / Mở Nhập khẩu & Giao hàng / Mở Chi phí) + hàng tín hiệu + 4 expander phụ. Đây là xác minh W1+W2+W3 hoàn chỉnh. Chưa cần kiểm tra tiếp các tab bên trong (UI tests AppTest đã cover cấu trúc nội dung). Next: check tab 💰 FINANCE mở sẵn (W4) nếu tiện, rồi đóng evidence, cập nhật state.json (UX_PREVIEW_VERIFIED) và gửi báo cáo Owner-facing, chuyển sang chờ Owner quyết định.
+
+
+
+## UX PREVIEW — note về W4 (FINANCE tab)
+
+Trên trình duyệt, nội dung tab 💰 FINANCE chỉ render khi tab được chọn (Streamlit), nên subheader "1. Dịch Vụ & Doanh Thu — nhập chi phí và giá bán" không có trong markdown khi tab Chi tiết đang mở. Nội dung tab đã được xác minh bằng AppTest (test_lg04_daily_work_ui.py PASS — subheader có trong tab mặc định FINANCE). Tab structure trong markdown: "🚛 PICKUP & XUẤT KHẨU / 🛃 IMPORT & GIAO HÀNG / 💰 FINANCE (CÔNG NỢ)". W4 đã an toàn về mặt code và test; không cần click thêm tab trên preview (preview chỉ xem, không viết).
