@@ -62,7 +62,7 @@ Công cụ `docs/goals/LOG-LG03/tools/cleanup_rehearsal_users.py` đã chạy dr
 | Mục | Giá trị |
 |---|---|
 | Nhánh | `log-lg03-vietnamese-simplified-ux` |
-| HEAD mới nhất | `99d098f` |
+| HEAD mới nhất | `a97307f` |
 | Cơ sở (baseline) | `09e2426` (main — LG02 đã duyệt) |
 | PR #2 | https://github.com/7roger89-web/logistics-work-desk/pull/2 — **Draft, chưa merge** |
 | Chain commit | Sạch, tuần tự, không rebase: `09e2426 → ... → 6fb8a84 → ... → af192d0 → 99d098f` |
