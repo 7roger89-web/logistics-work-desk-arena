@@ -178,8 +178,13 @@ MONGO_ALLOWED_DB_NAMES = get_list_setting(
 )
 if not MONGO_ALLOWED_DB_NAMES:
     MONGO_ALLOWED_DB_NAMES = ["logistics_workdesk_logc14", "logistics_workdesk_LG01_E2E"]
-ENV_IDENTITY = get_setting(    "ENV_IDENTITY", ("env", "identity"),
+ENV_IDENTITY = get_setting("ENV_IDENTITY", ("env", "identity"),
     "ENV_IDENTITY", default="DEV")
+
+# LOG-LG02 release gate (default OFF: production DB remains fail-closed).
+MONGO_RELEASE_MODE = bool(
+    get_setting("MONGO_RELEASE_MODE", ("mongo", "release_mode"), "MONGO_RELEASE_MODE")
+)
 
 _PRODUCTION_DB_NAMES = frozenset({"logistics_db"})
 
@@ -197,10 +202,14 @@ def validate_mongo_identity() -> None:
             "Chưa cấu hình [mongo].database / MONGO_DB_NAME. Không dùng giá trị "
             "mặc định; đặt tên database phát triển tường minh."
         )
-    if db_name in _PRODUCTION_DB_NAMES:
+    # LOG-LG02 (R5): production release gate. logistics_db may only be used
+    # when the Owner explicitly enables release mode via the
+    # MONGO_RELEASE_MODE setting; otherwise the fail-closed guard applies.
+    if db_name in _PRODUCTION_DB_NAMES and not bool(MONGO_RELEASE_MODE):
         raise RuntimeError(
             f"MONGO_DB_NAME={db_name} là tên database PRODUCTION. "
-            "App phát triển không được kết nối database sản xuất."
+            "Chưa bật chế độ phát hành (MONGO_RELEASE_MODE=true trong "
+            "secrets hoặc biến MONGO_RELEASE_MODE). Chỉ Owner được phép bật."
         )
     if db_name not in MONGO_ALLOWED_DB_NAMES:
         raise RuntimeError(

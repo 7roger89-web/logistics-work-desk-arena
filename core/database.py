@@ -750,6 +750,12 @@ def save_direct_payment_correction(
 
 
 def delete_shipment(sid: str, reason: str = "") -> bool:
+    # LOG-LG02 R4 bounded tightening: backend gate, so soft delete can never
+    # execute through a UI-only authorization defect.
+    from core.auth import has_write_permission  # noqa: PLC0415
+    if not has_write_permission("shipment_delete"):
+        from core.auth import PermissionDeniedError  # noqa: PLC0415
+        raise PermissionDeniedError("shipment_delete")
     db = get_db()
     if db is None:
         return False
