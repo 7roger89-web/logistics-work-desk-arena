@@ -169,9 +169,17 @@ def ui_shipment_detail_tabs(sid, ship):
         )
 
     # TRẢ LẠI ĐÚNG 3 TAB CHUẨN GỐC CỦA ANH
-    t1, t2, t3 = st.tabs(["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"])
+    # LOG-LG04: mở tab theo thẻ việc chính ở đầu trang
+    _jump = st.session_state.pop("active_shipment_section", None)
+    _tab_index = {"export": 0, "import": 1, "finance": 2}.get(str(_jump))
+    _tab_label = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"][_tab_index] if _tab_index is not None else None
+    t1, t2, t3 = st.tabs(
+        ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"],
+        default=_tab_label,
+    )
     
     with t1:
+        st.markdown(f"<a id='lg04_tab_export'></a>", unsafe_allow_html=True)
         st.caption("Thông tin Vận đơn")
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
@@ -192,6 +200,7 @@ def ui_shipment_detail_tabs(sid, ship):
             d['1.2']['qty_pkg'] = c2.text_input("Số Lượng/GW", d['1.2'].get('qty_pkg',''), key=f"{prefix}_pkg")
 
     with t2:
+        st.markdown(f"<a id='lg04_tab_import'></a>", unsafe_allow_html=True)
         col_l, col_r = st.columns([2, 1])
         with col_l:
             st.caption("1. Nhập khẩu")
@@ -364,13 +373,19 @@ def ui_shipment_detail_tabs(sid, ship):
             st.code(info_str, language=None)
 
     with t3:
-        render_shipment_360_summary(shipment_360)
-        st.subheader("1. Dịch Vụ & Doanh Thu")
+        st.markdown(f"<a id='lg04_tab_finance'></a>", unsafe_allow_html=True)
+        st.subheader("1. Dịch Vụ & Doanh Thu — nhập chi phí và giá bán")
+        st.caption("Nhập vào đây để tính doanh thu, chi phí, công nợ và lợi nhuận của lô hàng. Sau khi nhập, nhấn nút 💾 LƯU ở đầu trang.")
         details = d['3.4']['details']
         
         h = st.columns([0.5, 3, 1, 1.5, 1.5, 1, 1.5, 0.5])
-        h[0].caption("#"); h[1].caption("Tên Dịch vụ"); h[2].caption("SL"); 
-        h[3].caption("Giá Vốn"); h[4].caption("Giá Bán"); h[5].caption("VAT"); h[6].caption("Thành tiền");
+        h[0].caption("#"); h[1].caption("Tên Dịch vụ"); h[2].caption("SL");
+        h[3].caption("Giá Vốn"); h[4].caption("Giá Bán"); h[5].caption("VAT %"); h[6].caption("Thành tiền");
+        st.markdown(
+            "<style>.lg04-service-row { border: 2px solid #D0D7DE; border-radius: 10px; "
+            "padding: .5rem .65rem .3rem; margin-bottom: .75rem; background: #FFFFFF; }</style>",
+            unsafe_allow_html=True,
+        )
 
         indices_to_remove = []
         base_service_options = [f"{s['name']} ({s['code']})" for s in GETFLY_SERVICES_LIST]
@@ -379,6 +394,7 @@ def ui_shipment_detail_tabs(sid, ship):
         for i, item in enumerate(details):
             c = st.columns([0.5, 3, 1, 1.5, 1.5, 1, 1.5, 0.5])
             c[0].text(str(i + 1))
+            st.markdown("<div class='lg04-service-row'>", unsafe_allow_html=True)
 
             current_code = str(item.get('code', '')).strip()
             current_name = str(item.get('display_name') or item.get('name_full') or item.get('name') or '').strip()
@@ -429,9 +445,9 @@ def ui_shipment_detail_tabs(sid, ship):
             
             if c[7].button("🗑", key=f"{prefix}_del_svc_{i}"):
                 indices_to_remove.append(i)
-            
+
             item['note'] = st.text_input("Ghi chú", value=item.get('note', ''), key=f"{prefix}_note_{i}", placeholder="Ghi chú chi tiết...", label_visibility="collapsed")
-            st.markdown("---")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if indices_to_remove:
             for i in sorted(indices_to_remove, reverse=True): details.pop(i)

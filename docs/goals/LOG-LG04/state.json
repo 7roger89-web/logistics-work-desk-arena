@@ -1,0 +1,44 @@
+{
+  "goal_id": "LOG-LG04",
+  "goal_name": "Daily Work Simplification & Input-First UX",
+  "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
+  "owner_feedback_file": "/home/ubuntu/upload/Trảinghiệmapp.docx",
+  "baseline_sha": "aa5cef4",
+  "production_code_sha_baseline": "3c1e1c7 (Owner machine main after LG03 release)",
+  "current_branch": "log-lg04-daily-work-simplification",
+  "candidate_sha": null,
+  "current_task": "T0_recovery_and_feedback_audit",
+  "terminal_outcome": null,
+  "release_status": null,
+  "merged": false,
+  "deployed": false,
+  "lg03_baseline_facts": {
+    "lg03_terminal": "RELEASED_VERIFIED",
+    "lg03_pushed_to_main": true,
+    "production_smoke": "PASS (2026-08-18): 362 customers, 78 shipments, admin active, 3 rehearsal inactive, finance read-only safe"
+  },
+  "owner_findings": [
+    "A_shipment_workspace: mở lô hàng phải cuộn ngược; Pickup/Export + Import/Delivery + Finance phải ở trên đầu",
+    "B_info_density: khối bảng 5 cột (Vận chuyển/Phí kiểm chứng/Chi phí giữ lô/Mã M-B-L/Phí giữ lô) rườm rà",
+    "C_attention: cảnh báo 'Quá free time' + 'Việc tiếp theo' quá mờ nhạt",
+    "D_unclear: khối 'Mã vận động chủ này: pickup delivery' (entity context) không rõ + tốn diện tích",
+    "D_unclear: khối 'Sổ tay đối chứng/thể' (UNKNOWN collection/settle terms) không hiểu",
+    "D_unclear: khối 'Cẩn số: xem trị' không rõ mục đích",
+    "D_unclear: 'Ngữ cảnh đối tác là cái gì?'",
+    "E_finance: tab FINANCE mở ra chỉ tổng hợp số; cần nhập chi phí ngay",
+    "F_quotation: quá nhiều trường; ô nhập không kẻ khung",
+    "G_handoff: không hiểu 'tạo thỏa thuận từ báo giá' -> 'chi tiết bàn giao' để làm gì"
+  ],
+  "classification": {},
+  "pilot": {
+    "test_shipment_id": null,
+    "test_data_mode": "rehearsal only, production read-only"
+  },
+  "qa": {},
+  "production_safety": {
+    "production_db": "logistics_db",
+    "writes": "NONE during dev/QA; test environment only"
+  },
+  "lg05_started": false,
+  "pending": []
+}

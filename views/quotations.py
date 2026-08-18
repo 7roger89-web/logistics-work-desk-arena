@@ -140,10 +140,16 @@ def _render_new_quote() -> None:
             factory_lots.append({"lot_no": index + 1, "factory_name": factory_name, "factory_contact": factory_contact, "factory_phone": factory_phone, "ready_date": str(ready_date), "packages": packages, "cbm": cbm, "gross_weight_kg": gross_weight, "pickup_address": pickup_address})
 
     st.markdown("#### Dịch vụ và phương án giá")
+    st.markdown(
+        "<style>.lg04-quote-line { border: 2px solid #D0D7DE; border-radius: 10px; "
+        "padding: .55rem .7rem .35rem; margin-bottom: .75rem; background: #FFFFFF; }</style>",
+        unsafe_allow_html=True,
+    )
     service_codes, service_map = _service_options()
     line_count = st.number_input("Số dòng dịch vụ", min_value=1, max_value=20, value=3, step=1, key="new_quote_line_count")
     service_lines: list[dict[str, Any]] = []
     for index in range(int(line_count)):
+        st.markdown(f"<div class='lg04-quote-line'>", unsafe_allow_html=True)
         a, b, c, d, e, f = st.columns([2.4, 1, 1.2, 1.2, 1.2, 1])
         code = a.selectbox("Dịch vụ", service_codes, format_func=lambda code: f"{code} · {service_map[code].get('name', code)}", key=f"quote_line_{index}_code")
         currency = b.selectbox("Tiền tệ", ["VND", "USD", "CNY"], key=f"quote_line_{index}_currency")
@@ -151,32 +157,36 @@ def _render_new_quote() -> None:
         cost_unit = d.number_input("Chi phí dự kiến", min_value=0.0, value=0.0, key=f"quote_line_{index}_cost")
         sell_unit = e.number_input("Giá báo khách", min_value=0.0, value=0.0, key=f"quote_line_{index}_sell")
         tax_pct = f.number_input("Thuế %", min_value=0.0, max_value=100.0, value=0.0, key=f"quote_line_{index}_tax")
+        st.markdown("</div>", unsafe_allow_html=True)
         service_lines.append({"code": code, "service_name": service_map[code].get("name", code), "unit": service_map[code].get("unit", "Lần"), "qty": qty, "currency": currency, "cost_unit": cost_unit, "sell_unit": sell_unit, "tax_pct": tax_pct, "cost_source": "Nhập bởi SALE/Support; cần đối chiếu agent nếu là phí Trung Quốc."})
 
-    st.markdown("#### Tỷ giá dùng để báo giá")
-    a, b, c = st.columns(3)
-    usd_rate = a.number_input("USD → VND", min_value=0.0, value=25500.0, step=100.0, key="new_quote_usd_rate")
-    cny_rate = b.number_input("CNY → VND", min_value=0.0, value=3500.0, step=10.0, key="new_quote_cny_rate")
-    fx_source = c.text_input("Nguồn / ghi chú tỷ giá", value="Tỷ giá nhập khi báo giá; xác nhận lại trước khi gửi khách.", key="new_quote_fx_source")
+    # LOG-LG04: cài đặt nâng cao đưa vào 1 nhóm thu gọn (Ý 9)
+    with st.expander("📐 Cài đặt nâng cao (tỷ giá, ủy thác, chuyển tiền)", expanded=False):
+        st.caption("Các mục dưới dùng cho báo giá hàng hóa ngoại tệ hoặc có phí ủy thác/chuyển tiền. Lô nội địa thường không cần.")
+        st.markdown("**Tỷ giá dùng để báo giá**")
+        a, b, c = st.columns(3)
+        usd_rate = a.number_input("USD → VND", min_value=0.0, value=25500.0, step=100.0, key="new_quote_usd_rate")
+        cny_rate = b.number_input("CNY → VND", min_value=0.0, value=3500.0, step=10.0, key="new_quote_cny_rate")
+        fx_source = c.text_input("Nguồn / ghi chú tỷ giá", value="Tỷ giá nhập khi báo giá; xác nhận lại trước khi gửi khách.", key="new_quote_fx_source")
 
-    st.markdown("#### Ủy thác nhập khẩu và chi phí chuyển tiền (ước tính)")
-    a, b, c, d = st.columns(4)
-    entrusted_active = a.checkbox("Có phí ủy thác", key="new_quote_entrusted_active")
-    goods_value = b.number_input("Giá trị hàng", min_value=0.0, value=0.0, key="new_quote_goods_value")
-    goods_currency = c.selectbox("Tiền tệ giá trị hàng", ["USD", "CNY", "VND"], key="new_quote_goods_currency")
-    entrusted_rate = d.number_input("Tỷ lệ phí ủy thác %", min_value=0.0, max_value=100.0, value=0.0, key="new_quote_entrusted_rate")
-    review_requested = st.checkbox("Sale/manager yêu cầu review thương mại", key="new_quote_review_requested")
-    review_reason = st.text_input("Lý do review (nếu có)", key="new_quote_review_reason") if review_requested else ""
-    if entrusted_active:
-        st.caption("Tỷ lệ do Sale nhập theo chính sách/duyệt thương mại. Review chỉ phát sinh khi tỷ lệ ngoài khoảng reference 2–3%, có cờ review explicit, hoặc một policy high-value được cấu hình; hiện không cấu hình ngưỡng high-value.")
-    a, b, c, d, e = st.columns(5)
-    remittance_amount = a.number_input("Số tiền chuyển USD", min_value=0.0, value=0.0, key="new_quote_remit_amount")
-    bank_pct = b.number_input("Phí ngân hàng %", min_value=0.0, value=0.2, key="new_quote_bank_pct")
-    swift = c.number_input("SWIFT USD", min_value=0.0, value=5.0, key="new_quote_swift")
-    receiving = d.number_input("Receiving USD", min_value=0.0, value=0.0, key="new_quote_receiving")
-    agent_fee = e.number_input("Agent conversion USD", min_value=0.0, value=0.0, key="new_quote_agent_fee")
-    rmb_fee = st.number_input("RMB conversion fee CNY", min_value=0.0, value=0.0, key="new_quote_rmb_fee")
-    include_remittance = st.checkbox("Tính chi phí chuyển tiền vào chi phí dự kiến", key="new_quote_include_remittance")
+        st.markdown("**Ủy thác nhập khẩu và chi phí chuyển tiền (ước tính)**")
+        a, b, c, d = st.columns(4)
+        entrusted_active = a.checkbox("Có phí ủy thác", key="new_quote_entrusted_active")
+        goods_value = b.number_input("Giá trị hàng", min_value=0.0, value=0.0, key="new_quote_goods_value")
+        goods_currency = c.selectbox("Tiền tệ giá trị hàng", ["USD", "CNY", "VND"], key="new_quote_goods_currency")
+        entrusted_rate = d.number_input("Tỷ lệ phí ủy thác %", min_value=0.0, max_value=100.0, value=0.0, key="new_quote_entrusted_rate")
+        review_requested = st.checkbox("Sale/manager yêu cầu review thương mại", key="new_quote_review_requested")
+        review_reason = st.text_input("Lý do review (nếu có)", key="new_quote_review_reason") if review_requested else ""
+        if entrusted_active:
+            st.caption("Tỷ lệ do Sale nhập theo chính sách/duyệt thương mại. Review chỉ phát sinh khi tỷ lệ ngoài khoảng reference 2–3%, có cờ review explicit, hoặc một policy high-value được cấu hình; hiện không cấu hình ngưỡng high-value.")
+        a, b, c, d, e = st.columns(5)
+        remittance_amount = a.number_input("Số tiền chuyển USD", min_value=0.0, value=0.0, key="new_quote_remit_amount")
+        bank_pct = b.number_input("Phí ngân hàng %", min_value=0.0, value=0.2, key="new_quote_bank_pct")
+        swift = c.number_input("SWIFT USD", min_value=0.0, value=5.0, key="new_quote_swift")
+        receiving = d.number_input("Receiving USD", min_value=0.0, value=0.0, key="new_quote_receiving")
+        agent_fee = e.number_input("Agent conversion USD", min_value=0.0, value=0.0, key="new_quote_agent_fee")
+        rmb_fee = st.number_input("RMB conversion fee CNY", min_value=0.0, value=0.0, key="new_quote_rmb_fee")
+        include_remittance = st.checkbox("Tính chi phí chuyển tiền vào chi phí dự kiến", key="new_quote_include_remittance")
 
     if st.button("Tính phương án và lưu báo giá nháp", type="primary", key="new_quote_save"):
         if not sales_owner.strip() or not origin.strip() or not destination.strip() or not goods_description.strip():

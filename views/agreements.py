@@ -199,7 +199,8 @@ def _render_new_agreement() -> None:
             "factory_lots": snapshot.get("factory_lots"),
             "services": snapshot["commercial_snapshot"]["service_lines"],
         })
-    st.caption("Nhấn nút dưới đây sẽ tạo thỏa thuận DRAFT giữ nguyên snapshot trên.")
+    st.caption("Nhấn nút dưới đây sẽ tạo thỏa thuận DRAFT giữ nguyên toàn bộ điều khoản như trong báo giá đã chốt, "
+               "để tránh điều khoản bị thay đổi ngầm. Sau khi khách đồng ý, Sale đánh dấu AGREED.")
     if st.button(
         "Tạo thỏa thuận từ báo giá này",
         type="primary",
@@ -448,7 +449,9 @@ def _render_handoff_view(view: dict[str, Any], agreement: dict[str, Any]) -> Non
         + "</div>",
         unsafe_allow_html=True,
     )
-    st.subheader("Bàn giao vận hành — 16 câu hỏi Support cần có")
+    st.subheader("Kiểm tra đủ thông tin cho Support")
+    st.caption("Đây là danh mục thông tin Support cần có để vận hành lô hàng (nhà máy, lịch trình, chứng từ, "
+               "điều khoản...). Đủ hết các mục thì Support mới có thể làm việc suôn sẻ.")
     df = pd.DataFrame(view.get("questions") or [])
     st.dataframe(df, use_container_width=True, hide_index=True)
     c1, c2 = st.columns(2)
@@ -487,9 +490,26 @@ def _render_handoff_view(view: dict[str, Any], agreement: dict[str, Any]) -> Non
 
 def ui_agreements_module() -> None:
     st.title("Thỏa Thuận & Bàn Giao")
-    st.caption("Báo giá đã chốt → thỏa thuận thương mại → bàn giao vận hành. Thỏa thuận không tạo payment, transaction hay event Finance Ledger nào.")
+    st.caption("Trang này KHÔNG tạo payment, transaction hay event Finance Ledger nào.")
+    # LOG-LG04: hành trình 4 bước giải thích bằng tiếng Việt thường (Ý 10)
+    st.markdown(
+        "<style>"
+        ".lg04-journey {{ border: 2px solid #D0D7DE; border-radius: 10px; padding: .6rem .8rem; "
+        "margin: .3rem 0 1rem; background: #F6F8FA; }}"
+        ".lg04-step {{ display: inline-block; background: #0B6E99; color: #FFFFFF; border-radius: 14px; "
+        "padding: .15rem .6rem; font-weight: 800; font-size: .8rem; margin-right: .4rem; }}"
+        "</style>"
+        "<div class='lg04-journey'>"
+        "<div><span class='lg04-step'>1</span><b>Báo giá</b> — Sale lập phương án giá (menu Kinh Doanh &amp; Báo Giá)</div>"
+        "<div><span class='lg04-step'>2</span><b>Khách chốt</b> — khách đồng ý báo giá, Sale đánh dấu ACCEPTED</div>"
+        "<div><span class='lg04-step'>3</span><b>Thỏa thuận</b> — chốt lại điều khoản thương mại theo báo giá đã chốt</div>"
+        "<div><span class='lg04-step'>4</span><b>Bàn giao cho Support</b> — kiểm tra đủ thông tin Support cần để vận hành lô hàng (liên hệ nhà máy, xe, chứng từ, điều khoản...)</div>"
+        "<div style='color:#475467;font-size:.82rem;margin-top:.3rem'>Sau bàn giao, Support mở lô hàng và làm việc theo 3 mục: Lấy hàng &amp; Xuất khẩu / Nhập khẩu &amp; Giao hàng / Chi phí &amp; Công nợ.</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
     agreements = _agreement_store()
-    tabs = st.tabs(["Danh sách thỏa thuận", "Tạo từ báo giá chốt", "Chi tiết & Bàn giao"])
+    tabs = st.tabs(["Danh sách thỏa thuận", "Tạo từ báo giá khách đã chốt", "Chi tiết &amp; Bàn giao"])
     with tabs[0]:
         _render_agreement_table(agreements)
     with tabs[1]:

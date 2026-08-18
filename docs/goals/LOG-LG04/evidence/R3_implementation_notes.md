@@ -1,0 +1,73 @@
+# LOG-LG04 — Ghi chú triển khai (phase 3)
+
+## Baseline
+- Regression tại aa5cef4: 217 passed / 28 skipped / 0 failed ✅
+- Production read-only: customers=362, shipments=78 (đã xác minh ở LG03)
+
+## Files liên quan (đã nắm rõ)
+- `views/shipment_360.py`: render_shipment_workspace (dòng 40-181) — workspace read-only trên cùng; render_shipment_360_summary (259+) — 16 thẻ metric trong tab FINANCE.
+- `views/shipment.py`: ui_shipment_detail_tabs (93-614): render_workspace (115-125), header chỉnh sửa (128-169), 3 tabs (172): t1 PICKUP & XUẤT KHẨU (174-189), t2 IMPORT & GIAO HÀNG (194-364), t3 FINANCE (366-563): 360 summary → "1. Dịch Vụ & Doanh Thu" (form dịch vụ 369-443, hàng dạng `c = st.columns([0.5,3,1,1.5,1.5,1,1.5,0.5])` KHÔNG kẻ khung) → "2. Chi Hoa Hồng" (475-482) → "3. Lịch sử Thu tiền" (484-541) → 📊 BẢNG KÊ TÀI CHÍNH (544-563) → 🕒 Lịch sử thay đổi (565-576) → save (578-613).
+- `core/shipment_workspace.py`: build_shipment_workspace_view (199-282) — next_action, alerts, context, factory_lots, documents (fallback 5 cột: document/status/step/source/required), timeline.
+- `views/quotations.py`: form báo giá — service code + currency + qty + cost_unit + sell_unit + tax_pct; nâng cao: usd_rate, cny_rate, fx_source, goods_value, goods_currency, entrusted_rate, remittance_amount, bank_pct, swift; lô hàng: factory/contact/phone/packages/cbm/weight/pickup_address.
+- `views/agreements.py`: tabs (492): "Danh sách thỏa thuận"/"Tạo từ báo giá chốt"/"Chi tiết & Bàn Giao"; _render_agreement_detail 6 tabs gồm "Bàn giao vận hành"; handoff = 16 câu hỏi.
+
+## Đã làm
+- [x] R1_owner_feedback_mapped.md, R2_block_classification_audit.md, DESIGN.md
+- [x] core/next_action_card.py — render_next_action_card(action, anchor=...) card VIỆC TIẾP THEO nổi bật (border 3px theo severity, icon, level text, who, nút "⬇ Xử lý ngay" scroll đến anchor bookmark)
+
+## Còn lại (W1-W6 theo DESIGN.md)
+- [ ] W1: shipment_360.py — thay NEXT ACTION cũ bằng render_next_action_card; cảnh báo free time sắp hết → nâng severity
+- [ ] W2: 3 thẻ việc chính trên đầu (🚛 Lấy hàng & Xuất khẩu / 🛃 Nhập khẩu & Giao hàng / 💰 Chi phí & Công nợ) — mỗi thẻ có trạng thái rút gọn + nút tới tab tương ứng (dùng anchor bookmark + JS scroll hoặc active_page + active_tab session state; Streamlit tab switch cần đặt active_tab session_state key — tab object có name, set st.session_state.active_tab)
+- [ ] W3: thu gọn context (đổi tên "👥 Ai tham gia lô hàng này" + giải thích 1 câu + nút "Xem hồ sơ đối tác" chứa 3 nút 360 cũ); factory_lots ẩn khi UNKNOWN; documents fallback → danh sách 1 dòng; alert grouping
+- [ ] W4: tab FINANCE thứ tự mới: form dịch vụ kẻ khung (container border per row + nhãn đầy đủ) lên đầu, summary cards sau, bảng kê + lịch sử cuối
+- [ ] W5: quotations.py kẻ khung dòng dịch vụ, tách Essential vs expander "📐 Cài đặt nâng cao"
+- [ ] W6: agreements.py 4 bước hành trình + giải thích tiếng Việt + đổi tên "Bàn giao vận hành — 16 câu hỏi" → "Kiểm tra đủ thông tin cho Support"
+- [ ] T8 beginner QA (AppTest browser), responsive narrow viewport QA
+- [ ] T10 regression + RBAC + finance oracle + encoding + secret scan
+- [ ] T11: state.json = READY_FOR_OWNER_LG04_RELEASE_GATE, draft PR #3, push nhánh log-lg04-daily-work-simplification
+
+## Quy tắc an toàn tuyệt đối
+- Không đổi permission; không thêm write path tài chính; UNKNOWN != ZERO; ESTIMATE != ACTUAL; commercial flow finance mutation oracle = 0; production chỉ đọc.
+
+
+## Cập nhật tiến độ (sau W1-W6 draft + LG04 UI tests)
+
+### Đã làm xong (code OK, compile OK)
+- core/next_action_card.py: render_next_action_card(action, anchor) — card VIỆC TIẾP THEO viền 3px theo severity (critical đỏ #C81E1E, warning cam #B45309, normal xanh #0B6E99, info xám), nút "⬇ Xử lý ngay" scroll đến anchor.
+- views/shipment_360.py: viết lại render_shipment_workspace — card Việc tiếp theo trên cùng (Ý 3), 3 thẻ việc chính 🚛/🛃/💰 với nút "Mở ..." đặt st.session_state.active_shipment_section + scroll anchor (Ý 1), expander "👥 Ai tham gia lô hàng này" có giải thích tiếng Việt (Ý 4, 8), factory_lots ẩn khi rỗng (Ý 6), documents dạng danh sách 1 dòng + expander chi tiết (Ý 2), alerts gộp trong 1 expander, giữ nguyên keys cũ cho backward compat với tests: shipment_customer_context_{id}, shipment_factory_context_{id}, shipment_partner_context_{id}.
+- views/shipment.py: anchor lg04_tab_export/import/finance trong 3 tabs; st.tabs(..., default=label) theo active_shipment_section (FINANCE input-first — Ý 1, 7); subheader tài chính "1. Dịch Vụ & Doanh Thu — nhập chi phí và giá bán" + caption hướng dẫn (Ý 7); dòng dịch vụ kẻ khung .lg04-service-row (Ý 9).
+- views/quotations.py: mỗi dòng dịch vụ kẻ khung .lg04-quote-line (Ý 9); tỷ giá + ủy thác + chuyển tiền gộp vào expander "📐 Cài đặt nâng cao" (Ý 9).
+- views/agreements.py: hành trình 4 bước (Báo giá → Khách chốt → Thỏa thuận → Bàn giao cho Support) ở đầu trang + 5 câu giải thích (Ý 10); caption tạo thỏa thuận rõ nghĩa; đổi "Bàn giao vận hành — 16 câu hỏi Support cần có" → "Kiểm tra đủ thông tin cho Support" + caption giải thích (Ý 10).
+
+### Test mới tests/test_lg04_daily_work_ui.py (AppTest.from_string page_src)
+- 7/9 pass. Còn 2 fail đang chẩn đoán:
+  1. test_primary_work_cards_render_three_labels: labels "Lấy hàng & Xuất khẩu" v.v. KHÔNG có trong test.markdown — có thể vì markdown bên trong card render bằng st.markdown trong columns nhưng test chỉ thấy phần không có; kiểm tra bằng diagnostic.
+  2. test_tabs_jump_to_finance: db connection thật bị gọi (MongoDB connection failed — test cần patch load_proxy_payments/load_entrustments/load_audit_logs như test cũ), subheader không thấy.
+- Diagnostic script: tools/_diag_lg04.py (xóa sau khi xong).
+
+### Regression hiện tại: 217 passed / 28 skipped / 0 failed (bao gồm test entity context)
+
+### Còn lại
+- Sửa 2 test fail + chạy full regression
+- Responsive QA (viewport hẹp): dùng AppTest không kiểm được width thực — thay bằng kiểm tra CSS media query có trong file + mở app sandbox viewport kiểm thị giác
+- Regression/RBAC/finance oracle (T10)
+- Encoding + secret scan
+- state.json = READY_FOR_OWNER_LG04_RELEASE_GATE (T11), PR #3 draft
+
+
+## Kết quả QA code (trước khi responsive + release)
+
+Regression toàn bộ suite: **226 passed / 28 skipped / 0 failed** (217 baseline + 9 test mới LG04 UI). Bộ test mới `tests/test_lg04_daily_work_ui.py` kiểm tra: card VIỆC TIẾP THEO (viền 3px theo severity, nút Xử lý ngay, free time quá hạn đè lên next action), 3 thẻ việc chính với 3 nút "Mở Xuất khẩu / Mở Nhập khẩu & Giao hàng / Mở Chi phí", expander "👥 Ai tham gia lô hàng này" có giải thích tiếng Việt, ẩn khối nhà máy khi rỗng, UNKNOWN không bị chuyển thành 0, tab Tài chính mở mặc định khi bấm Mở Chi phí, form báo giá 3 dòng kẻ khung + 1 expander cài đặt nâng cao, hành trình 4 bước báo giá.
+
+Lưu ý kỹ thuật đã gặp và giải quyết: AppTest.from_string chạy page trong module cách ly (tất cả import phải nằm trong page function, không closure); các file views mới dùng st.button/use_container_width gây cảnh báo deprecation (không lỗi); giá trị subheader render lowercase "nhập chi phí..." — test dùng needle lowercase.
+
+Còn lại: responsive QA (viewport hẹp — kiểm tra CSS media query + visual trên sandbox app), mojibake/encoding scan, finance oracle RBAC, update state.json = READY_FOR_OWNER_LG04_RELEASE_GATE, PR draft #3, báo cáo Owner.
+
+
+## QA tiến độ (Phase 4)
+
+Regression: 226 passed / 28 skipped / 0 failed (9 test mới LG04). Mojibake scan: CLEAN trên 5 file thay đổi. Secrets scan: CLEAN. AST: CLEAN. Media query responsive có trong shipment_360.py.
+
+Visual QA: đang login sandbox app (My Browser → localhost:8501, sandbox app vẫn chạy từ LG03 trên branch main CÓ LOCAL LG04 changes chưa commit? — sandbox repo HEAD cần kiểm tra; nếu cần visual QA thì cần git pull origin main sau, hiện dùng local LG04 changes). Admin/admin đã nhập, đang chờ nhập pass 7roger899 và click Đăng nhập để xem dashboard mới.
+
+Lưu ý: sandbox app chạy trên 8501 là production DB logistics_db — visual QA phải READ-ONLY, không tạo/sửa dữ liệu.
