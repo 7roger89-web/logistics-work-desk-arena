@@ -80,7 +80,7 @@ def _render_master(view: Mapping[str, Any]) -> None:
     identity = view.get("identity") or {}
     master = view.get("master") or {}
     fields = master.get("fields") or {}
-    st.markdown("### Master identity / contact")
+    st.markdown("### Nhận dạng chính / liên hệ")
     st.caption(
         f"Nguồn master: {_value(master.get('source'))} · trạng thái: {_value(master.get('status'))}. "
         "Các dòng shipment/lot bên dưới không ghi đè master."
@@ -132,7 +132,7 @@ def _render_shipment_rows(rows: list[Mapping[str, Any]], key_prefix: str) -> Non
 
 def _render_customer(view: Mapping[str, Any]) -> None:
     requirements = view.get("requirements") or []
-    st.markdown("### Requirements / delivery expectation")
+    st.markdown("### Yêu cầu / kỳ vọng giao hàng")
     st.dataframe(
         [{"Requirement": _value(row.get("label")), "Value": _value(row.get("value"))} for row in requirements],
         hide_index=True,
@@ -222,7 +222,7 @@ def _render_customer_agreement_rows(rows: list[Mapping[str, Any]], key_prefix: s
 
 
 def _render_factory(view: Mapping[str, Any]) -> None:
-    st.markdown("### Factory / supplier lot context")
+    st.markdown("### Lô nhà máy / nhà cung cấp")
     st.caption(f"Next coordination need: {_value(view.get('next_coordination'))}")
     lots = list(view.get("lots") or [])
     if lots:
@@ -257,7 +257,7 @@ def _render_factory(view: Mapping[str, Any]) -> None:
 
 def _render_partner(view: Mapping[str, Any]) -> None:
     roles = ", ".join(_value(role) for role in view.get("roles") or [UNKNOWN])
-    st.markdown(f"### Roles by shipment · {roles}")
+    st.markdown(f"### Vai trò theo lô · {roles}")
     st.caption("Partner/Agent context là workspace tổng quát. Finance bên dưới chỉ là projection canonical theo từng shipment.")
     rows = list(view.get("shipments") or [])
     if rows:
@@ -329,7 +329,7 @@ def _selector(entity_type: str, options: list[dict[str, str]]) -> None:
         format_func=lambda option: f"{option['label']} · {option['entity_key']}",
         key=f"entity_selector_{entity_type}",
     )
-    if st.button(f"Open {label} context", key=f"entity_open_{entity_type}", type="primary"):
+    if st.button(f"Mở ngữ cảnh {label}", key=f"entity_open_{entity_type}", type="primary"):
         open_entity_context(entity_type, selected["entity_key"])
 
 
@@ -351,7 +351,7 @@ def ui_entity_context() -> None:
     request = _request()
 
     st.markdown("<div class='entity-context-kicker'>ENTITY CONTEXT · READ-ONLY WORKSPACE</div>", unsafe_allow_html=True)
-    st.title("Customer / Factory / Partner 360")
+    st.title("Khách / Nhà máy / Đối tác 360")
     st.markdown(
         "<div class='entity-context-note'>Master identity stays separate from shipment/lot facts. "
         "Missing data remains UNKNOWN. Navigation here does not save or change business data.</div>",

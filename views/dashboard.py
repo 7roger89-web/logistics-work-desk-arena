@@ -442,9 +442,9 @@ def ui_dashboard():
     # ==============================================================
     c1, c_btn1, c_btn2, c_tog = st.columns([2.5, 1.2, 1.2, 1.1])
     c1.markdown(
-        "<div class='ops-section-kicker'>LOGISTICS OPERATIONS WORKSPACE</div>"
-        "<h1 class='ops-section-title ops-page-title'>Shipment control room</h1>"
-        "<div style='color:#667085;font-size:0.82rem;'>Queue lô hàng là mặt tiền · Finance là context có nguồn</div>",
+        "<div class='ops-section-kicker'>KHU VỰC QUẢN LÝ VẬN HÀNH</div>"
+        "<h1 class='ops-section-title ops-page-title'>Phòng điều khiển lô hàng</h1>"
+        "<div style='color:#667085;font-size:0.82rem;'>Bảng việc là mặt tiền · Tài chính là bối cảnh có nguồn</div>",
         unsafe_allow_html=True,
     )
     if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True): quick_assign_task_dialog()

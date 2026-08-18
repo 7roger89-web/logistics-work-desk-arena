@@ -191,7 +191,7 @@ def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
 
     with st.sidebar:
         st.markdown(
-            "<div class='ops-brand'><div class='ops-brand-kicker'>SHIPMENT OPERATIONS</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>Daily control room · local workspace</div></div>",
+            "<div class='ops-brand'><div class='ops-brand-kicker'>VẬN HÀNH LÔ HÀNG</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>Phòng điều khiển hàng ngày · không gian nội bộ</div></div>",
             unsafe_allow_html=True,
         )
         st.caption(f"{current_user['display_name']} · {current_user['role']}")
