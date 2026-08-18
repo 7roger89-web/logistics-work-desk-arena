@@ -29,7 +29,7 @@ def open_entity_context(
         "return_shipment_id": str(return_shipment_id or ""),
         "return_page": str(return_page or ""),
     }
-    st.session_state.active_page = "Entity Context"
+    st.session_state.active_page = "Ngữ Cảnh Đối Tác"
     st.rerun()
 
 
@@ -51,8 +51,8 @@ def _request() -> dict[str, str]:
 
 def _go_dashboard() -> None:
     request = _request()
-    st.session_state.active_page = request.get("return_page") or "Dashboard"
-    if st.session_state.active_page == "Review Queue":
+    st.session_state.active_page = request.get("return_page") or "Tổng Quan Công Việc"
+    if st.session_state.active_page == "Việc Cần Xử Lý":
         st.session_state.review_queue_return = False
     st.session_state.pop(_REQUEST_KEY, None)
     st.rerun()
@@ -67,10 +67,10 @@ def _open_shipment(shipment_id: str) -> None:
             (str(key) for key in shipments if str(key).strip() == requested_id.strip()),
             requested_id,
         )
-    st.session_state.active_page = "Dashboard"
+    st.session_state.active_page = "Tổng Quan Công Việc"
     st.session_state.active_shipment_id = resolved_id
     st.session_state.dashboard_active_shipment_id = resolved_id
-    if _request().get("return_page") == "Review Queue":
+    if _request().get("return_page") == "Việc Cần Xử Lý":
         st.session_state.review_queue_return = True
     st.session_state.pop(_REQUEST_KEY, None)
     st.rerun()
@@ -181,7 +181,7 @@ def _render_customer_quotation_rows(rows: list[Mapping[str, Any]], key_prefix: s
             use_container_width=True,
         ):
             st.session_state.quote_detail_id = str(row.get("quote_id"))
-            st.session_state.active_page = "Sales & Báo Giá"
+            st.session_state.active_page = "Kinh Doanh & Báo Giá"
             st.rerun()
         note_col.caption(f"source: {_value(row.get('source'))}")
 
@@ -369,14 +369,14 @@ def ui_entity_context() -> None:
             _selector("partner", options)
         return
 
-    entity_label = {"customer": "Customer 360", "factory": "Factory / Supplier 360", "partner": "Partner / Agent 360"}.get(request["entity_type"], "Entity Context")
+    entity_label = {"customer": "Khách hàng 360", "factory": "Xưởng / Nhà cung cấp 360", "partner": "Đối tác / Đại lý 360"}.get(request["entity_type"], "Ngữ Cảnh Đối Tác")
     st.subheader(f"{entity_label} · {_value(request['entity_key'])}")
     back_col, nav_col = st.columns([1.4, 4.6])
     if request["return_shipment_id"]:
         if back_col.button("← Back to Shipment 360", key="entity_back_shipment", use_container_width=True):
             _open_shipment(request["return_shipment_id"])
     else:
-        back_label = "← Back to Review Queue" if request.get("return_page") == "Review Queue" else "← Back to Dashboard"
+        back_label = "← Quay lại Việc Cần Xử Lý" if request.get("return_page") == "Việc Cần Xử Lý" else "← Quay lại Trang Tổng Quan"
         if back_col.button(back_label, key="entity_back_dashboard", use_container_width=True):
             _go_dashboard()
     nav_col.caption("Read-only context · source-bound fields · no entity CRUD")
