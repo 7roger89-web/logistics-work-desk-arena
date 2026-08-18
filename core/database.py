@@ -1232,3 +1232,92 @@ def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
         _audit(db, "proxy_payment", payment_id, "soft_delete", before=old, after={"reason": reason})
         return True
     return False
+
+
+# ---------- LG03 restore (4578d3f): user persistence API ----------
+# Da bi mat trong commit 0d6ce55 (LG02 mojibake hotfix). Phuc hoi co gioi han.
+
+def load_users() -> dict[str, dict[str, Any]]:
+    """Toan bo user documents (gom password_hash — chi core.auth dung de xac thuc)."""
+    db = get_db()
+    if db is None:
+        return {}
+    return {
+        str(doc["username"]): {k: v for k, v in doc.items() if k != "_id"}
+        for doc in db.users.find({}, {"_id": 0})
+        if doc.get("username") and not doc.get("is_deleted")
+    }
+
+def save_user(document: dict[str, Any]) -> bool:
+    """Tao hoac cap nhat user theo khoa username; ghi audit."""
+    db = get_db()
+    if db is None or not document.get("username"):
+        return False
+    try:
+        safe = {k: v for k, v in document.items() if k != "_id"}
+        db.users.update_one(
+            {"username": str(document["username"])},
+            {"$set": safe},
+            upsert=True,
+        )
+        _audit(db, "user", str(document["username"]), "create", after=safe)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.exception("save_user failed")
+        return False
+
+def update_user(username: str, payload: dict[str, Any] | None = None, *, document: dict[str, Any] | None = None, actor: str = "system") -> bool:
+    """Cap nhat user da ton tai; khong tao moi.
+    - payload={{...}}: partial $set (caller hien tai views/web_app.py)
+    - document={{...}}: full $set document (caller legacy)
+    """
+    db = get_db()
+    if db is None:
+        return False
+    safe = (payload or document) or {}
+    if not safe:
+        return False
+    try:
+        result = db.users.update_one({"username": str(username)}, {"$set": safe})
+        _audit(db, "user", str(username), "update", after=safe, actor=actor)
+        return bool(result.matched_count)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.exception("update_user failed")
+        return False
+
+def delete_user(username: str, actor: str = "system") -> bool:
+    """Soft delete user (giu audit trail); hard delete chi khi is_deleted san."""
+    db = get_db()
+    if db is None:
+        return False
+    old = db.users.find_one({"username": str(username)}, {"_id": 0})
+    if old is None:
+        return False
+    if old.get("is_deleted"):
+        result = db.users.delete_one({"username": str(username)})
+        if result.deleted_count:
+            _audit(db, "user", str(username), "hard_delete", before=old, actor=actor)
+            return True
+        return False
+    result = db.users.update_one(
+        {"username": str(username)},
+        {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": str(actor)}},
+    )
+    if result.modified_count:
+        _audit(db, "user", str(username), "soft_delete", before=old, actor=actor)
+        return True
+    return False
+# ---------- /LG03 restore ----------
+
+
+# ---------- LG03 restore #2 (83a567c): agreements API ----------
+
+def load_agreements() -> dict[str, dict[str, Any]]:
+    """Load LOG-C13 commercial agreements (agreed commercial terms, not finance)."""
+    return _load_dict("agreements", query={"is_deleted": {"$ne": True}})
+
+def save_agreements_to_cloud(agreements_dict: dict[str, dict[str, Any]]) -> bool:
+    """Upsert commercial agreements. 0 canonical finance writes by contract."""
+    return all(_save_document("agreements", document) for document in agreements_dict.values())
+
+# ---------- /LG03 restore #2 ----------
