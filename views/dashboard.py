@@ -327,7 +327,7 @@ def _render_shipment_workdesk(all_ships, rows):
 
 def _render_excel_import_ui():
     """Render the Excel import dialog with upload, preview, and confirm."""
-    with st.expander("📤 NHẬP TỪ GETFLY", expanded=True):
+    with st.expander("📤 NHẬP TỪ GETFLY", expanded=True, key="lg05_import_expander"):
         st.caption("Tải file Excel định dạng 52 cột (Sheet1, A:AZ). Preview trước khi import.")
         
         uploaded = st.file_uploader(
@@ -550,7 +550,7 @@ def ui_dashboard():
             
         elif time_mode == "Tháng trước":
             first_this_month = datetime.date(today.year, today.month, 1)
-            end_date = first_this_month - timedelta(days=1)
+            end_date = first_this_month - datetime.timedelta(days=1)
             start_date = datetime.date(end_date.year, end_date.month, 1)
             f3.info(f"Đang hiển thị: **{start_date.strftime('%d/%m/%Y')}** đến **{end_date.strftime('%d/%m/%Y')}**")
             
