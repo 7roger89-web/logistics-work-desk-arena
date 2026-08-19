@@ -486,7 +486,7 @@ def ui_dashboard():
     
     # ─── LOG-LG05: Excel Import/Export ───
     st.divider()
-    c_excel1, c_excel2, c_excel3 = st.columns(3)
+    c_excel1, c_excel2 = st.columns(2)
     
     # Import button
     if c_excel1.button("📤 NHẬP TỪ GETFLY", use_container_width=True, key="btn_lg05_import"):
@@ -496,9 +496,6 @@ def ui_dashboard():
     if c_excel2.button("📥 XUẤT CHO GETFLY", use_container_width=True, key="btn_lg05_export"):
         _handle_excel_export()
     
-    # GNT button (per shipment)
-    if c_excel3.button("🧾 TẠO GIẤY NỘP THUẾ (GNT)", use_container_width=True, key="btn_lg05_gnt"):
-        _render_gnt_dialog()
     
     # ==============================================================
     # BỘ LỌC THỜI GIAN VÀ TÌM KIẾM (HIỂN THỊ CHÍNH GIỮA MÀN HÌNH)
