@@ -529,8 +529,7 @@ def classify_service_lines(
                 consumed_indices.add(matching_idx)
             
             # Check for material differences beyond identity fields
-            material_fields = ["vat", "vat_line", "discount_pct", "discount_amt",
-                             "note", "unit", "product_group", "display_name"]
+            material_fields = ["vat", "note"]
             has_material_diff = False
             for field in material_fields:
                 inc_val = inc_line.get(field)
