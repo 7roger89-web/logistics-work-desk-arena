@@ -1,0 +1,52 @@
+{
+  "goal": "LOG-LG05",
+  "title": "Excel Round-Trip & GNT Generation",
+  "status": "READY_FOR_OWNER_LG05_RELEASE_GATE",
+  "branch": "log-lg05-excel-round-trip-gnt",
+  "pr": 4,
+  "pr_state": "draft",
+  "not_merged": true,
+  "not_deployed": true,
+  "created_at": "2026-08-19",
+  "tests": {
+    "passed": 256,
+    "skipped": 28,
+    "failed": 0
+  },
+  "lg05_tests": 25,
+  "modules": [
+    "core/excel_roundtrip.py",
+    "core/gnt_builder.py",
+    "tests/test_lg05_excel_roundtrip_gnt.py"
+  ],
+  "ui_changes": [
+    "views/dashboard.py: NHẬP FILE EXCEL (52 cột), XUẤT DANH SÁCH ĐƠN HÀNG, TẠO GIẤY NỘP THUẾ (GNT)"
+  ],
+  "principles": [
+    "UNKNOWN != ZERO",
+    "MISSING != SAFE_TO_GUESS",
+    "AMBIGUOUS != RESOLVED",
+    "No business mutation during import preview"
+  ],
+  "gnt": {
+    "template": "C1-02/NS (mẫu C1-02/NS, ban hành kèm Thông tư 184/2015/TT-BTC)",
+    "sheets": ["NHẬP THÔNG TIN", "GIẤY NỘP THUẾ"],
+    "auto_fill": true,
+    "amount_in_words": true,
+    "legal_reference": "Nghị định 347/2025/NĐ-CP (kiểm tra theo mẫu hiện hành)"
+  },
+  "excel": {
+    "columns": 52,
+    "format": "A:AZ",
+    "sheet": "Sheet1",
+    "round_trip_verified": true,
+    "owner_file_tested": true
+  },
+  "production_safety": {
+    "no_db_write_during_preview": true,
+    "no_overwrite_financial": true,
+    "existing_shipments_merged_only": true,
+    "customers_unchanged": 362,
+    "shipments_unchanged": 78
+  }
+}
