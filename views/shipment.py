@@ -287,25 +287,29 @@ def ui_shipment_detail_tabs(sid, ship):
                         'so_tk': gnt_so_tk,
                     })
 
+                    _gnt_tax_default = [
+                        {"Nội dung": "Thuế Nhập khẩu", "Mã NDKT": "1901", "Số tiền": 0},
+                        {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1701", "Số tiền": 0},
+                    ]
                     if f"gnt_tax_data_{sid}" not in st.session_state:
-                         st.session_state[f"gnt_tax_data_{sid}"] = [
-                            {"Nội dung": "Thuế Nhập khẩu", "Mã NDKT": "1901", "Số tiền": 0},
-                            {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1701", "Số tiền": 0},
-                        ]
-                    
+                        st.session_state[f"gnt_tax_data_{sid}"] = pd.DataFrame(_gnt_tax_default)
+                    _gnt_input = st.session_state[f"gnt_tax_data_{sid}"]
+                    if not isinstance(_gnt_input, pd.DataFrame):
+                        _gnt_input = pd.DataFrame(_gnt_input) if _gnt_input else pd.DataFrame(_gnt_tax_default)
                     edited_taxes = st.data_editor(
-                        st.session_state[f"gnt_tax_data_{sid}"], num_rows="dynamic", use_container_width=True, key=f"gnt_tax_table_{sid}",
+                        _gnt_input, num_rows="dynamic", use_container_width=True, key=f"gnt_tax_table_{sid}",
                         column_config={
                             "Nội dung": st.column_config.TextColumn("Nội dung khoản nộp", width="large", required=True),
                             "Mã NDKT": st.column_config.TextColumn("Mã NDKT", width="medium"),
                             "Số tiền": st.column_config.NumberColumn("Số tiền (VNĐ)", format="%d", min_value=0, required=True)
                         }
                     )
-
                     if st.button("📥 Xuất Excel GNT", key=f"btn_gnt_{sid}", use_container_width=True):
                         from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
                         final_tax_list = []
-                        st.session_state[f"gnt_tax_data_{sid}"] = edited_taxes.to_dict("records")
+                        if not isinstance(edited_taxes, pd.DataFrame):
+                            edited_taxes = pd.DataFrame(edited_taxes) if edited_taxes else pd.DataFrame(_gnt_tax_default)
+                        st.session_state[f"gnt_tax_data_{sid}"] = edited_taxes
                         for _, item in edited_taxes.iterrows():
                             amt = safe_float(item.get("Số tiền", 0))
                             if amt > 0:
