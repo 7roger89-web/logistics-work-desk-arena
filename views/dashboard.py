@@ -374,35 +374,127 @@ def _render_excel_import_ui():
                 st.error("Dữ liệu không hợp lệ:\n" + "\n".join(validated.errors))
                 return
             
-            # Preview
+            # Preview with conflict detection
+            from core.excel_roundtrip import classify_service_lines
             st.markdown("**Preview lô hàng sẽ import:**")
+            
+            # Classification
+            new_shipments = []
+            conflicted_shipments = []
+            no_change_shipments = []
+            
             for g in validated.groups:
-                detail_count = len(g.details)
-                status_icon = "🆕" if g.status == "new" else "⚠️"
-                st.markdown(f"- {status_icon} **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — {detail_count} dịch vụ [{g.status}]")
+                sid = g.shipment_id
+                if sid in existing_ids:
+                    # Classify service lines against existing
+                    existing_details = st.session_state.db_shipments.get(sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+                    from core.excel_roundtrip import group_to_shipment_doc as _g2d
+                    incoming_details = _g2d(g).get("data", {}).get("3.4", {}).get("details", [])
+                    same, new, conflict, ambiguous = classify_service_lines(existing_details, incoming_details)
+                    
+                    if conflict or ambiguous:
+                        conflicted_shipments.append((g, same, new, conflict, ambiguous))
+                        st.markdown(f"- ⚠️ **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] **CẦN XÁC MINH DỮ LIỆU GETFLY**")
+                    elif new:
+                        conflicted_shipments.append((g, same, new, conflict, ambiguous))
+                        st.markdown(f"- 🔄 **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] +{len(new)} dịch vụ mới")
+                    else:
+                        no_change_shipments.append(g)
+                        st.markdown(f"- ✅ **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] Không thay đổi")
+                else:
+                    new_shipments.append(g)
+                    st.markdown(f"- 🆕 **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] {len(g.details)} dịch vụ")
+            
+            # Show conflict preview if any
+            if conflicted_shipments:
+                st.warning("⚠️ Có lô hàng cần xác minh dữ liệu:")
+                for g, same, new, conflict, ambiguous in conflicted_shipments:
+                    st.markdown(f"\n**LÔ: {g.shipment_id[:60]}**")
+                    if conflict:
+                        # Show conflict details
+                        existing_details = st.session_state.db_shipments.get(g.shipment_id, {}).get("data", {}).get("3.4", {}).get("details", [])
+                        from core.excel_roundtrip import group_to_shipment_doc as _g2d
+                        incoming_details = _g2d(g).get("data", {}).get("3.4", {}).get("details", [])
+                        for inc_line in conflict:
+                            inc_key = (inc_line.get("code", ""), str(inc_line.get("name", "")).strip(), inc_line.get("qty", 0), inc_line.get("cost", 0), inc_line.get("price", 0))
+                            # Find matching existing line
+                            matching_ex = next(
+                                (d for d in existing_details 
+                                 if (d.get("code", ""), str(d.get("name", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key
+                                 or (d.get("code", ""), str(d.get("name_full", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key
+                                 or (d.get("code", ""), str(d.get("display_name", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key),
+                                None
+                            )
+                            if matching_ex:
+                                import re as _re
+                                code = str(inc_line.get("code", "")).strip().upper()
+                                ex_name = str(matching_ex.get("name", "") or matching_ex.get("name_full", "") or matching_ex.get("display_name", "")).strip()
+                                # Strip (CODE) suffix for display
+                                ex_name_clean = _re.sub(rf"\s*\({_re.escape(code)}\)\s*$", "", ex_name, flags=_re.IGNORECASE).strip()
+                                inc_name = str(inc_line.get("name", "")).strip()
+                                st.markdown(f"  - TRƯỜNG XUNG ĐỘT: **VAT**")
+                                st.markdown(f"    - TRONG APP: **{matching_ex.get('vat', 'N/A')}%**")
+                                st.markdown(f"    - TRONG GETFLY: **{inc_line.get('vat', 'N/A')}%**")
+                                st.markdown(f"    - DỊCH VỤ: {inc_name} (code: {inc_line.get('code', '')})")
+                                st.markdown(f"    - ẢNH HƯỞNG: VAT tham gia tính Thành tiền/Doanh thu. Giá trị khác nhau → tổng tài chính sẽ khác.")
+                                st.markdown(f"    - ⚠️ KHÔNG tự động chọn giá trị nào. LO ĐƯỢC GIỮ NGUYÊN CHO CHỦ XỬ LÝ.")
+                    elif ambiguous:
+                        st.markdown(f"  - TRƯỜNG XUNG ĐỘT: Không xác định được — cần kiểm tra thủ công")
+            
+            # Summary
+            st.info(f"\n📋 **TÓM TẮT:** {len(new_shipments)} lô mới sẽ nhập, {len(conflicted_shipments)} lô cần xác minh, {len(no_change_shipments)} lô không thay đổi.")
             
             if validated.warnings:
                 st.warning("Cảnh báo:\n" + "\n".join(validated.warnings[:5]))
             
-            # Confirm
-            if validated.is_valid and st.button("✅ XÁC NHẬN IMPORT", key="lg05_confirm_import", type="primary"):
+            # Confirm — only import NEW shipments, hold conflicted ones
+            if validated.is_valid and new_shipments and st.button("✅ XÁC NHẬN IMPORT", key="lg05_confirm_import", type="primary"):
                 from core.database import save_shipment_atomic
                 imported = 0
                 updated = 0
-                for g in validated.groups:
+                held_conflicts = []
+                
+                for g in new_shipments:
                     from core.excel_roundtrip import group_to_shipment_doc
                     doc = group_to_shipment_doc(g)
                     sid = doc["id"]
-                    if sid in existing_ids:
-                        # Merge: add/update details, don't overwrite financial
-                        existing = st.session_state.db_shipments[sid]
-                        new_details = doc["data"].get("3.4", {}).get("details", [])
-                        if new_details:
-                            existing.setdefault("data", {}).setdefault("3.4", {}).setdefault("details", []).extend(new_details)
-                        updated += 1
-                    else:
-                        st.session_state.db_shipments[sid] = doc
-                        imported += 1
+                    st.session_state.db_shipments[sid] = doc
+                    imported += 1
+                
+                # Save to DB (best effort)
+                try:
+                    from core.database import get_db
+                    db = get_db()
+                    saved_count = 0
+                    for g in new_shipments:
+                        from core.excel_roundtrip import group_to_shipment_doc
+                        doc = group_to_shipment_doc(g)
+                        sid = doc.get("id", "")
+                        try:
+                            db.shipments.update_one(
+                                {"id": sid}, {"$set": doc}, upsert=True
+                            )
+                            saved_count += 1
+                        except Exception as ex:
+                            st.warning(f"Không lưu được lô {sid}: {ex}")
+                    if saved_count > 0:
+                        st.session_state.lg05_import_done = True
+                except Exception as e:
+                    st.warning(f"Không kết nối được DB: {e}")
+                
+                # Improved result display with clear counts (contract section 12)
+                total_rows = sum(len(g.details) for g in new_shipments)
+                total_orders = len(new_shipments)
+                conflict_count = len(conflicted_shipments)
+                
+                st.success(f"""
+                **KẾT QUẢ IMPORT:**
+                - ĐÃ ĐỌC FILE: **{len(validated.groups)} đơn**, **{sum(len(g.details) for g in validated.groups)} dòng dịch vụ**
+                - ĐÃ NHẬP MỚI: **{imported} lô** ({total_rows} dòng dịch vụ)
+                - GIỮ NGUYÊN (cần xác minh): **{conflict_count} lô** — VAT trong app ≠ file GETFLY
+                - BỎ QUA (không đổi): **{len(no_change_shipments)} lô**
+                - CẦN KIỂM TRA: **{sum(len(c[3]) for c in conflicted_shipments) + sum(len(c[4]) for c in conflicted_shipments)} dòng dịch vụ xung đột**
+                """)
                 
                 # Save to DB (best effort)
                 try:
