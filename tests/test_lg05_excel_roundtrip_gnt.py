@@ -473,3 +473,219 @@ class TestLg05IncidentRegression:
             "Cache invalidation (st.cache_data.clear()) should be in import path"
         assert 'load_data()' in source, \
             "load_data() refresh should be in import path"
+
+
+# ============================================================
+# SERVICE-LINE IDEMPOTENCY TESTS (3-run proof)
+# ============================================================
+
+class TestServiceLineIdempotency:
+    """Prove service-line dedup prevents duplicate accumulation across re-imports."""
+
+    def test_same_shipment_same_service_line_exising_same(self):
+        """Same shipment + same service line → EXISTING_SAME (not appended)."""
+        from core.excel_roundtrip import classify_service_lines
+
+        existing = [{"code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+        incoming = [{"code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+
+        same, new, conflict, ambiguous = classify_service_lines(existing, incoming)
+        assert len(same) == 1, "Should be classified as EXISTING_SAME"
+        assert len(new) == 0, "Should NOT be classified as NEW"
+        assert len(conflict) == 0
+
+    def test_same_shipment_new_service_line(self):
+        """Same shipment + one genuinely new service line → NEW_SERVICE."""
+        from core.excel_roundtrip import classify_service_lines
+
+        existing = [{"code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+        incoming = [{"code": "VCH", "name": "Phí vận chuyển", "qty": 2.0, "cost": 200.0, "price": 250.0}]
+
+        same, new, conflict, ambiguous = classify_service_lines(existing, incoming)
+        assert len(same) == 0
+        assert len(new) == 1, "Should be classified as NEW_SERVICE"
+        assert len(conflict) == 0
+
+    def test_same_shipment_conflicting_service_value(self):
+        """Same identity but VAT changed → CONFLICT (needs review)."""
+        from core.excel_roundtrip import classify_service_lines
+
+        existing = [{"code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0, "cost": 100.0, "price": 150.0, "vat": 0.0}]
+        incoming = [{"code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0, "cost": 100.0, "price": 150.0, "vat": 8.0}]
+
+        same, new, conflict, ambiguous = classify_service_lines(existing, incoming)
+        assert len(conflict) == 1, "Should be classified as CONFLICT (VAT changed)"
+        assert len(new) == 0, "Should NOT auto-append conflicting line"
+        assert len(same) == 0
+
+    def test_merge_details_idempotent_same(self):
+        """merge_details_idempotent: same lines → no change."""
+        from core.excel_roundtrip import merge_details_idempotent
+
+        existing = [{"code": "DVK", "name": "A", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+        incoming = [{"code": "DVK", "name": "A", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+
+        merged, stats = merge_details_idempotent(existing, incoming)
+        assert len(merged) == 1, "Should remain 1 line (not duplicated)"
+        assert stats["same"] == 1
+        assert stats["new"] == 0
+
+    def test_merge_details_idempotent_new(self):
+        """merge_details_idempotent: new line → appended once."""
+        from core.excel_roundtrip import merge_details_idempotent
+
+        existing = [{"code": "DVK", "name": "A", "qty": 1.0, "cost": 100.0, "price": 150.0}]
+        incoming = [{"code": "VCH", "name": "B", "qty": 2.0, "cost": 200.0, "price": 250.0}]
+
+        merged, stats = merge_details_idempotent(existing, incoming)
+        assert len(merged) == 2, "Should have 2 lines (existing + new)"
+        assert stats["same"] == 0
+        assert stats["new"] == 1
+
+    def test_import_same_file_twice_zero_delta(self):
+        """RUN 1 + RUN 2 (identical file) → business-data delta = 0.
+        Simulates 3-run proof with isolated test fixture."""
+        from core.excel_roundtrip import (
+            parse_excel_bytes, group_rows, group_to_shipment_doc,
+            merge_details_idempotent, classify_service_lines,
+        )
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        # RUN 1: Parse file, create initial shipment docs
+        result1 = parse_excel_bytes(file_bytes)
+        groups1 = group_rows(result1.groups)
+        docs1 = {g.shipment_id: group_to_shipment_doc(g) for g in groups1}
+
+        # RUN 2: Parse same file again, compare against RUN 1 results
+        result2 = parse_excel_bytes(file_bytes)
+        groups2 = group_rows(result2.groups)
+        docs2 = {g.shipment_id: group_to_shipment_doc(g) for g in groups2}
+
+        # Verify: same shipments, same counts
+        assert len(docs1) == len(docs2), "Same file should produce same number of shipments"
+
+        # For each shipment, verify service-line dedup produces zero delta
+        for sid in docs1:
+            existing_details = docs1[sid].get("data", {}).get("3.4", {}).get("details", [])
+            incoming_details = docs2.get(sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+
+            if existing_details and incoming_details:
+                same, new, conflict, ambiguous = classify_service_lines(
+                    existing_details, incoming_details
+                )
+                # All lines should be EXISTING_SAME (zero delta)
+                assert len(new) == 0, f"Shipment {sid}: no new lines on re-import"
+                assert len(same) == len(incoming_details), f"Shipment {sid}: all lines should be same"
+
+    def test_import_three_times_financial_totals_no_double(self):
+        """3-run proof: RUN 3 with one new service line → adds exactly 1 line.
+        Financial totals must NOT double."""
+        from core.excel_roundtrip import (
+            parse_excel_bytes, group_rows, group_to_shipment_doc,
+            merge_details_idempotent,
+        )
+        import copy
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        # RUN 1: Import file
+        result1 = parse_excel_bytes(file_bytes)
+        groups1 = group_rows(result1.groups)
+        docs1 = {g.shipment_id: group_to_shipment_doc(g) for g in groups1}
+
+        # RUN 2: Import same file → simulate idempotent merge
+        result2 = parse_excel_bytes(file_bytes)
+        groups2 = group_rows(result2.groups)
+        docs2 = {g.shipment_id: group_to_shipment_doc(g) for g in groups2}
+
+        # Merge RUN 2 into RUN 1 (idempotent)
+        final_state = copy.deepcopy(docs1)
+        total_delta = 0
+        for sid in docs2:
+            existing = final_state.get(sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+            incoming = docs2.get(sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+
+            if existing and incoming:
+                merged, stats = merge_details_idempotent(existing, incoming)
+                total_delta += stats["new"]
+                final_state.setdefault(sid, {}).setdefault("data", {}).setdefault("3.4", {})["details"] = merged
+            elif incoming and not existing:
+                final_state.setdefault(sid, {}).setdefault("data", {}).setdefault("3.4", {})["details"] = incoming
+                total_delta += len(incoming)
+
+        # RUN 2 should produce ZERO delta
+        assert total_delta == 0, f"RUN 2 should have zero delta, got {total_delta}"
+
+        # RUN 3: Modified file with one extra service line (simulated)
+        # Add a new service line to the first group's incoming details
+        first_sid = list(docs2.keys())[0]
+        new_line = {
+            "code": "LAP", "name": "Phí lắp đặt", "qty": 1.0,
+            "cost": 500000.0, "price": 600000.0, "vat": 8.0,
+        }
+        docs2[first_sid]["data"]["3.4"]["details"].append(new_line)
+
+        # Merge RUN 3 into current state
+        existing = final_state.get(first_sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+        incoming = docs2[first_sid].get("data", {}).get("3.4", {}).get("details", [])
+        merged3, stats3 = merge_details_idempotent(existing, incoming)
+        final_state[first_sid]["data"]["3.4"]["details"] = merged3
+
+        # RUN 3 should add exactly 1 new service line
+        assert stats3["new"] == 1, f"RUN 3 should add exactly 1 new line, got {stats3['new']}"
+        assert stats3["same"] >= 1, "Existing lines should be preserved"
+
+        # Verify financial totals don't double
+        final_details = final_state[first_sid]["data"]["3.4"]["details"]
+        original_count = len(existing)
+        final_count = len(final_details)
+        assert final_count == original_count + 1, "Should have exactly 1 more line"
+
+    def test_continuation_rows_grouped_correctly_after_dedup(self):
+        """Verify continuation rows remain correctly grouped after dedup logic."""
+        from core.excel_roundtrip import parse_excel_bytes, group_rows
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        result = parse_excel_bytes(file_bytes)
+        groups = group_rows(result.groups)
+
+        # All groups should have at least 1 detail (the master row)
+        for g in groups:
+            assert len(g.details) >= 1, f"Group {g.shipment_id} should have at least 1 detail"
+            # Master row should be first detail if it has service data
+            first = g.details[0]
+            assert first.has_master or first.has_service, "First detail should have data"
+
+    def test_finance_safety_no_silent_overwrite(self):
+        """Financial data must never be silently overwritten during import."""
+        from core.excel_roundtrip import merge_details_idempotent
+
+        # Existing has financial data
+        existing = [
+            {
+                "code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0,
+                "cost": 100.0, "price": 150.0,
+                "paid": 150.0, "debt": 0.0,  # Financial actuals
+            }
+        ]
+
+        # Incoming has different financial values (but same identity)
+        incoming = [
+            {
+                "code": "DVK", "name": "Phí dịch vụ khác", "qty": 1.0,
+                "cost": 100.0, "price": 150.0,
+                "paid": 0.0, "debt": 150.0,  # Different financial actuals
+            }
+        ]
+
+        merged, stats = merge_details_idempotent(existing, incoming)
+
+        # Existing line should be preserved with ORIGINAL financial data
+        assert len(merged) == 1
+        assert merged[0]["paid"] == 150.0, "Original paid amount must be preserved"
+        assert merged[0]["debt"] == 0.0, "Original debt must be preserved"

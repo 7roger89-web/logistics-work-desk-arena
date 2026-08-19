@@ -418,7 +418,7 @@ def validate_groups(groups: List[ImportGroup],
                 f"Mã ĐH '{sid}': Không có dòng dịch vụ"
             )
 
-        # Validate financial values
+                # Validate financial values
         for detail in group.details:
             # UNKNOWN != ZERO: if price is None, it's unknown, not zero
             if detail.get("sale_price") is None and detail.get("product_code"):
@@ -430,9 +430,155 @@ def validate_groups(groups: List[ImportGroup],
 
 
 # ============================================================
-# EXPORT: Canonical → 52-column Excel
+# SERVICE-LINE IDEMPOTENCY: Deterministic matching + dedup
 # ============================================================
 
+def _service_line_key(line: Dict[str, Any]) -> Tuple:
+    """
+    Deterministic identity key for a service line.
+    Uses business-critical fields only (not position, not auto-generated IDs).
+    
+    Identity = (code, name, qty, cost, price)
+    
+    These are the fields that a human would use to identify "the same service":
+    - code: product/service code (e.g., "DVK" = Phí dịch vụ khác)
+    - name: product/service name
+    - qty: quantity
+    - cost: cost price (price_in)
+    - price: sale price (price_out)
+    
+    Fields like VAT, discount, line_total are NOT part of identity because
+    they can legitimately change between GETFLY exports (e.g., VAT updated).
+    """
+    # Normalize name: use 'name' if present, else 'name_full', else 'display_name'
+    raw_name = (
+        line.get("name")
+        or line.get("name_full")
+        or line.get("display_name")
+        or ""
+    )
+    
+    # Smart normalization: strip "(CODE)" suffix from name
+    # This handles the case where existing was manually created with name="X (CODE)"
+    # while GETFLY export has name="X" (without suffix)
+    # e.g., "Phí dịch vụ khác (DVK)" → "Phí dịch vụ khác"
+    import re
+    code = str(line.get("code", "")).strip().upper()
+    if code:
+        # Remove trailing " (CODE)" or " (code)" from the name
+        cleaned = re.sub(rf"\s*\({re.escape(code)}\)\s*$", "", raw_name, flags=re.IGNORECASE).strip()
+    else:
+        cleaned = str(raw_name).strip()
+    
+    return (
+        str(line.get("code", "")).strip(),
+        cleaned,
+        line.get("qty", 0),
+        line.get("cost", 0),
+        line.get("price", 0),
+    )
+
+
+def classify_service_lines(
+    existing_details: List[Dict[str, Any]],
+    incoming_details: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Classify incoming service lines against existing canonical lines.
+    
+    Returns:
+        (same_lines, new_lines, conflict_lines, ambiguous_lines)
+        
+    Rules:
+    - EXISTING_SAME: identical identity key → skip (do NOT append)
+    - NEW_SERVICE: identity key not found → append once
+    - CONFLICT: same identity key but materially different values
+      (e.g., VAT changed) → flag for Owner review, do NOT silently overwrite
+    - AMBIGUOUS: cannot determine → flag for Owner review
+    """
+    existing_keys = set(_service_line_key(d) for d in existing_details)
+    existing_by_key = [(_service_line_key(d), d) for d in existing_details]
+    
+    same_lines = []
+    new_lines = []
+    conflict_lines = []
+    ambiguous_lines = []
+    
+    for inc_line in incoming_details:
+        inc_key = _service_line_key(inc_line)
+        
+        if inc_key in existing_keys:
+            # Find the matching existing line
+            matching_ex = next(
+                (d for k, d in existing_by_key if k == inc_key), None
+            )
+            
+            if matching_ex is None:
+                ambiguous_lines.append(inc_line)
+                continue
+            
+            # Check for material differences beyond identity fields
+            material_fields = ["vat", "vat_line", "discount_pct", "discount_amt",
+                             "note", "unit", "product_group", "display_name"]
+            has_material_diff = False
+            for field in material_fields:
+                inc_val = inc_line.get(field)
+                ex_val = matching_ex.get(field)
+                # Skip if both are None/empty
+                if inc_val is None and ex_val is None:
+                    continue
+                if str(inc_val) != str(ex_val):
+                    has_material_diff = True
+                    break
+            
+            if has_material_diff:
+                # Same identity but values changed → CONFLICT (needs review)
+                conflict_lines.append(inc_line)
+            else:
+                # Truly identical → EXISTING_SAME (skip)
+                same_lines.append(inc_line)
+        else:
+            # New service line → append
+            new_lines.append(inc_line)
+    
+    return same_lines, new_lines, conflict_lines, ambiguous_lines
+
+
+def merge_details_idempotent(
+    existing_details: List[Dict[str, Any]],
+    incoming_details: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    Merge incoming details into existing, with full idempotency.
+    
+    Returns:
+        (merged_details, stats)
+        where stats = {"same": N, "new": N, "conflict": N, "ambiguous": N}
+    """
+    same, new, conflict, ambiguous = classify_service_lines(
+        existing_details, incoming_details
+    )
+    
+    # Start with existing (preserve all)
+    merged = list(existing_details)
+    
+    # Append only NEW lines
+    merged.extend(new)
+    
+    # Conflicts and ambiguous: do NOT auto-merge, flag for review
+    stats = {
+        "same": len(same),
+        "new": len(new),
+        "conflict": len(conflict),
+        "ambiguous": len(ambiguous),
+    }
+    
+    return merged, stats
+
+
+# ============================================================
+# EXPORT: Canonical → 52-column Excel
+# ============================================================
 def shipment_to_export_rows(ship: Dict[str, Any]) -> List[ExportRow]:
     """
     Convert a canonical shipment document to 52-column export rows.
