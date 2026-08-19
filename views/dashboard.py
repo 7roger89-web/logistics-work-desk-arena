@@ -321,6 +321,172 @@ def _render_shipment_workdesk(all_ships, rows):
     )
     _render_workdesk_rows(all_ships, filtered_rows)
 
+# ============================================================
+# LOG-LG05: Excel Round-Trip & GNT UI
+# ============================================================
+
+def _render_excel_import_ui():
+    """Render the Excel import dialog with upload, preview, and confirm."""
+    with st.expander("📤 NHẬP FILE EXCEL (52 cột)", expanded=True):
+        st.caption("Tải file Excel định dạng 52 cột (Sheet1, A:AZ). Preview trước khi import.")
+        
+        uploaded = st.file_uploader(
+            "Chọn file Excel (.xlsx)", 
+            type=["xlsx"], 
+            key="lg05_excel_upload",
+            help="File phải có Sheet1 với 52 cột từ A đến AZ theo đúng thứ tự."
+        )
+        
+        if uploaded:
+            file_bytes = uploaded.read()
+            
+            # Parse
+            from core.excel_roundtrip import parse_excel_bytes, group_rows, validate_groups
+            result = parse_excel_bytes(file_bytes)
+            
+            if result.errors:
+                st.error("Lỗi parse file:\n" + "\n".join(result.errors))
+                return
+            
+            st.success(f"Đã parse {result.row_count} dòng, không lỗi cú pháp.")
+            
+            # Group
+            groups = group_rows(result.groups)
+            st.info(f"Nhóm thành {len(groups)} lô hàng với {sum(len(g.details) for g in groups)} dòng dịch vụ.")
+            
+            # Validate
+            existing_ids = set(st.session_state.db_shipments.keys())
+            validated = validate_groups(groups, existing_ids)
+            
+            if not validated.is_valid:
+                st.error("Dữ liệu không hợp lệ:\n" + "\n".join(validated.errors))
+                return
+            
+            # Preview
+            st.markdown("**Preview lô hàng sẽ import:**")
+            for g in validated.groups:
+                detail_count = len(g.details)
+                status_icon = "🆕" if g.status == "new" else "⚠️"
+                st.markdown(f"- {status_icon} **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — {detail_count} dịch vụ [{g.status}]")
+            
+            if validated.warnings:
+                st.warning("Cảnh báo:\n" + "\n".join(validated.warnings[:5]))
+            
+            # Confirm
+            if validated.is_valid and st.button("✅ XÁC NHẬN IMPORT", key="lg05_confirm_import", type="primary"):
+                from core.database import save_shipment_atomic
+                imported = 0
+                updated = 0
+                for g in validated.groups:
+                    from core.excel_roundtrip import group_to_shipment_doc
+                    doc = group_to_shipment_doc(g)
+                    sid = doc["id"]
+                    if sid in existing_ids:
+                        # Merge: add/update details, don't overwrite financial
+                        existing = st.session_state.db_shipments[sid]
+                        new_details = doc["data"].get("3.4", {}).get("details", [])
+                        if new_details:
+                            existing.setdefault("data", {}).setdefault("3.4", {}).setdefault("details", []).extend(new_details)
+                        updated += 1
+                    else:
+                        st.session_state.db_shipments[sid] = doc
+                        imported += 1
+                
+                # Save to DB (best effort)
+                try:
+                    for sid, doc in st.session_state.db_shipments.items():
+                        save_shipment_atomic(sid, doc)
+                except Exception as e:
+                    st.warning(f"Không lưu được vào DB: {e}")
+                
+                st.success(f"Import hoàn tất: {imported} lô mới, {updated} lô cập nhật.")
+                st.session_state.lg05_import_done = True
+                st.rerun()
+
+
+def _handle_excel_export():
+    """Export all visible shipments to 52-column Excel."""
+    from core.excel_roundtrip import export_to_excel_bytes
+    
+    # Get filtered shipments
+    time_mode = st.session_state.get('dashboard_time_mode', 'Tháng này')
+    search_q = st.session_state.get('dashboard_search_query', '')
+    
+    ships = st.session_state.db_shipments
+    exported = []
+    
+    for sid, ship in ships.items():
+        exported.append(ship)
+    
+    if not exported:
+        st.warning("Không có lô hàng để xuất.")
+        return
+    
+    xlsx_bytes = export_to_excel_bytes(exported)
+    
+    st.download_button(
+        label="📄 Tải file Excel (52 cột)",
+        data=xlsx_bytes,
+        file_name=f"danhsachdonhang_{datetime.date.today().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="lg05_download_export",
+    )
+
+
+def _render_gnt_dialog():
+    """Render the GNT creation dialog."""
+    from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
+    
+    with st.expander("🧾 TẠO GIẤY NỘP THUẾ (GNT)", expanded=True):
+        st.caption("Chọn lô hàng có đủ thông tin tờ khai và thuế nhập khẩu.")
+        
+        # Show shipments with GNT prerequisites met
+        eligible = []
+        ineligible = []
+        
+        for sid, ship in st.session_state.db_shipments.items():
+            prereq = check_gnt_prerequisites(ship)
+            if prereq["ready"]:
+                eligible.append((sid, ship, prereq["data"]))
+            else:
+                ineligible.append((sid, ship, prereq["missing"]))
+        
+        if eligible:
+            st.success(f"{len(eligible)} lô đủ điều kiện tạo GNT.")
+            for sid, ship, data in eligible[:5]:
+                col_sel, col_name = st.columns([0.5, 5])
+                if col_sel.button("🧾", key=f"lg05_gnt_btn_{sid}"):
+                    st.session_state.lg05_gnt_selected = sid
+        else:
+            st.warning("Không có lô nào đủ điều kiện tạo GNT.")
+            st.caption("Yêu cầu: Số tờ khai + Ngày tờ khai + Thuế NK + Thuế GTGT (tất cả phải có giá trị > 0)")
+        
+        if ineligible:
+            st.markdown(f"**{len(ineligible)} lô thiếu thông tin:**")
+            for sid, ship, missing in ineligible[:5]:
+                st.markdown(f"- {sid[:40]}: thiếu {', '.join(missing[:3])}")
+        
+        # If a shipment is selected, show download
+        selected_sid = st.session_state.pop("lg05_gnt_selected", None)
+        if selected_sid and selected_sid in st.session_state.db_shipments:
+            ship = st.session_state.db_shipments[selected_sid]
+            prereq = check_gnt_prerequisites(ship)
+            if prereq["ready"]:
+                wb_bytes = build_gnt_workbook(prereq["data"])
+                tk_no = prereq["data"].get("tk_no", "no_tk")
+                safe_tk = "".join(c for c in tk_no if c.isalnum() or c in "._-")
+                safe_sid = "".join(c for c in selected_sid if c.isalnum() or c in "._-")
+                filename = f"GNT_{safe_sid}_{safe_tk}.xlsx"
+                
+                st.download_button(
+                    label="📄 Tải file GNT.xlsx",
+                    data=wb_bytes,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="lg05_gnt_download",
+                )
+
+
 def ui_dashboard():
     st.markdown("""
     <style>
@@ -371,6 +537,22 @@ def ui_dashboard():
     if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True): quick_assign_task_dialog()
     if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True): quick_note_dialog()
     view_archive = c_tog.toggle("Lưu Trữ", value=False)
+    
+    # ─── LOG-LG05: Excel Import/Export ───
+    st.divider()
+    c_excel1, c_excel2, c_excel3 = st.columns(3)
+    
+    # Import button
+    if c_excel1.button("📤 NHẬP FILE EXCEL (52 cột)", use_container_width=True, key="btn_lg05_import"):
+        _render_excel_import_ui()
+    
+    # Export button
+    if c_excel2.button("📥 XUẤT DANH SÁCH ĐƠN HÀNG", use_container_width=True, key="btn_lg05_export"):
+        _handle_excel_export()
+    
+    # GNT button (per shipment)
+    if c_excel3.button("🧾 TẠO GIẤY NỘP THUẾ (GNT)", use_container_width=True, key="btn_lg05_gnt"):
+        _render_gnt_dialog()
     
     # ==============================================================
     # BỘ LỌC THỜI GIAN VÀ TÌM KIẾM (HIỂN THỊ CHÍNH GIỮA MÀN HÌNH)
