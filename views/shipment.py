@@ -210,7 +210,8 @@ def ui_shipment_detail_tabs(sid, ship):
                 if not cust_info:
                     cust_info = next((customer for customer in db_cust.values() if customer.get('name') == curr_cust), {})
                 
-                with st.expander("🖨️ Tạo Giấy Nộp Thuế (GNT)", expanded=False):
+                with st.container(border=True):
+                    st.caption("🧾 GIẤY NỘP THUẾ (GNT) — C1-02/NS")
                     st.caption("Điền thông tin để xuất file Excel GNT")
                     gnt_saved = d['2.4'].setdefault('gnt', {})
                     c_gnt_1, c_gnt_2 = st.columns(2)
