@@ -227,47 +227,61 @@ def _render_financial_explanation(row):
 
 def _render_shipment_workdesk(all_ships, rows):
     """Render the shipment-first read-only operations queue."""
+    # R3: Compact summary band at top (replaces large KPI band)
+    summary = build_dashboard_summary(rows)
+    action_count = summary["critical"] + summary["warning"]
+    overdue = sum(1 for r in rows if r.get("top_alert") and r["top_alert"].get("severity") == CRITICAL)
+    missing_docs = sum(1 for r in rows if r.get("missing_documents_count", 0) > 0)
+    waiting = sum(1 for r in rows if not r.get("next_action") or r.get("next_action") == "Không có việc tiếp theo")
+
+    st.markdown(
+        f"""
+        <div style='background:#FFF8EB;border:2px solid #D97706;border-radius:8px;padding:0.6rem 0.8rem;margin:0.5rem 0 0.8rem;'>
+          <span style='font-size:1.1rem;font-weight:800;color:#92400E;'>🔴 {action_count} lô cần xử lý</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {overdue} quá hạn</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {missing_docs} thiếu chứng từ</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {waiting} đang chờ</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>"
         "<h2 class='ops-section-title'>Lô hàng cần xử lý</h2>",
         unsafe_allow_html=True,
     )
-    st.caption("Ưu tiên theo cảnh báo và deadline. Mỗi dòng trả lời nhanh: lô nào, đang chờ ai, bước tiếp theo là gì.")
+    st.caption("Bấm 📝 Xử lý để mở thẳng form nhập liệu.")
 
-    summary = build_dashboard_summary(rows)
-    action_count = summary["critical"] + summary["warning"]
-    st.markdown(
-        f"""
-        <div class='ops-summary-band' aria-label='Tổng quan vận hành'>
-          <div><span class='ops-summary-label'>TỔNG LÔ</span><strong>{summary['total']}</strong><small>trong phạm vi hiện tại</small></div>
-          <div class='ops-summary-focus'><span class='ops-summary-label'>CẦN XỬ LÝ</span><strong>{action_count}</strong><small>cảnh báo ưu tiên</small></div>
-          <div><span class='ops-summary-label'>DEADLINE</span><strong>{summary['deadline_soon']}</strong><small>sắp hoặc quá hạn</small></div>
-          <div><span class='ops-summary-label'>TÀI CHÍNH CẦN THEO DÕI</span><strong>{summary['financial_attention']}</strong><small>không phải số đã chốt</small></div>
-          <div><span class='ops-summary-label'>THIẾU CONTEXT</span><strong>{summary['missing_info']}</strong><small>cần bổ sung dữ liệu</small></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    # R3: Simple controls — time period already handled by ui_dashboard filters
+    # Only keep: quick search + customer/status if useful
     owners = sorted({str(row.get("owner") or "").strip() for row in rows if row.get("owner")})
-    # Keep the requested owner filter discoverable without assigning it to rows.
     if "SALE Thành" not in owners:
         owners.insert(0, "SALE Thành")
     customers = sorted({str(row.get("customer") or "").strip() for row in rows if row.get("customer")})
     status_options = ["Tất cả"] + sorted({str(row.get("operational_status") or "").strip() for row in rows if row.get("operational_status")})
-    financial_options = [
-        ("Tất cả", None),
-        ("Tài chính OK", "ok"),
-        ("Đang mở", FINANCIAL_OPEN),
-        ("Cần đối soát", FINANCIAL_REVIEW),
-        ("UNKNOWN", FINANCIAL_UNKNOWN),
-    ]
 
-    with st.expander("🔎 Lọc & tìm trong queue", expanded=True):
-        f1, f2, f3, f4, f5 = st.columns([1.4, 1.5, 1.5, 1.4, 1.6])
-        owner_filter = f1.selectbox("Sale phụ trách", ["Tất cả"] + owners, key="dashboard_owner_filter")
-        customer_filter = f2.selectbox("Khách hàng", ["Tất cả"] + customers, key="dashboard_customer_filter")
+    # R3: Keep only simple controls — customer + status (remove complex queue filters)
+    f1, f2, f3 = st.columns([1.5, 1.5, 1.5])
+    customer_filter = f1.selectbox("Khách hàng", ["Tất cả"] + customers, key="dashboard_customer_filter")
+    owner_filter = f2.selectbox("Sale phụ trách", ["Tất cả"] + owners, key="dashboard_owner_filter")
+    operational_filter = f3.selectbox(
+        "Vận hành",
+        status_options,
+        format_func=lambda value: "Tất cả" if value == "Tất cả" else STATUS_MAP_INV.get(value, value),
+        key="dashboard_operational_filter",
+    )
+
+    # R3: Detailed queue filters moved to expander (collapsed by default)
+    with st.expander("🔎 Lọc nâng cao (mở rộng)", expanded=False):
+        financial_options = [
+            ("Tất cả", None),
+            ("Tài chính OK", "ok"),
+            ("Đang mở", FINANCIAL_OPEN),
+            ("Cần đối soát", FINANCIAL_REVIEW),
+            ("UNKNOWN", FINANCIAL_UNKNOWN),
+        ]
+        f3, f4, f5 = st.columns([1.5, 1.5, 2])
         attention_filter = f3.selectbox(
             "Cảnh báo",
             [
@@ -281,26 +295,20 @@ def _render_shipment_workdesk(all_ships, rows):
             ],
             key="dashboard_attention_filter",
         )
-        operational_filter = f4.selectbox(
-            "Vận hành",
-            status_options,
-            format_func=lambda value: "Tất cả" if value == "Tất cả" else STATUS_MAP_INV.get(value, value),
-            key="dashboard_operational_filter",
-        )
-        financial_filter_label = f5.selectbox(
+        financial_filter_label = f4.selectbox(
             "Tài chính",
             [label for label, _ in financial_options],
             key="dashboard_financial_filter",
         )
-        q1, q2, q3 = st.columns([1.5, 1.5, 3.0])
+        q1, q2 = st.columns([1, 2])
         only_actionable = q1.checkbox("Chỉ còn việc", value=False, key="dashboard_only_actionable")
         deadline_only = q2.checkbox("Chỉ deadline", value=False, key="dashboard_deadline_only")
-        q3.caption("Search ở thanh phạm vi phía trên · financial status luôn là read-only projection.")
+        q2.caption("filter 'Lọc & tìm trong queue' đã chuyển sang trang 'Việc cần xử lý'.")
 
     filtered_rows = filter_dashboard_views(
         rows,
-        owner=owner_filter,
         customer=customer_filter,
+        owner=owner_filter,
         operational_status=operational_filter,
         financial_flag=dict(financial_options).get(financial_filter_label),
         has_alert=True if only_actionable else None,
@@ -311,94 +319,10 @@ def _render_shipment_workdesk(all_ships, rows):
     filtered_rows = sort_dashboard_views(filtered_rows)
     st.markdown(
         f"<div class='ops-filter-note'><strong>{len(filtered_rows)}/{len(rows)} lô</strong> đang hiển thị · "
-        "mở một dòng để đi thẳng vào Shipment 360 · các trạng thái UNKNOWN được giữ nguyên.</div>",
+        "mở một dòng để đi thẳng vào form nhập liệu · các trạng thái UNKNOWN được giữ nguyên.</div>",
         unsafe_allow_html=True,
     )
-
-    if not filtered_rows:
-        st.info("📭 Không có lô hàng phù hợp với các bộ lọc hiện tại.")
-        return
-
-    for row in filtered_rows:
-        row_sid = str(row.get("shipment_id") or "UNKNOWN")
-        ship = all_ships.get(row_sid)
-        if ship is None:
-            ship = next(
-                (
-                    candidate
-                    for candidate in all_ships.values()
-                    if str(candidate.get("id") or candidate.get("shipment_id") or "") == row_sid
-                ),
-                None,
-            )
-        if not ship:
-            continue
-        sid = str(ship.get("id") or row_sid)
-        data = ship.get("data", {})
-        route = data.get("1.2", {}) if isinstance(data, dict) else {}
-        if not isinstance(route, dict):
-            route = {}
-        top_alert = row.get("top_alert") or {}
-        alert_color = {CRITICAL: ("#FDECEC", "#B42318"), "warning": ("#FFF4E5", "#9A6700"), "info": ("#EEF2FF", "#4657C8")}.get(top_alert.get("severity"), ("#F3F4F6", "#475467"))
-        finance_color = {
-            "ok": ("#EAF7EF", "#18794E"),
-            FINANCIAL_OPEN: ("#FFF4E5", "#9A6700"),
-            FINANCIAL_REVIEW: ("#EEF2FF", "#4657C8"),
-            FINANCIAL_UNKNOWN: ("#FDECEC", "#B42318"),
-        }.get(row.get("financial_flag"), ("#F3F4F6", "#475467"))
-
-        context_bits = _desk_source_context(row, data, route)
-        with st.container(border=True):
-            st.markdown(
-                f"<div class='ops-row-head'><span class='ops-row-id'>{escape_html(sid)}</span>"
-                f"<span class='ops-row-customer'>{escape_html(row.get('customer') or 'Chưa có khách hàng')}</span>"
-                f"<span class='ops-row-route'>{escape_html(route.get('pol') or '?')} → {escape_html(route.get('pod') or '?')}</span></div>",
-                unsafe_allow_html=True,
-            )
-            c_main, c_ops, c_finance, c_action = st.columns([2.8, 1.5, 1.8, 1.25])
-            with c_main:
-                st.caption(
-                    f"Sale: {row.get('owner', 'Chưa phân công')} · "
-                    f"Cập nhật: {row.get('last_update_label', 'Chưa có')} · "
-                    f"{escape_html(route.get('pol', '?'))} ➝ {escape_html(route.get('pod', '?'))}"
-                )
-                date_bits = [f"ETA: {row.get('arrival_date_label', 'Chưa có')}"]
-                if row.get("required_date"):
-                    date_bits.append(f"Hạn khách: {row.get('required_date_label')}")
-                if row.get("promised_date"):
-                    date_bits.append(f"Mốc hẹn: {row.get('promised_date_label')}")
-                if row.get("planned_date"):
-                    date_bits.append(f"Kế hoạch: {row.get('planned_date_label')}")
-                st.caption(" · ".join(date_bits))
-                st.caption(" · ".join(context_bits))
-            with c_ops:
-                st.markdown(_desk_badge(f"Vận hành: {row.get('operational_status_label')}", "#EEF2FF", "#4657C8"), unsafe_allow_html=True)
-                if row.get("days_remaining") is not None:
-                    free_label = f"Free time: {row['days_remaining']} ngày"
-                    st.markdown(_desk_badge(free_label, alert_color[0], alert_color[1]), unsafe_allow_html=True)
-                elif row.get("free_time_days") is None:
-                    st.caption("Free time: UNKNOWN")
-            with c_finance:
-                st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
-                st.caption(escape_html(row.get("financial_status")))
-                with st.expander("Vì sao ra số này?", expanded=False):
-                    _render_financial_explanation(row)
-            with c_action:
-                st.markdown("**MỞ HỒ SƠ LÔ 360°**")
-                if st.button(sid, key=f"dashboard_open_360_{sid}", help="Mở Shipment 360", use_container_width=True):
-                    st.session_state.active_shipment_id = sid
-                    st.session_state.dashboard_active_shipment_id = sid
-                    st.rerun()
-
-            if top_alert:
-                severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
-                st.markdown(
-                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
-                    f"{escape_html(top_alert.get('detail'))}</div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown("<div class='ops-next-action ops-next-action-ok'>✅ Chưa có cảnh báo cần xử lý.</div>", unsafe_allow_html=True)
+    _render_workdesk_rows(all_ships, filtered_rows)
 
 def ui_dashboard():
     st.markdown("""
@@ -653,7 +577,16 @@ def ui_dashboard():
                     if col_n.button("Hủy bỏ", key="confirm_no"): st.session_state.confirm_delete_sid = None; st.rerun()
 
                 st.divider()
-                if can_edit:
+                open_360 = st.session_state.pop("lg04_open_360_view", False)
+
+                if open_360:
+
+                    from views.shipment_360 import render_shipment_workspace
+
+                    render_shipment_workspace(active_sid, ship_data)
+
+                elif can_edit:
+
                     ui_shipment_detail_tabs(active_sid, ship_data)
                 else:
                     st.info("Tài khoản hiện tại chỉ có quyền xem.")
@@ -835,3 +768,98 @@ def ui_dashboard():
                 xls = generate_commission_excel([(item['Mã Lô'], ships_filtered[item['Mã Lô']]) for item in comm_data])
                 if xls: st.download_button("Download Commission.xlsx", xls, "Commission.xlsx")
         else: st.info("Không có hoa hồng trong khoảng thời gian này.")
+
+def _render_workdesk_rows(all_ships, filtered_rows):
+    """Render individual shipment rows in the workdesk. Extracted for reuse."""
+    from core.shipment_dashboard import CRITICAL, FINANCIAL_OPEN, FINANCIAL_REVIEW, FINANCIAL_UNKNOWN
+
+    if not filtered_rows:
+        st.info("📭 Không có lô hàng phù hợp với các bộ lọc hiện tại.")
+        return
+
+    for row in filtered_rows:
+        row_sid = str(row.get("shipment_id") or "UNKNOWN")
+        ship = all_ships.get(row_sid)
+        if ship is None:
+            ship = next(
+                (
+                    candidate
+                    for candidate in all_ships.values()
+                    if str(candidate.get("id") or candidate.get("shipment_id") or "") == row_sid
+                ),
+                None,
+            )
+        if not ship:
+            continue
+        sid = str(ship.get("id") or row_sid)
+        data = ship.get("data", {})
+        route = data.get("1.2", {}) if isinstance(data, dict) else {}
+        if not isinstance(route, dict):
+            route = {}
+        top_alert = row.get("top_alert") or {}
+        alert_color = {CRITICAL: ("#FDECEC", "#B42318"), "warning": ("#FFF4E5", "#9A6700"), "info": ("#EEF2FF", "#4657C8")}.get(top_alert.get("severity"), ("#F3F4F6", "#475467"))
+        finance_color = {
+            "ok": ("#EAF7EF", "#18794E"),
+            FINANCIAL_OPEN: ("#FFF4E5", "#9A6700"),
+            FINANCIAL_REVIEW: ("#EEF2FF", "#4657C8"),
+            FINANCIAL_UNKNOWN: ("#FDECEC", "#B42318"),
+        }.get(row.get("financial_flag"), ("#F3F4F6", "#475467"))
+        context_bits = _desk_source_context(row, data, route)
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ops-row-head'><span class='ops-row-id'>{escape_html(sid)}</span>"
+                f"<span class='ops-row-customer'>{escape_html(row.get('customer') or 'Chưa có khách hàng')}</span>"
+                f"<span class='ops-row-route'>{escape_html(route.get('pol') or '?')} → {escape_html(route.get('pod') or '?')}</span></div>",
+                unsafe_allow_html=True,
+            )
+            c_main, c_ops, c_finance, c_action = st.columns([2.8, 1.5, 1.8, 1.25])
+            with c_main:
+                st.caption(
+                    f"Sale: {row.get('owner', 'Chưa phân công')} · "
+                    f"Cập nhật: {row.get('last_update_label', 'Chưa có')} · "
+                    f"{escape_html(route.get('pol', '?'))} ➝ {escape_html(route.get('pod', '?'))}"
+                )
+                date_bits = [f"ETA: {row.get('arrival_date_label', 'Chưa có')}"]
+                if row.get("required_date"):
+                    date_bits.append(f"Hạn khách: {row.get('required_date_label')}")
+                if row.get("promised_date"):
+                    date_bits.append(f"Mốc hẹn: {row.get('promised_date_label')}")
+                if row.get("planned_date"):
+                    date_bits.append(f"Kế hoạch: {row.get('planned_date_label')}")
+                st.caption(" · ".join(date_bits))
+                st.caption(" · ".join(context_bits))
+            with c_ops:
+                st.markdown(_desk_badge(f"Vận hành: {row.get('operational_status_label')}", "#EEF2FF", "#4657C8"), unsafe_allow_html=True)
+                if row.get("days_remaining") is not None:
+                    free_label = f"Free time: {row['days_remaining']} ngày"
+                    st.markdown(_desk_badge(free_label, alert_color[0], alert_color[1]), unsafe_allow_html=True)
+                elif row.get("free_time_days") is None:
+                    st.caption("Free time: UNKNOWN")
+            with c_finance:
+                st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
+                st.caption(escape_html(row.get("financial_status")))
+                with st.expander("Vì sao ra số này?", expanded=False):
+                    _render_financial_explanation(row)
+            with c_action:
+                st.markdown("**📝 Xử lý lô**")
+                if st.button("Xử lý", key=f"dashboard_process_{sid}", help="Mở thẳng form nhập liệu", type="primary", use_container_width=True):
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_direct_work = True
+                    st.session_state.active_shipment_section = "finance"
+                    st.rerun()
+                st.markdown("**📊 360°**")
+                if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan", use_container_width=True):
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_direct_work = False
+                    st.rerun()
+            if top_alert:
+                severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
+                st.markdown(
+                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
+                    f"{escape_html(top_alert.get('detail'))}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown("<div class='ops-next-action ops-next-action-ok'>✅ Chưa có cảnh báo cần xử lý.</div>", unsafe_allow_html=True)

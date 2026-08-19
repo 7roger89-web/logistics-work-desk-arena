@@ -142,7 +142,7 @@ class Lg04WorkspaceUITests(unittest.TestCase):
         test = self._render()
         self.assertFalse(test.exception, msg=str(test.exception))
         labels = [e.label for e in test.expander if e.label]
-        self.assertIn("📞 Liên hệ nhanh", labels)
+        self.assertIn("🏭 Khách hàng · Nhà máy · Đại lý", labels)
         self.assertNotIn("👥 Ai tham gia lô hàng này", labels)
 
     def test_documents_show_missing_signal(self) -> None:

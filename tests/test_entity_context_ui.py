@@ -82,7 +82,7 @@ class EntityContextMountedTests(unittest.TestCase):
             stack.enter_context(patch("views.shipment.load_entrustments", return_value={}))
             stack.enter_context(patch("views.shipment.load_audit_logs", return_value=[]))
             app.run()
-            open_button = next(item for item in app.button if item.key == "dashboard_open_360_S-001")
+            open_button = next(item for item in app.button if item.key == "dashboard_process_S-001")
             open_button.click()
             app.run()
             self.assertFalse(app.exception)

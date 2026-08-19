@@ -152,8 +152,23 @@ def _payment_history_is_unchanged(old: Mapping[str, Any] | None, new: Mapping[st
     return True, ""
 
 
-@lru_cache(maxsize=1)
 def init_connection() -> pymongo.MongoClient | None:
+    """Get MongoDB connection. Uses st.cache_resource when in Streamlit runtime."""
+    if st is not None and is_streamlit_runtime():
+        return _get_cached_connection()
+    return _init_connection_impl()
+
+
+def _get_cached_connection() -> pymongo.MongoClient | None:
+    """Cached wrapper to avoid repeated re-connection overhead."""
+    try:
+        return st.cache_resource(_init_connection_impl, ttl=3600, show_spinner=False)()
+    except Exception:
+        return _init_connection_impl()
+
+
+@lru_cache(maxsize=1)
+def _init_connection_impl() -> pymongo.MongoClient | None:
     if not MONGO_URI:
         _set_last_error(
             "Chưa cấu hình MongoDB. Thêm [mongo].uri hoặc MONGO_URI vào "
@@ -333,6 +348,15 @@ def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str
 
 
 def load_data(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False) -> dict[str, dict[str, Any]]:
+    """Load shipment data. Cached in Streamlit runtime for performance."""
+    if st is not None and is_streamlit_runtime():
+        return st.cache_data(
+            _load_data_impl, ttl=30, show_spinner=False,
+        )(limit, include_archived, include_deleted)
+    return _load_data_impl(limit, include_archived, include_deleted)
+
+
+def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False) -> dict[str, dict[str, Any]]:
     db = get_db()
     if db is None:
         return {}
@@ -856,6 +880,13 @@ def _save_document(
 
 
 def load_customers() -> dict[str, dict[str, Any]]:
+    """Load customers. Cached in Streamlit runtime for performance."""
+    if st is not None and is_streamlit_runtime():
+        return st.cache_data(_load_customers_impl, ttl=30, show_spinner=False)()
+    return _load_customers_impl()
+
+
+def _load_customers_impl() -> dict[str, dict[str, Any]]:
     return _load_dict("customers", query={"is_deleted": {"$ne": True}})
 
 
@@ -887,6 +918,13 @@ def delete_customer(cust_id: str, reason: str = "") -> bool:
 
 
 def load_contracts() -> dict[str, dict[str, Any]]:
+    """Load contracts. Cached in Streamlit runtime for performance."""
+    if st is not None and is_streamlit_runtime():
+        return st.cache_data(_load_contracts_impl, ttl=30, show_spinner=False)()
+    return _load_contracts_impl()
+
+
+def _load_contracts_impl() -> dict[str, dict[str, Any]]:
     raw = _load_dict("contracts", query={"is_deleted": {"$ne": True}})
     return {str(value.get("ContractNo") or value.get("id")): value for value in raw.values()}
 
@@ -908,6 +946,13 @@ def save_contract_to_cloud(document: dict[str, Any]) -> bool:
 
 
 def load_contract_transactions(contract_id: str | None = None) -> dict[str, dict[str, Any]]:
+    """Load contract transactions. Cached in Streamlit runtime for performance."""
+    if st is not None and is_streamlit_runtime():
+        return st.cache_data(_load_contract_transactions_impl, ttl=30, show_spinner=False)(contract_id)
+    return _load_contract_transactions_impl(contract_id)
+
+
+def _load_contract_transactions_impl(contract_id: str | None = None) -> dict[str, dict[str, Any]]:
     """Load typed contract-finance rows, optionally scoped to one contract."""
     query: dict[str, Any] = {"is_deleted": {"$ne": True}}
     if contract_id:

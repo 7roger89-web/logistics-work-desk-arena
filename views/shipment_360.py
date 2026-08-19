@@ -368,11 +368,9 @@ def render_shipment_workspace(
         st.caption("Không có cảnh báo nào khác ngoài việc tiếp theo ở trên.")
 
     # ---- LOG-LG04: khối đối tác thu gọn + giải thích (Ý 4, Ý 8) ----
-    with st.expander("📞 Liên hệ nhanh", expanded=False):
+    with st.expander("🏭 Khách hàng · Nhà máy · Đại lý", expanded=False):
         st.caption(
-            "Thông tin liên hệ của các bên tham gia lô hàng (khách hàng, người giao hàng, "
-            "địa chỉ lấy hàng / giao hàng, người nhận). Dùng để gọi điện và đi lấy hàng/giao hàng. "
-            "Chi tiết từng hồ sơ xem nút bên dưới."
+            "Thông tin liên hệ của các bên trong lô hàng, dùng khi lấy hàng, xử lý chứng từ và giao hàng."
         )
         context = view.get("context") or {}
         c1, c2 = st.columns(2)

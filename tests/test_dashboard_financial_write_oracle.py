@@ -182,19 +182,19 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
             # Warning semantics: the factory-data warning isolates LG-001.
             _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
             _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
             # First shipment: open the real mounted detail path, then return.
             _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
             app.run()
-            _button(app, "dashboard_open_360_LG-001").click()
+            _button(app, "dashboard_process_LG-001").click()
             app.run()
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})
@@ -208,7 +208,7 @@ class DashboardFinancialWriteOracleTests(TestCase):
             self.assertNotIn("btn_close_top", {element.key for element in app.button})
             # Second shipment: verify the list is restored and the second row
             # opens independently on the next click.
-            _button(app, "dashboard_open_360_LG-002").click()
+            _button(app, "dashboard_process_LG-002").click()
             app.run()
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})
