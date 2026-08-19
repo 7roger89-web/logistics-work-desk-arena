@@ -207,7 +207,7 @@ def require_login() -> dict[str, str] | None:
         st.markdown("### 🔐 Đăng nhập")
         username = st.text_input("Tài khoản", key="login_username").strip()
         password = st.text_input("Mật khẩu", type="password", key="login_password")
-        submitted = st.form_submit_button("Đăng nhập", type="primary", use_container_width=True)
+        submitted = st.button("Đăng nhập", type="primary", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
     if submitted:
         identity = _authenticate(username, password)
