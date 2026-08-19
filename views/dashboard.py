@@ -338,8 +338,13 @@ def _render_excel_import_ui():
         )
         
         if uploaded:
+            uploaded.seek(0)
             file_bytes = uploaded.read()
-            
+            if file_bytes:
+                st.session_state["lg05_excel_bytes"] = file_bytes
+        
+        file_bytes = st.session_state.get("lg05_excel_bytes", b"")
+        if file_bytes:
             # Parse
             from core.excel_roundtrip import parse_excel_bytes, group_rows, validate_groups
             result = parse_excel_bytes(file_bytes)
@@ -355,6 +360,13 @@ def _render_excel_import_ui():
             st.info(f"Nhóm thành {len(groups)} lô hàng với {sum(len(g.details) for g in groups)} dòng dịch vụ.")
             
             # Validate
+            # Ensure db_shipments is loaded
+            if "db_shipments" not in st.session_state or not st.session_state.db_shipments:
+                from core.database import load_data
+                try:
+                    st.session_state.db_shipments = load_data() or {}
+                except Exception:
+                    st.session_state.db_shipments = {}
             existing_ids = set(st.session_state.db_shipments.keys())
             validated = validate_groups(groups, existing_ids)
             
@@ -394,10 +406,24 @@ def _render_excel_import_ui():
                 
                 # Save to DB (best effort)
                 try:
-                    for sid, doc in st.session_state.db_shipments.items():
-                        save_shipment_atomic(sid, doc)
+                    from core.database import get_db
+                    db = get_db()
+                    saved_count = 0
+                    for g in validated.groups:
+                        from core.excel_roundtrip import group_to_shipment_doc
+                        doc = group_to_shipment_doc(g)
+                        sid = doc.get("id", "")
+                        try:
+                            db.shipments.update_one(
+                                {"id": sid}, {"$set": doc}, upsert=True
+                            )
+                            saved_count += 1
+                        except Exception as ex:
+                            st.warning(f"Không lưu được lô {sid}: {ex}")
+                    if saved_count > 0:
+                        st.session_state.lg05_import_done = True
                 except Exception as e:
-                    st.warning(f"Không lưu được vào DB: {e}")
+                    st.warning(f"Không kết nối được DB: {e}")
                 
                 st.success(f"Import hoàn tất: {imported} lô mới, {updated} lô cập nhật.")
                 st.session_state.lg05_import_done = True
