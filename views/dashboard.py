@@ -906,9 +906,14 @@ def ui_dashboard():
         comm_data = []
         for sid, s in ships_filtered.items():
             comm_info = s['data']['3.4'].get('commission', {})
-            val = safe_float(comm_info.get('total', 0))
+            if isinstance(comm_info, dict):
+                val = safe_float(comm_info.get('total', 0))
+                note = comm_info.get('note', '')
+            else:
+                val = safe_float(comm_info)
+                note = ''
             if val > 0:
-                comm_data.append({"Mã Lô": sid, "Khách Hàng": s['client_short'], "Hoa Hồng": val, "Ghi Chú": comm_info.get('note', '')})
+                comm_data.append({"Mã Lô": sid, "Khách Hàng": s['client_short'], "Hoa Hồng": val, "Ghi Chú": note})
         if comm_data:
             df_comm = pd.DataFrame(comm_data)
             st.metric("Tổng Hoa Hồng", f"{df_comm['Hoa Hồng'].sum():,.0f} ₫")

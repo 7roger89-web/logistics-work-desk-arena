@@ -493,6 +493,9 @@ def ui_shipment_detail_tabs(sid, ship):
         with c_fin_1:
             st.subheader("2. Chi Hoa Hồng")
             comm_data = d['3.4']['commission']
+            if not isinstance(comm_data, dict):
+                comm_data = {"total": safe_float(comm_data) or 0, "list": [], "note": ""}
+                d['3.4']['commission'] = comm_data
             if 'list' not in comm_data: comm_data['list'] = []
             
             comm_total = st.number_input("Tổng Hoa Hồng (Chi ngoài)", value=float(safe_float(comm_data.get('total', 0))), step=100000.0, format="%.0f", key=f"{prefix}_comm_tot")
