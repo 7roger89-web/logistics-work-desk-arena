@@ -1,7 +1,7 @@
 {
   "goal": "LOG-LG05",
   "title": "Excel Round-Trip & GNT Generation",
-  "status": "READY_FOR_OWNER_GETFLY_IMPORT_CONFIRMATION",
+  "status": "GETFLY_IMPORT_COMPLETE_WITH_1_HELD_CONFLICT",
   "branch": "log-lg05-excel-round-trip-gnt",
   "pr": 4,
   "pr_state": "draft",
@@ -58,5 +58,21 @@
   },
   "service_line_idempotency_sha": "914e849",
   "test_count_after_idempotency": "278 passed / 28 skipped / 0 failed",
-  "notes": "Service-line dedup implemented: code+name+qty+cost+price identity, smart (CODE) suffix normalization, 3-run proof PASSED"
+  "notes": "Service-line dedup implemented: code+name+qty+cost+price identity, smart (CODE) suffix normalization, 3-run proof PASSED",
+  "import_sha": "ef22649",
+  "production_imported": true,
+  "shipments_before": 78,
+  "shipments_after": 91,
+  "new_shipments_imported": 13,
+  "new_service_lines_imported": 38,
+  "conflict_held": 1,
+  "conflict_reason": "VAT app=0% vs GETFLY=8%",
+  "duplicates_created": 0,
+  "finance_overwrite": 0,
+  "visibility_thang_nay": 13,
+  "visibility_tat_ca": 14,
+  "second_run_dry_run_new_shipments": 0,
+  "second_run_dry_run_new_service_lines": 0,
+  "second_run_conflict_held": 1,
+  "regression": "278 passed / 28 skipped / 0 failed"
 }
