@@ -8,12 +8,16 @@
   "not_merged": true,
   "not_deployed": true,
   "created_at": "2026-08-19",
+  "incident_fix_sha": "59d77ef",
+  "incident_fix_date": "2026-08-19",
+  "incident_root_cause": "get_shipment_business_date() used created_at instead of order_date for period filter",
+  "incident_fix": "order_date priority + cache invalidation + import result display",
   "tests": {
-    "passed": 256,
+    "passed": 269,
     "skipped": 28,
     "failed": 0
   },
-  "lg05_tests": 25,
+  "lg05_tests": 33,
   "modules": [
     "core/excel_roundtrip.py",
     "core/gnt_builder.py",
