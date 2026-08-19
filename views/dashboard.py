@@ -832,6 +832,7 @@ def ui_dashboard():
                 if c_close.button("← Queue" if return_to_queue else "❌", key="btn_close_top", use_container_width=True):
                     st.session_state.active_shipment_id = None
                     st.session_state.dashboard_active_shipment_id = None
+                    st.session_state.confirm_delete_sid = None
                     if return_to_finance:
                         st.session_state.active_page = "Đối Soát Tài Chính"
                         st.session_state.finance_review_return = False
@@ -841,7 +842,8 @@ def ui_dashboard():
                     st.rerun()
 
                 if st.session_state.get('confirm_delete_sid') == active_sid:
-                    st.warning("Lô sẽ được đưa vào thùng lưu trữ và vẫn còn trong audit log.")
+                    ship_name = ship_data.get('customer') or ship_data.get('client') or active_sid
+                    st.error(f"⚠️ BẠN CÓ CHẮC MUỐN XÓA LÔ HÀNG NÀY?\n\n📋 **Mã lô:** {active_sid}\n🏢 **Khách hàng:** {ship_name}\n\nLô sẽ được đưa vào thùng lưu trữ (soft delete) và vẫn còn trong audit log.\nHành động này KHÔNG thể hoàn tác từ giao diện người dùng.")
                     col_y, col_n = st.columns(2)
                     if col_y.button("✅ XÁC NHẬN XÓA", key="confirm_yes"):
                         if delete_shipment(active_sid):
@@ -1117,6 +1119,16 @@ def _render_workdesk_rows(all_ships, filtered_rows):
             with c_finance:
                 st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
                 st.caption(escape_html(row.get("financial_status")))
+                # UX-STAB P1: Compact — show only a minimal hint, expand on user request
+                projection = row.get("financial_projection") or {}
+                if isinstance(projection, dict) and projection.get("sources"):
+                    n_sources = len(projection["sources"])
+                    status = escape_html(row.get("financial_status") or "UNKNOWN")
+                    st.markdown(
+                        f"<span style='font-size:0.7rem;color:#9CA3AF;'>"  # noqa
+                        f"📊 Nguồn dữ liệu: {n_sources} · Nhấn để xem chi tiết</span>",
+                        unsafe_allow_html=True,
+                    )
                 with st.expander("Vì sao ra số này?", expanded=False):
                     _render_financial_explanation(row)
             with c_action:
