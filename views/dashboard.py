@@ -247,12 +247,9 @@ def _render_shipment_workdesk(all_ships, rows):
     )
 
     st.markdown(
-        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>"
-        "<h2 class='ops-section-title'>Lô hàng cần xử lý</h2>",
+        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>",
         unsafe_allow_html=True,
     )
-    st.caption("Bấm 📝 Xử lý để mở thẳng form nhập liệu.")
-
     # R3: Simple controls — time period already handled by ui_dashboard filters
     # Only keep: quick search + customer/status if useful
     owners = sorted({str(row.get("owner") or "").strip() for row in rows if row.get("owner")})
@@ -846,7 +843,7 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                     st.session_state.active_shipment_id = sid
                     st.session_state.dashboard_active_shipment_id = sid
                     st.session_state.lg04_open_direct_work = True
-                    st.session_state.active_shipment_section = "finance"
+                    st.session_state.active_shipment_section = "export"
                     st.rerun()
                 st.markdown("**📊 360°**")
                 if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan", use_container_width=True):

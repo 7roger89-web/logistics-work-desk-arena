@@ -171,8 +171,15 @@ def ui_shipment_detail_tabs(sid, ship):
     # TRẢ LẠI ĐÚNG 3 TAB CHUẨN GỐC CỦA ANH
     # LOG-LG04: mở tab theo thẻ việc chính ở đầu trang
     _jump = st.session_state.pop("active_shipment_section", None)
-    _tab_index = {"export": 0, "import": 1, "finance": 2}.get(str(_jump))
-    _tab_label = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"][_tab_index] if _tab_index is not None else None
+    _tab_labels = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"]
+    if _jump in ("export", 0, None):
+        _tab_label = _tab_labels[0]
+    elif _jump in ("import", 1):
+        _tab_label = _tab_labels[1]
+    elif _jump in ("finance", 2):
+        _tab_label = _tab_labels[2]
+    else:
+        _tab_label = _tab_labels[0]  # default: PICKUP & XUẤT KHẨU
     t1, t2, t3 = st.tabs(
         ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"],
         default=_tab_label,
