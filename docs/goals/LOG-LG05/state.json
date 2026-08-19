@@ -89,5 +89,31 @@
     "ambiguous": 0,
     "idempotent": true
   },
-  "regression_after_fix": "278 passed / 28 skipped / 0 failed"
+  "regression_after_fix": "278 passed / 28 skipped / 0 failed",
+  "vat_conflict_resolved": true,
+  "vat_resolution_sha": "4589644",
+  "vat_approved_value": 8.0,
+  "vat_audit": {
+    "prior": 0.0,
+    "new": 8.0,
+    "recalculated": [
+      "vat_line",
+      "out",
+      "in",
+      "out_net",
+      "output_vat",
+      "debt"
+    ],
+    "prior_out": 941849572,
+    "new_out": 1017197538,
+    "delta": 75347966
+  },
+  "dry_run_after_resolution": {
+    "new_shipments": 0,
+    "new_service": 0,
+    "conflict": 0,
+    "ambiguous": 0,
+    "unchanged": 39
+  },
+  "terminal": "GETFLY_IMPORT_VERIFIED_COMPLETE"
 }
