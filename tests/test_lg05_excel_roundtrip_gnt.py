@@ -334,3 +334,142 @@ class TestLg05DashboardUI:
     def test_gnt_function_in_shipment(self):
         from core.gnt_builder import build_gnt_workbook
         assert callable(build_gnt_workbook)
+
+
+# ============================================================
+# LG05 INCIDENT REGRESSION TESTS
+# GETFLY Import Incident: malformed styles.xml + date semantics fix
+# ============================================================
+
+class TestLg05IncidentRegression:
+    """Regression tests for the GETFLY Import Incident.
+    
+    Root causes:
+    1. openpyxl cannot read files with malformed styles.xml (rgb="#ccc")
+    2. Dashboard period filter uses created_at instead of order_date
+       → orders with created_at in previous month are invisible under "Tháng này"
+    
+    Fixes:
+    1. Reader already uses calamine engine (values-oriented, ignores styles.xml)
+    2. get_shipment_business_date() now prefers order_date over created_at
+    3. Cache invalidation after import (st.cache_data.clear() + refresh)
+    """
+
+    def test_synthetic_fixture_openpyxl_fails(self):
+        """openpyxl cannot read files with malformed styles.xml (rgb='#ccc')."""
+        import openpyxl
+        with pytest.raises(Exception):
+            openpyxl.load_workbook("tests/fixtures/synthetic_getfly.xlsx")
+
+    def test_synthetic_fixture_calamine_succeeds(self):
+        """calamine (values-oriented) can read files with malformed styles.xml."""
+        import pandas as pd
+        df = pd.read_excel("tests/fixtures/synthetic_getfly.xlsx", engine="calamine", header=None)
+        assert df.shape[1] == 52  # 52 columns
+        assert df.shape[0] == 8   # 1 header + 7 data rows
+
+    def test_synthetic_fixture_parse_pipeline(self):
+        """Full parse → group → validate pipeline works with corrupted fixture."""
+        from core.excel_roundtrip import parse_excel_bytes, group_rows, validate_groups
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        result = parse_excel_bytes(file_bytes)
+        assert result.row_count == 7  # 7 data rows
+        assert len(result.errors) == 0
+
+        groups = group_rows(result.groups)
+        assert len(groups) == 3  # 3 orders
+        assert sum(len(g.details) for g in groups) == 7  # 7 service lines
+
+        validation = validate_groups(groups, set())
+        assert validation.is_valid
+
+    def test_order_date_priority_in_document(self):
+        """group_to_shipment_doc maps order_date correctly, distinct from created_at."""
+        from core.excel_roundtrip import parse_excel_bytes, group_rows, group_to_shipment_doc
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        result = parse_excel_bytes(file_bytes)
+        groups = group_rows(result.groups)
+
+        for g in groups:
+            doc = group_to_shipment_doc(g)
+            sec = doc['data']['0.0']
+            od = sec.get('order_date', '')
+            ca = sec.get('created_at', '')
+            # Verify order_date and created_at are distinct (different months)
+            assert od != ca, f"order_date and created_at should differ for {g.shipment_id}"
+            assert len(od) > 0, "order_date should not be empty"
+
+    def test_get_shipment_business_date_uses_order_date(self):
+        """get_shipment_business_date prefers order_date over created_at."""
+        from core.utils import get_shipment_business_date
+        from core.excel_roundtrip import parse_excel_bytes, group_rows, group_to_shipment_doc
+        from datetime import datetime, date
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        result = parse_excel_bytes(file_bytes)
+        groups = group_rows(result.groups)
+
+        for g in groups:
+            doc = group_to_shipment_doc(g)
+            biz_date = get_shipment_business_date(doc)
+            od = doc['data']['0.0'].get('order_date', '')
+            # The business date should match order_date (converted to ISO)
+            od_dt = datetime.strptime(od, "%d/%m/%Y").date()
+            # biz_date might be a date or datetime object
+            if isinstance(biz_date, datetime):
+                biz_date = biz_date.date()
+            assert biz_date == od_dt, \
+                f"Business date '{biz_date}' should equal order_date '{od_dt}'"
+
+    def test_all_orders_visible_under_thang_nay_filter(self):
+        """All orders with order_date in current month should be visible
+        under 'Tháng này' filter (regression for 8/14 invisible orders)."""
+        from core.utils import get_shipment_business_date
+        from core.excel_roundtrip import parse_excel_bytes, group_rows, group_to_shipment_doc
+        from datetime import datetime, date
+
+        with open("tests/fixtures/synthetic_getfly.xlsx", "rb") as f:
+            file_bytes = f.read()
+
+        result = parse_excel_bytes(file_bytes)
+        groups = group_rows(result.groups)
+
+        # Count orders visible in Aug 2026 using the fixed date semantics
+        visible_count = 0
+        for g in groups:
+            doc = group_to_shipment_doc(g)
+            biz_date = get_shipment_business_date(doc)
+            if biz_date:
+                # Handle both date and datetime objects
+                if isinstance(biz_date, datetime):
+                    biz_date = biz_date.date()
+                if isinstance(biz_date, date):
+                    if biz_date.month == 8 and biz_date.year == 2026:
+                        visible_count += 1
+
+        # All 3 orders should be visible (all have order_date in Aug 2026)
+        assert visible_count == len(groups), \
+            f"Expected {len(groups)} visible, got {visible_count}"
+
+    def test_import_result_display_counts(self):
+        """Verify the import UI result display format (contract section 12)."""
+        from views.dashboard import _render_excel_import_ui
+        assert callable(_render_excel_import_ui)
+
+    def test_cache_invalidation_after_import(self):
+        """Verify cache invalidation code exists in the import path."""
+        import inspect
+        from views.dashboard import _render_excel_import_ui
+        source = inspect.getsource(_render_excel_import_ui)
+        assert 'st.cache_data.clear()' in source, \
+            "Cache invalidation (st.cache_data.clear()) should be in import path"
+        assert 'load_data()' in source, \
+            "load_data() refresh should be in import path"

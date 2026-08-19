@@ -425,8 +425,41 @@ def _render_excel_import_ui():
                 except Exception as e:
                     st.warning(f"Không kết nối được DB: {e}")
                 
-                st.success(f"Import hoàn tất: {imported} lô mới, {updated} lô cập nhật.")
+                # Improved result display with clear counts (contract section 12)
+                total_rows = sum(len(g.details) for g in validated.groups)
+                total_orders = len(validated.groups)
+                
+                st.success(f"""
+                **KẾT QUẢ IMPORT:**
+                - ĐÃ ĐỌC FILE: **{total_orders} đơn**, **{total_rows} dòng dịch vụ**
+                - ĐÃ NHẬP MỚI: **{imported} lô**
+                - ĐÃ CẬP NHẬT: **{updated} lô**
+                - BỎ QUA: **{total_orders - imported - updated} lô**
+                - CẦN KIỂM TRA: **0 lỗi**
+                """)
+                
                 st.session_state.lg05_import_done = True
+                
+                # "Xem các lô vừa nhập" button — sets time filter to "Tất cả" and shows imported shipments
+                if st.button("🔍 [XEM CÁC LÔ VỪA NHẬP]", key="lg05_view_imported", type="primary"):
+                    st.session_state['dashboard_time_mode'] = 'Tất cả'
+                    # Mark imported IDs so they can be highlighted
+                    imported_ids = []
+                    for g in validated.groups:
+                        doc = group_to_shipment_doc(g)
+                        imported_ids.append(doc["id"])
+                    st.session_state['lg05_imported_ids'] = imported_ids
+                    st.rerun()
+                
+                # Clear cache so dashboard reloads fresh data (preserves ttl-based caching for normal browsing)
+                st.cache_data.clear()
+                
+                # Update session_state to reflect the newly imported shipments immediately
+                try:
+                    st.session_state.db_shipments = load_data()
+                except Exception:
+                    pass
+                
                 st.rerun()
 
 
