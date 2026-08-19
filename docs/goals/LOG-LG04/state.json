@@ -6,10 +6,10 @@
   "baseline_sha": "aa5cef4",
   "production_code_sha_baseline": "3c1e1c7 (Owner machine main after LG03 release)",
   "current_branch": "log-lg04-daily-work-simplification",
-  "candidate_sha": "8769883",
-  "current_task": "T6_owner_preview_gate",
-  "release_gate_version": "UX_PREVIEW_VERIFIED_ON_OWNER_MACHINE",
-  "terminal_outcome": null,
+  "candidate_sha": "69f1458",
+  "current_task": "T7_final_ux_correction",
+  "release_gate_version": "READY_FOR_OWNER_LG04_FINAL_PREVIEW_GATE",
+  "terminal_outcome": "READY_FOR_OWNER_LG04_FINAL_PREVIEW_GATE",
   "release_status": null,
   "merged": false,
   "deployed": false,
@@ -31,17 +31,36 @@
     "G_handoff: không hiểu 'tạo thỏa thuận từ báo giá' -> 'chi tiết bàn giao' để làm gì"
   ],
   "classification": {
-    "primary_work": ["export/pickup", "import/delivery", "finance input", "next action card"],
-    "reference": ["partner/agent blocks", "shipment history", "documents table", "signals"],
-    "audit_technical": ["factory lot block (hidden when empty)", "audit trails"]
+    "primary_work": [
+      "export/pickup",
+      "import/delivery",
+      "finance input",
+      "next action card"
+    ],
+    "reference": [
+      "partner/agent blocks",
+      "shipment history",
+      "documents table",
+      "signals"
+    ],
+    "audit_technical": [
+      "factory lot block (hidden when empty)",
+      "audit trails"
+    ]
   },
   "pilot": {
     "test_shipment_id": null,
     "test_data_mode": "rehearsal only, production read-only",
-    "changes": ["core/next_action_card.py (new)", "views/shipment_360.py (rewrite workspace)", "views/shipment.py (anchors + finance input-first)", "views/quotations.py (bordered rows + advanced expander)", "views/agreements.py (4-step journey + plain labels)"]
+    "changes": [
+      "core/next_action_card.py (new)",
+      "views/shipment_360.py (rewrite workspace)",
+      "views/shipment.py (anchors + finance input-first)",
+      "views/quotations.py (bordered rows + advanced expander)",
+      "views/agreements.py (4-step journey + plain labels)"
+    ]
   },
   "qa": {
-    "regression": "226 passed / 28 skipped / 0 failed (9 new LG04 UI tests)",
+    "regression": "231 passed / 28 skipped / 0 failed (all tests pass including updated LG04 tests)",
     "mojibake": "CLEAN (5 changed files)",
     "secrets": "CLEAN",
     "ast": "CLEAN",
@@ -55,8 +74,7 @@
       "owner_tryout_pending": true
     }
   },
-  "candidate_sha": "8769883",
-  "branch_sha": "8769883 (log-lg04-daily-work-simplification)",
+  "branch_sha": "69f1458 (log-lg04-daily-work-simplification)",
   "production_safety": {
     "production_db": "logistics_db",
     "writes": "NONE during dev/QA; test environment only"
@@ -65,5 +83,25 @@
   "pr_number": 3,
   "pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/3",
   "pr_state": "draft, open",
-  "pending": ["Owner tryout of preview on port 8502 + approve/reject gate", "merge of PR #3 only after owner approval", "post-merge update of owner production app"]
+  "pending": [
+    "Owner tryout of preview on port 8502 + approve/reject gate",
+    "merge of PR #3 only after owner approval",
+    "post-merge update of owner production app"
+  ],
+  "final_ux_facts": {
+    "login": "compact centered form (max-width 320px, margin auto), st.button instead of st.form_submit_button",
+    "shipment_primary_action": "XỬ LÝ LÔ → opens editable form DIRECTLY (3 tabs: PICKUP & XUẤT KHẨU / IMPORT & GIAO HÀNG / FINANCE), default tab = PICKUP & XUẤT KHẨU via active_shipment_section='export'",
+    "workspace_removed_from_editable_form": "render_shipment_workspace call removed from ui_shipment_detail_tabs in views/shipment.py",
+    "360_secondary": "360°/Tổng quan button still available on dashboard → opens read-only workspace via lg04_open_360_view",
+    "dashboard_queue_compressed": "queue block compressed, filtering moved to 'Việc cần xử lý' sidebar page",
+    "tests_updated": "test_entity_context_ui.py and test_dashboard_financial_write_oracle.py updated to match new flow (process button → editable form, overview button → 360 workspace)",
+    "production_db_writes": "NONE",
+    "production_untouched": true,
+    "lg05_not_started": true,
+    "pr_not_merged": true,
+    "not_deployed": true,
+    "performance_cache": "st.cache_resource + st.cache_data → warm run from 27s to 0.5s",
+    "support_finance_write": true,
+    "browser_qa_note": "My Browser extension cannot properly send Streamlit widget state through WebSocket (login fails via extension but works programmatically). Owner should QA directly on their machine."
+  }
 }
