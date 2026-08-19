@@ -1,7 +1,7 @@
 {
   "goal": "LOG-LG05",
   "title": "Excel Round-Trip & GNT Generation",
-  "status": "READY_FOR_OWNER_LG05_RELEASE_GATE",
+  "status": "READY_FOR_OWNER_GETFLY_IMPORT_CONFIRMATION",
   "branch": "log-lg05-excel-round-trip-gnt",
   "pr": 4,
   "pr_state": "draft",
@@ -34,7 +34,10 @@
   ],
   "gnt": {
     "template": "C1-02/NS (mẫu C1-02/NS, ban hành kèm Thông tư 184/2015/TT-BTC)",
-    "sheets": ["NHẬP THÔNG TIN", "GIẤY NỘP THUẾ"],
+    "sheets": [
+      "NHẬP THÔNG TIN",
+      "GIẤY NỘP THUẾ"
+    ],
     "auto_fill": true,
     "amount_in_words": true,
     "legal_reference": "Nghị định 347/2025/NĐ-CP (kiểm tra theo mẫu hiện hành)"
@@ -52,5 +55,8 @@
     "existing_shipments_merged_only": true,
     "customers_unchanged": 362,
     "shipments_unchanged": 78
-  }
+  },
+  "service_line_idempotency_sha": "914e849",
+  "test_count_after_idempotency": "278 passed / 28 skipped / 0 failed",
+  "notes": "Service-line dedup implemented: code+name+qty+cost+price identity, smart (CODE) suffix normalization, 3-run proof PASSED"
 }
