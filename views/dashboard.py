@@ -327,7 +327,7 @@ def _render_shipment_workdesk(all_ships, rows):
 
 def _render_excel_import_ui():
     """Render the Excel import dialog with upload, preview, and confirm."""
-    with st.expander("📤 NHẬP FILE EXCEL (52 cột)", expanded=True):
+    with st.expander("📤 NHẬP TỪ GETFLY", expanded=True):
         st.caption("Tải file Excel định dạng 52 cột (Sheet1, A:AZ). Preview trước khi import.")
         
         uploaded = st.file_uploader(
@@ -433,60 +433,6 @@ def _handle_excel_export():
     )
 
 
-def _render_gnt_dialog():
-    """Render the GNT creation dialog."""
-    from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
-    
-    with st.expander("🧾 TẠO GIẤY NỘP THUẾ (GNT)", expanded=True):
-        st.caption("Chọn lô hàng có đủ thông tin tờ khai và thuế nhập khẩu.")
-        
-        # Show shipments with GNT prerequisites met
-        eligible = []
-        ineligible = []
-        
-        for sid, ship in st.session_state.db_shipments.items():
-            prereq = check_gnt_prerequisites(ship)
-            if prereq["ready"]:
-                eligible.append((sid, ship, prereq["data"]))
-            else:
-                ineligible.append((sid, ship, prereq["missing"]))
-        
-        if eligible:
-            st.success(f"{len(eligible)} lô đủ điều kiện tạo GNT.")
-            for sid, ship, data in eligible[:5]:
-                col_sel, col_name = st.columns([0.5, 5])
-                if col_sel.button("🧾", key=f"lg05_gnt_btn_{sid}"):
-                    st.session_state.lg05_gnt_selected = sid
-        else:
-            st.warning("Không có lô nào đủ điều kiện tạo GNT.")
-            st.caption("Yêu cầu: Số tờ khai + Ngày tờ khai + Thuế NK + Thuế GTGT (tất cả phải có giá trị > 0)")
-        
-        if ineligible:
-            st.markdown(f"**{len(ineligible)} lô thiếu thông tin:**")
-            for sid, ship, missing in ineligible[:5]:
-                st.markdown(f"- {sid[:40]}: thiếu {', '.join(missing[:3])}")
-        
-        # If a shipment is selected, show download
-        selected_sid = st.session_state.pop("lg05_gnt_selected", None)
-        if selected_sid and selected_sid in st.session_state.db_shipments:
-            ship = st.session_state.db_shipments[selected_sid]
-            prereq = check_gnt_prerequisites(ship)
-            if prereq["ready"]:
-                wb_bytes = build_gnt_workbook(prereq["data"])
-                tk_no = prereq["data"].get("tk_no", "no_tk")
-                safe_tk = "".join(c for c in tk_no if c.isalnum() or c in "._-")
-                safe_sid = "".join(c for c in selected_sid if c.isalnum() or c in "._-")
-                filename = f"GNT_{safe_sid}_{safe_tk}.xlsx"
-                
-                st.download_button(
-                    label="📄 Tải file GNT.xlsx",
-                    data=wb_bytes,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="lg05_gnt_download",
-                )
-
-
 def ui_dashboard():
     st.markdown("""
     <style>
@@ -543,11 +489,11 @@ def ui_dashboard():
     c_excel1, c_excel2, c_excel3 = st.columns(3)
     
     # Import button
-    if c_excel1.button("📤 NHẬP FILE EXCEL (52 cột)", use_container_width=True, key="btn_lg05_import"):
+    if c_excel1.button("📤 NHẬP TỪ GETFLY", use_container_width=True, key="btn_lg05_import"):
         _render_excel_import_ui()
     
     # Export button
-    if c_excel2.button("📥 XUẤT DANH SÁCH ĐƠN HÀNG", use_container_width=True, key="btn_lg05_export"):
+    if c_excel2.button("📥 XUẤT CHO GETFLY", use_container_width=True, key="btn_lg05_export"):
         _handle_excel_export()
     
     # GNT button (per shipment)

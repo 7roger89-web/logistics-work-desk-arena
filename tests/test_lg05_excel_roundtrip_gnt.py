@@ -331,6 +331,6 @@ class TestLg05DashboardUI:
         from views.dashboard import _handle_excel_export
         assert callable(_handle_excel_export)
 
-    def test_gnt_function_exists(self):
-        from views.dashboard import _render_gnt_dialog
-        assert callable(_render_gnt_dialog)
+    def test_gnt_function_in_shipment(self):
+        from core.gnt_builder import build_gnt_workbook
+        assert callable(build_gnt_workbook)

@@ -302,6 +302,7 @@ def ui_shipment_detail_tabs(sid, ship):
                     )
 
                     if st.button("📥 Xuất Excel GNT", key=f"btn_gnt_{sid}", use_container_width=True):
+                        from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
                         final_tax_list = []
                         st.session_state[f"gnt_tax_data_{sid}"] = edited_taxes.to_dict("records")
                         for _, item in edited_taxes.iterrows():
@@ -319,12 +320,15 @@ def ui_shipment_detail_tabs(sid, ship):
                                 'ten_kbnn': gnt_kbnn, 'ten_cq_thu': gnt_cq_thu,
                                 'ma_cq_thu': gnt_ma_hq,
                                 'tk_thu': gnt_tk_thu, 'so_tk': gnt_so_tk,
-                                'ngay_tk': datetime.now().strftime("%d/%m/%Y"), 
-                                'ds_thue': final_tax_list
+                                'tk_no': d['2.4'].get('tk_no', ''),
+                                'tk_date': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
+                                'ngay_tk': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
+                                'ds_thue': final_tax_list,
+                                'customer_name': curr_cust,
                             }
-                            excel_buffer = create_gnt_excel(gnt_data)
-                            if excel_buffer:
-                                st.download_button(label="📄 Tải file GNT.xlsx", data=excel_buffer, file_name=f"GNT_{gnt_so_tk}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                            wb_buffer = build_gnt_workbook(gnt_data)
+                            if wb_buffer:
+                                st.download_button(label="📄 Tải file GNT.xlsx", data=wb_buffer, file_name=f"GNT_{gnt_so_tk}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
                 c4, c5 = st.columns([1,2])
                 d['2.4']['customs_status'] = c4.checkbox("Đã thông quan", d['2.4'].get('customs_status', False), key=f"{prefix}_cst")
