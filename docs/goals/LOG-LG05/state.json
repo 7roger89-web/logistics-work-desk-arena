@@ -74,5 +74,20 @@
   "second_run_dry_run_new_shipments": 0,
   "second_run_dry_run_new_service_lines": 0,
   "second_run_conflict_held": 1,
-  "regression": "278 passed / 28 skipped / 0 failed"
+  "regression": "278 passed / 28 skipped / 0 failed",
+  "reconciliation_sha": "581ac14",
+  "conflict_count": 1,
+  "false_positive_fixed": true,
+  "false_positive_cause": "Multi-line same identity key (note differs) — next() always matched first line",
+  "false_positive_fix": "One-to-one consumed matching",
+  "order6_date_explanation": "Production order_date=None, created_at=15/07/2026. GETFLY order_date=15/08/2026 but import did not overwrite (held as conflict). Business date=July 2026, correctly NOT in Tháng này.",
+  "second_run": {
+    "new_shipments": 0,
+    "unchanged_lines": 38,
+    "true_new_service": 0,
+    "conflict": 1,
+    "ambiguous": 0,
+    "idempotent": true
+  },
+  "regression_after_fix": "278 passed / 28 skipped / 0 failed"
 }
