@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta, date
+import datetime
 from uuid import uuid4
 import calendar 
 import re
@@ -60,7 +60,7 @@ def quick_assign_task_dialog():
     t_content = st.text_area("📝 Nội dung công việc", placeholder="Ví dụ: Lấy lệnh DO...")
     c1, c2 = st.columns(2)
     t_assignee = c1.selectbox("👤 Giao cho ai?", TEAM_MEMBERS)
-    t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=date.today())
+    t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=datetime.date.today())
     
     if st.button("🚀 XÁC NHẬN GIAO VIỆC", type="primary", use_container_width=True):
         if t_content.strip():
@@ -388,30 +388,30 @@ def ui_dashboard():
             key="dashboard_time_mode",
         )
 
-        today = date.today()
+        today = datetime.date.today()
         start_date, end_date = None, None
         
         if time_mode == "Tháng này":
-            start_date = date(today.year, today.month, 1)
+            start_date = datetime.date(today.year, today.month, 1)
             last_day = calendar.monthrange(today.year, today.month)[1]
-            end_date = date(today.year, today.month, last_day)
+            end_date = datetime.date(today.year, today.month, last_day)
             f3.info(f"Đang hiển thị: **{start_date.strftime('%d/%m/%Y')}** đến **{end_date.strftime('%d/%m/%Y')}**")
             
         elif time_mode == "Tháng trước":
-            first_this_month = date(today.year, today.month, 1)
+            first_this_month = datetime.date(today.year, today.month, 1)
             end_date = first_this_month - timedelta(days=1)
-            start_date = date(end_date.year, end_date.month, 1)
+            start_date = datetime.date(end_date.year, end_date.month, 1)
             f3.info(f"Đang hiển thị: **{start_date.strftime('%d/%m/%Y')}** đến **{end_date.strftime('%d/%m/%Y')}**")
             
         elif time_mode == "Năm nay":
-            start_date = date(today.year, 1, 1)
-            end_date = date(today.year, 12, 31)
+            start_date = datetime.date(today.year, 1, 1)
+            end_date = datetime.date(today.year, 12, 31)
             f3.info(f"Đang hiển thị toàn bộ năm {today.year}")
             
         elif time_mode == "Thời gian khác":
             date_range = f3.date_input(
                 "Chọn khoảng ngày tùy chỉnh:",
-                value=(date(today.year, today.month, 1), today),
+                value=(datetime.date(today.year, today.month, 1), today),
                 format="DD/MM/YYYY",
                 key="dashboard_custom_date_range",
             )
@@ -579,8 +579,9 @@ def ui_dashboard():
                 if open_360:
 
                     from views.shipment_360 import render_shipment_workspace
-
-                    render_shipment_workspace(active_sid, ship_data)
+                    from core.shipment_workspace import build_shipment_workspace_view
+                    _view = build_shipment_workspace_view(ship_data, today=datetime.date.today())
+                    render_shipment_workspace(_view, audit_rows=None, navigation_shipment_id=active_sid)
 
                 elif can_edit:
 
@@ -649,7 +650,7 @@ def ui_dashboard():
                                 if sid not in st.session_state.db_shipments:
                                     first_row = group.iloc[0]
                                     cust_name = str(first_row.get('customer_name', 'Khách Lẻ')).strip()
-                                    order_date = str(first_row.get('order_date', date.today()))
+                                    order_date = str(first_row.get('order_date', datetime.date.today()))
                                     matched_customer_id = next((cid for cid, customer in st.session_state.get('db_customers', {}).items() if str(customer.get('name', '')).strip().lower() == cust_name.lower()), '')
 
                                     details = []
@@ -849,6 +850,7 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                 if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan", use_container_width=True):
                     st.session_state.active_shipment_id = sid
                     st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_360_view = True
                     st.session_state.lg04_open_direct_work = False
                     st.rerun()
             if top_alert:

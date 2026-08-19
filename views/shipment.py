@@ -27,9 +27,6 @@ from core.database import (
 from core.excel_utils import generate_mini_export_excel
 from core.excel_gnt import create_gnt_excel
 from core.gnt_utils import get_treasury_info
-from core.shipment_360 import build_shipment_360_summary
-from core.shipment_workspace import build_shipment_workspace_view
-from views.shipment_360 import render_shipment_360_summary, render_shipment_workspace
 
 def ui_create_new_shipment():
     st.title("➕ TẠO LÔ HÀNG MỚI")
@@ -112,18 +109,8 @@ def ui_shipment_detail_tabs(sid, ship):
             st.session_state.db_entrustments = {}
             related_read_errors.append(f"entrustments ({type(exc).__name__})")
 
-    shipment_360 = build_shipment_360_summary(
-        ship,
-        proxy_payments=st.session_state.get("db_proxy", {}),
-        entrustments=st.session_state.get("db_entrustments", {}),
-        read_errors=related_read_errors,
-        agreements=st.session_state.get("db_agreements", {}),
-        quotes=st.session_state.get("db_quotes", {}),
-    )
-    audit_rows = load_audit_logs("shipment", sid, limit=30)
-    workspace_view = build_shipment_workspace_view(ship, financial_view=shipment_360)
-    render_shipment_workspace(workspace_view, audit_rows=audit_rows, navigation_shipment_id=sid)
     
+    audit_rows = load_audit_logs("shipment", sid, limit=30)
     # --- HEADER ---
     with st.container(border=True):
         c1, c2, c3, c4, c5 = st.columns([1.35, 1.2, 2.5, 1.5, 1])

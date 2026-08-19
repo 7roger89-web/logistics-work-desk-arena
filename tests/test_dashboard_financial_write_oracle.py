@@ -199,8 +199,8 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})
             self.assertTrue(
-                any("Shipment 360" in element.value for element in app.markdown),
-                "first shipment did not render Shipment 360 financial projection",
+                any("lg04_tab_export" in element.value for element in app.markdown),
+                "first shipment did not render the editable work tabs",
             )
             _button(app, "btn_close_top").click()
             app.run()
