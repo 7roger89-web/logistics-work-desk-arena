@@ -504,18 +504,29 @@ def classify_service_lines(
     conflict_lines = []
     ambiguous_lines = []
     
+    # Track which existing lines have been consumed (one-to-one matching)
+    consumed_indices = set()
+    
     for inc_line in incoming_details:
         inc_key = _service_line_key(inc_line)
         
         if inc_key in existing_keys:
-            # Find the matching existing line
-            matching_ex = next(
-                (d for k, d in existing_by_key if k == inc_key), None
-            )
+            # Find the matching existing line (one-to-one: skip already consumed)
+            matching_ex = None
+            matching_idx = None
+            for idx, (k, d) in enumerate(existing_by_key):
+                if k == inc_key and idx not in consumed_indices:
+                    matching_ex = d
+                    matching_idx = idx
+                    break
             
             if matching_ex is None:
                 ambiguous_lines.append(inc_line)
                 continue
+            
+            # Mark this existing line as consumed
+            if matching_idx is not None:
+                consumed_indices.add(matching_idx)
             
             # Check for material differences beyond identity fields
             material_fields = ["vat", "vat_line", "discount_pct", "discount_amt",
