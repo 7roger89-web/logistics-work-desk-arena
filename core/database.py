@@ -178,7 +178,7 @@ def _init_connection_impl() -> pymongo.MongoClient | None:
     try:
         client = pymongo.MongoClient(
             MONGO_URI,
-            serverSelectionTimeoutMS=5000,
+            serverSelectionTimeoutMS=30000,
             connectTimeoutMS=5000,
             socketTimeoutMS=10000,
             waitQueueTimeoutMS=10000,
