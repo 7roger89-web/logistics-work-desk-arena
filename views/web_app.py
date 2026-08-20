@@ -411,8 +411,16 @@ def main() -> None:
         st.stop()
 
     try:
-        with st.spinner("Đang đồng bộ dữ liệu hệ thống..."):
-            refresh_core_data()
+        # UX-STAB P1: Only show spinner when data is NOT already loaded or needs refresh.
+        # On every rerun (e.g., form close/cancel), refresh_core_data() returns
+        # immediately if data_loaded=True and needs_refresh=False — but the spinner
+        # was still blocking the UI visually, making the page appear "stuck".
+        _needs_data_sync = not st.session_state.get("data_loaded", False) or st.session_state.get("needs_refresh", False)
+        if _needs_data_sync:
+            with st.spinner("Đang đồng bộ dữ liệu hệ thống..."):
+                refresh_core_data()
+        else:
+            refresh_core_data()  # Returns immediately (cached, no DB work)
     except Exception as exc:
         LOGGER.exception("Core data refresh failed")
         st.session_state.last_db_error = str(exc)

@@ -97,21 +97,24 @@ def parse_date(value: Any, default: date | None = None) -> date:
 
 def get_shipment_business_date(shipment: Any) -> date | None:
     """Return a shipment business date without inventing a date.
-
-    The nested document date is authoritative; the top-level value is only a
-    backwards-compatible fallback because it is normally a persistence
-    timestamp. Missing or malformed values stay ``None`` for bounded filters.
+    Priority: order_date (canonical business order date from GETFLY)
+    > created_at (record creation timestamp) > top-level fallback.
+    Missing or malformed values stay ``None`` for bounded filters.
     """
     if not isinstance(shipment, dict):
         return None
     data = shipment.get("data")
     section = data.get("0.0") if isinstance(data, dict) else None
     if isinstance(section, dict):
+        # Prefer order_date (GETFLY "Ngày đặt hàng") as canonical business date
+        order_dt = parse_date_optional(section.get("order_date"))
+        if order_dt is not None:
+            return order_dt
+        # Fall back to created_at (GETFLY "Ngày tạo")
         nested = parse_date_optional(section.get("created_at"))
         if nested is not None:
             return nested
     return parse_date_optional(shipment.get("created_at"))
-
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)

@@ -1,0 +1,107 @@
+{
+  "goal_id": "LOG-LG04",
+  "goal_name": "Daily Work Simplification & Input-First UX",
+  "contract_file": "/home/ubuntu/upload/pasted_content_2.txt",
+  "owner_feedback_file": "/home/ubuntu/upload/Trảinghiệmapp.docx",
+  "baseline_sha": "aa5cef4",
+  "production_code_sha_baseline": "3c1e1c7 (Owner machine main after LG03 release)",
+  "current_branch": "log-lg04-daily-work-simplification",
+  "candidate_sha": "69f1458",
+  "current_task": "T7_final_ux_correction",
+  "release_gate_version": "READY_FOR_OWNER_LG04_FINAL_PREVIEW_GATE",
+  "terminal_outcome": "READY_FOR_OWNER_LG04_FINAL_PREVIEW_GATE",
+  "release_status": null,
+  "merged": false,
+  "deployed": false,
+  "lg03_baseline_facts": {
+    "lg03_terminal": "RELEASED_VERIFIED",
+    "lg03_pushed_to_main": true,
+    "production_smoke": "PASS (2026-08-18): 362 customers, 78 shipments, admin active, 3 rehearsal inactive, finance read-only safe"
+  },
+  "owner_findings": [
+    "A_shipment_workspace: mở lô hàng phải cuộn ngược; Pickup/Export + Import/Delivery + Finance phải ở trên đầu",
+    "B_info_density: khối bảng 5 cột (Vận chuyển/Phí kiểm chứng/Chi phí giữ lô/Mã M-B-L/Phí giữ lô) rườm rà",
+    "C_attention: cảnh báo 'Quá free time' + 'Việc tiếp theo' quá mờ nhạt",
+    "D_unclear: khối 'Mã vận động chủ này: pickup delivery' (entity context) không rõ + tốn diện tích",
+    "D_unclear: khối 'Sổ tay đối chứng/thể' (UNKNOWN collection/settle terms) không hiểu",
+    "D_unclear: khối 'Cẩn số: xem trị' không rõ mục đích",
+    "D_unclear: 'Ngữ cảnh đối tác là cái gì?'",
+    "E_finance: tab FINANCE mở ra chỉ tổng hợp số; cần nhập chi phí ngay",
+    "F_quotation: quá nhiều trường; ô nhập không kẻ khung",
+    "G_handoff: không hiểu 'tạo thỏa thuận từ báo giá' -> 'chi tiết bàn giao' để làm gì"
+  ],
+  "classification": {
+    "primary_work": [
+      "export/pickup",
+      "import/delivery",
+      "finance input",
+      "next action card"
+    ],
+    "reference": [
+      "partner/agent blocks",
+      "shipment history",
+      "documents table",
+      "signals"
+    ],
+    "audit_technical": [
+      "factory lot block (hidden when empty)",
+      "audit trails"
+    ]
+  },
+  "pilot": {
+    "test_shipment_id": null,
+    "test_data_mode": "rehearsal only, production read-only",
+    "changes": [
+      "core/next_action_card.py (new)",
+      "views/shipment_360.py (rewrite workspace)",
+      "views/shipment.py (anchors + finance input-first)",
+      "views/quotations.py (bordered rows + advanced expander)",
+      "views/agreements.py (4-step journey + plain labels)"
+    ]
+  },
+  "qa": {
+    "regression": "231 passed / 28 skipped / 0 failed (all tests pass including updated LG04 tests)",
+    "mojibake": "CLEAN (5 changed files)",
+    "secrets": "CLEAN",
+    "ast": "CLEAN",
+    "rbac_oracles": "50 passed (rbac/finance/oracle test subset)",
+    "visual_qa": "PASS via My Browser 2026-08-18: owner machine port 8502 preview (FETCH_HEAD of log-lg04 branch), admin login OK, shipment 360 workspace LO-0306 render verified: next-action card (nghiêm trọng), 3 primary work cards + jump buttons, signal row, 4 reference expanders, tabs Chi tiết/PICKUP/IMPORT/FINANCE present. FINANCE tab content verified via AppTest (input-first subheader). No writes made (preview read-only view).",
+    "ux_preview_facts": {
+      "preview_mode": "git checkout FETCH_HEAD + streamlit --server.port 8502 on owner machine D:\\Logistics_App_GitHub",
+      "production_app_untouched": true,
+      "production_db_writes": "NONE",
+      "preview_viewed_by_agent": true,
+      "owner_tryout_pending": true
+    }
+  },
+  "branch_sha": "69f1458 (log-lg04-daily-work-simplification)",
+  "production_safety": {
+    "production_db": "logistics_db",
+    "writes": "NONE during dev/QA; test environment only"
+  },
+  "lg05_started": false,
+  "pr_number": 3,
+  "pr_url": "https://github.com/7roger89-web/logistics-work-desk/pull/3",
+  "pr_state": "draft, open",
+  "pending": [
+    "Owner tryout of preview on port 8502 + approve/reject gate",
+    "merge of PR #3 only after owner approval",
+    "post-merge update of owner production app"
+  ],
+  "final_ux_facts": {
+    "login": "compact centered form (max-width 320px, margin auto), st.button instead of st.form_submit_button",
+    "shipment_primary_action": "XỬ LÝ LÔ → opens editable form DIRECTLY (3 tabs: PICKUP & XUẤT KHẨU / IMPORT & GIAO HÀNG / FINANCE), default tab = PICKUP & XUẤT KHẨU via active_shipment_section='export'",
+    "workspace_removed_from_editable_form": "render_shipment_workspace call removed from ui_shipment_detail_tabs in views/shipment.py",
+    "360_secondary": "360°/Tổng quan button still available on dashboard → opens read-only workspace via lg04_open_360_view",
+    "dashboard_queue_compressed": "queue block compressed, filtering moved to 'Việc cần xử lý' sidebar page",
+    "tests_updated": "test_entity_context_ui.py and test_dashboard_financial_write_oracle.py updated to match new flow (process button → editable form, overview button → 360 workspace)",
+    "production_db_writes": "NONE",
+    "production_untouched": true,
+    "lg05_not_started": true,
+    "pr_not_merged": true,
+    "not_deployed": true,
+    "performance_cache": "st.cache_resource + st.cache_data → warm run from 27s to 0.5s",
+    "support_finance_write": true,
+    "browser_qa_note": "My Browser extension cannot properly send Streamlit widget state through WebSocket (login fails via extension but works programmatically). Owner should QA directly on their machine."
+  }
+}

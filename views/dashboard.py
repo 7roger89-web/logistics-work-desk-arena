@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta, date
+import datetime
 from uuid import uuid4
 import calendar 
 import re
@@ -60,7 +60,7 @@ def quick_assign_task_dialog():
     t_content = st.text_area("📝 Nội dung công việc", placeholder="Ví dụ: Lấy lệnh DO...")
     c1, c2 = st.columns(2)
     t_assignee = c1.selectbox("👤 Giao cho ai?", TEAM_MEMBERS)
-    t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=date.today())
+    t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=datetime.date.today())
     
     if st.button("🚀 XÁC NHẬN GIAO VIỆC", type="primary", use_container_width=True):
         if t_content.strip():
@@ -227,47 +227,58 @@ def _render_financial_explanation(row):
 
 def _render_shipment_workdesk(all_ships, rows):
     """Render the shipment-first read-only operations queue."""
-
-    st.markdown(
-        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>"
-        "<h2 class='ops-section-title'>Lô hàng cần xử lý</h2>",
-        unsafe_allow_html=True,
-    )
-    st.caption("Ưu tiên theo cảnh báo và deadline. Mỗi dòng trả lời nhanh: lô nào, đang chờ ai, bước tiếp theo là gì.")
-
+    # R3: Compact summary band at top (replaces large KPI band)
     summary = build_dashboard_summary(rows)
     action_count = summary["critical"] + summary["warning"]
+    overdue = sum(1 for r in rows if r.get("top_alert") and r["top_alert"].get("severity") == CRITICAL)
+    missing_docs = sum(1 for r in rows if r.get("missing_documents_count", 0) > 0)
+    waiting = sum(1 for r in rows if not r.get("next_action") or r.get("next_action") == "Không có việc tiếp theo")
+
     st.markdown(
         f"""
-        <div class='ops-summary-band' aria-label='Tổng quan vận hành'>
-          <div><span class='ops-summary-label'>TỔNG LÔ</span><strong>{summary['total']}</strong><small>trong phạm vi hiện tại</small></div>
-          <div class='ops-summary-focus'><span class='ops-summary-label'>CẦN XỬ LÝ</span><strong>{action_count}</strong><small>cảnh báo ưu tiên</small></div>
-          <div><span class='ops-summary-label'>DEADLINE</span><strong>{summary['deadline_soon']}</strong><small>sắp hoặc quá hạn</small></div>
-          <div><span class='ops-summary-label'>TÀI CHÍNH CẦN THEO DÕI</span><strong>{summary['financial_attention']}</strong><small>không phải số đã chốt</small></div>
-          <div><span class='ops-summary-label'>THIẾU CONTEXT</span><strong>{summary['missing_info']}</strong><small>cần bổ sung dữ liệu</small></div>
+        <div style='background:#FFF8EB;border:2px solid #D97706;border-radius:8px;padding:0.6rem 0.8rem;margin:0.5rem 0 0.8rem;'>
+          <span style='font-size:1.1rem;font-weight:800;color:#92400E;'>🔴 {action_count} lô cần xử lý</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {overdue} quá hạn</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {missing_docs} thiếu chứng từ</span>
+          <span style='color:#92400E;margin-left:0.8rem;'>· {waiting} đang chờ</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    st.markdown(
+        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>",
+        unsafe_allow_html=True,
+    )
+    # R3: Simple controls — time period already handled by ui_dashboard filters
+    # Only keep: quick search + customer/status if useful
     owners = sorted({str(row.get("owner") or "").strip() for row in rows if row.get("owner")})
-    # Keep the requested owner filter discoverable without assigning it to rows.
     if "SALE Thành" not in owners:
         owners.insert(0, "SALE Thành")
     customers = sorted({str(row.get("customer") or "").strip() for row in rows if row.get("customer")})
     status_options = ["Tất cả"] + sorted({str(row.get("operational_status") or "").strip() for row in rows if row.get("operational_status")})
-    financial_options = [
-        ("Tất cả", None),
-        ("Tài chính OK", "ok"),
-        ("Đang mở", FINANCIAL_OPEN),
-        ("Cần đối soát", FINANCIAL_REVIEW),
-        ("UNKNOWN", FINANCIAL_UNKNOWN),
-    ]
 
-    with st.expander("🔎 Lọc & tìm trong queue", expanded=True):
-        f1, f2, f3, f4, f5 = st.columns([1.4, 1.5, 1.5, 1.4, 1.6])
-        owner_filter = f1.selectbox("Sale phụ trách", ["Tất cả"] + owners, key="dashboard_owner_filter")
-        customer_filter = f2.selectbox("Khách hàng", ["Tất cả"] + customers, key="dashboard_customer_filter")
+    # R3: Keep only simple controls — customer + status (remove complex queue filters)
+    f1, f2, f3 = st.columns([1.5, 1.5, 1.5])
+    customer_filter = f1.selectbox("Khách hàng", ["Tất cả"] + customers, key="dashboard_customer_filter")
+    owner_filter = f2.selectbox("Sale phụ trách", ["Tất cả"] + owners, key="dashboard_owner_filter")
+    operational_filter = f3.selectbox(
+        "Vận hành",
+        status_options,
+        format_func=lambda value: "Tất cả" if value == "Tất cả" else STATUS_MAP_INV.get(value, value),
+        key="dashboard_operational_filter",
+    )
+
+    # R3: Detailed queue filters moved to expander (collapsed by default)
+    with st.expander("🔎 Lọc nâng cao (mở rộng)", expanded=False):
+        financial_options = [
+            ("Tất cả", None),
+            ("Tài chính OK", "ok"),
+            ("Đang mở", FINANCIAL_OPEN),
+            ("Cần đối soát", FINANCIAL_REVIEW),
+            ("UNKNOWN", FINANCIAL_UNKNOWN),
+        ]
+        f3, f4, f5 = st.columns([1.5, 1.5, 2])
         attention_filter = f3.selectbox(
             "Cảnh báo",
             [
@@ -281,26 +292,20 @@ def _render_shipment_workdesk(all_ships, rows):
             ],
             key="dashboard_attention_filter",
         )
-        operational_filter = f4.selectbox(
-            "Vận hành",
-            status_options,
-            format_func=lambda value: "Tất cả" if value == "Tất cả" else STATUS_MAP_INV.get(value, value),
-            key="dashboard_operational_filter",
-        )
-        financial_filter_label = f5.selectbox(
+        financial_filter_label = f4.selectbox(
             "Tài chính",
             [label for label, _ in financial_options],
             key="dashboard_financial_filter",
         )
-        q1, q2, q3 = st.columns([1.5, 1.5, 3.0])
+        q1, q2 = st.columns([1, 2])
         only_actionable = q1.checkbox("Chỉ còn việc", value=False, key="dashboard_only_actionable")
         deadline_only = q2.checkbox("Chỉ deadline", value=False, key="dashboard_deadline_only")
-        q3.caption("Search ở thanh phạm vi phía trên · financial status luôn là read-only projection.")
+        q2.caption("filter 'Lọc & tìm trong queue' đã chuyển sang trang 'Việc cần xử lý'.")
 
     filtered_rows = filter_dashboard_views(
         rows,
-        owner=owner_filter,
         customer=customer_filter,
+        owner=owner_filter,
         operational_status=operational_filter,
         financial_flag=dict(financial_options).get(financial_filter_label),
         has_alert=True if only_actionable else None,
@@ -311,94 +316,273 @@ def _render_shipment_workdesk(all_ships, rows):
     filtered_rows = sort_dashboard_views(filtered_rows)
     st.markdown(
         f"<div class='ops-filter-note'><strong>{len(filtered_rows)}/{len(rows)} lô</strong> đang hiển thị · "
-        "mở một dòng để đi thẳng vào Shipment 360 · các trạng thái UNKNOWN được giữ nguyên.</div>",
+        "mở một dòng để đi thẳng vào form nhập liệu · các trạng thái UNKNOWN được giữ nguyên.</div>",
         unsafe_allow_html=True,
     )
+    _render_workdesk_rows(all_ships, filtered_rows)
 
-    if not filtered_rows:
-        st.info("📭 Không có lô hàng phù hợp với các bộ lọc hiện tại.")
-        return
+# ============================================================
+# LOG-LG05: Excel Round-Trip & GNT UI
+# ============================================================
 
-    for row in filtered_rows:
-        row_sid = str(row.get("shipment_id") or "UNKNOWN")
-        ship = all_ships.get(row_sid)
-        if ship is None:
-            ship = next(
-                (
-                    candidate
-                    for candidate in all_ships.values()
-                    if str(candidate.get("id") or candidate.get("shipment_id") or "") == row_sid
-                ),
-                None,
-            )
-        if not ship:
-            continue
-        sid = str(ship.get("id") or row_sid)
-        data = ship.get("data", {})
-        route = data.get("1.2", {}) if isinstance(data, dict) else {}
-        if not isinstance(route, dict):
-            route = {}
-        top_alert = row.get("top_alert") or {}
-        alert_color = {CRITICAL: ("#FDECEC", "#B42318"), "warning": ("#FFF4E5", "#9A6700"), "info": ("#EEF2FF", "#4657C8")}.get(top_alert.get("severity"), ("#F3F4F6", "#475467"))
-        finance_color = {
-            "ok": ("#EAF7EF", "#18794E"),
-            FINANCIAL_OPEN: ("#FFF4E5", "#9A6700"),
-            FINANCIAL_REVIEW: ("#EEF2FF", "#4657C8"),
-            FINANCIAL_UNKNOWN: ("#FDECEC", "#B42318"),
-        }.get(row.get("financial_flag"), ("#F3F4F6", "#475467"))
-
-        context_bits = _desk_source_context(row, data, route)
-        with st.container(border=True):
-            st.markdown(
-                f"<div class='ops-row-head'><span class='ops-row-id'>{escape_html(sid)}</span>"
-                f"<span class='ops-row-customer'>{escape_html(row.get('customer') or 'Chưa có khách hàng')}</span>"
-                f"<span class='ops-row-route'>{escape_html(route.get('pol') or '?')} → {escape_html(route.get('pod') or '?')}</span></div>",
-                unsafe_allow_html=True,
-            )
-            c_main, c_ops, c_finance, c_action = st.columns([2.8, 1.5, 1.8, 1.25])
-            with c_main:
-                st.caption(
-                    f"Sale: {row.get('owner', 'Chưa phân công')} · "
-                    f"Cập nhật: {row.get('last_update_label', 'Chưa có')} · "
-                    f"{escape_html(route.get('pol', '?'))} ➝ {escape_html(route.get('pod', '?'))}"
-                )
-                date_bits = [f"ETA: {row.get('arrival_date_label', 'Chưa có')}"]
-                if row.get("required_date"):
-                    date_bits.append(f"Hạn khách: {row.get('required_date_label')}")
-                if row.get("promised_date"):
-                    date_bits.append(f"Mốc hẹn: {row.get('promised_date_label')}")
-                if row.get("planned_date"):
-                    date_bits.append(f"Kế hoạch: {row.get('planned_date_label')}")
-                st.caption(" · ".join(date_bits))
-                st.caption(" · ".join(context_bits))
-            with c_ops:
-                st.markdown(_desk_badge(f"Vận hành: {row.get('operational_status_label')}", "#EEF2FF", "#4657C8"), unsafe_allow_html=True)
-                if row.get("days_remaining") is not None:
-                    free_label = f"Free time: {row['days_remaining']} ngày"
-                    st.markdown(_desk_badge(free_label, alert_color[0], alert_color[1]), unsafe_allow_html=True)
-                elif row.get("free_time_days") is None:
-                    st.caption("Free time: UNKNOWN")
-            with c_finance:
-                st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
-                st.caption(escape_html(row.get("financial_status")))
-                with st.expander("Vì sao ra số này?", expanded=False):
-                    _render_financial_explanation(row)
-            with c_action:
-                st.markdown("**MỞ HỒ SƠ LÔ 360°**")
-                if st.button(sid, key=f"dashboard_open_360_{sid}", help="Mở Shipment 360", use_container_width=True):
-                    st.session_state.active_shipment_id = sid
-                    st.session_state.dashboard_active_shipment_id = sid
+def _render_excel_import_ui():
+    """Render the Excel import dialog with upload, preview, and confirm."""
+    with st.expander("📤 NHẬP TỪ GETFLY", expanded=True, key="lg05_import_expander"):
+        st.caption("Tải file Excel định dạng 52 cột (Sheet1, A:AZ). Preview trước khi import.")
+        
+        uploaded = st.file_uploader(
+            "Chọn file Excel (.xlsx)", 
+            type=["xlsx"], 
+            key="lg05_excel_upload",
+            help="File phải có Sheet1 với 52 cột từ A đến AZ theo đúng thứ tự."
+        )
+        
+        if uploaded:
+            uploaded.seek(0)
+            file_bytes = uploaded.read()
+            if file_bytes:
+                st.session_state["lg05_excel_bytes"] = file_bytes
+        
+        file_bytes = st.session_state.get("lg05_excel_bytes", b"")
+        if file_bytes:
+            # Parse
+            from core.excel_roundtrip import parse_excel_bytes, group_rows, validate_groups
+            result = parse_excel_bytes(file_bytes)
+            
+            if result.errors:
+                st.error("Lỗi parse file:\n" + "\n".join(result.errors))
+                return
+            
+            st.success(f"Đã parse {result.row_count} dòng, không lỗi cú pháp.")
+            
+            # Group
+            groups = group_rows(result.groups)
+            st.info(f"Nhóm thành {len(groups)} lô hàng với {sum(len(g.details) for g in groups)} dòng dịch vụ.")
+            
+            # Validate
+            # Ensure db_shipments is loaded
+            if "db_shipments" not in st.session_state or not st.session_state.db_shipments:
+                from core.database import load_data
+                try:
+                    st.session_state.db_shipments = load_data() or {}
+                except Exception:
+                    st.session_state.db_shipments = {}
+            existing_ids = set(st.session_state.db_shipments.keys())
+            validated = validate_groups(groups, existing_ids)
+            
+            if not validated.is_valid:
+                st.error("Dữ liệu không hợp lệ:\n" + "\n".join(validated.errors))
+                return
+            
+            # Preview with conflict detection
+            from core.excel_roundtrip import classify_service_lines
+            st.markdown("**Preview lô hàng sẽ import:**")
+            
+            # Classification
+            new_shipments = []
+            conflicted_shipments = []
+            no_change_shipments = []
+            
+            for g in validated.groups:
+                sid = g.shipment_id
+                if sid in existing_ids:
+                    # Classify service lines against existing
+                    existing_details = st.session_state.db_shipments.get(sid, {}).get("data", {}).get("3.4", {}).get("details", [])
+                    from core.excel_roundtrip import group_to_shipment_doc as _g2d
+                    incoming_details = _g2d(g).get("data", {}).get("3.4", {}).get("details", [])
+                    same, new, conflict, ambiguous = classify_service_lines(existing_details, incoming_details)
+                    
+                    if conflict or ambiguous:
+                        conflicted_shipments.append((g, same, new, conflict, ambiguous))
+                        st.markdown(f"- ⚠️ **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] **CẦN XÁC MINH DỮ LIỆU GETFLY**")
+                    elif new:
+                        conflicted_shipments.append((g, same, new, conflict, ambiguous))
+                        st.markdown(f"- 🔄 **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] +{len(new)} dịch vụ mới")
+                    else:
+                        no_change_shipments.append(g)
+                        st.markdown(f"- ✅ **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] Không thay đổi")
+                else:
+                    new_shipments.append(g)
+                    st.markdown(f"- 🆕 **{g.shipment_id[:60]}** ({g.customer_name[:40]}) — [{g.status}] {len(g.details)} dịch vụ")
+            
+            # Show conflict preview if any
+            if conflicted_shipments:
+                st.warning("⚠️ Có lô hàng cần xác minh dữ liệu:")
+                for g, same, new, conflict, ambiguous in conflicted_shipments:
+                    st.markdown(f"\n**LÔ: {g.shipment_id[:60]}**")
+                    if conflict:
+                        # Show conflict details
+                        existing_details = st.session_state.db_shipments.get(g.shipment_id, {}).get("data", {}).get("3.4", {}).get("details", [])
+                        from core.excel_roundtrip import group_to_shipment_doc as _g2d
+                        incoming_details = _g2d(g).get("data", {}).get("3.4", {}).get("details", [])
+                        for inc_line in conflict:
+                            inc_key = (inc_line.get("code", ""), str(inc_line.get("name", "")).strip(), inc_line.get("qty", 0), inc_line.get("cost", 0), inc_line.get("price", 0))
+                            # Find matching existing line
+                            matching_ex = next(
+                                (d for d in existing_details 
+                                 if (d.get("code", ""), str(d.get("name", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key
+                                 or (d.get("code", ""), str(d.get("name_full", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key
+                                 or (d.get("code", ""), str(d.get("display_name", "")).strip(), d.get("qty", 0), d.get("cost", 0), d.get("price", 0)) == inc_key),
+                                None
+                            )
+                            if matching_ex:
+                                import re as _re
+                                code = str(inc_line.get("code", "")).strip().upper()
+                                ex_name = str(matching_ex.get("name", "") or matching_ex.get("name_full", "") or matching_ex.get("display_name", "")).strip()
+                                # Strip (CODE) suffix for display
+                                ex_name_clean = _re.sub(rf"\s*\({_re.escape(code)}\)\s*$", "", ex_name, flags=_re.IGNORECASE).strip()
+                                inc_name = str(inc_line.get("name", "")).strip()
+                                st.markdown(f"  - TRƯỜNG XUNG ĐỘT: **VAT**")
+                                st.markdown(f"    - TRONG APP: **{matching_ex.get('vat', 'N/A')}%**")
+                                st.markdown(f"    - TRONG GETFLY: **{inc_line.get('vat', 'N/A')}%**")
+                                st.markdown(f"    - DỊCH VỤ: {inc_name} (code: {inc_line.get('code', '')})")
+                                st.markdown(f"    - ẢNH HƯỞNG: VAT tham gia tính Thành tiền/Doanh thu. Giá trị khác nhau → tổng tài chính sẽ khác.")
+                                st.markdown(f"    - ⚠️ KHÔNG tự động chọn giá trị nào. LO ĐƯỢC GIỮ NGUYÊN CHO CHỦ XỬ LÝ.")
+                    elif ambiguous:
+                        st.markdown(f"  - TRƯỜNG XUNG ĐỘT: Không xác định được — cần kiểm tra thủ công")
+            
+            # Summary
+            st.info(f"\n📋 **TÓM TẮT:** {len(new_shipments)} lô mới sẽ nhập, {len(conflicted_shipments)} lô cần xác minh, {len(no_change_shipments)} lô không thay đổi.")
+            
+            if validated.warnings:
+                st.warning("Cảnh báo:\n" + "\n".join(validated.warnings[:5]))
+            
+            # Confirm — only import NEW shipments, hold conflicted ones
+            if validated.is_valid and new_shipments and st.button("✅ XÁC NHẬN IMPORT", key="lg05_confirm_import", type="primary"):
+                from core.database import save_shipment_atomic
+                imported = 0
+                updated = 0
+                held_conflicts = []
+                
+                for g in new_shipments:
+                    from core.excel_roundtrip import group_to_shipment_doc
+                    doc = group_to_shipment_doc(g)
+                    sid = doc["id"]
+                    st.session_state.db_shipments[sid] = doc
+                    imported += 1
+                
+                # Save to DB (best effort)
+                try:
+                    from core.database import get_db
+                    db = get_db()
+                    saved_count = 0
+                    for g in new_shipments:
+                        from core.excel_roundtrip import group_to_shipment_doc
+                        doc = group_to_shipment_doc(g)
+                        sid = doc.get("id", "")
+                        try:
+                            db.shipments.update_one(
+                                {"id": sid}, {"$set": doc}, upsert=True
+                            )
+                            saved_count += 1
+                        except Exception as ex:
+                            st.warning(f"Không lưu được lô {sid}: {ex}")
+                    if saved_count > 0:
+                        st.session_state.lg05_import_done = True
+                except Exception as e:
+                    st.warning(f"Không kết nối được DB: {e}")
+                
+                # Improved result display with clear counts (contract section 12)
+                total_rows = sum(len(g.details) for g in new_shipments)
+                total_orders = len(new_shipments)
+                conflict_count = len(conflicted_shipments)
+                
+                st.success(f"""
+                **KẾT QUẢ IMPORT:**
+                - ĐÃ ĐỌC FILE: **{len(validated.groups)} đơn**, **{sum(len(g.details) for g in validated.groups)} dòng dịch vụ**
+                - ĐÃ NHẬP MỚI: **{imported} lô** ({total_rows} dòng dịch vụ)
+                - GIỮ NGUYÊN (cần xác minh): **{conflict_count} lô** — VAT trong app ≠ file GETFLY
+                - BỎ QUA (không đổi): **{len(no_change_shipments)} lô**
+                - CẦN KIỂM TRA: **{sum(len(c[3]) for c in conflicted_shipments) + sum(len(c[4]) for c in conflicted_shipments)} dòng dịch vụ xung đột**
+                """)
+                
+                # Save to DB (best effort)
+                try:
+                    from core.database import get_db
+                    db = get_db()
+                    saved_count = 0
+                    for g in validated.groups:
+                        from core.excel_roundtrip import group_to_shipment_doc
+                        doc = group_to_shipment_doc(g)
+                        sid = doc.get("id", "")
+                        try:
+                            db.shipments.update_one(
+                                {"id": sid}, {"$set": doc}, upsert=True
+                            )
+                            saved_count += 1
+                        except Exception as ex:
+                            st.warning(f"Không lưu được lô {sid}: {ex}")
+                    if saved_count > 0:
+                        st.session_state.lg05_import_done = True
+                except Exception as e:
+                    st.warning(f"Không kết nối được DB: {e}")
+                
+                # Improved result display with clear counts (contract section 12)
+                total_rows = sum(len(g.details) for g in validated.groups)
+                total_orders = len(validated.groups)
+                
+                st.success(f"""
+                **KẾT QUẢ IMPORT:**
+                - ĐÃ ĐỌC FILE: **{total_orders} đơn**, **{total_rows} dòng dịch vụ**
+                - ĐÃ NHẬP MỚI: **{imported} lô**
+                - ĐÃ CẬP NHẬT: **{updated} lô**
+                - BỎ QUA: **{total_orders - imported - updated} lô**
+                - CẦN KIỂM TRA: **0 lỗi**
+                """)
+                
+                st.session_state.lg05_import_done = True
+                
+                # "Xem các lô vừa nhập" button — sets time filter to "Tất cả" and shows imported shipments
+                if st.button("🔍 [XEM CÁC LÔ VỪA NHẬP]", key="lg05_view_imported", type="primary"):
+                    st.session_state['dashboard_time_mode'] = 'Tất cả'
+                    # Mark imported IDs so they can be highlighted
+                    imported_ids = []
+                    for g in validated.groups:
+                        doc = group_to_shipment_doc(g)
+                        imported_ids.append(doc["id"])
+                    st.session_state['lg05_imported_ids'] = imported_ids
                     st.rerun()
+                
+                # Clear cache so dashboard reloads fresh data (preserves ttl-based caching for normal browsing)
+                st.cache_data.clear()
+                
+                # Update session_state to reflect the newly imported shipments immediately
+                try:
+                    st.session_state.db_shipments = load_data()
+                except Exception:
+                    pass
+                
+                st.rerun()
 
-            if top_alert:
-                severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
-                st.markdown(
-                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
-                    f"{escape_html(top_alert.get('detail'))}</div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown("<div class='ops-next-action ops-next-action-ok'>✅ Chưa có cảnh báo cần xử lý.</div>", unsafe_allow_html=True)
+
+def _handle_excel_export():
+    """Export all visible shipments to 52-column Excel."""
+    from core.excel_roundtrip import export_to_excel_bytes
+    
+    # Get filtered shipments
+    time_mode = st.session_state.get('dashboard_time_mode', 'Tháng này')
+    search_q = st.session_state.get('dashboard_search_query', '')
+    
+    ships = st.session_state.db_shipments
+    exported = []
+    
+    for sid, ship in ships.items():
+        exported.append(ship)
+    
+    if not exported:
+        st.warning("Không có lô hàng để xuất.")
+        return
+    
+    xlsx_bytes = export_to_excel_bytes(exported)
+    
+    st.download_button(
+        label="📄 Tải file Excel (52 cột)",
+        data=xlsx_bytes,
+        file_name=f"danhsachdonhang_{datetime.date.today().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="lg05_download_export",
+    )
+
 
 def ui_dashboard():
     st.markdown("""
@@ -451,6 +635,19 @@ def ui_dashboard():
     if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True): quick_note_dialog()
     view_archive = c_tog.toggle("Lưu Trữ", value=False)
     
+    # ─── LOG-LG05: Excel Import/Export ───
+    st.divider()
+    c_excel1, c_excel2 = st.columns(2)
+    
+    # Import button
+    if c_excel1.button("📤 NHẬP TỪ GETFLY", use_container_width=True, key="btn_lg05_import"):
+        _render_excel_import_ui()
+    
+    # Export button
+    if c_excel2.button("📥 XUẤT CHO GETFLY", use_container_width=True, key="btn_lg05_export"):
+        _handle_excel_export()
+    
+    
     # ==============================================================
     # BỘ LỌC THỜI GIAN VÀ TÌM KIẾM (HIỂN THỊ CHÍNH GIỮA MÀN HÌNH)
     # ==============================================================
@@ -463,34 +660,34 @@ def ui_dashboard():
         time_mode = f2.selectbox(
             "Khoảng thời gian:", 
             ["Tháng này", "Tháng trước", "Năm nay", "Thời gian khác", "Tất cả"], 
-            index=4,
+            index=0,  # Owner requirement: default = Tháng này
             key="dashboard_time_mode",
         )
 
-        today = date.today()
+        today = datetime.date.today()
         start_date, end_date = None, None
         
         if time_mode == "Tháng này":
-            start_date = date(today.year, today.month, 1)
+            start_date = datetime.date(today.year, today.month, 1)
             last_day = calendar.monthrange(today.year, today.month)[1]
-            end_date = date(today.year, today.month, last_day)
+            end_date = datetime.date(today.year, today.month, last_day)
             f3.info(f"Đang hiển thị: **{start_date.strftime('%d/%m/%Y')}** đến **{end_date.strftime('%d/%m/%Y')}**")
             
         elif time_mode == "Tháng trước":
-            first_this_month = date(today.year, today.month, 1)
-            end_date = first_this_month - timedelta(days=1)
-            start_date = date(end_date.year, end_date.month, 1)
+            first_this_month = datetime.date(today.year, today.month, 1)
+            end_date = first_this_month - datetime.timedelta(days=1)
+            start_date = datetime.date(end_date.year, end_date.month, 1)
             f3.info(f"Đang hiển thị: **{start_date.strftime('%d/%m/%Y')}** đến **{end_date.strftime('%d/%m/%Y')}**")
             
         elif time_mode == "Năm nay":
-            start_date = date(today.year, 1, 1)
-            end_date = date(today.year, 12, 31)
+            start_date = datetime.date(today.year, 1, 1)
+            end_date = datetime.date(today.year, 12, 31)
             f3.info(f"Đang hiển thị toàn bộ năm {today.year}")
             
         elif time_mode == "Thời gian khác":
             date_range = f3.date_input(
                 "Chọn khoảng ngày tùy chỉnh:",
-                value=(date(today.year, today.month, 1), today),
+                value=(datetime.date(today.year, today.month, 1), today),
                 format="DD/MM/YYYY",
                 key="dashboard_custom_date_range",
             )
@@ -635,6 +832,7 @@ def ui_dashboard():
                 if c_close.button("← Queue" if return_to_queue else "❌", key="btn_close_top", use_container_width=True):
                     st.session_state.active_shipment_id = None
                     st.session_state.dashboard_active_shipment_id = None
+                    st.session_state.confirm_delete_sid = None
                     if return_to_finance:
                         st.session_state.active_page = "Đối Soát Tài Chính"
                         st.session_state.finance_review_return = False
@@ -644,7 +842,8 @@ def ui_dashboard():
                     st.rerun()
 
                 if st.session_state.get('confirm_delete_sid') == active_sid:
-                    st.warning("Lô sẽ được đưa vào thùng lưu trữ và vẫn còn trong audit log.")
+                    ship_name = ship_data.get('customer') or ship_data.get('client') or active_sid
+                    st.error(f"⚠️ BẠN CÓ CHẮC MUỐN XÓA LÔ HÀNG NÀY?\n\n📋 **Mã lô:** {active_sid}\n🏢 **Khách hàng:** {ship_name}\n\nLô sẽ được đưa vào thùng lưu trữ (soft delete) và vẫn còn trong audit log.\nHành động này KHÔNG thể hoàn tác từ giao diện người dùng.")
                     col_y, col_n = st.columns(2)
                     if col_y.button("✅ XÁC NHẬN XÓA", key="confirm_yes"):
                         if delete_shipment(active_sid):
@@ -653,7 +852,17 @@ def ui_dashboard():
                     if col_n.button("Hủy bỏ", key="confirm_no"): st.session_state.confirm_delete_sid = None; st.rerun()
 
                 st.divider()
-                if can_edit:
+                open_360 = st.session_state.pop("lg04_open_360_view", False)
+
+                if open_360:
+
+                    from views.shipment_360 import render_shipment_workspace
+                    from core.shipment_workspace import build_shipment_workspace_view
+                    _view = build_shipment_workspace_view(ship_data, today=datetime.date.today())
+                    render_shipment_workspace(_view, audit_rows=None, navigation_shipment_id=active_sid)
+
+                elif can_edit:
+
                     ui_shipment_detail_tabs(active_sid, ship_data)
                 else:
                     st.info("Tài khoản hiện tại chỉ có quyền xem.")
@@ -719,7 +928,7 @@ def ui_dashboard():
                                 if sid not in st.session_state.db_shipments:
                                     first_row = group.iloc[0]
                                     cust_name = str(first_row.get('customer_name', 'Khách Lẻ')).strip()
-                                    order_date = str(first_row.get('order_date', date.today()))
+                                    order_date = str(first_row.get('order_date', datetime.date.today()))
                                     matched_customer_id = next((cid for cid, customer in st.session_state.get('db_customers', {}).items() if str(customer.get('name', '')).strip().lower() == cust_name.lower()), '')
 
                                     details = []
@@ -824,9 +1033,14 @@ def ui_dashboard():
         comm_data = []
         for sid, s in ships_filtered.items():
             comm_info = s['data']['3.4'].get('commission', {})
-            val = safe_float(comm_info.get('total', 0))
+            if isinstance(comm_info, dict):
+                val = safe_float(comm_info.get('total', 0))
+                note = comm_info.get('note', '')
+            else:
+                val = safe_float(comm_info)
+                note = ''
             if val > 0:
-                comm_data.append({"Mã Lô": sid, "Khách Hàng": s['client_short'], "Hoa Hồng": val, "Ghi Chú": comm_info.get('note', '')})
+                comm_data.append({"Mã Lô": sid, "Khách Hàng": s['client_short'], "Hoa Hồng": val, "Ghi Chú": note})
         if comm_data:
             df_comm = pd.DataFrame(comm_data)
             st.metric("Tổng Hoa Hồng", f"{df_comm['Hoa Hồng'].sum():,.0f} ₫")
@@ -835,3 +1049,109 @@ def ui_dashboard():
                 xls = generate_commission_excel([(item['Mã Lô'], ships_filtered[item['Mã Lô']]) for item in comm_data])
                 if xls: st.download_button("Download Commission.xlsx", xls, "Commission.xlsx")
         else: st.info("Không có hoa hồng trong khoảng thời gian này.")
+
+def _render_workdesk_rows(all_ships, filtered_rows):
+    """Render individual shipment rows in the workdesk. Extracted for reuse."""
+    from core.shipment_dashboard import CRITICAL, FINANCIAL_OPEN, FINANCIAL_REVIEW, FINANCIAL_UNKNOWN
+
+    if not filtered_rows:
+        st.info("📭 Không có lô hàng phù hợp với các bộ lọc hiện tại.")
+        return
+
+    for row in filtered_rows:
+        row_sid = str(row.get("shipment_id") or "UNKNOWN")
+        ship = all_ships.get(row_sid)
+        if ship is None:
+            ship = next(
+                (
+                    candidate
+                    for candidate in all_ships.values()
+                    if str(candidate.get("id") or candidate.get("shipment_id") or "") == row_sid
+                ),
+                None,
+            )
+        if not ship:
+            continue
+        sid = str(ship.get("id") or row_sid)
+        data = ship.get("data", {})
+        route = data.get("1.2", {}) if isinstance(data, dict) else {}
+        if not isinstance(route, dict):
+            route = {}
+        top_alert = row.get("top_alert") or {}
+        alert_color = {CRITICAL: ("#FDECEC", "#B42318"), "warning": ("#FFF4E5", "#9A6700"), "info": ("#EEF2FF", "#4657C8")}.get(top_alert.get("severity"), ("#F3F4F6", "#475467"))
+        finance_color = {
+            "ok": ("#EAF7EF", "#18794E"),
+            FINANCIAL_OPEN: ("#FFF4E5", "#9A6700"),
+            FINANCIAL_REVIEW: ("#EEF2FF", "#4657C8"),
+            FINANCIAL_UNKNOWN: ("#FDECEC", "#B42318"),
+        }.get(row.get("financial_flag"), ("#F3F4F6", "#475467"))
+        context_bits = _desk_source_context(row, data, route)
+        with st.container(border=True):
+            st.markdown(
+                f"<div class='ops-row-head'><span class='ops-row-id'>{escape_html(sid)}</span>"
+                f"<span class='ops-row-customer'>{escape_html(row.get('customer') or 'Chưa có khách hàng')}</span>"
+                f"<span class='ops-row-route'>{escape_html(route.get('pol') or '?')} → {escape_html(route.get('pod') or '?')}</span></div>",
+                unsafe_allow_html=True,
+            )
+            c_main, c_ops, c_finance, c_action = st.columns([2.8, 1.5, 1.8, 1.25])
+            with c_main:
+                st.caption(
+                    f"Sale: {row.get('owner', 'Chưa phân công')} · "
+                    f"Cập nhật: {row.get('last_update_label', 'Chưa có')} · "
+                    f"{escape_html(route.get('pol', '?'))} ➝ {escape_html(route.get('pod', '?'))}"
+                )
+                date_bits = [f"ETA: {row.get('arrival_date_label', 'Chưa có')}"]
+                if row.get("required_date"):
+                    date_bits.append(f"Hạn khách: {row.get('required_date_label')}")
+                if row.get("promised_date"):
+                    date_bits.append(f"Mốc hẹn: {row.get('promised_date_label')}")
+                if row.get("planned_date"):
+                    date_bits.append(f"Kế hoạch: {row.get('planned_date_label')}")
+                st.caption(" · ".join(date_bits))
+                st.caption(" · ".join(context_bits))
+            with c_ops:
+                st.markdown(_desk_badge(f"Vận hành: {row.get('operational_status_label')}", "#EEF2FF", "#4657C8"), unsafe_allow_html=True)
+                if row.get("days_remaining") is not None:
+                    free_label = f"Free time: {row['days_remaining']} ngày"
+                    st.markdown(_desk_badge(free_label, alert_color[0], alert_color[1]), unsafe_allow_html=True)
+                elif row.get("free_time_days") is None:
+                    st.caption("Free time: UNKNOWN")
+            with c_finance:
+                st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
+                st.caption(escape_html(row.get("financial_status")))
+                # UX-STAB P1: Compact — show only a minimal hint, expand on user request
+                projection = row.get("financial_projection") or {}
+                if isinstance(projection, dict) and projection.get("sources"):
+                    n_sources = len(projection["sources"])
+                    status = escape_html(row.get("financial_status") or "UNKNOWN")
+                    st.markdown(
+                        f"<span style='font-size:0.7rem;color:#9CA3AF;'>"  # noqa
+                        f"📊 Nguồn dữ liệu: {n_sources} · Nhấn để xem chi tiết</span>",
+                        unsafe_allow_html=True,
+                    )
+                with st.expander("Vì sao ra số này?", expanded=False):
+                    _render_financial_explanation(row)
+            with c_action:
+                st.markdown("**📝 Xử lý lô**")
+                if st.button("Xử lý", key=f"dashboard_process_{sid}", help="Mở thẳng form nhập liệu", type="primary", use_container_width=True):
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_direct_work = True
+                    st.session_state.active_shipment_section = "export"
+                    st.rerun()
+                st.markdown("**📊 360°**")
+                if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan", use_container_width=True):
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_360_view = True
+                    st.session_state.lg04_open_direct_work = False
+                    st.rerun()
+            if top_alert:
+                severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
+                st.markdown(
+                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
+                    f"{escape_html(top_alert.get('detail'))}</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown("<div class='ops-next-action ops-next-action-ok'>✅ Chưa có cảnh báo cần xử lý.</div>", unsafe_allow_html=True)

@@ -94,6 +94,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "knowledge",
         "commercial_view",
         "finance_view",
+        "finance_write",  # Owner-approved (2026-08-18): shipment-level finance work (actual costs, payment confirmation, receivable/payable updates, reconciliation)
         "operations_write",
     },
     # Legacy role names giữ tương thích ngược với entries secrets.toml cũ
@@ -185,10 +186,29 @@ def require_login() -> dict[str, str] | None:
         _render_bootstrap_setup()
         return None
 
-    with st.form("login_form"):
+    # LOG-LG04 Final UX: compact centered login
+    st.markdown(
+        """
+        <style>
+        .lg04-login-container {
+            max-width: 320px;
+            margin: 3rem auto;
+            padding: 1.5rem;
+            border: 1px solid #E4E7EC;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.container():
+        st.markdown('<div class="lg04-login-container">', unsafe_allow_html=True)
+        st.markdown("### 🔐 Đăng nhập")
         username = st.text_input("Tài khoản", key="login_username").strip()
         password = st.text_input("Mật khẩu", type="password", key="login_password")
-        submitted = st.form_submit_button("Đăng nhập", type="primary", use_container_width=True)
+        submitted = st.button("Đăng nhập", type="primary", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     if submitted:
         identity = _authenticate(username, password)
         if identity:

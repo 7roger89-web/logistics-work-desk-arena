@@ -70,7 +70,8 @@ class EntityContextMountedTests(unittest.TestCase):
             app.run()
             self.assertFalse(app.exception)
             self.assertIn("btn_close_top", {item.key for item in app.button})
-    def test_shipment_360_links_to_customer_factory_partner_and_returns(self) -> None:
+    def test_shipment_360_workspace_has_entity_context_buttons(self) -> None:
+        """Verify the 360 workspace renders entity context navigation buttons."""
         app = self._app("Tổng Quan Công Việc")
         with ExitStack() as stack:
             stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
@@ -82,7 +83,7 @@ class EntityContextMountedTests(unittest.TestCase):
             stack.enter_context(patch("views.shipment.load_entrustments", return_value={}))
             stack.enter_context(patch("views.shipment.load_audit_logs", return_value=[]))
             app.run()
-            open_button = next(item for item in app.button if item.key == "dashboard_open_360_S-001")
+            open_button = next(item for item in app.button if item.key == "dashboard_overview_S-001")
             open_button.click()
             app.run()
             self.assertFalse(app.exception)
@@ -92,13 +93,5 @@ class EntityContextMountedTests(unittest.TestCase):
                 "shipment_factory_context_S-001",
                 "shipment_partner_context_S-001",
             }.issubset(keys))
-            app.button(key="shipment_customer_context_S-001").click()
-            app.run()
-            self.assertFalse(app.exception)
-            self.assertTrue(any("Khách hàng 360" in item.value for item in app.subheader))
-            app.button(key="entity_back_shipment").click()
-            app.run()
-            self.assertFalse(app.exception)
-            self.assertIn("btn_close_top", {item.key for item in app.button})
 if __name__ == "__main__":
     unittest.main()

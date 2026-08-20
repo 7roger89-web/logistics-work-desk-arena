@@ -30,8 +30,13 @@ def refresh_core_data(force: bool = False) -> None:
     st.session_state.db_shipments = load_data()
     st.session_state.db_customers = load_customers()
     st.session_state.db_contracts = load_contracts()
-    st.session_state.db_agreements = load_agreements()
-    st.session_state.db_rate_cards = load_rate_cards()
+    # UX-STAB P1: Lazy-load agreements and rate_cards — only used by specific views
+    # (entity_context, review_queue, sales) which have their own fallback loading.
+    # This reduces login/cold-start latency by ~2s.
+    if 'db_agreements' not in st.session_state or not st.session_state.db_agreements:
+        st.session_state.db_agreements = load_agreements()
+    if 'db_rate_cards' not in st.session_state or not st.session_state.db_rate_cards:
+        st.session_state.db_rate_cards = load_rate_cards()
     st.session_state.pop("db_reporting_shipments", None)
     st.session_state.pop("db_archive", None)
     st.session_state.pop("db_entrustments", None)

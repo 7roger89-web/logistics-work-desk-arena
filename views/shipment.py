@@ -27,9 +27,6 @@ from core.database import (
 from core.excel_utils import generate_mini_export_excel
 from core.excel_gnt import create_gnt_excel
 from core.gnt_utils import get_treasury_info
-from core.shipment_360 import build_shipment_360_summary
-from core.shipment_workspace import build_shipment_workspace_view
-from views.shipment_360 import render_shipment_360_summary, render_shipment_workspace
 
 def ui_create_new_shipment():
     st.title("➕ TẠO LÔ HÀNG MỚI")
@@ -112,18 +109,8 @@ def ui_shipment_detail_tabs(sid, ship):
             st.session_state.db_entrustments = {}
             related_read_errors.append(f"entrustments ({type(exc).__name__})")
 
-    shipment_360 = build_shipment_360_summary(
-        ship,
-        proxy_payments=st.session_state.get("db_proxy", {}),
-        entrustments=st.session_state.get("db_entrustments", {}),
-        read_errors=related_read_errors,
-        agreements=st.session_state.get("db_agreements", {}),
-        quotes=st.session_state.get("db_quotes", {}),
-    )
-    audit_rows = load_audit_logs("shipment", sid, limit=30)
-    workspace_view = build_shipment_workspace_view(ship, financial_view=shipment_360)
-    render_shipment_workspace(workspace_view, audit_rows=audit_rows, navigation_shipment_id=sid)
     
+    audit_rows = load_audit_logs("shipment", sid, limit=30)
     # --- HEADER ---
     with st.container(border=True):
         c1, c2, c3, c4, c5 = st.columns([1.35, 1.2, 2.5, 1.5, 1])
@@ -169,9 +156,24 @@ def ui_shipment_detail_tabs(sid, ship):
         )
 
     # TRẢ LẠI ĐÚNG 3 TAB CHUẨN GỐC CỦA ANH
-    t1, t2, t3 = st.tabs(["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"])
+    # LOG-LG04: mở tab theo thẻ việc chính ở đầu trang
+    _jump = st.session_state.pop("active_shipment_section", None)
+    _tab_labels = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"]
+    if _jump in ("export", 0, None):
+        _tab_label = _tab_labels[0]
+    elif _jump in ("import", 1):
+        _tab_label = _tab_labels[1]
+    elif _jump in ("finance", 2):
+        _tab_label = _tab_labels[2]
+    else:
+        _tab_label = _tab_labels[0]  # default: PICKUP & XUẤT KHẨU
+    t1, t2, t3 = st.tabs(
+        ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"],
+        default=_tab_label,
+    )
     
     with t1:
+        st.markdown(f"<a id='lg04_tab_export'></a>", unsafe_allow_html=True)
         st.caption("Thông tin Vận đơn")
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
@@ -192,6 +194,7 @@ def ui_shipment_detail_tabs(sid, ship):
             d['1.2']['qty_pkg'] = c2.text_input("Số Lượng/GW", d['1.2'].get('qty_pkg',''), key=f"{prefix}_pkg")
 
     with t2:
+        st.markdown(f"<a id='lg04_tab_import'></a>", unsafe_allow_html=True)
         col_l, col_r = st.columns([2, 1])
         with col_l:
             st.caption("1. Nhập khẩu")
@@ -207,7 +210,8 @@ def ui_shipment_detail_tabs(sid, ship):
                 if not cust_info:
                     cust_info = next((customer for customer in db_cust.values() if customer.get('name') == curr_cust), {})
                 
-                with st.expander("🖨️ Tạo Giấy Nộp Thuế (GNT)", expanded=False):
+                with st.container(border=True):
+                    st.caption("🧾 GIẤY NỘP THUẾ (GNT) — C1-02/NS")
                     st.caption("Điền thông tin để xuất file Excel GNT")
                     gnt_saved = d['2.4'].setdefault('gnt', {})
                     c_gnt_1, c_gnt_2 = st.columns(2)
@@ -283,24 +287,29 @@ def ui_shipment_detail_tabs(sid, ship):
                         'so_tk': gnt_so_tk,
                     })
 
+                    _gnt_tax_default = [
+                        {"Nội dung": "Thuế Nhập khẩu", "Mã NDKT": "1901", "Số tiền": 0},
+                        {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1701", "Số tiền": 0},
+                    ]
                     if f"gnt_tax_data_{sid}" not in st.session_state:
-                         st.session_state[f"gnt_tax_data_{sid}"] = [
-                            {"Nội dung": "Thuế Nhập khẩu", "Mã NDKT": "1901", "Số tiền": 0},
-                            {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1701", "Số tiền": 0},
-                        ]
-                    
+                        st.session_state[f"gnt_tax_data_{sid}"] = pd.DataFrame(_gnt_tax_default)
+                    _gnt_input = st.session_state[f"gnt_tax_data_{sid}"]
+                    if not isinstance(_gnt_input, pd.DataFrame):
+                        _gnt_input = pd.DataFrame(_gnt_input) if _gnt_input else pd.DataFrame(_gnt_tax_default)
                     edited_taxes = st.data_editor(
-                        st.session_state[f"gnt_tax_data_{sid}"], num_rows="dynamic", use_container_width=True, key=f"gnt_tax_table_{sid}",
+                        _gnt_input, num_rows="dynamic", use_container_width=True, key=f"gnt_tax_table_{sid}",
                         column_config={
                             "Nội dung": st.column_config.TextColumn("Nội dung khoản nộp", width="large", required=True),
                             "Mã NDKT": st.column_config.TextColumn("Mã NDKT", width="medium"),
                             "Số tiền": st.column_config.NumberColumn("Số tiền (VNĐ)", format="%d", min_value=0, required=True)
                         }
                     )
-
                     if st.button("📥 Xuất Excel GNT", key=f"btn_gnt_{sid}", use_container_width=True):
+                        from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
                         final_tax_list = []
-                        st.session_state[f"gnt_tax_data_{sid}"] = edited_taxes.to_dict("records")
+                        if not isinstance(edited_taxes, pd.DataFrame):
+                            edited_taxes = pd.DataFrame(edited_taxes) if edited_taxes else pd.DataFrame(_gnt_tax_default)
+                        st.session_state[f"gnt_tax_data_{sid}"] = edited_taxes
                         for _, item in edited_taxes.iterrows():
                             amt = safe_float(item.get("Số tiền", 0))
                             if amt > 0:
@@ -316,12 +325,15 @@ def ui_shipment_detail_tabs(sid, ship):
                                 'ten_kbnn': gnt_kbnn, 'ten_cq_thu': gnt_cq_thu,
                                 'ma_cq_thu': gnt_ma_hq,
                                 'tk_thu': gnt_tk_thu, 'so_tk': gnt_so_tk,
-                                'ngay_tk': datetime.now().strftime("%d/%m/%Y"), 
-                                'ds_thue': final_tax_list
+                                'tk_no': d['2.4'].get('tk_no', ''),
+                                'tk_date': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
+                                'ngay_tk': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
+                                'ds_thue': final_tax_list,
+                                'customer_name': curr_cust,
                             }
-                            excel_buffer = create_gnt_excel(gnt_data)
-                            if excel_buffer:
-                                st.download_button(label="📄 Tải file GNT.xlsx", data=excel_buffer, file_name=f"GNT_{gnt_so_tk}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                            wb_buffer = build_gnt_workbook(gnt_data)
+                            if wb_buffer:
+                                st.download_button(label="📄 Tải file GNT.xlsx", data=wb_buffer, file_name=f"GNT_{gnt_so_tk}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
                 c4, c5 = st.columns([1,2])
                 d['2.4']['customs_status'] = c4.checkbox("Đã thông quan", d['2.4'].get('customs_status', False), key=f"{prefix}_cst")
@@ -364,13 +376,19 @@ def ui_shipment_detail_tabs(sid, ship):
             st.code(info_str, language=None)
 
     with t3:
-        render_shipment_360_summary(shipment_360)
-        st.subheader("1. Dịch Vụ & Doanh Thu")
+        st.markdown(f"<a id='lg04_tab_finance'></a>", unsafe_allow_html=True)
+        st.subheader("1. Dịch Vụ & Doanh Thu — nhập chi phí và giá bán")
+        st.caption("Nhập vào đây để tính doanh thu, chi phí, công nợ và lợi nhuận của lô hàng. Sau khi nhập, nhấn nút 💾 LƯU ở đầu trang.")
         details = d['3.4']['details']
         
         h = st.columns([0.5, 3, 1, 1.5, 1.5, 1, 1.5, 0.5])
-        h[0].caption("#"); h[1].caption("Tên Dịch vụ"); h[2].caption("SL"); 
-        h[3].caption("Giá Vốn"); h[4].caption("Giá Bán"); h[5].caption("VAT"); h[6].caption("Thành tiền");
+        h[0].caption("#"); h[1].caption("Tên Dịch vụ"); h[2].caption("SL");
+        h[3].caption("Giá Vốn"); h[4].caption("Giá Bán"); h[5].caption("VAT %"); h[6].caption("Thành tiền");
+        st.markdown(
+            "<style>.lg04-service-row { border: 2px solid #D0D7DE; border-radius: 10px; "
+            "padding: .5rem .65rem .3rem; margin-bottom: .75rem; background: #FFFFFF; }</style>",
+            unsafe_allow_html=True,
+        )
 
         indices_to_remove = []
         base_service_options = [f"{s['name']} ({s['code']})" for s in GETFLY_SERVICES_LIST]
@@ -379,6 +397,7 @@ def ui_shipment_detail_tabs(sid, ship):
         for i, item in enumerate(details):
             c = st.columns([0.5, 3, 1, 1.5, 1.5, 1, 1.5, 0.5])
             c[0].text(str(i + 1))
+            st.markdown("<div class='lg04-service-row'>", unsafe_allow_html=True)
 
             current_code = str(item.get('code', '')).strip()
             current_name = str(item.get('display_name') or item.get('name_full') or item.get('name') or '').strip()
@@ -429,9 +448,9 @@ def ui_shipment_detail_tabs(sid, ship):
             
             if c[7].button("🗑", key=f"{prefix}_del_svc_{i}"):
                 indices_to_remove.append(i)
-            
+
             item['note'] = st.text_input("Ghi chú", value=item.get('note', ''), key=f"{prefix}_note_{i}", placeholder="Ghi chú chi tiết...", label_visibility="collapsed")
-            st.markdown("---")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if indices_to_remove:
             for i in sorted(indices_to_remove, reverse=True): details.pop(i)
@@ -474,6 +493,9 @@ def ui_shipment_detail_tabs(sid, ship):
         with c_fin_1:
             st.subheader("2. Chi Hoa Hồng")
             comm_data = d['3.4']['commission']
+            if not isinstance(comm_data, dict):
+                comm_data = {"total": safe_float(comm_data) or 0, "list": [], "note": ""}
+                d['3.4']['commission'] = comm_data
             if 'list' not in comm_data: comm_data['list'] = []
             
             comm_total = st.number_input("Tổng Hoa Hồng (Chi ngoài)", value=float(safe_float(comm_data.get('total', 0))), step=100000.0, format="%.0f", key=f"{prefix}_comm_tot")

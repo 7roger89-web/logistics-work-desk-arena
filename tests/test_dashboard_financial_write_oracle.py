@@ -58,6 +58,7 @@ def _shipment_fixture(shipment_id: str, customer: str, owner: str, status: str) 
         "customer": customer,
         "status": status,
         "internal_sale_owner": owner,
+        "created_at": "2026-08-14",  # Owner requirement: default "Tháng này" filter
         "assigned_date": "2026-08-01",
         "incoterm": "EXW",
         "production_expectation_days": 14,
@@ -181,25 +182,25 @@ class DashboardFinancialWriteOracleTests(TestCase):
             _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
             # Warning semantics: the factory-data warning isolates LG-001.
             _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
             _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_open_360_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_open_360_LG-002", {element.key for element in app.button})
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
             # First shipment: open the real mounted detail path, then return.
             _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
             app.run()
-            _button(app, "dashboard_open_360_LG-001").click()
+            _button(app, "dashboard_process_LG-001").click()
             app.run()
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})
             self.assertTrue(
-                any("Shipment 360" in element.value for element in app.markdown),
-                "first shipment did not render Shipment 360 financial projection",
+                any("lg04_tab_export" in element.value for element in app.markdown),
+                "first shipment did not render the editable work tabs",
             )
             _button(app, "btn_close_top").click()
             app.run()
@@ -207,7 +208,7 @@ class DashboardFinancialWriteOracleTests(TestCase):
             self.assertNotIn("btn_close_top", {element.key for element in app.button})
             # Second shipment: verify the list is restored and the second row
             # opens independently on the next click.
-            _button(app, "dashboard_open_360_LG-002").click()
+            _button(app, "dashboard_process_LG-002").click()
             app.run()
             _assert_no_streamlit_exceptions(self, app)
             self.assertIn("btn_close_top", {element.key for element in app.button})

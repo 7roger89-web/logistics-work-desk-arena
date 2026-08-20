@@ -1,0 +1,119 @@
+{
+  "goal": "LOG-LG05",
+  "title": "Excel Round-Trip & GNT Generation",
+  "status": "GETFLY_IMPORT_COMPLETE_WITH_1_HELD_CONFLICT",
+  "branch": "log-lg05-excel-round-trip-gnt",
+  "pr": 4,
+  "pr_state": "draft",
+  "not_merged": true,
+  "not_deployed": true,
+  "created_at": "2026-08-19",
+  "incident_fix_sha": "59d77ef",
+  "incident_fix_date": "2026-08-19",
+  "incident_root_cause": "get_shipment_business_date() used created_at instead of order_date for period filter",
+  "incident_fix": "order_date priority + cache invalidation + import result display",
+  "tests": {
+    "passed": 269,
+    "skipped": 28,
+    "failed": 0
+  },
+  "lg05_tests": 33,
+  "modules": [
+    "core/excel_roundtrip.py",
+    "core/gnt_builder.py",
+    "tests/test_lg05_excel_roundtrip_gnt.py"
+  ],
+  "ui_changes": [
+    "views/dashboard.py: NHẬP FILE EXCEL (52 cột), XUẤT DANH SÁCH ĐƠN HÀNG, TẠO GIẤY NỘP THUẾ (GNT)"
+  ],
+  "principles": [
+    "UNKNOWN != ZERO",
+    "MISSING != SAFE_TO_GUESS",
+    "AMBIGUOUS != RESOLVED",
+    "No business mutation during import preview"
+  ],
+  "gnt": {
+    "template": "C1-02/NS (mẫu C1-02/NS, ban hành kèm Thông tư 184/2015/TT-BTC)",
+    "sheets": [
+      "NHẬP THÔNG TIN",
+      "GIẤY NỘP THUẾ"
+    ],
+    "auto_fill": true,
+    "amount_in_words": true,
+    "legal_reference": "Nghị định 347/2025/NĐ-CP (kiểm tra theo mẫu hiện hành)"
+  },
+  "excel": {
+    "columns": 52,
+    "format": "A:AZ",
+    "sheet": "Sheet1",
+    "round_trip_verified": true,
+    "owner_file_tested": true
+  },
+  "production_safety": {
+    "no_db_write_during_preview": true,
+    "no_overwrite_financial": true,
+    "existing_shipments_merged_only": true,
+    "customers_unchanged": 362,
+    "shipments_unchanged": 78
+  },
+  "service_line_idempotency_sha": "914e849",
+  "test_count_after_idempotency": "278 passed / 28 skipped / 0 failed",
+  "notes": "Service-line dedup implemented: code+name+qty+cost+price identity, smart (CODE) suffix normalization, 3-run proof PASSED",
+  "import_sha": "ef22649",
+  "production_imported": true,
+  "shipments_before": 78,
+  "shipments_after": 91,
+  "new_shipments_imported": 13,
+  "new_service_lines_imported": 38,
+  "conflict_held": 1,
+  "conflict_reason": "VAT app=0% vs GETFLY=8%",
+  "duplicates_created": 0,
+  "finance_overwrite": 0,
+  "visibility_thang_nay": 13,
+  "visibility_tat_ca": 14,
+  "second_run_dry_run_new_shipments": 0,
+  "second_run_dry_run_new_service_lines": 0,
+  "second_run_conflict_held": 1,
+  "regression": "278 passed / 28 skipped / 0 failed",
+  "reconciliation_sha": "581ac14",
+  "conflict_count": 1,
+  "false_positive_fixed": true,
+  "false_positive_cause": "Multi-line same identity key (note differs) — next() always matched first line",
+  "false_positive_fix": "One-to-one consumed matching",
+  "order6_date_explanation": "Production order_date=None, created_at=15/07/2026. GETFLY order_date=15/08/2026 but import did not overwrite (held as conflict). Business date=July 2026, correctly NOT in Tháng này.",
+  "second_run": {
+    "new_shipments": 0,
+    "unchanged_lines": 38,
+    "true_new_service": 0,
+    "conflict": 1,
+    "ambiguous": 0,
+    "idempotent": true
+  },
+  "regression_after_fix": "278 passed / 28 skipped / 0 failed",
+  "vat_conflict_resolved": true,
+  "vat_resolution_sha": "4589644",
+  "vat_approved_value": 8.0,
+  "vat_audit": {
+    "prior": 0.0,
+    "new": 8.0,
+    "recalculated": [
+      "vat_line",
+      "out",
+      "in",
+      "out_net",
+      "output_vat",
+      "debt"
+    ],
+    "prior_out": 941849572,
+    "new_out": 1017197538,
+    "delta": 75347966
+  },
+  "dry_run_after_resolution": {
+    "new_shipments": 0,
+    "new_service": 0,
+    "conflict": 0,
+    "ambiguous": 0,
+    "unchanged": 39
+  },
+  "terminal": "GETFLY_IMPORT_VERIFIED_COMPLETE"
+}
