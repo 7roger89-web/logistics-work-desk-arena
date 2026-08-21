@@ -44,7 +44,7 @@ Clicked NHẬP TỪ GETFLY button on cloud app. The button appears clickable but
 - Repo: 7roger89-web/logistics-work-desk, Branch: main, File: web_app.py
 - Owner GitHub: 7roger89-web
 - Local sandbox app: localhost:8501 (production), localhost:8502 (preview)
-- Admin: admin / 7roger899 (password)
+- Admin: admin / [REDACTED-ADMIN-PW] (password)
 - DB: logistics_db on cluster0.qvjh5ji.mongodb.net
 - DB credentials: Qazqaz12 / 1123456
 
@@ -158,25 +158,25 @@ PASSWORD ISSUE: The admin password might not be Qazqaz12. From the conversation 
 - Owner said: "admin Qazqaz12" (username=admin, password=Qazqaz12) 
 - But then said "mật khẩu là: 1123456"
 - Then "pass: 7roger89" → "Mat khau toi thieu 8 ky tu"
-- Then "7roger899"
-- Then "pass: 7roger899 . từ giờ tự làm đi"
+- Then "[REDACTED-ADMIN-PW]"
+- Then "pass: [REDACTED-ADMIN-PW] . từ giờ tự làm đi"
 
-So the password is likely **7roger899** not Qazqaz12. Let me retry.
+So the password is likely **[REDACTED-ADMIN-PW]** not Qazqaz12. Let me retry.
 
 ## Login attempts on cloud:
 - admin / Qazqaz12 → FAIL
-- admin / 7roger899 → FAIL (still showing login form)
+- admin / [REDACTED-ADMIN-PW] → FAIL (still showing login form)
 
 From conversation history, the Owner used multiple passwords over time:
 1. Qazqaz12 (initial setup for MongoDB Atlas)
 2. 1123456 (used for export_production.py)
-3. 7roger899 (final confirmed password for the app)
+3. [REDACTED-ADMIN-PW] (final confirmed password for the app)
 
 The app's admin password is stored in MongoDB users collection. The password for "admin" might have been reset to something else. Let me try 1123456.
 
 ## All login attempts on cloud fail:
 - admin / Qazqaz12 → FAIL
-- admin / 7roger899 → FAIL  
+- admin / [REDACTED-ADMIN-PW] → FAIL  
 - admin / 1123456 → FAIL
 
 The cloud app IS reading the DB (it shows login form, not Local Admin — meaning it CAN connect). But login fails.
@@ -189,7 +189,7 @@ POSSIBLE REASONS:
 NEED TO CHECK: What password is actually stored in the users collection for "admin"
 
 ## Password verification:
-The password 7roger899 MATCHES the stored hash for admin in logistics_db. So the DB has the correct password.
+The password [REDACTED-ADMIN-PW] MATCHES the stored hash for admin in logistics_db. So the DB has the correct password.
 
 The issue must be that the CLOUD app is connecting to a DIFFERENT database or a different MongoDB Atlas cluster. The Owner may have set the wrong URI in the cloud secrets, or the cloud app is reading from a different source.
 
@@ -201,7 +201,7 @@ OR: The cloud app's config reads the URI from a different key name than what the
 
 NEED TO INVESTIGATE: Check what the Owner actually entered in the cloud secrets.
 
-## All 3 logistics DBs have the same admin hash (7roger899 matches).
+## All 3 logistics DBs have the same admin hash ([REDACTED-ADMIN-PW] matches).
 So the password is definitely correct. The cloud app must be reading a DIFFERENT URI from the secrets.
 
 The Owner might have entered the secrets with a DIFFERENT format than expected. On Streamlit Cloud, secrets are read via st.secrets. The config module reads:
@@ -212,7 +212,7 @@ HYPOTHESIS: The Owner's secrets entry might have the wrong URI — maybe they us
 
 SOLUTION: I need to give the Owner a corrected secrets entry. But first, let me check if maybe the issue is that the cloud app reads MONGO_URI from an ENV var that's set differently on Streamlit Cloud. Actually, on Streamlit Cloud there are no env vars unless explicitly set.
 
-BETTER APPROACH: Let me just check what happens when I try to login from the LOCAL sandbox (port 8501) — does admin/7roger899 work there? If yes, then the issue is specifically the cloud app's DB connection.
+BETTER APPROACH: Let me just check what happens when I try to login from the LOCAL sandbox (port 8501) — does admin/[REDACTED-ADMIN-PW] work there? If yes, then the issue is specifically the cloud app's DB connection.
 
 ## CRITICAL: Local 8501 ALSO stuck on "Đang đồng bộ dữ liệu hệ thống..."
 - The local process (PID 74938) is trying to sync data but can't connect to MongoDB Atlas
@@ -252,7 +252,7 @@ IMPORTANT: This is acceptable for daily use — login only happens once per sess
 The actual app usage after login is fast (data is cached in session_state).
 
 ## SUCCESS: Local 8501 login COMPLETED
-- Login with admin/7roger899 succeeded
+- Login with admin/[REDACTED-ADMIN-PW] succeeded
 - Dashboard shows: 362 customers, 91 shipments, 13 lô cần xử lý, 2 pending tasks, 6 completed
 - Full app working correctly after 30s timeout fix
 - The 30s timeout in core/database.py is the key fix for cloud deployment
@@ -267,7 +267,7 @@ The actual app usage after login is fast (data is cached in session_state).
 The 30s timeout fix (pushed as commit 1560298) resolved the cloud DB connection issue.
 Cloud app at https://tienthanhlog.streamlit.app/ now:
 - Shows proper login form (AUTH_REQUIRED = true)
-- Login with admin/7roger899 succeeds
+- Login with admin/[REDACTED-ADMIN-PW] succeeds
 - Dashboard shows full data: 13 lô cần xử lý, 362 customers, 91 shipments
 - All navigation, filters, tasks visible
 - This confirms the secrets ARE configured correctly on cloud
@@ -295,19 +295,19 @@ Need to investigate: check if the DB write actually succeeded despite the error 
 Alternative: create accounts directly via Python script using the same DB credentials.
 
 ## PHASE 8 — SUCCESS: Team accounts created directly via DB
-- 7roger (admin) — password: 7roger899 — CREATED
-- sami (sale) — password: Sami2026! — CREATED  
-- fiona (support) — password: Fiona2026! — CREATED
+- 7roger (admin) — password: [REDACTED-ADMIN-PW] — CREATED
+- sami (sale) — password: [REDACTED-SAMI-PW] — CREATED  
+- fiona (support) — password: [REDACTED-FIONA-PW] — CREATED
 - Total users: 7 (admin + 3 rehearsal inactive + 3 new team)
 - DB: logistics_db, customers=362, shipments=91
 
 ## LOGIN CREDENTIALS SUMMARY:
 | Username | Role | Password |
 |----------|------|----------|
-| admin | admin | 7roger899 |
-| 7roger | admin | 7roger899 |
-| sami | sale | Sami2026! |
-| fiona | support | Fiona2026! |
+| admin | admin | [REDACTED-ADMIN-PW] |
+| 7roger | admin | [REDACTED-ADMIN-PW] |
+| sami | sale | [REDACTED-SAMI-PW] |
+| fiona | support | [REDACTED-FIONA-PW] |
 
 ## PHASE 9 — ISSUE: sami login FAILED
 Error: "Tài khoản hoặc mật khẩu không đúng."
@@ -354,10 +354,10 @@ Now need to test fiona (support) and 7roger (admin).
 ## TEAM ACCOUNTS CREATED (Phase 8)
 | Username | Role | Password | Status |
 |----------|------|----------|--------|
-| admin | admin | 7roger899 | Pre-existing, works |
-| 7roger | admin | 7roger899 | Created, login SUCCESS |
-| sami | sale | Sami2026! | Created, login SUCCESS |
-| fiona | support | Fiona2026! | Created, login SUCCESS |
+| admin | admin | [REDACTED-ADMIN-PW] | Pre-existing, works |
+| 7roger | admin | [REDACTED-ADMIN-PW] | Created, login SUCCESS |
+| sami | sale | [REDACTED-SAMI-PW] | Created, login SUCCESS |
+| fiona | support | [REDACTED-FIONA-PW] | Created, login SUCCESS |
 
 ## IMPORTANT: Password hash fix
 - Original create script used wrong hash format

@@ -68,7 +68,7 @@ Còn lại: responsive QA (viewport hẹp — kiểm tra CSS media query + visua
 
 Regression: 226 passed / 28 skipped / 0 failed (9 test mới LG04). Mojibake scan: CLEAN trên 5 file thay đổi. Secrets scan: CLEAN. AST: CLEAN. Media query responsive có trong shipment_360.py.
 
-Visual QA: đang login sandbox app (My Browser → localhost:8501, sandbox app vẫn chạy từ LG03 trên branch main CÓ LOCAL LG04 changes chưa commit? — sandbox repo HEAD cần kiểm tra; nếu cần visual QA thì cần git pull origin main sau, hiện dùng local LG04 changes). Admin/admin đã nhập, đang chờ nhập pass 7roger899 và click Đăng nhập để xem dashboard mới.
+Visual QA: đang login sandbox app (My Browser → localhost:8501, sandbox app vẫn chạy từ LG03 trên branch main CÓ LOCAL LG04 changes chưa commit? — sandbox repo HEAD cần kiểm tra; nếu cần visual QA thì cần git pull origin main sau, hiện dùng local LG04 changes). Admin/admin đã nhập, đang chờ nhập pass [REDACTED-ADMIN-PW] và click Đăng nhập để xem dashboard mới.
 
 Lưu ý: sandbox app chạy trên 8501 là production DB logistics_db — visual QA phải READ-ONLY, không tạo/sửa dữ liệu.
 
@@ -77,7 +77,7 @@ Lưu ý: sandbox app chạy trên 8501 là production DB logistics_db — visual
 
 - MAIN_SHA = aa5cef4 (main không đổi kể từ LG03 terminal)
 - PR3_HEAD_SHA = 468865ecf2b88dee3798deb219177849a6d5025a (PR #3 draft, open, NOT merged — xác minh qua API)
-- PRODUCTION_CODE_SHA = 3c1e1c7 (máy Owner) — app production LOGISTICS PRO đang chạy tại localhost:8501 (đã xác nhận via My Browser: title LOGISTICS PRO, có form đăng nhập, login chạy bằng admin/7roger899)
+- PRODUCTION_CODE_SHA = 3c1e1c7 (máy Owner) — app production LOGISTICS PRO đang chạy tại localhost:8501 (đã xác nhận via My Browser: title LOGISTICS PRO, có form đăng nhập, login chạy bằng admin/[REDACTED-ADMIN-PW])
 - PRODUCTION_DB = logistics_db (cluster0.qvjh5ji.mongodb.net)
 - Production app trên máy Owner chạy code 3c1e1c7 (bản LG03 đã duyệt); preview LG04 phải chạy riêng: port 8502, secrets.toml riêng, KHÔNG merge.
 

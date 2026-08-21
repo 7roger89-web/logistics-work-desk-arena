@@ -19,10 +19,10 @@ App **LOGISTICS PRO** đã được deploy thành công lên Streamlit Community
 
 | Tên đăng nhập | Vai trò | Mật khẩu | Quyền hạn |
 |--------------|---------|----------|-----------|
-| admin | Admin (chủ) | 7roger899 | Toàn quyền, quản lý tài khoản |
-| 7roger | Admin | 7roger899 | Toàn quyền, quản lý tài khoản |
-| sami | Sale | Sami2026! | Tạo lô, xử lý lô, báo giá, khách hàng |
-| fiona | Support | Fiona2026! | Xem lô, theo dõi vận chuyển, tra cứu |
+| admin | Admin (chủ) | [REDACTED-ADMIN-PW] | Toàn quyền, quản lý tài khoản |
+| 7roger | Admin | [REDACTED-ADMIN-PW] | Toàn quyền, quản lý tài khoản |
+| sami | Sale | [REDACTED-SAMI-PW] | Tạo lô, xử lý lô, báo giá, khách hàng |
+| fiona | Support | [REDACTED-FIONA-PW] | Xem lô, theo dõi vận chuyển, tra cứu |
 
 ## Các chức năng đã kiểm tra trên cloud (tất cả PASS)
 

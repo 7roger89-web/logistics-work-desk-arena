@@ -10,7 +10,7 @@
 ## Steps Completed
 1. ✅ Phase 1: Live truth verified (main=5420058, production=b6fde2b)
 2. ✅ Phase 2: production branch synced to b6fde2b, Owner deployed new app from production branch
-3. ✅ Phase 3: App VERIFIED — login screen appeared, admin/7roger899 logged in successfully, dashboard shows "13 lô cần xử lý" + real shipment data, sidebar "Owner · admin". Secrets correct, DB connected. CLOUD_LIVE_SHA = b6fde2b
+3. ✅ Phase 3: App VERIFIED — login screen appeared, admin/[REDACTED-ADMIN-PW] logged in successfully, dashboard shows "13 lô cần xử lý" + real shipment data, sidebar "Owner · admin". Secrets correct, DB connected. CLOUD_LIVE_SHA = b6fde2b
 4. ✅ Phase 4: Isolation PROVEN — pushed docs-only test commit 36c01cb to branch test/release-isolation; origin/production stayed b6fde2b (unchanged). Test branch deleted; main reset to 5420058
 
 ## Remaining Steps
@@ -19,10 +19,10 @@
 - Phase 7: Final release record + report
 
 ## Credentials (for testing)
-- admin / 7roger899 (admin)
-- 7roger / 7roger899 (admin)
-- sami / Sami2026! (sale)
-- fiona / Fiona2026! (support)
+- admin / [REDACTED-ADMIN-PW] (admin)
+- 7roger / [REDACTED-ADMIN-PW] (admin)
+- sami / [REDACTED-SAMI-PW] (sale)
+- fiona / [REDACTED-FIONA-PW] (support)
 
 ## DB
 - logistics_db on Atlas, 362 customers, 91 shipments, 7 users (admin, 7roger, sami, fiona, + 3 rehearsal inactive)

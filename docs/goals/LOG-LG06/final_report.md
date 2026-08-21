@@ -53,7 +53,7 @@
 
 | Bài test | Kết quả |
 |----------|---------|
-| Đăng nhập (admin/7roger899) | ✅ PASS |
+| Đăng nhập (admin/[REDACTED-ADMIN-PW]) | ✅ PASS |
 | Dashboard hiển thị | ✅ PASS (13 lô, dữ liệu đúng) |
 | Mở form lô hàng (Xử lý) | ✅ PASS (3 tabs hiện ngay) |
 | Tab PICKUP & XUẤT KHẨU (mặc định) | ✅ PASS |

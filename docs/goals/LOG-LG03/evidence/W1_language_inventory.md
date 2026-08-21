@@ -223,7 +223,7 @@ Admin password: đặt qua reset-admin-tool (LG02, giá trị owner nhập khi �
 
 ## 21. Admin password xác nhận (18/08 — internal only)
 
-Owner cung cấp: admin / 7roger899 — probe MATCH. KHÔNG in mật khẩu trong báo cáo cuối.
+Owner cung cấp: admin / [REDACTED-ADMIN-PW] — probe MATCH. KHÔNG in mật khẩu trong báo cáo cuối.
 My Browser offline → QA qua AppTest mock (navigation + RBAC tiếng Việt) + QA visual qua Streamlit AppTest.
 
 ## 22. QA gate lần 1 (AppTest mock) — kết quả & chẩn đoán (18/08)
@@ -314,7 +314,7 @@ Quyết định giữ nguyên (INTERNATIONAL_TERM_KEEP): Incoterm, Multimodal, D
 
 TIẾP: W7 giảm thao tác thừa + W8 next-action (kiểm tra lại next-action UX đã có sẵn: dashboard Việc tiếp theo + review_queue Việc tiếp theo — có rồi; có thể thêm next-action cho shipment create khi xong? Giữ phạm vi vừa phải). Sau đó: encoding scan + secret scan → state.json final → Draft PR → báo Owner.
 
-Lưu ý chưa xử: (a) Owner chưa xác nhận xóa 3 rehearsal users trong production — hỏi lại trong báo cáo; (b) mật khẩu admin là 7roger899 do Owner cung cấp (không in trong báo cáo).
+Lưu ý chưa xử: (a) Owner chưa xác nhận xóa 3 rehearsal users trong production — hỏi lại trong báo cáo; (b) mật khẩu admin là [REDACTED-ADMIN-PW] do Owner cung cấp (không in trong báo cáo).
 
 ## 31. Encoding scan lưu ý (18/08)
 
@@ -357,8 +357,8 @@ KEY FACTS CHO BÁO CÁO:
 - RBAC giữ nguyên: admin={*}, sale, support, accounting, legacy, viewer — không widen.
 - Finance invariants: UNKNOWN != ZERO giữ nguyên (UI review queue hiển thị 'UNKNOWN' không đổi).
 - App đang chạy: port 8501 sandbox; Owner máy Windows chạy app từ local copy (cần pull branch).
-- Admin password: Owner đặt 7roger899 (KHÔNG in trong report).
-- QA: admin login verified trên production (Owner xác nhận), password 7roger899.
+- Admin password: Owner đặt [REDACTED-ADMIN-PW] (KHÔNG in trong report).
+- QA: admin login verified trên production (Owner xác nhận), password [REDACTED-ADMIN-PW].
 - Exposed QA URL: https://8501-ir597s8ybmcfhscghlmcb-9d796d59.sg1.manus.computer (tạm thời).
 - Production DB baseline: users=1 admin, customers=362, shipments=78 (trước +3 rehearsal).
 - Secret scan: chỉ hits trong docs/ (text mô tả), không credential thật trong code.

@@ -16,7 +16,7 @@ Ask owner to re-check secrets on the NEW app specifically (logisticspro-1, not t
 
 ## ✅ VERIFIED 2026-08-21 ~04:08 (sandbox browser)
 - Login screen appeared (no Local Admin banner)
-- Login admin / 7roger899 → SUCCESS → sidebar shows "Owner · admin", "Đăng xuất" present
+- Login admin / [REDACTED-ADMIN-PW] → SUCCESS → sidebar shows "Owner · admin", "Đăng xuất" present
 - Dashboard: "13 lô cần xử lý", Bảng việc chính có dữ liệu (CÔNG TY CỔ PHẦN B&G GREEN...), Lịch sử đã xong (5)
 - Footer: LOG-C07 · 3.1.3-router-hotfix → this is production branch build (b6fde2b)
 - CONCLUSION: logisticspro-1.streamlit.app = LIVE PRODUCTION from branch production, secrets correct, DB connected.

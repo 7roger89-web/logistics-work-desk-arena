@@ -154,9 +154,9 @@
 - Owner needs to change cloud deploy branch to "production"
 
 ### Team member credentials
-- admin / 7roger899 (admin)
-- sami / Sami2026! (sale)
-- fiona / Fiona2026! (support)
+- admin / [REDACTED-ADMIN-PW] (admin)
+- sami / [REDACTED-SAMI-PW] (sale)
+- fiona / [REDACTED-FIONA-PW] (support)
 
 ### DB
 - logistics_db on Atlas cluster0.qvjh5ji.mongodb.net

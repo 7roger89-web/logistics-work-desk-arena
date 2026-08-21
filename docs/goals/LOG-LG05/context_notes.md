@@ -35,7 +35,7 @@ LOG-LG05 — Excel Round-Trip & GNT Generation
 - DB: MongoDB Atlas (cluster0.qvjh5ji), logistics_db, shipments=78, customers=362
 - Streamlit on port 8501 (production), 8502 (preview on Owner's machine)
 - Owner machine: D:\Logistics_App_GitHub
-- Login: admin / 7roger899
+- Login: admin / [REDACTED-ADMIN-PW]
 
 ## Excel file issue
 - openpyxl cannot read danhsachdonhang-.xlsx (invalid stylesheet XML)
