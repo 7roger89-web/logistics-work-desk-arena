@@ -157,58 +157,68 @@ def _configure_page() -> None:
     [data-testid="stExpander"] summary:hover {
         color: #FFFFFF !important;
     }
+    /* P2P: Sidebar Button Fix - Force dark background and white text */
     [data-testid="stSidebar"] button {
-        background: transparent;
-        color: #D9E7F2;
-        border: 1px solid transparent;
-        text-align: left;
-        transition: background-color 120ms ease, color 120ms ease;
+        background-color: transparent !important;
+        color: #D9E7F2 !important;
+        border: 1px solid transparent !important;
+        text-align: left !important;
+        transition: background-color 120ms ease, color 120ms ease !important;
     }
-    [data-testid="stSidebar"] button:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #FFFFFF; }
-    [data-testid="stSidebar"] button[kind="primary"] {
-        background: #2563EB;
-        color: #FFFFFF;
-        font-weight: 800;
-        box-shadow: inset 4px 0 0 #FFFFFF;
+    [data-testid="stSidebar"] button:hover { 
+        background-color: rgba(255, 255, 255, 0.08) !important; 
+        border-color: rgba(255, 255, 255, 0.12) !important; 
+        color: #FFFFFF !important; 
     }
-    [data-testid="stSidebar"] button[kind="primary"] p { color: #FFFFFF !important; }
+    [data-testid="stSidebar"] button p {
+        color: #D9E7F2 !important;
+    }
+    [data-testid="stSidebar"] button:hover p {
+        color: #FFFFFF !important;
+    }
     
-    /* P2P: Fix primary button contrast & visibility */
-    button[kind="primary"] {
+    /* Active/Primary Navigation Item in Sidebar */
+    [data-testid="stSidebar"] button[kind="primary"] {
+        background-color: #2563EB !important;
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+        box-shadow: inset 4px 0 0 #FFFFFF !important;
+        border: 1px solid #3B82F6 !important;
+    }
+    [data-testid="stSidebar"] button[kind="primary"] p { 
+        color: #FFFFFF !important; 
+        font-weight: 800 !important;
+    }
+    
+    /* Global Primary Buttons (Main Content Area) */
+    .main button[kind="primary"] {
         background-color: #1E40AF !important;
         color: #FFFFFF !important;
         border: 1px solid #1D4ED8 !important;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
         border-radius: 8px !important;
     }
-    button[kind="primary"]:hover {
+    .main button[kind="primary"]:hover {
         background-color: #1D4ED8 !important;
         border-color: #2563EB !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
     }
-    /* Critical fix for text/icon visibility inside buttons */
-    button[kind="primary"] p, 
-    button[kind="primary"] span,
-    button[kind="primary"] div {
+    .main button[kind="primary"] p, 
+    .main button[kind="primary"] span,
+    .main button[kind="primary"] div {
         color: #FFFFFF !important;
         font-weight: 700 !important;
     }
-    /* Enhance emoji icon visibility */
-    button[kind="primary"] span[data-testid="stMarkdownContainer"] {
-        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)) !important;
-    }
     
-    /* Secondary button styling */
-    button[kind="secondary"] {
+    /* Global Secondary Buttons (Main Content Area) */
+    .main button[kind="secondary"] {
         background-color: #FFFFFF !important;
         color: #1E293B !important;
         border: 1px solid #CBD5E1 !important;
     }
-    button[kind="secondary"]:hover {
+    .main button[kind="secondary"]:hover {
         background-color: #F8FAFC !important;
         border-color: #94A3B8 !important;
     }
-    [data-testid="stSidebar"] button[kind="secondary"] p { color: #D9E7F2 !important; }
     [data-testid="stSidebar"] [data-testid="stExpander"] {
         border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
