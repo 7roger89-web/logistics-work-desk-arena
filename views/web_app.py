@@ -159,12 +159,15 @@ def _configure_page() -> None:
         color: #FFFFFF !important;
     }
     
-    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE */
-    /* We must force the sidebar buttons to NEVER have white backgrounds */
-    [data-testid="stSidebar"] button {
-        background-color: rgba(255, 255, 255, 0.03) !important;
+    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE V2 */
+    /* We must use highly specific selectors to override Streamlit's base button styles in sidebar */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] button,
+    [data-testid="stSidebar"] [data-testid="stExpander"] button,
+    [data-testid="stSidebar"] button[kind="secondary"],
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
         color: #CBD5E1 !important; /* Slate 300 */
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         text-align: left !important;
         justify-content: flex-start !important;
         width: 100% !important;
@@ -172,8 +175,8 @@ def _configure_page() -> None:
     }
     
     [data-testid="stSidebar"] button:hover {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        border-color: rgba(255, 255, 255, 0.15) !important;
+        background-color: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
         color: #FFFFFF !important;
     }
     
@@ -196,10 +199,9 @@ def _configure_page() -> None:
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
     }
     
-    /* Specific fix for the "white button" issue: force background for secondary buttons in sidebar */
-    [data-testid="stSidebar"] button[kind="secondary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
-        background-color: rgba(255, 255, 255, 0.03) !important;
+    /* Final safety: Never allow white backgrounds in sidebar buttons */
+    [data-testid="stSidebar"] button[kind="secondary"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
     }
     
     /* Global Primary Buttons (Main Content Area) */
