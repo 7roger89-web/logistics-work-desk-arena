@@ -80,13 +80,16 @@ LOG-LG08 hoàn thành đầy đủ tất cả các hạng mục: harden identity
 
 | Username | Role | Password |
 |----------|------|----------|
-| admin | Admin | 7roger899 |
-| 7roger | Admin | 7roger899 |
-| sami | Sale | Sami2026! |
-| fiona | Support | Fiona2026! |
+| admin | Admin | [REDACTED —Owner-kept] |
+| 7roger | Admin | [REDACTED —Owner-kept] |
+| sami | Sale | [REDACTED —rotated 2026-08-21] |
+| fiona | Support | [REDACTED —rotated 2026-08-21] |
 
-## Cloud URL
-**https://tienthanhlog.streamlit.app/**
+> Credentials từng được ghi plaintext trong tài liệu này đã bị xóa (commit LG08 sanitize). sami và fiona đã đổi mật khẩu mới; admin/7roger do chính Owner giữ nên không cần đổi.
+
+## Cloud URL (LG08 release)
+- App mới (production branch): **https://logisticspro-1.streamlit.app/**
+- App cũ (main branch): https://tienthanhlog.streamlit.app/ (cũ, không còn là nguồn chính)
 
 ## Rollback Plan
 If issues arise, revert to production branch:
