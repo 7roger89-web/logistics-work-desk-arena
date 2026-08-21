@@ -303,17 +303,8 @@ def _render_shipment_workdesk(all_ships, rows):
     missing_docs = sum(1 for r in rows if r.get("missing_documents_count", 0) > 0)
     waiting = sum(1 for r in rows if not r.get("next_action") or r.get("next_action") == "Không có việc tiếp theo")
 
-    st.markdown(
-        f"""
-        <div style='background:#FFF8EB;border:2px solid #D97706;border-radius:8px;padding:0.6rem 0.8rem;margin:0.5rem 0 0.8rem;'>
-          <span style='font-size:1.1rem;font-weight:800;color:#92400E;'>🔴 {action_count} lô cần xử lý</span>
-          <span style='color:#92400E;margin-left:0.8rem;'>· {overdue} quá hạn</span>
-          <span style='color:#92400E;margin-left:0.8rem;'>· {missing_docs} thiếu chứng từ</span>
-          <span style='color:#92400E;margin-left:0.8rem;'>· {waiting} đang chờ</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # P2P: Compressed queue kicker for cleaner dashboard
+    st.info(f"🔔 **{action_count} lô cần xử lý** ({overdue} quá hạn, {missing_docs} thiếu chứng từ). Xem chi tiết tại [Việc Cần Xử Lý](/Việc_Cần_Xử_Lý).")
 
     st.markdown(
         "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>",
@@ -906,15 +897,11 @@ def ui_dashboard():
             with st.container(border=True):
                 can_edit = has_permission("shipment_edit")
                 can_delete = has_permission("shipment_delete")
-                c_head, c_save, c_del, c_close = st.columns([3, 1.5, 1.5, 1])
+                c_head, c_del, c_close = st.columns([4.5, 1.5, 1])
                 c_head.markdown(f"#### 📂 {active_sid}")
-                if c_save.button("💾 LƯU", key="btn_save_top", type="primary", use_container_width=True, disabled=not can_edit):
-                    apply_financial_snapshot(ship_data)
-                    if save_shipment_atomic(ship_data, expected_version=ship_data.get("version")):
-                        st.session_state.needs_refresh = True
-                        st.toast("Đã lưu thành công!")
-                        st.rerun()
-                    st.error(st.session_state.get("last_db_error") or "Không thể lưu dữ liệu.")
+                
+                # P2P: Duplicate save button removed. 
+                # The canonical save interaction is now exclusively inside the shipment workspace tabs.
                 
                 if c_del.button("🗑️ XÓA", key="btn_del_top", type="secondary", use_container_width=True, disabled=not can_delete):
                     st.session_state.confirm_delete_sid = active_sid; st.rerun()

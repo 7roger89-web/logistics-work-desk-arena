@@ -103,7 +103,17 @@ def _configure_page() -> None:
     }
     .stApp { background: var(--ops-bg); color: var(--ops-ink); }
     h1, h2, h3, h4 { color: var(--ops-navy); font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.015em; }
-    .block-container { max-width: 1680px; padding-top: 1.1rem; padding-bottom: 3rem; }
+    .block-container { max-width: 1680px; padding-top: 1.1rem; padding-bottom: 3rem; margin: 0 auto; }
+    
+    /* P2P: Responsive Content Widths */
+    /* Forms and standard pages should be narrower for readability */
+    .stMain .block-container { max-width: 1200px !important; }
+    
+    /* Shipment Workspace & Tables can be wider */
+    div[data-testid="stVerticalBlock"]:has(div[data-testid="stExpander"]) .block-container,
+    div[data-testid="stTable"] .block-container { 
+        max-width: 1680px !important; 
+    }
     .stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] { border-radius: 6px; }
     div[data-testid="stMetric"] {
         background: var(--ops-surface); border: 1px solid var(--ops-line);
@@ -119,14 +129,26 @@ def _configure_page() -> None:
     }
     [data-testid="stSidebar"] > div:first-child { padding-top: 1rem !important; }
     
-    /* P2P: Force Sidebar Text Colors */
+    /* P2P: Force Sidebar Text Colors - HIGH CONTRAST */
     [data-testid="stSidebar"] .stMarkdown, 
     [data-testid="stSidebar"] .stCaption,
     [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p,
     [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stMarkdown p { 
-        color: #D9E7F2 !important; 
+    [data-testid="stSidebar"] .stMarkdown p,
+    [data-testid="stSidebar"] .stMarkdown div,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary p { 
+        color: #E2E8F0 !important; /* Slate 200 - High contrast on dark bg */
+        opacity: 1 !important;
+    }
+    
+    /* Specific overrides for group headings */
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary p {
+        color: #94A3B8 !important; /* Slate 400 for headers */
+        font-weight: 700 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p {
+        color: #F8FAFC !important;
     }
     
     .ops-brand {
@@ -159,19 +181,24 @@ def _configure_page() -> None:
         color: #FFFFFF !important;
     }
     
-    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE V2 */
-    /* We must use highly specific selectors to override Streamlit's base button styles in sidebar */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] button,
-    [data-testid="stSidebar"] [data-testid="stExpander"] button,
+    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE V3 */
+    /* High specificity to ensure visibility of navigation and utility buttons */
     [data-testid="stSidebar"] button[kind="secondary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        color: #CBD5E1 !important; /* Slate 300 */
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"],
+    [data-testid="stSidebar"] [data-testid="stExpander"] button {
+        background-color: rgba(255, 255, 255, 0.07) !important;
+        color: #F1F5F9 !important; /* Slate 100 - Near white for max readability */
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         text-align: left !important;
         justify-content: flex-start !important;
         width: 100% !important;
-        transition: all 0.2s ease !important;
+        opacity: 1 !important;
+    }
+    
+    /* Ensure icons and text inside buttons are white/bright */
+    [data-testid="stSidebar"] button[kind="secondary"] p,
+    [data-testid="stSidebar"] button[kind="secondary"] span {
+        color: #F1F5F9 !important;
     }
     
     [data-testid="stSidebar"] button:hover {
