@@ -6,8 +6,8 @@ Ngày phát hành: 2026-08-21 (UTC+7)
 
 | Hạng mục | Giá trị |
 |---|---|
-| CURRENT_MAIN_SHA (full) | `e859d7346aef12c13557b12a7277ba1da44bc5a6` |
-| CURRENT_MAIN_SHA (short) | `e859d73` |
+| CURRENT_MAIN_SHA (full) | `05f4b76`+ (HEAD tại thời điểm phát hành là `05f4b76b197881886790e241a795c20cf639906a`; chứa thêm bản ghi phát hành này) |
+| CURRENT_MAIN_SHA (short) | `05f4b76` |
 | CURRENT_PRODUCTION_SHA (full) | `b6fde2b46e36f65947867f3b8aeee5c2c98f8f04` |
 | CURRENT_PRODUCTION_SHA (short) | `b6fde2b` |
 | CLOUD_DEPLOYMENT_BRANCH | `production` |
