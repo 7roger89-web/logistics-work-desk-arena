@@ -163,3 +163,61 @@
 - URI: mongodb+srv://Qazqaz12:1123456@cluster0.qvjh5ji.mongodb.net/?appName=Cluster0
 - users: admin(user_id=8c6976e5b5410415), 7roger(cbd5311e50e7a312), sami(24964a2764be8975), fiona(4c0db82499ca9a6d)
 - tasks: 8 total, all use display-name assignees (no user_id yet)
+
+
+## Browser QA trên cloud (2026-08-21 02:39 UTC)
+- Login 7roger (admin) thành công
+- Dashboard hiển thị đầy đủ với các tính năng LG08:
+  - Global search "🔍 Tìm nhanh" ở trên cùng sidebar
+  - Sidebar gọn gàng với 5 nhóm: VẬN HÀNH, KINH DOANH & ĐỐI TÁC, TÀI CHÍNH & ĐỐI SOÁT, CÔNG CỤ & THAM KHẢO, QUẢN TRỊ
+  - Tasks hiển thị đúng (3 việc đang chờ, 5 lịch sử đã xong)
+  - "🧭 Việc Cần Xử Lý" hiện trong menu
+  - "➕ Giao Việc Nhanh" và "📝 Sổ Tay Nháp" buttons visible
+  - User identity shows "7roger · Owner · admin" in sidebar
+- Footer: LOG-C07 · 3.1.3-router-hotfix (đúng version tag)
+
+## Dashboard QA — đầy đủ tính năng LG08
+- Header: "Phòng điều khiển lô hàng" với subtitle "Bảng việc là mặt tiền - Tài chính là bối cảnh có nguồn"
+- Quick actions: "➕ Giao Việc Nhanh", "📝 Sổ Tay Nháp", "Lưu Trữ" toggle
+- NHẬP TỪ GETFLY / XUẤT CHO GETFLY buttons visible
+- Bộ lọc dữ liệu & thời gian + Bảng việc đang chờ (3) + Lịch sử đã xong (5)
+- Tabs: DASHBOARD, TOP KHÁCH, GETFLY, HOA HỒNG
+- Shipment list: 13/13 lô, khách hàng B&G GREEN, sale phụ trách, vận hành, trạng thái
+- "Vì sao ra số này?" explanation buttons per shipment
+- Xử lý / Tổng quan buttons per shipment
+- Sidebar gọn, collapsible groups — LG08 compact navigation working
+- Global search "🔍 Tìm nhanh" — LG08 global search working
+- User identity "7roger · Owner · admin" — LG08 canonical identity working
+
+## Global Search QA — PASS
+Search "B&G GREEN" returns 2 results:
+1. "📦 Lô hàng: T1.2026 - B&G GREEN - GIAY..." — type=lô hàng, direct open
+2. "👥 Khách hàng: CÔNG TY CỔ PHẦN B&G GREEN" — type=khách hàng, direct open
+- Shows type icon + identifier + context — LG08 global search works correctly
+- Search results appear as dropdown with clickable items
+
+## Global Search Direct-Open QA — PASS
+- Clicked search result "Lô hàng: T1 - B&G GREEN - GIA VI"
+- Search results dropdown shows correctly with 2 items
+- Direct open navigation works (opens shipment form)
+
+## Role-Specific Dashboard QA (sami/sale) — PASS
+- Sidebar shows "Sami - Sale · sale" (not "Người Dùng" section — RBAC working)
+- "Giao Việc Mới" dialog appeared at top — this is from the LG08 quick-assign feature
+- Dashboard shows full data: 13 lô cần xử lý, 0 quá hạn
+- Navigation: Tổng Quan Công Việc, Việc Cần Xử Lý, Tạo Lô Mới, Theo Dõi Vận Chuyển visible for sale
+- No "Người Dùng", no "Reload Data" (only limited items) — correct RBAC
+- Global search bar visible at top with "🔍 Tìm nhanh"
+- LG08 features all working for sale role
+
+## LG08 Browser QA Summary — ALL PASS
+Dashboard QA (7roger/admin): "Phòng điều khiển lô hàng" title, "Việc của tôi" visible in sidebar, global search with "🔍 Tìm nhanh", quick-assign, role-specific emphasis (admin sees all sections), navigation collapsed to compact groups.
+
+Role-Specific QA (sami/sale): "Sami - Sale · sale" shown, no "Người Dùng" in sidebar (correct RBAC), "Giao Việc Mới" dialog appeared, dashboard shows 13 lô cần xử lý, search works.
+
+Global Search: "B&G GREEN" returns 2 results with type labels (📦 Lô hàng, 👥 Khách hàng) — direct open works.
+
+Regression: 278 passed / 28 skipped / 0 failed
+RBAC tests: PASS
+Mojibake: 0
+Production data: unchanged (362 customers, 91 shipments)
