@@ -159,36 +159,33 @@ def _configure_page() -> None:
         color: #FFFFFF !important;
     }
     
-    /* P2P: Sidebar Button Fix - HARD OVERRIDE */
-    /* Target both generic buttons and Streamlit's baseButton components */
-    [data-testid="stSidebar"] button,
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-primary"] {
-        background-color: rgba(255, 255, 255, 0.03) !important;
-        color: #D9E7F2 !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    /* P2P: Sidebar Button Fix - EMERGENCY HARD OVERRIDE */
+    /* We must force the sidebar to be dark and buttons to have high contrast */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] button,
+    [data-testid="stSidebar"] button[kind="secondary"],
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
+        background-color: #1E293B !important; /* Slate 800 - Dark but distinct */
+        color: #F1F5F9 !important; /* Slate 100 - Near white */
+        border: 1px solid #334155 !important;
         text-align: left !important;
         justify-content: flex-start !important;
         width: 100% !important;
-        transition: all 120ms ease !important;
     }
     
-    [data-testid="stSidebar"] button:hover,
+    [data-testid="stSidebar"] button[kind="secondary"]:hover,
     [data-testid="stSidebar"] [data-testid="baseButton-secondary"]:hover { 
-        background-color: rgba(255, 255, 255, 0.1) !important; 
-        border-color: rgba(255, 255, 255, 0.2) !important; 
+        background-color: #334155 !important; 
+        border-color: #475569 !important; 
         color: #FFFFFF !important; 
     }
     
-    /* Force text color inside sidebar buttons */
+    /* Force text color inside ALL sidebar buttons to prevent inheritance leaks */
     [data-testid="stSidebar"] button p,
     [data-testid="stSidebar"] button span,
-    [data-testid="stSidebar"] button div {
-        color: #D9E7F2 !important;
-    }
-    [data-testid="stSidebar"] button:hover p,
-    [data-testid="stSidebar"] button:hover span {
-        color: #FFFFFF !important;
+    [data-testid="stSidebar"] button div,
+    [data-testid="stSidebar"] button label {
+        color: inherit !important;
+        font-weight: 600 !important;
     }
     
     /* Active/Primary Navigation Item in Sidebar */
@@ -197,13 +194,7 @@ def _configure_page() -> None:
         background-color: #2563EB !important;
         color: #FFFFFF !important;
         font-weight: 700 !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
         border: 1px solid #3B82F6 !important;
-    }
-    [data-testid="stSidebar"] button[kind="primary"] p,
-    [data-testid="stSidebar"] [data-testid="baseButton-primary"] p { 
-        color: #FFFFFF !important; 
-        font-weight: 700 !important;
     }
     
     /* Global Primary Buttons (Main Content Area) */
