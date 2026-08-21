@@ -119,7 +119,8 @@ def _configure_page() -> None:
     }
     [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] .stCaption,
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #D9E7F2; }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] .stMarkdown p { color: #D9E7F2 !important; }
     .ops-brand {
         padding: 0.35rem 0.2rem 1rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
@@ -140,12 +141,18 @@ def _configure_page() -> None:
         background: transparent !important;
         border: none !important;
     }
-    [data-testid="stExpander"] summary {
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary {
         color: #94A3B8 !important;
         font-size: 0.75rem !important;
         font-weight: 700 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.05em !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary p {
+        color: #94A3B8 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p {
+        color: #FFFFFF !important;
     }
     [data-testid="stExpander"] summary:hover {
         color: #FFFFFF !important;
@@ -201,7 +208,10 @@ def _configure_page() -> None:
         background-color: #F8FAFC !important;
         border-color: #94A3B8 !important;
     }
-    [data-testid="stSidebar"] button[kind="secondary"] p { color: #D9E7F2; }
+    [data-testid="stSidebar"] button[kind="secondary"] p { color: #D9E7F2 !important; }
+    [data-testid="stSidebar"] [data-testid="stExpander"] {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
     [data-testid="stSidebar"] hr { border-color: rgba(255, 255, 255, 0.12); }
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
