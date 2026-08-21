@@ -682,8 +682,8 @@ def ui_dashboard():
         .ops-next-action { border-top: 1px solid #E7EEF3; color: #475467; font-size: 0.82rem; line-height: 1.4; padding-top: 0.52rem; margin-top: 0.38rem; }
         .ops-next-action-ok { color: #18794E; }
         .ops-unknown { color: #9A6700; }
-        div[data-testid="stVerticalBlock"] button { border: 1px solid #C8D4DF; font-weight: 700; color: #102A43; min-height: 2.45rem; }
-        div[data-testid="stVerticalBlock"] button:hover { border-color: #0B6E99; color: #0B6E99; }
+        /* P2P: Removed conflicting local button styles to allow global theme to take over */
+        div[data-testid="stVerticalBlock"] button { min-height: 2.45rem; }
         div[data-testid="stExpander"] { border: none; box-shadow: none; }
         div[data-testid="stExpander"] details { border: 1px solid #D9E2EC; background: white; border-radius: 7px; }
         @media (max-width: 900px) {

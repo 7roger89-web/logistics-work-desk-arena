@@ -447,49 +447,57 @@ def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None 
     shipment.setdefault("is_deleted", False)
     shipment.setdefault("is_archived", False)
 
-    try:
-        old = db.shipments.find_one({"id": sid}, {"_id": 0})
-        payment_history_ok, payment_history_error = _payment_history_is_unchanged(old, shipment)
-        if not payment_history_ok:
-            _set_last_error(payment_history_error)
-            return False
-        query: dict[str, Any] = {"id": sid}
-        if expected_version is not None and old is not None:
-            expected = int(expected_version)
-            if "version" not in old and expected == 0:
-                # Tương thích document cũ chưa có trường version.
-                query["$or"] = [{"version": 0}, {"version": {"$exists": False}}]
-            else:
-                query["version"] = expected
-        set_on_insert = {"created_by": actor or _actor()}
-        if "created_at" not in shipment:
-            set_on_insert["created_at"] = utc_now()
-        result = db.shipments.find_one_and_update(
-            query,
-            {
-                "$set": shipment,
-                "$setOnInsert": set_on_insert,
-                "$inc": {"version": 1},
-            },
-            upsert=old is None,
-            return_document=ReturnDocument.AFTER,
-        )
-        if result is None:
-            raise ConcurrentUpdateError("Dữ liệu đã được người khác cập nhật. Hãy Reload Data rồi lưu lại.")
-        _audit(db, "shipment", sid, "create" if old is None else "update", before=old, after={k: v for k, v in result.items() if k != "_id"}, actor=actor)
+    client = getattr(db, "client", None)
+    if client is None or not hasattr(client, "start_session"):
+        _set_last_error("MongoDB không cung cấp transaction cho cập nhật lô hàng.")
+        return False
 
-        if old is None:
-            _enqueue_domain_event(db, "shipment.created", {"shipment_id": sid, "customer": shipment.get("customer", ""), "mode": shipment["data"]["0.0"].get("mode", "")})
-        else:
-            old_status = old.get("status") or old.get("data", {}).get("0.0", {}).get("st")
-            if old_status != shipment["status"]:
-                _enqueue_domain_event(db, "shipment.status_changed", {"shipment_id": sid, "customer": shipment.get("customer", ""), "old_status": old_status, "new_status": shipment["status"]})
-            old_eta = old.get("data", {}).get("2.6", {}).get("arrival_date")
-            new_eta = shipment.get("data", {}).get("2.6", {}).get("arrival_date")
-            if old_eta != new_eta:
-                _enqueue_domain_event(db, "shipment.eta_changed", {"shipment_id": sid, "customer": shipment.get("customer", ""), "old_eta": old_eta, "new_eta": new_eta})
-        _set_last_error("")
-        return True
+    try:
+        with client.start_session() as session:
+            with session.start_transaction():
+                old = db.shipments.find_one({"id": sid}, {"_id": 0}, session=session)
+                payment_history_ok, payment_history_error = _payment_history_is_unchanged(old, shipment)
+                if not payment_history_ok:
+                    _set_last_error(payment_history_error)
+                    return False
+                query: dict[str, Any] = {"id": sid}
+                if expected_version is not None and old is not None:
+                    expected = int(expected_version)
+                    if "version" not in old and expected == 0:
+                        # Tương thích document cũ chưa có trường version.
+                        query["$or"] = [{"version": 0}, {"version": {"$exists": False}}]
+                    else:
+                        query["version"] = expected
+                set_on_insert = {"created_by": actor or _actor()}
+                if "created_at" not in shipment:
+                    set_on_insert["created_at"] = utc_now()
+                result = db.shipments.find_one_and_update(
+                    query,
+                    {
+                        "$set": shipment,
+                        "$setOnInsert": set_on_insert,
+                        "$inc": {"version": 1},
+                    },
+                    upsert=old is None,
+                    return_document=ReturnDocument.AFTER,
+                    session=session,
+                )
+                if result is None:
+                    raise ConcurrentUpdateError("Dữ liệu đã được người khác cập nhật. Hãy Reload Data rồi lưu lại.")
+                _audit(db, "shipment", sid, "create" if old is None else "update", before=old, after={k: v for k, v in result.items() if k != "_id"}, actor=actor, session=session)
+
+                if old is None:
+                    _enqueue_domain_event(db, "shipment.created", {"shipment_id": sid, "customer": shipment.get("customer", ""), "mode": shipment["data"]["0.0"].get("mode", "")}, session=session)
+                else:
+                    old_status = old.get("status") or old.get("data", {}).get("0.0", {}).get("st")
+                    if old_status != shipment["status"]:
+                        _enqueue_domain_event(db, "shipment.status_changed", {"shipment_id": sid, "customer": shipment.get("customer", ""), "old_status": old_status, "new_status": shipment["status"]}, session=session)
+                    old_eta = old.get("data", {}).get("2.6", {}).get("arrival_date")
+                    new_eta = shipment.get("data", {}).get("2.6", {}).get("arrival_date")
+                    if old_eta != new_eta:
+                        _enqueue_domain_event(db, "shipment.eta_changed", {"shipment_id": sid, "customer": shipment.get("customer", ""), "old_eta": old_eta, "new_eta": new_eta}, session=session)
+                _set_last_error("")
+                return True
     except (PyMongoError, ConcurrentUpdateError, DuplicateKeyError) as exc:
         LOGGER.exception("save_shipment_atomic failed")
         _set_last_error(str(exc))

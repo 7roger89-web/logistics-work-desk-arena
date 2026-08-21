@@ -89,17 +89,17 @@ def _configure_page() -> None:
         """
 <style>
     :root {
-        --ops-ink: #16202A;
-        --ops-muted: #667085;
-        --ops-navy: #102A43;
-        --ops-navy-2: #173B5E;
-        --ops-blue: #0B6E99;
-        --ops-bg: #F7F8FA;
+        --ops-ink: #0F172A;
+        --ops-muted: #64748B;
+        --ops-navy: #1E3A8A;
+        --ops-navy-2: #1E40AF;
+        --ops-blue: #2563EB;
+        --ops-bg: #F8FAFC;
         --ops-surface: #FFFFFF;
-        --ops-line: #D9E2EC;
-        --ops-amber: #9A6700;
-        --ops-red: #B42318;
-        --ops-green: #18794E;
+        --ops-line: #E2E8F0;
+        --ops-amber: #B45309;
+        --ops-red: #DC2626;
+        --ops-green: #15803D;
     }
     .stApp { background: var(--ops-bg); color: var(--ops-ink); }
     h1, h2, h3, h4 { color: var(--ops-navy); font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.015em; }
@@ -114,7 +114,7 @@ def _configure_page() -> None:
         outline-offset: 2px !important;
     }
     [data-testid="stSidebar"] {
-        background: var(--ops-navy);
+        background: #0F172A;
         border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
     [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
@@ -129,11 +129,26 @@ def _configure_page() -> None:
     .ops-brand-title { color: #FFFFFF; font-size: 1.22rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 0.15rem; }
     .ops-brand-status { color: #A9C6D9; font-size: 0.72rem; margin-top: 0.3rem; }
     .ops-nav-group {
-        color: #8FB7D3;
+        color: #94A3B8;
         font-size: 0.64rem;
         font-weight: 800;
         letter-spacing: 0.12em;
         margin: 1rem 0 0.35rem;
+    }
+    /* P2P: Expander styling for navigation groups */
+    [data-testid="stExpander"] {
+        background: transparent !important;
+        border: none !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #94A3B8 !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        color: #FFFFFF !important;
     }
     [data-testid="stSidebar"] button {
         background: transparent;
@@ -144,12 +159,48 @@ def _configure_page() -> None:
     }
     [data-testid="stSidebar"] button:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #FFFFFF; }
     [data-testid="stSidebar"] button[kind="primary"] {
-        background: #E8F1F7;
-        color: var(--ops-navy);
+        background: #2563EB;
+        color: #FFFFFF;
         font-weight: 800;
-        box-shadow: inset 3px 0 0 #5EA9C9;
+        box-shadow: inset 4px 0 0 #FFFFFF;
     }
-    [data-testid="stSidebar"] button[kind="primary"] p { color: var(--ops-navy); }
+    [data-testid="stSidebar"] button[kind="primary"] p { color: #FFFFFF !important; }
+    
+    /* P2P: Fix primary button contrast & visibility */
+    button[kind="primary"] {
+        background-color: #1E40AF !important;
+        color: #FFFFFF !important;
+        border: 1px solid #1D4ED8 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+        border-radius: 8px !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #1D4ED8 !important;
+        border-color: #2563EB !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+    }
+    /* Critical fix for text/icon visibility inside buttons */
+    button[kind="primary"] p, 
+    button[kind="primary"] span,
+    button[kind="primary"] div {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    /* Enhance emoji icon visibility */
+    button[kind="primary"] span[data-testid="stMarkdownContainer"] {
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)) !important;
+    }
+    
+    /* Secondary button styling */
+    button[kind="secondary"] {
+        background-color: #FFFFFF !important;
+        color: #1E293B !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    button[kind="secondary"]:hover {
+        background-color: #F8FAFC !important;
+        border-color: #94A3B8 !important;
+    }
     [data-testid="stSidebar"] button[kind="secondary"] p { color: #D9E7F2; }
     [data-testid="stSidebar"] hr { border-color: rgba(255, 255, 255, 0.12); }
     @media (prefers-reduced-motion: reduce) {
