@@ -9,13 +9,18 @@ from core.users import authenticate
 
 validate_mongo_identity()
 users = load_users()
+# Mật khẩu cũ của sami/fiona đã bị lộ trong tài liệu và ĐÃ XÓA khỏi repo.
+# Test đọc ngược sử dụng env vars để không đưa literal vào source:
+# LOGISTICS_SAMI_OLD / LOGISTICS_SAMI_NEW / LOGISTICS_FIONA_OLD / LOGISTICS_FIONA_NEW / LOGISTICS_OWNER_PW
+import os
+
 checks = [
-    ("sami", "Sami2026!", False),      # mật khẩu cũ — phải FAIL
-    ("sami", "Sami2026New!", True),    # mật khẩu mới — phải PASS
-    ("fiona", "Fiona2026!", False),    # cũ — FAIL
-    ("fiona", "Fiona2026New!", True),  # mới — PASS
-    ("admin", "7roger899", True),      # không đổi — PASS
-    ("7roger", "7roger899", True),     # không đổi — PASS
+    ("sami", os.environ.get("LOGISTICS_SAMI_OLD", "").strip(), False),      # cũ — FAIL
+    ("sami", os.environ.get("LOGISTICS_SAMI_NEW", "").strip(), True),       # mới — PASS
+    ("fiona", os.environ.get("LOGISTICS_FIONA_OLD", "").strip(), False),   # cũ — FAIL
+    ("fiona", os.environ.get("LOGISTICS_FIONA_NEW", "").strip(), True),    # mới — PASS
+    ("admin", os.environ.get("LOGISTICS_OWNER_PW", "").strip(), True),     # Owner-kept — PASS
+    ("7roger", os.environ.get("LOGISTICS_OWNER_PW", "").strip(), True),    # Owner-kept — PASS
 ]
 all_ok = True
 for uname, pw, expect in checks:
