@@ -179,7 +179,7 @@ MONGO_ALLOWED_DB_NAMES = get_list_setting(
 if not MONGO_ALLOWED_DB_NAMES:
     MONGO_ALLOWED_DB_NAMES = ["logistics_workdesk_logc14", "logistics_workdesk_LG01_E2E"]
 ENV_IDENTITY = get_setting("ENV_IDENTITY", ("env", "identity"),
-    "ENV_IDENTITY", default="DEV")
+    "ENV_IDENTITY", default="DEV").upper()
 
 # LOG-LG02 release gate (default OFF: production DB remains fail-closed).
 def _parse_bool(val: Any) -> bool:
@@ -192,10 +192,14 @@ MONGO_RELEASE_MODE = _parse_bool(
 )
 
 _PRODUCTION_DB_NAMES = frozenset({"logistics_db"})
+_STAGING_DB_NAMES = frozenset({"logistics_staging"})
 
 
 def validate_mongo_identity() -> None:
-    """Fail-closed guard: kiểm MONGO_URI + MONGO_DB_NAME trước khi app hoạt động."""
+    """Fail-closed guard: kiểm MONGO_URI + MONGO_DB_NAME trước khi app hoạt động.
+    
+    LOG-REL-01: Thắt chặt cách ly giữa Production và Staging/Preview.
+    """
     if not MONGO_URI:
         raise RuntimeError(
             "Chưa cấu hình MongoDB. Thêm [mongo].uri hoặc MONGO_URI vào "
@@ -207,19 +211,41 @@ def validate_mongo_identity() -> None:
             "Chưa cấu hình [mongo].database / MONGO_DB_NAME. Không dùng giá trị "
             "mặc định; đặt tên database phát triển tường minh."
         )
-    # LOG-LG02 (R5): production release gate. logistics_db may only be used
-    # when the Owner explicitly enables release mode via the
-    # MONGO_RELEASE_MODE setting; otherwise the fail-closed guard applies.
+
+    # LOG-REL-01 (W4): Database isolation based on environment identity.
+    if ENV_IDENTITY == "PRODUCTION":
+        if db_name not in _PRODUCTION_DB_NAMES:
+            raise RuntimeError(
+                f"LỖI CÁCH LY: App đang chạy ở chế độ PRODUCTION nhưng kết nối tới DB '{db_name}'. "
+                f"Chỉ cho phép: {list(_PRODUCTION_DB_NAMES)}"
+            )
+        if not bool(MONGO_RELEASE_MODE):
+            raise RuntimeError(
+                "LỖI CẤU HÌNH: Chế độ PRODUCTION yêu cầu MONGO_RELEASE_MODE=true."
+            )
+    elif ENV_IDENTITY == "STAGING" or ENV_IDENTITY == "PREVIEW":
+        if db_name in _PRODUCTION_DB_NAMES:
+            raise RuntimeError(
+                f"LỖI CÁCH LY NGUY HIỂM: App '{ENV_IDENTITY}' đang cố gắng ghi vào PRODUCTION DB '{db_name}'. "
+                "Hành động này bị chặn để bảo vệ dữ liệu khách hàng thực tế."
+            )
+        if db_name not in _STAGING_DB_NAMES and db_name not in MONGO_ALLOWED_DB_NAMES:
+             raise RuntimeError(
+                f"LỖI CẤU HÌNH: App '{ENV_IDENTITY}' yêu cầu database staging hoặc được phép. "
+                f"Hiện tại: {db_name}. Cho phép: {list(_STAGING_DB_NAMES)}"
+            )
+
+    # Fallback legacy checks
     if db_name in _PRODUCTION_DB_NAMES and not bool(MONGO_RELEASE_MODE):
         raise RuntimeError(
             f"MONGO_DB_NAME={db_name} là tên database PRODUCTION. "
-            "Chưa bật chế độ phát hành (MONGO_RELEASE_MODE=true trong "
-            "secrets hoặc biến MONGO_RELEASE_MODE). Chỉ Owner được phép bật."
+            "Chưa bật chế độ phát hành (MONGO_RELEASE_MODE=true). Chỉ Owner được phép bật."
         )
-    if db_name not in MONGO_ALLOWED_DB_NAMES:
+    
+    # Ensure the DB is at least in the allowed list if not production/staging
+    if db_name not in MONGO_ALLOWED_DB_NAMES and db_name not in _PRODUCTION_DB_NAMES and db_name not in _STAGING_DB_NAMES:
         raise RuntimeError(
-            f"MONGO_DB_NAME={db_name} không thuộc danh sách MONGO_ALLOWED_DB_NAMES "
-            f"{MONGO_ALLOWED_DB_NAMES}. Chỉnh secrets hoặc biến MONGO_ALLOWED_DB_NAMES."
+            f"MONGO_DB_NAME={db_name} không thuộc danh sách MONGO_ALLOWED_DB_NAMES."
         )
 
 

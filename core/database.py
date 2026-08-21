@@ -197,10 +197,9 @@ def get_db():
     client = init_connection()
     if client is None:
         return None
-    # LOG-LG08.1: Mandatory identity validation in release mode
-    from core.config import MONGO_RELEASE_MODE, validate_mongo_identity
-    if MONGO_RELEASE_MODE:
-        validate_mongo_identity()
+    # LOG-REL-01: Mandatory identity validation in ALL modes for environment isolation
+    from core.config import validate_mongo_identity
+    validate_mongo_identity()
     return client[MONGO_DB_NAME]
 
 

@@ -323,8 +323,17 @@ def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
         st.session_state.active_page = active
 
     with st.sidebar:
+        from core.config import ENV_IDENTITY
+        brand_kicker = "VẬN HÀNH LÔ HÀNG"
+        brand_status = "Phòng điều khiển hàng ngày · không gian nội bộ"
+        
+        if ENV_IDENTITY in ("STAGING", "PREVIEW"):
+            brand_kicker = "🛠️ PREVIEW / STAGING"
+            brand_status = "⚠️ KHÔNG PHẢI APP NHÂN VIÊN"
+            st.error("Dữ liệu STAGING - Không ghi lời thực")
+
         st.markdown(
-            "<div class='ops-brand'><div class='ops-brand-kicker'>VẬN HÀNH LÔ HÀNG</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>Phòng điều khiển hàng ngày · không gian nội bộ</div></div>",
+            f"<div class='ops-brand'><div class='ops-brand-kicker'>{brand_kicker}</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>{brand_status}</div></div>",
             unsafe_allow_html=True,
         )
         st.caption(f"{current_user['display_name']} · {current_user['role']}")
