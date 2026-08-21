@@ -683,8 +683,8 @@ def ui_dashboard():
         .ops-next-action-ok { color: #18794E; }
         .ops-unknown { color: #9A6700; }
         /* P2P: Removed conflicting local button styles to allow global theme to take over */
-        div[data-testid="stVerticalBlock"] button { min-height: 2.45rem; }
-        div[data-testid="stExpander"] { border: none; box-shadow: none; }
+        .main div[data-testid="stVerticalBlock"] button { min-height: 2.45rem; }
+        .main div[data-testid="stExpander"] { border: none; box-shadow: none; }
         /* P2P: Restrict expander styling to main content area only */
         .main div[data-testid="stExpander"] details { border: 1px solid #D9E2EC; background: white; border-radius: 7px; }
         @media (max-width: 900px) {

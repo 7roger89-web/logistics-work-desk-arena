@@ -159,24 +159,22 @@ def _configure_page() -> None:
         color: #FFFFFF !important;
     }
     
-    /* P2P: Sidebar Button Fix - EMERGENCY HARD OVERRIDE */
-    /* We must force the sidebar to be dark and buttons to have high contrast */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] button,
-    [data-testid="stSidebar"] button[kind="secondary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
-        background-color: #1E293B !important; /* Slate 800 - Dark but distinct */
-        color: #F1F5F9 !important; /* Slate 100 - Near white */
-        border: 1px solid #334155 !important;
+    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE */
+    /* We must force the sidebar buttons to NEVER have white backgrounds */
+    [data-testid="stSidebar"] button {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        color: #CBD5E1 !important; /* Slate 300 */
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         text-align: left !important;
         justify-content: flex-start !important;
         width: 100% !important;
+        transition: all 0.2s ease !important;
     }
     
-    [data-testid="stSidebar"] button[kind="secondary"]:hover,
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"]:hover { 
-        background-color: #334155 !important; 
-        border-color: #475569 !important; 
-        color: #FFFFFF !important; 
+    [data-testid="stSidebar"] button:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+        color: #FFFFFF !important;
     }
     
     /* Force text color inside ALL sidebar buttons to prevent inheritance leaks */
@@ -185,16 +183,23 @@ def _configure_page() -> None:
     [data-testid="stSidebar"] button div,
     [data-testid="stSidebar"] button label {
         color: inherit !important;
-        font-weight: 600 !important;
+        font-weight: 500 !important;
     }
     
-    /* Active/Primary Navigation Item in Sidebar */
+    /* Active/Primary Navigation Item in Sidebar - High Visibility Blue */
     [data-testid="stSidebar"] button[kind="primary"],
     [data-testid="stSidebar"] [data-testid="baseButton-primary"] {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
         font-weight: 700 !important;
         border: 1px solid #3B82F6 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    /* Specific fix for the "white button" issue: force background for secondary buttons in sidebar */
+    [data-testid="stSidebar"] button[kind="secondary"],
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"] {
+        background-color: rgba(255, 255, 255, 0.03) !important;
     }
     
     /* Global Primary Buttons (Main Content Area) */
