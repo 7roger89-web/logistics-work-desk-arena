@@ -528,8 +528,8 @@ def _render_owner_reconciliation(reconciliation: Mapping[str, Any] | None) -> No
         source_reconciliation = received.get("source_reconciliation")
         if isinstance(source_reconciliation, Mapping):
             st.caption(
-                f"Six-source status: {source_reconciliation.get('status')} Â· "
-                f"row delta sum: {_money(source_reconciliation.get('delta_sum'), 'CNY')} Â· "
+                f"Six-source status: {source_reconciliation.get('status')} · "
+                f"row delta sum: {_money(source_reconciliation.get('delta_sum'), 'CNY')} · "
                 "C190/C197/C198 are oracle labels mapped to physical rows C192/C199/C200."
             )
             st.dataframe(

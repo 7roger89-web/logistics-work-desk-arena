@@ -630,7 +630,7 @@ def save_direct_shipment_payment(
         existing = db.financial_action_requests.find_one({"request_id": request_id})
         if existing:
             return _existing_result(existing)
-        _set_last_error("Financial action request bị trùng nhưng không Ä‘ọc lại được.")
+        _set_last_error("Financial action request bị trùng nhưng không đọc lại được.")
         return False, {}, get_last_db_error()
     except (PyMongoError, ConcurrentUpdateError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_direct_shipment_payment failed")
@@ -758,7 +758,7 @@ def save_direct_payment_correction(
         existing = db.financial_corrections.find_one({"correction_request_id": request_id})
         if existing:
             return _existing_correction(existing)
-        _set_last_error("Correction request bị trùng nhưng không Ä‘ọc lại được.")
+        _set_last_error("Correction request bị trùng nhưng không đọc lại được.")
         return False, {}, get_last_db_error()
     except (PyMongoError, ConcurrentUpdateError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_direct_payment_correction failed")
@@ -1210,7 +1210,7 @@ def save_entrustment_book(
         existing = db.financial_action_requests.find_one({"request_id": stable_request_id})
         if existing:
             return _matches_existing(existing)
-        _set_last_error("Entrustment request bị trùng nhưng không Ä‘ọc lại được.")
+        _set_last_error("Entrustment request bị trùng nhưng không đọc lại được.")
         return False
     except (PyMongoError, RuntimeError, ValueError) as exc:
         LOGGER.exception("save_entrustment_book failed")
