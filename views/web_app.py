@@ -223,8 +223,10 @@ def _configure_page() -> None:
         font-weight: 700 !important;
     }
     
-    /* Global Secondary Buttons (Main Content Area) */
-    .main button[kind="secondary"] {
+    /* Global Secondary Buttons (Main Content Area Only) */
+    /* Use .block-container to ensure these styles don't leak into the sidebar */
+    .block-container button[kind="secondary"],
+    .stMain button[kind="secondary"] {
         background-color: #FFFFFF !important;
         color: #1E293B !important;
         border: 1px solid #CBD5E1 !important;
