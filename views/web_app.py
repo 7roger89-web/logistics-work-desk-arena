@@ -114,13 +114,21 @@ def _configure_page() -> None:
         outline-offset: 2px !important;
     }
     [data-testid="stSidebar"] {
-        background: #0F172A;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background: #0F172A !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
-    [data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] .stCaption,
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] .stMarkdown p { color: #D9E7F2 !important; }
+    [data-testid="stSidebar"] > div:first-child { padding-top: 1rem !important; }
+    
+    /* P2P: Force Sidebar Text Colors */
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] .stCaption,
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] .stMarkdown p { 
+        color: #D9E7F2 !important; 
+    }
+    
     .ops-brand {
         padding: 0.35rem 0.2rem 1rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
@@ -129,17 +137,13 @@ def _configure_page() -> None:
     .ops-brand-kicker { color: #8FB7D3; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; }
     .ops-brand-title { color: #FFFFFF; font-size: 1.22rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 0.15rem; }
     .ops-brand-status { color: #A9C6D9; font-size: 0.72rem; margin-top: 0.3rem; }
-    .ops-nav-group {
-        color: #94A3B8;
-        font-size: 0.64rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        margin: 1rem 0 0.35rem;
-    }
-    /* P2P: Expander styling for navigation groups */
-    [data-testid="stExpander"] {
+    
+    /* P2P: Expander styling for navigation groups in Sidebar */
+    [data-testid="stSidebar"] [data-testid="stExpander"] {
         background: transparent !important;
         border: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 0 !important;
     }
     [data-testid="stSidebar"] [data-testid="stExpander"] summary {
         color: #94A3B8 !important;
@@ -154,40 +158,52 @@ def _configure_page() -> None:
     [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p {
         color: #FFFFFF !important;
     }
-    [data-testid="stExpander"] summary:hover {
-        color: #FFFFFF !important;
-    }
-    /* P2P: Sidebar Button Fix - Force dark background and white text */
-    [data-testid="stSidebar"] button {
-        background-color: transparent !important;
+    
+    /* P2P: Sidebar Button Fix - HARD OVERRIDE */
+    /* Target both generic buttons and Streamlit's baseButton components */
+    [data-testid="stSidebar"] button,
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"],
+    [data-testid="stSidebar"] [data-testid="baseButton-primary"] {
+        background-color: rgba(255, 255, 255, 0.03) !important;
         color: #D9E7F2 !important;
-        border: 1px solid transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         text-align: left !important;
-        transition: background-color 120ms ease, color 120ms ease !important;
+        justify-content: flex-start !important;
+        width: 100% !important;
+        transition: all 120ms ease !important;
     }
-    [data-testid="stSidebar"] button:hover { 
-        background-color: rgba(255, 255, 255, 0.08) !important; 
-        border-color: rgba(255, 255, 255, 0.12) !important; 
+    
+    [data-testid="stSidebar"] button:hover,
+    [data-testid="stSidebar"] [data-testid="baseButton-secondary"]:hover { 
+        background-color: rgba(255, 255, 255, 0.1) !important; 
+        border-color: rgba(255, 255, 255, 0.2) !important; 
         color: #FFFFFF !important; 
     }
-    [data-testid="stSidebar"] button p {
+    
+    /* Force text color inside sidebar buttons */
+    [data-testid="stSidebar"] button p,
+    [data-testid="stSidebar"] button span,
+    [data-testid="stSidebar"] button div {
         color: #D9E7F2 !important;
     }
-    [data-testid="stSidebar"] button:hover p {
+    [data-testid="stSidebar"] button:hover p,
+    [data-testid="stSidebar"] button:hover span {
         color: #FFFFFF !important;
     }
     
     /* Active/Primary Navigation Item in Sidebar */
-    [data-testid="stSidebar"] button[kind="primary"] {
+    [data-testid="stSidebar"] button[kind="primary"],
+    [data-testid="stSidebar"] [data-testid="baseButton-primary"] {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
-        font-weight: 800 !important;
-        box-shadow: inset 4px 0 0 #FFFFFF !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
         border: 1px solid #3B82F6 !important;
     }
-    [data-testid="stSidebar"] button[kind="primary"] p { 
+    [data-testid="stSidebar"] button[kind="primary"] p,
+    [data-testid="stSidebar"] [data-testid="baseButton-primary"] p { 
         color: #FFFFFF !important; 
-        font-weight: 800 !important;
+        font-weight: 700 !important;
     }
     
     /* Global Primary Buttons (Main Content Area) */
