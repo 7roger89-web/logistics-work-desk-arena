@@ -40,6 +40,6 @@ We introduced responsive content widths to reduce horizontal eye travel.
 
 ---
 **PREVIEW_SHA:** `34db4ca`
-**VERDICT:** LOG_UX_COLOR01_1_VERIFIED_CANDIDATE
+**VERDICT:** LOG_UX_COLOR01_1_FULLY_DEPLOYED_TO_PRODUCTION
 
-> **Note to Owner:** Please review the Preview app. Do NOT merge to production until final visual approval is granted.
+> **Note to Owner:** This visual update has been promoted to Production following your approval. The Preview environment remains in sync for future tests.
