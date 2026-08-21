@@ -195,7 +195,13 @@ def _init_connection_impl() -> pymongo.MongoClient | None:
 
 def get_db():
     client = init_connection()
-    return client[MONGO_DB_NAME] if client is not None else None
+    if client is None:
+        return None
+    # LOG-LG08.1: Mandatory identity validation in release mode
+    from core.config import MONGO_RELEASE_MODE, validate_mongo_identity
+    if MONGO_RELEASE_MODE:
+        validate_mongo_identity()
+    return client[MONGO_DB_NAME]
 
 
 def ensure_indexes() -> bool:
@@ -387,14 +393,20 @@ def load_archived_data(limit: int = 5000) -> dict[str, dict[str, Any]]:
 
 
 def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None, after: Any = None, actor: str | None = None, session=None) -> None:
+    # LOG-LG08.1: Prevent password_hash leakage into audit logs
+    from core.users import redact_password_material
+    
+    safe_before = redact_password_material(before) if isinstance(before, Mapping) else before
+    safe_after = redact_password_material(after) if isinstance(after, Mapping) else after
+
     db.audit_logs.insert_one({
         "event_id": str(uuid4()),
         "entity_type": entity_type,
         "entity_id": entity_id,
         "action": action,
         "actor": actor or _actor(),
-        "before": before,
-        "after": after,
+        "before": safe_before,
+        "after": safe_after,
         "created_at": utc_now(),
     }, session=session)
 
@@ -505,7 +517,13 @@ def save_direct_shipment_payment(
     if amount <= 0:
         _set_last_error("Số tiền thanh toán phải lớn hơn 0.")
         return False, {}, get_last_db_error()
-
+    
+    # LOG-LG08.1: Boundary RBAC enforcement
+    from core.auth import has_permission
+    if not has_permission("finance_write"):
+        _set_last_error("Bạn không có quyền thực hiện giao dịch tài chính.")
+        return False, {}, get_last_db_error()
+        
     payment["request_id"] = request_id
     payment.setdefault("id", f"PAY-{uuid4().hex.upper()}")
     payment.pop("_id", None)
@@ -609,6 +627,7 @@ def save_direct_shipment_payment(
                     },
                     session=session,
                 )
+                # LOG-LG08.1: Audit and event MUST use the same session to ensure atomicity
                 _audit(
                     db,
                     "shipment",

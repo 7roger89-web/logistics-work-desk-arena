@@ -182,7 +182,12 @@ ENV_IDENTITY = get_setting("ENV_IDENTITY", ("env", "identity"),
     "ENV_IDENTITY", default="DEV")
 
 # LOG-LG02 release gate (default OFF: production DB remains fail-closed).
-MONGO_RELEASE_MODE = bool(
+def _parse_bool(val: Any) -> bool:
+    if isinstance(val, bool): return val
+    s = str(val or "").strip().lower()
+    return s in ("true", "1", "yes", "on")
+
+MONGO_RELEASE_MODE = _parse_bool(
     get_setting("MONGO_RELEASE_MODE", ("mongo", "release_mode"), "MONGO_RELEASE_MODE")
 )
 

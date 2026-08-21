@@ -217,16 +217,24 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
         ws1.cell(row=row, column=col).fill = section_fill
     row += 1
 
-    duty = float(data.get("import_duty_amount", 0) or 0)
-    vat = float(data.get("import_vat_amount", 0) or 0)
-    total = duty + vat
+    # LOG-LG08.1: Support dynamic tax list from UI
+    tax_list = data.get("ds_thue", [])
+    if not tax_list:
+        duty = float(data.get("import_duty_amount", 0) or 0)
+        vat = float(data.get("import_vat_amount", 0) or 0)
+        tax_list = [
+            {"ten": "Thuế nhập khẩu", "ndkt": "1901", "tien": duty},
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1701", "tien": vat}
+        ]
+    
+    total = sum(t.get("tien", 0) for t in tax_list)
 
-    autofill_data3 = [
-        ("Thuế nhập khẩu (đ)", duty, "Tự động từ hồ sơ lô"),
-        ("Thuế GTGT hàng NK (đ)", vat, "Tự động từ hồ sơ lô"),
-        ("TỔNG CỘNG (đ)", total, "= Thuế NK + Thuế GTGT"),
-        ("Tổng bằng chữ", doc_so_thanh_chu_vi(total), "Tự động chuyển số thành chữ"),
-    ]
+    autofill_data3 = []
+    for t in tax_list:
+        autofill_data3.append((t.get("ten", "Thuế"), t.get("tien", 0), f"Mã NDKT: {t.get('ndkt', '')}"))
+    
+    autofill_data3.append(("TỔNG CỘNG (đ)", total, "Tổng cộng các khoản thuế"))
+    autofill_data3.append(("Tổng bằng chữ", doc_so_thanh_chu_vi(total), "Tự động chuyển số thành chữ"))
     for label, value, note in autofill_data3:
         ws1.cell(row=row, column=1, value=label).font = label_font
         c = ws1.cell(row=row, column=2, value=value)
@@ -337,10 +345,10 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
     tk_no = data.get("tk_no", "")
     tk_date = data.get("tk_date", "")
 
-    tax_rows = [
-        ("1", tk_no, tk_date, "Thuế nhập khẩu", duty, "", ""),
-        ("2", tk_no, tk_date, "Thuế GTGT hàng nhập khẩu", vat, "", ""),
-    ]
+    tax_rows = []
+    for i, t in enumerate(tax_list, 1):
+        tax_rows.append((str(i), tk_no, tk_date, t.get("ten", ""), t.get("tien", 0), t.get("ndkt", ""), ""))
+        
     first_tax_row = row
     for tax_row_data in tax_rows:
         for col_idx, val in enumerate(tax_row_data, 1):

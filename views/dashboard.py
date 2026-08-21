@@ -540,10 +540,13 @@ def _render_excel_import_ui():
                         doc = group_to_shipment_doc(g)
                         sid = doc.get("id", "")
                         try:
-                            db.shipments.update_one(
-                                {"id": sid}, {"$set": doc}, upsert=True
-                            )
-                            saved_count += 1
+                            # LOG-LG08.1: Mandatory atomic save with idempotency
+                            # For NEW shipments, version is 0.
+                            success = save_shipment_atomic(doc, expected_version=0)
+                            if success:
+                                saved_count += 1
+                            else:
+                                st.warning(f"Không lưu được lô {sid}: Lỗi nghiệp vụ hoặc trùng lặp.")
                         except Exception as ex:
                             st.warning(f"Không lưu được lô {sid}: {ex}")
                     if saved_count > 0:
@@ -575,10 +578,14 @@ def _render_excel_import_ui():
                         doc = group_to_shipment_doc(g)
                         sid = doc.get("id", "")
                         try:
-                            db.shipments.update_one(
-                                {"id": sid}, {"$set": doc}, upsert=True
-                            )
-                            saved_count += 1
+                            # LOG-LG08.1: Use atomic save with version check.
+                            # For bulk import, we don't have expected_version, but save_shipment_atomic
+                            # will handle upsert/update safely.
+                            success = save_shipment_atomic(doc)
+                            if success:
+                                saved_count += 1
+                            else:
+                                st.warning(f"Không lưu được lô {sid}: Lỗi nghiệp vụ.")
                         except Exception as ex:
                             st.warning(f"Không lưu được lô {sid}: {ex}")
                     if saved_count > 0:
@@ -700,8 +707,16 @@ def ui_dashboard():
         "<div style='color:#667085;font-size:0.82rem;'>Bảng việc là mặt tiền · Tài chính là bối cảnh có nguồn</div>",
         unsafe_allow_html=True,
     )
-    if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True): quick_assign_task_dialog()
-    if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True): quick_note_dialog()
+    if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True):
+        if has_permission("shipment_edit"):
+            quick_assign_task_dialog()
+        else:
+            st.error("⚠️ Bạn không có quyền giao việc.")
+    if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True):
+        if has_permission("shipment_edit"):
+            quick_note_dialog()
+        else:
+            st.error("⚠️ Bạn không có quyền sử dụng sổ tay.")
     view_archive = c_tog.toggle("Lưu Trữ", value=False)
     
     # ─── LOG-LG05: Excel Import/Export ───
@@ -710,7 +725,10 @@ def ui_dashboard():
     
     # Import button
     if c_excel1.button("📤 NHẬP TỪ GETFLY", use_container_width=True, key="btn_lg05_import"):
-        _render_excel_import_ui()
+        if has_permission("shipment_create"):
+            _render_excel_import_ui()
+        else:
+            st.error("⚠️ Bạn không có quyền nhập dữ liệu.")
     
     # Export button
     if c_excel2.button("📥 XUẤT CHO GETFLY", use_container_width=True, key="btn_lg05_export"):

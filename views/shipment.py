@@ -304,8 +304,8 @@ def ui_shipment_detail_tabs(sid, ship):
                             "Số tiền": st.column_config.NumberColumn("Số tiền (VNĐ)", format="%d", min_value=0, required=True)
                         }
                     )
+                    # LOG-LG08.1: Unified GNT build path with fail-closed validation
                     if st.button("📥 Xuất Excel GNT", key=f"btn_gnt_{sid}", use_container_width=True):
-                        from core.gnt_builder import check_gnt_prerequisites, build_gnt_workbook
                         final_tax_list = []
                         if not isinstance(edited_taxes, pd.DataFrame):
                             edited_taxes = pd.DataFrame(edited_taxes) if edited_taxes else pd.DataFrame(_gnt_tax_default)
@@ -318,22 +318,40 @@ def ui_shipment_detail_tabs(sid, ship):
                                     "ndkt": str(item.get("Mã NDKT", "")).strip(),
                                     "tien": amt,
                                 })
-                        if not final_tax_list: st.warning("Vui lòng nhập số tiền thuế lớn hơn 0.")
+                        
+                        # Data validation before building
+                        if not final_tax_list:
+                            st.error("⚠️ Vui lòng nhập ít nhất một khoản thuế có số tiền > 0.")
+                        elif not gnt_mst or not gnt_nguoi_nop:
+                            st.error("⚠️ Thiếu thông tin Người nộp thuế hoặc MST.")
+                        elif not d['2.4'].get('tk_no'):
+                            st.error("⚠️ Thiếu Số tờ khai hải quan.")
                         else:
+                            from core.gnt_builder import build_gnt_workbook
                             gnt_data = {
+                                'shipment_id': sid,
                                 'nguoi_nop': gnt_nguoi_nop, 'mst': gnt_mst, 'dia_chi': gnt_dia_chi,
                                 'ten_kbnn': gnt_kbnn, 'ten_cq_thu': gnt_cq_thu,
-                                'ma_cq_thu': gnt_ma_hq,
+                                'ma_hq': gnt_ma_hq,
                                 'tk_thu': gnt_tk_thu, 'so_tk': gnt_so_tk,
                                 'tk_no': d['2.4'].get('tk_no', ''),
                                 'tk_date': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
-                                'ngay_tk': d['2.4'].get('tk_date', datetime.now().strftime("%d/%m/%Y")),
                                 'ds_thue': final_tax_list,
                                 'customer_name': curr_cust,
                             }
-                            wb_buffer = build_gnt_workbook(gnt_data)
-                            if wb_buffer:
-                                st.download_button(label="📄 Tải file GNT.xlsx", data=wb_buffer, file_name=f"GNT_{gnt_so_tk}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                            try:
+                                wb_buffer = build_gnt_workbook(gnt_data)
+                                if wb_buffer:
+                                    st.download_button(
+                                        label="📄 Tải file GNT.xlsx", 
+                                        data=wb_buffer, 
+                                        file_name=f"GNT_{sid}_{datetime.now().strftime('%Y%m%d')}.xlsx", 
+                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                        key=f"dl_gnt_{sid}_{uuid4().hex[:8]}"
+                                    )
+                                    st.success("✅ Đã tạo file GNT thành công. Bấm nút Tải về phía trên.")
+                            except Exception as e:
+                                st.error(f"Lỗi khi tạo file GNT: {e}")
 
                 c4, c5 = st.columns([1,2])
                 d['2.4']['customs_status'] = c4.checkbox("Đã thông quan", d['2.4'].get('customs_status', False), key=f"{prefix}_cst")
