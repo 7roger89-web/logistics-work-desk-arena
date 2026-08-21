@@ -17,6 +17,7 @@ single data path. No credentials, hashes, or secrets are printed anywhere.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Iterable, Mapping
 
@@ -68,7 +69,9 @@ def build_user_document(
     if len(password) < 8:
         raise UserError("Mật khẩu cần ít nhất 8 ký tự.")
     email = str(email or "").strip().lower()
+    user_id = hashlib.sha256(username.encode()).hexdigest()[:16]
     return {
+        "user_id": user_id,
         "username": username,
         "display_name": display,
         "email": email,

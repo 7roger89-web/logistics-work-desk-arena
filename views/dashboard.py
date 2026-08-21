@@ -12,7 +12,7 @@ from core.config import STATUS_MAP_INV
 from core.utils import get_shipment_business_date, parse_date, log_error, escape_html, safe_float
 from core.logic import calculate_from_shipment, apply_financial_snapshot
 from core.auth import has_permission
-from core.database import load_data, load_archived_data, save_shipment_atomic, delete_shipment
+from core.database import load_data, load_archived_data, save_shipment_atomic, delete_shipment, load_users
 from core.shipment_dashboard import (
     CRITICAL,
     FINANCIAL_OPEN,
@@ -55,17 +55,86 @@ def quick_note_dialog():
         st.rerun()
 
 @st.dialog("🎯 GIAO VIỆC MỚI")
+def _get_current_user_id():
+    """Return the canonical user_id of the currently logged-in user."""
+    _cu = st.session_state.get("current_user", {})
+    return str(_cu.get("user_id") or _cu.get("username") or "")
+
+
+def _is_my_task(task_doc, user_id):
+    """Check if a task belongs to the given user by canonical user_id."""
+    if not user_id:
+        return False
+    return task_doc.get("assignee_user_id") == user_id
+
+
+def _render_my_tasks_section():
+    """Render 'Việc của tôi' — tasks assigned to the current user by user_id."""
+    _uid = _get_current_user_id()
+    if not _uid:
+        return
+    try:
+        _all_tasks = load_tasks()
+    except Exception:
+        _all_tasks = []
+    _my_pending = [t for t in _all_tasks if not t.get("done", False) and _is_my_task(t, _uid)]
+    if not _my_pending:
+        return
+    with st.expander(f"📌 Việc của tôi ({len(_my_pending)})", expanded=True):
+        for t in _my_pending:
+            _c1, _c2 = st.columns([0.08, 0.92])
+            _done = _c1.checkbox("Đánh dấu đã xong", value=False, label_visibility="collapsed", key=f"my_chk_{t['_id']}")
+            if _done:
+                toggle_task(t["_id"], True)
+                st.rerun()
+            _deadline = escape_html(t.get("deadline", ""))
+            _dl_badge = f" <span style='font-size:10px; color:#E65100;'>(📅 {_deadline})</span>" if _deadline else ""
+            _c2.markdown(f"<div style='font-size:14px; font-weight:700; color:#1B4332; padding-top:4px;'>{escape_html(t.get('content'))}{_dl_badge}</div>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin:4px 0px; opacity:0.15;'>", unsafe_allow_html=True)
+
+
+def _build_assignee_options():
+    """Build (display_label, user_id) pairs for task assignment.
+    Uses canonical user_id, not display_name, for durable identity."""
+    _users = load_users()
+    current_user = st.session_state.get("current_user", {})
+    current_role = str(current_user.get("role", "")).lower()
+    options = [("", "Tất cả (Team)")]  # (user_id, display_label)
+    for u in _users:
+        if not u.get("active", True):
+            continue
+        label = u.get("display_name") or u.get("username", "?")
+        uid = u.get("user_id") or u.get("username", "")
+        if current_role == "admin":
+            options.append((str(uid), label))
+        elif str(uid) != str(current_user.get("user_id") or current_user.get("username", "")):
+            options.append((str(uid), label))
+    return options
+
+
 def quick_assign_task_dialog():
-    TEAM_MEMBERS = ["Tất cả (Team)", "Thành", "Mến", "Linh"]
+    _assignee_options = _build_assignee_options()
+    _labels = [lbl for _, lbl in _assignee_options]
     t_content = st.text_area("📝 Nội dung công việc", placeholder="Ví dụ: Lấy lệnh DO...")
     c1, c2 = st.columns(2)
-    t_assignee = c1.selectbox("👤 Giao cho ai?", TEAM_MEMBERS)
+    t_assignee_label = c1.selectbox("👤 Giao cho ai?", _labels)
     t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=datetime.date.today())
     
     if st.button("🚀 XÁC NHẬN GIAO VIỆC", type="primary", use_container_width=True):
         if t_content.strip():
-            add_task(t_content.strip(), t_assignee, t_deadline.strftime("%d/%m/%Y"))
-            st.success(f"🎉 Đã giao việc cho {t_assignee}!")
+            _selected_uid = ""
+            for _uid, _lbl in _assignee_options:
+                if _lbl == t_assignee_label:
+                    _selected_uid = _uid
+                    break
+            add_task(
+                t_content.strip(),
+                t_assignee_label,
+                t_deadline.strftime("%d/%m/%Y"),
+                assignee_user_id=_selected_uid,
+                assigned_by_user_id=str(st.session_state.get("current_user", {}).get("user_id") or ""),
+            )
+            st.success(f"🎉 Đã giao việc cho {t_assignee_label}!")
             st.rerun()
         else: st.error("⚠️ Vui lòng nhập nội dung!")
 
@@ -705,6 +774,10 @@ def ui_dashboard():
     try: tasks = load_tasks()
     except: tasks = []
     
+    # LG08: Role-specific dashboard emphasis — "Việc của tôi" renders first for all roles.
+    # Role ordering does not hide authorized data; it merely prioritizes what each role sees.
+    _render_my_tasks_section()
+
     pending_tasks = [t for t in tasks if not t.get('done', False)]
     completed_tasks = [t for t in tasks if t.get('done', False)]
     

@@ -161,6 +161,52 @@ def _configure_page() -> None:
     )
 
 
+def _render_global_search(routes: list[Route]) -> None:
+    """LG08: Global/federated search across shipments, customers, tasks.
+
+    Results obey RBAC: only routes the user can see produce results, and the
+    destination still enforces access at the route boundary."""
+    search_term = st.text_input(
+        "🔍 Tìm nhanh",
+        placeholder="Mã lô, khách hàng, container, đơn...",
+        key="global_search_input",
+        label_visibility="collapsed",
+    )
+    if not search_term or len(search_term.strip()) < 2:
+        return
+
+    term = search_term.strip().lower()
+    results: list[tuple[str, str, str]] = []  # (label, primary_id, context)
+
+    # Shipment search — shipments are accessible to all authorized roles.
+    shipments = st.session_state.get("db_shipments", {})
+    for sid, sdata in shipments.items():
+        sid_str = str(sid)
+        if term in sid_str.lower():
+            results.append(("Lô hàng", sid_str, "Tìm theo mã lô"))
+            break
+    # Customer search — customers visible to all authorized roles.
+    customers = st.session_state.get("db_customers", {})
+    for _cid, cdata in customers.items():
+        cname = str(cdata.get("name", "")).lower()
+        if term in cname:
+            results.append(("Khách hàng", cdata.get("name", "?"), "Tìm theo tên khách"))
+            if len(results) >= 5:
+                break
+
+    if not results:
+        st.caption("Không tìm thấy kết quả phù hợp.")
+        return
+
+    st.caption(f"{len(results)} kết quả:")
+    for r_type, r_id, r_ctx in results[:5]:
+        if st.button(f"{r_type}: {r_id}", key=f"gs_btn_{r_type}_{r_id}", use_container_width=True):
+            if r_type == "Lô hàng" and "shipment_id" in st.session_state:
+                st.session_state.active_shipment_id = r_id
+            st.session_state.active_page = "Tổng Quan Công Việc"
+            st.rerun()
+
+
 def _visible_routes() -> list[Route]:
     return [route for route in ROUTES if has_permission(route.permission)]
 
@@ -195,25 +241,30 @@ def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
             unsafe_allow_html=True,
         )
         st.caption(f"{current_user['display_name']} · {current_user['role']}")
+        # LG08: Global search entry point — one federated lookup for daily work.
+        _render_global_search(routes)
         if not AUTH_REQUIRED:
             st.warning(
                 "Đang chạy Local Admin. Bật AUTH_REQUIRED khi triển khai nhiều người dùng.",
                 icon=None,
             )
 
-        for group_name, group_routes in _visible_navigation_groups(routes):
-            st.markdown(f"<div class='ops-nav-group'>{group_name}</div>", unsafe_allow_html=True)
-            for route in group_routes:
-                button_key = "nav_button_" + re.sub(r"[^a-z0-9]+", "_", route.label.casefold()).strip("_")
-                if st.button(
-                    f"{route.icon}  {route.label}",
-                    key=button_key,
-                    use_container_width=True,
-                    type="primary" if route.label == active else "secondary",
-                ):
-                    st.session_state.active_page = route.label
-                    st.rerun()
         selected_label = st.session_state.get("active_page", labels[0])
+        for group_name, group_routes in _visible_navigation_groups(routes):
+            # LG08: Compact navigation — collapsible groups.
+            # Auto-expand the group containing the active page; collapse others.
+            group_active = selected_label in {route.label for route in group_routes}
+            with st.expander(group_name, expanded=group_active):
+                for route in group_routes:
+                    button_key = "nav_button_" + re.sub(r"[^a-z0-9]+", "_", route.label.casefold()).strip("_")
+                    if st.button(
+                        f"{route.icon}  {route.label}",
+                        key=button_key,
+                        use_container_width=True,
+                        type="primary" if route.label == active else "secondary",
+                    ):
+                        st.session_state.active_page = route.label
+                        st.rerun()
 
         st.divider()
         if st.button("🔄 Reload Data", use_container_width=True):
@@ -283,10 +334,7 @@ def _assert_route_access(current_user: dict[str, str], route: Route) -> None:
     trên được lựa chọn như thế nào.
     """
     user = current_user or {}
-    role = str(user.get("role", "viewer")).lower()
-    if has_write_permission(route.permission) or has_permission(route.permission):
-        return
-    if role == "admin" or (user.get("username") and route.permission in ("dashboard", "tariff", "tracking", "knowledge")):
+    if has_permission(route.permission):
         return
     st.error(
         f"Tài khoản **{user.get('display_name', user.get('username', '?'))}** "

@@ -1090,11 +1090,16 @@ def load_tasks() -> list[dict[str, Any]]:
         return []
 
 
-def add_task(content: str, assignee: str = "All", deadline_str: str = "") -> bool:
+def add_task(content: str, assignee: str = "All", deadline_str: str = "", assignee_user_id: str = "", assigned_by_user_id: str = "") -> bool:
     db = get_db()
     if db is None:
         return False
-    db.tasks.insert_one({"content": content, "assignee": assignee, "deadline": deadline_str, "done": False, "created_at": utc_now(), "created_by": _actor()})
+    doc = {"content": content, "assignee": assignee, "deadline": deadline_str, "done": False, "created_at": utc_now(), "created_by": _actor()}
+    if assignee_user_id:
+        doc["assignee_user_id"] = assignee_user_id
+    if assigned_by_user_id:
+        doc["assigned_by_user_id"] = assigned_by_user_id
+    db.tasks.insert_one(doc)
     return True
 
 
