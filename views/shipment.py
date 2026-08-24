@@ -111,6 +111,66 @@ def ui_shipment_detail_tabs(sid, ship):
 
     
     audit_rows = load_audit_logs("shipment", sid, limit=30)
+    
+    # --- LOG-LG09: DETERMINISTIC READINESS & NEXT ACTION ---
+    from core.readiness import get_all_readiness, derive_next_action, CRITICAL, ACTION, WAITING, INFO, OK
+    
+    # Prepare dashboard summary for finance evaluation
+    from core.shipment_dashboard import build_shipment_summary
+    dashboard_summary = build_shipment_summary(ship)
+    
+    readiness_results = get_all_readiness(ship, dashboard_summary)
+    primary_action = derive_next_action(ship, readiness_results)
+    
+    # 1. Next Action Card
+    if primary_action.severity != OK:
+        severity_colors = {
+            CRITICAL: "🔴",
+            ACTION: "🟡",
+            WAITING: "⚪",
+            INFO: "🔵"
+        }
+        color_icon = severity_colors.get(primary_action.severity, "⚪")
+        
+        with st.container(border=True):
+            st.markdown(f"### {color_icon} VIỆC TIẾP THEO")
+            st.markdown(f"**{primary_action.label}**")
+            
+            if primary_action.missing_items:
+                st.markdown(f"*Thiếu: {', '.join(primary_action.missing_items)}*")
+            
+            c_act1, c_act2 = st.columns([3, 1])
+            c_act1.info(f"👉 {primary_action.recommended_action}")
+            
+            # Button to jump to relevant tab
+            tab_map = {
+                "Pickup": 0,
+                "Xuất khẩu": 0,
+                "Hải quan": 1,
+                "Giao hàng": 1,
+                "Finance": 2
+            }
+            target_tab_idx = tab_map.get(primary_action.stage, 0)
+            if c_act2.button(f"Đi tới {primary_action.stage}", use_container_width=True, key=f"jump_{sid}"):
+                st.session_state.active_shipment_section = target_tab_idx
+                st.rerun()
+
+    # 2. Readiness Strip
+    status_icons = {
+        "READY": "🟢",
+        "NOT_READY": "🔴",
+        "BLOCKED": "🚫",
+        "WAITING_EXTERNAL": "🟡",
+        "REVIEW_REQUIRED": "🟠",
+        "FUTURE": "⚪"
+    }
+    
+    cols = st.columns(len(readiness_results))
+    for i, res in enumerate(readiness_results):
+        icon = status_icons.get(res.status, "⚪")
+        cols[i].markdown(f"{icon} **{res.stage}**")
+        cols[i].caption(res.reason)
+
     # --- HEADER ---
     with st.container(border=True):
         c1, c2, c3, c4, c5 = st.columns([1.35, 1.2, 2.5, 1.5, 1])

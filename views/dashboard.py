@@ -1225,12 +1225,24 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                     st.session_state.lg04_open_360_view = True
                     st.session_state.lg04_open_direct_work = False
                     st.rerun()
-            if top_alert:
-                severity_icon = {CRITICAL: "🔴", "warning": "🟠", "info": "🔵"}.get(top_alert.get("severity"), "ℹ️")
+            # [LOG-LG09] Integrate readiness signals into Dashboard Row
+            from core.readiness import get_all_readiness, derive_next_action, OK, ACTION, WAITING, INFO
+            
+            # Use build_shipment_summary for evaluation
+            from core.shipment_dashboard import build_shipment_summary
+            dash_summary = build_shipment_summary(ship)
+            readiness_results = get_all_readiness(ship, dash_summary)
+            primary_action = derive_next_action(ship, readiness_results)
+            
+            # Readiness Strip (Mini)
+            status_icons = {"READY": "🟢", "NOT_READY": "🔴", "BLOCKED": "🚫", "WAITING_EXTERNAL": "🟡", "REVIEW_REQUIRED": "🟠"}
+            strip_html = "".join([status_icons.get(r.status, "⚪") for r in readiness_results])
+            
+            if primary_action.severity != OK:
+                severity_icon = {CRITICAL: "🔴", ACTION: "🟡", WAITING: "⚪", INFO: "🔵"}.get(primary_action.severity, "ℹ️")
                 st.markdown(
-                    f"<div class='ops-next-action'>{severity_icon} <strong>Việc tiếp theo:</strong> {escape_html(top_alert.get('label'))} — "
-                    f"{escape_html(top_alert.get('detail'))}</div>",
+                    f"<div class='ops-next-action'>{strip_html} | {severity_icon} <strong>{primary_action.stage}:</strong> {escape_html(primary_action.label)}</div>",
                     unsafe_allow_html=True,
                 )
             else:
-                st.markdown("<div class='ops-next-action ops-next-action-ok'>✅ Chưa có cảnh báo cần xử lý.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ops-next-action ops-next-action-ok'>{strip_html} | ✅ Lô hàng ổn định.</div>", unsafe_allow_html=True)
