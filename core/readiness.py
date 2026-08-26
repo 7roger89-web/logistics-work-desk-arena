@@ -11,6 +11,7 @@ from datetime import date
 from typing import Any, Mapping, Optional, List
 
 from core.shipment_360 import UNKNOWN
+from core.utils import parse_date_optional
 
 # Readiness Status Vocabulary
 READY = "READY"
@@ -217,7 +218,7 @@ def derive_next_action(shipment: Mapping[str, Any], readiness: List[ReadinessRes
     # Within each, CRITICAL > ACTION > WAITING
     
     # Check for overdue deadlines first (Global Critical)
-    required_date = _get_field(shipment, "customer_required_date")
+    required_date = parse_date_optional(_get_field(shipment, "customer_required_date"))
     if required_date and required_date < date.today():
         return NextAction(
             label="Quá hạn giao hàng cho khách",

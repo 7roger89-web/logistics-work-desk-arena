@@ -534,6 +534,26 @@ def build_dashboard_summary(views: Iterable[Mapping[str, Any]]) -> dict[str, int
     }
 
 
+def build_shipment_summary(
+    shipment: Mapping[str, Any],
+    *,
+    today: date | None = None,
+    financial_view: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compatibility name for the canonical per-shipment dashboard view.
+
+    LG09 callers use this per-shipment contract. Keep the compatibility name
+    explicit while delegating all behavior to the existing read-only projection
+    so the two names cannot drift.
+    """
+
+    return build_shipment_dashboard_view(
+        shipment,
+        today=today,
+        financial_view=financial_view,
+    )
+
+
 def _matches_text(row: Mapping[str, Any], query: str) -> bool:
     needle = query.strip().casefold()
     if not needle:

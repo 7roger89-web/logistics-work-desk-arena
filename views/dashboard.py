@@ -1226,7 +1226,7 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                     st.session_state.lg04_open_direct_work = False
                     st.rerun()
             # [LOG-LG09] Integrate readiness signals into Dashboard Row
-            from core.readiness import get_all_readiness, derive_next_action, OK, ACTION, WAITING, INFO
+            from core.readiness import get_all_readiness, derive_next_action, CRITICAL, OK, ACTION, WAITING, INFO
             
             # Use build_shipment_summary for evaluation
             from core.shipment_dashboard import build_shipment_summary
@@ -1241,7 +1241,8 @@ def _render_workdesk_rows(all_ships, filtered_rows):
             if primary_action.severity != OK:
                 severity_icon = {CRITICAL: "🔴", ACTION: "🟡", WAITING: "⚪", INFO: "🔵"}.get(primary_action.severity, "ℹ️")
                 st.markdown(
-                    f"<div class='ops-next-action'>{strip_html} | {severity_icon} <strong>{primary_action.stage}:</strong> {escape_html(primary_action.label)}</div>",
+                    f"<div class='ops-next-action'>{strip_html} | {severity_icon} <strong>Việc tiếp theo:</strong> "
+                    f"<strong>{primary_action.stage}:</strong> {escape_html(primary_action.label)}</div>",
                     unsafe_allow_html=True,
                 )
             else:
