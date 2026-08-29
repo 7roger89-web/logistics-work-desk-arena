@@ -1,0 +1,10 @@
+{
+  "product_name": "Patient vital-sign monitor",
+  "category": "medical_device",
+  "model": "VM-10",
+  "manufacturer": "Example Medical Co.",
+  "function": "Measures and displays patient vital signs",
+  "intended_use": "Clinical monitoring by trained healthcare personnel",
+  "medical_device_status": "POSSIBLE_MEDICAL_DEVICE",
+  "origin_country": "CN"
+}
