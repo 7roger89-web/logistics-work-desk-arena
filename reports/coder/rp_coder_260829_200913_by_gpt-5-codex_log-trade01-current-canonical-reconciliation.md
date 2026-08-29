@@ -86,10 +86,10 @@ change.
 
 ## Candidate handoff boundary
 
-The final candidate SHA/tree is frozen only after this report and the
-reconciliation plan/evidence/benchmark/actual-status documents are committed,
-then verified against the current-main-first ancestry and a clean worktree.
-An independent Supervisor must review that exact frozen candidate. Technical
+The final candidate SHA/tree is frozen by the commit containing this report and
+the reconciliation plan/evidence/benchmark/actual-status closure. The exact
+identity is recorded in the return packet after commit and independently
+rechecked against current-main-first ancestry and a clean worktree. Technical
 readiness does not authorize Owner promotion.
 
 `READY_FOR_EXACT_SUPERVISOR_REVIEW`

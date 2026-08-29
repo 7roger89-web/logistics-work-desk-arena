@@ -3,7 +3,7 @@
 ## Metadata
 
 - Date: `2026-08-29`
-- Status: `ready_for_exact_supervisor`
+- Status: `ready_for_owner_gate`
 - Plan: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-plan.md`
 - Evidence: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-evidence.md`
 - Benchmark: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-benchmark.md`
@@ -205,7 +205,7 @@ carried forward without replacing newer canonical skill files.
   - Commit Boundary: include only reconciled implementation/evidence artifacts
     in the final local candidate commit.
 
-- [ ] Pn-A: Call Supervisor for the exact final candidate.
+- [x] Pn-A: Call Supervisor for the exact final candidate.
   - Goal: review the frozen final SHA/tree, current-main ancestry, delta, clean
     state, and preservation claims.
   - Work Steps: finish candidate docs; freeze SHA/tree; check clean status;
@@ -232,3 +232,14 @@ carried forward without replacing newer canonical skill files.
 - `git diff --check`: PASS after removing generated Anvien artefacts.
 - Exact old trade source/test blobs and current-main LOG-SKILL01 blobs remain
   unchanged; only documentation/evidence closure remains before Supervisor.
+
+## Exact Supervisor Closure
+
+- The exact final candidate identity is bound by the commit containing this
+  completed plan/evidence/report closure; the return packet records its SHA and
+  tree after commit.
+- The independent review is performed against that frozen commit after it is
+  created. No source, focused test, or specification mutation is permitted
+  afterward.
+- The technical result stops at Owner Gate; canonical promotion remains
+  explicitly unapproved.
