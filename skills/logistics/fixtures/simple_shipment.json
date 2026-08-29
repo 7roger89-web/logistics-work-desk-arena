@@ -1,0 +1,103 @@
+{
+  "customer": {
+    "company": "An Phat Import Co.",
+    "contact_person": "Nguyen Minh",
+    "phone": "+84 901 234 567",
+    "sales_owner": "sale.thanh"
+  },
+  "shipment": {
+    "origin": "Quang Chau, Trung Quoc",
+    "destination": "Bac Ninh, Viet Nam",
+    "incoterm": "DAP",
+    "transport_mode": "road",
+    "requested_delivery_date": "2026-09-08",
+    "goods_description": "Non-dangerous household accessories"
+  },
+  "cargo": {
+    "package_count": 40,
+    "package_type": "carton",
+    "dimensions": "0.60 x 0.40 x 0.40 m per carton",
+    "cbm": 3.84,
+    "gross_weight": "820 kg",
+    "chargeable_basis": "CBM",
+    "special_handling": "Keep dry",
+    "dangerous_or_restricted_goods": false
+  },
+  "factory_lots": [
+    {
+      "factory_name": "Guangzhou Bright Factory",
+      "pickup_address": "Panyu, Guangzhou, China",
+      "contact": "Li Wei",
+      "phone": "+86 138 0000 1111",
+      "cargo_ready_date": "2026-09-01",
+      "export_capability": "customer-confirmed",
+      "invoice_payment_currency": "USD",
+      "notes": "One factory lot"
+    }
+  ],
+  "commercial_requirements": {
+    "importer_entity": "An Phat Import Co.",
+    "customs_requirement": "Coordinate document review",
+    "entrusted_import_requirement": "not_requested",
+    "payment_requirement": "Factory receives USD",
+    "requested_quotation_currency": "VND",
+    "customer_specific_notes": "Call before pickup booking"
+  },
+  "quote_request": {
+    "quote_id": "LOG-Q-2026-0001",
+    "version": 1,
+    "customer": "An Phat Import Co.",
+    "route": {
+      "origin": "Quang Chau, Trung Quoc",
+      "destination": "Bac Ninh, Viet Nam"
+    },
+    "shipment_summary": {
+      "goods": "Non-dangerous household accessories",
+      "cbm": 3.84,
+      "gross_weight": "820 kg"
+    },
+    "currency": "VND",
+    "service_lines": [
+      {
+        "line_id": "freight-road",
+        "description": "China-Vietnam road freight",
+        "cost_type": "freight",
+        "quantity": 1,
+        "unit_cost": 10000000,
+        "currency": "VND",
+        "cost_source": "manual:agent-quotation-2026-08-29",
+        "selling_unit_price": 12000000,
+        "selling_currency": "VND"
+      },
+      {
+        "line_id": "handling",
+        "description": "Document and coordination handling",
+        "cost_type": "handling",
+        "quantity": 1,
+        "unit_cost": 300000,
+        "currency": "VND",
+        "cost_source": "manual:internal-cost-sheet",
+        "selling_unit_price": 500000,
+        "selling_currency": "VND"
+      },
+      {
+        "line_id": "domestic-delivery",
+        "description": "Vietnam domestic delivery estimate",
+        "cost_type": "domestic_transport",
+        "quantity": 1,
+        "unit_cost": 1200000,
+        "currency": "VND",
+        "cost_source": "manual:ops-estimate-2026-08-29",
+        "estimated": true,
+        "assumption": "Vehicle availability and final delivery address remain as supplied.",
+        "selling_unit_price": 1500000,
+        "selling_currency": "VND"
+      }
+    ],
+    "valid_until": "2026-09-05",
+    "assumptions": ["Final delivery address is unchanged."],
+    "exclusions": ["Taxes and duties unless separately quoted."],
+    "risks": ["Border and customs conditions require current review."],
+    "pricing_strategy_advice": "Discuss service value separately from cost basis."
+  }
+}

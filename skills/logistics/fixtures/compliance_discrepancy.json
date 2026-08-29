@@ -1,0 +1,22 @@
+{
+  "scenario": "A",
+  "invoice_amount_usd": 10000,
+  "bank_service_fee_usd": 10,
+  "wire_fee_usd": 20,
+  "bank_conversion_fee_vnd": 250000,
+  "fx_snapshot": {
+    "usd_to_vnd": 25000,
+    "captured_at": "2026-08-29T09:00:00+07:00",
+    "source": "manual:bank-quote"
+  },
+  "fee_sources": {
+    "bank_service_fee_usd": "manual:bank-fee",
+    "wire_fee_usd": "manual:wire-fee",
+    "bank_conversion_fee_vnd": "manual:bank-conversion-fee"
+  },
+  "commercial_values": {
+    "invoice_value": {"amount": 10000, "currency": "USD"},
+    "payment_value": {"amount": 9000, "currency": "USD"},
+    "declared_value": {"amount": 7000, "currency": "USD"}
+  }
+}

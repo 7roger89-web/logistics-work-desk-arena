@@ -1,0 +1,42 @@
+{
+  "customer": {
+    "company": "Hoa Nam Trading",
+    "contact_person": "Tran An",
+    "phone": "+84 902 888 999",
+    "sales_owner": "sale.abo"
+  },
+  "shipment": {
+    "origin": "Dongguan, China",
+    "destination": "Hai Phong, Vietnam",
+    "transport_mode": "road",
+    "requested_delivery_date": "2026-09-15",
+    "goods_description": "Plastic household components"
+  },
+  "cargo": {
+    "package_count": 20,
+    "package_type": "carton",
+    "dimensions": "0.50 x 0.40 x 0.30 m per carton",
+    "gross_weight": "300 kg",
+    "chargeable_basis": "UNKNOWN",
+    "special_handling": "UNKNOWN",
+    "dangerous_or_restricted_goods": "UNKNOWN"
+  },
+  "factory_lots": [
+    {
+      "factory_name": "Dongguan Components Factory",
+      "contact": "Wang Li",
+      "phone": "+86 138 2222 3333",
+      "cargo_ready_date": "2026-09-04",
+      "export_capability": "UNKNOWN",
+      "invoice_payment_currency": "USD"
+    }
+  ],
+  "commercial_requirements": {
+    "importer_entity": "Hoa Nam Trading",
+    "customs_requirement": "Need review",
+    "entrusted_import_requirement": "not_requested",
+    "payment_requirement": "Factory payment to confirm",
+    "requested_quotation_currency": "VND",
+    "customer_specific_notes": "First shipment"
+  }
+}

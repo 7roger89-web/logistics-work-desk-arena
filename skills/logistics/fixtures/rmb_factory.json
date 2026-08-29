@@ -1,0 +1,16 @@
+{
+  "scenario": "B",
+  "authorized_flow_confirmation": true,
+  "source_amount_usd": 12000,
+  "transfer_fee_usd": 35,
+  "intermediary_fee_cny": 120,
+  "fx_snapshot": {
+    "usd_to_cny": 7.12,
+    "captured_at": "2026-08-29T09:00:00+07:00",
+    "source": "manual:authorized-agent-quotation"
+  },
+  "fee_sources": {
+    "transfer_fee_usd": "manual:bank-wire-fee",
+    "intermediary_fee_cny": "manual:agent-fee-sheet"
+  }
+}

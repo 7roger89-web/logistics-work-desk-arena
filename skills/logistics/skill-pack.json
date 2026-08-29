@@ -1,0 +1,114 @@
+{
+  "pack_id": "logistics-skill-pack",
+  "version": "0.1.0",
+  "status": "foundation",
+  "loader": null,
+  "host_neutral": true,
+  "skills": [
+    {
+      "id": "logistics.business_context",
+      "path": "business_context/SKILL.md",
+      "reference_module": null
+    },
+    {
+      "id": "logistics.customer_intake",
+      "path": "customer_intake/SKILL.md",
+      "reference_module": "reference.intake.normalize_customer_intake"
+    },
+    {
+      "id": "logistics.payment_scenario",
+      "path": "payment_scenario/SKILL.md",
+      "reference_module": "reference.payment.calculate_payment_scenario"
+    },
+    {
+      "id": "logistics.quote_builder",
+      "path": "quote_builder/SKILL.md",
+      "reference_module": "reference.quote.build_quote"
+    },
+    {
+      "id": "logistics.sales_enablement",
+      "path": "sales_enablement/SKILL.md",
+      "reference_module": "reference.sales.build_sales_response"
+    }
+  ],
+  "default_workflow": [
+    "logistics.business_context",
+    "logistics.customer_intake",
+    "relevant_domain_skill"
+  ],
+  "quotation_workflow": [
+    "logistics.business_context",
+    "logistics.customer_intake",
+    "logistics.payment_scenario_if_needed",
+    "logistics.quote_builder",
+    "logistics.sales_enablement"
+  ],
+  "authority_invariants": [
+    "AI_GENERATED_VALUE != VERIFIED_BUSINESS_VALUE",
+    "MARKETING_PRICING_ADVICE != ACTUAL_LOGISTICS_COST",
+    "MISSING_DYNAMIC_DATA != PERMISSION_TO_ESTIMATE",
+    "CUSTOMER_MESSAGE != VERIFIED_SHIPMENT_FACT",
+    "QUOTE != INVOICE",
+    "QUOTE != CUSTOMS_DECLARATION",
+    "RETRIEVED_REGULATION != AUTOMATIC_LEGAL_TRUTH",
+    "CURRENT_FX_REQUIRES_TIMESTAMPED_SOURCE",
+    "CURRENT_FREIGHT_REQUIRES_SOURCE_OR_MANUAL_INPUT",
+    "COMMERCIAL_VALUE_MISMATCH -> COMPLIANCE_REVIEW_REQUIRED"
+  ],
+  "provenance": {
+    "repository": "https://github.com/minhnv0807/ai-business-skills",
+    "branch": "master",
+    "commit": "958bd43b03afbc5afc42dfdb3fb2c087b23309e4",
+    "version": "3.7.0",
+    "version_source": ".claude-plugin/plugin.json at the pinned commit",
+    "tag": null,
+    "tag_resolution_note": "No v3.7.0 tag was returned; newest returned v3 tag was v3.2.0.",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2025 Over Powers Agency",
+    "text_reused": false,
+    "referenced_skills": [
+      {
+        "path": "skills/vi/20-brief-client-intake/SKILL.md",
+        "classification": "TEMPLATE_ADAPTED",
+        "use": "intake gate, structured questions, and downstream handoff shape",
+        "text_copied": false,
+        "source_sha256": "3f6d86f7343cedee5703d9c731ae257a60837575fe040be83bf0a40ead01e22"
+      },
+      {
+        "path": "skills/vi/17-pricing-strategy/SKILL.md",
+        "classification": "CONCEPT_ONLY",
+        "use": "keep strategic pricing separate from explicit logistics cost arithmetic",
+        "text_copied": false,
+        "source_sha256": "6aceac57689a87c32970b2725f33295da0e5f624f371d7c79845034269140de5"
+      },
+      {
+        "path": "skills/vi/31-offer-design/SKILL.md",
+        "classification": "CONCEPT_ONLY",
+        "use": "service differentiation and offer explanation only",
+        "text_copied": false,
+        "source_sha256": "5b4fa0b1eaa99426aa2666205e7f21090da0205fc2730498d90f062da321a32"
+      },
+      {
+        "path": "skills/vi/33-b2b-lead-gen/SKILL.md",
+        "classification": "CONCEPT_ONLY",
+        "use": "evidence-aware sales handoff only; lead scraping/outreach is out of scope",
+        "text_copied": false,
+        "source_sha256": "9e1b51fba0570370e62524754bd489ffee0331090cccfdafc26cbe87d2445e3b"
+      },
+      {
+        "path": "skills/vi/69-giu-chan-khach-hang/SKILL.md",
+        "classification": "NOT_USED",
+        "use": "retention is a later workstream",
+        "text_copied": false,
+        "source_sha256": "c81aaca705265625bb4d5d3182d3a55e93e639ef43cc840917033f7de92f0370"
+      },
+      {
+        "path": "skills/vi/71-sales-enablement/SKILL.md",
+        "classification": "TEMPLATE_ADAPTED",
+        "use": "objection, FAQ, quote explanation, handoff, and next-action shape",
+        "text_copied": false,
+        "source_sha256": "e99c790c4515bf20288d8fafea9fc1e68dfd07ca6c9278cfc20ca18705e880fc"
+      }
+    ]
+  }
+}
