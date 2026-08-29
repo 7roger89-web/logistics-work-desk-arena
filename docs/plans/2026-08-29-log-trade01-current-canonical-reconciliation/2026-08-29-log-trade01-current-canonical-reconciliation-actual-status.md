@@ -2,7 +2,7 @@
 
 Title: LOG-TRADE01 current GitHub canonical reconciliation
 Date: 2026-08-29
-Status: P0 Complete
+Status: Ready for exact Supervisor review
 Companion plan: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-plan.md`
 Companion evidence: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-evidence.md`
 Companion benchmark: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-benchmark.md`
@@ -31,19 +31,19 @@ Out of scope:
 
 | Unit / File / Surface | File Detail Evidence | Related File Count | Relationship Summary | Impact Note |
 |-----------------------|----------------------|--------------------|----------------------|-------------|
-| `skills/logistics/**` | `E0-P0A-SKILL1` | preserve-only; no new Anvien run yet | LOG-SKILL01 contracts/reference/test family | preserve-only |
-| `core/trade_compliance/**` | prior exact candidate Anvien evidence; recheck after materialization | imported from old candidate | independent trade domain family | bounded |
-| `tests/test_log_trade01_trade_compliance.py` | `E0-P0A-BLOB1` | no post-review source/test delta | focused trade behavior evidence | preserve-only |
-| `docs/notes_decisions_log/notes_decisions_log_20260829.md` | `E0-P0A-DIFF1` | one exact overlap | documentation from both workstreams | edit/reconcile |
+| `skills/logistics/**` | `E0-P0A-SKILL1`, `E2-VAL1` | current-main blobs preserved; affected reference parsed | LOG-SKILL01 contracts/reference/test family | preserve-only |
+| `core/trade_compliance/**` | `E0-P0A-BLOB1`, `E2-ANV1` | imported exact old-candidate blobs; parsed; focused tests pass | independent trade domain family | bounded |
+| `tests/test_log_trade01_trade_compliance.py` | `E0-P0A-BLOB1`, `E2-VAL1` | 16/16 pass; unchanged from old candidate | focused trade behavior evidence | preserve-only |
+| `docs/notes_decisions_log/notes_decisions_log_20260829.md` | `E0-P0A-DIFF1`, `E1-P1B-DOC1` | one documentation overlap reconciled | documentation from both workstreams | reconciled |
 
 ## Current Status Matrix
 
 | Unit | Current State | Required State | Status | Relationship Count | Evidence | Next Plan Decision |
 |------|---------------|----------------|--------|--------------------|----------|--------------------|
-| LOG-SKILL01 `skills/logistics/**` | present on current main, contract/reference tests exist | unchanged canonical source | correct | preserve-only | `E0-P0A-SKILL1` | preserve P1-A |
-| LOG-TRADE01 `core/trade_compliance/**` | present only in old candidate snapshot | carried onto current-main-first branch | missing on current main | imported family | `E0-P0A-DIFF1` | bind P1-A |
-| LOG-TRADE01 fixtures/tests | present only in old candidate snapshot; blobs unchanged after review | carried without semantic edit | missing on current main | focused tests | `E0-P0A-BLOB1` | bind P1-A |
-| shared daily notes | independently added by both deltas | both histories retained | partial | one overlap | `E0-P0A-DIFF1` | reconcile P1-B |
+| LOG-SKILL01 `skills/logistics/**` | present on current main, contract/reference tests exist | unchanged canonical source | correct | preserve-only | `E0-P0A-SKILL1`, `E2-VAL1` | preserved |
+| LOG-TRADE01 `core/trade_compliance/**` | present only in old candidate snapshot | carried onto current-main-first branch without code drift | correct / bound | imported family | `E0-P0A-DIFF1`, `E0-P0A-BLOB1`, `E2-ANV1` | preserved |
+| LOG-TRADE01 fixtures/tests | present only in old candidate snapshot; blobs unchanged after review | carried without semantic edit; 16/16 pass | correct / bound | focused tests | `E0-P0A-BLOB1`, `E2-VAL1` | preserved |
+| shared daily notes | independently added by both deltas | both histories retained | reconciled | one overlap | `E0-P0A-DIFF1`, `E1-P1B-DOC1` | closed |
 | P2P/production surfaces | not in either scoped delta | untouched | correct boundary | do-not-touch | `E0-P0A-DIFF1` | preserve |
 
 ## Status Refresh Log
@@ -51,14 +51,15 @@ Out of scope:
 | Refresh | Date | Repo Basis | Changed Scope | Status Changes | Evidence | Next Phase Update |
 |---------|------|------------|----------------|----------------|----------|-------------------|
 | R0 | 2026-08-29 | fresh remote main and exact old/current path comparison | authority, overlap, LOG-SKILL01 reuse | baseline classification | `E0-P0A-AUTH1`, `E0-P0A-DIFF1`, `E0-P0A-BLOB1`, `E0-P0A-SKILL1` | proceed with current-main-first reconciliation |
+| R1 | 2026-08-29 | current-main-first merge checkpoint and focused validation | trade import, notes reconciliation, source/test behavior, Anvien topology | P1-A/P1-B complete; exact Supervisor remains | `E1-P1A-MERGE1`, `E1-P1B-DOC1`, `E2-VAL1`, `E2-ANV1` | freeze candidate, then exact-subject review |
 
 ## Phase Touch Map
 
 | Unit / File / Surface | Plan-Relevant Relationship File | Relationship to Target | Plan Item | Touch Mode | Evidence | Constraint |
 |-----------------------|---------------------------------|------------------------|-----------|------------|----------|------------|
-| `skills/logistics/**` | `tests/test_logistics_skill_contracts.py`, `tests/test_logistics_skill_reference.py` | canonical source/test | P1-A | preserve-only | `E0-P0A-SKILL1` | no refactor or blob change |
-| `core/trade_compliance/**` | `tests/test_log_trade01_trade_compliance.py` | imported source/test family | P1-A | preserve-only after import | `E0-P0A-BLOB1` | preserve reviewed blobs |
-| shared daily notes | both exact notes files | documentation overlap | P1-B | edit | `E0-P0A-DIFF1` | retain both histories |
+| `skills/logistics/**` | `tests/test_logistics_skill_contracts.py`, `tests/test_logistics_skill_reference.py` | canonical source/test | P1-A | preserve-only | `E0-P0A-SKILL1`, `E2-VAL1` | no refactor or blob change |
+| `core/trade_compliance/**` | `tests/test_log_trade01_trade_compliance.py` | imported source/test family | P1-A | preserve-only after import | `E0-P0A-BLOB1`, `E2-ANV1`, `E2-VAL1` | preserve reviewed blobs |
+| shared daily notes | both exact notes files | documentation overlap | P1-B | edit | `E0-P0A-DIFF1`, `E1-P1B-DOC1` | retain both histories |
 | P2P and production | N/A | unrelated boundary | all | do-not-touch | `E0-P0A-DIFF1` | no path may enter final delta |
 
 ## Detailed Findings
@@ -128,8 +129,9 @@ Import LOG-SKILL01 modules into trade merely for abstraction symmetry.
 
 | Plan Item | Actual Status Finding | Required Status / Next-Action Update |
 |-----------|-----------------------|--------------------------------------|
-| P1-A | trade source/test family is absent from current main but exact old candidate exists | bind old unchanged delta on current-main-first branch |
-| P1-B | one notes path overlaps as documentation | reconcile both notes histories only |
+| P1-A | trade source/test family is carried from exact old candidate; current-main skill files remain unchanged | complete; preserve current-main-first merge and exact trade blobs |
+| P1-B | one notes path overlapped as documentation | complete; both histories retained and notes reconciled |
+| P2 validation | focused trade/skill tests, compile, Anvien, and diff hygiene are complete | complete; freeze exact candidate identity before Supervisor |
 
 ## Implementation Gate
 
@@ -139,6 +141,9 @@ Import LOG-SKILL01 modules into trade merely for abstraction symmetry.
 - [x] Current authority and overlap are known.
 - [x] Correct current-main skill surfaces are preserve-only.
 - [x] P0 status is complete before implementation mutation.
+- [x] P1-A current-main-first reconciliation is materialized; trade source/test blobs are unchanged.
+- [x] P1-B documentation overlap is reconciled without source/test mutation.
+- [x] Focused validation and affected-module compile are complete.
 
 ## Final P0 Decision
 
@@ -150,6 +155,18 @@ Import LOG-SKILL01 modules into trade merely for abstraction symmetry.
 Decision note:
 
 Fresh current main is authoritative and stable for this turn. The exact
-overlap is documentation-only. Proceed with a current-main-first local merge,
-keep LOG-SKILL01 independent, and preserve old trade source/test blobs.
+overlap is documentation-only. The current-main-first merge is materialized,
+focused validation is green, LOG-SKILL01 remains independent, and old trade
+source/test blobs are preserved. Freeze the exact candidate and run one
+independent Supervisor review; Owner promotion remains a separate gate.
 
+## Validation Closure Before Supervisor
+
+- LOG-TRADE01 focused unittest: `16/16 PASS`.
+- LOG-SKILL01 directly affected contract/reference unittest: `14/14 PASS`.
+- Affected-module in-memory compile: `17/17 PASS`; no bytecode-writing compile.
+- Anvien graph refresh: `467` files scanned, `225` parsed, `0` parse failures;
+  trade files and the inspected intake reference parsed, with bounded downstream
+  impact evidence recorded as `E2-ANV1`.
+- `git diff --check`: PASS at closure point.
+- No broad regression, push, deployment, production, or P2P action.

@@ -3,7 +3,7 @@
 ## Metadata
 
 - Date: `2026-08-29`
-- Status: `draft`
+- Status: `ready_for_exact_supervisor`
 - Plan: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-plan.md`
 - Evidence: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-evidence.md`
 - Benchmark: `docs/plans/2026-08-29-log-trade01-current-canonical-reconciliation/2026-08-29-log-trade01-current-canonical-reconciliation-benchmark.md`
@@ -107,7 +107,7 @@ carried forward without replacing newer canonical skill files.
   - P1-A: Preserve current-main LOG-SKILL01 and import old trade snapshot.
   - P1-B: Resolve the shared notes file and update reconciliation evidence.
 
-- [ ] P1-A: Preserve current-main LOG-SKILL01 and import old trade snapshot.
+- [x] P1-A: Preserve current-main LOG-SKILL01 and import old trade snapshot.
   - Goal: make current GitHub `main` the first-parent base while carrying the
     old trade implementation without rebuilding it.
   - Scope Boundary:
@@ -157,7 +157,7 @@ carried forward without replacing newer canonical skill files.
   - Actual-status Update: `missing` trade surfaces become `bound-correct`.
   - Commit Boundary: local reconciliation checkpoint after P1-B passes.
 
-- [ ] P1-B: Resolve the shared notes file and update reconciliation evidence.
+- [x] P1-B: Resolve the shared notes file and update reconciliation evidence.
   - Goal: preserve both LOG-SKILL01 and LOG-TRADE01 history in the one
     overlapping documentation path without changing code semantics.
   - Scope Boundary:
@@ -222,3 +222,13 @@ carried forward without replacing newer canonical skill files.
   identity contract; direct coupling is intentionally not inferred.
 - The trade registry remains discovery-only and contains no live tariff rates.
 
+## Validation Closure
+
+- LOG-TRADE01 focused unittest: `16/16 PASS`.
+- Directly affected LOG-SKILL01 contract/reference unittest: `14/14 PASS`.
+- Affected-module in-memory compile: `17/17 PASS`.
+- Anvien refresh: `467` files scanned, `225` parsed, `0` parse failures;
+  targeted trade/intake file-detail and downstream impact evidence is recorded.
+- `git diff --check`: PASS after removing generated Anvien artefacts.
+- Exact old trade source/test blobs and current-main LOG-SKILL01 blobs remain
+  unchanged; only documentation/evidence closure remains before Supervisor.

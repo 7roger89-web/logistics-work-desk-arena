@@ -50,3 +50,7 @@
   regulatory, provenance, or tariff contracts; no forced direct reuse is made.
 - The current-main-first reconciliation is local only. Owner approval remains
   required before push, merge, release, deployment, or production action.
+- Focused reconciliation validation passed: LOG-TRADE01 `16/16` tests,
+  directly affected LOG-SKILL01 `14/14` tests, and `17/17` affected-module
+  in-memory compile. Anvien refreshed the graph with `467` files scanned,
+  `225` parsed, and `0` parse failures. No broad regression was run.
