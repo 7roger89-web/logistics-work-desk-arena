@@ -1,0 +1,31 @@
+{
+  "registry_id": "logistics.trade_compliance.authoritative_sources",
+  "version": "0.1.0",
+  "description": "Discovery registry only. It contains official Vietnamese source entry points, not tariff rates or legal conclusions.",
+  "jurisdictions": {
+    "VN": [
+      {
+        "authority": "Vietnam Trade Information Portal",
+        "source_url": "https://vietnamtradeportal.gov.vn/",
+        "authority_level": "OFFICIAL_DISCOVERY",
+        "evidence_status": "NOT_RETRIEVED",
+        "scope": "Vietnam import/export procedures and regulatory information"
+      },
+      {
+        "authority": "Vietnam Customs",
+        "source_url": "https://www.customs.gov.vn/",
+        "authority_level": "OFFICIAL_DISCOVERY",
+        "evidence_status": "NOT_RETRIEVED",
+        "scope": "Vietnam customs administration and official customs information"
+      },
+      {
+        "authority": "Vietnam Government legal-document portal",
+        "source_url": "https://vanban.chinhphu.vn/",
+        "authority_level": "OFFICIAL_DISCOVERY",
+        "evidence_status": "NOT_RETRIEVED",
+        "scope": "Official Vietnamese legal instruments and government documents"
+      }
+    ]
+  },
+  "live_source_poc": false
+}

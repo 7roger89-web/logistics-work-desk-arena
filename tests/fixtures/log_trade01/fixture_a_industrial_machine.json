@@ -1,0 +1,18 @@
+{
+  "commercial_name": "CartonPro 2000",
+  "product_name": "Automatic carton packing machine",
+  "model": "CP-2000",
+  "manufacturer": "Example Machinery Co.",
+  "function": "Automatically folds, fills and seals cartons",
+  "intended_use": "Industrial packaging line",
+  "operating_principle": "Servo-driven carton forming and sealing",
+  "technical_specifications": {
+    "power": "5.5 kW",
+    "capacity": "20 cartons/min",
+    "voltage": "380 V"
+  },
+  "power": "5.5 kW",
+  "capacity": "20 cartons/min",
+  "voltage": "380 V",
+  "origin_country": "CN"
+}
