@@ -143,8 +143,8 @@ commit `fb1c380bf079a901820426fe9869b914a08da5b3`, tree
 `7351d073fe00e1780454bca6e2c8cb4f21029348`. It is three commits ahead of
 fresh `origin/main` and its ancestry check passes. The coder report is
 `reports/coder/rp_coder_260903_175900_by_gpt-5-codex_logistics-deepl-translation-v1.md`.
-The closure package is now at `413071a16a261f8e55504a5ce665df0a5054fc50`
-with tree `0bb228c8c87ce3c75425555e8da636d1db38c8e1`, four commits ahead of
+The closure package is now at `1f6469e0328f0ac78b63b060261a61747164bab2`
+with tree `ea3568c7f93dcf88a8d868e566d91f6db9891161`, five commits ahead of
 fresh `origin/main`; its ancestry check passes. Final Supervisor verdict,
 Owner local key gate, and push/PR/deploy status are recorded in the report and
 return packet.

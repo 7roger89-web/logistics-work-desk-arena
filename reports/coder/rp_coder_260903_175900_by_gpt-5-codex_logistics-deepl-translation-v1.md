@@ -9,8 +9,8 @@
 - Branch: `feature/logistics-deepl-translation-v1`
 - Worktree: `D:/Logistics_App_GitHub/.tmp/logistics-deepl-translation-v1`
 - Implementation commits: `bc1c9c7`, `d44e47f`, `fb1c380`
-- Candidate HEAD after closure package: `413071a16a261f8e55504a5ce665df0a5054fc50`
-- Candidate tree: `0bb228c8c87ce3c75425555e8da636d1db38c8e1`
+- Candidate HEAD after closure package: `1f6469e0328f0ac78b63b060261a61747164bab2`
+- Candidate tree: `ea3568c7f93dcf88a8d868e566d91f6db9891161`
 
 The original `D:/Logistics_App_GitHub` checkout remains detached at
 `219bd0aaf6dafbf2c6fd3d5340f6393d5ae3011f` with its untracked Owner files.
