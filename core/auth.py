@@ -82,20 +82,31 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "commercial_view",
         "commercial_write",
     },
+    # Owner-approved: support được dùng toàn bộ nghiệp vụ hiện có trong app,
+    # nhưng vẫn không nhận wildcard "*" của admin để giữ các thao tác quản trị/
+    # xóa phá huỷ ở boundary admin.
     "support": {
         "dashboard",
+        "shipment_create",
         "shipment_edit",
         "customers",
-        "shipment_360_read",
-        "entity_context",
+        "sales",
+        "sales_write",
         "contracts",
         "tariff",
         "tracking",
         "knowledge",
+        "shipment_360_read",
+        "entity_context",
         "commercial_view",
+        "commercial_write",
         "finance_view",
-        "finance_write",  # Owner-approved (2026-08-18): shipment-level finance work (actual costs, payment confirmation, receivable/payable updates, reconciliation)
+        "finance_write",
         "operations_write",
+        "proxy_payment",
+        "receivables",
+        "entrustment",
+        "reports",
     },
     # Legacy role names giữ tương thích ngược với entries secrets.toml cũ
     # và test fixtures cũ.
