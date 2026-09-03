@@ -1,0 +1,16 @@
+# Notes and Decisions — 2026-09-03
+
+## LOGISTICS_DEEPL_TRANSLATION_V1
+
+- P0 bound clean implementation worktree
+  `feature/logistics-deepl-translation-v1` to fresh `origin/main` at PR #8
+  merge `c1c9468`; the original detached checkout and untracked Owner work
+  remain untouched.
+- P1 service checkpoint: requests-based DeepL text client, endpoint inference,
+  bounded retry/failover, explicit usage rows, list configuration, and
+  key-free errors/logs are implemented. Focused service/config tests are
+  `14/14 PASS` with fake keys only.
+- Real DeepL smoke is intentionally not run until the Owner adds keys to the
+  branch-local `.streamlit/secrets.toml`; no key value is recorded here.
+- Push, PR, merge, deployment, and production DB mutation remain forbidden for
+  this task.
