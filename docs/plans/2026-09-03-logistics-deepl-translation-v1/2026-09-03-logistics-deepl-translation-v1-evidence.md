@@ -94,8 +94,42 @@ Matching plan item(s): `P1-A`, `P1-B`, `P1-C`
 
 Matching plan item(s): `P2-A`, `P2-B`, `P2-C`
 
-Implementation and local runtime evidence will be appended as each P2 slice
-completes.
+- `E2-P2A-IMPACT1`: refreshed Anvien detail/impact before and after route/RBAC
+  wiring. `core/auth.py` is a CRITICAL shared permission surface affecting 5
+  files/1 flow; `views/web_app.py` is MEDIUM with 2 affected files/1 flow.
+  The edit remained one permission plus one route/group entry.
+- `E2-P2A-RBAC1`: `translation` was added only to modern `sale` and `support`
+  role sets; admin retains wildcard access and viewer/anonymous do not gain
+  the permission. The route points to `views.translation.ui_translation` and
+  is listed in `CÔNG CỤ & THAM KHẢO`.
+- `E2-P2A-STALE1`: the existing C15 RBAC test contradicted the already merged
+  PR #8 support-full-operational policy. Its stale expected set/test names were
+  aligned to current `origin/main` policy; no permission policy was changed to
+  make the test pass.
+- `E2-P2A-TEST1`: `python -m unittest tests.test_deepl_route_rbac
+  tests.test_logc15_auth_rbac -v` ran `33/33 PASS`.
+- `E2-P2B-UI1`: `views/translation.py` is parsed with 20 symbols, 2 related
+  files, and 9 linked flows. The view renders the accepted language controls,
+  source text, context toggle, translation action, and explicit usage action.
+- `E2-P2B-FLOW1`: focused AppTest exercised support mount, Chinese ->
+  Vietnamese translation trigger, result text, detected source, billed
+  characters, API index, swap to Vietnamese -> Chinese, and usage table.
+- `E2-P2B-SEC1`: mocked UI visible-text scans found neither fake key in the
+  rendered page; no database function is imported or called by the view.
+  Unexpected provider errors are converted to generic UI text and are not
+  logged with arbitrary exception content.
+- `E2-P2C-TEST1`: the full focused family command ran `50/50 PASS` across
+  service/config, route/RBAC, stale-policy alignment, and mounted UI tests.
+- `E2-P2C-BUILD1`: `python -m py_compile views/translation.py
+  views/web_app.py core/auth.py` passed; no Dockerfile exists in this repo.
+- `E2-P2C-ANV1`: staged Anvien detect-changes found exactly 11 intended
+  changed paths, 11 affected files, 9 affected flows, and HIGH aggregate risk
+  due to the shared auth/router boundaries plus the new view/service links.
+  `git diff --cached --check` passed; no unrelated source path entered the
+  staged candidate.
+- `E2-P2C-LOCAL1`: real DeepL smoke and a live Streamlit preview were not run
+  because the clean branch has no configured local key. This is the required
+  Owner gate, not mocked evidence of real API readiness.
 
 ## Closure Evidence
 

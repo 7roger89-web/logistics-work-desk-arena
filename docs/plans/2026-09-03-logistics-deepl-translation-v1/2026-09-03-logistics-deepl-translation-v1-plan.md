@@ -312,7 +312,7 @@ surface.
   - P2-B: Build translation form/result/usage UI.
   - P2-C: Prove route visibility and UI behavior with focused AppTest.
 
-- [ ] P2-A: Register minimum translation permission and route
+- [x] P2-A: Register minimum translation permission and route
   - Goal: let authenticated sale/support users reach exactly the new route while
     retaining admin wildcard and route-boundary enforcement.
   - Scope Boundary:
@@ -363,7 +363,7 @@ surface.
   - Actual-status Update: refresh route/RBAC rows before P2-B.
   - Commit Boundary: commit after this slice when acceptance passes.
 
-- [ ] P2-B: Build translation form/result/usage UI
+- [x] P2-B: Build translation form/result/usage UI
   - Goal: provide the Owner-facing Vietnamese UI for text translation, swap,
     editable context, safe result metadata, and explicit usage checking.
   - Scope Boundary:

@@ -44,11 +44,14 @@ from core.users import (
     set_active,
 )
 
-# Owner-approved (2026-08-18): Support now has finance_write for shipment-level work.
-SUPPORT_ONLY_READ = frozenset({
-    "dashboard", "shipment_edit", "customers", "shipment_360_read",
-    "entity_context", "contracts", "tariff", "tracking", "knowledge",
-    "commercial_view", "finance_view", "finance_write", "operations_write",
+# Owner-approved (2026-09-03): PR #8 grants support the full operational
+# surface while preserving the admin-only wildcard boundary.
+SUPPORT_OPERATIONAL_PERMISSIONS = frozenset({
+    "dashboard", "shipment_create", "shipment_edit", "customers", "sales",
+    "sales_write", "contracts", "tariff", "tracking", "knowledge",
+    "translation", "shipment_360_read", "entity_context", "commercial_view",
+    "commercial_write", "finance_view", "finance_write", "operations_write",
+    "proxy_payment", "receivables", "entrustment", "reports",
 })
 
 
@@ -211,15 +214,20 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertEqual(set(ROLE_PERMISSIONS["admin"]), {"*"})
 
     # Owner-approved (2026-08-18): support now holds finance_write for shipment-level work
-    def test_support_is_read_only_on_finance_and_admin(self) -> None:
-        self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_ONLY_READ)
-        for forbidden in ("receivables", "admin_write",
-                          "finance_review_write", "proxy_payment_delete",
-                          "commercial_write", "sales_write"):
+    def test_support_has_full_operational_access_but_not_admin_boundary(self) -> None:
+        self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_OPERATIONAL_PERMISSIONS)
+        for forbidden in ("admin_write", "finance_review_write",
+                          "proxy_payment_delete"):
             self.assertNotIn(forbidden, ROLE_PERMISSIONS["support"],
                              f"support must not hold {forbidden}")
     def test_support_can_write_shipment_finance(self) -> None:
         self.assertIn("finance_write", ROLE_PERMISSIONS["support"])
+
+    def test_sale_and_support_can_use_translation_without_admin_wildcard(self) -> None:
+        self.assertIn("translation", ROLE_PERMISSIONS["sale"])
+        self.assertIn("translation", ROLE_PERMISSIONS["support"])
+        self.assertNotEqual(ROLE_PERMISSIONS["sale"], {"*"})
+        self.assertNotEqual(ROLE_PERMISSIONS["support"], {"*"})
 
     def test_sale_cannot_touch_finance_writes_or_admin(self) -> None:
         sale = ROLE_PERMISSIONS["sale"]
@@ -229,11 +237,12 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertIn("sales_write", sale)
         self.assertIn("commercial_write", sale)
 
-    def test_support_cannot_create_shipments_or_quotes(self) -> None:
+    def test_support_can_access_shipment_and_commercial_work(self) -> None:
         support = ROLE_PERMISSIONS["support"]
-        self.assertNotIn("shipment_create", support)
-        self.assertNotIn("sales", support)
-        self.assertNotIn("sales_write", support)
+        self.assertIn("shipment_create", support)
+        self.assertIn("sales", support)
+        self.assertIn("sales_write", support)
+        self.assertIn("commercial_write", support)
 
     def test_viewer_is_read_only(self) -> None:
         for permission in ROLE_PERMISSIONS["viewer"]:

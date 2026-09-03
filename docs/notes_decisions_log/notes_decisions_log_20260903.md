@@ -12,5 +12,7 @@
   `14/14 PASS` with fake keys only.
 - Real DeepL smoke is intentionally not run until the Owner adds keys to the
   branch-local `.streamlit/secrets.toml`; no key value is recorded here.
+- P2 route/UI checkpoint: `translation` is available to sale/support only;
+  support mounted AppTest and the full focused family are `50/50 PASS`.
 - Push, PR, merge, deployment, and production DB mutation remain forbidden for
   this task.

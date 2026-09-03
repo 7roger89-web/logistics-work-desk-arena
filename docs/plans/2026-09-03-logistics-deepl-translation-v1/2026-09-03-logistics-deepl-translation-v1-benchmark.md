@@ -38,10 +38,10 @@
 
 | Phase | Metric | Unit | Baseline | Latest | Final | Target | Delta | Evidence |
 |-------|--------|------|----------|--------|-------|--------|-------|----------|
-| P2 | Translation route entries added | routes | 0 | pending | pending | 1 | pending | pending |
-| P2 | Focused RBAC/UI tests | tests | 0 | pending | pending | all pass | pending | pending |
-| P2 | Production DB mutations | mutations | 0 | pending | pending | 0 | 0 | pending |
-| P2 | Real API smoke calls | calls | 0 | pending | pending | small single smoke or NOT_RUN | pending | pending |
+| P2 | Translation route entries added | routes | 0 | 1 | 1 | 1 | +1 | E2-P2A-RBAC1 |
+| P2 | Focused RBAC/UI tests | tests | 0 | 36 | 36 | all pass | +36 | E2-P2A-TEST1, E2-P2C-TEST1 |
+| P2 | Production DB mutations | mutations | 0 | 0 | 0 | 0 | 0 | E2-P2B-SEC1 |
+| P2 | Real API smoke calls | calls | 0 | 0 | 0 | small single smoke or NOT_RUN | 0 | E2-P2C-LOCAL1 |
 
 ## Non-Benchmarkable Notes
 

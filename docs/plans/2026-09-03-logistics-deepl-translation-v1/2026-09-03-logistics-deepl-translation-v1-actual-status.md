@@ -2,7 +2,7 @@
 
 Title: LOGISTICS DeepL Translation V1
 Date: 2026-09-03
-Status: P1 Complete. P2 implementation can proceed on the clean branch worktree.
+Status: P2 Complete for mocked/local code gates; blocked at Owner real-key gate.
 Companion plan: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-plan.md`
 Companion evidence: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-evidence.md`
 Companion benchmark: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-benchmark.md`
@@ -67,10 +67,10 @@ Out of scope:
 | `core/config.py` DeepL setting | list loader now exposes `DEEPL_API_KEYS`; no values persisted | backend receives list via existing loader | correct | 3 | `E0-P0A-SRC1`, `E1-P1A-CONFIG1` | preserve |
 | DeepL service | requests-based client/key pool implemented with 14 focused tests | safe text client/key pool with finite failover | correct | 1 related file | `E1-P1A-IMPACT1`, `E1-P1A-TEST1`, `E1-P1B-ROTATE1` | proceed P2 |
 | DeepL usage checker | explicit `check_usage()` returns index-only rows | explicit-call-only indexed status rows | correct | covered by service family | `E1-P1C-USAGE1`, `E1-P1C-BOUNDARY1` | proceed P2 |
-| `core/auth.py` translation permission | matrix exists; no translation permission | sale/support access only | partial | 4 | `E0-P0A-SRC1`, `E0-P0A-REL1` | edit P2-A |
-| `views/web_app.py` translation route | route/group system exists; no DeepL route | one grouped route with route boundary | partial | 1 | `E0-P0A-SRC1`, `E0-P0A-REL1` | edit P2-A |
-| Translation UI | absent | safe text-only view | missing | 0 before implementation | `E0-P0A-MISSING1` | edit P2-B |
-| Focused DeepL tests | 14 focused service/config tests pass; mounted UI tests still absent | mocked behavior and mounted RBAC/UI evidence | partial | 1 related file | `E1-P1A-TEST1`, `E1-P1B-SEC1` | add P2 tests |
+| `core/auth.py` translation permission | matrix now grants only `translation` to sale/support in addition to current PR #8 policy | sale/support access only | correct | 4 | `E0-P0A-REL1`, `E2-P2A-RBAC1`, `E2-P2A-TEST1` | preserve |
+| `views/web_app.py` translation route | route/group system now mounts one DeepL route | one grouped route with route boundary | correct | 1 | `E0-P0A-REL1`, `E2-P2A-RBAC1`, `E2-P2A-TEST1` | preserve |
+| Translation UI | text-only view renders and mounted support flow passes | safe text-only view | correct | 2 | `E2-P2B-UI1`, `E2-P2B-FLOW1`, `E2-P2C-TEST1` | Owner visual gate |
+| Focused DeepL tests | 50 focused service/config/RBAC/UI tests pass | mocked behavior and mounted RBAC/UI evidence | correct | 2 | `E1-P1A-TEST1`, `E2-P2A-TEST1`, `E2-P2C-TEST1` | preserve |
 | Clean-branch DeepL secrets | no key configured; root secret contents not inspected | local Owner-supplied keys only | blocked for real smoke, not implementation | N/A | `E0-P0A-SECRET1` | mock first; Owner gate later |
 | Production DB/runtime | not invoked | zero mutations and no production start | correct boundary | N/A | `E0-P0A-BOUNDARY1` | preserve |
 
@@ -80,6 +80,7 @@ Out of scope:
 |---------|------|------------|----------------|----------------|----------|-------------------|
 | R0 | 2026-09-03 | fresh fetch, branch creation, Anvien baseline, source inspection | authority, config, auth, route, missing DeepL surfaces | initial classifications recorded | `E0-P0A-GIT1`, `E0-P0A-ANV1`, `E0-P0A-REL1`, `E0-P0A-MISSING1`, `E0-P0A-SECRET1` | P1-A starts on clean branch |
 | R1 | 2026-09-03 | P1 service/config implementation and 14 focused tests | config, translation key pool, bounded retry, usage rows, secret safety | config/service/usage missing -> correct; focused tests missing -> partial | `E1-P1A-IMPACT1`, `E1-P1A-TEST1`, `E1-P1B-ROTATE1`, `E1-P1C-USAGE1` | P2-A route/RBAC is next |
+| R2 | 2026-09-03 | P2 route/RBAC/UI implementation and 50 focused tests | permission, route, view, mounted support flow | route/UI/tests partial -> correct; real smoke remains blocked | `E2-P2A-IMPACT1`, `E2-P2A-RBAC1`, `E2-P2B-FLOW1`, `E2-P2C-TEST1`, `E2-P2C-LOCAL1` | stop at Owner key gate |
 
 ## Phase Touch Map
 
@@ -211,7 +212,7 @@ Read, copy, print, commit, or ask the Owner to paste a real key into chat/source
 - [x] Blockers are recorded without broadening the scope.
 - [x] Next phase status assumptions and work steps reflect P0 evidence.
 - [x] Status Refresh Log has an R0 baseline row.
-- [ ] Affected rows refreshed after implementation begins.
+- [x] Affected rows refreshed after implementation begins.
 
 ## Final P0 Decision
 
