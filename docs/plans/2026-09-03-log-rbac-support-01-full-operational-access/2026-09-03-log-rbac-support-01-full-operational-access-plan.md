@@ -3,7 +3,7 @@
 ## Metadata
 
 - Date: `2026-09-03`
-- Status: `P1 implementation complete; supervisor/closure pending`
+- Status: `Implementation and Supervisor acceptance complete; candidate closed without promotion`
 - Plan: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-plan.md`
 - Evidence: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-evidence.md`
 - Benchmark: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-benchmark.md`
@@ -234,7 +234,7 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
   - Actual-status Update: append final P1 refresh before supervisor handoff.
   - Commit Boundary: commit after this slice when acceptance passes.
 
-- [ ] Pn-A: Call supervisor for the implemented-plan acceptance loop.
+- [x] Pn-A: Call supervisor for the implemented-plan acceptance loop.
   - Goal: verify the completed plan work against the accepted plan, actual-status decisions, evidence, benchmark, changed files, generated output, and validation results before closure.
   - Work Steps:
     1. Call the supervisor skill to review the full completed plan work.
@@ -242,8 +242,8 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
     3. Re-run supervisor review after the fix.
     4. Repeat until supervisor passes or records a blocker.
   - Implementation Gate: all planned implementation phases must be completed or explicitly blocked before this review.
-  - Acceptance: supervisor review passes, or the plan records a blocker with evidence and no closure is performed.
-- [ ] Pn-B: Remove dead work created during this plan.
+  - Acceptance: Supervisor report `rp_supervisor_260903_184101_by_gpt-5-codex_log-rbac-support-01.md` records `Verdict: PASS` after fresh source, graph, test, and isolation review.
+- [x] Pn-B: Remove dead work created during this plan.
   - Goal: ensure the final diff contains only artifacts that still serve the accepted plan.
   - Work Steps:
     1. Review files, sections, generated output, tests, temp files, and plan artifacts created or modified during this plan.
@@ -252,8 +252,8 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
     4. Call supervisor to review the dead-work cleanup.
     5. If supervisor fails the cleanup, return to the responsible implementation workflow/skill for the failed cleanup scope only, then re-run supervisor review.
   - Implementation Gate: only remove artifacts created by this plan unless the user explicitly approves broader cleanup.
-  - Acceptance: final `git diff/status` contains no dead plan-created artifacts, supervisor passes the cleanup, and evidence records what was removed or preserved.
-- [ ] Pn-C: Close the plan.
+  - Acceptance: final diff contains only accepted source/tests/plan/report artifacts; generated Anvien metadata was removed and the Supervisor review passed.
+- [x] Pn-C: Close the plan.
   - Goal: finish validation, evidence, benchmark, detect-changes, commit, and final status.
   - Work Steps:
     1. Run required final validation for the accepted scope, including compile and the repository's full test command; record unavailable Docker/Preview gates honestly.
@@ -262,7 +262,7 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
     4. Record final validation, benchmark, detect-changes, commit, and production-mutation evidence.
     5. Commit the completed scope and verify worktree state.
   - Implementation Gate: Pn-A and Pn-B must pass or record blockers.
-  - Acceptance: final evidence is recorded, required commits exist, and the worktree state is known.
+  - Acceptance: final evidence is recorded, implementation candidate `f25347daac3d53c07f005ca49c3d9521de59351d` exists, closure docs/report are committed, and the worktree state is known clean.
 
 ## Risk Notes
 

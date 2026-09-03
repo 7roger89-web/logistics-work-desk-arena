@@ -2,7 +2,7 @@
 
 Title: LOG-RBAC-SUPPORT-01 — Full operational access for Support
 Date: 2026-09-03
-Status: P1 implementation complete; supervisor/closure pending
+Status: Closed; implementation candidate and Supervisor acceptance complete; no promotion
 Companion plan: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-plan.md`
 Companion evidence: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-evidence.md`
 Companion benchmark: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-benchmark.md`
@@ -81,6 +81,7 @@ Out of scope:
 | R0 | 2026-09-03 | fresh `origin/main` fetch and isolated worktree at `c1c9468` before implementation | full Support RBAC/Contract operational family | initial matrix/route partial; Contract service/readback partial/missing; admin boundary correct; tests stale; browser blocked | E0-P0A-SRC1..E0-P0A-BUILD1 | proceed to P1-A; retain P1-B/P1-C sibling sweep |
 | R1 | 2026-09-03 | P1-A implementation checkpoint in isolated worktree | Contract helper, UI guards, Contract writers, central actor/audit fields, focused tests | Contract UI/service/readback `partial/missing -> correct`; actor family remains partial pending sibling sweep | E1-P1A-SRC1..E1-P1A-UI1 | proceed to P1-B; preserve Contract behavior and test remaining writers |
 | R2 | 2026-09-03 | P1-B/P1-C implementation in isolated worktree; final Anvien refresh and focused/full validation | Customer/shipment/quote/agreement/task/finance/payment/reconciliation writer gates and controls; canonical ledger gate; actor metadata; admin service guards; focused tests | all in-scope operational rows `partial -> correct`; Sale drift `0`; browser remains blocked without safe Preview identity; full suite has baseline/env residuals | E1-P1B-SRC1..E1-P1C-BUILD1 | proceed to supervisor; no Promotion |
+| R3 | 2026-09-03 | committed candidate `f25347d` plus Supervisor review and closure artifacts | final source/evidence/report/notes cleanup | implementation claim `PASS`; no same-invariant residual in changed writer family; browser remains pending; no Production mutation | E2-Pn-A..E-CLOSE-1 | close; Owner may separately decide merge/promotion |
 
 ## Phase Touch Map
 

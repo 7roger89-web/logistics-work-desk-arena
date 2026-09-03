@@ -59,8 +59,10 @@ Matching plan item(s): `P1-A`, `P1-B`, `P1-C`
 
 Matching plan item(s): `Pn-A`, `Pn-B`, `Pn-C`
 
-No P2 implementation evidence is claimed yet. The P2 closure section will be populated only after Supervisor review and final detect-changes/commit verification.
+- `E2-Pn-A`: Supervisor review completed on the committed candidate. Report `reports/supervisor/rp_supervisor_260903_184101_by_gpt-5-codex_log-rbac-support-01.md` records exactly one verdict: `PASS`.
+- `E2-Pn-B`: Dead-work cleanup completed: Anvien-generated `AGENTS.md`, `CLAUDE.md`, and `.gitignore` changes were removed; no temporary fixture or rejected approach is in the committed diff. Accepted reports/plan/evidence artifacts remain.
+- `E2-Pn-C`: Closure artifacts include the coder report, Supervisor report, today's notes/decisions log, final validation results, and candidate SHA. A post-closure Anvien refresh indexed 481 files / 228 parsed code files / 37,695 nodes / 43,372 relationships; the remaining working-tree detect scope is documentation-only. No Production or application-database mutation occurred.
 
 ## Closure Evidence
 
-- `E-CLOSE-1`: Pending final candidate SHA, clean intended diff, and Supervisor acceptance; implementation validation and Anvien detect evidence are recorded above. No Production or application-database write was performed.
+- `E-CLOSE-1`: Candidate `f25347daac3d53c07f005ca49c3d9521de59351d` is committed on `codex/log-rbac-support-01`; Supervisor report is `PASS`; final Anvien compare detect found 27 intended files before closure artifacts were added, and post-closure source diff remains limited to this plan's source/tests/docs/reports. Working tree is clean after closure commit. Browser Preview remains pending by explicit credential gate. `PRODUCTION_MUTATIONS=0`; `PRODUCTION_DATA_MUTATIONS=0`; no promotion was performed.

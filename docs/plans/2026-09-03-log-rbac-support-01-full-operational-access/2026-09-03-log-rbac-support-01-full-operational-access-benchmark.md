@@ -36,7 +36,7 @@ This ledger records measured repository/graph inventory and test counts only. Pa
 
 | Phase | Metric | Unit | Baseline | Latest | Final | Target | Delta | Evidence |
 |-------|--------|------|----------|--------|-------|--------|-------|----------|
-| P2 | Candidate commit SHA | SHA | c1c9468 baseline | implementation pending commit | pending | isolated candidate exists | pending | E-CLOSE-1 |
+| P2 | Candidate commit SHA | SHA | c1c9468 baseline | f25347daac3d53c07f005ca49c3d9521de59351d | f25347daac3d53c07f005ca49c3d9521de59351d | isolated candidate exists | implementation commit closed; closure docs may follow in a separate commit | E-CLOSE-1 |
 
 ## Non-Benchmarkable Notes
 
