@@ -7,9 +7,9 @@ Guarantees under test:
    internal state (wrong password and inactive both return None).
 3. RBAC is a single authoritative matrix in core.auth: the 3 modern roles are
    admin / sale / support; the legacy viewer role gets read-only surfaces.
-4. finance_write, finance_review_write, admin_write, proxy_payment_delete and
-   receivables are exclusively admin — support/sale/viewer cannot touch money
-   writes or user management.
+4. Support has the employee-facing operational write surface, while
+   finance-review administration, destructive actions, and user management
+   remain outside Support and Sale.
 5. PermissionDeniedError is raised by assert_permission when the actor lacks
    the required permission, so view rendering can stop safely.
 6. Username normalization rejects unsafe identifiers; role validation rejects
@@ -44,11 +44,14 @@ from core.users import (
     set_active,
 )
 
-# Owner-approved (2026-08-18): Support now has finance_write for shipment-level work.
-SUPPORT_ONLY_READ = frozenset({
-    "dashboard", "shipment_edit", "customers", "shipment_360_read",
-    "entity_context", "contracts", "tariff", "tracking", "knowledge",
-    "commercial_view", "finance_view", "finance_write", "operations_write",
+# Owner-approved (2026-09-03): Support may operate all existing employee-facing
+# workflows, but never receives Admin's wildcard or destructive/admin tokens.
+SUPPORT_OPERATIONAL = frozenset({
+    "dashboard", "shipment_create", "shipment_edit", "customers", "sales",
+    "sales_write", "contracts", "tariff", "tracking", "knowledge",
+    "shipment_360_read", "entity_context", "commercial_view",
+    "commercial_write", "finance_view", "finance_write", "operations_write",
+    "proxy_payment", "receivables", "entrustment", "reports",
 })
 
 
@@ -210,16 +213,17 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertEqual(set(SUPPORTED_ROLES), {"admin", "sale", "support"})
         self.assertEqual(set(ROLE_PERMISSIONS["admin"]), {"*"})
 
-    # Owner-approved (2026-08-18): support now holds finance_write for shipment-level work
-    def test_support_is_read_only_on_finance_and_admin(self) -> None:
-        self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_ONLY_READ)
-        for forbidden in ("receivables", "admin_write",
-                          "finance_review_write", "proxy_payment_delete",
-                          "commercial_write", "sales_write"):
+    def test_support_has_full_operational_access_without_admin_authority(self) -> None:
+        self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_OPERATIONAL)
+        for forbidden in ("*", "admin_write", "finance_review_write",
+                          "proxy_payment_delete", "shipment_delete",
+                          "customer_delete", "knowledge_delete"):
             self.assertNotIn(forbidden, ROLE_PERMISSIONS["support"],
                              f"support must not hold {forbidden}")
-    def test_support_can_write_shipment_finance(self) -> None:
-        self.assertIn("finance_write", ROLE_PERMISSIONS["support"])
+        for operational in ("sales_write", "commercial_write", "finance_write",
+                            "operations_write", "proxy_payment", "receivables",
+                            "entrustment"):
+            self.assertIn(operational, ROLE_PERMISSIONS["support"])
 
     def test_sale_cannot_touch_finance_writes_or_admin(self) -> None:
         sale = ROLE_PERMISSIONS["sale"]
@@ -229,11 +233,11 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertIn("sales_write", sale)
         self.assertIn("commercial_write", sale)
 
-    def test_support_cannot_create_shipments_or_quotes(self) -> None:
+    def test_support_can_create_shipments_and_quotes(self) -> None:
         support = ROLE_PERMISSIONS["support"]
-        self.assertNotIn("shipment_create", support)
-        self.assertNotIn("sales", support)
-        self.assertNotIn("sales_write", support)
+        self.assertIn("shipment_create", support)
+        self.assertIn("sales", support)
+        self.assertIn("sales_write", support)
 
     def test_viewer_is_read_only(self) -> None:
         for permission in ROLE_PERMISSIONS["viewer"]:

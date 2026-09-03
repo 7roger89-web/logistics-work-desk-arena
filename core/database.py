@@ -65,14 +65,14 @@ def get_last_db_error() -> str:
     return _LAST_DB_ERROR
 
 
+def _actor_context(actor: str | None = None) -> dict[str, str]:
+    from core.auth import current_actor_context
+
+    return current_actor_context(actor)
+
+
 def _actor() -> str:
-    if st is not None and is_streamlit_runtime():
-        try:
-            user = st.session_state.get("current_user", {})
-            return str(user.get("username") or user.get("display_name") or "system")
-        except Exception:
-            pass
-    return "system"
+    return _actor_context()["username"]
 
 
 def _transaction_client(db):
@@ -394,7 +394,8 @@ def load_archived_data(limit: int = 5000) -> dict[str, dict[str, Any]]:
 def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None, after: Any = None, actor: str | None = None, session=None) -> None:
     # LOG-LG08.1: Prevent password_hash leakage into audit logs
     from core.users import redact_password_material
-    
+
+    actor_context = _actor_context(actor)
     safe_before = redact_password_material(before) if isinstance(before, Mapping) else before
     safe_after = redact_password_material(after) if isinstance(after, Mapping) else after
 
@@ -403,7 +404,10 @@ def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None
         "entity_type": entity_type,
         "entity_id": entity_id,
         "action": action,
-        "actor": actor or _actor(),
+        "actor": actor_context["username"],
+        "actor_user_id": actor_context["user_id"],
+        "actor_username": actor_context["username"],
+        "actor_role": actor_context["role"],
         "before": safe_before,
         "after": safe_after,
         "created_at": utc_now(),
@@ -891,10 +895,19 @@ def _save_document(
         return False
     payload = copy.deepcopy(document)
     payload.pop("_id", None)
+    actor_context = _actor_context()
     payload["updated_at"] = utc_now()
-    payload["updated_by"] = _actor()
+    payload["updated_by"] = actor_context["username"]
+    payload["updated_by_user_id"] = actor_context["user_id"]
+    payload["updated_by_role"] = actor_context["role"]
     try:
-        set_on_insert = {} if "created_at" in payload else {"created_at": utc_now()}
+        set_on_insert = {
+            "created_by": actor_context["username"],
+            "created_by_user_id": actor_context["user_id"],
+            "created_by_role": actor_context["role"],
+        }
+        if "created_at" not in payload:
+            set_on_insert["created_at"] = utc_now()
         update = {"$set": payload}
         if set_on_insert:
             update["$setOnInsert"] = set_on_insert
@@ -956,6 +969,11 @@ def _load_contracts_impl() -> dict[str, dict[str, Any]]:
 
 
 def save_contract_to_cloud(document: dict[str, Any]) -> bool:
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa hợp đồng.")
+        return False
     db = get_db()
     if db is None or not document.get("id"):
         return False
@@ -988,6 +1006,11 @@ def _load_contract_transactions_impl(contract_id: str | None = None) -> dict[str
 
 def save_contract_transaction(document: dict[str, Any]) -> bool:
     """Persist a contract finance row without changing legacy payment stores."""
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa giao dịch hợp đồng.")
+        return False
     db = get_db()
     if db is None or not document.get("id") or not document.get("contract_id"):
         _set_last_error("Giao dịch hợp đồng cần có mã giao dịch và mã hợp đồng.")
@@ -1023,6 +1046,11 @@ def save_contract_proxy_payment_atomic(
     either document is persisted; it does not fall back to two independent
     saves or compensation logic.
     """
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa thanh toán trong hợp đồng.")
+        return False
     db = get_db()
     if db is None:
         _set_last_error("MongoDB chưa sẵn sàng.")
