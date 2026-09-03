@@ -466,7 +466,7 @@ surface.
   - Actual-status Update: final status matrix and Owner gate readiness.
   - Commit Boundary: commit after this slice when acceptance passes.
 
-- [ ] Pn-A: Call supervisor for the implemented-plan acceptance loop.
+- [x] Pn-A: Call supervisor for the implemented-plan acceptance loop.
   - Goal: verify the completed plan work against the exact branch, evidence,
     tests, security boundary, and local-only stop contract.
   - Work Steps:
@@ -478,7 +478,7 @@ surface.
     blocked; no source changes occur after the reviewed identity.
   - Acceptance: supervisor passes or records a blocker; no promotion is inferred.
 
-- [ ] Pn-B: Remove dead work created during this plan.
+- [x] Pn-B: Remove dead work created during this plan.
   - Goal: ensure only accepted source/tests/evidence remain in the final diff.
   - Work Steps:
     1. Inspect plan-created files and remove only obsolete artifacts from this plan.
@@ -487,7 +487,7 @@ surface.
   - Implementation Gate: do not remove unrelated Owner files or worktrees.
   - Acceptance: clean final status contains no dead plan-created artifacts.
 
-- [ ] Pn-C: Close the plan.
+- [x] Pn-C: Close the plan.
   - Goal: record final validation, benchmark, detect-changes, commit, and exact
     local Owner gate status.
   - Work Steps:

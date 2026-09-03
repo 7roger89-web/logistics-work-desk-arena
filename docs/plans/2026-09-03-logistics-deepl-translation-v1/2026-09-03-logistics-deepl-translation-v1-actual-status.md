@@ -2,7 +2,7 @@
 
 Title: LOGISTICS DeepL Translation V1
 Date: 2026-09-03
-Status: Ready for exact Supervisor review; mocked/local code gates complete and Owner real-key gate blocked.
+Status: Supervisor PASS; ready for Owner local visual gate, with real-key gate blocked.
 Companion plan: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-plan.md`
 Companion evidence: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-evidence.md`
 Companion benchmark: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-benchmark.md`
@@ -82,6 +82,7 @@ Out of scope:
 | R1 | 2026-09-03 | P1 service/config implementation and 14 focused tests | config, translation key pool, bounded retry, usage rows, secret safety | config/service/usage missing -> correct; focused tests missing -> partial | `E1-P1A-IMPACT1`, `E1-P1A-TEST1`, `E1-P1B-ROTATE1`, `E1-P1C-USAGE1` | P2-A route/RBAC is next |
 | R2 | 2026-09-03 | P2 route/RBAC/UI implementation and 50 focused tests | permission, route, view, mounted support flow | route/UI/tests partial -> correct; real smoke remains blocked | `E2-P2A-IMPACT1`, `E2-P2A-RBAC1`, `E2-P2B-FLOW1`, `E2-P2C-TEST1`, `E2-P2C-LOCAL1` | stop at Owner key gate |
 | R3 | 2026-09-03 | final compileall, reverse-flow coverage, candidate closure package, coder report | final implementation/evidence identity and Owner stop boundary | P2 implementation remains correct; external real-key gate remains blocked | `E2-P2C-REVERSE1`, `E3-CLOSURE1`, `E3-CLOSURE2`, `E3-CLOSURE3` | exact Supervisor review |
+| R4 | 2026-09-03 | exact Supervisor review at f011a297 | acceptance verdict and residual gate | implementation claim PASS; live provider/visual gate remains blocked | `E3-SUPERVISOR1`, `E3-SUPERVISOR2` | stop and hand Owner exact key instruction |
 
 ## Phase Touch Map
 

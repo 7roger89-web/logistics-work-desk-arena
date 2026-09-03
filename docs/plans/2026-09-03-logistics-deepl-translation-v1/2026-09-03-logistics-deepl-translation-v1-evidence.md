@@ -168,3 +168,10 @@ return packet.
   intended documentation/report paths; Anvien detect-changes classified it
   LOW risk with zero affected runtime flows, and `git diff --cached --check`
   passed before the report checkpoint.
+- `E3-SUPERVISOR1`: Supervisor independently reviewed exact HEAD
+  `f011a2973ec4fa0445525b03021a15f365e99fde` / tree
+  `becb6d81ccf175a748e02571c76bfc01ea8740ec` and returned `PASS`. The review
+  report is `reports/supervisor/rp_supervisor_260903_181035_by_gpt-5-codex_logistics-deepl-translation-v1.md`.
+- `E3-SUPERVISOR2`: the PASS is bounded to the local/mock implementation
+  claim. Real DeepL calls, real-key browser preview, deployment, push, PR,
+  merge, and production remain NOT_RUN/NO as required by the Owner contract.

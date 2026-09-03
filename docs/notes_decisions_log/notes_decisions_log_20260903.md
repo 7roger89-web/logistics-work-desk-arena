@@ -19,5 +19,8 @@
   configured keys.
 - Coder handoff report: `reports/coder/rp_coder_260903_175900_by_gpt-5-codex_logistics-deepl-translation-v1.md`.
 - Exact Owner next action: `Thêm API DeepL vào .streamlit/secrets.toml local. Không gửi key vào chat/GitHub.`
+- Supervisor reviewed the exact local candidate and returned PASS for the
+  local/mock claim. Live API smoke and browser preview remain intentionally
+  unrun until the Owner supplies local keys.
 - Push, PR, merge, deployment, and production DB mutation remain forbidden for
   this task.
