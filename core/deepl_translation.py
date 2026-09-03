@@ -40,7 +40,6 @@ OVERSIZED_TEXT_MESSAGE = (
     "Nội dung quá lớn cho một yêu cầu DeepL. Hãy rút gọn văn bản rồi thử lại."
 )
 INVALID_TRANSLATION_RESPONSE_MESSAGE = "DeepL trả về phản hồi dịch không hợp lệ."
-INVALID_USAGE_RESPONSE_MESSAGE = "DeepL trả về phản hồi hạn mức không hợp lệ."
 INVALID_LANGUAGE_MESSAGE = "Ngôn ngữ dịch chưa được hỗ trợ trong phiên bản V1."
 PROVIDER_REQUEST_ERROR_MESSAGE = "DeepL không thể xử lý yêu cầu lúc này."
 
