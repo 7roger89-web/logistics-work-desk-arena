@@ -81,7 +81,7 @@ Out of scope:
 | R0 | 2026-09-03 | fresh fetch, branch creation, Anvien baseline, source inspection | authority, config, auth, route, missing DeepL surfaces | initial classifications recorded | `E0-P0A-GIT1`, `E0-P0A-ANV1`, `E0-P0A-REL1`, `E0-P0A-MISSING1`, `E0-P0A-SECRET1` | P1-A starts on clean branch |
 | R1 | 2026-09-03 | P1 service/config implementation and 14 focused tests | config, translation key pool, bounded retry, usage rows, secret safety | config/service/usage missing -> correct; focused tests missing -> partial | `E1-P1A-IMPACT1`, `E1-P1A-TEST1`, `E1-P1B-ROTATE1`, `E1-P1C-USAGE1` | P2-A route/RBAC is next |
 | R2 | 2026-09-03 | P2 route/RBAC/UI implementation and 50 focused tests | permission, route, view, mounted support flow | route/UI/tests partial -> correct; real smoke remains blocked | `E2-P2A-IMPACT1`, `E2-P2A-RBAC1`, `E2-P2B-FLOW1`, `E2-P2C-TEST1`, `E2-P2C-LOCAL1` | stop at Owner key gate |
-| R3 | 2026-09-03 | final compileall, reverse-flow coverage, candidate freeze, coder report | final implementation/evidence identity and Owner stop boundary | P2 implementation remains correct; external real-key gate remains blocked | `E2-P2C-REVERSE1`, `E3-CLOSURE1`, `E3-CLOSURE2`, `E3-CLOSURE3` | exact Supervisor review |
+| R3 | 2026-09-03 | final compileall, reverse-flow coverage, candidate closure package, coder report | final implementation/evidence identity and Owner stop boundary | P2 implementation remains correct; external real-key gate remains blocked | `E2-P2C-REVERSE1`, `E3-CLOSURE1`, `E3-CLOSURE2`, `E3-CLOSURE3` | exact Supervisor review |
 
 ## Phase Touch Map
 
