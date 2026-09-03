@@ -14,5 +14,10 @@
   branch-local `.streamlit/secrets.toml`; no key value is recorded here.
 - P2 route/UI checkpoint: `translation` is available to sale/support only;
   support mounted AppTest and the full focused family are `50/50 PASS`.
+- Candidate is local-only and ready for Owner to add branch-local DeepL keys;
+  no live API call or preview was started because the clean worktree has zero
+  configured keys.
+- Coder handoff report: `reports/coder/rp_coder_260903_175900_by_gpt-5-codex_logistics-deepl-translation-v1.md`.
+- Exact Owner next action: `Thêm API DeepL vào .streamlit/secrets.toml local. Không gửi key vào chat/GitHub.`
 - Push, PR, merge, deployment, and production DB mutation remain forbidden for
   this task.

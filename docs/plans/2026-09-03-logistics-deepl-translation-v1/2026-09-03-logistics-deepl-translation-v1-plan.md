@@ -3,7 +3,7 @@
 ## Metadata
 
 - Date: `2026-09-03`
-- Status: `in_progress`
+- Status: `ready_for_owner_gate`
 - Plan: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-plan.md`
 - Evidence: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-evidence.md`
 - Benchmark: `docs/plans/2026-09-03-logistics-deepl-translation-v1/2026-09-03-logistics-deepl-translation-v1-benchmark.md`
@@ -414,7 +414,7 @@ surface.
   - Actual-status Update: refresh UI row before P2-C.
   - Commit Boundary: commit after this slice when acceptance passes.
 
-- [ ] P2-C: Prove route visibility and UI behavior with focused AppTest
+- [x] P2-C: Prove route visibility and UI behavior with focused AppTest
   - Goal: close the support-access and mounted-flow family with no production
     access and fake service responses only.
   - Scope Boundary:

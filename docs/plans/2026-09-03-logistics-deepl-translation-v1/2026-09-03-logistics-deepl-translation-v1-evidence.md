@@ -32,9 +32,11 @@ Matching plan item(s): `P0-A`
   `feature/logistics-deepl-translation-v1` at the exact fresh origin/main
   SHA/tree and tracks `origin/main`.
 - `E0-P0A-PRESERVE1`: original `D:\Logistics_App_GitHub` is detached at
-  `219bd0aaf6dafbf2c6fd3d5340f6393d5ae3011f` with untracked Owner files and
-  was not reset, cleaned, or modified. Its local `main` at
-  `3c1e1c7bebd2b4313677ee5cdfdc484ade6b8a14` is diverged from origin/main
+  `219bd0aaf6dafbf2c6fd3d5340f6393d5ae3011f` with untracked Owner files.
+  Reflog showed a transient `main -> origin/main` reset during setup; the
+  ref was restored by an explicit expected-old-value update to
+  `3c1e1c7bebd2b4313677ee5cdfdc484ade6b8a14`. The root working tree was not
+  reset, cleaned, or modified. Local `main` remains diverged from origin/main
   (93 commits only on origin/main and 3 only on local main), so a safe
   fast-forward of that ref is not possible and was not forced.
 - `E0-P0A-ANV1`: Anvien baseline indexed 473 files, parsed 227 code files,
@@ -130,9 +132,36 @@ Matching plan item(s): `P2-A`, `P2-B`, `P2-C`
 - `E2-P2C-LOCAL1`: real DeepL smoke and a live Streamlit preview were not run
   because the clean branch has no configured local key. This is the required
   Owner gate, not mocked evidence of real API readiness.
+- `E2-P2C-REVERSE1`: the mounted UI test also clicked DỊCH after selecting
+  Vietnamese -> Simplified Chinese and asserted the service received `VI` ->
+  `ZH-HANS`; this closes the reverse language workflow at the mocked boundary.
 
 ## Closure Evidence
 
-Final branch identity, detect-changes, focused validation, supervisor verdict,
-Owner local key gate, and push/PR/deploy status will be appended only after the
-candidate is frozen.
+Before the final Supervisor review, the candidate is frozen at implementation
+commit `fb1c380bf079a901820426fe9869b914a08da5b3`, tree
+`7351d073fe00e1780454bca6e2c8cb4f21029348`. It is three commits ahead of
+fresh `origin/main` and its ancestry check passes. The coder report is
+`reports/coder/rp_coder_260903_175900_by_gpt-5-codex_logistics-deepl-translation-v1.md`.
+Final report commit, Supervisor verdict, Owner local key gate, and push/PR/deploy
+status are recorded in the report and return packet.
+
+- `E3-CLOSURE1`: implementation candidate `fb1c380bf079a901820426fe9869b914a08da5b3`
+  has tree `7351d073fe00e1780454bca6e2c8cb4f21029348`, is three commits ahead
+  of fresh `origin/main`, and passes the ancestry check.
+- `E3-CLOSURE2`: final compileall and focused family validation completed with
+  `50/50 PASS`; focused UI evidence covers both ZH -> VI and VI -> ZH-HANS at
+  the mocked boundary. Credential-like literal scan is clean and no DeepL
+  production file imports the database or another provider.
+- `E3-CLOSURE3`: clean worktree has zero configured DeepL keys and no local
+  secrets file. Real API smoke/live preview therefore remain `NOT_RUN` by the
+  explicit Owner gate. No production DB mutation, push, PR, merge, or deploy
+  occurred. Exact next action is: `Thêm API DeepL vào .streamlit/secrets.toml local. Không gửi key vào chat/GitHub.`
+- `E3-CLOSURE4`: original root checkout remains detached with its untracked
+  Owner work preserved; local `main` is restored to its pre-task divergent
+  SHA. The branch is ready for exact Supervisor review and then Owner local
+  visual gate, not production promotion.
+- `E3-CLOSURE5`: the staged report/evidence closure package contains five
+  intended documentation/report paths; Anvien detect-changes classified it
+  LOW risk with zero affected runtime flows, and `git diff --cached --check`
+  passed before the report checkpoint.
