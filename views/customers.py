@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from core.database import load_customers, save_customer_to_cloud, delete_customer
-from core.auth import has_permission
+from core.auth import can_operate_business, has_permission
 
 def ui_customers():
     st.title("👥 QUẢN LÝ KHÁCH HÀNG")
@@ -11,6 +11,7 @@ def ui_customers():
     if "db_customers" not in st.session_state:
         st.session_state.db_customers = load_customers()
     db_customers = st.session_state.db_customers
+    can_edit = can_operate_business("customers")
 
     # ==========================================
     # 1. TÍNH NĂNG IMPORT TỪ EXCEL/CSV (MỚI)
@@ -33,7 +34,7 @@ def ui_customers():
                 st.markdown("**Bản xem trước dữ liệu:**")
                 st.dataframe(df_cust.head(5), use_container_width=True)
 
-                if st.button("🚀 XÁC NHẬN IMPORT VÀO HỆ THỐNG", type="primary"):
+                if st.button("🚀 XÁC NHẬN IMPORT VÀO HỆ THỐNG", type="primary", disabled=not can_edit):
                     success_count = 0
                     skip_count = 0
                     
@@ -82,7 +83,7 @@ def ui_customers():
             new_email = c4.text_input("Email").strip()
             new_tax_code = c5.text_input("Mã số thuế").strip()
             new_address = st.text_input("Địa chỉ").strip()
-            if st.form_submit_button("Lưu khách hàng", type="primary"):
+            if st.form_submit_button("Lưu khách hàng", type="primary", disabled=not can_edit):
                 if not new_id or not new_name:
                     st.error("Mã và tên khách hàng là bắt buộc.")
                 elif new_id in db_customers:
@@ -134,7 +135,7 @@ def ui_customers():
             }
         )
 
-        if st.button("💾 LƯU THAY ĐỔI KHÁCH HÀNG", type="primary"):
+        if st.button("💾 LƯU THAY ĐỔI KHÁCH HÀNG", type="primary", disabled=not can_edit):
             errors = []
             for _, row in edited_df.iterrows():
                 cid = str(row.get("id", "")).strip()

@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 from uuid import uuid4
 
+from core.auth import can_operate_business
 from core.database import load_entrustments, save_entrustment_book
 from core.utils import safe_float
 
@@ -47,6 +48,7 @@ def save_entrust_db(db_data):
 # GIAO DIỆN CHÍNH
 # =====================================================================
 def ui_entrustment_manager():
+    can_edit = can_operate_business("entrustment")
     st.title("💳 QUẢN LÝ THANH TOÁN HỘ (VÍ TỆ)")
     
     # 1. Tải dữ liệu một lần vào session-state
@@ -74,7 +76,12 @@ def ui_entrustment_manager():
         with st.container(border=True):
             c1, c2 = st.columns([3, 1])
             new_code_input = c1.text_input("Nhập Tên/Mã giao dịch mới tinh:", placeholder="VD: CỌC-KH-MINH-ANH, LO-2026...").strip().upper()
-            if c2.button("➕ TẠO VÍ THANH TOÁN MỚI", type="primary", use_container_width=True):
+            if c2.button(
+                "➕ TẠO VÍ THANH TOÁN MỚI",
+                type="primary",
+                use_container_width=True,
+                disabled=not can_edit,
+            ):
                 if new_code_input:
                     if new_code_input not in db_total:
                         db_total[new_code_input] = {
@@ -173,7 +180,7 @@ def ui_entrustment_manager():
         with st.container(border=True):
             cc1, cc2 = st.columns(2)
             curr_link_type = current_wallet.get("linked_type", "Không liên kết")
-            link_type = cc1.radio("Gắn kết giao dịch thanh toán hộ này với:", ["Không liên kết", "Lô Hàng (Dashboard)", "Hợp Đồng"], index=["Không liên kết", "Lô Hàng (Dashboard)", "Hợp Đồng"].index(curr_link_type), horizontal=True)
+            link_type = cc1.radio("Gắn kết giao dịch thanh toán hộ này với:", ["Không liên kết", "Lô Hàng (Dashboard)", "Hợp Đồng"], index=["Không liên kết", "Lô Hàng (Dashboard)", "Hợp Đồng"].index(curr_link_type), horizontal=True, disabled=not can_edit)
             chosen_link_id = current_wallet.get("linked_id", "")
             
             if link_type == "Lô Hàng (Dashboard)":
@@ -181,13 +188,13 @@ def ui_entrustment_manager():
                 if not shipment_options: cc2.warning("⚠️ Chưa có lô hàng nào trên Dashboard.")
                 else:
                     default_idx = shipment_options.index(chosen_link_id) if chosen_link_id in shipment_options else 0
-                    chosen_link_id = cc2.selectbox("🎯 Chọn Mã Lô Hàng:", shipment_options, index=default_idx)
+                    chosen_link_id = cc2.selectbox("🎯 Chọn Mã Lô Hàng:", shipment_options, index=default_idx, disabled=not can_edit)
             elif link_type == "Hợp Đồng":
                 contract_options = list(db_contracts.keys()) if db_contracts else []
                 if not contract_options: cc2.warning("⚠️ Chưa có Hợp đồng nào.")
                 else:
                     default_idx = contract_options.index(chosen_link_id) if chosen_link_id in contract_options else 0
-                    chosen_link_id = cc2.selectbox("📄 Chọn Số Hợp Đồng:", contract_options, index=default_idx)
+                    chosen_link_id = cc2.selectbox("📄 Chọn Số Hợp Đồng:", contract_options, index=default_idx, disabled=not can_edit)
             else:
                 chosen_link_id = ""
 
@@ -207,7 +214,7 @@ def ui_entrustment_manager():
         # KHỐI NHẬP LIỆU BẢNG TÍNH (AUTO-SAVE)
         # -----------------------------------------------------------------
         curr_completed_status = current_wallet.get("is_completed", False)
-        is_completed = st.checkbox("🔒 Khóa số liệu (Hoàn thành nhập liệu cho ví này)", value=curr_completed_status, key=f"chk_comp_{active_code}")
+        is_completed = st.checkbox("🔒 Khóa số liệu (Hoàn thành nhập liệu cho ví này)", value=curr_completed_status, key=f"chk_comp_{active_code}", disabled=not can_edit)
         
         if is_completed != curr_completed_status:
             db_total[active_code]["is_completed"] = is_completed
@@ -225,7 +232,7 @@ def ui_entrustment_manager():
                     "Số tiền (VND)": st.column_config.NumberColumn("Số tiền nạp (VNĐ)", format="%d ₫", step=100000),
                     "Ghi chú": st.column_config.TextColumn("Ghi chú", width="large")
                 },
-                num_rows="dynamic", use_container_width=True, key=f"editor_dep_{active_code}"
+                num_rows="dynamic", use_container_width=True, key=f"editor_dep_{active_code}", disabled=not can_edit
             )
             
             dep_dict_list = edited_dep.to_dict('records')
@@ -250,7 +257,7 @@ def ui_entrustment_manager():
                     "Tỷ giá Thực Tế": st.column_config.NumberColumn("Giá Thực Mua", format="%d", step=1, required=True),
                     "Ghi chú": st.column_config.TextColumn("Ghi chú", width="large")
                 },
-                num_rows="dynamic", use_container_width=True, key=f"editor_pay_{active_code}"
+                num_rows="dynamic", use_container_width=True, key=f"editor_pay_{active_code}", disabled=not can_edit
             )
 
             pay_dict_list = edited_pay.to_dict('records')
@@ -304,7 +311,7 @@ def ui_entrustment_manager():
         cc3.markdown(f"🇪🇺 Đồng Euro: **{eur_summary:,.2f} €**")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🗑️ XÓA TOÀN BỘ SỐ LIỆU MÃ NÀY", use_container_width=True):
+        if st.button("🗑️ XÓA TOÀN BỘ SỐ LIỆU MÃ NÀY", use_container_width=True, disabled=not can_edit):
             if active_code in db_total:
                 del db_total[active_code]
                 save_entrust_db(db_total)

@@ -7,6 +7,7 @@ test_quotations.py / test_commercial_agreements.py). Khong can MongoDB that.
 from __future__ import annotations
 
 import sys
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -91,6 +92,22 @@ def _fresh_modules():
     return core.database
 
 
+def _admin_auth_patch():
+    return patch(
+        "core.auth.st",
+        new=SimpleNamespace(
+            session_state={
+                "current_user": {
+                    "user_id": "admin-fixture-01",
+                    "username": "admin.fixture",
+                    "display_name": "Admin Fixture",
+                    "role": "admin",
+                }
+            }
+        ),
+    )
+
+
 def _make_user(username: str = "testuser") -> dict[str, Any]:
     return {
         "username": username,
@@ -104,7 +121,7 @@ def _make_user(username: str = "testuser") -> dict[str, Any]:
 def test_save_user_creates_and_audits() -> None:
     core = _fresh_modules()
     db = FakeDb()
-    with patch.object(core, "get_db", return_value=db):
+    with _admin_auth_patch(), patch.object(core, "get_db", return_value=db):
         ok = core.save_user(_make_user())
         assert ok, "save_user phai tra ve True"
         stored = db.users.find_one({"username": "testuser"})
@@ -120,7 +137,7 @@ def test_save_user_creates_and_audits() -> None:
 def test_load_users_returns_mapping_excludes_deleted() -> None:
     core = _fresh_modules()
     db = FakeDb()
-    with patch.object(core, "get_db", return_value=db):
+    with _admin_auth_patch(), patch.object(core, "get_db", return_value=db):
         db.users.docs["u1"] = {"username": "alice", "role": "sale"}
         db.users.docs["u2"] = {"username": "bob", "role": "support", "is_deleted": True}
         mapping = core.load_users()
@@ -132,7 +149,7 @@ def test_load_users_returns_mapping_excludes_deleted() -> None:
 def test_update_user_payload_partial() -> None:
     core = _fresh_modules()
     db = FakeDb()
-    with patch.object(core, "get_db", return_value=db):
+    with _admin_auth_patch(), patch.object(core, "get_db", return_value=db):
         db.users.docs["u1"] = {"username": "alice", "role": "sale", "active": True}
         ok = core.update_user("alice", payload={"role": "support", "active": False}, actor="admin")
         assert ok, "update_user voi payload phai cap nhat duoc"
@@ -145,7 +162,7 @@ def test_update_user_payload_partial() -> None:
 def test_delete_user_soft_then_hard() -> None:
     core = _fresh_modules()
     db = FakeDb()
-    with patch.object(core, "get_db", return_value=db):
+    with _admin_auth_patch(), patch.object(core, "get_db", return_value=db):
         db.users.docs["u1"] = {"username": "alice", "role": "sale"}
         ok = core.delete_user("alice", actor="admin")
         assert ok
@@ -170,7 +187,7 @@ def test_finance_collections_untouched() -> None:
     core = _fresh_modules()
     db = FakeDb()
     db.receivables = FakeCollection("receivables")
-    with patch.object(core, "get_db", return_value=db):
+    with _admin_auth_patch(), patch.object(core, "get_db", return_value=db):
         core.save_user(_make_user())
         core.load_users()
         core.delete_user("testuser", actor="admin")

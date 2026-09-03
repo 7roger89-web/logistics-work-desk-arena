@@ -61,6 +61,17 @@ def _error(message: str) -> tuple[bool, dict[str, Any], str]:
     return False, {}, message
 
 
+def _require_finance_write() -> bool:
+    """Fail closed before any canonical finance mutation is attempted."""
+
+    from core.auth import can_operate_business
+
+    if can_operate_business("finance_write"):
+        return True
+    database._set_last_error("Bạn không có quyền ghi nhận Finance Actual.")
+    return False
+
+
 def _party(value: Any, *, required: bool = True) -> dict[str, Any] | None:
     if value is None or value == "":
         if required:
@@ -376,6 +387,7 @@ def _obligation_payload(document: Mapping[str, Any], request_id: str, actor: str
     if not purpose:
         raise FinancialLedgerValidationError("obligation purpose is required")
     shipment_fields = _shipment_fields(_shipment_ids(document))
+    actor_context = database._actor_context(actor)
     record = {
         "id": str(document.get("id") or f"OBL-{uuid4().hex.upper()}"),
         "record_type": "obligation",
@@ -397,9 +409,13 @@ def _obligation_payload(document: Mapping[str, Any], request_id: str, actor: str
         "status": ACTIVE,
         "request_id": request_id,
         "created_at": deepcopy(document.get("created_at") or utc_now()),
-        "created_by": actor or database._actor(),
+        "created_by": actor_context["username"],
+        "created_by_user_id": actor_context["user_id"],
+        "created_by_role": actor_context["role"],
         "updated_at": utc_now(),
-        "updated_by": actor or database._actor(),
+        "updated_by": actor_context["username"],
+        "updated_by_user_id": actor_context["user_id"],
+        "updated_by_role": actor_context["role"],
     }
     record.update(shipment_fields)
     if document.get("note") not in (None, ""):
@@ -428,6 +444,7 @@ def _transaction_payload(document: Mapping[str, Any], request_id: str, actor: st
         classification = REVIEW_REQUIRED
     restriction = _restriction(document)
     shipment_fields = _shipment_fields(_shipment_ids(document))
+    actor_context = database._actor_context(actor)
     record = {
         "id": str(document.get("id") or f"TX-{uuid4().hex.upper()}"),
         "record_type": "transaction",
@@ -454,9 +471,13 @@ def _transaction_payload(document: Mapping[str, Any], request_id: str, actor: st
         "provenance": _provenance(document),
         "status": ACTIVE,
         "created_at": deepcopy(document.get("created_at") or utc_now()),
-        "created_by": actor or database._actor(),
+        "created_by": actor_context["username"],
+        "created_by_user_id": actor_context["user_id"],
+        "created_by_role": actor_context["role"],
         "updated_at": utc_now(),
-        "updated_by": actor or database._actor(),
+        "updated_by": actor_context["username"],
+        "updated_by_user_id": actor_context["user_id"],
+        "updated_by_role": actor_context["role"],
     }
     record.update(shipment_fields)
     if document.get("fx_snapshot") is not None or document.get("fx") is not None:
@@ -480,6 +501,8 @@ def _persist_new_record(
     request_id: str,
     actor: str | None,
 ) -> tuple[bool, dict[str, Any], str]:
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     db = database.get_db()
     if db is None:
         return _error("MongoDB is not available")
@@ -489,6 +512,7 @@ def _persist_new_record(
     payload = deepcopy(dict(document))
     payload.pop("_id", None)
     fingerprint = _stable_fingerprint(payload)
+    actor_context = database._actor_context(actor)
     try:
         with client.start_session() as session:
             with session.start_transaction():
@@ -506,7 +530,9 @@ def _persist_new_record(
                         "shipment_id": payload.get("shipment_id"),
                         "result": result,
                         "created_at": utc_now(),
-                        "created_by": actor or database._actor(),
+                        "created_by": actor_context["username"],
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     },
                     session=session,
                 )
@@ -532,6 +558,8 @@ def _persist_new_record(
 def save_obligation(document: Mapping[str, Any], request_id: str, actor: str | None = None) -> tuple[bool, dict[str, Any], str]:
     """Create one obligation; shipment linkage is optional."""
 
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     request_id = str(request_id or "").strip()
     if not request_id:
         return _error("obligation requires request identity")
@@ -553,6 +581,8 @@ def save_obligation(document: Mapping[str, Any], request_id: str, actor: str | N
 def save_transaction(document: Mapping[str, Any], request_id: str, actor: str | None = None) -> tuple[bool, dict[str, Any], str]:
     """Create one money event; it may exist before or without a shipment."""
 
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     request_id = str(request_id or "").strip()
     if not request_id:
         return _error("transaction requires request identity")
@@ -617,6 +647,8 @@ def allocate_transaction(
 ) -> tuple[bool, dict[str, Any], str]:
     """Allocate an effective credit to an obligation with all guards active."""
 
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     transaction_id = str(transaction_id or "").strip()
     obligation_id = str(obligation_id or "").strip()
     request_id = str(request_id or "").strip()
@@ -643,6 +675,7 @@ def allocate_transaction(
     client = database._transaction_client(db)
     if client is None:
         return _error("financial ledger requires Mongo transaction support")
+    actor_context = database._actor_context(actor)
     try:
         with client.start_session() as session:
             with session.start_transaction():
@@ -688,9 +721,13 @@ def allocate_transaction(
                     "source_refs": _references(source_refs),
                     "provenance": {"mapping_status": CONFIRMED, "review_status": CONFIRMED},
                     "created_at": utc_now(),
-                    "created_by": actor or database._actor(),
+                    "created_by": actor_context["username"],
+                    "created_by_user_id": actor_context["user_id"],
+                    "created_by_role": actor_context["role"],
                     "updated_at": utc_now(),
-                    "updated_by": actor or database._actor(),
+                    "updated_by": actor_context["username"],
+                    "updated_by_user_id": actor_context["user_id"],
+                    "updated_by_role": actor_context["role"],
                 }
                 allocation.update(_shipment_fields(allocation["shipment_ids"]))
                 db[ALLOCATIONS].insert_one(allocation, session=session)
@@ -716,7 +753,9 @@ def allocate_transaction(
                         "shipment_id": allocation.get("shipment_id"),
                         "result": result,
                         "created_at": utc_now(),
-                        "created_by": actor or database._actor(),
+                        "created_by": actor_context["username"],
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     },
                     session=session,
                 )
@@ -750,6 +789,8 @@ def reverse_allocation(
 ) -> tuple[bool, dict[str, Any], str]:
     """Reverse an allocation without deleting its original history."""
 
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     allocation_id = str(allocation_id or "").strip()
     request_id = str(correction_request_id or "").strip()
     reason = str(reason or "").strip()
@@ -764,6 +805,7 @@ def reverse_allocation(
     client = database._transaction_client(db)
     if client is None:
         return _error("financial ledger requires Mongo transaction support")
+    actor_context = database._actor_context(actor)
 
     def existing_result(existing: Mapping[str, Any]) -> tuple[bool, dict[str, Any], str]:
         if existing.get("fingerprint") != fingerprint:
@@ -791,9 +833,13 @@ def reverse_allocation(
                         "reversed_by": correction_id,
                         "reversed_at": utc_now(),
                         "reversal_reason": reason,
-                        "reversed_by_actor": actor or database._actor(),
+                        "reversed_by_actor": actor_context["username"],
+                        "reversed_by_user_id": actor_context["user_id"],
+                        "reversed_by_role": actor_context["role"],
                         "updated_at": utc_now(),
-                        "updated_by": actor or database._actor(),
+                        "updated_by": actor_context["username"],
+                        "updated_by_user_id": actor_context["user_id"],
+                        "updated_by_role": actor_context["role"],
                     }
                 )
                 updated = db[ALLOCATIONS].update_one(
@@ -820,7 +866,9 @@ def reverse_allocation(
                     "original_id": allocation_id,
                     "reason": reason,
                     "evidence": deepcopy(evidence),
-                    "actor": actor or database._actor(),
+                    "actor": actor_context["username"],
+                    "actor_user_id": actor_context["user_id"],
+                    "actor_role": actor_context["role"],
                     "created_at": utc_now(),
                     "status": "applied",
                     "fingerprint": fingerprint,
@@ -858,6 +906,8 @@ def link_financial_record_to_shipment(
 ) -> tuple[bool, dict[str, Any], str]:
     """Add shipment context later without creating another financial event."""
 
+    if not _require_finance_write():
+        return _error("Bạn không có quyền ghi nhận Finance Actual.")
     record_type = str(record_type or "").strip().lower()
     record_id = str(record_id or "").strip()
     shipment_id = str(shipment_id or "").strip()
@@ -874,6 +924,7 @@ def link_financial_record_to_shipment(
     client = database._transaction_client(db)
     if client is None:
         return _error("financial ledger requires Mongo transaction support")
+    actor_context = database._actor_context(actor)
     action_type = "financial_record_shipment_link"
     collection = collections[record_type]
     try:
@@ -889,7 +940,14 @@ def link_financial_record_to_shipment(
                 if shipment_id not in shipment_ids:
                     shipment_ids.append(shipment_id)
                 fields = _shipment_fields(shipment_ids)
-                fields.update({"updated_at": utc_now(), "updated_by": actor or database._actor()})
+                fields.update(
+                    {
+                        "updated_at": utc_now(),
+                        "updated_by": actor_context["username"],
+                        "updated_by_user_id": actor_context["user_id"],
+                        "updated_by_role": actor_context["role"],
+                    }
+                )
                 updated = db[collection].update_one({"id": record_id}, {"$set": fields}, session=session)
                 if getattr(updated, "matched_count", 0) != 1:
                     raise RuntimeError("financial record changed before shipment link")
@@ -909,7 +967,9 @@ def link_financial_record_to_shipment(
                         "shipment_id": shipment_id,
                         "result": result,
                         "created_at": utc_now(),
-                        "created_by": actor or database._actor(),
+                        "created_by": actor_context["username"],
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     },
                     session=session,
                 )

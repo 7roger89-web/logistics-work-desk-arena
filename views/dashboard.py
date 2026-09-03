@@ -11,7 +11,7 @@ import re
 from core.config import STATUS_MAP_INV
 from core.utils import get_shipment_business_date, parse_date, log_error, escape_html, safe_float
 from core.logic import calculate_from_shipment, apply_financial_snapshot
-from core.auth import has_permission
+from core.auth import can_operate_business, has_permission
 from core.database import load_data, load_archived_data, save_shipment_atomic, delete_shipment, load_users
 from core.shipment_dashboard import (
     CRITICAL,
@@ -49,7 +49,7 @@ def quick_note_dialog():
     if updated_at:
         st.markdown(f"<div style='text-align:right; font-size:12px; color:gray; font-style:italic;'>🕒 Cập nhật: {updated_at}</div>", unsafe_allow_html=True)
     note_text = st.text_area("Nội dung ghi chú:", value=current_note, height=300, label_visibility="collapsed")
-    if st.button("💾 LƯU SỔ TAY", type="primary", use_container_width=True):
+    if st.button("💾 LƯU SỔ TAY", type="primary", use_container_width=True, disabled=not can_operate_business("shipment_edit")):
         save_quick_note(note_text)
         st.success("✅ Đã lưu sổ tay!")
         st.rerun()
@@ -83,7 +83,7 @@ def _render_my_tasks_section():
     with st.expander(f"📌 Việc của tôi ({len(_my_pending)})", expanded=True):
         for t in _my_pending:
             _c1, _c2 = st.columns([0.08, 0.92])
-            _done = _c1.checkbox("Đánh dấu đã xong", value=False, label_visibility="collapsed", key=f"my_chk_{t['_id']}")
+            _done = _c1.checkbox("Đánh dấu đã xong", value=False, label_visibility="collapsed", key=f"my_chk_{t['_id']}", disabled=not can_operate_business("shipment_edit"))
             if _done:
                 toggle_task(t["_id"], True)
                 st.rerun()
@@ -120,7 +120,7 @@ def quick_assign_task_dialog():
     t_assignee_label = c1.selectbox("👤 Giao cho ai?", _labels)
     t_deadline = c2.date_input("📅 Deadline (Hạn chót)", value=datetime.date.today())
     
-    if st.button("🚀 XÁC NHẬN GIAO VIỆC", type="primary", use_container_width=True):
+    if st.button("🚀 XÁC NHẬN GIAO VIỆC", type="primary", use_container_width=True, disabled=not can_operate_business("shipment_edit")):
         if t_content.strip():
             _selected_uid = ""
             for _uid, _lbl in _assignee_options:
@@ -700,12 +700,12 @@ def ui_dashboard():
         unsafe_allow_html=True,
     )
     if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True):
-        if has_permission("shipment_edit"):
+        if can_operate_business("shipment_edit"):
             quick_assign_task_dialog()
         else:
             st.error("⚠️ Bạn không có quyền giao việc.")
     if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True):
-        if has_permission("shipment_edit"):
+        if can_operate_business("shipment_edit"):
             quick_note_dialog()
         else:
             st.error("⚠️ Bạn không có quyền sử dụng sổ tay.")
@@ -798,7 +798,7 @@ def ui_dashboard():
             if pending_tasks:
                 for t in pending_tasks:
                     col_chk, col_txt = st.columns([0.08, 0.92])
-                    is_done = col_chk.checkbox("Đánh dấu đã xong", value=False, label_visibility="collapsed", key=f"pend_chk_{t['_id']}")
+                    is_done = col_chk.checkbox("Đánh dấu đã xong", value=False, label_visibility="collapsed", key=f"pend_chk_{t['_id']}", disabled=not can_operate_business("shipment_edit"))
                     if is_done:
                         toggle_task(t['_id'], True)
                         st.rerun()
@@ -822,7 +822,7 @@ def ui_dashboard():
                 recent_completed = sorted(completed_tasks, key=lambda x: str(x.get('_id')), reverse=True)[:20]
                 for t in recent_completed:
                     col_chk, col_txt = st.columns([0.08, 0.92])
-                    is_undone = col_chk.checkbox("Giữ trạng thái đã xong", value=True, label_visibility="collapsed", key=f"hist_chk_{t['_id']}")
+                    is_undone = col_chk.checkbox("Giữ trạng thái đã xong", value=True, label_visibility="collapsed", key=f"hist_chk_{t['_id']}", disabled=not can_operate_business("shipment_edit"))
                     if not is_undone:
                         toggle_task(t['_id'], False)
                         st.rerun()

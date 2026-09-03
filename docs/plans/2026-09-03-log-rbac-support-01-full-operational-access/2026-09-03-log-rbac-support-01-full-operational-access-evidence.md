@@ -40,20 +40,20 @@ Matching plan item(s): `P1-A`, `P1-B`, `P1-C`
 
 ### P1-B — Mounted operational writer gates and controls
 
-- `E1-P1B-SRC1`: Pending sibling writer/control sweep.
-- `E1-P1B-IMPACT1`: Pending post-edit Anvien impact evidence for each changed writer family.
-- `E1-P1B-TEST1`: Pending Support Customer/Shipment/Pickup/Import/Task/Finance/payment/reconciliation matrix tests.
-- `E1-P1B-UI1`: Pending mounted control visibility/enabled-state evidence.
-- `E1-P1B-SEC1`: Pending negative tests for viewer/Sale/admin-only boundaries.
+- `E1-P1B-SRC1`: Fresh source sweep closed the existing operational writer gaps through the current permission layer. `core/database.py` now gates Shipment create/edit, Customer, Quotes, Agreements, rate-card/tariff workspace, Tasks/quick note, proxy/entrustment, and the Admin user APIs. `core/payment_logic.py` gates lump-sum Finance Actual; `core/debit_snapshot.py` gates reconciliation snapshot writes; `core/financial_ledger.py` gates canonical obligation/transaction/allocation/reversal/link writes. Matching UI controls in Customers, Shipment, Quotations, Agreements, Finance, Dashboard, Proxy Payment, Reconciliation, Sales/tariff, and Entrustment use existing permission helpers. Sale's matrix is unchanged from fresh `origin/main`.
+- `E1-P1B-IMPACT1`: Final Anvien refresh indexed 478 files / 228 parsed code files / 37,656 graph nodes / 43,333 relationships. Final file-detail counts: `core/auth.py` 16 local / 7 inbound; `core/database.py` 185 local / 45 inbound; `core/financial_ledger.py` 84 local / 0 inbound / 35 outbound; `views/contracts.py` 18 local. Final `anvien detect-changes files --scope all` after generated-metadata cleanup reported 27 intended changed files (23 source/test + 4 plan docs), 76 affected items, risk `critical`; no generated `AGENTS.md`/`CLAUDE.md`/`.gitignore` change remains. `_audit` symbol impact is `35`, risk `CRITICAL`.
+- `E1-P1B-TEST1`: `python -m pytest tests/test_log_rbac_support_01.py tests/test_logc15_auth_rbac.py -q` → `37 passed`; `python -m pytest tests/test_financial_write_safety.py -q` → `12 passed, 6 skipped, 2 subtests passed`; `python -m pytest tests/test_financial_ledger.py -q` → `13 passed, 1 skipped` independently; `python -m pytest tests/test_users_persistence.py -q` → `6 passed`; representative Customer/Quote/Agreement/Contract tests → `38 passed, 4 subtests passed`.
+- `E1-P1B-UI1`: `python -m pytest tests/test_all_tabs_smoke.py -q` → `1 passed`; `python -m pytest tests/test_logc12_host_native_runtime.py -q` → `1 passed`; Support AppTest mounted the real `Hợp Đồng` route, found no exceptions, and confirmed `🚀 Lưu hợp đồng` is enabled. Shipment fixture UI/service coverage persists Pickup/Export and Import/Delivery fields through `save_shipment_atomic`.
+- `E1-P1B-SEC1`: Support route visibility covers every non-admin route and excludes `admin`; Support negative tests reject Customer/Quote/Agreement/Entrustment/Proxy/Shipment destructive or unauthorized writes as applicable; Viewer is rejected before canonical Finance/Shipment writer access; Admin wildcard remains true; Sale retains its prior finance/receivables/admin exclusions.
 
 ### P1-C — Actor/audit and security
 
-- `E1-P1C-SRC1`: Pending central actor/audit stamping evidence.
-- `E1-P1C-IMPACT1`: Pending `_audit` and central writer impact evidence.
-- `E1-P1C-DB1`: Pending fresh fixture audit readback containing user ID, role, username, timestamp, and provenance.
-- `E1-P1C-TEST1`: Pending idempotency/rollback/protected-history/security regression evidence.
-- `E1-P1C-SEC1`: Pending Support cannot change users/roles/secrets/deployment/configuration evidence.
-- `E1-P1C-BUILD1`: Pending final compile/full-suite evidence.
+- `E1-P1C-SRC1`: `current_actor_context()` remains in `core/auth.py`; `_actor_context()`, `_audit()`, and `_save_document()` are the existing central path. Audit documents now retain `actor_user_id`, `actor_username`, `actor_role`, and UTC `created_at`; persisted business documents/action requests stamp canonical created/updated actor fields. Payment, correction, ledger, entrustment, and Debit snapshot writers retain the same identity context.
+- `E1-P1C-IMPACT1`: Final Anvien `impact symbol _audit -u Function:core/database.py:_audit#8 -d upstream --include-tests` returned `impactedCount=35`, `risk=CRITICAL`; central `core/database.py` file-detail returned 185 local / 45 inbound relationships. This is a shared-boundary warning handled by focused rollback/idempotency tests.
+- `E1-P1C-DB1`: Support fixture Contract create/update/reload, Shipment create/edit/reload, canonical Finance transaction, and operational collection writes read back canonical user ID/role and audit timestamps. Caller-supplied display actor is not allowed to replace authenticated Support identity.
+- `E1-P1C-TEST1`: Independent `financial_write_safety` and `financial_ledger` suites pass with rollback/idempotency/reversal coverage; Support negative Admin API/destructive tests pass; focused RBAC/Contract suite passes. Existing protected-history assertions remain green in the affected suites.
+- `E1-P1C-SEC1`: `ROLE_PERMISSIONS["admin"] == {"*"}`; Support has no `*`, `admin`, user-delete, shipment-delete, customer-delete, proxy-delete, or knowledge-delete token. User service `save_user` permits only first-admin bootstrap without an authenticated user; update/delete require Admin wildcard. No source path was added for secrets/deployment/configuration mutation.
+- `E1-P1C-BUILD1`: `python -m compileall -q core views app.py tests` → pass. Full `python -m pytest tests -q` → `347 passed, 7 skipped, 27 failed, 6 errors, 12 subtests passed`; residual failures/errors are baseline/environment issues (missing Owner workbook, missing `python-calamine`, historical hash drift, cp1252 source reads, missing Mongo config, stale dashboard/runtime assertions), not affected Support writer gates. Safe Preview credentials were not supplied, so browser validation remains pending.
 
 ## E2 - P2 Evidence
 
@@ -63,4 +63,4 @@ No P2 implementation evidence is claimed yet. The P2 closure section will be pop
 
 ## Closure Evidence
 
-- `E-CLOSE-1`: Pending final candidate SHA, clean intended diff, Anvien detect-changes, validation output, and explicit `PRODUCTION_MUTATIONS=0` / `PRODUCTION_DATA_MUTATIONS=0` proof.
+- `E-CLOSE-1`: Pending final candidate SHA, clean intended diff, and Supervisor acceptance; implementation validation and Anvien detect evidence are recorded above. No Production or application-database write was performed.

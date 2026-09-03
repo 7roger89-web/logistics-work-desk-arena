@@ -3,7 +3,7 @@
 ## Metadata
 
 - Date: `2026-09-03`
-- Status: `P0 Complete; implementation pending`
+- Status: `P1 implementation complete; supervisor/closure pending`
 - Plan: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-plan.md`
 - Evidence: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-evidence.md`
 - Benchmark: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-benchmark.md`
@@ -140,7 +140,7 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
   - Actual-status Update: mark only the Contract rows proven by fresh evidence; update P1-B assumptions if shared actor/audit code changes.
   - Commit Boundary: commit `P1-A` after all listed acceptance checks pass. P1-A evidence is recorded in `E1-P1A-SRC1..E1-P1A-UI1` and the checkpoint is separate from later sibling fixes.
 
-- [ ] P1-B: Mounted operational writer gates and Support-facing controls
+- [x] P1-B: Mounted operational writer gates and Support-facing controls
   - Goal: verify and close accidental Support denials or UI-only authorization across Customer, Shipment/Pickup/Export/Import/Delivery, Quotations/Agreements, Tasks, Finance Actual, payments, and reconciliation surfaces already present in the app.
   - Scope Boundary:
     - Editable: only existing UI controls and central writer permission gates in the affected family; focused role-matrix tests.
@@ -187,7 +187,7 @@ The immediate predecessor changed only `core/auth.py` to grant Support a broad p
   - Actual-status Update: append transitions for each verified sibling surface and revise P1-C only for proven shared changes.
   - Commit Boundary: commit after this slice when acceptance passes.
 
-- [ ] P1-C: Actor/audit provenance and security regression coverage
+- [x] P1-C: Actor/audit provenance and security regression coverage
   - Goal: ensure every Support mutation in the changed writer family remains attributable to one canonical actor and protected history cannot be deleted or silently rewritten.
   - Scope Boundary:
     - Editable: central actor/audit stamping and focused tests only where necessary for the already mapped writers.

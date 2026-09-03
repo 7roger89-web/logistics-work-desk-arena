@@ -6,7 +6,7 @@ from uuid import uuid4
 import calendar
 from core.database import load_customers, load_data, load_contracts, load_proxy_payments, save_proxy_payment, delete_proxy_payment
 from core.utils import safe_float, parse_date_optional
-from core.auth import has_permission
+from core.auth import can_operate_business, has_permission
 
 # --- GIAO DIỆN CHÍNH ---
 def ui_proxy_payment_management():
@@ -90,7 +90,12 @@ def ui_proxy_payment_management():
                 
             p_note = st.text_input("Ghi chú điều khoản bổ sung")
 
-            if st.button("💾 LƯU GIAO DỊCH THANH TOÁN HỘ", type="primary", use_container_width=True):
+            if st.button(
+                "💾 LƯU GIAO DỊCH THANH TOÁN HỘ",
+                type="primary",
+                use_container_width=True,
+                disabled=not can_operate_business("proxy_payment"),
+            ):
                 if p_cust != "" and p_vnd > 0:
                     new_item = {
                         "id": p_id.strip().upper(), "date": str(p_date), "customer": p_cust,

@@ -11,7 +11,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from core.auth import has_write_permission
+from core.auth import can_operate_business
 from core.config import GETFLY_SERVICES_LIST
 from core.database import (
     generate_shipment_id,
@@ -188,7 +188,12 @@ def _render_new_quote() -> None:
         rmb_fee = st.number_input("RMB conversion fee CNY", min_value=0.0, value=0.0, key="new_quote_rmb_fee")
         include_remittance = st.checkbox("Tính chi phí chuyển tiền vào chi phí dự kiến", key="new_quote_include_remittance")
 
-    if st.button("Tính phương án và lưu báo giá nháp", type="primary", key="new_quote_save"):
+    if st.button(
+        "Tính phương án và lưu báo giá nháp",
+        type="primary",
+        key="new_quote_save",
+        disabled=not can_operate_business("sales_write"),
+    ):
         if not sales_owner.strip() or not origin.strip() or not destination.strip() or not goods_description.strip():
             st.error("Vui lòng nhập đủ SALE, điểm đi, điểm đến và mô tả hàng hóa.")
             return
@@ -245,8 +250,8 @@ def _render_quote_detail() -> None:
     if actions:
         cols = st.columns(len(actions))
         for col, (label, target) in zip(cols, actions):
-            if col.button(label, key=f"quote_transition_{target}", disabled=not has_write_permission("sales_write")):
-                if not has_write_permission("sales_write"):
+            if col.button(label, key=f"quote_transition_{target}", disabled=not can_operate_business("sales_write")):
+                if not can_operate_business("sales_write"):
                     st.warning("Bạn không có quyền thay đổi báo giá.")
                     continue
                 try:
@@ -266,9 +271,9 @@ def _render_create_shipment(quote: dict[str, Any]) -> None:
         st.success(f"Đã liên kết shipment {quote['shipment_id']}. Retry sẽ không tạo thêm lô.")
         return
     st.info("Hành động này chỉ tạo shipment draft, giữ quote reference và không ghi sổ tài chính.")
-    if not st.button("Tạo / prefill shipment draft", type="primary", key="quote_create_shipment", disabled=not has_write_permission("sales_write")):
+    if not st.button("Tạo / prefill shipment draft", type="primary", key="quote_create_shipment", disabled=not can_operate_business("sales_write")):
         return
-    if not has_write_permission("sales_write"):
+    if not can_operate_business("sales_write"):
         st.warning("Bạn không có quyền thay đổi báo giá.")
         return
     shipments = st.session_state.get("db_shipments", {})

@@ -8,7 +8,27 @@ from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
 
 from core.auth import can_edit_contract
-from core.database import load_contracts, save_contract_to_cloud, save_contract_transaction
+from core.database import (
+    load_contracts,
+    delete_customer,
+    delete_knowledge_entry,
+    delete_proxy_payment,
+    delete_shipment,
+    save_agreements_to_cloud,
+    save_contract_to_cloud,
+    save_contract_transaction,
+    save_customer_to_cloud,
+    save_entrustment,
+    save_proxy_payment,
+    save_quotes_to_cloud,
+    save_rate_card,
+    save_cbpg_workspace,
+    save_user,
+    update_user,
+    delete_user,
+)
+from core.financial_ledger import save_transaction
+from tests.test_financial_ledger import _MemoryDatabase
 
 
 class _Result:
@@ -76,6 +96,13 @@ class _Database:
 
     def __getitem__(self, name: str) -> _Collection:
         return getattr(self, name)
+
+    def __getattr__(self, name: str) -> _Collection:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        collection = _Collection()
+        setattr(self, name, collection)
+        return collection
 
 
 SUPPORT = {
@@ -164,10 +191,108 @@ class SupportContractPersistenceTests(TestCase):
         with self._with_user(ADMIN):
             admin_permissions = {route.permission for route in _visible_routes()}
 
+        from views.web_app import ROUTES
+
+        employee_permissions = {route.permission for route in ROUTES if route.permission != "admin"}
+        self.assertTrue(employee_permissions.issubset(support_permissions))
         self.assertTrue({"contracts", "customers", "shipment_create", "receivables"}.issubset(support_permissions))
         self.assertNotIn("admin", support_permissions)
         self.assertNotIn("receivables", sale_permissions)
         self.assertIn("admin", admin_permissions)
+
+
+class SupportOperationalWriterTests(TestCase):
+    def _with_user(self, user):
+        return patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": user}})())
+
+    def test_support_can_write_mapped_operational_collections(self) -> None:
+        db = _Database()
+        with self._with_user(SUPPORT), patch("core.database.get_db", return_value=db):
+            self.assertTrue(save_customer_to_cloud({"id": "CUS-SUPPORT", "name": "Khách Support"}))
+            self.assertTrue(save_quotes_to_cloud({"Q-SUPPORT": {"id": "Q-SUPPORT", "status": "DRAFT"}}))
+            self.assertTrue(save_agreements_to_cloud({"A-SUPPORT": {"id": "A-SUPPORT", "agreement_id": "A-SUPPORT"}}))
+            self.assertTrue(save_entrustment({"id": "ENT-SUPPORT", "linked_id": "SHP-SUPPORT"}))
+            self.assertTrue(save_proxy_payment({"id": "PX-SUPPORT", "amount_vnd": 1000}))
+            self.assertTrue(save_rate_card({"id": "RC-SUPPORT", "history": []}))
+            self.assertTrue(save_cbpg_workspace("USD", 100.0, []))
+
+        self.assertIn("CUS-SUPPORT", db.customers.docs)
+        self.assertIn("Q-SUPPORT", db.quotes.docs)
+        self.assertIn("A-SUPPORT", db.agreements.docs)
+        self.assertIn("ENT-SUPPORT", db.entrustments.docs)
+        self.assertIn("PX-SUPPORT", db.proxy_payments.docs)
+        self.assertIn("RC-SUPPORT", db.rate_cards.docs)
+        self.assertIn("default", db.cbpg_workspaces.docs)
+        self.assertGreaterEqual(len(db.audit_logs.docs), 2)
+
+    def test_viewer_is_rejected_before_operational_writer_mutation(self) -> None:
+        db = _Database()
+        with self._with_user(VIEWER), patch("core.database.get_db", return_value=db) as get_db:
+            self.assertFalse(save_customer_to_cloud({"id": "CUS-DENIED", "name": "Không được ghi"}))
+            self.assertFalse(save_quotes_to_cloud({"Q-DENIED": {"id": "Q-DENIED"}}))
+            self.assertFalse(save_agreements_to_cloud({"A-DENIED": {"id": "A-DENIED"}}))
+            self.assertFalse(save_entrustment({"id": "ENT-DENIED"}))
+            self.assertFalse(save_proxy_payment({"id": "PX-DENIED"}))
+            self.assertFalse(save_rate_card({"id": "RC-DENIED"}))
+            self.assertFalse(save_cbpg_workspace("USD", 100.0, []))
+
+        get_db.assert_not_called()
+        self.assertEqual(db.audit_logs.docs, {})
+
+    def test_support_cannot_use_admin_only_destructive_writers(self) -> None:
+        db = _Database()
+        with self._with_user(SUPPORT), patch("core.database.get_db", return_value=db) as get_db:
+            self.assertFalse(delete_customer("CUS-1", reason="test"))
+            self.assertFalse(delete_knowledge_entry("KB-1"))
+            self.assertFalse(delete_proxy_payment("PX-1", reason="test"))
+            with self.assertRaises(RuntimeError):
+                delete_shipment("SHP-1", reason="test")
+
+        get_db.assert_not_called()
+        self.assertEqual(db.audit_logs.docs, {})
+
+    def test_support_can_write_canonical_finance_actual_but_viewer_cannot(self) -> None:
+        db = _MemoryDatabase()
+        transaction = {
+            "id": "TX-SUPPORT-ACTUAL",
+            "source_party": {"party_type": "customer", "party_id": "CUS-SUPPORT", "name": "Khách Support"},
+            "holder_party": {"party_type": "company", "party_id": "LOGISTICS", "name": "Logistics"},
+            "beneficial_owner": {"party_type": "customer", "party_id": "CUS-SUPPORT", "name": "Khách Support"},
+            "amount": 2500000,
+            "currency": "VND",
+            "transaction_kind": "payment",
+            "classification_status": "CONFIRMED",
+            "restriction": {"status": "NONE"},
+        }
+        with self._with_user(SUPPORT), patch("core.database.get_db", return_value=db):
+            created = save_transaction(transaction, "REQ-SUPPORT-ACTUAL", actor="ignored-display-name")
+        self.assertTrue(created[0], created[2])
+        saved = db.financial_transactions.find_one({"id": "TX-SUPPORT-ACTUAL"})
+        self.assertEqual(saved["created_by_user_id"], SUPPORT["user_id"])
+        self.assertEqual(saved["created_by_role"], "support")
+
+        with self._with_user(VIEWER), patch("core.database.get_db", return_value=db) as get_db:
+            denied = save_transaction(transaction, "REQ-VIEWER-ACTUAL", actor="viewer-string")
+        self.assertFalse(denied[0])
+        get_db.assert_not_called()
+        self.assertIsNone(db.financial_transactions.find_one({"id": "TX-VIEWER-ACTUAL"}))
+
+    def test_support_cannot_call_admin_user_service(self) -> None:
+        db = _Database()
+        with self._with_user(SUPPORT), patch("core.database.get_db", return_value=db) as get_db:
+            self.assertFalse(save_user({"username": "blocked-admin", "role": "admin"}))
+            self.assertFalse(update_user("someone", payload={"role": "admin"}, actor="support-string"))
+            self.assertFalse(delete_user("someone", actor="support-string"))
+        self.assertEqual(db.users.docs, {})
+        get_db.assert_not_called()
+
+    def test_admin_retains_wildcard_business_authority(self) -> None:
+        with self._with_user(ADMIN):
+            from core.auth import can_operate_business
+
+            self.assertTrue(can_operate_business("shipment_create"))
+            self.assertTrue(can_operate_business("finance_write"))
+            self.assertTrue(can_operate_business("admin_write"))
 
 
 class SupportContractMountedUiTests(TestCase):

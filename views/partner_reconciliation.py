@@ -16,6 +16,7 @@ import pandas as pd
 import streamlit as st
 
 from core.database import get_db
+from core.auth import can_operate_business
 from core.debit_draft import (
     DEBIT_STATUS_READY_FOR_REVIEW,
     REPORT_STATUS_READY_FOR_REVIEW,
@@ -291,6 +292,7 @@ def _render_debit_draft(position: Mapping[str, Any]) -> None:
         )
 
     db = get_db() if eligible else None
+    can_reconcile = can_operate_business("receivables")
     if not eligible:
         st.info("Chưa có số debit đủ điều kiện để lưu READY_FOR_REVIEW; các dòng review vẫn chỉ là review.")
     elif db is None:
@@ -301,9 +303,12 @@ def _render_debit_draft(position: Mapping[str, Any]) -> None:
         _state_set(_SNAPSHOT_REQUEST_KEY, request_id)
     if st.button(
         "Lưu READY_FOR_REVIEW snapshot",
-        disabled=db is None or not eligible,
+        disabled=db is None or not eligible or not can_reconcile,
         key="log_c05_save_snapshot",
     ):
+        if not can_reconcile:
+            st.error("Bạn không có quyền cập nhật đối soát công nợ.")
+            st.stop()
         try:
             ready_draft = build_debit_draft(position, status=DEBIT_STATUS_READY_FOR_REVIEW)
             ready_report = build_manager_report(position, status=REPORT_STATUS_READY_FOR_REVIEW)
@@ -371,7 +376,10 @@ def _render_debit_draft(position: Mapping[str, Any]) -> None:
             st.info(f"Đang đọc lại nội dung đã lưu của V{reopened.get('version')}; hash không phụ thuộc thời điểm mở lại.")
         else:
             st.warning("Không tìm thấy snapshot đã chọn.")
-    if c2.button("Tạo phiên bản mới", key="log_c05_regenerate_snapshot"):
+    if c2.button("Tạo phiên bản mới", key="log_c05_regenerate_snapshot", disabled=not can_reconcile):
+        if not can_reconcile:
+            st.error("Bạn không có quyền cập nhật đối soát công nợ.")
+            st.stop()
         try:
             next_version = int(selected.get("version") or 0) + 1
             result = save_debit_draft_snapshot(

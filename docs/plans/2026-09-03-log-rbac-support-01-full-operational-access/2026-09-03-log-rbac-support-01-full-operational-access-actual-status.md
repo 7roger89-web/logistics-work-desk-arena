@@ -2,14 +2,14 @@
 
 Title: LOG-RBAC-SUPPORT-01 — Full operational access for Support
 Date: 2026-09-03
-Status: P1-A complete; P1-B/P1-C implementation pending
+Status: P1 implementation complete; supervisor/closure pending
 Companion plan: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-plan.md`
 Companion evidence: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-evidence.md`
 Companion benchmark: `docs/plans/2026-09-03-log-rbac-support-01-full-operational-access/2026-09-03-log-rbac-support-01-full-operational-access-benchmark.md`
 
 ## Purpose
 
-This file records the current repo reality before implementation. It is based on a fresh fetch and isolated worktree at `origin/main` `c1c9468a814a2c0e56cefcf2851a2cadf46df436`; it does not treat old SHA claims or the dirty Owner checkout as authority.
+This file records the current repo reality from the P0 baseline through the final P1 refresh. It is based on a fresh fetch and isolated worktree at `origin/main` `c1c9468a814a2c0e56cefcf2851a2cadf46df436`; it does not treat old SHA claims or the dirty Owner checkout as authority.
 
 ## Freshness / Refresh Rules
 
@@ -30,14 +30,14 @@ Out of scope:
 
 | Unit / File / Surface | File Detail Evidence | Related File Count | Relationship Summary | Impact Note |
 |-----------------------|----------------------|--------------------|----------------------|-------------|
-| `core/auth.py` | `E0-P0A-ANV1` | 13 local / 3 inbound | Single permission matrix, permission helpers, actor identity | medium/high; shared auth boundary |
-| `core/database.py` | `E0-P0A-ANV1` | 144 local / 44 inbound | Contract, shipment, customer, finance, task, proxy, entrustment writers and audit | critical; central persistence fan-in |
+| `core/auth.py` | `E1-P1B-IMPACT1` | 16 local / 7 inbound | Single permission matrix, permission helpers, actor identity | medium/high; shared auth boundary |
+| `core/database.py` | `E1-P1B-IMPACT1` | 185 local / 45 inbound | Contract, shipment, customer, finance, task, proxy, entrustment writers and audit | critical; central persistence fan-in |
 | `views/contracts.py` | `E0-P0A-ANV1` | 18 local | Contract route/forms, shipment links, contract finance, terms | high; direct user-visible path |
 | `views/quotations.py` | `E0-P0A-ANV1` | 12 local | Quote create/transition/shipment draft controls | medium; Support operational sibling |
 | `views/customers.py` | `E0-P0A-ANV1` | 0 local | Customer import/create/edit/delete controls | medium; writer boundary is imported |
 | `views/shipment.py` | `E0-P0A-ANV1` | 0 local | Pickup/export, import/delivery, GNT, finance and shipment save | high; writer boundary is imported |
 | `core/payment_logic.py` | `E0-P0A-ANV1` | 3 local | Lump-sum receipt and allocation | high; financial writer sibling |
-| `core/financial_ledger.py` | P0 Anvien impact | 78 local / 34 outbound | Canonical ledger writer family, not mounted in the primary current route | inspect-only unless fresh impact proves required |
+| `core/financial_ledger.py` | `E1-P1B-IMPACT1` | 84 local / 35 outbound | Canonical ledger writer family, now protected at its service boundary | high; canonical finance writer family |
 | `views/dashboard.py` | P0 Anvien impact | 18 local / 3 outbound | Tasks, GetFly import/export, shipment launch/detail, admin-only delete | medium; mounted operational sibling |
 
 ## Status Rules
@@ -56,22 +56,22 @@ Out of scope:
 
 | Unit | Current State | Required State | Status | Relationship Count | Evidence | Next Plan Decision |
 |------|---------------|----------------|--------|--------------------|----------|--------------------|
-| `ROLE_PERMISSIONS` / Support | Current matrix grants employee-facing operational permissions but not Admin wildcard/destructive tokens | one canonical Support operational policy | partial | 13 local auth relationships | E0-P0A-SRC2 | preserve policy; reconcile tests/helpers in P1-A |
-| Route visibility | `views/web_app.py` derives visible routes from `has_permission`; Support receives Contract, Shipment, Customer, Sales, Finance, reports, tariff, tracking, knowledge routes; User route requires `admin` | all current employee workflows visible to Support; User/security admin hidden | partial | route consumer in web app | E0-P0A-SRC2, E0-P0A-SRC4 | verify in P1-B |
+| `ROLE_PERMISSIONS` / Support | Current matrix grants employee-facing operational permissions but not Admin wildcard/destructive tokens; Sale block is unchanged from `origin/main` | one canonical Support operational policy | correct | 16 local / 7 inbound auth relationships | E0-P0A-SRC2, E1-P1B-SRC1 | preserve policy |
+| Route visibility | `views/web_app.py` derives visible routes from `has_permission`; Support route set covers all non-admin `ROUTES`; User route requires `admin` | all current employee workflows visible to Support; User/security admin hidden | correct | route consumer in web app | E1-P1A-UI1, E1-P1B-SEC1 | preserve |
 | Contract UI | Contract forms and tabs now use `can_edit_contract()` over the existing matrix; mounted Support form has enabled save and no exception | Support controls enabled; validation and Vietnamese success/error are clear | correct for mounted control path | 18 local Contract relationships | E1-P1A-SRC1, E1-P1A-UI1 | preserve; continue sibling sweep |
-| Contract service/repository | `save_contract_to_cloud`, `save_contract_transaction`, and atomic proxy Contract writer now reject unauthorized calls before mutation | authorized Support writes succeed; unauthorized direct calls fail before mutation | correct for covered writers | 146 central DB relationships | E1-P1A-SRC1, E1-P1A-DB1 | preserve; verify other writers P1-B |
+| Contract service/repository | `save_contract_to_cloud`, `save_contract_transaction`, and atomic proxy Contract writer now reject unauthorized calls before mutation | authorized Support writes succeed; unauthorized direct calls fail before mutation | correct for covered writers | 185 central DB relationships | E1-P1A-SRC1, E1-P1A-DB1 | preserve |
 | Contract reopen/readback | `load_contracts` reads persisted documents; fixture test proves Support create/update/fresh-readback | values survive fresh read after create and edit | correct | Contract + database | E1-P1A-TEST1, E1-P1A-DB1 | preserve |
-| Customer operations | Support route is visible; import/create/edit buttons are not explicitly write-gated; repository save is not centrally gated | Support can perform ordinary customer operations; unauthorized direct writer fails | partial | customer surface + DB writer | E0-P0A-SRC4 | edit P1-B |
-| Shipment/Pickup/Export/Import/Delivery | Support has `shipment_create`/`shipment_edit`; detail controls and import paths reach existing writers, with incomplete control/service guard coverage | Support can operate; protected delete remains Admin-only | partial | shipment surface + DB writer | E0-P0A-SRC2, E0-P0A-SRC4 | edit P1-B |
-| Quotations/Agreements/factory data | Support matrix has `sales`, `sales_write`, `commercial_write`; some quote create/persist controls are UI-only | Support can use current operational quote/agreement workflow; Sale effective access unchanged | partial | quote/agreement surfaces | E0-P0A-SRC2, E0-P0A-SRC4 | edit P1-B |
-| Documents/GNT/evidence | Existing current routes expose review/GNT/export/read flows; no new document-management route is needed | Support can use existing operational evidence/document flows without new authority | partial | shipment/review/dashboard surfaces | E0-P0A-SRC4 | inspect and verify P1-B |
-| Tasks/quick work handling | Support has `operations_write`; dashboard task/note writes exist but are not all explicitly gated/audited | Support can create/complete ordinary tasks; admin/security boundaries remain separate | partial | dashboard + DB task writers | E0-P0A-SRC4 | edit P1-B/P1-C |
-| Finance Actual | Support has `finance_write`; shipment direct payment already has a backend gate; lump-sum and some sibling writers are UI-only | actual cost/payment/AR/AP/reconciliation operations allowed with financial safety | partial | finance/payment/database | E0-P0A-SRC2, E0-P0A-SRC4 | edit P1-B/P1-C |
-| Payment/reconciliation | Support has `receivables`, `proxy_payment`, `entrustment`; current finance route and contract finance exist, but legacy writer controls are uneven | Support payment/reconciliation succeeds; idempotency and protected history remain | partial | payment logic + DB + routes | E0-P0A-SRC2, E0-P0A-SRC4 | edit P1-B/P1-C |
-| Audit/actor identity | `_audit` now stores actor string, canonical user ID, username, role, and timestamp; central document writers also stamp actor metadata | every Support mutation retains user ID, username, role, time, audit/provenance | partial (Contract covered; sibling regression pending) | `_audit` CRITICAL fan-in | E1-P1A-DB1, E1-P1A-IMPACT1 | continue P1-C |
-| Admin-only boundaries | `Người Dùng` route requires `admin`; Support lacks `*`, delete tokens, and admin route permission | user/role/secrets/config/deployment/database/security/destructive functions remain unavailable | correct at matrix/route level; service audit pending | auth/web app/database | E0-P0A-SRC2, E0-P0A-SRC4 | preserve; prove negative paths P1-C |
-| Sale permission | Immediate predecessor changed only Support; Sale set was not changed by that commit | exact previous Sale effective access, zero drift | correct by current diff; test coverage stale | auth + tests | E0-P0A-SRC1, E0-P0A-TEST1 | snapshot and prove P1-C |
-| Test contract | LOG-C15 tests still assert old Support denial; finance fixture tests call a gated writer without an authenticated fixture | affected tests express the Owner decision and prove behavior | wrong/stale | auth + finance tests | E0-P0A-TEST1 | update only affected tests after code P1-A/P1-C |
+| Customer operations | Support route/control and `save_customer_to_cloud` now use the existing `customers` permission; destructive customer delete remains separately gated | Support can perform ordinary customer operations; unauthorized direct writer fails | correct | customer surface + DB writer | E1-P1B-SRC1, E1-P1B-TEST1 | preserve |
+| Shipment/Pickup/Export/Import/Delivery | Support create/edit controls and `save_shipment_atomic` use `shipment_create`/`shipment_edit`; service test persists export/import fields; protected delete remains Admin-only | Support can operate; protected delete remains Admin-only | correct | shipment surface + DB writer | E1-P1B-SRC1, E1-P1B-TEST1 | preserve |
+| Quotations/Agreements/factory data | Support `sales_write`/`commercial_write` controls and writers are covered; quote remains estimate-only and factory lots remain commercial payload | Support can use current operational quote/agreement workflow; Sale effective access unchanged | correct | quote/agreement surfaces | E1-P1B-SRC1, E1-P1B-TEST1 | preserve |
+| Documents/GNT/evidence | Existing routes remain mounted; shipment save gate covers normal GNT/document fields and Getfly import reaches the same guarded shipment writer; no new document route added | Support can use existing operational evidence/document flows without new authority | correct for source/mounted path; browser pending | shipment/review/dashboard surfaces | E1-P1B-SRC1, E1-P1B-UI1 | preserve; do not claim browser proof |
+| Tasks/quick work handling | Dashboard quick-note/task create/toggle controls and writers use existing `shipment_edit`; task audit rows carry actor metadata | Support can create/complete ordinary tasks; admin/security boundaries remain separate | correct | dashboard + DB task writers | E1-P1B-SRC1, E1-P1B-TEST1 | preserve |
+| Finance Actual | Support `finance_write` is enforced in direct shipment payment, correction, lump-sum receipt, and canonical ledger writers; finance values remain separate from quote/agreement estimates | actual cost/payment/AR/AP/reconciliation operations allowed with financial safety | correct | finance/payment/database | E1-P1B-SRC1, E1-P1B-TEST1 | preserve |
+| Payment/reconciliation | Support `receivables`, `proxy_payment`, and `entrustment` routes/writers are guarded; Debit snapshot writer is guarded; idempotency/rollback tests remain green | Support payment/reconciliation succeeds; idempotency and protected history remain | correct | payment logic + DB + routes | E1-P1B-SRC1, E1-P1B-TEST1, E1-P1B-SEC1 | preserve |
+| Audit/actor identity | `_audit`, central document writers, payment/ledger/entrustment/debit paths stamp canonical user ID, username, role, UTC timestamp, and existing provenance/idempotency records | every Support mutation retains user ID, username, role, time, audit/provenance | correct for changed writer family | `_audit` CRITICAL fan-in | E1-P1C-SRC1, E1-P1C-DB1, E1-P1C-TEST1 | preserve |
+| Admin-only boundaries | `Người Dùng` route and user service require Admin wildcard; Support lacks `*`, delete tokens, and admin route permission; protected destructive calls fail before mutation | user/role/secrets/config/deployment/database/security/destructive functions remain unavailable | correct | auth/web app/database | E1-P1B-SEC1, E1-P1C-SEC1 | preserve |
+| Sale permission | Sale `ROLE_PERMISSIONS` is unchanged versus fresh `origin/main`; focused tests retain Sale's finance/receivables/admin exclusions | exact previous Sale effective access, zero drift | correct; zero drift | auth + tests | E1-P1C-SEC1 | preserve |
+| Test contract | Affected stale Support assertions and fixture auth dependencies are reconciled; focused suites pass; full suite residuals are unrelated baseline/env blockers | affected tests express the Owner decision and prove behavior | correct for affected scope; full suite blocked by baseline/env | auth + finance tests | E1-P1B-TEST1, E1-P1C-BUILD1 | report residuals honestly |
 | Runtime/Preview | No safe Preview credential was supplied; no Production runtime will be used | mounted evidence if available, otherwise honest pending status | blocked for browser-only proof | app/runtime | E0-P0A-SRC1 | use fixture/AppTest; report pending browser gate |
 
 ## Status Refresh Log
@@ -80,6 +80,7 @@ Out of scope:
 |---------|------|------------|----------------|----------------|----------|-------------------|
 | R0 | 2026-09-03 | fresh `origin/main` fetch and isolated worktree at `c1c9468` before implementation | full Support RBAC/Contract operational family | initial matrix/route partial; Contract service/readback partial/missing; admin boundary correct; tests stale; browser blocked | E0-P0A-SRC1..E0-P0A-BUILD1 | proceed to P1-A; retain P1-B/P1-C sibling sweep |
 | R1 | 2026-09-03 | P1-A implementation checkpoint in isolated worktree | Contract helper, UI guards, Contract writers, central actor/audit fields, focused tests | Contract UI/service/readback `partial/missing -> correct`; actor family remains partial pending sibling sweep | E1-P1A-SRC1..E1-P1A-UI1 | proceed to P1-B; preserve Contract behavior and test remaining writers |
+| R2 | 2026-09-03 | P1-B/P1-C implementation in isolated worktree; final Anvien refresh and focused/full validation | Customer/shipment/quote/agreement/task/finance/payment/reconciliation writer gates and controls; canonical ledger gate; actor metadata; admin service guards; focused tests | all in-scope operational rows `partial -> correct`; Sale drift `0`; browser remains blocked without safe Preview identity; full suite has baseline/env residuals | E1-P1B-SRC1..E1-P1C-BUILD1 | proceed to supervisor; no Promotion |
 
 ## Phase Touch Map
 

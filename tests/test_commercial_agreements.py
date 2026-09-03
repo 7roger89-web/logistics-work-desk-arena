@@ -23,6 +23,7 @@ import copy
 import re
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -265,7 +266,8 @@ class AgreementPersistenceTests(unittest.TestCase):
             self.upsert_calls = 0
             self.fail_on_update_calls = set()
 
-        def find_one(self, query, **kwargs):
+        def find_one(self, query, projection=None, **kwargs):
+            del projection
             for document in self.docs.values():
                 if document.get("agreement_id") == query.get("agreement_id") and document.get("version") == query.get("version"):
                     return dict(document)
@@ -288,17 +290,38 @@ class AgreementPersistenceTests(unittest.TestCase):
                 self.docs[key] = document
             return self
 
+        def insert_one(self, document, **kwargs):
+            key = str(document.get("event_id") or len(self.docs))
+            self.docs[key] = dict(document)
+            return self
+
         def create_index(self, *args, **kwargs):
             return kwargs.get("name", "fixture")
 
     class _MemoryDatabase:
         def __init__(self):
             self.agreements = AgreementPersistenceTests._MemoryCollection("agreements")
+            self.audit_logs = AgreementPersistenceTests._MemoryCollection("audit_logs")
 
         def __getitem__(self, name):
             return getattr(self, name)
 
     def setUp(self):
+        self.auth_patch = patch(
+            "core.auth.st",
+            SimpleNamespace(
+                session_state={
+                    "current_user": {
+                        "user_id": "sale-fixture-01",
+                        "username": "sale.fixture",
+                        "display_name": "Sale Fixture",
+                        "role": "sale",
+                    }
+                }
+            ),
+        )
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
         self.db = self._MemoryDatabase()
 
     def test_persistence_writes_only_agreements_collection(self):

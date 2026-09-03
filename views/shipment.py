@@ -6,7 +6,7 @@ from uuid import uuid4
 
 # --- IMPORTS ---
 from core.config import INCOTERMS, STATUS_OPTIONS, STATUS_MAP_INV, STATUS_MAP_FWD, GETFLY_SERVICES_LIST
-from core.auth import has_write_permission
+from core.auth import can_operate_business
 from core.utils import mark_changed, parse_date, safe_float
 from core.logic import calculate_shipment_financials, apply_financial_snapshot
 from core.validators import validate_shipment
@@ -50,8 +50,8 @@ def ui_create_new_shipment():
         create_date = c3.date_input("Ngày chứng từ", value=date.today())
         init_note = c4.text_input("Ghi chú nội bộ")
 
-        if st.button("🚀 Khởi tạo", type="primary", disabled=not has_write_permission("shipment_create")):
-            if not has_write_permission("shipment_create"):
+        if st.button("🚀 Khởi tạo", type="primary", disabled=not can_operate_business("shipment_create")):
+            if not can_operate_business("shipment_create"):
                 st.warning("Bạn không có quyền tạo lô hàng.")
             elif code and customer_id != "--Chọn--" and cust:
                 if 'db_shipments' in st.session_state and code in st.session_state.db_shipments:
@@ -92,6 +92,8 @@ def ui_shipment_detail_tabs(sid, ship):
     ship = repaired_ship
     d = ship['data']
     prefix = f"dt_{sid}"
+    can_edit = can_operate_business("shipment_edit")
+    can_manage_finance = can_operate_business("finance_write")
 
     # Shipment 360 is a read-only projection. Related caches are loaded only
     # for display; no summary control can save, allocate, or mutate money.
@@ -196,7 +198,7 @@ def ui_shipment_detail_tabs(sid, ship):
             "Trạng thái", STATUS_OPTIONS, index=st_idx,
             format_func=lambda value: STATUS_MAP_INV.get(value, value), key=f"{prefix}_status",
         )
-        should_save = c5.button("💾 LƯU", type="primary", use_container_width=True, key=f"{prefix}_sv")
+        should_save = c5.button("💾 LƯU", type="primary", use_container_width=True, key=f"{prefix}_sv", disabled=not can_edit)
         curr_cust = ship.get('customer') or ship.get('client') or ""
         new_cust_name = raw_customers.get(new_customer_id, {}).get("name", curr_cust)
 
@@ -524,7 +526,7 @@ def ui_shipment_detail_tabs(sid, ship):
             line_total = (item['qty'] * item['price']) * (1 + item['vat_line']/100.0)
             c[6].markdown(f"**{line_total:,.0f}**")
             
-            if c[7].button("🗑", key=f"{prefix}_del_svc_{i}"):
+            if c[7].button("🗑", key=f"{prefix}_del_svc_{i}", disabled=not can_edit):
                 indices_to_remove.append(i)
 
             item['note'] = st.text_input("Ghi chú", value=item.get('note', ''), key=f"{prefix}_note_{i}", placeholder="Ghi chú chi tiết...", label_visibility="collapsed")
@@ -534,7 +536,7 @@ def ui_shipment_detail_tabs(sid, ship):
             for i in sorted(indices_to_remove, reverse=True): details.pop(i)
             st.rerun()
 
-        if st.button("➕ Thêm Dịch vụ", key=f"{prefix}_add_svc"):
+        if st.button("➕ Thêm Dịch vụ", key=f"{prefix}_add_svc", disabled=not can_edit):
             details.append({"id": str(uuid4()), "name_full": "", "qty": 1, "cost": 0, "price": 0, "vat_line": 0, "note": ""})
             st.rerun()
 
@@ -551,7 +553,7 @@ def ui_shipment_detail_tabs(sid, ship):
                 retention = gross_amt - net_amt
                 st.markdown(f"👉 **Gross cần ghi:** `{gross_amt:,.0f}` (Giữ lại: `{retention:,.0f}`)")
                 
-                if st.button("💾 Áp dụng vào Chi phí Hoa hồng", key=f"{prefix}_apply_com"):
+                if st.button("💾 Áp dụng vào Chi phí Hoa hồng", key=f"{prefix}_apply_com", disabled=not can_manage_finance):
                     if 'commission' not in d['3.4']: d['3.4']['commission'] = {}
                     d['3.4']['commission']['total'] = gross_amt
                     d['3.4']['commission']['details'] = {"type": "gross_up", "net": net_amt, "fee": fee_pct, "retention": retention}
@@ -590,7 +592,7 @@ def ui_shipment_detail_tabs(sid, ship):
                 cc[0].text(p.get('date'))
                 cc[1].text(p.get('note'))
                 cc[2].markdown(f"**{safe_float(p.get('amount')):,.0f}**")
-                if cc[3].button("x", key=f"{prefix}_del_pay_{idx}"): pay_remove.append(idx)
+                if cc[3].button("x", key=f"{prefix}_del_pay_{idx}", disabled=not can_manage_finance): pay_remove.append(idx)
             
             if pay_remove:
                 st.warning("Lịch sử thanh toán không được xóa âm. Hãy dùng correction/reversal có audit.")
@@ -600,7 +602,7 @@ def ui_shipment_detail_tabs(sid, ship):
                 pd_date = pp1.date_input("Ngày", date.today(), key=f"{prefix}_pd_d")
                 pd_amt = pp2.number_input("Số tiền", step=100000.0, format="%.0f", key=f"{prefix}_pd_a")
                 pd_note = st.text_input("Nội dung", key=f"{prefix}_pd_n")
-                if st.button("Lưu thanh toán", key=f"{prefix}_pd_s"):
+                if st.button("Lưu thanh toán", key=f"{prefix}_pd_s", disabled=not can_manage_finance):
                     if pd_amt <= 0:
                         st.error("Số tiền thanh toán phải lớn hơn 0.")
                     else:

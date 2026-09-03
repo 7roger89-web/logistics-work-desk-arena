@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from views.quotations import ui_sales_module
@@ -84,6 +85,9 @@ class QuotationDomainTests(unittest.TestCase):
         class FakeCollection:
             def __init__(self):
                 self.docs = {}
+            def find_one(self, query, projection=None, **kwargs):
+                del projection, kwargs
+                return self.docs.get(query.get("id"))
             def update_one(self, query, update, upsert=False, session=None):
                 key = query["id"]
                 payload = dict(update["$set"])
@@ -91,10 +95,14 @@ class QuotationDomainTests(unittest.TestCase):
                 return object()
             def find(self, query, projection=None):
                 return list(self.docs.values())
+            def insert_one(self, document, session=None):
+                self.docs[str(document.get("event_id", len(self.docs)))] = dict(document)
+                return object()
 
         class FakeDb:
             def __init__(self):
                 self.collections = {"quotes": FakeCollection()}
+                self.audit_logs = FakeCollection()
                 self.accessed = []
             def __getitem__(self, name):
                 self.accessed.append(name)
@@ -102,11 +110,18 @@ class QuotationDomainTests(unittest.TestCase):
 
         fake_db = FakeDb()
         quote = prepare_quote_for_persistence(new_quote_document(self.base()), actor="sale-a")
-        with patch("core.database.get_db", return_value=fake_db):
+        sale_user = {
+            "user_id": "sale-fixture-01",
+            "username": "sale.fixture",
+            "display_name": "Sale Fixture",
+            "role": "sale",
+        }
+        with patch("core.auth.st", new=SimpleNamespace(session_state={"current_user": sale_user})), \
+             patch("core.database.get_db", return_value=fake_db):
             self.assertTrue(save_quotes_to_cloud({quote["id"]: quote}))
             self.assertTrue(save_quotes_to_cloud({quote["id"]: quote}))
             readback = load_quotes()
-        self.assertEqual(fake_db.accessed, ["quotes", "quotes", "quotes"])
+        self.assertGreaterEqual(fake_db.accessed.count("quotes"), 2)
         self.assertEqual(len(fake_db.collections["quotes"].docs), 1)
         self.assertIn(quote["id"], readback)
         self.assertEqual(readback[quote["id"]]["write_request_id"], quote["write_request_id"])

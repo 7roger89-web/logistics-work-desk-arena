@@ -4,6 +4,7 @@ import os
 import threading
 import unittest
 from copy import deepcopy
+from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -217,6 +218,20 @@ ABO = {"party_type": "partner", "party_id": "ABO", "name": "A Bò"}
 FACTORY = {"party_type": "factory", "party_id": "FACTORY-CN", "name": "Factory CN"}
 CUSTOMER = {"party_type": "customer", "party_id": "BC", "name": "BC"}
 
+SUPPORT_FIXTURE_USER = {
+    "user_id": "support-ledger-fixture-01",
+    "username": "support.ledger.fixture",
+    "display_name": "Support Ledger Fixture",
+    "role": "support",
+}
+
+
+def _support_auth_patch():
+    return patch(
+        "core.auth.st",
+        new=SimpleNamespace(session_state={"current_user": SUPPORT_FIXTURE_USER}),
+    )
+
 
 def _obligation(obligation_id, amount, currency="VND", shipment_ids=None, purpose="partner payable", owner="Thành", from_party=TT, to_party=ABO):
     return {
@@ -254,11 +269,14 @@ def _transaction(transaction_id, amount, currency="VND", *, kind="held_money", s
 class FinancialLedgerMemoryFixtureTests(unittest.TestCase):
     def setUp(self):
         self.db = _MemoryDatabase()
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
         self.patch_db = patch("core.database.get_db", return_value=self.db)
         self.patch_db.start()
 
     def tearDown(self):
         self.patch_db.stop()
+        self.auth_patch.stop()
 
     def test_obligation_transaction_are_shipment_optional_and_request_retry_is_idempotent(self):
         obligation = _obligation("OBL-NO-SHIPMENT", 80_000_000, shipment_ids=[])
@@ -276,6 +294,8 @@ class FinancialLedgerMemoryFixtureTests(unittest.TestCase):
         self.assertIsNone(saved_obligation["shipment_id"])
         self.assertEqual(saved_transaction["shipment_ids"], [])
         self.assertIsNone(saved_transaction["shipment_id"])
+        self.assertEqual(saved_obligation["created_by_user_id"], SUPPORT_FIXTURE_USER["user_id"])
+        self.assertEqual(saved_transaction["created_by_role"], "support")
         self.assertNotIn("outstanding", saved_obligation)
         self.assertNotIn("unallocated", saved_transaction)
 
@@ -622,6 +642,11 @@ class MongoFinancialLedgerFixtureTests(unittest.TestCase):
 
     def setUp(self):
         type(self).created_fixture = True
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+
+    def tearDown(self):
+        self.auth_patch.stop()
 
     def _fresh_db(self):
         from pymongo import MongoClient
