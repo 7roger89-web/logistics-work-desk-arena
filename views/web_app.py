@@ -17,7 +17,7 @@ from typing import Callable
 
 import streamlit as st
 
-from core.auth import has_permission, has_write_permission, logout, require_login
+from core.auth import current_user, has_permission, has_write_permission, logout, require_login
 from core.config import AUTH_REQUIRED
 from core.database import load_archived_data
 from core.state import initialize_state, refresh_core_data
