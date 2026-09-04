@@ -5,6 +5,7 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -22,6 +23,21 @@ from core.database import (
 )
 from core.logic import calculate_from_shipment
 from core.payment_logic import apply_lump_sum_payment
+
+
+SUPPORT_FIXTURE_USER = {
+    "user_id": "support-fixture-01",
+    "username": "support.fixture",
+    "display_name": "Support Fixture",
+    "role": "support",
+}
+
+
+def _support_auth_patch():
+    return patch(
+        "core.auth.st",
+        new=SimpleNamespace(session_state={"current_user": SUPPORT_FIXTURE_USER}),
+    )
 
 
 class _Result:
@@ -199,6 +215,24 @@ class _MemoryCollection:
         self.docs[key] = document
         return _MemoryResult()
 
+    def find_one_and_update(self, query, update, upsert=False, **kwargs):
+        self.update_calls += 1
+        if self.update_calls in self.fail_on_update_calls:
+            raise PyMongoError(f"fixture forced update failure in {self.name}")
+        key = next((key for key, value in self.docs.items() if _memory_matches(value, query)), None)
+        if key is None:
+            if not upsert:
+                return None
+            document = {name: value for name, value in query.items() if not name.startswith("$") and not isinstance(value, dict)}
+            self._apply_update(document, update)
+            document.update(deepcopy(update.get("$setOnInsert", {})))
+            key = self._key(document)
+        else:
+            document = deepcopy(self.docs[key])
+            self._apply_update(document, update)
+        self.docs[key] = document
+        return deepcopy(document)
+
     def insert_one(self, document, **kwargs):
         self.insert_calls += 1
         if self.insert_calls in self.fail_on_insert_calls:
@@ -317,6 +351,11 @@ class ContractProxyAtomicityFixtureTests(unittest.TestCase):
         "transaction_type": "proxy_payment",
     }
 
+    def setUp(self):
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
+
     def test_second_write_failure_rolls_back_both_documents_and_audits(self):
         fixture_db = _FixtureDatabase(fail_contract_write=True)
         with patch("core.database.get_db", return_value=fixture_db), patch("core.database.LOGGER.exception"):
@@ -349,6 +388,9 @@ class ContractProxyAtomicityFixtureTests(unittest.TestCase):
 
 class DirectFinancialWriteFixtureTests(unittest.TestCase):
     def setUp(self):
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
         self.db = _MemoryDatabase()
         self.db.shipments.insert_one(_shipment_fixture())
 
@@ -482,7 +524,54 @@ class DirectFinancialWriteFixtureTests(unittest.TestCase):
         self.assertEqual(self.db.financial_corrections.count_documents({}), 1)
 
 
+class ShipmentOperationalFixtureTests(unittest.TestCase):
+    def setUp(self):
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
+
+    def test_support_can_create_edit_and_reload_export_import_fields(self):
+        db = _MemoryDatabase()
+        shipment = _shipment_fixture("SHP-SUPPORT-OPS")
+        shipment["data"]["1.2"].update(
+            {"pickup_address": "Nhà máy fixture", "booking": "BK-SUPPORT-01", "etd": "2026-08-20"}
+        )
+        shipment["data"]["2.6"].update({"arrival_date": "2026-08-25"})
+        shipment["data"]["2.7"].update(
+            {"delivery_address": "Kho Support", "delivery_date": "2026-08-28", "is_delivered": True}
+        )
+
+        with patch("core.database.get_db", return_value=db):
+            self.assertTrue(save_shipment_atomic(shipment, expected_version=0))
+            saved = db.shipments.find_one({"id": "SHP-SUPPORT-OPS"})
+            saved["customer"] = "Khách Support đã sửa"
+            saved["data"]["2.7"]["delivery_address"] = "Kho Support mới"
+            self.assertTrue(save_shipment_atomic(saved, expected_version=1))
+
+        reloaded = db.shipments.find_one({"id": "SHP-SUPPORT-OPS"})
+        self.assertEqual(reloaded["customer"], "Khách Support đã sửa")
+        self.assertEqual(reloaded["data"]["1.2"]["booking"], "BK-SUPPORT-01")
+        self.assertEqual(reloaded["data"]["2.7"]["delivery_address"], "Kho Support mới")
+        self.assertEqual(reloaded["updated_by_user_id"], SUPPORT_FIXTURE_USER["user_id"])
+        self.assertEqual(reloaded["updated_by_role"], "support")
+
+    def test_viewer_shipment_write_is_rejected_before_database_access(self):
+        db = _MemoryDatabase()
+        with patch(
+            "core.auth.st",
+            new=SimpleNamespace(session_state={"current_user": {"username": "viewer", "role": "viewer"}}),
+        ), patch("core.database.get_db", return_value=db) as get_db:
+            self.assertFalse(save_shipment_atomic(_shipment_fixture("SHP-VIEWER"), expected_version=0))
+        get_db.assert_not_called()
+        self.assertIsNone(db.shipments.find_one({"id": "SHP-VIEWER"}))
+
+
 class EntrustmentBatchFixtureTests(unittest.TestCase):
+    def setUp(self):
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
+
     def _documents(self, count=3):
         return {
             f"ENT-{index}": {
@@ -579,6 +668,9 @@ class MongoPersistenceFixtureTests(unittest.TestCase):
             cls.client.close()
 
     def setUp(self):
+        self.auth_patch = _support_auth_patch()
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
         self.cls = type(self)
         self.cls.created_fixture = True
 

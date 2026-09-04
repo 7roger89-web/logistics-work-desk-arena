@@ -65,14 +65,23 @@ def get_last_db_error() -> str:
     return _LAST_DB_ERROR
 
 
+def _actor_context(actor: str | None = None) -> dict[str, str]:
+    from core.auth import current_actor_context
+
+    return current_actor_context(actor)
+
+
 def _actor() -> str:
-    if st is not None and is_streamlit_runtime():
-        try:
-            user = st.session_state.get("current_user", {})
-            return str(user.get("username") or user.get("display_name") or "system")
-        except Exception:
-            pass
-    return "system"
+    return _actor_context()["username"]
+
+
+def _require_business_permission(permission: str, message: str) -> bool:
+    from core.auth import can_operate_business
+
+    if can_operate_business(permission):
+        return True
+    _set_last_error(message)
+    return False
 
 
 def _transaction_client(db):
@@ -394,7 +403,8 @@ def load_archived_data(limit: int = 5000) -> dict[str, dict[str, Any]]:
 def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None, after: Any = None, actor: str | None = None, session=None) -> None:
     # LOG-LG08.1: Prevent password_hash leakage into audit logs
     from core.users import redact_password_material
-    
+
+    actor_context = _actor_context(actor)
     safe_before = redact_password_material(before) if isinstance(before, Mapping) else before
     safe_after = redact_password_material(after) if isinstance(after, Mapping) else after
 
@@ -403,7 +413,10 @@ def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None
         "entity_type": entity_type,
         "entity_id": entity_id,
         "action": action,
-        "actor": actor or _actor(),
+        "actor": actor_context["username"],
+        "actor_user_id": actor_context["user_id"],
+        "actor_username": actor_context["username"],
+        "actor_role": actor_context["role"],
         "before": safe_before,
         "after": safe_after,
         "created_at": utc_now(),
@@ -423,6 +436,11 @@ def _enqueue_domain_event(db, event_type: str, payload: Mapping[str, Any], sessi
 
 
 def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None = None, actor: str | None = None) -> bool:
+    from core.auth import can_operate_business
+
+    if not (can_operate_business("shipment_edit") or can_operate_business("shipment_create")):
+        _set_last_error("Bạn không có quyền ghi dữ liệu lô hàng.")
+        return False
     db = get_db()
     if db is None:
         _set_last_error("MongoDB chưa sẵn sàng.")
@@ -436,13 +454,26 @@ def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None 
         _set_last_error(validation.message)
         return False
 
+    try:
+        existing = db.shipments.find_one({"id": sid}, {"_id": 0})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
+    required_permission = "shipment_edit" if existing is not None else "shipment_create"
+    if not _require_business_permission(required_permission, "Bạn không có quyền ghi dữ liệu lô hàng."):
+        return False
+    actor_context = _actor_context(actor)
+    effective_actor = actor_context["username"]
+
     shipment.pop("_id", None)
     shipment.pop("version", None)
     shipment["shipment_id"] = sid
     shipment["status"] = shipment.get("status") or shipment["data"]["0.0"].get("st", "wait")
     shipment["data"]["0.0"]["st"] = shipment["status"]
     shipment["updated_at"] = utc_now()
-    shipment["updated_by"] = actor or _actor()
+    shipment["updated_by"] = effective_actor
+    shipment["updated_by_user_id"] = actor_context["user_id"]
+    shipment["updated_by_role"] = actor_context["role"]
     shipment.setdefault("is_deleted", False)
     shipment.setdefault("is_archived", False)
 
@@ -467,13 +498,22 @@ def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None 
                         query["$or"] = [{"version": 0}, {"version": {"$exists": False}}]
                     else:
                         query["version"] = expected
-                set_on_insert = {"created_by": actor or _actor()}
+                set_on_insert = {
+                    "created_by": effective_actor,
+                    "created_by_user_id": actor_context["user_id"],
+                    "created_by_role": actor_context["role"],
+                }
                 if "created_at" not in shipment:
                     set_on_insert["created_at"] = utc_now()
+                update_fields = {
+                    key: value
+                    for key, value in shipment.items()
+                    if key not in {"created_by", "created_by_user_id", "created_by_role"}
+                }
                 result = db.shipments.find_one_and_update(
                     query,
                     {
-                        "$set": shipment,
+                        "$set": update_fields,
                         "$setOnInsert": set_on_insert,
                         "$inc": {"version": 1},
                     },
@@ -483,7 +523,7 @@ def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None 
                 )
                 if result is None:
                     raise ConcurrentUpdateError("Dữ liệu đã được người khác cập nhật. Hãy Reload Data rồi lưu lại.")
-                _audit(db, "shipment", sid, "create" if old is None else "update", before=old, after={k: v for k, v in result.items() if k != "_id"}, actor=actor, session=session)
+                _audit(db, "shipment", sid, "create" if old is None else "update", before=old, after={k: v for k, v in result.items() if k != "_id"}, actor=effective_actor, session=session)
 
                 if old is None:
                     _enqueue_domain_event(db, "shipment.created", {"shipment_id": sid, "customer": shipment.get("customer", ""), "mode": shipment["data"]["0.0"].get("mode", "")}, session=session)
@@ -526,10 +566,12 @@ def save_direct_shipment_payment(
         return False, {}, get_last_db_error()
     
     # LOG-LG08.1: Boundary RBAC enforcement
-    from core.auth import has_permission
-    if not has_permission("finance_write"):
+    from core.auth import can_operate_business
+    if not can_operate_business("finance_write"):
         _set_last_error("Bạn không có quyền thực hiện giao dịch tài chính.")
         return False, {}, get_last_db_error()
+    actor_context = _actor_context(actor)
+    effective_actor = actor_context["username"]
         
     payment["request_id"] = request_id
     payment.setdefault("id", f"PAY-{uuid4().hex.upper()}")
@@ -577,7 +619,9 @@ def save_direct_shipment_payment(
                                 "shipment_id": sid,
                                 "result": result,
                                 "created_at": utc_now(),
-                                "created_by": actor or _actor(),
+                                "created_by": effective_actor,
+                                "created_by_user_id": actor_context["user_id"],
+                                "created_by_role": actor_context["role"],
                             },
                             session=session,
                         )
@@ -590,7 +634,9 @@ def save_direct_shipment_payment(
                         **payment,
                         "amount": float(amount),
                         "created_at": utc_now(),
-                        "created_by": actor or _actor(),
+                        "created_by": effective_actor,
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     }
                 )
                 summary = apply_financial_snapshot(ship)
@@ -606,7 +652,9 @@ def save_direct_shipment_payment(
                         "$set": {
                             "data": ship["data"],
                             "updated_at": utc_now(),
-                            "updated_by": actor or _actor(),
+                            "updated_by": effective_actor,
+                            "updated_by_user_id": actor_context["user_id"],
+                            "updated_by_role": actor_context["role"],
                         },
                         "$inc": {"version": 1},
                     },
@@ -630,7 +678,9 @@ def save_direct_shipment_payment(
                         "shipment_id": sid,
                         "result": result,
                         "created_at": utc_now(),
-                        "created_by": actor or _actor(),
+                        "created_by": effective_actor,
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     },
                     session=session,
                 )
@@ -642,7 +692,7 @@ def save_direct_shipment_payment(
                     "direct_payment_created",
                     before={"paid": calculate_from_shipment(old)["paid"]},
                     after={"payment": saved_payment, "paid": summary["paid"], "debt": summary["debt"]},
-                    actor=actor,
+                    actor=effective_actor,
                     session=session,
                 )
                 _enqueue_domain_event(
@@ -680,6 +730,12 @@ def save_direct_payment_correction(
     if not sid or not pid or not request_id or not reason:
         _set_last_error("Correction phải có original, request identity và reason.")
         return False, {}, get_last_db_error()
+    from core.auth import can_operate_business
+    if not can_operate_business("finance_write"):
+        _set_last_error("Bạn không có quyền thực hiện correction tài chính.")
+        return False, {}, get_last_db_error()
+    actor_context = _actor_context(actor)
+    effective_actor = actor_context["username"]
     fingerprint = _financial_fingerprint(
         {
             "shipment_id": sid,
@@ -725,7 +781,9 @@ def save_direct_payment_correction(
                 target["reversed_by"] = correction_id
                 target["reversed_at"] = utc_now()
                 target["reversal_reason"] = reason
-                target["reversed_by_actor"] = actor or _actor()
+                target["reversed_by_actor"] = effective_actor
+                target["reversed_by_user_id"] = actor_context["user_id"]
+                target["reversed_by_role"] = actor_context["role"]
                 summary = apply_financial_snapshot(ship)
                 expected_version = int(old.get("version", 0) or 0)
                 version_filter: dict[str, Any] = {"id": sid}
@@ -739,7 +797,9 @@ def save_direct_payment_correction(
                         "$set": {
                             "data": ship["data"],
                             "updated_at": utc_now(),
-                            "updated_by": actor or _actor(),
+                            "updated_by": effective_actor,
+                            "updated_by_user_id": actor_context["user_id"],
+                            "updated_by_role": actor_context["role"],
                         },
                         "$inc": {"version": 1},
                     },
@@ -764,15 +824,17 @@ def save_direct_payment_correction(
                     "shipment_id": sid,
                     "reason": reason,
                     "evidence": copy.deepcopy(evidence),
-                    "actor": actor or _actor(),
+                    "actor": effective_actor,
+                    "actor_user_id": actor_context["user_id"],
+                    "actor_role": actor_context["role"],
                     "created_at": utc_now(),
                     "status": "applied",
                     "fingerprint": fingerprint,
                     "result": result,
                 }
                 db.financial_corrections.insert_one(correction, session=session)
-                _audit(db, "shipment", sid, "payment_reversed", before={"payment": original}, after={"correction": correction}, actor=actor, session=session)
-                _audit(db, "financial_correction", correction_id, "create", before=None, after=correction, actor=actor, session=session)
+                _audit(db, "shipment", sid, "payment_reversed", before={"payment": original}, after={"correction": correction}, actor=effective_actor, session=session)
+                _audit(db, "financial_correction", correction_id, "create", before=None, after=correction, actor=effective_actor, session=session)
                 _enqueue_domain_event(
                     db,
                     "shipment.payment_reversed",
@@ -804,7 +866,18 @@ def delete_shipment(sid: str, reason: str = "") -> bool:
         return False
     try:
         old = db.shipments.find_one({"id": sid}, {"_id": 0})
-        result = db.shipments.update_one({"id": sid, "is_deleted": {"$ne": True}}, {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": _actor(), "delete_reason": reason}})
+        actor_context = _actor_context()
+        result = db.shipments.update_one(
+            {"id": sid, "is_deleted": {"$ne": True}},
+            {"$set": {
+                "is_deleted": True,
+                "deleted_at": utc_now(),
+                "deleted_by": actor_context["username"],
+                "deleted_by_user_id": actor_context["user_id"],
+                "deleted_by_role": actor_context["role"],
+                "delete_reason": reason,
+            }},
+        )
         if result.modified_count:
             _audit(db, "shipment", sid, "soft_delete", before=old, after={"reason": reason})
             return True
@@ -818,6 +891,8 @@ def rename_shipment_id(old_id: str, new_id: str) -> bool:
     old_id, new_id = old_id.strip(), new_id.strip()
     if not old_id or not new_id or old_id == new_id:
         return old_id == new_id
+    if not _require_business_permission("shipment_edit", "Bạn không có quyền đổi mã lô hàng."):
+        return False
     db = get_db()
     if db is None:
         return False
@@ -828,7 +903,18 @@ def rename_shipment_id(old_id: str, new_id: str) -> bool:
         old = db.shipments.find_one({"id": old_id}, {"_id": 0})
         if not old:
             return False
-        db.shipments.update_one({"id": old_id}, {"$set": {"id": new_id, "shipment_id": new_id, "updated_at": utc_now(), "updated_by": _actor()}, "$inc": {"version": 1}})
+        actor_context = _actor_context()
+        db.shipments.update_one(
+            {"id": old_id},
+            {"$set": {
+                "id": new_id,
+                "shipment_id": new_id,
+                "updated_at": utc_now(),
+                "updated_by": actor_context["username"],
+                "updated_by_user_id": actor_context["user_id"],
+                "updated_by_role": actor_context["role"],
+            }, "$inc": {"version": 1}},
+        )
         db.proxy_payments.update_many({"linked_id": old_id}, {"$set": {"linked_id": new_id}})
         db.entrustments.update_many({"linked_id": old_id}, {"$set": {"linked_id": new_id}})
         _audit(db, "shipment", new_id, "rename", before={"id": old_id}, after={"id": new_id})
@@ -839,14 +925,27 @@ def rename_shipment_id(old_id: str, new_id: str) -> bool:
 
 
 def update_shipment_customer(sid: str, new_customer_name: str, customer_id: str = "") -> bool:
+    if not _require_business_permission("shipment_edit", "Bạn không có quyền cập nhật khách hàng của lô hàng."):
+        return False
     db = get_db()
     if db is None:
         return False
-    fields = {"client": new_customer_name, "customer": new_customer_name, "updated_at": utc_now(), "updated_by": _actor()}
+    old = db.shipments.find_one({"id": sid}, {"_id": 0})
+    actor_context = _actor_context()
+    fields = {
+        "client": new_customer_name,
+        "customer": new_customer_name,
+        "updated_at": utc_now(),
+        "updated_by": actor_context["username"],
+        "updated_by_user_id": actor_context["user_id"],
+        "updated_by_role": actor_context["role"],
+    }
     if customer_id:
         fields["customer_id"] = customer_id
     try:
         result = db.shipments.update_one({"id": sid}, {"$set": fields, "$inc": {"version": 1}})
+        if result.modified_count > 0:
+            _audit(db, "shipment", sid, "customer_updated", before=old, after=fields)
         return result.modified_count > 0
     except PyMongoError as exc:
         _set_last_error(str(exc))
@@ -891,10 +990,19 @@ def _save_document(
         return False
     payload = copy.deepcopy(document)
     payload.pop("_id", None)
+    actor_context = _actor_context()
     payload["updated_at"] = utc_now()
-    payload["updated_by"] = _actor()
+    payload["updated_by"] = actor_context["username"]
+    payload["updated_by_user_id"] = actor_context["user_id"]
+    payload["updated_by_role"] = actor_context["role"]
     try:
-        set_on_insert = {} if "created_at" in payload else {"created_at": utc_now()}
+        set_on_insert = {
+            "created_by": actor_context["username"],
+            "created_by_user_id": actor_context["user_id"],
+            "created_by_role": actor_context["role"],
+        }
+        if "created_at" not in payload:
+            set_on_insert["created_at"] = utc_now()
         update = {"$set": payload}
         if set_on_insert:
             update["$setOnInsert"] = set_on_insert
@@ -917,6 +1025,8 @@ def _load_customers_impl() -> dict[str, dict[str, Any]]:
 
 
 def save_customer_to_cloud(document: dict[str, Any]) -> bool:
+    if not _require_business_permission("customers", "Bạn không có quyền cập nhật khách hàng."):
+        return False
     db = get_db()
     if db is None or not document.get("id"):
         return False
@@ -929,6 +1039,8 @@ def save_customer_to_cloud(document: dict[str, Any]) -> bool:
 
 
 def delete_customer(cust_id: str, reason: str = "") -> bool:
+    if not _require_business_permission("customer_delete", "Bạn không có quyền lưu trữ khách hàng."):
+        return False
     db = get_db()
     if db is None:
         return False
@@ -956,6 +1068,11 @@ def _load_contracts_impl() -> dict[str, dict[str, Any]]:
 
 
 def save_contract_to_cloud(document: dict[str, Any]) -> bool:
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa hợp đồng.")
+        return False
     db = get_db()
     if db is None or not document.get("id"):
         return False
@@ -988,6 +1105,11 @@ def _load_contract_transactions_impl(contract_id: str | None = None) -> dict[str
 
 def save_contract_transaction(document: dict[str, Any]) -> bool:
     """Persist a contract finance row without changing legacy payment stores."""
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa giao dịch hợp đồng.")
+        return False
     db = get_db()
     if db is None or not document.get("id") or not document.get("contract_id"):
         _set_last_error("Giao dịch hợp đồng cần có mã giao dịch và mã hợp đồng.")
@@ -1023,6 +1145,11 @@ def save_contract_proxy_payment_atomic(
     either document is persisted; it does not fall back to two independent
     saves or compensation logic.
     """
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền sửa thanh toán trong hợp đồng.")
+        return False
     db = get_db()
     if db is None:
         _set_last_error("MongoDB chưa sẵn sàng.")
@@ -1094,7 +1221,20 @@ def load_quotes() -> dict[str, dict[str, Any]]:
 
 
 def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
-    return all(_save_document("quotes", document) for document in quotes_dict.values())
+    if not _require_business_permission("sales_write", "Bạn không có quyền lưu báo giá."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    for document in quotes_dict.values():
+        quote_id = str(document.get("id") or "").strip()
+        if not quote_id:
+            return False
+        old = db["quotes"].find_one({"id": quote_id}, {"_id": 0})
+        if not _save_document("quotes", document):
+            return False
+        _audit(db, "quote", quote_id, "create" if old is None else "update", before=old, after=document)
+    return True
 
 
 def load_rate_cards() -> dict[str, dict[str, Any]]:
@@ -1102,7 +1242,17 @@ def load_rate_cards() -> dict[str, dict[str, Any]]:
 
 
 def save_rate_card(document: dict[str, Any]) -> bool:
-    return _save_document("rate_cards", document)
+    if not _require_business_permission("tariff", "Bạn không có quyền cập nhật báo giá khung."):
+        return False
+    db = get_db()
+    if db is None or not document.get("id"):
+        return False
+    rate_card_id = str(document["id"])
+    old = db.rate_cards.find_one({"id": rate_card_id}, {"_id": 0})
+    ok = _save_document("rate_cards", document)
+    if ok:
+        _audit(db, "rate_card", rate_card_id, "create" if old is None else "update", before=old, after=document)
+    return ok
 
 
 def load_tasks() -> list[dict[str, Any]]:
@@ -1117,31 +1267,76 @@ def load_tasks() -> list[dict[str, Any]]:
 
 
 def add_task(content: str, assignee: str = "All", deadline_str: str = "", assignee_user_id: str = "", assigned_by_user_id: str = "") -> bool:
+    if not _require_business_permission("shipment_edit", "Bạn không có quyền giao việc."):
+        return False
     db = get_db()
     if db is None:
         return False
-    doc = {"content": content, "assignee": assignee, "deadline": deadline_str, "done": False, "created_at": utc_now(), "created_by": _actor()}
+    actor_context = _actor_context()
+    doc = {
+        "task_id": str(uuid4()),
+        "content": content,
+        "assignee": assignee,
+        "deadline": deadline_str,
+        "done": False,
+        "created_at": utc_now(),
+        "created_by": actor_context["username"],
+        "created_by_user_id": actor_context["user_id"],
+        "created_by_role": actor_context["role"],
+    }
     if assignee_user_id:
         doc["assignee_user_id"] = assignee_user_id
     if assigned_by_user_id:
         doc["assigned_by_user_id"] = assigned_by_user_id
     db.tasks.insert_one(doc)
+    _audit(db, "task", doc["task_id"], "create", after=doc)
     return True
 
 
 def delete_task(tid: str) -> bool:
+    if not _require_business_permission("task_delete", "Bạn không có quyền xóa công việc."):
+        return False
     db = get_db()
     if db is None:
         return False
-    result = db.tasks.update_one({"_id": ObjectId(tid)}, {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": _actor()}})
+    old = db.tasks.find_one({"_id": ObjectId(tid)}, {"_id": 0})
+    actor_context = _actor_context()
+    result = db.tasks.update_one(
+        {"_id": ObjectId(tid)},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": utc_now(),
+            "deleted_by": actor_context["username"],
+            "deleted_by_user_id": actor_context["user_id"],
+            "deleted_by_role": actor_context["role"],
+        }},
+    )
+    if result.modified_count > 0:
+        _audit(db, "task", tid, "soft_delete", before=old, after={"is_deleted": True})
     return result.modified_count > 0
 
 
 def toggle_task(tid: str, status: bool) -> bool:
+    if not _require_business_permission("shipment_edit", "Bạn không có quyền cập nhật công việc."):
+        return False
     db = get_db()
     if db is None:
         return False
-    return db.tasks.update_one({"_id": ObjectId(tid)}, {"$set": {"done": bool(status), "updated_at": utc_now(), "updated_by": _actor()}}).modified_count > 0
+    old = db.tasks.find_one({"_id": ObjectId(tid)}, {"_id": 0})
+    actor_context = _actor_context()
+    result = db.tasks.update_one(
+        {"_id": ObjectId(tid)},
+        {"$set": {
+            "done": bool(status),
+            "updated_at": utc_now(),
+            "updated_by": actor_context["username"],
+            "updated_by_user_id": actor_context["user_id"],
+            "updated_by_role": actor_context["role"],
+        }},
+    )
+    if result.modified_count > 0:
+        _audit(db, "task", tid, "status_updated", before=old, after={"done": bool(status)})
+    return result.modified_count > 0
 
 
 def load_quick_note() -> tuple[str, str]:
@@ -1153,7 +1348,16 @@ def load_quick_note() -> tuple[str, str]:
 
 
 def save_quick_note(content: str) -> bool:
-    return _save_document("quick_notes", {"id": "team_note", "content": content})
+    if not _require_business_permission("shipment_edit", "Bạn không có quyền cập nhật sổ tay."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    old = db.quick_notes.find_one({"id": "team_note"}, {"_id": 0})
+    ok = _save_document("quick_notes", {"id": "team_note", "content": content})
+    if ok:
+        _audit(db, "quick_note", "team_note", "update", before=old, after={"content": content})
+    return ok
 
 
 def load_entrustments() -> dict[str, dict[str, Any]]:
@@ -1161,7 +1365,17 @@ def load_entrustments() -> dict[str, dict[str, Any]]:
 
 
 def save_entrustment(document: dict[str, Any]) -> bool:
-    return _save_document("entrustments", document)
+    if not _require_business_permission("entrustment", "Bạn không có quyền cập nhật thanh toán hộ."):
+        return False
+    db = get_db()
+    if db is None or not document.get("id"):
+        return False
+    identifier = str(document["id"])
+    old = db["entrustments"].find_one({"id": identifier}, {"_id": 0})
+    ok = _save_document("entrustments", document)
+    if ok:
+        _audit(db, "entrustment", identifier, "create" if old is None else "update", before=old, after=document)
+    return ok
 
 
 def save_entrustment_book(
@@ -1172,6 +1386,8 @@ def save_entrustment_book(
     """Persist an entrustment UI batch atomically and idempotently."""
     if not documents:
         return True
+    if not _require_business_permission("entrustment", "Bạn không có quyền cập nhật thanh toán hộ."):
+        return False
     stable_request_id = str(request_id or "").strip()
     if not stable_request_id:
         _set_last_error("Entrustment batch phải có request identity.")
@@ -1184,6 +1400,7 @@ def save_entrustment_book(
     if client is None:
         return False
     fingerprint = _entrustment_batch_fingerprint(documents)
+    actor_context = _actor_context(actor)
 
     def _matches_existing(existing: Mapping[str, Any]) -> bool:
         if existing.get("action_type") == "entrustment_batch" and existing.get("fingerprint") == fingerprint:
@@ -1226,7 +1443,9 @@ def save_entrustment_book(
                         "shipment_id": None,
                         "result": result,
                         "created_at": utc_now(),
-                        "created_by": actor or _actor(),
+                        "created_by": actor_context["username"],
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     },
                     session=session,
                 )
@@ -1259,10 +1478,26 @@ def save_knowledge_entry(document: dict[str, Any]) -> bool:
 
 
 def delete_knowledge_entry(entry_id: str) -> bool:
+    if not _require_business_permission("knowledge_delete", "Bạn không có quyền xóa ghi chú."):
+        return False
     db = get_db()
     if db is None:
         return False
-    return db.knowledge_base.update_one({"id": entry_id}, {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": _actor()}}).modified_count > 0
+    old = db.knowledge_base.find_one({"id": entry_id}, {"_id": 0})
+    actor_context = _actor_context()
+    result = db.knowledge_base.update_one(
+        {"id": entry_id},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": utc_now(),
+            "deleted_by": actor_context["username"],
+            "deleted_by_user_id": actor_context["user_id"],
+            "deleted_by_role": actor_context["role"],
+        }},
+    )
+    if result.modified_count:
+        _audit(db, "knowledge_entry", entry_id, "soft_delete", before=old, after={"is_deleted": True})
+    return result.modified_count > 0
 
 
 def load_cbpg_workspace() -> dict[str, Any] | None:
@@ -1273,7 +1508,17 @@ def load_cbpg_workspace() -> dict[str, Any] | None:
 
 
 def save_cbpg_workspace(unit: str, invoice_total: float, items: list[dict[str, Any]]) -> bool:
-    return _save_document("cbpg_workspaces", {"id": "default", "unit": unit, "invoice_total": invoice_total, "items": items})
+    if not _require_business_permission("tariff", "Bạn không có quyền cập nhật workspace CBPG."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    payload = {"id": "default", "unit": unit, "invoice_total": invoice_total, "items": items}
+    old = db.cbpg_workspaces.find_one({"id": "default"}, {"_id": 0})
+    ok = _save_document("cbpg_workspaces", payload)
+    if ok:
+        _audit(db, "cbpg_workspace", "default", "create" if old is None else "update", before=old, after=payload)
+    return ok
 
 
 def load_audit_logs(entity_type: str, entity_id: str, limit: int = 100) -> list[dict[str, Any]]:
@@ -1288,6 +1533,8 @@ def load_proxy_payments() -> dict[str, dict[str, Any]]:
 
 
 def save_proxy_payment(document: dict[str, Any]) -> bool:
+    if not _require_business_permission("proxy_payment", "Bạn không có quyền cập nhật thanh toán hộ."):
+        return False
     db = get_db()
     if db is None or not document.get("id"):
         return False
@@ -1299,11 +1546,24 @@ def save_proxy_payment(document: dict[str, Any]) -> bool:
 
 
 def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
+    if not _require_business_permission("proxy_payment_delete", "Bạn không có quyền lưu trữ thanh toán hộ."):
+        return False
     db = get_db()
     if db is None:
         return False
     old = db.proxy_payments.find_one({"id": payment_id}, {"_id": 0})
-    result = db.proxy_payments.update_one({"id": payment_id}, {"$set": {"is_deleted": True, "deleted_at": utc_now(), "deleted_by": _actor(), "delete_reason": reason}})
+    actor_context = _actor_context()
+    result = db.proxy_payments.update_one(
+        {"id": payment_id},
+        {"$set": {
+            "is_deleted": True,
+            "deleted_at": utc_now(),
+            "deleted_by": actor_context["username"],
+            "deleted_by_user_id": actor_context["user_id"],
+            "deleted_by_role": actor_context["role"],
+            "delete_reason": reason,
+        }},
+    )
     if result.modified_count:
         _audit(db, "proxy_payment", payment_id, "soft_delete", before=old, after={"reason": reason})
         return True
@@ -1326,9 +1586,23 @@ def load_users() -> dict[str, dict[str, Any]]:
 
 def save_user(document: dict[str, Any]) -> bool:
     """Tao hoac cap nhat user theo khoa username; ghi audit."""
-    db = get_db()
-    if db is None or not document.get("username"):
+    if not document.get("username"):
         return False
+    from core.auth import can_operate_business, current_user
+
+    authenticated_user = current_user()
+    if authenticated_user.get("username") and not can_operate_business("*"):
+        _set_last_error("Chỉ Admin mới được quản lý tài khoản người dùng.")
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    if not can_operate_business("*"):
+        # The only unauthenticated exception is first-admin bootstrap. Once a
+        # user exists, an actor string cannot substitute for Admin auth.
+        if db.users.find_one({}, {"_id": 1}) is not None:
+            _set_last_error("Chỉ Admin mới được quản lý tài khoản người dùng.")
+            return False
     try:
         safe = {k: v for k, v in document.items() if k != "_id"}
         db.users.update_one(
@@ -1347,6 +1621,8 @@ def update_user(username: str, payload: dict[str, Any] | None = None, *, documen
     - payload={{...}}: partial $set (caller hien tai views/web_app.py)
     - document={{...}}: full $set document (caller legacy)
     """
+    if not _require_business_permission("*", "Chỉ Admin mới được cập nhật tài khoản người dùng."):
+        return False
     db = get_db()
     if db is None:
         return False
@@ -1363,6 +1639,8 @@ def update_user(username: str, payload: dict[str, Any] | None = None, *, documen
 
 def delete_user(username: str, actor: str = "system") -> bool:
     """Soft delete user (giu audit trail); hard delete chi khi is_deleted san."""
+    if not _require_business_permission("*", "Chỉ Admin mới được xóa tài khoản người dùng."):
+        return False
     db = get_db()
     if db is None:
         return False
@@ -1394,6 +1672,19 @@ def load_agreements() -> dict[str, dict[str, Any]]:
 
 def save_agreements_to_cloud(agreements_dict: dict[str, dict[str, Any]]) -> bool:
     """Upsert commercial agreements. 0 canonical finance writes by contract."""
-    return all(_save_document("agreements", document) for document in agreements_dict.values())
+    if not _require_business_permission("commercial_write", "Bạn không có quyền cập nhật thỏa thuận thương mại."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    for document in agreements_dict.values():
+        agreement_id = str(document.get("id") or document.get("agreement_id") or "").strip()
+        if not agreement_id:
+            return False
+        old = db["agreements"].find_one({"id": agreement_id}, {"_id": 0})
+        if not _save_document("agreements", document):
+            return False
+        _audit(db, "agreement", agreement_id, "create" if old is None else "update", before=old, after=document)
+    return True
 
 # ---------- /LG03 restore #2 ----------

@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 
+from core.auth import can_operate_business
 # Tắt giới hạn render khổng lồ của Pandas (Tiết kiệm RAM)
 pd.set_option("styler.render.max_elements", 262144)
 
@@ -145,6 +146,7 @@ def check_cbpg_tax(row, unit):
 # GIAO DIỆN CHÍNH
 # =====================================================================
 def ui_super_tariff_hub():
+    can_edit = can_operate_business("tariff")
     st.title("🌏 TRA CỨU THUẾ & TỐI ƯU CBPG")
     st.caption("Công cụ hỗ trợ tra cứu và kiểm tra sơ bộ; kết quả phải được chuyên viên hải quan xác nhận trước khi khai báo.")
     
@@ -308,7 +310,11 @@ def ui_super_tariff_hub():
         st.markdown("<br>", unsafe_allow_html=True)
         col_btn1, col_btn2, col_btn3 = st.columns([1, 1.5, 1])
         
-        if col_btn1.button("💾 LƯU DỮ LIỆU ĐANG NHẬP", use_container_width=True):
+        if col_btn1.button(
+            "💾 LƯU DỮ LIỆU ĐANG NHẬP",
+            use_container_width=True,
+            disabled=not can_edit,
+        ):
             items_to_save = edited_df.drop(columns=["Kết Quả Check Thuế"], errors="ignore").to_dict('records')
             st.session_state.cbpg_items = items_to_save
             if save_cbpg_data(unit_choice, total_invoice_input, items_to_save):
@@ -316,7 +322,12 @@ def ui_super_tariff_hub():
             else:
                 st.error("Lỗi lưu file.")
 
-        if col_btn2.button("🔄 TỰ ĐỘNG PHÂN BỔ (AUTO-BALANCE)", type="primary", use_container_width=True, disabled=edited_df.empty):
+        if col_btn2.button(
+            "🔄 TỰ ĐỘNG PHÂN BỔ (AUTO-BALANCE)",
+            type="primary",
+            use_container_width=True,
+            disabled=edited_df.empty or not can_edit,
+        ):
             new_prices = edited_df["Giá Khai Báo ($)"].tolist()
             safe_indices = [i for i, taxed in enumerate(final_is_taxed_list) if not taxed]
             taxed_indices = [i for i, taxed in enumerate(final_is_taxed_list) if taxed]
@@ -344,7 +355,11 @@ def ui_super_tariff_hub():
                     st.success("Đã phân bổ lại giá trị và giữ tổng Invoice trong sai số làm tròn.")
                     st.rerun()
 
-        if col_btn3.button("🗑️ XÓA DỮ LIỆU (TẠO LÔ MỚI)", use_container_width=True):
+        if col_btn3.button(
+            "🗑️ XÓA DỮ LIỆU (TẠO LÔ MỚI)",
+            use_container_width=True,
+            disabled=not can_edit,
+        ):
             default_items = [{"ID": 1, "Loại Hàng": "Khác", "Tên Hàng": "", "Ngoại trừ": "Không", "Bằng chứng/Ghi chú": "", "Dài": 0, "Rộng": 0, "Cao Min": 0, "Cao Max": 0, "Dày mặt": 0, "Giá Khai Báo ($)": 0.0}]
             st.session_state.cbpg_items = default_items
             save_cbpg_data(unit_choice, 0.0, default_items)

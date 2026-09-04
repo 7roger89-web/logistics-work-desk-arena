@@ -7,9 +7,9 @@ Guarantees under test:
    internal state (wrong password and inactive both return None).
 3. RBAC is a single authoritative matrix in core.auth: the 3 modern roles are
    admin / sale / support; the legacy viewer role gets read-only surfaces.
-4. finance_write, finance_review_write, admin_write, proxy_payment_delete and
-   receivables are exclusively admin — support/sale/viewer cannot touch money
-   writes or user management.
+4. Support has the employee-facing operational write surface, while
+   finance-review administration, destructive actions, and user management
+   remain outside Support and Sale.
 5. PermissionDeniedError is raised by assert_permission when the actor lacks
    the required permission, so view rendering can stop safely.
 6. Username normalization rejects unsafe identifiers; role validation rejects
@@ -44,8 +44,9 @@ from core.users import (
     set_active,
 )
 
-# Owner-approved (2026-09-03): PR #8 grants support the full operational
-# surface while preserving the admin-only wildcard boundary.
+# Owner-approved (2026-09-03): Support has the full employee-facing operational
+# surface, including the merged DeepL route, while preserving the admin-only
+# wildcard and destructive-action boundaries.
 SUPPORT_OPERATIONAL_PERMISSIONS = frozenset({
     "dashboard", "shipment_create", "shipment_edit", "customers", "sales",
     "sales_write", "contracts", "tariff", "tracking", "knowledge",
@@ -213,15 +214,17 @@ class TestRoleMatrix(unittest.TestCase):
         self.assertEqual(set(SUPPORTED_ROLES), {"admin", "sale", "support"})
         self.assertEqual(set(ROLE_PERMISSIONS["admin"]), {"*"})
 
-    # Owner-approved (2026-08-18): support now holds finance_write for shipment-level work
     def test_support_has_full_operational_access_but_not_admin_boundary(self) -> None:
         self.assertEqual(set(ROLE_PERMISSIONS["support"]), SUPPORT_OPERATIONAL_PERMISSIONS)
-        for forbidden in ("admin_write", "finance_review_write",
-                          "proxy_payment_delete"):
+        for forbidden in ("*", "admin_write", "finance_review_write",
+                          "proxy_payment_delete", "shipment_delete",
+                          "customer_delete", "knowledge_delete"):
             self.assertNotIn(forbidden, ROLE_PERMISSIONS["support"],
                              f"support must not hold {forbidden}")
-    def test_support_can_write_shipment_finance(self) -> None:
-        self.assertIn("finance_write", ROLE_PERMISSIONS["support"])
+        for operational in ("sales_write", "commercial_write", "finance_write",
+                            "operations_write", "proxy_payment", "receivables",
+                            "entrustment"):
+            self.assertIn(operational, ROLE_PERMISSIONS["support"])
 
     def test_sale_and_support_can_use_translation_without_admin_wildcard(self) -> None:
         self.assertIn("translation", ROLE_PERMISSIONS["sale"])

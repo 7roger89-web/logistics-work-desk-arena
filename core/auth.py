@@ -145,6 +145,21 @@ def has_write_permission(permission: str) -> bool:
     return has_permission(permission)
 
 
+def can_operate_business(permission: str) -> bool:
+    """Return whether the authenticated actor may perform a business action.
+
+    The role matrix remains the only policy source.  This small semantic
+    wrapper gives callers a stable name for a business write without creating
+    a second authorization system.
+    """
+    return has_write_permission(permission)
+
+
+def can_edit_contract() -> bool:
+    """Contract mutations use the existing commercial write permission."""
+    return can_operate_business("sales_write")
+
+
 def assert_permission(permission: str) -> None:
     """Nâng PermissionDeniedError khi boundary thao tác bị vi phạm."""
     if not has_permission(permission):
@@ -162,6 +177,23 @@ class PermissionDeniedError(RuntimeError):
         )
 
 
+def current_actor_context(actor: str | None = None) -> dict[str, str]:
+    """Return the canonical identity attached to a mutation.
+
+    ``actor`` is retained as a compatibility fallback for non-Streamlit
+    callers and fixtures.  An authenticated session always wins, so a
+    display name or arbitrary caller string cannot replace the canonical
+    ``user_id``/role pair.
+    """
+    user = current_user()
+    username = str(user.get("username") or actor or "system")
+    return {
+        "user_id": str(user.get("user_id") or username),
+        "username": username,
+        "role": str(user.get("role") or "system").strip().lower(),
+    }
+
+
 def current_actor() -> str:
     """Định danh kiểm toán cho material write.
 
@@ -169,11 +201,7 @@ def current_actor() -> str:
     ứng dụng chạy ở chế độ đơn người dùng không xác thực (AUTH_REQUIRED tắt).
     Không bao giờ fall back về 'admin' hay tên tự do.
     """
-    user = current_user()
-    username = user.get("username")
-    if username:
-        return str(username)
-    return "system"
+    return current_actor_context()["username"]
 
 
 # ------------------------------------------------------------------ login UI

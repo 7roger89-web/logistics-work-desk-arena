@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+from core.auth import can_operate_business
 from core.database import load_customers, load_rate_cards, save_rate_card
 from core.config import GETFLY_SERVICES_LIST
 from core.utils import safe_float
@@ -75,7 +76,11 @@ def ui_sales_module():
                 c_sum2.metric("🎯 TỔNG BÁO GIÁ KHÁCH", f"{total_price:,.0f} ₫")
                 c_sum3.metric("📈 Lợi nhuận dự kiến / Lô", f"{expected_profit:,.0f} ₫")
 
-                if st.button(f"💾 LƯU BÁO GIÁ THÁNG {rc_month}", type="primary"):
+                if st.button(
+                    f"💾 LƯU BÁO GIÁ THÁNG {rc_month}",
+                    type="primary",
+                    disabled=not can_operate_business("tariff"),
+                ):
                     new_month_data = {
                         "month": rc_month,
                         "total_cost": total_cost,

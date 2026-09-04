@@ -90,7 +90,12 @@ def apply_lump_sum_payment(
     """
     if not idempotency_key.strip():
         return False, [], float(to_decimal(amount)), "Thiếu idempotency_key."
-    from core.database import get_db
+    from core.auth import can_operate_business, current_actor_context
+    from core.database import _audit, get_db
+    if not can_operate_business("finance_write"):
+        return False, [], float(to_decimal(amount)), "Bạn không có quyền ghi nhận khoản thu tài chính."
+    actor_context = current_actor_context(actor)
+    actor = actor_context["username"]
     db = get_db()
     if db is None:
         return False, [], float(to_decimal(amount)), "MongoDB chưa sẵn sàng."
@@ -124,6 +129,8 @@ def apply_lump_sum_payment(
                         "note": note,
                         "created_at": utc_now(),
                         "created_by": actor,
+                        "created_by_user_id": actor_context["user_id"],
+                        "created_by_role": actor_context["role"],
                     }
                     ship.setdefault("data", {}).setdefault("3.4", {}).setdefault("payments", []).append(payment)
                     apply_financial_snapshot(ship)
@@ -135,23 +142,29 @@ def apply_lump_sum_payment(
                         version_filter["version"] = expected_version
                     update_result = db.shipments.update_one(
                         version_filter,
-                        {"$set": {"data": ship["data"], "updated_at": utc_now(), "updated_by": actor}, "$inc": {"version": 1}},
+                        {"$set": {
+                            "data": ship["data"],
+                            "updated_at": utc_now(),
+                            "updated_by": actor,
+                            "updated_by_user_id": actor_context["user_id"],
+                            "updated_by_role": actor_context["role"],
+                        }, "$inc": {"version": 1}},
                         session=session,
                     )
                     if update_result.modified_count != 1:
                         raise RuntimeError(f"Lô {sid} vừa được người khác cập nhật; transaction đã hủy.")
                     saved_allocation = {"shipment_id": sid, "payment_id": payment["id"], "amount": allocation["pay_amount"]}
                     saved_allocations.append(saved_allocation)
-                    db.audit_logs.insert_one({
-                        "event_id": str(uuid4()),
-                        "entity_type": "shipment",
-                        "entity_id": sid,
-                        "action": "payment_allocated",
-                        "actor": actor,
-                        "before": {"debt": allocation.get("pay_amount", 0) + allocation.get("remaining_debt", 0)},
-                        "after": {"payment": payment, "remaining_debt": allocation.get("remaining_debt", 0)},
-                        "created_at": utc_now(),
-                    }, session=session)
+                    _audit(
+                        db,
+                        "shipment",
+                        sid,
+                        "payment_allocated",
+                        before={"debt": allocation.get("pay_amount", 0) + allocation.get("remaining_debt", 0)},
+                        after={"payment": payment, "remaining_debt": allocation.get("remaining_debt", 0)},
+                        actor=actor,
+                        session=session,
+                    )
 
                 db.payment_receipts.insert_one({
                     "receipt_id": receipt_id,
@@ -165,22 +178,24 @@ def apply_lump_sum_payment(
                     "created_at": utc_now(),
                     "currency": "VND",
                     "created_by": actor,
+                    "created_by_user_id": actor_context["user_id"],
+                    "created_by_role": actor_context["role"],
                 }, session=session)
-                db.audit_logs.insert_one({
-                    "event_id": str(uuid4()),
-                    "entity_type": "payment_receipt",
-                    "entity_id": receipt_id,
-                    "action": "create_and_allocate",
-                    "actor": actor,
-                    "after": {
+                _audit(
+                    db,
+                    "payment_receipt",
+                    receipt_id,
+                    "create_and_allocate",
+                    after={
                         "customer_ref": customer_ref,
                         "amount": float(to_decimal(amount)),
                         "allocations": saved_allocations,
                         "remaining": remaining,
                         "currency": "VND",
                     },
-                    "created_at": utc_now(),
-                }, session=session)
+                    actor=actor,
+                    session=session,
+                )
         return True, saved_allocations, remaining, "Đã phân bổ khoản thu thành công."
     except Exception as exc:
         return False, [], float(to_decimal(amount)), str(exc)

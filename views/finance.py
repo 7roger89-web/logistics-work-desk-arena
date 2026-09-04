@@ -6,7 +6,7 @@ from uuid import uuid4
 import pandas as pd
 import streamlit as st
 
-from core.auth import has_write_permission
+from core.auth import can_operate_business
 from core.payment_logic import allocate_lump_sum, apply_lump_sum_payment, get_customer_debt_overview
 from core.utils import safe_float
 from views.partner_finance import render_partner_financial_position
@@ -92,10 +92,11 @@ def ui_receivables_management():
         "Xác nhận ghi khoản thu",
         type="primary",
         use_container_width=True,
-        disabled=amount <= 0 or not plan or not has_write_permission("finance_write"),
+        disabled=amount <= 0 or not plan or not can_operate_business("finance_write"),
     ):
-        if not has_write_permission("finance_write"):
+        if not can_operate_business("finance_write"):
             st.warning("Bạn không có quyền ghi nhận khoản thu tài chính.")
+            return
         user = st.session_state.get("current_user", {})
         ok, allocations, leftover, message = apply_lump_sum_payment(
             customer_ref=allocation_customer_ref,

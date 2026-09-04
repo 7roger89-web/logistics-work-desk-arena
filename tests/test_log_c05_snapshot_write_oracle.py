@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from core.debit_draft import build_debit_draft, build_manager_report
 from core.debit_snapshot import (
@@ -23,6 +25,21 @@ from tests.test_reconciliation_desk import ABO, _fixture_history
 
 class LogC05SnapshotTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.auth_patch = patch(
+            "core.auth.st",
+            SimpleNamespace(
+                session_state={
+                    "current_user": {
+                        "user_id": "support-fixture-01",
+                        "username": "support.fixture",
+                        "display_name": "Support Fixture",
+                        "role": "support",
+                    }
+                }
+            ),
+        )
+        self.auth_patch.start()
+        self.addCleanup(self.auth_patch.stop)
         obligations, transactions, allocations = _fixture_history()
         self.position = project_partner_financial_position(
             ABO,

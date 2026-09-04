@@ -308,6 +308,13 @@ def save_debit_draft_snapshot(
 ) -> dict[str, Any]:
     """Insert one immutable metadata snapshot with retry-safe identity."""
 
+    from core.auth import can_operate_business, current_actor_context
+
+    if not can_operate_business("receivables"):
+        raise RuntimeError("Bạn không có quyền cập nhật đối soát công nợ.")
+    actor_context = current_actor_context(prepared_by)
+    prepared_by = actor_context["username"]
+
     stable_request_id = _string(request_id)
     if not stable_request_id:
         raise ValueError("request_id is required for a Debit Draft snapshot")
@@ -350,6 +357,8 @@ def save_debit_draft_snapshot(
         supersedes_snapshot_id=supersedes_snapshot_id,
         generated_at=generated_at,
     )
+    document["prepared_by_user_id"] = actor_context["user_id"]
+    document["prepared_by_role"] = actor_context["role"]
     try:
         collection.insert_one(document)
     except DuplicateKeyError:
@@ -367,6 +376,8 @@ def save_debit_draft_snapshot(
                     "status": DEBIT_STATUS_SUPERSEDED,
                     "superseded_by_snapshot_id": document["snapshot_id"],
                     "updated_at": utc_now(),
+                    "updated_by_user_id": actor_context["user_id"],
+                    "updated_by_role": actor_context["role"],
                 }
             },
         )

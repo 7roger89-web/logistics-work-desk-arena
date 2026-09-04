@@ -32,7 +32,7 @@ from core.commercial_agreements import (
     prepare_agreement_for_persistence,
     transition_agreement,
 )
-from core.auth import has_write_permission
+from core.auth import can_operate_business
 from core.database import load_agreements, save_agreements_to_cloud
 
 
@@ -205,9 +205,9 @@ def _render_new_agreement() -> None:
         "Tạo thỏa thuận từ báo giá này",
         type="primary",
         key="agr_create_from_quote",
-        disabled=not has_write_permission("commercial_write"),
+        disabled=not can_operate_business("commercial_write"),
     ):
-        if not has_write_permission("commercial_write"):
+        if not can_operate_business("commercial_write"):
             st.error("Bạn không có quyền tạo thỏa thuận. Liên hệ người quản trị.")
             st.stop()
         if _persist_agreement(snapshot):
@@ -377,9 +377,9 @@ def _render_agreement_detail() -> None:
             if st.form_submit_button(
                 "Cập nhật liên kết lô",
                 type="primary",
-                disabled=not has_write_permission("commercial_write"),
+                disabled=not can_operate_business("commercial_write"),
             ):
-                if not has_write_permission("commercial_write"):
+                if not can_operate_business("commercial_write"):
                     st.error("Bạn không có quyền cập nhật liên kết lô. Liên hệ người quản trị.")
                     st.stop()
                 agreement["shipment_ids"] = list(dict.fromkeys(str(item) for item in linked if item in shipments))
@@ -414,9 +414,9 @@ def _render_revision_dialog(agreement: dict[str, Any]) -> bool:
         if st.form_submit_button(
             "Tạo bản sửa đổi (revision draft)",
             type="primary",
-            disabled=not has_write_permission("commercial_write"),
+            disabled=not can_operate_business("commercial_write"),
         ):
-            if not has_write_permission("commercial_write"):
+            if not can_operate_business("commercial_write"):
                 st.error("Bạn không có quyền sửa điều khoản thỏa thuận. Liên hệ người quản trị.")
                 st.stop()
             if not note.strip():
