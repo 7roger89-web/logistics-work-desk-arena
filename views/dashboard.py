@@ -54,7 +54,6 @@ def quick_note_dialog():
         st.success("✅ Đã lưu sổ tay!")
         st.rerun()
 
-@st.dialog("🎯 GIAO VIỆC MỚI")
 def _get_current_user_id():
     """Return the canonical user_id of the currently logged-in user."""
     _cu = st.session_state.get("current_user", {})
@@ -112,6 +111,7 @@ def _build_assignee_options():
     return options
 
 
+@st.dialog("🎯 GIAO VIỆC MỚI")
 def quick_assign_task_dialog():
     _assignee_options = _build_assignee_options()
     _labels = [lbl for _, lbl in _assignee_options]

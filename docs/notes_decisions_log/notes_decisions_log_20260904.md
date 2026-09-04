@@ -12,3 +12,13 @@
 - Remaining gate: Owner visually inspects the six requested Support surfaces. No broad regression run was performed.
 
 Related coder report: `reports/coder/rp_coder_260904_122141_by_gpt-5-codex_log-rbac-support-01-preview-blocker.md`.
+
+## LOG-RBAC-SUPPORT-01 Finance Add Service repair
+
+- Headed local Support reproduction showed the Finance Add Service button was enabled but blocked by an unintended dashboard dialog overlay, not by RBAC.
+- The same exact flow exposed two concrete persistence defects: the added row was lost across rerun, and `save_shipment_atomic` sent immutable creation fields in both `$set` and `$setOnInsert`.
+- Surgical repair moved the existing dialog decorator to `quick_assign_task_dialog`, retained the added row in existing session state, and excluded immutable creation provenance from `$set`.
+- Focused verification: 6 tests passed; local `logistics_dev` readback passed after Support added `TEST LOCAL SERVICE`; Streamlit health returned 200; Support/admin and Sale boundaries remained closed.
+- No Production connection or mutation; no broad suite, push, PR, merge, deploy, or new framework.
+
+Related coder report: `reports/coder/rp_coder_260904_165433_by_gpt-5-codex_log-rbac-support-01-finance-add-service.md`.

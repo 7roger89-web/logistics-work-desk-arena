@@ -538,6 +538,7 @@ def ui_shipment_detail_tabs(sid, ship):
 
         if st.button("➕ Thêm Dịch vụ", key=f"{prefix}_add_svc", disabled=not can_edit):
             details.append({"id": str(uuid4()), "name_full": "", "qty": 1, "cost": 0, "price": 0, "vat_line": 0, "note": ""})
+            st.session_state.db_shipments[sid] = ship
             st.rerun()
 
         st.divider()

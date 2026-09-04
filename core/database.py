@@ -505,10 +505,15 @@ def save_shipment_atomic(ship_obj: dict[str, Any], expected_version: int | None 
                 }
                 if "created_at" not in shipment:
                     set_on_insert["created_at"] = utc_now()
+                update_fields = {
+                    key: value
+                    for key, value in shipment.items()
+                    if key not in {"created_by", "created_by_user_id", "created_by_role"}
+                }
                 result = db.shipments.find_one_and_update(
                     query,
                     {
-                        "$set": shipment,
+                        "$set": update_fields,
                         "$setOnInsert": set_on_insert,
                         "$inc": {"version": 1},
                     },
