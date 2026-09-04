@@ -50,6 +50,7 @@ ROUTES: tuple[Route, ...] = (
     Route("Tra Cứu Thuế", "🔎", "tariff", "views.tariff", "ui_super_tariff_hub"),
     Route("Theo Dõi Vận Chuyển", "🌐", "tracking", "views.tracking", "ui_tracking_tool"),
     Route("Sổ Tay Kinh Nghiệm", "📔", "knowledge", "views.knowledge_base", "ui_knowledge_base"),
+    Route("Dịch Thuật DeepL", "🌐", "translation", "views.translation", "ui_translation"),
     # Màn hình quản lý tài khoản, chỉ dành cho vai trò admin.
     Route("Người Dùng", "👤", "admin", "views.web_app", "_render_user_management"),
 )
@@ -73,7 +74,7 @@ NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "CÔNG CỤ & THAM KHẢO",
-        ("Tra Cứu Thuế", "Sổ Tay Kinh Nghiệm"),
+        ("Tra Cứu Thuế", "Sổ Tay Kinh Nghiệm", "Dịch Thuật DeepL"),
     ),
     (
         "QUẢN TRỊ",

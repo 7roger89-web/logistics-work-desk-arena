@@ -181,6 +181,15 @@ if not MONGO_ALLOWED_DB_NAMES:
 ENV_IDENTITY = get_setting("ENV_IDENTITY", ("env", "identity"),
     "ENV_IDENTITY", default="DEV").upper()
 
+# DeepL credentials remain server-side.  Keep the list loader shared with the
+# existing Gemini configuration so TOML and environment-list forms behave the
+# same way without adding a credential-management subsystem.
+DEEPL_API_KEYS = get_list_setting(
+    "DEEPL_API_KEYS",
+    ("deepl", "api_keys"),
+    "DEEPL_API_KEYS",
+)
+
 # LOG-LG02 release gate (default OFF: production DB remains fail-closed).
 def _parse_bool(val: Any) -> bool:
     if isinstance(val, bool): return val
