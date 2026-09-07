@@ -1055,16 +1055,33 @@ def delete_customer(cust_id: str, reason: str = "") -> bool:
     return False
 
 
-def load_contracts() -> dict[str, dict[str, Any]]:
-    """Load contracts. Cached in Streamlit runtime for performance."""
-    if st is not None and is_streamlit_runtime():
-        return st.cache_data(_load_contracts_impl, ttl=30, show_spinner=False)()
-    return _load_contracts_impl()
-
-
 def _load_contracts_impl() -> dict[str, dict[str, Any]]:
     raw = _load_dict("contracts", query={"is_deleted": {"$ne": True}})
     return {str(value.get("ContractNo") or value.get("id")): value for value in raw.values()}
+
+
+# Module-level cached wrapper so we can call .clear() after saves to give
+# immediate readback (HDNT -> PL flow without 30s staleness).
+if st is not None:
+    _cached_load_contracts = st.cache_data(ttl=30, show_spinner=False)(_load_contracts_impl)
+else:
+    _cached_load_contracts = _load_contracts_impl
+
+
+def _invalidate_contracts_cache() -> None:
+    """Clear the contracts cache so the next read sees freshly persisted data."""
+    try:
+        if st is not None and hasattr(_cached_load_contracts, "clear"):
+            _cached_load_contracts.clear()
+    except Exception:
+        pass
+
+
+def load_contracts() -> dict[str, dict[str, Any]]:
+    """Load contracts. Cached in Streamlit runtime for performance."""
+    if st is not None and is_streamlit_runtime():
+        return _cached_load_contracts()
+    return _load_contracts_impl()
 
 
 def save_contract_to_cloud(document: dict[str, Any]) -> bool:
@@ -1085,6 +1102,7 @@ def save_contract_to_cloud(document: dict[str, Any]) -> bool:
     ok = _save_document("contracts", payload)
     if ok:
         _audit(db, "contract", contract_id, "create" if old is None else "update", before=old, after=payload)
+        _invalidate_contracts_cache()
     return ok
 
 
@@ -1124,13 +1142,22 @@ def link_contract_to_shipment(contract_id: str, shipment_id: str) -> bool:
     if contract is None:
         return False
     payload = copy.deepcopy(contract)
-    existing = [str(x) for x in (payload.get("shipment_ids") or [])]
+    existing = [str(x).upper() for x in (payload.get("shipment_ids") or [])]
+    # Ensure the legacy scalar (if present) is also in the additive list.
+    legacy_scalar = str(payload.get("shipment_id") or "").strip().upper()
+    if legacy_scalar and legacy_scalar not in existing:
+        existing.append(legacy_scalar)
     if shipment_id not in existing:
         existing.append(shipment_id)
     payload["shipment_ids"] = existing
-    # Preserve the legacy scalar read of the (first) shipment linkage.
-    payload["shipment_id"] = shipment_id
-    return _save_document("contracts", payload)
+    # Preserve the legacy scalar: only set shipment_id if it was previously
+    # absent.  A second linkage must NOT overwrite the original scalar.
+    if not str(payload.get("shipment_id") or "").strip():
+        payload["shipment_id"] = shipment_id
+    ok = _save_document("contracts", payload)
+    if ok:
+        _invalidate_contracts_cache()
+    return ok
 
 
 def load_contracts_for_shipment(shipment_id: str) -> dict[str, dict[str, Any]]:
@@ -1883,6 +1910,9 @@ _DOCGEN_IMMUTABLE_FIELDS = frozenset(
         "supersedes_document_id",
     }
 )
+# After ISSUED, ONLY superseded_by_document_id may be set.  All other metadata
+# (including issued_at, issued_by, generated_by) is fully frozen.
+_DOCGEN_ISSUED_ALLOWED_CHANGES = frozenset({"superseded_by_document_id"})
 def save_docgen_document(document: Mapping[str, Any]) -> bool:
     """Persist document generation metadata (never a binary blob).
 
@@ -1925,8 +1955,14 @@ def save_docgen_document(document: Mapping[str, Any]) -> bool:
                 _set_last_error("Không thể thay đổi nội dung chứng từ khi phát hành.")
                 return False
         elif old_status == "ISSUED" and new_status == "ISSUED":
-            # Only the controlled supersede linkage may be added to an ISSUED record.
-            if changed_mutable:
+            # After ISSUED, ONLY the controlled supersede linkage may change.
+            # issued_at, issued_by, generated_by, and all other fields are
+            # fully frozen — any other change is rejected.
+            iss_changed = [
+                field for field in payload
+                if old.get(field) != payload.get(field) and field not in _DOCGEN_ISSUED_ALLOWED_CHANGES
+            ]
+            if iss_changed:
                 _set_last_error("Không thể sửa chứng từ đã ISSUED.")
                 return False
         elif old_status != new_status:

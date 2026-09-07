@@ -656,6 +656,192 @@ class FinanceSafetyTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
+# LOG-DOCGEN-01-PR1 final correctness repair regression tests
+# ---------------------------------------------------------------------------
+
+
+class PxkSourceIndependentOfEditorTests(TestCase):
+    """Repair 1: PXK readiness/generation must NOT depend on current goods editor."""
+
+    def test_empty_editor_with_hdmb_source_pxk_ready(self) -> None:
+        """current goods_lines=[] with valid HDMB source => PXK READY."""
+        src = _pxk_source(doc_type=HDMB, line_count=1, line={
+            "description": "Máy", "unit": "Cái", "quantity": "1",
+            "unit_price_vnd_excl_vat": 60000000, "amount_vnd_excl_vat": 60000000,
+        })
+        readiness = evaluate_document_readiness(
+            PXK,
+            goods_lines=[],  # empty editor
+            agent=_agent(),
+            company=_company(),
+            delivery_completed=True,
+            document_identity=_pxk_identity(),
+            delivery=_pxk_delivery(),
+            pxk_source=src,
+            selected_contract={"currency": "VND"},
+        )
+        self.assertEqual(readiness.state, READY, f"Expected READY but got {readiness.state}: {readiness.reason}")
+
+    def test_empty_editor_with_pl_source_pxk_ready(self) -> None:
+        """current goods_lines=[] with valid PL source => PXK READY."""
+        src = _pxk_source(doc_type=PL, line_count=1, line={
+            "description": "Máy", "unit": "Cái", "quantity": "1",
+            "unit_price_vnd_excl_vat": 60000000, "amount_vnd_excl_vat": 60000000,
+        })
+        readiness = evaluate_document_readiness(
+            PXK,
+            goods_lines=[],  # empty editor
+            agent=_agent(),
+            company=_company(),
+            delivery_completed=True,
+            document_identity=_pxk_identity(),
+            delivery=_pxk_delivery(),
+            pxk_source=src,
+            selected_contract={"currency": "VND"},
+        )
+        self.assertEqual(readiness.state, READY, f"Expected READY but got {readiness.state}: {readiness.reason}")
+
+
+class HdntValidityFailClosedTests(TestCase):
+    """Repair 2: HDNT validity must fail closed on all missing/invalid conditions."""
+
+    def test_expired_hdnt_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-EXP")
+        parent["valid_to"] = "2020-01-01"
+        decision = classify_valid_hdnt({"HDNT-EXP": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+        self.assertIsNone(decision["reuse_target"])
+
+    def test_future_hdnt_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-FUT")
+        parent["valid_from"] = "2027-01-01"
+        parent["valid_to"] = "2028-01-01"
+        decision = classify_valid_hdnt({"HDNT-FUT": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_missing_validity_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-NOVAL")
+        parent["valid_from"] = ""
+        parent["valid_to"] = ""
+        decision = classify_valid_hdnt({"HDNT-NOVAL": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_cancelled_hdnt_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-CANC")
+        parent["status"] = "cancelled"
+        decision = classify_valid_hdnt({"HDNT-CANC": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_inactive_hdnt_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-INACT")
+        parent["status"] = "inactive"
+        decision = classify_valid_hdnt({"HDNT-INACT": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_deleted_hdnt_cannot_parent_pl(self) -> None:
+        parent = _parent("HDNT-DEL")
+        parent["is_deleted"] = True
+        decision = classify_valid_hdnt({"HDNT-DEL": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_one_valid_hdnt_reuse(self) -> None:
+        parent = _parent("HDNT-OK")
+        decision = classify_valid_hdnt({"HDNT-OK": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 1)
+        self.assertFalse(decision["needs_selection"])
+        self.assertEqual(decision["reuse_target"]["hdnt_no"], "HDNT-OK")
+
+    def test_two_valid_hdnt_explicit_selection(self) -> None:
+        p1 = _parent("HDNT-A")
+        p2 = _parent("HDNT-B")
+        decision = classify_valid_hdnt({"HDNT-A": p1, "HDNT-B": p2}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 2)
+        self.assertTrue(decision["needs_selection"])
+        self.assertIsNone(decision["reuse_target"])
+
+
+class IssuedFullImmutabilityTests(TestCase):
+    """Repair 4: After ISSUED only superseded_by_document_id may change."""
+
+    def test_cannot_change_issued_at_after_issued(self) -> None:
+        from core.database import save_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "IM1::R1", "document_id": "IM1", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("IM1")
+            record = gen_load_latest("IM1")
+            self.assertEqual(record["status"], ISSUED)
+            # Attempt to change issued_at
+            hacked = deepcopy(record)
+            hacked["issued_at"] = "2099-01-01T00:00:00"
+            self.assertFalse(save_docgen_document(hacked))
+
+    def test_cannot_change_issued_by_after_issued(self) -> None:
+        from core.database import save_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "IM2::R1", "document_id": "IM2", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("IM2")
+            record = gen_load_latest("IM2")
+            self.assertEqual(record["status"], ISSUED)
+            hacked = deepcopy(record)
+            hacked["issued_by"] = "attacker"
+            self.assertFalse(save_docgen_document(hacked))
+
+    def test_cannot_change_generated_by_after_issued(self) -> None:
+        from core.database import save_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "IM3::R1", "document_id": "IM3", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("IM3")
+            record = gen_load_latest("IM3")
+            self.assertEqual(record["status"], ISSUED)
+            hacked = deepcopy(record)
+            hacked["generated_by"] = "attacker"
+            self.assertFalse(save_docgen_document(hacked))
+
+
+class LegacyScalarPreservedTests(TestCase):
+    """Repair 3: link_contract_to_shipment must not overwrite legacy scalar."""
+
+    def test_legacy_scalar_preserved_after_second_linkage(self) -> None:
+        from core.database import link_contract_to_shipment, load_contracts_for_shipment
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db), patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": {"role": "support", "username": "support", "user_id": "u1"}}})()):
+            # Initial contract with shipment_id = SHP-001
+            self.assertTrue(_save_contract({
+                "id": "C-NM-001", "contract_no": "C-NM-001", "kind": HDNT,
+                "agent_id": "AGT-001", "company_id": "TT-001",
+                "shipment_id": "SHP-001",
+            }))
+            # Link SHP-002 — must NOT overwrite the legacy scalar
+            self.assertTrue(link_contract_to_shipment("C-NM-001", "SHP-002"))
+            linked = load_contracts_for_shipment("SHP-002")
+            self.assertIn("C-NM-001", linked)
+            # shipment_ids contains BOTH
+            record = linked["C-NM-001"]
+            self.assertIn("SHP-001", record.get("shipment_ids", []))
+            self.assertIn("SHP-002", record.get("shipment_ids", []))
+            # Legacy scalar remains SHP-001 (the original)
+            self.assertEqual(record.get("shipment_id"), "SHP-001")
+
+
+class ContractCacheImmediateReadbackTests(TestCase):
+    """Repair 5: After contract save, immediate read must see new data."""
+
+    def test_cache_invalidation_after_save(self) -> None:
+        from core.database import _invalidate_contracts_cache, load_contracts
+
+        # Outside Streamlit runtime, load_contracts goes directly to _load_contracts_impl.
+        # We test that _invalidate_contracts_cache is callable and doesn't raise.
+        _invalidate_contracts_cache()  # Must not raise
+
+
+# ---------------------------------------------------------------------------
 # In-memory DB + auth helpers
 # ---------------------------------------------------------------------------
 

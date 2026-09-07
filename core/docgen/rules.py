@@ -413,14 +413,40 @@ def evaluate_document_readiness(
     if document_type not in DOCUMENT_TYPES:
         return Readiness(document_type=document_type, state=OWNER_RULE_REQUIRED, reason="Loại chứng từ chưa được hỗ trợ.")
 
+    # PXK readiness must NOT depend on the current generic goods editor state.
+    # Its goods facts come from the explicitly selected source snapshot.  For
+    # PXK we use the source_goods_line (if present) for applicability instead
+    # of the potentially-empty editor goods_lines.
+    pxk_goods_for_applicability = goods_lines
+    if document_type == PXK:
+        _pxk_src_line = (pxk_source or {}).get("source_goods_line")
+        if _pxk_src_line:
+            pxk_goods_for_applicability = [dict(_pxk_src_line)]
+        elif not goods_lines:
+            # No source and no editor lines — still compute applicability but
+            # the source check below will flag the missing source separately.
+            pxk_goods_for_applicability = goods_lines
+
     applicability = decide_applicable_documents(
-        goods_lines=goods_lines,
+        goods_lines=pxk_goods_for_applicability,
         currency=(selected_contract or {}).get("currency") or VND_CURRENCY,
         delivery_completed=delivery_completed,
         pxk_source=pxk_source,
     )
     base = applicability[document_type]
-    if base.state == NOT_APPLICABLE or base.state == BLOCKED:
+    if base.state == NOT_APPLICABLE:
+        return base
+    # For PXK, a BLOCKED from decide_applicable_documents due to missing
+    # totals/goods_lines is overridden when a valid pxk_source is present —
+    # the source line is authoritative.  Only non-source BLOCKED states
+    # (e.g. non-VND currency) should still block.
+    if document_type == PXK and base.state == BLOCKED:
+        _pxk_src_line = (pxk_source or {}).get("source_goods_line")
+        if _pxk_src_line and not _is_vnd((selected_contract or {}).get("currency") or VND_CURRENCY):
+            return base  # non-VND still blocks even with a source
+        # Override the goods-lines-driven block; source is authoritative.
+        base = _pxk_readiness(delivery_completed=delivery_completed)
+    elif base.state == BLOCKED:
         return base
 
     missing: list[str] = []
@@ -428,7 +454,15 @@ def evaluate_document_readiness(
         missing.extend(_authority_missing(agent, company))
     if document_type in (HDNT, PL, HDMB, PXK):
         missing.extend(document_identity_missing(document_type, document_identity, delivery=delivery))
-    if not goods_lines:
+    if document_type == PXK:
+        # PXK derives its goods facts from the explicitly selected source
+        # snapshot (pxk_source.source_goods_line), NOT from the generic
+        # purchase goods editor.  An empty goods_lines must NOT block PXK
+        # when a valid source line is present.
+        _pxk_src_line = (pxk_source or {}).get("source_goods_line")
+        if not _pxk_src_line and not goods_lines:
+            missing.append("Chưa có dòng hàng hóa mua.")
+    elif not goods_lines:
         missing.append("Chưa có dòng hàng hóa mua.")
 
     if document_type == HDNT:
@@ -491,23 +525,43 @@ def _parse_date(value: Any) -> date | None:
         return None
 
 
+# Statuses that disqualify an HDNT from being reusable as a PL parent.
+_INVALID_HDNT_STATUSES = frozenset({"deleted", "cancelled", "void", "superseded", "inactive"})
+
+
 def _candidate_valid_hdnt(candidate: Mapping[str, Any], *, agent_id: str, company_id: str, today: date | None) -> bool:
+    """Return True only when a candidate HDNT is provably valid and reusable.
+
+    Fail-closed: every required fact must be present and every disqualifying
+    status must reject.  A missing validity window (valid_from or valid_to)
+    makes the candidate NOT reusable.  Deleted / cancelled / void / superseded
+    / inactive candidates are also rejected.
+    """
     if str(candidate.get("kind") or candidate.get("type") or "").upper() != HDNT:
         return False
     if str(candidate.get("agent_id") or "").upper() != str(agent_id or "").upper():
         return False
     if str(candidate.get("company_id") or "").upper() != str(company_id or "").upper():
         return False
+    # Disqualifying statuses.
+    status = str(candidate.get("status") or "").strip().lower()
+    if status in _INVALID_HDNT_STATUSES:
+        return False
+    # is_deleted / is_cancelled boolean guards.
+    if candidate.get("is_deleted") or candidate.get("is_cancelled") or candidate.get("is_void"):
+        return False
     no = str(candidate.get("hdnt_no") or candidate.get("contract_no") or candidate.get("id") or "").strip()
     signing = str(candidate.get("hdnt_date") or candidate.get("contract_date") or "").strip()
     if not no or not signing:
         return False
     today = today or date.today()
+    # Fail-closed: BOTH valid_from and valid_to MUST be present and parseable.
     valid_from = _parse_date(candidate.get("valid_from"))
     valid_to = _parse_date(candidate.get("valid_to"))
-    if valid_from is not None and valid_from > today:
+    if valid_from is None or valid_to is None:
         return False
-    if valid_to is not None and valid_to < today:
+    # Today must be inside [valid_from, valid_to].
+    if today < valid_from or today > valid_to:
         return False
     return True
 
