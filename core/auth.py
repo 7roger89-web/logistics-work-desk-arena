@@ -160,6 +160,39 @@ def can_edit_contract() -> bool:
     return can_operate_business("sales_write")
 
 
+# ------------------------------------------------------------------ LOG-DOCGEN-01
+# Bounded RBAC for the Shipment Document Pack Generator.  These wrappers reuse
+# the single ROLE_PERMISSIONS matrix; they intentionally do NOT widen Sale.
+#
+#   GENERATE / DOWNLOAD  -> sales_write   (Admin YES, Support YES, Sale YES)
+#   ISSUE / SUPERSEDE    -> operations_write (Admin YES, Support YES, Sale NO)
+#
+# The writer/service layer calls these wrappers directly so UI hiding alone is
+# never the security boundary.
+
+
+def can_generate_documents() -> bool:
+    """Generate/download a document pack: existing sales_write."""
+    return can_operate_business("sales_write")
+
+
+def can_issue_documents() -> bool:
+    """Issue/supersede a document pack: existing operations_write."""
+    return can_operate_business("operations_write")
+
+
+def assert_can_generate_documents() -> None:
+    """Raise PermissionDeniedError when generation is not authorised."""
+    if not can_generate_documents():
+        raise PermissionDeniedError("sales_write")
+
+
+def assert_can_issue_documents() -> None:
+    """Raise PermissionDeniedError when issuance/supersede is not authorised."""
+    if not can_issue_documents():
+        raise PermissionDeniedError("operations_write")
+
+
 def assert_permission(permission: str) -> None:
     """Nâng PermissionDeniedError khi boundary thao tác bị vi phạm."""
     if not has_permission(permission):

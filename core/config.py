@@ -316,6 +316,18 @@ TREASURY_FILE_PATH = Path(get_setting(
     default=str(BASE_DIR / "MA_NGAN_SACH.xlsx"),
 ))
 
+# LOG-DOCGEN-01: bounded runtime template directory.  The legal template
+# binaries are sandbox-only and must NOT be committed to this repository, so we
+# never default this to an in-repo path.  When empty the generator reports the
+# TEMPLATE_ASSET_STORAGE_OWNER_GATE instead of generating from a wrong file.
+_docgen_template_dir = get_setting(
+    "DOCGEN_TEMPLATE_DIR",
+    ("paths", "docgen_templates"),
+    "DOCGEN_TEMPLATE_DIR",
+    default="",
+).strip()
+DOCGEN_TEMPLATE_DIR = Path(_docgen_template_dir) if _docgen_template_dir else None
+
 INCOTERMS = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"]
 
 STATUS_OPTIONS = ["wait", "pending", "done", "cancel"]

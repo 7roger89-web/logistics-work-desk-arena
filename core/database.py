@@ -1688,3 +1688,136 @@ def save_agreements_to_cloud(agreements_dict: dict[str, dict[str, Any]]) -> bool
     return True
 
 # ---------- /LG03 restore #2 ----------
+
+
+# ----------------------------------------------------------------------------
+# LOG-DOCGEN-01 — bounded authority + document generation metadata persistence.
+#
+# These are the SMALLEST persistent stores needed to drive the Shipment
+# Document Pack Generator.  They reuse the existing ``_load_dict`` /
+# ``_save_document`` / ``_audit`` helpers so no second persistence subsystem
+# is introduced.  Binary XLSX/DOCX are never stored here - only metadata,
+# revision history and immutable source snapshots.
+# ----------------------------------------------------------------------------
+
+
+def load_authority_companies() -> dict[str, dict[str, Any]]:
+    """Load the approved legal Company master (buyer/owner entity)."""
+    return _load_dict("authority_companies", query={"is_deleted": {"$ne": True}})
+
+
+def save_authority_company(document: Mapping[str, Any]) -> bool:
+    """Upsert one approved legal Company master record."""
+    if not _require_business_permission("sales_write", "Bạn không có quyền cập nhật hồ sơ Công ty."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    company_id = str(document.get("company_id") or document.get("id") or "").strip().upper()
+    if not company_id:
+        _set_last_error("Hồ sơ Công ty cần có company_id.")
+        return False
+    payload = copy.deepcopy(dict(document))
+    payload["company_id"] = company_id
+    payload["id"] = company_id
+    old = db["authority_companies"].find_one({"id": company_id}, {"_id": 0})
+    if not _save_document("authority_companies", payload):
+        return False
+    _audit(db, "authority_company", company_id, "create" if old is None else "update", before=old, after=payload)
+    return True
+
+
+def load_authority_agents() -> dict[str, dict[str, Any]]:
+    """Load the approved legal Agent master (seller of goods to Trường Thành)."""
+    return _load_dict("authority_agents", query={"is_deleted": {"$ne": True}})
+
+
+def save_authority_agent(document: Mapping[str, Any]) -> bool:
+    """Upsert one approved legal Agent master record."""
+    if not _require_business_permission("sales_write", "Bạn không có quyền cập nhật hồ sơ Đại lý."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    agent_id = str(document.get("agent_id") or document.get("id") or "").strip().upper()
+    if not agent_id:
+        _set_last_error("Hồ sơ Đại lý cần có agent_id.")
+        return False
+    payload = copy.deepcopy(dict(document))
+    payload["agent_id"] = agent_id
+    payload["id"] = agent_id
+    old = db["authority_agents"].find_one({"id": agent_id}, {"_id": 0})
+    if not _save_document("authority_agents", payload):
+        return False
+    _audit(db, "authority_agent", agent_id, "create" if old is None else "update", before=old, after=payload)
+    return True
+
+
+def load_docgen_documents(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:
+    """Load generated document metadata, optionally scoped to one shipment."""
+    query: dict[str, Any] = {"is_deleted": {"$ne": True}}
+    if shipment_id:
+        query["shipment_id"] = str(shipment_id).strip()
+    return _load_dict("docgen_documents", query=query)
+
+
+def load_docgen_document(document_id: str) -> dict[str, Any] | None:
+    """Load one generated document metadata record by its storage id."""
+    db = get_db()
+    if db is None:
+        return None
+    try:
+        return db["docgen_documents"].find_one({"id": str(document_id).strip()}, {"_id": 0})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return None
+
+
+def load_docgen_document_latest(document_id: str) -> dict[str, Any] | None:
+    """Load the highest-generation record for a logical ``document_id``.
+
+    Records store a revision-scoped ``id`` like ``{document_id}::R{revision}``
+    while the ``document_id`` field stays stable across regenerations, so this
+    returns the newest revision of a logical document.
+    """
+    db = get_db()
+    if db is None:
+        return None
+    try:
+        records = list(
+            db["docgen_documents"].find({"document_id": str(document_id).strip(), "is_deleted": {"$ne": True}}, {"_id": 0})
+        )
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return None
+    if not records:
+        return None
+    return max(
+        records,
+        key=lambda item: int(item.get("generation_revision") or item.get("revision") or 0),
+    )
+
+
+def save_docgen_document(document: Mapping[str, Any]) -> bool:
+    """Persist document generation metadata (never a binary blob).
+
+    The record key is ``id``.  Callers may pass a revision-scoped ``id`` such
+    as ``{document_id}::R{revision}`` so the same logical ``document_id`` can
+    keep multiple immutable revision records.
+    """
+    db = get_db()
+    if db is None:
+        return False
+    document_id = str(document.get("document_id") or "").strip()
+    record_id = str(document.get("id") or document_id).strip()
+    if not document_id or not record_id:
+        _set_last_error("Chứng từ cần có document_id.")
+        return False
+    payload = copy.deepcopy(dict(document))
+    payload["document_id"] = document_id
+    payload["id"] = record_id
+    old = db["docgen_documents"].find_one({"id": record_id}, {"_id": 0})
+    if not _save_document("docgen_documents", payload):
+        return False
+    _audit(db, "docgen_document", record_id, "create" if old is None else "update", before=old, after=payload)
+    return True
