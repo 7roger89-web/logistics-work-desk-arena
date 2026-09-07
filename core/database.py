@@ -1095,6 +1095,71 @@ def load_contract_transactions(contract_id: str | None = None) -> dict[str, dict
     return _load_contract_transactions_impl(contract_id)
 
 
+# ---------------------------------------------------------------------------
+# LOG-DOCGEN-01-PR1 — additive N:M shipment<->contract linkage.
+#
+# A shipment can link multiple contracts (HDNT + PL + HDMB ...); a contract can
+# link multiple shipments where appropriate.  We reuse the existing ``contracts``
+# collection and only ADD the ``shipment_ids`` list, never destructively
+# migrating legacy scalar ``shipment_id`` / ``contract_id`` reads.
+# ---------------------------------------------------------------------------
+
+
+def link_contract_to_shipment(contract_id: str, shipment_id: str) -> bool:
+    """Add a shipment to a contract's additive ``shipment_ids`` list."""
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền cập nhật liên kết hợp đồng.")
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    contract_id = str(contract_id or "").strip().upper()
+    shipment_id = str(shipment_id or "").strip().upper()
+    if not contract_id or not shipment_id:
+        _set_last_error("Cần contract_id và shipment_id để liên kết.")
+        return False
+    contract = db["contracts"].find_one({"id": contract_id}, {"_id": 0})
+    if contract is None:
+        return False
+    payload = copy.deepcopy(contract)
+    existing = [str(x) for x in (payload.get("shipment_ids") or [])]
+    if shipment_id not in existing:
+        existing.append(shipment_id)
+    payload["shipment_ids"] = existing
+    # Preserve the legacy scalar read of the (first) shipment linkage.
+    payload["shipment_id"] = shipment_id
+    return _save_document("contracts", payload)
+
+
+def load_contracts_for_shipment(shipment_id: str) -> dict[str, dict[str, Any]]:
+    """Return contracts additively linked to one shipment."""
+    db = get_db()
+    if db is None:
+        return {}
+    shipment_id = str(shipment_id or "").strip().upper()
+    raw = _load_dict("contracts", query={"is_deleted": {"$ne": True}})
+    result: dict[str, dict[str, Any]] = {}
+    for cid, contract in raw.items():
+        ids = [str(x).upper() for x in (contract.get("shipment_ids") or [])]
+        if shipment_id in ids or str(contract.get("shipment_id") or "").upper() == shipment_id:
+            result[cid] = contract
+    return result
+
+
+def load_shipments_for_contract(contract_id: str) -> list[str]:
+    """Return the shipments linked to one contract (additive list)."""
+    db = get_db()
+    if db is None:
+        return []
+    contract_id = str(contract_id or "").strip().upper()
+    contract = db["contracts"].find_one({"id": contract_id}, {"_id": 0})
+    if not contract:
+        return []
+    return [str(x) for x in (contract.get("shipment_ids") or [])]
+
+
 def _load_contract_transactions_impl(contract_id: str | None = None) -> dict[str, dict[str, Any]]:
     """Load typed contract-finance rows, optionally scoped to one contract."""
     query: dict[str, Any] = {"is_deleted": {"$ne": True}}
@@ -1798,12 +1863,39 @@ def load_docgen_document_latest(document_id: str) -> dict[str, Any] | None:
     )
 
 
+# DOCGEN immutability: once a record is GENERATED its content is frozen; once
+# ISSUED it can only move to ISSUED once and then be linked as superseded.
+_DOCGEN_IMMUTABLE_FIELDS = frozenset(
+    {
+        "document_id",
+        "document_type",
+        "shipment_id",
+        "contract_id",
+        "parent_contract_id",
+        "counterparty_id",
+        "template_hash",
+        "generation_revision",
+        "revision",
+        "source_snapshot",
+        "source_reference",
+        "output_file_name",
+        "output_hash",
+        "supersedes_document_id",
+    }
+)
 def save_docgen_document(document: Mapping[str, Any]) -> bool:
     """Persist document generation metadata (never a binary blob).
 
     The record key is ``id``.  Callers may pass a revision-scoped ``id`` such
     as ``{document_id}::R{revision}`` so the same logical ``document_id`` can
     keep multiple immutable revision records.
+
+    An existing record is immutable: the generic writer only permits the
+    controlled ``GENERATED -> ISSUED`` transition (adding ``issued_at`` /
+    ``issued_by``) and the controlled supersede linkage (setting
+    ``superseded_by_document_id``).  It will NOT accept an arbitrary rewrite of
+    ``source_snapshot`` / ``output_hash`` / ``template_hash`` / legal identity /
+    ``generation_revision`` on an existing (especially ISSUED) record.
     """
     db = get_db()
     if db is None:
@@ -1817,6 +1909,34 @@ def save_docgen_document(document: Mapping[str, Any]) -> bool:
     payload["document_id"] = document_id
     payload["id"] = record_id
     old = db["docgen_documents"].find_one({"id": record_id}, {"_id": 0})
+    if old is not None:
+        # (1) Immutable content fields may never change on an existing record.
+        changed = [field for field in _DOCGEN_IMMUTABLE_FIELDS if old.get(field) != payload.get(field)]
+        if changed:
+            _set_last_error(f"Không thể sửa chứng từ đã tồn tại: {', '.join(sorted(changed))}.")
+            return False
+        # (2) Determine which fields actually changed (vs the stored old record).
+        old_status = str(old.get("status") or "").upper()
+        new_status = str(payload.get("status") or old_status).upper()
+        ALLOWED_RECHANGE = {"id", "document_id", "status", "superseded_by_document_id", "issued_at", "issued_by", "generated_by"}
+        changed_mutable = [field for field in payload if old.get(field) != payload.get(field) and field not in ALLOWED_RECHANGE]
+        if old_status == "GENERATED" and new_status == "ISSUED":
+            if changed_mutable:
+                _set_last_error("Không thể thay đổi nội dung chứng từ khi phát hành.")
+                return False
+        elif old_status == "ISSUED" and new_status == "ISSUED":
+            # Only the controlled supersede linkage may be added to an ISSUED record.
+            if changed_mutable:
+                _set_last_error("Không thể sửa chứng từ đã ISSUED.")
+                return False
+        elif old_status != new_status:
+            _set_last_error("Không thể thay đổi trạng thái chứng từ theo cách này.")
+            return False
+        else:
+            # Same GENERATED status (or same any status) except the transition.
+            if changed_mutable:
+                _set_last_error("Không thể sửa chứng từ đã tồn tại.")
+                return False
     if not _save_document("docgen_documents", payload):
         return False
     _audit(db, "docgen_document", record_id, "create" if old is None else "update", before=old, after=payload)

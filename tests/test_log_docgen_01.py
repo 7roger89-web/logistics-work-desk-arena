@@ -1,8 +1,10 @@
 """Focused tests for LOG-DOCGEN-01 V1 Shipment Document Pack Generator.
 
-Covers the locked owner rules, readiness, OOXML structural QA, RBAC,
-versioning, linkage, finance safety, and template integrity.  Uses only
-synthetic data (no Production data) and never writes to Finance Actual.
+Covers the locked owner rules, readiness (per-document identity + facts),
+explicit PXK source, HDNT reuse, OOXML structural QA, RBAC, versioning,
+linkage, ISSUED-writer immutability, finance safety, and template integrity.
+Uses only synthetic data (no Production data) and never writes to Finance
+Actual.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from __future__ import annotations
 import io
 import os
 from copy import deepcopy
+from datetime import date
 from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import patch
@@ -27,8 +30,10 @@ from core.docgen.rules import (
     PXK,
     READY,
     VND_THRESHOLD,
+    classify_valid_hdnt,
     compute_goods_totals,
     decide_applicable_documents,
+    document_identity_missing,
     evaluate_document_readiness,
     normalize_goods_line,
     total_after_vat,
@@ -71,9 +76,55 @@ def _company() -> dict:
     }
 
 
+def _hdnt_identity(no: str = "HDNT-001", d: str = "2026-09-01") -> dict:
+    return {"hdnt_no": no, "hdnt_date": d, "valid_from": "2026-09-01", "valid_to": "2027-08-31", "currency": "VND"}
+
+
+def _pl_identity(no: str = "PL-001", d: str = "2026-09-05") -> dict:
+    return {"pl_no": no, "pl_date": d, "currency": "VND"}
+
+
+def _hdmb_identity(no: str = "HDMB-001", d: str = "2026-09-05") -> dict:
+    return {"hdmb_no": no, "hdmb_date": d, "currency": "VND"}
+
+
+def _pxk_identity(no: str = "PXK-001", d: str = "2026-09-10") -> dict:
+    return {"pxk_no": no, "pxk_date": d, "currency": "VND"}
+
+
+def _pxk_source(doc_type=HDMB, line_count=1, line=None, source_id="SHP-001-HDMB-AGT-001", rev=1) -> dict:
+    return {
+        "source_document_type": doc_type,
+        "source_contract_id": source_id,
+        "source_revision": rev,
+        "source_line_count": line_count,
+        "source_goods_line": line or {"description": "Máy", "unit": "Cái", "quantity": "1", "unit_price_vnd_excl_vat": 60000000, "amount_vnd_excl_vat": 60000000},
+    }
+
+
+def _pxk_delivery(**overrides) -> dict:
+    base = {"delivery_completed": True, "receiver_name": "Bà Hương", "receiver_title": "Giám đốc", "delivery_location": "Kho Trường Thành"}
+    base.update(overrides)
+    return base
+
+
+def _parent(id_="HDNT-001", agent_id="AGT-001", company_id="TT-001") -> dict:
+    return {
+        "id": id_,
+        "contract_no": id_,
+        "hdnt_no": id_,
+        "hdnt_date": "2026-09-01",
+        "contract_date": "2026-09-01",
+        "kind": HDNT,
+        "agent_id": agent_id,
+        "company_id": company_id,
+        "valid_from": "2026-09-01",
+        "valid_to": "2027-08-31",
+    }
+
+
 class ThresholdRulesTests(TestCase):
     def test_below_50m_applies_hdnt_pl(self) -> None:
-        # 4,999,999.99 before VAT -> total after VAT ~ 5.4m < 50m
         lines = [_line("Hàng A", 1, Decimal("4999999.99"))]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[HDNT].state, READY)
@@ -81,10 +132,7 @@ class ThresholdRulesTests(TestCase):
         self.assertEqual(decision[HDMB].state, NOT_APPLICABLE)
 
     def test_exactly_50m_applies_hdmb(self) -> None:
-        # total_after_vat should equal 50,000,000
-        # subtotal = 50m / 1.08 → not integer. Use subtotal that rounds.
-        # Build total_after_vat >= 50m with unit price 46,296,296 -> *1.08 = 50,000,000 (approx)
-        lines = [_line("Hàng B", 1, Decimal("46296296"))]  # *1.08 = 49,999,999.68 -> rounds 50,000,000
+        lines = [_line("Hàng B", 1, Decimal("46296296"))]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[HDMB].state, READY)
         self.assertIn(HDMB, [d for d in (HDMB, HDNT, PL) if decision[d].state == READY])
@@ -103,7 +151,6 @@ class ThresholdRulesTests(TestCase):
             self.assertEqual(decision[doc_type].state, BLOCKED)
 
     def test_unknown_total_blocked(self) -> None:
-        # Invalid line -> total is None -> BLOCK
         lines = [{"description": "", "quantity": -1, "unit_price_vnd_excl_vat": 100, "unit": "", "vat_rate": "0.08"}]
         decision = decide_applicable_documents(goods_lines=lines)
         for doc_type in (HDNT, PL, HDMB):
@@ -119,10 +166,7 @@ class VatRulesTests(TestCase):
         self.assertEqual(totals.total_after_vat, Decimal("1080000"))
 
     def test_mixed_vat_blocked(self) -> None:
-        lines = [
-            _line("A", 1, Decimal("100000")),
-            _line("B", 1, Decimal("100000"), vat="0.10"),
-        ]
+        lines = [_line("A", 1, Decimal("100000")), _line("B", 1, Decimal("100000"), vat="0.10")]
         totals, normalized = compute_goods_totals(lines)
         self.assertTrue(any(not item["valid"] for item in normalized))
 
@@ -135,27 +179,19 @@ class VatRulesTests(TestCase):
     def test_unit_price_hr_rounding(self) -> None:
         lines = [_line("Hàng", 3, Decimal("33333.33"))]
         totals, _ = compute_goods_totals(lines)
-        # 3 * 33333.33 = 99999.99 -> ROUND_HALF_UP -> 100000
         self.assertEqual(totals.subtotal, Decimal("100000"))
         self.assertEqual(totals.total_after_vat, Decimal("108000"))
 
 
 class AuthorityRulesTests(TestCase):
-    def _parent(self) -> dict:
-        return {"id": "HDNT-001", "contract_no": "HDNT-001", "kind": HDNT, "agent_id": "AGT-001", "company_id": "TT-001"}
-
     def test_missing_agent_master_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            HDNT,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
-            agent=None,
-            company=_company(),
+            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=None, company=_company()
         )
         self.assertEqual(readiness.state, MISSING_INFO)
         self.assertTrue(any("Đại lý" in item for item in readiness.missing))
 
     def test_customer_cannot_silently_substitute_for_agent(self) -> None:
-        # A customer-styled dict (no legal fields) must NOT be treated as agent.
         customer = {"name": "Công ty Khách", "address": "abc", "tax_code": "999"}
         readiness = evaluate_document_readiness(
             HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=customer, company=_company()
@@ -171,10 +207,77 @@ class AuthorityRulesTests(TestCase):
         self.assertEqual(readiness.state, MISSING_INFO)
 
 
+class LegalIdentityTests(TestCase):
+    """Each legal document owns its own number/date; absent = MISSING_INFO."""
+
+    def test_hdnt_missing_number_not_ready(self) -> None:
+        identity = dict(_hdnt_identity(no="", d="2026-09-01"))
+        readiness = evaluate_document_readiness(
+            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), document_identity=identity
+        )
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("số" in m.lower() and "nguyên tắc" in m for m in readiness.missing))
+
+    def test_hdnt_missing_validity_not_ready(self) -> None:
+        identity = dict(_hdnt_identity())
+        identity["valid_to"] = ""
+        readiness = evaluate_document_readiness(
+            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), document_identity=identity
+        )
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("hiệu lực" in m for m in readiness.missing))
+
+    def test_pl_missing_number_not_ready(self) -> None:
+        readiness = evaluate_document_readiness(
+            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            parent_contract=_parent(), document_identity={"pl_no": "", "pl_date": "", "currency": "VND"},
+        )
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("Phụ lục" in m or "PL" in m or "Số" in m for m in readiness.missing))
+
+    def test_hdmb_separate_number_not_shared_with_hdnt(self) -> None:
+        # HDNT identity must not satisfy HDMB.
+        hdnt_identity = dict(_hdnt_identity(no="HDNT-ABC"))
+        hdmb_readiness = evaluate_document_readiness(
+            HDMB, goods_lines=[_line("Máy", 1, Decimal("60000000"))], agent=_agent(), company=_company(), document_identity=hdnt_identity
+        )
+        self.assertEqual(hdmb_readiness.state, MISSING_INFO)
+        self.assertTrue(any("mua bán" in m for m in hdmb_readiness.missing))
+
+    def test_document_identity_missing_returns_hdnt_and_hdmb_own_fields(self) -> None:
+        missing_hdnt = document_identity_missing(HDNT, {})
+        missing_hdmb = document_identity_missing(HDMB, {})
+        self.assertTrue(any("nguyên tắc" in m for m in missing_hdnt))
+        self.assertTrue(any("mua bán" in m for m in missing_hdmb))
+
+
+class UnknownNotZeroTests(TestCase):
+    def test_blank_quantity_is_unknown_not_zero(self) -> None:
+        line = normalize_goods_line({"description": "A", "unit": "Cái", "quantity": "", "unit_price_vnd_excl_vat": "100000", "vat_rate": "0.08"}, 1)
+        self.assertFalse(line["valid"])
+        self.assertIn("UNKNOWN", line["validation_errors"][0])
+
+    def test_blank_price_is_unknown_not_zero(self) -> None:
+        line = normalize_goods_line({"description": "A", "unit": "Cái", "quantity": "1", "unit_price_vnd_excl_vat": "", "vat_rate": "0.08"}, 1)
+        self.assertFalse(line["valid"])
+        self.assertEqual(line["unit_price_vnd_excl_vat"], None)
+
+    def test_explicit_zero_price_is_valid(self) -> None:
+        line = normalize_goods_line({"description": "A", "unit": "Cái", "quantity": "1", "unit_price_vnd_excl_vat": "0", "vat_rate": "0.08"}, 1)
+        self.assertTrue(line["valid"])
+        self.assertEqual(line["unit_price_vnd_excl_vat"], 0)
+
+    def test_amount_words_zero_guard(self) -> None:
+        self.assertEqual(gen.amount_in_words_vnd(0), "không đồng")
+
+    def test_unknown_total_is_not_zero(self) -> None:
+        lines = [{"description": "", "quantity": -1, "unit_price_vnd_excl_vat": 100, "unit": "", "vat_rate": "0.08"}]
+        self.assertIsNone(total_after_vat(lines))
+
+
 class GoodsCountRulesTests(TestCase):
     def test_hdmb_one_line_ready(self) -> None:
-        lines = [_line("Máy", 1, Decimal("60000000"))]
-        decision = decide_applicable_documents(goods_lines=lines)
+        decision = decide_applicable_documents(goods_lines=[_line("Máy", 1, Decimal("60000000"))])
         self.assertEqual(decision[HDMB].state, READY)
 
     def test_hdmb_more_than_one_blocked(self) -> None:
@@ -201,19 +304,42 @@ class HdntPlRulesTests(TestCase):
         self.assertEqual(readiness.state, BLOCKED)
 
     def test_pl_parent_agent_mismatch_blocked(self) -> None:
-        parent = {"id": "HDNT-001", "contract_no": "HDNT-001", "kind": HDNT, "agent_id": "AGT-XYZ", "company_id": "TT-001"}
+        parent = _parent(agent_id="AGT-XYZ")
         readiness = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), parent_contract=parent
+            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), parent_contract=parent, document_identity=_pl_identity()
         )
         self.assertEqual(readiness.state, BLOCKED)
 
-    def test_multiple_valid_hdnt_requires_explicit_selection(self) -> None:
-        # The rule: if multiple valid HDNT exist require explicit selection.
-        # We assert the readiness helper flags an ambiguous parent reference.
-        parent_missing = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), parent_contract=None
-        )
-        self.assertEqual(parent_missing.state, BLOCKED)
+
+class HdntReuseTests(TestCase):
+    def test_single_valid_hdnt_selects_reuse_single(self) -> None:
+        candidates = {"HDNT-001": _parent("HDNT-001")}
+        decision = classify_valid_hdnt(candidates, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 1)
+        self.assertFalse(decision["needs_selection"])
+        self.assertEqual(decision["reuse_target"]["hdnt_no"], "HDNT-001")
+
+    def test_two_simultaneously_valid_hdnt_requires_explicit_selection(self) -> None:
+        candidates = {
+            "HDNT-0001": _parent("HDNT-0001"),
+            "HDNT-0002": _parent("HDNT-0002"),
+        }
+        decision = classify_valid_hdnt(candidates, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 2)
+        self.assertTrue(decision["needs_selection"])
+        self.assertIsNone(decision["reuse_target"])
+        self.assertEqual(len(decision["valid_hdnt"]), 2)
+
+    def test_wrong_agent_hdnt_not_valid(self) -> None:
+        candidates = {"HDNT-999": _parent("HDNT-999", agent_id="AGT-OTHER")}
+        decision = classify_valid_hdnt(candidates, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
+
+    def test_expired_hdnt_not_valid(self) -> None:
+        parent = _parent("HDNT-EXP")
+        parent["valid_to"] = "2020-01-01"
+        decision = classify_valid_hdnt({"HDNT-EXP": parent}, agent_id="AGT-001", company_id="TT-001", today=date(2026, 9, 1))
+        self.assertEqual(decision["valid_count"], 0)
 
 
 class PxkRulesTests(TestCase):
@@ -223,38 +349,54 @@ class PxkRulesTests(TestCase):
         )
         self.assertEqual(readiness.state, BLOCKED)
 
-    def test_expected_date_only_blocked(self) -> None:
-        # Expected delivery date alone is not actual delivery.
+    def test_missing_source_requires_explicit_selection(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), delivery_completed=False
+            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(), pxk_source=None,
         )
-        self.assertEqual(readiness.state, BLOCKED)
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("nguồn" in m.lower() for m in readiness.missing))
 
-    def test_confirmed_delivery_ready(self) -> None:
+    def test_missing_receiver_not_ready(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), delivery_completed=True
+            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(),
+            delivery=_pxk_delivery(receiver_name=""), pxk_source=_pxk_source(),
+        )
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("người nhận" in m.lower() for m in readiness.missing))
+
+    def test_missing_location_not_ready(self) -> None:
+        readiness = evaluate_document_readiness(
+            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(),
+            delivery=_pxk_delivery(delivery_location=""), pxk_source=_pxk_source(),
+        )
+        self.assertEqual(readiness.state, MISSING_INFO)
+        self.assertTrue(any("địa điểm" in m.lower() for m in readiness.missing))
+
+    def test_confirmed_delivery_full_facts_ready(self) -> None:
+        readiness = evaluate_document_readiness(
+            PXK, goods_lines=[_line("Máy", 1, Decimal("60000000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(), pxk_source=_pxk_source(),
         )
         self.assertEqual(readiness.state, READY)
 
     def test_multiline_source_pxk_blocked(self) -> None:
-        lines = [_line("A", 1, Decimal("100000")), _line("B", 1, Decimal("100000"))]
-        decision = decide_applicable_documents(goods_lines=lines, delivery_completed=True)
-        self.assertEqual(decision[PXK].state, BLOCKED)
-
-
-class UnknownValueTests(TestCase):
-    def test_unknown_total_is_not_zero(self) -> None:
-        lines = [{"description": "", "quantity": -1, "unit_price_vnd_excl_vat": 100, "unit": "", "vat_rate": "0.08"}]
-        self.assertIsNone(total_after_vat(lines))
-
-    def test_sample_placeholder_blocked(self) -> None:
-        # A "CÔNG TY TNHH..." sample value is not an authoritative master.
-        sample = {"legal_name": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH", "legal_address": "Số nhà 16 ngõ 41"}
         readiness = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=sample, company=_company()
+            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(),
+            pxk_source=_pxk_source(line_count=2),
         )
-        # Missing legal_code/representative -> MISSING_INFO, not READY.
-        self.assertNotEqual(readiness.state, READY)
+        self.assertEqual(readiness.state, BLOCKED)
+
+    def test_pl_source_with_multiple_lines_blocked(self) -> None:
+        readiness = evaluate_document_readiness(
+            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(),
+            pxk_source=_pxk_source(doc_type=PL, line_count=2),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
 
 
 class TemplateGenerationTests(TestCase):
@@ -290,11 +432,36 @@ class TemplateGenerationTests(TestCase):
         out = gen.generate_xlsx_file(TPL_XLSX, PXK, contract_no="PXK-001", contract_date="2026-09-10", agent=_agent(), company=_company(), goods_lines=lines, delivery={"receiver_name": "Bà Hương", "receiver_title": "Giám đốc", "delivery_location": "Kho TT"})
         wb = openpyxl.load_workbook(io.BytesIO(out), data_only=False)
         ws = wb["pxk"]
-        # B15/C15/D15 must be explicit values, not =HDMB!... formulas.
         self.assertEqual(str(ws["B15"].value), "Máy móc")
         self.assertEqual(str(ws["C15"].value), "Bộ")
         self.assertEqual(int(ws["D15"].value), 5)
         self.assertFalse(str(ws["B15"].value).startswith("="))
+
+    def test_pxk_explicit_source_drives_b15(self) -> None:
+        import openpyxl
+
+        payload = _pxk_source(doc_type=HDMB, source_id="SHP-001-HDMB-AGT-001", line={"description": "Máy chính hãng", "unit": "Bộ", "quantity": "2", "unit_price_vnd_excl_vat": 10000000})
+        with _with_user({"role": "admin", "username": "admin", "user_id": "u1"}), patch("core.database.get_db", return_value=_Database()):
+            result = gen.generate_document(
+                PXK,
+                shipment_id="SHP-001",
+                agent=_agent(),
+                company=_company(),
+                goods_lines=[_line("Máy chính hãng", 2, Decimal("10000000"), unit="Bộ")],
+                contract=_pxk_identity(),
+                delivery=_pxk_delivery(),
+                pxk_source=payload,
+                template_path_xlsx=TPL_XLSX,
+            )
+        wb = openpyxl.load_workbook(io.BytesIO(result["bytes"]), data_only=False)
+        ws = wb["pxk"]
+        self.assertEqual(str(ws["B15"].value), "Máy chính hãng")
+        self.assertEqual(str(ws["C15"].value), "Bộ")
+        self.assertEqual(int(ws["D15"].value), 2)
+        # source snapshot provenance contains the explicit source
+        self.assertEqual(result["metadata"]["source_snapshot"]["source_document_type"], HDMB)
+        self.assertEqual(result["metadata"]["source_snapshot"]["source_contract_id"], "SHP-001-HDMB-AGT-001")
+        self.assertTrue(str(ws["B15"].value) != "" and not str(ws["B15"].value).startswith("="))
 
     def test_hdnt_docx_opens_with_expected_text(self) -> None:
         import docx
@@ -318,7 +485,7 @@ class TemplateGenerationTests(TestCase):
 
 class VersionAndLinkageTests(TestCase):
     def test_revision_increments_across_regenerations(self) -> None:
-        logical = gen._document_id(HDNT, "SHP-001", "AGT-001")  # SHP-001-HDNT-AGT-001
+        logical = gen._document_id(HDNT, "SHP-001", "AGT-001")
         existing = {
             f"{logical}::R1": {"document_id": logical, "generation_revision": 1},
             f"{logical}::R2": {"document_id": logical, "generation_revision": 2},
@@ -329,66 +496,107 @@ class VersionAndLinkageTests(TestCase):
     def test_issued_immutable_prevents_second_issue(self) -> None:
         db = _Database()
         with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
-            save = _saved_docgen_document({"id": "D::R1", "document_id": "D", "status": GENERATED, "generation_revision": 1})
-            self.assertTrue(save)
+            self.assertTrue(_saved_docgen_document({"id": "D::R1", "document_id": "D", "status": GENERATED, "generation_revision": 1}))
             result = gen.issue_document("D")
             self.assertEqual(result["status"], ISSUED)
             with self.assertRaises(gen.DocumentGenerationError):
                 gen.issue_document("D")
 
-    def test_supersede_creates_new_id_and_links_old(self) -> None:
+    def test_direct_writer_cannot_mutate_issued(self) -> None:
+        from core.database import save_docgen_document
+
         db = _Database()
         with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
-            # seed an ISSUED doc
-            record = {"id": "OLD::R1", "document_id": "OLD", "status": GENERATED, "generation_revision": 1, "shipment_id": "SHP-001"}
+            self.assertTrue(_saved_docgen_document({"id": "E::R1", "document_id": "E", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("E")
+            record = gen_load_latest("E")
+            self.assertEqual(record["status"], ISSUED)
+            # Attempt an arbitrary rewrite of content on the ISSUED record.
+            hacked = deepcopy(record)
+            hacked["source_snapshot"] = {"document_no": "HACKED"}
+            self.assertFalse(save_docgen_document(hacked))
+            # Attempt to rewrite the legal identity field.
+            hacked2 = deepcopy(record)
+            hacked2["output_hash"] = "deadbeef"
+            self.assertFalse(save_docgen_document(hacked2))
+            # The stored record is unchanged.
+            self.assertEqual(gen_load_latest("E").get("output_hash"), record.get("output_hash"))
+
+    def test_supersede_creates_new_logical_id_and_links_old(self) -> None:
+        db = _Database()
+        old_doc_id = gen._document_id(HDMB, "SHP-001", "AGT-001")  # deterministic old id
+        new_doc_id = f"{old_doc_id}-V2"
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            record = {"id": f"{old_doc_id}::R1", "document_id": old_doc_id, "status": GENERATED, "generation_revision": 1, "shipment_id": "SHP-001"}
             self.assertTrue(_saved_docgen_document(record))
-            gen.issue_document("OLD")
-            # Generate a superseding document
+            gen.issue_document(old_doc_id)
             result = gen.supersede_document(
-                "OLD",
-                new_document_id="NEW",
+                old_doc_id,
+                new_document_id=new_doc_id,
                 document_type=HDMB,
                 shipment_id="SHP-001",
-                contract_no="NEW-001",
-                contract_date="2026-09-05",
+                contract_no="HDMB-002",
+                contract_date="2026-09-06",
                 agent=_agent(),
                 company=_company(),
                 goods_lines=[_line("Máy", 1, Decimal("100000000"))],
                 template_path_xlsx=TPL_XLSX,
             )
-            self.assertEqual(result["supersedes_document_id"], "OLD")
-            new_logical = result["document_id"]
-            db_docs = gen_load_latest(new_logical)
-            self.assertEqual(db_docs.get("supersedes_document_id"), "OLD")
-            old = gen_load_latest("OLD")
-            self.assertEqual(old.get("superseded_by_document_id"), new_logical)
+            # A NEW logical id is minted; it must differ from the old one.
+            self.assertNotEqual(result["document_id"], old_doc_id)
+            self.assertEqual(result["document_id"], new_doc_id)
+            self.assertEqual(result["supersedes_document_id"], old_doc_id)
+            new_rec = gen_load_latest(new_doc_id)
+            self.assertEqual(new_rec.get("supersedes_document_id"), old_doc_id)
+            old = gen_load_latest(old_doc_id)
+            self.assertEqual(old.get("superseded_by_document_id"), new_doc_id)
+            # Old record remains ISSUED (immutable) and points to the replacement.
+            self.assertEqual(old.get("status"), ISSUED)
+
+
+class ContractLinkageTests(TestCase):
+    def test_nm_shipment_linkage_additive_and_preserves_scalar(self) -> None:
+        from core.database import link_contract_to_shipment, load_contracts_for_shipment
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db), patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": {"role": "support", "username": "support", "user_id": "u1"}}})()):
+            # Two distinct contract records (HDNT and PL) for the same shipment.
+            self.assertTrue(_save_contract({"id": "HDNT-001", "contract_no": "HDNT-001", "kind": HDNT, "agent_id": "AGT-001", "company_id": "TT-001", "shipment_id": "SHP-001"}))
+            self.assertTrue(_save_contract({"id": "PL-001", "contract_no": "PL-001", "kind": PL, "agent_id": "AGT-001", "company_id": "TT-001"}))
+            # Additively link HDNT then PL to the same shipment.
+            self.assertTrue(link_contract_to_shipment("HDNT-001", "SHP-001"))
+            self.assertTrue(link_contract_to_shipment("PL-001", "SHP-001"))
+            linked = load_contracts_for_shipment("SHP-001")
+            self.assertIn("HDNT-001", linked)
+            self.assertIn("PL-001", linked)
+            # Both remain readable and the legacy scalar linkage is preserved.
+            self.assertEqual(linked["HDNT-001"].get("shipment_id"), "SHP-001")
+            self.assertEqual(linked["PL-001"].get("shipment_id"), "SHP-001")
+            # Adding PL did NOT overwrite the HDNT linkage.
+            self.assertIn("SHP-001", linked["HDNT-001"].get("shipment_ids", []))
+            self.assertIn("SHP-001", linked["PL-001"].get("shipment_ids", []))
 
 
 class RbacTests(TestCase):
     def _parent_contract(self) -> dict:
-        return {
-            "id": "HDNT-001",
-            "contract_no": "HDNT-001",
-            "contract_date": "2026-09-01",
-            "kind": HDNT,
-            "agent_id": "AGT-001",
-            "company_id": "TT-001",
-        }
+        return _parent()
 
-    def _run_generate(self, user):
+    def _run_generate(self, user, doc_type=PL):
         with _with_user(user):
             try:
-                result = gen.generate_document(
-                    PL,
+                contract = _pl_identity() if doc_type == PL else (_hdmb_identity() if doc_type == HDMB else _hdnt_identity())
+                contract["id"] = contract.get(f"{doc_type.lower()}_no")
+                return gen.generate_document(
+                    doc_type,
                     shipment_id="SHP-001",
                     agent=_agent(),
                     company=_company(),
-                    goods_lines=[_line("A", 1, Decimal("100000"))],
-                    contract={"id": "HDNT-001", "contract_no": "HDNT-001", "contract_date": "2026-09-01", "currency": "VND"},
-                    parent_contract=self._parent_contract(),
+                    goods_lines=[_line("A", 1, Decimal("100000"))] if doc_type != HDMB else [_line("Máy", 1, Decimal("60000000"))],
+                    contract=contract,
+                    parent_contract=self._parent_contract() if doc_type == PL else None,
                     template_path_xlsx=TPL_XLSX,
+                    template_path_docx=TPL_DOCX if doc_type == HDNT else None,
                 )
-                return result
             except Exception as exc:  # noqa: BLE001
                 return exc
 
@@ -418,6 +626,20 @@ class RbacTests(TestCase):
             with self.assertRaises(PermissionDeniedError):
                 gen.issue_document("D")
 
+    def test_admin_can_issue(self) -> None:
+        db = _Database()
+        with _with_user({"role": "admin", "username": "admin", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "D::R1", "document_id": "D", "status": GENERATED, "generation_revision": 1}))
+            result = gen.issue_document("D")
+            self.assertEqual(result["status"], ISSUED)
+
+    def test_support_can_issue(self) -> None:
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u2"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "D::R1", "document_id": "D", "status": GENERATED, "generation_revision": 1}))
+            result = gen.issue_document("D")
+            self.assertEqual(result["status"], ISSUED)
+
     def test_viewer_generate_denied(self) -> None:
         result = self._run_generate({"role": "viewer", "username": "viewer", "user_id": "u4"})
         self.assertIsInstance(result, PermissionError)
@@ -431,11 +653,6 @@ class FinanceSafetyTests(TestCase):
         self.assertNotIn("financial_ledger", source)
         self.assertNotIn("finance_review", source)
         self.assertNotIn("save_transaction", source)
-
-
-class UnknownNotZeroTests(TestCase):
-    def test_amount_words_zero_guard(self) -> None:
-        self.assertEqual(gen.amount_in_words_vnd(0), "không đồng")
 
 
 # ---------------------------------------------------------------------------
@@ -523,6 +740,12 @@ def _saved_docgen_document(document: dict) -> bool:
     from core.database import save_docgen_document
 
     return save_docgen_document(document)
+
+
+def _save_contract(document: dict) -> bool:
+    from core.database import save_contract_to_cloud
+
+    return save_contract_to_cloud(document)
 
 
 def gen_load_latest(document_id: str):

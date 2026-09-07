@@ -432,8 +432,17 @@ def generate_document(
     template_path_xlsx: str | None = None,
     template_path_docx: str | None = None,
     existing_documents: Mapping[str, Mapping[str, Any]] | None = None,
+    pxk_source: Mapping[str, Any] | None = None,
+    document_id_override: str | None = None,
 ) -> dict[str, Any]:
-    """Generate one document file + metadata.  Does not write Finance."""
+    """Generate one document file + metadata.  Does not write Finance.
+
+    Each legal document owns its own identity (``hdnt_no`` / ``pl_no`` /
+    ``hdmb_no`` / ``pxk_no``).  PXK must be driven by an explicitly selected
+    source contract/document (HDMB or PL), never by the generic goods editor.
+    ``document_id_override`` is used by supersede to mint a NEW logical id
+    (never silently reusing the superseded one).
+    """
     from core.auth import can_generate_documents, current_actor_context
 
     if not can_generate_documents():
@@ -447,13 +456,23 @@ def generate_document(
         parent_contract=parent_contract,
         selected_contract=contract,
         delivery_completed=bool((delivery or {}).get("delivery_completed")),
+        document_identity=contract,
+        pxk_source=pxk_source,
+        delivery=delivery,
     )
     if readiness.state != READY:
         raise DocumentGenerationError(readiness)
 
-    contract_no = _nonempty(contract.get("contract_no") or contract.get("id"))
-    contract_date = _nonempty(contract.get("contract_date") or contract.get("date"))
+    contract_no = rules_mod.doc_no(document_type, contract) or _nonempty(contract.get("contract_no") or contract.get("id"))
+    contract_date = rules_mod.doc_date(document_type, contract) or _nonempty(contract.get("contract_date") or contract.get("date"))
     counterparty_id = _nonempty(agent.get("agent_id") or agent.get("id"))
+
+    # PXK: the source snapshot (not the goods editor) is authoritative for the
+    # goods line(s) written into the template.
+    if document_type == PXK and pxk_source:
+        source_line = (pxk_source or {}).get("source_goods_line")
+        if source_line:
+            goods_lines = [dict(source_line)]
 
     if document_type == HDNT:
         if template_path_docx is None:
@@ -486,10 +505,23 @@ def generate_document(
         output_name = f"{document_type}_{contract_no}.xlsx"
         template_hash = _sha256(_read_file(template_path_xlsx))
 
-    document_id = _document_id(document_type, shipment_id, counterparty_id)
+    document_id = document_id_override or _document_id(document_type, shipment_id, counterparty_id)
     revision = _next_revision(document_type, shipment_id, counterparty_id, existing_documents or {})
     output_hash = _sha256(output)
     actor = current_actor_context()
+    source_snapshot = _build_source_snapshot(
+        document_type,
+        contract=contract,
+        document_no=contract_no,
+        document_date=contract_date,
+        agent=agent,
+        company=company,
+        goods_lines=goods_lines,
+        parent_contract=parent_contract,
+        delivery=delivery,
+        pxk_source=pxk_source,
+        counterparty_id=counterparty_id,
+    )
     metadata = build_metadata(
         document_id,
         document_type=document_type,
@@ -502,15 +534,8 @@ def generate_document(
         status=GENERATED,
         output_file_name=output_name,
         output_hash=output_hash,
-        source_reference=f"contract:{contract_no}",
-        source_snapshot={
-            "document_type": document_type,
-            "contract_no": contract_no,
-            "contract_date": contract_date,
-            "goods_lines": goods_lines,
-            "agent_id": counterparty_id,
-            "company_id": _nonempty(company.get("company_id") or company.get("id")),
-        },
+        source_reference=f"{document_type}:{contract_no}",
+        source_snapshot=source_snapshot,
     )
     metadata["generated_by"] = actor["username"]
 
@@ -524,6 +549,54 @@ def generate_document(
         "bytes": output,
         "metadata": metadata,
     }
+
+
+def _build_source_snapshot(
+    document_type: str,
+    *,
+    contract: Mapping[str, Any],
+    document_no: str,
+    document_date: str,
+    agent: Mapping[str, Any],
+    company: Mapping[str, Any],
+    goods_lines: list[Mapping[str, Any]],
+    parent_contract: Mapping[str, Any] | None,
+    delivery: Mapping[str, Any] | None,
+    pxk_source: Mapping[str, Any] | None,
+    counterparty_id: str,
+) -> dict[str, Any]:
+    """Build the provenance snapshot of the ACTUAL facts used to generate."""
+    snapshot: dict[str, Any] = {
+        "document_type": document_type,
+        "document_no": document_no,
+        "document_date": document_date,
+        "agent_id": counterparty_id,
+        "company_id": _nonempty(company.get("company_id") or company.get("id")),
+        "goods_lines": [dict(g) for g in (goods_lines or [])],
+    }
+    snapshot[f"{document_type.lower()}_no"] = document_no
+    snapshot[f"{document_type.lower()}_date"] = document_date
+
+    if document_type == HDNT:
+        snapshot["valid_from"] = _nonempty(contract.get("valid_from"))
+        snapshot["valid_to"] = _nonempty(contract.get("valid_to"))
+    if document_type == PL:
+        parent_no = _nonempty((parent_contract or {}).get("hdnt_no") or (parent_contract or {}).get("contract_no") or (parent_contract or {}).get("id"))
+        snapshot["parent_hdnt_id"] = _nonempty((parent_contract or {}).get("id") or parent_no)
+        snapshot["parent_hdnt_no"] = parent_no
+        snapshot["parent_hdnt_date"] = _nonempty((parent_contract or {}).get("hdnt_date") or (parent_contract or {}).get("contract_date"))
+        snapshot["parent_hdnt_revision"] = (parent_contract or {}).get("generation_revision") or (parent_contract or {}).get("revision")
+    if document_type == PXK:
+        snapshot["delivery_completed"] = bool((delivery or {}).get("delivery_completed"))
+        snapshot["receiver_name"] = _nonempty((delivery or {}).get("receiver_name"))
+        snapshot["receiver_title"] = _nonempty((delivery or {}).get("receiver_title"))
+        snapshot["delivery_location"] = _nonempty((delivery or {}).get("delivery_location"))
+        pxk_src = pxk_source or {}
+        snapshot["source_document_type"] = str(pxk_src.get("source_document_type") or "").upper()
+        snapshot["source_contract_id"] = _nonempty(pxk_src.get("source_contract_id") or pxk_src.get("source_document_id"))
+        snapshot["source_revision"] = (pxk_src or {}).get("source_revision")
+        snapshot["source_goods_snapshot"] = dict(pxk_src.get("source_goods_line") or {})
+    return snapshot
 
 
 def _blocked(message: str) -> Readiness:
@@ -550,6 +623,9 @@ def build_document_pack(
     company: Mapping[str, Any] | None = None,
     parent_contract: Mapping[str, Any] | None = None,
     contract: Mapping[str, Any] | None = None,
+    pxk_source: Mapping[str, Any] | None = None,
+    delivery: Mapping[str, Any] | None = None,
+    contracts: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the viewer-friendly applicability + readiness summary."""
     totals, _ = rules_mod.compute_goods_totals(goods_lines)
@@ -558,6 +634,7 @@ def build_document_pack(
             goods_lines=goods_lines,
             currency=currency,
             delivery_completed=delivery_completed,
+            pxk_source=pxk_source,
         )
     except Exception:  # noqa: BLE001 - never let summary rendering break the page
         applicability = {}
@@ -572,10 +649,52 @@ def build_document_pack(
             parent_contract=parent_contract,
             selected_contract=contract,
             delivery_completed=delivery_completed,
+            document_identity=contract,
+            pxk_source=pxk_source,
+            delivery=delivery,
         )
         cards.append(_card_view(doc_type, readiness))
-    cards.append(_card_view(PXK, applicability.get(PXK) or rules_mod._blocked("", document_type=PXK)))
+    pxk_readiness = rules_mod.evaluate_document_readiness(
+        PXK,
+        goods_lines=goods_lines,
+        agent=agent,
+        company=company,
+        selected_contract=contract,
+        delivery_completed=delivery_completed,
+        document_identity=contract,
+        pxk_source=pxk_source,
+        delivery=delivery,
+    )
+    cards.append(_card_view(PXK, pxk_readiness))
     cards.append({"document_type": DEBIT_USD, "state": "DEFERRED", "reason": "Chưa triển khai", "applicable": False})
+
+    # HDNT reuse rule: a valid existing HDNT for the selected Agent is REUSED /
+    # LINKED, never auto-regenerated.  Multiple valid HDNT require selection.
+    hdnt_reuse: dict[str, Any] = {}
+    if agent:
+        candidates = contracts or {}
+        decision = rules_mod.classify_valid_hdnt(
+            candidates,
+            agent_id=_nonempty(agent.get("agent_id") or agent.get("id")),
+            company_id=_nonempty(company.get("company_id") or company.get("id")) if company else "",
+        )
+        if decision["valid_count"] >= 1:
+            hdnt_reuse = {
+                "valid_count": decision["valid_count"],
+                "needs_selection": decision["needs_selection"],
+                "reuse_target": decision["reuse_target"],
+            }
+            for card in cards:
+                if card["document_type"] == HDNT:
+                    if decision["needs_selection"]:
+                        card["state"] = rules_mod.MISSING_INFO
+                        card["missing"] = ["Cần chọn HDNT hiện có để tái sử dụng."]
+                        card["reason"] = "Có nhiều HDNT hợp lệ — cần chọn một HDNT để tái sử dụng."
+                    else:
+                        card["state"] = rules_mod.READY
+                        card["reason"] = "Tái sử dụng HDNT hiện có (không tạo HDNT mới)."
+                        card["source_ref"] = _nonempty(decision["reuse_target"].get("id") or decision["reuse_target"].get("hdnt_no") or decision["reuse_target"].get("contract_no"))
+                    break
 
     return {
         "shipment_id": shipment_id,
@@ -584,6 +703,7 @@ def build_document_pack(
         "threshold_vnd": int(rules_mod.VND_THRESHOLD),
         "applicable_documents": [c["document_type"] for c in cards if c["applicable"] and c["state"] in (rules_mod.READY, rules_mod.MISSING_INFO)],
         "cards": cards,
+        "hdnt_reuse": hdnt_reuse,
     }
 
 
@@ -597,6 +717,23 @@ def _card_view(document_type: str, readiness: Readiness) -> dict[str, Any]:
         "goods_count": readiness.goods_count,
         "applicable": readiness.applicable,
     }
+
+
+def reuse_decision_for_agent(
+    contracts: Mapping[str, Any] | None,
+    *,
+    agent: Mapping[str, Any],
+    company: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the HDNT reuse/selection decision for the selected Agent."""
+    if not agent:
+        return {"valid_count": 0, "needs_selection": False, "reuse_target": None, "valid_hdnt": []}
+    candidates = {k: c for k, c in (contracts or {}).items() if str(c.get("kind") or c.get("type") or "").upper() == HDNT}
+    return rules_mod.classify_valid_hdnt(
+        candidates,
+        agent_id=_nonempty(agent.get("agent_id") or agent.get("id")),
+        company_id=_nonempty(company.get("company_id") or company.get("id")) if company else "",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -660,24 +797,43 @@ def supersede_document(
     if old.get("status") != ISSUED:
         raise DocumentGenerationError(_blocked("Chỉ thay thế chứng từ đã ISSUED."))
 
+    # The new document gets its OWN logical id (new_document_id) and its OWN
+    # legal number/date — it must differ from the superseded document.
+    contract = {
+        "id": new_document_id,
+        "contract_no": contract_no,
+        "contract_date": contract_date,
+        "currency": rules_mod.VND_CURRENCY,
+    }
+    # Map the per-document legal identity field to the provided new number/date.
+    identity_key_no = {"HDNT": "hdnt_no", "PL": "pl_no", "HDMB": "hdmb_no", "PXK": "pxk_no"}.get(document_type)
+    identity_key_date = {"HDNT": "hdnt_date", "PL": "pl_date", "HDMB": "hdmb_date", "PXK": "pxk_date"}.get(document_type)
+    if identity_key_no:
+        contract[identity_key_no] = contract_no
+    if identity_key_date:
+        contract[identity_key_date] = contract_date
+
     result = generate_document(
         document_type,
         shipment_id=shipment_id,
         agent=agent,
         company=company,
         goods_lines=goods_lines,
-        contract={"id": contract_no, "contract_no": contract_no, "contract_date": contract_date, "currency": rules_mod.VND_CURRENCY},
+        contract=contract,
         parent_contract=None,
         delivery=None,
         template_path_xlsx=template_path_xlsx,
         template_path_docx=template_path_docx,
         existing_documents={},
+        document_id_override=new_document_id,
     )
     metadata = result["metadata"]
     metadata["supersedes_document_id"] = old_document_id
     if not save_docgen_document(metadata):
         raise DocumentGenerationError(_blocked("Không lưu được chứng từ thay thế."))
 
+    # Controlled supersede linkage on the still-ISSUED old record (the database
+    # guard permits this -- and only this -- mutation on an ISSUED record).
     old["superseded_by_document_id"] = metadata["document_id"]
     if not save_docgen_document(old):
         raise DocumentGenerationError(_blocked("Không cập nhật được chứng từ cũ."))
