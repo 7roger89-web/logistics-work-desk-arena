@@ -788,7 +788,7 @@ def supersede_document(
 ) -> dict[str, Any]:
     """Create a new document id that supersedes an ISSUED one. No silent overwrite."""
     from core.auth import assert_can_issue_documents
-    from core.database import load_docgen_document_latest, save_docgen_document
+    from core.database import link_superseded_docgen_document, load_docgen_document_latest, save_docgen_document
 
     assert_can_issue_documents()
     old = load_docgen_document_latest(old_document_id)
@@ -832,10 +832,9 @@ def supersede_document(
     if not save_docgen_document(metadata):
         raise DocumentGenerationError(_blocked("Không lưu được chứng từ thay thế."))
 
-    # Controlled supersede linkage on the still-ISSUED old record (the database
-    # guard permits this -- and only this -- mutation on an ISSUED record).
-    old["superseded_by_document_id"] = metadata["document_id"]
-    if not save_docgen_document(old):
+    # Use the controlled helper for supersede linkage on the ISSUED old record.
+    # The generic save_docgen_document no longer permits any modification to ISSUED records.
+    if not link_superseded_docgen_document(old_document_id, metadata["document_id"]):
         raise DocumentGenerationError(_blocked("Không cập nhật được chứng từ cũ."))
     result["supersedes_document_id"] = old_document_id
     return result

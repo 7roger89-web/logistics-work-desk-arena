@@ -1912,7 +1912,7 @@ _DOCGEN_IMMUTABLE_FIELDS = frozenset(
 )
 # After ISSUED, ONLY superseded_by_document_id may be set.  All other metadata
 # (including issued_at, issued_by, generated_by) is fully frozen.
-_DOCGEN_ISSUED_ALLOWED_CHANGES = frozenset({"superseded_by_document_id"})
+_DOCGEN_ISSUED_ALLOWED_CHANGES = frozenset()  # Fully frozen; no field may change after ISSUED via generic writer
 def save_docgen_document(document: Mapping[str, Any]) -> bool:
     """Persist document generation metadata (never a binary blob).
 
@@ -1976,4 +1976,88 @@ def save_docgen_document(document: Mapping[str, Any]) -> bool:
     if not _save_document("docgen_documents", payload):
         return False
     _audit(db, "docgen_document", record_id, "create" if old is None else "update", before=old, after=payload)
+    return True
+
+
+def link_superseded_docgen_document(old_document_id: str, new_document_id: str) -> bool:
+    """Link an ISSUED document as superseded by a new document.
+    
+    This is the ONLY controlled operation that may modify an ISSUED record.
+    Requires operations_write permission. The old document must exist and be
+    ISSUED. The new_document_id must be non-empty. If superseded_by_document_id
+    is already set to the same value, this is idempotent. If it's already set
+    to a different value, this is rejected.
+    
+    Returns True on success, False on failure (with error set via _set_last_error).
+    """
+    db = get_db()
+    if db is None:
+        _set_last_error("Không có kết nối cơ sở dữ liệu.")
+        return False
+    
+    old_document_id = str(old_document_id or "").strip()
+    new_document_id = str(new_document_id or "").strip()
+    
+    if not old_document_id:
+        _set_last_error("Thiếu old_document_id.")
+        return False
+    if not new_document_id:
+        _set_last_error("Thiếu new_document_id.")
+        return False
+    
+    # Check permission
+    from core.auth import can_issue_documents
+    if not can_issue_documents():
+        _set_last_error("Không có quyền operations_write để liên kết chứng từ thay thế.")
+        return False
+    
+    # Load old document (resolve logical document_id to latest revision)
+    old = load_docgen_document_latest(old_document_id)
+    if old is None:
+        _set_last_error(f"Không tìm thấy chứng từ cũ {old_document_id}.")
+        return False
+    
+    # Must be ISSUED
+    if str(old.get("status") or "").upper() != "ISSUED":
+        _set_last_error("Chỉ có thể liên kết thay thế cho chứng từ đã ISSUED.")
+        return False
+    
+    # Get the actual record ID (with revision suffix)
+    old_record_id = old.get("id")
+    if not old_record_id:
+        _set_last_error(f"Chứng từ cũ {old_document_id} không có ID hợp lệ.")
+        return False
+    
+    # Check current superseded_by_document_id
+    current_superseded = str(old.get("superseded_by_document_id") or "").strip()
+    
+    if current_superseded == new_document_id:
+        # Idempotent: already pointing to the same document
+        return True
+    
+    if current_superseded and current_superseded != new_document_id:
+        # Already superseded by a different document
+        _set_last_error(f"Chứng từ {old_document_id} đã được thay thế bởi {current_superseded}.")
+        return False
+    
+    # Perform the narrow update using $set
+    result = db["docgen_documents"].update_one(
+        {"id": old_record_id},
+        {"$set": {"superseded_by_document_id": new_document_id}},
+    )
+    
+    if result.matched_count == 0:
+        _set_last_error("Không tìm thấy chứng từ cũ để cập nhật.")
+        return False
+    
+    # Audit the linkage
+    _audit(
+        db,
+        "docgen_document",
+        old_record_id,
+        "supersede_link",
+        before={"superseded_by_document_id": ""},
+        after={"superseded_by_document_id": new_document_id},
+    )
+    
     return True

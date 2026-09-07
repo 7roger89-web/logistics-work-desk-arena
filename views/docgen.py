@@ -56,6 +56,7 @@ from core.docgen.rules import (
     PXK,
     READY,
     VND_THRESHOLD,
+    classify_valid_hdnt,
 )
 
 _STATE_ICON = {
@@ -321,10 +322,22 @@ def ui_document_pack(sid: str, ship: dict[str, Any]) -> None:
             parent_hdnt = reuse.get("reuse_target")
             st.caption(f"Tái sử dụng HDNT hiện có: {parent_hdnt.get('hdnt_no') or parent_hdnt.get('contract_no') or parent_hdnt.get('id')} — không tạo HDNT mới.")
     else:
-        hdnt_keys = list(hdnt_candidates.keys())
-        parent_label = st.selectbox("HDNT cha cho PL", [""] + hdnt_keys, format_func=lambda k: str(k) if not k else str(hdnt_candidates[k].get("contract_no") or k), key=f"docgen_parent_{sid}") if hdnt_keys else None
-        parent_hdnt = hdnt_candidates.get(parent_label) if parent_label else None
-        st.caption("Chưa có HDNT hợp lệ — có thể tạo HDNT mới khi xuất.")
+        # Filter hdnt_candidates through fail-closed validity classification
+        # Only show HDNT that pass the same validity checks as reuse
+        valid_hdnt_decision = classify_valid_hdnt(
+            hdnt_candidates,
+            agent_id=agent.get("agent_id") or agent.get("id") if agent else "",
+            company_id=company.get("company_id") or company.get("id") if company else "",
+        )
+        valid_hdnt_list = valid_hdnt_decision.get("valid_hdnt", [])
+        
+        if not valid_hdnt_list:
+            st.caption("Chưa có HDNT hợp lệ — cần tạo HDNT mới trước khi xuất PL.")
+        else:
+            # Should not reach here if valid_count == 0, but defensive
+            hdnt_keys = [str(c.get("id") or c.get("hdnt_no") or c.get("contract_no")) for c in valid_hdnt_list]
+            parent_label = st.selectbox("HDNT cha cho PL", [""] + hdnt_keys, format_func=lambda k: str(k) if not k else str(next((c.get("contract_no") or k) for c in valid_hdnt_list if str(c.get("id") or c.get("hdnt_no") or c.get("contract_no")) == k)), key=f"docgen_parent_{sid}") if hdnt_keys else None
+            parent_hdnt = next((c for c in valid_hdnt_list if str(c.get("id") or c.get("hdnt_no") or c.get("contract_no")) == parent_label), None) if parent_label else None
 
     # ---- PXK explicit source ----
     pxk_candidates = _pxk_source_candidates(sid)

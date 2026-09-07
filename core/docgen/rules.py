@@ -479,8 +479,19 @@ def evaluate_document_readiness(
                 reason="PL và HDNT cha không cùng Đại lý / Công ty.",
                 missing=("Đối tác của PL không khớp HDNT cha,",),
             )
-        if parent_contract.get("kind") != HDNT:
+        # Support both kind and type representations
+        parent_kind = str(parent_contract.get("kind") or parent_contract.get("type") or "").upper()
+        if parent_kind != HDNT:
             return Readiness(document_type=PL, state=BLOCKED, reason="HDNT cha phải là hợp đồng nguyên tắc.")
+        # Validate parent HDNT is currently valid (reusable)
+        agent_id = _nonempty((agent or {}).get("agent_id") or (agent or {}).get("id"))
+        company_id = _nonempty((company or {}).get("company_id") or (company or {}).get("id"))
+        if not _candidate_valid_hdnt(parent_contract, agent_id=agent_id, company_id=company_id, today=today):
+            return Readiness(
+                document_type=PL,
+                state=BLOCKED,
+                reason="HDNT cha không còn hiệu lực (hết hạn, chưa có hiệu lực, hoặc đã bị hủy).",
+            )
 
     if document_type == PXK:
         if not delivery_completed:

@@ -841,6 +841,214 @@ class ContractCacheImmediateReadbackTests(TestCase):
         _invalidate_contracts_cache()  # Must not raise
 
 
+class PlParentValidityServiceGateTests(TestCase):
+    """PL readiness must reject invalid HDNT parent at service layer."""
+
+    def test_expired_parent_blocked(self) -> None:
+        expired_parent = _parent("HDNT-EXP")
+        expired_parent["valid_to"] = "2020-01-01"
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=expired_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
+        self.assertIn("hiệu lực", readiness.reason.lower())
+
+    def test_future_parent_blocked(self) -> None:
+        future_parent = _parent("HDNT-FUT")
+        future_parent["valid_from"] = "2027-01-01"
+        future_parent["valid_to"] = "2028-01-01"
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=future_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
+        self.assertIn("hiệu lực", readiness.reason.lower())
+
+    def test_missing_validity_parent_blocked(self) -> None:
+        no_validity_parent = _parent("HDNT-NOVAL")
+        no_validity_parent["valid_from"] = ""
+        no_validity_parent["valid_to"] = ""
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=no_validity_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
+
+    def test_cancelled_parent_blocked(self) -> None:
+        cancelled_parent = _parent("HDNT-CANC")
+        cancelled_parent["status"] = "cancelled"
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=cancelled_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
+
+    def test_inactive_parent_blocked(self) -> None:
+        inactive_parent = _parent("HDNT-INACT")
+        inactive_parent["status"] = "inactive"
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=inactive_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual(readiness.state, BLOCKED)
+
+    def test_valid_parent_passes(self) -> None:
+        valid_parent = _parent("HDNT-OK")
+        readiness = evaluate_document_readiness(
+            PL,
+            goods_lines=[_line("A", 1, Decimal("100000"))],
+            agent=_agent(),
+            company=_company(),
+            parent_contract=valid_parent,
+            delivery_completed=False,
+            today=date(2026, 9, 1),
+        )
+        # Should not be BLOCKED due to parent validity
+        self.assertNotEqual(readiness.state, BLOCKED)
+
+
+class ControlledSupersedeLinkHelperTests(TestCase):
+    """Issued supersede link must use controlled helper, not generic writer."""
+
+    def test_generic_writer_cannot_change_superseded_by_on_issued(self) -> None:
+        from core.database import save_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP1::R1", "document_id": "SUP1", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP1")
+            record = gen_load_latest("SUP1")
+            self.assertEqual(record["status"], ISSUED)
+            # Attempt to change superseded_by_document_id via generic writer
+            hacked = deepcopy(record)
+            hacked["superseded_by_document_id"] = "NEW-DOC"
+            self.assertFalse(save_docgen_document(hacked))
+
+    def test_controlled_helper_admin_pass(self) -> None:
+        from core.database import link_superseded_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "admin", "username": "admin", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP2::R1", "document_id": "SUP2", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP2")
+            record = gen_load_latest("SUP2")
+            self.assertEqual(record["status"], ISSUED)
+            # Controlled helper should succeed
+            self.assertTrue(link_superseded_docgen_document("SUP2", "NEW-DOC-2"))
+            updated = gen_load_latest("SUP2")
+            self.assertEqual(updated.get("superseded_by_document_id"), "NEW-DOC-2")
+            self.assertEqual(updated.get("status"), ISSUED)
+
+    def test_controlled_helper_support_pass(self) -> None:
+        from core.database import link_superseded_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP3::R1", "document_id": "SUP3", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP3")
+            record = gen_load_latest("SUP3")
+            self.assertEqual(record["status"], ISSUED)
+            # Controlled helper should succeed for support role
+            self.assertTrue(link_superseded_docgen_document("SUP3", "NEW-DOC-3"))
+
+    def test_controlled_helper_sale_denied(self) -> None:
+        from core.database import link_superseded_docgen_document
+
+        db = _Database()
+        # First issue the document with support role
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP4::R1", "document_id": "SUP4", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP4")
+            record = gen_load_latest("SUP4")
+            self.assertEqual(record["status"], ISSUED)
+        
+        # Now test that sale role is denied by the link helper
+        with _with_user({"role": "sale", "username": "sale", "user_id": "u3"}), patch("core.database.get_db", return_value=db):
+            # Controlled helper should deny sale role
+            self.assertFalse(link_superseded_docgen_document("SUP4", "NEW-DOC-4"))
+
+    def test_controlled_helper_rejects_second_different_replacement(self) -> None:
+        from core.database import link_superseded_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP5::R1", "document_id": "SUP5", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP5")
+            record = gen_load_latest("SUP5")
+            self.assertEqual(record["status"], ISSUED)
+            # First linkage should succeed
+            self.assertTrue(link_superseded_docgen_document("SUP5", "NEW-DOC-5A"))
+            # Second different linkage should be rejected
+            self.assertFalse(link_superseded_docgen_document("SUP5", "NEW-DOC-5B"))
+            # Record should still point to first replacement
+            updated = gen_load_latest("SUP5")
+            self.assertEqual(updated.get("superseded_by_document_id"), "NEW-DOC-5A")
+
+    def test_controlled_helper_idempotent_same_id(self) -> None:
+        from core.database import link_superseded_docgen_document
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db):
+            self.assertTrue(_saved_docgen_document({"id": "SUP6::R1", "document_id": "SUP6", "status": GENERATED, "generation_revision": 1}))
+            gen.issue_document("SUP6")
+            record = gen_load_latest("SUP6")
+            self.assertEqual(record["status"], ISSUED)
+            # First linkage
+            self.assertTrue(link_superseded_docgen_document("SUP6", "NEW-DOC-6"))
+            # Same linkage again should be idempotent
+            self.assertTrue(link_superseded_docgen_document("SUP6", "NEW-DOC-6"))
+
+
+class CacheImmediateReadbackEvidenceTests(TestCase):
+    """Strengthened cache evidence: save -> invalidate -> read sees new data."""
+
+    def test_save_invalidate_read_sees_new_contract(self) -> None:
+        from core.database import save_contract_to_cloud, load_contracts
+
+        db = _Database()
+        with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db), patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": {"role": "support", "username": "support", "user_id": "u1"}}})()):
+            # Save a new HDNT
+            self.assertTrue(_save_contract({
+                "id": "HDNT-NEW-001",
+                "contract_no": "HDNT-NEW-001",
+                "kind": HDNT,
+                "agent_id": "AGT-001",
+                "company_id": "TT-001",
+                "valid_from": "2026-09-01",
+                "valid_to": "2027-08-31",
+            }))
+            # Immediate read should see it
+            contracts = load_contracts()
+            self.assertIn("HDNT-NEW-001", contracts)
+            self.assertEqual(contracts["HDNT-NEW-001"].get("kind"), HDNT)
+
+
 # ---------------------------------------------------------------------------
 # In-memory DB + auth helpers
 # ---------------------------------------------------------------------------
