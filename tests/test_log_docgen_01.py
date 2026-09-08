@@ -1162,6 +1162,33 @@ def inspect_source(module) -> str:
     return inspect.getsource(module)
 
 class PrintFidelityTests(TestCase):
+
+    def test_hdmb_honorific_normalized(self):
+        from core.docgen.generator import build_xlsx_payload
+        agent = {
+            "legal_representative": "Ông Nguyễn Văn A",
+            "representative_title": "Giám đốc"
+        }
+        company = {
+            "legal_name": "Công ty B",
+            "legal_representative": "Bà Lê Thị C",
+            "representative_title": "Phó Giám đốc"
+        }
+        payload = build_xlsx_payload(
+            "HDMB",
+            contract_no="C01",
+            contract_date="2026-09-08",
+            agent=agent,
+            company=company,
+            goods_lines=[]
+        )
+        
+        hdmb_fill = payload.get("HDMB", {})
+        self.assertIn("Đại diện bởi Ông/Bà: Nguyễn Văn A", hdmb_fill.get("A13", ""))
+        self.assertIn("Đại diện bởi Ông/Bà: Lê Thị C", hdmb_fill.get("A20", ""))
+        self.assertNotIn("Ông/Bà: Ông Nguyễn", hdmb_fill.get("A13", ""))
+        self.assertNotIn("Ông/Bà: Bà Lê", hdmb_fill.get("A20", ""))
+
     def test_hdnt_representative_formatting(self):
         from core.docgen.generator import build_docx_run_edits
         agent = {
