@@ -240,7 +240,11 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
                 def_names = workbook.find(f"{{{SHEET_NS}}}definedNames")
                 if def_names is None:
                     def_names = etree.Element(f"{{{SHEET_NS}}}definedNames")
-                    workbook.append(def_names)
+                    calc_pr = workbook.find(f"{{{SHEET_NS}}}calcPr")
+                    if calc_pr is not None:
+                        calc_pr.addprevious(def_names)
+                    else:
+                        workbook.append(def_names)
                 exists = False
                 for dn in def_names.findall(f"{{{SHEET_NS}}}definedName"):
                     if dn.get("name") == "_xlnm.Print_Titles" and dn.get("localSheetId") == str(pl_sheet_idx):

@@ -221,5 +221,45 @@ class TestOOXMLMutation(unittest.TestCase):
             self.assertEqual(ps.get("fitToHeight"), "0")
 
 
+
+    def test_pl_definednames_schema_order(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>')
+            zf.writestr("xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>')
+            # workbook with sheets then calcPr
+            wb = """<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <sheets>
+        <sheet name="pl" sheetId="1" r:id="rId1"/>
+    </sheets>
+    <calcPr calcId="12345"/>
+</workbook>"""
+            zf.writestr("xl/workbook.xml", wb)
+            zf.writestr("xl/worksheets/sheet1.xml", '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>')
+
+        tpl = buffer.getvalue()
+        with open("/tmp/dummy_pl_order.xlsx", "wb") as f:
+            f.write(tpl)
+            
+        fill = {"pl": {"A1": "Test"}}
+        res = mutate_xlsx("/tmp/dummy_pl_order.xlsx", fill)
+        with zipfile.ZipFile(io.BytesIO(res)) as zf:
+            wb_xml = zf.read("xl/workbook.xml")
+            wb = etree.fromstring(wb_xml)
+            children = list(wb)
+            
+            def_names_idx = -1
+            calc_pr_idx = -1
+            for i, child in enumerate(children):
+                if child.tag.endswith("definedNames"):
+                    def_names_idx = i
+                elif child.tag.endswith("calcPr"):
+                    calc_pr_idx = i
+            
+            self.assertTrue(def_names_idx != -1)
+            self.assertTrue(calc_pr_idx != -1)
+            self.assertTrue(def_names_idx < calc_pr_idx, "definedNames must appear before calcPr in workbook.xml")
+
 if __name__ == '__main__':
     unittest.main()
