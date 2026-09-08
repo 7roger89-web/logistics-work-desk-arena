@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping
-from xml.sax.saxutils import escape
+from typing import Any
 
 from lxml import etree
 
@@ -76,20 +76,27 @@ def _append_shared_string(sst_element, text_index: dict[str, int], text: str) ->
     return index
 
 
-def _set_shared_string(cell, sst_element, text_index: dict[str, int], text: str) -> None:
+def _set_shared_string(cell, sst_element, text_index: dict[str, int], text: str) -> bool:
     index = _append_shared_string(sst_element, text_index, text)
+    removed_f = False
     # Strip existing value/formula/inline str children.
     for tag in ("v", "f", "is"):
         for child in cell.findall(f"x:{tag}", NSMAP):
+            if tag == "f":
+                removed_f = True
             cell.remove(child)
     cell.set("t", "s")
     v = etree.SubElement(cell, f"{{{SHEET_NS}}}v")
     v.text = str(index)
+    return removed_f
 
 
-def _set_number(cell, value) -> None:
+def _set_number(cell, value) -> bool:
+    removed_f = False
     for tag in ("v", "f", "is"):
         for child in cell.findall(f"x:{tag}", NSMAP):
+            if tag == "f":
+                removed_f = True
             cell.remove(child)
     if "t" in cell.attrib:
         del cell.attrib["t"]
@@ -100,15 +107,16 @@ def _set_number(cell, value) -> None:
         v.text = repr(value)
     else:
         v.text = str(int(value))
+    return removed_f
 
 
-def _write_cell(cell, sst_element, text_index: dict[str, int], value) -> None:
+def _write_cell(cell, sst_element, text_index: dict[str, int], value) -> bool:
     if isinstance(value, _NUMBER_TYPES) and not isinstance(value, bool):
-        _set_number(cell, value)
+        return _set_number(cell, value)
     elif isinstance(value, bool):
-        _set_number(cell, 1 if value else 0)
+        return _set_number(cell, 1 if value else 0)
     else:
-        _set_shared_string(cell, sst_element, text_index, str(value))
+        return _set_shared_string(cell, sst_element, text_index, str(value))
 
 
 def _sheet_path_by_name(workbook_element, rels_element) -> dict[str, str]:
@@ -149,6 +157,7 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
     sst_element = None
     text_index: dict[str, int] = {}
     sst_path = "xl/sharedStrings.xml"
+    formula_removed = False
 
     for sheet_name, payload in fill.items():
         path = sheet_paths.get(sheet_name)
@@ -168,22 +177,61 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
             if sst_element is None:
                 # No shared strings part: write text inline.
                 if isinstance(value, _NUMBER_TYPES) and not isinstance(value, bool):
-                    _set_number(cell, value)
+                    if _set_number(cell, value):
+                        formula_removed = True
                 else:
                     for tag in ("v", "f", "is"):
                         for child in cell.findall(f"x:{tag}", NSMAP):
+                            if tag == "f":
+                                formula_removed = True
                             cell.remove(child)
                     cell.set("t", "inlineStr")
                     is_el = etree.SubElement(cell, f"{{{SHEET_NS}}}is")
                     t = etree.SubElement(is_el, f"{{{SHEET_NS}}}t")
                     t.text = str(value)
                 continue
-            _write_cell(cell, sst_element, text_index, value)
+            if _write_cell(cell, sst_element, text_index, value):
+                formula_removed = True
 
         parts[path] = _serialize(sheet)
 
     if sst_element is not None and sst_path in parts:
         parts[sst_path] = _serialize(sst_element)
+
+    if formula_removed:
+        # 1. Remove xl/calcChain.xml
+        if "xl/calcChain.xml" in parts:
+            del parts["xl/calcChain.xml"]
+            if "xl/calcChain.xml" in entry_order:
+                entry_order.remove("xl/calcChain.xml")
+
+        # 2. Remove its relationship from xl/_rels/workbook.xml.rels
+        rels_modified = False
+        for rel in rels.findall(f"{{{PKG_REL_NS}}}Relationship"):
+            if rel.get("Target") == "calcChain.xml":
+                rels.remove(rel)
+                rels_modified = True
+        if rels_modified:
+            parts["xl/_rels/workbook.xml.rels"] = _serialize(rels)
+
+        # 3. Remove its corresponding Content-Type override from [Content_Types].xml
+        if "[Content_Types].xml" in parts:
+            ct_element = _parse(parts["[Content_Types].xml"])
+            ct_modified = False
+            for override in ct_element.findall("{http://schemas.openxmlformats.org/package/2006/content-types}Override"):
+                if override.get("PartName") == "/xl/calcChain.xml":
+                    ct_element.remove(override)
+                    ct_modified = True
+            if ct_modified:
+                parts["[Content_Types].xml"] = _serialize(ct_element)
+
+        # 4. Update workbook calculation properties to request safe recalculation
+        calc_pr = workbook.find(f"{{{SHEET_NS}}}calcPr")
+        if calc_pr is not None:
+            calc_pr.set("calcMode", "auto")
+            calc_pr.set("fullCalcOnLoad", "1")
+            calc_pr.set("forceFullCalc", "1")
+            parts["xl/workbook.xml"] = _serialize(workbook)
 
     # Rebuild the zip preserving original entry order and metadata.
     buffer = io.BytesIO()
@@ -210,7 +258,7 @@ def mutate_docx(template_path: str, run_edits: list[tuple[int, int, str, str | N
     ``value``.  Run properties (rPr) are preserved because we never rebuild the
     paragraph or run element.
     """
-    import docx  # noqa: PLC0415
+    import docx
 
     document = docx.Document(template_path)
     paragraphs = list(document.paragraphs)
