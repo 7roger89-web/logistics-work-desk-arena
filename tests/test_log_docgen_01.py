@@ -29,7 +29,6 @@ from core.docgen.rules import (
     PL,
     PXK,
     READY,
-    VND_THRESHOLD,
     classify_valid_hdnt,
     compute_goods_totals,
     decide_applicable_documents,
@@ -132,20 +131,20 @@ class ThresholdRulesTests(TestCase):
         self.assertEqual(decision[HDMB].state, NOT_APPLICABLE)
 
     def test_exactly_50m_applies_hdmb(self) -> None:
-        lines = [_line("Hàng B", 1, Decimal("46296296"))]
+        lines = [_line("Hàng B", 1, Decimal(46296296))]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[HDMB].state, READY)
         self.assertIn(HDMB, [d for d in (HDMB, HDNT, PL) if decision[d].state == READY])
 
     def test_above_50m_applies_hdmb_only(self) -> None:
-        lines = [_line("Máy móc", 1, Decimal("100000000"))]
+        lines = [_line("Máy móc", 1, Decimal(100000000))]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[HDMB].state, READY)
         self.assertEqual(decision[HDNT].state, NOT_APPLICABLE)
         self.assertEqual(decision[PL].state, NOT_APPLICABLE)
 
     def test_non_vnd_blocked(self) -> None:
-        lines = [_line("Hàng A", 1, Decimal("100000"))]
+        lines = [_line("Hàng A", 1, Decimal(100000))]
         decision = decide_applicable_documents(goods_lines=lines, currency="USD")
         for doc_type in (HDNT, PL, HDMB):
             self.assertEqual(decision[doc_type].state, BLOCKED)
@@ -159,19 +158,19 @@ class ThresholdRulesTests(TestCase):
 
 class VatRulesTests(TestCase):
     def test_vat_8_percent_calc(self) -> None:
-        lines = [_line("Hàng", 10, Decimal("100000"))]
+        lines = [_line("Hàng", 10, Decimal(100000))]
         totals, _ = compute_goods_totals(lines)
-        self.assertEqual(totals.subtotal, Decimal("1000000"))
-        self.assertEqual(totals.vat_amount, Decimal("80000"))
-        self.assertEqual(totals.total_after_vat, Decimal("1080000"))
+        self.assertEqual(totals.subtotal, Decimal(1000000))
+        self.assertEqual(totals.vat_amount, Decimal(80000))
+        self.assertEqual(totals.total_after_vat, Decimal(1080000))
 
     def test_mixed_vat_blocked(self) -> None:
-        lines = [_line("A", 1, Decimal("100000")), _line("B", 1, Decimal("100000"), vat="0.10")]
+        lines = [_line("A", 1, Decimal(100000)), _line("B", 1, Decimal(100000), vat="0.10")]
         totals, normalized = compute_goods_totals(lines)
         self.assertTrue(any(not item["valid"] for item in normalized))
 
     def test_other_vat_blocked(self) -> None:
-        lines = [_line("A", 1, Decimal("100000"), vat="0.10")]
+        lines = [_line("A", 1, Decimal(100000), vat="0.10")]
         totals, normalized = compute_goods_totals(lines)
         self.assertFalse(normalized[0]["valid"])
         self.assertIn("Chỉ hỗ trợ thuế GTGT 8%", normalized[0]["validation_errors"])
@@ -179,14 +178,14 @@ class VatRulesTests(TestCase):
     def test_unit_price_hr_rounding(self) -> None:
         lines = [_line("Hàng", 3, Decimal("33333.33"))]
         totals, _ = compute_goods_totals(lines)
-        self.assertEqual(totals.subtotal, Decimal("100000"))
-        self.assertEqual(totals.total_after_vat, Decimal("108000"))
+        self.assertEqual(totals.subtotal, Decimal(100000))
+        self.assertEqual(totals.total_after_vat, Decimal(108000))
 
 
 class AuthorityRulesTests(TestCase):
     def test_missing_agent_master_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=None, company=_company()
+            HDNT, goods_lines=[_line("A", 1, Decimal(100000))], agent=None, company=_company()
         )
         self.assertEqual(readiness.state, MISSING_INFO)
         self.assertTrue(any("Đại lý" in item for item in readiness.missing))
@@ -194,7 +193,7 @@ class AuthorityRulesTests(TestCase):
     def test_customer_cannot_silently_substitute_for_agent(self) -> None:
         customer = {"name": "Công ty Khách", "address": "abc", "tax_code": "999"}
         readiness = evaluate_document_readiness(
-            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=customer, company=_company()
+            HDNT, goods_lines=[_line("A", 1, Decimal(100000))], agent=customer, company=_company()
         )
         self.assertEqual(readiness.state, MISSING_INFO)
         self.assertTrue(any("Đại lý" in item for item in readiness.missing))
@@ -202,7 +201,7 @@ class AuthorityRulesTests(TestCase):
     def test_factory_cannot_silently_substitute_for_agent(self) -> None:
         factory = {"factory": "Nhà máy X", "contact": "abc"}
         readiness = evaluate_document_readiness(
-            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=factory, company=_company()
+            HDNT, goods_lines=[_line("A", 1, Decimal(100000))], agent=factory, company=_company()
         )
         self.assertEqual(readiness.state, MISSING_INFO)
 
@@ -213,7 +212,7 @@ class LegalIdentityTests(TestCase):
     def test_hdnt_missing_number_not_ready(self) -> None:
         identity = dict(_hdnt_identity(no="", d="2026-09-01"))
         readiness = evaluate_document_readiness(
-            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), document_identity=identity
+            HDNT, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(), document_identity=identity
         )
         self.assertEqual(readiness.state, MISSING_INFO)
         self.assertTrue(any("số" in m.lower() and "nguyên tắc" in m for m in readiness.missing))
@@ -222,14 +221,14 @@ class LegalIdentityTests(TestCase):
         identity = dict(_hdnt_identity())
         identity["valid_to"] = ""
         readiness = evaluate_document_readiness(
-            HDNT, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), document_identity=identity
+            HDNT, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(), document_identity=identity
         )
         self.assertEqual(readiness.state, MISSING_INFO)
         self.assertTrue(any("hiệu lực" in m for m in readiness.missing))
 
     def test_pl_missing_number_not_ready(self) -> None:
         readiness = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PL, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             parent_contract=_parent(), document_identity={"pl_no": "", "pl_date": "", "currency": "VND"},
         )
         self.assertEqual(readiness.state, MISSING_INFO)
@@ -239,7 +238,7 @@ class LegalIdentityTests(TestCase):
         # HDNT identity must not satisfy HDMB.
         hdnt_identity = dict(_hdnt_identity(no="HDNT-ABC"))
         hdmb_readiness = evaluate_document_readiness(
-            HDMB, goods_lines=[_line("Máy", 1, Decimal("60000000"))], agent=_agent(), company=_company(), document_identity=hdnt_identity
+            HDMB, goods_lines=[_line("Máy", 1, Decimal(60000000))], agent=_agent(), company=_company(), document_identity=hdnt_identity
         )
         self.assertEqual(hdmb_readiness.state, MISSING_INFO)
         self.assertTrue(any("mua bán" in m for m in hdmb_readiness.missing))
@@ -277,21 +276,21 @@ class UnknownNotZeroTests(TestCase):
 
 class GoodsCountRulesTests(TestCase):
     def test_hdmb_one_line_ready(self) -> None:
-        decision = decide_applicable_documents(goods_lines=[_line("Máy", 1, Decimal("60000000"))])
+        decision = decide_applicable_documents(goods_lines=[_line("Máy", 1, Decimal(60000000))])
         self.assertEqual(decision[HDMB].state, READY)
 
     def test_hdmb_more_than_one_blocked(self) -> None:
-        lines = [_line("A", 1, Decimal("30000000")), _line("B", 1, Decimal("30000000"))]
+        lines = [_line("A", 1, Decimal(30000000)), _line("B", 1, Decimal(30000000))]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[HDMB].state, BLOCKED)
 
     def test_pl_18_lines_ready(self) -> None:
-        lines = [_line(f"H{i}", 1, Decimal("100000")) for i in range(18)]
+        lines = [_line(f"H{i}", 1, Decimal(100000)) for i in range(18)]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[PL].state, READY)
 
     def test_pl_19_lines_blocked(self) -> None:
-        lines = [_line(f"H{i}", 1, Decimal("100000")) for i in range(19)]
+        lines = [_line(f"H{i}", 1, Decimal(100000)) for i in range(19)]
         decision = decide_applicable_documents(goods_lines=lines)
         self.assertEqual(decision[PL].state, BLOCKED)
 
@@ -299,14 +298,14 @@ class GoodsCountRulesTests(TestCase):
 class HdntPlRulesTests(TestCase):
     def test_pl_without_parent_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), parent_contract=None
+            PL, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(), parent_contract=None
         )
         self.assertEqual(readiness.state, BLOCKED)
 
     def test_pl_parent_agent_mismatch_blocked(self) -> None:
         parent = _parent(agent_id="AGT-XYZ")
         readiness = evaluate_document_readiness(
-            PL, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), parent_contract=parent, document_identity=_pl_identity()
+            PL, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(), parent_contract=parent, document_identity=_pl_identity()
         )
         self.assertEqual(readiness.state, BLOCKED)
 
@@ -345,13 +344,13 @@ class HdntReuseTests(TestCase):
 class PxkRulesTests(TestCase):
     def test_not_delivered_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(), delivery_completed=False
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(), delivery_completed=False
         )
         self.assertEqual(readiness.state, BLOCKED)
 
     def test_missing_source_requires_explicit_selection(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(), pxk_source=None,
         )
         self.assertEqual(readiness.state, MISSING_INFO)
@@ -359,7 +358,7 @@ class PxkRulesTests(TestCase):
 
     def test_missing_receiver_not_ready(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(),
             delivery=_pxk_delivery(receiver_name=""), pxk_source=_pxk_source(),
         )
@@ -368,7 +367,7 @@ class PxkRulesTests(TestCase):
 
     def test_missing_location_not_ready(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(),
             delivery=_pxk_delivery(delivery_location=""), pxk_source=_pxk_source(),
         )
@@ -377,14 +376,14 @@ class PxkRulesTests(TestCase):
 
     def test_confirmed_delivery_full_facts_ready(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("Máy", 1, Decimal("60000000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("Máy", 1, Decimal(60000000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(), pxk_source=_pxk_source(),
         )
         self.assertEqual(readiness.state, READY)
 
     def test_multiline_source_pxk_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(),
             pxk_source=_pxk_source(line_count=2),
         )
@@ -392,7 +391,7 @@ class PxkRulesTests(TestCase):
 
     def test_pl_source_with_multiple_lines_blocked(self) -> None:
         readiness = evaluate_document_readiness(
-            PXK, goods_lines=[_line("A", 1, Decimal("100000"))], agent=_agent(), company=_company(),
+            PXK, goods_lines=[_line("A", 1, Decimal(100000))], agent=_agent(), company=_company(),
             delivery_completed=True, document_identity=_pxk_identity(), delivery=_pxk_delivery(),
             pxk_source=_pxk_source(doc_type=PL, line_count=2),
         )
@@ -407,7 +406,7 @@ class TemplateGenerationTests(TestCase):
     def test_source_hashes_unchanged_after_generation(self) -> None:
         before_xlsx = _sha256_file(TPL_XLSX)
         before_docx = _sha256_file(TPL_DOCX)
-        gen.generate_xlsx_file(TPL_XLSX, PL, contract_no="PL-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Hàng", 5, Decimal("100000"))], parent_contract={"contract_no": "HDNT-001", "contract_date": "2026-09-01", "id": "HDNT-001"})
+        gen.generate_xlsx_file(TPL_XLSX, PL, contract_no="PL-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Hàng", 5, Decimal(100000))], parent_contract={"contract_no": "HDNT-001", "contract_date": "2026-09-01", "id": "HDNT-001"})
         gen.generate_docx_file(TPL_DOCX, contract_no="HDNT-001", contract_date="2026-09-01", valid_from="2026-09-01", valid_to="2027-08-31", agent=_agent(), company=_company())
         self.assertEqual(_sha256_file(TPL_XLSX), before_xlsx)
         self.assertEqual(_sha256_file(TPL_DOCX), before_docx)
@@ -415,7 +414,7 @@ class TemplateGenerationTests(TestCase):
     def test_pl_output_opens_and_preserves_formulas(self) -> None:
         import openpyxl
 
-        out = gen.generate_xlsx_file(TPL_XLSX, PL, contract_no="PL-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Hàng", 5, Decimal("100000"))], parent_contract={"contract_no": "HDNT-001", "contract_date": "2026-09-01", "id": "HDNT-001"})
+        out = gen.generate_xlsx_file(TPL_XLSX, PL, contract_no="PL-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Hàng", 5, Decimal(100000))], parent_contract={"contract_no": "HDNT-001", "contract_date": "2026-09-01", "id": "HDNT-001"})
         wb = openpyxl.load_workbook(io.BytesIO(out), data_only=False)
         ws = wb["pl"]
         self.assertEqual(ws["F28"].value, "=SUM(F10:F27)")
@@ -428,7 +427,7 @@ class TemplateGenerationTests(TestCase):
     def test_pxk_writes_explicit_values_not_formula(self) -> None:
         import openpyxl
 
-        lines = [_line("Máy móc", 5, Decimal("20000000"), unit="Bộ")]
+        lines = [_line("Máy móc", 5, Decimal(20000000), unit="Bộ")]
         out = gen.generate_xlsx_file(TPL_XLSX, PXK, contract_no="PXK-001", contract_date="2026-09-10", agent=_agent(), company=_company(), goods_lines=lines, delivery={"receiver_name": "Bà Hương", "receiver_title": "Giám đốc", "delivery_location": "Kho TT"})
         wb = openpyxl.load_workbook(io.BytesIO(out), data_only=False)
         ws = wb["pxk"]
@@ -447,7 +446,7 @@ class TemplateGenerationTests(TestCase):
                 shipment_id="SHP-001",
                 agent=_agent(),
                 company=_company(),
-                goods_lines=[_line("Máy chính hãng", 2, Decimal("10000000"), unit="Bộ")],
+                goods_lines=[_line("Máy chính hãng", 2, Decimal(10000000), unit="Bộ")],
                 contract=_pxk_identity(),
                 delivery=_pxk_delivery(),
                 pxk_source=payload,
@@ -476,7 +475,7 @@ class TemplateGenerationTests(TestCase):
     def test_sheet_parts_retained(self) -> None:
         import zipfile
 
-        out = gen.generate_xlsx_file(TPL_XLSX, HDMB, contract_no="HDMB-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Máy", 1, Decimal("100000000"))])
+        out = gen.generate_xlsx_file(TPL_XLSX, HDMB, contract_no="HDMB-001", contract_date="2026-09-05", agent=_agent(), company=_company(), goods_lines=[_line("Máy", 1, Decimal(100000000))])
         names = zipfile.ZipFile(io.BytesIO(out)).namelist()
         self.assertIn("xl/printerSettings/printerSettings1.bin", names)
         self.assertIn("xl/calcChain.xml", names)
@@ -523,6 +522,8 @@ class VersionAndLinkageTests(TestCase):
             self.assertEqual(gen_load_latest("E").get("output_hash"), record.get("output_hash"))
 
     def test_supersede_creates_new_logical_id_and_links_old(self) -> None:
+        if not _HAS_ASSETS:
+            self.skipTest("Requires local templates")
         db = _Database()
         old_doc_id = gen._document_id(HDMB, "SHP-001", "AGT-001")  # deterministic old id
         new_doc_id = f"{old_doc_id}-V2"
@@ -539,7 +540,7 @@ class VersionAndLinkageTests(TestCase):
                 contract_date="2026-09-06",
                 agent=_agent(),
                 company=_company(),
-                goods_lines=[_line("Máy", 1, Decimal("100000000"))],
+                goods_lines=[_line("Máy", 1, Decimal(100000000))],
                 template_path_xlsx=TPL_XLSX,
             )
             # A NEW logical id is minted; it must differ from the old one.
@@ -591,7 +592,7 @@ class RbacTests(TestCase):
                     shipment_id="SHP-001",
                     agent=_agent(),
                     company=_company(),
-                    goods_lines=[_line("A", 1, Decimal("100000"))] if doc_type != HDMB else [_line("Máy", 1, Decimal("60000000"))],
+                    goods_lines=[_line("A", 1, Decimal(100000))] if doc_type != HDMB else [_line("Máy", 1, Decimal(60000000))],
                     contract=contract,
                     parent_contract=self._parent_contract() if doc_type == PL else None,
                     template_path_xlsx=TPL_XLSX,
@@ -834,7 +835,7 @@ class ContractCacheImmediateReadbackTests(TestCase):
     """Repair 5: After contract save, immediate read must see new data."""
 
     def test_cache_invalidation_after_save(self) -> None:
-        from core.database import _invalidate_contracts_cache, load_contracts
+        from core.database import _invalidate_contracts_cache
 
         # Outside Streamlit runtime, load_contracts goes directly to _load_contracts_impl.
         # We test that _invalidate_contracts_cache is callable and doesn't raise.
@@ -849,7 +850,7 @@ class PlParentValidityServiceGateTests(TestCase):
         expired_parent["valid_to"] = "2020-01-01"
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=expired_parent,
@@ -865,7 +866,7 @@ class PlParentValidityServiceGateTests(TestCase):
         future_parent["valid_to"] = "2028-01-01"
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=future_parent,
@@ -881,7 +882,7 @@ class PlParentValidityServiceGateTests(TestCase):
         no_validity_parent["valid_to"] = ""
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=no_validity_parent,
@@ -895,7 +896,7 @@ class PlParentValidityServiceGateTests(TestCase):
         cancelled_parent["status"] = "cancelled"
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=cancelled_parent,
@@ -909,7 +910,7 @@ class PlParentValidityServiceGateTests(TestCase):
         inactive_parent["status"] = "inactive"
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=inactive_parent,
@@ -922,7 +923,7 @@ class PlParentValidityServiceGateTests(TestCase):
         valid_parent = _parent("HDNT-OK")
         readiness = evaluate_document_readiness(
             PL,
-            goods_lines=[_line("A", 1, Decimal("100000"))],
+            goods_lines=[_line("A", 1, Decimal(100000))],
             agent=_agent(),
             company=_company(),
             parent_contract=valid_parent,
@@ -1029,7 +1030,7 @@ class CacheImmediateReadbackEvidenceTests(TestCase):
     """Strengthened cache evidence: save -> invalidate -> read sees new data."""
 
     def test_save_invalidate_read_sees_new_contract(self) -> None:
-        from core.database import save_contract_to_cloud, load_contracts
+        from core.database import load_contracts
 
         db = _Database()
         with _with_user({"role": "support", "username": "support", "user_id": "u1"}), patch("core.database.get_db", return_value=db), patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": {"role": "support", "username": "support", "user_id": "u1"}}})()):
@@ -1159,3 +1160,71 @@ def inspect_source(module) -> str:
     import inspect
 
     return inspect.getsource(module)
+
+class PrintFidelityTests(TestCase):
+
+    def test_hdmb_honorific_normalized(self):
+        from core.docgen.generator import build_xlsx_payload
+        agent = {
+            "legal_representative": "Ông Nguyễn Văn A",
+            "representative_title": "Giám đốc"
+        }
+        company = {
+            "legal_name": "Công ty B",
+            "legal_representative": "Bà Lê Thị C",
+            "representative_title": "Phó Giám đốc"
+        }
+        payload = build_xlsx_payload(
+            "HDMB",
+            contract_no="C01",
+            contract_date="2026-09-08",
+            agent=agent,
+            company=company,
+            goods_lines=[]
+        )
+        
+        hdmb_fill = payload.get("HDMB", {})
+        self.assertIn("Đại diện bởi Ông/Bà: Nguyễn Văn A", hdmb_fill.get("A13", ""))
+        self.assertIn("Đại diện bởi Ông/Bà: Lê Thị C", hdmb_fill.get("A20", ""))
+        self.assertNotIn("Ông/Bà: Ông Nguyễn", hdmb_fill.get("A13", ""))
+        self.assertNotIn("Ông/Bà: Bà Lê", hdmb_fill.get("A20", ""))
+
+    def test_hdnt_representative_formatting(self):
+        from core.docgen.generator import build_docx_run_edits
+        agent = {
+            "legal_representative": "Ông Nguyễn Văn A",
+            "representative_title": "Giám đốc"
+        }
+        company = {
+            "legal_name": "Công ty B",
+            "legal_representative": "Bà Lê Thị C",
+            "representative_title": "Phó Giám đốc"
+        }
+        edits = build_docx_run_edits(
+            contract_no="C01",
+            contract_date="2026-09-08",
+            valid_from="2026-09-08",
+            valid_to="2027-09-08",
+            agent=agent,
+            company=company
+        )
+        
+        found_9_1 = False
+        found_9_3 = False
+        found_15_2 = False
+        
+        for e in edits:
+            if e[0] == 9 and e[1] == 1:
+                self.assertEqual(e[2], "/Bà Nguyễn Văn A")
+                found_9_1 = True
+            if e[0] == 9 and e[1] == 3:
+                self.assertEqual(e[2], "Chức vụ: Giám đốc")
+                found_9_3 = True
+            if e[0] == 15 and e[1] == 2:
+                self.assertEqual(e[2], "Bà Lê Thị C")
+                found_15_2 = True
+                
+        self.assertTrue(found_9_1)
+        self.assertTrue(found_9_3)
+        self.assertTrue(found_15_2)
+

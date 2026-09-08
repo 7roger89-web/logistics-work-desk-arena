@@ -14,30 +14,25 @@ The service layer is the security boundary; UI hiding is never sufficient.
 from __future__ import annotations
 
 import hashlib
-import io
-from datetime import date, datetime
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 from core.docgen import rules as rules_mod
 from core.docgen.rules import (
+    BLOCKED,
     DEBIT_USD,
     GENERATED,
     HDMB,
     HDNT,
     ISSUED,
-    MISSING_INFO,
-    NOT_APPLICABLE,
-    OWNER_RULE_REQUIRED,
     PL,
     PXK,
     READY,
-    BLOCKED,
     Readiness,
-    DRAFT,
 )
-from core.docgen.template_engine import mutate_docx, mutate_xlsx
-from core.utils import parse_date, safe_float, utc_now, to_decimal
+from core.docgen.template_engine import CachedFormulaValue, mutate_docx, mutate_xlsx
+from core.utils import parse_date, to_decimal, utc_now
 
 # ---------------------------------------------------------------------------
 # Vietnamese amount-in-words (bounded, VND only).  Kept local so the generator
@@ -107,7 +102,7 @@ def amount_in_words_vnd(value: Any) -> str:
     amount = to_decimal(value)
     if amount is None:
         return ""
-    rounded = int(amount.quantize(Decimal("1")))
+    rounded = int(amount.quantize(Decimal(1)))
     integer = rounded
     whole = _int_words(integer)
     text = f"{whole} đồng chẵn" if integer else "không đồng"
@@ -125,7 +120,7 @@ def _date_ddmmyyyy(value: Any) -> str:
 
 
 def _vnd_format(value: Any) -> str:
-    amount = to_decimal(value) or Decimal("0")
+    amount = to_decimal(value) or Decimal(0)
     return f"{int(amount):,}".replace(",", ".")
 
 
@@ -182,18 +177,21 @@ def build_xlsx_payload(
                 "A10": f"Điện thoại: {_nonempty(agent.get('phone'))}    Email: {_nonempty(agent.get('email'))}",
                 "A11": f"Mã số thuế: {_nonempty(agent.get('legal_code'))}",
                 "A12": f"Tài khoản số: {_nonempty(agent.get('bank_account_number'))}    Tại Ngân hàng: {_nonempty(agent.get('bank_name'))}",
-                "A13": f"Đại diện bởi Ông/Bà: {_nonempty(agent.get('legal_representative'))}    Chức vụ: {_nonempty(agent.get('representative_title'))}",
+                "A13": f"Đại diện bởi Ông/Bà: {_normalize_rep_name(_nonempty(agent.get('legal_representative')))}    Chức vụ: {_nonempty(agent.get('representative_title'))}",
                 "A15": f"Tên công ty: {company_name}",
                 "A16": f"Địa chỉ: {_nonempty(company.get('legal_address'))}",
                 "A17": f"Điện thoại: {_nonempty(company.get('phone'))}    Email: {_nonempty(company.get('email'))}",
                 "A18": f"Mã số thuế: {_nonempty(company.get('tax_or_legal_code'))}",
                 "A19": f"Tài khoản số: {_nonempty(company.get('bank_account_number'))}",
-                "A20": f"Đại diện bởi Ông/Bà: {_nonempty(company.get('legal_representative'))}    Chức vụ: {_nonempty(company.get('representative_title'))}",
+                "A20": f"Đại diện bởi Ông/Bà: {_normalize_rep_name(_nonempty(company.get('legal_representative')))}    Chức vụ: {_nonempty(company.get('representative_title'))}",
                 "B24": _nonempty(goods.get("description")),
                 "C24": _nonempty(goods.get("unit")),
                 "D24": _to_number(goods.get("quantity")),
                 "E24": _to_number(goods.get("unit_price_vnd_excl_vat")),
                 "F24": _to_number(goods.get("amount_vnd_excl_vat")),
+                "F25": CachedFormulaValue(totals.subtotal),
+                "F26": CachedFormulaValue(totals.vat_amount),
+                "F27": CachedFormulaValue(totals.total_after_vat),
                 "A28": f"(Bằng chữ: {words})",
                 "A35": f"* Chủ tài khoản: {_nonempty(agent.get('bank_account_holder'))}",
                 "A36": f"* Số tài khoản: {_nonempty(agent.get('bank_account_number'))}",
@@ -221,6 +219,11 @@ def build_xlsx_payload(
             fill[f"D{idx}"] = _to_number(goods.get("quantity"))
             fill[f"E{idx}"] = _to_number(goods.get("unit_price_vnd_excl_vat"))
             fill[f"F{idx}"] = _to_number(goods.get("amount_vnd_excl_vat"))
+            
+        fill["F28"] = CachedFormulaValue(totals.subtotal)
+        fill["F29"] = CachedFormulaValue(totals.vat_amount)
+        fill["F30"] = CachedFormulaValue(totals.total_after_vat)
+        
         return {"pl": fill}
 
     if document_type == PXK:
@@ -242,6 +245,13 @@ def build_xlsx_payload(
 
     raise ValueError(f"Unsupported XLSX document type: {document_type}")
 
+
+def _normalize_rep_name(name: str) -> str:
+    if name.startswith("Ông "):
+        return name[4:]
+    if name.startswith("Bà "):
+        return name[3:]
+    return name
 
 def build_docx_run_edits(
     *,
@@ -269,13 +279,16 @@ def build_docx_run_edits(
         (6, 1, _nonempty(agent.get("legal_address")), None),
         (7, 1, _nonempty(agent.get("phone")), None),
         (8, 1, _nonempty(agent.get("legal_code")), None),
-        (9, 1, _nonempty(agent.get("legal_representative")), "….."),
-        (9, 3, _nonempty(agent.get("representative_title")), None),
+        (9, 1, f"/Bà {_normalize_rep_name(_nonempty(agent.get('legal_representative')))}", None),
+        (9, 2, "  ", None),
+        (9, 3, f"Chức vụ: {_nonempty(agent.get('representative_title'))}", None),
         (11, 3, company_name, None),
         (12, 1, _nonempty(company.get("legal_address")), None),
         (13, 0, f"Điện thoại: {_nonempty(company.get('phone'))}", None),
         (14, 1, _nonempty(company.get("tax_or_legal_code")), None),
         (15, 2, _nonempty(company.get("legal_representative")), None),
+        (15, 3, "  ", None),
+        (15, 4, "", None),
         (15, 5, f"Chức vụ: {_nonempty(company.get('representative_title'))}", None),
         (22, 5, _date_ddmmyyyy(valid_from), None),
         (22, 7, _date_ddmmyyyy(valid_to), None),
@@ -749,7 +762,11 @@ def issue_document(
 ) -> dict[str, Any]:
     """Mark the latest revision of a generated document as ISSUED (immutable)."""
     from core.auth import assert_can_issue_documents
-    from core.database import load_docgen_document, load_docgen_document_latest, save_docgen_document
+    from core.database import (
+        load_docgen_document,
+        load_docgen_document_latest,
+        save_docgen_document,
+    )
 
     assert_can_issue_documents()
     from core.auth import current_actor_context
@@ -788,7 +805,11 @@ def supersede_document(
 ) -> dict[str, Any]:
     """Create a new document id that supersedes an ISSUED one. No silent overwrite."""
     from core.auth import assert_can_issue_documents
-    from core.database import link_superseded_docgen_document, load_docgen_document_latest, save_docgen_document
+    from core.database import (
+        link_superseded_docgen_document,
+        load_docgen_document_latest,
+        save_docgen_document,
+    )
 
     assert_can_issue_documents()
     old = load_docgen_document_latest(old_document_id)
