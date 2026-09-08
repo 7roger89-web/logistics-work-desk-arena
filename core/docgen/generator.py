@@ -246,6 +246,13 @@ def build_xlsx_payload(
     raise ValueError(f"Unsupported XLSX document type: {document_type}")
 
 
+def _normalize_rep_name(name: str) -> str:
+    if name.startswith("Ông "):
+        return name[4:]
+    if name.startswith("Bà "):
+        return name[3:]
+    return name
+
 def build_docx_run_edits(
     *,
     contract_no: str,
@@ -272,13 +279,16 @@ def build_docx_run_edits(
         (6, 1, _nonempty(agent.get("legal_address")), None),
         (7, 1, _nonempty(agent.get("phone")), None),
         (8, 1, _nonempty(agent.get("legal_code")), None),
-        (9, 1, _nonempty(agent.get("legal_representative")), "….."),
-        (9, 3, _nonempty(agent.get("representative_title")), None),
+        (9, 1, _normalize_rep_name(_nonempty(agent.get("legal_representative"))), "….."),
+        (9, 2, "    ", None),
+        (9, 3, f"Chức vụ: {_nonempty(agent.get('representative_title'))}", None),
         (11, 3, company_name, None),
         (12, 1, _nonempty(company.get("legal_address")), None),
         (13, 0, f"Điện thoại: {_nonempty(company.get('phone'))}", None),
         (14, 1, _nonempty(company.get("tax_or_legal_code")), None),
-        (15, 2, _nonempty(company.get("legal_representative")), None),
+        (15, 2, _normalize_rep_name(_nonempty(company.get("legal_representative"))), None),
+        (15, 3, "    ", None),
+        (15, 4, "", None),
         (15, 5, f"Chức vụ: {_nonempty(company.get('representative_title'))}", None),
         (22, 5, _date_ddmmyyyy(valid_from), None),
         (22, 7, _date_ddmmyyyy(valid_to), None),

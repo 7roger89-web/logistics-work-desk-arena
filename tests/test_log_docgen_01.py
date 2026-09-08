@@ -1160,3 +1160,39 @@ def inspect_source(module) -> str:
     import inspect
 
     return inspect.getsource(module)
+
+class PrintFidelityTests(TestCase):
+    def test_hdnt_representative_formatting(self):
+        from core.docgen.generator import build_docx_run_edits
+        agent = {
+            "legal_representative": "Ông Nguyễn Văn A",
+            "representative_title": "Giám đốc"
+        }
+        company = {
+            "legal_name": "Công ty B",
+            "legal_representative": "Bà Lê Thị C",
+            "representative_title": "Phó Giám đốc"
+        }
+        edits = build_docx_run_edits(
+            contract_no="C01",
+            contract_date="2026-09-08",
+            valid_from="2026-09-08",
+            valid_to="2027-09-08",
+            agent=agent,
+            company=company
+        )
+        
+        found_9_1 = False
+        found_9_3 = False
+        
+        for e in edits:
+            if e[0] == 9 and e[1] == 1:
+                self.assertEqual(e[2], "Nguyễn Văn A")
+                found_9_1 = True
+            if e[0] == 9 and e[1] == 3:
+                self.assertEqual(e[2], "Chức vụ: Giám đốc")
+                found_9_3 = True
+                
+        self.assertTrue(found_9_1)
+        self.assertTrue(found_9_3)
+

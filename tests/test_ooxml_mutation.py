@@ -261,5 +261,63 @@ class TestOOXMLMutation(unittest.TestCase):
             self.assertTrue(calc_pr_idx != -1)
             self.assertTrue(def_names_idx < calc_pr_idx, "definedNames must appear before calcPr in workbook.xml")
 
+
+    def test_hdmb_e24_cloned_style(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>')
+            zf.writestr("xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>')
+            wb = """<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <sheets><sheet name="HDMB" sheetId="1" r:id="rId1"/></sheets>
+</workbook>"""
+            zf.writestr("xl/workbook.xml", wb)
+            ws = """<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <sheetData>
+        <row r="24">
+            <c r="E24" s="0"/>
+            <c r="F24" s="0"/>
+        </row>
+    </sheetData>
+</worksheet>"""
+            zf.writestr("xl/worksheets/sheet1.xml", ws)
+            styles = """<?xml version="1.0" encoding="UTF-8"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <cellXfs count="1">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">
+            <alignment wrapText="1" horizontal="center"/>
+        </xf>
+    </cellXfs>
+</styleSheet>"""
+            zf.writestr("xl/styles.xml", styles)
+
+        tpl = buffer.getvalue()
+        with open("/tmp/dummy_hdmb.xlsx", "wb") as f:
+            f.write(tpl)
+            
+        fill = {"HDMB": {"E24": 125000000}}
+        res = mutate_xlsx("/tmp/dummy_hdmb.xlsx", fill)
+        with zipfile.ZipFile(io.BytesIO(res)) as zf:
+            ws_xml = zf.read("xl/worksheets/sheet1.xml")
+            ws_el = etree.fromstring(ws_xml)
+            e24 = ws_el.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c[@r='E24']")
+            f24 = ws_el.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c[@r='F24']")
+            s_e24 = int(e24.get("s"))
+            s_f24 = int(f24.get("s"))
+            
+            self.assertNotEqual(s_e24, s_f24, "E24 should have a new cloned style")
+            self.assertEqual(s_f24, 0, "F24 should retain original style")
+            
+            styles_xml = zf.read("xl/styles.xml")
+            styles_el = etree.fromstring(styles_xml)
+            xfs = styles_el.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}cellXfs").findall("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}xf")
+            
+            xf_e24 = xfs[s_e24]
+            align = xf_e24.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}alignment")
+            self.assertEqual(align.get("shrinkToFit"), "1")
+            self.assertIsNone(align.get("wrapText"))
+            self.assertEqual(align.get("horizontal"), "center", "Should preserve original attributes")
+
 if __name__ == '__main__':
     unittest.main()

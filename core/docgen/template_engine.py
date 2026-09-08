@@ -211,14 +211,13 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
                 formula_removed = True
 
 
-        styles_to_shrink = set()
-        styles_to_wrap = set()
+        cells_to_shrink = []
+        cells_to_wrap = []
 
         if sheet_name == "HDMB":
-            for coord in ["E24", "F24", "F25", "F26", "F27"]:
-                c_el = _cell(sheet, coord)
-                if c_el is not None and c_el.get("s"):
-                    styles_to_shrink.add(int(c_el.get("s")))
+            c_el = _cell(sheet, "E24")
+            if c_el is not None and c_el.get("s"):
+                cells_to_shrink.append(c_el)
 
         if sheet_name == "pl":
             sheetData = sheet.find(f"{{{SHEET_NS}}}sheetData")
@@ -268,7 +267,7 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
                     row.set("customHeight", "1")
                     c_el = _cell(sheet, f"A{r_idx}")
                     if c_el is not None and c_el.get("s"):
-                        styles_to_wrap.add(int(c_el.get("s")))
+                        cells_to_wrap.append(c_el)
             
             mergeCells = sheet.find(f"{{{SHEET_NS}}}mergeCells")
             if mergeCells is None:
@@ -311,27 +310,42 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
                 pageSetUpPr = etree.SubElement(sheetPr, f"{{{SHEET_NS}}}pageSetUpPr")
             pageSetUpPr.set("fitToPage", "1")
 
-        if (styles_to_shrink or styles_to_wrap) and "xl/styles.xml" in parts:
+        if (cells_to_shrink or cells_to_wrap) and "xl/styles.xml" in parts:
+            import copy
             styles = _parse(parts["xl/styles.xml"])
             cellXfs = styles.find(f"{{{SHEET_NS}}}cellXfs")
             if cellXfs is not None:
-                xfs = cellXfs.findall(f"{{{SHEET_NS}}}xf")
-                for s_idx in styles_to_shrink:
+                for c_el in cells_to_shrink:
+                    s_idx = int(c_el.get("s"))
+                    xfs = cellXfs.findall(f"{{{SHEET_NS}}}xf")
                     if s_idx < len(xfs):
-                        xf = xfs[s_idx]
-                        alignment = xf.find(f"{{{SHEET_NS}}}alignment")
+                        new_xf = copy.deepcopy(xfs[s_idx])
+                        alignment = new_xf.find(f"{{{SHEET_NS}}}alignment")
                         if alignment is None:
-                            alignment = etree.SubElement(xf, f"{{{SHEET_NS}}}alignment")
+                            alignment = etree.SubElement(new_xf, f"{{{SHEET_NS}}}alignment")
                         alignment.set("shrinkToFit", "1")
-                        xf.set("applyAlignment", "1")
-                for s_idx in styles_to_wrap:
+                        if "wrapText" in alignment.attrib:
+                            del alignment.attrib["wrapText"]
+                        new_xf.set("applyAlignment", "1")
+                        cellXfs.append(new_xf)
+                        new_s_idx = len(cellXfs.findall(f"{{{SHEET_NS}}}xf")) - 1
+                        cellXfs.set("count", str(new_s_idx + 1))
+                        c_el.set("s", str(new_s_idx))
+                
+                for c_el in cells_to_wrap:
+                    s_idx = int(c_el.get("s"))
+                    xfs = cellXfs.findall(f"{{{SHEET_NS}}}xf")
                     if s_idx < len(xfs):
-                        xf = xfs[s_idx]
-                        alignment = xf.find(f"{{{SHEET_NS}}}alignment")
+                        new_xf = copy.deepcopy(xfs[s_idx])
+                        alignment = new_xf.find(f"{{{SHEET_NS}}}alignment")
                         if alignment is None:
-                            alignment = etree.SubElement(xf, f"{{{SHEET_NS}}}alignment")
+                            alignment = etree.SubElement(new_xf, f"{{{SHEET_NS}}}alignment")
                         alignment.set("wrapText", "1")
-                        xf.set("applyAlignment", "1")
+                        new_xf.set("applyAlignment", "1")
+                        cellXfs.append(new_xf)
+                        new_s_idx = len(cellXfs.findall(f"{{{SHEET_NS}}}xf")) - 1
+                        cellXfs.set("count", str(new_s_idx + 1))
+                        c_el.set("s", str(new_s_idx))
             parts["xl/styles.xml"] = _serialize(styles)
 
         parts[path] = _serialize(sheet)
