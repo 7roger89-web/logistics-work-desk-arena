@@ -27,6 +27,7 @@ from core.database import (
     save_shipment_atomic,
 )
 from core.auth import can_edit_contract
+from views.docgen import _authority_form
 from core.logic import calculate_from_shipment
 from core.utils import safe_float
 
@@ -330,9 +331,167 @@ def _render_contract_finance(item: dict, contracts_db: dict, proxy_db: dict, ent
                         st.error("Không lưu được dòng ví ký quỹ.")
 
 
+def _authority_field_form(record: dict[str, Any] | None, kind: str, key_suffix: str) -> None:
+    """✏️ Bổ sung thông tin — edits the EXISTING authority master record."""
+    from core.database import save_authority_agent, save_authority_company
+
+    is_agent = kind == "agent"
+    label = "Đại lý" if is_agent else "Công ty"
+    fields = (
+        ("legal_name", "Tên pháp lý"),
+        ("legal_address", "Địa chỉ"),
+        ("legal_code" if is_agent else "tax_or_legal_code", "MST / mã pháp lý"),
+        ("legal_representative", "Người đại diện"),
+        ("representative_title", "Chức vụ"),
+    )
+    bank_fields = (
+        ("bank_account_holder", "Chủ tài khoản"),
+        ("bank_account_number", "Số tài khoản"),
+        ("bank_name", "Ngân hàng"),
+    ) if is_agent else ()
+
+    values: dict[str, str] = {}
+    with st.form(f"auth_edit_{kind}_{key_suffix}"):
+        for field, text in fields:
+            values[field] = st.text_input(text, value=str((record or {}).get(field) or ""), key=f"ae_{kind}_{key_suffix}_{field}")
+        for field, text in bank_fields:
+            values[field] = st.text_input(text, value=str((record or {}).get(field) or ""), key=f"ae_{kind}_{key_suffix}_{field}")
+        if st.form_submit_button(f"💾 Lưu hồ sơ {label}", type="primary"):
+            payload = dict(record or {})
+            payload.update(values)
+            ok = save_authority_agent(payload) if is_agent else save_authority_company(payload)
+            if ok:
+                st.success(f"Đã lưu hồ sơ {label} (nguồn gốc, không lưu bản sao trong hợp đồng).")
+                st.rerun()
+            else:
+                st.error(f"Không lưu được hồ sơ {label}.")
+
+
+def _render_contract_parties(contract_id: str, item: dict[str, Any], contracts_db: dict) -> None:
+    """Tab 1 — BÊN MUA / BÊN BÁN read from the existing authority master."""
+    from core.database import load_authority_agents, load_authority_companies
+
+    companies = load_authority_companies()
+    agents = load_authority_agents()
+    company_keys = list(companies.keys())
+    agent_keys = list(agents.keys())
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### 🏢 BÊN MUA (Công ty)")
+        if company_keys:
+            index = company_keys.index(item["company_id"]) if item.get("company_id") in company_keys else 0
+            company_id = st.selectbox(
+                "Công ty", company_keys, index=index,
+                format_func=lambda k: companies.get(k, {}).get("legal_name", k),
+                key=f"contract_company_{contract_id}",
+            )
+        else:
+            company_id = None
+            st.info("Chưa có hồ sơ pháp lý Công ty.")
+    with right:
+        st.markdown("#### 🤝 BÊN BÁN (Đại lý)")
+        if agent_keys:
+            index = agent_keys.index(item["agent_id"]) if item.get("agent_id") in agent_keys else 0
+            agent_id = st.selectbox(
+                "Đại lý", agent_keys, index=index,
+                format_func=lambda k: agents.get(k, {}).get("legal_name", k),
+                key=f"contract_agent_{contract_id}",
+            )
+        else:
+            agent_id = None
+            st.info("Chưa có hồ sơ pháp lý Đại lý.")
+
+    changed = False
+    if company_id and item.get("company_id") != company_id:
+        item["company_id"] = company_id
+        changed = True
+    if agent_id and item.get("agent_id") != agent_id:
+        item["agent_id"] = agent_id
+        changed = True
+    if changed:
+        _save_contract_and_refresh(item, contracts_db)
+
+    company = companies.get(company_id) if company_id else None
+    agent = agents.get(agent_id) if agent_id else None
+
+    from views.docgen import _authority_summary_card, _missing_authority_fields
+
+    _authority_summary_card(company, agent)
+
+    missing = _missing_authority_fields(agent, company)
+    if missing:
+        st.warning("Thiếu thông tin pháp lý: " + " ".join(missing))
+    if company is None and not company_keys:
+        _authority_form("company", key_suffix=f"ct_{contract_id}")
+    if agent is None and not agent_keys:
+        _authority_form("agent", key_suffix=f"ct_{contract_id}")
+
+    edit_col1, edit_col2 = st.columns(2)
+    with edit_col1:
+        with st.expander("✏️ Bổ sung thông tin BÊN MUA", expanded=False):
+            if company is None:
+                st.caption("Chưa chọn Công ty.")
+            else:
+                _authority_field_form(company, "company", f"buyer_{contract_id}")
+    with edit_col2:
+        with st.expander("✏️ Bổ sung thông tin BÊN BÁN", expanded=False):
+            if agent is None:
+                st.caption("Chưa chọn Đại lý.")
+            else:
+                _authority_field_form(agent, "agent", f"seller_{contract_id}")
+
+
+def _contract_document_summary(contract_id: str) -> None:
+    """Tab 5 — concise generated-document history for this contract."""
+    from core.database import load_docgen_documents
+
+    docs = load_docgen_documents(contract_id)
+    if not docs:
+        st.info("Chưa có chứng từ nào được xuất cho hợp đồng này.")
+        return
+    rows = [
+        {
+            "Loại": d.get("document_type"),
+            "Số": d.get("document_id"),
+            "Ngày": str(d.get("generated_at") or "")[:10],
+            "Revision": d.get("generation_revision") or d.get("revision") or 1,
+            "Trạng thái": d.get("status"),
+            "Người tạo": d.get("generated_by") or "—",
+            "File": d.get("output_file_name"),
+        }
+        for d in docs.values()
+    ]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _contract_card(item: dict, contracts_db: dict, linked_count: int) -> None:
+    """One concise, beginner-friendly contract row."""
+    contract_id = _contract_id(item)
+    with st.container(border=True):
+        info, action = st.columns([5, 1])
+        with info:
+            st.markdown(f"**{item.get('contract_no') or contract_id}** · {item.get('kind') or item.get('type') or '—'}")
+            st.caption(f"Đại lý: {item.get('agent_id') or '—'} · Công ty: {item.get('company_id') or '—'}")
+            st.caption(
+                f"Giá trị: {safe_float(item.get('value', 0)):,.0f} {item.get('currency', 'VND')}"
+                f" · Hiệu lực: {str(item.get('date') or '—')}"
+                f" · Lô liên kết: {linked_count}"
+                f" · Trạng thái: {item.get('status') or 'Đang xử lý'}"
+            )
+        with action:
+            if st.button("MỞ HỢP ĐỒNG", key=f"open_contract_{contract_id}", type="primary", use_container_width=True):
+                st.session_state.selected_contract_v2 = contract_id
+                st.rerun()
+
+
 def ui_contracts_management() -> None:
-    st.title("📜 QUẢN LÝ HỢP ĐỒNG & TÀI CHÍNH HỢP ĐỒNG")
-    st.caption("Một hợp đồng có thể dùng chung cho nhiều lô hàng. Ngân hàng, thanh toán hộ và ví ký quỹ được quản lý trong cùng một hồ sơ.")
+    """📜 HỢP ĐỒNG — the contract work desk (contract-centric owner workflow)."""
+    st.title("📜 HỢP ĐỒNG")
+    st.caption(
+        "Hợp đồng là nơi làm việc chính: thông tin pháp lý hai bên, hàng hóa, "
+        "chứng từ HDNT / PL / HDMB và tải file. Phiếu xuất kho (PXK) vẫn thuộc lô hàng."
+    )
 
     if "db_contracts" not in st.session_state:
         st.session_state.db_contracts = load_contracts()
@@ -348,7 +507,16 @@ def ui_contracts_management() -> None:
     proxy_db = st.session_state.db_proxy
     entrust_db = st.session_state.db_entrustments
 
-    with st.expander("➕ Đăng ký hợp đồng mới", expanded=False):
+    # ------------------------------------------------------------------
+    # A. DANH SÁCH HỢP ĐỒNG
+    # ------------------------------------------------------------------
+    st.markdown("## 📋 DANH SÁCH HỢP ĐỒNG")
+
+    if st.button("➕ TẠO HỢP ĐỒNG MỚI", type="primary", key="toggle_new_contract"):
+        st.session_state.show_new_contract = not st.session_state.get("show_new_contract", False)
+        st.rerun()
+
+    if st.session_state.get("show_new_contract") or not contracts_db:
         with st.form("new_contract_form_v2"):
             c1, c2, c3 = st.columns(3)
             new_no = c1.text_input("Số hợp đồng")
@@ -356,7 +524,7 @@ def ui_contracts_management() -> None:
             new_client = c3.text_input("Đối tác / nhà nhập khẩu")
             c4, c5, c6 = st.columns(3)
             new_value = c4.number_input("Tổng giá trị", min_value=0.0, step=1000.0, format="%.2f")
-            new_currency = c5.selectbox("Loại tiền", ["USD", "EUR", "VND", "CNY"])
+            new_currency = c5.selectbox("Loại tiền", ["VND", "USD", "EUR", "CNY"])
             new_note = c6.text_input("Điều khoản / ghi chú")
             if st.form_submit_button("🚀 Lưu hợp đồng", type="primary", disabled=not can_edit_contract()):
                 if not can_edit_contract():
@@ -368,36 +536,92 @@ def ui_contracts_management() -> None:
                     elif any(normalize_contract_no(existing) == normalize_contract_no(contract_id) for existing in contracts_db):
                         st.error("Số hợp đồng này đã tồn tại.")
                     else:
-                        item = {"id": contract_id, "contract_no": contract_id, "normalized_no": normalize_contract_no(contract_id), "date": str(new_date), "client": new_client.strip(), "value": new_value, "currency": new_currency, "note": new_note.strip(), "details": {"transactions": []}, "linked_shipment_ids": []}
+                        item = {
+                            "id": contract_id, "contract_no": contract_id, "normalized_no": normalize_contract_no(contract_id),
+                            "date": str(new_date), "client": new_client.strip(), "value": new_value, "currency": new_currency,
+                            "note": new_note.strip(), "details": {"transactions": []}, "linked_shipment_ids": [],
+                        }
                         if _save_contract_and_refresh(item, contracts_db):
-                            st.success(f"Đã đăng ký {contract_id}.")
+                            st.session_state.selected_contract_v2 = contract_id
+                            st.session_state.show_new_contract = False
+                            st.success(f"Đã tạo hợp đồng {contract_id}.")
                             st.rerun()
                         else:
                             st.error("Không lưu được hợp đồng.")
+
+    search = st.text_input("🔍 Tìm hợp đồng (số hợp đồng, đối tác, đại lý)", key="contract_search_box")
+    needle = str(search or "").strip().upper()
 
     if not contracts_db:
         st.info("Hiện tại chưa có hợp đồng nào.")
         return
 
-    contract_rows = [{"Số hợp đồng": _contract_id(item), "Ngày ký": item.get("date", ""), "Đối tác": item.get("client", ""), "Giá trị": f"{safe_float(item.get('value', 0)):,.2f} {item.get('currency', 'USD')}", "Ghi chú": item.get("note", "")} for item in contracts_db.values()]
-    st.dataframe(pd.DataFrame(contract_rows), use_container_width=True, hide_index=True)
+    def _matches(item: dict) -> bool:
+        if not needle:
+            return True
+        haystack = " ".join(
+            str(item.get(field) or "") for field in ("id", "contract_no", "client", "agent_id", "company_id", "note", "kind", "type")
+        ).upper()
+        return needle in haystack
+
+    visible = [item for item in contracts_db.values() if _matches(item)]
+    if not visible:
+        st.info("Không tìm thấy hợp đồng phù hợp.")
+
+    for item in visible:
+        contract_id = _contract_id(item)
+        linked_count = sum(1 for shipment in shipments_db.values() if _shipment_matches_contract(shipment, contract_id))
+        _contract_card(item, contracts_db, linked_count)
+
+    st.divider()
+
+    # ------------------------------------------------------------------
+    # B. CONTRACT DETAIL
+    # ------------------------------------------------------------------
     contract_options = list(contracts_db.keys())
-    selected_id = st.selectbox("Chọn hợp đồng để mở hồ sơ hợp nhất", contract_options, key="selected_contract_v2")
+    default_id = st.session_state.get("selected_contract_v2")
+    index = contract_options.index(default_id) if default_id in contract_options else 0
+    selected_id = st.selectbox("Chọn hợp đồng để mở", contract_options, index=index, key="selected_contract_v2")
     item = contracts_db[selected_id]
     contract_id = _contract_id(item)
-    st.markdown(f"### 📂 Hợp đồng {contract_id} · {item.get('client', '')}")
+    st.markdown(f"## 📂 HỢP ĐỒNG {item.get('contract_no') or contract_id} · {item.get('client', '')}")
 
-    overview_tab, shipments_tab, finance_tab, terms_tab = st.tabs(["📋 Tổng quan", "🚢 Lô hàng", "💰 Tài chính hợp đồng", "⚙️ Phụ lục / điều khoản"])
-    with overview_tab:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Giá trị hợp đồng", f"{safe_float(item.get('value', 0)):,.2f} {item.get('currency', 'USD')}")
-        c2.metric("Lô hàng liên kết", str(sum(1 for shipment in shipments_db.values() if _shipment_matches_contract(shipment, contract_id))))
-        c3.metric("Ngày ký", str(item.get("date", "")))
-        st.info("Thu tiền & Công nợ vẫn là tab riêng vì đó là sổ phải thu/phân bổ theo khách hàng. Không gộp vào sổ thanh toán ngoại thương của hợp đồng để tránh tính trùng.")
-    with shipments_tab:
-        _render_shipment_links(contract_id, shipments_db)
+    info_tab, goods_tab, shipment_tab, finance_tab, terms_tab = st.tabs(
+        ["📋 THÔNG TIN HỢP ĐỒNG", "🧾 HÀNG HÓA & CHỨNG TỪ", "🚢 LÔ HÀNG LIÊN KẾT", "💰 TÀI CHÍNH HỢP ĐỒNG", "⚙️ PHỤ LỤC / LỊCH SỬ"]
+    )
+
+    with info_tab:
+        _render_contract_parties(contract_id, item, contracts_db)
+
+    with goods_tab:
+        from views.docgen import ui_contract_document_pack
+
+        ui_contract_document_pack(contract_id, item)
+
+    with shipment_tab:
+        linked = _render_shipment_links(contract_id, shipments_db)
+        for shipment in linked:
+            sid = str(shipment.get("id") or shipment.get("shipment_id") or "")
+            if not sid:
+                continue
+            with st.container(border=True):
+                left, mid, right = st.columns([3, 1.4, 1.6])
+                left.markdown(f"**{sid}**")
+                left.caption(f"Khách hàng: {shipment.get('customer') or shipment.get('client') or '—'} · Trạng thái: {STATUS_MAP_INV.get(shipment.get('status', 'wait'), 'Chờ xử lý')}")
+                if mid.button("🚢 MỞ LÔ HÀNG", key=f"contract_open_shipment_{sid}", use_container_width=True):
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.active_shipment_section = "export"
+                    st.session_state.active_page = "Tổng Quan Công Việc"
+                    st.rerun()
+                if right.button("📦 LÀM PHIẾU XUẤT KHO", key=f"contract_pxk_{sid}", use_container_width=True):
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.active_shipment_section = "documents"
+                    st.session_state.active_page = "Tổng Quan Công Việc"
+                    st.rerun()
+
     with finance_tab:
         _render_contract_finance(item, contracts_db, proxy_db, entrust_db)
+
     with terms_tab:
         new_value = st.number_input("Điều chỉnh giá trị theo phụ lục", value=safe_float(item.get("value", 0)), key=f"contract_value_{contract_id}")
         new_note = st.text_area("Ghi chú / điều khoản", value=item.get("note", ""), key=f"contract_note_{contract_id}")
@@ -409,3 +633,6 @@ def ui_contracts_management() -> None:
             if _save_contract_and_refresh(item, contracts_db):
                 st.success("Đã cập nhật phụ lục hợp đồng.")
                 st.rerun()
+        st.divider()
+        st.markdown("#### 🕒 LỊCH SỬ CHỨNG TỪ")
+        _contract_document_summary(contract_id)
