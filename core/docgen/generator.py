@@ -14,30 +14,25 @@ The service layer is the security boundary; UI hiding is never sufficient.
 from __future__ import annotations
 
 import hashlib
-import io
-from datetime import date, datetime
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 from core.docgen import rules as rules_mod
 from core.docgen.rules import (
+    BLOCKED,
     DEBIT_USD,
     GENERATED,
     HDMB,
     HDNT,
     ISSUED,
-    MISSING_INFO,
-    NOT_APPLICABLE,
-    OWNER_RULE_REQUIRED,
     PL,
     PXK,
     READY,
-    BLOCKED,
     Readiness,
-    DRAFT,
 )
-from core.docgen.template_engine import mutate_docx, mutate_xlsx
-from core.utils import parse_date, safe_float, utc_now, to_decimal
+from core.docgen.template_engine import CachedFormulaValue, mutate_docx, mutate_xlsx
+from core.utils import parse_date, to_decimal, utc_now
 
 # ---------------------------------------------------------------------------
 # Vietnamese amount-in-words (bounded, VND only).  Kept local so the generator
@@ -107,7 +102,7 @@ def amount_in_words_vnd(value: Any) -> str:
     amount = to_decimal(value)
     if amount is None:
         return ""
-    rounded = int(amount.quantize(Decimal("1")))
+    rounded = int(amount.quantize(Decimal(1)))
     integer = rounded
     whole = _int_words(integer)
     text = f"{whole} đồng chẵn" if integer else "không đồng"
@@ -125,7 +120,7 @@ def _date_ddmmyyyy(value: Any) -> str:
 
 
 def _vnd_format(value: Any) -> str:
-    amount = to_decimal(value) or Decimal("0")
+    amount = to_decimal(value) or Decimal(0)
     return f"{int(amount):,}".replace(",", ".")
 
 
@@ -194,6 +189,9 @@ def build_xlsx_payload(
                 "D24": _to_number(goods.get("quantity")),
                 "E24": _to_number(goods.get("unit_price_vnd_excl_vat")),
                 "F24": _to_number(goods.get("amount_vnd_excl_vat")),
+                "F25": CachedFormulaValue(totals.subtotal),
+                "F26": CachedFormulaValue(totals.vat_amount),
+                "F27": CachedFormulaValue(totals.total_after_vat),
                 "A28": f"(Bằng chữ: {words})",
                 "A35": f"* Chủ tài khoản: {_nonempty(agent.get('bank_account_holder'))}",
                 "A36": f"* Số tài khoản: {_nonempty(agent.get('bank_account_number'))}",
@@ -221,6 +219,11 @@ def build_xlsx_payload(
             fill[f"D{idx}"] = _to_number(goods.get("quantity"))
             fill[f"E{idx}"] = _to_number(goods.get("unit_price_vnd_excl_vat"))
             fill[f"F{idx}"] = _to_number(goods.get("amount_vnd_excl_vat"))
+            
+        fill["F28"] = CachedFormulaValue(totals.subtotal)
+        fill["F29"] = CachedFormulaValue(totals.vat_amount)
+        fill["F30"] = CachedFormulaValue(totals.total_after_vat)
+        
         return {"pl": fill}
 
     if document_type == PXK:
@@ -749,7 +752,11 @@ def issue_document(
 ) -> dict[str, Any]:
     """Mark the latest revision of a generated document as ISSUED (immutable)."""
     from core.auth import assert_can_issue_documents
-    from core.database import load_docgen_document, load_docgen_document_latest, save_docgen_document
+    from core.database import (
+        load_docgen_document,
+        load_docgen_document_latest,
+        save_docgen_document,
+    )
 
     assert_can_issue_documents()
     from core.auth import current_actor_context
@@ -788,7 +795,11 @@ def supersede_document(
 ) -> dict[str, Any]:
     """Create a new document id that supersedes an ISSUED one. No silent overwrite."""
     from core.auth import assert_can_issue_documents
-    from core.database import link_superseded_docgen_document, load_docgen_document_latest, save_docgen_document
+    from core.database import (
+        link_superseded_docgen_document,
+        load_docgen_document_latest,
+        save_docgen_document,
+    )
 
     assert_can_issue_documents()
     old = load_docgen_document_latest(old_document_id)

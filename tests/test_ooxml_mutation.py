@@ -136,5 +136,90 @@ class TestOOXMLMutation(unittest.TestCase):
         wb = openpyxl.load_workbook("/tmp/dummy_out.xlsx")
         self.assertIn("pxk", wb.sheetnames)
 
+
+    def test_pl_hdmb_formula_cache_preserved(self):
+        tpl = build_dummy_template() # We'll just use the dummy one and pretend it's PL/HDMB
+        with open("/tmp/dummy_tpl2.xlsx", "wb") as f:
+            f.write(tpl)
+            
+        from core.docgen.template_engine import CachedFormulaValue
+        fill = {
+            "pxk": { # map sheet name pxk but we test CachedFormulaValue behavior
+                "F28": CachedFormulaValue(100),
+            }
+        }
+        res = mutate_xlsx("/tmp/dummy_tpl2.xlsx", fill)
+        with zipfile.ZipFile(io.BytesIO(res)) as zf:
+            ws = etree.fromstring(zf.read("xl/worksheets/sheet1.xml"))
+            f28 = ws.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c[@r='F28']")
+            self.assertIsNotNone(f28.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}f"))
+            v = f28.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v")
+            self.assertEqual(v.text, "100")
+            
+            # Check calcPr requests full calc
+            wb = etree.fromstring(zf.read("xl/workbook.xml"))
+            calcPr = wb.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}calcPr")
+            self.assertEqual(calcPr.get("calcMode"), "auto")
+            self.assertEqual(calcPr.get("fullCalcOnLoad"), "1")
+            self.assertEqual(calcPr.get("forceFullCalc"), "1")
+
+
+    def test_pl_layout_patches(self):
+        # We need a dummy with 'pl' sheet
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>')
+            zf.writestr("xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>')
+            zf.writestr("xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="pl" sheetId="1" r:id="rId1"/></sheets></workbook>')
+            zf.writestr("xl/worksheets/sheet1.xml", '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="6" ht="36" customHeight="1"/></sheetData></worksheet>')
+
+        tpl = buffer.getvalue()
+        with open("/tmp/dummy_pl.xlsx", "wb") as f:
+            f.write(tpl)
+            
+        fill = {"pl": {"A1": "Test"}}
+        res = mutate_xlsx("/tmp/dummy_pl.xlsx", fill)
+        with zipfile.ZipFile(io.BytesIO(res)) as zf:
+            ws = etree.fromstring(zf.read("xl/worksheets/sheet1.xml"))
+            row6 = ws.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row[@r='6']")
+            self.assertEqual(row6.get("ht"), "75")
+            
+            wb = etree.fromstring(zf.read("xl/workbook.xml"))
+            defNames = wb.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}definedNames")
+            self.assertIsNotNone(defNames)
+            dn = defNames.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}definedName")
+            self.assertEqual(dn.get("name"), "_xlnm.Print_Titles")
+            self.assertEqual(dn.text, "pl!$9:$9")
+
+
+
+    def test_pxk_layout_patches(self):
+        # We need a dummy with 'pxk' sheet
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>')
+            zf.writestr("xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>')
+            zf.writestr("xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="pxk" sheetId="1" r:id="rId1"/></sheets></workbook>')
+            zf.writestr("xl/worksheets/sheet1.xml", '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="6" ht="22" customHeight="1"/></sheetData></worksheet>')
+
+        tpl = buffer.getvalue()
+        with open("/tmp/dummy_pxk.xlsx", "wb") as f:
+            f.write(tpl)
+            
+        fill = {"pxk": {"A1": "Test"}}
+        res = mutate_xlsx("/tmp/dummy_pxk.xlsx", fill)
+        with zipfile.ZipFile(io.BytesIO(res)) as zf:
+            ws = etree.fromstring(zf.read("xl/worksheets/sheet1.xml"))
+            row6 = ws.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row[@r='6']")
+            self.assertEqual(row6.get("ht"), "40")
+            
+            mc = ws.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}mergeCell[@ref='A10:D10']")
+            self.assertIsNotNone(mc)
+            
+            ps = ws.find(".//{http://schemas.openxmlformats.org/spreadsheetml/2006/main}pageSetup")
+            self.assertEqual(ps.get("fitToWidth"), "1")
+            self.assertEqual(ps.get("fitToHeight"), "0")
+
+
 if __name__ == '__main__':
     unittest.main()
