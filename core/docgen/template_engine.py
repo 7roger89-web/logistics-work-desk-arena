@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Any, Mapping
-from xml.sax.saxutils import escape
+from typing import Any
 
 from lxml import etree
 
@@ -76,20 +76,29 @@ def _append_shared_string(sst_element, text_index: dict[str, int], text: str) ->
     return index
 
 
-def _set_shared_string(cell, sst_element, text_index: dict[str, int], text: str) -> None:
+def _set_shared_string(cell, sst_element, text_index: dict[str, int], text: str) -> bool:
     index = _append_shared_string(sst_element, text_index, text)
+    removed_f = False
     # Strip existing value/formula/inline str children.
     for tag in ("v", "f", "is"):
         for child in cell.findall(f"x:{tag}", NSMAP):
+            if tag == "f":
+                removed_f = True
             cell.remove(child)
     cell.set("t", "s")
     v = etree.SubElement(cell, f"{{{SHEET_NS}}}v")
     v.text = str(index)
+    return removed_f
 
 
-def _set_number(cell, value) -> None:
+def _set_number(cell, value, keep_formula=False) -> bool:
+    removed_f = False
     for tag in ("v", "f", "is"):
+        if tag == "f" and keep_formula:
+            continue
         for child in cell.findall(f"x:{tag}", NSMAP):
+            if tag == "f":
+                removed_f = True
             cell.remove(child)
     if "t" in cell.attrib:
         del cell.attrib["t"]
@@ -100,15 +109,21 @@ def _set_number(cell, value) -> None:
         v.text = repr(value)
     else:
         v.text = str(int(value))
+    return removed_f
 
 
-def _write_cell(cell, sst_element, text_index: dict[str, int], value) -> None:
+def _write_cell(cell, sst_element, text_index: dict[str, int], value) -> bool:
+    keep_formula = False
+    if isinstance(value, CachedFormulaValue):
+        keep_formula = True
+        value = value.value
+
     if isinstance(value, _NUMBER_TYPES) and not isinstance(value, bool):
-        _set_number(cell, value)
+        return _set_number(cell, value, keep_formula)
     elif isinstance(value, bool):
-        _set_number(cell, 1 if value else 0)
+        return _set_number(cell, 1 if value else 0, keep_formula)
     else:
-        _set_shared_string(cell, sst_element, text_index, str(value))
+        return _set_shared_string(cell, sst_element, text_index, str(value))
 
 
 def _sheet_path_by_name(workbook_element, rels_element) -> dict[str, str]:
@@ -127,6 +142,10 @@ def _sheet_path_by_name(workbook_element, rels_element) -> dict[str, str]:
         sheet_paths[sheet.get("name")] = target
     return sheet_paths
 
+
+class CachedFormulaValue:
+    def __init__(self, value):
+        self.value = value
 
 def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> bytes:
     """Return a new XLSX workbook with the mapped cells written.
@@ -149,6 +168,7 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
     sst_element = None
     text_index: dict[str, int] = {}
     sst_path = "xl/sharedStrings.xml"
+    formula_removed = False
 
     for sheet_name, payload in fill.items():
         path = sheet_paths.get(sheet_name)
@@ -167,25 +187,209 @@ def mutate_xlsx(template_path: str, fill: Mapping[str, Mapping[str, Any]]) -> by
                 continue
             if sst_element is None:
                 # No shared strings part: write text inline.
+                keep_formula = False
+                if isinstance(value, CachedFormulaValue):
+                    keep_formula = True
+                    value = value.value
                 if isinstance(value, _NUMBER_TYPES) and not isinstance(value, bool):
-                    _set_number(cell, value)
+                    if _set_number(cell, value, keep_formula):
+                        formula_removed = True
                 else:
                     for tag in ("v", "f", "is"):
+                        if tag == "f" and keep_formula:
+                            continue
                         for child in cell.findall(f"x:{tag}", NSMAP):
+                            if tag == "f":
+                                formula_removed = True
                             cell.remove(child)
                     cell.set("t", "inlineStr")
                     is_el = etree.SubElement(cell, f"{{{SHEET_NS}}}is")
                     t = etree.SubElement(is_el, f"{{{SHEET_NS}}}t")
                     t.text = str(value)
                 continue
-            _write_cell(cell, sst_element, text_index, value)
+            if _write_cell(cell, sst_element, text_index, value):
+                formula_removed = True
+
+
+        cells_to_shrink = []
+        cells_to_wrap = []
+
+        if sheet_name == "HDMB":
+            c_el = _cell(sheet, "E24")
+            if c_el is not None and c_el.get("s"):
+                cells_to_shrink.append(c_el)
+
+        if sheet_name == "pl":
+            sheetData = sheet.find(f"{{{SHEET_NS}}}sheetData")
+            if sheetData is not None:
+                row6 = sheetData.find(f"{{{SHEET_NS}}}row[@r='6']")
+                if row6 is not None:
+                    row6.set("ht", "75")
+                    row6.set("customHeight", "1")
+            
+            # Print title for pl
+            wb_sheets = workbook.find(f"{{{SHEET_NS}}}sheets")
+            pl_sheet_idx = None
+            if wb_sheets is not None:
+                for idx, s in enumerate(wb_sheets.findall(f"{{{SHEET_NS}}}sheet")):
+                    if s.get("name") == "pl":
+                        pl_sheet_idx = idx
+                        break
+            if pl_sheet_idx is not None:
+                def_names = workbook.find(f"{{{SHEET_NS}}}definedNames")
+                if def_names is None:
+                    def_names = etree.Element(f"{{{SHEET_NS}}}definedNames")
+                    calc_pr = workbook.find(f"{{{SHEET_NS}}}calcPr")
+                    if calc_pr is not None:
+                        calc_pr.addprevious(def_names)
+                    else:
+                        workbook.append(def_names)
+                exists = False
+                for dn in def_names.findall(f"{{{SHEET_NS}}}definedName"):
+                    if dn.get("name") == "_xlnm.Print_Titles" and dn.get("localSheetId") == str(pl_sheet_idx):
+                        exists = True
+                        dn.text = "pl!$9:$9"
+                if not exists:
+                    dn = etree.SubElement(def_names, f"{{{SHEET_NS}}}definedName")
+                    dn.set("name", "_xlnm.Print_Titles")
+                    dn.set("localSheetId", str(pl_sheet_idx))
+                    dn.text = "pl!$9:$9"
+                    
+        if sheet_name == "pxk":
+            sheetData = sheet.find(f"{{{SHEET_NS}}}sheetData")
+            if sheetData is not None:
+                for r_idx in ["6", "7", "10", "11"]:
+                    row = sheetData.find(f"{{{SHEET_NS}}}row[@r='{r_idx}']")
+                    if row is None:
+                        row = etree.SubElement(sheetData, f"{{{SHEET_NS}}}row")
+                        row.set("r", r_idx)
+                    row.set("ht", "40" if r_idx in ["6", "7"] else "30")
+                    row.set("customHeight", "1")
+                    c_el = _cell(sheet, f"A{r_idx}")
+                    if c_el is not None and c_el.get("s"):
+                        cells_to_wrap.append(c_el)
+            
+            mergeCells = sheet.find(f"{{{SHEET_NS}}}mergeCells")
+            if mergeCells is None:
+                mergeCells = etree.Element(f"{{{SHEET_NS}}}mergeCells")
+                # Insert after sheetData? Actually, etree handles it gracefully most times, but strictly we could just append to sheet.
+                pm = sheet.find(f"{{{SHEET_NS}}}pageMargins")
+                if pm is not None:
+                    pm.addprevious(mergeCells)
+                else:
+                    sheet.append(mergeCells)
+                    
+            for ref in ["A10:D10", "A11:D11"]:
+                exists = False
+                for mc in mergeCells.findall(f"{{{SHEET_NS}}}mergeCell"):
+                    if mc.get("ref") == ref:
+                        exists = True
+                if not exists:
+                    mc = etree.SubElement(mergeCells, f"{{{SHEET_NS}}}mergeCell")
+                    mc.set("ref", ref)
+                    count = int(mergeCells.get("count", "0"))
+                    mergeCells.set("count", str(count + 1))
+            
+            pageSetup = sheet.find(f"{{{SHEET_NS}}}pageSetup")
+            if pageSetup is None:
+                pageSetup = etree.Element(f"{{{SHEET_NS}}}pageSetup")
+                pm = sheet.find(f"{{{SHEET_NS}}}pageMargins")
+                if pm is not None:
+                    pm.addnext(pageSetup)
+                else:
+                    sheet.append(pageSetup)
+            pageSetup.set("fitToWidth", "1")
+            pageSetup.set("fitToHeight", "0")
+            
+            sheetPr = sheet.find(f"{{{SHEET_NS}}}sheetPr")
+            if sheetPr is None:
+                sheetPr = etree.Element(f"{{{SHEET_NS}}}sheetPr")
+                sheet.insert(0, sheetPr)
+            pageSetUpPr = sheetPr.find(f"{{{SHEET_NS}}}pageSetUpPr")
+            if pageSetUpPr is None:
+                pageSetUpPr = etree.SubElement(sheetPr, f"{{{SHEET_NS}}}pageSetUpPr")
+            pageSetUpPr.set("fitToPage", "1")
+
+        if (cells_to_shrink or cells_to_wrap) and "xl/styles.xml" in parts:
+            import copy
+            styles = _parse(parts["xl/styles.xml"])
+            cellXfs = styles.find(f"{{{SHEET_NS}}}cellXfs")
+            if cellXfs is not None:
+                for c_el in cells_to_shrink:
+                    s_idx = int(c_el.get("s"))
+                    xfs = cellXfs.findall(f"{{{SHEET_NS}}}xf")
+                    if s_idx < len(xfs):
+                        new_xf = copy.deepcopy(xfs[s_idx])
+                        alignment = new_xf.find(f"{{{SHEET_NS}}}alignment")
+                        if alignment is None:
+                            alignment = etree.SubElement(new_xf, f"{{{SHEET_NS}}}alignment")
+                        alignment.set("shrinkToFit", "1")
+                        if "wrapText" in alignment.attrib:
+                            del alignment.attrib["wrapText"]
+                        new_xf.set("applyAlignment", "1")
+                        cellXfs.append(new_xf)
+                        new_s_idx = len(cellXfs.findall(f"{{{SHEET_NS}}}xf")) - 1
+                        cellXfs.set("count", str(new_s_idx + 1))
+                        c_el.set("s", str(new_s_idx))
+                
+                for c_el in cells_to_wrap:
+                    s_idx = int(c_el.get("s"))
+                    xfs = cellXfs.findall(f"{{{SHEET_NS}}}xf")
+                    if s_idx < len(xfs):
+                        new_xf = copy.deepcopy(xfs[s_idx])
+                        alignment = new_xf.find(f"{{{SHEET_NS}}}alignment")
+                        if alignment is None:
+                            alignment = etree.SubElement(new_xf, f"{{{SHEET_NS}}}alignment")
+                        alignment.set("wrapText", "1")
+                        new_xf.set("applyAlignment", "1")
+                        cellXfs.append(new_xf)
+                        new_s_idx = len(cellXfs.findall(f"{{{SHEET_NS}}}xf")) - 1
+                        cellXfs.set("count", str(new_s_idx + 1))
+                        c_el.set("s", str(new_s_idx))
+            parts["xl/styles.xml"] = _serialize(styles)
 
         parts[path] = _serialize(sheet)
 
     if sst_element is not None and sst_path in parts:
         parts[sst_path] = _serialize(sst_element)
 
+    if formula_removed:
+        # 1. Remove xl/calcChain.xml
+        if "xl/calcChain.xml" in parts:
+            del parts["xl/calcChain.xml"]
+            if "xl/calcChain.xml" in entry_order:
+                entry_order.remove("xl/calcChain.xml")
+
+        # 2. Remove its relationship from xl/_rels/workbook.xml.rels
+        rels_modified = False
+        for rel in rels.findall(f"{{{PKG_REL_NS}}}Relationship"):
+            if rel.get("Target") == "calcChain.xml":
+                rels.remove(rel)
+                rels_modified = True
+        if rels_modified:
+            parts["xl/_rels/workbook.xml.rels"] = _serialize(rels)
+
+        # 3. Remove its corresponding Content-Type override from [Content_Types].xml
+        if "[Content_Types].xml" in parts:
+            ct_element = _parse(parts["[Content_Types].xml"])
+            ct_modified = False
+            for override in ct_element.findall("{http://schemas.openxmlformats.org/package/2006/content-types}Override"):
+                if override.get("PartName") == "/xl/calcChain.xml":
+                    ct_element.remove(override)
+                    ct_modified = True
+            if ct_modified:
+                parts["[Content_Types].xml"] = _serialize(ct_element)
+
+
+    # 4. Update workbook calculation properties to request safe recalculation
+    calc_pr = workbook.find(f"{{{SHEET_NS}}}calcPr")
+    if calc_pr is not None:
+        calc_pr.set("calcMode", "auto")
+        calc_pr.set("fullCalcOnLoad", "1")
+        calc_pr.set("forceFullCalc", "1")
+
     # Rebuild the zip preserving original entry order and metadata.
+    parts["xl/workbook.xml"] = _serialize(workbook)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as writer:
         for name in entry_order:
@@ -210,7 +414,7 @@ def mutate_docx(template_path: str, run_edits: list[tuple[int, int, str, str | N
     ``value``.  Run properties (rPr) are preserved because we never rebuild the
     paragraph or run element.
     """
-    import docx  # noqa: PLC0415
+    import docx
 
     document = docx.Document(template_path)
     paragraphs = list(document.paragraphs)
