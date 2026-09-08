@@ -1211,15 +1211,20 @@ class PrintFidelityTests(TestCase):
         
         found_9_1 = False
         found_9_3 = False
+        found_15_2 = False
         
         for e in edits:
             if e[0] == 9 and e[1] == 1:
-                self.assertEqual(e[2], "Nguyễn Văn A")
+                self.assertEqual(e[2], "/Bà Nguyễn Văn A")
                 found_9_1 = True
             if e[0] == 9 and e[1] == 3:
                 self.assertEqual(e[2], "Chức vụ: Giám đốc")
                 found_9_3 = True
+            if e[0] == 15 and e[1] == 2:
+                self.assertEqual(e[2], "Bà Lê Thị C")
+                found_15_2 = True
                 
         self.assertTrue(found_9_1)
         self.assertTrue(found_9_3)
+        self.assertTrue(found_15_2)
 
