@@ -12,7 +12,6 @@ from . import design, icons, store, ui
 
 def render_collect():
     recs = store.get_receivables()
-    kpi = store.get_kpi()["totals"]
 
     # KPI strip
     kpi_cards = [
@@ -44,20 +43,21 @@ def render_collect():
 
     st.markdown(f'<div class="lg-kpi-grid" style="{style};margin-bottom:16px">{cards_html}</div>', unsafe_allow_html=True)
 
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.wallet(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Thu Tiền & Công Nợ</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Hiện trạng từng khoản → còn thiếu bao nhiêu → bấm thu ngay</p>
       </div>
     </div>
-    <button class="lg-btn success" onclick="document.querySelector('button[data-action=&quot;open_pay&quot;]')?.click()">{icons.plus(17, "#fff")} GHI NHẬN THANH TOÁN</button>
+    <a class="lg-btn success" href="?action=open_pay" target="_self">{icons.plus(17, "#fff")} GHI NHẬN THANH TOÁN</a>
   </div>
 </div>
-""".format(icons.wallet(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # Table
     rows = []
@@ -65,109 +65,63 @@ def render_collect():
         rest = r["must"] - r["got"]
         rows.append([
             f'<b>{r["customer"]}</b>',
-            f'<a class="lg-link" data-to="/lo-hang-detail?id={r["lot"]}">{r["lot"]}</a><br><span style="font-size:12.5px;color:#64748b">{r["contract"]}</span>',
+            f'<a class="lg-link" href="?p=/lo-hang-detail&id={r["lot"]}" target="_self">{r["lot"]}</a><br><span style="font-size:12.5px;color:#64748b">{r["contract"]}</span>',
             f'<span style="white-space:nowrap">{design.fmt_vnd(r["must"])}</span>',
             f'<span style="white-space:nowrap;color:#047857;font-weight:600">{design.fmt_vnd(r["got"])}</span>',
             f'<span style="white-space:nowrap;font-weight:800;color:#b91c1c">{design.fmt_vnd(rest)}</span>',
             f'<span style="font-weight:600;white-space:nowrap">{r["due"]}</span>',
             f'<span class="lg-badge {r["tone"]} sm">{r["status"]}</span>',
-            f'<button class="lg-btn success sm" onclick="window.parent.postMessage({{&quot;type&quot;:&quot;donor&quot;,&quot;action&quot;:&quot;pay_dialog&quot;,&quot;sid&quot;:&quot;{r["lot"]}&quot;}},\'*\')">THU NGAY</button>',
+            f'<a class="lg-btn success sm" href="?action=pay_dialog&sid={r["lot"]}" target="_self">THU NGAY</a>',
         ])
 
     from .pages_core import _render_table
     _render_table(["Khách hàng", "Lô · Hợp đồng", "Phải thu", "Đã thu", "Còn lại", "Hạn", "Trạng thái", ""], rows, min_width="940px")
 
-    # Hidden button to open the pay dialog
-    if st.button("OPEN_PAY_HIDDEN", key="open_pay", type="secondary"):
-        st.session_state["pay_dialog_open"] = True
-
-    ui._install_goto_bridge()
-
-    # Payment dialog rendered in a modal via component
     if st.session_state.get("pay_dialog_open"):
-        _render_pay_dialog()
+        _render_pay_form()
 
 
-def _render_pay_dialog():
+def _render_pay_form():
     recs = store.get_receivables()
     lots = [r["lot"] for r in recs]
-    if "pay_lot" not in st.session_state:
-        st.session_state["pay_lot"] = lots[0] if lots else "LO-0306"
-    if "pay_amt" not in st.session_state:
-        st.session_state["pay_amt"] = ""
-    if "pay_kind" not in st.session_state:
-        st.session_state["pay_kind"] = "Thu tiền khách"
+    sid = st.session_state.get("pay_sid", lots[0] if lots else "LO-0306")
+    default_idx = lots.index(sid) if sid in lots else 0
 
-    from streamlit.components.v1 import html as components_html
-    components_html("""
-<style>
-  .pay-mask { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:60; }
-  .pay-sheet { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; width:480px; max-width:92vw; border-radius:24px; padding:20px; z-index:61; box-shadow:0 10px 30px rgba(0,0,0,.18); font-family:'Be Vietnam Pro', system-ui, sans-serif; }
-  .pay-sheet h3 { font-size:18px; font-weight:800; color:#0f2a4a; margin:0 0 12px; }
-  .pay-close { position:absolute; top:12px; right:12px; width:44px; height:44px; border:none; background:transparent; border-radius:12px; cursor:pointer; color:#0f2a4a; }
-  .pay-close:hover { background:#f1f5f9; }
-  .pay-amount { background:#ecfdf5; border:1px solid #bbf7d0; padding:10px 12px; border-radius:12px; font-size:13.5px; margin-bottom:12px; }
-  .pay-amount b { color:#b91c1c; }
-  .pay-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
-</style>
-<div class="pay-mask" id="pay-mask"></div>
-<div class="pay-sheet">
-  <button class="pay-close" id="pay-close" aria-label="Đóng">✕</button>
-  <h3>Ghi nhận thanh toán</h3>
-  <p style="font-size:13.5px;color:#64748b;margin:0 0 8px">Còn phải thu: <b style="color:#b91c1c">336.500.000 ₫</b></p>
-  <div style="display:flex;flex-direction:column;gap:12px">
-    <div class="lg-field">
-      <label class="lg-field-label">Lô hàng</label>
-      <select class="lg-input" id="pay-lot">
-        <option>LO-0306</option>
-        <option>LO-0299</option>
-        <option>LO-0295</option>
-        <option>LO-0307</option>
-        <option>LO-0308</option>
-      </select>
-    </div>
-    <div class="lg-field">
-      <label class="lg-field-label">Số tiền (VND) <span style="color:#dc2626">*</span></label>
-      <input class="lg-input missing" id="pay-amt" placeholder="VD: 150000000" inputmode="numeric" />
-      <p class="lg-field-error" id="pay-err" style="display:none">⚠ Nhập số tiền — VD: 150000000</p>
-    </div>
-    <div class="lg-field">
-      <label class="lg-field-label">Hình thức</label>
-      <select class="lg-input" id="pay-kind">
-        <option>Chuyển khoản Vietcombank</option>
-        <option>Chuyển khoản Techcombank</option>
-        <option>Tiền mặt</option>
-      </select>
-    </div>
-  </div>
-  <div class="pay-btns">
-    <button class="lg-btn ghost full" id="pay-cancel">Hủy</button>
-    <button class="lg-btn success full" id="pay-save">💾 LƯU KHOẢN THU</button>
-  </div>
-</div>
-<script>
-  const send = (kind, payload) => {
-    const url = new URL(window.parent.location);
-    url.searchParams.set('_a', kind + ':' + (payload||'') + ':' + Date.now());
-    window.parent.history.pushState({}, '', url.toString());
-    window.parent.dispatchEvent(new PopStateEvent('popstate'));
-  };
-  document.getElementById('pay-mask').addEventListener('click', () => send('close_pay'));
-  document.getElementById('pay-close').addEventListener('click', () => send('close_pay'));
-  document.getElementById('pay-cancel').addEventListener('click', () => send('close_pay'));
-  document.getElementById('pay-save').addEventListener('click', () => {
-    const amt = (document.getElementById('pay-amt').value || '').replace(/\\D/g, '');
-    const lot = document.getElementById('pay-lot').value;
-    const kind = document.getElementById('pay-kind').value;
-    if (!amt) {
-      document.getElementById('pay-err').style.display = 'block';
-      return;
-    }
-    send('record_payment', lot + '|' + amt + '|' + kind);
-  });
-</script>
-""", height=560)
-    st.session_state["pay_dialog_open"] = False
+    st.markdown('<div class="lg-card" style="border:2px solid #10b981;background:#f0fdf4;margin-top:20px;max-width:520px">', unsafe_allow_html=True)
+    st.markdown(f'<h3 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0 0 12px">{icons.wallet(20, "#10b981")} Ghi nhận thanh toán cho lô</h3>', unsafe_allow_html=True)
+
+    with st.form("pay_record_form"):
+        lot = st.selectbox("Lô hàng", lots, index=default_idx)
+        amt = st.number_input("Số tiền (VND) *", min_value=1_000_000, value=150_000_000, step=10_000_000)
+        kind = st.selectbox("Hình thức", ["Chuyển khoản Vietcombank", "Chuyển khoản Techcombank", "Tiền mặt"])
+        note = st.text_input("Ghi chú", placeholder="Đợt 1 / cọc / thanh toán cuối…")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            cancel = st.form_submit_button("Đóng / Hủy", use_container_width=True)
+        with c2:
+            submit = st.form_submit_button("💾 LƯU KHOẢN THU", type="primary", use_container_width=True)
+
+        if cancel:
+            st.session_state["pay_dialog_open"] = False
+            st.rerun()
+        if submit:
+            ship = store.find_shipment(lot)
+            if ship:
+                ship["finance"]["received"] = ship["finance"].get("received", 0) + amt
+                ship["finance"]["payments"].append({
+                    "date": "09/09/2026",
+                    "kind": kind,
+                    "by": "Kế toán Thu",
+                    "amount": amt,
+                    "ccy": "VND",
+                    "note": note,
+                })
+            store.push_toast(f"Đã ghi nhận thu {design.fmt_vnd(amt)}", f"Đã cộng vào lô {lot} · {kind}", "green")
+            st.session_state["pay_dialog_open"] = False
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ===========================================================================
@@ -177,11 +131,11 @@ def _render_pay_dialog():
 def render_reconcile():
     rec = store.get_reconcile()
 
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.scale(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Đối Soát Tài Chính</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Chốt số với đại lý Bằng Tường — tiền Việt và tiền Trung tách riêng, không gộp</p>
@@ -189,7 +143,8 @@ def render_reconcile():
     </div>
   </div>
 </div>
-""".format(icons.scale(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     vnd = rec["VND"]
     cny = rec["CNY"]
@@ -217,26 +172,30 @@ def render_reconcile():
 </div>
 """, unsafe_allow_html=True)
 
-    st.markdown("""
+    checklist_html = f"""
 <div class="lg-card" style="margin-top:16px">
   <h3 style="font-size:15.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Checklist trước khi chốt</h3>
   <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14.5px">
-    <span style="width:24px;height:24px;border-radius:999px;background:#10b981;color:#fff;display:grid;place-items-center;font-size:13px;font-weight:700">✓</span>
+    <span style="width:24px;height:24px;border-radius:999px;background:#10b981;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700">✓</span>
     <span>Đủ biên lai 9 lô tháng 9</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14.5px">
     <span style="width:24px;height:24px;border-radius:999px;background:#e2e8f0;color:#64748b;display:grid;place-items:center;font-size:13px;font-weight:700">·</span>
     <span style="font-weight:600">Cước xe TQ LO-0307 (9.200 CNY) đã khớp</span>
-    <button class="lg-btn ghost sm" style="margin-left:auto">Bổ sung →</button>
+    <a class="lg-btn ghost sm" style="margin-left:auto" href="?p=/lo-hang-detail&id=LO-0307&tab=tai-chinh" target="_self">Bổ sung →</a>
   </div>
   <div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14.5px">
     <span style="width:24px;height:24px;border-radius:999px;background:#e2e8f0;color:#64748b;display:grid;place-items:center;font-size:13px;font-weight:700">·</span>
     <span style="font-weight:600">Thuế + VAT LO-0306 đã có biên lai</span>
-    <button class="lg-btn ghost sm" style="margin-left:auto">Bổ sung →</button>
+    <a class="lg-btn ghost sm" style="margin-left:auto" href="?p=/lo-hang-detail&id=LO-0306&tab=tai-chinh" target="_self">Bổ sung →</a>
   </div>
-  <button class="lg-btn primary" style="margin-top:12px">{icons.scale(18, "#fff")} CHỐT ĐỐI SOÁT THÁNG 9</button>
 </div>
-""", unsafe_allow_html=True)
+"""
+    st.markdown(checklist_html, unsafe_allow_html=True)
+
+    if st.button("⚖ CHỐT ĐỐI SOÁT THÁNG 9", type="primary", use_container_width=True):
+        store.push_toast("Đã chốt đối soát tháng 9", "Biên bản đối soát đã được lưu vào hồ sơ đối tác.", "green")
+        st.rerun()
 
 
 # ===========================================================================
@@ -246,11 +205,11 @@ def render_reconcile():
 def render_partner_debt():
     p_vnd = store.get_partner_vnd()
     p_cny = store.get_partner_cny()
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.building(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Công Nợ Đối Tác</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Mỗi đối tác 1 sổ riêng — dư đầu, tăng, giảm, đã trả, còn lại</p>
@@ -258,7 +217,8 @@ def render_partner_debt():
     </div>
   </div>
 </div>
-""".format(icons.building(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     st.markdown(f"""
 <div class="lg-tbl-wrap">
@@ -273,7 +233,7 @@ def render_partner_debt():
           <td>−{p_vnd['Đã thanh toán']/1e6:.1f} tr</td>
           <td>{p_vnd['Đã thanh toán']/1e6:.1f} tr</td>
           <td style="font-weight:800;color:#b45309">{p_vnd['Còn phải trả']/1e6:.1f} tr</td>
-          <td><a class="lg-link" data-to="/tai-chinh/doi-soat">Đối soát →</a></td>
+          <td><a class="lg-link" href="?p=/tai-chinh/doi-soat" target="_self">Đối soát →</a></td>
         </tr>
         <tr>
           <td style="font-weight:700">Bằng Tường (CNY)</td>
@@ -282,7 +242,7 @@ def render_partner_debt():
           <td>−¥{p_cny['Đã thanh toán']:,}</td>
           <td>¥{p_cny['Đã thanh toán']:,}</td>
           <td style="font-weight:800">¥{p_cny['Còn phải trả']:,}</td>
-          <td><a class="lg-link" data-to="/tai-chinh/doi-soat">Đối soát →</a></td>
+          <td><a class="lg-link" href="?p=/tai-chinh/doi-soat" target="_self">Đối soát →</a></td>
         </tr>
         <tr>
           <td style="font-weight:700">Nhà xe Hải Phòng (VND)</td>
@@ -298,7 +258,6 @@ def render_partner_debt():
   </div>
 </div>
 """, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 # ===========================================================================
@@ -307,22 +266,25 @@ def render_partner_debt():
 
 def render_ceo():
     kpi = store.get_kpi()
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.bar_chart(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Báo Cáo CEO</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Doanh thu · lợi nhuận · công nợ · điểm nghẽn — chỉ hiện số giúp quyết định</p>
       </div>
     </div>
     <div style="display:flex;gap:6px">
-      {''.join(f'<button class="lg-btn {("primary" if p=="Tháng" else "ghost")} sm" style="min-height:44px">{p}</button>' for p in ["Tuần","Tháng","Quý","Năm"])}
+      <span class="lg-btn primary sm" style="min-height:44px">Tháng</span>
+      <span class="lg-btn ghost sm" style="min-height:44px">Quý</span>
+      <span class="lg-btn ghost sm" style="min-height:44px">Năm</span>
     </div>
   </div>
 </div>
-""".format(icons.bar_chart(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # KPI cards
     kpis = [
@@ -395,10 +357,10 @@ def render_ceo():
 
     # Top customers + bottlenecks
     cust_rows = "".join(
-        f'<div style="padding:8px 0;border-bottom:1px solid #f1f5f9"><div style="display:flex;justify-content:space-between;font-size:14px"><b>{c["name"]}</b><b>{c["value"]/1e6:.0f} tr ₫</b></div><div style="height:10px;background:#f1f5f9;border-radius:999px;margin-top:6px"><div style="height:10px;border-radius:999px;background:linear-gradient(90deg,#0f2a4a,#1e5aa8);width:{c["share"]}%"></div></div></div>' for c in kpi["top_customers"]
+        f'<div style="padding:8px 0;border-bottom:1px solid #f1f5f9"><div style="display:flex;justify-content:space-between;font-size:14px"><b>{c["name"]}</b><b>{c["value"]/1e6:.0f} tr ₫</b></div><div style="height:10px;background:#f1f5f9;border-radius:999px;margin-top:6px"><div style="height:10px;border-radius:999px;background:linear-gradient(90deg,#0f2a4a,#1e5aa8);width:{c["share"]}%"></div></div></div>' for c in kpi.get("top_customers", [])
     )
     bottlenecks = "".join(
-        f'<a class="lg-next-card" data-to="{b["to"]}" style="margin-bottom:8px;min-height:0;padding:12px;align-items:center;gap:12px"><span style="width:8px;height:40px;border-radius:6px;background:#dc2626"></span><div style="flex:1"><p style="font-size:14.5px;font-weight:700;color:#0f2a4a;margin:0">{b["title"]}</p><p style="font-size:13px;color:#64748b;margin:2px 0 0">{b["desc"]}</p></div><span style="color:#cbd5e1">→</span></a>' for b in kpi["bottlenecks"]
+        f'<a class="lg-next-card" href="?p={b["to"]}" target="_self" style="margin-bottom:8px;min-height:0;padding:12px;align-items:center;gap:12px"><span style="width:8px;height:40px;border-radius:6px;background:#dc2626"></span><div style="flex:1"><p style="font-size:14.5px;font-weight:700;color:#0f2a4a;margin:0">{b["title"]}</p><p style="font-size:13px;color:#64748b;margin:2px 0 0">{b["desc"]}</p></div><span style="color:#cbd5e1">→</span></a>' for b in kpi.get("bottlenecks", [])
     )
     st.markdown(f"""
 <div class="lg-2col" style="margin-top:16px">
@@ -412,7 +374,6 @@ def render_ceo():
   </div>
 </div>
 """, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 # ===========================================================================
@@ -423,11 +384,11 @@ def render_hs_lookup():
     hs = store.get_hs()
     q = st.text_input("", placeholder="VD: 8457 (máy CNC) hoặc 'board mạch'…", key="hs_q", label_visibility="collapsed")
     filtered = [h for h in hs if not q or q.lower() in (h["hs"] + h["desc"]).lower()]
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.search(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Tra Cứu Thuế / HS</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Nhập mã HS hoặc tên hàng — xem thuế NK, VAT, chính sách</p>
@@ -435,7 +396,8 @@ def render_hs_lookup():
     </div>
   </div>
 </div>
-""".format(icons.search(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     cards = ""
     for h in filtered:
@@ -449,7 +411,7 @@ def render_hs_lookup():
   <p style="font-weight:600;font-size:14.5px;margin:6px 0 0">{h['desc']}</p>
   <p style="font-size:13.5px;color:#475569;margin:4px 0 0">📌 Chính sách: {h['policy']}</p>
   <p style="font-size:13px;color:#64748b;margin:2px 0 0">📝 {h.get('note','')}</p>
-  <button class="lg-btn primary full" style="margin-top:12px">DÙNG CHO LÔ HÀNG</button>
+  <a class="lg-btn primary full" style="margin-top:12px" href="?p=/tao-lo-moi" target="_self">DÙNG CHO LÔ HÀNG</a>
 </div>
 """
     if not cards:
@@ -459,11 +421,11 @@ def render_hs_lookup():
 
 def render_handbook():
     items = store.get_handbook()
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.book(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Sổ Tay Kinh Nghiệm</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Hướng dẫn từng bước bằng tiếng Việt đơn giản — cho người mới & cô chú lớn tuổi</p>
@@ -471,7 +433,8 @@ def render_handbook():
     </div>
   </div>
 </div>
-""".format(icons.book(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
     cards = ""
     for it in items:
         cards += f"""
@@ -500,37 +463,33 @@ def render_translate():
         out = "Giấy chứng nhận xuất xứ"
     else:
         out = "Nhập câu tiếng Trung để xem bản dịch Việt (bản mẫu: 装箱单 / 发票 / 提单 / 原产地证)."
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="max-width:900px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.lang(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Dịch Thuật</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Dịch nhanh chứng từ Trung ↔ Việt cho Support</p>
       </div>
     </div>
   </div>
-  <div class="lg-field"><label class="lg-field-label">Tiếng Trung (dán nội dung chứng từ)</label><textarea class="lg-textarea" rows="3">{src}</textarea></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    {''.join(f'<button class="lg-btn ghost sm" style="min-height:44px">{w}</button>' for w in ["装箱单","商业发票","提单","原产地证"])}
-  </div>
   <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-top:12px">
     <p style="font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#047857;margin:0">Tiếng Việt</p>
     <p style="font-weight:700;font-size:16px;margin:4px 0 0">{out}</p>
   </div>
-  <button class="lg-btn primary" style="margin-top:12px">{icons.lang(17, "#fff")} CHÉP BẢN DỊCH</button>
 </div>
-""".format(icons.lang(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
 
 def render_tracking():
     ships = store.get_shipments()
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.truck(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Theo Dõi Vận Chuyển</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Vị trí & mốc thời gian từng lô — xe TQ tới đâu, hàng đang ở đâu</p>
@@ -538,7 +497,8 @@ def render_tracking():
     </div>
   </div>
 </div>
-""".format(icons.truck(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
     for s in ships:
         done_idx = {"LO-0295": 5, "LO-0299": 4, "LO-0306": 3, "LO-0307": 2}.get(s["id"], 1)
         steps_html = ""
@@ -567,13 +527,12 @@ def render_tracking():
   <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
     <span style="font-size:16.5px;font-weight:800;color:#0f2a4a">{s['id']}</span>
     <span class="lg-badge {s.get('statusTone','gray')} sm">{s.get('status','')}</span>
-    <a class="lg-link" style="margin-left:auto" data-to="/lo-hang-detail?id={s['id']}">Mở workspace →</a>
+    <a class="lg-link" style="margin-left:auto" href="?p=/lo-hang-detail&id={s['id']}" target="_self">Mở workspace →</a>
   </div>
   <div style="display:flex;align-items:center;gap:4px;overflow-x:auto;margin-top:12px">{steps_html}</div>
   <p style="font-size:13.5px;color:#475569;margin:12px 0 0">📍 {last.get('title','')} — {last.get('time','')}</p>
 </div>
 """, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 def render_users():
@@ -588,20 +547,20 @@ def render_users():
 """, unsafe_allow_html=True)
         return
     users = store.get_users()
-    st.markdown("""
+    header_html = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{{}}</span>
+      <span class="lg-section-icon">{icons.shield(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Người Dùng (Admin)</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Tên · tài khoản · vai trò · trạng thái · đăng nhập cuối</p>
       </div>
     </div>
-    <button class="lg-btn primary">{icons.plus(17, "#fff")} Tạo người dùng</button>
   </div>
 </div>
-""".format(icons.shield(20, "#fff")), unsafe_allow_html=True)
+"""
+    st.markdown(header_html, unsafe_allow_html=True)
 
     rows = []
     for u in users:
@@ -610,11 +569,11 @@ def render_users():
         rows.append([
             f'<b>{u["name"]}</b>',
             f'<span style="color:#64748b">{u["username"]}</span>',
-            f'<span style="background:{role_bg.split(";")[0]};color:{role_bg.split(";")[1] if ";" in role_bg else "#0f2a4a"};font-size:12.5px;font-weight:800;border-radius:999px;padding:4px 10px">{u["role"]} ⇄</span>',
+            f'<span style="background:{role_bg.split(";")[0]};color:{role_bg.split(";")[1] if ";" in role_bg else "#0f2a4a"};font-size:12.5px;font-weight:800;border-radius:999px;padding:4px 10px">{u["role"]}</span>',
             status,
             f'<span style="font-size:13px;color:#64748b">{u.get("last","")}</span>',
-            f'<button class="lg-btn ghost sm">{"Mở khóa" if u["status"] == "Tạm khóa" else "Khóa TK"}</button>',
+            f'<span class="lg-badge gray sm">Chi tiết</span>',
         ])
 
     from .pages_core import _render_table
-    _render_table(["Tên", "Tài khoản", "Vai trò", "Trạng thái", "Đăng nhập cuối", "Hành động"], rows, min_width="820px")
+    _render_table(["Tên", "Tài khoản", "Vai trò", "Trạng thái", "Đăng nhập cuối", ""], rows, min_width="820px")

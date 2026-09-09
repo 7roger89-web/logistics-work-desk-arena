@@ -1,4 +1,4 @@
-"""Contracts, Contract detail, New contract pages — all .format() to avoid f-string issues."""
+"""Contracts, Contract detail, New contract pages."""
 from __future__ import annotations
 
 import streamlit as st
@@ -22,45 +22,43 @@ def render_contracts():
     <h1 style="font-size:22px;font-weight:800;margin:0">Hợp Đồng — Bàn làm việc chính</h1>
     <p style="color:#bfdbfe;font-size:14.5px;margin:6px 0 0">Tạo & quản lý HDMB / HDNT / Phụ lục tại đây. <b style="color:#fff">Không tạo hợp đồng trong màn hình Lô hàng</b> — lô chỉ gắn hợp đồng có sẵn.</p>
   </div>
-  <a class="lg-btn-white" data-to="/hop-dong/moi">➕ TẠO HỢP ĐỒNG MỚI</a>
+  <a class="lg-btn-white" href="?p=/hop-dong/moi" target="_self">➕ TẠO HỢP ĐỒNG MỚI</a>
 </div>
 """
     st.markdown(header_html, unsafe_allow_html=True)
 
-    n_html = '<div class="lg-card" style="margin-bottom:16px"><p style="font-size:13.5px;color:#64748b;margin:0">Tìm thấy <b style="color:#0f2a4a">{0} hợp đồng</b> · Mỗi dòng: hiện trạng → việc thiếu → nút mở.</p></div>'.format(len(filtered))
+    n_html = f'<div class="lg-card" style="margin-bottom:16px"><p style="font-size:13.5px;color:#64748b;margin:0">Tìm thấy <b style="color:#0f2a4a">{len(filtered)} hợp đồng</b> · Mỗi dòng: hiện trạng → việc thiếu → nút mở.</p></div>'
     st.markdown(n_html, unsafe_allow_html=True)
 
     if filtered:
         rows = []
         for c in filtered:
             type_lbl = c.get("type", "")
-            value_html = ('<b>{0}</b>'.format(design.fmt_vnd(c.get("value", 0)))) if c.get("value") else '<span style="color:#b45309">Chưa tính</span>'
-            valid_html = ('{0} → {1}'.format(c.get("validFrom", ""), c.get("validTo", ""))) if c.get("validFrom") else '<span style="color:#b45309;font-weight:600">⚠ Thiếu ngày</span>'
+            value_html = f'<b>{design.fmt_vnd(c.get("value", 0))}</b>' if c.get("value") else '<span style="color:#b45309">Chưa tính</span>'
+            valid_html = f'{c.get("validFrom", "")} → {c.get("validTo", "")}' if c.get("validFrom") else '<span style="color:#b45309;font-weight:600">⚠ Thiếu ngày</span>'
             type_bg = "#dbeafe" if type_lbl == "HDMB" else "#d1fae5"
             type_fg = "#1e40af" if type_lbl == "HDMB" else "#047857"
-            type_span = '<span style="background:{0};color:{1};font-size:12.5px;font-weight:800;border-radius:6px;padding:2px 8px">{2}</span>'.format(type_bg, type_fg, type_lbl)
+            type_span = f'<span style="background:{type_bg};color:{type_fg};font-size:12.5px;font-weight:800;border-radius:6px;padding:2px 8px">{type_lbl}</span>'
             rows.append([
-                '<a class="lg-link" data-to="/hop-dong-detail?id={0}" style="font-weight:800">{1}</a>'.format(c["id"], c["id"]),
+                f'<a class="lg-link" href="?p=/hop-dong-detail&id={c["id"]}" target="_self" style="font-weight:800">{c["id"]}</a>',
                 type_span,
-                '<b>{0}</b><br><span style="font-size:12.5px;color:#64748b">{1}</span>'.format(c.get("company", ""), c.get("agent", "")),
+                f'<b>{c.get("company", "")}</b><br><span style="font-size:12.5px;color:#64748b">{c.get("agent", "")}</span>',
                 value_html,
-                '<span style="font-size:13px">{0}</span>'.format(valid_html),
-                '<b style="text-align:center;display:block">{0}</b>'.format(c.get("lots", 0)),
-                '<span class="lg-badge {0} sm">{1}</span>'.format(c.get("statusTone", "gray"), c.get("status", "")),
-                '<a class="lg-btn primary sm" data-to="/hop-dong-detail?id={0}">MỞ HỢP ĐỒNG →</a>'.format(c["id"]),
+                f'<span style="font-size:13px">{valid_html}</span>',
+                f'<b style="text-align:center;display:block">{c.get("lots", 0)}</b>',
+                f'<span class="lg-badge {c.get("statusTone", "gray")} sm">{c.get("status", "")}</span>',
+                f'<a class="lg-btn primary sm" href="?p=/hop-dong-detail&id={c["id"]}" target="_self">MỞ HỢP ĐỒNG →</a>',
             ])
-        ui._install_goto_bridge()
         from .pages_core import _render_table
         _render_table(["Số hợp đồng", "Loại", "Đại lý · Công ty", "Giá trị", "Hiệu lực", "Số lô", "Trạng thái", ""], rows, min_width="1020px")
     else:
         empty_html = """
 <div class="lg-card" style="text-align:center;padding:48px;border:2px dashed #cbd5e1">
   <p style="font-weight:700;font-size:16px">Chưa có hợp đồng nào cho Đại lý này.</p>
-  <a class="lg-btn primary" data-to="/hop-dong/moi">＋ TẠO HỢP ĐỒNG</a>
+  <a class="lg-btn primary" href="?p=/hop-dong/moi" target="_self">＋ TẠO HỢP ĐỒNG</a>
 </div>
 """
         st.markdown(empty_html, unsafe_allow_html=True)
-        ui._install_goto_bridge()
 
 
 CONTRACT_TABS = [
@@ -73,49 +71,38 @@ CONTRACT_TABS = [
 
 
 def render_contract_detail():
-    cid = store.get_shipment_id() or st.query_params.get("id") or "HDMB-PA-2026-031"
+    cid = store.get_contract_id() or st.query_params.get("id") or "HDMB-PA-2026-031"
     c = store.find_contract(cid)
     if not c:
-        st.markdown('<div class="lg-card" style="text-align:center;padding:48px"><p style="font-size:19px;font-weight:800">Không tìm thấy {0}</p></div>'.format(cid), unsafe_allow_html=True)
+        st.markdown(f'<div class="lg-card" style="text-align:center;padding:48px"><p style="font-size:19px;font-weight:800">Không tìm thấy {cid}</p></div>', unsafe_allow_html=True)
         return
 
-    tab = st.query_params.get("tab", "hang-hoa")
+    tab = st.session_state.get("active_contract_tab") or st.query_params.get("tab") or "hang-hoa"
     if tab not in [t["id"] for t in CONTRACT_TABS]:
         tab = "hang-hoa"
 
-    st.markdown('<a class="lg-link" data-to="/hop-dong" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;font-size:14.5px">← Quay lại danh sách</a>', unsafe_allow_html=True)
+    st.markdown('<a class="lg-link" href="?p=/hop-dong" target="_self" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;font-size:14.5px">← Quay lại danh sách</a>', unsafe_allow_html=True)
 
     type_lbl = c.get("type", "")
     type_bg = "#dbeafe" if type_lbl == "HDMB" else "#d1fae5"
     type_fg = "#1e40af" if type_lbl == "HDMB" else "#047857"
 
-    header_html = """
+    header_html = f"""
 <div class="lg-card" style="padding:0;overflow:hidden">
   <div style="height:6px;background:linear-gradient(90deg,#10b981,#1e5aa8,#0f2a4a)"></div>
   <div style="padding:20px 24px">
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
-      <h1 style="font-size:24px;font-weight:800;color:#0f2a4a;margin:0">{cid}</h1>
-      <span style="background:{tbg};color:{tfg};font-size:12.5px;font-weight:800;border-radius:6px;padding:4px 8px">{type_lbl}</span>
-      <span class="lg-badge {st_tone}">{status}</span>
+      <h1 style="font-size:24px;font-weight:800;color:#0f2a4a;margin:0">{c["id"]}</h1>
+      <span style="background:{type_bg};color:{type_fg};font-size:12.5px;font-weight:800;border-radius:6px;padding:4px 8px">{type_lbl}</span>
+      <span class="lg-badge {c.get('statusTone', 'gray')}">{c.get('status', '')}</span>
     </div>
-    <p style="font-size:14.5px;color:#475569;margin:6px 0 0">{company} · Đại lý {agent} · {lots} lô liên kết</p>
+    <p style="font-size:14.5px;color:#475569;margin:6px 0 0">{c.get('company', '')} · Đại lý {c.get('agent', '')} · {c.get('lots', 0)} lô liên kết</p>
     <div class="lg-tabs">
-      {tabs}
+      {_contract_tabs_html(c['id'], tab)}
     </div>
   </div>
 </div>
-""".format(
-        cid=c["id"],
-        tbg=type_bg,
-        tfg=type_fg,
-        type_lbl=type_lbl,
-        st_tone=c.get("statusTone", "gray"),
-        status=c.get("status", ""),
-        company=c.get("company", ""),
-        agent=c.get("agent", ""),
-        lots=c.get("lots", 0),
-        tabs=_contract_tabs_html(tab),
-    )
+"""
     st.markdown(header_html, unsafe_allow_html=True)
 
     if tab == "thong-tin":
@@ -128,14 +115,13 @@ def render_contract_detail():
         _render_ctab_finance(c)
     elif tab == "lich-su":
         _render_ctab_history(c)
-    ui._install_goto_bridge()
 
 
-def _contract_tabs_html(active):
+def _contract_tabs_html(c_id, active):
     parts = []
     for t in CONTRACT_TABS:
         cls = "lg-tab active" if t["id"] == active else "lg-tab"
-        parts.append('<button class="{0}" data-tab="{1}">{2}</button>'.format(cls, t["id"], t["label"]))
+        parts.append(f'<a class="{cls}" href="?p=/hop-dong-detail&id={c_id}&tab={t["id"]}" target="_self" style="text-decoration:none">{t["label"]}</a>')
     return "".join(parts)
 
 
@@ -144,8 +130,8 @@ def _render_ctab_info(c):
     company = c.get("company", "")
     agent = c.get("agent", "")
 
-    rep_html = ('<b>{0}</b>'.format(c.get("companyRep", ""))) if c.get("companyRep") else '<span style="color:#b45309;font-weight:700">⚠ Thiếu người đại diện</span>'
-    role_html = ('<b>{0}</b>'.format(c.get("companyRole", ""))) if c.get("companyRole") else '<span style="color:#b45309;font-weight:700">⚠ Thiếu chức vụ</span>'
+    rep_html = f'<b>{c.get("companyRep", "")}</b>' if c.get("companyRep") else '<span style="color:#b45309;font-weight:700">⚠ Thiếu người đại diện</span>'
+    role_html = f'<b>{c.get("companyRole", "")}</b>' if c.get("companyRole") else '<span style="color:#b45309;font-weight:700">⚠ Thiếu chức vụ</span>'
 
     extra_block = ""
     if buyer_missing:
@@ -156,40 +142,39 @@ def _render_ctab_info(c):
     <div class="lg-field"><label class="lg-field-label">Người đại diện bên mua <span style="color:#dc2626">*</span></label><input class="lg-input missing" placeholder="VD: Phạm Minh Đức" /></div>
     <div class="lg-field"><label class="lg-field-label">Chức vụ <span style="color:#dc2626">*</span></label><input class="lg-input missing" placeholder="VD: Giám đốc" /></div>
   </div>
-  <button class="lg-btn primary full">💾 LƯU THÔNG TIN BÊN MUA</button>
 </div>
 """
 
-    left = """
+    left = f"""
 <div class="lg-card">
-  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Bên mua — {0}</h3>
+  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Bên mua — {company}</h3>
   <div style="background:#f8fafc;border:1px solid #e4e9f1;border-radius:12px;padding:14px;font-size:14.5px;display:flex;flex-direction:column;gap:6px">
-    <p style="margin:0"><span style="color:#64748b">Tên pháp lý:</span> <b>{1}</b></p>
-    <p style="margin:0"><span style="color:#64748b">Địa chỉ:</span> {2}</p>
-    <p style="margin:0"><span style="color:#64748b">MST:</span> <b>{3}</b></p>
-    <p style="margin:0"><span style="color:#64748b">Người đại diện:</span> {4}</p>
-    <p style="margin:0"><span style="color:#64748b">Chức vụ:</span> {5}</p>
+    <p style="margin:0"><span style="color:#64748b">Tên pháp lý:</span> <b>{c.get("companyLegal", "")}</b></p>
+    <p style="margin:0"><span style="color:#64748b">Địa chỉ:</span> {c.get("companyAddr", "")}</p>
+    <p style="margin:0"><span style="color:#64748b">MST:</span> <b>{c.get("companyTax", "")}</b></p>
+    <p style="margin:0"><span style="color:#64748b">Người đại diện:</span> {rep_html}</p>
+    <p style="margin:0"><span style="color:#64748b">Chức vụ:</span> {role_html}</p>
   </div>
-  {6}
+  {extra_block}
 </div>
-""".format(company, c.get("companyLegal", ""), c.get("companyAddr", ""), c.get("companyTax", ""), rep_html, role_html, extra_block)
+"""
 
-    right = """
+    right = f"""
 <div class="lg-card">
-  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Bên bán / Đại lý — {0}</h3>
+  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Bên bán / Đại lý — {agent}</h3>
   <div style="background:#f8fafc;border:1px solid #e4e9f1;border-radius:12px;padding:14px;font-size:14.5px;display:flex;flex-direction:column;gap:6px">
-    <p style="margin:0"><span style="color:#64748b">Tên pháp lý:</span> <b>{1}</b></p>
-    <p style="margin:0"><span style="color:#64748b">Địa chỉ:</span> {2}</p>
-    <p style="margin:0"><span style="color:#64748b">MST / mã pháp lý:</span> <b>{3}</b></p>
-    <p style="margin:0"><span style="color:#64748b">Người đại diện:</span> <b>{4}</b> · {5}</p>
-    <p style="margin:0"><span style="color:#64748b">Chủ tài khoản:</span> {6}</p>
-    <p style="margin:0"><span style="color:#64748b">Số TK:</span> <b>{7}</b> · {8}</p>
+    <p style="margin:0"><span style="color:#64748b">Tên pháp lý:</span> <b>{c.get("agentLegal", "")}</b></p>
+    <p style="margin:0"><span style="color:#64748b">Địa chỉ:</span> {c.get("agentAddr", "")}</p>
+    <p style="margin:0"><span style="color:#64748b">MST / mã pháp lý:</span> <b>{c.get("agentTax", "")}</b></p>
+    <p style="margin:0"><span style="color:#64748b">Người đại diện:</span> <b>{c.get("agentRep", "")}</b> · {c.get("agentRole", "")}</p>
+    <p style="margin:0"><span style="color:#64748b">Chủ tài khoản:</span> {c.get("bankOwner", "")}</p>
+    <p style="margin:0"><span style="color:#64748b">Số TK:</span> <b>{c.get("bankNo", "")}</b> · {c.get("bankName", "")}</p>
   </div>
   <div style="margin-top:12px;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px;padding:12px;font-size:13.5px;color:#064e3b">✅ Thông tin đại lý đầy đủ — không cần bổ sung.</div>
 </div>
-""".format(agent, c.get("agentLegal", ""), c.get("agentAddr", ""), c.get("agentTax", ""), c.get("agentRep", ""), c.get("agentRole", ""), c.get("bankOwner", ""), c.get("bankNo", ""), c.get("bankName", ""))
+"""
 
-    st.markdown('<div class="lg-2col" style="margin-top:16px">{0}{1}</div>'.format(left, right), unsafe_allow_html=True)
+    st.markdown(f'<div class="lg-2col" style="margin-top:16px">{left}{right}</div>', unsafe_allow_html=True)
 
 
 def _render_ctab_goods(c):
@@ -218,16 +203,16 @@ def _render_ctab_goods(c):
     border = "#bfdbfe" if route == "HDMB" else "#bbf7d0"
     badge_bg = "#10b981" if readiness_ok else "#f59e0b"
     badge_icon = "✓" if readiness_ok else "!"
-    banner = """
+    banner = f"""
 <div style="margin-top:12px;background:{bg};border:2px solid {border};border-radius:16px;padding:16px;display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap">
   <div style="flex:1">
-    <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7;margin:0">Tổng sau VAT: {total_vnd}</p>
+    <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7;margin:0">Tổng sau VAT: {design.fmt_vnd(total)}</p>
     <p style="font-size:21px;font-weight:800;color:#0f2a4a;margin:2px 0 0">{route_text}</p>
     <p style="font-size:13.5px;color:#475569;margin:4px 0 0">Ngưỡng: dưới 50.000.000 ₫ → HDNT + PL · Từ 50.000.000 ₫ trở lên → HDMB.</p>
   </div>
-  <span style="background:{bbg};color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:14.5px;display:inline-flex;align-items:center;gap:6px">{bicon} {blbl}</span>
+  <span style="background:{badge_bg};color:#fff;border-radius:999px;padding:8px 16px;font-weight:800;font-size:14.5px;display:inline-flex;align-items:center;gap:6px">{badge_icon} {readiness_label}</span>
 </div>
-""".format(bg=bg, border=border, total_vnd=design.fmt_vnd(total), route_text=route_text, bbg=badge_bg, bicon=badge_icon, blbl=readiness_label)
+"""
 
     goods_rows = ""
     for i, g in enumerate(goods):
@@ -236,25 +221,24 @@ def _render_ctab_goods(c):
         desc_invalid = " invalid" if not g["desc"].strip() else ""
         qty_invalid = " invalid" if not g["qty"] else ""
         price_invalid = " invalid" if not g["price"] else ""
-        price_value = ('"{0:,.0f}".format(g["price"])').replace(",", ".") if g["price"] else 'placeholder="0"'
+        price_value = f'{g["price"]:,.0f}'.replace(",", ".") if g["price"] else ""
         line_total = design.fmt_vnd(round(g["qty"] * g["price"] * 1.08))
         sel = lambda unit: ' selected' if g["unit"] == unit else ''
-        unit_options = '<option{0}>Cái</option><option{1}>Máy</option><option{2}>Bộ</option><option{3}>Lô</option><option{4}>Hệ thống</option><option{5}>Kiện</option><option{6}>Kg</option>'.format(sel("Cái"), sel("Máy"), sel("Bộ"), sel("Lô"), sel("Hệ thống"), sel("Kiện"), sel("Kg"))
-        trash_icon = icons.trash(17, "#dc2626")
-        goods_rows += """
-<tr{rc}>
-  <td style="font-weight:800;text-align:center">{i}</td>
-  <td><input class="lg-input{di}" value="{desc}" /></td>
-  <td><select class="lg-input">{uo}</select></td>
-  <td><input type="number" class="lg-input{qi}" value="{qty}" /></td>
-  <td><input type="number" class="lg-input{pi}" value="{pv}" /></td>
+        unit_options = f'<option{sel("Cái")}>Cái</option><option{sel("Máy")}>Máy</option><option{sel("Bộ")}>Bộ</option><option{sel("Lô")}>Lô</option><option{sel("Hệ thống")}>Hệ thống</option><option{sel("Kiện")}>Kiện</option><option{sel("Kg")}>Kg</option>'
+        goods_rows += f"""
+<tr{row_class}>
+  <td style="font-weight:800;text-align:center">{i + 1}</td>
+  <td><input class="lg-input{desc_invalid}" value="{g['desc']}" /></td>
+  <td><select class="lg-input">{unit_options}</select></td>
+  <td><input type="number" class="lg-input{qty_invalid}" value="{g['qty']}" /></td>
+  <td><input type="text" class="lg-input{price_invalid}" value="{price_value}" /></td>
   <td style="text-align:center;font-weight:700;color:#64748b">8%</td>
-  <td style="font-weight:800;color:#0f2a4a;white-space:nowrap">{lt}</td>
-  <td><button class="lg-btn ghost sm" style="color:#dc2626">{ti}</button></td>
+  <td style="font-weight:800;color:#0f2a4a;white-space:nowrap">{line_total}</td>
+  <td><span style="color:#dc2626;cursor:pointer">{icons.trash(17, "#dc2626")}</span></td>
 </tr>
-""".format(rc=row_class, i=i + 1, di=desc_invalid, desc=g["desc"], uo=unit_options, qi=qty_invalid, qty=g["qty"], pi=price_invalid, pv=price_value, lt=line_total, ti=trash_icon)
+"""
 
-    goods_card = """
+    goods_card = f"""
 <div class="lg-card" style="margin-top:16px">
   <div class="lg-section-title">
     <h2 style="font-size:17px;font-weight:800;color:#0f2a4a;margin:0">Hàng hóa — nhập từng dòng, máy tự tính tiền</h2>
@@ -263,113 +247,101 @@ def _render_ctab_goods(c):
   <div style="overflow-x:auto">
     <table class="lg-tbl" style="min-width:860px">
       <thead><tr><th style="width:52px">STT</th><th>Mô tả hàng hóa *</th><th style="width:110px">Đơn vị</th><th style="width:110px">Số lượng *</th><th style="width:170px">Đơn giá chưa VAT *</th><th style="width:80px">VAT</th><th style="width:160px">Thành tiền</th><th style="width:70px"></th></tr></thead>
-      <tbody>{gr}</tbody>
+      <tbody>{goods_rows}</tbody>
     </table>
   </div>
-  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-    <button class="lg-btn ghost" style="flex:1;border-style:dashed;border-color:#1e5aa8;color:#1e5aa8">{0} THÊM DÒNG HÀNG HÓA</button>
-    <button class="lg-btn primary" style="flex:1">💾 LƯU HÀNG HÓA</button>
-  </div>
   <div class="lg-cols-3" style="margin-top:12px;background:#0f2a4a;color:#fff;padding:16px;border-radius:16px;text-align:center">
-    <div><p style="font-size:12px;color:#bfdbfe;font-weight:600;margin:0">Tiền hàng</p><p style="font-size:18px;font-weight:800;margin:2px 0 0">{1}</p></div>
-    <div><p style="font-size:12px;color:#bfdbfe;font-weight:600;margin:0">VAT 8%</p><p style="font-size:18px;font-weight:800;margin:2px 0 0">{2}</p></div>
-    <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:8px 0"><p style="font-size:12px;color:#fde68a;font-weight:700;margin:0">TỔNG SAU VAT</p><p style="font-size:21px;font-weight:800;color:#fde68a;margin:2px 0 0">{3}</p></div>
+    <div><p style="font-size:12px;color:#bfdbfe;font-weight:600;margin:0">Tiền hàng</p><p style="font-size:18px;font-weight:800;margin:2px 0 0">{design.fmt_vnd(pre_total)}</p></div>
+    <div><p style="font-size:12px;color:#bfdbfe;font-weight:600;margin:0">VAT 8%</p><p style="font-size:18px;font-weight:800;margin:2px 0 0">{design.fmt_vnd(vat)}</p></div>
+    <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:8px 0"><p style="font-size:12px;color:#fde68a;font-weight:700;margin:0">TỔNG SAU VAT</p><p style="font-size:21px;font-weight:800;color:#fde68a;margin:2px 0 0">{design.fmt_vnd(total)}</p></div>
   </div>
 </div>
-""".format(icons.plus(19, "#1e5aa8"), design.fmt_vnd(pre_total), design.fmt_vnd(vat), design.fmt_vnd(total), gr=goods_rows)
+"""
 
     st.markdown(goods_card, unsafe_allow_html=True)
-    st.markdown("""
+    st.markdown(f"""
 <div class="lg-card" style="border:2px solid #0f2a4a;margin-top:16px">
   <h3 style="font-size:17px;font-weight:800;color:#0f2a4a;margin:0">✅ PHƯƠNG ÁN CHỨNG TỪ <span style="font-size:13px;font-weight:500;color:#64748b">(tự chọn theo tổng sau VAT — đúng 50 tr thuộc HDMB)</span></h3>
-  {0}
-  {1}
-  <button class="lg-btn success full" style="margin-top:16px;font-size:16.5px;min-height:56px">🖨 XUẤT CHỨNG TỪ SẴN SÀNG</button>
+  {banner}
+  {_render_route_form(c, route)}
 </div>
-""".format(banner, _render_route_form(c, route)), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 def _render_route_form(c, route):
     if route == "HDNT+PL":
+        reusable = ""
         if c.get("reusableHdnt"):
-            reusable = """
+            reusable = f"""
 <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px;padding:12px;margin-bottom:12px">
-  <p style="font-weight:700;font-size:14px;color:#064e3b;margin:0">✔ CÓ THỂ TÁI SỬ DỤNG HDNT {0} (còn hiệu lực tới {1})</p>
-  <div class="lg-cols-2" style="margin-top:8px">
-    <button class="lg-btn success">Tái sử dụng</button>
-    <button class="lg-btn ghost">Lập HDNT mới</button>
-  </div>
+  <p style="font-weight:700;font-size:14px;color:#064e3b;margin:0">✔ CÓ THỂ TÁI SỬ DỤNG HDNT {c.get('hdntNo', '')} (còn hiệu lực tới {c.get('hdntTo', '')})</p>
 </div>
-""".format(c.get("hdntNo", ""), c.get("hdntTo", ""))
-        else:
-            reusable = ""
+"""
 
-        hdnt_block = """
+        hdnt_block = f"""
 <div class="lg-card" style="margin-top:12px">
   <h4 style="font-weight:800;font-size:15px;margin:0 0 12px">Hợp đồng nguyên tắc (HDNT)</h4>
-  {0}
+  {reusable}
   <div class="lg-cols-2">
-    <div class="lg-field"><label class="lg-field-label">Số HDNT <span style="color:#dc2626">*</span></label><input class="lg-input" value="{1}" placeholder="VD: HDNT-PA-2026-119" /></div>
-    <div class="lg-field"><label class="lg-field-label">Ngày ký <span style="color:#dc2626">*</span></label><input class="lg-input" value="{2}" placeholder="VD: 09/09/2026" /></div>
-    <div class="lg-field"><label class="lg-field-label">Hiệu lực từ</label><input class="lg-input" value="{3}" /></div>
-    <div class="lg-field"><label class="lg-field-label">Hiệu lực đến</label><input class="lg-input" value="{4}" /></div>
+    <div class="lg-field"><label class="lg-field-label">Số HDNT <span style="color:#dc2626">*</span></label><input class="lg-input" value="{c.get('hdntNo', '')}" placeholder="VD: HDNT-PA-2026-119" /></div>
+    <div class="lg-field"><label class="lg-field-label">Ngày ký <span style="color:#dc2626">*</span></label><input class="lg-input" value="{c.get('hdntDate', '')}" placeholder="VD: 09/09/2026" /></div>
+    <div class="lg-field"><label class="lg-field-label">Hiệu lực từ</label><input class="lg-input" value="{c.get('hdntFrom', '')}" /></div>
+    <div class="lg-field"><label class="lg-field-label">Hiệu lực đến</label><input class="lg-input" value="{c.get('hdntTo', '')}" /></div>
   </div>
 </div>
-""".format(reusable, c.get("hdntNo", ""), c.get("hdntDate", ""), c.get("hdntFrom", ""), c.get("hdntTo", ""))
+"""
 
-        pl_block = """
+        pl_block = f"""
 <div class="lg-card" style="margin-top:12px">
-  <h4 style="font-weight:800;font-size:15px;margin:0 0 12px">Phụ lục (PL) — HDNT cha: {0}</h4>
+  <h4 style="font-weight:800;font-size:15px;margin:0 0 12px">Phụ lục (PL) — HDNT cha: {c.get('hdntNo', '')}</h4>
   <div class="lg-cols-2">
-    <div class="lg-field"><label class="lg-field-label">Số PL <span style="color:#dc2626">*</span></label><input class="lg-input" value="{1}" placeholder="VD: PL-118-B" /></div>
-    <div class="lg-field"><label class="lg-field-label">Ngày PL <span style="color:#dc2626">*</span></label><input class="lg-input" value="{2}" placeholder="VD: 09/09/2026" /></div>
+    <div class="lg-field"><label class="lg-field-label">Số PL <span style="color:#dc2626">*</span></label><input class="lg-input" value="{c.get('plNo', '')}" placeholder="VD: PL-118-B" /></div>
+    <div class="lg-field"><label class="lg-field-label">Ngày PL <span style="color:#dc2626">*</span></label><input class="lg-input" value="{c.get('plDate', '')}" placeholder="VD: 09/09/2026" /></div>
   </div>
 </div>
-""".format(c.get("hdntNo", ""), c.get("plNo", ""), c.get("plDate", ""))
-
-        return '<div class="lg-cols-2" style="margin-top:12px">{0}{1}</div>'.format(hdnt_block, pl_block)
+"""
+        return f'<div class="lg-cols-2" style="margin-top:12px">{hdnt_block}{pl_block}</div>'
 
     missing_class = " missing" if not c.get("hdmbDate") else ""
-    return """
+    return f"""
 <div class="lg-card" style="margin-top:12px">
   <h4 style="font-weight:800;font-size:15px;margin:0 0 12px">Hợp đồng mua bán (HDMB)</h4>
   <div class="lg-cols-2">
-    <div class="lg-field"><label class="lg-field-label">Số HDMB <span style="color:#dc2626">*</span></label><input class="lg-input" value="{0}" /></div>
-    <div class="lg-field"><label class="lg-field-label">Ngày HDMB <span style="color:#dc2626">*</span></label><input class="lg-input{1}" value="{2}" placeholder="VD: 09/09/2026" /></div>
+    <div class="lg-field"><label class="lg-field-label">Số HDMB <span style="color:#dc2626">*</span></label><input class="lg-input" value="{c.get('hdmbNo', '')}" /></div>
+    <div class="lg-field"><label class="lg-field-label">Ngày HDMB <span style="color:#dc2626">*</span></label><input class="lg-input{missing_class}" value="{c.get('hdmbDate', '')}" placeholder="VD: 09/09/2026" /></div>
   </div>
 </div>
-""".format(c.get("hdmbNo", ""), missing_class, c.get("hdmbDate", ""))
+"""
 
 
 def _render_ctab_linked(c):
     lots = c.get("linkedLots", [])
     rows = ""
     for l in lots:
-        rows += """
+        rows += f"""
 <tr>
-  <td><b><a class="lg-link" data-to="/lo-hang-detail?id={id}">{id}</a></b></td>
-  <td>{cust}</td>
-  <td>{status}</td>
-  <td>{delivery}</td>
-  <td>{pxk}</td>
-  <td><div style="display:flex;gap:6px"><a class="lg-btn primary sm" data-to="/lo-hang-detail?id={id}">MỞ LÔ</a><a class="lg-btn ghost sm" data-to="/lo-hang-detail?id={id}&tab=chung-tu">LÀM PXK</a></div></td>
+  <td><b><a class="lg-link" href="?p=/lo-hang-detail&id={l['id']}" target="_self">{l['id']}</a></b></td>
+  <td>{l['customer']}</td>
+  <td>{l['status']}</td>
+  <td>{l['delivery']}</td>
+  <td>{l['pxk']}</td>
+  <td><div style="display:flex;gap:6px"><a class="lg-btn primary sm" href="?p=/lo-hang-detail&id={l['id']}" target="_self">MỞ LÔ</a><a class="lg-btn ghost sm" href="?p=/lo-hang-detail&id={l['id']}&tab=chung-tu" target="_self">LÀM PXK</a></div></td>
 </tr>
-""".format(id=l["id"], cust=l["customer"], status=l["status"], delivery=l["delivery"], pxk=l["pxk"])
+"""
 
-    body = """
+    body = f"""
 <div class="lg-card" style="margin-top:16px">
-  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 4px">Lô hàng liên kết — {n} lô</h3>
+  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 4px">Lô hàng liên kết — {len(lots)} lô</h3>
   <p style="font-size:13.5px;color:#64748b;margin:0 0 12px">PXK làm theo từng lô (không gộp). Bấm MỞ LÔ để xử lý, LÀM PXK để xuất phiếu.</p>
   <div style="overflow-x:auto">
     <table class="lg-tbl" style="min-width:760px">
       <thead><tr><th>Mã lô</th><th>Khách hàng</th><th>Trạng thái</th><th>Ngày giao</th><th>PXK</th><th>Hành động</th></tr></thead>
-      <tbody>{rows}</tbody>
+      <tbody>{rows or '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px">Chưa có lô liên kết.</td></tr>'}</tbody>
     </table>
   </div>
 </div>
-""".format(n=len(lots), rows=rows or '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px">Chưa có lô liên kết.</td></tr>')
+"""
     st.markdown(body, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 def _render_ctab_finance(c):
@@ -379,17 +351,16 @@ def _render_ctab_finance(c):
     received = sum(s["finance"].get("received", 0) for s in store.get_shipments() if s.get("contract") == c["id"])
     remain = max(0, total - received)
 
-    body = """
+    body = f"""
 <div class="lg-card" style="margin-top:16px;max-width:860px">
-  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Tài chính hợp đồng {cid}</h3>
-  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13.5px;color:#64748b">Giá trị hợp đồng (sau VAT)</span><span style="font-weight:800;font-size:19px;color:#0f2a4a">{total_vnd}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13.5px;color:#64748b">Đã thu (cộng các lô)</span><span style="font-weight:600">{rec_vnd}</span></div>
-  <div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:13.5px;color:#64748b">Còn phải thu</span><span style="font-weight:700;color:#b91c1c">{rem_vnd}</span></div>
-  <a class="lg-btn success" style="margin-top:12px" data-to="/tai-chinh/thu-tien">{arr} MỞ THU TIỀN & CÔNG NỢ</a>
+  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Tài chính hợp đồng {c['id']}</h3>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13.5px;color:#64748b">Giá trị hợp đồng (sau VAT)</span><span style="font-weight:800;font-size:19px;color:#0f2a4a">{design.fmt_vnd(total)}</span></div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13.5px;color:#64748b">Đã thu (cộng các lô)</span><span style="font-weight:600">{design.fmt_vnd(received)}</span></div>
+  <div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:13.5px;color:#64748b">Còn phải thu</span><span style="font-weight:700;color:#b91c1c">{design.fmt_vnd(remain)}</span></div>
+  <a class="lg-btn success" style="margin-top:12px" href="?p=/tai-chinh/thu-tien" target="_self">{icons.arrow_right(16, "#fff")} MỞ THU TIỀN & CÔNG NỢ</a>
 </div>
-""".format(cid=c["id"], total_vnd=design.fmt_vnd(total), rec_vnd=design.fmt_vnd(received), rem_vnd=design.fmt_vnd(remain), arr=icons.arrow_right(16, "#fff"))
+"""
     st.markdown(body, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 def _render_ctab_history(c):
@@ -405,29 +376,29 @@ def _render_ctab_history(c):
         return
     rows = ""
     for h in history:
-        rows += """
+        rows += f"""
 <tr>
-  <td style="font-weight:700">{type}</td>
-  <td style="font-weight:600">{no}</td>
-  <td>{date}</td>
-  <td>{rev}</td>
-  <td><span style="background:#d1fae5;color:#065f46;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:800">● {status}</span></td>
-  <td>{by} · {created}</td>
-  <td><div style="display:flex;gap:6px"><button class="lg-btn ghost sm">{eye} Xem</button><button class="lg-btn ghost sm">{down} Tải lại</button></div></td>
+  <td style="font-weight:700">{h.get('type', '')}</td>
+  <td style="font-weight:600">{h.get('no', '')}</td>
+  <td>{h.get('date', '')}</td>
+  <td>{h.get('rev', '')}</td>
+  <td><span style="background:#d1fae5;color:#065f46;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:800">● {h.get('status', '')}</span></td>
+  <td>{h.get('by', '')} · {h.get('created', '')}</td>
+  <td><span class="lg-badge green sm">{icons.download(14, "#047857")} Có sẵn</span></td>
 </tr>
-""".format(type=h.get("type", ""), no=h.get("no", ""), date=h.get("date", ""), rev=h.get("rev", ""), status=h.get("status", ""), by=h.get("by", ""), created=h.get("created", ""), eye=icons.eye(14, "#0f2a4a"), down=icons.download(14, "#0f2a4a"))
+"""
 
-    body = """
+    body = f"""
 <div class="lg-card" style="margin-top:16px">
   <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Lịch sử phát hành & phụ lục</h3>
   <div style="overflow-x:auto">
     <table class="lg-tbl" style="min-width:820px">
       <thead><tr><th>Loại</th><th>Số</th><th>Ngày</th><th>Revision</th><th>Trạng thái</th><th>Người tạo</th><th></th></tr></thead>
-      <tbody>{0}</tbody>
+      <tbody>{rows}</tbody>
     </table>
   </div>
 </div>
-""".format(rows)
+"""
     st.markdown(body, unsafe_allow_html=True)
 
 
@@ -441,114 +412,127 @@ def render_new_contract():
     if "nc_addr" not in st.session_state:
         st.session_state["nc_addr"] = ""
     if "nc_agent" not in st.session_state:
-        st.session_state["nc_agent"] = "Phú An Logistics Việt Nam"
+        st.session_state["nc_agent"] = "Phú Anh Logistics Việt Nam"
     if "nc_created" not in st.session_state:
         st.session_state["nc_created"] = None
 
-    header = """
+    header = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{0}</span>
+      <span class="lg-section-icon">{icons.file_text(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Tạo Hợp Đồng Mới</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">3 bước: Bên mua → Hàng hóa → Xuất chứng từ. Mỗi bước đều báo rõ còn thiếu gì.</p>
       </div>
     </div>
   </div>
-  {1}
+  {_stepper(st.session_state["nc_step"], st.session_state["nc_created"])}
 </div>
-""".format(icons.file_text(20, "#fff"), _stepper(st.session_state["nc_step"], st.session_state["nc_created"]))
+"""
     st.markdown(header, unsafe_allow_html=True)
 
     if st.session_state["nc_step"] == 1 and not st.session_state["nc_created"]:
-        sel_pa = "selected" if st.session_state["nc_agent"] == "Phú An Logistics Việt Nam" else ""
-        company_missing_cls = " missing" if not st.session_state["nc_company"] else ""
-        mst_missing_cls = " missing" if not st.session_state["nc_mst"] else ""
-        company_err = '<p class="lg-field-error">⚠ Nhập tên công ty — không để trống</p>' if not st.session_state["nc_company"] else ""
-        mst_err = '<p class="lg-field-error">⚠ Nhập MST để tra cứu & in hợp đồng</p>' if not st.session_state["nc_mst"] else ""
-        warn = ('<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px;font-size:13.5px;color:#9a3412">⚠ Thiếu tên công ty — nhập tên thì nút "Tiếp tục" mới đi tiếp được.</div>') if not st.session_state["nc_company"] else ""
+        with st.form("form_new_contract_step1"):
+            st.markdown('<h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0 0 12px">Bước 1 — Chọn đại lý & bên mua</h3>', unsafe_allow_html=True)
+            agent = st.selectbox("Đại lý (bên bán)", ["Phú Anh Logistics Việt Nam", "Trường Thành — CN Lạng Sơn"], index=0)
+            c1, c2 = st.columns(2)
+            with c1:
+                co = st.text_input("Công ty bên mua *", value=st.session_state["nc_company"], placeholder="VD: Công ty TNHH Thiết Bị Minh Đức")
+            with c2:
+                mst = st.text_input("Mã số thuế *", value=st.session_state["nc_mst"], placeholder="VD: 0201884452")
+            addr = st.text_input("Địa chỉ bên mua", value=st.session_state["nc_addr"], placeholder="VD: KCN Tràng Duệ, Hải Phòng")
 
-        step1 = """
-<div class="lg-card" style="display:flex;flex-direction:column;gap:14px">
-  <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0">Bước 1 — Chọn đại lý & bên mua</h3>
-  <div class="lg-field"><label class="lg-field-label">Đại lý (bên bán)</label>
-    <select class="lg-input">
-      <option {sel_pa}>Phú Anh Logistics Việt Nam</option>
-      <option>Trường Thành — CN Lạng Sơn</option>
-    </select>
-  </div>
-  <div class="lg-cols-2">
-    <div class="lg-field"><label class="lg-field-label">Công ty bên mua <span style="color:#dc2626">*</span></label>
-      <input class="lg-input{co_cls}" placeholder="VD: Công ty TNHH Thiết Bị Minh Đức" value="{co_val}" oninput="this.setAttribute('value', this.value)" />
-      {co_err}
-    </div>
-    <div class="lg-field"><label class="lg-field-label">Mã số thuế <span style="color:#dc2626">*</span></label>
-      <input class="lg-input{mst_cls}" placeholder="VD: 0201884452" value="{mst_val}" />
-      {mst_err}
-    </div>
-  </div>
-  <div class="lg-field"><label class="lg-field-label">Địa chỉ bên mua</label>
-    <input class="lg-input" placeholder="VD: KCN Tràng Duệ, Hải Phòng" value="{addr_val}" />
-  </div>
-  {warn}
-</div>
-""".format(sel_pa=sel_pa, co_cls=company_missing_cls, co_val=st.session_state["nc_company"], co_err=company_err, mst_cls=mst_missing_cls, mst_val=st.session_state["nc_mst"], mst_err=mst_err, addr_val=st.session_state["nc_addr"], warn=warn)
-        st.markdown(step1, unsafe_allow_html=True)
-
-        c1, c2 = st.columns([1, 1])
-        with c2:
-            if st.button("TIẾP TỤC → NHẬP HÀNG HÓA", type="primary", use_container_width=True):
-                if st.session_state["nc_company"] and st.session_state["nc_mst"]:
+            submit = st.form_submit_button("TIẾP TỤC → NHẬP HÀNG HÓA", type="primary", use_container_width=True)
+            if submit:
+                if co.strip() and mst.strip():
+                    st.session_state["nc_agent"] = agent
+                    st.session_state["nc_company"] = co.strip()
+                    st.session_state["nc_mst"] = mst.strip()
+                    st.session_state["nc_addr"] = addr.strip()
                     st.session_state["nc_step"] = 2
                     st.rerun()
                 else:
-                    store.push_toast("Thiếu thông tin bắt buộc", "Vui lòng nhập tên công ty + MST.", "red")
+                    store.push_toast("Thiếu thông tin bắt buộc", "Vui lòng nhập tên công ty và MST bên mua.", "red")
+                    st.rerun()
 
-    if st.session_state["nc_step"] == 2 and not st.session_state["nc_created"]:
-        addr_block = ('<p style="margin:0">Địa chỉ: {0}</p>'.format(st.session_state["nc_addr"])) if st.session_state["nc_addr"] else ""
-        step2 = """
+    elif st.session_state["nc_step"] == 2 and not st.session_state["nc_created"]:
+        step2 = f"""
 <div class="lg-card" style="display:flex;flex-direction:column;gap:14px">
   <h3 style="font-size:16.5px;font-weight:800;color:#0f2a4a;margin:0">Bước 2 — Xác nhận & tạo nháp</h3>
   <div style="background:#f8fafc;border:1px solid #e4e9f1;border-radius:12px;padding:16px;font-size:14.5px;display:flex;flex-direction:column;gap:6px">
-    <p style="margin:0">Đại lý: <b>{agent}</b></p>
-    <p style="margin:0">Bên mua: <b>{company}</b> · MST {mst}</p>
-    {addr}
+    <p style="margin:0">Đại lý: <b>{st.session_state["nc_agent"]}</b></p>
+    <p style="margin:0">Bên mua: <b>{st.session_state["nc_company"]}</b> · MST {st.session_state["nc_mst"]}</p>
+    {f'<p style="margin:0">Địa chỉ: {st.session_state["nc_addr"]}</p>' if st.session_state["nc_addr"] else ''}
   </div>
   <p style="font-size:13.5px;color:#64748b;margin:0">Bấm "Tạo nháp" để sinh số HDMB-033, sau đó nhập từng dòng hàng hóa ở màn hình chi tiết (máy tự tính VAT 8% & gợi ý HDMB/HDNT).</p>
-  <div class="lg-cols-2">
-    <button class="lg-btn ghost full" onclick="document.querySelector('button[data-action=&quot;nc_back&quot;]')?.click()">← Sửa bên mua</button>
-    <button class="lg-btn primary full" onclick="document.querySelector('button[data-action=&quot;nc_create&quot;]')?.click()">➕ TẠO NHÁP HỢP ĐỒNG</button>
-  </div>
 </div>
-""".format(agent=st.session_state["nc_agent"], company=st.session_state["nc_company"], mst=st.session_state["nc_mst"], addr=addr_block)
+"""
         st.markdown(step2, unsafe_allow_html=True)
 
-        c1, c2 = st.columns([1, 1])
+        c1, c2 = st.columns(2)
         with c1:
             if st.button("← Sửa bên mua", type="secondary", use_container_width=True, key="nc_back"):
                 st.session_state["nc_step"] = 1
                 st.rerun()
         with c2:
             if st.button("➕ TẠO NHÁP HỢP ĐỒNG", type="primary", use_container_width=True, key="nc_create"):
-                st.session_state["nc_created"] = "HDMB-PA-2026-033"
-                store.push_toast("Đã tạo HDMB-PA-2026-033", "Hợp đồng nháp đã lưu — sang bước nhập hàng hóa để xuất chứng từ.", "green")
+                new_cid = "HDMB-PA-2026-033"
+                new_ct = {
+                    "id": new_cid,
+                    "type": "HDMB",
+                    "company": st.session_state["nc_company"],
+                    "companyLegal": st.session_state["nc_company"].upper(),
+                    "companyAddr": st.session_state["nc_addr"],
+                    "companyTax": st.session_state["nc_mst"],
+                    "companyRep": "Nguyễn Văn Đại",
+                    "companyRole": "Giám đốc",
+                    "agent": st.session_state["nc_agent"],
+                    "agentLegal": "CÔNG TY TNHH PHÚ ANH LOGISTICS VIỆT NAM",
+                    "agentAddr": "Số 88 Trần Thái Tông, Cầu Giấy, Hà Nội",
+                    "agentTax": "0108123456",
+                    "agentRep": "Nguyễn Phú Anh",
+                    "agentRole": "Giám đốc",
+                    "bankOwner": "CÔNG TY TNHH PHÚ ANH LOGISTICS VIỆT NAM",
+                    "bankNo": "0451000412345",
+                    "bankName": "Vietcombank Thanh Xuân",
+                    "value": 0,
+                    "validFrom": "09/09/2026",
+                    "validTo": "31/12/2026",
+                    "lots": 0,
+                    "status": "Còn hiệu lực",
+                    "statusTone": "green",
+                    "missingBuyerInfo": [],
+                    "goods": [
+                        {"desc": "Máy công nghiệp model PA-2026", "unit": "Máy", "qty": 1, "price": 450_000_000},
+                    ],
+                    "hdmbNo": new_cid,
+                    "hdmbDate": "09/09/2026",
+                    "history": [
+                        {"type": "HDMB", "no": new_cid, "date": "09/09/2026", "rev": "V1", "status": "ĐÃ PHÁT HÀNH", "by": "Thu Hằng", "created": "09/09/2026"},
+                    ],
+                    "linkedLots": [],
+                }
+                store.get_contracts().insert(0, new_ct)
+                st.session_state["nc_created"] = new_cid
+                store.set_contract_id(new_cid)
+                store.push_toast(f"Đã tạo {new_cid}", "Hợp đồng nháp đã lưu — sang bước nhập hàng hóa để xuất chứng từ.", "green")
                 st.rerun()
 
     if st.session_state["nc_created"]:
-        done = """
+        cid = st.session_state["nc_created"]
+        done = f"""
 <div class="lg-card" style="border:2px solid #bbf7d0;text-align:center;padding:32px">
-  <div style="width:56px;height:56px;border-radius:999px;background:#10b981;color:#fff;display:grid;place-items:center;margin:0 auto">{ck}</div>
+  <div style="width:56px;height:56px;border-radius:999px;background:#10b981;color:#fff;display:grid;place-items:center;margin:0 auto">{icons.circle_check(28, "#fff")}</div>
   <h3 style="font-size:19px;font-weight:800;color:#0f2a4a;margin:12px 0 4px">✅ ĐÃ TẠO NHÁP {cid}</h3>
-  <p style="font-size:14.5px;color:#475569;margin:0">Bên mua: <b>{co}</b> · Tiếp theo: nhập hàng hóa → máy gợi ý phương án chứng từ → xuất file.</p>
+  <p style="font-size:14.5px;color:#475569;margin:0">Bên mua: <b>{st.session_state['nc_company']}</b> · Tiếp theo: nhập hàng hóa → máy gợi ý phương án chứng từ → xuất file.</p>
   <div class="lg-cols-2" style="margin-top:16px;max-width:520px;margin-left:auto;margin-right:auto">
-    <a class="lg-btn primary full" data-to="/hop-dong-detail?id=HDMB-PA-2026-032">{pen} NHẬP HÀNG HÓA NGAY</a>
-    <a class="lg-btn ghost full" data-to="/hop-dong">{ft} Về danh sách</a>
+    <a class="lg-btn primary full" href="?p=/hop-dong-detail&id={cid}&tab=hang-hoa" target="_self">{icons.pen(17, "#fff")} NHẬP HÀNG HÓA NGAY</a>
+    <a class="lg-btn ghost full" href="?p=/hop-dong" target="_self">{icons.file_text(17, "#0f2a4a")} Về danh sách</a>
   </div>
 </div>
-""".format(ck=icons.circle_check(28, "#fff"), cid=st.session_state["nc_created"], co=st.session_state["nc_company"], pen=icons.pen(17, "#fff"), ft=icons.file_text(17, "#0f2a4a"))
+"""
         st.markdown(done, unsafe_allow_html=True)
-        ui._install_goto_bridge()
 
 
 def _stepper(step: int, created):
@@ -562,21 +546,21 @@ def _stepper(step: int, created):
         else:
             cls = "background:#fff;border:1px solid #e4e9f1;color:#94a3b8"
         check = "✓ " if (created and i < 3) else ""
-        parts += '<div style="flex:1"><span style="display:block;text-align:center;border-radius:12px;padding:10px 0;font-size:13.5px;font-weight:800;{0}">{1}{2}</span></div>'.format(cls, check, lbl)
+        parts += f'<div style="flex:1"><span style="display:block;text-align:center;border-radius:12px;padding:10px 0;font-size:13.5px;font-weight:800;{cls}">{check}{lbl}</span></div>'
         if i < 2:
             parts += '<span style="color:#cbd5e1;display:flex;align-items:center">→</span>'
-    return '<div style="display:flex;align-items:center;gap:6px">{0}</div>'.format(parts)
+    return f'<div style="display:flex;align-items:center;gap:6px">{parts}</div>'
 
 
 def render_new_shipment():
     if "ns_done" not in st.session_state:
         st.session_state["ns_done"] = False
 
-    header = """
+    header = f"""
 <div class="lg-card" style="margin-bottom:16px">
   <div class="lg-section-title">
     <div style="display:flex;align-items:flex-start;gap:10px">
-      <span class="lg-section-icon">{0}</span>
+      <span class="lg-section-icon">{icons.plus_circle(20, "#fff")}</span>
       <div>
         <h2 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Tạo Lô Mới</h2>
         <p style="font-size:13.5px;color:#64748b;margin:2px 0 0">Tạo từ báo giá đã chốt — thông tin tự điền, chỉ bổ sung phần thiếu</p>
@@ -584,63 +568,101 @@ def render_new_shipment():
     </div>
   </div>
 </div>
-""".format(icons.plus_circle(20, "#fff"))
+"""
     st.markdown(header, unsafe_allow_html=True)
 
-    success_block = ""
     if st.session_state["ns_done"]:
         success_block = """
 <div style="background:#ecfdf5;border:2px solid #bbf7d0;border-radius:12px;padding:16px;text-align:center">
   <p style="font-weight:800;color:#065f46;font-size:16px;margin:0">✅ ĐÃ TẠO LO-0309 (NHÁP)</p>
   <p style="font-size:13.5px;color:#047857;margin:4px 0 0">Tiếp theo: chốt xe TQ + giờ lấy hàng.</p>
   <div class="lg-cols-2" style="margin-top:12px">
-    <a class="lg-btn success full" data-to="/lo-hang-detail?id=LO-0308&tab=lay-hang">MỞ TAB LẤY HÀNG MẪU →</a>
-    <a class="lg-btn ghost full" data-to="/lo-hang">Về danh sách lô</a>
+    <a class="lg-btn success full" href="?p=/lo-hang-detail&id=LO-0309&tab=lay-hang" target="_self">MỞ TAB LẤY HÀNG MẪU →</a>
+    <a class="lg-btn ghost full" href="?p=/lo-hang" target="_self">Về danh sách lô</a>
   </div>
 </div>
 """
+        st.markdown(success_block, unsafe_allow_html=True)
     else:
-        success_block = '<button class="lg-btn primary full" onclick="document.querySelector(\'button[data-action=&quot;ns_create&quot;]\')?.click()">➕ TẠO LÔ HÀNG</button>'
+        with st.form("form_new_shipment"):
+            bg_sel = st.selectbox("Tạo từ báo giá đã chốt", ["BG-2026-214 (Minh Đức — ĐÃ CHỐT)", "BG-2026-212 (An Phát — ĐÃ CHỐT)", "Nhập tay (không từ báo giá)"])
+            c1, c2 = st.columns(2)
+            with c1:
+                cust = st.text_input("Khách hàng *", value="Công ty TNHH Thiết Bị Minh Đức")
+                route = st.selectbox("Tuyến *", ["Quảng Đông → Hữu Nghị → Hải Phòng", "Quảng Đông → Hữu Nghị → Hà Nội", "Quảng Tây → Tân Thanh → Bắc Ninh"])
+            with c2:
+                border = st.selectbox("Cửa khẩu TQ", ["Hữu Nghị (TQ)", "Tân Thanh (TQ)"])
+                pickup_date = st.text_input("Ngày dự kiến lấy hàng *", value="12/09/2026 09:00")
+            cargo = st.text_input("Hàng hóa", value="Máy dập kim loại 200 tấn — 1 máy — 18.500 kg")
 
-    form_html = """
-<div class="lg-card" style="display:flex;flex-direction:column;gap:14px;max-width:860px">
-  <div class="lg-field">
-    <label class="lg-field-label">Tạo từ báo giá đã chốt</label>
-    <select class="lg-input">
-      <option>BG-2026-214 (Minh Đức — ĐÃ CHỐT)</option>
-      <option>BG-2026-212 (An Phát — ĐÃ CHỐT)</option>
-      <option>Nhập tay (không từ báo giá)</option>
-    </select>
-    <span class="lg-field-hint">Chọn báo giá ACCEPTED — khách, tuyến, hàng tự điền</span>
-  </div>
-  <div class="lg-cols-2">
-    <div class="lg-field"><label class="lg-field-label">Khách hàng <span style="color:#dc2626">*</span></label><input class="lg-input" value="Công ty TNHH Thiết Bị Minh Đức" /></div>
-    <div class="lg-field"><label class="lg-field-label">Tuyến <span style="color:#dc2626">*</span></label>
-      <select class="lg-input">
-        <option>Quảng Đông → Hữu Nghị → Hải Phòng</option>
-        <option>Quảng Đông → Hữu Nghị → Hà Nội</option>
-        <option>Quảng Tây → Tân Thanh → Bắc Ninh</option>
-      </select>
-    </div>
-    <div class="lg-field"><label class="lg-field-label">Cửa khẩu TQ</label>
-      <select class="lg-input">
-        <option>Hữu Nghị (TQ)</option>
-        <option>Tân Thanh (TQ)</option>
-      </select>
-    </div>
-    <div class="lg-field"><label class="lg-field-label">Ngày dự kiến lấy hàng <span style="color:#dc2626">*</span></label><input class="lg-input missing" placeholder="VD: 12/09/2026 09:00" /></div>
-  </div>
-  <div class="lg-field"><label class="lg-field-label">Hàng hóa</label><input class="lg-input" placeholder="VD: Máy CNC — 2 máy — 18.500 kg" /></div>
-  {0}
-  {1}
-</div>
-""".format("" if st.session_state["ns_done"] else '<button class="lg-btn primary full" onclick="document.querySelector(\'button[data-action=&quot;ns_create&quot;]\')?.click()">➕ TẠO LÔ HÀNG</button>', success_block)
-
-    st.markdown(form_html, unsafe_allow_html=True)
-
-    if not st.session_state["ns_done"]:
-        if st.button("➕ TẠO LÔ HÀNG", type="primary", use_container_width=True, key="ns_create"):
-            st.session_state["ns_done"] = True
-            store.push_toast("Đã tạo lô LO-0309 (nháp)", "Tiếp theo: chốt xe TQ & giờ lấy ở tab Lấy hàng.", "green")
-            st.rerun()
-    ui._install_goto_bridge()
+            create_submit = st.form_submit_button("➕ TẠO LÔ HÀNG", type="primary", use_container_width=True)
+            if create_submit:
+                new_lot = {
+                    "id": "LO-0309",
+                    "customer": cust,
+                    "customerShort": "Minh Đức",
+                    "customerMST": "0200667788",
+                    "customer_id": "minh_duc",
+                    "contract": "HDMB-PA-2026-028",
+                    "route": route,
+                    "borderVN": "Hữu Nghị",
+                    "sale": "Hồng Nhung",
+                    "support": "Thu Hằng",
+                    "status": "Chờ lấy hàng",
+                    "statusTone": "amber",
+                    "priority": "Khan",
+                    "nextAction": "Chốt xe TQ + giờ lấy hàng trước 12:00 hôm nay",
+                    "nextActionDetail": "Nhà máy cần báo trước 24h — đang chờ Bằng Tường xác nhận xe",
+                    "nextLabel": "CHỐT XE NGAY",
+                    "nextRoute": "/lo-hang-detail?id=LO-0309&tab=lay-hang",
+                    "updated": "09/09/2026 10:00",
+                    "pickup": {
+                        "factory": "Nhà máy Thiết Bị Minh Đức — CN Quảng Đông",
+                        "address": "Khu CNC Đông Quan, Quảng Đông",
+                        "contact": "Mr. Wang",
+                        "phone": "+86 137 5566 7788",
+                        "truckType": "Cont 40HQ",
+                        "plate": "",
+                        "driver": "",
+                        "driverPhone": "",
+                        "eta": "12/09/2026",
+                        "ata": "—",
+                        "pickupTime": pickup_date,
+                    },
+                    "importInfo": {
+                        "borderVN": "Hữu Nghị (VN)", "declarationNo": "", "regDate": "", "tax": 22_000_000, "vat": 44_000_000,
+                        "inspection": "Luồng vàng", "license": "—", "truckVN": "Cont 40HQ",
+                        "plateVN": "", "driverVN": "", "schedule": "14/09/2026",
+                        "deliveryAddr": "KCN Tràng Duệ, Hải Phòng", "receiver": "Nguyễn Hải Yến", "receiverPhone": "0912 345 678",
+                        "delivered": False, "actualDelivery": "", "clearDate": "",
+                    },
+                    "cargo": {
+                        "type": cargo, "packs": 1, "weight": "18.500 kg", "cbm": 22,
+                        "dims": "4.2 x 2.0 x 2.6 m", "note": "Yêu cầu xe cẩu chuyên dụng",
+                    },
+                    "exportInfo": {
+                        "border": "Hữu Nghị (TQ)", "declarant": "Phú Anh — chi nhánh Bằng Tường",
+                        "eta": "12/09/2026", "ata": "—", "state": "Chờ lấy hàng",
+                    },
+                    "docs": [
+                        {"name": "Hợp đồng mua bán (HDMB)", "ok": True, "note": "HDMB-PA-2026-028"},
+                        {"name": "Packing List", "ok": False, "note": "Đang chờ nhà máy cập nhật"},
+                        {"name": "Invoice (Hóa đơn thương mại)", "ok": True, "note": "INV-2026-0615"},
+                    ],
+                    "pxk": {"number": "", "date": "", "place": "", "receiver": "", "role": "Thủ kho", "source": "HDMB-PA-2026-028", "done": False},
+                    "finance": {
+                        "receivable": 425_000_000, "received": 0, "payable": 58_000_000, "paid": 0,
+                        "payments": [],
+                        "quote": [],
+                        "actual": [],
+                    },
+                    "timeline": [
+                        {"time": "09/09 10:00", "title": "Đã tạo lô LO-0309", "desc": "Từ báo giá BG-2026-214 đã chốt", "tone": "blue"},
+                    ],
+                    "missingDocs": ["Biển số xe TQ", "Tài xế TQ"],
+                }
+                store.get_shipments().insert(0, new_lot)
+                st.session_state["ns_done"] = True
+                store.set_shipment_id("LO-0309")
+                store.push_toast("Đã tạo lô LO-0309 (nháp)", "Tiếp theo: chốt xe TQ & giờ lấy ở tab Lấy hàng.", "green")
+                st.rerun()

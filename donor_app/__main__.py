@@ -1,8 +1,6 @@
 """Donor-exact UI entry point — clone of Logi-good design.
 
-This module owns the Streamlit bootstrap. The old views (under ``views/``)
-remain the source of truth for business logic; this file only changes how
-those capabilities are presented.
+This module owns the Streamlit bootstrap.
 """
 from __future__ import annotations
 
@@ -17,8 +15,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Hide the Streamlit chrome early
-st.set_page_config(page_title="LOGISTICS · TRƯỜNG THÀNH", layout="wide", page_icon="⚓", initial_sidebar_state="collapsed")
+# Page config
+st.set_page_config(
+    page_title="LOGISTICS · TRƯỜNG THÀNH",
+    layout="wide",
+    page_icon="⚓",
+    initial_sidebar_state="collapsed",
+)
 
 from donor_app import design, shell, store
 from donor_app import home_page as _pages_home
@@ -37,48 +40,46 @@ from donor_app.pages_finance import (
 
 
 def main():
-    # initialise session state
+    # 1. Initialise sandbox store and session state
     store._ensure_store()
     shell.init_session_state()
 
-    # Install the post-message bridge so embedded components can dispatch
-    # navigation/role/etc. actions to the parent Streamlit app.
-    shell.install_bridge()
-
-    # Process any pending actions from the bridge
+    # 2. Process query parameter actions and routes
     shell.process_actions()
 
-    # Render the global shell (CSS + header + sidebar + mobile nav + drawers)
-    shell.render_shell()
+    # 3. Render CSS, header, search dropdown, drawers, toasts
+    shell.render_header_and_overlays()
 
-    # Determine which page to render
+    # 4. Two-column desktop layout (Sidebar + Main Content)
+    active_page = store.get_active_page()
     route = shell.get_route()
-    page = store.get_active_page()
-    # The default main content area is rendered by the page modules below.
-    # We open a flex container that the sidebar sits inside.
-    st.markdown('<div class="lg-shell">', unsafe_allow_html=True)
 
-    # Render page
-    _dispatch(page, route)
+    col_side, col_main = st.columns([264, 1100], gap="small")
+    with col_side:
+        shell.render_sidebar_content(active_page)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    with col_main:
+        st.markdown('<div class="lg-main-content">', unsafe_allow_html=True)
+        _dispatch(active_page, route)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # 5. Mobile bottom navigation (visible on mobile < 700px)
+    shell.render_mobile_nav(active_page)
 
 
 def _dispatch(page: str, route: str):
-    """Render the active page. The sidebar is already on the left inside
-    ``lg-shell`` (rendered by the shell)."""
-    # Render the page main content
+    """Render the active page inside lg-main-content."""
     if page == "home":
         _pages_home.render()
     elif page == "tasks":
         render_tasks()
     elif page == "shipments":
         render_shipments()
-    elif page == "shipment_detail" or route == "/lo-hang-detail":
+    elif page == "shipment_detail":
         render_shipment_detail()
-    elif page == "new_shipment" or route == "/tao-lo-moi":
+    elif page == "new_shipment":
         render_new_shipment()
-    elif page == "tracking" or route == "/theo-doi":
+    elif page == "tracking":
         render_tracking()
     elif page == "customers":
         render_customers()
@@ -90,25 +91,25 @@ def _dispatch(page: str, route: str):
         render_agreements()
     elif page == "contracts":
         render_contracts()
-    elif page == "new_contract" or route == "/hop-dong/moi":
+    elif page == "new_contract":
         render_new_contract()
-    elif page == "contract_detail" or route == "/hop-dong-detail":
+    elif page == "contract_detail":
         render_contract_detail()
-    elif page == "collect" or route == "/tai-chinh/thu-tien":
+    elif page == "collect":
         render_collect()
-    elif page == "reconcile" or route == "/tai-chinh/doi-soat":
+    elif page == "reconcile":
         render_reconcile()
-    elif page == "partner_debt" or route == "/tai-chinh/cong-no-doi-tac":
+    elif page == "partner_debt":
         render_partner_debt()
     elif page == "ceo":
         render_ceo()
-    elif page == "hs_lookup" or route == "/tra-cuu-thue":
+    elif page == "hs_lookup":
         render_hs_lookup()
-    elif page == "handbook" or route == "/so-tay":
+    elif page == "handbook":
         render_handbook()
-    elif page == "translate" or route == "/dich-thuat":
+    elif page == "translate":
         render_translate()
-    elif page == "users" or route == "/nguoi-dung":
+    elif page == "users":
         render_users()
     else:
         _pages_home.render()

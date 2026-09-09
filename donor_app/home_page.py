@@ -78,23 +78,23 @@ def render():
 <div class="lg-card">
   <div class="lg-section-title" style="margin-bottom:12px">
     <h2 style="font-size:16.5px">Tiền hôm nay — hiện trạng → việc thiếu → hành động</h2>
-    <a class="lg-link" data-to="/tai-chinh/thu-tien">Mở tài chính →</a>
+    <a class="lg-link" href="?p=/tai-chinh/thu-tien" target="_self">Mở tài chính →</a>
   </div>
   <div class="lg-cols-3">
     <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px;padding:16px">
       <p style="font-size:13px;font-weight:600;color:#065f46;margin:0">Còn phải thu · 537.600.000 ₫</p>
       <p style="font-size:13.5px;color:#064e3b;margin:6px 0 0">Thiếu: tạm ứng đợt 2 LO-0306 (150 tr, hạn hôm nay)</p>
-      <a class="lg-btn success" style="margin-top:10px" data-to="/tai-chinh/thu-tien">＋ GHI NHẬN THANH TOÁN</a>
+      <a class="lg-btn success" style="margin-top:10px" href="?p=/tai-chinh/thu-tien" target="_self">＋ GHI NHẬN THANH TOÁN</a>
     </div>
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px">
       <p style="font-size:13px;font-weight:600;color:#9a3412;margin:0">Còn phải trả · 73.800.000 ₫</p>
       <p style="font-size:13.5px;color:#7c2d12;margin:6px 0 0">Thiếu: đối soát cước xe TQ Bằng Tường tháng 9</p>
-      <a class="lg-btn" style="background:#f59e0b;color:#fff;margin-top:10px" data-to="/tai-chinh/doi-soat">ĐỐI SOÁT NGAY</a>
+      <a class="lg-btn" style="background:#f59e0b;color:#fff;margin-top:10px" href="?p=/tai-chinh/doi-soat" target="_self">ĐỐI SOÁT NGAY</a>
     </div>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px">
       <p style="font-size:13px;font-weight:600;color:#1e40af;margin:0">Đã thu hôm nay · 0 ₫</p>
       <p style="font-size:13.5px;color:#1e3a8a;margin:6px 0 0">Chưa ghi nhận khoản nào — thu LO-0306 để bắt đầu</p>
-      <a class="lg-btn primary" style="margin-top:10px" data-to="/tai-chinh/thu-tien">MỞ SỔ THU TIỀN</a>
+      <a class="lg-btn primary" style="margin-top:10px" href="?p=/tai-chinh/thu-tien" target="_self">MỞ SỔ THU TIỀN</a>
     </div>
   </div>
 </div>
@@ -106,7 +106,6 @@ def render():
   CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · Bản prototype nội bộ — dữ liệu minh họa 09/09/2026
 </div>
 """, unsafe_allow_html=True)
-    ui._install_goto_bridge()
 
 
 def _render_overdue(tasks: list) -> str:
@@ -114,9 +113,9 @@ def _render_overdue(tasks: list) -> str:
     for t in tasks[:3]:
         tone = "red" if t.get("level") == "Khan" else "amber"
         due = t.get("due", "")
-        # build data-to
+        route = t.get("route", "/viec-can-xu-ly")
         rows += f"""
-<a class="lg-next-card" data-to="{t.get('route','/viec-can-xu-ly')}" style="min-height:0;padding:12px;align-items:center;gap:12px">
+<a class="lg-next-card" href="?p={route}" target="_self" style="min-height:0;padding:12px;align-items:center;gap:12px">
   <span class="lg-next-bar" style="width:10px;height:40px;background:{'#dc2626' if tone=='red' else '#f59e0b'};border-radius:6px"></span>
   <div style="flex:1;min-width:0">
     <p style="font-size:14.5px;font-weight:700;color:#0f2a4a;margin:0">{t.get('lot','')} · {t.get('job','')}</p>
@@ -129,7 +128,7 @@ def _render_overdue(tasks: list) -> str:
 <div class="lg-card">
   <div class="lg-section-title" style="margin-bottom:12px">
     <h2 style="font-size:16.5px;display:flex;align-items:center;gap:8px">⏰ Quá hạn và sắp tới hạn</h2>
-    <a class="lg-link" data-to="/viec-can-xu-ly">Tất cả →</a>
+    <a class="lg-link" href="?p=/viec-can-xu-ly" target="_self">Tất cả →</a>
   </div>
   <div style="display:flex;flex-direction:column;gap:10px">{rows}</div>
 </div>
@@ -142,7 +141,7 @@ def _render_running(ships: list) -> str:
         tone = s.get("statusTone", "gray")
         next_act = s.get("nextAction", "—")
         rows += f"""
-<a class="lg-next-card" data-to="/lo-hang-detail?id={s['id']}" style="min-height:0;padding:12px;align-items:center;gap:12px">
+<a class="lg-next-card" href="?p=/lo-hang-detail&id={s['id']}" target="_self" style="min-height:0;padding:12px;align-items:center;gap:12px">
   <span class="lg-dot {tone}"></span>
   <div style="flex:1;min-width:0">
     <p style="font-size:14.5px;font-weight:700;color:#0f2a4a;margin:0">{s['id']} · {s.get('customerShort','')}</p>
@@ -155,7 +154,7 @@ def _render_running(ships: list) -> str:
 <div class="lg-card">
   <div class="lg-section-title" style="margin-bottom:12px">
     <h2 style="font-size:16.5px">Trạng thái các lô đang chạy</h2>
-    <a class="lg-link" data-to="/lo-hang">Tất cả lô →</a>
+    <a class="lg-link" href="?p=/lo-hang" target="_self">Tất cả lô →</a>
   </div>
   <div style="display:flex;flex-direction:column;gap:10px">{rows}</div>
   <div style="margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px;display:flex;align-items:flex-start;gap:8px">

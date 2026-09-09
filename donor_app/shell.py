@@ -68,37 +68,46 @@ QUICK_ADD_ITEMS = [
 ]
 
 
+PAGE_ROUTES = {
+    "/": "home",
+    "/home": "home",
+    "/trang-chu": "home",
+    "/viec-can-xu-ly": "tasks",
+    "/lo-hang": "shipments",
+    "/lo-hang-detail": "shipment_detail",
+    "/tao-lo-moi": "new_shipment",
+    "/theo-doi": "tracking",
+    "/khach-hang": "customers",
+    "/ngu-canh-doi-tac": "partner_context",
+    "/kinh-doanh-bao-gia": "quotes",
+    "/thoa-thuan-ban-giao": "agreements",
+    "/hop-dong": "contracts",
+    "/hop-dong/moi": "new_contract",
+    "/hop-dong-detail": "contract_detail",
+    "/tai-chinh/thu-tien": "collect",
+    "/tai-chinh/doi-soat": "reconcile",
+    "/tai-chinh/cong-no-doi-tac": "partner_debt",
+    "/bao-cao-ceo": "ceo",
+    "/tra-cuu-thue": "hs_lookup",
+    "/cong-cu/hs": "hs_lookup",
+    "/so-tay": "handbook",
+    "/cong-cu/so-tay": "handbook",
+    "/dich-thuat": "translate",
+    "/cong-cu/dich-thuat": "translate",
+    "/nguoi-dung": "users",
+    "/admin/users": "users",
+}
+
+
 def _resolve_page_key(route: str) -> str:
-    mapping = {
-        "/": "home",
-        "/viec-can-xu-ly": "tasks",
-        "/lo-hang": "shipments",
-        "/lo-hang-detail": "shipment_detail",
-        "/tao-lo-moi": "new_shipment",
-        "/theo-doi": "tracking",
-        "/khach-hang": "customers",
-        "/ngu-canh-doi-tac": "partner_context",
-        "/kinh-doanh-bao-gia": "quotes",
-        "/thoa-thuan-ban-giao": "agreements",
-        "/hop-dong": "contracts",
-        "/hop-dong/moi": "new_contract",
-        "/hop-dong-detail": "contract_detail",
-        "/tai-chinh/thu-tien": "collect",
-        "/tai-chinh/doi-soat": "reconcile",
-        "/tai-chinh/cong-no-doi-tac": "partner_debt",
-        "/bao-cao-ceo": "ceo",
-        "/tra-cuu-thue": "hs_lookup",
-        "/so-tay": "handbook",
-        "/dich-thuat": "translate",
-        "/nguoi-dung": "users",
-    }
-    return mapping.get(route, "home")
+    base = route.split("?")[0] if "?" in route else route
+    return PAGE_ROUTES.get(base, "home")
 
 
 def set_route(route: str):
     """Switch the active page by route string."""
-    store.set_active_page(_resolve_page_key(route))
-    # also stash the raw route so detail pages can read it
+    page_key = _resolve_page_key(route)
+    store.set_active_page(page_key)
     st.session_state["active_route"] = route
 
 
@@ -110,29 +119,23 @@ def get_route() -> str:
 # SHELL RENDER
 # ============================================================================
 
-def render_shell():
-    """Inject the global shell (header, sidebar, mobile nav) and any open sheets."""
-    # Inject CSS first
+def render_header_and_overlays():
+    """Inject the global CSS, top header, drawers, search, and toasts."""
+    # Inject CSS
     st.markdown(design.DONOR_CSS, unsafe_allow_html=True)
 
     role = store.get_role()
     user = store.get_user()
     active_page = store.get_active_page()
 
-    # ----- HEADER -----
+    # Top sticky Header
     _render_header(role, user)
 
-    # ----- SEARCH (expanded) -----
+    # Search (expanded)
     if st.session_state.get("donor_search_open"):
         _render_search_dropdown()
 
-    # ----- SIDEBAR (desktop) -----
-    _render_sidebar(active_page)
-
-    # ----- MOBILE NAV (bottom) -----
-    _render_mobile_nav(active_page)
-
-    # ----- DRAWERS / SHEETS -----
+    # Drawers / Sheets
     if st.session_state.get("donor_nav_open"):
         _render_drawer(active_page)
     if st.session_state.get("donor_quick_add"):
@@ -140,7 +143,7 @@ def render_shell():
     if st.session_state.get("donor_notif_open"):
         _render_notif_drawer()
 
-    # ----- TOASTS -----
+    # Toasts
     _render_toasts()
 
 
@@ -149,12 +152,13 @@ def _render_header(role: str, user: dict):
     unread = len([n for n in notifs if n.get("tone") in ("red", "amber")])
     initials = (user.get("name") or user.get("display_name") or "U")[0].upper()
     role_color = {"ADMIN": "#7c3aed", "SUPPORT": "#1e5aa8", "SALE": "#059669"}.get(role, "#1e5aa8")
+    query = st.session_state.get("donor_search_query", "")
 
     st.markdown(f"""
-<div class="lg-header">
+<header class="lg-header">
   <div class="lg-header-inner">
-    <button class="lg-icon-btn" id="lg-menu-btn" onclick="window.parent.postMessage({{'type':'donor','action':'open_nav'}}, '*')" aria-label="Mở menu">{icons.menu(22, "#0f2a4a")}</button>
-    <a class="lg-logo" href="?p=home">
+    <a class="lg-icon-btn" id="lg-menu-btn" href="?action=open_nav" target="_self" aria-label="Mở menu">{icons.menu(22, "#0f2a4a")}</a>
+    <a class="lg-logo" href="?p=/" target="_self">
       <span class="lg-logo-mark">T</span>
       <span class="lg-logo-text">
         <span class="lg-logo-title">TRƯỜNG THÀNH</span>
@@ -163,26 +167,28 @@ def _render_header(role: str, user: dict):
       <span class="lg-pill">PROTOTYPE</span>
     </a>
     <div class="lg-search">
-      <div class="lg-search-input">
-        <span class="lg-search-icon">{icons.search(19, "#94a3b8")}</span>
-        <input type="text" placeholder="Tìm mã lô · khách hàng · hợp đồng · container · báo giá…" onfocus="window.parent.postMessage({{'type':'donor','action':'open_search'}}, '*')" />
-      </div>
+      <form method="GET" action="" style="margin:0;width:100%">
+        <div class="lg-search-input">
+          <span class="lg-search-icon">{icons.search(19, "#94a3b8")}</span>
+          <input type="text" name="q" value="{query}" placeholder="Tìm mã lô · khách hàng · hợp đồng · container · báo giá…" autocomplete="off" />
+        </div>
+      </form>
     </div>
-    <button class="lg-icon-btn" id="lg-search-mobile" onclick="window.parent.postMessage({{'type':'donor','action':'open_search'}}, '*')" aria-label="Tìm kiếm">{icons.search(21, "#0f2a4a")}</button>
-    <div class="lg-role-chip" id="lg-role-chip" onclick="window.parent.postMessage({{'type':'donor','action':'toggle_role'}}, '*')" style="cursor:pointer">
+    <a class="lg-icon-btn" id="lg-search-mobile" href="?action=open_search" target="_self" aria-label="Tìm kiếm">{icons.search(21, "#0f2a4a")}</a>
+    <a class="lg-role-chip" id="lg-role-chip" href="?action=toggle_role" target="_self" style="text-decoration:none">
       <span class="lg-role-avatar" style="background:{role_color}">{initials}</span>
       <span>
         <span class="lg-role-name">{user.get("name", "User")}</span>
         <span class="lg-role-meta">{ROLE_LABELS_FULL.get(role, role)}</span>
       </span>
-    </div>
-    <button class="lg-icon-btn" id="lg-bell" onclick="window.parent.postMessage({{'type':'donor','action':'open_notif'}}, '*')" aria-label="Thông báo">
+    </a>
+    <a class="lg-icon-btn" id="lg-bell" href="?action=open_notif" target="_self" aria-label="Thông báo">
       {icons.bell(21, "#0f2a4a")}
       <span class="lg-badge">{unread}</span>
-    </button>
-    <button class="lg-add-btn" onclick="window.parent.postMessage({{'type':'donor','action':'open_quick_add'}}, '*')">{icons.plus(18, "#fff")} Thêm</button>
+    </a>
+    <a class="lg-add-btn" href="?action=open_quick_add" target="_self" style="text-decoration:none">{icons.plus(18, "#fff")} Thêm</a>
   </div>
-</div>
+</header>
 """, unsafe_allow_html=True)
 
 
@@ -200,25 +206,25 @@ def _render_search_dropdown():
     rows = ""
     for s in lots:
         rows += f"""
-<a class="lg-search-row" onclick="window.parent.postMessage({{'type':'donor','action':'goto','to':'/lo-hang-detail?id={s['id']}'}}, '*')">
+<a class="lg-search-row" href="?p=/lo-hang-detail&id={s['id']}&action=close_search" target="_self">
   <span class="ico" style="background:#dbeafe;color:#1e40af">{icons.package(17, "#1e5aa8")}</span>
   <span><span class="title">{s['id']} · {s['customerShort']}</span><span class="meta">Lô hàng — {s['status']}</span></span>
 </a>"""
     for c in cts:
         rows += f"""
-<a class="lg-search-row" onclick="window.parent.postMessage({{'type':'donor','action':'goto','to':'/hop-dong-detail?id={c['id']}'}}, '*')">
+<a class="lg-search-row" href="?p=/hop-dong-detail&id={c['id']}&action=close_search" target="_self">
   <span class="ico" style="background:#d1fae5;color:#047857">{icons.file_text(17, "#059669")}</span>
   <span><span class="title">{c['id']} · {c['company']}</span><span class="meta">Hợp đồng — {c['status']}</span></span>
 </a>"""
     for c in cus:
         rows += f"""
-<a class="lg-search-row" onclick="window.parent.postMessage({{'type':'donor','action':'goto','to':'/khach-hang'}}, '*')">
+<a class="lg-search-row" href="?p=/khach-hang&action=close_search" target="_self">
   <span class="ico" style="background:#fef3c7;color:#b45309">{icons.truck(17, "#b45309")}</span>
   <span><span class="title">{c['short']} · MST {c['mst']}</span><span class="meta">Khách hàng</span></span>
 </a>"""
     for qq in quo:
         rows += f"""
-<a class="lg-search-row" onclick="window.parent.postMessage({{'type':'donor','action':'goto','to':'/kinh-doanh-bao-gia'}}, '*')">
+<a class="lg-search-row" href="?p=/kinh-doanh-bao-gia&action=close_search" target="_self">
   <span class="ico" style="background:#ede9fe;color:#5b21b6">{icons.calculator(17, "#5b21b6")}</span>
   <span><span class="title">{qq['id']} · {qq['customer']}</span><span class="meta">Báo giá — {qq['status']}</span></span>
 </a>"""
@@ -226,19 +232,17 @@ def _render_search_dropdown():
         rows = f'<p style="padding:14px;font-size:14.5px;color:#64748b">Không tìm thấy "{q}". Thử mã lô <b>LO-0306</b>, <b>An Phát</b> hoặc <b>HDMB</b>.</p>'
 
     st.markdown(f"""
-<div class="lg-shell" style="position:relative">
-  <div style="flex:1;min-width:0;padding-top:0;position:relative">
-    <div class="lg-search-results">
-      {rows}
-      <p style="text-align:center;padding:8px;color:#94a3b8;font-size:13px;font-weight:500;margin:0">Nhấn ra ngoài để đóng</p>
-    </div>
+<div style="position:relative;max-width:1600px;margin:0 auto">
+  <div class="lg-search-results">
+    {rows}
+    <a href="?action=close_search" target="_self" style="display:block;text-align:center;padding:8px;color:#94a3b8;font-size:13px;font-weight:500;text-decoration:none">Nhấn để đóng kết quả tìm kiếm</a>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
 
-def _render_sidebar(active_page: str):
-    # Build nav HTML
+def render_sidebar_content(active_page: str):
+    """Render the desktop sidebar directly in the main document DOM."""
     html = '<aside class="lg-sidebar"><nav>'
     for g in NAV:
         html += '<div class="lg-nav-group">'
@@ -250,53 +254,28 @@ def _render_sidebar(active_page: str):
             count_badge = ""
             if it.get("count"):
                 count_badge = f'<span class="lg-nav-count">{it["count"]}</span>'
-            # build data-href so the bridge handler can navigate
-            html += f'<a class="{cls}" data-to="{it["route"]}"><span>{icon}</span><span style="flex:1">{it["label"]}</span>{count_badge}</a>'
+            html += f'<a class="{cls}" href="?p={it["route"]}" target="_self"><span>{icon}</span><span style="flex:1">{it["label"]}</span>{count_badge}</a>'
         html += '</div>'
     # help card
     html += """
 <div class="lg-help-card">
   <h4>Cần hỗ trợ thao tác?</h4>
   <p>Sổ tay hướng dẫn từng bước cho Sale & Support mới.</p>
-  <a data-to="/so-tay">Mở sổ tay →</a>
+  <a href="?p=/so-tay" target="_self">Mở sổ tay →</a>
 </div>
 """
     html += '</nav></aside>'
-
-    # Use st.components.v1.html so we can attach an event listener that posts
-    # back to the Streamlit app. We embed a small script that wires up the
-    # click handlers.
-    from streamlit.components.v1 import html as components_html
-
-    components_html(f"""
-<!DOCTYPE html>
-<html><head><style>html,body{{margin:0;padding:0;background:transparent;}}</style></head>
-<body>
-{html}
-<script>
-  // Forward all sidebar link clicks to the parent Streamlit document.
-  document.querySelectorAll('[data-to]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      const to = el.getAttribute('data-to');
-      window.parent.postMessage({{type:'donor', action:'goto', to: to}}, '*');
-    }});
-  }});
-</script>
-</body></html>
-""", height=720, scrolling=False)
+    st.markdown(html, unsafe_allow_html=True)
 
 
-def _render_mobile_nav(active_page: str):
-    """Render fixed mobile bottom nav via a component for click routing."""
+def render_mobile_nav(active_page: str):
+    """Render fixed mobile bottom navigation directly in DOM."""
     items = [
         {"to": "home", "label": "Tổng quan", "icon": "layout", "route": "/"},
         {"to": "shipments", "label": "Lô hàng", "icon": "package", "route": "/lo-hang"},
         {"to": "contracts", "label": "Hợp đồng", "icon": "file_text", "route": "/hop-dong"},
         {"to": "collect", "label": "Tài chính", "icon": "wallet", "route": "/tai-chinh/thu-tien"},
     ]
-    # Build a tiny component
-    from streamlit.components.v1 import html as components_html
     parts = []
     for it in items:
         active = active_page == it["to"]
@@ -304,46 +283,16 @@ def _render_mobile_nav(active_page: str):
         ico = icons.NAV_ICONS.get(it["icon"], icons.package)(22, "currentColor")
         bar = '<span class="active-bar"></span>' if active else ''
         parts.append(
-            f'<a class="{cls}" data-to="{it["route"]}">{ico}<span>{it["label"]}</span>{bar}</a>'
+            f'<a class="{cls}" href="?p={it["route"]}" target="_self">{ico}<span>{it["label"]}</span>{bar}</a>'
         )
-    # Thêm button
-    parts.append('<button data-action="open_quick_add"><span class="add-pill">{}</span><span>Thêm</span></button>'.format(icons.plus(22, "#fff")))
-
-    components_html(f"""
-<style>
-.lg-mobile-nav {{ display:none !important; }}
-@media (max-width:1023px) {{
-  .lg-mobile-nav {{ display:grid !important; grid-template-columns:repeat(5,1fr); }}
-}}
-.lg-mobile-nav {{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e8f0; box-shadow:0 -4px 20px rgba(0,0,0,.08); z-index:40; padding-bottom:env(safe-area-inset-bottom); }}
-.lg-mobile-nav a, .lg-mobile-nav button {{ background:transparent; border:none; padding:8px 4px 6px; display:flex; flex-direction:column; align-items:center; gap:2px; text-decoration:none; color:#94a3b8; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }}
-.lg-mobile-nav a.active {{ color:#0f2a4a; }}
-.lg-mobile-nav a.active svg {{ stroke-width:2.4; }}
-.lg-mobile-nav .active-bar {{ width:32px; height:4px; border-radius:999px; background:#0f2a4a; margin-top:2px; display:block; }}
-.lg-mobile-nav .add-pill {{ width:44px; height:32px; margin-top:-12px; border-radius:16px; background:#0f2a4a; color:#fff; display:grid; place-items:center; box-shadow:0 4px 12px rgba(15,42,74,.28); }}
-</style>
-<nav class="lg-mobile-nav">{"".join(parts)}</nav>
-<script>
-  document.querySelectorAll('.lg-mobile-nav [data-to]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      const to = el.getAttribute('data-to');
-      window.parent.postMessage({{type:'donor', action:'goto', to: to}}, '*');
-    }});
-  }});
-  document.querySelectorAll('.lg-mobile-nav [data-action]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      window.parent.postMessage({{type:'donor', action: el.getAttribute('data-action')}}, '*');
-    }});
-  }});
-</script>
-""", height=70)
+    parts.append(
+        f'<a href="?action=open_quick_add" target="_self" style="text-decoration:none"><span class="add-pill">{icons.plus(22, "#fff")}</span><span>Thêm</span></a>'
+    )
+    st.markdown(f'<nav class="lg-mobile-nav">{"".join(parts)}</nav>', unsafe_allow_html=True)
 
 
 def _render_drawer(active_page: str):
     role = store.get_role()
-    from streamlit.components.v1 import html as components_html
     nav_html = ""
     for g in NAV:
         nav_html += '<div class="lg-nav-group">'
@@ -353,83 +302,36 @@ def _render_drawer(active_page: str):
             cls = "lg-nav-item" + (" active" if active else "")
             ico = icons.NAV_ICONS.get(it["icon"], icons.package)(20, "currentColor")
             count = f'<span class="lg-nav-count">{it["count"]}</span>' if it.get("count") else ""
-            nav_html += f'<a class="{cls}" data-to="{it["route"]}">{ico}<span style="flex:1">{it["label"]}</span>{count}</a>'
+            nav_html += f'<a class="{cls}" href="?p={it["route"]}&action=close_nav" target="_self">{ico}<span style="flex:1">{it["label"]}</span>{count}</a>'
         nav_html += '</div>'
 
-    components_html(f"""
-<style>
-  .lg-drawer-mask {{ position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:50; }}
-  .lg-drawer {{ position:fixed; left:0; top:0; bottom:0; width:300px; max-width:85vw; background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.18); z-index:51; overflow-y:auto; font-family:'Be Vietnam Pro', system-ui, sans-serif; }}
-  .lg-drawer-header {{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #e4e9f1; background:#fff; position:sticky; top:0; z-index:2; }}
-  .lg-drawer-header h4 {{ font-size:15px; font-weight:800; color:#0f2a4a; margin:0; }}
-  .lg-drawer-close {{ width:44px; height:44px; display:grid; place-items:center; border:none; background:transparent; border-radius:12px; cursor:pointer; color:#0f2a4a; }}
-  .lg-drawer-close:hover {{ background:#f1f5f9; }}
-  .lg-drawer-inner {{ padding:12px; }}
-  .role-pills {{ display:flex; gap:6px; margin-bottom:10px; }}
-  .role-pills button {{ flex:1; height:44px; border-radius:12px; border:2px solid #e4e9f1; background:#fff; font-size:13px; font-weight:700; color:#475569; cursor:pointer; font-family:inherit; }}
-  .role-pills button.active {{ border-color:#0f2a4a; background:#0f2a4a; color:#fff; }}
-  .role-pills button:hover:not(.active) {{ background:#f8fafc; }}
-  .nav-heading {{ padding:0 12px 6px; font-size:11.5px; font-weight:800; letter-spacing:.04em; color:#94a3b8; text-transform:uppercase; margin:0; }}
-  .nav-item {{ display:flex; align-items:center; gap:10px; padding:12px 12px; border-radius:12px; font-size:15px; font-weight:500; color:#334155; text-decoration:none; margin-bottom:2px; }}
-  .nav-item:hover {{ background:#f1f5f9; color:#0f2a4a; }}
-  .nav-item.active {{ background:#0f2a4a; color:#fff; }}
-  .nav-count {{ margin-left:auto; background:#dc2626; color:#fff; border-radius:999px; font-size:11px; font-weight:800; min-width:22px; height:22px; padding:0 6px; display:grid; place-items:center; }}
-  .nav-group {{ margin-bottom:12px; }}
-  .help {{ margin:10px 4px 0; padding:16px; border-radius:16px; background:linear-gradient(135deg,#0f2a4a,#1e5aa8); color:#fff; }}
-  .help h4 {{ font-size:14px; font-weight:700; margin:0 0 4px; }}
-  .help p {{ font-size:12.5px; color:#bfdbfe; margin:0 0 10px; }}
-  .help a {{ display:inline-flex; align-items:center; gap:4px; background:#fff; color:#0f2a4a; padding:8px 12px; border-radius:8px; font-size:13.5px; font-weight:700; text-decoration:none; }}
-  .user {{ padding:0 8px 8px; font-size:12px; color:#64748b; margin:0; }}
-  .user b {{ color:#0f2a4a; }}
-</style>
-<div class="lg-drawer-mask" id="drawer-mask"></div>
+    html = f"""
+<a class="lg-drawer-mask" href="?action=close_nav" target="_self"></a>
 <aside class="lg-drawer">
   <div class="lg-drawer-header">
     <h4>Menu điều hành</h4>
-    <button class="lg-drawer-close" id="drawer-close" aria-label="Đóng">✕</button>
+    <a class="lg-drawer-close" href="?action=close_nav" target="_self" aria-label="Đóng">✕</a>
   </div>
-  <div class="lg-drawer-inner">
-    <div class="role-pills" id="role-pills">
-      <button data-role="ADMIN" class="{ 'active' if role=='ADMIN' else '' }">ADMIN</button>
-      <button data-role="SUPPORT" class="{ 'active' if role=='SUPPORT' else '' }">SUPPORT</button>
-      <button data-role="SALE" class="{ 'active' if role=='SALE' else '' }">SALE</button>
+  <div class="lg-drawer-inner" style="padding:12px">
+    <div class="role-pills" style="display:flex;gap:6px;margin-bottom:10px">
+      <a href="?action=set_role&role=ADMIN" target="_self" class="lg-btn {'primary' if role=='ADMIN' else 'ghost'} sm" style="flex:1;text-decoration:none">ADMIN</a>
+      <a href="?action=set_role&role=SUPPORT" target="_self" class="lg-btn {'primary' if role=='SUPPORT' else 'ghost'} sm" style="flex:1;text-decoration:none">SUPPORT</a>
+      <a href="?action=set_role&role=SALE" target="_self" class="lg-btn {'primary' if role=='SALE' else 'ghost'} sm" style="flex:1;text-decoration:none">SALE</a>
     </div>
-    <p class="user">Đang dùng: <b>{store.get_user().get('name', 'User')}</b> · {ROLE_LABELS.get(role, role)}</p>
+    <p style="padding:0 8px 8px;font-size:12px;color:#64748b;margin:0">Đang dùng: <b style="color:#0f2a4a">{store.get_user().get('name', 'User')}</b> · {ROLE_LABELS.get(role, role)}</p>
     {nav_html}
-    <div class="help">
+    <div class="lg-help-card" style="margin-top:10px">
       <h4>Cần hỗ trợ thao tác?</h4>
       <p>Sổ tay hướng dẫn từng bước cho Sale & Support mới.</p>
-      <a href="#" data-to="/so-tay">Mở sổ tay →</a>
+      <a href="?p=/so-tay&action=close_nav" target="_self">Mở sổ tay →</a>
     </div>
   </div>
 </aside>
-<script>
-  document.getElementById('drawer-mask').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_nav'}}, '*');
-  }});
-  document.getElementById('drawer-close').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_nav'}}, '*');
-  }});
-  document.querySelectorAll('[data-to]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      const to = el.getAttribute('data-to');
-      window.parent.postMessage({{type:'donor', action:'goto', to: to}}, '*');
-    }});
-  }});
-  document.querySelectorAll('[data-role]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      const r = el.getAttribute('data-role');
-      window.parent.postMessage({{type:'donor', action:'set_role', role: r}}, '*');
-    }});
-  }});
-</script>
-""", height=600)
+"""
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def _render_quick_add():
-    from streamlit.components.v1 import html as components_html
     parts = []
     for it in QUICK_ADD_ITEMS:
         ico = icons.NAV_ICONS.get(it["icon"], icons.plus)(21, "currentColor")
@@ -441,7 +343,6 @@ def _render_quick_add():
             "bg-slate-100 text-slate-700": ("#f1f5f9", "#334155"),
         }
         bg, fg = bg_map.get(it["bg"], ("#f1f5f9", "#334155"))
-        # Map item.to back to a route
         route_map = {
             "new_shipment": "/tao-lo-moi",
             "new_contract": "/hop-dong/moi",
@@ -451,56 +352,26 @@ def _render_quick_add():
         }
         route = route_map.get(it["to"], "/")
         parts.append(
-            f'<button class="lg-sheet-row" data-to="{route}">'
+            f'<a class="lg-sheet-row" href="?p={route}&action=close_quick_add" target="_self">'
             f'<span class="ico" style="background:{bg};color:{fg}">{ico}</span>'
             f'<span style="flex:1;text-align:left"><span class="ttl">{it["label"]}</span><span class="dsc">{it["desc"]}</span></span>'
             f'<span style="color:#cbd5e1">{icons.chevron_right(19, "#cbd5e1")}</span>'
-            f'</button>'
+            f'</a>'
         )
 
-    components_html(f"""
-<style>
-  .lg-sheet-mask {{ position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:60; }}
-  .lg-sheet {{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px 20px calc(env(safe-area-inset-bottom) + 20px); z-index:61; max-height:90vh; overflow-y:auto; box-shadow:0 -10px 30px rgba(0,0,0,.18); font-family:'Be Vietnam Pro', system-ui, sans-serif; }}
-  @media (min-width:640px) {{ .lg-sheet {{ left:50%; transform:translateX(-50%); right:auto; width:520px; max-width:92vw; bottom:auto; top:50%; transform:translate(-50%,-50%); border-radius:24px; padding:20px; }} }}
-  .lg-sheet-grab {{ width:48px; height:6px; background:#cbd5e1; border-radius:999px; margin:0 auto 12px; display:block; }}
-  .lg-sheet h3 {{ font-size:18px; font-weight:800; color:#0f2a4a; margin:0 0 4px; }}
-  .lg-sheet p.hint {{ font-size:13.5px; color:#64748b; margin:0 0 12px; }}
-  .lg-sheet-row {{ display:flex; align-items:center; gap:12px; padding:14px; border:2px solid #f1f5f9; border-radius:16px; background:#fff; cursor:pointer; text-align:left; width:100%; margin-bottom:8px; font-family:inherit; }}
-  .lg-sheet-row:hover {{ border-color:#1e5aa8; }}
-  .lg-sheet-row .ico {{ width:44px; height:44px; border-radius:12px; display:grid; place-items:center; flex-shrink:0; }}
-  .lg-sheet-row .ttl {{ font-size:15px; font-weight:700; color:#0f2a4a; display:block; }}
-  .lg-sheet-row .dsc {{ font-size:13px; color:#64748b; display:block; }}
-  .lg-sheet-close {{ position:absolute; top:12px; right:12px; width:44px; height:44px; display:grid; place-items:center; border:none; background:transparent; border-radius:12px; cursor:pointer; color:#0f2a4a; }}
-  .lg-sheet-close:hover {{ background:#f1f5f9; }}
-  .lg-sheet-header {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }}
-</style>
-<div class="lg-sheet-mask" id="sheet-mask"></div>
+    html = f"""
+<a class="lg-sheet-mask" href="?action=close_quick_add" target="_self"></a>
 <div class="lg-sheet">
   <div class="lg-sheet-grab"></div>
-  <div class="lg-sheet-header">
-    <h3>Thêm mới nhanh</h3>
-    <button class="lg-sheet-close" id="sheet-close" aria-label="Đóng">✕</button>
+  <div class="lg-sheet-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <h3 style="font-size:18px;font-weight:800;color:#0f2a4a;margin:0">Thêm mới nhanh</h3>
+    <a class="lg-sheet-close" href="?action=close_quick_add" target="_self" aria-label="Đóng" style="text-decoration:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:#0f2a4a">✕</a>
   </div>
   <p class="hint">Chọn việc muốn làm — mỗi nút dẫn thẳng tới màn hình nhập liệu.</p>
   {''.join(parts)}
 </div>
-<script>
-  document.getElementById('sheet-mask').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_quick_add'}}, '*');
-  }});
-  document.getElementById('sheet-close').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_quick_add'}}, '*');
-  }});
-  document.querySelectorAll('[data-to]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      const to = el.getAttribute('data-to');
-      window.parent.postMessage({{type:'donor', action:'goto', to: to}}, '*');
-    }});
-  }});
-</script>
-""", height=520)
+"""
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def _render_notif_drawer():
@@ -514,60 +385,30 @@ def _render_notif_drawer():
   <div style="display:flex;align-items:flex-start;gap:10px">
     <span class="dot" style="background:{dot_color};{pulse}"></span>
     <div>
-      <h5>{n['title']}</h5>
-      <p>{n['desc']}</p>
-      <time>{n['time']}</time>
+      <h5 style="font-size:14.5px;color:#0f2a4a;font-weight:700;margin:0">{n['title']}</h5>
+      <p style="font-size:13.5px;color:#475569;margin:2px 0 0">{n['desc']}</p>
+      <time style="font-size:12px;color:#94a3b8">{n['time']}</time>
     </div>
   </div>
 </div>"""
 
-    from streamlit.components.v1 import html as components_html
-    components_html(f"""
-<style>
-  .lg-sheet-mask {{ position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:60; }}
-  .lg-notif {{ position:fixed; right:0; top:0; bottom:0; width:380px; max-width:92vw; background:#fff; box-shadow:0 10px 30px rgba(0,0,0,.18); z-index:61; display:flex; flex-direction:column; font-family:'Be Vietnam Pro', system-ui, sans-serif; }}
-  .lg-notif-header {{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #e4e9f1; }}
-  .lg-notif-header h4 {{ font-size:16px; font-weight:800; color:#0f2a4a; margin:0; }}
-  .lg-notif-header button {{ width:44px; height:44px; display:grid; place-items:center; border:none; background:transparent; border-radius:12px; cursor:pointer; color:#0f2a4a; }}
-  .lg-notif-header button:hover {{ background:#f1f5f9; }}
-  .lg-notif-list {{ flex:1; overflow-y:auto; padding:10px; }}
-  .lg-notif-item {{ background:#fff; border:1px solid #e4e9f1; border-radius:16px; padding:12px; margin-bottom:8px; transition:box-shadow .15s, transform .15s; }}
-  .lg-notif-item:hover {{ box-shadow:0 4px 14px rgba(15,42,74,.06); transform:translateY(-1px); }}
-  .lg-notif-item h5 {{ font-size:14.5px; color:#0f2a4a; font-weight:700; margin:0; }}
-  .lg-notif-item p {{ font-size:13.5px; color:#475569; margin:2px 0 0; }}
-  .lg-notif-item time {{ font-size:12px; color:#94a3b8; }}
-  .lg-notif-foot {{ padding:10px; border-top:1px solid #e4e9f1; }}
-  .lg-notif-foot button {{ width:100%; height:52px; border-radius:12px; background:#0f2a4a; color:#fff; font-weight:700; border:none; cursor:pointer; font-family:inherit; font-size:15px; }}
-  .dot {{ width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:6px; display:inline-block; }}
-</style>
-<div class="lg-sheet-mask" id="notif-mask"></div>
+    unread_count = len([n for n in notifs if n.get('tone') in ('red', 'amber')])
+    html = f"""
+<a class="lg-sheet-mask" href="?action=close_notif" target="_self"></a>
 <aside class="lg-notif">
   <div class="lg-notif-header">
-    <h4>Thông báo · {len([n for n in notifs if n.get('tone') in ('red','amber')])} chưa đọc</h4>
-    <button id="notif-close" aria-label="Đóng">✕</button>
+    <h4 style="font-size:16px;font-weight:800;color:#0f2a4a;margin:0">Thông báo · {unread_count} chưa đọc</h4>
+    <a class="lg-icon-btn" href="?action=close_notif" target="_self" aria-label="Đóng" style="text-decoration:none">✕</a>
   </div>
   <div class="lg-notif-list">
     {items_html}
   </div>
   <div class="lg-notif-foot">
-    <button data-to="/viec-can-xu-ly">Mở Việc Cần Xử Lý</button>
+    <a class="lg-btn primary full" href="?p=/viec-can-xu-ly&action=close_notif" target="_self" style="text-decoration:none">Mở Việc Cần Xử Lý</a>
   </div>
 </aside>
-<script>
-  document.getElementById('notif-mask').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_notif'}}, '*');
-  }});
-  document.getElementById('notif-close').addEventListener('click', () => {{
-    window.parent.postMessage({{type:'donor', action:'close_notif'}}, '*');
-  }});
-  document.querySelectorAll('[data-to]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      window.parent.postMessage({{type:'donor', action:'goto', to: el.getAttribute('data-to')}}, '*');
-    }});
-  }});
-</script>
-""", height=620)
+"""
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def _render_toasts():
@@ -587,154 +428,112 @@ def _render_toasts():
     <h5>{t['title']}</h5>
     {f'<p>{t["desc"]}</p>' if t.get('desc') else ''}
   </div>
-  <button class="close" data-toast-id="{t['id']}" aria-label="Đóng">✕</button>
+  <a class="close" href="?action=dismiss_toast&toast_id={t['id']}" target="_self" aria-label="Đóng">✕</a>
 </div>"""
 
-    from streamlit.components.v1 import html as components_html
-    components_html(f"""
-<style>
-  .lg-toast-stack {{ position:fixed; left:12px; right:12px; bottom:90px; z-index:70; display:flex; flex-direction:column; gap:8px; pointer-events:none; }}
-  @media (min-width:768px) {{ .lg-toast-stack {{ left:auto; right:24px; bottom:24px; width:380px; }} }}
-  .lg-toast {{ background:#0f2a4a; color:#fff; padding:14px 16px; border-radius:16px; display:flex; align-items:flex-start; gap:10px; box-shadow:0 10px 30px rgba(0,0,0,.2); pointer-events:auto; font-family:'Be Vietnam Pro', system-ui, sans-serif; }}
-  .lg-toast .ico {{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; flex-shrink:0; color:#fff; font-weight:800; font-size:15px; }}
-  .lg-toast .body {{ flex:1; min-width:0; }}
-  .lg-toast .body h5 {{ font-size:14.5px; margin:0; font-weight:700; }}
-  .lg-toast .body p {{ font-size:13px; color:#bfdbfe; margin:2px 0 0; }}
-  .lg-toast .close {{ background:rgba(255,255,255,.1); border:none; width:32px; height:32px; border-radius:8px; color:#fff; cursor:pointer; }}
-</style>
-<div class="lg-toast-stack">
-  {rows}
-</div>
-<script>
-  document.querySelectorAll('[data-toast-id]').forEach(el => {{
-    el.addEventListener('click', (e) => {{
-      e.preventDefault();
-      window.parent.postMessage({{type:'donor', action:'dismiss_toast', id: el.getAttribute('data-toast-id')}}, '*');
-    }});
-  }});
-</script>
-""", height=180)
+    st.markdown(f'<div class="lg-toast-stack">{rows}</div>', unsafe_allow_html=True)
 
 
 # ============================================================================
-# BRIDGE — listen for postMessage events from the embedded components
-# ============================================================================
-
-def install_bridge():
-    """Install a tiny script that listens for postMessage from the embedded
-    components and converts those events into Streamlit query-param changes
-    we then pick up on the next rerun.
-    """
-    from streamlit.components.v1 import html as components_html
-    components_html("""
-<script>
-(function() {
-  function post(to) {
-    // Update window.location.search so the parent Streamlit rerun picks up the new query
-    const url = new URL(window.parent.location);
-    url.searchParams.set('p', to);
-    window.parent.history.pushState({}, '', url.toString());
-    // Trigger a synthetic popstate so Streamlit re-reads
-    window.parent.dispatchEvent(new PopStateEvent('popstate'));
-  }
-  window.addEventListener('message', (e) => {
-    const d = (e.data || {});
-    if (d.type !== 'donor') return;
-    if (d.action === 'goto') {
-      post(d.to);
-    } else if (d.action === 'open_nav' || d.action === 'open_search' || d.action === 'open_quick_add' || d.action === 'open_notif' || d.action === 'close_nav' || d.action === 'close_quick_add' || d.action === 'close_notif' || d.action === 'set_role' || d.action === 'dismiss_toast' || d.action === 'toggle_role') {
-      // Action flags ride via session state
-      const url = new URL(window.parent.location);
-      url.searchParams.set('_a', d.action + (d.role ? ':' + d.role : '') + (d.id ? ':' + d.id : '') + ':' + Date.now());
-      window.parent.history.pushState({}, '', url.toString());
-      window.parent.dispatchEvent(new PopStateEvent('popstate'));
-    }
-  });
-})();
-</script>
-""", height=0)
-
-
-# ============================================================================
-# ACTION DISPATCHER — process the encoded action from query params
+# ACTION DISPATCHER — process query params and navigate
 # ============================================================================
 
 def process_actions():
-    """Read query string and dispatch to handlers. Called by main() on every rerun."""
+    """Read query parameters and apply navigation/actions. Called on every rerun."""
     qp = st.query_params
-    raw_action = qp.get("_a", "")
-    if not raw_action:
-        return
-    # Consume the action so it doesn't fire twice
-    qp.pop("_a", None)
-    parts = raw_action.split(":")
-    action = parts[0] if parts else ""
-    extra = parts[1] if len(parts) > 1 else ""
-    if action == "open_nav":
-        st.session_state["donor_nav_open"] = True
-    elif action == "open_search":
-        st.session_state["donor_search_open"] = True
-    elif action == "open_quick_add":
-        st.session_state["donor_quick_add"] = True
-    elif action == "open_notif":
-        st.session_state["donor_notif_open"] = True
-    elif action == "close_nav":
-        st.session_state["donor_nav_open"] = False
-    elif action == "close_search":
-        st.session_state["donor_search_open"] = False
-    elif action == "close_quick_add":
-        st.session_state["donor_quick_add"] = False
-    elif action == "close_notif":
-        st.session_state["donor_notif_open"] = False
-    elif action == "set_role":
-        if extra in ("ADMIN", "SUPPORT", "SALE"):
-            store.set_role(extra)
-            store.push_toast(f"Đã chuyển sang vai trò {ROLE_LABELS.get(extra, extra)}", ROLE_LABELS_FULL.get(extra, ""), "blue")
-    elif action == "toggle_role":
-        cur = store.get_role()
-        nxt = {"ADMIN": "SUPPORT", "SUPPORT": "SALE", "SALE": "ADMIN"}[cur]
-        store.set_role(nxt)
-        store.push_toast(f"Đã chuyển sang vai trò {ROLE_LABELS.get(nxt, nxt)}", ROLE_LABELS_FULL.get(nxt, ""), "blue")
-    elif action == "dismiss_toast":
-        # extra is the toast id
-        store.dismiss_toast(extra)
 
-    # Goto: parse the `p` param and route
-    p = qp.get("p", None)
+    # 1. Action parameter
+    action = qp.get("action")
+    if action:
+        if action == "open_nav":
+            st.session_state["donor_nav_open"] = True
+        elif action == "close_nav":
+            st.session_state["donor_nav_open"] = False
+        elif action in ("open_search", "search_dropdown"):
+            st.session_state["donor_search_open"] = True
+        elif action == "close_search":
+            st.session_state["donor_search_open"] = False
+        elif action == "open_quick_add":
+            st.session_state["donor_quick_add"] = True
+        elif action == "close_quick_add":
+            st.session_state["donor_quick_add"] = False
+        elif action in ("open_notif", "notif_drawer"):
+            st.session_state["donor_notif_open"] = True
+        elif action == "close_notif":
+            st.session_state["donor_notif_open"] = False
+        elif action == "close_drawer":
+            st.session_state["donor_nav_open"] = False
+            st.session_state["donor_search_open"] = False
+            st.session_state["donor_quick_add"] = False
+            st.session_state["donor_notif_open"] = False
+        elif action == "toggle_role":
+            cur = store.get_role()
+            nxt = {"ADMIN": "SUPPORT", "SUPPORT": "SALE", "SALE": "ADMIN"}.get(cur, "SUPPORT")
+            store.set_role(nxt)
+            store.push_toast(f"Đã chuyển sang vai trò {ROLE_LABELS.get(nxt, nxt)}", ROLE_LABELS_FULL.get(nxt, ""), "blue")
+        elif action == "set_role":
+            role = qp.get("role", "")
+            if role in ("ADMIN", "SUPPORT", "SALE"):
+                store.set_role(role)
+                store.push_toast(f"Đã chuyển sang vai trò {ROLE_LABELS.get(role, role)}", ROLE_LABELS_FULL.get(role, ""), "blue")
+        elif action == "dismiss_toast":
+            tid = qp.get("toast_id", "")
+            if tid:
+                store.dismiss_toast(tid)
+        elif action in ("pay_dialog", "open_pay"):
+            sid = qp.get("sid", "LO-0306")
+            st.session_state["pay_dialog_open"] = True
+            st.session_state["pay_lot"] = sid
+            st.session_state["pay_sid"] = sid
+        elif action == "close_pay":
+            st.session_state["pay_dialog_open"] = False
+
+    # 2. Search query parameter
+    if "q" in qp:
+        st.session_state["donor_search_query"] = qp.get("q", "")
+        if st.session_state["donor_search_query"]:
+            st.session_state["donor_search_open"] = True
+
+    # 3. Route parameter 'p' or 'page'
+    p = qp.get("p") or qp.get("page")
     if p:
-        qp.pop("p", None)
-        if p.startswith("/lo-hang-detail"):
-            # /lo-hang-detail?id=LO-0306
-            import re as _re
-            m = _re.search(r"id=([^&]+)", p)
-            if m:
-                store.set_shipment_id(m.group(1))
-                set_route("/lo-hang-detail")
-                return
-        if p.startswith("/hop-dong-detail"):
-            import re as _re
-            m = _re.search(r"id=([^&]+)", p)
-            if m:
-                store.set_shipment_id(m.group(1))
+        if p.startswith("/lo-hang-detail") or p.startswith("/lo-hang/"):
+            sid = qp.get("id")
+            if not sid and "/lo-hang/" in p and not p.endswith("/lo-hang"):
+                sid = p.split("/lo-hang/")[1].split("?")[0]
+            if sid:
+                store.set_shipment_id(sid)
+            tab = qp.get("tab")
+            if tab:
+                st.session_state["active_tab"] = tab
+            set_route("/lo-hang-detail")
+        elif p.startswith("/hop-dong-detail") or p.startswith("/hop-dong/"):
+            if p != "/hop-dong/moi":
+                cid = qp.get("id")
+                if not cid and "/hop-dong/" in p and not p.endswith("/moi"):
+                    cid = p.split("/hop-dong/")[1].split("?")[0]
+                if cid:
+                    store.set_contract_id(cid)
+                tab = qp.get("tab")
+                if tab:
+                    st.session_state["active_contract_tab"] = tab
                 set_route("/hop-dong-detail")
-                return
-        if p == "/lo-hang":
-            set_route("/lo-hang")
-        elif p == "/hop-dong":
-            set_route("/hop-dong")
-        elif p == "/tai-chinh/thu-tien":
-            set_route("/tai-chinh/thu-tien")
+            else:
+                set_route("/hop-dong/moi")
         else:
             set_route(p)
 
 
 def init_session_state():
-    """Initialise the global shell state flags."""
+    """Initialise global state flags only if not present."""
     st.session_state.setdefault("donor_nav_open", False)
     st.session_state.setdefault("donor_search_open", False)
     st.session_state.setdefault("donor_quick_add", False)
     st.session_state.setdefault("donor_notif_open", False)
     st.session_state.setdefault("donor_search_query", "")
     st.session_state.setdefault("active_route", "/")
-    # Page is home by default
-    store.set_active_page("home")
+    st.session_state.setdefault("active_page", "home")
+    st.session_state.setdefault("active_shipment_id", "LO-0306")
+    st.session_state.setdefault("active_contract_id", "HDMB-PA-2026-031")
+    st.session_state.setdefault("active_tab", "lay-hang")
+    st.session_state.setdefault("active_contract_tab", "hang-hoa")

@@ -681,6 +681,11 @@ def _ensure_store():
     st.session_state.setdefault("donor_role", "ADMIN")
     st.session_state.setdefault("donor_user", {"name": "Thu Hằng", "display_name": "Thu Hằng", "username": "thu.hang", "role": "ADMIN"})
     st.session_state.setdefault("active_page", "home")
+    st.session_state.setdefault("active_route", "/")
+    st.session_state.setdefault("active_shipment_id", "LO-0306")
+    st.session_state.setdefault("active_contract_id", "HDMB-PA-2026-031")
+    st.session_state.setdefault("active_tab", "lay-hang")
+    st.session_state.setdefault("active_contract_tab", "hang-hoa")
 
 
 # ============================================================================
@@ -865,22 +870,69 @@ def record_payment(sid: str, amount: int, kind: str, note: str = ""):
 # Active page routing — drives the shell
 # ============================================================================
 
+def init_session_state():
+    """Ensure session state and store defaults exist."""
+    _ensure_store()
+
+
 def get_active_page() -> str:
     _ensure_store()
-    return st.session_state.active_page
+    return st.session_state.get("active_page", "home")
 
-def set_active_page(page: str):
+def set_active_page(page: str, route: str = None):
     _ensure_store()
-    st.session_state.active_page = page
+    st.session_state["active_page"] = page
+    if route:
+        st.session_state["active_route"] = route
 
 
-def get_shipment_id() -> str | None:
+def get_active_route() -> str:
     _ensure_store()
-    return st.session_state.get("active_shipment_id")
+    return st.session_state.get("active_route", "/")
 
-def set_shipment_id(sid: str):
+
+def get_shipment_id() -> str:
     _ensure_store()
-    st.session_state.active_shipment_id = sid
+    return st.session_state.get("active_shipment_id", "LO-0306")
+
+def set_shipment_id(sid: str, tab: str = None):
+    _ensure_store()
+    st.session_state["active_shipment_id"] = sid
+    if tab:
+        st.session_state["active_tab"] = tab
+
+
+def get_contract_id() -> str:
+    _ensure_store()
+    return st.session_state.get("active_contract_id", "HDMB-PA-2026-031")
+
+def set_contract_id(cid: str, tab: str = None):
+    _ensure_store()
+    st.session_state["active_contract_id"] = cid
+    if tab:
+        st.session_state["active_contract_tab"] = tab
+
+
+def get_active_tab() -> str:
+    _ensure_store()
+    return st.session_state.get("active_tab", "lay-hang")
+
+def set_active_tab(tab: str):
+    _ensure_store()
+    st.session_state["active_tab"] = tab
+
+
+def get_contract_tab() -> str:
+    _ensure_store()
+    return st.session_state.get("active_contract_tab", "hang-hoa")
+
+def get_active_contract_tab() -> str:
+    _ensure_store()
+    return st.session_state.get("active_contract_tab", "hang-hoa")
+
+def set_contract_tab(tab: str):
+    _ensure_store()
+    st.session_state["active_contract_tab"] = tab
 
 
 # Backward-compat shim for views that use the original Logistics helpers

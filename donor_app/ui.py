@@ -6,6 +6,17 @@ import streamlit as st
 from . import design, icons, store
 
 
+def href_for(to: str | None) -> str:
+    """Format a target_self href query string from a route or action."""
+    if not to:
+        return ""
+    if to.startswith("action:"):
+        return f"?action={to.replace('action:', '')}"
+    if to.startswith("?"):
+        return to
+    return f"?p={to}"
+
+
 def page_title(title: str, sub: str = "", right=None):
     """Render the donor's SectionTitle pattern."""
     icon = '<span class="lg-section-icon">{}</span>'.format(icons.layout(20, "#fff"))
@@ -36,9 +47,9 @@ def hero(
 ):
     cta_html = ""
     if primary_label:
-        cta_html += f'<a class="lg-btn-white" data-to="{primary_to}">{primary_label} →</a>'
+        cta_html += f'<a class="lg-btn-white" href="{href_for(primary_to)}" target="_self">{primary_label} →</a>'
     if secondary_label:
-        cta_html += f'<a class="lg-btn-ghost" data-to="{secondary_to}">{secondary_label}</a>'
+        cta_html += f'<a class="lg-btn-ghost" href="{href_for(secondary_to)}" target="_self">{secondary_label}</a>'
     st.markdown(f"""
 <div class="lg-hero">
   <p class="lg-kicker">{kicker}</p>
@@ -47,13 +58,10 @@ def hero(
   <div class="lg-hero-ctas">{cta_html}</div>
 </div>
 """, unsafe_allow_html=True)
-    if cta_html:
-        # Wire up postMessage handler
-        _install_goto_bridge()
 
 
 def next_action_banner(tone: str, kicker: str, title: str, desc: str = None, action: str = None, to: str = None):
-    btn_html = f'<a class="lg-na-btn" data-to="{to}">{action} {icons.arrow_right(18, "#fff")}</a>' if action else ""
+    btn_html = f'<a class="lg-na-btn" href="{href_for(to)}" target="_self">{action} {icons.arrow_right(18, "#fff")}</a>' if action else ""
     desc_html = f'<p class="lg-na-desc">{desc}</p>' if desc else ""
     st.markdown(f"""
 <div class="lg-na {tone}">
@@ -68,8 +76,6 @@ def next_action_banner(tone: str, kicker: str, title: str, desc: str = None, act
   {btn_html}
 </div>
 """, unsafe_allow_html=True)
-    if btn_html:
-        _install_goto_bridge()
 
 
 def _na_icon(tone: str) -> str:
@@ -93,7 +99,8 @@ def kpi_grid(items: list, columns: int = 5):
         tone = it.get("tone", "")
         cls = f"lg-kpi {tone}".strip()
         to = it.get("to")
-        tag_open = f'<a class="{cls}" data-to="{to}">' if to else f'<div class="{cls}">'
+        href = href_for(to) if to else ""
+        tag_open = f'<a class="{cls}" href="{href}" target="_self">' if to else f'<div class="{cls}">'
         tag_close = "</a>" if to else "</div>"
         sub = it.get("sub", "")
         sub_html = f'<p class="sub">{sub}</p>' if sub else ""
@@ -105,8 +112,6 @@ def kpi_grid(items: list, columns: int = 5):
 {tag_close}
 """)
     st.markdown(f'<div class="lg-kpi-grid" style="{style}">{"".join(cards)}</div>', unsafe_allow_html=True)
-    if any(it.get("to") for it in items):
-        _install_goto_bridge()
 
 
 def next_action_cards(items: list):
@@ -115,8 +120,9 @@ def next_action_cards(items: list):
     for it in items:
         icon_html = f'<span class="lg-next-icon" style="background:{it.get("bg","#475569")}">{_icon_for(it.get("icon","package"))}</span>'
         bar = f'<div class="lg-next-bar" style="background:{it.get("bar","#475569")}"></div>'
+        href = href_for(it.get("to", "/"))
         cards.append(f"""
-<a class="lg-next-card" data-to="{it.get('to','/')}">
+<a class="lg-next-card" href="{href}" target="_self">
   {bar}
   {icon_html}
   <div class="lg-next-card-body">
@@ -127,7 +133,6 @@ def next_action_cards(items: list):
 </a>
 """)
     st.markdown(f'<div class="lg-next-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
-    _install_goto_bridge()
 
 
 def _icon_for(name: str) -> str:
@@ -150,11 +155,7 @@ def card(content: str, css_class: str = "lg-card"):
 
 
 def table(headers: list, rows: list, min_width: str = "980px", key_col: int = None):
-    """Render a donor-style responsive table.
-
-    rows is a list of (cells: list[str], action_html: str). action_html is appended
-    as the last cell. If row has dict with 'to' and 'label' we render a button.
-    """
+    """Render a donor-style responsive table."""
     head = "".join(f"<th>{h}</th>" for h in headers)
     body = ""
     for r in rows:
@@ -180,10 +181,7 @@ def two_col(left_html: str, right_html: str):
 
 
 def field(label: str, required: bool = False, hint: str = None, error: str = None, key: str = None, default: str = "", placeholder: str = "", input_type: str = "text", options: list = None, value: str = None):
-    """Render a Streamlit form field that mimics the donor's Field component.
-
-    Returns the new value (string). For select, returns the selected option.
-    """
+    """Render a Streamlit form field that mimics the donor's Field component."""
     label_html = f'{label} <span style="color:#dc2626">*</span>' if required else label
     if input_type == "select":
         if value is None:
@@ -224,7 +222,8 @@ def success_button(label: str, key: str = None, full: bool = False):
 
 def missing_box(what: str, where: str = None, action_label: str = "Bổ sung ngay", to: str = None):
     where_html = f'<p>{where}</p>' if where else ""
-    btn = f'<a class="btn" data-to="{to}">{icons.pen(16, "#fff")} {action_label}</a>' if to else f'<span class="btn">{icons.pen(16, "#fff")} {action_label}</span>'
+    href = href_for(to) if to else ""
+    btn = f'<a class="btn" href="{href}" target="_self">{icons.pen(16, "#fff")} {action_label}</a>' if to else f'<span class="btn">{icons.pen(16, "#fff")} {action_label}</span>'
     st.markdown(f"""
 <div class="lg-missing">
   <span class="body">
@@ -234,15 +233,12 @@ def missing_box(what: str, where: str = None, action_label: str = "Bổ sung nga
   {btn}
 </div>
 """, unsafe_allow_html=True)
-    if to:
-        _install_goto_bridge()
 
 
 def tabs(labels: list, active_id: str, key: str = "donor_tab") -> str:
     """Render the donor's horizontal tab strip and return the selected tab id."""
     options = [lbl["id"] for lbl in labels]
     idx = options.index(active_id) if active_id in options else 0
-    # Use st.radio as the underlying control
     selected = st.radio(
         "Tabs",
         options=options,
@@ -256,20 +252,21 @@ def tabs(labels: list, active_id: str, key: str = "donor_tab") -> str:
 
 
 def _next_action_banner_html(s: dict) -> str:
-    """Return HTML for a shipment-specific next-action banner (used inside other pages)."""
-    tone = s.get("naTone", "red")
-    kicker = s.get("naKicker", "Việc tiếp theo")
+    """Return HTML for a shipment-specific next-action banner."""
+    tone = s.get("statusTone", "red")
+    kicker = "Việc tiếp theo"
     title = s.get("nextAction", "Tiếp tục xử lý lô hàng")
-    desc = s.get("naDesc", "")
+    desc = s.get("nextActionDetail", "")
     to = s.get("nextRoute", "/lo-hang-detail?id=" + s.get("id", ""))
     btn = ""
     if to:
-        btn = '<a class="lg-na-btn" data-to="{0}">XỬ LÝ NGAY {1}</a>'.format(to, icons.arrow_right(18, "#fff"))
-    desc_html = '<p class="lg-na-desc">{0}</p>'.format(desc) if desc else ""
-    return """
+        href = href_for(to)
+        btn = f'<a class="lg-na-btn" href="{href}" target="_self">XỬ LÝ NGAY {icons.arrow_right(18, "#fff")}</a>'
+    desc_html = f'<p class="lg-na-desc">{desc}</p>' if desc else ""
+    return f"""
 <div class="lg-na {tone}">
   <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
-    <div class="lg-na-icon {tone}">{icon}</div>
+    <div class="lg-na-icon {tone}">{_na_icon(tone)}</div>
     <div style="min-width:0">
       <p class="lg-na-kicker">{kicker}</p>
       <h3 class="lg-na-title">{title}</h3>
@@ -278,46 +275,8 @@ def _next_action_banner_html(s: dict) -> str:
   </div>
   {btn}
 </div>
-""".format(tone=tone, icon=_na_icon(tone), kicker=kicker, title=title, desc_html=desc_html, btn=btn)
+"""
 
-
-def _install_goto_bridge():
-    """Make any data-to anchor navigate via postMessage."""
-    from streamlit.components.v1 import html as components_html
-    components_html("""
-<script>
-(function() {
-  function post(to) {
-    const url = new URL(window.parent.location);
-    url.searchParams.set('p', to);
-    window.parent.history.pushState({}, '', url.toString());
-    window.parent.dispatchEvent(new PopStateEvent('popstate'));
-  }
-  document.querySelectorAll('[data-to]').forEach(el => {
-    if (el.__wired) return;
-    el.__wired = true;
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      const to = el.getAttribute('data-to');
-      // Action flags (open drawers) ride along via _a
-      if (to.startsWith('action:')) {
-        const url = new URL(window.parent.location);
-        url.searchParams.set('_a', to.replace('action:', '') + ':' + Date.now());
-        window.parent.history.pushState({}, '', url.toString());
-        window.parent.dispatchEvent(new PopStateEvent('popstate'));
-      } else {
-        post(to);
-      }
-    });
-  });
-})();
-</script>
-""", height=0)
-
-
-# ============================================================================
-# Donor-faithful numeric / money formatting (re-exported for convenience)
-# ============================================================================
 
 def fmt_vnd(amount) -> str:
     return design.fmt_vnd(amount)
