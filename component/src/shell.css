@@ -1,0 +1,50 @@
+/* ============================================================================
+   Shell adapter — mounting-context only (NOT a donor redesign).
+   The donor styles index.css target html/body which do not exist inside the
+   v2 shadow root; this maps the same values onto the shadow host so the
+   donor UI renders identically. Donor index.css is included verbatim.
+   ========================================================================== */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.logi-shell {
+  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  background: #eef1f6;
+  color: #1a2433;
+  font-size: 15.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-width: 0;
+}
+
+/* The shell is its own scrollport so the donor sticky header pins exactly
+   where it does in the standalone app (directly under the Streamlit toolbar). */
+.logi-shell {
+  height: calc(100vh - var(--logi-toolbar-gap, 57px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.logi-shell ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.logi-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.logi-shell ::-webkit-scrollbar-thumb {
+  background: #b9c4d4;
+  border-radius: 8px;
+}
+.logi-shell ::-webkit-scrollbar-thumb:hover {
+  background: #8fa0b8;
+}
+
+.logi-shell :focus-visible {
+  outline: 3px solid #1e5aa8;
+  outline-offset: 2px;
+  border-radius: 6px;
+}

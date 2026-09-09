@@ -1,0 +1,28 @@
+{
+  "name": "logi-shell-component",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Logi-good literal UI as a single Streamlit Components v2 component root (Phase A).",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "scan": "python3 ../scripts/scan_process.py dist"
+  },
+  "dependencies": {
+    "lucide-react": "^1.43.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

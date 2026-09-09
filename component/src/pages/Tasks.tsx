@@ -1,0 +1,82 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, ListFilter } from "lucide-react";
+import { SectionTitle, ToneBadge } from "../components/ui";
+import { TASKS } from "../lib/data";
+import { cx } from "../lib/format";
+
+const LEVEL = {
+  Khan: { label: "Khẩn", cls: "bg-red-600 text-white" },
+  CanXuLy: { label: "Cần xử lý", cls: "bg-amber-400 text-amber-950" },
+  BinhThuong: { label: "Bình thường", cls: "bg-slate-200 text-slate-700" },
+} as const;
+
+export default function Tasks() {
+  const [filter, setFilter] = useState<"ALL" | "Khan" | "CanXuLy" | "BinhThuong">("ALL");
+  const [q, setQ] = useState("");
+  const list = useMemo(() => TASKS.filter((t) => (filter === "ALL" || t.level === filter) && (!q || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(q.toLowerCase()))), [filter, q]);
+
+  return (
+    <div className="space-y-4 max-w-[1300px]">
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
+        <SectionTitle title="Việc Cần Xử Lý" sub="Hiện trạng → việc thiếu → bấm XỬ LÝ NGAY để tới đúng ô cần nhập. Làm mục Khẩn trước 17:00." />
+        <div className="flex flex-col md:flex-row gap-2.5">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Lọc theo mã lô, khách hàng, người phụ trách…" className="flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] focus:border-[#1e5aa8] outline-none" />
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {(["ALL", "Khan", "CanXuLy", "BinhThuong"] as const).map((f) => (
+              <button key={f} onClick={() => setFilter(f)} className={cx("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-bold", filter === f ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}>{f === "ALL" ? "Tất cả (10)" : f === "Khan" ? "Khẩn (3)" : f === "CanXuLy" ? "Cần xử lý (4)" : "Bình thường (3)"}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="tbl w-full text-[14.5px] min-w-[980px]">
+          <thead><tr><th>Ưu tiên</th><th>Mã lô</th><th>Khách hàng</th><th>Việc cần làm</th><th>Người phụ trách</th><th>Hạn</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+          <tbody>
+            {list.map((t) => (
+              <tr key={t.id} className="hover:bg-slate-50">
+                <td><span className={cx("inline-flex items-center gap-1.5 text-[12.5px] font-extrabold rounded-full px-2.5 py-1 whitespace-nowrap", LEVEL[t.level].cls)}>{LEVEL[t.level].label}</span></td>
+                <td className="font-extrabold text-[#0f2a4a]"><Link to={t.route} className="hover:underline whitespace-nowrap">{t.lot}</Link></td>
+                <td>{t.customer}</td>
+                <td className="max-w-[260px]"><span className="font-semibold">{t.job}</span></td>
+                <td className="whitespace-nowrap">{t.assignee}</td>
+                <td><span className="font-bold text-red-700 whitespace-nowrap">{t.due}</span><span className="block text-[12.5px] text-slate-500">{t.dueNote}</span></td>
+                <td><ToneBadge tone={t.statusTone} size="sm">{t.status}</ToneBadge></td>
+                <td><Link to={t.route} className="btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white text-[13.5px] font-bold px-3.5 min-h-[44px] whitespace-nowrap">XỬ LÝ NGAY <ArrowRight size={15} /></Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+        {list.length === 0 && <p className="p-8 text-center text-slate-500">Không có việc nào khớp. <button onClick={() => { setFilter("ALL"); setQ(""); }} className="font-bold text-[#1e5aa8]">Xóa lọc</button></p>}
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {list.map((t) => (
+          <div key={t.id} className="rounded-2xl bg-white border border-slate-200 p-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cx("inline-flex items-center text-[12px] font-extrabold rounded-full px-2.5 py-1", LEVEL[t.level].cls)}>{LEVEL[t.level].label}</span>
+              <ToneBadge tone={t.statusTone} size="sm">{t.status}</ToneBadge>
+              <span className="ml-auto text-[12.5px] font-bold text-red-700">⏰ {t.due}</span>
+            </div>
+            <p className="font-extrabold text-[16px] text-[#0f2a4a] mt-2">{t.lot} · {t.customer}</p>
+            <div className="mt-1.5 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Việc cần làm</p>
+              <p className="text-[15px] font-semibold text-slate-800 mt-0.5">{t.job}</p>
+              <p className="text-[13px] text-slate-500 mt-1">👤 {t.assignee} · {t.dueNote}</p>
+            </div>
+            <Link to={t.route} className="btn-press touch-target mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-extrabold text-[15.5px] min-h-[52px]">XỬ LÝ NGAY <ArrowRight size={18} /></Link>
+          </div>
+        ))}
+        {list.length === 0 && <div className="rounded-2xl bg-white border p-8 text-center text-slate-500">Không có việc nào. <button onClick={() => { setFilter("ALL"); setQ(""); }} className="font-bold text-[#1e5aa8]">Xóa lọc</button></div>}
+      </div>
+
+      <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 flex items-start gap-3 text-[14px] text-slate-500">
+        <ListFilter size={19} className="shrink-0 mt-0.5" />
+        <p>Mẹo cho người mới: xử lý theo thứ tự <b>Khẩn → Cần xử lý → Bình thường</b>. Mỗi dòng đều có nút XỬ LÝ NGAY dẫn tới đúng ô nhập liệu.</p>
+      </div>
+    </div>
+  );
+}
