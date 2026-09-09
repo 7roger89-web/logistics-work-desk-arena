@@ -415,15 +415,23 @@ _LABEL_KEY: dict[str, str] = {
 def nav_to_page(label: Any) -> None:
     """Navigate between screens from inside real modules (legacy label API).
 
-    Sets the legacy ``st.session_state.active_page`` and keeps the Logi-good
-    shell in sync by writing the matching ``lg`` query parameter (and clearing
-    stale deep-link params).  Safe to call when the legacy sidebar is used.
+    Sets the legacy ``st.session_state.active_page``; for non-home screens the
+    matching ``lg`` query parameter is written so the shell router lands on the
+    right page and stale deep-link params (sid/tab/ov) are dropped.
+
+    ``"Tổng Quan Công Việc"`` is intentionally left session-driven: modules use
+    it together with an active shipment id to open the shipment workspace
+    (resolver hijack) or with no id to reach the dashboard — writing ``lg=home``
+    here would defeat that.
     """
     import streamlit as st  # noqa: PLC0415
 
     label_text = str(label or "Tổng Quan Công Việc").strip()
     st.session_state.active_page = label_text
-    st.query_params["lg"] = _LABEL_KEY.get(label_text, "home")
+    key = _LABEL_KEY.get(label_text, "")
+    if not key or key == "home":
+        return
+    st.query_params["lg"] = key
     for name in ("sid", "tab", "ov"):
         if name in st.query_params:
             del st.query_params[name]

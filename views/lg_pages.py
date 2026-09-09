@@ -102,6 +102,10 @@ def _money_known(value: Any) -> bool:
 # TỔNG QUAN CÔNG VIỆC
 # ---------------------------------------------------------------------------
 def home_page() -> None:
+    # The dashboard never owns a shipment focus: clear any stale workspace id so
+    # later internal reruns cannot be mistaken for a legacy workspace jump.
+    st.session_state.active_shipment_id = None
+    st.session_state.dashboard_active_shipment_id = None
     ships, _customers, _contracts = _db()
     rows = _dashboard_rows(ships)
 

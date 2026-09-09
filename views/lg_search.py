@@ -6,7 +6,13 @@ import streamlit as st
 from views.lg_core import esc, link_url
 
 
-def search_page() -> None:
+def search_page(close_href: str | None = None) -> None:
+    if not close_href:
+        # Overlay close fallback: preserve lg/sid/tab, drop only ov.
+        qp = st.query_params
+        parts = [f"{key}={esc(str(qp.get(key)))}" for key in ("lg", "sid", "tab")
+                 if key in qp and str(qp.get(key) or "").strip()]
+        close_href = ("?" + "&".join(parts)) if parts else "?lg=home"
     st.markdown(
         "<div style='max-width:760px;margin:0 auto;'><div class='lg-card'>"
         "<div style='padding:20px 22px;'>"
@@ -88,7 +94,8 @@ def search_page() -> None:
     st.markdown(
         "<p style='margin-top:14px;font-size:12.5px;color:#94a3b8;'>Kết quả hiện tại dừng ở danh sách có sẵn — "
         "hệ thống chỉ tìm trên dữ liệu thật của bạn.</p>"
-        "<a href='/' style='display:inline-flex;margin-top:6px;font-weight:800;color:#1e5aa8;'>← Đóng tìm kiếm</a>"
+        f"<a href='{close_href}' style='display:inline-flex;margin-top:6px;font-weight:800;color:#1e5aa8;'>"
+        "← Đóng tìm kiếm</a>"
         "</div></div></div>",
         unsafe_allow_html=True,
     )

@@ -108,6 +108,8 @@ def shipment_page(sid: str = "", tab: str = "") -> None:
     st.session_state.active_shipment_id = sid
 
     # Legacy reviewers return to their own desks, not the list.
+    from views.lg_core import nav_to_page  # noqa: PLC0415
+
     back_label = ""
     if st.session_state.get("review_queue_return"):
         back_label = "Việc Cần Xử Lý"
@@ -119,8 +121,7 @@ def shipment_page(sid: str = "", tab: str = "") -> None:
             st.session_state.finance_review_return = False
             st.session_state.active_shipment_id = None
             st.session_state.dashboard_active_shipment_id = None
-            st.session_state.active_page = back_label
-            st.query_params.clear()
+            nav_to_page(back_label)
             st.rerun()
     else:
         st.markdown(
