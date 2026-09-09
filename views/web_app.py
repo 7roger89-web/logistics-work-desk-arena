@@ -21,6 +21,7 @@ from core.auth import current_user, has_permission, has_write_permission, logout
 from core.config import AUTH_REQUIRED
 from core.database import load_archived_data
 from core.state import initialize_state, refresh_core_data
+from views.ui_kit import COMPONENT_CSS
 
 LOGGER = logging.getLogger("logistics_pro.ui")
 
@@ -83,243 +84,302 @@ NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
-def _configure_page() -> None:
-    st.set_page_config(page_title="LOGISTICS PRO", layout="wide", page_icon="⚓")
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    st.markdown(
-        """
+SIDEBAR_WIDTH = 268
+
+# Donor visual language (logistics-demo) expressed as CSS design tokens. The
+# legacy ``--ops-*`` variables stay defined because Level B views still
+# reference them (readiness card in agreements.py, a few badges elsewhere).
+GLOBAL_CSS = """
 <style>
-    :root {
-        --ops-ink: #0F172A;
-        --ops-muted: #64748B;
-        --ops-navy: #1E3A8A;
-        --ops-navy-2: #1E40AF;
-        --ops-blue: #2563EB;
-        --ops-bg: #F8FAFC;
-        --ops-surface: #FFFFFF;
-        --ops-line: #E2E8F0;
-        --ops-amber: #B45309;
-        --ops-red: #DC2626;
-        --ops-green: #15803D;
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+:root {
+    --lg-navy-900: #061024; --lg-navy-800: #0b2545; --lg-navy-700: #123168; --lg-navy-600: #1c4482;
+    --lg-navy-500: #2c5aa0; --lg-blue-500: #2f6fed; --lg-blue-600: #1d54c9;
+    --lg-green: #16a34a; --lg-amber: #d97706; --lg-red: #dc2626;
+    --lg-bg: #eef2f8; --lg-surface: #ffffff; --lg-line: #e2e8f0;
+    --lg-ink: #0f1c33; --lg-muted: #4b5b72; --lg-faint: #8695a8;
+    --lg-font: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --lg-header-h: 60px; --lg-sidebar-w: 268px;
+    /* legacy aliases used by Level B views */
+    --ops-ink: #0f1c33; --ops-muted: #4b5b72; --ops-navy: #0b2545; --ops-navy-2: #123168; --ops-blue: #2f6fed;
+    --ops-bg: #eef2f8; --ops-surface: #ffffff; --ops-line: #e2e8f0; --ops-amber: #d97706; --ops-red: #dc2626; --ops-green: #16a34a;
+}
+html, body, .stApp, [data-testid="stAppViewContainer"], .stMarkdown, button, input, textarea, select {
+    font-family: var(--lg-font);
+}
+.stApp { background: var(--lg-bg); color: var(--lg-ink); }
+h1, h2, h3, h4, h5, h6 { color: var(--lg-navy-800); font-family: var(--lg-font); letter-spacing: -0.01em; }
+h1 { font-size: 1.6rem !important; font-weight: 800 !important; }
+h2 { font-size: 1.3rem !important; font-weight: 700 !important; }
+h3 { font-size: 1.1rem !important; font-weight: 700 !important; }
+a { color: var(--lg-blue-600); }
+
+/* ---------- main column ---------- */
+[data-testid="stMainBlockContainer"] {
+    max-width: 1440px; padding: calc(var(--lg-header-h) + 1rem) 2rem 3.5rem !important; margin: 0 auto;
+}
+[data-testid="stMain"] { background: var(--lg-bg); }
+
+/* ---------- Streamlit header: keep only the sidebar toggle button ---------- */
+header[data-testid="stHeader"] { background: transparent !important; pointer-events: none; box-shadow: none; }
+header[data-testid="stHeader"] button { pointer-events: auto; }
+[data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] button {
+    color: var(--lg-navy-800) !important; background: var(--lg-surface) !important;
+    border: 1px solid var(--lg-line) !important; border-radius: 8px !important;
+}
+[data-testid="stSidebarCollapseButton"] button { color: #e2e8f0 !important; background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.15) !important; }
+[data-testid="stDecoration"] { display: none; }
+
+/* ---------- fixed top header (donor) ---------- */
+.st-key-lg_topbar {
+    position: fixed; top: 0 !important; left: 0; width: 100% !important; height: var(--lg-header-h);
+    margin: 0 !important; z-index: 999989; background: var(--lg-surface); border-bottom: 1px solid var(--lg-line);
+    padding: 0 1.25rem 0 1.25rem; box-sizing: border-box; box-shadow: 0 1px 2px rgba(6, 16, 36, .04);
+    gap: .75rem !important; flex-wrap: nowrap !important;
+}
+.stApp:has([data-testid="stExpandSidebarButton"]) .st-key-lg_topbar { padding-left: 3.6rem; }
+.st-key-lg_topbar > [data-testid="stElementContainer"], .st-key-lg_topbar > [data-testid="stLayoutWrapper"] { min-width: 0; }
+.st-key-lg_topbar .lg-topbar-title { color: var(--lg-navy-800); font-weight: 800; font-size: 1rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.st-key-lg_topbar .lg-topbar-crumb { color: var(--lg-faint); font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.st-key-lg_topbar .lg-topbar-user { display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.st-key-lg_topbar .lg-avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--lg-navy-800); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: .8rem; }
+.st-key-lg_topbar .lg-user-name { color: var(--lg-ink); font-weight: 700; font-size: .82rem; line-height: 1.15; }
+.st-key-lg_topbar .lg-user-role { color: var(--lg-faint); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; }
+.st-key-lg_topbar [data-testid="stTextInput"] { max-width: 520px; }
+.st-key-lg_topbar [data-testid="stTextInputRootElement"] { background: #f4f7fc; border-radius: 999px !important; }
+.st-key-lg_topbar [data-testid="stTextInputRootElement"] input { font-size: .86rem; }
+.st-key-lg_topbar [data-testid="stMarkdownContainer"] p { margin: 0; }
+.st-key-lg_topbar [data-testid="stPopover"] button { border-radius: 999px !important; }
+@media (min-width: 769px) {
+    .stApp:has(section[data-testid="stSidebar"][aria-expanded="true"]) .st-key-lg_topbar { left: var(--lg-sidebar-w); width: calc(100% - var(--lg-sidebar-w)) !important; }
+}
+@media (max-width: 768px) {
+    .st-key-lg_topbar { padding-right: .75rem; gap: .5rem !important; overflow: hidden; }
+    .st-key-lg_topbar .lg-topbar-crumb { display: none; }
+    .st-key-lg_topbar .lg-topbar-user > div { display: none; }
+    .st-key-lg_topbar .lg-topbar-title { font-size: .92rem; max-width: 34vw; }
+    .st-key-lg_topbar [data-testid="stTextInput"] { min-width: 0; }
+    .st-key-lg_topbar .st-key-lg_topbar_title { flex: 0 1 auto !important; min-width: 0; }
+    .st-key-lg_topbar .st-key-lg_topbar_user { flex: 0 0 auto !important; }
+}
+/* the fixed topbar / bottom nav leave zero-height wrappers in the flow: cancel their flex gap */
+[data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-lg_topbar),
+[data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-lg_bottom_nav),
+[data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(> .stMarkdown > div > [data-testid="stMarkdownContainer"] > style:only-child) { height: 0; margin-bottom: -16px; overflow: visible; }
+/* the global-search results panel */
+.st-key-lg_search_results { position: fixed; top: var(--lg-header-h); right: 1rem; width: min(520px, calc(100vw - 2rem)); z-index: 999988; background: var(--lg-surface); border: 1px solid var(--lg-line); border-top: 0; border-radius: 0 0 12px 12px; padding: .5rem .75rem .75rem; box-shadow: 0 12px 30px rgba(6,16,36,.14); }
+
+/* ---------- sidebar (donor: navy, 268px) ---------- */
+section[data-testid="stSidebar"] {
+    background: var(--lg-navy-800) !important; border-right: 1px solid var(--lg-navy-600) !important;
+    width: var(--lg-sidebar-w) !important; min-width: var(--lg-sidebar-w) !important;
+}
+section[data-testid="stSidebar"][aria-expanded="false"] { width: 0 !important; min-width: 0 !important; }
+[data-testid="stSidebarContent"] { padding: .35rem .6rem 0 !important; }
+[data-testid="stSidebarUserContent"] { padding: .35rem .5rem 1.5rem !important; }
+[data-testid="stSidebarHeader"] { padding: .35rem .2rem 0 !important; }
+[data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] .stCaption, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span { color: #e2e8f0; }
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.12); margin: .6rem 0; }
+.lg-brand { display: flex; align-items: center; gap: .7rem; padding: .35rem .15rem .9rem; border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: .6rem; }
+.lg-brand-mark { width: 38px; height: 38px; border-radius: 10px; background: var(--lg-blue-500); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; flex: 0 0 auto; }
+.lg-brand-title { color: #fff !important; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
+.lg-brand-sub { color: #9fb3d6 !important; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; margin-top: .15rem; }
+.lg-nav-group { color: #9fb3d6 !important; font-size: .64rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; margin: .9rem 0 .3rem .25rem; }
+.lg-env-pill { display: inline-flex; align-items: center; gap: .3rem; background: rgba(217,119,6,.18); color: #fcd34d !important; border: 1px solid rgba(252,211,77,.4); border-radius: 999px; padding: .12rem .55rem; font-size: .66rem; font-weight: 800; letter-spacing: .08em; margin-bottom: .5rem; }
+.lg-env-note { color: #fcd34d !important; font-size: .68rem; line-height: 1.35; background: rgba(217,119,6,.12); border: 1px solid rgba(252,211,77,.3); border-radius: 8px; padding: .4rem .55rem; margin: 0 0 .5rem; }
+.lg-sidebar-user { display: flex; align-items: center; gap: .6rem; padding: .55rem .6rem; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; margin: .2rem 0 .6rem; }
+.lg-sidebar-user .lg-avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--lg-blue-500); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: .8rem; flex: 0 0 auto; }
+.lg-sidebar-user-name { color: #fff !important; font-weight: 700; font-size: .84rem; line-height: 1.15; }
+.lg-sidebar-user-role { color: #9fb3d6 !important; font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+/* nav buttons */
+[data-testid="stSidebar"] [data-testid="stElementContainer"]:has(> .stButton) { margin-bottom: 0; }
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: .2rem; }
+[data-testid="stSidebar"] .stButton, [data-testid="stSidebar"] .stButton > div { width: 100% !important; }
+[data-testid="stSidebar"] .stButton button {
+    width: 100% !important; justify-content: flex-start !important; text-align: left; min-height: 40px; padding: .35rem .7rem;
+    border-radius: 8px !important; border: 1px solid transparent !important; background: transparent !important;
+    color: #d6e0f0 !important; font-weight: 500; box-shadow: none !important; transition: background .12s ease;
+}
+[data-testid="stSidebar"] .stButton button:hover { background: rgba(255,255,255,.08) !important; color: #fff !important; }
+[data-testid="stSidebar"] .stButton button:focus-visible { outline: 2px solid var(--lg-blue-500) !important; outline-offset: 1px; }
+[data-testid="stSidebar"] .stButton button[kind="primary"] { background: var(--lg-blue-500) !important; color: #fff !important; font-weight: 700; box-shadow: 0 4px 12px rgba(47,111,237,.35) !important; }
+[data-testid="stSidebar"] .stButton button[kind="primary"]:hover { background: var(--lg-blue-600) !important; }
+[data-testid="stSidebar"] .stButton button p, [data-testid="stSidebar"] .stButton button span { color: inherit !important; font-size: .86rem; }
+[data-testid="stSidebar"] .stButton button [data-testid="stIconMaterial"] { font-size: 20px; margin-right: .45rem; color: inherit !important; }
+[data-testid="stSidebar"] .stButton button[kind="secondary"] [data-testid="stIconMaterial"] { color: #9fb3d6 !important; }
+[data-testid="stSidebar"] .stButton button > div { width: 100%; justify-content: flex-start; }
+[data-testid="stSidebar"] .stButton button > div > span { align-items: center; justify-content: flex-start; width: 100%; }
+[data-testid="stSidebar"] .stButton button p { text-align: left; white-space: normal; line-height: 1.25; }
+/* utility rows */
+[data-testid="stSidebar"] .st-key-lg_side_utils .stButton button { border: 1px solid rgba(255,255,255,.14) !important; background: rgba(255,255,255,.04) !important; min-height: 36px; font-size: .8rem; }
+[data-testid="stSidebar"] .stAlert { border-radius: 8px; }
+[data-testid="stSidebar"] .stAlert p { color: #0f1c33; }
+
+/* ---------- buttons ---------- */
+.stButton button, [data-testid="stFormSubmitButton"] button, [data-testid="stDownloadButton"] button, [data-testid="stPopover"] button {
+    border-radius: 8px !important; font-weight: 600 !important; min-height: 40px; box-shadow: none; font-family: var(--lg-font);
+}
+[data-testid="stMain"] button[kind="primary"], [data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"] {
+    background: var(--lg-navy-800) !important; border: 1px solid var(--lg-navy-800) !important; color: #fff !important; font-weight: 700 !important;
+}
+[data-testid="stMain"] button[kind="primary"]:hover, [data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"]:hover { background: var(--lg-navy-700) !important; border-color: var(--lg-navy-700) !important; }
+[data-testid="stMain"] button[kind="primary"] p, [data-testid="stMain"] button[kind="primary"] span, [data-testid="stMain"] button[data-testid="stBaseButton-primaryFormSubmit"] p { color: #fff !important; }
+[data-testid="stMain"] button[kind="secondary"], [data-testid="stMain"] button[data-testid="stBaseButton-secondaryFormSubmit"] {
+    background: var(--lg-surface) !important; border: 1px solid var(--lg-line) !important; color: var(--lg-navy-800) !important;
+}
+[data-testid="stMain"] button[kind="secondary"]:hover, [data-testid="stMain"] button[data-testid="stBaseButton-secondaryFormSubmit"]:hover { border-color: var(--lg-navy-500) !important; background: #f4f7fc !important; color: var(--lg-navy-800) !important; }
+[data-testid="stMain"] button[kind="secondary"] p, [data-testid="stMain"] button[kind="secondary"] span { color: var(--lg-navy-800) !important; }
+[data-testid="stMain"] button[kind="tertiary"] { color: var(--lg-blue-600) !important; }
+[data-testid="stMain"] button:disabled, [data-testid="stMain"] button:disabled p, [data-testid="stMain"] button:disabled span { opacity: .55; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible { outline: 3px solid rgba(47,111,237,.35) !important; outline-offset: 2px !important; }
+
+/* ---------- cards, forms, inputs ---------- */
+[data-testid="stMain"] [data-testid="stVerticalBlock"][overflow="visible"]:has(> [data-testid="stElementContainer"]),
+[data-testid="stMain"] [data-testid="stForm"], [data-testid="stMain"] [data-testid="stColumn"][overflow="visible"] {
+    border-color: var(--lg-line);
+}
+[data-testid="stMain"] [data-testid="stLayoutWrapper"] > [data-testid="stVerticalBlock"][overflow="visible"] { border-radius: 10px; }
+[data-testid="stMain"] [data-testid="stVerticalBlock"][overflow="visible"] { background: var(--lg-surface); }
+[data-testid="stMain"] [data-testid="stForm"] { background: var(--lg-surface); border-radius: 10px; }
+[data-testid="stMain"] [data-testid="stVerticalBlock"][overflow="visible"] [data-testid="stVerticalBlock"][overflow="visible"] { background: #f8fafc; }
+[data-testid="stMain"] [data-testid="stMetric"] { background: var(--lg-surface); border: 1px solid var(--lg-line); border-radius: 10px; padding: .75rem .9rem; box-shadow: 0 1px 2px rgba(6,16,36,.04); }
+[data-testid="stMetricLabel"] p { color: var(--lg-muted) !important; font-size: .7rem !important; font-weight: 800 !important; letter-spacing: .06em; text-transform: uppercase; }
+[data-testid="stMetricValue"] { color: var(--lg-navy-800); font-weight: 800; font-size: 1.45rem !important; }
+[data-testid="stMain"] [data-testid="stTextInputRootElement"], [data-testid="stMain"] [data-testid="stNumberInputContainer"], [data-testid="stMain"] [data-baseweb="select"] > div, [data-testid="stMain"] [data-testid="stTextArea"] textarea, [data-testid="stMain"] [data-baseweb="input"] {
+    border-radius: 8px !important; background: var(--lg-surface);
+}
+[data-testid="stMain"] [data-testid="stWidgetLabel"] p { color: var(--lg-muted) !important; font-size: .78rem !important; font-weight: 700 !important; }
+[data-testid="stMain"] [data-testid="stExpander"] details { background: var(--lg-surface); border: 1px solid var(--lg-line); border-radius: 10px; }
+[data-testid="stMain"] [data-testid="stExpander"] summary { font-weight: 700; color: var(--lg-navy-800); }
+[data-testid="stMain"] [data-testid="stExpander"] summary:hover { color: var(--lg-blue-600); }
+[data-testid="stMain"] [data-testid="stDataFrame"], [data-testid="stMain"] [data-testid="stDataEditor"] { border-radius: 10px; overflow: hidden; }
+[data-testid="stMain"] .stCaption, [data-testid="stMain"] [data-testid="stCaptionContainer"] p { color: var(--lg-muted) !important; }
+[data-testid="stMain"] hr { border-color: var(--lg-line); margin: 1rem 0; }
+
+/* ---------- tabs ---------- */
+[data-testid="stTabs"] [role="tablist"] { gap: .25rem; border-bottom: 1px solid var(--lg-line); overflow-x: auto; scrollbar-width: thin; }
+[data-testid="stTab"] { padding: .55rem .85rem !important; border-radius: 8px 8px 0 0; color: var(--lg-muted) !important; font-weight: 600; white-space: nowrap; }
+[data-testid="stTab"] p { font-size: .86rem !important; font-weight: 700 !important; }
+[data-testid="stTab"][aria-selected="true"] { color: var(--lg-navy-800) !important; background: var(--lg-surface); }
+[data-testid="stTab"][aria-selected="true"] p { color: var(--lg-navy-800) !important; }
+[data-testid="stTabs"] .react-aria-SelectionIndicator, [data-testid="stTabs"] [data-baseweb="tab-highlight"] { background-color: var(--lg-navy-800) !important; height: 3px; border-radius: 3px 3px 0 0; }
+
+/* ---------- alerts / toasts / dialogs / popovers ---------- */
+[data-testid="stAlert"] { border-radius: 10px; }
+[data-testid="stAlert"] [data-testid="stAlertContainer"] { border-radius: 10px; border: 1px solid transparent; }
+[data-testid="stAlertContentInfo"] { color: #1e3a8a; }
+[data-testid="stAlertContentSuccess"] { color: #14532d; }
+[data-testid="stAlertContentWarning"] { color: #7c4a03; }
+[data-testid="stAlertContentError"] { color: #991b1b; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]) [data-testid="stAlertContainer"] { background: #eef4ff; border-color: #c7d7fb; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) [data-testid="stAlertContainer"] { background: #ecfdf3; border-color: #a6e3bd; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) [data-testid="stAlertContainer"] { background: #fff7ed; border-color: #fed7aa; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]) [data-testid="stAlertContainer"] { background: #fef2f2; border-color: #fecaca; }
+[data-testid="stToast"] { background: var(--lg-navy-800) !important; color: #fff !important; border-radius: 10px !important; border: 1px solid var(--lg-navy-600) !important; box-shadow: 0 10px 30px rgba(6,16,36,.35) !important; }
+[data-testid="stToast"] p, [data-testid="stToast"] span { color: #fff !important; }
+[data-testid="stDialog"] [role="dialog"] { border-radius: 14px; border: 1px solid var(--lg-line); box-shadow: 0 24px 60px rgba(6,16,36,.3); font-family: var(--lg-font); }
+[data-testid="stDialog"] h2[slot="title"] p { color: var(--lg-navy-800); font-weight: 800; }
+[data-testid="stPopoverBody"], [data-baseweb="popover"] > div { border-radius: 12px; border: 1px solid var(--lg-line); }
+[data-testid="stBottomBlockContainer"] { background: var(--lg-bg); }
+
+/* ---------- mobile bottom navigation (donor) ---------- */
+@media (min-width: 769px) { .st-key-lg_bottom_nav { display: none !important; } }
+@media (max-width: 768px) {
+    [data-testid="stMainBlockContainer"] { padding-left: 1rem !important; padding-right: 1rem !important; padding-bottom: 6.5rem !important; }
+    .st-key-lg_bottom_nav {
+        position: fixed; left: 0; right: 0; bottom: 0; width: 100% !important; margin: 0 !important; z-index: 999989;
+        background: var(--lg-surface); border-top: 1px solid var(--lg-line); box-shadow: 0 -6px 20px rgba(6,16,36,.08);
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); gap: 0 !important; flex-wrap: nowrap !important;
     }
-    .stApp { background: var(--ops-bg); color: var(--ops-ink); }
-    h1, h2, h3, h4 { color: var(--ops-navy); font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.015em; }
-    .block-container { max-width: 1680px; padding-top: 1.1rem; padding-bottom: 3rem; margin: 0 auto; }
-    
-    /* P2P: Responsive Content Widths */
-    /* Forms and standard pages should be narrower for readability */
-    .stMain .block-container { max-width: 1200px !important; }
-    
-    /* Shipment Workspace & Tables can be wider */
-    div[data-testid="stVerticalBlock"]:has(div[data-testid="stExpander"]) .block-container,
-    div[data-testid="stTable"] .block-container { 
-        max-width: 1680px !important; 
-    }
-    .stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] { border-radius: 6px; }
-    div[data-testid="stMetric"] {
-        background: var(--ops-surface); border: 1px solid var(--ops-line);
-        padding: 12px; border-radius: 8px; box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
-    }
-    button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible {
-        outline: 3px solid rgba(11, 110, 153, 0.35) !important;
-        outline-offset: 2px !important;
-    }
-    [data-testid="stSidebar"] {
-        background: #0F172A !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
-    [data-testid="stSidebar"] > div:first-child { padding-top: 1rem !important; }
-    
-    /* P2P: Force Sidebar Text Colors - HIGH CONTRAST */
-    [data-testid="stSidebar"] .stMarkdown, 
-    [data-testid="stSidebar"] .stCaption,
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] .stMarkdown div,
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary p { 
-        color: #E2E8F0 !important; /* Slate 200 - High contrast on dark bg */
-        opacity: 1 !important;
-    }
-    
-    /* Specific overrides for group headings */
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary p {
-        color: #94A3B8 !important; /* Slate 400 for headers */
-        font-weight: 700 !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p {
-        color: #F8FAFC !important;
-    }
-    
-    .ops-brand {
-        padding: 0.35rem 0.2rem 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-        margin-bottom: 0.85rem;
-    }
-    .ops-brand-kicker { color: #8FB7D3; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; }
-    .ops-brand-title { color: #FFFFFF; font-size: 1.22rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 0.15rem; }
-    .ops-brand-status { color: #A9C6D9; font-size: 0.72rem; margin-top: 0.3rem; }
-    
-    /* P2P: Expander styling for navigation groups in Sidebar */
-    [data-testid="stSidebar"] [data-testid="stExpander"] {
-        background: transparent !important;
-        border: none !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 0 !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary {
-        color: #94A3B8 !important;
-        font-size: 0.75rem !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary p {
-        color: #94A3B8 !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover p {
-        color: #FFFFFF !important;
-    }
-    
-    /* P2P: Sidebar Button Fix - ULTIMATE DARK OVERRIDE V3 */
-    /* High specificity to ensure visibility of navigation and utility buttons */
-    [data-testid="stSidebar"] button[kind="secondary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-secondary"],
-    [data-testid="stSidebar"] [data-testid="stExpander"] button {
-        background-color: rgba(255, 255, 255, 0.07) !important;
-        color: #F1F5F9 !important; /* Slate 100 - Near white for max readability */
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        text-align: left !important;
-        justify-content: flex-start !important;
-        width: 100% !important;
-        opacity: 1 !important;
-    }
-    
-    /* Ensure icons and text inside buttons are white/bright */
-    [data-testid="stSidebar"] button[kind="secondary"] p,
-    [data-testid="stSidebar"] button[kind="secondary"] span {
-        color: #F1F5F9 !important;
-    }
-    
-    [data-testid="stSidebar"] button:hover {
-        background-color: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.2) !important;
-        color: #FFFFFF !important;
-    }
-    
-    /* Force text color inside ALL sidebar buttons to prevent inheritance leaks */
-    [data-testid="stSidebar"] button p,
-    [data-testid="stSidebar"] button span,
-    [data-testid="stSidebar"] button div,
-    [data-testid="stSidebar"] button label {
-        color: inherit !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Active/Primary Navigation Item in Sidebar - High Visibility Blue */
-    [data-testid="stSidebar"] button[kind="primary"],
-    [data-testid="stSidebar"] [data-testid="baseButton-primary"] {
-        background-color: #2563EB !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-        border: 1px solid #3B82F6 !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
-    }
-    
-    /* Final safety: Never allow white backgrounds in sidebar buttons */
-    [data-testid="stSidebar"] button[kind="secondary"] {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-    }
-    
-    /* Global Primary Buttons (Main Content Area) */
-    .main button[kind="primary"] {
-        background-color: #1E40AF !important;
-        color: #FFFFFF !important;
-        border: 1px solid #1D4ED8 !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-        border-radius: 8px !important;
-    }
-    .main button[kind="primary"]:hover {
-        background-color: #1D4ED8 !important;
-        border-color: #2563EB !important;
-    }
-    .main button[kind="primary"] p, 
-    .main button[kind="primary"] span,
-    .main button[kind="primary"] div {
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Global Secondary Buttons (Main Content Area Only) */
-    /* Use .block-container to ensure these styles don't leak into the sidebar */
-    .block-container button[kind="secondary"],
-    .stMain button[kind="secondary"] {
-        background-color: #FFFFFF !important;
-        color: #1E293B !important;
-        border: 1px solid #CBD5E1 !important;
-    }
-    .main button[kind="secondary"]:hover {
-        background-color: #F8FAFC !important;
-        border-color: #94A3B8 !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stExpander"] {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    }
-    [data-testid="stSidebar"] hr { border-color: rgba(255, 255, 255, 0.12); }
-    @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-    }
+    .st-key-lg_bottom_nav [data-testid="stElementContainer"] { flex: 1 1 0 !important; min-width: 0; width: auto !important; }
+    .st-key-lg_bottom_nav button { min-height: 52px; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 4px 2px !important; border-radius: 10px !important; }
+    .st-key-lg_bottom_nav button > div > span { flex-direction: column; gap: 2px; align-items: center; }
+    .st-key-lg_bottom_nav button p { font-size: 10.5px !important; font-weight: 600 !important; margin: 0; white-space: nowrap !important; }
+    .st-key-lg_bottom_nav button [data-testid="stMarkdownContainer"] { overflow: visible; }
+    .st-key-lg_bottom_nav button [data-testid="stIconMaterial"] { font-size: 22px; }
+    .st-key-lg_bottom_nav button[kind="primary"] { background: #eef4ff !important; }
+    .st-key-lg_bottom_nav button[kind="primary"] * { color: var(--lg-blue-600) !important; }
+    .st-key-lg_bottom_nav button[kind="secondary"] * { color: var(--lg-muted) !important; }
+    /* phone layout: one-column forms, large touch targets, no hover-only actions */
+    [data-testid="stMain"] [data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
+    [data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important; }
+    [data-testid="stMain"] .stButton button { min-height: 44px; }
+    h1 { font-size: 1.35rem !important; }
+    [data-testid="stMetricValue"] { font-size: 1.25rem !important; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+    [data-testid="stMainBlockContainer"] { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 </style>
-""",
-        unsafe_allow_html=True,
+"""
+
+
+def _configure_page() -> None:
+    st.set_page_config(
+        page_title="LOGISTICS PRO",
+        layout="wide",
+        page_icon="⚓",
+        initial_sidebar_state=SIDEBAR_WIDTH,
     )
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    st.markdown(GLOBAL_CSS + "<style>" + COMPONENT_CSS + "</style>", unsafe_allow_html=True)
+
+
+def _search_results(term: str) -> list[tuple[str, str, str]]:
+    """LG08: federated lookup across shipments and customers (RBAC-safe: the
+    destination route still enforces access at the route boundary)."""
+    results: list[tuple[str, str, str]] = []  # (label, primary_id, context)
+    shipments = st.session_state.get("db_shipments", {})
+    for sid, sdata in shipments.items():
+        sid_str = str(sid)
+        haystack = sid_str.lower() + " " + str((sdata or {}).get("customer") or "").lower()
+        if term in haystack:
+            results.append(("Lô hàng", sid_str, str((sdata or {}).get("customer") or "Chưa có khách hàng")))
+            if len(results) >= 5:
+                break
+    customers = st.session_state.get("db_customers", {})
+    for cid, cdata in customers.items():
+        cname = str((cdata or {}).get("name", "")).lower()
+        if term in cname or term in str(cid).lower():
+            results.append(("Khách hàng", str((cdata or {}).get("name") or cid), f"Mã KH {cid}"))
+            if len(results) >= 8:
+                break
+    return results
 
 
 def _render_global_search(routes: list[Route]) -> None:
-    """LG08: Global/federated search across shipments, customers, tasks.
+    """LG08: Global/federated search across shipments, customers.
 
-    Results obey RBAC: only routes the user can see produce results, and the
-    destination still enforces access at the route boundary."""
+    Rendered inside the fixed top header; results drop down under it."""
     search_term = st.text_input(
         "🔍 Tìm nhanh",
-        placeholder="Mã lô, khách hàng, container, đơn...",
+        placeholder="Tìm mã lô, khách hàng, container...",
         key="global_search_input",
         label_visibility="collapsed",
+        icon=":material/search:",
+        width="stretch",
     )
     if not search_term or len(search_term.strip()) < 2:
         return
 
     term = search_term.strip().lower()
-    results: list[tuple[str, str, str]] = []  # (label, primary_id, context)
-
-    # Shipment search — shipments are accessible to all authorized roles.
-    shipments = st.session_state.get("db_shipments", {})
-    for sid, sdata in shipments.items():
-        sid_str = str(sid)
-        if term in sid_str.lower():
-            results.append(("Lô hàng", sid_str, "Tìm theo mã lô"))
-            break
-    # Customer search — customers visible to all authorized roles.
-    customers = st.session_state.get("db_customers", {})
-    for _cid, cdata in customers.items():
-        cname = str(cdata.get("name", "")).lower()
-        if term in cname:
-            results.append(("Khách hàng", cdata.get("name", "?"), "Tìm theo tên khách"))
-            if len(results) >= 5:
-                break
-
-    if not results:
-        st.caption("Không tìm thấy kết quả phù hợp.")
-        return
-
-    st.caption(f"{len(results)} kết quả:")
-    for r_type, r_id, r_ctx in results[:5]:
-        if st.button(f"{r_type}: {r_id}", key=f"gs_btn_{r_type}_{r_id}", use_container_width=True):
-            if r_type == "Lô hàng" and "shipment_id" in st.session_state:
-                st.session_state.active_shipment_id = r_id
-            st.session_state.active_page = "Tổng Quan Công Việc"
-            st.rerun()
+    results = _search_results(term)
+    with st.container(key="lg_search_results"):
+        if not results:
+            st.caption("Không tìm thấy kết quả phù hợp.")
+            return
+        st.caption(f"{len(results)} kết quả cho “{search_term.strip()}”")
+        for r_type, r_id, r_ctx in results[:8]:
+            icon_name = ":material/local_shipping:" if r_type == "Lô hàng" else ":material/group:"
+            if st.button(f"{r_type}: {r_id} · {r_ctx}", key=f"gs_btn_{r_type}_{r_id}", icon=icon_name, use_container_width=True):
+                if r_type == "Lô hàng":
+                    st.session_state.active_shipment_id = r_id
+                    st.session_state.dashboard_active_shipment_id = r_id
+                    st.session_state.active_page = "Tổng Quan Công Việc"
+                else:
+                    st.session_state.active_page = "Khách Hàng"
+                st.rerun()
 
 
 def _visible_routes() -> list[Route]:
@@ -340,6 +400,70 @@ def _visible_navigation_groups(routes: list[Route]) -> list[tuple[str, list[Rout
     return grouped
 
 
+ROUTE_ICONS: dict[str, str] = {
+    "Tổng Quan Công Việc": "dashboard",
+    "Việc Cần Xử Lý": "checklist",
+    "Tạo Lô Mới": "add_box",
+    "Theo Dõi Vận Chuyển": "travel_explore",
+    "Khách Hàng": "group",
+    "Ngữ Cảnh Đối Tác": "hub",
+    "Kinh Doanh & Báo Giá": "request_quote",
+    "Thỏa Thuận & Bàn Giao": "handshake",
+    "Hợp Đồng": "description",
+    "Đối Soát Tài Chính": "fact_check",
+    "Thu Tiền & Công Nợ": "payments",
+    "Công Nợ A Bò": "account_balance_wallet",
+    "Báo Cáo CEO": "monitoring",
+    "Tra Cứu Thuế": "manage_search",
+    "Sổ Tay Kinh Nghiệm": "menu_book",
+    "Dịch Thuật DeepL": "translate",
+    "Người Dùng": "manage_accounts",
+}
+
+# Donor mobile bottom navigation: 5 slots mapped onto existing route labels.
+MOBILE_NAV: tuple[tuple[str, str, str | None], ...] = (
+    ("Tổng quan", "dashboard", "Tổng Quan Công Việc"),
+    ("Lô hàng", "local_shipping", "Việc Cần Xử Lý"),
+    ("Hợp đồng", "description", "Hợp Đồng"),
+    ("Tài chính", "payments", "Thu Tiền & Công Nợ"),
+    ("Thêm", "more_horiz", None),
+)
+
+_GROUP_ICONS = {
+    "VẬN HÀNH": "local_shipping",
+    "KINH DOANH & ĐỐI TÁC": "handshake",
+    "TÀI CHÍNH & ĐỐI SOÁT": "payments",
+    "CÔNG CỤ & THAM KHẢO": "construction",
+    "QUẢN TRỊ": "admin_panel_settings",
+    "MORE": "more_horiz",
+}
+
+
+def _nav_key(label: str) -> str:
+    return "nav_button_" + re.sub(r"[^a-z0-9]+", "_", label.casefold()).strip("_")
+
+
+def _go(label: str) -> None:
+    st.session_state.active_page = label
+    st.rerun()
+
+
+def _initials(name: str) -> str:
+    parts = [part for part in re.split(r"\s+", str(name or "").strip()) if part]
+    if not parts:
+        return "?"
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return (parts[0][0] + parts[-1][0]).upper()
+
+
+def _group_of(label: str) -> str:
+    for group_name, labels in NAVIGATION_GROUPS:
+        if label in labels:
+            return group_name
+    return "MORE"
+
+
 def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
     labels = [route.label for route in routes]
     if not labels:
@@ -352,57 +476,119 @@ def _render_sidebar(current_user: dict[str, str], routes: list[Route]) -> Route:
 
     with st.sidebar:
         from core.config import ENV_IDENTITY
-        brand_kicker = "VẬN HÀNH LÔ HÀNG"
-        brand_status = "Phòng điều khiển hàng ngày · không gian nội bộ"
-        
-        if ENV_IDENTITY in ("STAGING", "PREVIEW"):
-            brand_kicker = "🛠️ PREVIEW / STAGING"
-            brand_status = "⚠️ KHÔNG PHẢI APP NHÂN VIÊN"
-            st.error("Dữ liệu STAGING - Không ghi lời thực")
+        from html import escape as _esc
 
         st.markdown(
-            f"<div class='ops-brand'><div class='ops-brand-kicker'>{brand_kicker}</div><div class='ops-brand-title'>⚓ LOGISTICS PRO</div><div class='ops-brand-status'>{brand_status}</div></div>",
+            "<div class='lg-brand'><span class='lg-brand-mark'>⚓</span><div>"
+            "<div class='lg-brand-title'>LOGISTICS PRO</div>"
+            "<div class='lg-brand-sub'>Bàn làm việc vận hành</div></div></div>",
             unsafe_allow_html=True,
         )
-        st.caption(f"{current_user['display_name']} · {current_user['role']}")
-        # LG08: Global search entry point — one federated lookup for daily work.
-        _render_global_search(routes)
+        if ENV_IDENTITY in ("STAGING", "PREVIEW"):
+            st.markdown("<span class='lg-env-pill'>🛠️ PREVIEW / STAGING · KHÔNG PHẢI APP NHÂN VIÊN</span>", unsafe_allow_html=True)
+            st.error("Dữ liệu STAGING - Không ghi lời thực")
+        st.markdown(
+            f"<div class='lg-sidebar-user'><span class='lg-avatar'>{_esc(_initials(current_user.get('display_name', '')))}</span>"
+            f"<div><div class='lg-sidebar-user-name'>{_esc(str(current_user.get('display_name', '')))}</div>"
+            f"<div class='lg-sidebar-user-role'>{_esc(str(current_user.get('role', '')))}</div></div></div>",
+            unsafe_allow_html=True,
+        )
         if not AUTH_REQUIRED:
-            st.warning(
-                "Đang chạy Local Admin. Bật AUTH_REQUIRED khi triển khai nhiều người dùng.",
-                icon=None,
+            st.markdown(
+                "<div class='lg-env-note'>⚠️ Đang chạy Local Admin. Bật AUTH_REQUIRED khi triển khai nhiều người dùng.</div>",
+                unsafe_allow_html=True,
             )
 
         selected_label = st.session_state.get("active_page", labels[0])
         for group_name, group_routes in _visible_navigation_groups(routes):
-            # LG08: Compact navigation — collapsible groups.
-            # Auto-expand the group containing the active page; collapse others.
-            group_active = selected_label in {route.label for route in group_routes}
-            with st.expander(group_name, expanded=group_active):
-                for route in group_routes:
-                    button_key = "nav_button_" + re.sub(r"[^a-z0-9]+", "_", route.label.casefold()).strip("_")
-                    if st.button(
-                        f"{route.icon}  {route.label}",
-                        key=button_key,
-                        use_container_width=True,
-                        type="primary" if route.label == active else "secondary",
-                    ):
-                        st.session_state.active_page = route.label
-                        st.rerun()
+            st.markdown(f"<div class='lg-nav-group'>{group_name}</div>", unsafe_allow_html=True)
+            for route in group_routes:
+                icon_name = ROUTE_ICONS.get(route.label)
+                if st.button(
+                    route.label,
+                    key=_nav_key(route.label),
+                    icon=f":material/{icon_name}:" if icon_name else None,
+                    use_container_width=True,
+                    type="primary" if route.label == active else "secondary",
+                ):
+                    _go(route.label)
 
         st.divider()
-        if st.button("🔄 Reload Data", use_container_width=True):
-            st.session_state.needs_refresh = True
-            refresh_core_data(force=True)
-            st.rerun()
-        if st.button("📦 Nạp kho lưu trữ", use_container_width=True):
-            st.session_state.db_archive = load_archived_data()
-            st.toast("Đã nạp dữ liệu lưu trữ.")
-        if AUTH_REQUIRED and st.button("Đăng xuất", use_container_width=True):
-            logout()
-        st.caption("LOG-C07 · 3.1.3-router-hotfix")
+        with st.container(key="lg_side_utils"):
+            if st.button("Reload Data", key="side_reload_data", icon=":material/refresh:", use_container_width=True):
+                st.session_state.needs_refresh = True
+                refresh_core_data(force=True)
+                st.rerun()
+            if st.button("Nạp kho lưu trữ", key="side_load_archive", icon=":material/inventory_2:", use_container_width=True):
+                st.session_state.db_archive = load_archived_data()
+                st.toast("Đã nạp dữ liệu lưu trữ.")
+            if AUTH_REQUIRED and st.button("Đăng xuất", key="side_logout", icon=":material/logout:", use_container_width=True):
+                logout()
+        st.caption("LOG-C07 · 3.1.3-router-hotfix · hybrid-ui")
 
     return next(route for route in routes if route.label == selected_label)
+
+
+def _render_top_header(current_user: dict[str, str], routes: list[Route], route: Route) -> None:
+    """Donor top header: breadcrumb + page title, global search, user chip."""
+    from html import escape as _esc
+
+    with st.container(key="lg_topbar", horizontal=True, wrap=False, vertical_alignment="center", gap="medium"):
+        with st.container(key="lg_topbar_title", width="content"):
+            st.markdown(
+                f"<div class='lg-topbar-crumb'>{_esc(_group_of(route.label))}</div>"
+                f"<div class='lg-topbar-title'>{_esc(route.label)}</div>",
+                unsafe_allow_html=True,
+            )
+        _render_global_search(routes)
+        with st.container(key="lg_topbar_user", width="content"):
+            st.markdown(
+                f"<div class='lg-topbar-user'><span class='lg-avatar'>{_esc(_initials(current_user.get('display_name', '')))}</span>"
+                f"<div><div class='lg-user-name'>{_esc(str(current_user.get('display_name', '')))}</div>"
+                f"<div class='lg-user-role'>{_esc(str(current_user.get('role', '')))}</div></div></div>",
+                unsafe_allow_html=True,
+            )
+
+
+@st.dialog("Thêm")
+def _mobile_more_dialog(routes: list[Route], active: str) -> None:
+    """Phone “Thêm” sheet: every permitted route, grouped like the sidebar."""
+    st.caption("Tất cả màn hình bạn có quyền mở.")
+    for group_name, group_routes in _visible_navigation_groups(routes):
+        st.markdown(f"**{group_name}**")
+        for route in group_routes:
+            icon_name = ROUTE_ICONS.get(route.label)
+            if st.button(
+                route.label,
+                key=f"more_{_nav_key(route.label)}",
+                icon=f":material/{icon_name}:" if icon_name else None,
+                use_container_width=True,
+                type="primary" if route.label == active else "secondary",
+            ):
+                _go(route.label)
+    if AUTH_REQUIRED and st.button("Đăng xuất", key="more_logout", icon=":material/logout:", use_container_width=True):
+        logout()
+
+
+def _render_mobile_nav(routes: list[Route], active: str) -> None:
+    """Donor bottom navigation (CSS shows it only ≤768px)."""
+    allowed = {route.label for route in routes}
+    with st.container(key="lg_bottom_nav", horizontal=True, wrap=False, gap="small"):
+        for label, icon_name, target in MOBILE_NAV:
+            if target is not None and target not in allowed:
+                continue
+            is_active = target == active
+            if st.button(
+                label,
+                key=f"mnav_{icon_name}",
+                icon=f":material/{icon_name}:",
+                width="stretch",
+                type="primary" if is_active else "secondary",
+            ):
+                if target is None:
+                    _mobile_more_dialog(routes, active)
+                else:
+                    _go(target)
 
 
 def _load_view(route: Route) -> Callable[[], None]:
@@ -602,6 +788,10 @@ def main() -> None:
 
     routes = _visible_routes()
     route = _render_sidebar(current_user, routes)
+    _render_top_header(current_user, routes, route)
+    # Bottom nav is position:fixed (phone only) — render before the route so it
+    # stays available even when a view calls st.stop().
+    _render_mobile_nav(routes, route.label)
     _assert_route_access(current_user, route)
     if route.label == "Người dùng":
         _render_user_management()

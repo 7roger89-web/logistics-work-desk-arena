@@ -24,6 +24,7 @@ from core.shipment_dashboard import (
     sort_dashboard_views,
 )
 from views.shipment import ui_shipment_detail_tabs 
+from views import ui_kit
 
 from core.getfly_reader import process_getfly_excel, get_kpi_summary
 from core.database import load_quick_note, save_quick_note, load_tasks, add_task, toggle_task
@@ -301,15 +302,10 @@ def _render_shipment_workdesk(all_ships, rows):
     action_count = summary["critical"] + summary["warning"]
     overdue = sum(1 for r in rows if r.get("top_alert") and r["top_alert"].get("severity") == CRITICAL)
     missing_docs = sum(1 for r in rows if r.get("missing_documents_count", 0) > 0)
-    waiting = sum(1 for r in rows if not r.get("next_action") or r.get("next_action") == "Không có việc tiếp theo")
+    waiting = sum(1 for r in rows if not r.get("next_action") or _next_action_text(r) == "Không có việc tiếp theo")
 
     # P2P: Compressed queue kicker for cleaner dashboard
-    st.info(f"🔔 **{action_count} lô cần xử lý** ({overdue} quá hạn, {missing_docs} thiếu chứng từ). Xem chi tiết tại [Việc Cần Xử Lý](/Việc_Cần_Xử_Lý).")
-
-    st.markdown(
-        "<div class='ops-section-kicker'>BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG</div>",
-        unsafe_allow_html=True,
-    )
+    ui_kit.section("BẢNG VIỆC CHÍNH · DANH SÁCH LÔ HÀNG", f"{action_count} lô cần xử lý · {overdue} quá hạn · {missing_docs} thiếu chứng từ · {waiting} đang chờ")
     # R3: Simple controls — time period already handled by ui_dashboard filters
     # Only keep: quick search + customer/status if useful
     owners = sorted({str(row.get("owner") or "").strip() for row in rows if row.get("owner")})
@@ -330,7 +326,7 @@ def _render_shipment_workdesk(all_ships, rows):
     )
 
     # R3: Detailed queue filters moved to expander (collapsed by default)
-    with st.expander("🔎 Lọc nâng cao (mở rộng)", expanded=False):
+    with st.expander("Lọc nâng cao", expanded=False, icon=":material/filter_alt:"):
         financial_options = [
             ("Tất cả", None),
             ("Tài chính OK", "ok"),
@@ -651,86 +647,214 @@ def _handle_excel_export():
     )
 
 
+def _next_action_text(row):
+    """Flatten the read-only ``next_action`` projection (dict or str) to display text."""
+    action = row.get("next_action")
+    if isinstance(action, dict):
+        label = str(action.get("label") or "").strip()
+        detail = str(action.get("detail") or "").strip()
+        if label and detail and detail != label:
+            return f"{label} — {detail}"
+        return label or detail or "UNKNOWN"
+    if action in (None, ""):
+        return "UNKNOWN"
+    return str(action)
+
+
+def _render_today_focus(rows, all_ships):
+    """Donor Dashboard: 'Hôm nay tôi cần làm gì?' built from REAL projections.
+
+    Read-only: reuses ``build_shipment_dashboard_view`` rows; navigation only."""
+    from core.shipment_dashboard import CRITICAL as _CRIT, WARNING as _WARN
+
+    summary = build_dashboard_summary(rows)
+    ordered = sort_dashboard_views(rows)
+    critical_rows = [r for r in ordered if (r.get("top_alert") or {}).get("severity") == _CRIT]
+    warning_rows = [r for r in ordered if (r.get("top_alert") or {}).get("severity") == _WARN]
+    todo_rows = [r for r in ordered if r.get("top_alert")][:5]
+    focus = todo_rows[0] if todo_rows else None
+
+    ui_kit.summary_cards([
+        {"label": "Lô đang theo dõi", "value": summary["total"], "icon": "local_shipping", "hint": "theo bộ lọc thời gian hiện tại"},
+        {"label": "Nghiêm trọng", "value": summary["critical"], "icon": "error", "tone": "danger" if summary["critical"] else "neutral", "hint": "quá free time / quá hạn khách"},
+        {"label": "Cần chú ý", "value": summary["warning"], "icon": "warning", "tone": "warn" if summary["warning"] else "neutral", "hint": "sắp đến hạn hoặc thiếu dữ liệu"},
+        {"label": "Sắp đến hạn khách", "value": summary["deadline_soon"], "icon": "schedule", "tone": "warn" if summary["deadline_soon"] else "neutral"},
+        {"label": "Tài chính cần theo dõi", "value": summary["financial_attention"], "icon": "payments", "tone": "info" if summary["financial_attention"] else "neutral", "hint": "đang mở / cần đối soát / UNKNOWN"},
+        {"label": "Thiếu thông tin", "value": summary["missing_info"], "icon": "help", "tone": "warn" if summary["missing_info"] else "neutral", "hint": "cần bổ sung dữ liệu lô / nhà máy"},
+    ])
+
+    c_next, c_short = st.columns([1.6, 1])
+    with c_next:
+        ui_kit.section("VIỆC TIẾP THEO", "lô cần xử lý trước nhất theo mức độ ưu tiên")
+        if focus is None:
+            ui_kit.callout("Không có lô nào đang cảnh báo trong bộ lọc hiện tại. Kiểm tra lại bộ lọc thời gian nếu bạn mong đợi thấy lô hàng.", "ok")
+        else:
+            top = focus.get("top_alert") or {}
+            tone = "danger" if top.get("severity") == _CRIT else "warn"
+            with st.container(border=True):
+                ui_kit.row_head(
+                    focus.get("shipment_id"),
+                    f"{focus.get('customer') or 'Chưa có khách hàng'} · Sale: {focus.get('owner') or 'Chưa phân công'}",
+                    badge_items=[(top.get("label") or "Cảnh báo", tone), (f"Vận hành: {focus.get('operational_status_label')}", "info", "local_shipping")],
+                    meta=f"Hạn khách: {focus.get('required_date_label') or 'Chưa có'}",
+                )
+                st.markdown(
+                    f"<div class='lg-callout lg-callout--{tone}'><strong>Việc tiếp theo:</strong> {escape_html(_next_action_text(focus))}"
+                    f"<br><span style='font-size:.76rem;opacity:.85'>Nguồn: {escape_html(top.get('source') or 'shipment')}</span></div>",
+                    unsafe_allow_html=True,
+                )
+                b1, b2 = st.columns(2)
+                if b1.button("Xử lý ngay", key="today_focus_process", type="primary", icon=":material/edit_square:", use_container_width=True):
+                    sid = str(focus.get("shipment_id"))
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_direct_work = True
+                    st.session_state.active_shipment_section = "export"
+                    st.rerun()
+                if b2.button("Xem hồ sơ 360°", key="today_focus_360", icon=":material/visibility:", use_container_width=True):
+                    sid = str(focus.get("shipment_id"))
+                    st.session_state.active_shipment_id = sid
+                    st.session_state.dashboard_active_shipment_id = sid
+                    st.session_state.lg04_open_360_view = True
+                    st.session_state.lg04_open_direct_work = False
+                    st.rerun()
+
+        ui_kit.section("VIỆC CẦN XỬ LÝ HÔM NAY", f"{len(critical_rows)} nghiêm trọng · {len(warning_rows)} cần chú ý")
+        if not todo_rows:
+            ui_kit.empty_state("Không có việc khẩn trong bộ lọc hiện tại.", "Danh sách lô đầy đủ nằm ở tab DASHBOARD bên dưới.")
+        else:
+            for row in todo_rows:
+                top = row.get("top_alert") or {}
+                tone = "danger" if top.get("severity") == _CRIT else "warn"
+                sid = str(row.get("shipment_id"))
+                with st.container(border=True):
+                    l, r = st.columns([4, 1.1])
+                    with l:
+                        st.markdown(
+                            f"<div class='lg-row'><div><span class='lg-row-title'>{escape_html(sid)}</span> "
+                            f"<span class='lg-row-sub' style='display:inline'>{escape_html(row.get('customer') or 'Chưa có khách hàng')}</span></div></div>"
+                            f"<div class='lg-badges'>{ui_kit.badge(top.get('label') or 'Cảnh báo', tone)}"
+                            f"{ui_kit.badge('Tài chính: ' + str(row.get('financial_label') or 'UNKNOWN'), 'neutral', 'payments')}</div>"
+                            f"<div class='lg-row-sub'>→ {escape_html(_next_action_text(row))}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    if r.button("Mở", key=f"today_open_{sid}", icon=":material/arrow_forward:", use_container_width=True):
+                        st.session_state.active_shipment_id = sid
+                        st.session_state.dashboard_active_shipment_id = sid
+                        st.session_state.lg04_open_direct_work = True
+                        st.session_state.active_shipment_section = "export"
+                        st.rerun()
+            if len(critical_rows) + len(warning_rows) > len(todo_rows):
+                st.caption(f"… và {len(critical_rows) + len(warning_rows) - len(todo_rows)} lô khác trong danh sách bên dưới hoặc tại Việc Cần Xử Lý.")
+
+    with c_short:
+        ui_kit.section("LỐI TẮT")
+        shortcuts = [
+            ("Việc Cần Xử Lý", "checklist", "Việc Cần Xử Lý", "dashboard"),
+            ("Tạo lô mới", "add_box", "Tạo Lô Mới", "shipment_create"),
+            ("Hợp đồng", "description", "Hợp Đồng", "contracts"),
+            ("Thu tiền & công nợ", "payments", "Thu Tiền & Công Nợ", "receivables"),
+            ("Kinh doanh & báo giá", "request_quote", "Kinh Doanh & Báo Giá", "sales"),
+            ("Khách hàng", "group", "Khách Hàng", "customers"),
+        ]
+        for label, icon_name, target, perm in shortcuts:
+            if not has_permission(perm):
+                continue
+            if st.button(label, key=f"shortcut_{icon_name}", icon=f":material/{icon_name}:", use_container_width=True):
+                st.session_state.active_page = target
+                st.rerun()
+
+        ui_kit.section("CHỈ SỐ VẬN HÀNH", "tính từ các lô đang hiển thị")
+        status_counts = {}
+        for row in rows:
+            key = row.get("operational_status_label") or "UNKNOWN"
+            status_counts[key] = status_counts.get(key, 0) + 1
+        owner_counts = {}
+        for row in rows:
+            key = row.get("owner") or "Chưa phân công"
+            owner_counts[key] = owner_counts.get(key, 0) + 1
+        overdue_customer = sum(1 for r in rows if any(str(a.get("code", "")).startswith("CUSTOMER_DEADLINE") and a.get("severity") == _CRIT for a in r.get("alerts", [])))
+        free_time_risk = sum(1 for r in rows if r.get("days_remaining") is not None and r["days_remaining"] <= 2)
+        ui_kit.kv_grid([
+            ("Quá hạn khách", overdue_customer),
+            ("Free time ≤ 2 ngày", free_time_risk),
+            ("Lô hoàn tất", sum(1 for r in rows if r.get("is_complete"))),
+            ("Lô chưa đủ dữ liệu nhà máy", sum(1 for r in rows if (r.get("missing_factory_count") or 0) > 0)),
+        ], missing_label="0")
+        if status_counts:
+            ui_kit.data_table(
+                [("k", "Trạng thái vận hành"), ("v", "Số lô", "num")],
+                [{"k": k, "v": v} for k, v in sorted(status_counts.items(), key=lambda kv: -kv[1])],
+            )
+        if owner_counts:
+            ui_kit.data_table(
+                [("k", "Sale phụ trách"), ("v", "Số lô", "num")],
+                [{"k": k, "v": v} for k, v in sorted(owner_counts.items(), key=lambda kv: -kv[1])],
+            )
+
+
 def ui_dashboard():
     st.markdown("""
     <style>
-        .ops-section-kicker { color: #0B6E99; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; margin-top: 0.25rem; }
-        .ops-section-title { color: #102A43; font-size: 1.55rem; line-height: 1.15; margin: 0.18rem 0 0.35rem; }
-        h1.ops-page-title { color: #102A43; font-size: 1.55rem !important; line-height: 1.15 !important; margin: 0.18rem 0 0.35rem !important; }
-        .ops-summary-band { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid #D9E2EC; border-radius: 8px; background: #FFFFFF; overflow: hidden; margin: 0.8rem 0 1rem; }
-        .ops-summary-band > div { padding: 0.78rem 0.9rem; border-right: 1px solid #D9E2EC; }
-        .ops-summary-band > div:last-child { border-right: 0; }
-        .ops-summary-band strong { display: block; color: #102A43; font-size: 1.42rem; line-height: 1.1; margin-top: 0.18rem; }
-        .ops-summary-band small { display: block; color: #667085; font-size: 0.69rem; margin-top: 0.22rem; }
-        .ops-summary-label { color: #667085; display: block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.08em; }
-        .ops-summary-focus { background: #FFF8EB; }
-        .ops-summary-focus strong { color: #9A6700; }
-        .ops-filter-note { color: #475467; font-size: 0.82rem; padding: 0.52rem 0.72rem; border-left: 3px solid #0B6E99; background: #F0F7FA; margin: 0.7rem 0; }
+        .ops-section-kicker { color: var(--lg-blue-600); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; margin-top: 0.25rem; text-transform: uppercase; }
+        .ops-filter-note { color: var(--lg-muted); font-size: 0.82rem; padding: 0.52rem 0.72rem; border-left: 3px solid var(--lg-blue-500); background: #eef4ff; margin: 0.7rem 0; border-radius: 0 8px 8px 0; }
         .ops-row-head { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; padding-bottom: 0.18rem; }
-        .ops-row-id { color: #102A43; font-size: 1.02rem; font-weight: 800; letter-spacing: 0.01em; }
-        .ops-row-customer { color: #344054; font-size: 0.9rem; font-weight: 650; }
-        .ops-row-route { color: #667085; font-size: 0.76rem; margin-left: auto; }
-        .ops-next-action { border-top: 1px solid #E7EEF3; color: #475467; font-size: 0.82rem; line-height: 1.4; padding-top: 0.52rem; margin-top: 0.38rem; }
-        .ops-next-action-ok { color: #18794E; }
-        .ops-unknown { color: #9A6700; }
-        /* P2P: Removed conflicting local button styles to allow global theme to take over */
-        .main div[data-testid="stVerticalBlock"] button { min-height: 2.45rem; }
-        .main div[data-testid="stExpander"] { border: none; box-shadow: none; }
-        /* P2P: Restrict expander styling to main content area only */
-        .main div[data-testid="stExpander"] details { border: 1px solid #D9E2EC; background: white; border-radius: 7px; }
-        @media (max-width: 900px) {
-            .ops-summary-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .ops-summary-band > div { border-bottom: 1px solid #D9E2EC; }
-            .ops-row-route { margin-left: 0; width: 100%; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-        }
+        .ops-row-id { color: var(--lg-navy-800); font-size: 1.02rem; font-weight: 800; letter-spacing: 0.01em; }
+        .ops-row-customer { color: var(--lg-ink); font-size: 0.9rem; font-weight: 650; }
+        .ops-row-route { color: var(--lg-faint); font-size: 0.76rem; margin-left: auto; }
+        .ops-next-action { border-top: 1px solid var(--lg-line); color: var(--lg-muted); font-size: 0.82rem; line-height: 1.4; padding-top: 0.52rem; margin-top: 0.38rem; }
+        .ops-next-action-ok { color: #15803d; }
+        .ops-unknown { color: #b45309; }
+        @media (max-width: 900px) { .ops-row-route { margin-left: 0; width: 100%; } }
     </style>
     """, unsafe_allow_html=True)
 
     # ==============================================================
     # HEADER & CÔNG CỤ NHANH TRÊN CÙNG
     # ==============================================================
-    c1, c_btn1, c_btn2, c_tog = st.columns([2.5, 1.2, 1.2, 1.1])
-    c1.markdown(
-        "<div class='ops-section-kicker'>KHU VỰC QUẢN LÝ VẬN HÀNH</div>"
-        "<h1 class='ops-section-title ops-page-title'>Phòng điều khiển lô hàng</h1>"
-        "<div style='color:#667085;font-size:0.82rem;'>Bảng việc là mặt tiền · Tài chính là bối cảnh có nguồn</div>",
-        unsafe_allow_html=True,
-    )
-    if c_btn1.button("➕ Giao Việc Nhanh", use_container_width=True):
+    c1, c_btn1, c_btn2, c_tog = st.columns([3, 1.1, 1.1, 0.8], vertical_alignment="bottom")
+    with c1:
+        ui_kit.page_header(
+            "Hôm nay tôi cần làm gì?",
+            "Bảng việc là mặt tiền · Tài chính là bối cảnh có nguồn · số liệu lấy từ lô hàng thật",
+            kicker="TỔNG QUAN CÔNG VIỆC",
+        )
+    if c_btn1.button("Giao Việc Nhanh", icon=":material/add_task:", use_container_width=True):
         if can_operate_business("shipment_edit"):
             quick_assign_task_dialog()
         else:
             st.error("⚠️ Bạn không có quyền giao việc.")
-    if c_btn2.button("📝 Sổ Tay Nháp", use_container_width=True):
+    if c_btn2.button("Sổ Tay Nháp", icon=":material/sticky_note_2:", use_container_width=True):
         if can_operate_business("shipment_edit"):
             quick_note_dialog()
         else:
             st.error("⚠️ Bạn không có quyền sử dụng sổ tay.")
     view_archive = c_tog.toggle("Lưu Trữ", value=False)
-    
-    # ─── LOG-LG05: Excel Import/Export ───
-    st.divider()
-    c_excel1, c_excel2 = st.columns(2)
-    
-    # Import button
-    if c_excel1.button("📤 NHẬP TỪ GETFLY", use_container_width=True, key="btn_lg05_import"):
+
+    # ─── LOG-LG05: Excel Import/Export (kept; secondary actions inside a popover) ───
+    with st.popover("GetFly · Nhập / Xuất Excel", icon=":material/sync_alt:"):
+        st.caption("Nhập lô từ file GetFly 52 cột hoặc xuất các lô đang hiển thị.")
+        c_excel1, c_excel2 = st.columns(2)
+        if c_excel1.button("NHẬP TỪ GETFLY", icon=":material/upload:", use_container_width=True, key="btn_lg05_import"):
+            st.session_state.lg05_show_import = True
+        if c_excel2.button("XUẤT CHO GETFLY", icon=":material/download:", use_container_width=True, key="btn_lg05_export"):
+            st.session_state.lg05_show_export = True
+    if st.session_state.get("lg05_show_import"):
         if has_permission("shipment_create"):
+            if st.button("Đóng phần nhập GetFly", key="btn_lg05_import_close", icon=":material/close:"):
+                st.session_state.lg05_show_import = False
+                st.rerun()
             _render_excel_import_ui()
         else:
+            st.session_state.lg05_show_import = False
             st.error("⚠️ Bạn không có quyền nhập dữ liệu.")
-    
-    # Export button
-    if c_excel2.button("📥 XUẤT CHO GETFLY", use_container_width=True, key="btn_lg05_export"):
+    if st.session_state.pop("lg05_show_export", False):
         _handle_excel_export()
-    
-    
+
     # ==============================================================
     # BỘ LỌC THỜI GIAN VÀ TÌM KIẾM (HIỂN THỊ CHÍNH GIỮA MÀN HÌNH)
     # ==============================================================
-    with st.expander("🔎 BỘ LỌC DỮ LIỆU & THỜI GIAN", expanded=False):
+    with st.expander("BỘ LỌC DỮ LIỆU & THỜI GIAN", expanded=False, icon=":material/tune:"):
         f1, f2, f3, f4 = st.columns([2, 2, 3, 2])
         
         search_query = f1.text_input("Tìm kiếm:", placeholder="Mã lô, khách, Sale, trạng thái...", key="dashboard_search_query")
@@ -794,7 +918,7 @@ def ui_dashboard():
     col_pend, col_hist = st.columns(2)
     
     with col_pend:
-        with st.expander(f"📋 Bảng Việc Đang Chờ ({len(pending_tasks)})", expanded=False):
+        with st.expander(f"Bảng Việc Đang Chờ ({len(pending_tasks)})", expanded=False, icon=":material/checklist:"):
             if pending_tasks:
                 for t in pending_tasks:
                     col_chk, col_txt = st.columns([0.08, 0.92])
@@ -817,7 +941,7 @@ def ui_dashboard():
                 st.caption("🎉 Tuyệt vời! Team hiện không có công việc nào tồn đọng.")
 
     with col_hist:
-        with st.expander(f"🕒 Lịch Sử Đã Xong ({len(completed_tasks)})", expanded=False):
+        with st.expander(f"Lịch Sử Đã Xong ({len(completed_tasks)})", expanded=False, icon=":material/history:"):
             if completed_tasks:
                 recent_completed = sorted(completed_tasks, key=lambda x: str(x.get('_id')), reverse=True)[:20]
                 for t in recent_completed:
@@ -834,8 +958,6 @@ def ui_dashboard():
                     st.markdown("<hr style='margin: 4px 0px; opacity: 0.2;'>", unsafe_allow_html=True)
             else:
                 st.caption("Chưa có công việc nào hoàn thành.")
-    
-    st.markdown("---")
     
     # ==============================================================
     # LOAD DỮ LIỆU & ÁP DỤNG BỘ LỌC
@@ -886,6 +1008,16 @@ def ui_dashboard():
     # ==============================================================
     # MAIN TABS CỦA DASHBOARD
     # ==============================================================
+    dashboard_rows = [
+        build_shipment_dashboard_view(ship, today=today)
+        for ship in ships_filtered.values()
+    ]
+    active_sid = st.session_state.get('dashboard_active_shipment_id') or st.session_state.get('active_shipment_id')
+    if not (active_sid and str(active_sid) in all_ships):
+        # Donor dashboard sections (real data only) — hidden while a shipment is open
+        # so the locked shipment workspace keeps the full width.
+        _render_today_focus(dashboard_rows, all_ships)
+
     t_board, t_cust, t_gf, t_comm = st.tabs(["📋 DASHBOARD", "🏆 TOP KHÁCH", "🔗 GETFLY", "💰 HOA HỒNG"])
     
     with t_board:
@@ -948,10 +1080,6 @@ def ui_dashboard():
                     st.json(ship_data, expanded=False)
                 st.divider()
 
-        dashboard_rows = [
-            build_shipment_dashboard_view(ship, today=today)
-            for ship in ships_filtered.values()
-        ]
         _render_shipment_workdesk(all_ships, dashboard_rows)
 
     with t_cust:
@@ -1157,13 +1285,6 @@ def _render_workdesk_rows(all_ships, filtered_rows):
         if not isinstance(route, dict):
             route = {}
         top_alert = row.get("top_alert") or {}
-        alert_color = {CRITICAL: ("#FDECEC", "#B42318"), "warning": ("#FFF4E5", "#9A6700"), "info": ("#EEF2FF", "#4657C8")}.get(top_alert.get("severity"), ("#F3F4F6", "#475467"))
-        finance_color = {
-            "ok": ("#EAF7EF", "#18794E"),
-            FINANCIAL_OPEN: ("#FFF4E5", "#9A6700"),
-            FINANCIAL_REVIEW: ("#EEF2FF", "#4657C8"),
-            FINANCIAL_UNKNOWN: ("#FDECEC", "#B42318"),
-        }.get(row.get("financial_flag"), ("#F3F4F6", "#475467"))
         context_bits = _desk_source_context(row, data, route)
         with st.container(border=True):
             st.markdown(
@@ -1189,14 +1310,16 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                 st.caption(" · ".join(date_bits))
                 st.caption(" · ".join(context_bits))
             with c_ops:
-                st.markdown(_desk_badge(f"Vận hành: {row.get('operational_status_label')}", "#EEF2FF", "#4657C8"), unsafe_allow_html=True)
+                st.markdown(ui_kit.badge(f"Vận hành: {row.get('operational_status_label')}", "info", "local_shipping"), unsafe_allow_html=True)
                 if row.get("days_remaining") is not None:
                     free_label = f"Free time: {row['days_remaining']} ngày"
-                    st.markdown(_desk_badge(free_label, alert_color[0], alert_color[1]), unsafe_allow_html=True)
+                    free_tone = {CRITICAL: "danger", "warning": "warn", "info": "info"}.get(top_alert.get("severity"), "neutral")
+                    st.markdown(ui_kit.badge(free_label, free_tone, "schedule"), unsafe_allow_html=True)
                 elif row.get("free_time_days") is None:
-                    st.caption("Free time: UNKNOWN")
+                    st.markdown(ui_kit.badge("Free time: UNKNOWN", "warn", "help"), unsafe_allow_html=True)
             with c_finance:
-                st.markdown(_desk_badge(f"Tài chính: {row.get('financial_label')}", finance_color[0], finance_color[1]), unsafe_allow_html=True)
+                finance_tone = {"ok": "ok", FINANCIAL_OPEN: "warn", FINANCIAL_REVIEW: "info", FINANCIAL_UNKNOWN: "danger"}.get(row.get("financial_flag"), "neutral")
+                st.markdown(ui_kit.badge(f"Tài chính: {row.get('financial_label')}", finance_tone, "payments"), unsafe_allow_html=True)
                 st.caption(escape_html(row.get("financial_status")))
                 # UX-STAB P1: Compact — show only a minimal hint, expand on user request
                 projection = row.get("financial_projection") or {}
@@ -1211,15 +1334,13 @@ def _render_workdesk_rows(all_ships, filtered_rows):
                 with st.expander("Vì sao ra số này?", expanded=False):
                     _render_financial_explanation(row)
             with c_action:
-                st.markdown("**📝 Xử lý lô**")
-                if st.button("Xử lý", key=f"dashboard_process_{sid}", help="Mở thẳng form nhập liệu", type="primary", use_container_width=True):
+                if st.button("Xử lý", key=f"dashboard_process_{sid}", help="Mở thẳng form nhập liệu", type="primary", icon=":material/edit_square:", use_container_width=True):
                     st.session_state.active_shipment_id = sid
                     st.session_state.dashboard_active_shipment_id = sid
                     st.session_state.lg04_open_direct_work = True
                     st.session_state.active_shipment_section = "export"
                     st.rerun()
-                st.markdown("**📊 360°**")
-                if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan", use_container_width=True):
+                if st.button("Tổng quan", key=f"dashboard_overview_{sid}", help="Xem hồ sơ tổng quan 360°", icon=":material/visibility:", use_container_width=True):
                     st.session_state.active_shipment_id = sid
                     st.session_state.dashboard_active_shipment_id = sid
                     st.session_state.lg04_open_360_view = True
