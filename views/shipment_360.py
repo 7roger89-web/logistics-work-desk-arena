@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.next_action_card import render_next_action_card
 from core.shipment_360 import UNKNOWN
@@ -535,7 +536,7 @@ def _offer_agreement_link(commercial: Mapping[str, Any]) -> None:
     ):
         import streamlit as st
         st.session_state.agreement_detail_id = str(agreement_id)
-        st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+        nav_to_page("Thỏa Thuận & Bàn Giao")
         st.rerun()
 
 

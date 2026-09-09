@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.finance_review import (
     ACTIONABLE_STATUSES,
@@ -76,7 +77,7 @@ def _open_shipment(item: Mapping[str, Any]) -> None:
              or (isinstance(shipment, Mapping) and str(shipment.get("shipment_id") or shipment.get("id") or "").casefold() == shipment_id.casefold())),
             shipment_id,
         )
-    st.session_state.active_page = "Tổng Quan Công Việc"
+    nav_to_page("Tổng Quan Công Việc")
     st.session_state.active_shipment_id = resolved
     st.session_state.dashboard_active_shipment_id = resolved
     st.session_state.finance_review_return = True
@@ -95,7 +96,7 @@ def _open_entity(item: Mapping[str, Any]) -> None:
 
 
 def _back_to_queue() -> None:
-    st.session_state.active_page = "Việc Cần Xử Lý"
+    nav_to_page("Việc Cần Xử Lý")
     st.session_state.finance_review_return = False
     st.session_state.review_queue_return = False
     st.rerun()

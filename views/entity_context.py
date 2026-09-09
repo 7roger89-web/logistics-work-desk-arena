@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.entity_context import build_entity_context, list_context_entities
 from core.shipment_360 import UNKNOWN
@@ -29,7 +30,7 @@ def open_entity_context(
         "return_shipment_id": str(return_shipment_id or ""),
         "return_page": str(return_page or ""),
     }
-    st.session_state.active_page = "Ngữ Cảnh Đối Tác"
+    nav_to_page("Ngữ Cảnh Đối Tác")
     st.rerun()
 
 
@@ -51,7 +52,7 @@ def _request() -> dict[str, str]:
 
 def _go_dashboard() -> None:
     request = _request()
-    st.session_state.active_page = request.get("return_page") or "Tổng Quan Công Việc"
+    nav_to_page(request.get("return_page") or "Tổng Quan Công Việc")
     if st.session_state.active_page == "Việc Cần Xử Lý":
         st.session_state.review_queue_return = False
     st.session_state.pop(_REQUEST_KEY, None)
@@ -67,7 +68,7 @@ def _open_shipment(shipment_id: str) -> None:
             (str(key) for key in shipments if str(key).strip() == requested_id.strip()),
             requested_id,
         )
-    st.session_state.active_page = "Tổng Quan Công Việc"
+    nav_to_page("Tổng Quan Công Việc")
     st.session_state.active_shipment_id = resolved_id
     st.session_state.dashboard_active_shipment_id = resolved_id
     if _request().get("return_page") == "Việc Cần Xử Lý":
@@ -181,7 +182,7 @@ def _render_customer_quotation_rows(rows: list[Mapping[str, Any]], key_prefix: s
             use_container_width=True,
         ):
             st.session_state.quote_detail_id = str(row.get("quote_id"))
-            st.session_state.active_page = "Kinh Doanh & Báo Giá"
+            nav_to_page("Kinh Doanh & Báo Giá")
             st.rerun()
         note_col.caption(f"source: {_value(row.get('source'))}")
 
@@ -216,7 +217,7 @@ def _render_customer_agreement_rows(rows: list[Mapping[str, Any]], key_prefix: s
             use_container_width=True,
         ):
             st.session_state.agreement_detail_id = str(row.get("agreement_id"))
-            st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+            nav_to_page("Thỏa Thuận & Bàn Giao")
             st.rerun()
         note_col.caption(f"source: {_value(row.get('source'))}")
 

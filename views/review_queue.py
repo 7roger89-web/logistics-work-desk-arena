@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.review_queue import (
     CATEGORY_COMMERCIAL,
@@ -53,7 +54,7 @@ def _open_shipment(item: Mapping[str, Any]) -> None:
     target = item.get("target") or {}
     requested = _value(target.get("shipment_id") or item.get("shipment_id"))
     resolved = _resolve_shipment_id(requested)
-    st.session_state.active_page = "Tổng Quan Công Việc"
+    nav_to_page("Tổng Quan Công Việc")
     st.session_state.active_shipment_id = resolved
     st.session_state.dashboard_active_shipment_id = resolved
     st.session_state.review_queue_return = True
@@ -82,7 +83,7 @@ def _open_entity(item: Mapping[str, Any]) -> None:
 
 def _open_finance_review(item: Mapping[str, Any]) -> None:
     shipment_id = _value(item.get("shipment_id"), "")
-    st.session_state.active_page = "Đối Soát Tài Chính"
+    nav_to_page("Đối Soát Tài Chính")
     st.session_state.finance_review_scope = "shipment" if shipment_id else "Tất cả"
     st.session_state.finance_review_target = shipment_id
     st.session_state.finance_review_return = False
@@ -252,13 +253,13 @@ def _open_commercial(item: Mapping[str, Any]) -> None:
     key = _value(target.get("key"))
     if kind == "agreement":
         st.session_state.agreement_detail_id = key
-        st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+        nav_to_page("Thỏa Thuận & Bàn Giao")
         st.rerun()
     if kind == "quote":
         st.session_state.quote_detail_id = key
-        st.session_state.active_page = "Kinh Doanh & Báo Giá"
+        nav_to_page("Kinh Doanh & Báo Giá")
         st.rerun()
-    st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+    nav_to_page("Thỏa Thuận & Bàn Giao")
     st.rerun()
 
 __all__ = ["ui_review_queue"]

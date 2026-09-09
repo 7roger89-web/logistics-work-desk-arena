@@ -23,6 +23,7 @@ from typing import Any, Mapping
 
 import pandas as pd
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.auth import (
     can_edit_contract,
@@ -938,7 +939,7 @@ def _linked_contract_ids(ship: Mapping[str, Any]) -> list[str]:
 
 def _open_contract_button(contract_id: str, *, key: str, label: str = "📜 MỞ HỢP ĐỒNG") -> None:
     if st.button(label, key=key, type="primary"):
-        st.session_state.active_page = "Hợp Đồng"
+        nav_to_page("Hợp Đồng")
         st.session_state.selected_contract_v2 = contract_id
         st.rerun()
 
@@ -953,7 +954,7 @@ def _linked_contract_section(sid: str, ship: Mapping[str, Any]) -> None:
             "để tạo hợp đồng, sau đó gắn lô hàng này vào hợp đồng."
         )
         if st.button("📜 MỞ MÀN HÌNH HỢP ĐỒNG", key=f"docgen_goto_contracts_{sid}"):
-            st.session_state.active_page = "Hợp Đồng"
+            nav_to_page("Hợp Đồng")
             st.rerun()
         return
 

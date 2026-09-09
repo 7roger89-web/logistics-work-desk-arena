@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.config import STATUS_MAP_INV
 from core.database import (
@@ -611,12 +612,12 @@ def ui_contracts_management() -> None:
                 if mid.button("🚢 MỞ LÔ HÀNG", key=f"contract_open_shipment_{sid}", use_container_width=True):
                     st.session_state.dashboard_active_shipment_id = sid
                     st.session_state.active_shipment_section = "export"
-                    st.session_state.active_page = "Tổng Quan Công Việc"
+                    nav_to_page("Tổng Quan Công Việc")
                     st.rerun()
                 if right.button("📦 LÀM PHIẾU XUẤT KHO", key=f"contract_pxk_{sid}", use_container_width=True):
                     st.session_state.dashboard_active_shipment_id = sid
                     st.session_state.active_shipment_section = "documents"
-                    st.session_state.active_page = "Tổng Quan Công Việc"
+                    nav_to_page("Tổng Quan Công Việc")
                     st.rerun()
 
     with finance_tab:

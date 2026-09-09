@@ -17,6 +17,7 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+from views.lg_core import nav_to_page  # noqa: E402
 
 from core.commercial_agreements import (
     AGREEMENT_STATUSES,
@@ -168,7 +169,7 @@ def _render_agreement_table(agreements: dict[str, dict[str, Any]]) -> None:
     )
     if st.button("Mở chi tiết thỏa thuận", type="primary", key="agr_open_button"):
         st.session_state.agreement_detail_id = selected
-        st.session_state.active_page = "Thỏa Thuận & Bàn Giao"
+        nav_to_page("Thỏa Thuận & Bàn Giao")
         st.rerun()
 
 

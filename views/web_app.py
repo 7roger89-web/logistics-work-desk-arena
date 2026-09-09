@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import os
 import traceback
 import re
 import urllib3
@@ -83,9 +84,12 @@ NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
-def _configure_page() -> None:
+def _configure_page(*, legacy: bool = True) -> None:
     st.set_page_config(page_title="LOGISTICS PRO", layout="wide", page_icon="⚓")
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    if not legacy:
+        # Logi-good shell injects its own theme after login (views.lg_shell).
+        return
     st.markdown(
         """
 <style>
@@ -575,7 +579,9 @@ def _create_user_from_admin(
 
 def main() -> None:
     """Render toàn bộ ứng dụng trong mỗi lần Streamlit rerun."""
-    _configure_page()
+    # UI shell: "lg" (Logi-good shell, default) or "legacy" (ops sidebar).
+    ui_lg = os.environ.get("LOGISTICS_PRO_UI", "lg").strip().lower() != "legacy"
+    _configure_page(legacy=not ui_lg)
     initialize_state()
 
     current_user = require_login()
@@ -599,6 +605,20 @@ def main() -> None:
 
     if st.session_state.get("last_db_error"):
         st.error(f"Cơ sở dữ liệu chưa sẵn sàng: {st.session_state.last_db_error}")
+
+    if ui_lg:
+        # ============ LOGI-GOOD EXACT SHELL (default UI) ============
+        # Five VẬN HÀNH routes + all other modules behind the Logi-good chrome.
+        try:
+            from views.lg_shell import render_shell  # noqa: PLC0415
+
+            render_shell()
+        except Exception as exc:
+            LOGGER.exception("Cannot render Logi-good shell")
+            st.error("Không thể khởi tạo giao diện Logi-good.")
+            with st.expander("Chi tiết kỹ thuật", expanded=False):
+                st.code(traceback.format_exc(), language="text")
+        return
 
     routes = _visible_routes()
     route = _render_sidebar(current_user, routes)
