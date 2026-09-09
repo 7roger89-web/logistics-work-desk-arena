@@ -34,6 +34,7 @@ from core.commercial_agreements import (
 )
 from core.auth import can_operate_business
 from core.database import load_agreements, save_agreements_to_cloud
+from views import ui_kit
 
 
 def _agreement_store() -> dict[str, dict[str, Any]]:
@@ -88,10 +89,32 @@ def _acceptance_eligible_quotes(quotes: dict[str, dict[str, Any]]) -> dict[str, 
 
 def _readiness_badge_color(readiness_state: str) -> str:
     if readiness_state == HANDOFF_READY:
-        return "var(--ops-green)"
+        return "#16a34a"
     if readiness_state == HANDOFF_MISSING_REQUIRED_DATA:
-        return "var(--ops-red)"
-    return "var(--ops-amber)"
+        return "#dc2626"
+    return "#d97706"
+
+
+def _journey_stage(agreement: dict[str, Any] | None) -> tuple[int, int]:
+    """Map the REAL agreement/handoff state onto the 4-step journey.
+
+    Returns ``(current_index, done_through)`` for ``ui_kit.stage_indicator``:
+    0 = Báo giá, 1 = Khách chốt, 2 = Thỏa thuận, 3 = Bàn giao Support.
+    Presentation only — never changes business state rules."""
+    if not agreement:
+        return 0, 0
+    status = str(agreement.get("status") or "DRAFT").upper()
+    if status == "VOID":
+        return 2, 2
+    try:
+        readiness = handoff_readiness(agreement)
+    except Exception:  # pragma: no cover - defensive; readiness is pure
+        readiness = {"state": ""}
+    if agreement.get("shipment_id") or agreement.get("handed_over_at"):
+        return 3, 4
+    if status == "AGREED":
+        return 3, 3 if readiness.get("state") != HANDOFF_READY else 3
+    return 2, 2
 
 
 def _evidence_badge(state: str) -> str:
@@ -231,14 +254,13 @@ def _render_agreement_detail() -> None:
         f"Báo giá: {agreement.get('quote_reference', '')} v{agreement.get('quote_version', '?')} · "
         f"Thỏa thuận thương mại, KHÔNG ghi Finance Ledger."
     )
-    readiness_color = _readiness_badge_color(readiness["state"])
-    st.markdown(
-        f"<div style='background:var(--ops-surface);border:1px solid var(--ops-line);border-radius:8px;"
-        f"border-left:6px solid {readiness_color};padding:10px 14px'>"
-        f"<b>Bàn giao vận hành:</b> <span style='color:{readiness_color};font-weight:800'>{readiness['label']}</span>"
-        + (f"<br>{' · '.join(readiness['reasons'])}" if readiness["reasons"] else "")
-        + "</div>",
-        unsafe_allow_html=True,
+    readiness_tone = {HANDOFF_READY: "ok", HANDOFF_MISSING_REQUIRED_DATA: "danger"}.get(readiness["state"], "warn")
+    ui_kit.callout(
+        f"<span style='font-weight:800'>{ui_kit.text(readiness['label'])}</span>"
+        + (f"<br>{ui_kit.text(' · '.join(readiness['reasons']))}" if readiness["reasons"] else ""),
+        readiness_tone,
+        title="Bàn giao vận hành",
+        allow_html=True,
     )
 
     tabs = st.tabs([
@@ -489,15 +511,38 @@ def _render_handoff_view(view: dict[str, Any], agreement: dict[str, Any]) -> Non
 
 
 def ui_agreements_module() -> None:
-    st.title("Thỏa Thuận & Bàn Giao")
-    st.caption("Trang này KHÔNG tạo payment, transaction hay event Finance Ledger nào.")
+    ui_kit.page_header(
+        "Thỏa Thuận & Bàn Giao",
+        "Trang này KHÔNG tạo payment, transaction hay event Finance Ledger nào.",
+        kicker="KINH DOANH & ĐỐI TÁC",
+        native_title=True,
+    )
+    agreements = _agreement_store()
+    _detail_id = st.session_state.get("agreement_detail_id")
+    _focus = agreements.get(_detail_id) if _detail_id else None
+    _current, _done = _journey_stage(_focus)
+    # Donor stage indicator driven by the selected agreement's REAL state
+    ui_kit.stage_indicator(
+        [
+            ("BÁO GIÁ", "Sale lập phương án giá"),
+            ("KHÁCH CHỐT", "khách đồng ý · ACCEPTED"),
+            ("THỎA THUẬN", "chốt điều khoản thương mại"),
+            ("BÀN GIAO SUPPORT", "đủ thông tin để vận hành lô"),
+        ],
+        _current if _focus else 1,
+        done_through=_done if _focus else 1,
+    )
+    if _focus:
+        st.caption(f"Đang theo dõi: {_focus.get('agreement_no', _detail_id)} · trạng thái {_focus.get('status')} · các bước tính từ dữ liệu thật của thỏa thuận này.")
     # LOG-LG04: hành trình 4 bước giải thích bằng tiếng Việt thường (Ý 10)
     st.markdown(
         "<style>"
-        ".lg04-journey {{ border: 2px solid #D0D7DE; border-radius: 10px; padding: .6rem .8rem; "
-        "margin: .3rem 0 1rem; background: #F6F8FA; }}"
-        ".lg04-step {{ display: inline-block; background: #0B6E99; color: #FFFFFF; border-radius: 14px; "
-        "padding: .15rem .6rem; font-weight: 800; font-size: .8rem; margin-right: .4rem; }}"
+        ".lg04-journey { border: 1px solid var(--lg-line); border-radius: 12px; padding: .6rem .8rem; "
+        "margin: .3rem 0 1rem; background: var(--lg-surface); font-size: .86rem; color: var(--lg-ink); }"
+        ".lg04-journey > div { padding: .12rem 0; }"
+        ".lg04-step { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; "
+        "background: var(--lg-navy-700); color: #FFFFFF; border-radius: 999px; "
+        "padding: 0 .45rem; font-weight: 800; font-size: .74rem; margin-right: .45rem; }"
         "</style>"
         "<div class='lg04-journey'>"
         "<div><span class='lg04-step'>1</span><b>Báo giá</b> — Sale lập phương án giá (menu Kinh Doanh &amp; Báo Giá)</div>"
@@ -508,7 +553,16 @@ def ui_agreements_module() -> None:
         "</div>",
         unsafe_allow_html=True,
     )
-    agreements = _agreement_store()
+    status_counts: dict[str, int] = {}
+    for item in agreements.values():
+        key = str(item.get("status") or "DRAFT").upper()
+        status_counts[key] = status_counts.get(key, 0) + 1
+    ui_kit.summary_cards([
+        {"label": "Thỏa thuận", "value": len(agreements), "icon": "handshake"},
+        {"label": "Nháp / đang review", "value": status_counts.get("DRAFT", 0) + status_counts.get("REVIEWING", 0) + status_counts.get("REVISED", 0), "icon": "edit_note", "tone": "info"},
+        {"label": "Đã thỏa thuận (AGREED)", "value": status_counts.get("AGREED", 0), "icon": "task_alt", "tone": "ok" if status_counts.get("AGREED", 0) else "neutral"},
+        {"label": "Vô hiệu (VOID)", "value": status_counts.get("VOID", 0), "icon": "block", "tone": "neutral"},
+    ])
     tabs = st.tabs(["Danh sách thỏa thuận", "Tạo từ báo giá khách đã chốt", "Chi tiết &amp; Bàn giao"])
     with tabs[0]:
         _render_agreement_table(agreements)

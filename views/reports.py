@@ -6,14 +6,19 @@ import calendar
 from core.database import load_data, load_customers, load_tasks, load_proxy_payments
 from core.utils import safe_float, parse_date_optional, get_shipment_business_date
 from core.logic import calculate_from_shipment
+from views import ui_kit
 
 def clean_client_name(name):
     if not name or name == "Unknown": return "Khách Lẻ"
     return str(name).upper().strip()
 
 def ui_reports_dashboard():
-    st.title("📊 BÁO CÁO QUẢN TRỊ (CEO DASHBOARD)")
-    st.caption("Bức tranh toàn cảnh về Sức khỏe Tài chính, Lợi nhuận và Hiệu suất Vận hành của Doanh nghiệp.")
+    ui_kit.page_header(
+        "📊 BÁO CÁO QUẢN TRỊ (CEO DASHBOARD)",
+        "Bức tranh toàn cảnh về Sức khỏe Tài chính, Lợi nhuận và Hiệu suất Vận hành của Doanh nghiệp.",
+        kicker="TÀI CHÍNH & ĐỐI SOÁT · SỐ THỰC TẾ THEO KỲ",
+        native_title=True,
+    )
 
     # 1. Tải toàn bộ dữ liệu
     if 'db_reporting_shipments' not in st.session_state:
@@ -96,17 +101,16 @@ def ui_reports_dashboard():
         client_stats[client]['Số Lô'] += 1
 
     # 4. KHỐI METRIC "SỨC KHỎE TÀI CHÍNH"
-    st.markdown("### 💎 SỨC KHỎE TÀI CHÍNH")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("📈 TỔNG LỢI NHUẬN", f"{total_profit:,.0f} ₫", help="Doanh thu - Chi Phí - Hoa hồng")
-    m2.metric("💰 DOANH THU TRƯỚC VAT", f"{total_revenue:,.0f} ₫")
-    m3.metric("🚨 NỢ PHẢI THU (KHÁCH)", f"{total_debt_kh:,.0f} ₫", delta="Cần đôn đốc đòi nợ", delta_color="inverse")
-    m4.metric("💸 NỢ PHẢI TRẢ (ĐẠI LÝ VNĐ)", f"{total_debt_agent_vnd:,.0f} ₫", delta="Mình đang nợ", delta_color="inverse")
-
-    st.markdown("---")
+    ui_kit.section("SỨC KHỎE TÀI CHÍNH", f"{len(filtered_ships)} lô trong kỳ · tính theo FinanceService, lợi nhuận không cộng VAT đầu ra")
+    ui_kit.summary_cards([
+        {"label": "Tổng lợi nhuận", "value": f"{total_profit:,.0f} ₫", "icon": "trending_up", "tone": "ok" if total_profit > 0 else ("danger" if total_profit < 0 else "neutral"), "hint": "Doanh thu − Chi phí − Hoa hồng"},
+        {"label": "Doanh thu trước VAT", "value": f"{total_revenue:,.0f} ₫", "icon": "payments"},
+        {"label": "Nợ phải thu (khách)", "value": f"{total_debt_kh:,.0f} ₫", "icon": "error", "tone": "danger" if total_debt_kh > 0 else "ok", "hint": "cần đôn đốc đòi nợ" if total_debt_kh > 0 else "không có nợ đọng"},
+        {"label": "Nợ phải trả (đại lý VNĐ)", "value": f"{total_debt_agent_vnd:,.0f} ₫", "icon": "account_balance", "tone": "warn" if total_debt_agent_vnd > 0 else "ok", "hint": "mình đang nợ" if total_debt_agent_vnd > 0 else "đã thanh toán đủ"},
+    ])
 
     # 5. BẢNG PHONG THẦN KHÁCH HÀNG (BIỂU ĐỒ)
-    st.markdown("### 🏆 BẢNG PHONG THẦN KHÁCH HÀNG")
+    ui_kit.section("BẢNG PHONG THẦN KHÁCH HÀNG", "top lợi nhuận và top nợ đọng trong kỳ")
     if client_stats:
         df_clients = pd.DataFrame.from_dict(client_stats, orient='index').reset_index().rename(columns={'index': 'Khách Hàng'})
         
@@ -127,10 +131,8 @@ def ui_reports_dashboard():
     else:
         st.info("Chưa có dữ liệu khách hàng trong kỳ này.")
 
-    st.markdown("---")
-
     # 6. HIỆU SUẤT VẬN HÀNH & ỦY THÁC
-    st.markdown("### ⚙️ HIỆU SUẤT VẬN HÀNH & ỦY THÁC")
+    ui_kit.section("HIỆU SUẤT VẬN HÀNH & ỦY THÁC")
     
     col_op1, col_op2 = st.columns(2)
     

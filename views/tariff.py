@@ -147,12 +147,19 @@ def check_cbpg_tax(row, unit):
 # =====================================================================
 def ui_super_tariff_hub():
     can_edit = can_operate_business("tariff")
-    st.title("🌏 TRA CỨU THUẾ & TỐI ƯU CBPG")
-    st.caption("Công cụ hỗ trợ tra cứu và kiểm tra sơ bộ; kết quả phải được chuyên viên hải quan xác nhận trước khi khai báo.")
+    from views import ui_kit
+
+    ui_kit.page_header(
+        "🌏 TRA CỨU THUẾ & TỐI ƯU CBPG",
+        "Công cụ hỗ trợ tra cứu và kiểm tra sơ bộ; kết quả phải được chuyên viên hải quan xác nhận trước khi khai báo.",
+        kicker="CÔNG CỤ & THAM KHẢO",
+        native_title=True,
+    )
+    ui_kit.badges([("Kết quả tham khảo — cần chuyên viên hải quan xác nhận", "warn", "gavel")])
     
     st.markdown("""
     <style>
-        .stTextArea textarea { font-size: 14px; font-family: monospace; }
+        [data-testid="stMainBlockContainer"] .stTextArea textarea { font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         div[data-testid="stDataEditor"] table { font-size: 13px; }
     </style>
     """, unsafe_allow_html=True)

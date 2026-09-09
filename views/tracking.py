@@ -3,7 +3,14 @@ from core.config import CARRIER_LINKS
 from core.utils import get_tracking_url
 
 def ui_tracking_tool():
-    st.title("🌐 TRA CỨU HÀNH TRÌNH (TRACKING)")
+    from views import ui_kit
+
+    ui_kit.page_header(
+        "🌐 TRA CỨU HÀNH TRÌNH (TRACKING)",
+        "Mở nhanh trang tracking của hãng tàu / chuyển phát nhanh / hàng không theo số vận đơn.",
+        kicker="VẬN HÀNH · CÔNG CỤ",
+        native_title=True,
+    )
     with st.container(border=True):
         track_type = st.radio("Loại hình:", ["Đường Biển (Container)", "Chuyển Phát Nhanh (Express)", "Hàng Không (Air)"], horizontal=True)
         c_tr1, c_tr2 = st.columns([3, 1])

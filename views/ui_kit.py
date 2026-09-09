@@ -41,6 +41,11 @@ COMPONENT_CSS = """
 /* ---- page header ---- */
 .lg-page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .5rem 1rem; margin: 0 0 .85rem; }
 .lg-kicker { color: var(--lg-blue-600); font-size: .66rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; margin-bottom: .2rem; }
+.lg-partner-card { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; background: var(--lg-surface); border: 1px solid var(--lg-line); border-radius: 14px; padding: .8rem 1rem; margin: .4rem 0 .7rem; box-shadow: 0 1px 2px rgba(6,16,36,.04); }
+.lg-partner-avatar { width: 44px; height: 44px; border-radius: 12px; background: var(--lg-navy-700); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; letter-spacing: .04em; flex: 0 0 auto; }
+.lg-partner-name { font-weight: 800; color: var(--lg-navy-800); font-size: 1.05rem; line-height: 1.2; }
+.lg-partner-sub { color: var(--lg-muted); font-size: .8rem; }
+.lg-partner-card .lg-badge { margin-left: .1rem; }
 .lg-page-head { display: block !important; padding-bottom: .15rem; }
 .lg-page-head > div { display: block; width: 100%; }
 .lg-page-title { color: var(--lg-navy-800); font-size: 1.6rem; line-height: 1.15; font-weight: 800; margin: 0; padding: 0; letter-spacing: -.01em; }
@@ -260,10 +265,12 @@ def summary_cards(cards: Sequence[Mapping[str, Any]]) -> None:
     st.markdown(f"<div class='lg-cards'>{''.join(parts)}</div>", unsafe_allow_html=True)
 
 
-def callout(body: str, tone: str = "info", *, allow_html: bool = False) -> None:
+def callout(body: str, tone: str = "info", *, title: str | None = None, allow_html: bool = False) -> None:
     """Short explanatory note (where am I / what is missing / what to do)."""
     tone = _tone(tone)
     inner = body if allow_html else text(body)
+    if title:
+        inner = f"<strong>{text(title)}:</strong> {inner}"
     st.markdown(f"<div class='lg-callout lg-callout--{tone}'>{inner}</div>", unsafe_allow_html=True)
 
 
@@ -307,9 +314,13 @@ def data_table(
     rows: Iterable[Mapping[str, Any]],
     *,
     empty: str = "Chưa có dữ liệu.",
+    money_currency: str | None = None,
 ) -> None:
-    """Responsive HTML table: ``columns`` = ``[(key, header[, 'num'|'strong'])]``.
+    """Responsive HTML table: ``columns`` = ``[(key, header[, 'num'|'strong'|'html'])]``.
 
+    ``num`` cells holding numbers are formatted with thousands separators (and
+    ``money_currency`` suffix when given); ``html`` cells are inserted as-is
+    (use only with ``badge`` output or other trusted markup).
     On phones the rows collapse into label/value cards (no horizontal scroll)."""
     rows = list(rows)
     if not rows:
@@ -325,8 +336,13 @@ def data_table(
             key, header = col[0], col[1]
             cls = col[2] if len(col) > 2 else ""
             value = row.get(key, "")
-            if isinstance(value, str) and value.startswith("<span class='lg-badge"):
-                cell = value
+            if cls == "html" or (isinstance(value, str) and value.startswith("<span class='lg-badge")):
+                cell = value if value not in (None, "") else "—"
+                cls = "" if cls == "html" else cls
+            elif cls == "num" and isinstance(value, (int, float)) and not isinstance(value, bool):
+                cell = f"{value:,.0f}" if float(value).is_integer() or abs(value) >= 1000 else f"{value:,.2f}"
+                if money_currency:
+                    cell = f"{cell} {escape(money_currency)}"
             else:
                 cell = text(value)
             cells.append(f"<td class='{cls}' data-label='{escape(header)}'>{cell}</td>")

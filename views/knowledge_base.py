@@ -19,16 +19,33 @@ CATEGORIES = [
 
 
 def ui_knowledge_base():
-    st.title("📔 SỔ TAY KINH NGHIỆM LOGISTICS")
-    st.caption("Dữ liệu được lưu tập trung trên MongoDB và dùng chung cho toàn đội.")
+    from views import ui_kit
+
+    ui_kit.page_header(
+        "📔 SỔ TAY KINH NGHIỆM LOGISTICS",
+        "Dữ liệu được lưu tập trung trên MongoDB và dùng chung cho toàn đội.",
+        kicker="CÔNG CỤ & THAM KHẢO",
+        native_title=True,
+    )
 
     if "kb_data" not in st.session_state or st.session_state.get("kb_refresh"):
         st.session_state.kb_data = load_knowledge_base()
         st.session_state.kb_refresh = False
 
+    _entries_all = st.session_state.kb_data or []
+    _cat_counts: dict[str, int] = {}
+    for _e in _entries_all:
+        _k = str(_e.get("category") or "⚙️ Khác")
+        _cat_counts[_k] = _cat_counts.get(_k, 0) + 1
+    ui_kit.summary_cards([
+        {"label": "Ghi chú", "value": len(_entries_all), "icon": "menu_book"},
+        {"label": "Phân loại có nội dung", "value": len(_cat_counts), "icon": "category"},
+        {"label": "Nhiều nhất", "value": max(_cat_counts.items(), key=lambda kv: kv[1])[0] if _cat_counts else "—", "icon": "star", "hint": f"{max(_cat_counts.values())} ghi chú" if _cat_counts else None},
+    ])
+
     left, right = st.columns([1, 2.4])
     with left:
-        st.markdown("### ➕ Thêm ghi chú")
+        ui_kit.section("THÊM GHI CHÚ", "tình huống + cách xử lý")
         with st.form("add_kb_form", clear_on_submit=True):
             title = st.text_input("Tiêu đề / Tình huống")
             category = st.selectbox("Phân loại nghiệp vụ", CATEGORIES)
@@ -55,7 +72,7 @@ def ui_knowledge_base():
                     st.error("Không thể lưu dữ liệu vào MongoDB.")
 
     with right:
-        st.markdown("### 🔎 Tra cứu")
+        ui_kit.section("TRA CỨU", "tìm theo tiêu đề, nội dung hoặc từ khóa")
         search = st.text_input("Tìm theo tiêu đề, nội dung hoặc từ khóa", label_visibility="collapsed").strip().lower()
         selected_categories = st.multiselect("Lọc phân loại", CATEGORIES)
         entries = st.session_state.kb_data
@@ -73,7 +90,7 @@ def ui_knowledge_base():
             filtered.append(entry)
 
         if not filtered:
-            st.info("Chưa có nội dung phù hợp.")
+            ui_kit.empty_state("Chưa có nội dung phù hợp.", "Thêm ghi chú mới ở cột bên trái hoặc đổi bộ lọc.")
             return
 
         for entry in filtered:

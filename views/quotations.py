@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from core.auth import can_operate_business
+from views import ui_kit
 from core.config import GETFLY_SERVICES_LIST
 from core.database import (
     generate_shipment_id,
@@ -66,6 +67,7 @@ def _service_options() -> tuple[list[str], dict[str, dict[str, Any]]]:
 
 def _render_quote_table(quotes: dict[str, dict[str, Any]]) -> None:
     st.subheader("Báo giá đang theo dõi")
+    ui_kit.section("DANH SÁCH BÁO GIÁ / DỰ KIẾN", "tìm theo khách hàng, mã báo giá, SALE phụ trách · giá là ước tính")
     c1, c2, c3 = st.columns(3)
     search = c1.text_input("Khách hàng / mã báo giá", key="quote_search")
     status = c2.selectbox("Trạng thái", ["Tất cả", *QUOTE_STATUSES], key="quote_status_filter")
@@ -91,11 +93,12 @@ def _render_quote_table(quotes: dict[str, dict[str, Any]]) -> None:
             "id": quote.get("id", ""),
         })
     if not rows:
-        st.info("Chưa có báo giá phù hợp. Hãy tạo một báo giá mới từ thông tin Logistics thực tế.")
+        ui_kit.empty_state("Chưa có báo giá phù hợp.", "Hãy tạo một báo giá mới từ thông tin Logistics thực tế (tab Báo giá mới).")
         return
     rows.sort(key=lambda item: item["Mã báo giá"], reverse=True)
     df = pd.DataFrame(rows)
     st.dataframe(df.drop(columns=["id"]), use_container_width=True, hide_index=True)
+    st.caption("Giá báo khách / lợi nhuận là BÁO GIÁ / DỰ KIẾN theo snapshot tỷ giá của báo giá; không phải số thực tế của Finance.")
     selected = st.selectbox("Mở báo giá", [row["id"] for row in rows], format_func=lambda qid: next(row["Mã báo giá"] for row in rows if row["id"] == qid), key="quote_open_id")
     if st.button("Mở chi tiết báo giá", type="primary", key="quote_open_button"):
         st.session_state.quote_detail_id = selected
@@ -104,6 +107,7 @@ def _render_quote_table(quotes: dict[str, dict[str, Any]]) -> None:
 
 def _render_new_quote() -> None:
     st.subheader("Tiếp nhận nhu cầu báo giá")
+    ui_kit.section("THÔNG TIN KHÁCH & TUYẾN", "các trường * là bắt buộc để tính phương án")
     customers = _customer_store()
     customer_ids = list(customers)
     if not customer_ids:
@@ -226,11 +230,18 @@ def _render_quote_detail() -> None:
     calc = quote.get("calculation", {})
     st.subheader(f"{quote.get('quote_no', quote_id)} · {quote.get('customer_name', '')}")
     st.caption(f"Trạng thái: {quote.get('status')} · Phiên bản: {quote.get('version', 1)} · Đây là estimate, chưa ghi Finance Ledger.")
+    _stage_order = ["DRAFT", "READY_FOR_REVIEW", "SENT", "ACCEPTED", "READY_TO_CREATE_SHIPMENT"]
+    _current = str(quote.get("status") or "DRAFT")
+    ui_kit.stage_indicator(
+        [("Nháp", "thu thập thông tin"), ("Chờ review", "kiểm tra phương án"), ("Đã gửi khách", "chờ phản hồi"), ("Khách chốt", "chốt giá"), ("Sẵn sàng tạo lô", "chuyển sang Support")],
+        _stage_order.index(_current) if _current in _stage_order else -1,
+    )
+    ui_kit.badges([("BÁO GIÁ / DỰ KIẾN", "warn", "request_quote"), (f"Trạng thái: {_current}", "info"), (f"Phiên bản {quote.get('version', 1)}", "neutral", "history")])
     a, b, c, d = st.columns(4)
-    a.metric("Giá báo khách", f"{calc.get('selling_price_total_vnd', 0):,.0f} VND")
+    a.metric("Giá báo khách (dự kiến)", f"{calc.get('selling_price_total_vnd', 0):,.0f} VND")
     b.metric("Chi phí dự kiến", f"{calc.get('estimated_cost_vnd', 0):,.0f} VND")
     c.metric("Lợi nhuận dự kiến", f"{calc.get('estimated_margin_vnd', 0):,.0f} VND")
-    d.metric("Biên lợi nhuận", f"{calc.get('estimated_margin_pct', 0):,.1f}%")
+    d.metric("Biên lợi nhuận (dự kiến)", f"{calc.get('estimated_margin_pct', 0):,.1f}%")
     with st.expander("Vì sao ra giá này?", expanded=True):
         st.write("Tổng báo giá được quy đổi về VND theo snapshot tỷ giá của quotation; tỷ giá này không thay thế tỷ giá giao dịch thực tế.")
         st.dataframe(pd.DataFrame(quote.get("service_lines", [])), use_container_width=True, hide_index=True)
@@ -296,9 +307,27 @@ def _render_create_shipment(quote: dict[str, Any]) -> None:
 
 
 def ui_sales_module() -> None:
-    st.title("Sales & Báo giá Logistics")
-    st.caption("Khách hỏi giá → thu thập thông tin → tính phương án → báo giá → khách chốt → tạo lô. Giá hiển thị là estimate, không phải Finance Ledger.")
+    ui_kit.page_header(
+        "Sales & Báo giá Logistics",
+        "Khách hỏi giá → thu thập thông tin → tính phương án → báo giá → khách chốt → tạo lô. Giá hiển thị là estimate, không phải Finance Ledger.",
+        kicker="KINH DOANH & ĐỐI TÁC · BÁO GIÁ / DỰ KIẾN",
+        native_title=True,
+    )
+    ui_kit.badges([
+        ("BÁO GIÁ / DỰ KIẾN — không phải số thực tế Finance", "warn", "request_quote"),
+        ("Số thực thu / công nợ: xem Thu Tiền & Công Nợ", "neutral", "payments"),
+    ])
     quotes = _quote_store()
+    status_counts: dict[str, int] = {}
+    for quote in quotes.values():
+        key = str(quote.get("status") or "DRAFT")
+        status_counts[key] = status_counts.get(key, 0) + 1
+    ui_kit.summary_cards([
+        {"label": "Báo giá đang theo dõi", "value": len(quotes), "icon": "request_quote"},
+        {"label": "Nháp / chờ review", "value": status_counts.get("DRAFT", 0) + status_counts.get("READY_FOR_REVIEW", 0), "icon": "edit_note", "tone": "info"},
+        {"label": "Đã gửi khách", "value": status_counts.get("SENT", 0), "icon": "send", "tone": "info"},
+        {"label": "Khách chốt / sẵn sàng tạo lô", "value": status_counts.get("ACCEPTED", 0) + status_counts.get("READY_TO_CREATE_SHIPMENT", 0), "icon": "task_alt", "tone": "ok" if status_counts.get("ACCEPTED", 0) + status_counts.get("READY_TO_CREATE_SHIPMENT", 0) else "neutral"},
+    ])
     tabs = st.tabs(["Danh sách báo giá", "Báo giá mới", "Chi tiết", "Báo giá khung cũ"])
     with tabs[0]: _render_quote_table(quotes)
     with tabs[1]: _render_new_quote()

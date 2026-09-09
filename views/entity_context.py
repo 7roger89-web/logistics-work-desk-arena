@@ -7,6 +7,8 @@ from typing import Any
 
 import streamlit as st
 
+from views import ui_kit
+
 from core.entity_context import build_entity_context, list_context_entities
 from core.shipment_360 import UNKNOWN
 
@@ -80,16 +82,29 @@ def _render_master(view: Mapping[str, Any]) -> None:
     identity = view.get("identity") or {}
     master = view.get("master") or {}
     fields = master.get("fields") or {}
-    st.markdown("### Nhận dạng chính / liên hệ")
+    entity_type = str(view.get("entity_type") or "")
+    type_label = {"customer": "Khách hàng", "factory": "Xưởng / Nhà cung cấp", "partner": "Đối tác / Đại lý"}.get(entity_type, "Đối tác")
+    initials = "".join(part[0] for part in str(_value(identity.get("name")))[:40].split()[:2]).upper() or "?"
+    status = _value(master.get("status"))
+    gaps = [g for g in (view.get("gaps") or []) if g not in ("No known customer master gaps",)]
+    st.markdown(
+        "<div class='lg-partner-card'>"
+        f"<div class='lg-partner-avatar'>{ui_kit.text(initials)}</div>"
+        f"<div><div class='lg-partner-name'>{ui_kit.text(identity.get('name'))}</div>"
+        f"<div class='lg-partner-sub'>{ui_kit.text(type_label)} · ID: {ui_kit.text(identity.get('id'))} · nguồn master: {ui_kit.text(master.get('source'))}</div></div>"
+        + ui_kit.badge(f"Master: {status}", "ok" if status == "KNOWN" else "warn", "verified")
+        + ui_kit.badge(f"Liên hệ: {_value(fields.get('contact'))}", "neutral", "person")
+        + ui_kit.badge(f"ĐT: {_value(fields.get('phone'))}", "neutral", "call")
+        + ui_kit.badge("Chỉ đọc", "neutral", "lock")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
     st.caption(
         f"Nguồn master: {_value(master.get('source'))} · trạng thái: {_value(master.get('status'))}. "
         "Các dòng shipment/lot bên dưới không ghi đè master."
     )
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Entity", _value(identity.get("name")))
-    c2.metric("ID", _value(identity.get("id")))
-    c3.metric("Contact", _value(fields.get("contact")))
-    c4.metric("Phone", _value(fields.get("phone")))
+    ui_kit.section("PHÁP LÝ & LIÊN HỆ", "định danh chính từ master · các trường thiếu hiển thị là Thiếu, không suy đoán")
+    ui_kit.kv_grid([(label, None if _value(value) == UNKNOWN else value) for label, value in fields.items()] or [("Thông tin master", None)])
     with st.expander("Master details", expanded=False):
         st.dataframe(
             [{"Field": label, "Value": _value(value), "Source": _value(master.get("source"))} for label, value in fields.items()],
@@ -132,22 +147,27 @@ def _render_shipment_rows(rows: list[Mapping[str, Any]], key_prefix: str) -> Non
 
 def _render_customer(view: Mapping[str, Any]) -> None:
     requirements = view.get("requirements") or []
-    st.markdown("### Yêu cầu / kỳ vọng giao hàng")
-    st.dataframe(
-        [{"Requirement": _value(row.get("label")), "Value": _value(row.get("value"))} for row in requirements],
-        hide_index=True,
-        use_container_width=True,
-    )
+    ui_kit.summary_cards([
+        {"label": "Lô đang chạy", "value": len(view.get("active_shipments") or []), "icon": "local_shipping"},
+        {"label": "Lô cần chú ý", "value": len(view.get("attention_shipments") or []), "icon": "warning", "tone": "warn" if view.get("attention_shipments") else "neutral"},
+        {"label": "Báo giá / dự kiến", "value": len(view.get("active_quotations") or []), "icon": "request_quote", "hint": "ước tính, không phải Finance"},
+        {"label": "Thỏa thuận", "value": len(view.get("active_agreements") or []), "icon": "handshake"},
+    ])
+    ui_kit.section("YÊU CẦU / KỲ VỌNG GIAO HÀNG")
+    ui_kit.kv_grid([(_value(row.get("label")), None if _value(row.get("value")) == UNKNOWN else row.get("value")) for row in requirements])
     gaps = view.get("gaps") or []
+    ui_kit.section("VẤN ĐỀ CẦN XỬ LÝ", f"{len(gaps)} mục thiếu / UNKNOWN")
     with st.expander(f"Missing / unknown data ({len(gaps)})", expanded=bool(gaps)):
         for gap in gaps:
             st.markdown(f"- {_value(gap)}")
+    ui_kit.section("LÔ HÀNG LIÊN QUAN", "đang chạy · cần chú ý · lịch sử")
     with st.expander(f"Active shipments ({len(view.get('active_shipments') or [])})", expanded=True):
         _render_shipment_rows(list(view.get("active_shipments") or []), "customer_active")
     with st.expander(f"Shipments needing attention ({len(view.get('attention_shipments') or [])})", expanded=bool(view.get("attention_shipments"))):
         _render_shipment_rows(list(view.get("attention_shipments") or []), "customer_attention")
     with st.expander(f"Historical shipment context ({len(view.get('history_shipments') or [])})", expanded=False):
         _render_shipment_rows(list(view.get("history_shipments") or []), "customer_history")
+    ui_kit.section("BÁO GIÁ / DỰ KIẾN & THỎA THUẬN", "số dự kiến từ Kinh Doanh — không phải số thực tế của Finance")
     with st.expander(f"Báo giá đã chốt ({len(view.get('active_quotations') or [])})", expanded=bool(view.get("active_quotations"))):
         _render_customer_quotation_rows(list(view.get("active_quotations") or []), "customer_quote")
     with st.expander(f"Thỏa thuận thương mại ({len(view.get('active_agreements') or [])})", expanded=bool(view.get("active_agreements"))):
@@ -257,7 +277,13 @@ def _render_factory(view: Mapping[str, Any]) -> None:
 
 def _render_partner(view: Mapping[str, Any]) -> None:
     roles = ", ".join(_value(role) for role in view.get("roles") or [UNKNOWN])
-    st.markdown(f"### Vai trò theo lô · {roles}")
+    ui_kit.summary_cards([
+        {"label": "Lô liên quan", "value": len(view.get("shipments") or []), "icon": "local_shipping"},
+        {"label": "Chứng từ / bằng chứng", "value": len(view.get("documents") or []), "icon": "folder"},
+        {"label": "Projection tài chính", "value": len(view.get("financial_projection") or []), "icon": "payments", "hint": "canonical, theo từng lô"},
+        {"label": "Vấn đề cần xử lý", "value": len([g for g in view.get("gaps") or [] if _value(g) != UNKNOWN]), "icon": "warning", "tone": "warn" if view.get("gaps") else "neutral"},
+    ])
+    ui_kit.section("LÔ LIÊN QUAN", f"vai trò theo lô · {roles}")
     st.caption("Partner/Agent context là workspace tổng quát. Finance bên dưới chỉ là projection canonical theo từng shipment.")
     rows = list(view.get("shipments") or [])
     if rows:
@@ -279,6 +305,7 @@ def _render_partner(view: Mapping[str, Any]) -> None:
         _render_shipment_rows(rows, "partner_shipments")
     else:
         st.info("UNKNOWN — chưa có shipment liên quan đến partner/agent này.")
+    ui_kit.section("HỢP ĐỒNG & CHỨNG TỪ", "bằng chứng theo lô · không có CRUD ở đây")
     with st.expander(f"Evidence / documents ({len(view.get('documents') or [])})", expanded=True):
         documents = view.get("documents") or []
         if documents:
@@ -297,6 +324,7 @@ def _render_partner(view: Mapping[str, Any]) -> None:
             )
         else:
             st.caption("UNKNOWN — chưa có document evidence liên quan.")
+    ui_kit.section("THANH TOÁN & CÔNG NỢ", "projection canonical theo lô · số thực tế nằm ở Thu Tiền & Công Nợ / Công Nợ A Bò")
     with st.expander("Canonical financial projection", expanded=False):
         st.caption(_value(view.get("financial_note")))
         finance = view.get("financial_projection") or []
@@ -311,6 +339,7 @@ def _render_partner(view: Mapping[str, Any]) -> None:
             )
         else:
             st.caption("UNKNOWN — không có projection canonical theo shipment.")
+    ui_kit.section("VẤN ĐỀ CẦN XỬ LÝ & LỊCH SỬ")
     with st.expander("Missing / unknown data", expanded=True):
         for gap in view.get("gaps") or [UNKNOWN]:
             st.markdown(f"- {_value(gap)}")
@@ -336,30 +365,24 @@ def _selector(entity_type: str, options: list[dict[str, str]]) -> None:
 def ui_entity_context() -> None:
     """Render the generic read-only entity workspace."""
 
-    st.markdown(
-        """
-        <style>
-        .entity-context-kicker { color: #0B6E99; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
-        .entity-context-note { color: #475467; font-size: .82rem; border-left: 3px solid #0B6E99; background: #F0F7FA; padding: .55rem .75rem; margin: .65rem 0 .9rem; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
     shipments = st.session_state.get("db_shipments", {})
     customers = st.session_state.get("db_customers", {})
     options = list_context_entities(customers, shipments)
     request = _request()
 
-    st.markdown("<div class='entity-context-kicker'>ENTITY CONTEXT · READ-ONLY WORKSPACE</div>", unsafe_allow_html=True)
-    st.title("Khách / Nhà máy / Đối tác 360")
-    st.markdown(
-        "<div class='entity-context-note'>Master identity stays separate from shipment/lot facts. "
-        "Missing data remains UNKNOWN. Navigation here does not save or change business data.</div>",
-        unsafe_allow_html=True,
+    ui_kit.page_header(
+        "Khách / Nhà máy / Đối tác 360",
+        kicker="KINH DOANH & ĐỐI TÁC · NGỮ CẢNH ĐỐI TÁC · CHỈ ĐỌC",
+        native_title=True,
+    )
+    ui_kit.callout(
+        "Master identity stays separate from shipment/lot facts. "
+        "Missing data remains UNKNOWN. Navigation here does not save or change business data.",
+        "info",
     )
 
     if not request["entity_type"] or not request["entity_key"]:
-        st.info("Chọn một entity để xem context quanh các shipment liên quan.")
+        ui_kit.empty_state("Chọn một entity để xem context quanh các shipment liên quan.", "Khách hàng · Xưởng / Nhà cung cấp · Đối tác / Đại lý")
         c1, c2, c3 = st.tabs(["Customer 360", "Factory / Supplier 360", "Partner / Agent 360"])
         with c1:
             _selector("customer", options)
@@ -376,7 +399,8 @@ def ui_entity_context() -> None:
         if back_col.button("← Về Lô hàng 360", key="entity_back_shipment", use_container_width=True):
             _open_shipment(request["return_shipment_id"])
     else:
-        back_label = "← Quay lại Việc Cần Xử Lý" if request.get("return_page") == "Việc Cần Xử Lý" else "← Quay lại Trang Tổng Quan"
+        return_page = request.get("return_page") or ""
+        back_label = f"← Quay lại {return_page}" if return_page else "← Quay lại Trang Tổng Quan"
         if back_col.button(back_label, key="entity_back_dashboard", use_container_width=True):
             _go_dashboard()
     nav_col.caption("Read-only context · source-bound fields · no entity CRUD")

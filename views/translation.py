@@ -98,10 +98,14 @@ def _render_usage(rows: list[UsageRow]) -> None:
 
 def ui_translation() -> None:
     """Render the bounded DeepL text-only workflow."""
-    st.title("🌐 Dịch Thuật DeepL")
-    st.caption(
+    from views import ui_kit
+
+    ui_kit.page_header(
+        "🌐 Dịch Thuật DeepL",
         "Dịch văn bản nghiệp vụ logistics qua DeepL. API key chỉ được dùng "
-        "ở backend và không hiển thị trên giao diện."
+        "ở backend và không hiển thị trên giao diện.",
+        kicker="CÔNG CỤ & THAM KHẢO",
+        native_title=True,
     )
     st.markdown(
         """

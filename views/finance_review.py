@@ -18,6 +18,7 @@ from core.finance_review import (
 )
 from core.shipment_360 import UNKNOWN
 from views.entity_context import open_entity_context
+from views import ui_kit
 
 
 def _value(value: Any, default: str = UNKNOWN) -> str:
@@ -141,11 +142,19 @@ def _render_partner_position(snapshot: Mapping[str, Any]) -> None:
 
 def ui_finance_review() -> None:
     st.markdown("<div class='review-kicker'>FINANCIAL CONTROL · READ-ONLY INVESTIGATION</div>", unsafe_allow_html=True)
-    st.title("Đối Soát Tài Chính")
-    st.caption(
+    ui_kit.page_header(
+        "Đối Soát Tài Chính",
         "Ai phải trả ai, bao nhiêu, tiền tệ gì, đã allocation thế nào và vì sao ra số này. "
-        "Canonical ledger là source of truth; không có nút sửa số dư, Resolve hay auto-allocation."
+        "Canonical ledger là source of truth; không có nút sửa số dư, Resolve hay auto-allocation.",
+        kicker="TÀI CHÍNH & ĐỐI SOÁT · SỐ THỰC TẾ · CHỈ ĐỌC",
+        native_title=True,
     )
+    ui_kit.badges([
+        ("CHƯA ĐỐI SOÁT = UNALLOCATED / REVIEW REQUIRED", "warn", "pending"),
+        ("ĐÃ KHỚP = CONFIRMED / SETTLED", "ok", "check_circle"),
+        ("CÓ CHÊNH LỆCH = OVERDUE / DUE SOON", "danger", "difference"),
+        ("CẦN XỬ LÝ = UNKNOWN / RESTRICTED / MISSING EVIDENCE", "info", "flag"),
+    ])
 
     if st.session_state.get("finance_review_return"):
         if st.button("← Quay lại Finance Review", key="finance_review_return_button"):
@@ -183,12 +192,21 @@ def ui_finance_review() -> None:
 
     items = list(snapshot.get("items") or [])
     summary = snapshot.get("summary") or {}
+    counts = summary.get("counts") or {}
+    ui_kit.section("TÓM TẮT ĐỐI SOÁT", "đếm theo trạng thái canonical · tiền tệ được giữ riêng ở bảng dưới")
+    ui_kit.summary_cards([
+        {"label": "Chưa đối soát", "value": counts.get("UNALLOCATED", 0) + counts.get("REVIEW REQUIRED", 0), "icon": "pending", "tone": "warn" if counts.get("UNALLOCATED", 0) + counts.get("REVIEW REQUIRED", 0) else "neutral", "hint": "UNALLOCATED · REVIEW REQUIRED"},
+        {"label": "Đã khớp", "value": counts.get("CONFIRMED", 0) + counts.get("SETTLED", 0), "icon": "check_circle", "tone": "ok" if counts.get("CONFIRMED", 0) + counts.get("SETTLED", 0) else "neutral", "hint": "CONFIRMED · SETTLED"},
+        {"label": "Có chênh lệch / quá hạn", "value": counts.get("OVERDUE", 0) + counts.get("DUE SOON", 0), "icon": "difference", "tone": "danger" if counts.get("OVERDUE", 0) else ("warn" if counts.get("DUE SOON", 0) else "neutral"), "hint": "OVERDUE · DUE SOON"},
+        {"label": "Cần xử lý", "value": counts.get("UNKNOWN", 0) + counts.get("RESTRICTED", 0) + counts.get("MISSING EVIDENCE", 0), "icon": "flag", "tone": "info" if counts.get("UNKNOWN", 0) + counts.get("RESTRICTED", 0) + counts.get("MISSING EVIDENCE", 0) else "neutral", "hint": "UNKNOWN · RESTRICTED · MISSING EVIDENCE"},
+        {"label": "Held credit", "value": counts.get("HELD CREDIT", 0), "icon": "account_balance_wallet"},
+    ])
+    ui_kit.section("SỐ DƯ THEO LOẠI TIỀN", "confirmed loại trừ các trạng thái không chắc chắn · không quy đổi giữa các loại tiền")
     st.dataframe(
         pd.DataFrame(_summary_rows(summary) or [{"Currency": UNKNOWN, "Formula": "Chưa có canonical finance record phù hợp"}]),
         hide_index=True,
         use_container_width=True,
     )
-    counts = summary.get("counts") or {}
     st.caption(
         f"{len(items)} financial records · {sum(counts.get(status, 0) for status in ACTIONABLE_STATUSES)} actionable/review signals · "
         "UNKNOWN/restricted/evidence không được âm thầm cộng vào confirmed totals."
@@ -200,7 +218,7 @@ def ui_finance_review() -> None:
         st.info("Không có canonical financial record phù hợp. Điều này không đồng nghĩa hệ thống đã complete.")
         return
 
-    st.markdown("#### Investigation queue")
+    ui_kit.section("HÀNG ĐỢI ĐỐI SOÁT", f"{len(items)} bản ghi · chọn một dòng để xem lineage và nơi xử lý")
     st.dataframe(_table_rows(items), hide_index=True, use_container_width=True, height=min(660, 120 + len(items) * 42))
     item_ids = [_value(item.get("item_id")) for item in items]
     selected_id = st.selectbox("Chọn financial item để xem lineage", item_ids, key="finance_review_selected_item")
@@ -220,6 +238,7 @@ def ui_finance_review() -> None:
             "raw_record": selected.get("raw_record"),
         })
 
+    ui_kit.section("ĐỐI SOÁT", "mở nơi cần xử lý · màn hình này không ghi số")
     b1, b2, b3 = st.columns([1.35, 1.35, 2.5])
     if b1.button("Mở Shipment 360", type="primary", use_container_width=True, key="finance_open_shipment"):
         _open_shipment(selected)

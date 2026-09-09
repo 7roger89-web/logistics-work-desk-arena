@@ -42,6 +42,7 @@ from core.reconciliation import (
 )
 from core.utils import to_decimal
 from views.historical_review import ui_historical_review
+from views import ui_kit
 
 
 PARTNER = {"party_type": "partner", "party_id": "ABO", "name": "A Bò"}
@@ -508,6 +509,36 @@ def _show_position(position: Mapping[str, Any]) -> None:
         return
 
     explanations = build_all_currency_explanations(position)
+
+    # Donor presentation: one partner card, one row per currency — NEVER summed across currencies.
+    ui_kit.section("VỊ TRÍ THEO TỪNG LOẠI TIỀN", "mỗi loại tiền là một dòng riêng · không quy đổi, không cộng gộp")
+    ui_kit.data_table(
+        [
+            ("currency", "Đơn vị tiền", "strong"),
+            ("payable", "TT phải trả A Bò", "num"),
+            ("held", "A Bò đang giữ / credit", "num"),
+            ("received", "Nhận hộ", "num"),
+            ("paid", "Chi hộ", "num"),
+            ("net", "Vị trí confirmed", "num"),
+            ("review", "Cần xử lý", "html"),
+        ],
+        [
+            {
+                "currency": currency,
+                "payable": _money((totals.get(currency) or {}).get("payable_to_partner", 0), currency),
+                "held": _money((totals.get(currency) or {}).get("held_credit", 0), currency),
+                "received": _money((totals.get(currency) or {}).get("received_on_behalf", 0), currency),
+                "paid": _money((totals.get(currency) or {}).get("paid_on_behalf", 0), currency),
+                "net": _money((totals.get(currency) or {}).get("net_after_valid_allocations", 0), currency),
+                "review": ui_kit.badge(
+                    f"{sum(1 for row in inbox if str(row.get('currency') or '').upper() == currency)} dòng",
+                    "warn" if any(str(row.get("currency") or "").upper() == currency for row in inbox) else "ok",
+                ),
+            }
+            for currency in currencies
+        ],
+    )
+
     for currency in currencies:
         values = totals.get(currency) or {}
         review_rows = [row for row in inbox if str(row.get("currency") or "").upper() == currency]
@@ -747,10 +778,30 @@ def ui_partner_reconciliation_desk() -> None:
         "SALE Thành · bàn đối soát chỉ đọc · dữ liệu lấy từ canonical ledger · "
         "không có sổ Thành riêng"
     )
+    st.markdown(
+        "<div class='lg-partner-card'>"
+        "<div class='lg-partner-avatar'>AB</div>"
+        "<div><div class='lg-partner-name'>A Bò</div>"
+        "<div class='lg-partner-sub'>Đối tác · Sale nội bộ: Thành · projection canonical, read-only</div></div>"
+        + "".join(
+            ui_kit.badge(label, tone, icon_name)
+            for label, tone, icon_name in (
+                ("Công nợ đối tác", "info", "handshake"),
+                ("Không cộng gộp loại tiền", "neutral", "currency_exchange"),
+                ("Chỉ đọc", "neutral", "lock"),
+            )
+        )
+        + "</div>",
+        unsafe_allow_html=True,
+    )
     st.info(
         "Nguyên tắc đọc số: TT phải trả A Bò và tiền A Bò đang giữ/credit là hai bucket khác nhau. "
         "Tiền nhận hộ, chi hộ, chưa phân bổ, chưa xác minh và bị giới hạn không bị gộp lẫn."
     )
+    if st.button("XEM NGỮ CẢNH ĐỐI TÁC", key="log_c04_open_partner_context"):
+        from views.entity_context import open_entity_context
+
+        open_entity_context("partner", PARTNER.get("name") or "A Bò", return_page="Công Nợ A Bò")
 
     mode = _mode_navigation()
     if mode == "historical_review":

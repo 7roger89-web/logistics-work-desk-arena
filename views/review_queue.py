@@ -120,20 +120,7 @@ def _table_rows(items: list[Mapping[str, Any]]) -> list[dict[str, str]]:
 def ui_review_queue() -> None:
     """Render the actionable review queue without adding a writer."""
 
-    st.markdown(
-        """
-        <style>
-        .review-kicker { color: #0B6E99; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
-        .review-title { color: #102A43; font-size: 1.65rem; line-height: 1.15; margin: .15rem 0 .25rem; }
-        .review-note { color: #475467; font-size: .82rem; border-left: 3px solid #0B6E99; background: #F0F7FA; padding: .6rem .8rem; margin: .65rem 0 1rem; }
-        .review-readonly { color: #667085; font-size: .76rem; }
-        .review-action { border-left: 3px solid #D97706; background: #FFFBEB; padding: .55rem .75rem; color: #7C4A03; }
-        @media (max-width: 900px) { .review-title { font-size: 1.35rem; } }
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # .review-* styles come from views.ui_kit.COMPONENT_CSS (donor tokens)
     st.markdown("<div class='review-kicker'>VIỆC CẦN XỬ LÝ · CHỨNG TỪ + BẤT THƯỜNG</div>", unsafe_allow_html=True)
     st.markdown("<h1 class='review-title'>Chứng Từ & Việc Cần Xử Lý</h1>", unsafe_allow_html=True)
     st.markdown(
@@ -152,12 +139,15 @@ def ui_review_queue() -> None:
     agreements = st.session_state.get("db_agreements") or {}
     items = build_review_queue_items(shipments, agreements=agreements, quotes=quotes)
     summary = summarize_review_queue(items)
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Cần xử lý", summary["total"])
-    m2.metric("Nghiêm trọng", summary["critical"])
-    m3.metric("Cần chú ý", summary["attention"])
-    m4.metric("Đang chờ", summary["waiting"])
-    m5.metric("Số lô hàng", summary["shipments"])
+    from views import ui_kit
+
+    ui_kit.summary_cards([
+        {"label": "Cần xử lý", "value": summary["total"], "icon": "checklist"},
+        {"label": "Nghiêm trọng", "value": summary["critical"], "icon": "error", "tone": "danger" if summary["critical"] else "neutral"},
+        {"label": "Cần chú ý", "value": summary["attention"], "icon": "warning", "tone": "warn" if summary["attention"] else "neutral"},
+        {"label": "Đang chờ", "value": summary["waiting"], "icon": "hourglass_top", "tone": "info" if summary["waiting"] else "neutral"},
+        {"label": "Số lô hàng", "value": summary["shipments"], "icon": "local_shipping"},
+    ])
 
     categories = ["Tất cả"] + [label_vi(c) for c in CATEGORIES]
     _cat_by_vi = {label_vi(c): c for c in CATEGORIES}
