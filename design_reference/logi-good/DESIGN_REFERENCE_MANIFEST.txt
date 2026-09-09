@@ -1,0 +1,16 @@
+DESIGN_REFERENCE=LOGI_GOOD
+SOURCE_REPOSITORY=7roger89-web/logi-good
+SOURCE_REF=main
+SOURCE_SHA=974b7cfff2a73ef78d53b7233e1ae932063a5dcf
+REFERENCE_ROOT=design_reference/logi-good
+PURPOSE=ARENA EXACT UI/UX REFERENCE ONLY
+BUSINESS_AUTHORITY=TARGET_LOGISTICS_APP
+MOCK_DATA_POLICY=DO_NOT_COPY_AS_REAL_TRUTH
+CRITICAL_FIXES=
+- VẬN HÀNH keeps five separate routes including standalone Lô Hàng
+- Mobile Lô hàng opens Lô Hàng, never Việc Cần Xử Lý
+- Dashboard links to shipment; it does not absorb shipment list/workspace
+- ShipmentDetail layout follows logi-good, but every operationally editable field needs a real input/save path
+- UNKNOWN must not silently become zero
+TARGET_WORK_BRANCH=arena/logi-good-exact-v3
+TARGET_BASE_SHA=dd55c5ef107c85d3fe55b903d6f2ecb8c5a3a61a
