@@ -350,6 +350,61 @@ def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -
     }
 
 
+def receivables_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Global customer-receivable worklist over real shipment finance truth.
+
+    One row per shipment. ``receivable`` / ``outstanding`` come from the
+    canonical ``core.logic`` snapshot ONLY when at least one actual service
+    line is booked; otherwise they stay UNKNOWN (None) — a blank book is a
+    statement about knowledge, never a manufactured zero. Quote Estimate is a
+    separate object and is never used to fill a gap. ``received`` is the
+    non-reversed customer receipt total and is a genuine zero when no payment
+    exists.
+
+    Totals are grouped by currency and never summed across currencies
+    (no FX engine, no fake "grand total").
+    """
+    out_rows: list[dict[str, Any]] = []
+    totals: dict[str, dict[str, float | None]] = {}
+
+    for row in rows:
+        fin = row.get("finance") if isinstance(row.get("finance"), Mapping) else {}
+        currency = (text(fin.get("currency")) or "VND").upper()
+        has_actual = bool(fin.get("hasActualLines"))
+        receivable = num(fin.get("receivable")) if has_actual else None
+        received = num(fin.get("received"))
+        outstanding = num(fin.get("outstanding")) if has_actual else None
+
+        out_rows.append({
+            "id": text(row.get("id")),
+            "customer": text(row.get("customer")),
+            "customerId": text(row.get("customerId")),
+            "currency": currency,
+            "receivable": receivable,
+            "received": received,
+            "outstanding": outstanding,
+            "sale": text(row.get("sale")),
+            "support": text(row.get("support")),
+            "status": text(row.get("status")),
+            "statusTone": text(row.get("statusTone")),
+            "hasActualLines": has_actual,
+        })
+
+        if not has_actual:
+            continue
+        bucket = totals.setdefault(
+            currency, {"receivable": 0.0, "received": 0.0, "outstanding": 0.0}
+        )
+        if receivable is not None:
+            bucket["receivable"] += receivable
+        if received is not None:
+            bucket["received"] += received
+        if outstanding is not None:
+            bucket["outstanding"] += outstanding
+
+    return {"rows": out_rows, "totals": totals}
+
+
 # --------------------------------------------------------------------------
 # History — real audit only
 # --------------------------------------------------------------------------
@@ -431,7 +486,10 @@ def shipment_projection(
         "contract": contract_id,
         "route": " → ".join(part for part in (text(transport.get("pol")), text(transport.get("pod"))) if part) or UNKNOWN_LABEL,
         "borderVN": text(transport.get("pod")) or UNKNOWN_LABEL,
-        "sale": "",
+        # Sale owner = the dashboard's authoritative owner resolution
+        # (sale_owner / internal_sale_owner / assigned_to / assignee), or
+        # "Chưa phân công" when none is assigned. Never a fabricated name.
+        "sale": text(view.get("owner")) or UNKNOWN_LABEL,
         "support": text(shipment.get("updated_by")),
         "status": status_label,
         "statusTone": status_tone,

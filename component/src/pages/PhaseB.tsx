@@ -13,7 +13,6 @@ const PATH_NAMES: Record<string, string> = {
   "/thoa-thuan-ban-giao": "Thòa thuận mua bán",
   "/hop-dong": "Hợp đồng",
   "/hop-dong/moi": "Tạo hợp đồng mới",
-  "/tai-chinh/thu-tien": "Thu tiền",
   "/tai-chinh/doi-soat": "Đối soát",
   "/tai-chinh/cong-no-doi-tac": "Công nợ đối tác",
   "/bao-cao-ceo": "Báo cáo CEO",

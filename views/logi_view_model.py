@@ -292,6 +292,10 @@ def build_view_model() -> dict:
         "agreements": c1["agreements"],
         "authority": c1["authority"],
         "notifications": _notifications(rows),
+        # C2C — global customer-receivable worklist, a read-only projection over
+        # the SAME shipment finance truth already delivered above. No new ledger,
+        # no new accounting model: one row per shipment + per-currency totals.
+        "receivables": rd.receivables_projection(rows),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)

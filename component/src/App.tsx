@@ -20,6 +20,7 @@ import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
 import CreateShipment from "./pages/CreateShipment";
 import Tracking from "./pages/Tracking";
+import Receivables from "./pages/Receivables";
 import Customers from "./pages/Customers";
 import SalesQuotes from "./pages/SalesQuotes";
 import Agreements from "./pages/Agreements";
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/tao-lo-moi" element={<CreateShipment />} />
             <Route path="/theo-doi" element={<Tracking />} />
             <Route path="/khach-hang" element={<Customers />} />
+            <Route path="/tai-chinh/thu-tien" element={<Receivables />} />
             <Route path="/kinh-doanh-bao-gia" element={<SalesQuotes />} />
             <Route path="/thoa-thuan-ban-giao" element={<Agreements />} />
             <Route path="/hop-dong" element={<Contracts />} />
