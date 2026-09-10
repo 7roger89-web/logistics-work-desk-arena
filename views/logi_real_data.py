@@ -192,6 +192,78 @@ def _quote_lines(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> list
     return []
 
 
+def _partner_projection(shipment_id: str) -> dict[str, Any]:
+    """Partner payable truth for ONE shipment, read from the canonical ledger.
+
+    UNKNOWN != ZERO: with no canonical obligation/payment records the money
+    figures stay None (rendered as “—”), never 0. The partner identity comes
+    from the ledger when established; before that, the single existing
+    authority_agents master record is offered as a clearly-marked suggestion
+    so the shell can start the journey without inventing a partner.
+    """
+    from core.database import load_authority_agents
+    from core.financial_ledger import shipment_partner_position
+
+    position = shipment_partner_position(shipment_id)
+    result: dict[str, Any] = {
+        "partnerId": None,
+        "partnerName": None,
+        "suggested": False,
+        "status": position.get("status"),
+        "payable": None,
+        "paid": None,
+        "remaining": None,
+        "currency": None,
+        "payments": [],
+    }
+    groups = position.get("partners") or []
+    if len(groups) == 1:
+        group = groups[0]
+        party = group.get("partner") if isinstance(group.get("partner"), Mapping) else {}
+        result["partnerId"] = text(party.get("party_id"))
+        result["partnerName"] = text(party.get("name"))
+        if group.get("status") == "CONFIRMED" and len(group.get("totals_by_currency") or {}) == 1:
+            currency = next(iter(group["totals_by_currency"]))
+            values = group["totals_by_currency"][currency]
+            result.update(
+                {
+                    "payable": values["payable"],
+                    "paid": values["paid"],
+                    "remaining": values["remaining"],
+                    "currency": currency,
+                }
+            )
+        result["payments"] = [
+            {
+                "id": text(row.get("transaction_id")),
+                "requestId": text(row.get("request_id")),
+                "date": _ddmmyyyy(row.get("occurred_at")),
+                "kind": text(row.get("transaction_kind")) or "payment",
+                "amount": num(row.get("amount")),
+                "ccy": text(row.get("currency")),
+                "allocated": num(row.get("allocated")),
+                "unallocated": num(row.get("unallocated")),
+                "note": text(row.get("note")),
+            }
+            for row in (group.get("payments") or [])
+            if isinstance(row, Mapping)
+        ]
+        return result
+
+    # Nothing established yet: suggest the single existing catalog agent, if any.
+    try:
+        agents = load_authority_agents() or {}
+    except Exception:  # noqa: BLE001 - suggestion is best-effort only
+        agents = {}
+    docs = [d for d in agents.values() if isinstance(d, Mapping) and text(d.get("agent_id") or d.get("id"))]
+    if len(docs) == 1:
+        doc = docs[0]
+        result["suggested"] = True
+        result["partnerId"] = text(doc.get("agent_id") or doc.get("id"))
+        result["partnerName"] = text(doc.get("legal_name")) or result["partnerId"]
+    return result
+
+
 def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> dict[str, Any]:
     """Finance Actual from the canonical snapshot; AR/AP from core.logic.
 
@@ -270,6 +342,10 @@ def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -
         "profit": profit,
         "profitMargin": profit_margin,
         "payments": payments,
+        # C2B — partner payable truth for THIS shipment, from the canonical
+        # ledger (financial_obligations/transactions/allocations). `paid` above
+        # stays UNKNOWN; the partner block carries the ledger-derived figures.
+        "partner": _partner_projection(text(shipment.get("id"))),
         "source": "core.logic.calculate_from_shipment over data.3.4",
     }
 

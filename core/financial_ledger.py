@@ -1305,6 +1305,174 @@ def project_partner_financial_position(
     }
 
 
+def shipment_partner_position(
+    shipment_id: str,
+    *,
+    db: Any = None,
+) -> dict[str, Any]:
+    """Derive the payable/paid/remaining truth for ONE shipment's partner debt.
+
+    Read-only projection over the canonical collections, filtered by shipment
+    linkage on the records themselves.  UNKNOWN != ZERO: when no obligation or
+    payment record exists for the shipment, every money figure stays ``None``
+    — absence of a record is never reported as 0.  With an obligation present,
+    its allocation history is complete information, so derived values (including
+    a true 0) are reported per currency and never combined across currencies.
+    """
+
+    sid = str(shipment_id or "").strip()
+    empty: dict[str, Any] = {
+        "shipment_id": sid,
+        "partners": [],
+        "partner": None,
+        "partner_key": None,
+        "currency": None,
+        "payable": None,
+        "paid": None,
+        "remaining": None,
+        "totals_by_currency": {},
+        "obligations": [],
+        "payments": [],
+        "status": UNKNOWN if sid else REVIEW_REQUIRED,
+        "derived": True,
+        "read_only": True,
+    }
+    if not sid:
+        empty["error"] = "shipment id is required"
+        return empty
+    db = db if db is not None else database.get_db()
+    if db is None:
+        return {**empty, "status": UNKNOWN, "error": "MongoDB is not available"}
+    try:
+        obligations = [
+            dict(item)
+            for item in _all(db, OBLIGATIONS)
+            if isinstance(item, Mapping) and _effective(item) and sid in _shipment_ids(item)
+        ]
+        transactions = [
+            dict(item)
+            for item in _all(db, TRANSACTIONS)
+            if isinstance(item, Mapping) and _effective(item) and sid in _shipment_ids(item)
+        ]
+        allocations = _all(db, ALLOCATIONS)
+        if not obligations and not transactions:
+            return empty
+
+        obligation_rows: list[dict[str, Any]] = []
+        groups: dict[str, dict[str, Any]] = {}
+        for obligation in obligations:
+            position = derive_obligation_position(obligation, allocations)
+            partner = deepcopy(obligation.get("to_party"))
+            partner_key = str(obligation.get("to_party_key") or party_key(partner))
+            group = groups.setdefault(
+                partner_key,
+                {"partner": partner, "partner_key": partner_key, "obligations": [], "payments": []},
+            )
+            row = {
+                "obligation_id": obligation.get("id"),
+                "purpose": obligation.get("purpose"),
+                "note": deepcopy(obligation.get("note")),
+                "due_date": deepcopy(obligation.get("due_date")),
+                "created_at": deepcopy(obligation.get("created_at")),
+                "shipment_ids": deepcopy(obligation.get("shipment_ids") or []),
+                "from_party": deepcopy(obligation.get("from_party")),
+                "to_party": deepcopy(obligation.get("to_party")),
+                "evidence_refs": deepcopy(obligation.get("evidence_refs") or []),
+                "source_record_ids": [obligation.get("id"), *position["allocation_ids"]],
+                **position,
+            }
+            group["obligations"].append(row)
+            obligation_rows.append({**row, "_partner_key": partner_key})
+
+        payment_rows: list[dict[str, Any]] = []
+        for transaction in transactions:
+            position = derive_transaction_position(transaction, allocations)
+            payment_rows.append(
+                {
+                    "transaction_id": transaction.get("id"),
+                    "request_id": transaction.get("request_id"),
+                    "transaction_kind": transaction.get("transaction_kind"),
+                    "occurred_at": deepcopy(transaction.get("occurred_at")),
+                    "note": deepcopy(transaction.get("note")),
+                    "source_party": deepcopy(transaction.get("source_party")),
+                    "holder_party": deepcopy(transaction.get("holder_party")),
+                    "holder_party_key": transaction.get("holder_party_key"),
+                    "source_record_ids": [transaction.get("id"), *position["allocation_ids"]],
+                    **position,
+                }
+            )
+
+        result_partners: list[dict[str, Any]] = []
+        for partner_key, group in groups.items():
+            group_payments = [
+                row
+                for row in payment_rows
+                if row["holder_party_key"] == partner_key
+                or any(
+                    allocation.get("obligation_id") == obligation["obligation_id"]
+                    for allocation in allocations
+                    if _effective(allocation) and allocation.get("transaction_id") == row["transaction_id"]
+                )
+            ]
+            confirmed_currencies = {
+                row["currency"] for row in group["obligations"] if row["status"] == CONFIRMED
+            }
+            mixed = len(confirmed_currencies) > 1
+            totals: dict[str, dict[str, float]] = {
+                currency: {"payable": 0.0, "paid": 0.0, "remaining": 0.0}
+                for currency in confirmed_currencies
+            }
+            for row in group["obligations"]:
+                if row["status"] != CONFIRMED:
+                    continue
+                bucket = totals.setdefault(row["currency"], {"payable": 0.0, "paid": 0.0, "remaining": 0.0})
+                bucket["payable"] += float(row["amount"])
+                bucket["paid"] += float(row["allocated"])
+                bucket["remaining"] += float(row["outstanding"])
+            group_status = (
+                REVIEW_REQUIRED
+                if mixed or any(row["status"] != CONFIRMED for row in group["obligations"])
+                else CONFIRMED
+            )
+            result_partners.append(
+                {
+                    "partner": group["partner"],
+                    "partner_key": partner_key,
+                    "status": group_status,
+                    "totals_by_currency": totals,
+                    "obligations": group["obligations"],
+                    "payments": group_payments,
+                }
+            )
+
+        result_partners.sort(key=lambda item: str(item["partner_key"]))
+        result = {
+            **empty,
+            "partners": result_partners,
+            "payments": payment_rows,
+            "obligations": obligation_rows,
+        }
+        if len(result_partners) == 1:
+            group = result_partners[0]
+            result["partner"] = group["partner"]
+            result["partner_key"] = group["partner_key"]
+            result["status"] = group["status"]
+            result["totals_by_currency"] = group["totals_by_currency"]
+            if group["status"] == CONFIRMED and len(group["totals_by_currency"]) == 1:
+                currency = next(iter(group["totals_by_currency"]))
+                values = group["totals_by_currency"][currency]
+                result["currency"] = currency
+                result["payable"] = values["payable"]
+                result["paid"] = values["paid"]
+                result["remaining"] = values["remaining"]
+        elif len(result_partners) > 1:
+            result["status"] = REVIEW_REQUIRED
+        return result
+    except (PyMongoError, FinancialLedgerValidationError, TypeError, ValueError) as exc:
+        database._set_last_error(str(exc))
+        return {**empty, "status": UNKNOWN, "error": str(exc)}
+
+
 def build_partner_financial_position(
     party: Mapping[str, Any] | str,
     *,
@@ -1371,4 +1539,5 @@ __all__ = [
     "reverse_allocation",
     "save_obligation",
     "save_transaction",
+    "shipment_partner_position",
 ]
