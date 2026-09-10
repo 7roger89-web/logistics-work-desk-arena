@@ -405,6 +405,133 @@ def receivables_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"rows": out_rows, "totals": totals}
 
 
+def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
+    """Global THANH TOÁN ĐỐI TÁC / PHẢI TRẢ worklist over canonical C2B truth.
+
+    Reuses ``core.financial_ledger.shipment_partner_position`` per shipment —
+    the SAME derived payable/paid/remaining the per-shipment C2B slice already
+    proves — and flattens it to one row per SHIPMENT × PARTNER × CURRENCY.
+
+    UNKNOWN != ZERO: a shipment with no canonical obligation/payment record
+    contributes NO row (absence is never reported as a 0 payable). Currencies
+    are never summed together (no FX engine). Partner identity resolves against
+    the authority_agents master and only falls back to the canonical record's
+    party name when the master has no match.
+    """
+
+    from core.database import get_db, load_authority_agents
+    from core.financial_ledger import shipment_partner_position
+
+    db = get_db() if db is None else db
+    empty: dict[str, Any] = {
+        "rows": [],
+        "totals_by_currency": {},
+        "status": "UNKNOWN",
+        "derived": True,
+        "read_only": True,
+    }
+    if db is None:
+        return {**empty, "error": "MongoDB is not available"}
+
+    try:
+        agents = load_authority_agents() or {}
+    except Exception:  # noqa: BLE001 - name resolution is best-effort only
+        agents = {}
+
+    def _master_name(party_id: str, fallback: str) -> str:
+        doc = agents.get(party_id) if isinstance(agents.get(party_id), Mapping) else None
+        if doc is None:
+            doc = next(
+                (d for d in agents.values() if isinstance(d, Mapping) and text(d.get("agent_id")) == party_id),
+                None,
+            )
+        if doc is None:
+            return fallback or party_id
+        return text(doc.get("legal_name")) or fallback or party_id
+
+    shipment_ids = [
+        text(doc.get("id"))
+        for doc in db.shipments.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1})
+        if isinstance(doc, Mapping)
+    ]
+
+    rows: list[dict[str, Any]] = []
+    totals: dict[str, dict[str, Any]] = {}
+    for sid in shipment_ids:
+        if not sid:
+            continue
+        position = shipment_partner_position(sid, db=db)
+        for group in position.get("partners") or []:
+            if not isinstance(group, Mapping):
+                continue
+            party = group.get("partner") if isinstance(group.get("partner"), Mapping) else {}
+            partner_id = text(party.get("party_id"))
+            if not partner_id:
+                continue
+            partner_name = _master_name(partner_id, text(party.get("name")))
+            by_currency: dict[str, dict[str, Any]] = {}
+            for obligation in group.get("obligations") or []:
+                if not isinstance(obligation, Mapping):
+                    continue
+                currency = text(obligation.get("currency")).upper()
+                if not currency:
+                    continue
+                bucket = by_currency.setdefault(
+                    currency,
+                    {
+                        "payable": 0.0,
+                        "paid": 0.0,
+                        "remaining": 0.0,
+                        "status": "CONFIRMED",
+                        "obligationIds": [],
+                    },
+                )
+                bucket["payable"] += float(obligation.get("amount") or 0)
+                bucket["paid"] += float(obligation.get("allocated") or 0)
+                bucket["remaining"] += float(obligation.get("outstanding") or 0)
+                obligation_id = text(obligation.get("obligation_id"))
+                if obligation_id and obligation_id not in bucket["obligationIds"]:
+                    bucket["obligationIds"].append(obligation_id)
+                if text(obligation.get("status")).upper() != "CONFIRMED":
+                    bucket["status"] = "REVIEW_REQUIRED"
+            for currency, values in by_currency.items():
+                rows.append(
+                    {
+                        "id": f"{sid}|{partner_id}|{currency}",
+                        "partnerId": partner_id,
+                        "partnerName": partner_name,
+                        "shipmentId": sid,
+                        "currency": currency,
+                        "payable": values["payable"],
+                        "paid": values["paid"],
+                        "remaining": values["remaining"],
+                        "status": values["status"],
+                        "obligationIds": values["obligationIds"],
+                    }
+                )
+                total = totals.setdefault(
+                    currency, {"payable": 0.0, "paid": 0.0, "remaining": 0.0, "count": 0}
+                )
+                total["payable"] += values["payable"]
+                total["paid"] += values["paid"]
+                total["remaining"] += values["remaining"]
+                total["count"] += 1
+
+    rows.sort(key=lambda r: (r["shipmentId"], r["partnerId"], r["currency"]))
+    overall = (
+        "UNKNOWN"
+        if not rows
+        else ("REVIEW_REQUIRED" if any(r["status"] != "CONFIRMED" for r in rows) else "CONFIRMED")
+    )
+    return {
+        "rows": rows,
+        "totals_by_currency": totals,
+        "status": overall,
+        "derived": True,
+        "read_only": True,
+    }
+
+
 # --------------------------------------------------------------------------
 # History — real audit only
 # --------------------------------------------------------------------------
