@@ -301,6 +301,36 @@ console.log("STEP 7 — open LO-0306");
     assert.ok(t.includes(fact), `missing fact not listed: ${fact}`);
   }
   ok(`Shipment Detail LO-0306 rendered (status, ${missing} real missing facts)`);
+
+  // "Bổ sung ngay" must route to the tab that really owns the fact. The Phase
+  // A mapping keyed off label strings the real checklist never emits, so every
+  // row fell through to Tài chính. Assert the real labels route correctly.
+  // Each tab button renders a desktop label span plus a mobile short-label
+  // span; read only the desktop one so the comparison is unambiguous.
+  const activeTab = () => {
+    const tabs = $("button", window.document.getElementById("workspace-tabs"));
+    const on = tabs.find((b) => b.className.includes("bg-[#0f2a4a]"));
+    return on ? text($("span", on)[0]) : null;
+  };
+  const expectRoute = [
+    ["Số tờ khai nhập khẩu", "Nhập khẩu & Giao hàng"],
+    ["Xe giao VN + tài xế", "Nhập khẩu & Giao hàng"],
+    ["Xác nhận đã giao hàng", "Nhập khẩu & Giao hàng"],
+  ];
+  for (const [fact, expected] of expectRoute) {
+    // back to tab 1 so every assertion starts from a known state
+    await click("Lấy hàng & Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+    const box = $("div").find((d) => d.className.includes("border-dashed") && text(d).includes("Thiếu " + fact));
+    assert.ok(box, `missing box for ${fact} not found`);
+    const btn = $("button", box).find((b) => text(b).includes("Bổ sung ngay"));
+    assert.ok(btn, `Bổ sung ngay button missing for ${fact}`);
+    btn.click();
+    await tick(160);
+    assert.equal(activeTab(), expected, `"${fact}" routed to ${activeTab()}, expected ${expected}`);
+  }
+  // restore the default tab so the next step starts from a clean state
+  await click("Lấy hàng & Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+  ok("Bổ sung ngay routes each real missing fact to the tab that owns it");
 }
 
 // ---------------------------------------------------------------------------
