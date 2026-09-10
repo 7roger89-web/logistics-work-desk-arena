@@ -36,6 +36,35 @@ export function fmtVND(n: number | null | undefined): string {
 }
 
 /**
+ * Amount with its explicit currency code (VND / USD / CNY).
+ *
+ * NEVER converts. The backend carries one authoritative currency per shipment
+ * (`shipments.currency` → `data["3.4"].currency`) and there is no FX engine in
+ * the repository, so a USD amount is shown as a USD amount and is never summed
+ * with another currency. The "VND" fallback mirrors core.logic's own default
+ * (`shipment.get("currency", finance.get("currency", "VND"))`), it is not an
+ * invented conversion.
+ */
+export function fmtCcy(n: number | null | undefined, ccy?: string | null): string {
+  const code = (ccy || "VND").toUpperCase();
+  if (isUnknown(n)) return `${UNKNOWN} ${code}`;
+  return `${fmtMoney(n)} ${code}`;
+}
+
+/** Millions ("tr") tagged with the explicit currency. UNKNOWN stays UNKNOWN. */
+export function fmtMillionsCcy(n: number | null | undefined, ccy?: string | null): string {
+  const code = (ccy || "VND").toUpperCase();
+  if (isUnknown(n)) return `${UNKNOWN} tr ${code}`;
+  return `${(Number(n) / 1e6).toLocaleString("vi-VN")} tr ${code}`;
+}
+
+/** Percentage cell (actual margin). UNKNOWN renders as an em dash, never 0%. */
+export function fmtPct(n: number | null | undefined): string {
+  if (isUnknown(n)) return UNKNOWN;
+  return `${Number(n).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}%`;
+}
+
+/**
  * Millions ("tr") as used by the donor finance tiles.
  * UNKNOWN stays UNKNOWN instead of collapsing to "0 tr".
  */

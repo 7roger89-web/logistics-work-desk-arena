@@ -236,14 +236,29 @@ def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -
         if isinstance(p, Mapping)
     ]
 
+    # ACTUAL PROFIT comes only from booked actual service lines. core.logic
+    # legitimately returns 0.0 for an empty book, but presenting that as an
+    # actual profit would manufacture a result from unknown inputs, so profit
+    # and margin stay UNKNOWN until at least one actual line is booked.
+    # Quote Estimate is never used to fill the gap.
+    has_actual_lines = bool(details)
+    profit = num(summary.get("profit")) if has_actual_lines else UNKNOWN
+    revenue_net = num(summary.get("revenue_net"))
+    profit_margin = (
+        round(profit / revenue_net * 100, 2)
+        if profit is not None and revenue_net not in (None, 0)
+        else UNKNOWN
+    )
+
     return {
         "quote": _quote_lines(shipment, quotes),
         "actual": actual,
         "currency": currency,
+        "hasActualLines": has_actual_lines,
         # AR — canonical snapshot from core.logic (receivable = net + output VAT).
         "receivable": num(summary.get("receivable")),
         "received": num(summary.get("paid")),
-        "receivableNet": num(summary.get("revenue_net")),
+        "receivableNet": revenue_net,
         "outputVat": num(summary.get("output_vat")),
         "outstanding": num(summary.get("debt")),
         # AP — cost side of the same service lines.
@@ -252,7 +267,8 @@ def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -
         # "already paid to partners" is UNKNOWN, not zero.
         "paid": UNKNOWN,
         "commission": num((finance.get("commission") or {}).get("total") if isinstance(finance.get("commission"), Mapping) else finance.get("commission")),
-        "profit": num(summary.get("profit")),
+        "profit": profit,
+        "profitMargin": profit_margin,
         "payments": payments,
         "source": "core.logic.calculate_from_shipment over data.3.4",
     }

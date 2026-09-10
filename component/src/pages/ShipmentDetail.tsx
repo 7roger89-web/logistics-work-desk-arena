@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, fmtMillions, fmtNum, fmtText, cx } from "../lib/format";
+import { fmtMoney, fmtVND, fmtNum, fmtText, fmtCcy, fmtMillionsCcy, fmtPct, cx } from "../lib/format";
 
 const TABS = [
   { id: "lay-hang", label: "Lấy hàng & Xuất khẩu", short: "Lấy hàng" },
@@ -24,16 +24,23 @@ export default function ShipmentDetail() {
   const [showDeliver, setShowDeliver] = useState(false);
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
+  const [lineForm, setLineForm] = useState({ name: "", qty: "1", price: "", cost: "", vat: "8" });
   const [form, setForm] = useState<Record<string, string>>({});
   const [savedTick, setSavedTick] = useState(0);
 
-  useEffect(() => { setForm({}); }, [id, tab]);
+  useEffect(() => { setForm({}); setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" }); }, [id, tab]);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const val = (k: string, fb: string) => form[k] ?? fb;
 
   const linkedContract = useMemo(() => contracts.find((c) => c.id === s?.contract), [contracts, s]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
+
+  // The ONE authoritative currency of this shipment (shipments.currency →
+  // data["3.4"].currency). The backend has no FX engine, so every amount is
+  // labelled with this code and amounts of different currencies are never
+  // summed. The "VND" fallback mirrors core.logic's own default.
+  const ccy = s.finance.currency || "VND";
 
   // -----------------------------------------------------------------------
   // Phase B write contract: every save is ONE typed event → the single Python
@@ -111,27 +118,52 @@ export default function ShipmentDetail() {
     else toast("Không gửi được", "Component chưa kết nối backend.", "red");
   };
 
-  // Stable request identity per payment intent: a re-render or double click
-  // replays the SAME id, which the backend treats as one idempotent request.
-  const payIntentRef = useRef("");
+  // Stable request identity per PAYMENT INTENT.
+  //
+  // The identity is minted when the payment sheet is opened and then held for
+  // that one intent, so a re-render or a double click replays the SAME id and
+  // the backend's request registry treats it as one idempotent request. It is
+  // deliberately NOT derived from shipmentId|amount|kind: that made a second
+  // genuine receipt of the same amount and kind replay the first request and
+  // never post. Idempotency is scoped to the request, not to the amount.
   const payRequestRef = useRef("");
+  const openPay = () => {
+    payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    setShowPay(true);
+  };
   const recordPay = () => {
     const amt = Number(payAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", "Nhập số tiền VND rồi bấm Lưu — ví dụ 50.000.000.", "red"); return; }
-    const intent = `${s.id}|${amt}|${payKind}`;
-    if (payIntentRef.current !== intent) {
-      payIntentRef.current = intent;
-      payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    }
-    dispatch("payment_record", {
+    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền ${ccy} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
+    const sent = dispatch("payment_record", {
       shipmentId: s.id,
       amount: amt,
       requestId: payRequestRef.current,
       date: new Date().toISOString().slice(0, 10),
       note: payKind,
     });
+    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
     setShowPay(false); setPayAmt("");
-    toast("Đã gửi khoản thu " + fmtVND(amt), "Ghi qua save_direct_shipment_payment với request identity.", "green");
+    toast("Đã gửi khoản thu " + fmtCcy(amt, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+  };
+
+  // FINANCE ACTUAL — one booked service line in data["3.4"].details, saved
+  // through the canonical writer. Quote Estimate is never touched here.
+  const lineSet = (k: keyof typeof lineForm, v: string) => setLineForm((f) => ({ ...f, [k]: v }));
+  const saveActualLine = () => {
+    if (!lineForm.name.trim()) { toast("Thiếu tên dịch vụ", "Nhập tên dòng thực tế — ví dụ: Cước xe TQ.", "red"); return; }
+    const sent = dispatch("finance_actual_save", {
+      shipmentId: s.id,
+      line: {
+        name: lineForm.name.trim(),
+        qty: lineForm.qty,
+        price: lineForm.price,
+        cost: lineForm.cost,
+        vat: lineForm.vat,
+      },
+    });
+    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
+    toast("Đã gửi dòng thực tế", "Ghi vào data['3.4'].details rồi core.logic tính lại phải thu / chi phí / lợi nhuận.", "green");
+    setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" });
   };
 
   const exportPXK = () => {
@@ -324,27 +356,79 @@ export default function ShipmentDetail() {
             </section>
             <section className="rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5">
               <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 inline-block rounded-md px-2 py-0.5">Thực tế — đã phát sinh, có chứng từ</p>
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2">Chi phí thực tế</h3>
-              {s.finance.actual.map((c) => (<StateRow key={c.label} label={c.label} value={<span className="font-bold text-[16px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[12px] font-bold text-emerald-700">{c.ccy}</span></span>} />))}
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2">Doanh thu &amp; chi phí thực tế ({ccy})</h3>
+              {s.finance.actual.length === 0 && (
+                <p className="text-[14px] text-slate-500">Chưa ghi nhận dòng thực tế nào — doanh thu / chi phí / lợi nhuận thực tế đang <b>chưa xác định</b>, không phải 0.</p>
+              )}
+              {s.finance.actual.map((c, i) => (
+                <div key={`${c.label}-${i}`} className="py-2 border-b border-slate-100 last:border-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-[13.5px] text-slate-500 font-medium pt-0.5">{c.label}</span>
+                    <span className="text-right font-semibold text-slate-800 text-[14.5px]">
+                      <span className="font-bold text-[16px]">{fmtCcy(c.amount, c.ccy)}</span>
+                    </span>
+                  </div>
+                  <p className="text-[12.5px] text-slate-400 mt-0.5 text-right">
+                    Chi phí {fmtCcy(c.cost, c.ccy)}{c.qty != null ? ` · SL ${fmtNum(c.qty)}` : ""}{c.vat != null ? ` · VAT ${fmtNum(c.vat)}%` : ""}
+                  </p>
+                </div>
+              ))}
+              <StateRow label="Doanh thu thực tế (chưa VAT)" value={<span className="font-bold">{fmtCcy(s.finance.receivableNet, ccy)}</span>} />
+              <StateRow label="Chi phí thực tế" value={<span className="font-bold">{fmtCcy(s.finance.payable, ccy)}</span>} />
+              {/* ACTUAL PROFIT — from booked actuals only. Never from the quote. */}
+              <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+                <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700">Lợi nhuận thực tế</p>
+                <div className="grid grid-cols-2 gap-2 mt-1.5 text-center">
+                  <div><p className="text-[12px] text-slate-500 font-semibold">Lãi / Lỗ thực tế</p>
+                    <p className={cx("font-extrabold text-[17px]", s.finance.profit == null ? "text-slate-400" : s.finance.profit < 0 ? "text-red-700" : "text-emerald-700")}>{fmtCcy(s.finance.profit, ccy)}</p></div>
+                  <div><p className="text-[12px] text-slate-500 font-semibold">Biên lợi nhuận</p>
+                    <p className={cx("font-extrabold text-[17px]", s.finance.profitMargin == null ? "text-slate-400" : s.finance.profitMargin < 0 ? "text-red-700" : "text-emerald-700")}>{fmtPct(s.finance.profitMargin)}</p></div>
+                </div>
+                <p className="text-[12.5px] text-slate-500 mt-2">
+                  = Doanh thu thực tế − chi phí thực tế − hoa hồng. Không gồm VAT đầu ra. Không lấy số báo giá để bù chỗ trống.
+                </p>
+              </div>
+              {/* One booked actual service line → the canonical writer. */}
+              <div className="mt-3 rounded-xl border border-slate-200 p-3">
+                <p className="text-[13px] font-extrabold text-[#0f2a4a] mb-2">Ghi nhận dòng thực tế</p>
+                <div className="grid gap-2.5">
+                  <Field label="Dịch vụ" required error={!lineForm.name.trim() ? "Nhập tên dịch vụ" : undefined}>
+                    <input value={lineForm.name} onChange={(e) => lineSet("name", e.target.value)} placeholder="VD: Cước xe TQ Đông Bằng → Hữu Nghị" className={inputCls(!lineForm.name.trim() ? "missing" : "ok")} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Field label={`Giá bán (${ccy})`}><input value={lineForm.price} onChange={(e) => lineSet("price", e.target.value)} inputMode="numeric" placeholder="VD: 62000000" className={inputCls()} /></Field>
+                    <Field label={`Chi phí (${ccy})`}><input value={lineForm.cost} onChange={(e) => lineSet("cost", e.target.value)} inputMode="numeric" placeholder="VD: 57000000" className={inputCls()} /></Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Field label="Số lượng"><input value={lineForm.qty} onChange={(e) => lineSet("qty", e.target.value)} inputMode="numeric" placeholder="VD: 1" className={inputCls()} /></Field>
+                    <Field label="VAT %" hint="Bỏ trống = chưa xác định"><input value={lineForm.vat} onChange={(e) => lineSet("vat", e.target.value)} inputMode="decimal" placeholder="VD: 8" className={inputCls()} /></Field>
+                  </div>
+                </div>
+                <PrimaryBtn onClick={saveActualLine} className="mt-3 w-full">💾 LƯU DÒNG THỰC TẾ</PrimaryBtn>
+              </div>
             </section>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-2"><Wallet size={19} className="text-emerald-600" /> Phải thu khách hàng (VND)</h3>
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-2"><Wallet size={19} className="text-emerald-600" /> Phải thu khách hàng ({ccy})</h3>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillions(s.finance.receivable)}</p></div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-emerald-700">{fmtMillions(s.finance.received)}</p></div>
-                <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-[12px] text-red-600 font-semibold">Còn phải thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-red-700">{fmtMillions(s.finance.outstanding)}</p></div>
+                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillionsCcy(s.finance.receivable, ccy)}</p></div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-emerald-700">{fmtMillionsCcy(s.finance.received, ccy)}</p></div>
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-[12px] text-red-600 font-semibold">Còn phải thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-red-700">{fmtMillionsCcy(s.finance.outstanding, ccy)}</p></div>
               </div>
-              <button onClick={() => setShowPay(true)} className="btn-press touch-target mt-3 w-full rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>
+              <p className="text-[12.5px] text-slate-400 mt-2">Phải thu = doanh thu thực tế + VAT đầu ra. Còn phải thu = phải thu − đã thu, do backend tính.</p>
+              <button onClick={openPay} className="btn-press touch-target mt-3 w-full rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>
             </section>
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-2">Phải trả đối tác (VND)</h3>
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-2">Phải trả đối tác ({ccy})</h3>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillions(s.finance.payable)}</p></div>
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtMillions(s.finance.paid)}</p></div>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtMillions(s.finance.paid == null ? null : (s.finance.payable ?? 0) - s.finance.paid)}</p></div>
+                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillionsCcy(s.finance.payable, ccy)}</p></div>
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtMillionsCcy(s.finance.paid, ccy)}</p></div>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtMillionsCcy(s.finance.paid == null ? null : (s.finance.payable ?? 0) - s.finance.paid, ccy)}</p></div>
               </div>
+              {/* UNKNOWN != ZERO: the shipment document carries no supplier-payment
+                  ledger, so "đã trả" stays an em dash — it is never shown as 0. */}
+              <p className="text-[12.5px] text-slate-400 mt-2">Phải trả là chi phí đã phát sinh. Tiền đã trả đối tác chưa có sổ theo dõi trên lô nên để “—”, không suy ra 0.</p>
               <Link to="/tai-chinh/doi-soat" className="btn-press touch-target mt-3 w-full rounded-xl border-2 border-slate-200 font-bold min-h-[52px] flex items-center justify-center">MỞ ĐỐI SOÁT</Link>
             </section>
           </div>
@@ -443,7 +527,7 @@ export default function ShipmentDetail() {
       <div className="xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2">
         {tab === "nhap" && !s.importInfo.delivered && <button onClick={() => setShowDeliver(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">✅ XÁC NHẬN ĐÃ GIAO</button>}
         {tab === "chung-tu" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
-        {tab === "tai-chinh" && <button onClick={() => setShowPay(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
+        {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
         {(tab === "lay-hang" || tab === "lich-su") && <button onClick={savePickup} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">💾 LƯU THAY ĐỔI</button>}
       </div>
 
@@ -467,11 +551,12 @@ export default function ShipmentDetail() {
           <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => setShowPay(false)} />
           <div className="relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
             <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận thanh toán — {s.id}</h3>
-            <p className="text-[13.5px] text-slate-500">Còn phải thu: <b className="text-red-700">{fmtVND(s.finance.outstanding)}</b></p>
+            <p className="text-[13.5px] text-slate-500">Còn phải thu: <b className="text-red-700">{fmtCcy(s.finance.outstanding, ccy)}</b></p>
             <div className="grid gap-3 mt-3">
               <Field label="Loại khoản"><select value={payKind} onChange={(e) => setPayKind(e.target.value)} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option><option>Trả đối tác</option></select></Field>
-              <Field label="Số tiền (VND)" required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
+              <Field label={`Số tiền (${ccy})`} required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
             </div>
+            <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({ccy}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
               <GhostBtn onClick={() => setShowPay(false)}>Hủy</GhostBtn>
               <SuccessBtn onClick={recordPay}>💾 LƯU KHOẢN THU</SuccessBtn>

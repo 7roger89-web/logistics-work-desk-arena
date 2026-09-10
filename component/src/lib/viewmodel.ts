@@ -143,6 +143,9 @@ export interface Finance {
   quote: MoneyLine[];
   actual: MoneyLine[];
   currency?: string;
+  /** True when at least one actual service line is booked. Without one,
+   *  actual revenue/cost/profit are UNKNOWN — never a manufactured 0. */
+  hasActualLines?: boolean;
   receivable: MaybeNum;
   received: MaybeNum;
   receivableNet?: MaybeNum;
@@ -153,6 +156,8 @@ export interface Finance {
   paid: MaybeNum;
   commission?: MaybeNum;
   profit?: MaybeNum;
+  /** profit / revenue_net * 100 — UNKNOWN unless both are known. */
+  profitMargin?: MaybeNum;
   payments: Payment[];
   source?: string;
 }
