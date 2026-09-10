@@ -105,3 +105,67 @@ C2B work.
 `PRODUCTION_DB_USED=NO` — every write ran against the isolated mongomock
 staging database (`logistics_staging`); `logi_sandbox` never touches a real
 `MONGO_URI` and the fixture generator asserts the staging transport.
+
+---
+
+## Addendum — live app evidence through the real entry point
+
+The Arena Preview control plane returned a generic "Something went wrong"
+while the application itself was healthy, so the C2A Finance path was verified
+through the real entry point instead: `AppTest.from_file("app.py")`, which runs
+`app.py` → `views.web_app.main()` → `build_view_model()` → the single
+Components v2 root.
+
+Preview diagnosis (in order):
+
+| Check | Result |
+| --- | --- |
+| Streamlit already running? | Yes — the intended `streamlit run app.py` process |
+| Port 8501 occupied? | Yes, by that process (`0.0.0.0:8501`) |
+| Is it the intended app? | Yes |
+| Latest stdout/stderr | Clean boot, no exception, no traceback |
+| `GET /_stcore/health` | `200`, body `ok` |
+| `GET /` | `200`, 7459 bytes |
+| `GET /` with an external preview `Host` header | `200` |
+| → classification | **Arena preview/control-plane problem, not a Logistics code failure** |
+
+Live run on the one existing shipment `LO-0308`:
+
+```
+1) app.py boots via real entry point - no exception
+   transport=SANDBOX_STAGING  db=logistics_staging
+   BEFORE  receivable=66,960,000 net=62,000,000 vat=4,960,000 cost=57,000,000
+           paid_to_partner=None outstanding=66,960,000
+           profit=5,000,000 margin=8.06 ccy=VND
+   hasActualLines=True actual_lines=1 quote_lines=0
+   component data channel JSON-serializable: OK
+
+2) finance_actual_save OK  lineId=PAY-LINE-3AA8B61BD4A2
+   payment_record   OK  paymentId=PAY-A17EED6F...
+   SAME intent replay -> ok=True samePaymentId=True
+   NEW intent (same amount+kind) -> distinctPaymentId=True
+
+3) FRESH app.py run (reopen). payload version a4f5342a -> 581595fb
+   AFTER   receivable=70,200,000 net=65,000,000 cost=59,200,000
+           received=80,000,000 outstanding=-9,800,000
+           profit=5,800,000 margin=8.92
+   payments retained = [REQ-LIVE-1 40,000,000 ; REQ-LIVE-2 40,000,000]
+   outstanding == receivable - received : True
+   paid-to-partner still UNKNOWN (None) : True
+   actual lines retained = 2
+
+4) audit actions = ['create', 'direct_payment_created', 'update']
+```
+
+Notes on that run:
+
+* Step 3 intentionally posts **two** receipts (the second with a genuinely new
+  request identity) to prove a new intent is not swallowed as a replay, so
+  `received` is 80,000,000 against a 70,200,000 receivable and `outstanding`
+  is the correct **negative** 9,800,000 credit. The committed acceptance test
+  posts one receipt and asserts the ordinary positive balance
+  (outstanding 30,200,000).
+* `margin` moves 8.06 → 8.92 because the extra booked line changes the
+  revenue/cost mix. Both values come from `core.logic`, never from the quote.
+* `db=logistics_staging` confirms the isolated mongomock staging database;
+  production was never contacted.
