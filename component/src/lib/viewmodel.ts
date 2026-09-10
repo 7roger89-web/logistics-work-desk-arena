@@ -511,6 +511,41 @@ export interface Notif {
   route?: string;
 }
 
+/**
+ * C2C — one row of the global customer-receivable worklist. receivable /
+ * outstanding are UNKNOWN (null) until an actual service line is booked;
+ * received is the non-reversed customer receipt total (a genuine 0 when no
+ * payment exists). Totals are grouped by currency — never summed across
+ * currencies (no FX engine).
+ */
+export interface ReceivableRow {
+  id: string;
+  customer: string;
+  customerId?: string;
+  currency: string;
+  receivable: MaybeNum;
+  received: MaybeNum;
+  outstanding: MaybeNum;
+  sale: string;
+  support: string;
+  status: string;
+  statusTone: Tone;
+  hasActualLines: boolean;
+}
+
+export interface ReceivableTotals {
+  [currency: string]: {
+    receivable: MaybeNum;
+    received: MaybeNum;
+    outstanding: MaybeNum;
+  };
+}
+
+export interface ReceivablesViewModel {
+  rows: ReceivableRow[];
+  totals: ReceivableTotals;
+}
+
 export interface HomeTile {
   label: string;
   value: number;
@@ -569,6 +604,8 @@ export interface ViewModel {
   agreements?: Agreement[];
   authority?: { companies: AuthorityParty[]; agents: AuthorityParty[] };
   notifications: Notif[];
+  /** C2C — global customer-receivable worklist (read-only projection). */
+  receivables?: ReceivablesViewModel;
   unknownLabel?: string;
 }
 
