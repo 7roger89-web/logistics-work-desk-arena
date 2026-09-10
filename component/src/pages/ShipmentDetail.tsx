@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
 import { fmtMoney, fmtVND, fmtNum, fmtText, fmtCcy, fmtMillionsCcy, fmtPct, cx } from "../lib/format";
@@ -24,11 +24,12 @@ export default function ShipmentDetail() {
   const [showDeliver, setShowDeliver] = useState(false);
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
+  const [partnerAmt, setPartnerAmt] = useState("");
   const [lineForm, setLineForm] = useState({ name: "", qty: "1", price: "", cost: "", vat: "8" });
   const [form, setForm] = useState<Record<string, string>>({});
   const [savedTick, setSavedTick] = useState(0);
 
-  useEffect(() => { setForm({}); setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" }); }, [id, tab]);
+  useEffect(() => { setForm({}); setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" }); setPartnerAmt(""); }, [id, tab]);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const val = (k: string, fb: string) => form[k] ?? fb;
 
@@ -144,6 +145,55 @@ export default function ShipmentDetail() {
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
     setShowPay(false); setPayAmt("");
     toast("Đã gửi khoản thu " + fmtCcy(amt, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+  };
+
+  // C2B — partner payable / payment to partner. SAME contract as receipts:
+  // one stable request identity per PAYABLE/PAYMENT INTENT, minted with the
+  // amount draft and held until the operator changes it, so a double click
+  // replays the SAME id and the canonical action registry absorbs it. A new
+  // genuine intent (new amount draft) mints a new id and stays distinct.
+  const partnerOblRef = useRef("");
+  const partnerPayRef = useRef("");
+  const newPartnerIntent = (prefix: string) =>
+    `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const mintPartnerObl = () => { partnerOblRef.current = newPartnerIntent("POBL"); };
+  const mintPartnerPay = () => { partnerPayRef.current = newPartnerIntent("PPAY"); };
+  const recordPartnerPayable = () => {
+    const partner = s.finance.partner;
+    if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red"); return; }
+    const amt = Number(partnerAmt.replace(/\D/g, ""));
+    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền phải trả ${ccy} — ví dụ 57.000.000.`, "red"); return; }
+    if (!partnerOblRef.current) mintPartnerObl();
+    const sent = dispatch("partner_payable_record", {
+      shipmentId: s.id,
+      partnerId: partner.partnerId,
+      amount: amt,
+      currency: ccy,
+      requestId: partnerOblRef.current,
+      note: "Phải trả chi phí đối tác theo thực tế lô",
+    });
+    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
+    setPartnerAmt("");
+    toast("Đã gửi phải trả đối tác " + fmtCcy(amt, ccy), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+  };
+  const recordPartnerPayment = () => {
+    const partner = s.finance.partner;
+    if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red"); return; }
+    const amt = Number(partnerAmt.replace(/\D/g, ""));
+    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền thanh toán ${ccy} — ví dụ 20.000.000.`, "red"); return; }
+    if (!partnerPayRef.current) mintPartnerPay();
+    const sent = dispatch("partner_payment_record", {
+      shipmentId: s.id,
+      partnerId: partner.partnerId,
+      amount: amt,
+      currency: ccy,
+      requestId: partnerPayRef.current,
+      date: new Date().toISOString().slice(0, 10),
+      note: "Chuyển khoản thanh toán đối tác",
+    });
+    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
+    setPartnerAmt("");
+    toast("Đã gửi thanh toán đối tác " + fmtCcy(amt, ccy), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
   };
 
   // FINANCE ACTUAL — one booked service line in data["3.4"].details, saved
@@ -421,14 +471,74 @@ export default function ShipmentDetail() {
             </section>
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-2">Phải trả đối tác ({ccy})</h3>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillionsCcy(s.finance.payable, ccy)}</p></div>
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtMillionsCcy(s.finance.paid, ccy)}</p></div>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtMillionsCcy(s.finance.paid == null ? null : (s.finance.payable ?? 0) - s.finance.paid, ccy)}</p></div>
+              {/* C2B — the selected partner + payable/paid/remaining come from the
+                  canonical ledger block (finance.partner), never from client math.
+                  UNKNOWN stays “—”; a true zero from the ledger stays 0. */}
+              {(() => {
+                const partner = s.finance.partner;
+                const partnerId = partner?.partnerId ?? "";
+                const partnerName = partner?.partnerName;
+                const suggested = partner?.suggested === true;
+                return (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-[12px] text-slate-500 font-semibold">Đối tác:</span>
+                      {partnerName ? (
+                        <span className="inline-flex items-center gap-1.5 text-[13.5px] font-extrabold text-[#0f2a4a]">
+                          <Building2 size={15} className="text-[#1e5aa8]" /> {partnerName}
+                          <span className="text-[11.5px] font-bold text-slate-400">{partnerId}</span>
+                          {suggested && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">đề xuất từ danh mục</span>}
+                        </span>
+                      ) : (
+                        <span className="text-[13.5px] font-bold text-slate-400">—</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillionsCcy(partner?.payable ?? null, ccy)}</p></div>
+                      <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtMillionsCcy(partner?.paid ?? null, ccy)}</p></div>
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtMillionsCcy(partner?.remaining ?? null, ccy)}</p></div>
+                    </div>
+                  </>
+                );
+              })()}
+              {/* UNKNOWN != ZERO: before any canonical payable/payment record the
+                  figures above stay an em dash — they are never shown as 0. Once
+                  the ledger has rows, mọi số đều do backend đọc ra. */}
+              <p className="text-[12.5px] text-slate-400 mt-2">Phải trả / đã trả / còn lại đọc từ sổ tài chính canonical (nghĩa vụ + thanh toán + phân bổ) theo lô này. Chưa có sổ ⇒ “—”, không suy ra 0. Đơn vị: {ccy} — không quy đổi.</p>
+
+              {/* Payment history — canonical transactions bound to this shipment. */}
+              {(s.finance.partner?.payments?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <p className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Lịch sử trả đối tác</p>
+                  <div className="space-y-1.5">
+                    {s.finance.partner!.payments.map((p, i) => (
+                      <div key={p.id || i} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5">
+                        <span className="text-[12px] font-bold text-slate-400 w-[80px]">{p.date || "—"}</span>
+                        <span className="flex-1 min-w-[140px] text-[12.5px] text-slate-600">{p.note || p.kind}{p.requestId ? ` · ${p.requestId}` : ""}</span>
+                        <span className="font-extrabold text-[14.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[11px] text-slate-400">{p.ccy}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* C2B write actions — SAME typed-event contract as receipts:
+                  typed event → Python dispatcher → RBAC → canonical writer →
+                  audit → fresh backend read. Frontend visibility is NOT
+                  authorization; a denied role only sees the backend's refusal.
+                  The intent id is minted with the amount draft and held for that
+                  one intent (re-click replays the SAME id → idempotent). */}
+              <div className="mt-3 rounded-xl border border-slate-200 p-3">
+                <p className="text-[13px] font-extrabold text-[#0f2a4a] mb-2">Ghi nhận phải trả & thanh toán đối tác</p>
+                <Field label={`Số tiền (${ccy})`} hint="Ví dụ: 20.000.000 — để trống là UNKNOWN, không tự thành 0">
+                  <input value={partnerAmt} onChange={(e) => { setPartnerAmt(e.target.value); mintPartnerObl(); mintPartnerPay(); }} inputMode="numeric" placeholder="VD: 20000000" className={inputCls()} />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5">
+                  <GhostBtn onClick={recordPartnerPayable} className="min-h-[48px]">📌 GHI NHẬN PHẢI TRẢ</GhostBtn>
+                  <PrimaryBtn onClick={recordPartnerPayment} className="min-h-[48px]">💸 TRẢ ĐỐI TÁC</PrimaryBtn>
+                </div>
               </div>
-              {/* UNKNOWN != ZERO: the shipment document carries no supplier-payment
-                  ledger, so "đã trả" stays an em dash — it is never shown as 0. */}
-              <p className="text-[12.5px] text-slate-400 mt-2">Phải trả là chi phí đã phát sinh. Tiền đã trả đối tác chưa có sổ theo dõi trên lô nên để “—”, không suy ra 0.</p>
+
               <Link to="/tai-chinh/doi-soat" className="btn-press touch-target mt-3 w-full rounded-xl border-2 border-slate-200 font-bold min-h-[52px] flex items-center justify-center">MỞ ĐỐI SOÁT</Link>
             </section>
           </div>

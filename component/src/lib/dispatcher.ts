@@ -22,6 +22,9 @@ export type LogiEventName =
   | "finance_actual_save"
   | "payment_record"
   | "payment_correction"
+  // C2B — single-partner payable slice (canonical financial ledger).
+  | "partner_payable_record"
+  | "partner_payment_record"
   | "shipment_create"
   | "pxk_generate"
   // Phase C1 — business-contracts slice (KHÁCH HÀNG → BÁO GIÁ → THỎA THUẬN →
@@ -51,6 +54,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "finance_actual_save",
   "payment_record",
   "payment_correction",
+  "partner_payable_record",
+  "partner_payment_record",
   "shipment_create",
   "pxk_generate",
   "customer_create",

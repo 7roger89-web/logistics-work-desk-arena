@@ -139,6 +139,36 @@ export interface ImportInfo {
   actualDelivery?: string;
 }
 
+export interface PartnerPaymentRow {
+  id: string;
+  requestId: string;
+  date: string;
+  kind: string;
+  amount: MaybeNum;
+  ccy: string;
+  allocated?: MaybeNum;
+  unallocated?: MaybeNum;
+  note?: string;
+}
+
+/**
+ * C2B — partner payable truth for THIS shipment, derived by the backend from
+ * the canonical ledger. Every money figure is UNKNOWN (null) until a canonical
+ * obligation/payment record exists — null is never rendered as 0.
+ */
+export interface PartnerFinance {
+  partnerId: string | null;
+  partnerName: string | null;
+  /** True when partnerId is only a catalog suggestion (no ledger rows yet). */
+  suggested?: boolean;
+  status?: string;
+  payable: MaybeNum;
+  paid: MaybeNum;
+  remaining: MaybeNum;
+  currency?: string | null;
+  payments: PartnerPaymentRow[];
+}
+
 export interface Finance {
   quote: MoneyLine[];
   actual: MoneyLine[];
@@ -159,6 +189,8 @@ export interface Finance {
   /** profit / revenue_net * 100 — UNKNOWN unless both are known. */
   profitMargin?: MaybeNum;
   payments: Payment[];
+  /** Canonical partner payable block (C2B) — see PartnerFinance. */
+  partner?: PartnerFinance;
   source?: string;
 }
 

@@ -73,3 +73,63 @@ boundary could post a partner payable/payment. Both connectors are added here.
 - New read-side helper `core.financial_ledger.shipment_partner_position`:
   derives payable/paid/remaining/payment history for ONE shipment from the
   canonical collections only. No new collection, no new store, no balances.
+
+## 5. Proven journey (acceptance A–N — all PASS)
+
+Suite `tests/test_logi_c2b_partner_payable.py` (11 tests) on the isolated
+mongomock staging transport, plus real-bundle DOM acceptance
+`node tests/component/dom_acceptance_c2b.mjs` (7 checks) against a fixture
+generated from the same backend (`scripts/gen_c2b_fixture.py`):
+
+- A partner identity: `AGT-PHUANH` resolved ONLY from the existing
+  `authority_agents` master; unknown partner ids are refused.
+- B shipment identity: `LO-0308`; linkage persisted on the canonical records
+  (`obligation.shipment_ids`, `transaction.shipment_ids`,
+  `allocation.shipment_ids`) and read back fresh.
+- C accrued cost read from `core.logic.calculate_from_shipment`
+  (= 57,000,000 VND, never assumed).
+- D one real payment wrote through `save_transaction` + `allocate_transaction`
+  via the typed `partner_payment_record` boundary event.
+- E fresh readback: position re-derived from the collections, independent of
+  the event result.
+- F same-intent idempotency: replayed requestId returns "financial action
+  already applied"; exactly 1 transaction + 1 allocation remain. The UI
+  double-click replays the same request identity (DOM-proven).
+- G a NEW genuine intent (new requestId, same amount) posts a DISTINCT
+  transaction + allocation (DOM-proven: new request identity minted).
+- H remaining payable derived = 57,000,000 − 20,000,000 − 20,000,000 =
+  17,000,000 VND, exact at every step.
+- I currency explicit (VND on every record/figure); a USD payment against the
+  VND payable is refused before any write; no combining, no FX.
+- J UNKNOWN != ZERO regression: before any ledger record, payable/paid/
+  remaining are None (UI renders "— tr VND", never "0 tr VND"); a derived 0
+  (allocated before any payment) is a true zero.
+- K allowed role: SUPPORT (finance_write) writes successfully.
+- L denied role: SALE typed event fails at the backend boundary ("RBAC:
+  không có quyền finance_write") with zero canonical records created.
+- M audit evidence: `audit_logs` rows exist for the obligation, transaction,
+  and allocation, stamped with the acting user.
+- N fresh-session reopen: projections rebuilt from brand-new database reads
+  show identical business truth.
+
+Overpay guard: a payment beyond the open outstanding is refused before any
+write (advance/unallocated credit remains ledger-representable, out of slice).
+
+## 6. UI (Checkpoint B — minimum useful, donor structures only)
+
+No new page, no shell redesign. Inside the existing Shipment Detail →
+"Tài chính / Công nợ" tab, the existing "Phải trả đối tác" card now shows:
+selected partner (canonical, or the clearly-badged single catalog agent
+suggestion before any ledger row), payable/paid/remaining tiles fed from the
+backend partner block ("—" when UNKNOWN), partner payment history, and the two
+typed-event actions (GHI NHẬN PHẢI TRẢ / TRẢ ĐỐI TÁC) with the same per-intent
+request identity contract as customer receipts. Frontend visibility is not
+authorization — a denied role only receives the backend refusal.
+
+## 7. Environment note (real state at time of slice)
+
+The full pytest suite on this sandbox shows 13 pre-existing failures + 6
+errors in UI-mount/AppTest/Excel suites (Streamlit runtime + optional deps in
+the sandbox). They exist unchanged on pristine main @ 3b48141 and are untouched
+by this slice; every finance/ledger/RBAC/C1/C2A/C2B suite passes.
+
