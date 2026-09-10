@@ -1,6 +1,6 @@
 """Single Streamlit Components v2 component root for the Logi-good shell.
 
-Architecture (Phase A):
+Architecture (Phase B — unchanged shape, real inner data):
     Python Logistics view-model
       → ONE st.components.v2.component (logi_shell)
       → literal Logi-good React UI (component/dist build)
@@ -63,13 +63,19 @@ def _renderer():
 
 
 def render(view_model: dict) -> None:
-    """Mount the ONE component root and run the bounded event dispatcher."""
-    result = _renderer()(
-        key="logi-shell",
-        data=view_model,
-        width="stretch",
-        height="content",
-        on_shipment_update_change=lambda: None,
-        on_navigate_change=lambda: None,
-    )
+    """Mount the ONE component root and run the bounded event dispatcher.
+
+    Each declared event gets its own ``on_<event>_change`` trigger callback so
+    the v2 runtime surfaces it as a typed trigger value. The set below is
+    exactly ``logi_view_model.ALL_EVENTS`` — nothing else can reach Python.
+    """
+    kwargs: dict = {
+        "key": "logi-shell",
+        "data": view_model,
+        "width": "stretch",
+        "height": "content",
+    }
+    for event_name in sorted(logi_view_model.ALL_EVENTS):
+        kwargs[f"on_{event_name}_change"] = lambda: None
+    result = _renderer()(**kwargs)
     logi_view_model.dispatch(result)

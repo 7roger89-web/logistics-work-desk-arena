@@ -1,13 +1,20 @@
-"""Logistics view-model for the Logi-good component (Phase A).
+"""Logistics view-model + the ONE bounded event dispatcher (Phase B).
 
-Phase A: sandbox seed only (views/logi_seed.py). No production DB, no
-credentials. The view-model is the single source of truth pushed to the
-ONE Streamlit Components v2 component root; Phase B swaps the sandbox
-source for real Logistics readers behind the same shape.
+Phase B replaces the Phase A sandbox seed projection with a presentation
+adapter over the CURRENT Logistics readers (``views.logi_real_data``), and
+routes every material component event through the canonical write path:
 
-Sandbox session state:
-    st.session_state["logi_state"]  — copy of the seed (mutable per session)
-    st.session_state["logi_seq"]    — last consumed component event seq
+    frontend typed event
+      → bounded dispatcher (this module)
+      → current RBAC (core.auth)
+      → existing writer/service (core.database / core.docgen)
+      → audit (written by the canonical writer)
+      → fresh backend read
+      → refreshed view-model (same route/tab retained by the component)
+
+No frontend-only mutation is treated as persistence: the dispatcher returns a
+per-event result carrying the fresh readback, and the UI is refreshed from the
+backend, never from local state alone.
 """
 
 from __future__ import annotations
@@ -15,83 +22,991 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from typing import Any, Mapping
 
 import streamlit as st
 
-from views import logi_seed
+from views import logi_real_data as rd
+from views import logi_sandbox
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
 
 
-def _state() -> dict:
-    if STATE_KEY not in st.session_state:
-        st.session_state[STATE_KEY] = logi_seed.build_seed_state()
-    return st.session_state[STATE_KEY]
+# ---------------------------------------------------------------------------
+# Read side
+# ---------------------------------------------------------------------------
+
+def read_shipment(shipment_id: str) -> dict[str, Any] | None:
+    """Fresh read of ONE shipment straight from the database.
+
+    Deliberately bypasses the Streamlit read cache so a post-write readback is
+    the database's own answer, then runs the canonical ``repair_data``
+    normalisation the rest of the app uses.
+    """
+    from core.database import get_db, repair_data
+
+    db = get_db()
+    if db is None:
+        return None
+    doc = db.shipments.find_one({"id": shipment_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not doc:
+        return None
+    return repair_data({shipment_id: doc})[shipment_id]
+
+
+def load_shipments() -> dict[str, Any]:
+    """Fresh shipment read for the component, bypassing the 30s read cache.
+
+    ``core.database.load_data`` is cached for performance in the Streamlit
+    runtime. The Logi-good work desk must show a write the moment it lands, so
+    it calls the same module's uncached implementation directly — the same
+    query, the same ``repair_data`` normalisation, no second source of truth.
+    """
+    from core.database import _load_data_impl
+
+    return _load_data_impl() or {}
+
+
+def _load_references() -> dict[str, Any]:
+    from core.database import load_contracts, load_customers, load_quotes, load_tasks
+
+    return {
+        "customers": load_customers() or {},
+        "contracts": load_contracts() or {},
+        "quotes": load_quotes() or {},
+        "tasks": load_tasks() or [],
+    }
+
+
+def _dashboard_views(shipments: Mapping[str, Any]) -> dict[str, Any]:
+    from core.shipment_dashboard import build_shipment_dashboard_view
+
+    views: dict[str, Any] = {}
+    for sid, ship in shipments.items():
+        try:
+            views[sid] = build_shipment_dashboard_view(ship)
+        except Exception:  # noqa: BLE001 - one bad row must not blank the desk
+            views[sid] = {}
+    return views
+
+
+def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
+                     references: Mapping[str, Any]) -> dict[str, Any]:
+    """Home tiles/banners from real shipment facts. No fabricated KPI."""
+    def _stage_rows(stage: str) -> list[dict[str, Any]]:
+        return [row for row in rows if row["status"] == stage]
+
+    def _tile(label: str, stage: str) -> dict[str, Any]:
+        matches = _stage_rows(stage)
+        return {
+            "label": label,
+            "value": len(matches),
+            "sub": ", ".join(m["id"] for m in matches[:4]) or rd.UNKNOWN_LABEL,
+            "to": f"/lo-hang/{matches[0]['id']}" if matches else "/lo-hang",
+        }
+
+    running = [row for row in rows if row["status"] not in {"Đã giao", "Đã hủy"}]
+    delivered = _stage_rows("Đã giao")
+
+    outstanding = [row["finance"]["outstanding"] for row in rows
+                   if row["finance"]["outstanding"] is not None and row["finance"]["outstanding"] > 0]
+    outstanding_total = sum(outstanding) if outstanding else None
+
+    urgent = [row for row in rows if row["priority"] == "Khan"]
+    focus = urgent[0] if urgent else (next((r for r in rows if r["priority"] == "CanXuLy"), None) or (rows[0] if rows else None))
+
+    return {
+        "tiles": [
+            _tile("Lô đang chạy", "Đang vận chuyển"),
+            _tile("Chờ lấy hàng", "Chờ lấy hàng"),
+            _tile("Đang vận chuyển", "Đang vận chuyển"),
+            _tile("Chờ thông quan", "Chờ thông quan"),
+            _tile("Chờ giao", "Chờ giao"),
+            {"label": "Đã giao", "value": len(delivered),
+             "sub": ", ".join(m["id"] for m in delivered[:4]) or rd.UNKNOWN_LABEL, "to": "/lo-hang"},
+        ],
+        "runningCount": len(running),
+        "runningSummary": [
+            {"id": r["id"], "customer": r["customer"], "status": r["status"],
+             "nextAction": r["nextAction"], "to": f"/lo-hang/{r['id']}"}
+            for r in running[:6]
+        ],
+        "outstandingTotal": outstanding_total,
+        "outstandingTotalLabel": rd._money_label(outstanding_total) if outstanding_total is not None else rd.UNKNOWN_LABEL,
+        "outstandingCount": len(outstanding),
+        "summary": {
+            "total": int(summary.get("total") or 0),
+            "critical": int(summary.get("critical") or 0),
+            "warning": int(summary.get("warning") or 0),
+            "deadlineSoon": int(summary.get("deadline_soon") or 0),
+            "financialAttention": int(summary.get("financial_attention") or 0),
+            "missingInfo": int(summary.get("missing_info") or 0),
+        },
+        "urgentCount": len(urgent),
+        "focus": {
+            "id": focus["id"], "customer": focus["customer"], "status": focus["status"],
+            "nextAction": focus["nextAction"], "nextActionDetail": focus["nextActionDetail"],
+            "priority": focus["priority"], "to": focus["nextRoute"],
+        } if focus else None,
+        "missingDocsTotal": sum(len(r["missingDocs"]) for r in rows),
+        "taskCount": len(references.get("tasks") or []),
+    }
+
+
+def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Tasks from real readiness/dashboard evidence + the real tasks collection.
+
+    Every row routes to the real shipment and the correct tab. No mock rows.
+    """
+    stage_tab = {
+        "Chờ thông quan": "nhap",
+        "Chờ giao": "nhap",
+        "Chờ lấy hàng": "lay-hang",
+        "Đang vận chuyển": "lay-hang",
+        "Đã giao": "chung-tu",
+    }
+    out: list[dict[str, Any]] = []
+
+    for row in rows:
+        if row["priority"] == "BinhThuong" and not row["missingDocs"]:
+            continue
+        level = row["priority"]
+        tab = stage_tab.get(row["status"], "lay-hang")
+        out.append({
+            "id": f"OPS-{row['id']}",
+            "level": level,
+            "lot": row["id"],
+            "customer": row["customer"],
+            "job": row["nextAction"],
+            "assignee": row["support"] or rd.UNKNOWN_LABEL,
+            "due": row["ops"].get("arrivalDateLabel") or rd.UNKNOWN_LABEL,
+            "dueNote": row["nextActionDetail"] or (", ".join(f"thiếu {m}" for m in row["missingDocs"][:3])),
+            "status": row["status"],
+            "statusTone": row["statusTone"],
+            "route": f"/lo-hang/{row['id']}?tab={tab}",
+            "source": "core.shipment_dashboard (readiness/alerts)",
+        })
+
+    by_id = {row["id"]: row for row in rows}
+    for task in references.get("tasks") or []:
+        if not isinstance(task, Mapping):
+            continue
+        sid = rd.text(task.get("shipment_id"))
+        row = by_id.get(sid)
+        done = bool(task.get("done"))
+        out.append({
+            "id": rd.text(task.get("task_id")),
+            "level": "BinhThuong" if done else "CanXuLy",
+            "lot": sid or rd.UNKNOWN_LABEL,
+            "customer": row["customer"] if row else rd.UNKNOWN_LABEL,
+            "job": rd.text(task.get("content")),
+            "assignee": rd.text(task.get("assignee")) or rd.UNKNOWN_LABEL,
+            "due": rd._ddmmyyyy(task.get("deadline")),
+            "dueNote": "Đã hoàn thành" if done else "Việc được giao",
+            "status": "Đã xong" if done else "Chưa làm",
+            "statusTone": "green" if done else "amber",
+            "route": f"/lo-hang/{sid}?tab=lay-hang" if sid else "/lo-hang",
+            "source": "core.database.load_tasks",
+        })
+
+    order = {"Khan": 0, "CanXuLy": 1, "BinhThuong": 2}
+    out.sort(key=lambda item: (order.get(item["level"], 9), item["lot"]))
+    return out
+
+
+def _notifications(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out = []
+    for row in rows:
+        if not row["ops"]["alerts"]:
+            continue
+        alert = row["ops"]["alerts"][0]
+        severity = alert.get("severity")
+        out.append({
+            "id": f"{row['id']}-{alert.get('code')}",
+            "title": f"{row['id']} · {alert.get('title')}",
+            "desc": alert.get("message") or row["nextActionDetail"],
+            "time": row["updated"],
+            "tone": "red" if severity == "critical" else ("amber" if severity == "warning" else "blue"),
+            "route": row["nextRoute"],
+        })
+    return out
 
 
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
-    state = _state()
-    vm = {
-        "version": _payload_version(state),
-        "user": copy.deepcopy(logi_seed.USER),
-        "shipments": list(state["shipments"].values()),
-        "tasks": state["tasks"],
-        "contracts": state["contracts"],
-        "customers": state["customers"],
-        "quotes": state["quotes"],
-        "notifications": state["notifications"],
-    }
-    return vm
+    from core.auth import current_user
+    from core.shipment_dashboard import build_dashboard_summary
 
+    transport = logi_sandbox.ensure_backend()
+    shipments = load_shipments()
+    references = _load_references()
+    views = _dashboard_views(shipments)
 
-def _payload_version(state: dict) -> str:
-    """Deterministic content version: changes only when data actually
-    changes (keeps the component element identity stable across reruns)."""
-    raw = json.dumps(
-        {
-            "s": state["shipments"],
-            "t": state["tasks"],
-            "c": state["contracts"],
-            "q": state["quotes"],
-            "n": state["notifications"],
+    rows = [
+        rd.shipment_projection(
+            ship,
+            customers=references["customers"],
+            contracts=references["contracts"],
+            quotes=references["quotes"],
+            dashboard=views.get(sid, {}),
+            history=rd.timeline_projection(sid),
+        )
+        for sid, ship in shipments.items()
+    ]
+    order = {"Khan": 0, "CanXuLy": 1, "BinhThuong": 2}
+    rows.sort(key=lambda row: (order.get(row["priority"], 9), row["id"]))
+
+    summary = build_dashboard_summary(views.values())
+    user = current_user() or {}
+
+    model = {
+        "version": _payload_version(rows, references),
+        "environment": {
+            "transport": transport,
+            "label": "Preview / Staging" if transport == logi_sandbox.SANDBOX_TRANSPORT else "Production",
+            "isSandbox": transport == logi_sandbox.SANDBOX_TRANSPORT,
+            "database": "isolated staging (mongomock)" if transport == logi_sandbox.SANDBOX_TRANSPORT else "real MongoDB",
         },
-        sort_keys=True,
-        ensure_ascii=False,
-        default=str,
+        "user": {
+            "name": rd.text(user.get("full_name") or user.get("username")) or "Chưa đăng nhập",
+            "role": rd.text(user.get("role")).upper() or "VIEWER",
+            "username": rd.text(user.get("username")),
+            # Display only. Authorization is enforced by core.auth on the server.
+            "displayOnly": True,
+        },
+        "shipments": rows,
+        "home": _home_projection(rows, summary, references),
+        "tasks": _task_projection(rows, references),
+        "contracts": [
+            {
+                "id": rd.text(c.get("id")),
+                "company": rd.text(c.get("customer")),
+                "agent": rd.text(c.get("agent_id")),
+                "status": rd.text(c.get("status")),
+                "statusTone": "green" if rd.text(c.get("status")) == "active" else "gray",
+                "companyLegal": rd.text(c.get("customer")),
+                "value": rd.num(c.get("value")),
+            }
+            for c in references["contracts"].values() if isinstance(c, Mapping)
+        ],
+        "customers": [
+            {"name": rd.text(c.get("name")), "short": rd.text(c.get("name")),
+             "mst": rd.text(c.get("tax_code"))}
+            for c in references["customers"].values() if isinstance(c, Mapping)
+        ],
+        "quotes": [
+            {"id": rd.text(q.get("id")), "customer": rd.text(q.get("customer")),
+             "status": rd.text(q.get("status")), "total": rd.num(q.get("total")),
+             "currency": rd.text(q.get("currency")) or "VND"}
+            for q in references["quotes"].values() if isinstance(q, Mapping)
+        ],
+        "notifications": _notifications(rows),
+        "unknownLabel": rd.UNKNOWN_LABEL,
+    }
+    _remember(model)
+    return model
+
+
+def _payload_version(rows: list[dict[str, Any]], references: Mapping[str, Any]) -> str:
+    """Deterministic content version: changes only when data actually changes."""
+    raw = json.dumps(
+        {"s": rows, "t": references.get("tasks"), "c": list((references.get("contracts") or {}).keys()),
+         "q": list((references.get("quotes") or {}).keys())},
+        sort_keys=True, ensure_ascii=False, default=str,
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------------------
-# The ONE bounded event dispatcher (Phase A event set).
+# The ONE bounded event dispatcher
 # ---------------------------------------------------------------------------
 
+# Phase A event set — kept verbatim so the Phase A acceptance suite still runs.
 ALLOWED_EVENTS = {"shipment_update", "navigate"}
 
+# Phase B typed write events. Anything outside these two sets is dropped.
+PHASE_B_EVENTS = {
+    "shipment_field_save",
+    "delivery_confirm",
+    "finance_actual_save",
+    "payment_record",
+    "payment_correction",
+    "shipment_create",
+    "pxk_generate",
+}
 
-def dispatch(result) -> None:
-    """Streamlit-facing entry: consume component trigger values from one
-    script run. Thin wrapper over the pure :func:`consume_triggers`."""
-    state = _state()
-    session = {"seq": st.session_state.get(SEQ_KEY, 0), "shipments": state["shipments"]}
-    consume_triggers(session, result)
-    st.session_state[SEQ_KEY] = session["seq"]
-    # state["shipments"] is mutated in place by the pure function.
+ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS
 
+# Whitelist: component field key → canonical shipment document path.
+# Only these paths may be written by the component.
+FIELD_PATHS: dict[str, tuple[str, ...]] = {
+    "mode": ("data", "0.0", "mode"),
+    "incoterm": ("data", "0.0", "incoterm"),
+    "booking_no": ("data", "1.2", "booking_no"),
+    "carrier": ("data", "1.2", "carrier"),
+    "mbl": ("data", "1.2", "mbl"),
+    "hbl": ("data", "1.2", "hbl"),
+    "vessel": ("data", "1.2", "vessel"),
+    "etd": ("data", "1.2", "etd"),
+    "pol": ("data", "1.2", "pol"),
+    "pod": ("data", "1.2", "pod"),
+    "container_no": ("data", "1.2", "container_no"),
+    "qty_pkg": ("data", "1.2", "qty_pkg"),
+    "tk_no": ("data", "2.4", "tk_no"),
+    "customs_status": ("data", "2.4", "customs_status"),
+    "phan_luong": ("data", "2.4", "phan_luong"),
+    "arrival_date": ("data", "2.6", "arrival_date"),
+    "free_time": ("data", "2.6", "free_time"),
+    "truck_no": ("data", "2.7", "truck_no"),
+    "seal_no": ("data", "2.7", "seal_no"),
+    "delivery_date": ("data", "2.7", "delivery_date"),
+    "phone_receiver": ("data", "2.7", "phone_receiver"),
+    "addr": ("data", "2.7", "addr"),
+    "receiver_name": ("data", "2.7", "receiver_name"),
+    "receiver_title": ("data", "2.7", "receiver_title"),
+    "delivery_location": ("data", "2.7", "delivery_location"),
+    "status": ("status",),
+}
+
+_BOOL_FIELDS = {"customs_status"}
+_NUM_FIELDS = {"free_time"}
+_DATE_FIELDS = {"etd", "arrival_date", "delivery_date"}
+
+
+def _normalize_date(value: Any) -> str:
+    """Accept DD/MM/YYYY or ISO and store the canonical ISO form."""
+    from datetime import datetime
+
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw[:10], fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return raw
+
+
+def _coerce(key: str, value: Any) -> Any:
+    """Coerce one component value to its canonical type.
+
+    An empty value stays empty (None/"") — it is never turned into 0, because
+    for these fields a blank means UNKNOWN.
+    """
+    if key in _BOOL_FIELDS:
+        return bool(value)
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    if key in _NUM_FIELDS:
+        parsed = rd.num(raw)
+        return parsed if parsed is not None else raw
+    if key in _DATE_FIELDS:
+        return _normalize_date(raw)
+    return raw
+
+
+def _set_path(doc: dict[str, Any], path: tuple[str, ...], value: Any) -> None:
+    cursor: Any = doc
+    for part in path[:-1]:
+        nxt = cursor.get(part)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            cursor[part] = nxt
+        cursor = nxt
+    cursor[path[-1]] = value
+
+
+def _get_path(doc: Mapping[str, Any], path: tuple[str, ...]) -> Any:
+    cursor: Any = doc
+    for part in path:
+        if not isinstance(cursor, Mapping):
+            return None
+        cursor = cursor.get(part)
+    return cursor
+
+
+def _actor() -> str:
+    from core.auth import current_user
+
+    user = current_user() or {}
+    return rd.text(user.get("username")) or "system"
+
+
+def _result(event: str, shipment_id: str, ok: bool, error: str = "",
+            readback: dict[str, Any] | None = None, **extra: Any) -> dict[str, Any]:
+    return {"event": event, "shipmentId": shipment_id, "ok": ok, "error": error,
+            "readback": readback, **extra}
+
+
+def _projection_for(shipment: Mapping[str, Any]) -> dict[str, Any]:
+    """Project one canonical shipment for the post-write readback payload."""
+    from core.database import load_contracts, load_customers, load_quotes
+    from core.shipment_dashboard import build_shipment_dashboard_view
+
+    sid = rd.text(shipment.get("id"))
+    try:
+        view = build_shipment_dashboard_view(shipment)
+    except Exception:  # noqa: BLE001
+        view = {}
+    return rd.shipment_projection(
+        shipment,
+        customers=load_customers() or {},
+        contracts=load_contracts() or {},
+        quotes=load_quotes() or {},
+        dashboard=view,
+        history=rd.timeline_projection(sid),
+    )
+
+
+def _audit_trail(shipment_id: str, limit: int = 5) -> list[dict[str, Any]]:
+    from core.database import load_audit_logs
+
+    return [
+        {"action": rd.text(row.get("action")), "actor": rd.text(row.get("actor")),
+         "createdAt": str(row.get("created_at"))}
+        for row in (load_audit_logs("shipment", shipment_id, limit=limit) or [])
+        if isinstance(row, Mapping)
+    ]
+
+
+# --- individual write handlers -------------------------------------------
+
+def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.logic import apply_financial_snapshot
+
+    sid = rd.text(payload.get("shipmentId"))
+    fields = payload.get("fields") if isinstance(payload.get("fields"), Mapping) else {}
+    if not sid or not fields:
+        return _result("shipment_field_save", sid, False, "Thiếu shipmentId hoặc fields.")
+    if not can_operate_business("shipment_edit"):
+        return _result("shipment_field_save", sid, False, "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("shipment_field_save", sid, False, f"Không tìm thấy lô {sid}.")
+
+    applied: dict[str, Any] = {}
+    rejected: list[str] = []
+    for key, value in fields.items():
+        path = FIELD_PATHS.get(str(key))
+        if path is None:
+            rejected.append(str(key))
+            continue
+        applied[str(key)] = _coerce(str(key), value)
+        _set_path(shipment, path, applied[str(key)])
+
+    if not applied:
+        return _result("shipment_field_save", sid, False,
+                       "Không có trường nào được phép ghi.", rejected=rejected)
+
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
+        return _result("shipment_field_save", sid, False, get_last_db_error() or "Không lưu được.")
+
+    fresh = read_shipment(sid)
+    return _result("shipment_field_save", sid, True, readback=_projection_for(fresh or {}),
+                   applied=applied, rejected=rejected,
+                   version=int((fresh or {}).get("version") or 0),
+                   persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},
+                   audit=_audit_trail(sid))
+
+
+def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("delivery_confirm", sid, False, "Thiếu shipmentId.")
+    if not can_operate_business("shipment_edit"):
+        return _result("delivery_confirm", sid, False, "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("delivery_confirm", sid, False, f"Không tìm thấy lô {sid}.")
+
+    delivery = shipment.setdefault("data", {}).setdefault("2.7", {})
+    if delivery.get("is_delivered"):
+        return _result("delivery_confirm", sid, True, "Lô đã được xác nhận giao trước đó.",
+                       readback=_projection_for(shipment), alreadyConfirmed=True,
+                       audit=_audit_trail(sid))
+
+    delivered_on = _normalize_date(payload.get("deliveredAt")) or _normalize_date(
+        payload.get("deliveryDate")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
+
+    delivery["is_delivered"] = True
+    delivery["delivered_at"] = delivered_on
+    delivery["delivery_date"] = delivery.get("delivery_date") or delivered_on
+    for source, target in (("receiverName", "receiver_name"), ("receiverTitle", "receiver_title"),
+                           ("deliveryLocation", "delivery_location"), ("receiverPhone", "phone_receiver")):
+        value = rd.text(payload.get(source))
+        if value:
+            delivery[target] = value
+    if not delivery.get("delivery_location"):
+        delivery["delivery_location"] = delivery.get("addr") or ""
+
+    shipment["status"] = "done"
+    shipment["data"]["0.0"]["st"] = "done"
+
+    if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
+        return _result("delivery_confirm", sid, False, get_last_db_error() or "Không lưu được.")
+
+    fresh = read_shipment(sid) or {}
+    return _result("delivery_confirm", sid, True, readback=_projection_for(fresh),
+                   deliveredAt=delivered_on,
+                   persisted={"is_delivered": _get_path(fresh, ("data", "2.7", "is_delivered")),
+                              "delivered_at": _get_path(fresh, ("data", "2.7", "delivered_at")),
+                              "status": _get_path(fresh, ("status",))},
+                   audit=_audit_trail(sid))
+
+
+def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Finance Actual = a real service line in ``data.3.4.details``.
+
+    Quote Estimate is a separate object and is never written here.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.logic import apply_financial_snapshot
+
+    sid = rd.text(payload.get("shipmentId"))
+    line = payload.get("line") if isinstance(payload.get("line"), Mapping) else {}
+    if not sid or not line:
+        return _result("finance_actual_save", sid, False, "Thiếu shipmentId hoặc line.")
+    if not can_operate_business("finance_write"):
+        return _result("finance_actual_save", sid, False, "RBAC: không có quyền finance_write.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("finance_actual_save", sid, False, f"Không tìm thấy lô {sid}.")
+
+    finance = shipment.setdefault("data", {}).setdefault("3.4", {})
+    details = finance.setdefault("details", [])
+
+    # UNKNOWN != ZERO: a blank amount stays absent rather than becoming 0.
+    qty = rd.num(line.get("qty"))
+    price = rd.num(line.get("price"))
+    cost = rd.num(line.get("cost"))
+    vat = rd.num(line.get("vat"))
+    name = rd.text(line.get("name"))
+    if not name:
+        return _result("finance_actual_save", sid, False, "Thiếu tên dịch vụ.")
+    if qty is not None and qty <= 0:
+        return _result("finance_actual_save", sid, False, "Số lượng phải lớn hơn 0.")
+
+    from uuid import uuid4
+
+    target_id = rd.text(line.get("id"))
+    entry: dict[str, Any] | None = None
+    if target_id:
+        entry = next((d for d in details if isinstance(d, Mapping) and rd.text(d.get("id")) == target_id), None)
+    if entry is None:
+        entry = {"id": target_id or f"PAY-LINE-{uuid4().hex.upper()[:12]}"}
+        details.append(entry)
+
+    entry["name_full"] = name
+    entry["display_name"] = name
+    entry["unit"] = rd.text(line.get("unit")) or entry.get("unit") or "Lần"
+    entry["note"] = rd.text(line.get("note"))
+    if rd.text(line.get("code")):
+        entry["code"] = rd.text(line.get("code"))
+    # Only write numerics that were actually supplied.
+    if qty is not None:
+        entry["qty"] = qty
+    else:
+        entry.setdefault("qty", 1.0)
+    if price is not None:
+        entry["price"] = price
+        entry["price_out"] = price
+    else:
+        entry.setdefault("price", 0.0)
+        entry.setdefault("price_out", 0.0)
+    if cost is not None:
+        entry["cost"] = cost
+        entry["price_in"] = cost
+    else:
+        entry.setdefault("cost", 0.0)
+        entry.setdefault("price_in", 0.0)
+    if vat is not None:
+        entry["vat_line"] = vat
+        entry["vat"] = vat
+    else:
+        entry.setdefault("vat_line", 0.0)
+        entry.setdefault("vat", 0.0)
+
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
+        return _result("finance_actual_save", sid, False, get_last_db_error() or "Không lưu được.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_lines = _get_path(fresh, ("data", "3.4", "details")) or []
+    return _result("finance_actual_save", sid, True, readback=_projection_for(fresh),
+                   lineId=entry["id"],
+                   persisted={"lineCount": len(fresh_lines),
+                              "line": next((d for d in fresh_lines
+                                            if rd.text(d.get("id")) == entry["id"]), None),
+                              "receivable": _get_path(fresh, ("data", "3.4", "out")),
+                              "cost": _get_path(fresh, ("data", "3.4", "in"))},
+                   audit=_audit_trail(sid))
+
+
+def _handle_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """One real payment via ``save_direct_shipment_payment`` (request identity)."""
+    from core.database import save_direct_shipment_payment
+
+    sid = rd.text(payload.get("shipmentId"))
+    amount = rd.num(payload.get("amount"))
+    request_id = rd.text(payload.get("requestId"))
+    if not sid or amount is None or not request_id:
+        return _result("payment_record", sid, False,
+                       "Thiếu shipmentId, amount hoặc requestId (idempotency key).")
+
+    payment = {
+        "id": rd.text(payload.get("paymentId")) or None,
+        "request_id": request_id,
+        "date": _normalize_date(payload.get("date")) or __import__("datetime").date.today().strftime("%Y-%m-%d"),
+        "amount": amount,
+        "note": rd.text(payload.get("note")),
+    }
+    payment = {k: v for k, v in payment.items() if v is not None}
+
+    ok, result, message = save_direct_shipment_payment(sid, payment, actor=_actor())
+    if not ok:
+        return _result("payment_record", sid, False, message or "Không ghi nhận được khoản thu.",
+                       requestId=request_id)
+
+    fresh = read_shipment(sid) or {}
+    return _result("payment_record", sid, True, message, readback=_projection_for(fresh),
+                   requestId=request_id, paymentId=rd.text(result.get("payment_id")),
+                   persisted={"paymentId": rd.text(result.get("payment_id")),
+                              "amount": float(result.get("amount") or 0),
+                              "derivedPaid": result.get("derived_paid"),
+                              "derivedDebt": result.get("derived_debt"),
+                              "version": result.get("version")},
+                   audit=_audit_trail(sid))
+
+
+def _handle_payment_correction(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.database import save_direct_payment_correction
+
+    sid = rd.text(payload.get("shipmentId"))
+    payment_id = rd.text(payload.get("paymentId"))
+    correction_request_id = rd.text(payload.get("correctionRequestId"))
+    if not sid or not payment_id or not correction_request_id:
+        return _result("payment_correction", sid, False,
+                       "Thiếu shipmentId, paymentId hoặc correctionRequestId.")
+    ok, result, message = save_direct_payment_correction(
+        sid,
+        payment_id,
+        correction_request_id,
+        rd.text(payload.get("reason")) or "Điều chỉnh khoản thu theo yêu cầu vận hành",
+        {k: v for k, v in {
+            "amount": rd.num(payload.get("amount")),
+            "date": _normalize_date(payload.get("date")) or None,
+            "note": rd.text(payload.get("note")) or None,
+        }.items() if v is not None},
+        actor=_actor(),
+    )
+    if not ok:
+        return _result("payment_correction", sid, False, message or "Không điều chỉnh được.")
+    fresh = read_shipment(sid) or {}
+    return _result("payment_correction", sid, True, message, readback=_projection_for(fresh),
+                   persisted=result, audit=_audit_trail(sid))
+
+
+def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Create Shipment via the existing creation logic; duplicate codes rejected."""
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, save_shipment_atomic
+    from core.database import get_db
+    from core.logic import apply_financial_snapshot
+    from core.validators import validate_shipment
+
+    sid = rd.text(payload.get("shipmentId")).upper()
+    customer_id = rd.text(payload.get("customerId"))
+    if not sid:
+        return _result("shipment_create", sid, False, "Thiếu mã lô.")
+    if not can_operate_business("shipment_create"):
+        return _result("shipment_create", sid, False, "RBAC: không có quyền shipment_create.")
+
+    db = get_db()
+    if db is not None and db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}):
+        return _result("shipment_create", sid, False, f"Mã lô {sid} đã tồn tại.")
+
+    customers = load_customers() or {}
+    customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+    customer_name = rd.text(payload.get("customer")) or rd.text(customer_doc.get("name"))
+    if not customer_name:
+        return _result("shipment_create", sid, False, "Vui lòng chọn khách hàng.")
+
+    created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
+    transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}
+    delivery = payload.get("delivery") if isinstance(payload.get("delivery"), Mapping) else {}
+
+    doc: dict[str, Any] = {
+        "id": sid,
+        "shipment_id": sid,
+        "customer": customer_name,
+        "client": customer_name,
+        "customer_id": customer_id,
+        "status": "wait",
+        "currency": rd.text(payload.get("currency")) or "VND",
+        "data": {
+            "0.0": {"st": "wait", "created_at": created_on,
+                    "mode": rd.text(transport.get("mode")) or "Truck",
+                    "incoterm": rd.text(transport.get("incoterm")) or "EXW"},
+            "1.2": {k: _coerce(k, transport.get(k)) for k in
+                    ("booking_no", "carrier", "mbl", "hbl", "vessel", "etd",
+                     "pol", "pod", "container_no", "qty_pkg") if transport.get(k) not in (None, "")},
+            "2.4": {},
+            "2.6": {k: _coerce(k, v) for k, v in (("arrival_date", transport.get("etd")),) if v},
+            "2.7": {k: _coerce(k, delivery.get(k)) for k in
+                    ("addr", "phone_receiver", "delivery_date") if delivery.get(k) not in (None, "")},
+            "3.4": {"details": [], "payments": [], "commission": {"list": [], "total": 0}},
+            "entrustment": {"active": False},
+        },
+    }
+    if rd.text(payload.get("contractId")):
+        doc["contract_id"] = rd.text(payload.get("contractId")).upper()
+
+    validation = validate_shipment(doc)
+    if not validation.is_valid:
+        return _result("shipment_create", sid, False, validation.message)
+
+    apply_financial_snapshot(doc)
+    if not save_shipment_atomic(doc, actor=_actor()):
+        return _result("shipment_create", sid, False, get_last_db_error() or "Không tạo được lô hàng.")
+
+    fresh = read_shipment(sid) or {}
+    return _result("shipment_create", sid, True, readback=_projection_for(fresh),
+                   persisted={"id": rd.text(fresh.get("id")), "customer": rd.text(fresh.get("customer")),
+                              "version": int(fresh.get("version") or 0)},
+                   audit=_audit_trail(sid))
+
+
+def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """PXK through the real docgen rules/service — never a prototype TXT."""
+    from core.auth import can_generate_documents
+    from core.docgen import generator as docgen
+    from core.docgen import rules as docgen_rules
+    from core.docgen.rules import PXK, READY
+    from core.database import load_authority_agents, load_authority_companies, load_contracts
+
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("pxk_generate", sid, False, "Thiếu shipmentId.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("pxk_generate", sid, False, f"Không tìm thấy lô {sid}.")
+
+    delivery = _get_path(shipment, ("data", "2.7")) or {}
+    delivered = bool(delivery.get("is_delivered"))
+    missing_delivery = docgen_rules.delivery_facts_missing(delivery)
+
+    # The real delivery gate: an undelivered shipment is blocked by rule.
+    if not delivered:
+        return _result("pxk_generate", sid, False,
+                       "PXK bị chặn: lô hàng chưa được xác nhận giao.",
+                       gate="BLOCKED_NOT_DELIVERED", delivered=False)
+    if missing_delivery:
+        return _result("pxk_generate", sid, False,
+                       "PXK bị chặn: " + " ".join(missing_delivery),
+                       gate="BLOCKED_MISSING_DELIVERY_FACTS", delivered=True,
+                       missing=missing_delivery)
+
+    contract_id = rd.text(shipment.get("contract_id") or _get_path(shipment, ("data", "entrustment", "contract_no")))
+    contracts = load_contracts() or {}
+    contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    if not contract:
+        return _result("pxk_generate", sid, False,
+                       "PXK cần chứng từ nguồn (HDMB hoặc PL) đã liên kết với lô.",
+                       gate="BLOCKED_NO_SOURCE", delivered=True)
+
+    agents = load_authority_agents() or {}
+    companies = load_authority_companies() or {}
+    agent = next(iter(agents.values()), {}) or {}
+    company = next(iter(companies.values()), {}) or {}
+
+    finance = _get_path(shipment, ("data", "3.4")) or {}
+    goods_lines = [line for line in (finance.get("details") or []) if isinstance(line, Mapping)]
+    source_line = goods_lines[0] if len(goods_lines) == 1 else None
+    pxk_source = {
+        "source_document_type": "HDMB" if "HDMB" in contract_id.upper() else "PL",
+        "source_contract_id": contract_id,
+        "source_line_count": len(goods_lines),
+        "source_goods_line": source_line,
+    }
+
+    readiness = docgen_rules.evaluate_document_readiness(
+        PXK, goods_lines=goods_lines, agent=agent, company=company,
+        selected_contract=contract, delivery_completed=True,
+        document_identity=contract, pxk_source=pxk_source, delivery=delivery,
+    )
+    gate_state = "READY" if readiness.state == READY else readiness.state
+    if readiness.state != READY:
+        return _result("pxk_generate", sid, False, readiness.reason or "PXK chưa sẵn sàng.",
+                       gate=gate_state, delivered=True, missing=list(readiness.missing))
+
+    if not can_generate_documents():
+        return _result("pxk_generate", sid, False, "RBAC: không có quyền sales_write để sinh chứng từ.",
+                       gate=gate_state, delivered=True)
+
+    # Real service call. Legal templates are Owner-controlled assets; when they
+    # are not present the canonical service fails closed — it never falls back
+    # to a prototype text file.
+    template_xlsx = payload.get("templatePathXlsx")
+    try:
+        generated = docgen.generate_document(
+            PXK, shipment_id=sid, agent=agent, company=company,
+            goods_lines=goods_lines, contract=contract, delivery=delivery,
+            pxk_source=pxk_source,
+            template_path_xlsx=rd.text(template_xlsx) or None,
+        )
+    except docgen.DocumentGenerationError as exc:
+        readiness_err = getattr(exc, "args", [None])[0]
+        reason = getattr(readiness_err, "reason", None) or str(exc)
+        return _result("pxk_generate", sid, False, f"Dịch vụ docgen chặn: {reason}",
+                       gate=gate_state, delivered=True, service="core.docgen.generator.generate_document",
+                       failClosed=True)
+    except PermissionError:
+        return _result("pxk_generate", sid, False, "RBAC: không có quyền sinh chứng từ.",
+                       gate=gate_state, delivered=True)
+
+    raw = generated.get("bytes") or b""
+    is_office = raw[:2] == b"PK"  # OOXML container
+    return _result("pxk_generate", sid, True, "Đã sinh PXK bằng dịch vụ docgen thật.",
+                   gate=gate_state, delivered=True,
+                   service="core.docgen.generator.generate_document",
+                   persisted={"documentId": rd.text(generated.get("document_id")),
+                              "fileName": rd.text(generated.get("output_file_name")),
+                              "outputHash": rd.text(generated.get("output_hash")),
+                              "revision": generated.get("revision"),
+                              "bytes": len(raw),
+                              "isOfficeFile": is_office},
+                   audit=_audit_trail(sid))
+
+
+_HANDLERS = {
+    "shipment_field_save": _handle_field_save,
+    "delivery_confirm": _handle_delivery_confirm,
+    "finance_actual_save": _handle_finance_actual_save,
+    "payment_record": _handle_payment_record,
+    "payment_correction": _handle_payment_correction,
+    "shipment_create": _handle_shipment_create,
+    "pxk_generate": _handle_pxk_generate,
+}
+
+
+# ---------------------------------------------------------------------------
+# Dispatch entry points
+# ---------------------------------------------------------------------------
+
+def consume_phase_b_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded Phase B dispatcher (pure over an explicit session dict).
+
+    Only the declared Phase B event names are handled; anything else is
+    ignored. Events with a seq already consumed are ignored, so a replayed
+    trigger value can never double-write.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(PHASE_B_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        if not isinstance(data, dict):
+            outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
+            continue
+        handler = _HANDLERS.get(event_name)
+        if handler is None:  # pragma: no cover - PHASE_B_EVENTS and _HANDLERS agree
+            continue
+        try:
+            outcomes.append(handler(data))
+        except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
+            outcomes.append(_result(event_name, rd.text(data.get("shipmentId")), False,
+                                    f"{type(exc).__name__}: {exc}"))
+    if outcomes:
+        session["writes"] = outcomes
+    return outcomes
+
+
+def dispatch(result: Any) -> list[dict[str, Any]]:
+    """Streamlit-facing entry: consume one script run's component triggers.
+
+    Phase B typed writes are executed first against the real backend; the
+    Phase A bounded local merge is kept afterwards so the Phase A acceptance
+    contract is unchanged.
+    """
+    logi_sandbox.ensure_backend()
+    session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    outcomes = consume_phase_b_triggers(session, result)
+
+    # Phase A path (bounded local merge over the legacy event set).
+    phase_a_session = {"seq": st.session_state.get(SEQ_KEY, 0), "shipments": _state().get("shipments", {})}
+    consume_triggers(phase_a_session, result)
+    st.session_state[SEQ_KEY] = max(session["seq"], phase_a_session["seq"])
+
+    if outcomes:
+        st.session_state["logi_last_writes"] = outcomes
+    return outcomes
+
+
+def _state() -> dict:
+    """The last view-model delivered to the component (Phase A session shape).
+
+    Shipments are keyed by id, exactly as the Phase A acceptance contract
+    expects, so ``consume_triggers`` and the Phase A tests keep working.
+    """
+    if STATE_KEY not in st.session_state:
+        st.session_state[STATE_KEY] = {
+            "version": "", "shipments": {}, "tasks": [], "contracts": [],
+            "customers": [], "quotes": [], "notifications": [],
+        }
+    return st.session_state[STATE_KEY]
+
+
+def _remember(model: dict) -> None:
+    """Store the delivered payload in session state (Phase A contract)."""
+    try:
+        st.session_state[STATE_KEY] = {
+            "version": model["version"],
+            "shipments": {row["id"]: row for row in model["shipments"]},
+            "tasks": model["tasks"],
+            "contracts": model["contracts"],
+            "customers": model["customers"],
+            "quotes": model["quotes"],
+            "notifications": model["notifications"],
+        }
+    except Exception:  # pragma: no cover - non-Streamlit context
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Phase A bounded dispatcher — kept verbatim (Phase A acceptance contract).
+# ---------------------------------------------------------------------------
 
 def consume_triggers(session: dict, result) -> None:
-    """The ONE bounded event dispatcher (Phase A event set).
+    """The Phase A bounded dispatcher (legacy ``shipment_update``/``navigate``).
 
-    Pure over an explicit ``session`` dict so it is testable without a
-    Streamlit runtime:
-
-        session = {"seq": int, "shipments": {id: shipment_dict}}
-
-    `result` is the ComponentResult (dict-like) returned by the single v2
-    component mount. Only the bounded Phase A event set is handled;
-    everything else is ignored. Consumed events advance ``session["seq"]``.
+    Retained unchanged so ``tests/test_phase_a_component.py`` still proves the
+    Phase A contract. Phase B persistence does NOT flow through this path: the
+    component emits the typed Phase B events above, which write through the
+    canonical writers and return a fresh backend readback.
     """
     for event_name in ALLOWED_EVENTS:
         payload = result.get(event_name) if hasattr(result, "get") else None
@@ -104,13 +1019,11 @@ def consume_triggers(session: dict, result) -> None:
             continue
         last = session.get("seq", 0)
         if seq <= last:
-            continue  # already consumed (trigger values are transient, but be safe)
+            continue
         session["seq"] = seq
         data = payload.get("payload")
         if event_name == "shipment_update" and isinstance(data, dict):
             _apply_shipment_update(session.get("shipments", {}), data.get("shipment"))
-        # "navigate": backend-only navigation is a no-op in Phase A —
-        # ordinary page navigation never requires a Python rerun.
 
 
 def _apply_shipment_update(shipments: dict, shipment: dict | None) -> None:
@@ -119,27 +1032,9 @@ def _apply_shipment_update(shipments: dict, shipment: dict | None) -> None:
     sid = shipment.get("id")
     if not isinstance(sid, str) or sid not in shipments:
         return
-    # Bounded merge: accept only known top-level keys (payload comes from
-    # our own typed component — the TS contract fixes the shape).
     server = shipments[sid]
-    for key in (
-        "status",
-        "statusTone",
-        "priority",
-        "nextAction",
-        "nextActionDetail",
-        "nextLabel",
-        "nextRoute",
-        "updated",
-        "missingDocs",
-        "docs",
-        "pickup",
-        "cargo",
-        "exportInfo",
-        "importInfo",
-        "finance",
-        "pxk",
-        "timeline",
-    ):
+    for key in ("status", "statusTone", "priority", "nextAction", "nextActionDetail",
+                "nextLabel", "nextRoute", "updated", "missingDocs", "docs", "pickup",
+                "cargo", "exportInfo", "importInfo", "finance", "pxk", "timeline"):
         if key in shipment:
             server[key] = copy.deepcopy(shipment[key])

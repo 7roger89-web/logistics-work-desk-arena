@@ -1,8 +1,10 @@
-"""Logistics Work Desk — Phase A entry.
+"""Logistics Work Desk — Logi-good shell entry (Phase B).
 
 The entire visible shell + active page is ONE Streamlit Components v2
 component root running the literal Logi-good React UI. Inner data is the
-Logistics view-model (sandbox seed in Phase A; real readers in Phase B).
+presentation view-model over the CURRENT Logistics readers and writers
+(``views.logi_real_data`` + ``views.logi_view_model``). The visible donor UI is
+frozen; Phase B changed the data and the business actions, not the design.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
 
-    # Phase A: sandbox view-model (no production DB, no credentials).
+    # Real Logistics view-model. With no MONGO_URI configured the app runs on
+    # an isolated staging transport; a real URI always takes precedence.
     vm = logi_view_model.build_view_model()
     logi_shell.render(vm)
