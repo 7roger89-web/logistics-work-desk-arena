@@ -326,6 +326,12 @@ PHASE_B_EVENTS = {
     "payment_correction",
     "shipment_create",
     "pxk_generate",
+    # C2B — single-partner payable slice. The canonical writers are
+    # core.financial_ledger.save_obligation / save_transaction /
+    # allocate_transaction; these events are only the bounded shell boundary
+    # (RBAC → writer → audit → fresh readback), mirroring payment_record.
+    "partner_payable_record",
+    "partner_payment_record",
 }
 
 ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
@@ -714,6 +720,261 @@ def _handle_payment_correction(payload: Mapping[str, Any]) -> dict[str, Any]:
                    persisted=result, audit=_audit_trail(sid))
 
 
+def _company_party() -> dict[str, str] | None:
+    """The payer company party from the existing authority_companies master."""
+    from core.database import load_authority_companies
+
+    companies = load_authority_companies() or {}
+    doc = next((d for d in companies.values() if isinstance(d, Mapping) and rd.text(d.get("id"))), None)
+    if doc is None:
+        return None
+    return {
+        "party_type": "company",
+        "party_id": rd.text(doc.get("company_id") or doc.get("id")),
+        "name": rd.text(doc.get("legal_name")) or rd.text(doc.get("id")),
+    }
+
+
+def _agent_party(agent_id: str) -> dict[str, str] | None:
+    """Resolve ONE partner from the existing authority_agents master.
+
+    Never creates a partner; an unknown id is a hard error so the payable can
+    only ever be recorded against a real existing identity.
+    """
+    from core.database import load_authority_agents
+
+    agents = load_authority_agents() or {}
+    doc = agents.get(agent_id) or next(
+        (d for d in agents.values() if isinstance(d, Mapping) and rd.text(d.get("agent_id")) == agent_id), None
+    )
+    if doc is None:
+        return None
+    return {
+        "party_type": "agent",
+        "party_id": rd.text(doc.get("agent_id") or doc.get("id")),
+        "name": rd.text(doc.get("legal_name")) or rd.text(doc.get("id")),
+    }
+
+
+def _position_readback(sid: str) -> dict[str, Any]:
+    from core.financial_ledger import shipment_partner_position
+
+    return shipment_partner_position(sid)
+
+
+def _load_entity_audit(entity_type: str, entity_id: str) -> list:
+    from core.database import load_audit_logs
+
+    return load_audit_logs(entity_type, entity_id, limit=5) or []
+
+
+def _handle_partner_payable_record(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """ONE partner payable for ONE shipment = one canonical obligation.
+
+    PAYABLE ≠ COST in the model: the obligation is an explicit, evidence-linked
+    write that references the shipment's accrued cost; it is never derived
+    silently. Idempotent by requestId via the canonical action registry.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error
+    from core.financial_ledger import save_obligation
+    from core.logic import calculate_from_shipment
+
+    sid = rd.text(payload.get("shipmentId"))
+    partner_id = rd.text(payload.get("partnerId"))
+    request_id = rd.text(payload.get("requestId"))
+    amount = rd.num(payload.get("amount"))
+    if not sid or not partner_id or not request_id:
+        return _result("partner_payable_record", sid, False,
+                       "Thiếu shipmentId, partnerId hoặc requestId (idempotency key).")
+
+    actor = _actor()
+    if not can_operate_business("finance_write"):
+        return _result("partner_payable_record", sid, False, "RBAC: không có quyền finance_write.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("partner_payable_record", sid, False, f"Không tìm thấy lô {sid}.")
+    agent = _agent_party(partner_id)
+    if agent is None:
+        return _result("partner_payable_record", sid, False,
+                       f"Không tìm thấy đối tác {partner_id} trong danh mục đối tác hiện có.")
+    company = _company_party()
+    if company is None:
+        return _result("partner_payable_record", sid, False,
+                       "Thiếu hồ sơ công ty (authority_companies) — không xác định bên trả tiền.")
+    if amount is None or amount <= 0:
+        return _result("partner_payable_record", sid, False,
+                       "Nhập số tiền phải trả đối tác — số tiền trống là UNKNOWN, không tự thành 0.")
+
+    currency = rd.text(payload.get("currency")).upper() or rd.text(
+        shipment.get("currency") or _get_path(shipment, ("data", "3.4", "currency"))
+    ).upper() or "VND"
+
+    summary = calculate_from_shipment(shipment)
+    ok, result, message = save_obligation(
+        {
+            "from_party": company,
+            "to_party": agent,
+            "amount": amount,
+            "currency": currency,
+            "purpose": "partner_cost_payable",
+            "shipment_ids": [sid],
+            "evidence_refs": [{
+                "kind": "shipment_finance_actual",
+                "shipment_id": sid,
+                "section": "data.3.4",
+                "accrued_cost": summary.get("cost"),
+                "currency": summary.get("currency"),
+            }],
+            "note": rd.text(payload.get("note")) or None,
+        },
+        request_id,
+        actor=actor,
+    )
+    if not ok:
+        return _result("partner_payable_record", sid, False,
+                       message or get_last_db_error() or "Không ghi nhận được phải trả đối tác.",
+                       requestId=request_id)
+
+    fresh = _position_readback(sid)
+    return _result("partner_payable_record", sid, True, message, requestId=request_id,
+                   obligationId=rd.text(result.get("id")),
+                   persisted=result,
+                   position=fresh,
+                   audit=[
+                       {"action": rd.text(row.get("action")), "actor": rd.text(row.get("actor")),
+                        "createdAt": str(row.get("created_at"))}
+                       for row in _load_entity_audit("financial_obligations", rd.text(result.get("id")))
+                   ])
+
+
+def _handle_partner_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """ONE real payment to ONE partner = one canonical transaction + allocation.
+
+    The transaction is the money event; the allocation binds it to the open
+    payable obligation. Each write has its own deterministic request identity
+    derived from the ONE payment intent, so replaying the SAME intent never
+    double-writes, while a NEW intent (new requestId) stays distinct.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error
+    from core.financial_ledger import allocate_transaction, save_transaction
+
+    sid = rd.text(payload.get("shipmentId"))
+    partner_id = rd.text(payload.get("partnerId"))
+    request_id = rd.text(payload.get("requestId"))
+    amount = rd.num(payload.get("amount"))
+    if not sid or not partner_id or not request_id:
+        return _result("partner_payment_record", sid, False,
+                       "Thiếu shipmentId, partnerId hoặc requestId (idempotency key).")
+
+    actor = _actor()
+    if not can_operate_business("finance_write"):
+        return _result("partner_payment_record", sid, False, "RBAC: không có quyền finance_write.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("partner_payment_record", sid, False, f"Không tìm thấy lô {sid}.")
+    agent = _agent_party(partner_id)
+    if agent is None:
+        return _result("partner_payment_record", sid, False,
+                       f"Không tìm thấy đối tác {partner_id} trong danh mục đối tác hiện có.")
+    company = _company_party()
+    if company is None:
+        return _result("partner_payment_record", sid, False,
+                       "Thiếu hồ sơ công ty (authority_companies) — không xác định bên trả tiền.")
+    if amount is None or amount <= 0:
+        return _result("partner_payment_record", sid, False,
+                       "Nhập số tiền thanh toán — số tiền trống là UNKNOWN, không tự thành 0.")
+
+    currency = rd.text(payload.get("currency")).upper() or rd.text(
+        shipment.get("currency") or _get_path(shipment, ("data", "3.4", "currency"))
+    ).upper() or "VND"
+
+    # Bound the intent BEFORE any write: a payment beyond the open outstanding
+    # is refused up front (overpay/advance is ledger-representable as unallocated
+    # credit, but this slice records only payments that settle an open payable).
+    position = _position_readback(sid)
+    group = next((g for g in position.get("partners", [])
+                  if rd.text((g.get("partner") or {}).get("party_id")) == partner_id), None)
+    open_row = None
+    if group and group.get("status") == "CONFIRMED":
+        for row in group.get("obligations", []):
+            if row.get("status") == "CONFIRMED" and float(row.get("outstanding") or 0) > 0 \
+                    and rd.text(row.get("currency")) == currency:
+                open_row = row
+                break
+    if open_row is None:
+        return _result("partner_payment_record", sid, False,
+                       "Chưa có khoản phải trả đối tác nào đang mở cho lô này — ghi nhận phải trả trước khi thanh toán.",
+                       requestId=request_id)
+    if amount > float(open_row.get("outstanding") or 0):
+        return _result("partner_payment_record", sid, False,
+                       f"Số tiền vượt còn phải trả ({open_row.get('outstanding'):g} {currency}) — không ghi nhận.",
+                       requestId=request_id)
+    obligation_id = rd.text(open_row.get("obligation_id"))
+
+    ok, tx_result, message = save_transaction(
+        {
+            "source_party": company,
+            "holder_party": agent,
+            "beneficiary_party": agent,
+            "transaction_kind": "payment",
+            "amount": amount,
+            "currency": currency,
+            "classification_status": "CONFIRMED",
+            "shipment_ids": [sid],
+            "occurred_at": _normalize_date(payload.get("date"))
+            or __import__("datetime").date.today().strftime("%Y-%m-%d"),
+            "evidence_refs": [{"kind": "partner_payment_intent", "obligation_id": obligation_id,
+                               "shipment_id": sid}],
+            "note": rd.text(payload.get("note")) or None,
+        },
+        request_id,
+        actor=actor,
+    )
+    if not ok:
+        return _result("partner_payment_record", sid, False,
+                       message or get_last_db_error() or "Không ghi nhận được thanh toán đối tác.",
+                       requestId=request_id)
+    transaction_id = rd.text(tx_result.get("id"))
+
+    # Deterministic derived identity: the SAME intent always yields the SAME
+    # allocation request id, so a replay is absorbed by the action registry.
+    alloc_request_id = f"{request_id}:ALLOC"
+    ok, alloc_result, alloc_message = allocate_transaction(
+        transaction_id,
+        obligation_id,
+        amount,
+        alloc_request_id,
+        currency=currency,
+        shipment_ids=[sid],
+        evidence_refs=[{"kind": "partner_payment_settlement", "obligation_id": obligation_id,
+                        "shipment_id": sid}],
+        actor=actor,
+    )
+    if not ok:
+        # The payment itself is already a canonical fact; report the real state
+        # instead of hiding it. The remaining payable readback shows the truth.
+        return _result("partner_payment_record", sid, False,
+                       alloc_message or "Không phân bổ được thanh toán vào phải trả.",
+                       requestId=request_id, transactionId=transaction_id,
+                       persisted=tx_result, position=_position_readback(sid))
+
+    fresh = _position_readback(sid)
+    return _result("partner_payment_record", sid, True, message, requestId=request_id,
+                   transactionId=transaction_id,
+                   allocationId=rd.text(alloc_result.get("id")),
+                   persisted={"transaction": tx_result, "allocation": alloc_result},
+                   position=fresh,
+                   audit=[
+                       {"action": rd.text(row.get("action")), "actor": rd.text(row.get("actor")),
+                        "createdAt": str(row.get("created_at"))}
+                       for row in _load_entity_audit("financial_transactions", transaction_id)
+                   ])
+
+
 def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Create Shipment via the existing creation logic; duplicate codes rejected."""
     from core.auth import can_operate_business
@@ -895,6 +1156,8 @@ _HANDLERS = {
     "payment_correction": _handle_payment_correction,
     "shipment_create": _handle_shipment_create,
     "pxk_generate": _handle_pxk_generate,
+    "partner_payable_record": _handle_partner_payable_record,
+    "partner_payment_record": _handle_partner_payment_record,
 }
 
 
