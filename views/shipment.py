@@ -217,20 +217,22 @@ def ui_shipment_detail_tabs(sid, ship):
             key=f"{prefix}_contract_id",
         )
 
-    # TRẢ LẠI ĐÚNG 3 TAB CHUẨN GỐC CỦA ANH
+    # TRẢ LẠI ĐÚNG CÁC TAB CHUẨN GỐC CỦA ANH
     # LOG-LG04: mở tab theo thẻ việc chính ở đầu trang
     _jump = st.session_state.pop("active_shipment_section", None)
-    _tab_labels = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"]
+    _tab_labels = ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)", "📄 CHỨNG TỪ"]
     if _jump in ("export", 0, None):
         _tab_label = _tab_labels[0]
     elif _jump in ("import", 1):
         _tab_label = _tab_labels[1]
     elif _jump in ("finance", 2):
         _tab_label = _tab_labels[2]
+    elif _jump in ("documents", 3):
+        _tab_label = _tab_labels[3]
     else:
         _tab_label = _tab_labels[0]  # default: PICKUP & XUẤT KHẨU
-    t1, t2, t3 = st.tabs(
-        ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)"],
+    t1, t2, t3, t4 = st.tabs(
+        ["🚛 PICKUP & XUẤT KHẨU", "🛃 IMPORT & GIAO HÀNG", "💰 FINANCE (CÔNG NỢ)", "📄 CHỨNG TỪ"],
         default=_tab_label,
     )
     
@@ -664,6 +666,10 @@ def ui_shipment_detail_tabs(sid, ship):
         if st.button("📥 Xuất File Excel (Nội bộ)", key=f"{prefix}_xls"):
             ship['data'] = d
             st.download_button("Tải .xlsx", generate_mini_export_excel(ship), f"BangKe_{sid}.xlsx")
+
+    with t4:
+        from views.docgen import ui_document_pack  # noqa: PLC0415
+        ui_document_pack(sid, ship)
 
     with st.expander("🕒 Lịch sử thay đổi", expanded=False):
         if audit_rows:
