@@ -26,6 +26,7 @@ from typing import Any, Mapping
 
 import streamlit as st
 
+from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
 
@@ -265,9 +266,10 @@ def build_view_model() -> dict:
 
     summary = build_dashboard_summary(views.values())
     user = current_user() or {}
+    c1 = logi_c1.assemble_c1_payload()
 
     model = {
-        "version": _payload_version(rows, references),
+        "version": _payload_version(rows, references, c1),
         "environment": {
             "transport": transport,
             "label": "Preview / Staging" if transport == logi_sandbox.SANDBOX_TRANSPORT else "Production",
@@ -284,29 +286,11 @@ def build_view_model() -> dict:
         "shipments": rows,
         "home": _home_projection(rows, summary, references),
         "tasks": _task_projection(rows, references),
-        "contracts": [
-            {
-                "id": rd.text(c.get("id")),
-                "company": rd.text(c.get("customer")),
-                "agent": rd.text(c.get("agent_id")),
-                "status": rd.text(c.get("status")),
-                "statusTone": "green" if rd.text(c.get("status")) == "active" else "gray",
-                "companyLegal": rd.text(c.get("customer")),
-                "value": rd.num(c.get("value")),
-            }
-            for c in references["contracts"].values() if isinstance(c, Mapping)
-        ],
-        "customers": [
-            {"name": rd.text(c.get("name")), "short": rd.text(c.get("name")),
-             "mst": rd.text(c.get("tax_code"))}
-            for c in references["customers"].values() if isinstance(c, Mapping)
-        ],
-        "quotes": [
-            {"id": rd.text(q.get("id")), "customer": rd.text(q.get("customer")),
-             "status": rd.text(q.get("status")), "total": rd.num(q.get("total")),
-             "currency": rd.text(q.get("currency")) or "VND"}
-            for q in references["quotes"].values() if isinstance(q, Mapping)
-        ],
+        "contracts": c1["contracts"],
+        "customers": c1["customers"],
+        "quotes": c1["quotes"],
+        "agreements": c1["agreements"],
+        "authority": c1["authority"],
         "notifications": _notifications(rows),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
@@ -314,11 +298,13 @@ def build_view_model() -> dict:
     return model
 
 
-def _payload_version(rows: list[dict[str, Any]], references: Mapping[str, Any]) -> str:
+def _payload_version(rows: list[dict[str, Any]], references: Mapping[str, Any],
+                     c1: Mapping[str, Any] | None = None) -> str:
     """Deterministic content version: changes only when data actually changes."""
     raw = json.dumps(
         {"s": rows, "t": references.get("tasks"), "c": list((references.get("contracts") or {}).keys()),
-         "q": list((references.get("quotes") or {}).keys())},
+         "q": list((references.get("quotes") or {}).keys()),
+         "c1": (c1 or {})},
         sort_keys=True, ensure_ascii=False, default=str,
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
@@ -342,7 +328,7 @@ PHASE_B_EVENTS = {
     "pxk_generate",
 }
 
-ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS
+ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
 
 # Whitelist: component field key → canonical shipment document path.
 # Only these paths may be written by the component.
@@ -961,6 +947,10 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     logi_sandbox.ensure_backend()
     session = {"seq": st.session_state.get(SEQ_KEY, 0)}
     outcomes = consume_phase_b_triggers(session, result)
+
+    # Phase C1 path (business contracts slice) — shares the same seq counter so
+    # a replayed trigger value can never double-write across phase sets.
+    outcomes.extend(logi_c1.consume_c1_triggers(session, result))
 
     # Phase A path (bounded local merge over the legacy event set).
     phase_a_session = {"seq": st.session_state.get(SEQ_KEY, 0), "shipments": _state().get("shipments", {})}

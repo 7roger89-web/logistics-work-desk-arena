@@ -26,6 +26,8 @@ import {
   getViewModel,
   subscribeViewModel,
   unknownLabel,
+  type Agreement,
+  type AuthorityParty,
   type Contract,
   type Customer,
   type Environment,
@@ -66,6 +68,8 @@ interface StoreShape {
   contracts: Contract[];
   customers: Customer[];
   quotes: Quote[];
+  agreements: Agreement[];
+  authority: { companies: AuthorityParty[]; agents: AuthorityParty[] };
   tasks: Task[];
   notifications: Notif[];
   home: Home | null;
@@ -121,6 +125,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const tasks = useMemo(() => vm?.tasks ?? [], [vm]);
   const customers = useMemo(() => vm?.customers ?? [], [vm]);
   const quotes = useMemo(() => vm?.quotes ?? [], [vm]);
+  const agreements = useMemo(() => vm?.agreements ?? [], [vm]);
+  const authority = useMemo(
+    () => vm?.authority ?? { companies: [], agents: [] },
+    [vm]
+  );
   const notifications = useMemo(() => vm?.notifications ?? [], [vm]);
   const home = useMemo(() => vm?.home ?? null, [vm]);
   const environment = useMemo(() => vm?.environment ?? null, [vm]);
@@ -192,6 +201,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       contracts,
       customers,
       quotes,
+      agreements,
+      authority,
       tasks,
       notifications,
       home,
@@ -215,6 +226,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       contracts,
       customers,
       quotes,
+      agreements,
+      authority,
       tasks,
       notifications,
       home,

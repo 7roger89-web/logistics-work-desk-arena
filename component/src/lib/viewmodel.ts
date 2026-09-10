@@ -260,28 +260,209 @@ export interface Task {
   source?: string;
 }
 
-export interface Contract {
-  id: string;
-  company: string;
-  agent: string;
-  status: string;
-  statusTone: Tone;
-  companyLegal: string;
-  value?: MaybeNum;
-}
-
 export interface Customer {
+  id: string;
   name: string;
   short: string;
   mst: string;
+  phone: string;
+  email: string;
+  contactPerson: string;
+  taxCode: string;
+  address: string;
+  note: string;
+}
+
+export interface QuoteServiceLine {
+  code: string;
+  serviceName: string;
+  unit: string;
+  qty: MaybeNum;
+  currency: string;
+  costUnit: MaybeNum;
+  sellUnit: MaybeNum;
+  taxPct: MaybeNum;
+  costTotal: MaybeNum;
+  sellTotal: MaybeNum;
+  costVnd: MaybeNum;
+  sellVnd: MaybeNum;
 }
 
 export interface Quote {
   id: string;
+  quoteNo: string;
+  customerId: string;
+  customer: string;
+  salesOwner: string;
+  status: string;
+  statusLabel: string;
+  origin: string;
+  destination: string;
+  route: string;
+  incoterm: string;
+  transportMode: string;
+  goodsDescription: string;
+  expectedDeliveryDate: string;
+  currency: string;
+  total?: MaybeNum;
+  sellingPriceTotalVnd?: MaybeNum;
+  estimatedCostVnd?: MaybeNum;
+  estimatedMarginVnd?: MaybeNum;
+  isEstimate?: boolean;
+  ledgerPosted?: boolean;
+  serviceLines: QuoteServiceLine[];
+  assumptions: string[];
+  statusHistory: Array<Record<string, unknown>>;
+  version?: number;
+  shipmentId?: string;
+  allowedTransitions: string[];
+  source?: string;
+}
+
+export interface AgreementHandoff {
+  state: string;
+  label: string;
+  reasons: string[];
+  blocks_operations?: boolean;
+  source?: string;
+}
+
+export interface Agreement {
+  id: string;
+  agreementNo: string;
+  customerId: string;
+  customer: string;
+  quoteId: string;
+  quoteReference: string;
+  status: string;
+  statusLabel: string;
+  version?: number;
+  effectiveDate: string;
+  commercialSnapshot?: Record<string, unknown>;
+  paymentTerms?: Record<string, unknown>;
+  responsibilities?: Record<string, unknown>;
+  requiredDocuments: Array<Record<string, unknown>>;
+  factoryLots: Array<Record<string, unknown>>;
+  assumptions: string[];
+  unresolvedIssues: string[];
+  evidence: Record<string, unknown>;
+  shipmentIds: string[];
+  statusHistory: Array<Record<string, unknown>>;
+  handoff: AgreementHandoff;
+  allowedTransitions: string[];
+  source?: string;
+}
+
+export interface AuthorityParty {
+  id: string;
+  legalName: string;
+  legalCode: string;
+  legalAddress: string;
+  representative: string;
+  representativeTitle: string;
+  phone: string;
+  email: string;
+  bankAccountHolder: string;
+  bankAccountNumber: string;
+  bankName: string;
+  bankBranch: string;
+}
+
+export interface GoodsLine {
+  stt: number;
+  description: string;
+  unit: string;
+  quantity: MaybeNum;
+  unitPrice: MaybeNum;
+  vatRate: string;
+  amount: MaybeNum;
+}
+
+export interface GoodsTotals {
+  lines?: Array<Record<string, unknown>>;
+  subtotal: number;
+  vat_amount: number;
+  total_after_vat: number;
+  currency: string;
+}
+
+export interface DocCard {
+  document_type: string;
+  state: string;
+  reason: string;
+  missing: string[];
+  source_ref?: string;
+  goods_count?: number;
+  applicable?: boolean;
+}
+
+export interface ContractDocument {
+  id: string;
+  documentId: string;
+  documentType: string;
+  documentTypeLabel: string;
+  revision: number;
+  status: string;
+  fileName: string;
+  mime: string;
+  generatedAt: string;
+  generatedBy: string;
+  issuedAt: string;
+  issuedBy: string;
+  templateHash: string;
+  outputHash: string;
+  supersedes: string;
+  supersededBy: string;
+  downloadAvailable: boolean;
+  downloadBase64: string | null;
+}
+
+export interface ContractIdentity {
+  hdntNo: string;
+  hdntDate: string;
+  validFrom: string;
+  validTo: string;
+  plNo: string;
+  plDate: string;
+  hdmbNo: string;
+  hdmbDate: string;
+}
+
+export interface LinkedShipment {
+  id: string;
   customer: string;
   status: string;
-  total?: MaybeNum;
-  currency?: string;
+  to: string;
+}
+
+export interface Contract {
+  id: string;
+  contractNo: string;
+  kind: string;
+  status: string;
+  statusTone: Tone;
+  client: string;
+  customerId: string;
+  company: string;
+  companyLegal: string;
+  agent: string;
+  companyId: string;
+  agentId: string;
+  value?: MaybeNum;
+  currency: string;
+  note: string;
+  contractDate: string;
+  parties: { company: AuthorityParty | null; agent: AuthorityParty | null };
+  goodsLines: GoodsLine[];
+  goodsTotals: GoodsTotals;
+  thresholdVnd: number;
+  applicableDocuments: string[];
+  docCards: DocCard[];
+  hdntReuse: Record<string, unknown>;
+  identity: ContractIdentity;
+  linkedShipments: LinkedShipment[];
+  documents: ContractDocument[];
+  source?: string;
 }
 
 export interface Notif {
@@ -348,6 +529,8 @@ export interface ViewModel {
   contracts: Contract[];
   customers: Customer[];
   quotes: Quote[];
+  agreements?: Agreement[];
+  authority?: { companies: AuthorityParty[]; agents: AuthorityParty[] };
   notifications: Notif[];
   unknownLabel?: string;
 }

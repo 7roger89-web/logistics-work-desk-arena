@@ -23,7 +23,25 @@ export type LogiEventName =
   | "payment_record"
   | "payment_correction"
   | "shipment_create"
-  | "pxk_generate";
+  | "pxk_generate"
+  // Phase C1 — business-contracts slice (KHÁCH HÀNG → BÁO GIÁ → THỎA THUẬN →
+  // HỢP ĐỒNG → HÀNG HÓA → HDNT/PL/HDMB → LINK SHIPMENT → DOWNLOAD/HISTORY).
+  | "customer_create"
+  | "customer_edit"
+  | "customer_archive"
+  | "customer_import"
+  | "quote_create"
+  | "quote_edit"
+  | "quote_transition"
+  | "agreement_create"
+  | "agreement_edit"
+  | "agreement_transition"
+  | "contract_create"
+  | "contract_save"
+  | "contract_goods_save"
+  | "contract_docgen_generate"
+  | "contract_docgen_issue"
+  | "contract_shipment_link";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -35,6 +53,22 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "payment_correction",
   "shipment_create",
   "pxk_generate",
+  "customer_create",
+  "customer_edit",
+  "customer_archive",
+  "customer_import",
+  "quote_create",
+  "quote_edit",
+  "quote_transition",
+  "agreement_create",
+  "agreement_edit",
+  "agreement_transition",
+  "contract_create",
+  "contract_save",
+  "contract_goods_save",
+  "contract_docgen_generate",
+  "contract_docgen_issue",
+  "contract_shipment_link",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

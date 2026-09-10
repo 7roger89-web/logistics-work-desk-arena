@@ -1,0 +1,1363 @@
+"""Phase C1 — the business-contracts vertical slice, in the frozen Logi-good shell.
+
+KHÁCH HÀNG → BÁO GIÁ → THỎA THUẬN/BÀN GIAO → HỢP ĐỒNG → HÀNG HÓA HỢP ĐỒNG
+→ HDNT/PL/HDMB → LINK SHIPMENT → DOWNLOAD/HISTORY.
+
+This module is a presentation adapter + the ONE bounded dispatcher for the C1
+destinations.  It adds NO second source of truth:
+
+* every value is projected from the CURRENT Logistics readers
+  (``core.database``, ``core.quotations``, ``core.commercial_agreements``,
+  ``core.docgen``);
+* every write goes: typed event → RBAC (``core.auth``) → existing writer/service
+  → audit → fresh backend read → refreshed view-model.
+
+UNKNOWN != ZERO throughout: a blank quantity/unit-price stays ``None`` and is
+rendered "—"; it is never silently coerced to 0.
+"""
+
+from __future__ import annotations
+
+import base64
+from typing import Any, Mapping
+
+from views import logi_real_data as rd
+from views import logi_sandbox
+
+# ---------------------------------------------------------------------------
+# Event set (typed trigger values surfaced by the ONE component root)
+# ---------------------------------------------------------------------------
+
+C1_EVENTS = {
+    "customer_create",
+    "customer_edit",
+    "customer_archive",
+    "customer_import",
+    "quote_create",
+    "quote_edit",
+    "quote_transition",
+    "agreement_create",
+    "agreement_edit",
+    "agreement_transition",
+    "contract_create",
+    "contract_save",
+    "contract_goods_save",
+    "contract_docgen_generate",
+    "contract_docgen_issue",
+    "contract_shipment_link",
+}
+
+_MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+_UNKNOWN = rd.UNKNOWN
+_LABEL = rd.UNKNOWN_LABEL
+
+
+def _text(value: Any) -> str:
+    return rd.text(value)
+
+
+def _num(value: Any) -> float | None:
+    return rd.num(value)
+
+
+def _money_label(value: Any) -> str:
+    return rd._money_label(value)
+
+
+# ---------------------------------------------------------------------------
+# Fresh reads (straight from the database, never the render cache)
+# ---------------------------------------------------------------------------
+
+def read_customer(cid: str) -> dict[str, Any] | None:
+    from core.database import get_db
+
+    db = get_db()
+    if db is None:
+        return None
+    return db.customers.find_one({"id": cid, "is_deleted": {"$ne": True}}, {"_id": 0})
+
+
+def read_quote(qid: str) -> dict[str, Any] | None:
+    from core.database import get_db
+
+    db = get_db()
+    if db is None:
+        return None
+    return db.quotes.find_one({"id": qid, "is_deleted": {"$ne": True}}, {"_id": 0})
+
+
+def read_agreement(aid: str) -> dict[str, Any] | None:
+    from core.database import get_db
+
+    db = get_db()
+    if db is None:
+        return None
+    return db.agreements.find_one({"id": aid, "is_deleted": {"$ne": True}}, {"_id": 0})
+
+
+def read_contract(cid: str) -> dict[str, Any] | None:
+    from core.database import get_db
+
+    db = get_db()
+    if db is None:
+        return None
+    return db.contracts.find_one({"id": cid, "is_deleted": {"$ne": True}}, {"_id": 0})
+
+
+# ---------------------------------------------------------------------------
+# Session-scoped generated-file store (download availability, per persistence
+# capability: metadata persists cross-session, bytes are session-only)
+# ---------------------------------------------------------------------------
+
+def _outputs_key(scope: str) -> str:
+    return f"logi_c1_doc_outputs_{scope}"
+
+
+def stored_outputs(scope: str) -> dict[str, dict[str, Any]]:
+    import streamlit as st
+
+    outputs = st.session_state.get(_outputs_key(scope))
+    return dict(outputs) if isinstance(outputs, dict) else {}
+
+
+def store_output(scope: str, record_id: str, payload: Mapping[str, Any]) -> None:
+    import streamlit as st
+
+    if not record_id:
+        return
+    outputs = stored_outputs(scope)
+    if record_id in outputs:
+        return  # existing (possibly ISSUED) revisions are never overwritten
+    outputs[record_id] = dict(payload)
+    st.session_state[_outputs_key(scope)] = outputs
+
+
+# ---------------------------------------------------------------------------
+# Projections
+# ---------------------------------------------------------------------------
+
+def customer_projection(c: Mapping[str, Any]) -> dict[str, Any]:
+    name = _text(c.get("name"))
+    tax_code = _text(c.get("tax_code"))
+    return {
+        "id": _text(c.get("id")),
+        "name": name,
+        # Compatibility aliases for the donor shell search (name / MST).
+        "short": name,
+        "mst": tax_code,
+        "phone": _text(c.get("phone")),
+        "email": _text(c.get("email")),
+        "contactPerson": _text(c.get("contact_person")),
+        "taxCode": tax_code,
+        "address": _text(c.get("address")),
+        "note": _text(c.get("note")),
+    }
+
+
+_QUOTE_STATUS_LABEL = {
+    "DRAFT": "Nháp",
+    "READY_FOR_REVIEW": "Chờ review",
+    "SENT": "Đã gửi khách",
+    "ACCEPTED": "Khách chốt",
+    "REJECTED": "Từ chối",
+    "EXPIRED": "Hết hạn",
+    "READY_TO_CREATE_SHIPMENT": "Sẵn sàng tạo lô",
+}
+
+
+def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
+    from core.quotations import allowed_transitions
+
+    calc = q.get("calculation") if isinstance(q.get("calculation"), Mapping) else {}
+    status = _text(q.get("status")) or "DRAFT"
+    service_lines = q.get("service_lines") if isinstance(q.get("service_lines"), list) else []
+    # Legacy staging quote shape (estimate summary) falls back to `total`/`lines`.
+    total = _num(calc.get("selling_price_total_vnd"))
+    if total is None:
+        total = _num(q.get("total"))
+    lines_out: list[dict[str, Any]] = []
+    for line in service_lines:
+        if not isinstance(line, Mapping):
+            continue
+        lines_out.append({
+            "code": _text(line.get("code")),
+            "serviceName": _text(line.get("service_name")),
+            "unit": _text(line.get("unit")) or "Lần",
+            "qty": _num(line.get("qty")),
+            "currency": _text(line.get("currency")) or "VND",
+            "costUnit": _num(line.get("cost_unit")),
+            "sellUnit": _num(line.get("sell_unit")),
+            "taxPct": _num(line.get("tax_pct")),
+            "costTotal": _num(line.get("cost_total")),
+            "sellTotal": _num(line.get("sell_total")),
+            "costVnd": _num(line.get("cost_vnd")),
+            "sellVnd": _num(line.get("sell_vnd")),
+        })
+    return {
+        "id": _text(q.get("id")),
+        "quoteNo": _text(q.get("quote_no")) or _text(q.get("id")),
+        "customerId": _text(q.get("customer_id")),
+        "customer": _text(q.get("customer_name")) or _text(q.get("customer")),
+        "salesOwner": _text(q.get("sales_owner")),
+        "status": status,
+        "statusLabel": _QUOTE_STATUS_LABEL.get(status, status),
+        "origin": _text(q.get("origin")),
+        "destination": _text(q.get("destination")),
+        "route": _text(q.get("route")),
+        "incoterm": _text(q.get("incoterm")),
+        "transportMode": _text(q.get("transport_mode")),
+        "goodsDescription": _text(q.get("goods_description")),
+        "expectedDeliveryDate": _text(q.get("expected_delivery_date")),
+        "currency": "VND",
+        "total": total,
+        "sellingPriceTotalVnd": _num(calc.get("selling_price_total_vnd")),
+        "estimatedCostVnd": _num(calc.get("estimated_cost_vnd")),
+        "estimatedMarginVnd": _num(calc.get("estimated_margin_vnd")),
+        "isEstimate": True,
+        "ledgerPosted": bool(q.get("ledger_posted")),
+        "serviceLines": lines_out,
+        "assumptions": list(q.get("assumptions") or []),
+        "statusHistory": list(q.get("status_history") or []),
+        "version": int(q.get("version") or 0),
+        "shipmentId": _text(q.get("shipment_id")),
+        "allowedTransitions": list(allowed_transitions(status)),
+        "source": "core.database.load_quotes",
+    }
+
+
+_AGREEMENT_STATUS_LABEL = {
+    "DRAFT": "Nháp",
+    "REVIEWING": "Đang review",
+    "AGREED": "Đã đồng ý",
+    "REVISED": "Đã sửa đổi",
+    "VOID": "Vô hiệu",
+}
+
+
+def agreement_projection(a: Mapping[str, Any]) -> dict[str, Any]:
+    from core.commercial_agreements import allowed_transitions, handoff_readiness
+
+    status = _text(a.get("status")) or "DRAFT"
+    snapshot = a.get("commercial_snapshot") if isinstance(a.get("commercial_snapshot"), Mapping) else {}
+    return {
+        "id": _text(a.get("agreement_id")) or _text(a.get("id")),
+        "agreementNo": _text(a.get("agreement_no")),
+        "customerId": _text(a.get("customer_id")),
+        "customer": _text(a.get("customer_name")),
+        "quoteId": _text(a.get("quote_id")),
+        "quoteReference": _text(a.get("quote_reference")),
+        "status": status,
+        "statusLabel": _AGREEMENT_STATUS_LABEL.get(status, status),
+        "version": int(a.get("version") or 0),
+        "effectiveDate": _text(a.get("effective_date")),
+        "commercialSnapshot": {
+            "origin": _text(snapshot.get("origin")),
+            "destination": _text(snapshot.get("destination")),
+            "route": _text(snapshot.get("route")),
+            "incoterm": _text(snapshot.get("incoterm")),
+            "transportMode": _text(snapshot.get("transport_mode")),
+            "goodsDescription": _text(snapshot.get("goods_description")),
+            "expectedDeliveryDate": _text(snapshot.get("expected_delivery_date")),
+            "serviceLines": list(snapshot.get("service_lines") or []),
+            "calculationSummary": snapshot.get("calculation_summary") or {},
+        },
+        "paymentTerms": a.get("payment_terms") if isinstance(a.get("payment_terms"), Mapping) else {},
+        "responsibilities": a.get("responsibilities") if isinstance(a.get("responsibilities"), Mapping) else {},
+        "requiredDocuments": list(a.get("required_documents") or []),
+        "factoryLots": list(a.get("factory_lots") or []),
+        "assumptions": list(a.get("assumptions") or []),
+        "unresolvedIssues": list(a.get("unresolved_issues") or []),
+        "evidence": a.get("evidence") if isinstance(a.get("evidence"), Mapping) else {},
+        "shipmentIds": list(a.get("shipment_ids") or []),
+        "statusHistory": list(a.get("status_history") or []),
+        "handoff": handoff_readiness(a),
+        "allowedTransitions": list(allowed_transitions(status)),
+        "source": "core.database.load_agreements",
+    }
+
+
+_DOC_LABEL = {"HDNT": "Hợp đồng nguyên tắc", "PL": "Phụ lục Hợp đồng", "HDMB": "Hợp đồng mua bán", "PXK": "Phiếu xuất kho"}
+
+
+def document_projection(d: Mapping[str, Any], stored: Mapping[str, dict[str, Any]]) -> dict[str, Any]:
+    record_id = _text(d.get("id"))
+    doc_type = _text(d.get("document_type")).upper()
+    entry = stored.get(record_id)
+    download = None
+    if entry and entry.get("bytes"):
+        try:
+            download = base64.b64encode(entry["bytes"]).decode("ascii")
+        except Exception:  # noqa: BLE001
+            download = None
+    return {
+        "id": record_id,
+        "documentId": _text(d.get("document_id")),
+        "documentType": doc_type,
+        "documentTypeLabel": _DOC_LABEL.get(doc_type, doc_type),
+        "revision": d.get("generation_revision") or d.get("revision") or 1,
+        "status": _text(d.get("status")),
+        "fileName": _text(d.get("output_file_name")),
+        "mime": _MIME_DOCX if doc_type == "HDNT" else _MIME_XLSX,
+        "generatedAt": _text(d.get("generated_at")),
+        "generatedBy": _text(d.get("generated_by")),
+        "issuedAt": _text(d.get("issued_at")),
+        "issuedBy": _text(d.get("issued_by")),
+        "templateHash": _text(d.get("template_hash"))[:16],
+        "outputHash": _text(d.get("output_hash"))[:16],
+        "supersedes": _text(d.get("supersedes_document_id")),
+        "supersededBy": _text(d.get("superseded_by_document_id")),
+        "downloadAvailable": bool(entry and entry.get("bytes")),
+        "downloadBase64": download,
+    }
+
+
+def _goods_display(line: Mapping[str, Any], index: int) -> dict[str, Any]:
+    qty = rd.num(line.get("quantity"))
+    price = rd.num(line.get("unit_price_vnd_excl_vat"))
+    amount = None
+    if qty is not None and price is not None:
+        amount = round(qty * price)
+    return {
+        "stt": index,
+        "description": _text(line.get("description")),
+        "unit": _text(line.get("unit")),
+        "quantity": qty,
+        "unitPrice": price,
+        "vatRate": _text(line.get("vat_rate")) or "0.08",
+        "amount": amount,
+    }
+
+
+def _party_view(record: Mapping[str, Any] | None, kind: str) -> dict[str, Any] | None:
+    if not record:
+        return None
+    code_field = "legal_code" if kind == "agent" else "tax_or_legal_code"
+    return {
+        "id": _text(record.get(f"{kind}_id") or record.get("id")),
+        "legalName": _text(record.get("legal_name")),
+        "legalCode": _text(record.get(code_field)),
+        "legalAddress": _text(record.get("legal_address")),
+        "representative": _text(record.get("legal_representative")),
+        "representativeTitle": _text(record.get("representative_title")),
+        "phone": _text(record.get("phone")),
+        "email": _text(record.get("email")),
+        "bankAccountHolder": _text(record.get("bank_account_holder")),
+        "bankAccountNumber": _text(record.get("bank_account_number")),
+        "bankName": _text(record.get("bank_name")),
+        "bankBranch": _text(record.get("bank_branch")),
+    }
+
+
+def _contract_identity(contract: Mapping[str, Any]) -> dict[str, Any]:
+    stored = contract.get("doc_identity") if isinstance(contract.get("doc_identity"), Mapping) else {}
+    return {
+        "hdntNo": _text(contract.get("hdnt_no") or stored.get("hdnt_no")),
+        "hdntDate": _text(contract.get("hdnt_date") or stored.get("hdnt_date")),
+        "validFrom": _text(contract.get("valid_from") or stored.get("valid_from")),
+        "validTo": _text(contract.get("valid_to") or stored.get("valid_to")),
+        "plNo": _text(contract.get("pl_no") or stored.get("pl_no")),
+        "plDate": _text(contract.get("pl_date") or stored.get("pl_date")),
+        "hdmbNo": _text(contract.get("hdmb_no") or stored.get("hdmb_no")),
+        "hdmbDate": _text(contract.get("hdmb_date") or stored.get("hdmb_date")),
+    }
+
+
+def contract_projection(
+    c: Mapping[str, Any],
+    *,
+    shipments: Mapping[str, Any],
+    docs_by_scope: Mapping[str, dict[str, Any]],
+    companies: Mapping[str, Any],
+    agents: Mapping[str, Any],
+    all_contracts: Mapping[str, Any],
+) -> dict[str, Any]:
+    from core.docgen import generator as gen
+
+    cid = _text(c.get("id")) or _text(c.get("contract_no"))
+    company_id = _text(c.get("company_id"))
+    agent_id = _text(c.get("agent_id"))
+    # Same resolution as the generate path (incl. single-record fallback) so the
+    # list/detail readback and the docgen preflight always agree on parties.
+    company, agent = _resolve_authority(c, companies, agents)
+
+    goods_raw = c.get("goods_lines") if isinstance(c.get("goods_lines"), list) else []
+    goods = [_goods_display(line, idx) for idx, line in enumerate(goods_raw, start=1) if isinstance(line, Mapping)]
+
+    identity = _contract_identity(c)
+    contract_view = {
+        "id": cid,
+        "contract_no": _text(c.get("contract_no")) or cid,
+        "currency": "VND",
+        "hdnt_no": identity["hdntNo"],
+        "hdnt_date": identity["hdntDate"],
+        "valid_from": identity["validFrom"],
+        "valid_to": identity["validTo"],
+        "pl_no": identity["plNo"],
+        "pl_date": identity["plDate"],
+        "hdmb_no": identity["hdmbNo"],
+        "hdmb_date": identity["hdmbDate"],
+    }
+
+    # HDNT reuse / parent (authoritative, from core.docgen rules).
+    parent_contract = None
+    hdnt_reuse: dict[str, Any] = {}
+    if agent and company:
+        hdnt_reuse = gen.reuse_decision_for_agent(all_contracts, agent=agent, company=company)
+        if hdnt_reuse.get("valid_count") == 1:
+            parent_contract = hdnt_reuse.get("reuse_target")
+
+    delivery = {"delivery_completed": False, "delivery_date": "", "delivery_location": "",
+                "receiver_name": "", "receiver_title": ""}
+    try:
+        pack = gen.build_document_pack(
+            shipment_id=cid,
+            goods_lines=goods_raw,
+            delivery_completed=False,
+            agent=agent,
+            company=company,
+            parent_contract=parent_contract,
+            contract=contract_view,
+            pxk_source=None,
+            delivery=delivery,
+            contracts=all_contracts,
+        )
+    except Exception:  # noqa: BLE001 - one bad contract must not blank the desk
+        pack = {"totals": {"lines": [], "subtotal": 0, "vat_amount": 0, "total_after_vat": 0, "currency": "VND"},
+                "threshold_vnd": 50_000_000, "applicable_documents": [], "cards": [], "hdnt_reuse": {}}
+
+    from core.database import load_shipments_for_contract
+
+    linked_ids = [str(x).upper() for x in load_shipments_for_contract(cid)]
+    legacy = _text(c.get("shipment_id"))
+    if legacy and legacy.upper() not in linked_ids:
+        linked_ids.append(legacy.upper())
+    linked_shipments = []
+    for sid in linked_ids:
+        ship = shipments.get(sid)
+        if not isinstance(ship, Mapping):
+            continue
+        linked_shipments.append({
+            "id": _text(ship.get("id")),
+            "customer": _text(ship.get("customer") or ship.get("client")),
+            "status": _text(ship.get("status")),
+            "to": f"/lo-hang/{_text(ship.get('id'))}",
+        })
+
+    stored = stored_outputs(cid)
+    docs = docs_by_scope.get(cid, {})
+    documents = [document_projection(d, stored) for d in docs.values() if isinstance(d, Mapping)]
+    documents.sort(key=lambda d: (d["documentType"], d["revision"]))
+
+    status = _text(c.get("status")) or "active"
+    return {
+        "id": cid,
+        "contractNo": _text(c.get("contract_no")) or cid,
+        "kind": _text(c.get("kind")) or _text(c.get("type")),
+        "status": status,
+        "statusTone": "green" if status == "active" else "gray",
+        "client": _text(c.get("client")) or _text(c.get("customer")),
+        "customerId": _text(c.get("customer_id")),
+        "company": _text((company or {}).get("legal_name")),
+        "companyLegal": _text((company or {}).get("legal_name")),
+        "agent": _text((agent or {}).get("legal_name")),
+        "companyId": company_id,
+        "agentId": agent_id,
+        "value": _num(c.get("value")),
+        "currency": _text(c.get("currency")) or "VND",
+        "note": _text(c.get("note")),
+        "contractDate": _text(c.get("date") or c.get("contract_date")),
+        "parties": {"company": _party_view(company, "company"), "agent": _party_view(agent, "agent")},
+        "goodsLines": goods,
+        "goodsTotals": pack.get("totals") or {},
+        "thresholdVnd": pack.get("threshold_vnd"),
+        "applicableDocuments": pack.get("applicable_documents") or [],
+        "docCards": pack.get("cards") or [],
+        "hdntReuse": pack.get("hdnt_reuse") or {},
+        "identity": identity,
+        "linkedShipments": linked_shipments,
+        "documents": documents,
+        "source": "core.database.load_contracts + core.docgen.build_document_pack",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Assemble the C1 payload for the view-model `data` channel
+# ---------------------------------------------------------------------------
+
+def assemble_c1_payload() -> dict[str, Any]:
+    from core.database import (
+        load_agreements,
+        load_authority_agents,
+        load_authority_companies,
+        load_contracts,
+        load_customers,
+        load_docgen_documents,
+        load_quotes,
+    )
+
+    customers = load_customers() or {}
+    quotes = load_quotes() or {}
+    agreements = load_agreements() or {}
+    contracts = load_contracts() or {}
+    companies = load_authority_companies() or {}
+    agents = load_authority_agents() or {}
+    shipments = _load_shipments_for_links()
+
+    docs_by_scope: dict[str, dict[str, Any]] = {}
+    for doc in (load_docgen_documents() or {}).values():
+        if not isinstance(doc, Mapping):
+            continue
+        scope = _text(doc.get("shipment_id"))
+        docs_by_scope.setdefault(scope, {})[_text(doc.get("id"))] = doc
+
+    return {
+        "customers": [customer_projection(c) for c in customers.values() if isinstance(c, Mapping)],
+        "quotes": [quote_projection(q) for q in quotes.values() if isinstance(q, Mapping)],
+        "agreements": [agreement_projection(a) for a in agreements.values() if isinstance(a, Mapping)],
+        "contracts": [
+            contract_projection(
+                c,
+                shipments=shipments,
+                docs_by_scope=docs_by_scope,
+                companies=companies,
+                agents=agents,
+                all_contracts=contracts,
+            )
+            for c in contracts.values() if isinstance(c, Mapping)
+        ],
+        "authority": {
+            "companies": [(_party_view(v, "company") or {}) for v in companies.values() if isinstance(v, Mapping)],
+            "agents": [(_party_view(v, "agent") or {}) for v in agents.values() if isinstance(v, Mapping)],
+        },
+    }
+
+
+def _load_shipments_for_links() -> dict[str, Any]:
+    from views import logi_view_model as vm
+
+    try:
+        return vm.load_shipments()
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Template path resolution (production owner-gate; staging synth only)
+# ---------------------------------------------------------------------------
+
+def _resolve_template_paths() -> tuple[str | None, str | None]:
+    from core.config import DOCGEN_TEMPLATE_DIR
+
+    if DOCGEN_TEMPLATE_DIR is not None:
+        return (
+            str(DOCGEN_TEMPLATE_DIR / "truong-thanh-agent.xlsx"),
+            str(DOCGEN_TEMPLATE_DIR / "HDNT-TT-agent.docx"),
+        )
+    if logi_sandbox.transport_name() == logi_sandbox.SANDBOX_TRANSPORT:
+        from views import logi_docgen_templates
+
+        return logi_docgen_templates.staging_template_paths()
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+# Write handlers
+# ---------------------------------------------------------------------------
+
+def _actor() -> str:
+    from core.auth import current_user
+
+    user = current_user() or {}
+    return rd.text(user.get("username")) or "system"
+
+
+def _result(event: str, entity_id: str, ok: bool, error: str = "", readback: dict[str, Any] | None = None,
+            **extra: Any) -> dict[str, Any]:
+    return {"event": event, "id": entity_id, "ok": ok, "error": error, "readback": readback, **extra}
+
+
+def _audit(entity_type: str, entity_id: str, limit: int = 6) -> list[dict[str, Any]]:
+    from core.database import load_audit_logs
+
+    return [
+        {"action": rd.text(row.get("action")), "actor": rd.text(row.get("actor")),
+         "createdAt": str(row.get("created_at"))}
+        for row in (load_audit_logs(entity_type, entity_id, limit=limit) or [])
+        if isinstance(row, Mapping)
+    ]
+
+
+def _handle_customer_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, save_customer_to_cloud
+
+    cid = _text(payload.get("id")).strip().upper()
+    name = _text(payload.get("name"))
+    if not cid or not name:
+        return _result("customer_create", cid, False, "Mã và tên khách hàng là bắt buộc.")
+    if not can_operate_business("customers"):
+        return _result("customer_create", cid, False, "RBAC: không có quyền customers.")
+    if cid in (load_customers() or {}):
+        return _result("customer_create", cid, False, f"Mã khách hàng {cid} đã tồn tại.")
+    doc = {
+        "id": cid, "name": name,
+        "phone": _text(payload.get("phone")), "email": _text(payload.get("email")),
+        "contact_person": _text(payload.get("contactPerson")),
+        "tax_code": _text(payload.get("taxCode")), "address": _text(payload.get("address")),
+        "note": _text(payload.get("note")),
+    }
+    if not save_customer_to_cloud(doc):
+        return _result("customer_create", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+    fresh = read_customer(cid)
+    return _result("customer_create", cid, True, readback=customer_projection(fresh or {}),
+                   audit=_audit("customer", cid))
+
+
+def _handle_customer_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_customer_to_cloud
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("customer_edit", cid, False, "Thiếu mã khách hàng.")
+    if not can_operate_business("customers"):
+        return _result("customer_edit", cid, False, "RBAC: không có quyền customers.")
+    existing = read_customer(cid)
+    if existing is None:
+        return _result("customer_edit", cid, False, f"Không tìm thấy khách hàng {cid}.")
+    for key in ("name", "phone", "email", "contact_person", "tax_code", "address", "note"):
+        if key in payload:
+            existing[key] = _text(payload.get(key))
+    if not _text(existing.get("name")):
+        return _result("customer_edit", cid, False, "Tên khách hàng không được để trống.")
+    if not save_customer_to_cloud(existing):
+        return _result("customer_edit", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+    fresh = read_customer(cid)
+    return _result("customer_edit", cid, True, readback=customer_projection(fresh or {}),
+                   audit=_audit("customer", cid))
+
+
+def _handle_customer_archive(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import has_permission
+    from core.database import delete_customer
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("customer_archive", cid, False, "Thiếu mã khách hàng.")
+    if not has_permission("customer_delete"):
+        return _result("customer_archive", cid, False, "RBAC: chỉ Admin có quyền lưu trữ khách hàng.")
+    reason = _text(payload.get("reason"))
+    if not reason:
+        return _result("customer_archive", cid, False, "Cần lý do lưu trữ.")
+    if not delete_customer(cid, reason=reason):
+        return _result("customer_archive", cid, False, "Không thể lưu trữ khách hàng.")
+    return _result("customer_archive", cid, True, audit=_audit("customer", cid))
+
+
+def _handle_customer_import(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, save_customer_to_cloud
+
+    rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+    if not rows:
+        return _result("customer_import", "", False, "Không có dòng dữ liệu để import.")
+    if not can_operate_business("customers"):
+        return _result("customer_import", "", False, "RBAC: không có quyền customers.")
+    existing = load_customers() or {}
+    created, skipped, errors = 0, 0, []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        cid = _text(row.get("id")).strip().upper()
+        name = _text(row.get("name"))
+        if not cid or not name:
+            continue
+        if cid in existing:
+            skipped += 1
+            continue
+        doc = {
+            "id": cid, "name": name,
+            "phone": _text(row.get("phone")), "email": _text(row.get("email")),
+            "contact_person": _text(row.get("contactPerson") or row.get("contact_person")),
+            "tax_code": _text(row.get("taxCode") or row.get("tax_code")),
+            "address": _text(row.get("address")), "note": _text(row.get("note")),
+        }
+        if save_customer_to_cloud(doc):
+            existing[cid] = doc
+            created += 1
+        else:
+            errors.append(cid)
+    return _result("customer_import", "", not bool(errors),
+                   f"Đã thêm {created} khách hàng, bỏ qua {skipped} đã tồn tại, lỗi {len(errors)}.",
+                   created=created, skipped=skipped, failed=list(errors))
+
+
+def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.quotations import calculate_quote
+
+    service_lines: list[dict[str, Any]] = []
+    for line in (payload.get("serviceLines") if isinstance(payload.get("serviceLines"), list) else []):
+        if not isinstance(line, Mapping):
+            continue
+        service_lines.append({
+            "code": _text(line.get("code")),
+            "service_name": _text(line.get("serviceName")) or _text(line.get("code")),
+            "unit": _text(line.get("unit")) or "Lần",
+            "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
+            "currency": _text(line.get("currency")) or "VND",
+            "cost_unit": _num(line.get("costUnit")) if _num(line.get("costUnit")) is not None else 0,
+            "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
+            "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
+            "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support; cần đối chiếu agent nếu là phí Trung Quốc.",
+        })
+    if not service_lines:
+        raise ValueError("Cần ít nhất một dòng dịch vụ báo giá.")
+    quote = {
+        "customer_id": _text(payload.get("customerId")),
+        "customer_name": _text(customer_doc.get("name")),
+        "sales_owner": _text(payload.get("salesOwner")),
+        "origin": _text(payload.get("origin")),
+        "destination": _text(payload.get("destination")),
+        "route": _text(payload.get("route")),
+        "incoterm": _text(payload.get("incoterm")) or "EXW",
+        "transport_mode": _text(payload.get("transportMode")) or "Road",
+        "goods_description": _text(payload.get("goodsDescription")),
+        "expected_delivery_date": _text(payload.get("expectedDeliveryDate")),
+        "factory_lots": payload.get("factoryLots") if isinstance(payload.get("factoryLots"), list) else [],
+        "service_lines": service_lines,
+        "fx_snapshot": {"rates_to_vnd": {"USD": 25500, "CNY": 3500, "VND": 1},
+                        "source": "Tỷ giá nhập khi báo giá; không phải tỷ giá giao dịch thực tế."},
+        "entrusted_import": {"active": False, "goods_value": 0, "goods_currency": "USD", "rate_pct": 0,
+                             "review_requested": False, "review_reason": "",
+                             "high_value_review_policy": {"status": "POLICY_NOT_CONFIGURED"},
+                             "source": "Chưa khai báo phí ủy thác."},
+        "remittance_estimate": {"remitted_amount_usd": 0, "bank_fee_pct": 0, "swift_fee_usd": 0,
+                                "receiving_bank_fee_usd": 0, "agent_conversion_fee_usd": 0,
+                                "rmb_conversion_fee_cny": 0},
+        "include_remittance_in_cost": False,
+        "assumptions": [
+            "Đây là estimate/quotation, chưa phải nghĩa vụ thanh toán.",
+            "Giá agent/đối tác phải được đối chiếu với nguồn báo giá thực tế.",
+            "Không tự động hóa khai báo hải quan sai lệch.",
+        ],
+    }
+    # Normalise calculation immediately (raises ValueError on bad lines).
+    return calculate_quote(quote)
+
+
+def _handle_quote_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, save_quotes_to_cloud
+    from core.quotations import new_quote_document, prepare_quote_for_persistence
+
+    customer_id = _text(payload.get("customerId"))
+    if not customer_id:
+        return _result("quote_create", "", False, "Vui lòng chọn khách hàng.")
+    if not can_operate_business("sales_write"):
+        return _result("quote_create", "", False, "RBAC: không có quyền sales_write.")
+    customers = load_customers() or {}
+    customer = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+    if not customer:
+        return _result("quote_create", "", False, f"Không tìm thấy khách hàng {customer_id}.")
+    try:
+        base = _quote_payload(customer, payload)
+        quote = new_quote_document(base)
+        stamped = prepare_quote_for_persistence(quote, actor=_actor())
+    except ValueError as exc:
+        return _result("quote_create", "", False, str(exc))
+    if not save_quotes_to_cloud({_text(stamped.get("id")): stamped}):
+        return _result("quote_create", "", False, get_last_db_error() or "Không lưu được báo giá.")
+    fresh = read_quote(_text(stamped.get("id")))
+    return _result("quote_create", _text(stamped.get("id")), True,
+                   readback=quote_projection(fresh or {}),
+                   persisted={"id": _text(stamped.get("id")), "quoteNo": _text(stamped.get("quote_no")),
+                              "status": _text(stamped.get("status"))},
+                   audit=_audit("quote", _text(stamped.get("id"))))
+
+
+def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, save_quotes_to_cloud
+    from core.quotations import calculate_quote, prepare_quote_for_persistence
+
+    qid = _text(payload.get("id"))
+    if not qid:
+        return _result("quote_edit", qid, False, "Thiếu mã báo giá.")
+    if not can_operate_business("sales_write"):
+        return _result("quote_edit", qid, False, "RBAC: không có quyền sales_write.")
+    quote = read_quote(qid)
+    if quote is None:
+        return _result("quote_edit", qid, False, f"Không tìm thấy báo giá {qid}.")
+    for key in ("sales_owner", "origin", "destination", "route", "incoterm",
+                "goods_description", "expected_delivery_date"):
+        if key in payload:
+            quote[key] = _text(payload.get(key))
+    if isinstance(payload.get("serviceLines"), list):
+        service_lines: list[dict[str, Any]] = []
+        for line in payload.get("serviceLines"):
+            if not isinstance(line, Mapping):
+                continue
+            service_lines.append({
+                "code": _text(line.get("code")),
+                "service_name": _text(line.get("serviceName")) or _text(line.get("code")),
+                "unit": _text(line.get("unit")) or "Lần",
+                "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
+                "currency": _text(line.get("currency")) or "VND",
+                "cost_unit": _num(line.get("costUnit")) if _num(line.get("costUnit")) is not None else 0,
+                "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
+                "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
+                "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support.",
+            })
+        if service_lines:
+            quote["service_lines"] = service_lines
+    try:
+        recomputed = calculate_quote(quote)
+        stamped = prepare_quote_for_persistence(recomputed, actor=_actor())
+    except ValueError as exc:
+        return _result("quote_edit", qid, False, str(exc))
+    if not save_quotes_to_cloud({qid: stamped}):
+        return _result("quote_edit", qid, False, get_last_db_error() or "Không lưu được báo giá.")
+    fresh = read_quote(qid)
+    return _result("quote_edit", qid, True, readback=quote_projection(fresh or {}),
+                   audit=_audit("quote", qid))
+
+
+def _handle_quote_transition(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_quotes_to_cloud
+    from core.quotations import prepare_quote_for_persistence, transition_quote
+
+    qid = _text(payload.get("id"))
+    target = _text(payload.get("nextStatus")).upper()
+    if not qid or not target:
+        return _result("quote_transition", qid, False, "Thiếu mã báo giá hoặc trạng thái đích.")
+    if not can_operate_business("sales_write"):
+        return _result("quote_transition", qid, False, "RBAC: không có quyền sales_write.")
+    quote = read_quote(qid)
+    if quote is None:
+        return _result("quote_transition", qid, False, f"Không tìm thấy báo giá {qid}.")
+    try:
+        updated = transition_quote(quote, target, actor=_actor())
+        stamped = prepare_quote_for_persistence(updated, actor=_actor())
+    except ValueError as exc:
+        return _result("quote_transition", qid, False, str(exc))
+    if not save_quotes_to_cloud({qid: stamped}):
+        return _result("quote_transition", qid, False, get_last_db_error() or "Không lưu được trạng thái.")
+    fresh = read_quote(qid)
+    return _result("quote_transition", qid, True, readback=quote_projection(fresh or {}),
+                   persisted={"status": _text((fresh or {}).get("status"))}, audit=_audit("quote", qid))
+
+
+def _handle_agreement_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.commercial_agreements import build_agreement_from_quote, prepare_agreement_for_persistence
+    from core.database import get_last_db_error, save_agreements_to_cloud
+
+    qid = _text(payload.get("quoteId"))
+    if not qid:
+        return _result("agreement_create", "", False, "Thiếu báo giá nguồn.")
+    if not can_operate_business("commercial_write"):
+        return _result("agreement_create", "", False, "RBAC: không có quyền commercial_write.")
+    quote = read_quote(qid)
+    if quote is None:
+        return _result("agreement_create", "", False, f"Không tìm thấy báo giá {qid}.")
+    if _text(quote.get("status")).upper() not in ("ACCEPTED", "READY_TO_CREATE_SHIPMENT"):
+        return _result("agreement_create", "", False,
+                       "Thỏa thuận chỉ được tạo từ báo giá đã được khách chốt (ACCEPTED / READY_TO_CREATE_SHIPMENT).")
+    try:
+        agreement = build_agreement_from_quote(quote, actor=_actor())
+        stamped = prepare_agreement_for_persistence(agreement, actor=_actor())
+    except ValueError as exc:
+        return _result("agreement_create", "", False, str(exc))
+    aid = _text(stamped.get("agreement_id"))
+    if not save_agreements_to_cloud({aid: stamped}):
+        return _result("agreement_create", aid, False, get_last_db_error() or "Không lưu được thỏa thuận.")
+    fresh = read_agreement(aid)
+    return _result("agreement_create", aid, True, readback=agreement_projection(fresh or {}),
+                   persisted={"id": aid, "agreementNo": _text(stamped.get("agreement_no"))},
+                   audit=_audit("agreement", aid))
+
+
+def _handle_agreement_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.commercial_agreements import prepare_agreement_for_persistence
+    from core.database import get_last_db_error, save_agreements_to_cloud
+
+    aid = _text(payload.get("id"))
+    if not aid:
+        return _result("agreement_edit", aid, False, "Thiếu mã thỏa thuận.")
+    if not can_operate_business("commercial_write"):
+        return _result("agreement_edit", aid, False, "RBAC: không có quyền commercial_write.")
+    agreement = read_agreement(aid)
+    if agreement is None:
+        return _result("agreement_edit", aid, False, f"Không tìm thấy thỏa thuận {aid}.")
+    for key in ("payment_terms", "responsibilities", "required_documents", "evidence",
+                "unresolved_issues", "assumptions", "shipment_ids"):
+        if key in payload:
+            agreement[key] = payload.get(key)
+    try:
+        stamped = prepare_agreement_for_persistence(agreement, actor=_actor())
+    except ValueError as exc:
+        return _result("agreement_edit", aid, False, str(exc))
+    if not save_agreements_to_cloud({aid: stamped}):
+        return _result("agreement_edit", aid, False, get_last_db_error() or "Không lưu được thỏa thuận.")
+    fresh = read_agreement(aid)
+    return _result("agreement_edit", aid, True, readback=agreement_projection(fresh or {}),
+                   audit=_audit("agreement", aid))
+
+
+def _handle_agreement_transition(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.commercial_agreements import prepare_agreement_for_persistence, transition_agreement
+    from core.database import get_last_db_error, save_agreements_to_cloud
+
+    aid = _text(payload.get("id"))
+    target = _text(payload.get("nextStatus")).upper()
+    if not aid or not target:
+        return _result("agreement_transition", aid, False, "Thiếu mã thỏa thuận hoặc trạng thái đích.")
+    if not can_operate_business("commercial_write"):
+        return _result("agreement_transition", aid, False, "RBAC: không có quyền commercial_write.")
+    agreement = read_agreement(aid)
+    if agreement is None:
+        return _result("agreement_transition", aid, False, f"Không tìm thấy thỏa thuận {aid}.")
+    try:
+        updated = transition_agreement(agreement, target, actor=_actor())
+        stamped = prepare_agreement_for_persistence(updated, actor=_actor())
+    except ValueError as exc:
+        return _result("agreement_transition", aid, False, str(exc))
+    if not save_agreements_to_cloud({aid: stamped}):
+        return _result("agreement_transition", aid, False, get_last_db_error() or "Không lưu được trạng thái.")
+    fresh = read_agreement(aid)
+    return _result("agreement_transition", aid, True, readback=agreement_projection(fresh or {}),
+                   persisted={"status": _text((fresh or {}).get("status"))}, audit=_audit("agreement", aid))
+
+
+def _contract_doc(cid: str, customer_id: str | None, customer_name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "id": cid,
+        "contract_no": cid,
+        "normalized_no": cid,
+        "customer": customer_name,
+        "client": customer_name,
+        "customer_id": customer_id or "",
+        "kind": _text(payload.get("kind")),
+        "status": _text(payload.get("status")) or "active",
+        "value": _num(payload.get("value")) if payload.get("value") not in (None, "") else None,
+        "currency": _text(payload.get("currency")) or "VND",
+        "note": _text(payload.get("note")),
+    }
+
+
+def _handle_contract_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_edit_contract
+    from core.database import get_last_db_error, load_contracts, load_customers, save_contract_to_cloud
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("contract_create", cid, False, "Cần số hợp đồng.")
+    if not can_edit_contract():
+        return _result("contract_create", cid, False, "RBAC: không có quyền sửa hợp đồng (sales_write).")
+    contracts = load_contracts() or {}
+    if cid in {_text(v.get("id")) or _text(v.get("contract_no")) for v in contracts.values()}:
+        return _result("contract_create", cid, False, f"Số hợp đồng {cid} đã tồn tại.")
+    customer_id = _text(payload.get("customerId"))
+    customers = load_customers() or {}
+    customer = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+    customer_name = _text(customer.get("name")) or _text(payload.get("client"))
+    if not customer_name:
+        return _result("contract_create", cid, False, "Cần đối tác / khách hàng cho hợp đồng.")
+    doc = _contract_doc(cid, customer_id or None, customer_name, payload)
+    if not save_contract_to_cloud(doc):
+        return _result("contract_create", cid, False, get_last_db_error() or "Không lưu được hợp đồng.")
+    fresh = read_contract(cid)
+    from views import logi_view_model as vm
+
+    return _result("contract_create", cid, True,
+                   readback=_contract_readback(fresh or {}, vm.load_shipments()),
+                   audit=_audit("contract", cid))
+
+
+def _contract_readback(contract: Mapping[str, Any], shipments: Mapping[str, Any]) -> dict[str, Any]:
+    from core.database import load_authority_agents, load_authority_companies, load_contracts, load_docgen_documents
+
+    cid = _text(contract.get("id"))
+    docs_by_scope = {cid: load_docgen_documents(cid) or {}}
+    return contract_projection(
+        contract,
+        shipments=shipments,
+        docs_by_scope=docs_by_scope,
+        companies=load_authority_companies() or {},
+        agents=load_authority_agents() or {},
+        all_contracts=load_contracts() or {},
+    )
+
+
+def _handle_contract_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_edit_contract
+    from core.database import get_last_db_error, save_contract_to_cloud
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("contract_save", cid, False, "Thiếu mã hợp đồng.")
+    if not can_edit_contract():
+        return _result("contract_save", cid, False, "RBAC: không có quyền sửa hợp đồng (sales_write).")
+    contract = read_contract(cid)
+    if contract is None:
+        return _result("contract_save", cid, False, f"Không tìm thấy hợp đồng {cid}.")
+    for key in ("company_id", "agent_id", "kind", "status", "currency", "note"):
+        if key in payload:
+            value = _text(payload.get(key))
+            contract[key] = value.upper() if key in ("company_id", "agent_id") else value
+    if "value" in payload:
+        contract["value"] = _num(payload.get("value")) if payload.get("value") not in (None, "") else None
+    # Document legal identity (per-document numbers/dates) live on the contract.
+    identity = contract.setdefault("doc_identity", {}) if isinstance(contract.get("doc_identity"), Mapping) else {}
+    if not isinstance(identity, dict):
+        identity = {}
+    for field in ("hdnt_no", "hdnt_date", "valid_from", "valid_to", "pl_no", "pl_date", "hdmb_no", "hdmb_date"):
+        if field in payload:
+            identity[field] = _text(payload.get(field))
+    contract["doc_identity"] = identity
+    if not save_contract_to_cloud(contract):
+        return _result("contract_save", cid, False, get_last_db_error() or "Không lưu được hợp đồng.")
+    fresh = read_contract(cid)
+    from views import logi_view_model as vm
+
+    return _result("contract_save", cid, True, readback=_contract_readback(fresh or {}, vm.load_shipments()),
+                   audit=_audit("contract", cid))
+
+
+def _handle_contract_goods_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_edit_contract
+    from core.database import get_last_db_error, save_contract_to_cloud
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("contract_goods_save", cid, False, "Thiếu mã hợp đồng.")
+    if not can_edit_contract():
+        return _result("contract_goods_save", cid, False, "RBAC: không có quyền sửa hợp đồng (sales_write).")
+    contract = read_contract(cid)
+    if contract is None:
+        return _result("contract_goods_save", cid, False, f"Không tìm thấy hợp đồng {cid}.")
+    rows = payload.get("goodsLines") if isinstance(payload.get("goodsLines"), list) else None
+    if rows is None:
+        return _result("contract_goods_save", cid, False, "Thiếu dữ liệu hàng hóa.")
+    serialised: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        description = _text(row.get("description"))
+        quantity = None if row.get("quantity") in (None, "") else str(row.get("quantity"))
+        unit_price = None if row.get("unitPrice") in (None, "") else str(row.get("unitPrice"))
+        # A fully-empty editor row carries no business fact: drop it rather than
+        # persisting a blank line that would silently block generation. UNKNOWN
+        # still != ZERO for any row that has a description but a blank number.
+        if not description and quantity is None and unit_price is None:
+            continue
+        serialised.append({
+            "description": description,
+            "unit": _text(row.get("unit")),
+            "quantity": quantity,
+            "unit_price_vnd_excl_vat": unit_price,
+            "vat_rate": "0.08",
+        })
+    contract["goods_lines"] = serialised
+    if not save_contract_to_cloud(contract):
+        return _result("contract_goods_save", cid, False, get_last_db_error() or "Không lưu được hàng hóa.")
+    fresh = read_contract(cid)
+    from views import logi_view_model as vm
+
+    return _result("contract_goods_save", cid, True, readback=_contract_readback(fresh or {}, vm.load_shipments()),
+                   persisted={"lineCount": len(serialised)}, audit=_audit("contract", cid))
+
+
+def _resolve_authority(contract: Mapping[str, Any], companies: Mapping[str, Any], agents: Mapping[str, Any]):
+    company_id = _text(contract.get("company_id"))
+    agent_id = _text(contract.get("agent_id"))
+    company = companies.get(company_id) if company_id else None
+    agent = agents.get(agent_id) if agent_id else None
+    # Single-record fallback mirrors the contract workspace's default selection.
+    if company is None and len(companies) == 1:
+        company = next(iter(companies.values()))
+    if agent is None and len(agents) == 1:
+        agent = next(iter(agents.values()))
+    return company, agent
+
+
+def _handle_contract_docgen_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from datetime import date
+
+    from core.auth import can_generate_documents, current_actor_context
+    from core.database import (
+        link_contract_to_shipment,
+        load_authority_agents,
+        load_authority_companies,
+        load_contracts,
+        load_docgen_documents,
+        save_contract_to_cloud,
+        save_docgen_document,
+    )
+    from core.docgen import generator as gen
+    from core.docgen.rules import HDMB, HDNT, PL, READY
+
+    cid = _text(payload.get("id")).strip().upper()
+    if not cid:
+        return _result("contract_docgen_generate", cid, False, "Thiếu mã hợp đồng.")
+    if not can_generate_documents():
+        return _result("contract_docgen_generate", cid, False, "RBAC: không có quyền sales_write để sinh chứng từ.")
+    contract = read_contract(cid)
+    if contract is None:
+        return _result("contract_docgen_generate", cid, False, f"Không tìm thấy hợp đồng {cid}.")
+
+    companies = load_authority_companies() or {}
+    agents = load_authority_agents() or {}
+    company, agent = _resolve_authority(contract, companies, agents)
+    if company is None or agent is None:
+        return _result("contract_docgen_generate", cid, False,
+                       "Chưa chọn đủ hồ sơ pháp lý Công ty (bên mua) và Đại lý (bên bán).",
+                       gate="BLOCKED_NO_AUTHORITY")
+
+    goods_lines = contract.get("goods_lines") if isinstance(contract.get("goods_lines"), list) else []
+    identity = _contract_identity(contract)
+    contract_view = {
+        "id": cid,
+        "contract_no": _text(contract.get("contract_no")) or cid,
+        "currency": "VND",
+        "hdnt_no": identity["hdntNo"], "hdnt_date": identity["hdntDate"],
+        "valid_from": identity["validFrom"], "valid_to": identity["validTo"],
+        "pl_no": identity["plNo"], "pl_date": identity["plDate"],
+        "hdmb_no": identity["hdmbNo"], "hdmb_date": identity["hdmbDate"],
+    }
+
+    # HDNT reuse rule: never auto-regenerate a valid existing HDNT.
+    all_contracts = load_contracts() or {}
+    reuse = gen.reuse_decision_for_agent(all_contracts, agent=agent, company=company)
+    parent_contract = reuse.get("reuse_target") if reuse.get("valid_count") == 1 else None
+    if reuse.get("valid_count", 0) > 1:
+        return _result("contract_docgen_generate", cid, False,
+                       "Có nhiều HDNT hợp lệ cho Đại lý + Công ty này — cần chọn một HDNT để tái sử dụng.",
+                       gate="BLOCKED_HDNT_NEEDS_SELECTION")
+
+    # Preflight exactly like the donor: only READY documents are generated.
+    delivery = {"delivery_completed": False, "delivery_date": "", "delivery_location": "",
+                "receiver_name": "", "receiver_title": ""}
+    pack = gen.build_document_pack(
+        shipment_id=cid,
+        goods_lines=goods_lines,
+        delivery_completed=False,
+        agent=agent,
+        company=company,
+        parent_contract=parent_contract,
+        contract=contract_view,
+        pxk_source=None,
+        delivery=delivery,
+        contracts=all_contracts,
+    )
+    cards = pack.get("cards") or []
+    states = {card["document_type"]: card["state"] for card in cards}
+
+    requested = [str(x).upper() for x in (payload.get("documentTypes") or []) if str(x).upper() in (HDNT, PL, HDMB)]
+    to_generate = requested or [HDNT, PL, HDMB]
+    reused_hdnt: dict[str, Any] | None = None
+    if reuse.get("valid_count", 0) == 1:
+        reused_hdnt = parent_contract
+        # Never auto-regenerate a valid HDNT; a reuse is reported, not produced.
+        to_generate = [dt for dt in to_generate if dt != HDNT]
+
+    xlsx_path, docx_path = _resolve_template_paths()
+    if xlsx_path is None or docx_path is None:
+        return _result("contract_docgen_generate", cid, False,
+                       "Chưa có template chứng từ (DOCGEN_TEMPLATE_DIR) — hệ thống không tự sinh file giả.",
+                       gate="TEMPLATE_ASSET_STORAGE_OWNER_GATE", failClosed=True)
+
+    actor = current_actor_context()
+    for line in goods_lines:
+        if isinstance(line, dict):
+            line.setdefault("confirmed_by", actor["username"])
+            line.setdefault("confirmed_at", date.today().isoformat())
+
+    existing = load_docgen_documents(cid) or {}
+    produced: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+
+    for doc_type in to_generate:
+        state = states.get(doc_type)
+        if state != READY:
+            card = next((c for c in cards if c.get("document_type") == doc_type), {})
+            blocked.append({
+                "documentType": doc_type,
+                "reason": card.get("reason") or f"{doc_type} chưa sẵn sàng để xuất.",
+                "missing": list(card.get("missing") or []),
+                "state": state,
+            })
+            continue
+
+        # Each legal document owns its own identity: the generated document is
+        # persisted as its OWN contract record (id = its legal number) so it is
+        # reusable — e.g. a fresh HDNT becomes the valid parent of a later PL.
+        doc_contract = dict(contract_view)
+        doc_no = _text(doc_contract.get(f"{doc_type.lower()}_no")).strip().upper()
+        doc_contract["id"] = doc_no
+        if not doc_contract["id"]:
+            blocked.append({"documentType": doc_type, "reason": f"Thiếu số {doc_type}.", "state": "MISSING_INFO"})
+            continue
+
+        try:
+            generated = gen.generate_document(
+                doc_type,
+                shipment_id=cid,
+                agent=agent,
+                company=company,
+                goods_lines=goods_lines,
+                contract=doc_contract,
+                parent_contract=parent_contract if doc_type in (PL, HDNT) else None,
+                delivery=delivery,
+                template_path_xlsx=xlsx_path,
+                template_path_docx=docx_path,
+                existing_documents=existing,
+            )
+        except gen.DocumentGenerationError as exc:
+            blocked.append({"documentType": doc_type, "reason": exc.readiness.reason,
+                            "missing": list(exc.readiness.missing), "state": exc.readiness.state})
+            continue
+        except PermissionError:
+            blocked.append({"documentType": doc_type, "reason": "RBAC: không có quyền sinh chứng từ."})
+            continue
+
+        # Persist the generated document as a reusable child contract record
+        # (mirrors views/docgen._do_generate): kind, legal identity, parties.
+        doc_contract["kind"] = doc_type
+        doc_contract["contract_no"] = doc_contract.get(f"{doc_type.lower()}_no") or doc_contract["id"]
+        doc_contract["agent_id"] = _text(agent.get("agent_id") or agent.get("id"))
+        doc_contract["company_id"] = _text(company.get("company_id") or company.get("id"))
+        save_contract_to_cloud(doc_contract)
+        link_contract_to_shipment(doc_contract["id"], cid)
+
+        metadata = generated.get("metadata") or {}
+        metadata["generated_by"] = actor["username"]
+        if not save_docgen_document(metadata):
+            blocked.append({"documentType": doc_type, "reason": "Không lưu được metadata chứng từ."})
+            continue
+        record_id = _text(metadata.get("id")) or f"{generated['document_id']}::R{generated['revision']}"
+        store_output(
+            cid, record_id,
+            {"file_name": generated.get("output_file_name"), "mime": _MIME_DOCX if doc_type == HDNT else _MIME_XLSX,
+             "bytes": generated.get("bytes") or b"", "document_type": doc_type,
+             "revision": generated.get("revision")},
+        )
+        produced.append({
+            "documentType": doc_type, "ok": True,
+            "documentId": _text(generated.get("document_id")),
+            "revision": generated.get("revision"),
+            "fileName": _text(generated.get("output_file_name")),
+            "isOfficeFile": (generated.get("bytes") or b"")[:2] == b"PK",
+        })
+
+    if not produced and not blocked and to_generate:
+        blocked.append({"documentType": ", ".join(to_generate),
+                        "reason": "Không có chứng từ nào được sinh.", "state": "NOT_APPLICABLE"})
+    if not produced and blocked:
+        first = blocked[0]
+        return _result("contract_docgen_generate", cid, False, first["reason"],
+                       gate="BLOCKED", blocked=blocked, reusedHdnt=reused_hdnt, failClosed=True)
+    fresh = read_contract(cid)
+    from views import logi_view_model as vm
+
+    return _result("contract_docgen_generate", cid, True,
+                   readback=_contract_readback(fresh or {}, vm.load_shipments()),
+                   produced=produced, blocked=blocked, reusedHdnt=reused_hdnt,
+                   service="core.docgen.generator.generate_document",
+                   audit=_audit("contract", cid))
+
+
+def _handle_contract_docgen_issue(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import PermissionDeniedError
+    from core.docgen import generator as gen
+
+    document_id = _text(payload.get("documentId"))
+    revision = payload.get("revision")
+    if not document_id:
+        return _result("contract_docgen_issue", document_id, False, "Thiếu mã chứng từ.")
+    try:
+        result = gen.issue_document(document_id, revision=int(revision) if revision else None)
+    except gen.DocumentGenerationError as exc:
+        return _result("contract_docgen_issue", document_id, False, exc.readiness.reason)
+    except (PermissionError, PermissionDeniedError):
+        return _result("contract_docgen_issue", document_id, False, "RBAC: không có quyền operations_write để phát hành.")
+    return _result("contract_docgen_issue", document_id, True,
+                   persisted={"documentId": result.get("document_id"), "status": result.get("status")},
+                   audit=_audit("docgen_document", _text(result.get("document_id"))))
+
+
+def _handle_contract_shipment_link(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.database import get_last_db_error, link_contract_to_shipment
+
+    cid = _text(payload.get("id")).strip().upper()
+    sid = _text(payload.get("shipmentId")).strip().upper()
+    if not cid or not sid:
+        return _result("contract_shipment_link", cid, False, "Thiếu mã hợp đồng hoặc mã lô.")
+    if not link_contract_to_shipment(cid, sid):
+        return _result("contract_shipment_link", cid, False, get_last_db_error() or "Không liên kết được lô với hợp đồng.")
+    fresh = read_contract(cid)
+    from views import logi_view_model as vm
+
+    return _result("contract_shipment_link", cid, True,
+                   readback=_contract_readback(fresh or {}, vm.load_shipments()),
+                   linkedShipmentIds=[str(x).upper() for x in (fresh or {}).get("shipment_ids", [])],
+                   audit=_audit("contract", cid))
+
+
+_HANDLERS = {
+    "customer_create": _handle_customer_create,
+    "customer_edit": _handle_customer_edit,
+    "customer_archive": _handle_customer_archive,
+    "customer_import": _handle_customer_import,
+    "quote_create": _handle_quote_create,
+    "quote_edit": _handle_quote_edit,
+    "quote_transition": _handle_quote_transition,
+    "agreement_create": _handle_agreement_create,
+    "agreement_edit": _handle_agreement_edit,
+    "agreement_transition": _handle_agreement_transition,
+    "contract_create": _handle_contract_create,
+    "contract_save": _handle_contract_save,
+    "contract_goods_save": _handle_contract_goods_save,
+    "contract_docgen_generate": _handle_contract_docgen_generate,
+    "contract_docgen_issue": _handle_contract_docgen_issue,
+    "contract_shipment_link": _handle_contract_shipment_link,
+}
+
+
+def consume_c1_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded Phase C1 dispatcher (pure over an explicit session dict).
+
+    Only the declared C1 event names are handled; anything else is ignored.
+    A replayed ``seq`` can never double-write.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(C1_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        if not isinstance(data, dict):
+            outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
+            continue
+        handler = _HANDLERS.get(event_name)
+        if handler is None:  # pragma: no cover - C1_EVENTS and _HANDLERS agree
+            continue
+        try:
+            outcomes.append(handler(data))
+        except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
+            outcomes.append(_result(event_name, _text(data.get("id")), False,
+                                    f"{type(exc).__name__}: {exc}"))
+    if outcomes:
+        session["writes"] = outcomes
+    return outcomes

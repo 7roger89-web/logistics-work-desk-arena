@@ -72,6 +72,150 @@ QUOTES: list[dict[str, Any]] = [
      ]},
 ]
 
+# ---------------------------------------------------------------------------
+# LOG-DOCGEN-01 authority masters (approved legal Company / Agent records).
+# Staging identity only — production records live in the real database and are
+# never invented by the sandbox.
+# ---------------------------------------------------------------------------
+
+AUTHORITY_COMPANIES: list[dict[str, Any]] = [
+    {
+        "company_id": "TT-COMPANY",
+        "id": "TT-COMPANY",
+        "legal_name": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+        "tax_or_legal_code": "0100987654",
+        "legal_address": "Số 12, Đường Láng Hạ, Ba Đình, Hà Nội",
+        "legal_representative": "Nguyễn Thị Thu Hằng",
+        "representative_title": "Giám đốc",
+        "phone": "0241234567",
+        "email": "info@truongthanh.vn",
+        "bank_account_holder": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+        "bank_account_number": "0123456789",
+        "bank_name": "Vietcombank",
+    },
+]
+
+AUTHORITY_AGENTS: list[dict[str, Any]] = [
+    {
+        "agent_id": "AGT-PHUANH",
+        "id": "AGT-PHUANH",
+        "legal_name": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+        "legal_code": "0315678910",
+        "legal_address": "Số 45, Nguyễn Văn Linh, Quận 7, TP. Hồ Chí Minh",
+        "legal_representative": "Phạm Văn Thành",
+        "representative_title": "Giám đốc",
+        "phone": "0281234567",
+        "email": "sales@phuanh.vn",
+        "bank_account_holder": "PHÚ ANH LOGISTICS",
+        "bank_account_number": "9876543210",
+        "bank_name": "Techcombank",
+        "bank_branch": "Hội sở TP.HCM",
+    },
+]
+
+
+def build_canonical_quotes() -> list[dict[str, Any]]:
+    """Canonical LOG-C12 quotes, built through the REAL quotation domain service.
+
+    The legacy ``QUOTES`` list above keeps the Phase B finance-estimate shape;
+    these are the real quote documents the C1 slice works on (status, service
+    lines, calculation, status_history — all produced by ``core.quotations``).
+    """
+    from core.quotations import new_quote_document, prepare_quote_for_persistence, transition_quote
+
+    def _quote(spec: dict[str, Any], target_status: str) -> dict[str, Any]:
+        quote = new_quote_document(spec)
+        # Walk the only legal transition path to the target status.
+        path = {
+            "DRAFT": [],
+            "READY_FOR_REVIEW": ["READY_FOR_REVIEW"],
+            "SENT": ["READY_FOR_REVIEW", "SENT"],
+            "ACCEPTED": ["READY_FOR_REVIEW", "ACCEPTED"],
+            "READY_TO_CREATE_SHIPMENT": ["READY_FOR_REVIEW", "ACCEPTED", "READY_TO_CREATE_SHIPMENT"],
+        }[target_status]
+        for status in path:
+            quote = transition_quote(quote, status, actor="staging.seed")
+        return prepare_quote_for_persistence(quote, actor="staging.seed")
+
+    specs: list[tuple[dict[str, Any], str]] = [
+        (
+            {
+                "customer_id": "CUST-ANPHAT",
+                "customer_name": "An Phát JSC",
+                "sales_owner": "Minh Tú",
+                "origin": "Bằng Tường (Quảng Tây)",
+                "destination": "KCN Quế Võ, Bắc Ninh",
+                "route": "Hữu Nghị (Lạng Sơn)",
+                "incoterm": "DAP",
+                "transport_mode": "Road",
+                "goods_description": "Linh kiện điện tử",
+                "expected_delivery_date": "2026-09-20",
+                "factory_lots": [{"lot_no": 1, "factory_name": "Shenzhen ABC Factory", "pickup_address": "Shenzhen, Guangdong"}],
+                "service_lines": [
+                    {"code": "DV-VC-TQ", "service_name": "Cước xe TQ Bằng Tường → Hữu Nghị", "unit": "Lần", "qty": 1, "currency": "VND", "cost_unit": 26000000, "sell_unit": 28500000, "tax_pct": 8},
+                    {"code": "DV-TTQ", "service_name": "Thủ tục thông quan 2 đầu", "unit": "Lần", "qty": 1, "currency": "VND", "cost_unit": 5200000, "sell_unit": 6500000, "tax_pct": 8},
+                ],
+                "fx_snapshot": {"rates_to_vnd": {"USD": 25500, "CNY": 3500, "VND": 1}, "source": "Tỷ giá nhập khi báo giá."},
+                "entrusted_import": {"active": False, "goods_value": 0, "goods_currency": "USD", "rate_pct": 0, "review_requested": False, "review_reason": "", "high_value_review_policy": {"status": "POLICY_NOT_CONFIGURED"}, "source": ""},
+                "remittance_estimate": {"remitted_amount_usd": 0, "bank_fee_pct": 0, "swift_fee_usd": 0, "receiving_bank_fee_usd": 0, "agent_conversion_fee_usd": 0, "rmb_conversion_fee_cny": 0},
+                "include_remittance_in_cost": False,
+                "assumptions": ["Đây là estimate/quotation, chưa phải nghĩa vụ thanh toán."],
+            },
+            "ACCEPTED",
+        ),
+        (
+            {
+                "customer_id": "CUST-DUCLONG",
+                "customer_name": "Đức Long Co.",
+                "sales_owner": "Thu Hằng",
+                "origin": "Nam Ninh (Quảng Tây)",
+                "destination": "KCN Nam Sơn, Hải Phòng",
+                "route": "Hữu Nghị (Lạng Sơn)",
+                "incoterm": "FOB",
+                "transport_mode": "Road",
+                "goods_description": "Máy móc cơ khí",
+                "expected_delivery_date": "2026-09-25",
+                "factory_lots": [{"lot_no": 1, "factory_name": "Nanning Machinery", "pickup_address": "Nanning"}],
+                "service_lines": [
+                    {"code": "DV-VC-TQ", "service_name": "Cước đường bộ TQ + container", "unit": "Lần", "qty": 1, "currency": "VND", "cost_unit": 38000000, "sell_unit": 41200000, "tax_pct": 8},
+                    {"code": "DV-TTQ", "service_name": "Thủ tục thông quan", "unit": "Lần", "qty": 1, "currency": "VND", "cost_unit": 6600000, "sell_unit": 8200000, "tax_pct": 8},
+                ],
+                "fx_snapshot": {"rates_to_vnd": {"USD": 25500, "CNY": 3500, "VND": 1}, "source": "Tỷ giá nhập khi báo giá."},
+                "entrusted_import": {"active": False, "goods_value": 0, "goods_currency": "USD", "rate_pct": 0, "review_requested": False, "review_reason": "", "high_value_review_policy": {"status": "POLICY_NOT_CONFIGURED"}, "source": ""},
+                "remittance_estimate": {"remitted_amount_usd": 0, "bank_fee_pct": 0, "swift_fee_usd": 0, "receiving_bank_fee_usd": 0, "agent_conversion_fee_usd": 0, "rmb_conversion_fee_cny": 0},
+                "include_remittance_in_cost": False,
+                "assumptions": ["Đây là estimate/quotation, chưa phải nghĩa vụ thanh toán."],
+            },
+            "READY_FOR_REVIEW",
+        ),
+    ]
+    return [_quote(spec, status) for spec, status in specs]
+
+
+def build_seed_agreements(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One AGREED agreement frozen from an accepted quote (commercial handoff)."""
+    from core.commercial_agreements import (
+        build_agreement_from_quote,
+        prepare_agreement_for_persistence,
+        transition_agreement,
+    )
+
+    accepted = next((q for q in quotes if (q.get("status") or "").upper() in ("ACCEPTED", "READY_TO_CREATE_SHIPMENT")), None)
+    if accepted is None:
+        return []
+    agreement = build_agreement_from_quote(accepted, actor="staging.seed")
+    agreement = transition_agreement(agreement, "REVIEWING", actor="staging.seed")
+    agreement = transition_agreement(agreement, "AGREED", actor="staging.seed")
+    agreement["evidence"] = {
+        "accepted_quotation": True,
+        "signed_contract": False,
+        "customer_confirmation": True,
+        "entrusted_documentation": False,
+        "notes": "Khách đã xác nhận qua email; bằng chứng đánh dấu thủ công.",
+    }
+    return [prepare_agreement_for_persistence(agreement, actor="staging.seed")]
+
+
 USERS: list[dict[str, Any]] = [
     {"username": "admin", "full_name": "Quản trị hệ thống", "role": "ADMIN", "active": True},
     {"username": "thuhang", "full_name": "Thu Hằng", "role": "SUPPORT", "active": True},
@@ -359,6 +503,14 @@ def seed_staging(actor: str = "staging.support") -> dict[str, int]:
     _seed_many("quotes", QUOTES, "id")
     _seed_many("users", USERS, "username")
     _seed_many("tasks", TASKS, "task_id")
+    _seed_many("authority_companies", AUTHORITY_COMPANIES, "id")
+    _seed_many("authority_agents", AUTHORITY_AGENTS, "id")
+
+    # Canonical LOG-C12 quotes + a commercial agreement, built through the REAL
+    # domain services (core.quotations / core.commercial_agreements).
+    canonical_quotes = build_canonical_quotes()
+    _seed_many("quotes", canonical_quotes, "id")
+    _seed_many("agreements", build_seed_agreements(canonical_quotes), "id")
 
     written = 0
     bootstrap = {

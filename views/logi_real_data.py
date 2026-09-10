@@ -165,18 +165,30 @@ def _quote_lines(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> list
         elif text(quote.get("customer_id")) != customer_id:
             continue
         lines = quote.get("lines")
-        if not isinstance(lines, list):
-            continue
-        return [
-            {
-                "label": text(line.get("name")) or "Dòng báo giá",
-                "amount": num(line.get("amount")),
-                "ccy": text(line.get("currency")) or "VND",
-                "kind": "quote",
-            }
-            for line in lines
-            if isinstance(line, Mapping)
-        ]
+        if isinstance(lines, list):
+            return [
+                {
+                    "label": text(line.get("name")) or "Dòng báo giá",
+                    "amount": num(line.get("amount")),
+                    "ccy": text(line.get("currency")) or "VND",
+                    "kind": "quote",
+                }
+                for line in lines
+                if isinstance(line, Mapping)
+            ]
+        # Canonical LOG-C12 quote shape: service_lines carry the estimate.
+        service_lines = quote.get("service_lines")
+        if isinstance(service_lines, list):
+            return [
+                {
+                    "label": text(line.get("service_name")) or text(line.get("code")) or "Dòng báo giá",
+                    "amount": num(line.get("sell_vnd") if line.get("sell_vnd") is not None else line.get("sell_total")),
+                    "ccy": "VND",
+                    "kind": "quote",
+                }
+                for line in service_lines
+                if isinstance(line, Mapping)
+            ]
     return []
 
 

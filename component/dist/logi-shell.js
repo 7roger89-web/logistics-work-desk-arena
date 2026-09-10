@@ -1144,22 +1144,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			hoistableScripts: /* @__PURE__ */ new Map()
 		}), t;
 	}
-	function M(e) {
+	function Et(e) {
 		e[bt] = !0;
 	}
-	var Et = /* @__PURE__ */ new Set(), Dt = {};
-	function Ot(e, t) {
-		kt(e, t), kt(e + "Capture", t);
-	}
+	var Dt = /* @__PURE__ */ new Set(), Ot = {};
 	function kt(e, t) {
-		for (Dt[e] = t, e = 0; e < t.length; e++) Et.add(t[e]);
+		At(e, t), At(e + "Capture", t);
 	}
-	var At = RegExp("^[:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD][:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\-.0-9\\u00B7\\u0300-\\u036F\\u203F-\\u2040]*$"), jt = {}, Mt = {};
-	function Nt(e) {
-		return De.call(Mt, e) ? !0 : De.call(jt, e) ? !1 : At.test(e) ? Mt[e] = !0 : (jt[e] = !0, !1);
+	function At(e, t) {
+		for (Ot[e] = t, e = 0; e < t.length; e++) Dt.add(t[e]);
 	}
-	function Pt(e, t, n) {
-		if (Nt(t)) {
+	var jt = RegExp("^[:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD][:A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\-.0-9\\u00B7\\u0300-\\u036F\\u203F-\\u2040]*$"), Mt = {}, Nt = {};
+	function Pt(e) {
+		return De.call(Nt, e) ? !0 : De.call(Mt, e) ? !1 : jt.test(e) ? Nt[e] = !0 : (Mt[e] = !0, !1);
+	}
+	function Ft(e, t, n) {
+		if (Pt(t)) {
 			if (n === null) e.removeAttribute(t);
 			else {
 				switch (typeof n) {
@@ -1179,7 +1179,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 		}
 	}
-	function Ft(e, t, n) {
+	function It(e, t, n) {
 		if (n === null) e.removeAttribute(t);
 		else {
 			switch (typeof n) {
@@ -1193,7 +1193,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			e.setAttribute(t, "" + n);
 		}
 	}
-	function It(e, t, n, r) {
+	function Lt(e, t, n, r) {
 		if (r === null) e.removeAttribute(n);
 		else {
 			switch (typeof r) {
@@ -1207,7 +1207,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			e.setAttributeNS(t, n, "" + r);
 		}
 	}
-	function Lt(e) {
+	function Rt(e) {
 		switch (typeof e) {
 			case "bigint":
 			case "boolean":
@@ -1218,11 +1218,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return "";
 		}
 	}
-	function Rt(e) {
+	function zt(e) {
 		var t = e.type;
 		return (e = e.nodeName) && e.toLowerCase() === "input" && (t === "checkbox" || t === "radio");
 	}
-	function zt(e, t, n) {
+	function Bt(e, t, n) {
 		var r = Object.getOwnPropertyDescriptor(e.constructor.prototype, t);
 		if (!e.hasOwnProperty(t) && r !== void 0 && typeof r.get == "function" && typeof r.set == "function") {
 			var i = r.get, a = r.set;
@@ -1247,20 +1247,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			};
 		}
 	}
-	function Bt(e) {
+	function Vt(e) {
 		if (!e._valueTracker) {
-			var t = Rt(e) ? "checked" : "value";
-			e._valueTracker = zt(e, t, "" + e[t]);
+			var t = zt(e) ? "checked" : "value";
+			e._valueTracker = Bt(e, t, "" + e[t]);
 		}
 	}
-	function Vt(e) {
+	function Ht(e) {
 		if (!e) return !1;
 		var t = e._valueTracker;
 		if (!t) return !0;
 		var n = t.getValue(), r = "";
-		return e && (r = Rt(e) ? e.checked ? "true" : "false" : e.value), e = r, e !== n && (t.setValue(e), !0);
+		return e && (r = zt(e) ? e.checked ? "true" : "false" : e.value), e = r, e !== n && (t.setValue(e), !0);
 	}
-	function Ht(e) {
+	function Ut(e) {
 		if (e = e || (typeof document < "u" ? document : void 0), e === void 0) return null;
 		try {
 			return e.activeElement || e.body;
@@ -1268,35 +1268,35 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return e.body;
 		}
 	}
-	var Ut = /[\n"\\]/g;
-	function Wt(e) {
-		return e.replace(Ut, function(e) {
+	var Wt = /[\n"\\]/g;
+	function Gt(e) {
+		return e.replace(Wt, function(e) {
 			return "\\" + e.charCodeAt(0).toString(16) + " ";
 		});
 	}
-	function Gt(e, t, n, r, i, a, o, s) {
-		e.name = "", o != null && typeof o != "function" && typeof o != "symbol" && typeof o != "boolean" ? e.type = o : e.removeAttribute("type"), t == null ? o !== "submit" && o !== "reset" || e.removeAttribute("value") : o === "number" ? (t === 0 && e.value === "" || e.value != t) && (e.value = "" + Lt(t)) : e.value !== "" + Lt(t) && (e.value = "" + Lt(t)), t == null ? n == null ? r != null && e.removeAttribute("value") : qt(e, o, Lt(n)) : qt(e, o, Lt(t)), i == null && a != null && (e.defaultChecked = !!a), i != null && (e.checked = i && typeof i != "function" && typeof i != "symbol"), s != null && typeof s != "function" && typeof s != "symbol" && typeof s != "boolean" ? e.name = "" + Lt(s) : e.removeAttribute("name");
-	}
 	function Kt(e, t, n, r, i, a, o, s) {
+		e.name = "", o != null && typeof o != "function" && typeof o != "symbol" && typeof o != "boolean" ? e.type = o : e.removeAttribute("type"), t == null ? o !== "submit" && o !== "reset" || e.removeAttribute("value") : o === "number" ? (t === 0 && e.value === "" || e.value != t) && (e.value = "" + Rt(t)) : e.value !== "" + Rt(t) && (e.value = "" + Rt(t)), t == null ? n == null ? r != null && e.removeAttribute("value") : Jt(e, o, Rt(n)) : Jt(e, o, Rt(t)), i == null && a != null && (e.defaultChecked = !!a), i != null && (e.checked = i && typeof i != "function" && typeof i != "symbol"), s != null && typeof s != "function" && typeof s != "symbol" && typeof s != "boolean" ? e.name = "" + Rt(s) : e.removeAttribute("name");
+	}
+	function qt(e, t, n, r, i, a, o, s) {
 		if (a != null && typeof a != "function" && typeof a != "symbol" && typeof a != "boolean" && (e.type = a), t != null || n != null) {
 			if (!(a !== "submit" && a !== "reset" || t != null)) {
-				Bt(e);
+				Vt(e);
 				return;
 			}
-			n = n == null ? "" : "" + Lt(n), t = t == null ? n : "" + Lt(t), s || t === e.value || (e.value = t), e.defaultValue = t;
+			n = n == null ? "" : "" + Rt(n), t = t == null ? n : "" + Rt(t), s || t === e.value || (e.value = t), e.defaultValue = t;
 		}
-		r = r ?? i, r = typeof r != "function" && typeof r != "symbol" && !!r, e.checked = s ? e.checked : !!r, e.defaultChecked = !!r, o != null && typeof o != "function" && typeof o != "symbol" && typeof o != "boolean" && (e.name = o), Bt(e);
+		r = r ?? i, r = typeof r != "function" && typeof r != "symbol" && !!r, e.checked = s ? e.checked : !!r, e.defaultChecked = !!r, o != null && typeof o != "function" && typeof o != "symbol" && typeof o != "boolean" && (e.name = o), Vt(e);
 	}
-	function qt(e, t, n) {
-		t === "number" && Ht(e.ownerDocument) === e || e.defaultValue === "" + n || (e.defaultValue = "" + n);
+	function Jt(e, t, n) {
+		t === "number" && Ut(e.ownerDocument) === e || e.defaultValue === "" + n || (e.defaultValue = "" + n);
 	}
-	function Jt(e, t, n, r) {
+	function Yt(e, t, n, r) {
 		if (e = e.options, t) {
 			t = {};
 			for (var i = 0; i < n.length; i++) t["$" + n[i]] = !0;
 			for (n = 0; n < e.length; n++) i = t.hasOwnProperty("$" + e[n].value), e[n].selected !== i && (e[n].selected = i), i && r && (e[n].defaultSelected = !0);
 		} else {
-			for (n = "" + Lt(n), t = null, i = 0; i < e.length; i++) {
+			for (n = "" + Rt(n), t = null, i = 0; i < e.length; i++) {
 				if (e[i].value === n) {
 					e[i].selected = !0, r && (e[i].defaultSelected = !0);
 					return;
@@ -1306,14 +1306,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			t !== null && (t.selected = !0);
 		}
 	}
-	function Yt(e, t, n) {
-		if (t != null && (t = "" + Lt(t), t !== e.value && (e.value = t), n == null)) {
+	function Xt(e, t, n) {
+		if (t != null && (t = "" + Rt(t), t !== e.value && (e.value = t), n == null)) {
 			e.defaultValue !== t && (e.defaultValue = t);
 			return;
 		}
-		e.defaultValue = n == null ? "" : "" + Lt(n);
+		e.defaultValue = n == null ? "" : "" + Rt(n);
 	}
-	function Xt(e, t, n, r) {
+	function Zt(e, t, n, r) {
 		if (t == null) {
 			if (r != null) {
 				if (n != null) throw Error(i(92));
@@ -1325,9 +1325,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			n ?? (n = ""), t = n;
 		}
-		n = Lt(t), e.defaultValue = n, r = e.textContent, r === n && r !== "" && r !== null && (e.value = r), Bt(e);
+		n = Rt(t), e.defaultValue = n, r = e.textContent, r === n && r !== "" && r !== null && (e.value = r), Vt(e);
 	}
-	function Zt(e, t) {
+	function Qt(e, t) {
 		if (t) {
 			var n = e.firstChild;
 			if (n && n === e.lastChild && n.nodeType === 3) {
@@ -1337,19 +1337,19 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		e.textContent = t;
 	}
-	var Qt = new Set("animationIterationCount aspectRatio borderImageOutset borderImageSlice borderImageWidth boxFlex boxFlexGroup boxOrdinalGroup columnCount columns flex flexGrow flexPositive flexShrink flexNegative flexOrder gridArea gridRow gridRowEnd gridRowSpan gridRowStart gridColumn gridColumnEnd gridColumnSpan gridColumnStart fontWeight lineClamp lineHeight opacity order orphans scale tabSize widows zIndex zoom fillOpacity floodOpacity stopOpacity strokeDasharray strokeDashoffset strokeMiterlimit strokeOpacity strokeWidth MozAnimationIterationCount MozBoxFlex MozBoxFlexGroup MozLineClamp msAnimationIterationCount msFlex msZoom msFlexGrow msFlexNegative msFlexOrder msFlexPositive msFlexShrink msGridColumn msGridColumnSpan msGridRow msGridRowSpan WebkitAnimationIterationCount WebkitBoxFlex WebKitBoxFlexGroup WebkitBoxOrdinalGroup WebkitColumnCount WebkitColumns WebkitFlex WebkitFlexGrow WebkitFlexPositive WebkitFlexShrink WebkitLineClamp".split(" "));
-	function $t(e, t, n) {
-		var r = t.indexOf("--") === 0;
-		n == null || typeof n == "boolean" || n === "" ? r ? e.setProperty(t, "") : t === "float" ? e.cssFloat = "" : e[t] = "" : r ? e.setProperty(t, n) : typeof n != "number" || n === 0 || Qt.has(t) ? t === "float" ? e.cssFloat = n : e[t] = ("" + n).trim() : e[t] = n + "px";
-	}
+	var $t = new Set("animationIterationCount aspectRatio borderImageOutset borderImageSlice borderImageWidth boxFlex boxFlexGroup boxOrdinalGroup columnCount columns flex flexGrow flexPositive flexShrink flexNegative flexOrder gridArea gridRow gridRowEnd gridRowSpan gridRowStart gridColumn gridColumnEnd gridColumnSpan gridColumnStart fontWeight lineClamp lineHeight opacity order orphans scale tabSize widows zIndex zoom fillOpacity floodOpacity stopOpacity strokeDasharray strokeDashoffset strokeMiterlimit strokeOpacity strokeWidth MozAnimationIterationCount MozBoxFlex MozBoxFlexGroup MozLineClamp msAnimationIterationCount msFlex msZoom msFlexGrow msFlexNegative msFlexOrder msFlexPositive msFlexShrink msGridColumn msGridColumnSpan msGridRow msGridRowSpan WebkitAnimationIterationCount WebkitBoxFlex WebKitBoxFlexGroup WebkitBoxOrdinalGroup WebkitColumnCount WebkitColumns WebkitFlex WebkitFlexGrow WebkitFlexPositive WebkitFlexShrink WebkitLineClamp".split(" "));
 	function en(e, t, n) {
+		var r = t.indexOf("--") === 0;
+		n == null || typeof n == "boolean" || n === "" ? r ? e.setProperty(t, "") : t === "float" ? e.cssFloat = "" : e[t] = "" : r ? e.setProperty(t, n) : typeof n != "number" || n === 0 || $t.has(t) ? t === "float" ? e.cssFloat = n : e[t] = ("" + n).trim() : e[t] = n + "px";
+	}
+	function tn(e, t, n) {
 		if (t != null && typeof t != "object") throw Error(i(62));
 		if (e = e.style, n != null) {
 			for (var r in n) !n.hasOwnProperty(r) || t != null && t.hasOwnProperty(r) || (r.indexOf("--") === 0 ? e.setProperty(r, "") : r === "float" ? e.cssFloat = "" : e[r] = "");
-			for (var a in t) r = t[a], t.hasOwnProperty(a) && n[a] !== r && $t(e, a, r);
-		} else for (var o in t) t.hasOwnProperty(o) && $t(e, o, t[o]);
+			for (var a in t) r = t[a], t.hasOwnProperty(a) && n[a] !== r && en(e, a, r);
+		} else for (var o in t) t.hasOwnProperty(o) && en(e, o, t[o]);
 	}
-	function tn(e) {
+	function nn(e) {
 		if (e.indexOf("-") === -1) return !1;
 		switch (e) {
 			case "annotation-xml":
@@ -1363,7 +1363,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return !0;
 		}
 	}
-	var nn = /* @__PURE__ */ new Map([
+	var rn = /* @__PURE__ */ new Map([
 		["acceptCharset", "accept-charset"],
 		["htmlFor", "for"],
 		["httpEquiv", "http-equiv"],
@@ -1442,53 +1442,53 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		["writingMode", "writing-mode"],
 		["xmlnsXlink", "xmlns:xlink"],
 		["xHeight", "x-height"]
-	]), rn = /^[\u0000-\u001F ]*j[\r\n\t]*a[\r\n\t]*v[\r\n\t]*a[\r\n\t]*s[\r\n\t]*c[\r\n\t]*r[\r\n\t]*i[\r\n\t]*p[\r\n\t]*t[\r\n\t]*:/i;
-	function an(e) {
-		return rn.test("" + e) ? "javascript:throw new Error('React has blocked a javascript: URL as a security precaution.')" : e;
+	]), an = /^[\u0000-\u001F ]*j[\r\n\t]*a[\r\n\t]*v[\r\n\t]*a[\r\n\t]*s[\r\n\t]*c[\r\n\t]*r[\r\n\t]*i[\r\n\t]*p[\r\n\t]*t[\r\n\t]*:/i;
+	function on(e) {
+		return an.test("" + e) ? "javascript:throw new Error('React has blocked a javascript: URL as a security precaution.')" : e;
 	}
-	function on() {}
-	var sn = null;
-	function cn(e) {
+	function sn() {}
+	var cn = null;
+	function ln(e) {
 		return e = e.target || e.srcElement || window, e.correspondingUseElement && (e = e.correspondingUseElement), e.nodeType === 3 ? e.parentNode : e;
 	}
-	var ln = null, un = null;
-	function dn(e) {
+	var un = null, dn = null;
+	function fn(e) {
 		var t = Ct(e);
 		if (t && (e = t.stateNode)) {
 			var n = e[mt] || null;
 			a: switch (e = t.stateNode, t.type) {
 				case "input":
-					if (Gt(e, n.value, n.defaultValue, n.defaultValue, n.checked, n.defaultChecked, n.type, n.name), t = n.name, n.type === "radio" && t != null) {
+					if (Kt(e, n.value, n.defaultValue, n.defaultValue, n.checked, n.defaultChecked, n.type, n.name), t = n.name, n.type === "radio" && t != null) {
 						for (n = e; n.parentNode;) n = n.parentNode;
-						for (n = n.querySelectorAll("input[name=\"" + Wt("" + t) + "\"][type=\"radio\"]"), t = 0; t < n.length; t++) {
+						for (n = n.querySelectorAll("input[name=\"" + Gt("" + t) + "\"][type=\"radio\"]"), t = 0; t < n.length; t++) {
 							var r = n[t];
 							if (r !== e && r.form === e.form) {
 								var a = r[mt] || null;
 								if (!a) throw Error(i(90));
-								Gt(r, a.value, a.defaultValue, a.defaultValue, a.checked, a.defaultChecked, a.type, a.name);
+								Kt(r, a.value, a.defaultValue, a.defaultValue, a.checked, a.defaultChecked, a.type, a.name);
 							}
 						}
-						for (t = 0; t < n.length; t++) r = n[t], r.form === e.form && Vt(r);
+						for (t = 0; t < n.length; t++) r = n[t], r.form === e.form && Ht(r);
 					}
 					break a;
 				case "textarea":
-					Yt(e, n.value, n.defaultValue);
+					Xt(e, n.value, n.defaultValue);
 					break a;
-				case "select": t = n.value, t != null && Jt(e, !!n.multiple, t, !1);
+				case "select": t = n.value, t != null && Yt(e, !!n.multiple, t, !1);
 			}
 		}
 	}
-	var fn = !1;
-	function pn(e, t, n) {
-		if (fn) return e(t, n);
-		fn = !0;
+	var pn = !1;
+	function mn(e, t, n) {
+		if (pn) return e(t, n);
+		pn = !0;
 		try {
 			return e(t);
 		} finally {
-			if (fn = !1, (ln !== null || un !== null) && (bu(), ln && (t = ln, e = un, un = ln = null, dn(t), e))) for (t = 0; t < e.length; t++) dn(e[t]);
+			if (pn = !1, (un !== null || dn !== null) && (bu(), un && (t = un, e = dn, dn = un = null, fn(t), e))) for (t = 0; t < e.length; t++) fn(e[t]);
 		}
 	}
-	function mn(e, t) {
+	function hn(e, t) {
 		var n = e.stateNode;
 		if (n === null) return null;
 		var r = n[mt] || null;
@@ -1514,54 +1514,54 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (n && typeof n != "function") throw Error(i(231, t, typeof n));
 		return n;
 	}
-	var hn = !(typeof window > "u" || window.document === void 0 || window.document.createElement === void 0), gn = !1;
-	if (hn) try {
-		var _n = {};
-		Object.defineProperty(_n, "passive", { get: function() {
-			gn = !0;
-		} }), window.addEventListener("test", _n, _n), window.removeEventListener("test", _n, _n);
+	var gn = !(typeof window > "u" || window.document === void 0 || window.document.createElement === void 0), _n = !1;
+	if (gn) try {
+		var vn = {};
+		Object.defineProperty(vn, "passive", { get: function() {
+			_n = !0;
+		} }), window.addEventListener("test", vn, vn), window.removeEventListener("test", vn, vn);
 	} catch {
-		gn = !1;
+		_n = !1;
 	}
-	var vn = null, yn = null, bn = null;
-	function xn() {
-		if (bn) return bn;
-		var e, t = yn, n = t.length, r, i = "value" in vn ? vn.value : vn.textContent, a = i.length;
+	var yn = null, bn = null, xn = null;
+	function Sn() {
+		if (xn) return xn;
+		var e, t = bn, n = t.length, r, i = "value" in yn ? yn.value : yn.textContent, a = i.length;
 		for (e = 0; e < n && t[e] === i[e]; e++);
 		var o = n - e;
 		for (r = 1; r <= o && t[n - r] === i[a - r]; r++);
-		return bn = i.slice(e, 1 < r ? 1 - r : void 0);
+		return xn = i.slice(e, 1 < r ? 1 - r : void 0);
 	}
-	function Sn(e) {
+	function Cn(e) {
 		var t = e.keyCode;
 		return "charCode" in e ? (e = e.charCode, e === 0 && t === 13 && (e = 13)) : e = t, e === 10 && (e = 13), 32 <= e || e === 13 ? e : 0;
 	}
-	function Cn() {
+	function wn() {
 		return !0;
 	}
-	function wn() {
+	function Tn() {
 		return !1;
 	}
-	function Tn(e) {
+	function En(e) {
 		function t(t, n, r, i, a) {
 			for (var o in this._reactName = t, this._targetInst = r, this.type = n, this.nativeEvent = i, this.target = a, this.currentTarget = null, e) e.hasOwnProperty(o) && (t = e[o], this[o] = t ? t(i) : i[o]);
-			return this.isDefaultPrevented = (i.defaultPrevented == null ? !1 === i.returnValue : i.defaultPrevented) ? Cn : wn, this.isPropagationStopped = wn, this;
+			return this.isDefaultPrevented = (i.defaultPrevented == null ? !1 === i.returnValue : i.defaultPrevented) ? wn : Tn, this.isPropagationStopped = Tn, this;
 		}
 		return h(t.prototype, {
 			preventDefault: function() {
 				this.defaultPrevented = !0;
 				var e = this.nativeEvent;
-				e && (e.preventDefault ? e.preventDefault() : typeof e.returnValue != "unknown" && (e.returnValue = !1), this.isDefaultPrevented = Cn);
+				e && (e.preventDefault ? e.preventDefault() : typeof e.returnValue != "unknown" && (e.returnValue = !1), this.isDefaultPrevented = wn);
 			},
 			stopPropagation: function() {
 				var e = this.nativeEvent;
-				e && (e.stopPropagation ? e.stopPropagation() : typeof e.cancelBubble != "unknown" && (e.cancelBubble = !0), this.isPropagationStopped = Cn);
+				e && (e.stopPropagation ? e.stopPropagation() : typeof e.cancelBubble != "unknown" && (e.cancelBubble = !0), this.isPropagationStopped = wn);
 			},
 			persist: function() {},
-			isPersistent: Cn
+			isPersistent: wn
 		}), t;
 	}
-	var En = {
+	var Dn = {
 		eventPhase: 0,
 		bubbles: 0,
 		cancelable: 0,
@@ -1570,10 +1570,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		},
 		defaultPrevented: 0,
 		isTrusted: 0
-	}, Dn = Tn(En), On = h({}, En, {
+	}, On = En(Dn), kn = h({}, Dn, {
 		view: 0,
 		detail: 0
-	}), kn = Tn(On), An, jn, Mn, Nn = h({}, On, {
+	}), An = En(kn), jn, Mn, Nn, Pn = h({}, kn, {
 		screenX: 0,
 		screenY: 0,
 		clientX: 0,
@@ -1584,25 +1584,25 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		shiftKey: 0,
 		altKey: 0,
 		metaKey: 0,
-		getModifierState: Un,
+		getModifierState: Wn,
 		button: 0,
 		buttons: 0,
 		relatedTarget: function(e) {
 			return e.relatedTarget === void 0 ? e.fromElement === e.srcElement ? e.toElement : e.fromElement : e.relatedTarget;
 		},
 		movementX: function(e) {
-			return "movementX" in e ? e.movementX : (e !== Mn && (Mn && e.type === "mousemove" ? (An = e.screenX - Mn.screenX, jn = e.screenY - Mn.screenY) : jn = An = 0, Mn = e), An);
+			return "movementX" in e ? e.movementX : (e !== Nn && (Nn && e.type === "mousemove" ? (jn = e.screenX - Nn.screenX, Mn = e.screenY - Nn.screenY) : Mn = jn = 0, Nn = e), jn);
 		},
 		movementY: function(e) {
-			return "movementY" in e ? e.movementY : jn;
+			return "movementY" in e ? e.movementY : Mn;
 		}
-	}), Pn = Tn(Nn), Fn = Tn(h({}, Nn, { dataTransfer: 0 })), N = Tn(h({}, On, { relatedTarget: 0 })), In = Tn(h({}, En, {
+	}), Fn = En(Pn), In = En(h({}, Pn, { dataTransfer: 0 })), M = En(h({}, kn, { relatedTarget: 0 })), Ln = En(h({}, Dn, {
 		animationName: 0,
 		elapsedTime: 0,
 		pseudoElement: 0
-	})), Ln = Tn(h({}, En, { clipboardData: function(e) {
+	})), Rn = En(h({}, Dn, { clipboardData: function(e) {
 		return "clipboardData" in e ? e.clipboardData : window.clipboardData;
-	} })), Rn = Tn(h({}, En, { data: 0 })), zn = {
+	} })), zn = En(h({}, Dn, { data: 0 })), Bn = {
 		Esc: "Escape",
 		Spacebar: " ",
 		Left: "ArrowLeft",
@@ -1615,7 +1615,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		Apps: "ContextMenu",
 		Scroll: "ScrollLock",
 		MozPrintableKey: "Unidentified"
-	}, Bn = {
+	}, Vn = {
 		8: "Backspace",
 		9: "Tab",
 		12: "Clear",
@@ -1652,26 +1652,26 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		144: "NumLock",
 		145: "ScrollLock",
 		224: "Meta"
-	}, Vn = {
+	}, Hn = {
 		Alt: "altKey",
 		Control: "ctrlKey",
 		Meta: "metaKey",
 		Shift: "shiftKey"
 	};
-	function Hn(e) {
+	function Un(e) {
 		var t = this.nativeEvent;
-		return t.getModifierState ? t.getModifierState(e) : (e = Vn[e]) ? !!t[e] : !1;
+		return t.getModifierState ? t.getModifierState(e) : (e = Hn[e]) ? !!t[e] : !1;
 	}
-	function Un() {
-		return Hn;
+	function Wn() {
+		return Un;
 	}
-	var Wn = Tn(h({}, On, {
+	var Gn = En(h({}, kn, {
 		key: function(e) {
 			if (e.key) {
-				var t = zn[e.key] || e.key;
+				var t = Bn[e.key] || e.key;
 				if (t !== "Unidentified") return t;
 			}
-			return e.type === "keypress" ? (e = Sn(e), e === 13 ? "Enter" : String.fromCharCode(e)) : e.type === "keydown" || e.type === "keyup" ? Bn[e.keyCode] || "Unidentified" : "";
+			return e.type === "keypress" ? (e = Cn(e), e === 13 ? "Enter" : String.fromCharCode(e)) : e.type === "keydown" || e.type === "keyup" ? Vn[e.keyCode] || "Unidentified" : "";
 		},
 		code: 0,
 		location: 0,
@@ -1681,17 +1681,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		metaKey: 0,
 		repeat: 0,
 		locale: 0,
-		getModifierState: Un,
+		getModifierState: Wn,
 		charCode: function(e) {
-			return e.type === "keypress" ? Sn(e) : 0;
+			return e.type === "keypress" ? Cn(e) : 0;
 		},
 		keyCode: function(e) {
 			return e.type === "keydown" || e.type === "keyup" ? e.keyCode : 0;
 		},
 		which: function(e) {
-			return e.type === "keypress" ? Sn(e) : e.type === "keydown" || e.type === "keyup" ? e.keyCode : 0;
+			return e.type === "keypress" ? Cn(e) : e.type === "keydown" || e.type === "keyup" ? e.keyCode : 0;
 		}
-	})), Gn = Tn(h({}, Nn, {
+	})), Kn = En(h({}, Pn, {
 		pointerId: 0,
 		width: 0,
 		height: 0,
@@ -1702,7 +1702,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		twist: 0,
 		pointerType: 0,
 		isPrimary: 0
-	})), Kn = Tn(h({}, On, {
+	})), qn = En(h({}, kn, {
 		touches: 0,
 		targetTouches: 0,
 		changedTouches: 0,
@@ -1710,12 +1710,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		metaKey: 0,
 		ctrlKey: 0,
 		shiftKey: 0,
-		getModifierState: Un
-	})), qn = Tn(h({}, En, {
+		getModifierState: Wn
+	})), Jn = En(h({}, Dn, {
 		propertyName: 0,
 		elapsedTime: 0,
 		pseudoElement: 0
-	})), P = Tn(h({}, Nn, {
+	})), N = En(h({}, Pn, {
 		deltaX: function(e) {
 			return "deltaX" in e ? e.deltaX : "wheelDeltaX" in e ? -e.wheelDeltaX : 0;
 		},
@@ -1724,20 +1724,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		},
 		deltaZ: 0,
 		deltaMode: 0
-	})), Jn = Tn(h({}, En, {
+	})), Yn = En(h({}, Dn, {
 		newState: 0,
 		oldState: 0
-	})), Yn = [
+	})), Xn = [
 		9,
 		13,
 		27,
 		32
-	], Xn = hn && "CompositionEvent" in window, Zn = null;
-	hn && "documentMode" in document && (Zn = document.documentMode);
-	var Qn = hn && "TextEvent" in window && !Zn, $n = hn && (!Xn || Zn && 8 < Zn && 11 >= Zn), er = " ", tr = !1;
-	function nr(e, t) {
+	], Zn = gn && "CompositionEvent" in window, Qn = null;
+	gn && "documentMode" in document && (Qn = document.documentMode);
+	var $n = gn && "TextEvent" in window && !Qn, er = gn && (!Zn || Qn && 8 < Qn && 11 >= Qn), tr = " ", nr = !1;
+	function rr(e, t) {
 		switch (e) {
-			case "keyup": return Yn.indexOf(t.keyCode) !== -1;
+			case "keyup": return Xn.indexOf(t.keyCode) !== -1;
 			case "keydown": return t.keyCode !== 229;
 			case "keypress":
 			case "mousedown":
@@ -1745,20 +1745,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return !1;
 		}
 	}
-	function rr(e) {
+	function ir(e) {
 		return e = e.detail, typeof e == "object" && "data" in e ? e.data : null;
 	}
-	var ir = !1;
-	function ar(e, t) {
+	var ar = !1;
+	function or(e, t) {
 		switch (e) {
-			case "compositionend": return rr(t);
-			case "keypress": return t.which === 32 ? (tr = !0, er) : null;
-			case "textInput": return e = t.data, e === er && tr ? null : e;
+			case "compositionend": return ir(t);
+			case "keypress": return t.which === 32 ? (nr = !0, tr) : null;
+			case "textInput": return e = t.data, e === tr && nr ? null : e;
 			default: return null;
 		}
 	}
-	function or(e, t) {
-		if (ir) return e === "compositionend" || !Xn && nr(e, t) ? (e = xn(), bn = yn = vn = null, ir = !1, e) : null;
+	function sr(e, t) {
+		if (ar) return e === "compositionend" || !Zn && rr(e, t) ? (e = Sn(), xn = bn = yn = null, ar = !1, e) : null;
 		switch (e) {
 			case "paste": return null;
 			case "keypress":
@@ -1767,11 +1767,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					if (t.which) return String.fromCharCode(t.which);
 				}
 				return null;
-			case "compositionend": return $n && t.locale !== "ko" ? null : t.data;
+			case "compositionend": return er && t.locale !== "ko" ? null : t.data;
 			default: return null;
 		}
 	}
-	var sr = {
+	var cr = {
 		color: !0,
 		date: !0,
 		datetime: !0,
@@ -1788,81 +1788,81 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		url: !0,
 		week: !0
 	};
-	function cr(e) {
+	function lr(e) {
 		var t = e && e.nodeName && e.nodeName.toLowerCase();
-		return t === "input" ? !!sr[e.type] : t === "textarea";
+		return t === "input" ? !!cr[e.type] : t === "textarea";
 	}
-	function lr(e, t, n, r) {
-		ln ? un ? un.push(r) : un = [r] : ln = r, t = Ed(t, "onChange"), 0 < t.length && (n = new Dn("onChange", "change", null, n, r), e.push({
+	function ur(e, t, n, r) {
+		un ? dn ? dn.push(r) : dn = [r] : un = r, t = Ed(t, "onChange"), 0 < t.length && (n = new On("onChange", "change", null, n, r), e.push({
 			event: n,
 			listeners: t
 		}));
 	}
-	var ur = null, F = null;
-	function dr(e) {
+	var dr = null, P = null;
+	function fr(e) {
 		yd(e, 0);
 	}
-	function fr(e) {
-		if (Vt(wt(e))) return e;
+	function pr(e) {
+		if (Ht(wt(e))) return e;
 	}
-	function pr(e, t) {
+	function mr(e, t) {
 		if (e === "change") return t;
 	}
-	var mr = !1;
-	if (hn) {
-		var hr;
-		if (hn) {
-			var gr = "oninput" in document;
-			if (!gr) {
-				var _r = document.createElement("div");
-				_r.setAttribute("oninput", "return;"), gr = typeof _r.oninput == "function";
+	var hr = !1;
+	if (gn) {
+		var gr;
+		if (gn) {
+			var _r = "oninput" in document;
+			if (!_r) {
+				var vr = document.createElement("div");
+				vr.setAttribute("oninput", "return;"), _r = typeof vr.oninput == "function";
 			}
-			hr = gr;
-		} else hr = !1;
-		mr = hr && (!document.documentMode || 9 < document.documentMode);
+			gr = _r;
+		} else gr = !1;
+		hr = gr && (!document.documentMode || 9 < document.documentMode);
 	}
-	function vr() {
-		ur && (ur.detachEvent("onpropertychange", yr), F = ur = null);
+	function yr() {
+		dr && (dr.detachEvent("onpropertychange", br), P = dr = null);
 	}
-	function yr(e) {
-		if (e.propertyName === "value" && fr(F)) {
+	function br(e) {
+		if (e.propertyName === "value" && pr(P)) {
 			var t = [];
-			lr(t, F, e, cn(e)), pn(dr, t);
+			ur(t, P, e, ln(e)), mn(fr, t);
 		}
 	}
-	function br(e, t, n) {
-		e === "focusin" ? (vr(), ur = t, F = n, ur.attachEvent("onpropertychange", yr)) : e === "focusout" && vr();
+	function xr(e, t, n) {
+		e === "focusin" ? (yr(), dr = t, P = n, dr.attachEvent("onpropertychange", br)) : e === "focusout" && yr();
 	}
-	function xr(e) {
-		if (e === "selectionchange" || e === "keyup" || e === "keydown") return fr(F);
-	}
-	function Sr(e, t) {
-		if (e === "click") return fr(t);
+	function Sr(e) {
+		if (e === "selectionchange" || e === "keyup" || e === "keydown") return pr(P);
 	}
 	function Cr(e, t) {
-		if (e === "input" || e === "change") return fr(t);
+		if (e === "click") return pr(t);
 	}
 	function wr(e, t) {
+		if (e === "input" || e === "change") return pr(t);
+	}
+	function Tr(e, t) {
 		return e === t && (e !== 0 || 1 / e == 1 / t) || e !== e && t !== t;
 	}
-	var Tr = typeof Object.is == "function" ? Object.is : wr;
-	function Er(e, t) {
-		if (Tr(e, t)) return !0;
+	var Er = typeof Object.is == "function" ? Object.is : Tr;
+	function Dr(e, t) {
+		if (Er(e, t)) return !0;
 		if (typeof e != "object" || !e || typeof t != "object" || !t) return !1;
 		var n = Object.keys(e), r = Object.keys(t);
 		if (n.length !== r.length) return !1;
 		for (r = 0; r < n.length; r++) {
 			var i = n[r];
-			if (!De.call(t, i) || !Tr(e[i], t[i])) return !1;
+			if (!De.call(t, i) || !Er(e[i], t[i])) return !1;
 		}
 		return !0;
 	}
-	function Dr(e) {
+	function Or(e) {
 		for (; e && e.firstChild;) e = e.firstChild;
 		return e;
 	}
-	function Or(e, t) {
-		var n = Dr(e);
+	function kr(e, t) {
+		var n = Or(e);
 		e = 0;
 		for (var r; n;) {
 			if (n.nodeType === 3) {
@@ -1882,15 +1882,15 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 				n = void 0;
 			}
-			n = Dr(n);
+			n = Or(n);
 		}
 	}
-	function kr(e, t) {
-		return e && t ? e === t ? !0 : e && e.nodeType === 3 ? !1 : t && t.nodeType === 3 ? kr(e, t.parentNode) : "contains" in e ? e.contains(t) : e.compareDocumentPosition ? !!(e.compareDocumentPosition(t) & 16) : !1 : !1;
+	function Ar(e, t) {
+		return e && t ? e === t ? !0 : e && e.nodeType === 3 ? !1 : t && t.nodeType === 3 ? Ar(e, t.parentNode) : "contains" in e ? e.contains(t) : e.compareDocumentPosition ? !!(e.compareDocumentPosition(t) & 16) : !1 : !1;
 	}
-	function Ar(e) {
+	function jr(e) {
 		e = e != null && e.ownerDocument != null && e.ownerDocument.defaultView != null ? e.ownerDocument.defaultView : window;
-		for (var t = Ht(e.document); t instanceof e.HTMLIFrameElement;) {
+		for (var t = Ut(e.document); t instanceof e.HTMLIFrameElement;) {
 			try {
 				var n = typeof t.contentWindow.location.href == "string";
 			} catch {
@@ -1898,18 +1898,18 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			if (n) e = t.contentWindow;
 			else break;
-			t = Ht(e.document);
+			t = Ut(e.document);
 		}
 		return t;
 	}
-	function jr(e) {
+	function Mr(e) {
 		var t = e && e.nodeName && e.nodeName.toLowerCase();
 		return t && (t === "input" && (e.type === "text" || e.type === "search" || e.type === "tel" || e.type === "url" || e.type === "password") || t === "textarea" || e.contentEditable === "true");
 	}
-	var Mr = hn && "documentMode" in document && 11 >= document.documentMode, Nr = null, Pr = null, Fr = null, Ir = !1;
-	function Lr(e, t, n) {
+	var Nr = gn && "documentMode" in document && 11 >= document.documentMode, Pr = null, Fr = null, Ir = null, Lr = !1;
+	function Rr(e, t, n) {
 		var r = n.window === n ? n.document : n.nodeType === 9 ? n : n.ownerDocument;
-		Ir || Nr == null || Nr !== Ht(r) || (r = Nr, "selectionStart" in r && jr(r) ? r = {
+		Lr || Pr == null || Pr !== Ut(r) || (r = Pr, "selectionStart" in r && Mr(r) ? r = {
 			start: r.selectionStart,
 			end: r.selectionEnd
 		} : (r = (r.ownerDocument && r.ownerDocument.defaultView || window).getSelection(), r = {
@@ -1917,38 +1917,38 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			anchorOffset: r.anchorOffset,
 			focusNode: r.focusNode,
 			focusOffset: r.focusOffset
-		}), Fr && Er(Fr, r) || (Fr = r, r = Ed(Pr, "onSelect"), 0 < r.length && (t = new Dn("onSelect", "select", null, t, n), e.push({
+		}), Ir && Dr(Ir, r) || (Ir = r, r = Ed(Fr, "onSelect"), 0 < r.length && (t = new On("onSelect", "select", null, t, n), e.push({
 			event: t,
 			listeners: r
-		}), t.target = Nr)));
+		}), t.target = Pr)));
 	}
-	function Rr(e, t) {
+	function zr(e, t) {
 		var n = {};
 		return n[e.toLowerCase()] = t.toLowerCase(), n["Webkit" + e] = "webkit" + t, n["Moz" + e] = "moz" + t, n;
 	}
-	var zr = {
-		animationend: Rr("Animation", "AnimationEnd"),
-		animationiteration: Rr("Animation", "AnimationIteration"),
-		animationstart: Rr("Animation", "AnimationStart"),
-		transitionrun: Rr("Transition", "TransitionRun"),
-		transitionstart: Rr("Transition", "TransitionStart"),
-		transitioncancel: Rr("Transition", "TransitionCancel"),
-		transitionend: Rr("Transition", "TransitionEnd")
-	}, Br = {}, Vr = {};
-	hn && (Vr = document.createElement("div").style, "AnimationEvent" in window || (delete zr.animationend.animation, delete zr.animationiteration.animation, delete zr.animationstart.animation), "TransitionEvent" in window || delete zr.transitionend.transition);
-	function Hr(e) {
-		if (Br[e]) return Br[e];
-		if (!zr[e]) return e;
-		var t = zr[e], n;
-		for (n in t) if (t.hasOwnProperty(n) && n in Vr) return Br[e] = t[n];
+	var Br = {
+		animationend: zr("Animation", "AnimationEnd"),
+		animationiteration: zr("Animation", "AnimationIteration"),
+		animationstart: zr("Animation", "AnimationStart"),
+		transitionrun: zr("Transition", "TransitionRun"),
+		transitionstart: zr("Transition", "TransitionStart"),
+		transitioncancel: zr("Transition", "TransitionCancel"),
+		transitionend: zr("Transition", "TransitionEnd")
+	}, Vr = {}, Hr = {};
+	gn && (Hr = document.createElement("div").style, "AnimationEvent" in window || (delete Br.animationend.animation, delete Br.animationiteration.animation, delete Br.animationstart.animation), "TransitionEvent" in window || delete Br.transitionend.transition);
+	function Ur(e) {
+		if (Vr[e]) return Vr[e];
+		if (!Br[e]) return e;
+		var t = Br[e], n;
+		for (n in t) if (t.hasOwnProperty(n) && n in Hr) return Vr[e] = t[n];
 		return e;
 	}
-	var Ur = Hr("animationend"), Wr = Hr("animationiteration"), Gr = Hr("animationstart"), Kr = Hr("transitionrun"), qr = Hr("transitionstart"), Jr = Hr("transitioncancel"), Yr = Hr("transitionend"), Xr = /* @__PURE__ */ new Map(), Zr = "abort auxClick beforeToggle cancel canPlay canPlayThrough click close contextMenu copy cut drag dragEnd dragEnter dragExit dragLeave dragOver dragStart drop durationChange emptied encrypted ended error gotPointerCapture input invalid keyDown keyPress keyUp load loadedData loadedMetadata loadStart lostPointerCapture mouseDown mouseMove mouseOut mouseOver mouseUp paste pause play playing pointerCancel pointerDown pointerMove pointerOut pointerOver pointerUp progress rateChange reset resize seeked seeking stalled submit suspend timeUpdate touchCancel touchEnd touchStart volumeChange scroll toggle touchMove waiting wheel".split(" ");
-	Zr.push("scrollEnd");
-	function Qr(e, t) {
-		Xr.set(e, t), Ot(t, [e]);
+	var Wr = Ur("animationend"), Gr = Ur("animationiteration"), Kr = Ur("animationstart"), qr = Ur("transitionrun"), Jr = Ur("transitionstart"), Yr = Ur("transitioncancel"), Xr = Ur("transitionend"), Zr = /* @__PURE__ */ new Map(), Qr = "abort auxClick beforeToggle cancel canPlay canPlayThrough click close contextMenu copy cut drag dragEnd dragEnter dragExit dragLeave dragOver dragStart drop durationChange emptied encrypted ended error gotPointerCapture input invalid keyDown keyPress keyUp load loadedData loadedMetadata loadStart lostPointerCapture mouseDown mouseMove mouseOut mouseOver mouseUp paste pause play playing pointerCancel pointerDown pointerMove pointerOut pointerOver pointerUp progress rateChange reset resize seeked seeking stalled submit suspend timeUpdate touchCancel touchEnd touchStart volumeChange scroll toggle touchMove waiting wheel".split(" ");
+	Qr.push("scrollEnd");
+	function $r(e, t) {
+		Zr.set(e, t), kt(t, [e]);
 	}
-	var $r = typeof reportError == "function" ? reportError : function(e) {
+	var ei = typeof reportError == "function" ? reportError : function(e) {
 		if (typeof window == "object" && typeof window.ErrorEvent == "function") {
 			var t = new window.ErrorEvent("error", {
 				bubbles: !0,
@@ -1959,62 +1959,62 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			if (!window.dispatchEvent(t)) return;
 		}
 		console.error(e);
-	}, ei = [], ti = 0, ni = 0;
-	function ri() {
-		for (var e = ti, t = ni = ti = 0; t < e;) {
-			var n = ei[t];
-			ei[t++] = null;
-			var r = ei[t];
-			ei[t++] = null;
-			var i = ei[t];
-			ei[t++] = null;
-			var a = ei[t];
-			if (ei[t++] = null, r !== null && i !== null) {
+	}, ti = [], ni = 0, ri = 0;
+	function ii() {
+		for (var e = ni, t = ri = ni = 0; t < e;) {
+			var n = ti[t];
+			ti[t++] = null;
+			var r = ti[t];
+			ti[t++] = null;
+			var i = ti[t];
+			ti[t++] = null;
+			var a = ti[t];
+			if (ti[t++] = null, r !== null && i !== null) {
 				var o = r.pending;
 				o === null ? i.next = i : (i.next = o.next, o.next = i), r.pending = i;
 			}
-			a !== 0 && si(n, i, a);
+			a !== 0 && ci(n, i, a);
 		}
 	}
-	function ii(e, t, n, r) {
-		ei[ti++] = e, ei[ti++] = t, ei[ti++] = n, ei[ti++] = r, ni |= r, e.lanes |= r, e = e.alternate, e !== null && (e.lanes |= r);
-	}
 	function ai(e, t, n, r) {
-		return ii(e, t, n, r), ci(e);
+		ti[ni++] = e, ti[ni++] = t, ti[ni++] = n, ti[ni++] = r, ri |= r, e.lanes |= r, e = e.alternate, e !== null && (e.lanes |= r);
 	}
-	function oi(e, t) {
-		return ii(e, null, null, t), ci(e);
+	function oi(e, t, n, r) {
+		return ai(e, t, n, r), li(e);
 	}
-	function si(e, t, n) {
+	function si(e, t) {
+		return ai(e, null, null, t), li(e);
+	}
+	function ci(e, t, n) {
 		e.lanes |= n;
 		var r = e.alternate;
 		r !== null && (r.lanes |= n);
 		for (var i = !1, a = e.return; a !== null;) a.childLanes |= n, r = a.alternate, r !== null && (r.childLanes |= n), a.tag === 22 && (e = a.stateNode, e === null || e._visibility & 1 || (i = !0)), e = a, a = a.return;
 		return e.tag === 3 ? (a = e.stateNode, i && t !== null && (i = 31 - We(n), e = a.hiddenUpdates, r = e[i], r === null ? e[i] = [t] : r.push(t), t.lane = n | 536870912), a) : null;
 	}
-	function ci(e) {
+	function li(e) {
 		if (50 < du) throw du = 0, fu = null, Error(i(185));
 		for (var t = e.return; t !== null;) e = t, t = e.return;
 		return e.tag === 3 ? e.stateNode : null;
 	}
-	var li = {};
-	function ui(e, t, n, r) {
+	var ui = {};
+	function di(e, t, n, r) {
 		this.tag = e, this.key = n, this.sibling = this.child = this.return = this.stateNode = this.type = this.elementType = null, this.index = 0, this.refCleanup = this.ref = null, this.pendingProps = t, this.dependencies = this.memoizedState = this.updateQueue = this.memoizedProps = null, this.mode = r, this.subtreeFlags = this.flags = 0, this.deletions = null, this.childLanes = this.lanes = 0, this.alternate = null;
 	}
-	function di(e, t, n, r) {
-		return new ui(e, t, n, r);
+	function fi(e, t, n, r) {
+		return new di(e, t, n, r);
 	}
-	function fi(e) {
+	function pi(e) {
 		return e = e.prototype, !(!e || !e.isReactComponent);
 	}
-	function pi(e, t) {
+	function mi(e, t) {
 		var n = e.alternate;
-		return n === null ? (n = di(e.tag, t, e.key, e.mode), n.elementType = e.elementType, n.type = e.type, n.stateNode = e.stateNode, n.alternate = e, e.alternate = n) : (n.pendingProps = t, n.type = e.type, n.flags = 0, n.subtreeFlags = 0, n.deletions = null), n.flags = e.flags & 65011712, n.childLanes = e.childLanes, n.lanes = e.lanes, n.child = e.child, n.memoizedProps = e.memoizedProps, n.memoizedState = e.memoizedState, n.updateQueue = e.updateQueue, t = e.dependencies, n.dependencies = t === null ? null : {
+		return n === null ? (n = fi(e.tag, t, e.key, e.mode), n.elementType = e.elementType, n.type = e.type, n.stateNode = e.stateNode, n.alternate = e, e.alternate = n) : (n.pendingProps = t, n.type = e.type, n.flags = 0, n.subtreeFlags = 0, n.deletions = null), n.flags = e.flags & 65011712, n.childLanes = e.childLanes, n.lanes = e.lanes, n.child = e.child, n.memoizedProps = e.memoizedProps, n.memoizedState = e.memoizedState, n.updateQueue = e.updateQueue, t = e.dependencies, n.dependencies = t === null ? null : {
 			lanes: t.lanes,
 			firstContext: t.firstContext
 		}, n.sibling = e.sibling, n.index = e.index, n.ref = e.ref, n.refCleanup = e.refCleanup, n;
 	}
-	function mi(e, t) {
+	function hi(e, t) {
 		e.flags &= 65011714;
 		var n = e.alternate;
 		return n === null ? (e.childLanes = 0, e.lanes = t, e.child = null, e.subtreeFlags = 0, e.memoizedProps = null, e.memoizedState = null, e.updateQueue = null, e.dependencies = null, e.stateNode = null) : (e.childLanes = n.childLanes, e.lanes = n.lanes, e.child = n.child, e.subtreeFlags = 0, e.deletions = null, e.memoizedProps = n.memoizedProps, e.memoizedState = n.memoizedState, e.updateQueue = n.updateQueue, e.type = n.type, t = n.dependencies, e.dependencies = t === null ? null : {
@@ -2022,19 +2022,19 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			firstContext: t.firstContext
 		}), e;
 	}
-	function hi(e, t, n, r, a, o) {
+	function gi(e, t, n, r, a, o) {
 		var s = 0;
-		if (r = e, typeof e == "function") fi(e) && (s = 1);
+		if (r = e, typeof e == "function") pi(e) && (s = 1);
 		else if (typeof e == "string") s = Uf(e, n, fe.current) ? 26 : e === "html" || e === "head" || e === "body" ? 27 : 5;
 		else a: switch (e) {
-			case te: return e = di(31, n, t, a), e.elementType = te, e.lanes = o, e;
-			case y: return gi(n.children, a, o, t);
+			case te: return e = fi(31, n, t, a), e.elementType = te, e.lanes = o, e;
+			case y: return _i(n.children, a, o, t);
 			case b:
 				s = 8, a |= 24;
 				break;
-			case x: return e = di(12, n, t, a | 2), e.elementType = x, e.lanes = o, e;
-			case T: return e = di(13, n, t, a), e.elementType = T, e.lanes = o, e;
-			case E: return e = di(19, n, t, a), e.elementType = E, e.lanes = o, e;
+			case x: return e = fi(12, n, t, a | 2), e.elementType = x, e.lanes = o, e;
+			case T: return e = fi(13, n, t, a), e.elementType = T, e.lanes = o, e;
+			case E: return e = fi(19, n, t, a), e.elementType = E, e.lanes = o, e;
 			default:
 				if (typeof e == "object" && e) switch (e.$$typeof) {
 					case C:
@@ -2055,34 +2055,34 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 				s = 29, n = Error(i(130, e === null ? "null" : typeof e, "")), r = null;
 		}
-		return t = di(s, n, t, a), t.elementType = e, t.type = r, t.lanes = o, t;
+		return t = fi(s, n, t, a), t.elementType = e, t.type = r, t.lanes = o, t;
 	}
-	function gi(e, t, n, r) {
-		return e = di(7, e, r, t), e.lanes = n, e;
+	function _i(e, t, n, r) {
+		return e = fi(7, e, r, t), e.lanes = n, e;
 	}
-	function _i(e, t, n) {
-		return e = di(6, e, null, t), e.lanes = n, e;
+	function vi(e, t, n) {
+		return e = fi(6, e, null, t), e.lanes = n, e;
 	}
-	function vi(e) {
-		var t = di(18, null, null, 0);
+	function yi(e) {
+		var t = fi(18, null, null, 0);
 		return t.stateNode = e, t;
 	}
-	function yi(e, t, n) {
-		return t = di(4, e.children === null ? [] : e.children, e.key, t), t.lanes = n, t.stateNode = {
+	function bi(e, t, n) {
+		return t = fi(4, e.children === null ? [] : e.children, e.key, t), t.lanes = n, t.stateNode = {
 			containerInfo: e.containerInfo,
 			pendingChildren: null,
 			implementation: e.implementation
 		}, t;
 	}
-	var bi = /* @__PURE__ */ new WeakMap();
-	function xi(e, t) {
+	var xi = /* @__PURE__ */ new WeakMap();
+	function Si(e, t) {
 		if (typeof e == "object" && e) {
-			var n = bi.get(e);
+			var n = xi.get(e);
 			return n === void 0 ? (t = {
 				value: e,
 				source: t,
 				stack: Ee(t)
-			}, bi.set(e, t), t) : n;
+			}, xi.set(e, t), t) : n;
 		}
 		return {
 			value: e,
@@ -2090,35 +2090,35 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			stack: Ee(t)
 		};
 	}
-	var Si = [], Ci = 0, wi = null, Ti = 0, Ei = [], Di = 0, Oi = null, ki = 1, Ai = "";
+	var Ci = [], wi = 0, Ti = null, Ei = 0, Di = [], Oi = 0, ki = null, Ai = 1, F = "";
 	function ji(e, t) {
-		Si[Ci++] = Ti, Si[Ci++] = wi, wi = e, Ti = t;
+		Ci[wi++] = Ei, Ci[wi++] = Ti, Ti = e, Ei = t;
 	}
 	function Mi(e, t, n) {
-		Ei[Di++] = ki, Ei[Di++] = Ai, Ei[Di++] = Oi, Oi = e;
-		var r = ki;
-		e = Ai;
+		Di[Oi++] = Ai, Di[Oi++] = F, Di[Oi++] = ki, ki = e;
+		var r = Ai;
+		e = F;
 		var i = 32 - We(r) - 1;
 		r &= ~(1 << i), n += 1;
 		var a = 32 - We(t) + i;
 		if (30 < a) {
 			var o = i - i % 5;
-			a = (r & (1 << o) - 1).toString(32), r >>= o, i -= o, ki = 1 << 32 - We(t) + i | n << i | r, Ai = a + e;
-		} else ki = 1 << a | n << i | r, Ai = e;
+			a = (r & (1 << o) - 1).toString(32), r >>= o, i -= o, Ai = 1 << 32 - We(t) + i | n << i | r, F = a + e;
+		} else Ai = 1 << a | n << i | r, F = e;
 	}
 	function Ni(e) {
 		e.return !== null && (ji(e, 1), Mi(e, 1, 0));
 	}
 	function Pi(e) {
-		for (; e === wi;) wi = Si[--Ci], Si[Ci] = null, Ti = Si[--Ci], Si[Ci] = null;
-		for (; e === Oi;) Oi = Ei[--Di], Ei[Di] = null, Ai = Ei[--Di], Ei[Di] = null, ki = Ei[--Di], Ei[Di] = null;
+		for (; e === Ti;) Ti = Ci[--wi], Ci[wi] = null, Ei = Ci[--wi], Ci[wi] = null;
+		for (; e === ki;) ki = Di[--Oi], Di[Oi] = null, F = Di[--Oi], Di[Oi] = null, Ai = Di[--Oi], Di[Oi] = null;
 	}
 	function Fi(e, t) {
-		Ei[Di++] = ki, Ei[Di++] = Ai, Ei[Di++] = Oi, ki = t.id, Ai = t.overflow, Oi = e;
+		Di[Oi++] = Ai, Di[Oi++] = F, Di[Oi++] = ki, Ai = t.id, F = t.overflow, ki = e;
 	}
 	var Ii = null, I = null, L = !1, Li = null, Ri = !1, zi = Error(i(519));
 	function Bi(e) {
-		throw Ki(xi(Error(i(418, 1 < arguments.length && arguments[1] !== void 0 && arguments[1] ? "text" : "HTML", "")), e)), zi;
+		throw Ki(Si(Error(i(418, 1 < arguments.length && arguments[1] !== void 0 && arguments[1] ? "text" : "HTML", "")), e)), zi;
 	}
 	function Vi(e) {
 		var t = e.stateNode, n = e.type, r = e.memoizedProps;
@@ -2147,14 +2147,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				Q("toggle", t);
 				break;
 			case "input":
-				Q("invalid", t), Kt(t, r.value, r.defaultValue, r.checked, r.defaultChecked, r.type, r.name, !0);
+				Q("invalid", t), qt(t, r.value, r.defaultValue, r.checked, r.defaultChecked, r.type, r.name, !0);
 				break;
 			case "select":
 				Q("invalid", t);
 				break;
-			case "textarea": Q("invalid", t), Xt(t, r.value, r.defaultValue, r.children);
+			case "textarea": Q("invalid", t), Zt(t, r.value, r.defaultValue, r.children);
 		}
-		n = r.children, typeof n != "string" && typeof n != "number" && typeof n != "bigint" || t.textContent === "" + n || !0 === r.suppressHydrationWarning || Md(t.textContent, n) ? (r.popover != null && (Q("beforetoggle", t), Q("toggle", t)), r.onScroll != null && Q("scroll", t), r.onScrollEnd != null && Q("scrollend", t), r.onClick != null && (t.onclick = on), t = !0) : t = !1, t || Bi(e, !0);
+		n = r.children, typeof n != "string" && typeof n != "number" && typeof n != "bigint" || t.textContent === "" + n || !0 === r.suppressHydrationWarning || Md(t.textContent, n) ? (r.popover != null && (Q("beforetoggle", t), Q("toggle", t)), r.onScroll != null && Q("scroll", t), r.onScrollEnd != null && Q("scrollend", t), r.onClick != null && (t.onclick = sn), t = !0) : t = !1, t || Bi(e, !0);
 	}
 	function Hi(e) {
 		for (Ii = e.return; Ii;) switch (Ii.tag) {
@@ -2200,14 +2200,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function Zi(e) {
 		e._currentValue = qi.current, de(qi);
 	}
-	function R(e, t, n) {
+	function Qi(e, t, n) {
 		for (; e !== null;) {
 			var r = e.alternate;
 			if ((e.childLanes & t) === t ? r !== null && (r.childLanes & t) !== t && (r.childLanes |= t) : (e.childLanes |= t, r !== null && (r.childLanes |= t)), e === n) break;
 			e = e.return;
 		}
 	}
-	function Qi(e, t, n, r) {
+	function $i(e, t, n, r) {
 		var a = e.child;
 		for (a !== null && (a.return = e); a !== null;) {
 			var o = a.dependencies;
@@ -2218,14 +2218,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					var c = o;
 					o = a;
 					for (var l = 0; l < t.length; l++) if (c.context === t[l]) {
-						o.lanes |= n, c = o.alternate, c !== null && (c.lanes |= n), R(o.return, n, e), r || (s = null);
+						o.lanes |= n, c = o.alternate, c !== null && (c.lanes |= n), Qi(o.return, n, e), r || (s = null);
 						break a;
 					}
 					o = c.next;
 				}
 			} else if (a.tag === 18) {
 				if (s = a.return, s === null) throw Error(i(341));
-				s.lanes |= n, o = s.alternate, o !== null && (o.lanes |= n), R(s, n, e), s = null;
+				s.lanes |= n, o = s.alternate, o !== null && (o.lanes |= n), Qi(s, n, e), s = null;
 			} else s = a.child;
 			if (s !== null) s.return = a;
 			else for (s = a; s !== null;) {
@@ -2242,7 +2242,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			a = s;
 		}
 	}
-	function $i(e, t, n, r) {
+	function ea(e, t, n, r) {
 		e = null;
 		for (var a = t, o = !1; a !== null;) {
 			if (!o) {
@@ -2254,7 +2254,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				if (s === null) throw Error(i(387));
 				if (s = s.memoizedProps, s !== null) {
 					var c = a.type;
-					Tr(a.pendingProps.value, s.value) || (e === null ? e = [c] : e.push(c));
+					Er(a.pendingProps.value, s.value) || (e === null ? e = [c] : e.push(c));
 				}
 			} else if (a === he.current) {
 				if (s = a.alternate, s === null) throw Error(i(387));
@@ -2262,23 +2262,23 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			a = a.return;
 		}
-		e !== null && Qi(t, e, n, r), t.flags |= 262144;
+		e !== null && $i(t, e, n, r), t.flags |= 262144;
 	}
-	function ea(e) {
+	function ta(e) {
 		for (e = e.firstContext; e !== null;) {
-			if (!Tr(e.context._currentValue, e.memoizedValue)) return !0;
+			if (!Er(e.context._currentValue, e.memoizedValue)) return !0;
 			e = e.next;
 		}
 		return !1;
 	}
-	function ta(e) {
+	function na(e) {
 		Ji = e, Yi = null, e = e.dependencies, e !== null && (e.firstContext = null);
 	}
-	function na(e) {
+	function R(e) {
 		return ia(Ji, e);
 	}
 	function ra(e, t) {
-		return Ji === null && ta(e), ia(e, t);
+		return Ji === null && na(e), ia(e, t);
 	}
 	function ia(e, t) {
 		var n = t._currentValue;
@@ -2328,7 +2328,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		});
 	}
 	var la = null, ua = 0, da = 0, fa = null;
-	function pa(e, t) {
+	function V(e, t) {
 		if (la === null) {
 			var n = la = [];
 			ua = 0, da = dd(), fa = {
@@ -2339,9 +2339,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 			};
 		}
-		return ua++, t.then(ma, ma), t;
+		return ua++, t.then(pa, pa), t;
 	}
-	function ma() {
+	function pa() {
 		if (--ua === 0 && la !== null) {
 			fa !== null && (fa.status = "fulfilled");
 			var e = la;
@@ -2349,7 +2349,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			for (var t = 0; t < e.length; t++) (0, e[t])();
 		}
 	}
-	function ha(e, t) {
+	function ma(e, t) {
 		var n = [], r = {
 			status: "pending",
 			value: null,
@@ -2365,35 +2365,35 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			for (r.status = "rejected", r.reason = e, e = 0; e < n.length; e++) (0, n[e])(void 0);
 		}), r;
 	}
-	var ga = k.S;
+	var ha = k.S;
 	k.S = function(e, t) {
-		eu = Me(), typeof t == "object" && t && typeof t.then == "function" && pa(e, t), ga !== null && ga(e, t);
+		eu = Me(), typeof t == "object" && t && typeof t.then == "function" && V(e, t), ha !== null && ha(e, t);
 	};
-	var _a = ue(null);
-	function va() {
-		var e = _a.current;
+	var ga = ue(null);
+	function _a() {
+		var e = ga.current;
 		return e === null ? q.pooledCache : e;
 	}
-	function ya(e, t) {
-		t === null ? j(_a, _a.current) : j(_a, t.pool);
+	function H(e, t) {
+		t === null ? j(ga, ga.current) : j(ga, t.pool);
 	}
-	function ba() {
-		var e = va();
+	function U() {
+		var e = _a();
 		return e === null ? null : {
 			parent: z._currentValue,
 			pool: e
 		};
 	}
-	var xa = Error(i(460)), Sa = Error(i(474)), Ca = Error(i(542)), wa = { then: function() {} };
-	function Ta(e) {
+	var va = Error(i(460)), ya = Error(i(474)), ba = Error(i(542)), xa = { then: function() {} };
+	function Sa(e) {
 		return e = e.status, e === "fulfilled" || e === "rejected";
 	}
-	function Ea(e, t, n) {
-		switch (n = e[n], n === void 0 ? e.push(t) : n !== t && (t.then(on, on), t = n), t.status) {
+	function Ca(e, t, n) {
+		switch (n = e[n], n === void 0 ? e.push(t) : n !== t && (t.then(sn, sn), t = n), t.status) {
 			case "fulfilled": return t.value;
-			case "rejected": throw e = t.reason, Aa(e), e;
+			case "rejected": throw e = t.reason, Da(e), e;
 			default:
-				if (typeof t.status == "string") t.then(on, on);
+				if (typeof t.status == "string") t.then(sn, sn);
 				else {
 					if (e = q, e !== null && 100 < e.shellSuspendCounter) throw Error(i(482));
 					e = t, e.status = "pending", e.then(function(e) {
@@ -2410,40 +2410,40 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 				switch (t.status) {
 					case "fulfilled": return t.value;
-					case "rejected": throw e = t.reason, Aa(e), e;
+					case "rejected": throw e = t.reason, Da(e), e;
 				}
-				throw Oa = t, xa;
+				throw Ta = t, va;
 		}
 	}
-	function Da(e) {
+	function wa(e) {
 		try {
 			var t = e._init;
 			return t(e._payload);
 		} catch (e) {
-			throw typeof e == "object" && e && typeof e.then == "function" ? (Oa = e, xa) : e;
+			throw typeof e == "object" && e && typeof e.then == "function" ? (Ta = e, va) : e;
 		}
 	}
-	var Oa = null;
-	function ka() {
-		if (Oa === null) throw Error(i(459));
-		var e = Oa;
-		return Oa = null, e;
+	var Ta = null;
+	function Ea() {
+		if (Ta === null) throw Error(i(459));
+		var e = Ta;
+		return Ta = null, e;
 	}
+	function Da(e) {
+		if (e === va || e === ba) throw Error(i(483));
+	}
+	var Oa = null, ka = 0;
 	function Aa(e) {
-		if (e === xa || e === Ca) throw Error(i(483));
+		var t = ka;
+		return ka += 1, Oa === null && (Oa = []), Ca(Oa, e, t);
 	}
-	var ja = null, Ma = 0;
-	function Na(e) {
-		var t = Ma;
-		return Ma += 1, ja === null && (ja = []), Ea(ja, e, t);
-	}
-	function Pa(e, t) {
+	function ja(e, t) {
 		t = t.props.ref, e.ref = t === void 0 ? null : t;
 	}
-	function Fa(e, t) {
+	function Ma(e, t) {
 		throw t.$$typeof === g ? Error(i(525)) : (e = Object.prototype.toString.call(t), Error(i(31, e === "[object Object]" ? "object with keys {" + Object.keys(t).join(", ") + "}" : e)));
 	}
-	function Ia(e) {
+	function Na(e) {
 		function t(t, n) {
 			if (e) {
 				var r = t.deletions;
@@ -2460,7 +2460,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return t;
 		}
 		function a(e, t) {
-			return e = pi(e, t), e.index = 0, e.sibling = null, e;
+			return e = mi(e, t), e.index = 0, e.sibling = null, e;
 		}
 		function o(t, n, r) {
 			return t.index = r, e ? (r = t.alternate, r === null ? (t.flags |= 67108866, n) : (r = r.index, r < n ? (t.flags |= 67108866, n) : r)) : (t.flags |= 1048576, n);
@@ -2469,30 +2469,30 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return e && t.alternate === null && (t.flags |= 67108866), t;
 		}
 		function c(e, t, n, r) {
-			return t === null || t.tag !== 6 ? (t = _i(n, e.mode, r), t.return = e, t) : (t = a(t, n), t.return = e, t);
+			return t === null || t.tag !== 6 ? (t = vi(n, e.mode, r), t.return = e, t) : (t = a(t, n), t.return = e, t);
 		}
 		function l(e, t, n, r) {
 			var i = n.type;
-			return i === y ? d(e, t, n.props.children, r, n.key) : t !== null && (t.elementType === i || typeof i == "object" && i && i.$$typeof === D && Da(i) === t.type) ? (t = a(t, n.props), Pa(t, n), t.return = e, t) : (t = hi(n.type, n.key, n.props, null, e.mode, r), Pa(t, n), t.return = e, t);
+			return i === y ? d(e, t, n.props.children, r, n.key) : t !== null && (t.elementType === i || typeof i == "object" && i && i.$$typeof === D && wa(i) === t.type) ? (t = a(t, n.props), ja(t, n), t.return = e, t) : (t = gi(n.type, n.key, n.props, null, e.mode, r), ja(t, n), t.return = e, t);
 		}
 		function u(e, t, n, r) {
-			return t === null || t.tag !== 4 || t.stateNode.containerInfo !== n.containerInfo || t.stateNode.implementation !== n.implementation ? (t = yi(n, e.mode, r), t.return = e, t) : (t = a(t, n.children || []), t.return = e, t);
+			return t === null || t.tag !== 4 || t.stateNode.containerInfo !== n.containerInfo || t.stateNode.implementation !== n.implementation ? (t = bi(n, e.mode, r), t.return = e, t) : (t = a(t, n.children || []), t.return = e, t);
 		}
 		function d(e, t, n, r, i) {
-			return t === null || t.tag !== 7 ? (t = gi(n, e.mode, r, i), t.return = e, t) : (t = a(t, n), t.return = e, t);
+			return t === null || t.tag !== 7 ? (t = _i(n, e.mode, r, i), t.return = e, t) : (t = a(t, n), t.return = e, t);
 		}
 		function f(e, t, n) {
-			if (typeof t == "string" && t !== "" || typeof t == "number" || typeof t == "bigint") return t = _i("" + t, e.mode, n), t.return = e, t;
+			if (typeof t == "string" && t !== "" || typeof t == "number" || typeof t == "bigint") return t = vi("" + t, e.mode, n), t.return = e, t;
 			if (typeof t == "object" && t) {
 				switch (t.$$typeof) {
-					case _: return n = hi(t.type, t.key, t.props, null, e.mode, n), Pa(n, t), n.return = e, n;
-					case v: return t = yi(t, e.mode, n), t.return = e, t;
-					case D: return t = Da(t), f(e, t, n);
+					case _: return n = gi(t.type, t.key, t.props, null, e.mode, n), ja(n, t), n.return = e, n;
+					case v: return t = bi(t, e.mode, n), t.return = e, t;
+					case D: return t = wa(t), f(e, t, n);
 				}
-				if (O(t) || ie(t)) return t = gi(t, e.mode, n, null), t.return = e, t;
-				if (typeof t.then == "function") return f(e, Na(t), n);
+				if (O(t) || ie(t)) return t = _i(t, e.mode, n, null), t.return = e, t;
+				if (typeof t.then == "function") return f(e, Aa(t), n);
 				if (t.$$typeof === C) return f(e, ra(e, t), n);
-				Fa(e, t);
+				Ma(e, t);
 			}
 			return null;
 		}
@@ -2503,12 +2503,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				switch (n.$$typeof) {
 					case _: return n.key === i ? l(e, t, n, r) : null;
 					case v: return n.key === i ? u(e, t, n, r) : null;
-					case D: return n = Da(n), p(e, t, n, r);
+					case D: return n = wa(n), p(e, t, n, r);
 				}
 				if (O(n) || ie(n)) return i === null ? d(e, t, n, r, null) : null;
-				if (typeof n.then == "function") return p(e, t, Na(n), r);
+				if (typeof n.then == "function") return p(e, t, Aa(n), r);
 				if (n.$$typeof === C) return p(e, t, ra(e, n), r);
-				Fa(e, n);
+				Ma(e, n);
 			}
 			return null;
 		}
@@ -2518,12 +2518,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				switch (r.$$typeof) {
 					case _: return e = e.get(r.key === null ? n : r.key) || null, l(t, e, r, i);
 					case v: return e = e.get(r.key === null ? n : r.key) || null, u(t, e, r, i);
-					case D: return r = Da(r), m(e, t, n, r, i);
+					case D: return r = wa(r), m(e, t, n, r, i);
 				}
 				if (O(r) || ie(r)) return e = e.get(n) || null, d(t, e, r, i, null);
-				if (typeof r.then == "function") return m(e, t, n, Na(r), i);
+				if (typeof r.then == "function") return m(e, t, n, Aa(r), i);
 				if (r.$$typeof === C) return m(e, t, n, ra(t, r), i);
-				Fa(t, r);
+				Ma(t, r);
 			}
 			return null;
 		}
@@ -2580,8 +2580,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 											n(e, r.sibling), c = a(r, o.props.children), c.return = e, e = c;
 											break a;
 										}
-									} else if (r.elementType === l || typeof l == "object" && l && l.$$typeof === D && Da(l) === r.type) {
-										n(e, r.sibling), c = a(r, o.props), Pa(c, o), c.return = e, e = c;
+									} else if (r.elementType === l || typeof l == "object" && l && l.$$typeof === D && wa(l) === r.type) {
+										n(e, r.sibling), c = a(r, o.props), ja(c, o), c.return = e, e = c;
 										break a;
 									}
 									n(e, r);
@@ -2589,7 +2589,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								}
 								t(e, r), r = r.sibling;
 							}
-							o.type === y ? (c = gi(o.props.children, e.mode, c, o.key), c.return = e, e = c) : (c = hi(o.type, o.key, o.props, null, e.mode, c), Pa(c, o), c.return = e, e = c);
+							o.type === y ? (c = _i(o.props.children, e.mode, c, o.key), c.return = e, e = c) : (c = gi(o.type, o.key, o.props, null, e.mode, c), ja(c, o), c.return = e, e = c);
 						}
 						return s(e);
 					case v:
@@ -2605,36 +2605,36 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								}
 								t(e, r), r = r.sibling;
 							}
-							c = yi(o, e.mode, c), c.return = e, e = c;
+							c = bi(o, e.mode, c), c.return = e, e = c;
 						}
 						return s(e);
-					case D: return o = Da(o), b(e, r, o, c);
+					case D: return o = wa(o), b(e, r, o, c);
 				}
 				if (O(o)) return h(e, r, o, c);
 				if (ie(o)) {
 					if (l = ie(o), typeof l != "function") throw Error(i(150));
 					return o = l.call(o), g(e, r, o, c);
 				}
-				if (typeof o.then == "function") return b(e, r, Na(o), c);
+				if (typeof o.then == "function") return b(e, r, Aa(o), c);
 				if (o.$$typeof === C) return b(e, r, ra(e, o), c);
-				Fa(e, o);
+				Ma(e, o);
 			}
-			return typeof o == "string" && o !== "" || typeof o == "number" || typeof o == "bigint" ? (o = "" + o, r !== null && r.tag === 6 ? (n(e, r.sibling), c = a(r, o), c.return = e, e = c) : (n(e, r), c = _i(o, e.mode, c), c.return = e, e = c), s(e)) : n(e, r);
+			return typeof o == "string" && o !== "" || typeof o == "number" || typeof o == "bigint" ? (o = "" + o, r !== null && r.tag === 6 ? (n(e, r.sibling), c = a(r, o), c.return = e, e = c) : (n(e, r), c = vi(o, e.mode, c), c.return = e, e = c), s(e)) : n(e, r);
 		}
 		return function(e, t, n, r) {
 			try {
-				Ma = 0;
+				ka = 0;
 				var i = b(e, t, n, r);
-				return ja = null, i;
+				return Oa = null, i;
 			} catch (t) {
-				if (t === xa || t === Ca) throw t;
-				var a = di(29, t, null, e.mode);
+				if (t === va || t === ba) throw t;
+				var a = fi(29, t, null, e.mode);
 				return a.lanes = r, a.return = e, a;
 			}
 		};
 	}
-	var La = Ia(!0), Ra = Ia(!1), za = !1;
-	function Ba(e) {
+	var Pa = Na(!0), Fa = Na(!1), Ia = !1;
+	function La(e) {
 		e.updateQueue = {
 			baseState: e.memoizedState,
 			firstBaseUpdate: null,
@@ -2647,7 +2647,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			callbacks: null
 		};
 	}
-	function Va(e, t) {
+	function Ra(e, t) {
 		e = e.updateQueue, t.updateQueue === e && (t.updateQueue = {
 			baseState: e.baseState,
 			firstBaseUpdate: e.firstBaseUpdate,
@@ -2656,7 +2656,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			callbacks: null
 		});
 	}
-	function Ha(e) {
+	function za(e) {
 		return {
 			lane: e,
 			tag: 0,
@@ -2665,22 +2665,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			next: null
 		};
 	}
-	function Ua(e, t, n) {
+	function Ba(e, t, n) {
 		var r = e.updateQueue;
 		if (r === null) return null;
 		if (r = r.shared, K & 2) {
 			var i = r.pending;
-			return i === null ? t.next = t : (t.next = i.next, i.next = t), r.pending = t, t = ci(e), si(e, null, n), t;
+			return i === null ? t.next = t : (t.next = i.next, i.next = t), r.pending = t, t = li(e), ci(e, null, n), t;
 		}
-		return ii(e, r, t, n), ci(e);
+		return ai(e, r, t, n), li(e);
 	}
-	function Wa(e, t, n) {
+	function Va(e, t, n) {
 		if (t = t.updateQueue, t !== null && (t = t.shared, n & 4194048)) {
 			var r = t.lanes;
 			r &= e.pendingLanes, n |= r, t.lanes = n, ot(e, n);
 		}
 	}
-	function Ga(e, t) {
+	function Ha(e, t) {
 		var n = e.updateQueue, r = e.alternate;
 		if (r !== null && (r = r.updateQueue, n === r)) {
 			var i = null, a = null;
@@ -2708,17 +2708,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		e = n.lastBaseUpdate, e === null ? n.firstBaseUpdate = t : e.next = t, n.lastBaseUpdate = t;
 	}
-	var Ka = !1;
-	function qa() {
-		if (Ka) {
+	var Ua = !1;
+	function Wa() {
+		if (Ua) {
 			var e = fa;
 			if (e !== null) throw e;
 		}
 	}
-	function Ja(e, t, n, r) {
-		Ka = !1;
+	function Ga(e, t, n, r) {
+		Ua = !1;
 		var i = e.updateQueue;
-		za = !1;
+		Ia = !1;
 		var a = i.firstBaseUpdate, o = i.lastBaseUpdate, s = i.shared.pending;
 		if (s !== null) {
 			i.shared.pending = null;
@@ -2733,7 +2733,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			do {
 				var f = s.lane & -536870913, p = f !== s.lane;
 				if (p ? (Y & f) === f : (r & f) === f) {
-					f !== 0 && f === da && (Ka = !0), u !== null && (u = u.next = {
+					f !== 0 && f === da && (Ua = !0), u !== null && (u = u.next = {
 						lane: 0,
 						tag: s.tag,
 						payload: s.payload,
@@ -2757,7 +2757,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								if (m = g.payload, f = typeof m == "function" ? m.call(_, d, f) : m, f == null) break a;
 								d = h({}, d, f);
 								break a;
-							case 2: za = !0;
+							case 2: Ia = !0;
 						}
 					}
 					f = s.callback, f !== null && (e.flags |= 64, p && (e.flags |= 8192), p = i.callbacks, p === null ? i.callbacks = [f] : p.push(f));
@@ -2776,43 +2776,43 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			u === null && (c = d), i.baseState = c, i.firstBaseUpdate = l, i.lastBaseUpdate = u, a === null && (i.shared.lanes = 0), Gl |= o, e.lanes = o, e.memoizedState = d;
 		}
 	}
-	function Ya(e, t) {
+	function Ka(e, t) {
 		if (typeof e != "function") throw Error(i(191, e));
 		e.call(t);
 	}
-	function Xa(e, t) {
+	function qa(e, t) {
 		var n = e.callbacks;
-		if (n !== null) for (e.callbacks = null, e = 0; e < n.length; e++) Ya(n[e], t);
+		if (n !== null) for (e.callbacks = null, e = 0; e < n.length; e++) Ka(n[e], t);
 	}
-	var Za = ue(null), Qa = ue(0);
-	function $a(e, t) {
-		e = Ul, j(Qa, e), j(Za, t), Ul = e | t.baseLanes;
+	var Ja = ue(null), Ya = ue(0);
+	function Xa(e, t) {
+		e = Ul, j(Ya, e), j(Ja, t), Ul = e | t.baseLanes;
 	}
-	function eo() {
-		j(Qa, Ul), j(Za, Za.current);
+	function Za() {
+		j(Ya, Ul), j(Ja, Ja.current);
 	}
-	function to() {
-		Ul = Qa.current, de(Za), de(Qa);
+	function Qa() {
+		Ul = Ya.current, de(Ja), de(Ya);
 	}
-	var no = ue(null), ro = null;
-	function io(e) {
+	var $a = ue(null), eo = null;
+	function to(e) {
 		var t = e.alternate;
-		j(lo, lo.current & 1), j(no, e), ro === null && (t === null || Za.current !== null || t.memoizedState !== null) && (ro = e);
+		j(oo, oo.current & 1), j($a, e), eo === null && (t === null || Ja.current !== null || t.memoizedState !== null) && (eo = e);
+	}
+	function no(e) {
+		j(oo, oo.current), j($a, e), eo === null && (eo = e);
+	}
+	function ro(e) {
+		e.tag === 22 ? (j(oo, oo.current), j($a, e), eo === null && (eo = e)) : io(e);
+	}
+	function io() {
+		j(oo, oo.current), j($a, $a.current);
 	}
 	function ao(e) {
-		j(lo, lo.current), j(no, e), ro === null && (ro = e);
+		de($a), eo === e && (eo = null), de(oo);
 	}
-	function oo(e) {
-		e.tag === 22 ? (j(lo, lo.current), j(no, e), ro === null && (ro = e)) : so(e);
-	}
-	function so() {
-		j(lo, lo.current), j(no, no.current);
-	}
-	function co(e) {
-		de(no), ro === e && (ro = null), de(lo);
-	}
-	var lo = ue(0);
-	function uo(e) {
+	var oo = ue(0);
+	function so(e) {
 		for (var t = e; t !== null;) {
 			if (t.tag === 13) {
 				var n = t.memoizedState;
@@ -2832,59 +2832,59 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		return null;
 	}
-	var fo = 0, V = null, H = null, po = null, mo = !1, ho = !1, go = !1, _o = 0, vo = 0, yo = null, bo = 0;
-	function U() {
+	var co = 0, W = null, G = null, lo = null, uo = !1, fo = !1, po = !1, mo = 0, ho = 0, go = null, _o = 0;
+	function vo() {
 		throw Error(i(321));
 	}
-	function xo(e, t) {
+	function yo(e, t) {
 		if (t === null) return !1;
-		for (var n = 0; n < t.length && n < e.length; n++) if (!Tr(e[n], t[n])) return !1;
+		for (var n = 0; n < t.length && n < e.length; n++) if (!Er(e[n], t[n])) return !1;
 		return !0;
 	}
-	function So(e, t, n, r, i, a) {
-		return fo = a, V = t, t.memoizedState = null, t.updateQueue = null, t.lanes = 0, k.H = e === null || e.memoizedState === null ? zs : Bs, go = !1, a = n(r, i), go = !1, ho && (a = wo(t, n, r, i)), Co(e), a;
+	function bo(e, t, n, r, i, a) {
+		return co = a, W = t, t.memoizedState = null, t.updateQueue = null, t.lanes = 0, k.H = e === null || e.memoizedState === null ? Ls : Rs, po = !1, a = n(r, i), po = !1, fo && (a = So(t, n, r, i)), xo(e), a;
 	}
-	function Co(e) {
-		k.H = Rs;
-		var t = H !== null && H.next !== null;
-		if (fo = 0, po = H = V = null, mo = !1, vo = 0, yo = null, t) throw Error(i(300));
-		e === null || rc || (e = e.dependencies, e !== null && ea(e) && (rc = !0));
+	function xo(e) {
+		k.H = Is;
+		var t = G !== null && G.next !== null;
+		if (co = 0, lo = G = W = null, uo = !1, ho = 0, go = null, t) throw Error(i(300));
+		e === null || tc || (e = e.dependencies, e !== null && ta(e) && (tc = !0));
 	}
-	function wo(e, t, n, r) {
-		V = e;
+	function So(e, t, n, r) {
+		W = e;
 		var a = 0;
 		do {
-			if (ho && (yo = null), vo = 0, ho = !1, 25 <= a) throw Error(i(301));
-			if (a += 1, po = H = null, e.updateQueue != null) {
+			if (fo && (go = null), ho = 0, fo = !1, 25 <= a) throw Error(i(301));
+			if (a += 1, lo = G = null, e.updateQueue != null) {
 				var o = e.updateQueue;
 				o.lastEffect = null, o.events = null, o.stores = null, o.memoCache != null && (o.memoCache.index = 0);
 			}
-			k.H = Vs, o = t(n, r);
-		} while (ho);
+			k.H = zs, o = t(n, r);
+		} while (fo);
 		return o;
 	}
-	function To() {
+	function Co() {
 		var e = k.H, t = e.useState()[0];
-		return t = typeof t.then == "function" ? Mo(t) : t, e = e.useState()[0], (H === null ? null : H.memoizedState) !== e && (V.flags |= 1024), t;
+		return t = typeof t.then == "function" ? Ao(t) : t, e = e.useState()[0], (G === null ? null : G.memoizedState) !== e && (W.flags |= 1024), t;
 	}
-	function Eo() {
-		var e = _o !== 0;
-		return _o = 0, e;
+	function wo() {
+		var e = mo !== 0;
+		return mo = 0, e;
 	}
-	function Do(e, t, n) {
+	function To(e, t, n) {
 		t.updateQueue = e.updateQueue, t.flags &= -2053, e.lanes &= ~n;
 	}
-	function Oo(e) {
-		if (mo) {
+	function Eo(e) {
+		if (uo) {
 			for (e = e.memoizedState; e !== null;) {
 				var t = e.queue;
 				t !== null && (t.pending = null), e = e.next;
 			}
-			mo = !1;
+			uo = !1;
 		}
-		fo = 0, po = H = V = null, ho = !1, vo = _o = 0, yo = null;
+		co = 0, lo = G = W = null, fo = !1, ho = mo = 0, go = null;
 	}
-	function ko() {
+	function Do() {
 		var e = {
 			memoizedState: null,
 			baseState: null,
@@ -2892,28 +2892,28 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			queue: null,
 			next: null
 		};
-		return po === null ? V.memoizedState = po = e : po = po.next = e, po;
+		return lo === null ? W.memoizedState = lo = e : lo = lo.next = e, lo;
 	}
-	function Ao() {
-		if (H === null) {
-			var e = V.alternate;
+	function Oo() {
+		if (G === null) {
+			var e = W.alternate;
 			e = e === null ? null : e.memoizedState;
-		} else e = H.next;
-		var t = po === null ? V.memoizedState : po.next;
-		if (t !== null) po = t, H = e;
+		} else e = G.next;
+		var t = lo === null ? W.memoizedState : lo.next;
+		if (t !== null) lo = t, G = e;
 		else {
-			if (e === null) throw V.alternate === null ? Error(i(467)) : Error(i(310));
-			H = e, e = {
-				memoizedState: H.memoizedState,
-				baseState: H.baseState,
-				baseQueue: H.baseQueue,
-				queue: H.queue,
+			if (e === null) throw W.alternate === null ? Error(i(467)) : Error(i(310));
+			G = e, e = {
+				memoizedState: G.memoizedState,
+				baseState: G.baseState,
+				baseQueue: G.baseQueue,
+				queue: G.queue,
 				next: null
-			}, po === null ? V.memoizedState = po = e : po = po.next = e;
+			}, lo === null ? W.memoizedState = lo = e : lo = lo.next = e;
 		}
-		return po;
+		return lo;
 	}
-	function jo() {
+	function ko() {
 		return {
 			lastEffect: null,
 			events: null,
@@ -2921,21 +2921,21 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			memoCache: null
 		};
 	}
-	function Mo(e) {
-		var t = vo;
-		return vo += 1, yo === null && (yo = []), e = Ea(yo, e, t), t = V, (po === null ? t.memoizedState : po.next) === null && (t = t.alternate, k.H = t === null || t.memoizedState === null ? zs : Bs), e;
+	function Ao(e) {
+		var t = ho;
+		return ho += 1, go === null && (go = []), e = Ca(go, e, t), t = W, (lo === null ? t.memoizedState : lo.next) === null && (t = t.alternate, k.H = t === null || t.memoizedState === null ? Ls : Rs), e;
 	}
-	function No(e) {
+	function jo(e) {
 		if (typeof e == "object" && e) {
-			if (typeof e.then == "function") return Mo(e);
-			if (e.$$typeof === C) return na(e);
+			if (typeof e.then == "function") return Ao(e);
+			if (e.$$typeof === C) return R(e);
 		}
 		throw Error(i(438, String(e)));
 	}
-	function Po(e) {
-		var t = null, n = V.updateQueue;
+	function Mo(e) {
+		var t = null, n = W.updateQueue;
 		if (n !== null && (t = n.memoCache), t == null) {
-			var r = V.alternate;
+			var r = W.alternate;
 			r !== null && (r = r.updateQueue, r !== null && (r = r.memoCache, r != null && (t = {
 				data: r.data.map(function(e) {
 					return e.slice();
@@ -2946,16 +2946,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (t ?? (t = {
 			data: [],
 			index: 0
-		}), n === null && (n = jo(), V.updateQueue = n), n.memoCache = t, n = t.data[t.index], n === void 0) for (n = t.data[t.index] = Array(e), r = 0; r < e; r++) n[r] = ne;
+		}), n === null && (n = ko(), W.updateQueue = n), n.memoCache = t, n = t.data[t.index], n === void 0) for (n = t.data[t.index] = Array(e), r = 0; r < e; r++) n[r] = ne;
 		return t.index++, n;
 	}
-	function Fo(e, t) {
+	function No(e, t) {
 		return typeof t == "function" ? t(e) : t;
 	}
-	function Io(e) {
-		return Lo(Ao(), H, e);
+	function Po(e) {
+		return Fo(Oo(), G, e);
 	}
-	function Lo(e, t, n) {
+	function Fo(e, t, n) {
 		var r = e.queue;
 		if (r === null) throw Error(i(311));
 		r.lastRenderedReducer = n;
@@ -2973,7 +2973,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			var c = s = null, l = null, u = t, d = !1;
 			do {
 				var f = u.lane & -536870913;
-				if (f === u.lane ? (fo & f) === f : (Y & f) === f) {
+				if (f === u.lane ? (co & f) === f : (Y & f) === f) {
 					var p = u.revertLane;
 					if (p === 0) l !== null && (l = l.next = {
 						lane: 0,
@@ -2984,7 +2984,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						eagerState: u.eagerState,
 						next: null
 					}), f === da && (d = !0);
-					else if ((fo & p) === p) {
+					else if ((co & p) === p) {
 						u = u.next, p === da && (d = !0);
 						continue;
 					} else f = {
@@ -2995,8 +2995,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						hasEagerState: u.hasEagerState,
 						eagerState: u.eagerState,
 						next: null
-					}, l === null ? (c = l = f, s = o) : l = l.next = f, V.lanes |= p, Gl |= p;
-					f = u.action, go && n(o, f), o = u.hasEagerState ? u.eagerState : n(o, f);
+					}, l === null ? (c = l = f, s = o) : l = l.next = f, W.lanes |= p, Gl |= p;
+					f = u.action, po && n(o, f), o = u.hasEagerState ? u.eagerState : n(o, f);
 				} else p = {
 					lane: f,
 					revertLane: u.revertLane,
@@ -3005,16 +3005,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					hasEagerState: u.hasEagerState,
 					eagerState: u.eagerState,
 					next: null
-				}, l === null ? (c = l = p, s = o) : l = l.next = p, V.lanes |= f, Gl |= f;
+				}, l === null ? (c = l = p, s = o) : l = l.next = p, W.lanes |= f, Gl |= f;
 				u = u.next;
 			} while (u !== null && u !== t);
-			if (l === null ? s = o : l.next = c, !Tr(o, e.memoizedState) && (rc = !0, d && (n = fa, n !== null))) throw n;
+			if (l === null ? s = o : l.next = c, !Er(o, e.memoizedState) && (tc = !0, d && (n = fa, n !== null))) throw n;
 			e.memoizedState = o, e.baseState = s, e.baseQueue = l, r.lastRenderedState = o;
 		}
 		return a === null && (r.lanes = 0), [e.memoizedState, r.dispatch];
 	}
-	function Ro(e) {
-		var t = Ao(), n = t.queue;
+	function Io(e) {
+		var t = Oo(), n = t.queue;
 		if (n === null) throw Error(i(311));
 		n.lastRenderedReducer = e;
 		var r = n.dispatch, a = n.pending, o = t.memoizedState;
@@ -3024,56 +3024,56 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			do
 				o = e(o, s.action), s = s.next;
 			while (s !== a);
-			Tr(o, t.memoizedState) || (rc = !0), t.memoizedState = o, t.baseQueue === null && (t.baseState = o), n.lastRenderedState = o;
+			Er(o, t.memoizedState) || (tc = !0), t.memoizedState = o, t.baseQueue === null && (t.baseState = o), n.lastRenderedState = o;
 		}
 		return [o, r];
 	}
-	function zo(e, t, n) {
-		var r = V, a = Ao(), o = L;
+	function Lo(e, t, n) {
+		var r = W, a = Oo(), o = L;
 		if (o) {
 			if (n === void 0) throw Error(i(407));
 			n = n();
 		} else n = t();
-		var s = !Tr((H || a).memoizedState, n);
-		if (s && (a.memoizedState = n, rc = !0), a = a.queue, us(Ho.bind(null, r, a, e), [e]), a.getSnapshot !== t || s || po !== null && po.memoizedState.tag & 1) {
-			if (r.flags |= 2048, as(9, { destroy: void 0 }, Vo.bind(null, r, a, n, t), null), q === null) throw Error(i(349));
-			o || fo & 127 || Bo(r, t, n);
+		var s = !Er((G || a).memoizedState, n);
+		if (s && (a.memoizedState = n, tc = !0), a = a.queue, cs(Bo.bind(null, r, a, e), [e]), a.getSnapshot !== t || s || lo !== null && lo.memoizedState.tag & 1) {
+			if (r.flags |= 2048, rs(9, { destroy: void 0 }, zo.bind(null, r, a, n, t), null), q === null) throw Error(i(349));
+			o || co & 127 || Ro(r, t, n);
 		}
 		return n;
 	}
-	function Bo(e, t, n) {
+	function Ro(e, t, n) {
 		e.flags |= 16384, e = {
 			getSnapshot: t,
 			value: n
-		}, t = V.updateQueue, t === null ? (t = jo(), V.updateQueue = t, t.stores = [e]) : (n = t.stores, n === null ? t.stores = [e] : n.push(e));
+		}, t = W.updateQueue, t === null ? (t = ko(), W.updateQueue = t, t.stores = [e]) : (n = t.stores, n === null ? t.stores = [e] : n.push(e));
 	}
-	function Vo(e, t, n, r) {
-		t.value = n, t.getSnapshot = r, Uo(t) && Wo(e);
+	function zo(e, t, n, r) {
+		t.value = n, t.getSnapshot = r, Vo(t) && Ho(e);
 	}
-	function Ho(e, t, n) {
+	function Bo(e, t, n) {
 		return n(function() {
-			Uo(t) && Wo(e);
+			Vo(t) && Ho(e);
 		});
 	}
-	function Uo(e) {
+	function Vo(e) {
 		var t = e.getSnapshot;
 		e = e.value;
 		try {
 			var n = t();
-			return !Tr(e, n);
+			return !Er(e, n);
 		} catch {
 			return !0;
 		}
 	}
-	function Wo(e) {
-		var t = oi(e, 2);
+	function Ho(e) {
+		var t = si(e, 2);
 		t !== null && hu(t, e, 2);
 	}
-	function Go(e) {
-		var t = ko();
+	function Uo(e) {
+		var t = Do();
 		if (typeof e == "function") {
 			var n = e;
-			if (e = n(), go) {
+			if (e = n(), po) {
 				Ue(!0);
 				try {
 					n();
@@ -3086,15 +3086,15 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			pending: null,
 			lanes: 0,
 			dispatch: null,
-			lastRenderedReducer: Fo,
+			lastRenderedReducer: No,
 			lastRenderedState: e
 		}, t;
 	}
-	function Ko(e, t, n, r) {
-		return e.baseState = n, Lo(e, H, typeof r == "function" ? r : Fo);
+	function Wo(e, t, n, r) {
+		return e.baseState = n, Fo(e, G, typeof r == "function" ? r : No);
 	}
-	function qo(e, t, n, r, a) {
-		if (Fs(e)) throw Error(i(485));
+	function Go(e, t, n, r, a) {
+		if (Ns(e)) throw Error(i(485));
 		if (e = t.action, e !== null) {
 			var o = {
 				payload: a,
@@ -3109,61 +3109,61 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					o.listeners.push(e);
 				}
 			};
-			k.T === null ? o.isTransition = !1 : n(!0), r(o), n = t.pending, n === null ? (o.next = t.pending = o, Jo(t, o)) : (o.next = n.next, t.pending = n.next = o);
+			k.T === null ? o.isTransition = !1 : n(!0), r(o), n = t.pending, n === null ? (o.next = t.pending = o, Ko(t, o)) : (o.next = n.next, t.pending = n.next = o);
 		}
 	}
-	function Jo(e, t) {
+	function Ko(e, t) {
 		var n = t.action, r = t.payload, i = e.state;
 		if (t.isTransition) {
 			var a = k.T, o = {};
 			k.T = o;
 			try {
 				var s = n(i, r), c = k.S;
-				c !== null && c(o, s), Yo(e, t, s);
+				c !== null && c(o, s), qo(e, t, s);
 			} catch (n) {
-				Zo(e, t, n);
+				Yo(e, t, n);
 			} finally {
 				a !== null && o.types !== null && (a.types = o.types), k.T = a;
 			}
 		} else try {
-			a = n(i, r), Yo(e, t, a);
+			a = n(i, r), qo(e, t, a);
 		} catch (n) {
-			Zo(e, t, n);
+			Yo(e, t, n);
 		}
 	}
-	function Yo(e, t, n) {
+	function qo(e, t, n) {
 		typeof n == "object" && n && typeof n.then == "function" ? n.then(function(n) {
-			Xo(e, t, n);
+			Jo(e, t, n);
 		}, function(n) {
-			return Zo(e, t, n);
-		}) : Xo(e, t, n);
+			return Yo(e, t, n);
+		}) : Jo(e, t, n);
 	}
-	function Xo(e, t, n) {
-		t.status = "fulfilled", t.value = n, Qo(t), e.state = n, t = e.pending, t !== null && (n = t.next, n === t ? e.pending = null : (n = n.next, t.next = n, Jo(e, n)));
+	function Jo(e, t, n) {
+		t.status = "fulfilled", t.value = n, Xo(t), e.state = n, t = e.pending, t !== null && (n = t.next, n === t ? e.pending = null : (n = n.next, t.next = n, Ko(e, n)));
 	}
-	function Zo(e, t, n) {
+	function Yo(e, t, n) {
 		var r = e.pending;
 		if (e.pending = null, r !== null) {
 			r = r.next;
 			do
-				t.status = "rejected", t.reason = n, Qo(t), t = t.next;
+				t.status = "rejected", t.reason = n, Xo(t), t = t.next;
 			while (t !== r);
 		}
 		e.action = null;
 	}
-	function Qo(e) {
+	function Xo(e) {
 		e = e.listeners;
 		for (var t = 0; t < e.length; t++) (0, e[t])();
 	}
-	function $o(e, t) {
+	function Zo(e, t) {
 		return t;
 	}
-	function es(e, t) {
+	function Qo(e, t) {
 		if (L) {
 			var n = q.formState;
 			if (n !== null) {
 				a: {
-					var r = V;
+					var r = W;
 					if (L) {
 						if (I) {
 							b: {
@@ -3191,48 +3191,48 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				r && (t = n[0]);
 			}
 		}
-		return n = ko(), n.memoizedState = n.baseState = t, r = {
+		return n = Do(), n.memoizedState = n.baseState = t, r = {
 			pending: null,
 			lanes: 0,
 			dispatch: null,
-			lastRenderedReducer: $o,
+			lastRenderedReducer: Zo,
 			lastRenderedState: t
-		}, n.queue = r, n = Ms.bind(null, V, r), r.dispatch = n, r = Go(!1), a = Ps.bind(null, V, !1, r.queue), r = ko(), i = {
+		}, n.queue = r, n = As.bind(null, W, r), r.dispatch = n, r = Uo(!1), a = Ms.bind(null, W, !1, r.queue), r = Do(), i = {
 			state: t,
 			dispatch: null,
 			action: e,
 			pending: null
-		}, r.queue = i, n = qo.bind(null, V, i, a, n), i.dispatch = n, r.memoizedState = e, [
+		}, r.queue = i, n = Go.bind(null, W, i, a, n), i.dispatch = n, r.memoizedState = e, [
 			t,
 			n,
 			!1
 		];
 	}
-	function ts(e) {
-		return ns(Ao(), H, e);
+	function $o(e) {
+		return es(Oo(), G, e);
 	}
-	function ns(e, t, n) {
-		if (t = Lo(e, t, $o)[0], e = Io(Fo)[0], typeof t == "object" && t && typeof t.then == "function") try {
-			var r = Mo(t);
+	function es(e, t, n) {
+		if (t = Fo(e, t, Zo)[0], e = Po(No)[0], typeof t == "object" && t && typeof t.then == "function") try {
+			var r = Ao(t);
 		} catch (e) {
-			throw e === xa ? Ca : e;
+			throw e === va ? ba : e;
 		}
 		else r = t;
-		t = Ao();
+		t = Oo();
 		var i = t.queue, a = i.dispatch;
-		return n !== t.memoizedState && (V.flags |= 2048, as(9, { destroy: void 0 }, rs.bind(null, i, n), null)), [
+		return n !== t.memoizedState && (W.flags |= 2048, rs(9, { destroy: void 0 }, ts.bind(null, i, n), null)), [
 			r,
 			a,
 			e
 		];
 	}
-	function rs(e, t) {
+	function ts(e, t) {
 		e.action = t;
 	}
-	function is(e) {
-		var t = Ao(), n = H;
-		if (n !== null) return ns(t, n, e);
-		Ao(), t = t.memoizedState, n = Ao();
+	function ns(e) {
+		var t = Oo(), n = G;
+		if (n !== null) return es(t, n, e);
+		Oo(), t = t.memoizedState, n = Oo();
 		var r = n.queue.dispatch;
 		return n.memoizedState = e, [
 			t,
@@ -3240,46 +3240,46 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			!1
 		];
 	}
-	function as(e, t, n, r) {
+	function rs(e, t, n, r) {
 		return e = {
 			tag: e,
 			create: n,
 			deps: r,
 			inst: t,
 			next: null
-		}, t = V.updateQueue, t === null && (t = jo(), V.updateQueue = t), n = t.lastEffect, n === null ? t.lastEffect = e.next = e : (r = n.next, n.next = e, e.next = r, t.lastEffect = e), e;
+		}, t = W.updateQueue, t === null && (t = ko(), W.updateQueue = t), n = t.lastEffect, n === null ? t.lastEffect = e.next = e : (r = n.next, n.next = e, e.next = r, t.lastEffect = e), e;
 	}
-	function os() {
-		return Ao().memoizedState;
+	function is() {
+		return Oo().memoizedState;
 	}
-	function ss(e, t, n, r) {
-		var i = ko();
-		V.flags |= e, i.memoizedState = as(1 | t, { destroy: void 0 }, n, r === void 0 ? null : r);
+	function as(e, t, n, r) {
+		var i = Do();
+		W.flags |= e, i.memoizedState = rs(1 | t, { destroy: void 0 }, n, r === void 0 ? null : r);
 	}
-	function cs(e, t, n, r) {
-		var i = Ao();
+	function os(e, t, n, r) {
+		var i = Oo();
 		r = r === void 0 ? null : r;
 		var a = i.memoizedState.inst;
-		H !== null && r !== null && xo(r, H.memoizedState.deps) ? i.memoizedState = as(t, a, n, r) : (V.flags |= e, i.memoizedState = as(1 | t, a, n, r));
+		G !== null && r !== null && yo(r, G.memoizedState.deps) ? i.memoizedState = rs(t, a, n, r) : (W.flags |= e, i.memoizedState = rs(1 | t, a, n, r));
 	}
-	function ls(e, t) {
-		ss(8390656, 8, e, t);
+	function ss(e, t) {
+		as(8390656, 8, e, t);
 	}
-	function us(e, t) {
-		cs(2048, 8, e, t);
+	function cs(e, t) {
+		os(2048, 8, e, t);
 	}
-	function ds(e) {
-		V.flags |= 4;
-		var t = V.updateQueue;
-		if (t === null) t = jo(), V.updateQueue = t, t.events = [e];
+	function ls(e) {
+		W.flags |= 4;
+		var t = W.updateQueue;
+		if (t === null) t = ko(), W.updateQueue = t, t.events = [e];
 		else {
 			var n = t.events;
 			n === null ? t.events = [e] : n.push(e);
 		}
 	}
-	function fs(e) {
-		var t = Ao().memoizedState;
-		return ds({
+	function us(e) {
+		var t = Oo().memoizedState;
+		return ls({
 			ref: t,
 			nextImpl: e
 		}), function() {
@@ -3287,13 +3287,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return t.impl.apply(void 0, arguments);
 		};
 	}
+	function ds(e, t) {
+		return os(4, 2, e, t);
+	}
+	function fs(e, t) {
+		return os(4, 4, e, t);
+	}
 	function ps(e, t) {
-		return cs(4, 2, e, t);
-	}
-	function ms(e, t) {
-		return cs(4, 4, e, t);
-	}
-	function hs(e, t) {
 		if (typeof t == "function") {
 			e = e();
 			var n = t(e);
@@ -3305,22 +3305,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			t.current = null;
 		};
 	}
-	function gs(e, t, n) {
-		n = n == null ? null : n.concat([e]), cs(4, 4, hs.bind(null, t, e), n);
+	function ms(e, t, n) {
+		n = n == null ? null : n.concat([e]), os(4, 4, ps.bind(null, t, e), n);
 	}
-	function _s() {}
-	function vs(e, t) {
-		var n = Ao();
+	function hs() {}
+	function gs(e, t) {
+		var n = Oo();
 		t = t === void 0 ? null : t;
 		var r = n.memoizedState;
-		return t !== null && xo(t, r[1]) ? r[0] : (n.memoizedState = [e, t], e);
+		return t !== null && yo(t, r[1]) ? r[0] : (n.memoizedState = [e, t], e);
 	}
-	function ys(e, t) {
-		var n = Ao();
+	function _s(e, t) {
+		var n = Oo();
 		t = t === void 0 ? null : t;
 		var r = n.memoizedState;
-		if (t !== null && xo(t, r[1])) return r[0];
-		if (r = e(), go) {
+		if (t !== null && yo(t, r[1])) return r[0];
+		if (r = e(), po) {
 			Ue(!0);
 			try {
 				e();
@@ -3330,22 +3330,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		return n.memoizedState = [r, t], r;
 	}
-	function bs(e, t, n) {
-		return n === void 0 || fo & 1073741824 && !(Y & 261930) ? e.memoizedState = t : (e.memoizedState = n, e = mu(), V.lanes |= e, Gl |= e, n);
+	function vs(e, t, n) {
+		return n === void 0 || co & 1073741824 && !(Y & 261930) ? e.memoizedState = t : (e.memoizedState = n, e = mu(), W.lanes |= e, Gl |= e, n);
 	}
-	function xs(e, t, n, r) {
-		return Tr(n, t) ? n : Za.current === null ? !(fo & 42) || fo & 1073741824 && !(Y & 261930) ? (rc = !0, e.memoizedState = n) : (e = mu(), V.lanes |= e, Gl |= e, t) : (e = bs(e, n, r), Tr(e, t) || (rc = !0), e);
+	function ys(e, t, n, r) {
+		return Er(n, t) ? n : Ja.current === null ? !(co & 42) || co & 1073741824 && !(Y & 261930) ? (tc = !0, e.memoizedState = n) : (e = mu(), W.lanes |= e, Gl |= e, t) : (e = vs(e, n, r), Er(e, t) || (tc = !0), e);
 	}
-	function Ss(e, t, n, r, i) {
+	function bs(e, t, n, r, i) {
 		var a = A.p;
 		A.p = a !== 0 && 8 > a ? a : 8;
 		var o = k.T, s = {};
-		k.T = s, Ps(e, !1, t, n);
+		k.T = s, Ms(e, !1, t, n);
 		try {
 			var c = i(), l = k.S;
-			l !== null && l(s, c), typeof c == "object" && c && typeof c.then == "function" ? Ns(e, t, ha(c, r), pu(e)) : Ns(e, t, r, pu(e));
+			l !== null && l(s, c), typeof c == "object" && c && typeof c.then == "function" ? js(e, t, ma(c, r), pu(e)) : js(e, t, r, pu(e));
 		} catch (n) {
-			Ns(e, t, {
+			js(e, t, {
 				then: function() {},
 				status: "rejected",
 				reason: n
@@ -3354,15 +3354,15 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			A.p = a, o !== null && s.types !== null && (o.types = s.types), k.T = o;
 		}
 	}
-	function Cs() {}
-	function ws(e, t, n, r) {
+	function xs() {}
+	function Ss(e, t, n, r) {
 		if (e.tag !== 5) throw Error(i(476));
-		var a = Ts(e).queue;
-		Ss(e, a, t, se, n === null ? Cs : function() {
-			return Es(e), n(r);
+		var a = Cs(e).queue;
+		bs(e, a, t, se, n === null ? xs : function() {
+			return ws(e), n(r);
 		});
 	}
-	function Ts(e) {
+	function Cs(e) {
 		var t = e.memoizedState;
 		if (t !== null) return t;
 		t = {
@@ -3373,7 +3373,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				pending: null,
 				lanes: 0,
 				dispatch: null,
-				lastRenderedReducer: Fo,
+				lastRenderedReducer: No,
 				lastRenderedState: se
 			},
 			next: null
@@ -3387,40 +3387,40 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				pending: null,
 				lanes: 0,
 				dispatch: null,
-				lastRenderedReducer: Fo,
+				lastRenderedReducer: No,
 				lastRenderedState: n
 			},
 			next: null
 		}, e.memoizedState = t, e = e.alternate, e !== null && (e.memoizedState = t), t;
 	}
-	function Es(e) {
-		var t = Ts(e);
-		t.next === null && (t = e.alternate.memoizedState), Ns(e, t.next.queue, {}, pu());
+	function ws(e) {
+		var t = Cs(e);
+		t.next === null && (t = e.alternate.memoizedState), js(e, t.next.queue, {}, pu());
+	}
+	function Ts() {
+		return R(Qf);
+	}
+	function Es() {
+		return Oo().memoizedState;
 	}
 	function Ds() {
-		return na(Qf);
+		return Oo().memoizedState;
 	}
-	function Os() {
-		return Ao().memoizedState;
-	}
-	function ks() {
-		return Ao().memoizedState;
-	}
-	function As(e) {
+	function Os(e) {
 		for (var t = e.return; t !== null;) {
 			switch (t.tag) {
 				case 24:
 				case 3:
 					var n = pu();
-					e = Ha(n);
-					var r = Ua(t, e, n);
-					r !== null && (hu(r, t, n), Wa(r, t, n)), t = { cache: B() }, e.payload = t;
+					e = za(n);
+					var r = Ba(t, e, n);
+					r !== null && (hu(r, t, n), Va(r, t, n)), t = { cache: B() }, e.payload = t;
 					return;
 			}
 			t = t.return;
 		}
 	}
-	function js(e, t, n) {
+	function ks(e, t, n) {
 		var r = pu();
 		n = {
 			lane: r,
@@ -3430,12 +3430,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			hasEagerState: !1,
 			eagerState: null,
 			next: null
-		}, Fs(e) ? Is(t, n) : (n = ai(e, t, n, r), n !== null && (hu(n, e, r), Ls(n, t, r)));
+		}, Ns(e) ? Ps(t, n) : (n = oi(e, t, n, r), n !== null && (hu(n, e, r), Fs(n, t, r)));
 	}
-	function Ms(e, t, n) {
-		Ns(e, t, n, pu());
+	function As(e, t, n) {
+		js(e, t, n, pu());
 	}
-	function Ns(e, t, n, r) {
+	function js(e, t, n, r) {
 		var i = {
 			lane: r,
 			revertLane: 0,
@@ -3445,18 +3445,18 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			eagerState: null,
 			next: null
 		};
-		if (Fs(e)) Is(t, i);
+		if (Ns(e)) Ps(t, i);
 		else {
 			var a = e.alternate;
 			if (e.lanes === 0 && (a === null || a.lanes === 0) && (a = t.lastRenderedReducer, a !== null)) try {
 				var o = t.lastRenderedState, s = a(o, n);
-				if (i.hasEagerState = !0, i.eagerState = s, Tr(s, o)) return ii(e, t, i, 0), q === null && ri(), !1;
+				if (i.hasEagerState = !0, i.eagerState = s, Er(s, o)) return ai(e, t, i, 0), q === null && ii(), !1;
 			} catch {}
-			if (n = ai(e, t, i, r), n !== null) return hu(n, e, r), Ls(n, t, r), !0;
+			if (n = oi(e, t, i, r), n !== null) return hu(n, e, r), Fs(n, t, r), !0;
 		}
 		return !1;
 	}
-	function Ps(e, t, n, r) {
+	function Ms(e, t, n, r) {
 		if (r = {
 			lane: 2,
 			revertLane: dd(),
@@ -3465,73 +3465,73 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			hasEagerState: !1,
 			eagerState: null,
 			next: null
-		}, Fs(e)) {
+		}, Ns(e)) {
 			if (t) throw Error(i(479));
-		} else t = ai(e, n, r, 2), t !== null && hu(t, e, 2);
+		} else t = oi(e, n, r, 2), t !== null && hu(t, e, 2);
 	}
-	function Fs(e) {
+	function Ns(e) {
 		var t = e.alternate;
-		return e === V || t !== null && t === V;
+		return e === W || t !== null && t === W;
 	}
-	function Is(e, t) {
-		ho = mo = !0;
+	function Ps(e, t) {
+		fo = uo = !0;
 		var n = e.pending;
 		n === null ? t.next = t : (t.next = n.next, n.next = t), e.pending = t;
 	}
-	function Ls(e, t, n) {
+	function Fs(e, t, n) {
 		if (n & 4194048) {
 			var r = t.lanes;
 			r &= e.pendingLanes, n |= r, t.lanes = n, ot(e, n);
 		}
 	}
-	var Rs = {
-		readContext: na,
-		use: No,
-		useCallback: U,
-		useContext: U,
-		useEffect: U,
-		useImperativeHandle: U,
-		useLayoutEffect: U,
-		useInsertionEffect: U,
-		useMemo: U,
-		useReducer: U,
-		useRef: U,
-		useState: U,
-		useDebugValue: U,
-		useDeferredValue: U,
-		useTransition: U,
-		useSyncExternalStore: U,
-		useId: U,
-		useHostTransitionStatus: U,
-		useFormState: U,
-		useActionState: U,
-		useOptimistic: U,
-		useMemoCache: U,
-		useCacheRefresh: U
+	var Is = {
+		readContext: R,
+		use: jo,
+		useCallback: vo,
+		useContext: vo,
+		useEffect: vo,
+		useImperativeHandle: vo,
+		useLayoutEffect: vo,
+		useInsertionEffect: vo,
+		useMemo: vo,
+		useReducer: vo,
+		useRef: vo,
+		useState: vo,
+		useDebugValue: vo,
+		useDeferredValue: vo,
+		useTransition: vo,
+		useSyncExternalStore: vo,
+		useId: vo,
+		useHostTransitionStatus: vo,
+		useFormState: vo,
+		useActionState: vo,
+		useOptimistic: vo,
+		useMemoCache: vo,
+		useCacheRefresh: vo
 	};
-	Rs.useEffectEvent = U;
-	var zs = {
-		readContext: na,
-		use: No,
+	Is.useEffectEvent = vo;
+	var Ls = {
+		readContext: R,
+		use: jo,
 		useCallback: function(e, t) {
-			return ko().memoizedState = [e, t === void 0 ? null : t], e;
+			return Do().memoizedState = [e, t === void 0 ? null : t], e;
 		},
-		useContext: na,
-		useEffect: ls,
+		useContext: R,
+		useEffect: ss,
 		useImperativeHandle: function(e, t, n) {
-			n = n == null ? null : n.concat([e]), ss(4194308, 4, hs.bind(null, t, e), n);
+			n = n == null ? null : n.concat([e]), as(4194308, 4, ps.bind(null, t, e), n);
 		},
 		useLayoutEffect: function(e, t) {
-			return ss(4194308, 4, e, t);
+			return as(4194308, 4, e, t);
 		},
 		useInsertionEffect: function(e, t) {
-			ss(4, 2, e, t);
+			as(4, 2, e, t);
 		},
 		useMemo: function(e, t) {
-			var n = ko();
+			var n = Do();
 			t = t === void 0 ? null : t;
 			var r = e();
-			if (go) {
+			if (po) {
 				Ue(!0);
 				try {
 					e();
@@ -3542,10 +3542,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return n.memoizedState = [r, t], r;
 		},
 		useReducer: function(e, t, n) {
-			var r = ko();
+			var r = Do();
 			if (n !== void 0) {
 				var i = n(t);
-				if (go) {
+				if (po) {
 					Ue(!0);
 					try {
 						n(t);
@@ -3560,54 +3560,54 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				dispatch: null,
 				lastRenderedReducer: e,
 				lastRenderedState: i
-			}, r.queue = e, e = e.dispatch = js.bind(null, V, e), [r.memoizedState, e];
+			}, r.queue = e, e = e.dispatch = ks.bind(null, W, e), [r.memoizedState, e];
 		},
 		useRef: function(e) {
-			var t = ko();
+			var t = Do();
 			return e = { current: e }, t.memoizedState = e;
 		},
 		useState: function(e) {
-			e = Go(e);
-			var t = e.queue, n = Ms.bind(null, V, t);
+			e = Uo(e);
+			var t = e.queue, n = As.bind(null, W, t);
 			return t.dispatch = n, [e.memoizedState, n];
 		},
-		useDebugValue: _s,
+		useDebugValue: hs,
 		useDeferredValue: function(e, t) {
-			return bs(ko(), e, t);
+			return vs(Do(), e, t);
 		},
 		useTransition: function() {
-			var e = Go(!1);
-			return e = Ss.bind(null, V, e.queue, !0, !1), ko().memoizedState = e, [!1, e];
+			var e = Uo(!1);
+			return e = bs.bind(null, W, e.queue, !0, !1), Do().memoizedState = e, [!1, e];
 		},
 		useSyncExternalStore: function(e, t, n) {
-			var r = V, a = ko();
+			var r = W, a = Do();
 			if (L) {
 				if (n === void 0) throw Error(i(407));
 				n = n();
 			} else {
 				if (n = t(), q === null) throw Error(i(349));
-				Y & 127 || Bo(r, t, n);
+				Y & 127 || Ro(r, t, n);
 			}
 			a.memoizedState = n;
 			var o = {
 				value: n,
 				getSnapshot: t
 			};
-			return a.queue = o, ls(Ho.bind(null, r, o, e), [e]), r.flags |= 2048, as(9, { destroy: void 0 }, Vo.bind(null, r, o, n, t), null), n;
+			return a.queue = o, ss(Bo.bind(null, r, o, e), [e]), r.flags |= 2048, rs(9, { destroy: void 0 }, zo.bind(null, r, o, n, t), null), n;
 		},
 		useId: function() {
-			var e = ko(), t = q.identifierPrefix;
+			var e = Do(), t = q.identifierPrefix;
 			if (L) {
-				var n = Ai, r = ki;
-				n = (r & ~(1 << 32 - We(r) - 1)).toString(32) + n, t = "_" + t + "R_" + n, n = _o++, 0 < n && (t += "H" + n.toString(32)), t += "_";
-			} else n = bo++, t = "_" + t + "r_" + n.toString(32) + "_";
+				var n = F, r = Ai;
+				n = (r & ~(1 << 32 - We(r) - 1)).toString(32) + n, t = "_" + t + "R_" + n, n = mo++, 0 < n && (t += "H" + n.toString(32)), t += "_";
+			} else n = _o++, t = "_" + t + "r_" + n.toString(32) + "_";
 			return e.memoizedState = t;
 		},
-		useHostTransitionStatus: Ds,
-		useFormState: es,
-		useActionState: es,
+		useHostTransitionStatus: Ts,
+		useFormState: Qo,
+		useActionState: Qo,
 		useOptimistic: function(e) {
-			var t = ko();
+			var t = Do();
 			t.memoizedState = t.baseState = e;
 			var n = {
 				pending: null,
@@ -3616,133 +3616,133 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				lastRenderedReducer: null,
 				lastRenderedState: null
 			};
-			return t.queue = n, t = Ps.bind(null, V, !0, n), n.dispatch = t, [e, t];
+			return t.queue = n, t = Ms.bind(null, W, !0, n), n.dispatch = t, [e, t];
 		},
-		useMemoCache: Po,
+		useMemoCache: Mo,
 		useCacheRefresh: function() {
-			return ko().memoizedState = As.bind(null, V);
+			return Do().memoizedState = Os.bind(null, W);
 		},
 		useEffectEvent: function(e) {
-			var t = ko(), n = { impl: e };
+			var t = Do(), n = { impl: e };
 			return t.memoizedState = n, function() {
 				if (K & 2) throw Error(i(440));
 				return n.impl.apply(void 0, arguments);
 			};
 		}
-	}, Bs = {
-		readContext: na,
-		use: No,
-		useCallback: vs,
-		useContext: na,
-		useEffect: us,
-		useImperativeHandle: gs,
-		useInsertionEffect: ps,
-		useLayoutEffect: ms,
-		useMemo: ys,
+	}, Rs = {
+		readContext: R,
+		use: jo,
+		useCallback: gs,
+		useContext: R,
+		useEffect: cs,
+		useImperativeHandle: ms,
+		useInsertionEffect: ds,
+		useLayoutEffect: fs,
+		useMemo: _s,
+		useReducer: Po,
+		useRef: is,
+		useState: function() {
+			return Po(No);
+		},
+		useDebugValue: hs,
+		useDeferredValue: function(e, t) {
+			return ys(Oo(), G.memoizedState, e, t);
+		},
+		useTransition: function() {
+			var e = Po(No)[0], t = Oo().memoizedState;
+			return [typeof e == "boolean" ? e : Ao(e), t];
+		},
+		useSyncExternalStore: Lo,
+		useId: Es,
+		useHostTransitionStatus: Ts,
+		useFormState: $o,
+		useActionState: $o,
+		useOptimistic: function(e, t) {
+			return Wo(Oo(), G, e, t);
+		},
+		useMemoCache: Mo,
+		useCacheRefresh: Ds
+	};
+	Rs.useEffectEvent = us;
+	var zs = {
+		readContext: R,
+		use: jo,
+		useCallback: gs,
+		useContext: R,
+		useEffect: cs,
+		useImperativeHandle: ms,
+		useInsertionEffect: ds,
+		useLayoutEffect: fs,
+		useMemo: _s,
 		useReducer: Io,
-		useRef: os,
+		useRef: is,
 		useState: function() {
-			return Io(Fo);
+			return Io(No);
 		},
-		useDebugValue: _s,
+		useDebugValue: hs,
 		useDeferredValue: function(e, t) {
-			return xs(Ao(), H.memoizedState, e, t);
+			var n = Oo();
+			return G === null ? vs(n, e, t) : ys(n, G.memoizedState, e, t);
 		},
 		useTransition: function() {
-			var e = Io(Fo)[0], t = Ao().memoizedState;
-			return [typeof e == "boolean" ? e : Mo(e), t];
+			var e = Io(No)[0], t = Oo().memoizedState;
+			return [typeof e == "boolean" ? e : Ao(e), t];
 		},
-		useSyncExternalStore: zo,
-		useId: Os,
-		useHostTransitionStatus: Ds,
-		useFormState: ts,
-		useActionState: ts,
+		useSyncExternalStore: Lo,
+		useId: Es,
+		useHostTransitionStatus: Ts,
+		useFormState: ns,
+		useActionState: ns,
 		useOptimistic: function(e, t) {
-			return Ko(Ao(), H, e, t);
+			var n = Oo();
+			return G === null ? (n.baseState = e, [e, n.queue.dispatch]) : Wo(n, G, e, t);
 		},
-		useMemoCache: Po,
-		useCacheRefresh: ks
+		useMemoCache: Mo,
+		useCacheRefresh: Ds
 	};
-	Bs.useEffectEvent = fs;
-	var Vs = {
-		readContext: na,
-		use: No,
-		useCallback: vs,
-		useContext: na,
-		useEffect: us,
-		useImperativeHandle: gs,
-		useInsertionEffect: ps,
-		useLayoutEffect: ms,
-		useMemo: ys,
-		useReducer: Ro,
-		useRef: os,
-		useState: function() {
-			return Ro(Fo);
-		},
-		useDebugValue: _s,
-		useDeferredValue: function(e, t) {
-			var n = Ao();
-			return H === null ? bs(n, e, t) : xs(n, H.memoizedState, e, t);
-		},
-		useTransition: function() {
-			var e = Ro(Fo)[0], t = Ao().memoizedState;
-			return [typeof e == "boolean" ? e : Mo(e), t];
-		},
-		useSyncExternalStore: zo,
-		useId: Os,
-		useHostTransitionStatus: Ds,
-		useFormState: is,
-		useActionState: is,
-		useOptimistic: function(e, t) {
-			var n = Ao();
-			return H === null ? (n.baseState = e, [e, n.queue.dispatch]) : Ko(n, H, e, t);
-		},
-		useMemoCache: Po,
-		useCacheRefresh: ks
-	};
-	Vs.useEffectEvent = fs;
-	function Hs(e, t, n, r) {
+	zs.useEffectEvent = us;
+	function Bs(e, t, n, r) {
 		t = e.memoizedState, n = n(r, t), n = n == null ? t : h({}, t, n), e.memoizedState = n, e.lanes === 0 && (e.updateQueue.baseState = n);
 	}
-	var Us = {
+	var Vs = {
 		enqueueSetState: function(e, t, n) {
 			e = e._reactInternals;
-			var r = pu(), i = Ha(r);
-			i.payload = t, n != null && (i.callback = n), t = Ua(e, i, r), t !== null && (hu(t, e, r), Wa(t, e, r));
+			var r = pu(), i = za(r);
+			i.payload = t, n != null && (i.callback = n), t = Ba(e, i, r), t !== null && (hu(t, e, r), Va(t, e, r));
 		},
 		enqueueReplaceState: function(e, t, n) {
 			e = e._reactInternals;
-			var r = pu(), i = Ha(r);
-			i.tag = 1, i.payload = t, n != null && (i.callback = n), t = Ua(e, i, r), t !== null && (hu(t, e, r), Wa(t, e, r));
+			var r = pu(), i = za(r);
+			i.tag = 1, i.payload = t, n != null && (i.callback = n), t = Ba(e, i, r), t !== null && (hu(t, e, r), Va(t, e, r));
 		},
 		enqueueForceUpdate: function(e, t) {
 			e = e._reactInternals;
-			var n = pu(), r = Ha(n);
-			r.tag = 2, t != null && (r.callback = t), t = Ua(e, r, n), t !== null && (hu(t, e, n), Wa(t, e, n));
+			var n = pu(), r = za(n);
+			r.tag = 2, t != null && (r.callback = t), t = Ba(e, r, n), t !== null && (hu(t, e, n), Va(t, e, n));
 		}
 	};
-	function Ws(e, t, n, r, i, a, o) {
-		return e = e.stateNode, typeof e.shouldComponentUpdate == "function" ? e.shouldComponentUpdate(r, a, o) : t.prototype && t.prototype.isPureReactComponent ? !Er(n, r) || !Er(i, a) : !0;
+	function Hs(e, t, n, r, i, a, o) {
+		return e = e.stateNode, typeof e.shouldComponentUpdate == "function" ? e.shouldComponentUpdate(r, a, o) : t.prototype && t.prototype.isPureReactComponent ? !Dr(n, r) || !Dr(i, a) : !0;
 	}
-	function Gs(e, t, n, r) {
-		e = t.state, typeof t.componentWillReceiveProps == "function" && t.componentWillReceiveProps(n, r), typeof t.UNSAFE_componentWillReceiveProps == "function" && t.UNSAFE_componentWillReceiveProps(n, r), t.state !== e && Us.enqueueReplaceState(t, t.state, null);
+	function Us(e, t, n, r) {
+		e = t.state, typeof t.componentWillReceiveProps == "function" && t.componentWillReceiveProps(n, r), typeof t.UNSAFE_componentWillReceiveProps == "function" && t.UNSAFE_componentWillReceiveProps(n, r), t.state !== e && Vs.enqueueReplaceState(t, t.state, null);
 	}
-	function Ks(e, t) {
+	function Ws(e, t) {
 		var n = t;
 		if ("ref" in t) for (var r in n = {}, t) r !== "ref" && (n[r] = t[r]);
 		if (e = e.defaultProps) for (var i in n === t && (n = h({}, n)), e) n[i] === void 0 && (n[i] = e[i]);
 		return n;
 	}
-	function qs(e) {
-		$r(e);
+	function Gs(e) {
+		ei(e);
 	}
-	function Js(e) {
+	function Ks(e) {
 		console.error(e);
 	}
-	function Ys(e) {
-		$r(e);
+	function qs(e) {
+		ei(e);
 	}
-	function Xs(e, t) {
+	function Js(e, t) {
 		try {
 			var n = e.onUncaughtError;
 			n(t.value, { componentStack: t.stack });
@@ -3752,7 +3752,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			});
 		}
 	}
-	function Zs(e, t, n) {
+	function Ys(e, t, n) {
 		try {
 			var r = e.onCaughtError;
 			r(n.value, {
@@ -3765,38 +3765,38 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			});
 		}
 	}
-	function Qs(e, t, n) {
-		return n = Ha(n), n.tag = 3, n.payload = { element: null }, n.callback = function() {
-			Xs(e, t);
+	function Xs(e, t, n) {
+		return n = za(n), n.tag = 3, n.payload = { element: null }, n.callback = function() {
+			Js(e, t);
 		}, n;
 	}
-	function $s(e) {
-		return e = Ha(e), e.tag = 3, e;
+	function Zs(e) {
+		return e = za(e), e.tag = 3, e;
 	}
-	function ec(e, t, n, r) {
+	function Qs(e, t, n, r) {
 		var i = n.type.getDerivedStateFromError;
 		if (typeof i == "function") {
 			var a = r.value;
 			e.payload = function() {
 				return i(a);
 			}, e.callback = function() {
-				Zs(t, n, r);
+				Ys(t, n, r);
 			};
 		}
 		var o = n.stateNode;
 		o !== null && typeof o.componentDidCatch == "function" && (e.callback = function() {
-			Zs(t, n, r), typeof i != "function" && (ru === null ? ru = /* @__PURE__ */ new Set([this]) : ru.add(this));
+			Ys(t, n, r), typeof i != "function" && (ru === null ? ru = /* @__PURE__ */ new Set([this]) : ru.add(this));
 			var e = r.stack;
 			this.componentDidCatch(r.value, { componentStack: e === null ? "" : e });
 		});
 	}
-	function tc(e, t, n, r, a) {
+	function $s(e, t, n, r, a) {
 		if (n.flags |= 32768, typeof r == "object" && r && typeof r.then == "function") {
-			if (t = n.alternate, t !== null && $i(t, n, a, !0), n = no.current, n !== null) {
+			if (t = n.alternate, t !== null && ea(t, n, a, !0), n = $a.current, n !== null) {
 				switch (n.tag) {
 					case 31:
-					case 13: return ro === null ? Du() : n.alternate === null && Wl === 0 && (Wl = 3), n.flags &= -257, n.flags |= 65536, n.lanes = a, r === wa ? n.flags |= 16384 : (t = n.updateQueue, t === null ? n.updateQueue = /* @__PURE__ */ new Set([r]) : t.add(r), Gu(e, r, a)), !1;
-					case 22: return n.flags |= 65536, r === wa ? n.flags |= 16384 : (t = n.updateQueue, t === null ? (t = {
+					case 13: return eo === null ? Du() : n.alternate === null && Wl === 0 && (Wl = 3), n.flags &= -257, n.flags |= 65536, n.lanes = a, r === xa ? n.flags |= 16384 : (t = n.updateQueue, t === null ? n.updateQueue = /* @__PURE__ */ new Set([r]) : t.add(r), Gu(e, r, a)), !1;
+					case 22: return n.flags |= 65536, r === xa ? n.flags |= 16384 : (t = n.updateQueue, t === null ? (t = {
 						transitions: null,
 						markerInstances: null,
 						retryQueue: /* @__PURE__ */ new Set([r])
@@ -3806,54 +3806,54 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			return Gu(e, r, a), Du(), !1;
 		}
-		if (L) return t = no.current, t === null ? (r !== zi && (t = Error(i(423), { cause: r }), Ki(xi(t, n))), e = e.current.alternate, e.flags |= 65536, a &= -a, e.lanes |= a, r = xi(r, n), a = Qs(e.stateNode, r, a), Ga(e, a), Wl !== 4 && (Wl = 2)) : (!(t.flags & 65536) && (t.flags |= 256), t.flags |= 65536, t.lanes = a, r !== zi && (e = Error(i(422), { cause: r }), Ki(xi(e, n)))), !1;
+		if (L) return t = $a.current, t === null ? (r !== zi && (t = Error(i(423), { cause: r }), Ki(Si(t, n))), e = e.current.alternate, e.flags |= 65536, a &= -a, e.lanes |= a, r = Si(r, n), a = Xs(e.stateNode, r, a), Ha(e, a), Wl !== 4 && (Wl = 2)) : (!(t.flags & 65536) && (t.flags |= 256), t.flags |= 65536, t.lanes = a, r !== zi && (e = Error(i(422), { cause: r }), Ki(Si(e, n)))), !1;
 		var o = Error(i(520), { cause: r });
-		if (o = xi(o, n), Xl === null ? Xl = [o] : Xl.push(o), Wl !== 4 && (Wl = 2), t === null) return !0;
-		r = xi(r, n), n = t;
+		if (o = Si(o, n), Xl === null ? Xl = [o] : Xl.push(o), Wl !== 4 && (Wl = 2), t === null) return !0;
+		r = Si(r, n), n = t;
 		do {
 			switch (n.tag) {
-				case 3: return n.flags |= 65536, e = a & -a, n.lanes |= e, e = Qs(n.stateNode, r, e), Ga(n, e), !1;
-				case 1: if (t = n.type, o = n.stateNode, !(n.flags & 128) && (typeof t.getDerivedStateFromError == "function" || o !== null && typeof o.componentDidCatch == "function" && (ru === null || !ru.has(o)))) return n.flags |= 65536, a &= -a, n.lanes |= a, a = $s(a), ec(a, e, n, r), Ga(n, a), !1;
+				case 3: return n.flags |= 65536, e = a & -a, n.lanes |= e, e = Xs(n.stateNode, r, e), Ha(n, e), !1;
+				case 1: if (t = n.type, o = n.stateNode, !(n.flags & 128) && (typeof t.getDerivedStateFromError == "function" || o !== null && typeof o.componentDidCatch == "function" && (ru === null || !ru.has(o)))) return n.flags |= 65536, a &= -a, n.lanes |= a, a = Zs(a), Qs(a, e, n, r), Ha(n, a), !1;
 			}
 			n = n.return;
 		} while (n !== null);
 		return !1;
 	}
-	var nc = Error(i(461)), rc = !1;
-	function ic(e, t, n, r) {
-		t.child = e === null ? Ra(t, null, n, r) : La(t, e.child, n, r);
+	var ec = Error(i(461)), tc = !1;
+	function nc(e, t, n, r) {
+		t.child = e === null ? Fa(t, null, n, r) : Pa(t, e.child, n, r);
 	}
-	function ac(e, t, n, r, i) {
+	function rc(e, t, n, r, i) {
 		n = n.render;
 		var a = t.ref;
 		if ("ref" in r) {
 			var o = {};
 			for (var s in r) s !== "ref" && (o[s] = r[s]);
 		} else o = r;
-		return ta(t), r = So(e, t, n, o, a, i), s = Eo(), e !== null && !rc ? (Do(e, t, i), kc(e, t, i)) : (L && s && Ni(t), t.flags |= 1, ic(e, t, r, i), t.child);
+		return na(t), r = bo(e, t, n, o, a, i), s = wo(), e !== null && !tc ? (To(e, t, i), Dc(e, t, i)) : (L && s && Ni(t), t.flags |= 1, nc(e, t, r, i), t.child);
 	}
-	function oc(e, t, n, r, i) {
+	function ic(e, t, n, r, i) {
 		if (e === null) {
 			var a = n.type;
-			return typeof a == "function" && !fi(a) && a.defaultProps === void 0 && n.compare === null ? (t.tag = 15, t.type = a, sc(e, t, a, r, i)) : (e = hi(n.type, null, r, t, t.mode, i), e.ref = t.ref, e.return = t, t.child = e);
+			return typeof a == "function" && !pi(a) && a.defaultProps === void 0 && n.compare === null ? (t.tag = 15, t.type = a, ac(e, t, a, r, i)) : (e = gi(n.type, null, r, t, t.mode, i), e.ref = t.ref, e.return = t, t.child = e);
 		}
-		if (a = e.child, !Ac(e, i)) {
+		if (a = e.child, !Oc(e, i)) {
 			var o = a.memoizedProps;
-			if (n = n.compare, n = n === null ? Er : n, n(o, r) && e.ref === t.ref) return kc(e, t, i);
+			if (n = n.compare, n = n === null ? Dr : n, n(o, r) && e.ref === t.ref) return Dc(e, t, i);
 		}
-		return t.flags |= 1, e = pi(a, r), e.ref = t.ref, e.return = t, t.child = e;
+		return t.flags |= 1, e = mi(a, r), e.ref = t.ref, e.return = t, t.child = e;
 	}
-	function sc(e, t, n, r, i) {
+	function ac(e, t, n, r, i) {
 		if (e !== null) {
 			var a = e.memoizedProps;
-			if (Er(a, r) && e.ref === t.ref) {
-				if (rc = !1, t.pendingProps = r = a, Ac(e, i)) e.flags & 131072 && (rc = !0);
-				else return t.lanes = e.lanes, kc(e, t, i);
+			if (Dr(a, r) && e.ref === t.ref) {
+				if (tc = !1, t.pendingProps = r = a, Oc(e, i)) e.flags & 131072 && (tc = !0);
+				else return t.lanes = e.lanes, Dc(e, t, i);
 			}
 		}
-		return hc(e, t, n, r, i);
+		return pc(e, t, n, r, i);
 	}
-	function cc(e, t, n, r) {
+	function oc(e, t, n, r) {
 		var i = r.children, a = e === null ? null : e.memoizedState;
 		if (e === null && t.stateNode === null && (t.stateNode = {
 			_visibility: 1,
@@ -3866,17 +3866,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					for (r = t.child = e.child, i = 0; r !== null;) i = i | r.lanes | r.childLanes, r = r.sibling;
 					r = i & ~a;
 				} else r = 0, t.child = null;
-				return uc(e, t, a, n, r);
+				return cc(e, t, a, n, r);
 			}
 			if (n & 536870912) t.memoizedState = {
 				baseLanes: 0,
 				cachePool: null
-			}, e !== null && ya(t, a === null ? null : a.cachePool), a === null ? eo() : $a(t, a), oo(t);
-			else return r = t.lanes = 536870912, uc(e, t, a === null ? n : a.baseLanes | n, n, r);
-		} else a === null ? (e !== null && ya(t, null), eo(), so(t)) : (ya(t, a.cachePool), $a(t, a), so(t), t.memoizedState = null);
-		return ic(e, t, i, n), t.child;
+			}, e !== null && H(t, a === null ? null : a.cachePool), a === null ? Za() : Xa(t, a), ro(t);
+			else return r = t.lanes = 536870912, cc(e, t, a === null ? n : a.baseLanes | n, n, r);
+		} else a === null ? (e !== null && H(t, null), Za(), io(t)) : (H(t, a.cachePool), Xa(t, a), io(t), t.memoizedState = null);
+		return nc(e, t, i, n), t.child;
 	}
-	function lc(e, t) {
+	function sc(e, t) {
 		return e !== null && e.tag === 22 || t.stateNode !== null || (t.stateNode = {
 			_visibility: 1,
 			_pendingMarkers: null,
@@ -3884,62 +3884,62 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			_transitions: null
 		}), t.sibling;
 	}
-	function uc(e, t, n, r, i) {
-		var a = va();
+	function cc(e, t, n, r, i) {
+		var a = _a();
 		return a = a === null ? null : {
 			parent: z._currentValue,
 			pool: a
 		}, t.memoizedState = {
 			baseLanes: n,
 			cachePool: a
-		}, e !== null && ya(t, null), eo(), oo(t), e !== null && $i(e, t, r, !0), t.childLanes = i, null;
+		}, e !== null && H(t, null), Za(), ro(t), e !== null && ea(e, t, r, !0), t.childLanes = i, null;
 	}
-	function dc(e, t) {
-		return t = wc({
+	function lc(e, t) {
+		return t = Sc({
 			mode: t.mode,
 			children: t.children
 		}, e.mode), t.ref = e.ref, e.child = t, t.return = e, t;
 	}
-	function fc(e, t, n) {
-		return La(t, e.child, null, n), e = dc(t, t.pendingProps), e.flags |= 2, co(t), t.memoizedState = null, e;
+	function uc(e, t, n) {
+		return Pa(t, e.child, null, n), e = lc(t, t.pendingProps), e.flags |= 2, ao(t), t.memoizedState = null, e;
 	}
-	function pc(e, t, n) {
+	function dc(e, t, n) {
 		var r = t.pendingProps, a = !!(t.flags & 128);
 		if (t.flags &= -129, e === null) {
 			if (L) {
-				if (r.mode === "hidden") return e = dc(t, r), t.lanes = 536870912, lc(null, e);
-				if (ao(t), (e = I) ? (e = rf(e, Ri), e = e !== null && e.data === "&" ? e : null, e !== null && (t.memoizedState = {
+				if (r.mode === "hidden") return e = lc(t, r), t.lanes = 536870912, sc(null, e);
+				if (no(t), (e = I) ? (e = rf(e, Ri), e = e !== null && e.data === "&" ? e : null, e !== null && (t.memoizedState = {
 					dehydrated: e,
-					treeContext: Oi === null ? null : {
-						id: ki,
-						overflow: Ai
+					treeContext: ki === null ? null : {
+						id: Ai,
+						overflow: F
 					},
 					retryLane: 536870912,
 					hydrationErrors: null
-				}, n = vi(e), n.return = t, t.child = n, Ii = t, I = null)) : e = null, e === null) throw Bi(t);
+				}, n = yi(e), n.return = t, t.child = n, Ii = t, I = null)) : e = null, e === null) throw Bi(t);
 				return t.lanes = 536870912, null;
 			}
-			return dc(t, r);
+			return lc(t, r);
 		}
 		var o = e.memoizedState;
 		if (o !== null) {
 			var s = o.dehydrated;
-			if (ao(t), a) {
-				if (t.flags & 256) t.flags &= -257, t = fc(e, t, n);
+			if (no(t), a) {
+				if (t.flags & 256) t.flags &= -257, t = uc(e, t, n);
 				else if (t.memoizedState !== null) t.child = e.child, t.flags |= 128, t = null;
 				else throw Error(i(558));
-			} else if (rc || $i(e, t, n, !1), a = (n & e.childLanes) !== 0, rc || a) {
-				if (r = q, r !== null && (s = st(r, n), s !== 0 && s !== o.retryLane)) throw o.retryLane = s, oi(e, s), hu(r, e, s), nc;
-				Du(), t = fc(e, t, n);
-			} else e = o.treeContext, I = cf(s.nextSibling), Ii = t, L = !0, Li = null, Ri = !1, e !== null && Fi(t, e), t = dc(t, r), t.flags |= 4096;
+			} else if (tc || ea(e, t, n, !1), a = (n & e.childLanes) !== 0, tc || a) {
+				if (r = q, r !== null && (s = st(r, n), s !== 0 && s !== o.retryLane)) throw o.retryLane = s, si(e, s), hu(r, e, s), ec;
+				Du(), t = uc(e, t, n);
+			} else e = o.treeContext, I = cf(s.nextSibling), Ii = t, L = !0, Li = null, Ri = !1, e !== null && Fi(t, e), t = lc(t, r), t.flags |= 4096;
 			return t;
 		}
-		return e = pi(e.child, {
+		return e = mi(e.child, {
 			mode: r.mode,
 			children: r.children
 		}), e.ref = t.ref, t.child = e, e.return = t, e;
 	}
-	function mc(e, t) {
+	function fc(e, t) {
 		var n = t.ref;
 		if (n === null) e !== null && e.ref !== null && (t.flags |= 4194816);
 		else {
@@ -3947,123 +3947,123 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			(e === null || e.ref !== n) && (t.flags |= 4194816);
 		}
 	}
+	function pc(e, t, n, r, i) {
+		return na(t), n = bo(e, t, n, r, void 0, i), r = wo(), e !== null && !tc ? (To(e, t, i), Dc(e, t, i)) : (L && r && Ni(t), t.flags |= 1, nc(e, t, n, i), t.child);
+	}
+	function mc(e, t, n, r, i, a) {
+		return na(t), t.updateQueue = null, n = So(t, r, n, i), xo(e), r = wo(), e !== null && !tc ? (To(e, t, a), Dc(e, t, a)) : (L && r && Ni(t), t.flags |= 1, nc(e, t, n, a), t.child);
+	}
 	function hc(e, t, n, r, i) {
-		return ta(t), n = So(e, t, n, r, void 0, i), r = Eo(), e !== null && !rc ? (Do(e, t, i), kc(e, t, i)) : (L && r && Ni(t), t.flags |= 1, ic(e, t, n, i), t.child);
-	}
-	function gc(e, t, n, r, i, a) {
-		return ta(t), t.updateQueue = null, n = wo(t, r, n, i), Co(e), r = Eo(), e !== null && !rc ? (Do(e, t, a), kc(e, t, a)) : (L && r && Ni(t), t.flags |= 1, ic(e, t, n, a), t.child);
-	}
-	function _c(e, t, n, r, i) {
-		if (ta(t), t.stateNode === null) {
-			var a = li, o = n.contextType;
-			typeof o == "object" && o && (a = na(o)), a = new n(r, a), t.memoizedState = a.state !== null && a.state !== void 0 ? a.state : null, a.updater = Us, t.stateNode = a, a._reactInternals = t, a = t.stateNode, a.props = r, a.state = t.memoizedState, a.refs = {}, Ba(t), o = n.contextType, a.context = typeof o == "object" && o ? na(o) : li, a.state = t.memoizedState, o = n.getDerivedStateFromProps, typeof o == "function" && (Hs(t, n, o, r), a.state = t.memoizedState), typeof n.getDerivedStateFromProps == "function" || typeof a.getSnapshotBeforeUpdate == "function" || typeof a.UNSAFE_componentWillMount != "function" && typeof a.componentWillMount != "function" || (o = a.state, typeof a.componentWillMount == "function" && a.componentWillMount(), typeof a.UNSAFE_componentWillMount == "function" && a.UNSAFE_componentWillMount(), o !== a.state && Us.enqueueReplaceState(a, a.state, null), Ja(t, r, a, i), qa(), a.state = t.memoizedState), typeof a.componentDidMount == "function" && (t.flags |= 4194308), r = !0;
+		if (na(t), t.stateNode === null) {
+			var a = ui, o = n.contextType;
+			typeof o == "object" && o && (a = R(o)), a = new n(r, a), t.memoizedState = a.state !== null && a.state !== void 0 ? a.state : null, a.updater = Vs, t.stateNode = a, a._reactInternals = t, a = t.stateNode, a.props = r, a.state = t.memoizedState, a.refs = {}, La(t), o = n.contextType, a.context = typeof o == "object" && o ? R(o) : ui, a.state = t.memoizedState, o = n.getDerivedStateFromProps, typeof o == "function" && (Bs(t, n, o, r), a.state = t.memoizedState), typeof n.getDerivedStateFromProps == "function" || typeof a.getSnapshotBeforeUpdate == "function" || typeof a.UNSAFE_componentWillMount != "function" && typeof a.componentWillMount != "function" || (o = a.state, typeof a.componentWillMount == "function" && a.componentWillMount(), typeof a.UNSAFE_componentWillMount == "function" && a.UNSAFE_componentWillMount(), o !== a.state && Vs.enqueueReplaceState(a, a.state, null), Ga(t, r, a, i), Wa(), a.state = t.memoizedState), typeof a.componentDidMount == "function" && (t.flags |= 4194308), r = !0;
 		} else if (e === null) {
 			a = t.stateNode;
-			var s = t.memoizedProps, c = Ks(n, s);
+			var s = t.memoizedProps, c = Ws(n, s);
 			a.props = c;
 			var l = a.context, u = n.contextType;
-			o = li, typeof u == "object" && u && (o = na(u));
+			o = ui, typeof u == "object" && u && (o = R(u));
 			var d = n.getDerivedStateFromProps;
-			u = typeof d == "function" || typeof a.getSnapshotBeforeUpdate == "function", s = t.pendingProps !== s, u || typeof a.UNSAFE_componentWillReceiveProps != "function" && typeof a.componentWillReceiveProps != "function" || (s || l !== o) && Gs(t, a, r, o), za = !1;
+			u = typeof d == "function" || typeof a.getSnapshotBeforeUpdate == "function", s = t.pendingProps !== s, u || typeof a.UNSAFE_componentWillReceiveProps != "function" && typeof a.componentWillReceiveProps != "function" || (s || l !== o) && Us(t, a, r, o), Ia = !1;
 			var f = t.memoizedState;
-			a.state = f, Ja(t, r, a, i), qa(), l = t.memoizedState, s || f !== l || za ? (typeof d == "function" && (Hs(t, n, d, r), l = t.memoizedState), (c = za || Ws(t, n, c, r, f, l, o)) ? (u || typeof a.UNSAFE_componentWillMount != "function" && typeof a.componentWillMount != "function" || (typeof a.componentWillMount == "function" && a.componentWillMount(), typeof a.UNSAFE_componentWillMount == "function" && a.UNSAFE_componentWillMount()), typeof a.componentDidMount == "function" && (t.flags |= 4194308)) : (typeof a.componentDidMount == "function" && (t.flags |= 4194308), t.memoizedProps = r, t.memoizedState = l), a.props = r, a.state = l, a.context = o, r = c) : (typeof a.componentDidMount == "function" && (t.flags |= 4194308), r = !1);
+			a.state = f, Ga(t, r, a, i), Wa(), l = t.memoizedState, s || f !== l || Ia ? (typeof d == "function" && (Bs(t, n, d, r), l = t.memoizedState), (c = Ia || Hs(t, n, c, r, f, l, o)) ? (u || typeof a.UNSAFE_componentWillMount != "function" && typeof a.componentWillMount != "function" || (typeof a.componentWillMount == "function" && a.componentWillMount(), typeof a.UNSAFE_componentWillMount == "function" && a.UNSAFE_componentWillMount()), typeof a.componentDidMount == "function" && (t.flags |= 4194308)) : (typeof a.componentDidMount == "function" && (t.flags |= 4194308), t.memoizedProps = r, t.memoizedState = l), a.props = r, a.state = l, a.context = o, r = c) : (typeof a.componentDidMount == "function" && (t.flags |= 4194308), r = !1);
 		} else {
-			a = t.stateNode, Va(e, t), o = t.memoizedProps, u = Ks(n, o), a.props = u, d = t.pendingProps, f = a.context, l = n.contextType, c = li, typeof l == "object" && l && (c = na(l)), s = n.getDerivedStateFromProps, (l = typeof s == "function" || typeof a.getSnapshotBeforeUpdate == "function") || typeof a.UNSAFE_componentWillReceiveProps != "function" && typeof a.componentWillReceiveProps != "function" || (o !== d || f !== c) && Gs(t, a, r, c), za = !1, f = t.memoizedState, a.state = f, Ja(t, r, a, i), qa();
+			a = t.stateNode, Ra(e, t), o = t.memoizedProps, u = Ws(n, o), a.props = u, d = t.pendingProps, f = a.context, l = n.contextType, c = ui, typeof l == "object" && l && (c = R(l)), s = n.getDerivedStateFromProps, (l = typeof s == "function" || typeof a.getSnapshotBeforeUpdate == "function") || typeof a.UNSAFE_componentWillReceiveProps != "function" && typeof a.componentWillReceiveProps != "function" || (o !== d || f !== c) && Us(t, a, r, c), Ia = !1, f = t.memoizedState, a.state = f, Ga(t, r, a, i), Wa();
 			var p = t.memoizedState;
-			o !== d || f !== p || za || e !== null && e.dependencies !== null && ea(e.dependencies) ? (typeof s == "function" && (Hs(t, n, s, r), p = t.memoizedState), (u = za || Ws(t, n, u, r, f, p, c) || e !== null && e.dependencies !== null && ea(e.dependencies)) ? (l || typeof a.UNSAFE_componentWillUpdate != "function" && typeof a.componentWillUpdate != "function" || (typeof a.componentWillUpdate == "function" && a.componentWillUpdate(r, p, c), typeof a.UNSAFE_componentWillUpdate == "function" && a.UNSAFE_componentWillUpdate(r, p, c)), typeof a.componentDidUpdate == "function" && (t.flags |= 4), typeof a.getSnapshotBeforeUpdate == "function" && (t.flags |= 1024)) : (typeof a.componentDidUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 4), typeof a.getSnapshotBeforeUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 1024), t.memoizedProps = r, t.memoizedState = p), a.props = r, a.state = p, a.context = c, r = u) : (typeof a.componentDidUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 4), typeof a.getSnapshotBeforeUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 1024), r = !1);
+			o !== d || f !== p || Ia || e !== null && e.dependencies !== null && ta(e.dependencies) ? (typeof s == "function" && (Bs(t, n, s, r), p = t.memoizedState), (u = Ia || Hs(t, n, u, r, f, p, c) || e !== null && e.dependencies !== null && ta(e.dependencies)) ? (l || typeof a.UNSAFE_componentWillUpdate != "function" && typeof a.componentWillUpdate != "function" || (typeof a.componentWillUpdate == "function" && a.componentWillUpdate(r, p, c), typeof a.UNSAFE_componentWillUpdate == "function" && a.UNSAFE_componentWillUpdate(r, p, c)), typeof a.componentDidUpdate == "function" && (t.flags |= 4), typeof a.getSnapshotBeforeUpdate == "function" && (t.flags |= 1024)) : (typeof a.componentDidUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 4), typeof a.getSnapshotBeforeUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 1024), t.memoizedProps = r, t.memoizedState = p), a.props = r, a.state = p, a.context = c, r = u) : (typeof a.componentDidUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 4), typeof a.getSnapshotBeforeUpdate != "function" || o === e.memoizedProps && f === e.memoizedState || (t.flags |= 1024), r = !1);
 		}
-		return a = r, mc(e, t), r = !!(t.flags & 128), a || r ? (a = t.stateNode, n = r && typeof n.getDerivedStateFromError != "function" ? null : a.render(), t.flags |= 1, e !== null && r ? (t.child = La(t, e.child, null, i), t.child = La(t, null, n, i)) : ic(e, t, n, i), t.memoizedState = a.state, e = t.child) : e = kc(e, t, i), e;
+		return a = r, fc(e, t), r = !!(t.flags & 128), a || r ? (a = t.stateNode, n = r && typeof n.getDerivedStateFromError != "function" ? null : a.render(), t.flags |= 1, e !== null && r ? (t.child = Pa(t, e.child, null, i), t.child = Pa(t, null, n, i)) : nc(e, t, n, i), t.memoizedState = a.state, e = t.child) : e = Dc(e, t, i), e;
 	}
-	function vc(e, t, n, r) {
-		return Wi(), t.flags |= 256, ic(e, t, n, r), t.child;
+	function gc(e, t, n, r) {
+		return Wi(), t.flags |= 256, nc(e, t, n, r), t.child;
 	}
-	var yc = {
+	var _c = {
 		dehydrated: null,
 		treeContext: null,
 		retryLane: 0,
 		hydrationErrors: null
 	};
-	function bc(e) {
+	function vc(e) {
 		return {
 			baseLanes: e,
-			cachePool: ba()
+			cachePool: U()
 		};
 	}
-	function xc(e, t, n) {
+	function yc(e, t, n) {
 		return e = e === null ? 0 : e.childLanes & ~n, t && (e |= Jl), e;
 	}
-	function Sc(e, t, n) {
+	function bc(e, t, n) {
 		var r = t.pendingProps, a = !1, o = !!(t.flags & 128), s;
-		if ((s = o) || (s = e !== null && e.memoizedState === null ? !1 : !!(lo.current & 2)), s && (a = !0, t.flags &= -129), s = !!(t.flags & 32), t.flags &= -33, e === null) {
+		if ((s = o) || (s = e !== null && e.memoizedState === null ? !1 : !!(oo.current & 2)), s && (a = !0, t.flags &= -129), s = !!(t.flags & 32), t.flags &= -33, e === null) {
 			if (L) {
-				if (a ? io(t) : so(t), (e = I) ? (e = rf(e, Ri), e = e !== null && e.data !== "&" ? e : null, e !== null && (t.memoizedState = {
+				if (a ? to(t) : io(t), (e = I) ? (e = rf(e, Ri), e = e !== null && e.data !== "&" ? e : null, e !== null && (t.memoizedState = {
 					dehydrated: e,
-					treeContext: Oi === null ? null : {
-						id: ki,
-						overflow: Ai
+					treeContext: ki === null ? null : {
+						id: Ai,
+						overflow: F
 					},
 					retryLane: 536870912,
 					hydrationErrors: null
-				}, n = vi(e), n.return = t, t.child = n, Ii = t, I = null)) : e = null, e === null) throw Bi(t);
+				}, n = yi(e), n.return = t, t.child = n, Ii = t, I = null)) : e = null, e === null) throw Bi(t);
 				return of(e) ? t.lanes = 32 : t.lanes = 536870912, null;
 			}
 			var c = r.children;
-			return r = r.fallback, a ? (so(t), a = t.mode, c = wc({
+			return r = r.fallback, a ? (io(t), a = t.mode, c = Sc({
 				mode: "hidden",
 				children: c
-			}, a), r = gi(r, a, n, null), c.return = t, r.return = t, c.sibling = r, t.child = c, r = t.child, r.memoizedState = bc(n), r.childLanes = xc(e, s, n), t.memoizedState = yc, lc(null, r)) : (io(t), Cc(t, c));
+			}, a), r = _i(r, a, n, null), c.return = t, r.return = t, c.sibling = r, t.child = c, r = t.child, r.memoizedState = vc(n), r.childLanes = yc(e, s, n), t.memoizedState = _c, sc(null, r)) : (to(t), xc(t, c));
 		}
 		var l = e.memoizedState;
 		if (l !== null && (c = l.dehydrated, c !== null)) {
-			if (o) t.flags & 256 ? (io(t), t.flags &= -257, t = Tc(e, t, n)) : t.memoizedState === null ? (so(t), c = r.fallback, a = t.mode, r = wc({
+			if (o) t.flags & 256 ? (to(t), t.flags &= -257, t = Cc(e, t, n)) : t.memoizedState === null ? (io(t), c = r.fallback, a = t.mode, r = Sc({
 				mode: "visible",
 				children: r.children
-			}, a), c = gi(c, a, n, null), c.flags |= 2, r.return = t, c.return = t, r.sibling = c, t.child = r, La(t, e.child, null, n), r = t.child, r.memoizedState = bc(n), r.childLanes = xc(e, s, n), t.memoizedState = yc, t = lc(null, r)) : (so(t), t.child = e.child, t.flags |= 128, t = null);
-			else if (io(t), of(c)) {
+			}, a), c = _i(c, a, n, null), c.flags |= 2, r.return = t, c.return = t, r.sibling = c, t.child = r, Pa(t, e.child, null, n), r = t.child, r.memoizedState = vc(n), r.childLanes = yc(e, s, n), t.memoizedState = _c, t = sc(null, r)) : (io(t), t.child = e.child, t.flags |= 128, t = null);
+			else if (to(t), of(c)) {
 				if (s = c.nextSibling && c.nextSibling.dataset, s) var u = s.dgst;
 				s = u, r = Error(i(419)), r.stack = "", r.digest = s, Ki({
 					value: r,
 					source: null,
 					stack: null
-				}), t = Tc(e, t, n);
-			} else if (rc || $i(e, t, n, !1), s = (n & e.childLanes) !== 0, rc || s) {
-				if (s = q, s !== null && (r = st(s, n), r !== 0 && r !== l.retryLane)) throw l.retryLane = r, oi(e, r), hu(s, e, r), nc;
-				af(c) || Du(), t = Tc(e, t, n);
-			} else af(c) ? (t.flags |= 192, t.child = e.child, t = null) : (e = l.treeContext, I = cf(c.nextSibling), Ii = t, L = !0, Li = null, Ri = !1, e !== null && Fi(t, e), t = Cc(t, r.children), t.flags |= 4096);
+				}), t = Cc(e, t, n);
+			} else if (tc || ea(e, t, n, !1), s = (n & e.childLanes) !== 0, tc || s) {
+				if (s = q, s !== null && (r = st(s, n), r !== 0 && r !== l.retryLane)) throw l.retryLane = r, si(e, r), hu(s, e, r), ec;
+				af(c) || Du(), t = Cc(e, t, n);
+			} else af(c) ? (t.flags |= 192, t.child = e.child, t = null) : (e = l.treeContext, I = cf(c.nextSibling), Ii = t, L = !0, Li = null, Ri = !1, e !== null && Fi(t, e), t = xc(t, r.children), t.flags |= 4096);
 			return t;
 		}
-		return a ? (so(t), c = r.fallback, a = t.mode, l = e.child, u = l.sibling, r = pi(l, {
+		return a ? (io(t), c = r.fallback, a = t.mode, l = e.child, u = l.sibling, r = mi(l, {
 			mode: "hidden",
 			children: r.children
-		}), r.subtreeFlags = l.subtreeFlags & 65011712, u === null ? (c = gi(c, a, n, null), c.flags |= 2) : c = pi(u, c), c.return = t, r.return = t, r.sibling = c, t.child = r, lc(null, r), r = t.child, c = e.child.memoizedState, c === null ? c = bc(n) : (a = c.cachePool, a === null ? a = ba() : (l = z._currentValue, a = a.parent === l ? a : {
+		}), r.subtreeFlags = l.subtreeFlags & 65011712, u === null ? (c = _i(c, a, n, null), c.flags |= 2) : c = mi(u, c), c.return = t, r.return = t, r.sibling = c, t.child = r, sc(null, r), r = t.child, c = e.child.memoizedState, c === null ? c = vc(n) : (a = c.cachePool, a === null ? a = U() : (l = z._currentValue, a = a.parent === l ? a : {
 			parent: l,
 			pool: l
 		}), c = {
 			baseLanes: c.baseLanes | n,
 			cachePool: a
-		}), r.memoizedState = c, r.childLanes = xc(e, s, n), t.memoizedState = yc, lc(e.child, r)) : (io(t), n = e.child, e = n.sibling, n = pi(n, {
+		}), r.memoizedState = c, r.childLanes = yc(e, s, n), t.memoizedState = _c, sc(e.child, r)) : (to(t), n = e.child, e = n.sibling, n = mi(n, {
 			mode: "visible",
 			children: r.children
 		}), n.return = t, n.sibling = null, e !== null && (s = t.deletions, s === null ? (t.deletions = [e], t.flags |= 16) : s.push(e)), t.child = n, t.memoizedState = null, n);
 	}
-	function Cc(e, t) {
-		return t = wc({
+	function xc(e, t) {
+		return t = Sc({
 			mode: "visible",
 			children: t
 		}, e.mode), t.return = e, e.child = t;
 	}
-	function wc(e, t) {
-		return e = di(22, e, null, t), e.lanes = 0, e;
+	function Sc(e, t) {
+		return e = fi(22, e, null, t), e.lanes = 0, e;
 	}
-	function Tc(e, t, n) {
-		return La(t, e.child, null, n), e = Cc(t, t.pendingProps.children), e.flags |= 2, t.memoizedState = null, e;
+	function Cc(e, t, n) {
+		return Pa(t, e.child, null, n), e = xc(t, t.pendingProps.children), e.flags |= 2, t.memoizedState = null, e;
 	}
-	function Ec(e, t, n) {
+	function wc(e, t, n) {
 		e.lanes |= t;
 		var r = e.alternate;
-		r !== null && (r.lanes |= t), R(e.return, t, n);
+		r !== null && (r.lanes |= t), Qi(e.return, t, n);
 	}
-	function Dc(e, t, n, r, i, a) {
+	function Tc(e, t, n, r, i, a) {
 		var o = e.memoizedState;
 		o === null ? e.memoizedState = {
 			isBackwards: t,
@@ -4075,13 +4075,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			treeForkCount: a
 		} : (o.isBackwards = t, o.rendering = null, o.renderingStartTime = 0, o.last = r, o.tail = n, o.tailMode = i, o.treeForkCount = a);
 	}
-	function Oc(e, t, n) {
+	function Ec(e, t, n) {
 		var r = t.pendingProps, i = r.revealOrder, a = r.tail;
 		r = r.children;
-		var o = lo.current, s = !!(o & 2);
-		if (s ? (o = o & 1 | 2, t.flags |= 128) : o &= 1, j(lo, o), ic(e, t, r, n), r = L ? Ti : 0, !s && e !== null && e.flags & 128) a: for (e = t.child; e !== null;) {
-			if (e.tag === 13) e.memoizedState !== null && Ec(e, n, t);
-			else if (e.tag === 19) Ec(e, n, t);
+		var o = oo.current, s = !!(o & 2);
+		if (s ? (o = o & 1 | 2, t.flags |= 128) : o &= 1, j(oo, o), nc(e, t, r, n), r = L ? Ei : 0, !s && e !== null && e.flags & 128) a: for (e = t.child; e !== null;) {
+			if (e.tag === 13) e.memoizedState !== null && wc(e, n, t);
+			else if (e.tag === 19) wc(e, n, t);
 			else if (e.child !== null) {
 				e.child.return = e, e = e.child;
 				continue;
@@ -4095,44 +4095,44 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		switch (i) {
 			case "forwards":
-				for (n = t.child, i = null; n !== null;) e = n.alternate, e !== null && uo(e) === null && (i = n), n = n.sibling;
-				n = i, n === null ? (i = t.child, t.child = null) : (i = n.sibling, n.sibling = null), Dc(t, !1, i, n, a, r);
+				for (n = t.child, i = null; n !== null;) e = n.alternate, e !== null && so(e) === null && (i = n), n = n.sibling;
+				n = i, n === null ? (i = t.child, t.child = null) : (i = n.sibling, n.sibling = null), Tc(t, !1, i, n, a, r);
 				break;
 			case "backwards":
 			case "unstable_legacy-backwards":
 				for (n = null, i = t.child, t.child = null; i !== null;) {
-					if (e = i.alternate, e !== null && uo(e) === null) {
+					if (e = i.alternate, e !== null && so(e) === null) {
 						t.child = i;
 						break;
 					}
 					e = i.sibling, i.sibling = n, n = i, i = e;
 				}
-				Dc(t, !0, n, null, a, r);
+				Tc(t, !0, n, null, a, r);
 				break;
 			case "together":
-				Dc(t, !1, null, null, void 0, r);
+				Tc(t, !1, null, null, void 0, r);
 				break;
 			default: t.memoizedState = null;
 		}
 		return t.child;
 	}
-	function kc(e, t, n) {
+	function Dc(e, t, n) {
 		if (e !== null && (t.dependencies = e.dependencies), Gl |= t.lanes, (n & t.childLanes) === 0) {
 			if (e !== null) {
-				if ($i(e, t, n, !1), (n & t.childLanes) === 0) return null;
+				if (ea(e, t, n, !1), (n & t.childLanes) === 0) return null;
 			} else return null;
 		}
 		if (e !== null && t.child !== e.child) throw Error(i(153));
 		if (t.child !== null) {
-			for (e = t.child, n = pi(e, e.pendingProps), t.child = n, n.return = t; e.sibling !== null;) e = e.sibling, n = n.sibling = pi(e, e.pendingProps), n.return = t;
+			for (e = t.child, n = mi(e, e.pendingProps), t.child = n, n.return = t; e.sibling !== null;) e = e.sibling, n = n.sibling = mi(e, e.pendingProps), n.return = t;
 			n.sibling = null;
 		}
 		return t.child;
 	}
-	function Ac(e, t) {
-		return (e.lanes & t) !== 0 || (e = e.dependencies, !!(e !== null && ea(e)));
+	function Oc(e, t) {
+		return (e.lanes & t) !== 0 || (e = e.dependencies, !!(e !== null && ta(e)));
 	}
-	function jc(e, t, n) {
+	function kc(e, t, n) {
 		switch (t.tag) {
 			case 3:
 				ge(t, t.stateNode.containerInfo), Xi(t, z, e.memoizedState.cache), Wi();
@@ -4148,48 +4148,48 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				Xi(t, t.type, t.memoizedProps.value);
 				break;
 			case 31:
-				if (t.memoizedState !== null) return t.flags |= 128, ao(t), null;
+				if (t.memoizedState !== null) return t.flags |= 128, no(t), null;
 				break;
 			case 13:
 				var r = t.memoizedState;
-				if (r !== null) return r.dehydrated === null ? (n & t.child.childLanes) === 0 ? (io(t), e = kc(e, t, n), e === null ? null : e.sibling) : Sc(e, t, n) : (io(t), t.flags |= 128, null);
-				io(t);
+				if (r !== null) return r.dehydrated === null ? (n & t.child.childLanes) === 0 ? (to(t), e = Dc(e, t, n), e === null ? null : e.sibling) : bc(e, t, n) : (to(t), t.flags |= 128, null);
+				to(t);
 				break;
 			case 19:
 				var i = !!(e.flags & 128);
-				if (r = (n & t.childLanes) !== 0, r || ($i(e, t, n, !1), r = (n & t.childLanes) !== 0), i) {
-					if (r) return Oc(e, t, n);
+				if (r = (n & t.childLanes) !== 0, r || (ea(e, t, n, !1), r = (n & t.childLanes) !== 0), i) {
+					if (r) return Ec(e, t, n);
 					t.flags |= 128;
 				}
-				if (i = t.memoizedState, i !== null && (i.rendering = null, i.tail = null, i.lastEffect = null), j(lo, lo.current), r) break;
+				if (i = t.memoizedState, i !== null && (i.rendering = null, i.tail = null, i.lastEffect = null), j(oo, oo.current), r) break;
 				return null;
-			case 22: return t.lanes = 0, cc(e, t, n, t.pendingProps);
+			case 22: return t.lanes = 0, oc(e, t, n, t.pendingProps);
 			case 24: Xi(t, z, e.memoizedState.cache);
 		}
-		return kc(e, t, n);
+		return Dc(e, t, n);
 	}
-	function Mc(e, t, n) {
+	function Ac(e, t, n) {
 		if (e !== null) {
-			if (e.memoizedProps !== t.pendingProps) rc = !0;
+			if (e.memoizedProps !== t.pendingProps) tc = !0;
 			else {
-				if (!Ac(e, n) && !(t.flags & 128)) return rc = !1, jc(e, t, n);
-				rc = !!(e.flags & 131072);
+				if (!Oc(e, n) && !(t.flags & 128)) return tc = !1, kc(e, t, n);
+				tc = !!(e.flags & 131072);
 			}
-		} else rc = !1, L && t.flags & 1048576 && Mi(t, Ti, t.index);
+		} else tc = !1, L && t.flags & 1048576 && Mi(t, Ei, t.index);
 		switch (t.lanes = 0, t.tag) {
 			case 16:
 				a: {
 					var r = t.pendingProps;
-					if (e = Da(t.elementType), t.type = e, typeof e == "function") fi(e) ? (r = Ks(e, r), t.tag = 1, t = _c(null, t, e, r, n)) : (t.tag = 0, t = hc(null, t, e, r, n));
+					if (e = wa(t.elementType), t.type = e, typeof e == "function") pi(e) ? (r = Ws(e, r), t.tag = 1, t = hc(null, t, e, r, n)) : (t.tag = 0, t = pc(null, t, e, r, n));
 					else {
 						if (e != null) {
 							var a = e.$$typeof;
 							if (a === w) {
-								t.tag = 11, t = ac(null, t, e, r, n);
+								t.tag = 11, t = rc(null, t, e, r, n);
 								break a;
 							}
 							if (a === ee) {
-								t.tag = 14, t = oc(null, t, e, r, n);
+								t.tag = 14, t = ic(null, t, e, r, n);
 								break a;
 							}
 						}
@@ -4197,26 +4197,26 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					}
 				}
 				return t;
-			case 0: return hc(e, t, t.type, t.pendingProps, n);
-			case 1: return r = t.type, a = Ks(r, t.pendingProps), _c(e, t, r, a, n);
+			case 0: return pc(e, t, t.type, t.pendingProps, n);
+			case 1: return r = t.type, a = Ws(r, t.pendingProps), hc(e, t, r, a, n);
 			case 3:
 				a: {
 					if (ge(t, t.stateNode.containerInfo), e === null) throw Error(i(387));
 					r = t.pendingProps;
 					var o = t.memoizedState;
-					a = o.element, Va(e, t), Ja(t, r, null, n);
+					a = o.element, Ra(e, t), Ga(t, r, null, n);
 					var s = t.memoizedState;
-					if (r = s.cache, Xi(t, z, r), r !== o.cache && Qi(t, [z], n, !0), qa(), r = s.element, o.isDehydrated) {
+					if (r = s.cache, Xi(t, z, r), r !== o.cache && $i(t, [z], n, !0), Wa(), r = s.element, o.isDehydrated) {
 						if (o = {
 							element: r,
 							isDehydrated: !1,
 							cache: s.cache
 						}, t.updateQueue.baseState = o, t.memoizedState = o, t.flags & 256) {
-							t = vc(e, t, r, n);
+							t = gc(e, t, r, n);
 							break a;
 						}
 						if (r !== a) {
-							a = xi(Error(i(424)), t), Ki(a), t = vc(e, t, r, n);
+							a = Si(Error(i(424)), t), Ki(a), t = gc(e, t, r, n);
 							break a;
 						}
 						switch (e = t.stateNode.containerInfo, e.nodeType) {
@@ -4225,68 +4225,68 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								break;
 							default: e = e.nodeName === "HTML" ? e.ownerDocument.body : e;
 						}
-						for (I = cf(e.firstChild), Ii = t, L = !0, Li = null, Ri = !0, n = Ra(t, null, r, n), t.child = n; n;) n.flags = n.flags & -3 | 4096, n = n.sibling;
+						for (I = cf(e.firstChild), Ii = t, L = !0, Li = null, Ri = !0, n = Fa(t, null, r, n), t.child = n; n;) n.flags = n.flags & -3 | 4096, n = n.sibling;
 					} else {
 						if (Wi(), r === a) {
-							t = kc(e, t, n);
+							t = Dc(e, t, n);
 							break a;
 						}
-						ic(e, t, r, n);
+						nc(e, t, r, n);
 					}
 					t = t.child;
 				}
 				return t;
-			case 26: return mc(e, t), e === null ? (n = kf(t.type, null, t.pendingProps, null)) ? t.memoizedState = n : L || (n = t.type, e = t.pendingProps, r = Bd(me.current).createElement(n), r[pt] = t, r[mt] = e, Pd(r, n, e), M(r), t.stateNode = r) : t.memoizedState = kf(t.type, e.memoizedProps, t.pendingProps, e.memoizedState), null;
-			case 27: return ve(t), e === null && L && (r = t.stateNode = ff(t.type, t.pendingProps, me.current), Ii = t, Ri = !0, a = I, Zd(t.type) ? (lf = a, I = cf(r.firstChild)) : I = a), ic(e, t, t.pendingProps.children, n), mc(e, t), e === null && (t.flags |= 4194304), t.child;
-			case 5: return e === null && L && ((a = r = I) && (r = tf(r, t.type, t.pendingProps, Ri), r === null ? a = !1 : (t.stateNode = r, Ii = t, I = cf(r.firstChild), Ri = !1, a = !0)), a || Bi(t)), ve(t), a = t.type, o = t.pendingProps, s = e === null ? null : e.memoizedProps, r = o.children, Ud(a, o) ? r = null : s !== null && Ud(a, s) && (t.flags |= 32), t.memoizedState !== null && (a = So(e, t, To, null, null, n), Qf._currentValue = a), mc(e, t), ic(e, t, r, n), t.child;
+			case 26: return fc(e, t), e === null ? (n = kf(t.type, null, t.pendingProps, null)) ? t.memoizedState = n : L || (n = t.type, e = t.pendingProps, r = Bd(me.current).createElement(n), r[pt] = t, r[mt] = e, Pd(r, n, e), Et(r), t.stateNode = r) : t.memoizedState = kf(t.type, e.memoizedProps, t.pendingProps, e.memoizedState), null;
+			case 27: return ve(t), e === null && L && (r = t.stateNode = ff(t.type, t.pendingProps, me.current), Ii = t, Ri = !0, a = I, Zd(t.type) ? (lf = a, I = cf(r.firstChild)) : I = a), nc(e, t, t.pendingProps.children, n), fc(e, t), e === null && (t.flags |= 4194304), t.child;
+			case 5: return e === null && L && ((a = r = I) && (r = tf(r, t.type, t.pendingProps, Ri), r === null ? a = !1 : (t.stateNode = r, Ii = t, I = cf(r.firstChild), Ri = !1, a = !0)), a || Bi(t)), ve(t), a = t.type, o = t.pendingProps, s = e === null ? null : e.memoizedProps, r = o.children, Ud(a, o) ? r = null : s !== null && Ud(a, s) && (t.flags |= 32), t.memoizedState !== null && (a = bo(e, t, Co, null, null, n), Qf._currentValue = a), fc(e, t), nc(e, t, r, n), t.child;
 			case 6: return e === null && L && ((e = n = I) && (n = nf(n, t.pendingProps, Ri), n === null ? e = !1 : (t.stateNode = n, Ii = t, I = null, e = !0)), e || Bi(t)), null;
-			case 13: return Sc(e, t, n);
-			case 4: return ge(t, t.stateNode.containerInfo), r = t.pendingProps, e === null ? t.child = La(t, null, r, n) : ic(e, t, r, n), t.child;
-			case 11: return ac(e, t, t.type, t.pendingProps, n);
-			case 7: return ic(e, t, t.pendingProps, n), t.child;
-			case 8: return ic(e, t, t.pendingProps.children, n), t.child;
-			case 12: return ic(e, t, t.pendingProps.children, n), t.child;
-			case 10: return r = t.pendingProps, Xi(t, t.type, r.value), ic(e, t, r.children, n), t.child;
-			case 9: return a = t.type._context, r = t.pendingProps.children, ta(t), a = na(a), r = r(a), t.flags |= 1, ic(e, t, r, n), t.child;
-			case 14: return oc(e, t, t.type, t.pendingProps, n);
-			case 15: return sc(e, t, t.type, t.pendingProps, n);
-			case 19: return Oc(e, t, n);
-			case 31: return pc(e, t, n);
-			case 22: return cc(e, t, n, t.pendingProps);
-			case 24: return ta(t), r = na(z), e === null ? (a = va(), a === null && (a = q, o = B(), a.pooledCache = o, o.refCount++, o !== null && (a.pooledCacheLanes |= n), a = o), t.memoizedState = {
+			case 13: return bc(e, t, n);
+			case 4: return ge(t, t.stateNode.containerInfo), r = t.pendingProps, e === null ? t.child = Pa(t, null, r, n) : nc(e, t, r, n), t.child;
+			case 11: return rc(e, t, t.type, t.pendingProps, n);
+			case 7: return nc(e, t, t.pendingProps, n), t.child;
+			case 8: return nc(e, t, t.pendingProps.children, n), t.child;
+			case 12: return nc(e, t, t.pendingProps.children, n), t.child;
+			case 10: return r = t.pendingProps, Xi(t, t.type, r.value), nc(e, t, r.children, n), t.child;
+			case 9: return a = t.type._context, r = t.pendingProps.children, na(t), a = R(a), r = r(a), t.flags |= 1, nc(e, t, r, n), t.child;
+			case 14: return ic(e, t, t.type, t.pendingProps, n);
+			case 15: return ac(e, t, t.type, t.pendingProps, n);
+			case 19: return Ec(e, t, n);
+			case 31: return dc(e, t, n);
+			case 22: return oc(e, t, n, t.pendingProps);
+			case 24: return na(t), r = R(z), e === null ? (a = _a(), a === null && (a = q, o = B(), a.pooledCache = o, o.refCount++, o !== null && (a.pooledCacheLanes |= n), a = o), t.memoizedState = {
 				parent: r,
 				cache: a
-			}, Ba(t), Xi(t, z, a)) : ((e.lanes & n) !== 0 && (Va(e, t), Ja(t, null, null, n), qa()), a = e.memoizedState, o = t.memoizedState, a.parent === r ? (r = o.cache, Xi(t, z, r), r !== a.cache && Qi(t, [z], n, !0)) : (a = {
+			}, La(t), Xi(t, z, a)) : ((e.lanes & n) !== 0 && (Ra(e, t), Ga(t, null, null, n), Wa()), a = e.memoizedState, o = t.memoizedState, a.parent === r ? (r = o.cache, Xi(t, z, r), r !== a.cache && $i(t, [z], n, !0)) : (a = {
 				parent: r,
 				cache: r
-			}, t.memoizedState = a, t.lanes === 0 && (t.memoizedState = t.updateQueue.baseState = a), Xi(t, z, r))), ic(e, t, t.pendingProps.children, n), t.child;
+			}, t.memoizedState = a, t.lanes === 0 && (t.memoizedState = t.updateQueue.baseState = a), Xi(t, z, r))), nc(e, t, t.pendingProps.children, n), t.child;
 			case 29: throw t.pendingProps;
 		}
 		throw Error(i(156, t.tag));
 	}
-	function Nc(e) {
+	function jc(e) {
 		e.flags |= 4;
 	}
-	function Pc(e, t, n, r, i) {
+	function Mc(e, t, n, r, i) {
 		if ((t = !!(e.mode & 32)) && (t = !1), t) {
 			if (e.flags |= 16777216, (i & 335544128) === i) {
 				if (e.stateNode.complete) e.flags |= 8192;
 				else if (wu()) e.flags |= 8192;
-				else throw Oa = wa, Sa;
+				else throw Ta = xa, ya;
 			}
 		} else e.flags &= -16777217;
 	}
-	function Fc(e, t) {
+	function Nc(e, t) {
 		if (t.type !== "stylesheet" || t.state.loading & 4) e.flags &= -16777217;
 		else if (e.flags |= 16777216, !Wf(t)) {
 			if (wu()) e.flags |= 8192;
-			else throw Oa = wa, Sa;
+			else throw Ta = xa, ya;
 		}
 	}
-	function Ic(e, t) {
+	function Pc(e, t) {
 		t !== null && (e.flags |= 4), e.flags & 16384 && (t = e.tag === 22 ? 536870912 : tt(), e.lanes |= t, Yl |= t);
 	}
-	function Lc(e, t) {
+	function Fc(e, t) {
 		if (!L) switch (e.tailMode) {
 			case "hidden":
 				t = e.tail;
@@ -4299,13 +4299,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				r === null ? t || e.tail === null ? e.tail = null : e.tail.sibling = null : r.sibling = null;
 		}
 	}
-	function W(e) {
+	function Ic(e) {
 		var t = e.alternate !== null && e.alternate.child === e.child, n = 0, r = 0;
 		if (t) for (var i = e.child; i !== null;) n |= i.lanes | i.childLanes, r |= i.subtreeFlags & 65011712, r |= i.flags & 65011712, i.return = e, i = i.sibling;
 		else for (i = e.child; i !== null;) n |= i.lanes | i.childLanes, r |= i.subtreeFlags, r |= i.flags, i.return = e, i = i.sibling;
 		return e.subtreeFlags |= r, e.childLanes = n, t;
 	}
-	function Rc(e, t, n) {
+	function Lc(e, t, n) {
 		var r = t.pendingProps;
 		switch (Pi(t), t.tag) {
 			case 16:
@@ -4316,28 +4316,28 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 8:
 			case 12:
 			case 9:
-			case 14: return W(t), null;
-			case 1: return W(t), null;
-			case 3: return n = t.stateNode, r = null, e !== null && (r = e.memoizedState.cache), t.memoizedState.cache !== r && (t.flags |= 2048), Zi(z), _e(), n.pendingContext && (n.context = n.pendingContext, n.pendingContext = null), (e === null || e.child === null) && (Ui(t) ? Nc(t) : e === null || e.memoizedState.isDehydrated && !(t.flags & 256) || (t.flags |= 1024, Gi())), W(t), null;
+			case 14: return Ic(t), null;
+			case 1: return Ic(t), null;
+			case 3: return n = t.stateNode, r = null, e !== null && (r = e.memoizedState.cache), t.memoizedState.cache !== r && (t.flags |= 2048), Zi(z), _e(), n.pendingContext && (n.context = n.pendingContext, n.pendingContext = null), (e === null || e.child === null) && (Ui(t) ? jc(t) : e === null || e.memoizedState.isDehydrated && !(t.flags & 256) || (t.flags |= 1024, Gi())), Ic(t), null;
 			case 26:
 				var a = t.type, o = t.memoizedState;
-				return e === null ? (Nc(t), o === null ? (W(t), Pc(t, a, null, r, n)) : (W(t), Fc(t, o))) : o ? o === e.memoizedState ? (W(t), t.flags &= -16777217) : (Nc(t), W(t), Fc(t, o)) : (e = e.memoizedProps, e !== r && Nc(t), W(t), Pc(t, a, e, r, n)), null;
+				return e === null ? (jc(t), o === null ? (Ic(t), Mc(t, a, null, r, n)) : (Ic(t), Nc(t, o))) : o ? o === e.memoizedState ? (Ic(t), t.flags &= -16777217) : (jc(t), Ic(t), Nc(t, o)) : (e = e.memoizedProps, e !== r && jc(t), Ic(t), Mc(t, a, e, r, n)), null;
 			case 27:
-				if (ye(t), n = me.current, a = t.type, e !== null && t.stateNode != null) e.memoizedProps !== r && Nc(t);
+				if (ye(t), n = me.current, a = t.type, e !== null && t.stateNode != null) e.memoizedProps !== r && jc(t);
 				else {
 					if (!r) {
 						if (t.stateNode === null) throw Error(i(166));
-						return W(t), null;
+						return Ic(t), null;
 					}
-					e = fe.current, Ui(t) ? Vi(t, e) : (e = ff(a, r, n), t.stateNode = e, Nc(t));
+					e = fe.current, Ui(t) ? Vi(t, e) : (e = ff(a, r, n), t.stateNode = e, jc(t));
 				}
-				return W(t), null;
+				return Ic(t), null;
 			case 5:
-				if (ye(t), a = t.type, e !== null && t.stateNode != null) e.memoizedProps !== r && Nc(t);
+				if (ye(t), a = t.type, e !== null && t.stateNode != null) e.memoizedProps !== r && jc(t);
 				else {
 					if (!r) {
 						if (t.stateNode === null) throw Error(i(166));
-						return W(t), null;
+						return Ic(t), null;
 					}
 					if (o = fe.current, Ui(t)) Vi(t, o);
 					else {
@@ -4392,12 +4392,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								break a;
 							default: r = !1;
 						}
-						r && Nc(t);
+						r && jc(t);
 					}
 				}
-				return W(t), Pc(t, t.type, e === null ? null : e.memoizedProps, t.pendingProps, n), null;
+				return Ic(t), Mc(t, t.type, e === null ? null : e.memoizedProps, t.pendingProps, n), null;
 			case 6:
-				if (e && t.stateNode != null) e.memoizedProps !== r && Nc(t);
+				if (e && t.stateNode != null) e.memoizedProps !== r && jc(t);
 				else {
 					if (typeof r != "string" && t.stateNode === null) throw Error(i(166));
 					if (e = me.current, Ui(t)) {
@@ -4408,7 +4408,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						e[pt] = t, e = !!(e.nodeValue === n || r !== null && !0 === r.suppressHydrationWarning || Md(e.nodeValue, n)), e || Bi(t, !0);
 					} else e = Bd(e).createTextNode(r), e[pt] = t, t.stateNode = e;
 				}
-				return W(t), null;
+				return Ic(t), null;
 			case 31:
 				if (n = t.memoizedState, e === null || e.memoizedState !== null) {
 					if (r = Ui(t), n !== null) {
@@ -4417,12 +4417,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							if (e = t.memoizedState, e = e === null ? null : e.dehydrated, !e) throw Error(i(557));
 							e[pt] = t;
 						} else Wi(), !(t.flags & 128) && (t.memoizedState = null), t.flags |= 4;
-						W(t), e = !1;
+						Ic(t), e = !1;
 					} else n = Gi(), e !== null && e.memoizedState !== null && (e.memoizedState.hydrationErrors = n), e = !0;
-					if (!e) return t.flags & 256 ? (co(t), t) : (co(t), null);
+					if (!e) return t.flags & 256 ? (ao(t), t) : (ao(t), null);
 					if (t.flags & 128) throw Error(i(558));
 				}
-				return W(t), null;
+				return Ic(t), null;
 			case 13:
 				if (r = t.memoizedState, e === null || e.memoizedState !== null && e.memoizedState.dehydrated !== null) {
 					if (a = Ui(t), r !== null && r.dehydrated !== null) {
@@ -4431,45 +4431,45 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							if (a = t.memoizedState, a = a === null ? null : a.dehydrated, !a) throw Error(i(317));
 							a[pt] = t;
 						} else Wi(), !(t.flags & 128) && (t.memoizedState = null), t.flags |= 4;
-						W(t), a = !1;
+						Ic(t), a = !1;
 					} else a = Gi(), e !== null && e.memoizedState !== null && (e.memoizedState.hydrationErrors = a), a = !0;
-					if (!a) return t.flags & 256 ? (co(t), t) : (co(t), null);
+					if (!a) return t.flags & 256 ? (ao(t), t) : (ao(t), null);
 				}
-				return co(t), t.flags & 128 ? (t.lanes = n, t) : (n = r !== null, e = e !== null && e.memoizedState !== null, n && (r = t.child, a = null, r.alternate !== null && r.alternate.memoizedState !== null && r.alternate.memoizedState.cachePool !== null && (a = r.alternate.memoizedState.cachePool.pool), o = null, r.memoizedState !== null && r.memoizedState.cachePool !== null && (o = r.memoizedState.cachePool.pool), o !== a && (r.flags |= 2048)), n !== e && n && (t.child.flags |= 8192), Ic(t, t.updateQueue), W(t), null);
-			case 4: return _e(), e === null && Sd(t.stateNode.containerInfo), W(t), null;
-			case 10: return Zi(t.type), W(t), null;
+				return ao(t), t.flags & 128 ? (t.lanes = n, t) : (n = r !== null, e = e !== null && e.memoizedState !== null, n && (r = t.child, a = null, r.alternate !== null && r.alternate.memoizedState !== null && r.alternate.memoizedState.cachePool !== null && (a = r.alternate.memoizedState.cachePool.pool), o = null, r.memoizedState !== null && r.memoizedState.cachePool !== null && (o = r.memoizedState.cachePool.pool), o !== a && (r.flags |= 2048)), n !== e && n && (t.child.flags |= 8192), Pc(t, t.updateQueue), Ic(t), null);
+			case 4: return _e(), e === null && Sd(t.stateNode.containerInfo), Ic(t), null;
+			case 10: return Zi(t.type), Ic(t), null;
 			case 19:
-				if (de(lo), r = t.memoizedState, r === null) return W(t), null;
+				if (de(oo), r = t.memoizedState, r === null) return Ic(t), null;
 				if (a = !!(t.flags & 128), o = r.rendering, o === null) {
-					if (a) Lc(r, !1);
+					if (a) Fc(r, !1);
 					else {
 						if (Wl !== 0 || e !== null && e.flags & 128) for (e = t.child; e !== null;) {
-							if (o = uo(e), o !== null) {
-								for (t.flags |= 128, Lc(r, !1), e = o.updateQueue, t.updateQueue = e, Ic(t, e), t.subtreeFlags = 0, e = n, n = t.child; n !== null;) mi(n, e), n = n.sibling;
-								return j(lo, lo.current & 1 | 2), L && ji(t, r.treeForkCount), t.child;
+							if (o = so(e), o !== null) {
+								for (t.flags |= 128, Fc(r, !1), e = o.updateQueue, t.updateQueue = e, Pc(t, e), t.subtreeFlags = 0, e = n, n = t.child; n !== null;) hi(n, e), n = n.sibling;
+								return j(oo, oo.current & 1 | 2), L && ji(t, r.treeForkCount), t.child;
 							}
 							e = e.sibling;
 						}
-						r.tail !== null && Me() > tu && (t.flags |= 128, a = !0, Lc(r, !1), t.lanes = 4194304);
+						r.tail !== null && Me() > tu && (t.flags |= 128, a = !0, Fc(r, !1), t.lanes = 4194304);
 					}
 				} else {
 					if (!a) {
-						if (e = uo(o), e !== null) {
-							if (t.flags |= 128, a = !0, e = e.updateQueue, t.updateQueue = e, Ic(t, e), Lc(r, !0), r.tail === null && r.tailMode === "hidden" && !o.alternate && !L) return W(t), null;
-						} else 2 * Me() - r.renderingStartTime > tu && n !== 536870912 && (t.flags |= 128, a = !0, Lc(r, !1), t.lanes = 4194304);
+						if (e = so(o), e !== null) {
+							if (t.flags |= 128, a = !0, e = e.updateQueue, t.updateQueue = e, Pc(t, e), Fc(r, !0), r.tail === null && r.tailMode === "hidden" && !o.alternate && !L) return Ic(t), null;
+						} else 2 * Me() - r.renderingStartTime > tu && n !== 536870912 && (t.flags |= 128, a = !0, Fc(r, !1), t.lanes = 4194304);
 					}
 					r.isBackwards ? (o.sibling = t.child, t.child = o) : (e = r.last, e === null ? t.child = o : e.sibling = o, r.last = o);
 				}
-				return r.tail === null ? (W(t), null) : (e = r.tail, r.rendering = e, r.tail = e.sibling, r.renderingStartTime = Me(), e.sibling = null, n = lo.current, j(lo, a ? n & 1 | 2 : n & 1), L && ji(t, r.treeForkCount), e);
+				return r.tail === null ? (Ic(t), null) : (e = r.tail, r.rendering = e, r.tail = e.sibling, r.renderingStartTime = Me(), e.sibling = null, n = oo.current, j(oo, a ? n & 1 | 2 : n & 1), L && ji(t, r.treeForkCount), e);
 			case 22:
-			case 23: return co(t), to(), r = t.memoizedState !== null, e === null ? r && (t.flags |= 8192) : e.memoizedState !== null !== r && (t.flags |= 8192), r ? n & 536870912 && !(t.flags & 128) && (W(t), t.subtreeFlags & 6 && (t.flags |= 8192)) : W(t), n = t.updateQueue, n !== null && Ic(t, n.retryQueue), n = null, e !== null && e.memoizedState !== null && e.memoizedState.cachePool !== null && (n = e.memoizedState.cachePool.pool), r = null, t.memoizedState !== null && t.memoizedState.cachePool !== null && (r = t.memoizedState.cachePool.pool), r !== n && (t.flags |= 2048), e !== null && de(_a), null;
-			case 24: return n = null, e !== null && (n = e.memoizedState.cache), t.memoizedState.cache !== n && (t.flags |= 2048), Zi(z), W(t), null;
+			case 23: return ao(t), Qa(), r = t.memoizedState !== null, e === null ? r && (t.flags |= 8192) : e.memoizedState !== null !== r && (t.flags |= 8192), r ? n & 536870912 && !(t.flags & 128) && (Ic(t), t.subtreeFlags & 6 && (t.flags |= 8192)) : Ic(t), n = t.updateQueue, n !== null && Pc(t, n.retryQueue), n = null, e !== null && e.memoizedState !== null && e.memoizedState.cachePool !== null && (n = e.memoizedState.cachePool.pool), r = null, t.memoizedState !== null && t.memoizedState.cachePool !== null && (r = t.memoizedState.cachePool.pool), r !== n && (t.flags |= 2048), e !== null && de(ga), null;
+			case 24: return n = null, e !== null && (n = e.memoizedState.cache), t.memoizedState.cache !== n && (t.flags |= 2048), Zi(z), Ic(t), null;
 			case 25: return null;
 			case 30: return null;
 		}
 		throw Error(i(156, t.tag));
 	}
-	function zc(e, t) {
+	function Rc(e, t) {
 		switch (Pi(t), t.tag) {
 			case 1: return e = t.flags, e & 65536 ? (t.flags = e & -65537 | 128, t) : null;
 			case 3: return Zi(z), _e(), e = t.flags, e & 65536 && !(e & 128) ? (t.flags = e & -65537 | 128, t) : null;
@@ -4478,27 +4478,27 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 5: return ye(t), null;
 			case 31:
 				if (t.memoizedState !== null) {
-					if (co(t), t.alternate === null) throw Error(i(340));
+					if (ao(t), t.alternate === null) throw Error(i(340));
 					Wi();
 				}
 				return e = t.flags, e & 65536 ? (t.flags = e & -65537 | 128, t) : null;
 			case 13:
-				if (co(t), e = t.memoizedState, e !== null && e.dehydrated !== null) {
+				if (ao(t), e = t.memoizedState, e !== null && e.dehydrated !== null) {
 					if (t.alternate === null) throw Error(i(340));
 					Wi();
 				}
 				return e = t.flags, e & 65536 ? (t.flags = e & -65537 | 128, t) : null;
-			case 19: return de(lo), null;
+			case 19: return de(oo), null;
 			case 4: return _e(), null;
 			case 10: return Zi(t.type), null;
 			case 22:
-			case 23: return co(t), to(), e !== null && de(_a), e = t.flags, e & 65536 ? (t.flags = e & -65537 | 128, t) : null;
+			case 23: return ao(t), Qa(), e !== null && de(ga), e = t.flags, e & 65536 ? (t.flags = e & -65537 | 128, t) : null;
 			case 24: return Zi(z), null;
 			case 25: return null;
 			default: return null;
 		}
 	}
-	function Bc(e, t) {
+	function zc(e, t) {
 		switch (Pi(t), t.tag) {
 			case 3:
 				Zi(z), _e();
@@ -4512,25 +4512,25 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				_e();
 				break;
 			case 31:
-				t.memoizedState !== null && co(t);
+				t.memoizedState !== null && ao(t);
 				break;
 			case 13:
-				co(t);
+				ao(t);
 				break;
 			case 19:
-				de(lo);
+				de(oo);
 				break;
 			case 10:
 				Zi(t.type);
 				break;
 			case 22:
 			case 23:
-				co(t), to(), e !== null && de(_a);
+				ao(t), Qa(), e !== null && de(ga);
 				break;
 			case 24: Zi(z);
 		}
 	}
-	function Vc(e, t) {
+	function Bc(e, t) {
 		try {
 			var n = t.updateQueue, r = n === null ? null : n.lastEffect;
 			if (r !== null) {
@@ -4549,7 +4549,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(t, t.return, e);
 		}
 	}
-	function Hc(e, t, n) {
+	function Vc(e, t, n) {
 		try {
 			var r = t.updateQueue, i = r === null ? null : r.lastEffect;
 			if (i !== null) {
@@ -4575,26 +4575,26 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(t, t.return, e);
 		}
 	}
-	function Uc(e) {
+	function Hc(e) {
 		var t = e.updateQueue;
 		if (t !== null) {
 			var n = e.stateNode;
 			try {
-				Xa(t, n);
+				qa(t, n);
 			} catch (t) {
 				Z(e, e.return, t);
 			}
 		}
 	}
-	function Wc(e, t, n) {
-		n.props = Ks(e.type, e.memoizedProps), n.state = e.memoizedState;
+	function Uc(e, t, n) {
+		n.props = Ws(e.type, e.memoizedProps), n.state = e.memoizedState;
 		try {
 			n.componentWillUnmount();
 		} catch (n) {
 			Z(e, t, n);
 		}
 	}
-	function Gc(e, t) {
+	function Wc(e, t) {
 		try {
 			var n = e.ref;
 			if (n !== null) {
@@ -4615,7 +4615,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(e, t, n);
 		}
 	}
-	function Kc(e, t) {
+	function Gc(e, t) {
 		var n = e.ref, r = e.refCleanup;
 		if (n !== null) {
 			if (typeof r == "function") try {
@@ -4633,7 +4633,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			else n.current = null;
 		}
 	}
-	function qc(e) {
+	function Kc(e) {
 		var t = e.type, n = e.memoizedProps, r = e.stateNode;
 		try {
 			a: switch (t) {
@@ -4649,7 +4649,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(e, e.return, t);
 		}
 	}
-	function Jc(e, t, n) {
+	function qc(e, t, n) {
 		try {
 			var r = e.stateNode;
 			Fd(r, e.type, n, t), r[mt] = t;
@@ -4657,13 +4657,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(e, e.return, t);
 		}
 	}
-	function Yc(e) {
+	function Jc(e) {
 		return e.tag === 5 || e.tag === 3 || e.tag === 26 || e.tag === 27 && Zd(e.type) || e.tag === 4;
 	}
-	function Xc(e) {
+	function Yc(e) {
 		a: for (;;) {
 			for (; e.sibling === null;) {
-				if (e.return === null || Yc(e.return)) return null;
+				if (e.return === null || Jc(e.return)) return null;
 				e = e.return;
 			}
 			for (e.sibling.return = e.return, e = e.sibling; e.tag !== 5 && e.tag !== 6 && e.tag !== 18;) {
@@ -4673,17 +4673,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			if (!(e.flags & 2)) return e.stateNode;
 		}
 	}
+	function Xc(e, t, n) {
+		var r = e.tag;
+		if (r === 5 || r === 6) e = e.stateNode, t ? (n.nodeType === 9 ? n.body : n.nodeName === "HTML" ? n.ownerDocument.body : n).insertBefore(e, t) : (t = n.nodeType === 9 ? n.body : n.nodeName === "HTML" ? n.ownerDocument.body : n, t.appendChild(e), n = n._reactRootContainer, n != null || t.onclick !== null || (t.onclick = sn));
+		else if (r !== 4 && (r === 27 && Zd(e.type) && (n = e.stateNode, t = null), e = e.child, e !== null)) for (Xc(e, t, n), e = e.sibling; e !== null;) Xc(e, t, n), e = e.sibling;
+	}
 	function Zc(e, t, n) {
 		var r = e.tag;
-		if (r === 5 || r === 6) e = e.stateNode, t ? (n.nodeType === 9 ? n.body : n.nodeName === "HTML" ? n.ownerDocument.body : n).insertBefore(e, t) : (t = n.nodeType === 9 ? n.body : n.nodeName === "HTML" ? n.ownerDocument.body : n, t.appendChild(e), n = n._reactRootContainer, n != null || t.onclick !== null || (t.onclick = on));
-		else if (r !== 4 && (r === 27 && Zd(e.type) && (n = e.stateNode, t = null), e = e.child, e !== null)) for (Zc(e, t, n), e = e.sibling; e !== null;) Zc(e, t, n), e = e.sibling;
-	}
-	function Qc(e, t, n) {
-		var r = e.tag;
 		if (r === 5 || r === 6) e = e.stateNode, t ? n.insertBefore(e, t) : n.appendChild(e);
-		else if (r !== 4 && (r === 27 && Zd(e.type) && (n = e.stateNode), e = e.child, e !== null)) for (Qc(e, t, n), e = e.sibling; e !== null;) Qc(e, t, n), e = e.sibling;
+		else if (r !== 4 && (r === 27 && Zd(e.type) && (n = e.stateNode), e = e.child, e !== null)) for (Zc(e, t, n), e = e.sibling; e !== null;) Zc(e, t, n), e = e.sibling;
 	}
-	function $c(e) {
+	function Qc(e) {
 		var t = e.stateNode, n = e.memoizedProps;
 		try {
 			for (var r = e.type, i = t.attributes; i.length;) t.removeAttributeNode(i[0]);
@@ -4692,9 +4692,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			Z(e, e.return, t);
 		}
 	}
-	var el = !1, tl = !1, nl = !1, rl = typeof WeakSet == "function" ? WeakSet : Set, il = null;
-	function al(e, t) {
-		if (e = e.containerInfo, Rd = sp, e = Ar(e), jr(e)) {
+	var $c = !1, el = !1, tl = !1, nl = typeof WeakSet == "function" ? WeakSet : Set, rl = null;
+	function il(e, t) {
+		if (e = e.containerInfo, Rd = sp, e = jr(e), Mr(e)) {
 			if ("selectionStart" in e) var n = {
 				start: e.selectionStart,
 				end: e.selectionEnd
@@ -4736,9 +4736,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		for (zd = {
 			focusedElem: e,
 			selectionRange: n
-		}, sp = !1, il = t; il !== null;) if (t = il, e = t.child, t.subtreeFlags & 1028 && e !== null) e.return = t, il = e;
-		else for (; il !== null;) {
-			switch (t = il, o = t.alternate, e = t.flags, t.tag) {
+		}, sp = !1, rl = t; rl !== null;) if (t = rl, e = t.child, t.subtreeFlags & 1028 && e !== null) e.return = t, rl = e;
+		else for (; rl !== null;) {
+			switch (t = rl, o = t.alternate, e = t.flags, t.tag) {
 				case 0:
 					if (e & 4 && (e = t.updateQueue, e = e === null ? null : e.events, e !== null)) for (n = 0; n < e.length; n++) a = e[n], a.ref.impl = a.nextImpl;
 					break;
@@ -4748,7 +4748,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					if (e & 1024 && o !== null) {
 						e = void 0, n = t, a = o.memoizedProps, o = o.memoizedState, r = n.stateNode;
 						try {
-							var h = Ks(n.type, a);
+							var h = Ws(n.type, a);
 							e = r.getSnapshotBeforeUpdate(h, o), r.__reactInternalSnapshotBeforeUpdate = e;
 						} catch (e) {
 							Z(n, n.return, e);
@@ -4777,19 +4777,19 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				default: if (e & 1024) throw Error(i(163));
 			}
 			if (e = t.sibling, e !== null) {
-				e.return = t.return, il = e;
+				e.return = t.return, rl = e;
 				break;
 			}
-			il = t.return;
+			rl = t.return;
 		}
 	}
-	function ol(e, t, n) {
+	function al(e, t, n) {
 		var r = n.flags;
 		switch (n.tag) {
 			case 0:
 			case 11:
 			case 15:
-				bl(e, n), r & 4 && Vc(5, n);
+				bl(e, n), r & 4 && Bc(5, n);
 				break;
 			case 1:
 				if (bl(e, n), r & 4) {
@@ -4799,7 +4799,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						Z(n, n.return, e);
 					}
 					else {
-						var i = Ks(n.type, t.memoizedProps);
+						var i = Ws(n.type, t.memoizedProps);
 						t = t.memoizedState;
 						try {
 							e.componentDidUpdate(i, t, e.__reactInternalSnapshotBeforeUpdate);
@@ -4808,7 +4808,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						}
 					}
 				}
-				r & 64 && Uc(n), r & 512 && Gc(n, n.return);
+				r & 64 && Hc(n), r & 512 && Wc(n, n.return);
 				break;
 			case 3:
 				if (bl(e, n), r & 64 && (e = n.updateQueue, e !== null)) {
@@ -4820,16 +4820,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case 1: t = n.child.stateNode;
 					}
 					try {
-						Xa(e, t);
+						qa(e, t);
 					} catch (e) {
 						Z(n, n.return, e);
 					}
 				}
 				break;
-			case 27: t === null && r & 4 && $c(n);
+			case 27: t === null && r & 4 && Qc(n);
 			case 26:
 			case 5:
-				bl(e, n), t === null && r & 4 && qc(n), r & 512 && Gc(n, n.return);
+				bl(e, n), t === null && r & 4 && Kc(n), r & 512 && Wc(n, n.return);
 				break;
 			case 12:
 				bl(e, n);
@@ -4841,21 +4841,21 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				bl(e, n), r & 4 && fl(e, n), r & 64 && (e = n.memoizedState, e !== null && (e = e.dehydrated, e !== null && (n = Ju.bind(null, n), sf(e, n))));
 				break;
 			case 22:
-				if (r = n.memoizedState !== null || el, !r) {
-					t = t !== null && t.memoizedState !== null || tl, i = el;
-					var a = tl;
-					el = r, (tl = t) && !a ? Sl(e, n, !!(n.subtreeFlags & 8772)) : bl(e, n), el = i, tl = a;
+				if (r = n.memoizedState !== null || $c, !r) {
+					t = t !== null && t.memoizedState !== null || el, i = $c;
+					var a = el;
+					$c = r, (el = t) && !a ? Sl(e, n, !!(n.subtreeFlags & 8772)) : bl(e, n), $c = i, el = a;
 				}
 				break;
 			case 30: break;
 			default: bl(e, n);
 		}
 	}
-	function sl(e) {
+	function ol(e) {
 		var t = e.alternate;
-		t !== null && (e.alternate = null, sl(t)), e.child = null, e.deletions = null, e.sibling = null, e.tag === 5 && (t = e.stateNode, t !== null && xt(t)), e.stateNode = null, e.return = null, e.dependencies = null, e.memoizedProps = null, e.memoizedState = null, e.pendingProps = null, e.stateNode = null, e.updateQueue = null;
+		t !== null && (e.alternate = null, ol(t)), e.child = null, e.deletions = null, e.sibling = null, e.tag === 5 && (t = e.stateNode, t !== null && xt(t)), e.stateNode = null, e.return = null, e.dependencies = null, e.memoizedProps = null, e.memoizedState = null, e.pendingProps = null, e.stateNode = null, e.updateQueue = null;
 	}
-	var G = null, cl = !1;
+	var sl = null, cl = !1;
 	function ll(e, t, n) {
 		for (n = n.child; n !== null;) ul(e, t, n), n = n.sibling;
 	}
@@ -4865,48 +4865,48 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		} catch {}
 		switch (n.tag) {
 			case 26:
-				tl || Kc(n, t), ll(e, t, n), n.memoizedState ? n.memoizedState.count-- : n.stateNode && (n = n.stateNode, n.parentNode.removeChild(n));
+				el || Gc(n, t), ll(e, t, n), n.memoizedState ? n.memoizedState.count-- : n.stateNode && (n = n.stateNode, n.parentNode.removeChild(n));
 				break;
 			case 27:
-				tl || Kc(n, t);
-				var r = G, i = cl;
-				Zd(n.type) && (G = n.stateNode, cl = !1), ll(e, t, n), pf(n.stateNode), G = r, cl = i;
+				el || Gc(n, t);
+				var r = sl, i = cl;
+				Zd(n.type) && (sl = n.stateNode, cl = !1), ll(e, t, n), pf(n.stateNode), sl = r, cl = i;
 				break;
-			case 5: tl || Kc(n, t);
+			case 5: el || Gc(n, t);
 			case 6:
-				if (r = G, i = cl, G = null, ll(e, t, n), G = r, cl = i, G !== null) {
+				if (r = sl, i = cl, sl = null, ll(e, t, n), sl = r, cl = i, sl !== null) {
 					if (cl) try {
-						(G.nodeType === 9 ? G.body : G.nodeName === "HTML" ? G.ownerDocument.body : G).removeChild(n.stateNode);
+						(sl.nodeType === 9 ? sl.body : sl.nodeName === "HTML" ? sl.ownerDocument.body : sl).removeChild(n.stateNode);
 					} catch (e) {
 						Z(n, t, e);
 					}
 					else try {
-						G.removeChild(n.stateNode);
+						sl.removeChild(n.stateNode);
 					} catch (e) {
 						Z(n, t, e);
 					}
 				}
 				break;
 			case 18:
-				G !== null && (cl ? (e = G, Qd(e.nodeType === 9 ? e.body : e.nodeName === "HTML" ? e.ownerDocument.body : e, n.stateNode), Np(e)) : Qd(G, n.stateNode));
+				sl !== null && (cl ? (e = sl, Qd(e.nodeType === 9 ? e.body : e.nodeName === "HTML" ? e.ownerDocument.body : e, n.stateNode), Np(e)) : Qd(sl, n.stateNode));
 				break;
 			case 4:
-				r = G, i = cl, G = n.stateNode.containerInfo, cl = !0, ll(e, t, n), G = r, cl = i;
+				r = sl, i = cl, sl = n.stateNode.containerInfo, cl = !0, ll(e, t, n), sl = r, cl = i;
 				break;
 			case 0:
 			case 11:
 			case 14:
 			case 15:
-				Hc(2, n, t), tl || Hc(4, n, t), ll(e, t, n);
+				Vc(2, n, t), el || Vc(4, n, t), ll(e, t, n);
 				break;
 			case 1:
-				tl || (Kc(n, t), r = n.stateNode, typeof r.componentWillUnmount == "function" && Wc(n, t, r)), ll(e, t, n);
+				el || (Gc(n, t), r = n.stateNode, typeof r.componentWillUnmount == "function" && Uc(n, t, r)), ll(e, t, n);
 				break;
 			case 21:
 				ll(e, t, n);
 				break;
 			case 22:
-				tl = (r = tl) || n.memoizedState !== null, ll(e, t, n), tl = r;
+				el = (r = el) || n.memoizedState !== null, ll(e, t, n), el = r;
 				break;
 			default: ll(e, t, n);
 		}
@@ -4934,8 +4934,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 13:
 			case 19:
 				var t = e.stateNode;
-				return t === null && (t = e.stateNode = new rl()), t;
-			case 22: return e = e.stateNode, t = e._retryCache, t === null && (t = e._retryCache = new rl()), t;
+				return t === null && (t = e.stateNode = new nl()), t;
+			case 22: return e = e.stateNode, t = e._retryCache, t === null && (t = e._retryCache = new nl()), t;
 			default: throw Error(i(435, e.tag));
 		}
 	}
@@ -4957,22 +4957,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				switch (c.tag) {
 					case 27:
 						if (Zd(c.type)) {
-							G = c.stateNode, cl = !1;
+							sl = c.stateNode, cl = !1;
 							break a;
 						}
 						break;
 					case 5:
-						G = c.stateNode, cl = !1;
+						sl = c.stateNode, cl = !1;
 						break a;
 					case 3:
 					case 4:
-						G = c.stateNode.containerInfo, cl = !0;
+						sl = c.stateNode.containerInfo, cl = !0;
 						break a;
 				}
 				c = c.return;
 			}
-			if (G === null) throw Error(i(160));
-			ul(o, s, a), G = null, cl = !1, o = a.alternate, o !== null && (o.return = null), a.return = null;
+			if (sl === null) throw Error(i(160));
+			ul(o, s, a), sl = null, cl = !1, o = a.alternate, o !== null && (o.return = null), a.return = null;
 		}
 		if (t.subtreeFlags & 13886) for (t = t.child; t !== null;) _l(t, e), t = t.sibling;
 	}
@@ -4984,14 +4984,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 11:
 			case 14:
 			case 15:
-				hl(t, e), vl(e), r & 4 && (Hc(3, e, e.return), Vc(3, e), Hc(5, e, e.return));
+				hl(t, e), vl(e), r & 4 && (Vc(3, e, e.return), Bc(3, e), Vc(5, e, e.return));
 				break;
 			case 1:
-				hl(t, e), vl(e), r & 512 && (tl || n === null || Kc(n, n.return)), r & 64 && el && (e = e.updateQueue, e !== null && (r = e.callbacks, r !== null && (n = e.shared.hiddenCallbacks, e.shared.hiddenCallbacks = n === null ? r : n.concat(r))));
+				hl(t, e), vl(e), r & 512 && (el || n === null || Gc(n, n.return)), r & 64 && $c && (e = e.updateQueue, e !== null && (r = e.callbacks, r !== null && (n = e.shared.hiddenCallbacks, e.shared.hiddenCallbacks = n === null ? r : n.concat(r))));
 				break;
 			case 26:
 				var a = gl;
-				if (hl(t, e), vl(e), r & 512 && (tl || n === null || Kc(n, n.return)), r & 4) {
+				if (hl(t, e), vl(e), r & 512 && (el || n === null || Gc(n, n.return)), r & 4) {
 					var o = n === null ? null : n.memoizedState;
 					if (r = e.memoizedState, n === null) {
 						if (r === null) {
@@ -5000,7 +5000,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 									r = e.type, n = e.memoizedProps, a = a.ownerDocument || a;
 									b: switch (r) {
 										case "title":
-											o = a.getElementsByTagName("title")[0], (!o || o[bt] || o[pt] || o.namespaceURI === "http://www.w3.org/2000/svg" || o.hasAttribute("itemprop")) && (o = a.createElement(r), a.head.insertBefore(o, a.querySelector("head > title"))), Pd(o, r, n), o[pt] = e, M(o), r = o;
+											o = a.getElementsByTagName("title")[0], (!o || o[bt] || o[pt] || o.namespaceURI === "http://www.w3.org/2000/svg" || o.hasAttribute("itemprop")) && (o = a.createElement(r), a.head.insertBefore(o, a.querySelector("head > title"))), Pd(o, r, n), o[pt] = e, Et(o), r = o;
 											break a;
 										case "link":
 											var s = Vf("link", "href", a).get(r + (n.href || ""));
@@ -5023,27 +5023,27 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 											break;
 										default: throw Error(i(468, r));
 									}
-									o[pt] = e, M(o), r = o;
+									o[pt] = e, Et(o), r = o;
 								}
 								e.stateNode = r;
 							} else Hf(a, e.type, e.stateNode);
 						} else e.stateNode = If(a, r, e.memoizedProps);
-					} else o === r ? r === null && e.stateNode !== null && Jc(e, e.memoizedProps, n.memoizedProps) : (o === null ? n.stateNode !== null && (n = n.stateNode, n.parentNode.removeChild(n)) : o.count--, r === null ? Hf(a, e.type, e.stateNode) : If(a, r, e.memoizedProps));
+					} else o === r ? r === null && e.stateNode !== null && qc(e, e.memoizedProps, n.memoizedProps) : (o === null ? n.stateNode !== null && (n = n.stateNode, n.parentNode.removeChild(n)) : o.count--, r === null ? Hf(a, e.type, e.stateNode) : If(a, r, e.memoizedProps));
 				}
 				break;
 			case 27:
-				hl(t, e), vl(e), r & 512 && (tl || n === null || Kc(n, n.return)), n !== null && r & 4 && Jc(e, e.memoizedProps, n.memoizedProps);
+				hl(t, e), vl(e), r & 512 && (el || n === null || Gc(n, n.return)), n !== null && r & 4 && qc(e, e.memoizedProps, n.memoizedProps);
 				break;
 			case 5:
-				if (hl(t, e), vl(e), r & 512 && (tl || n === null || Kc(n, n.return)), e.flags & 32) {
+				if (hl(t, e), vl(e), r & 512 && (el || n === null || Gc(n, n.return)), e.flags & 32) {
 					a = e.stateNode;
 					try {
-						Zt(a, "");
+						Qt(a, "");
 					} catch (t) {
 						Z(e, e.return, t);
 					}
 				}
-				r & 4 && e.stateNode != null && (a = e.memoizedProps, Jc(e, a, n === null ? a : n.memoizedProps)), r & 1024 && (nl = !0);
+				r & 4 && e.stateNode != null && (a = e.memoizedProps, qc(e, a, n === null ? a : n.memoizedProps)), r & 1024 && (tl = !0);
 				break;
 			case 6:
 				if (hl(t, e), vl(e), r & 4) {
@@ -5062,7 +5062,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				} catch (t) {
 					Z(e, e.return, t);
 				}
-				nl && (nl = !1, yl(e));
+				tl && (tl = !1, yl(e));
 				break;
 			case 4:
 				r = gl, gl = gf(e.stateNode.containerInfo), hl(t, e), vl(e), gl = r;
@@ -5078,8 +5078,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				break;
 			case 22:
 				a = e.memoizedState !== null;
-				var l = n !== null && n.memoizedState !== null, u = el, d = tl;
-				if (el = u || a, tl = d || l, hl(t, e), tl = d, el = u, vl(e), r & 8192) a: for (t = e.stateNode, t._visibility = a ? t._visibility & -2 : t._visibility | 1, a && (n === null || l || el || tl || xl(e)), n = null, t = e;;) {
+				var l = n !== null && n.memoizedState !== null, u = $c, d = el;
+				if ($c = u || a, el = d || l, hl(t, e), el = d, $c = u, vl(e), r & 8192) a: for (t = e.stateNode, t._visibility = a ? t._visibility & -2 : t._visibility | 1, a && (n === null || l || $c || el || xl(e)), n = null, t = e;;) {
 					if (t.tag === 5 || t.tag === 26) {
 						if (n === null) {
 							l = n = t;
@@ -5139,7 +5139,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (t & 2) {
 			try {
 				for (var n, r = e.return; r !== null;) {
-					if (Yc(r)) {
+					if (Jc(r)) {
 						n = r;
 						break;
 					}
@@ -5149,16 +5149,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				switch (n.tag) {
 					case 27:
 						var a = n.stateNode;
-						Qc(e, Xc(e), a);
+						Zc(e, Yc(e), a);
 						break;
 					case 5:
 						var o = n.stateNode;
-						n.flags & 32 && (Zt(o, ""), n.flags &= -33), Qc(e, Xc(e), o);
+						n.flags & 32 && (Qt(o, ""), n.flags &= -33), Zc(e, Yc(e), o);
 						break;
 					case 3:
 					case 4:
 						var s = n.stateNode.containerInfo;
-						Zc(e, Xc(e), s);
+						Xc(e, Yc(e), s);
 						break;
 					default: throw Error(i(161));
 				}
@@ -5176,7 +5176,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function bl(e, t) {
-		if (t.subtreeFlags & 8772) for (t = t.child; t !== null;) ol(e, t.alternate, t), t = t.sibling;
+		if (t.subtreeFlags & 8772) for (t = t.child; t !== null;) al(e, t.alternate, t), t = t.sibling;
 	}
 	function xl(e) {
 		for (e = e.child; e !== null;) {
@@ -5186,17 +5186,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				case 11:
 				case 14:
 				case 15:
-					Hc(4, t, t.return), xl(t);
+					Vc(4, t, t.return), xl(t);
 					break;
 				case 1:
-					Kc(t, t.return);
+					Gc(t, t.return);
 					var n = t.stateNode;
-					typeof n.componentWillUnmount == "function" && Wc(t, t.return, n), xl(t);
+					typeof n.componentWillUnmount == "function" && Uc(t, t.return, n), xl(t);
 					break;
 				case 27: pf(t.stateNode);
 				case 26:
 				case 5:
-					Kc(t, t.return), xl(t);
+					Gc(t, t.return), xl(t);
 					break;
 				case 22:
 					t.memoizedState === null && xl(t);
@@ -5216,7 +5216,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				case 0:
 				case 11:
 				case 15:
-					Sl(i, a, n), Vc(4, a);
+					Sl(i, a, n), Bc(4, a);
 					break;
 				case 1:
 					if (Sl(i, a, n), r = a, i = r.stateNode, typeof i.componentDidMount == "function") try {
@@ -5228,17 +5228,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						var s = r.stateNode;
 						try {
 							var c = i.shared.hiddenCallbacks;
-							if (c !== null) for (i.shared.hiddenCallbacks = null, i = 0; i < c.length; i++) Ya(c[i], s);
+							if (c !== null) for (i.shared.hiddenCallbacks = null, i = 0; i < c.length; i++) Ka(c[i], s);
 						} catch (e) {
 							Z(r, r.return, e);
 						}
 					}
-					n && o & 64 && Uc(a), Gc(a, a.return);
+					n && o & 64 && Hc(a), Wc(a, a.return);
 					break;
-				case 27: $c(a);
+				case 27: Qc(a);
 				case 26:
 				case 5:
-					Sl(i, a, n), n && r === null && o & 4 && qc(a), Gc(a, a.return);
+					Sl(i, a, n), n && r === null && o & 4 && Kc(a), Wc(a, a.return);
 					break;
 				case 12:
 					Sl(i, a, n);
@@ -5250,7 +5250,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					Sl(i, a, n), n && o & 4 && fl(i, a);
 					break;
 				case 22:
-					a.memoizedState === null && Sl(i, a, n), Gc(a, a.return);
+					a.memoizedState === null && Sl(i, a, n), Wc(a, a.return);
 					break;
 				case 30: break;
 				default: Sl(i, a, n);
@@ -5274,7 +5274,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 0:
 			case 11:
 			case 15:
-				Tl(e, t, n, r), i & 2048 && Vc(9, t);
+				Tl(e, t, n, r), i & 2048 && Bc(9, t);
 				break;
 			case 1:
 				Tl(e, t, n, r);
@@ -5316,7 +5316,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				case 0:
 				case 11:
 				case 15:
-					Dl(a, o, s, c, i), Vc(8, o);
+					Dl(a, o, s, c, i), Bc(8, o);
 					break;
 				case 23: break;
 				case 22:
@@ -5383,7 +5383,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (e.flags & 16) {
 			if (t !== null) for (var n = 0; n < t.length; n++) {
 				var r = t[n];
-				il = r, Il(r, e);
+				rl = r, Il(r, e);
 			}
 			Ml(e);
 		}
@@ -5394,7 +5394,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case 0:
 			case 11:
 			case 15:
-				Nl(e), e.flags & 2048 && Hc(9, e, e.return);
+				Nl(e), e.flags & 2048 && Vc(9, e, e.return);
 				break;
 			case 3:
 				Nl(e);
@@ -5414,7 +5414,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (e.flags & 16) {
 			if (t !== null) for (var n = 0; n < t.length; n++) {
 				var r = t[n];
-				il = r, Il(r, e);
+				rl = r, Il(r, e);
 			}
 			Ml(e);
 		}
@@ -5423,7 +5423,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				case 0:
 				case 11:
 				case 15:
-					Hc(8, t, t.return), Fl(t);
+					Vc(8, t, t.return), Fl(t);
 					break;
 				case 22:
 					n = t.stateNode, n._visibility & 2 && (n._visibility &= -3, Fl(t));
@@ -5434,13 +5434,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function Il(e, t) {
-		for (; il !== null;) {
-			var n = il;
+		for (; rl !== null;) {
+			var n = rl;
 			switch (n.tag) {
 				case 0:
 				case 11:
 				case 15:
-					Hc(8, n, t);
+					Vc(8, n, t);
 					break;
 				case 23:
 				case 22:
@@ -5451,29 +5451,29 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					break;
 				case 24: ca(n.memoizedState.cache);
 			}
-			if (r = n.child, r !== null) r.return = n, il = r;
-			else a: for (n = e; il !== null;) {
-				r = il;
+			if (r = n.child, r !== null) r.return = n, rl = r;
+			else a: for (n = e; rl !== null;) {
+				r = rl;
 				var i = r.sibling, a = r.return;
-				if (sl(r), r === n) {
-					il = null;
+				if (ol(r), r === n) {
+					rl = null;
 					break a;
 				}
 				if (i !== null) {
-					i.return = a, il = i;
+					i.return = a, rl = i;
 					break a;
 				}
-				il = a;
+				rl = a;
 			}
 		}
 	}
 	var Ll = {
 		getCacheForType: function(e) {
-			var t = na(z), n = t.data.get(e);
+			var t = R(z), n = t.data.get(e);
 			return n === void 0 && (n = e(), t.data.set(e, n)), n;
 		},
 		cacheSignal: function() {
-			return na(z).controller.signal;
+			return R(z).controller.signal;
 		}
 	}, Rl = typeof WeakMap == "function" ? WeakMap : Map, K = 0, q = null, J = null, Y = 0, X = 0, zl = null, Bl = !1, Vl = !1, Hl = !1, Ul = 0, Wl = 0, Gl = 0, Kl = 0, ql = 0, Jl = 0, Yl = 0, Xl = null, Zl = null, Ql = !1, $l = 0, eu = 0, tu = Infinity, nu = null, ru = null, iu = 0, au = null, ou = null, su = 0, cu = 0, lu = null, uu = null, du = 0, fu = null;
 	function pu() {
@@ -5486,7 +5486,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				Ye <<= 1, !(Ye & 3932160) && (Ye = 262144), Jl = e;
 			} else Jl = 536870912;
 		}
-		return e = no.current, e !== null && (e.flags |= 32), Jl;
+		return e = $a.current, e !== null && (e.flags |= 32), Jl;
 	}
 	function hu(e, t, n) {
 		(e === q && (X === 2 || X === 9) || e.cancelPendingCommit !== null) && (Su(e, 0), yu(e, Y, Jl, !1)), rt(e, n), (!(K & 2) || e !== q) && (e === q && (!(K & 2) && (Kl |= n), Wl === 4 && yu(e, Y, Jl, !1)), rd(e));
@@ -5564,7 +5564,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				suspenseyImages: [],
 				waitingForImages: !0,
 				waitingForViewTransition: !1,
-				unsuspend: on
+				unsuspend: sn
 			}, jl(t, a, d);
 			var m = (a & 62914560) === a ? $l - Me() : (a & 4194048) === a ? eu - Me() : 0;
 			if (m = qf(d, m), m !== null) {
@@ -5581,7 +5581,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				var i = n[r], a = i.getSnapshot;
 				i = i.value;
 				try {
-					if (!Tr(a(), i)) return !1;
+					if (!Er(a(), i)) return !1;
 				} catch {
 					return !1;
 				}
@@ -5612,38 +5612,38 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function xu() {
 		if (J !== null) {
 			if (X === 0) var e = J.return;
-			else e = J, Yi = Ji = null, Oo(e), ja = null, Ma = 0, e = J;
-			for (; e !== null;) Bc(e.alternate, e), e = e.return;
+			else e = J, Yi = Ji = null, Eo(e), Oa = null, ka = 0, e = J;
+			for (; e !== null;) zc(e.alternate, e), e = e.return;
 			J = null;
 		}
 	}
 	function Su(e, t) {
 		var n = e.timeoutHandle;
-		n !== -1 && (e.timeoutHandle = -1, qd(n)), n = e.cancelPendingCommit, n !== null && (e.cancelPendingCommit = null, n()), su = 0, xu(), q = e, J = n = pi(e.current, null), Y = t, X = 0, zl = null, Bl = !1, Vl = $e(e, t), Hl = !1, Yl = Jl = ql = Kl = Gl = Wl = 0, Zl = Xl = null, Ql = !1, t & 8 && (t |= t & 32);
+		n !== -1 && (e.timeoutHandle = -1, qd(n)), n = e.cancelPendingCommit, n !== null && (e.cancelPendingCommit = null, n()), su = 0, xu(), q = e, J = n = mi(e.current, null), Y = t, X = 0, zl = null, Bl = !1, Vl = $e(e, t), Hl = !1, Yl = Jl = ql = Kl = Gl = Wl = 0, Zl = Xl = null, Ql = !1, t & 8 && (t |= t & 32);
 		var r = e.entangledLanes;
 		if (r !== 0) for (e = e.entanglements, r &= t; 0 < r;) {
 			var i = 31 - We(r), a = 1 << i;
 			t |= e[i], r &= ~a;
 		}
-		return Ul = t, ri(), n;
+		return Ul = t, ii(), n;
 	}
 	function Cu(e, t) {
-		V = null, k.H = Rs, t === xa || t === Ca ? (t = ka(), X = 3) : t === Sa ? (t = ka(), X = 4) : X = t === nc ? 8 : typeof t == "object" && t && typeof t.then == "function" ? 6 : 1, zl = t, J === null && (Wl = 1, Xs(e, xi(t, e.current)));
+		W = null, k.H = Is, t === va || t === ba ? (t = Ea(), X = 3) : t === ya ? (t = Ea(), X = 4) : X = t === ec ? 8 : typeof t == "object" && t && typeof t.then == "function" ? 6 : 1, zl = t, J === null && (Wl = 1, Js(e, Si(t, e.current)));
 	}
 	function wu() {
-		var e = no.current;
-		return e === null ? !0 : (Y & 4194048) === Y ? ro === null : (Y & 62914560) === Y || Y & 536870912 ? e === ro : !1;
+		var e = $a.current;
+		return e === null ? !0 : (Y & 4194048) === Y ? eo === null : (Y & 62914560) === Y || Y & 536870912 ? e === eo : !1;
 	}
 	function Tu() {
 		var e = k.H;
-		return k.H = Rs, e === null ? Rs : e;
+		return k.H = Is, e === null ? Is : e;
 	}
 	function Eu() {
 		var e = k.A;
 		return k.A = Ll, e;
 	}
 	function Du() {
-		Wl = 4, Bl || (Y & 4194048) !== Y && no.current !== null || (Vl = !0), !(Gl & 134217727) && !(Kl & 134217727) || q === null || yu(q, Y, Jl, !1);
+		Wl = 4, Bl || (Y & 4194048) !== Y && $a.current !== null || (Vl = !0), !(Gl & 134217727) && !(Kl & 134217727) || q === null || yu(q, Y, Jl, !1);
 	}
 	function Ou(e, t, n) {
 		var r = K;
@@ -5663,7 +5663,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case 2:
 						case 9:
 						case 6:
-							no.current === null && (t = !0);
+							$a.current === null && (t = !0);
 							var l = X;
 							if (X = 0, zl = null, Pu(e, s, c, l), n && Vl) {
 								o = 0;
@@ -5679,7 +5679,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				Cu(e, t);
 			}
 		while (1);
-		return t && e.shellSuspendCounter++, Yi = Ji = null, K = r, k.H = i, k.A = a, J === null && (q = null, Y = 0, ri()), o;
+		return t && e.shellSuspendCounter++, Yi = Ji = null, K = r, k.H = i, k.A = a, J === null && (q = null, Y = 0, ii()), o;
 	}
 	function ku() {
 		for (; J !== null;) Mu(J);
@@ -5700,7 +5700,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							break;
 						case 2:
 						case 9:
-							if (Ta(o)) {
+							if (Sa(o)) {
 								X = 0, zl = null, Nu(t);
 								break;
 							}
@@ -5715,7 +5715,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							X = 5;
 							break a;
 						case 7:
-							Ta(o) ? (X = 0, zl = null, Nu(t)) : (X = 0, zl = null, Pu(e, t, o, 7));
+							Sa(o) ? (X = 0, zl = null, Nu(t)) : (X = 0, zl = null, Pu(e, t, o, 7));
 							break;
 						case 5:
 							var s = null;
@@ -5752,13 +5752,13 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				Cu(e, t);
 			}
 		while (1);
-		return Yi = Ji = null, k.H = r, k.A = a, K = n, J === null ? (q = null, Y = 0, ri(), Wl) : 0;
+		return Yi = Ji = null, k.H = r, k.A = a, K = n, J === null ? (q = null, Y = 0, ii(), Wl) : 0;
 	}
 	function ju() {
 		for (; J !== null && !Ae();) Mu(J);
 	}
 	function Mu(e) {
-		var t = Mc(e.alternate, e, Ul);
+		var t = Ac(e.alternate, e, Ul);
 		e.memoizedProps = e.pendingProps, t === null ? Fu(e) : J = t;
 	}
 	function Nu(e) {
@@ -5766,30 +5766,30 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		switch (t.tag) {
 			case 15:
 			case 0:
-				t = gc(n, t, t.pendingProps, t.type, void 0, Y);
+				t = mc(n, t, t.pendingProps, t.type, void 0, Y);
 				break;
 			case 11:
-				t = gc(n, t, t.pendingProps, t.type.render, t.ref, Y);
+				t = mc(n, t, t.pendingProps, t.type.render, t.ref, Y);
 				break;
-			case 5: Oo(t);
-			default: Bc(n, t), t = J = mi(t, Ul), t = Mc(n, t, Ul);
+			case 5: Eo(t);
+			default: zc(n, t), t = J = hi(t, Ul), t = Ac(n, t, Ul);
 		}
 		e.memoizedProps = e.pendingProps, t === null ? Fu(e) : J = t;
 	}
 	function Pu(e, t, n, r) {
-		Yi = Ji = null, Oo(t), ja = null, Ma = 0;
+		Yi = Ji = null, Eo(t), Oa = null, ka = 0;
 		var i = t.return;
 		try {
-			if (tc(e, i, t, n, Y)) {
-				Wl = 1, Xs(e, xi(n, e.current)), J = null;
+			if ($s(e, i, t, n, Y)) {
+				Wl = 1, Js(e, Si(n, e.current)), J = null;
 				return;
 			}
 		} catch (t) {
 			if (i !== null) throw J = i, t;
-			Wl = 1, Xs(e, xi(n, e.current)), J = null;
+			Wl = 1, Js(e, Si(n, e.current)), J = null;
 			return;
 		}
-		t.flags & 32768 ? (L || r === 1 ? e = !0 : Vl || Y & 536870912 ? e = !1 : (Bl = e = !0, (r === 2 || r === 9 || r === 3 || r === 6) && (r = no.current, r !== null && r.tag === 13 && (r.flags |= 16384))), Iu(t, e)) : Fu(t);
+		t.flags & 32768 ? (L || r === 1 ? e = !0 : Vl || Y & 536870912 ? e = !1 : (Bl = e = !0, (r === 2 || r === 9 || r === 3 || r === 6) && (r = $a.current, r !== null && r.tag === 13 && (r.flags |= 16384))), Iu(t, e)) : Fu(t);
 	}
 	function Fu(e) {
 		var t = e;
@@ -5799,7 +5799,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				return;
 			}
 			e = t.return;
-			var n = Rc(t.alternate, t, Ul);
+			var n = Lc(t.alternate, t, Ul);
 			if (n !== null) {
 				J = n;
 				return;
@@ -5814,7 +5814,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function Iu(e, t) {
 		do {
-			var n = zc(e.alternate, e);
+			var n = Rc(e.alternate, e);
 			if (n !== null) {
 				n.flags &= 32767, J = n;
 				return;
@@ -5835,12 +5835,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (K & 6) throw Error(i(327));
 		if (t !== null) {
 			if (t === e.current) throw Error(i(177));
-			if (o = t.lanes | t.childLanes, o |= ni, it(e, n, o, s, c, l), e === q && (J = q = null, Y = 0), ou = t, au = e, su = n, cu = o, lu = a, uu = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Xu(Ie, function() {
+			if (o = t.lanes | t.childLanes, o |= ri, it(e, n, o, s, c, l), e === q && (J = q = null, Y = 0), ou = t, au = e, su = n, cu = o, lu = a, uu = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Xu(Ie, function() {
 				return Uu(), null;
 			})) : (e.callbackNode = null, e.callbackPriority = 0), r = !!(t.flags & 13878), t.subtreeFlags & 13878 || r) {
 				r = k.T, k.T = null, a = A.p, A.p = 2, s = K, K |= 4;
 				try {
-					al(e, t, n);
+					il(e, t, n);
 				} finally {
 					K = s, A.p = a, k.T = r;
 				}
@@ -5860,9 +5860,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				K |= 4;
 				try {
 					_l(t, e);
-					var a = zd, o = Ar(e.containerInfo), s = a.focusedElem, c = a.selectionRange;
-					if (o !== s && s && s.ownerDocument && kr(s.ownerDocument.documentElement, s)) {
-						if (c !== null && jr(s)) {
+					var a = zd, o = jr(e.containerInfo), s = a.focusedElem, c = a.selectionRange;
+					if (o !== s && s && s.ownerDocument && Ar(s.ownerDocument.documentElement, s)) {
+						if (c !== null && Mr(s)) {
 							var l = c.start, u = c.end;
 							if (u === void 0 && (u = l), "selectionStart" in s) s.selectionStart = l, s.selectionEnd = Math.min(u, s.value.length);
 							else {
@@ -5870,7 +5870,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								if (f.getSelection) {
 									var p = f.getSelection(), m = s.textContent.length, h = Math.min(c.start, m), g = c.end === void 0 ? h : Math.min(c.end, m);
 									!p.extend && h > g && (o = g, g = h, h = o);
-									var _ = Or(s, h), v = Or(s, g);
+									var _ = kr(s, h), v = kr(s, g);
 									if (_ && v && (p.rangeCount !== 1 || p.anchorNode !== _.node || p.anchorOffset !== _.offset || p.focusNode !== v.node || p.focusOffset !== v.offset)) {
 										var y = d.createRange();
 										y.setStart(_.node, _.offset), p.removeAllRanges(), h > g ? (p.addRange(y), p.extend(v.node, v.offset)) : (y.setEnd(v.node, v.offset), p.addRange(y));
@@ -5907,7 +5907,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				var i = K;
 				K |= 4;
 				try {
-					ol(e, t.alternate, t);
+					al(e, t.alternate, t);
 				} finally {
 					K = i, A.p = r, k.T = n;
 				}
@@ -5963,7 +5963,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function Wu(e, t, n) {
-		t = xi(n, t), t = Qs(e.stateNode, t, 2), e = Ua(e, t, 2), e !== null && (rt(e, 2), rd(e));
+		t = Si(n, t), t = Xs(e.stateNode, t, 2), e = Ba(e, t, 2), e !== null && (rt(e, 2), rd(e));
 	}
 	function Z(e, t, n) {
 		if (e.tag === 3) Wu(e, e, n);
@@ -5975,7 +5975,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			if (t.tag === 1) {
 				var r = t.stateNode;
 				if (typeof t.type.getDerivedStateFromError == "function" || typeof r.componentDidCatch == "function" && (ru === null || !ru.has(r))) {
-					e = xi(n, e), n = $s(2), r = Ua(t, n, 2), r !== null && (ec(n, r, t, e), rt(r, 2), rd(r));
+					e = Si(n, e), n = Zs(2), r = Ba(t, n, 2), r !== null && (Qs(n, r, t, e), rt(r, 2), rd(r));
 					break;
 				}
 			}
@@ -5996,7 +5996,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		r !== null && r.delete(t), e.pingedLanes |= e.suspendedLanes & n, e.warmLanes &= ~n, q === e && (Y & n) === n && (Wl === 4 || Wl === 3 && (Y & 62914560) === Y && 300 > Me() - $l ? !(K & 2) && Su(e, 0) : ql |= n, Yl === Y && (Yl = 0)), rd(e);
 	}
 	function qu(e, t) {
-		t === 0 && (t = tt()), e = oi(e, t), e !== null && (rt(e, t), rd(e));
+		t === 0 && (t = tt()), e = si(e, t), e !== null && (rt(e, t), rd(e));
 	}
 	function Ju(e) {
 		var t = e.memoizedState, n = 0;
@@ -6111,7 +6111,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		return nd;
 	}
 	function fd(e) {
-		return e == null || typeof e == "symbol" || typeof e == "boolean" ? null : typeof e == "function" ? e : an("" + e);
+		return e == null || typeof e == "symbol" || typeof e == "boolean" ? null : typeof e == "function" ? e : on("" + e);
 	}
 	function pd(e, t) {
 		var n = t.ownerDocument.createElement("input");
@@ -6121,7 +6121,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (t === "submit" && n && n.stateNode === i) {
 			var a = fd((i[mt] || null).action), o = r.submitter;
 			o && (t = (t = o[mt] || null) ? fd(t.formAction) : o.getAttribute("formAction"), t !== null && (a = t, o = null));
-			var s = new Dn("action", "action", null, r, i);
+			var s = new On("action", "action", null, r, i);
 			e.push({
 				event: s,
 				listeners: [{
@@ -6130,14 +6130,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						if (r.defaultPrevented) {
 							if (nd !== 0) {
 								var e = o ? pd(i, o) : new FormData(i);
-								ws(n, {
+								Ss(n, {
 									pending: !0,
 									data: e,
 									method: i.method,
 									action: a
 								}, null, e);
 							}
-						} else typeof a == "function" && (s.preventDefault(), e = o ? pd(i, o) : new FormData(i), ws(n, {
+						} else typeof a == "function" && (s.preventDefault(), e = o ? pd(i, o) : new FormData(i), Ss(n, {
 							pending: !0,
 							data: e,
 							method: i.method,
@@ -6149,16 +6149,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			});
 		}
 	}
-	for (var hd = 0; hd < Zr.length; hd++) {
-		var gd = Zr[hd];
-		Qr(gd.toLowerCase(), "on" + (gd[0].toUpperCase() + gd.slice(1)));
+	for (var hd = 0; hd < Qr.length; hd++) {
+		var gd = Qr[hd];
+		$r(gd.toLowerCase(), "on" + (gd[0].toUpperCase() + gd.slice(1)));
 	}
-	Qr(Ur, "onAnimationEnd"), Qr(Wr, "onAnimationIteration"), Qr(Gr, "onAnimationStart"), Qr("dblclick", "onDoubleClick"), Qr("focusin", "onFocus"), Qr("focusout", "onBlur"), Qr(Kr, "onTransitionRun"), Qr(qr, "onTransitionStart"), Qr(Jr, "onTransitionCancel"), Qr(Yr, "onTransitionEnd"), kt("onMouseEnter", ["mouseout", "mouseover"]), kt("onMouseLeave", ["mouseout", "mouseover"]), kt("onPointerEnter", ["pointerout", "pointerover"]), kt("onPointerLeave", ["pointerout", "pointerover"]), Ot("onChange", "change click focusin focusout input keydown keyup selectionchange".split(" ")), Ot("onSelect", "focusout contextmenu dragend focusin keydown keyup mousedown mouseup selectionchange".split(" ")), Ot("onBeforeInput", [
+	$r(Wr, "onAnimationEnd"), $r(Gr, "onAnimationIteration"), $r(Kr, "onAnimationStart"), $r("dblclick", "onDoubleClick"), $r("focusin", "onFocus"), $r("focusout", "onBlur"), $r(qr, "onTransitionRun"), $r(Jr, "onTransitionStart"), $r(Yr, "onTransitionCancel"), $r(Xr, "onTransitionEnd"), At("onMouseEnter", ["mouseout", "mouseover"]), At("onMouseLeave", ["mouseout", "mouseover"]), At("onPointerEnter", ["pointerout", "pointerover"]), At("onPointerLeave", ["pointerout", "pointerover"]), kt("onChange", "change click focusin focusout input keydown keyup selectionchange".split(" ")), kt("onSelect", "focusout contextmenu dragend focusin keydown keyup mousedown mouseup selectionchange".split(" ")), kt("onBeforeInput", [
 		"compositionend",
 		"keypress",
 		"textInput",
 		"paste"
-	]), Ot("onCompositionEnd", "compositionend focusout keydown keypress keyup mousedown".split(" ")), Ot("onCompositionStart", "compositionstart focusout keydown keypress keyup mousedown".split(" ")), Ot("onCompositionUpdate", "compositionupdate focusout keydown keypress keyup mousedown".split(" "));
+	]), kt("onCompositionEnd", "compositionend focusout keydown keypress keyup mousedown".split(" ")), kt("onCompositionStart", "compositionstart focusout keydown keypress keyup mousedown".split(" ")), kt("onCompositionUpdate", "compositionupdate focusout keydown keypress keyup mousedown".split(" "));
 	var _d = "abort canplay canplaythrough durationchange emptied encrypted ended error loadeddata loadedmetadata loadstart pause play playing progress ratechange resize seeked seeking stalled suspend timeupdate volumechange waiting".split(" "), vd = new Set("beforetoggle cancel close invalid load scroll scrollend toggle".split(" ").concat(_d));
 	function yd(e, t) {
 		t = !!(t & 4);
@@ -6174,7 +6174,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					try {
 						a(i);
 					} catch (e) {
-						$r(e);
+						ei(e);
 					}
 					i.currentTarget = null, a = c;
 				}
@@ -6184,7 +6184,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					try {
 						a(i);
 					} catch (e) {
-						$r(e);
+						ei(e);
 					}
 					i.currentTarget = null, a = c;
 				}
@@ -6204,7 +6204,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	var xd = "_reactListening" + Math.random().toString(36).slice(2);
 	function Sd(e) {
 		if (!e[xd]) {
-			e[xd] = !0, Et.forEach(function(t) {
+			e[xd] = !0, Dt.forEach(function(t) {
 				t !== "selectionchange" && (vd.has(t) || bd(t, !1, e), bd(t, !0, e));
 			});
 			var t = e.nodeType === 9 ? e : e.ownerDocument;
@@ -6221,7 +6221,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				break;
 			default: i = up;
 		}
-		n = i.bind(null, t, n, e), i = void 0, !gn || t !== "touchstart" && t !== "touchmove" && t !== "wheel" || (i = !0), r ? i === void 0 ? e.addEventListener(t, n, !0) : e.addEventListener(t, n, {
+		n = i.bind(null, t, n, e), i = void 0, !_n || t !== "touchstart" && t !== "touchmove" && t !== "wheel" || (i = !0), r ? i === void 0 ? e.addEventListener(t, n, !0) : e.addEventListener(t, n, {
 			capture: !0,
 			passive: i
 		}) : i === void 0 ? e.addEventListener(t, n, !1) : e.addEventListener(t, n, { passive: i });
@@ -6250,27 +6250,27 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			r = r.return;
 		}
-		pn(function() {
-			var r = a, i = cn(n), s = [];
+		mn(function() {
+			var r = a, i = ln(n), s = [];
 			a: {
-				var c = Xr.get(e);
+				var c = Zr.get(e);
 				if (c !== void 0) {
-					var l = Dn, u = e;
+					var l = On, u = e;
 					switch (e) {
-						case "keypress": if (Sn(n) === 0) break a;
+						case "keypress": if (Cn(n) === 0) break a;
 						case "keydown":
 						case "keyup":
-							l = Wn;
+							l = Gn;
 							break;
 						case "focusin":
-							u = "focus", l = N;
+							u = "focus", l = M;
 							break;
 						case "focusout":
-							u = "blur", l = N;
+							u = "blur", l = M;
 							break;
 						case "beforeblur":
 						case "afterblur":
-							l = N;
+							l = M;
 							break;
 						case "click": if (n.button === 2) break a;
 						case "auxclick":
@@ -6281,7 +6281,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "mouseout":
 						case "mouseover":
 						case "contextmenu":
-							l = Pn;
+							l = Fn;
 							break;
 						case "drag":
 						case "dragend":
@@ -6291,33 +6291,33 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "dragover":
 						case "dragstart":
 						case "drop":
-							l = Fn;
+							l = In;
 							break;
 						case "touchcancel":
 						case "touchend":
 						case "touchmove":
 						case "touchstart":
-							l = Kn;
+							l = qn;
 							break;
-						case Ur:
 						case Wr:
 						case Gr:
-							l = In;
+						case Kr:
+							l = Ln;
 							break;
-						case Yr:
-							l = qn;
+						case Xr:
+							l = Jn;
 							break;
 						case "scroll":
 						case "scrollend":
-							l = kn;
+							l = An;
 							break;
 						case "wheel":
-							l = P;
+							l = N;
 							break;
 						case "copy":
 						case "cut":
 						case "paste":
-							l = Ln;
+							l = Rn;
 							break;
 						case "gotpointercapture":
 						case "lostpointercapture":
@@ -6327,16 +6327,16 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "pointerout":
 						case "pointerover":
 						case "pointerup":
-							l = Gn;
+							l = Kn;
 							break;
 						case "toggle":
-						case "beforetoggle": l = Jn;
+						case "beforetoggle": l = Yn;
 					}
 					var d = !!(t & 4), f = !d && (e === "scroll" || e === "scrollend"), p = d ? c === null ? null : c + "Capture" : c;
 					d = [];
 					for (var m = r, h; m !== null;) {
 						var g = m;
-						if (h = g.stateNode, g = g.tag, g !== 5 && g !== 26 && g !== 27 || h === null || p === null || (g = mn(m, p), g != null && d.push(Td(m, g, h))), f) break;
+						if (h = g.stateNode, g = g.tag, g !== 5 && g !== 26 && g !== 27 || h === null || p === null || (g = hn(m, p), g != null && d.push(Td(m, g, h))), f) break;
 						m = m.return;
 					}
 					0 < d.length && (c = new l(c, u, null, n, i), s.push({
@@ -6347,9 +6347,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			if (!(t & 7)) {
 				a: {
-					if (c = e === "mouseover" || e === "pointerover", l = e === "mouseout" || e === "pointerout", c && n !== sn && (u = n.relatedTarget || n.fromElement) && (St(u) || u[ht])) break a;
+					if (c = e === "mouseover" || e === "pointerover", l = e === "mouseout" || e === "pointerout", c && n !== cn && (u = n.relatedTarget || n.fromElement) && (St(u) || u[ht])) break a;
 					if ((l || c) && (c = i.window === i ? i : (c = i.ownerDocument) ? c.defaultView || c.parentWindow : window, l ? (u = n.relatedTarget || n.toElement, l = r, u = u ? St(u) : null, u !== null && (f = o(u), d = u.tag, u !== f || d !== 5 && d !== 27 && d !== 6) && (u = null)) : (l = null, u = r), l !== u)) {
-						if (d = Pn, g = "onMouseLeave", p = "onMouseEnter", m = "mouse", (e === "pointerout" || e === "pointerover") && (d = Gn, g = "onPointerLeave", p = "onPointerEnter", m = "pointer"), f = l == null ? c : wt(l), h = u == null ? c : wt(u), c = new d(g, m + "leave", l, n, i), c.target = f, c.relatedTarget = h, g = null, St(i) === r && (d = new d(p, m + "enter", u, n, i), d.target = h, d.relatedTarget = f, g = d), f = g, l && u) b: {
+						if (d = Fn, g = "onMouseLeave", p = "onMouseEnter", m = "mouse", (e === "pointerout" || e === "pointerover") && (d = Kn, g = "onPointerLeave", p = "onPointerEnter", m = "pointer"), f = l == null ? c : wt(l), h = u == null ? c : wt(u), c = new d(g, m + "leave", l, n, i), c.target = f, c.relatedTarget = h, g = null, St(i) === r && (d = new d(p, m + "enter", u, n, i), d.target = h, d.relatedTarget = f, g = d), f = g, l && u) b: {
 							for (d = Dd, p = l, m = u, h = 0, g = p; g; g = d(g)) h++;
 							g = 0;
 							for (var _ = m; _; _ = d(_)) g++;
@@ -6369,41 +6369,41 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					}
 				}
 				a: {
-					if (c = r ? wt(r) : window, l = c.nodeName && c.nodeName.toLowerCase(), l === "select" || l === "input" && c.type === "file") var v = pr;
-					else if (cr(c)) {
-						if (mr) v = Cr;
+					if (c = r ? wt(r) : window, l = c.nodeName && c.nodeName.toLowerCase(), l === "select" || l === "input" && c.type === "file") var v = mr;
+					else if (lr(c)) {
+						if (hr) v = wr;
 						else {
-							v = xr;
-							var y = br;
+							v = Sr;
+							var y = xr;
 						}
-					} else l = c.nodeName, !l || l.toLowerCase() !== "input" || c.type !== "checkbox" && c.type !== "radio" ? r && tn(r.elementType) && (v = pr) : v = Sr;
+					} else l = c.nodeName, !l || l.toLowerCase() !== "input" || c.type !== "checkbox" && c.type !== "radio" ? r && nn(r.elementType) && (v = mr) : v = Cr;
 					if (v && (v = v(e, r))) {
-						lr(s, v, n, i);
+						ur(s, v, n, i);
 						break a;
 					}
-					y && y(e, c, r), e === "focusout" && r && c.type === "number" && r.memoizedProps.value != null && qt(c, "number", c.value);
+					y && y(e, c, r), e === "focusout" && r && c.type === "number" && r.memoizedProps.value != null && Jt(c, "number", c.value);
 				}
 				switch (y = r ? wt(r) : window, e) {
 					case "focusin":
-						(cr(y) || y.contentEditable === "true") && (Nr = y, Pr = r, Fr = null);
+						(lr(y) || y.contentEditable === "true") && (Pr = y, Fr = r, Ir = null);
 						break;
 					case "focusout":
-						Fr = Pr = Nr = null;
+						Ir = Fr = Pr = null;
 						break;
 					case "mousedown":
-						Ir = !0;
+						Lr = !0;
 						break;
 					case "contextmenu":
 					case "mouseup":
 					case "dragend":
-						Ir = !1, Lr(s, n, i);
+						Lr = !1, Rr(s, n, i);
 						break;
-					case "selectionchange": if (Mr) break;
+					case "selectionchange": if (Nr) break;
 					case "keydown":
-					case "keyup": Lr(s, n, i);
+					case "keyup": Rr(s, n, i);
 				}
 				var b;
-				if (Xn) b: {
+				if (Zn) b: {
 					switch (e) {
 						case "compositionstart":
 							var x = "onCompositionStart";
@@ -6417,11 +6417,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					}
 					x = void 0;
 				}
-				else ir ? nr(e, n) && (x = "onCompositionEnd") : e === "keydown" && n.keyCode === 229 && (x = "onCompositionStart");
-				x && ($n && n.locale !== "ko" && (ir || x !== "onCompositionStart" ? x === "onCompositionEnd" && ir && (b = xn()) : (vn = i, yn = "value" in vn ? vn.value : vn.textContent, ir = !0)), y = Ed(r, x), 0 < y.length && (x = new Rn(x, e, null, n, i), s.push({
+				else ar ? rr(e, n) && (x = "onCompositionEnd") : e === "keydown" && n.keyCode === 229 && (x = "onCompositionStart");
+				x && (er && n.locale !== "ko" && (ar || x !== "onCompositionStart" ? x === "onCompositionEnd" && ar && (b = Sn()) : (yn = i, bn = "value" in yn ? yn.value : yn.textContent, ar = !0)), y = Ed(r, x), 0 < y.length && (x = new zn(x, e, null, n, i), s.push({
 					event: x,
 					listeners: y
-				}), b ? x.data = b : (b = rr(n), b !== null && (x.data = b)))), (b = Qn ? ar(e, n) : or(e, n)) && (x = Ed(r, "onBeforeInput"), 0 < x.length && (y = new Rn("onBeforeInput", "beforeinput", null, n, i), s.push({
+				}), b ? x.data = b : (b = ir(n), b !== null && (x.data = b)))), (b = $n ? or(e, n) : sr(e, n)) && (x = Ed(r, "onBeforeInput"), 0 < x.length && (y = new zn("onBeforeInput", "beforeinput", null, n, i), s.push({
 					event: y,
 					listeners: x
 				}), y.data = b)), md(s, e, r, n, i);
@@ -6439,7 +6439,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function Ed(e, t) {
 		for (var n = t + "Capture", r = []; e !== null;) {
 			var i = e, a = i.stateNode;
-			if (i = i.tag, i !== 5 && i !== 26 && i !== 27 || a === null || (i = mn(e, n), i != null && r.unshift(Td(e, i, a)), i = mn(e, t), i != null && r.push(Td(e, i, a))), e.tag === 3) return r;
+			if (i = i.tag, i !== 5 && i !== 26 && i !== 27 || a === null || (i = hn(e, n), i != null && r.unshift(Td(e, i, a)), i = hn(e, t), i != null && r.push(Td(e, i, a))), e.tag === 3) return r;
 			e = e.return;
 		}
 		return [];
@@ -6455,7 +6455,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		for (var a = t._reactName, o = []; n !== null && n !== r;) {
 			var s = n, c = s.alternate, l = s.stateNode;
 			if (s = s.tag, c !== null && c === r) break;
-			s !== 5 && s !== 26 && s !== 27 || l === null || (c = l, i ? (l = mn(n, a), l != null && o.unshift(Td(n, l, c))) : i || (l = mn(n, a), l != null && o.push(Td(n, l, c)))), n = n.return;
+			s !== 5 && s !== 26 && s !== 27 || l === null || (c = l, i ? (l = hn(n, a), l != null && o.unshift(Td(n, l, c))) : i || (l = hn(n, a), l != null && o.push(Td(n, l, c)))), n = n.return;
 		}
 		o.length !== 0 && e.push({
 			event: t,
@@ -6472,26 +6472,26 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function $(e, t, n, r, a, o) {
 		switch (n) {
 			case "children":
-				typeof r == "string" ? t === "body" || t === "textarea" && r === "" || Zt(e, r) : (typeof r == "number" || typeof r == "bigint") && t !== "body" && Zt(e, "" + r);
+				typeof r == "string" ? t === "body" || t === "textarea" && r === "" || Qt(e, r) : (typeof r == "number" || typeof r == "bigint") && t !== "body" && Qt(e, "" + r);
 				break;
 			case "className":
-				Ft(e, "class", r);
+				It(e, "class", r);
 				break;
 			case "tabIndex":
-				Ft(e, "tabindex", r);
+				It(e, "tabindex", r);
 				break;
 			case "dir":
 			case "role":
 			case "viewBox":
 			case "width":
 			case "height":
-				Ft(e, n, r);
+				It(e, n, r);
 				break;
 			case "style":
-				en(e, r, o);
+				tn(e, r, o);
 				break;
 			case "data": if (t !== "object") {
-				Ft(e, "data", r);
+				It(e, "data", r);
 				break;
 			}
 			case "src":
@@ -6504,7 +6504,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					e.removeAttribute(n);
 					break;
 				}
-				r = an("" + r), e.setAttribute(n, r);
+				r = on("" + r), e.setAttribute(n, r);
 				break;
 			case "action":
 			case "formAction":
@@ -6516,10 +6516,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					e.removeAttribute(n);
 					break;
 				}
-				r = an("" + r), e.setAttribute(n, r);
+				r = on("" + r), e.setAttribute(n, r);
 				break;
 			case "onClick":
-				r != null && (e.onclick = on);
+				r != null && (e.onclick = sn);
 				break;
 			case "onScroll":
 				r != null && Q("scroll", e);
@@ -6554,7 +6554,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					e.removeAttribute("xlink:href");
 					break;
 				}
-				n = an("" + r), e.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", n);
+				n = on("" + r), e.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", n);
 				break;
 			case "contentEditable":
 			case "spellCheck":
@@ -6606,47 +6606,47 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				r == null || typeof r == "function" || typeof r == "symbol" || isNaN(r) ? e.removeAttribute(n) : e.setAttribute(n, r);
 				break;
 			case "popover":
-				Q("beforetoggle", e), Q("toggle", e), Pt(e, "popover", r);
+				Q("beforetoggle", e), Q("toggle", e), Ft(e, "popover", r);
 				break;
 			case "xlinkActuate":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:actuate", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:actuate", r);
 				break;
 			case "xlinkArcrole":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:arcrole", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:arcrole", r);
 				break;
 			case "xlinkRole":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:role", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:role", r);
 				break;
 			case "xlinkShow":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:show", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:show", r);
 				break;
 			case "xlinkTitle":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:title", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:title", r);
 				break;
 			case "xlinkType":
-				It(e, "http://www.w3.org/1999/xlink", "xlink:type", r);
+				Lt(e, "http://www.w3.org/1999/xlink", "xlink:type", r);
 				break;
 			case "xmlBase":
-				It(e, "http://www.w3.org/XML/1998/namespace", "xml:base", r);
+				Lt(e, "http://www.w3.org/XML/1998/namespace", "xml:base", r);
 				break;
 			case "xmlLang":
-				It(e, "http://www.w3.org/XML/1998/namespace", "xml:lang", r);
+				Lt(e, "http://www.w3.org/XML/1998/namespace", "xml:lang", r);
 				break;
 			case "xmlSpace":
-				It(e, "http://www.w3.org/XML/1998/namespace", "xml:space", r);
+				Lt(e, "http://www.w3.org/XML/1998/namespace", "xml:space", r);
 				break;
 			case "is":
-				Pt(e, "is", r);
+				Ft(e, "is", r);
 				break;
 			case "innerText":
 			case "textContent": break;
-			default: (!(2 < n.length) || n[0] !== "o" && n[0] !== "O" || n[1] !== "n" && n[1] !== "N") && (n = nn.get(n) || n, Pt(e, n, r));
+			default: (!(2 < n.length) || n[0] !== "o" && n[0] !== "O" || n[1] !== "n" && n[1] !== "N") && (n = rn.get(n) || n, Ft(e, n, r));
 		}
 	}
 	function Nd(e, t, n, r, a, o) {
 		switch (n) {
 			case "style":
-				en(e, r, o);
+				tn(e, r, o);
 				break;
 			case "dangerouslySetInnerHTML":
 				if (r != null) {
@@ -6658,7 +6658,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 				break;
 			case "children":
-				typeof r == "string" ? Zt(e, r) : (typeof r == "number" || typeof r == "bigint") && Zt(e, "" + r);
+				typeof r == "string" ? Qt(e, r) : (typeof r == "number" || typeof r == "bigint") && Qt(e, "" + r);
 				break;
 			case "onScroll":
 				r != null && Q("scroll", e);
@@ -6667,7 +6667,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				r != null && Q("scrollend", e);
 				break;
 			case "onClick":
-				r != null && (e.onclick = on);
+				r != null && (e.onclick = sn);
 				break;
 			case "suppressContentEditableWarning":
 			case "suppressHydrationWarning":
@@ -6675,12 +6675,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case "ref": break;
 			case "innerText":
 			case "textContent": break;
-			default: if (!Dt.hasOwnProperty(n)) a: {
+			default: if (!Ot.hasOwnProperty(n)) a: {
 				if (n[0] === "o" && n[1] === "n" && (a = n.endsWith("Capture"), t = n.slice(2, a ? n.length - 7 : void 0), o = e[mt] || null, o = o == null ? null : o[n], typeof o == "function" && e.removeEventListener(t, o, a), typeof r == "function")) {
 					typeof o != "function" && o !== null && (n in e ? e[n] = null : e.hasAttribute(n) && e.removeAttribute(n)), e.addEventListener(t, r, a);
 					break a;
 				}
-				n in e ? e[n] = r : !0 === r ? e.setAttribute(n, "") : Pt(e, n, r);
+				n in e ? e[n] = r : !0 === r ? e.setAttribute(n, "") : Ft(e, n, r);
 			}
 		}
 	}
@@ -6744,7 +6744,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						default: $(e, t, r, d, n, null);
 					}
 				}
-				Kt(e, o, c, l, u, s, a, !1);
+				qt(e, o, c, l, u, s, a, !1);
 				return;
 			case "select":
 				for (a in Q("invalid", e), r = s = o = null, n) if (n.hasOwnProperty(a) && (c = n[a], c != null)) switch (a) {
@@ -6757,7 +6757,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					case "multiple": r = c;
 					default: $(e, t, a, c, n, null);
 				}
-				t = o, n = s, e.multiple = !!r, t == null ? n != null && Jt(e, !!r, n, !0) : Jt(e, !!r, t, !1);
+				t = o, n = s, e.multiple = !!r, t == null ? n != null && Yt(e, !!r, n, !0) : Yt(e, !!r, t, !1);
 				return;
 			case "textarea":
 				for (s in Q("invalid", e), o = a = r = null, n) if (n.hasOwnProperty(s) && (c = n[s], c != null)) switch (s) {
@@ -6775,7 +6775,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						break;
 					default: $(e, t, s, c, n, null);
 				}
-				Xt(e, r, a, o);
+				Zt(e, r, a, o);
 				return;
 			case "option":
 				for (l in n) if (n.hasOwnProperty(l) && (r = n[l], r != null)) switch (l) {
@@ -6822,7 +6822,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					default: $(e, t, u, r, n, null);
 				}
 				return;
-			default: if (tn(t)) {
+			default: if (nn(t)) {
 				for (d in n) n.hasOwnProperty(d) && (r = n[d], r !== void 0 && Nd(e, t, d, r, n, void 0));
 				return;
 			}
@@ -6878,7 +6878,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						default: m !== f && $(e, t, p, m, r, f);
 					}
 				}
-				Gt(e, s, c, l, u, d, o, a);
+				Kt(e, s, c, l, u, d, o, a);
 				return;
 			case "select":
 				for (o in m = s = c = p = null, n) if (l = n[o], n.hasOwnProperty(o) && l != null) switch (o) {
@@ -6896,7 +6896,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					case "multiple": s = o;
 					default: o !== l && $(e, t, a, o, r, l);
 				}
-				t = c, n = s, r = m, p == null ? !!r != !!n && (t == null ? Jt(e, !!n, n ? [] : "", !1) : Jt(e, !!n, t, !0)) : Jt(e, !!n, p, !1);
+				t = c, n = s, r = m, p == null ? !!r != !!n && (t == null ? Yt(e, !!n, n ? [] : "", !1) : Yt(e, !!n, t, !0)) : Yt(e, !!n, p, !1);
 				return;
 			case "textarea":
 				for (c in m = p = null, n) if (a = n[c], n.hasOwnProperty(c) && a != null && !r.hasOwnProperty(c)) switch (c) {
@@ -6917,7 +6917,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						break;
 					default: a !== o && $(e, t, s, a, r, o);
 				}
-				Yt(e, p, m);
+				Xt(e, p, m);
 				return;
 			case "option":
 				for (var h in n) if (p = n[h], n.hasOwnProperty(h) && p != null && !r.hasOwnProperty(h)) switch (h) {
@@ -6957,7 +6957,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					default: $(e, t, u, p, r, m);
 				}
 				return;
-			default: if (tn(t)) {
+			default: if (nn(t)) {
 				for (var _ in n) p = n[_], n.hasOwnProperty(_) && p !== void 0 && !r.hasOwnProperty(_) && Nd(e, t, _, void 0, r, p);
 				for (d in r) p = r[d], m = n[d], !r.hasOwnProperty(d) || p === m || p === void 0 && m === void 0 || Nd(e, t, d, p, r, m);
 				return;
@@ -7225,18 +7225,18 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function yf(e) {
 		var t = Ct(e);
-		t !== null && t.tag === 5 && t.type === "form" ? Es(t) : _f.r(e);
+		t !== null && t.tag === 5 && t.type === "form" ? ws(t) : _f.r(e);
 	}
 	var bf = typeof document > "u" ? null : document;
 	function xf(e, t, n) {
 		var r = bf;
 		if (r && typeof t == "string" && t) {
-			var i = Wt(t);
+			var i = Gt(t);
 			i = "link[rel=\"" + e + "\"][href=\"" + i + "\"]", typeof n == "string" && (i += "[crossorigin=\"" + n + "\"]"), hf.has(i) || (hf.add(i), e = {
 				rel: e,
 				crossOrigin: n,
 				href: t
-			}, r.querySelector(i) === null && (t = r.createElement("link"), Pd(t, "link", e), M(t), r.head.appendChild(t)));
+			}, r.querySelector(i) === null && (t = r.createElement("link"), Pd(t, "link", e), Et(t), r.head.appendChild(t)));
 		}
 	}
 	function Sf(e) {
@@ -7249,8 +7249,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		_f.L(e, t, n);
 		var r = bf;
 		if (r && e && t) {
-			var i = "link[rel=\"preload\"][as=\"" + Wt(t) + "\"]";
-			t === "image" && n && n.imageSrcSet ? (i += "[imagesrcset=\"" + Wt(n.imageSrcSet) + "\"]", typeof n.imageSizes == "string" && (i += "[imagesizes=\"" + Wt(n.imageSizes) + "\"]")) : i += "[href=\"" + Wt(e) + "\"]";
+			var i = "link[rel=\"preload\"][as=\"" + Gt(t) + "\"]";
+			t === "image" && n && n.imageSrcSet ? (i += "[imagesrcset=\"" + Gt(n.imageSrcSet) + "\"]", typeof n.imageSizes == "string" && (i += "[imagesizes=\"" + Gt(n.imageSizes) + "\"]")) : i += "[href=\"" + Gt(e) + "\"]";
 			var a = i;
 			switch (t) {
 				case "style":
@@ -7262,14 +7262,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				rel: "preload",
 				href: t === "image" && n && n.imageSrcSet ? void 0 : e,
 				as: t
-			}, n), mf.set(a, e), r.querySelector(i) !== null || t === "style" && r.querySelector(jf(a)) || t === "script" && r.querySelector(Ff(a)) || (t = r.createElement("link"), Pd(t, "link", e), M(t), r.head.appendChild(t)));
+			}, n), mf.set(a, e), r.querySelector(i) !== null || t === "style" && r.querySelector(jf(a)) || t === "script" && r.querySelector(Ff(a)) || (t = r.createElement("link"), Pd(t, "link", e), Et(t), r.head.appendChild(t)));
 		}
 	}
 	function Tf(e, t) {
 		_f.m(e, t);
 		var n = bf;
 		if (n && e) {
-			var r = t && typeof t.as == "string" ? t.as : "script", i = "link[rel=\"modulepreload\"][as=\"" + Wt(r) + "\"][href=\"" + Wt(e) + "\"]", a = i;
+			var r = t && typeof t.as == "string" ? t.as : "script", i = "link[rel=\"modulepreload\"][as=\"" + Gt(r) + "\"][href=\"" + Gt(e) + "\"]", a = i;
 			switch (r) {
 				case "audioworklet":
 				case "paintworklet":
@@ -7290,7 +7290,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					case "worker":
 					case "script": if (n.querySelector(Ff(a))) return;
 				}
-				r = n.createElement("link"), Pd(r, "link", e), M(r), n.head.appendChild(r);
+				r = n.createElement("link"), Pd(r, "link", e), Et(r), n.head.appendChild(r);
 			}
 		}
 	}
@@ -7314,7 +7314,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						"data-precedence": t
 					}, n), (n = mf.get(a)) && Rf(e, n);
 					var c = o = r.createElement("link");
-					M(c), Pd(c, "link", e), c._p = new Promise(function(e, t) {
+					Et(c), Pd(c, "link", e), c._p = new Promise(function(e, t) {
 						c.onload = e, c.onerror = t;
 					}), c.addEventListener("load", function() {
 						s.loading |= 1;
@@ -7339,7 +7339,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			a || (a = n.querySelector(Ff(i)), a || (e = h({
 				src: e,
 				async: !0
-			}, t), (t = mf.get(i)) && zf(e, t), a = n.createElement("script"), M(a), Pd(a, "link", e), n.head.appendChild(a)), a = {
+			}, t), (t = mf.get(i)) && zf(e, t), a = n.createElement("script"), Et(a), Pd(a, "link", e), n.head.appendChild(a)), a = {
 				type: "script",
 				instance: a,
 				count: 1,
@@ -7356,7 +7356,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				src: e,
 				async: !0,
 				type: "module"
-			}, t), (t = mf.get(i)) && zf(e, t), a = n.createElement("script"), M(a), Pd(a, "link", e), n.head.appendChild(a)), a = {
+			}, t), (t = mf.get(i)) && zf(e, t), a = n.createElement("script"), Et(a), Pd(a, "link", e), n.head.appendChild(a)), a = {
 				type: "script",
 				instance: a,
 				count: 1,
@@ -7422,7 +7422,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function Af(e) {
-		return "href=\"" + Wt(e) + "\"";
+		return "href=\"" + Gt(e) + "\"";
 	}
 	function jf(e) {
 		return "link[rel=\"stylesheet\"][" + e + "]";
@@ -7438,10 +7438,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			return r.loading |= 1;
 		}), t.addEventListener("error", function() {
 			return r.loading |= 2;
-		}), Pd(t, "link", n), M(t), e.head.appendChild(t));
+		}), Pd(t, "link", n), Et(t), e.head.appendChild(t));
 	}
 	function Pf(e) {
-		return "[src=\"" + Wt(e) + "\"]";
+		return "[src=\"" + Gt(e) + "\"]";
 	}
 	function Ff(e) {
 		return "script[async]" + e;
@@ -7449,25 +7449,25 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function If(e, t, n) {
 		if (t.count++, t.instance === null) switch (t.type) {
 			case "style":
-				var r = e.querySelector("style[data-href~=\"" + Wt(n.href) + "\"]");
-				if (r) return t.instance = r, M(r), r;
+				var r = e.querySelector("style[data-href~=\"" + Gt(n.href) + "\"]");
+				if (r) return t.instance = r, Et(r), r;
 				var a = h({}, n, {
 					"data-href": n.href,
 					"data-precedence": n.precedence,
 					href: null,
 					precedence: null
 				});
-				return r = (e.ownerDocument || e).createElement("style"), M(r), Pd(r, "style", a), Lf(r, n.precedence, e), t.instance = r;
+				return r = (e.ownerDocument || e).createElement("style"), Et(r), Pd(r, "style", a), Lf(r, n.precedence, e), t.instance = r;
 			case "stylesheet":
 				a = Af(n.href);
 				var o = e.querySelector(jf(a));
-				if (o) return t.state.loading |= 4, t.instance = o, M(o), o;
-				r = Mf(n), (a = mf.get(a)) && Rf(r, a), o = (e.ownerDocument || e).createElement("link"), M(o);
+				if (o) return t.state.loading |= 4, t.instance = o, Et(o), o;
+				r = Mf(n), (a = mf.get(a)) && Rf(r, a), o = (e.ownerDocument || e).createElement("link"), Et(o);
 				var s = o;
 				return s._p = new Promise(function(e, t) {
 					s.onload = e, s.onerror = t;
 				}), Pd(o, "link", r), t.state.loading |= 4, Lf(o, n.precedence, e), t.instance = o;
-			case "script": return o = Pf(n.src), (a = e.querySelector(Ff(o))) ? (t.instance = a, M(a), a) : (r = n, (a = mf.get(o)) && (r = h({}, n), zf(r, a)), e = e.ownerDocument || e, a = e.createElement("script"), M(a), Pd(a, "link", r), e.head.appendChild(a), t.instance = a);
+			case "script": return o = Pf(n.src), (a = e.querySelector(Ff(o))) ? (t.instance = a, Et(a), a) : (r = n, (a = mf.get(o)) && (r = h({}, n), zf(r, a)), e = e.ownerDocument || e, a = e.createElement("script"), Et(a), Pd(a, "link", r), e.head.appendChild(a), t.instance = a);
 			case "void": return null;
 			default: throw Error(i(443, t.type));
 		}
@@ -7535,10 +7535,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			if (n.instance === null) {
 				var i = Af(r.href), a = t.querySelector(jf(i));
 				if (a) {
-					t = a._p, typeof t == "object" && t && typeof t.then == "function" && (e.count++, e = Jf.bind(e), t.then(e, e)), n.state.loading |= 4, n.instance = a, M(a);
+					t = a._p, typeof t == "object" && t && typeof t.then == "function" && (e.count++, e = Jf.bind(e), t.then(e, e)), n.state.loading |= 4, n.instance = a, Et(a);
 					return;
 				}
-				a = t.ownerDocument || t, r = Mf(r), (i = mf.get(i)) && Rf(r, i), a = a.createElement("link"), M(a);
+				a = t.ownerDocument || t, r = Mf(r), (i = mf.get(i)) && Rf(r, i), a = a.createElement("link"), Et(a);
 				var o = a;
 				o._p = new Promise(function(e, t) {
 					o.onload = e, o.onerror = t;
@@ -7608,17 +7608,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		this.tag = 1, this.containerInfo = e, this.pingCache = this.current = this.pendingChildren = null, this.timeoutHandle = -1, this.callbackNode = this.next = this.pendingContext = this.context = this.cancelPendingCommit = null, this.callbackPriority = 0, this.expirationTimes = nt(-1), this.entangledLanes = this.shellSuspendCounter = this.errorRecoveryDisabledLanes = this.expiredLanes = this.warmLanes = this.pingedLanes = this.suspendedLanes = this.pendingLanes = 0, this.entanglements = nt(0), this.hiddenUpdates = nt(null), this.identifierPrefix = r, this.onUncaughtError = i, this.onCaughtError = a, this.onRecoverableError = o, this.pooledCache = null, this.pooledCacheLanes = 0, this.formState = c, this.incompleteTransitions = /* @__PURE__ */ new Map();
 	}
 	function ep(e, t, n, r, i, a, o, s, c, l, u, d) {
-		return e = new $f(e, t, n, o, c, l, u, d, s), t = 1, !0 === a && (t |= 24), a = di(3, null, null, t), e.current = a, a.stateNode = e, t = B(), t.refCount++, e.pooledCache = t, t.refCount++, a.memoizedState = {
+		return e = new $f(e, t, n, o, c, l, u, d, s), t = 1, !0 === a && (t |= 24), a = fi(3, null, null, t), e.current = a, a.stateNode = e, t = B(), t.refCount++, e.pooledCache = t, t.refCount++, a.memoizedState = {
 			element: r,
 			isDehydrated: n,
 			cache: t
-		}, Ba(a), e;
+		}, La(a), e;
 	}
 	function tp(e) {
-		return e ? (e = li, e) : li;
+		return e ? (e = ui, e) : ui;
 	}
 	function np(e, t, n, r, i, a) {
-		i = tp(i), r.context === null ? r.context = i : r.pendingContext = i, r = Ha(t), r.payload = { element: n }, a = a === void 0 ? null : a, a !== null && (r.callback = a), n = Ua(e, r, t), n !== null && (hu(n, e, t), Wa(n, e, t));
+		i = tp(i), r.context === null ? r.context = i : r.pendingContext = i, r = za(t), r.payload = { element: n }, a = a === void 0 ? null : a, a !== null && (r.callback = a), n = Ba(e, r, t), n !== null && (hu(n, e, t), Va(n, e, t));
 	}
 	function rp(e, t) {
 		if (e = e.memoizedState, e !== null && e.dehydrated !== null) {
@@ -7631,7 +7631,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function ap(e) {
 		if (e.tag === 13 || e.tag === 31) {
-			var t = oi(e, 67108864);
+			var t = si(e, 67108864);
 			t !== null && hu(t, e, 67108864), ip(e, 67108864);
 		}
 	}
@@ -7639,7 +7639,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (e.tag === 13 || e.tag === 31) {
 			var t = pu();
 			t = ct(t);
-			var n = oi(e, t);
+			var n = si(e, t);
 			n !== null && hu(n, e, t), ip(e, t);
 		}
 	}
@@ -7687,7 +7687,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							}
 							break;
 						case 31:
-						case 13: s = oi(a, 2), s !== null && hu(s, a, 2), bu(), ip(a, 2);
+						case 13: s = si(a, 2), s !== null && hu(s, a, 2), bu(), ip(a, 2);
 					}
 					if (a = dp(r), a === null && wd(e, t, r, fp, n), a === i) break;
 					i = a;
@@ -7697,7 +7697,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function dp(e) {
-		return e = cn(e), pp(e);
+		return e = ln(e), pp(e);
 	}
 	var fp = null;
 	function pp(e) {
@@ -7882,7 +7882,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			if (n === null) {
 				n = e.nativeEvent;
 				var r = new n.constructor(n.type, n);
-				sn = r, n.target.dispatchEvent(r), sn = null;
+				cn = r, n.target.dispatchEvent(r), cn = null;
 			} else return t = Ct(n), t !== null && ap(t), e.blockedOn = n, !1;
 			t.shift();
 		}
@@ -7908,7 +7908,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					break;
 				}
 				var a = Ct(n);
-				a !== null && (e.splice(t, 3), t -= 3, ws(a, {
+				a !== null && (e.splice(t, 3), t -= 3, Ss(a, {
 					pending: !0,
 					data: i,
 					method: n.method,
@@ -8025,7 +8025,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	e.createRoot = function(e, t) {
 		if (!a(e)) throw Error(i(299));
-		var n = !1, r = "", o = qs, s = Js, c = Ys;
+		var n = !1, r = "", o = Gs, s = Ks, c = qs;
 		return t != null && (!0 === t.unstable_strictMode && (n = !0), t.identifierPrefix !== void 0 && (r = t.identifierPrefix), t.onUncaughtError !== void 0 && (o = t.onUncaughtError), t.onCaughtError !== void 0 && (s = t.onCaughtError), t.onRecoverableError !== void 0 && (c = t.onRecoverableError)), t = ep(e, 1, !1, null, null, n, r, null, o, s, c, Pp), e[ht] = t.current, Sd(e), new Fp(t);
 	};
 })), g = /* @__PURE__ */ o(((e, t) => {
@@ -8067,7 +8067,23 @@ var T = /* @__PURE__ */ new Set([
 	"payment_record",
 	"payment_correction",
 	"shipment_create",
-	"pxk_generate"
+	"pxk_generate",
+	"customer_create",
+	"customer_edit",
+	"customer_archive",
+	"customer_import",
+	"quote_create",
+	"quote_edit",
+	"quote_transition",
+	"agreement_create",
+	"agreement_edit",
+	"agreement_transition",
+	"contract_create",
+	"contract_save",
+	"contract_goods_save",
+	"contract_docgen_generate",
+	"contract_docgen_issue",
+	"contract_shipment_link"
 ]), E = null, ee = 0;
 function D(e) {
 	E = e;
@@ -8515,7 +8531,7 @@ function _t(e) {
 }
 function vt(e, { relative: t } = {}) {
 	O(yt(), "useHref() may be used only in the context of a <Router> component.");
-	let { basename: n, navigator: r } = _.useContext(lt), { hash: i, pathname: a, search: o } = M(e, { relative: t }), s = a;
+	let { basename: n, navigator: r } = _.useContext(lt), { hash: i, pathname: a, search: o } = Et(e, { relative: t }), s = a;
 	return n !== "/" && (s = a === "/" ? n : Le([n, a])), r.createHref({
 		pathname: s,
 		search: o,
@@ -8534,7 +8550,7 @@ function St(e) {
 }
 function Ct() {
 	let { isDataRoute: e } = _.useContext(dt);
-	return e ? Ht() : wt();
+	return e ? Ut() : wt();
 }
 function wt() {
 	O(yt(), "useNavigate() may be used only in the context of a <Router> component.");
@@ -8562,7 +8578,7 @@ function Tt() {
 	let { matches: e } = _.useContext(dt);
 	return e[e.length - 1]?.params ?? {};
 }
-function M(e, { relative: t } = {}) {
+function Et(e, { relative: t } = {}) {
 	let { matches: n } = _.useContext(dt), { pathname: r } = bt(), i = JSON.stringify(Pe(n));
 	return _.useMemo(() => Fe(e, JSON.parse(i), r, t === "path"), [
 		e,
@@ -8571,15 +8587,15 @@ function M(e, { relative: t } = {}) {
 		t
 	]);
 }
-function Et(e, t) {
-	return Dt(e, t);
+function Dt(e, t) {
+	return Ot(e, t);
 }
-function Dt(e, t, n) {
+function Ot(e, t, n) {
 	O(yt(), "useRoutes() may be used only in the context of a <Router> component.");
 	let { navigator: r } = _.useContext(lt), { matches: i } = _.useContext(dt), a = i[i.length - 1], o = a ? a.params : {}, s = a ? a.pathname : "/", c = a ? a.pathnameBase : "/", l = a && a.route;
 	{
 		let e = l && l.path || "";
-		Wt(s, !l || e.endsWith("*") || e.endsWith("*?"), `You rendered descendant <Routes> (or called \`useRoutes()\`) at "${s}" (under <Route path="${e}">) but the parent route path has no trailing "*". This means if you navigate deeper, the parent won't match anymore and therefore the child routes will never render.
+		Gt(s, !l || e.endsWith("*") || e.endsWith("*?"), `You rendered descendant <Routes> (or called \`useRoutes()\`) at "${s}" (under <Route path="${e}">) but the parent route path has no trailing "*". This means if you navigate deeper, the parent won't match anymore and therefore the child routes will never render.
 
 Please change the parent <Route path="${e}"> to <Route path="${e === "/" ? "*" : `${e}/*`}">.`);
 	}
@@ -8595,7 +8611,7 @@ Please change the parent <Route path="${e}"> to <Route path="${e === "/" ? "*" :
 	}
 	let m = n && n.state.matches.length ? n.state.matches.map((e) => Object.assign(e, { route: n.manifest[e.route.id] || e.route })) : ue(e, { pathname: p });
 	k(l || m != null, `No routes matched location "${d.pathname}${d.search}${d.hash}" `), k(m == null || m[m.length - 1].route.element !== void 0 || m[m.length - 1].route.Component !== void 0 || m[m.length - 1].route.lazy !== void 0, `Matched leaf route at location "${d.pathname}${d.search}${d.hash}" does not have an element or Component. This means it will render an <Outlet /> with a null value by default resulting in an "empty" page.`);
-	let h = Pt(m && m.map((e) => Object.assign({}, e, {
+	let h = Ft(m && m.map((e) => Object.assign({}, e, {
 		params: Object.assign({}, o, e.params),
 		pathname: Le([c, r.encodeLocation ? r.encodeLocation(e.pathname.replace(/%/g, "%25").replace(/\?/g, "%3F").replace(/#/g, "%23")).pathname : e.pathname]),
 		pathnameBase: e.pathnameBase === "/" ? c : Le([c, r.encodeLocation ? r.encodeLocation(e.pathnameBase.replace(/%/g, "%25").replace(/\?/g, "%3F").replace(/#/g, "%23")).pathname : e.pathnameBase])
@@ -8613,8 +8629,8 @@ Please change the parent <Route path="${e}"> to <Route path="${e === "/" ? "*" :
 		navigationType: "POP"
 	} }, h) : h;
 }
-function Ot() {
-	let e = Vt(), t = Ue(e) ? `${e.status} ${e.statusText}` : e instanceof Error ? e.message : JSON.stringify(e), n = e instanceof Error ? e.stack : null, r = "rgba(200,200,200, 0.5)", i = {
+function kt() {
+	let e = Ht(), t = Ue(e) ? `${e.status} ${e.statusText}` : e instanceof Error ? e.message : JSON.stringify(e), n = e instanceof Error ? e.stack : null, r = "rgba(200,200,200, 0.5)", i = {
 		padding: "0.5rem",
 		backgroundColor: r
 	}, a = {
@@ -8623,7 +8639,7 @@ function Ot() {
 	}, o = null;
 	return console.error("Error handled by React Router default ErrorBoundary:", e), o = /* @__PURE__ */ _.createElement(_.Fragment, null, /* @__PURE__ */ _.createElement("p", null, "💿 Hey developer 👋"), /* @__PURE__ */ _.createElement("p", null, "You can provide a way better UX than this when your app throws errors by providing your own ", /* @__PURE__ */ _.createElement("code", { style: a }, "ErrorBoundary"), " or", " ", /* @__PURE__ */ _.createElement("code", { style: a }, "errorElement"), " prop on your route.")), /* @__PURE__ */ _.createElement(_.Fragment, null, /* @__PURE__ */ _.createElement("h2", null, "Unexpected Application Error!"), /* @__PURE__ */ _.createElement("h3", { style: { fontStyle: "italic" } }, t), n ? /* @__PURE__ */ _.createElement("pre", { style: i }, n) : null, o);
 }
-var kt = /* @__PURE__ */ _.createElement(Ot, null), At = class extends _.Component {
+var At = /* @__PURE__ */ _.createElement(kt, null), jt = class extends _.Component {
 	constructor(e) {
 		super(e), this.state = {
 			location: e.location,
@@ -8658,25 +8674,25 @@ var kt = /* @__PURE__ */ _.createElement(Ot, null), At = class extends _.Compone
 			value: e,
 			children: this.props.component
 		}));
-		return this.context ? /* @__PURE__ */ _.createElement(Mt, { error: e }, t) : t;
+		return this.context ? /* @__PURE__ */ _.createElement(Nt, { error: e }, t) : t;
 	}
 };
-At.contextType = it;
-var jt = /* @__PURE__ */ new WeakMap();
-function Mt({ children: e, error: t }) {
+jt.contextType = it;
+var Mt = /* @__PURE__ */ new WeakMap();
+function Nt({ children: e, error: t }) {
 	let { basename: n, navigator: r } = _.useContext(lt);
 	if (typeof t == "object" && t && "digest" in t && typeof t.digest == "string") {
 		let e = gt(t.digest);
 		if (e) {
-			let i = jt.get(t);
+			let i = Mt.get(t);
 			if (i) throw i;
 			let a = Ke(e.location, n), o = a.absoluteURL || a.to;
 			if (Ze(e.location, o, Je(r), "allow-explicit"), tt(o)) throw Error("Invalid redirect location");
-			if (Ge && !jt.get(t)) {
+			if (Ge && !Mt.get(t)) {
 				if (a.isExternal || e.reloadDocument) window.location.href = o;
 				else {
 					let n = Promise.resolve().then(() => window.__reactRouterDataRouter.navigate(a.to, { replace: e.replace }));
-					throw jt.set(t, n), n;
+					throw Mt.set(t, n), n;
 				}
 			}
 			return /* @__PURE__ */ _.createElement("meta", {
@@ -8687,11 +8703,11 @@ function Mt({ children: e, error: t }) {
 	}
 	return e;
 }
-function Nt({ routeContext: e, match: t, children: n }) {
+function Pt({ routeContext: e, match: t, children: n }) {
 	let r = _.useContext(nt);
 	return r && r.static && r.staticContext && (t.route.errorElement || t.route.ErrorBoundary) && (r.staticContext._deepestRenderedBoundaryId = t.route.id), /* @__PURE__ */ _.createElement(dt.Provider, { value: e }, n);
 }
-function Pt(e, t = [], n) {
+function Ft(e, t = [], n) {
 	let r = n?.state;
 	if (e == null) {
 		if (!r) return null;
@@ -8728,10 +8744,10 @@ function Pt(e, t = [], n) {
 	} : void 0;
 	return i.reduceRight((e, n, c) => {
 		let u, d = !1, f = null, p = null;
-		r && (u = a && n.route.id ? a[n.route.id] : void 0, f = n.route.errorElement || kt, o && (s < 0 && c === 0 ? (Wt("route-fallback", !1, "No `HydrateFallback` element provided to render during initial hydration"), d = !0, p = null) : s === c && (d = !0, p = n.route.hydrateFallbackElement || null)));
+		r && (u = a && n.route.id ? a[n.route.id] : void 0, f = n.route.errorElement || At, o && (s < 0 && c === 0 ? (Gt("route-fallback", !1, "No `HydrateFallback` element provided to render during initial hydration"), d = !0, p = null) : s === c && (d = !0, p = n.route.hydrateFallbackElement || null)));
 		let m = t.concat(i.slice(0, c + 1)), h = () => {
 			let t;
-			return t = u ? f : d ? p : n.route.Component ? /* @__PURE__ */ _.createElement(n.route.Component, null) : n.route.element ? n.route.element : e, /* @__PURE__ */ _.createElement(Nt, {
+			return t = u ? f : d ? p : n.route.Component ? /* @__PURE__ */ _.createElement(n.route.Component, null) : n.route.element ? n.route.element : e, /* @__PURE__ */ _.createElement(Pt, {
 				match: n,
 				routeContext: {
 					outlet: e,
@@ -8741,7 +8757,7 @@ function Pt(e, t = [], n) {
 				children: t
 			});
 		};
-		return r && (n.route.ErrorBoundary || n.route.errorElement || c === 0) ? /* @__PURE__ */ _.createElement(At, {
+		return r && (n.route.ErrorBoundary || n.route.errorElement || c === 0) ? /* @__PURE__ */ _.createElement(jt, {
 			location: r.location,
 			revalidation: r.revalidation,
 			component: f,
@@ -8756,34 +8772,34 @@ function Pt(e, t = [], n) {
 		}) : h();
 	}, null);
 }
-function Ft(e) {
+function It(e) {
 	return `${e} must be used within a data router.  See https://reactrouter.com/en/main/routers/picking-a-router.`;
 }
-function It(e) {
-	let t = _.useContext(nt);
-	return O(t, Ft(e)), t;
-}
 function Lt(e) {
-	let t = _.useContext(rt);
-	return O(t, Ft(e)), t;
+	let t = _.useContext(nt);
+	return O(t, It(e)), t;
 }
 function Rt(e) {
-	let t = _.useContext(dt);
-	return O(t, Ft(e)), t;
+	let t = _.useContext(rt);
+	return O(t, It(e)), t;
 }
 function zt(e) {
-	let t = Rt(e), n = t.matches[t.matches.length - 1];
+	let t = _.useContext(dt);
+	return O(t, It(e)), t;
+}
+function Bt(e) {
+	let t = zt(e), n = t.matches[t.matches.length - 1];
 	return O(n.route.id, `${e} can only be used on routes that contain a unique "id"`), n.route.id;
 }
-function Bt() {
-	return zt("useRouteId");
-}
 function Vt() {
-	let e = _.useContext(ft), t = Lt("useRouteError"), n = zt("useRouteError");
-	return e === void 0 ? t.errors?.[n] : e;
+	return Bt("useRouteId");
 }
 function Ht() {
-	let { router: e } = It("useNavigate"), t = zt("useNavigate"), n = _.useRef(!1);
+	let e = _.useContext(ft), t = Rt("useRouteError"), n = Bt("useRouteError");
+	return e === void 0 ? t.errors?.[n] : e;
+}
+function Ut() {
+	let { router: e } = Lt("useNavigate"), t = Bt("useNavigate"), n = _.useRef(!1);
 	return St(() => {
 		n.current = !0;
 	}), _.useCallback(async (r, i = {}) => {
@@ -8793,13 +8809,13 @@ function Ht() {
 		}));
 	}, [e, t]);
 }
-var Ut = {};
-function Wt(e, t, n) {
-	!t && !Ut[e] && (Ut[e] = !0, k(!1, n));
+var Wt = {};
+function Gt(e, t, n) {
+	!t && !Wt[e] && (Wt[e] = !0, k(!1, n));
 }
-_.memo(Gt);
-function Gt({ routes: e, manifest: t, future: n, state: r, isStatic: i, onError: a }) {
-	return Dt(e, void 0, {
+_.memo(Kt);
+function Kt({ routes: e, manifest: t, future: n, state: r, isStatic: i, onError: a }) {
+	return Ot(e, void 0, {
 		manifest: t,
 		state: r,
 		isStatic: i,
@@ -8807,7 +8823,7 @@ function Gt({ routes: e, manifest: t, future: n, state: r, isStatic: i, onError:
 		future: n
 	});
 }
-function Kt({ basename: e, children: t, initialEntries: n, initialIndex: r, useTransitions: i }) {
+function qt({ basename: e, children: t, initialEntries: n, initialIndex: r, useTransitions: i }) {
 	let a = _.useRef();
 	a.current ?? (a.current = oe({
 		initialEntries: n,
@@ -8820,7 +8836,7 @@ function Kt({ basename: e, children: t, initialEntries: n, initialIndex: r, useT
 	}), l = _.useCallback((e) => {
 		i === !1 ? c(e) : _.startTransition(() => c(e));
 	}, [i]);
-	return _.useLayoutEffect(() => o.listen(l), [o, l]), /* @__PURE__ */ _.createElement(Jt, {
+	return _.useLayoutEffect(() => o.listen(l), [o, l]), /* @__PURE__ */ _.createElement(Yt, {
 		basename: e,
 		children: t,
 		location: s.location,
@@ -8829,10 +8845,10 @@ function Kt({ basename: e, children: t, initialEntries: n, initialIndex: r, useT
 		useTransitions: i
 	});
 }
-function qt(e) {
+function Jt(e) {
 	O(!1, "A <Route> is only ever to be used as the child of <Routes> element, never rendered directly. Please wrap your <Route> in a <Routes>.");
 }
-function Jt({ basename: e = "/", children: t = null, location: n, navigationType: r = "POP", navigator: i, static: a = !1, useTransitions: o }) {
+function Yt({ basename: e = "/", children: t = null, location: n, navigationType: r = "POP", navigator: i, static: a = !1, useTransitions: o }) {
 	O(!yt(), "You cannot render a <Router> inside another <Router>. You should never have more than one in your app.");
 	let s = e.replace(/^\/*/, "/"), c = _.useMemo(() => ({
 		basename: s,
@@ -8875,20 +8891,20 @@ function Jt({ basename: e = "/", children: t = null, location: n, navigationType
 		value: h
 	}));
 }
-function Yt({ children: e, location: t }) {
-	return Et(Xt(e), t);
+function Xt({ children: e, location: t }) {
+	return Dt(Zt(e), t);
 }
 _.Component;
-function Xt(e, t = []) {
+function Zt(e, t = []) {
 	let n = [];
 	return _.Children.forEach(e, (e, r) => {
 		if (!_.isValidElement(e)) return;
 		let i = [...t, r];
 		if (e.type === _.Fragment) {
-			n.push.apply(n, Xt(e.props.children, i));
+			n.push.apply(n, Zt(e.props.children, i));
 			return;
 		}
-		O(e.type === qt, `[${typeof e.type == "string" ? e.type : e.type.name}] is not a <Route> component. All component children of <Routes> must be a <Route> or <React.Fragment>`), O(!e.props.index || !e.props.children, "An index route cannot have child routes.");
+		O(e.type === Jt, `[${typeof e.type == "string" ? e.type : e.type.name}] is not a <Route> component. All component children of <Routes> must be a <Route> or <React.Fragment>`), O(!e.props.index || !e.props.children, "An index route cannot have child routes.");
 		let a = {
 			id: e.props.id || i.join("-"),
 			caseSensitive: e.props.caseSensitive,
@@ -8908,77 +8924,77 @@ function Xt(e, t = []) {
 			handle: e.props.handle,
 			lazy: e.props.lazy
 		};
-		e.props.children && (a.children = Xt(e.props.children, i)), n.push(a);
+		e.props.children && (a.children = Zt(e.props.children, i)), n.push(a);
 	}), n;
 }
-var Zt = "get", Qt = "application/x-www-form-urlencoded";
-function $t(e) {
+var Qt = "get", $t = "application/x-www-form-urlencoded";
+function en(e) {
 	return typeof HTMLElement < "u" && e instanceof HTMLElement;
 }
-function en(e) {
-	return $t(e) && e.tagName.toLowerCase() === "button";
-}
 function tn(e) {
-	return $t(e) && e.tagName.toLowerCase() === "form";
+	return en(e) && e.tagName.toLowerCase() === "button";
 }
 function nn(e) {
-	return $t(e) && e.tagName.toLowerCase() === "input";
+	return en(e) && e.tagName.toLowerCase() === "form";
 }
 function rn(e) {
+	return en(e) && e.tagName.toLowerCase() === "input";
+}
+function an(e) {
 	return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey);
 }
-function an(e, t) {
-	return e.button === 0 && (!t || t === "_self") && !rn(e);
+function on(e, t) {
+	return e.button === 0 && (!t || t === "_self") && !an(e);
 }
-function on(e = "") {
+function sn(e = "") {
 	return new URLSearchParams(typeof e == "string" || Array.isArray(e) || e instanceof URLSearchParams ? e : Object.keys(e).reduce((t, n) => {
 		let r = e[n];
 		return t.concat(Array.isArray(r) ? r.map((e) => [n, e]) : [[n, r]]);
 	}, []));
 }
-function sn(e, t) {
-	let n = on(e);
+function cn(e, t) {
+	let n = sn(e);
 	return t && t.forEach((e, r) => {
 		n.has(r) || t.getAll(r).forEach((e) => {
 			n.append(r, e);
 		});
 	}), n;
 }
-var cn = null;
-function ln() {
-	if (cn === null) try {
-		new FormData(document.createElement("form"), 0), cn = !1;
+var ln = null;
+function un() {
+	if (ln === null) try {
+		new FormData(document.createElement("form"), 0), ln = !1;
 	} catch {
-		cn = !0;
+		ln = !0;
 	}
-	return cn;
+	return ln;
 }
-var un = /* @__PURE__ */ new Set([
+var dn = /* @__PURE__ */ new Set([
 	"application/x-www-form-urlencoded",
 	"multipart/form-data",
 	"text/plain"
 ]);
-function dn(e) {
-	return e != null && !un.has(e) ? (k(!1, `"${e}" is not a valid \`encType\` for \`<Form>\`/\`<fetcher.Form>\` and will default to "${Qt}"`), null) : e;
+function fn(e) {
+	return e != null && !dn.has(e) ? (k(!1, `"${e}" is not a valid \`encType\` for \`<Form>\`/\`<fetcher.Form>\` and will default to "${$t}"`), null) : e;
 }
-function fn(e, t) {
+function pn(e, t) {
 	let n, r, i, a, o;
-	if (tn(e)) {
+	if (nn(e)) {
 		let o = e.getAttribute("action");
-		r = o ? ke(o, t) : null, n = e.getAttribute("method") || Zt, i = dn(e.getAttribute("enctype")) || Qt, a = new FormData(e);
-	} else if (en(e) || nn(e) && (e.type === "submit" || e.type === "image")) {
+		r = o ? ke(o, t) : null, n = e.getAttribute("method") || Qt, i = fn(e.getAttribute("enctype")) || $t, a = new FormData(e);
+	} else if (tn(e) || rn(e) && (e.type === "submit" || e.type === "image")) {
 		let o = e.form;
 		if (o == null) throw Error("Cannot submit a <button> or <input type=\"submit\"> without a <form>");
 		let s = e.getAttribute("formaction") || o.getAttribute("action");
-		if (r = s ? ke(s, t) : null, n = e.getAttribute("formmethod") || o.getAttribute("method") || Zt, i = dn(e.getAttribute("formenctype")) || dn(o.getAttribute("enctype")) || Qt, a = new FormData(o, e), !ln()) {
+		if (r = s ? ke(s, t) : null, n = e.getAttribute("formmethod") || o.getAttribute("method") || Qt, i = fn(e.getAttribute("formenctype")) || fn(o.getAttribute("enctype")) || $t, a = new FormData(o, e), !un()) {
 			let { name: t, type: n, value: r } = e;
 			if (n === "image") {
 				let e = t ? `${t}.` : "";
 				a.append(`${e}x`, "0"), a.append(`${e}y`, "0");
 			} else t && a.append(t, r);
 		}
-	} else if ($t(e)) throw Error("Cannot submit element that is not <form>, <button>, or <input type=\"submit|image\">");
-	else n = Zt, r = null, i = Qt, o = e;
+	} else if (en(e)) throw Error("Cannot submit element that is not <form>, <button>, or <input type=\"submit|image\">");
+	else n = Qt, r = null, i = $t, o = e;
 	return a && i === "text/plain" && (o = a, a = void 0), {
 		action: r,
 		method: n.toLowerCase(),
@@ -8988,14 +9004,14 @@ function fn(e, t) {
 	};
 }
 Object.getOwnPropertyNames(Object.prototype).sort().join("\0");
-function pn(e, t) {
+function mn(e, t) {
 	if (e === !1 || e == null) throw Error(t);
 }
-function mn(e, t, n, r) {
+function hn(e, t, n, r) {
 	let i = typeof e == "string" ? new URL(e, typeof window > "u" ? "server://singlefetch/" : window.location.origin) : e;
 	return i.pathname = n ? i.pathname.endsWith("/") ? `${i.pathname}_.${r}` : `${i.pathname}.${r}` : i.pathname === "/" ? `_root.${r}` : t && ke(i.pathname, t) === "/" ? `${Re(t)}/_root.${r}` : `${Re(i.pathname)}.${r}`, i;
 }
-async function hn(e, t) {
+async function gn(e, t) {
 	if (e.id in t) return t[e.id];
 	try {
 		let n = await import(
@@ -9008,21 +9024,21 @@ async function hn(e, t) {
 		return console.error(`Error loading route module \`${e.module}\`, reloading page...`), console.error(t), window.__reactRouterContext && window.__reactRouterContext.isSpaMode, window.location.reload(), new Promise(() => {});
 	}
 }
-function gn(e) {
+function _n(e) {
 	return e != null && typeof e.page == "string";
 }
-function _n(e) {
+function vn(e) {
 	return e == null ? !1 : e.href == null ? e.rel === "preload" && typeof e.imageSrcSet == "string" && typeof e.imageSizes == "string" : typeof e.rel == "string" && typeof e.href == "string";
 }
-async function vn(e, t, n) {
-	return Cn((await Promise.all(e.map(async (e) => {
+async function yn(e, t, n) {
+	return wn((await Promise.all(e.map(async (e) => {
 		let r = t.routes[e.route.id];
 		if (r) {
-			let e = await hn(r, n);
+			let e = await gn(r, n);
 			return e.links ? e.links() : [];
 		}
 		return [];
-	}))).flat(1).filter(_n).filter((e) => e.rel === "stylesheet" || e.rel === "preload").map((e) => e.rel === "stylesheet" ? {
+	}))).flat(1).filter(vn).filter((e) => e.rel === "stylesheet" || e.rel === "preload").map((e) => e.rel === "stylesheet" ? {
 		...e,
 		rel: "prefetch",
 		as: "style"
@@ -9031,7 +9047,7 @@ async function vn(e, t, n) {
 		rel: "prefetch"
 	}));
 }
-function yn(e, t, n, r, i, a) {
+function bn(e, t, n, r, i, a) {
 	let o = (e, t) => !n[t] || e.route.id !== n[t].route.id, s = (e, t) => n[t].pathname !== e.pathname || n[t].route.path?.endsWith("*") && n[t].params["*"] !== e.params["*"];
 	return a === "assets" ? t.filter((e, t) => o(e, t) || s(e, t)) : a === "data" ? t.filter((t, a) => {
 		let c = r.routes[t.route.id];
@@ -9050,49 +9066,49 @@ function yn(e, t, n, r, i, a) {
 		return !0;
 	}) : [];
 }
-function bn(e, t, { includeHydrateFallback: n } = {}) {
-	return xn(e.map((e) => {
+function xn(e, t, { includeHydrateFallback: n } = {}) {
+	return Sn(e.map((e) => {
 		let r = t.routes[e.route.id];
 		if (!r) return [];
 		let i = [r.module];
 		return r.clientActionModule && (i = i.concat(r.clientActionModule)), r.clientLoaderModule && (i = i.concat(r.clientLoaderModule)), n && r.hydrateFallbackModule && (i = i.concat(r.hydrateFallbackModule)), r.imports && (i = i.concat(r.imports)), i;
 	}).flat(1));
 }
-function xn(e) {
+function Sn(e) {
 	return [...new Set(e)];
 }
-function Sn(e) {
+function Cn(e) {
 	let t = {}, n = Object.keys(e).sort();
 	for (let r of n) t[r] = e[r];
 	return t;
 }
-function Cn(e, t) {
+function wn(e, t) {
 	let n = /* @__PURE__ */ new Set(), r = new Set(t);
 	return e.reduce((e, i) => {
-		if (t && !gn(i) && i.as === "script" && i.href && r.has(i.href)) return e;
-		let a = JSON.stringify(Sn(i));
+		if (t && !_n(i) && i.as === "script" && i.href && r.has(i.href)) return e;
+		let a = JSON.stringify(Cn(i));
 		return n.has(a) || (n.add(a), e.push({
 			key: a,
 			link: i
 		})), e;
 	}, []);
 }
-function wn() {
-	let e = _.useContext(nt);
-	return pn(e, "You must render this element inside a <DataRouterContext.Provider> element"), e;
-}
 function Tn() {
+	let e = _.useContext(nt);
+	return mn(e, "You must render this element inside a <DataRouterContext.Provider> element"), e;
+}
+function En() {
 	let e = _.useContext(rt);
-	return pn(e, "You must render this element inside a <DataRouterStateContext.Provider> element"), e;
+	return mn(e, "You must render this element inside a <DataRouterStateContext.Provider> element"), e;
 }
-var En = _.createContext(void 0);
-En.displayName = "FrameworkContext";
-function Dn() {
-	let e = _.useContext(En);
-	return pn(e, "You must render this element inside a <HydratedRouter> element"), e;
+var Dn = _.createContext(void 0);
+Dn.displayName = "FrameworkContext";
+function On() {
+	let e = _.useContext(Dn);
+	return mn(e, "You must render this element inside a <HydratedRouter> element"), e;
 }
-function On(e, t) {
-	let n = _.useContext(En), [r, i] = _.useState(!1), [a, o] = _.useState(!1), { onFocus: s, onBlur: c, onMouseEnter: l, onMouseLeave: u, onTouchStart: d } = t, f = _.useRef(null);
+function kn(e, t) {
+	let n = _.useContext(Dn), [r, i] = _.useState(!1), [a, o] = _.useState(!1), { onFocus: s, onBlur: c, onMouseEnter: l, onMouseLeave: u, onTouchStart: d } = t, f = _.useRef(null);
 	_.useEffect(() => {
 		if (e === "render" && o(!0), e === "viewport") {
 			let e = new IntersectionObserver((e) => {
@@ -9123,11 +9139,11 @@ function On(e, t) {
 		a,
 		f,
 		{
-			onFocus: kn(s, p),
-			onBlur: kn(c, m),
-			onMouseEnter: kn(l, p),
-			onMouseLeave: kn(u, m),
-			onTouchStart: kn(d, p)
+			onFocus: An(s, p),
+			onBlur: An(c, m),
+			onMouseEnter: An(l, p),
+			onMouseLeave: An(u, m),
+			onTouchStart: An(d, p)
 		}
 	] : [
 		a,
@@ -9139,13 +9155,13 @@ function On(e, t) {
 		{}
 	];
 }
-function kn(e, t) {
+function An(e, t) {
 	return (n) => {
 		e && e(n), n.defaultPrevented || t(n);
 	};
 }
-function An({ page: e, ...t }) {
-	let n = at(), { nonce: r } = Dn(), { router: i } = wn(), a = _.useMemo(() => ue(i.routes, e, i.basename), [
+function jn({ page: e, ...t }) {
+	let n = at(), { nonce: r } = On(), { router: i } = Tn(), a = _.useMemo(() => ue(i.routes, e, i.basename), [
 		i.routes,
 		e,
 		i.basename
@@ -9153,21 +9169,21 @@ function An({ page: e, ...t }) {
 	return a ? (t.nonce == null && r && (t = {
 		...t,
 		nonce: r
-	}), n ? /* @__PURE__ */ _.createElement(Mn, {
+	}), n ? /* @__PURE__ */ _.createElement(Nn, {
 		page: e,
 		matches: a,
 		...t
-	}) : /* @__PURE__ */ _.createElement(Nn, {
+	}) : /* @__PURE__ */ _.createElement(Pn, {
 		page: e,
 		matches: a,
 		...t
 	})) : null;
 }
-function jn(e) {
-	let { manifest: t, routeModules: n } = Dn(), [r, i] = _.useState([]);
+function Mn(e) {
+	let { manifest: t, routeModules: n } = On(), [r, i] = _.useState([]);
 	return _.useEffect(() => {
 		let r = !1;
-		return vn(e, t, n).then((e) => {
+		return yn(e, t, n).then((e) => {
 			r || i(e);
 		}), () => {
 			r = !0;
@@ -9178,10 +9194,10 @@ function jn(e) {
 		n
 	]), r;
 }
-function Mn({ page: e, matches: t, ...n }) {
-	let r = bt(), { future: i } = Dn(), { basename: a } = wn(), o = _.useMemo(() => {
+function Nn({ page: e, matches: t, ...n }) {
+	let r = bt(), { future: i } = On(), { basename: a } = Tn(), o = _.useMemo(() => {
 		if (e === r.pathname + r.search + r.hash) return [];
-		let n = mn(e, a, i.v8_trailingSlashAwareDataRequests, "rsc"), o = !1, s = [];
+		let n = hn(e, a, i.v8_trailingSlashAwareDataRequests, "rsc"), o = !1, s = [];
 		for (let e of t) typeof e.route.shouldRevalidate == "function" ? o = !0 : s.push(e.route.id);
 		return o && s.length > 0 && n.searchParams.set("_routes", s.join(",")), [n.pathname + n.search];
 	}, [
@@ -9199,14 +9215,14 @@ function Mn({ page: e, matches: t, ...n }) {
 		...n
 	})));
 }
-function Nn({ page: e, matches: t, ...n }) {
-	let r = bt(), { future: i, manifest: a, routeModules: o } = Dn(), { basename: s } = wn(), { loaderData: c, matches: l } = Tn(), u = _.useMemo(() => yn(e, t, l, a, r, "data"), [
+function Pn({ page: e, matches: t, ...n }) {
+	let r = bt(), { future: i, manifest: a, routeModules: o } = On(), { basename: s } = Tn(), { loaderData: c, matches: l } = En(), u = _.useMemo(() => bn(e, t, l, a, r, "data"), [
 		e,
 		t,
 		l,
 		a,
 		r
-	]), d = _.useMemo(() => yn(e, t, l, a, r, "assets"), [
+	]), d = _.useMemo(() => bn(e, t, l, a, r, "assets"), [
 		e,
 		t,
 		l,
@@ -9219,7 +9235,7 @@ function Nn({ page: e, matches: t, ...n }) {
 			let t = a.routes[e.route.id];
 			t && t.hasLoader && (!u.some((t) => t.route.id === e.route.id) && e.route.id in c && o[e.route.id]?.shouldRevalidate || t.hasClientLoader ? l = !0 : n.add(e.route.id));
 		}), n.size === 0) return [];
-		let d = mn(e, s, i.v8_trailingSlashAwareDataRequests, "data");
+		let d = hn(e, s, i.v8_trailingSlashAwareDataRequests, "data");
 		return l && n.size > 0 && d.searchParams.set("_routes", t.filter((e) => n.has(e.route.id)).map((e) => e.route.id).join(",")), [d.pathname + d.search];
 	}, [
 		s,
@@ -9231,7 +9247,7 @@ function Nn({ page: e, matches: t, ...n }) {
 		t,
 		e,
 		o
-	]), p = _.useMemo(() => bn(d, a), [d, a]), m = jn(d);
+	]), p = _.useMemo(() => xn(d, a), [d, a]), m = Mn(d);
 	return /* @__PURE__ */ _.createElement(_.Fragment, null, f.map((e) => /* @__PURE__ */ _.createElement("link", {
 		key: e,
 		rel: "prefetch",
@@ -9250,7 +9266,7 @@ function Nn({ page: e, matches: t, ...n }) {
 		crossOrigin: t.crossOrigin ?? n.crossOrigin
 	})));
 }
-function Pn(...e) {
+function Fn(...e) {
 	return (t) => {
 		e.forEach((e) => {
 			typeof e == "function" ? e(t) : e != null && (e.current = t);
@@ -9258,11 +9274,11 @@ function Pn(...e) {
 	};
 }
 _.Component;
-var Fn = typeof window < "u" && window.document !== void 0 && window.document.createElement !== void 0;
+var In = typeof window < "u" && window.document !== void 0 && window.document.createElement !== void 0;
 try {
-	Fn && (window.__reactRouterVersion = "7.18.3");
+	In && (window.__reactRouterVersion = "7.18.3");
 } catch {}
-var N = _.forwardRef(function({ onClick: e, discover: t = "render", prefetch: n = "none", relative: r, reloadDocument: i, replace: a, mask: o, state: s, target: c, to: l, preventScrollReset: u, viewTransition: d, defaultShouldRevalidate: f, ...p }, m) {
+var M = _.forwardRef(function({ onClick: e, discover: t = "render", prefetch: n = "none", relative: r, reloadDocument: i, replace: a, mask: o, state: s, target: c, to: l, preventScrollReset: u, viewTransition: d, defaultShouldRevalidate: f, ...p }, m) {
 	let { basename: h, navigator: g, useTransitions: v } = _.useContext(lt), y = typeof l == "string" && ne.test(l), b = Ke(l, h);
 	l = b.to;
 	let x = vt(l, { relative: r }), S = bt(), C = null;
@@ -9270,7 +9286,7 @@ var N = _.forwardRef(function({ onClick: e, discover: t = "render", prefetch: n 
 		let e = Fe(o, [], S.mask ? S.mask.pathname : "/", !0);
 		h !== "/" && (e.pathname = e.pathname === "/" ? h : Le([h, e.pathname])), C = g.createHref(e);
 	}
-	let [w, T, E] = On(n, p), ee = Bn(l, {
+	let [w, T, E] = kn(n, p), ee = Vn(l, {
 		replace: a,
 		mask: o,
 		state: s,
@@ -9289,15 +9305,15 @@ var N = _.forwardRef(function({ onClick: e, discover: t = "render", prefetch: n 
 		...E,
 		href: (te ? C : void 0) || b.absoluteURL || x,
 		onClick: te ? D : e,
-		ref: Pn(m, T),
+		ref: Fn(m, T),
 		target: c,
 		"data-discover": !y && t === "render" ? "true" : void 0
 	});
-	return w && !y ? /* @__PURE__ */ _.createElement(_.Fragment, null, re, /* @__PURE__ */ _.createElement(An, { page: x })) : re;
+	return w && !y ? /* @__PURE__ */ _.createElement(_.Fragment, null, re, /* @__PURE__ */ _.createElement(jn, { page: x })) : re;
 });
-N.displayName = "Link";
-var In = _.forwardRef(function({ "aria-current": e = "page", caseSensitive: t = !1, className: n = "", end: r = !1, style: i, to: a, viewTransition: o, children: s, ...c }, l) {
-	let u = M(a, { relative: c.relative }), d = bt(), f = _.useContext(rt), { navigator: p, basename: m } = _.useContext(lt), h = f != null && Kn(u) && o === !0, g = p.encodeLocation ? p.encodeLocation(u).pathname : u.pathname, v = d.pathname, y = f && f.navigation && f.navigation.location ? f.navigation.location.pathname : null;
+M.displayName = "Link";
+var Ln = _.forwardRef(function({ "aria-current": e = "page", caseSensitive: t = !1, className: n = "", end: r = !1, style: i, to: a, viewTransition: o, children: s, ...c }, l) {
+	let u = Et(a, { relative: c.relative }), d = bt(), f = _.useContext(rt), { navigator: p, basename: m } = _.useContext(lt), h = f != null && qn(u) && o === !0, g = p.encodeLocation ? p.encodeLocation(u).pathname : u.pathname, v = d.pathname, y = f && f.navigation && f.navigation.location ? f.navigation.location.pathname : null;
 	t || (v = v.toLowerCase(), y = y ? y.toLowerCase() : null, g = g.toLowerCase()), y && m && (y = ke(y, m) || y);
 	let b = g !== "/" && g.endsWith("/") ? g.length - 1 : g.length, x = v === g || !r && v.startsWith(g) && v.charAt(b) === "/", S = y != null && (y === g || !r && y.startsWith(g) && y.charAt(g.length) === "/"), C = {
 		isActive: x,
@@ -9311,7 +9327,7 @@ var In = _.forwardRef(function({ "aria-current": e = "page", caseSensitive: t = 
 		h ? "transitioning" : null
 	].filter(Boolean).join(" ");
 	let E = typeof i == "function" ? i(C) : i;
-	return /* @__PURE__ */ _.createElement(N, {
+	return /* @__PURE__ */ _.createElement(M, {
 		...c,
 		"aria-current": w,
 		className: T,
@@ -9321,9 +9337,9 @@ var In = _.forwardRef(function({ "aria-current": e = "page", caseSensitive: t = 
 		viewTransition: o
 	}, typeof s == "function" ? s(C) : s);
 });
-In.displayName = "NavLink";
-var Ln = _.forwardRef(({ discover: e = "render", fetcherKey: t, navigate: n, reloadDocument: r, replace: i, state: a, method: o = Zt, action: s, onSubmit: c, relative: l, preventScrollReset: u, viewTransition: d, defaultShouldRevalidate: f, ...p }, m) => {
-	let { useTransitions: h } = _.useContext(lt), g = Wn(), v = Gn(s, { relative: l }), y = o.toLowerCase() === "get" ? "get" : "post", b = typeof s == "string" && ne.test(s);
+Ln.displayName = "NavLink";
+var Rn = _.forwardRef(({ discover: e = "render", fetcherKey: t, navigate: n, reloadDocument: r, replace: i, state: a, method: o = Qt, action: s, onSubmit: c, relative: l, preventScrollReset: u, viewTransition: d, defaultShouldRevalidate: f, ...p }, m) => {
+	let { useTransitions: h } = _.useContext(lt), g = Gn(), v = Kn(s, { relative: l }), y = o.toLowerCase() === "get" ? "get" : "post", b = typeof s == "string" && ne.test(s);
 	return /* @__PURE__ */ _.createElement("form", {
 		ref: m,
 		method: y,
@@ -9348,18 +9364,18 @@ var Ln = _.forwardRef(({ discover: e = "render", fetcherKey: t, navigate: n, rel
 		"data-discover": !b && e === "render" ? "true" : void 0
 	});
 });
-Ln.displayName = "Form";
-function Rn(e) {
+Rn.displayName = "Form";
+function zn(e) {
 	return `${e} must be used within a data router.  See https://reactrouter.com/en/main/routers/picking-a-router.`;
 }
-function zn(e) {
+function Bn(e) {
 	let t = _.useContext(nt);
-	return O(t, Rn(e)), t;
+	return O(t, zn(e)), t;
 }
-function Bn(e, { target: t, replace: n, mask: r, state: i, preventScrollReset: a, relative: o, viewTransition: s, defaultShouldRevalidate: c, useTransitions: l } = {}) {
-	let u = Ct(), d = bt(), f = M(e, { relative: o });
+function Vn(e, { target: t, replace: n, mask: r, state: i, preventScrollReset: a, relative: o, viewTransition: s, defaultShouldRevalidate: c, useTransitions: l } = {}) {
+	let u = Ct(), d = bt(), f = Et(e, { relative: o });
 	return _.useCallback((p) => {
-		if (an(p, t)) {
+		if (on(p, t)) {
 			p.preventDefault();
 			let t = n === void 0 ? ce(d) === ce(f) : n, m = () => u(e, {
 				replace: t,
@@ -9388,21 +9404,21 @@ function Bn(e, { target: t, replace: n, mask: r, state: i, preventScrollReset: a
 		l
 	]);
 }
-function Vn(e) {
+function Hn(e) {
 	k(typeof URLSearchParams < "u", "You cannot use the `useSearchParams` hook in a browser that does not support the URLSearchParams API. If you need to support Internet Explorer 11, we recommend you load a polyfill such as https://github.com/ungap/url-search-params.");
-	let t = _.useRef(on(e)), n = _.useRef(!1), r = bt(), i = _.useMemo(() => sn(r.search, n.current ? null : t.current), [r.search]), a = Ct();
+	let t = _.useRef(sn(e)), n = _.useRef(!1), r = bt(), i = _.useMemo(() => cn(r.search, n.current ? null : t.current), [r.search]), a = Ct();
 	return [i, _.useCallback((e, t) => {
-		let r = on(typeof e == "function" ? e(new URLSearchParams(i)) : e);
+		let r = sn(typeof e == "function" ? e(new URLSearchParams(i)) : e);
 		n.current = !0, a("?" + r, t);
 	}, [a, i])];
 }
-var Hn = 0, Un = () => `__${String(++Hn)}__`;
-function Wn() {
-	let { router: e } = zn("useSubmit"), { basename: t } = _.useContext(lt), n = Bt(), r = e.fetch, i = e.navigate;
+var Un = 0, Wn = () => `__${String(++Un)}__`;
+function Gn() {
+	let { router: e } = Bn("useSubmit"), { basename: t } = _.useContext(lt), n = Vt(), r = e.fetch, i = e.navigate;
 	return _.useCallback(async (e, a = {}) => {
-		let { action: o, method: s, encType: c, formData: l, body: u } = fn(e, t);
+		let { action: o, method: s, encType: c, formData: l, body: u } = pn(e, t);
 		if (a.navigate === !1) {
-			let e = a.fetcherKey || Un();
+			let e = a.fetcherKey || Wn();
 			await r(e, n, a.action || o, {
 				defaultShouldRevalidate: a.defaultShouldRevalidate,
 				preventScrollReset: a.preventScrollReset,
@@ -9432,10 +9448,10 @@ function Wn() {
 		n
 	]);
 }
-function Gn(e, { relative: t } = {}) {
+function Kn(e, { relative: t } = {}) {
 	let { basename: n } = _.useContext(lt), r = _.useContext(dt);
 	O(r, "useFormAction must be used inside a RouteContext");
-	let [i] = r.matches.slice(-1), a = { ...M(e || ".", { relative: t }) }, o = bt();
+	let [i] = r.matches.slice(-1), a = { ...Et(e || ".", { relative: t }) }, o = bt();
 	if (e == null) {
 		a.search = o.search;
 		let e = new URLSearchParams(a.search), t = e.getAll("index");
@@ -9447,17 +9463,17 @@ function Gn(e, { relative: t } = {}) {
 	}
 	return (!e || e === ".") && i.route.index && (a.search = a.search ? a.search.replace(/^\?/, "?index&") : "?index"), n !== "/" && (a.pathname = a.pathname === "/" ? n : Le([n, a.pathname])), ce(a);
 }
-function Kn(e, { relative: t } = {}) {
+function qn(e, { relative: t } = {}) {
 	let n = _.useContext(ot);
 	O(n != null, "`useViewTransitionState` must be used within `react-router-dom`'s `RouterProvider`.  Did you accidentally import `RouterProvider` from `react-router`?");
-	let { basename: r } = zn("useViewTransitionState"), i = M(e, { relative: t });
+	let { basename: r } = Bn("useViewTransitionState"), i = Et(e, { relative: t });
 	if (!n.isTransitioning) return !1;
 	let a = ke(n.currentLocation.pathname, r) || n.currentLocation.pathname, o = ke(n.nextLocation.pathname, r) || n.nextLocation.pathname;
 	return Te(i.pathname, o) != null || Te(i.pathname, a) != null;
 }
 //#endregion
 //#region node_modules/react/cjs/react-jsx-runtime.production.js
-var qn = /* @__PURE__ */ o(((e) => {
+var Jn = /* @__PURE__ */ o(((e) => {
 	var t = Symbol.for("react.transitional.element"), n = Symbol.for("react.fragment");
 	function r(e, n, r) {
 		var i = null;
@@ -9472,15 +9488,15 @@ var qn = /* @__PURE__ */ o(((e) => {
 		};
 	}
 	e.Fragment = n, e.jsx = r, e.jsxs = r;
-})), P = (/* @__PURE__ */ o(((e, t) => {
-	t.exports = qn();
-})))(), Jn = (0, _.createContext)(null), Yn = 0;
-function Xn({ children: e }) {
+})), N = (/* @__PURE__ */ o(((e, t) => {
+	t.exports = Jn();
+})))(), Yn = (0, _.createContext)(null), Xn = 0;
+function Zn({ children: e }) {
 	let t = (0, _.useSyncExternalStore)(C, S, S), [n, r] = (0, _.useState)(t?.user.role ?? "SUPPORT"), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(!1), [c, l] = (0, _.useState)(!1), [u, d] = (0, _.useState)(!1), [f, p] = (0, _.useState)(!1), [m, h] = (0, _.useState)([]), [g, v] = (0, _.useState)({}), y = (0, _.useCallback)((e) => {
 		h((t) => t.filter((t) => t.id !== e));
 	}, []), b = (0, _.useCallback)((e, t, n = "blue") => {
-		Yn += 1;
-		let r = Yn;
+		Xn += 1;
+		let r = Xn;
 		h((i) => [...i.slice(-3), {
 			id: r,
 			title: e,
@@ -9490,7 +9506,10 @@ function Xn({ children: e }) {
 	}, [y]), x = (0, _.useMemo)(() => {
 		let e = t?.shipments ?? [];
 		return Object.keys(g).length === 0 ? e : e.map((e) => g[e.id] ?? e);
-	}, [t, g]), T = (0, _.useMemo)(() => t?.contracts ?? [], [t]), E = (0, _.useMemo)(() => t?.tasks ?? [], [t]), ee = (0, _.useMemo)(() => t?.customers ?? [], [t]), D = (0, _.useMemo)(() => t?.quotes ?? [], [t]), ne = (0, _.useMemo)(() => t?.notifications ?? [], [t]), re = (0, _.useMemo)(() => t?.home ?? null, [t]), ie = (0, _.useMemo)(() => t?.environment ?? null, [t]), ae = (0, _.useCallback)((e, t) => te(e, t), []), oe = (0, _.useCallback)((e, n) => {
+	}, [t, g]), T = (0, _.useMemo)(() => t?.contracts ?? [], [t]), E = (0, _.useMemo)(() => t?.tasks ?? [], [t]), ee = (0, _.useMemo)(() => t?.customers ?? [], [t]), D = (0, _.useMemo)(() => t?.quotes ?? [], [t]), ne = (0, _.useMemo)(() => t?.agreements ?? [], [t]), re = (0, _.useMemo)(() => t?.authority ?? {
+		companies: [],
+		agents: []
+	}, [t]), ie = (0, _.useMemo)(() => t?.notifications ?? [], [t]), ae = (0, _.useMemo)(() => t?.home ?? null, [t]), oe = (0, _.useMemo)(() => t?.environment ?? null, [t]), O = (0, _.useCallback)((e, t) => te(e, t), []), k = (0, _.useCallback)((e, n) => {
 		let r = (t?.shipments ?? []).find((t) => t.id === e) ?? Object.values(g).find((t) => t.id === e);
 		if (!r) return;
 		let i = n(r);
@@ -9498,8 +9517,8 @@ function Xn({ children: e }) {
 			...t,
 			[e]: i
 		})), te("shipment_update", { shipment: i });
-	}, [t, g]), O = t?.version, k = (0, _.useRef)(O);
-	O !== k.current && (k.current = O, t && v((e) => {
+	}, [t, g]), A = t?.version, se = (0, _.useRef)(A);
+	A !== se.current && (se.current = A, t && v((e) => {
 		let n = new Set((t.shipments ?? []).map((e) => e.id)), r = {};
 		for (let [i, a] of Object.entries(e)) {
 			let e = (t.shipments ?? []).find((e) => e.id === i);
@@ -9507,10 +9526,10 @@ function Xn({ children: e }) {
 		}
 		return r;
 	}));
-	let A = t?.user.name ?? "Thu Hằng", se = (0, _.useMemo)(() => ({
+	let ce = t?.user.name ?? "Thu Hằng", le = (0, _.useMemo)(() => ({
 		role: n,
 		setRole: r,
-		userName: A,
+		userName: ce,
 		query: i,
 		setQuery: a,
 		searchOpen: o,
@@ -9528,16 +9547,18 @@ function Xn({ children: e }) {
 		contracts: T,
 		customers: ee,
 		quotes: D,
+		agreements: ne,
+		authority: re,
 		tasks: E,
-		notifications: ne,
-		home: re,
-		environment: ie,
+		notifications: ie,
+		home: ae,
+		environment: oe,
 		unknownLabel: w(),
-		dispatch: ae,
-		updateShipment: oe
+		dispatch: O,
+		updateShipment: k
 	}), [
 		n,
-		A,
+		ce,
 		i,
 		o,
 		c,
@@ -9550,32 +9571,34 @@ function Xn({ children: e }) {
 		T,
 		ee,
 		D,
-		E,
 		ne,
 		re,
+		E,
 		ie,
 		ae,
-		oe
+		oe,
+		O,
+		k
 	]);
-	return /* @__PURE__ */ (0, P.jsx)(Jn.Provider, {
-		value: se,
+	return /* @__PURE__ */ (0, N.jsx)(Yn.Provider, {
+		value: le,
 		children: e
 	});
 }
-function Zn() {
-	let e = (0, _.useContext)(Jn);
+function Qn() {
+	let e = (0, _.useContext)(Yn);
 	if (!e) throw Error("useStore must be used inside <StoreProvider>");
 	return e;
 }
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs
-var Qn = (e) => e?.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+var $n = (e) => e?.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/utils/toLucideIconData.mjs
-function $n(e, t, n = []) {
+function er(e, t, n = []) {
 	if (t == null) throw Error("[lucide]: iconNode is required when icon name is used");
 	return {
-		name: Qn(e),
+		name: $n(e),
 		size: 24,
 		node: t,
 		...n.length > 0 ? { aliases: n } : {}
@@ -9583,7 +9606,7 @@ function $n(e, t, n = []) {
 }
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs
-var er = (e) => {
+var tr = (e) => {
 	let t = "", n = !1;
 	for (let r of e) {
 		if (r === "-" || r === "_" || r <= " ") {
@@ -9593,10 +9616,10 @@ var er = (e) => {
 		t.length === 0 ? t += r.toLowerCase() : t += n ? r.toUpperCase() : r, n = !1;
 	}
 	return t;
-}, tr = (e) => {
-	let t = er(e);
+}, nr = (e) => {
+	let t = tr(e);
 	return t.charAt(0).toUpperCase() + t.slice(1);
-}, nr = (...e) => e.filter((e, t, n) => !!e && e.trim() !== "" && n.indexOf(e) === t).join(" ").trim(), rr = {
+}, rr = (...e) => e.filter((e, t, n) => !!e && e.trim() !== "" && n.indexOf(e) === t).join(" ").trim(), ir = {
 	xmlns: "http://www.w3.org/2000/svg",
 	width: 24,
 	height: 24,
@@ -9609,22 +9632,22 @@ var er = (e) => {
 };
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconNode.mjs
-function ir(e) {
+function ar(e) {
 	return e != null;
 }
-function ar(e, t = {}) {
-	let n = t.attributeNames ?? {}, r = (e) => n[e] ?? e, i = e.size ?? e.width ?? rr.width, a = e.size ?? e.height ?? rr.height, o = e.aliases?.filter((e) => typeof e == "string" && e.trim() !== "").map((e) => `lucide-${e}`) ?? [], s = [...e.name ? [`lucide-${e.name}`] : [], ...o], c = t.className?.split(" ").filter(Boolean) ?? [], l = t.includeDefaultClasses === !1 ? nr(...c) : nr("lucide", ...s, ...c), u = t.absoluteStrokeWidth ? Number(t.strokeWidth ?? rr["stroke-width"]) * Number(e.size ?? e.width ?? rr.width) / Number(t.size ?? t.width ?? rr.width) : t.strokeWidth ?? rr["stroke-width"];
+function or(e, t = {}) {
+	let n = t.attributeNames ?? {}, r = (e) => n[e] ?? e, i = e.size ?? e.width ?? ir.width, a = e.size ?? e.height ?? ir.height, o = e.aliases?.filter((e) => typeof e == "string" && e.trim() !== "").map((e) => `lucide-${e}`) ?? [], s = [...e.name ? [`lucide-${e.name}`] : [], ...o], c = t.className?.split(" ").filter(Boolean) ?? [], l = t.includeDefaultClasses === !1 ? rr(...c) : rr("lucide", ...s, ...c), u = t.absoluteStrokeWidth ? Number(t.strokeWidth ?? ir["stroke-width"]) * Number(e.size ?? e.width ?? ir.width) / Number(t.size ?? t.width ?? ir.width) : t.strokeWidth ?? ir["stroke-width"];
 	return [
 		"svg",
 		{
-			...Object.entries(rr).reduce((e, [t, n]) => (e[r(t)] = n, e), {}),
+			...Object.entries(ir).reduce((e, [t, n]) => (e[r(t)] = n, e), {}),
 			..."color" in t && t.color && { [r("stroke")]: t.color },
-			..."size" in t && ir(t.size) && {
+			..."size" in t && ar(t.size) && {
 				[r("width")]: t.size,
 				[r("height")]: t.size
 			},
-			..."width" in t && ir(t.width) && { [r("width")]: t.width },
-			..."height" in t && ir(t.height) && { [r("height")]: t.height },
+			..."width" in t && ar(t.width) && { [r("width")]: t.width },
+			..."height" in t && ar(t.height) && { [r("height")]: t.height },
 			[r("stroke-width")]: u,
 			...l && { [r("class")]: l },
 			[r("viewBox")]: `0 0 ${i} ${a}`,
@@ -9646,8 +9669,8 @@ function ar(e, t = {}) {
 }
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconForReact.mjs
-function or(e, t = {}) {
-	return ar(e, {
+function sr(e, t = {}) {
+	return or(e, {
 		...t,
 		attributeNames: {
 			...t.attributeNames,
@@ -9661,22 +9684,22 @@ function or(e, t = {}) {
 }
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs
-var sr = (e) => {
+var cr = (e) => {
 	for (let t in e) if (t.startsWith("aria-") || t === "role" || t === "title") return !0;
 	return !1;
-}, cr = (0, _.createContext)({}), lr = () => (0, _.useContext)(cr), ur = (0, _.forwardRef)(({ color: e, size: t, width: n, height: r, strokeWidth: i, absoluteStrokeWidth: a, nonScalingStroke: o, className: s = "", children: c, iconNode: l = [], icon: u = {
+}, lr = (0, _.createContext)({}), ur = () => (0, _.useContext)(lr), dr = (0, _.forwardRef)(({ color: e, size: t, width: n, height: r, strokeWidth: i, absoluteStrokeWidth: a, nonScalingStroke: o, className: s = "", children: c, iconNode: l = [], icon: u = {
 	node: l,
 	aliases: [],
 	size: 24
 }, ...d }, f) => {
-	let { size: p = 24, strokeWidth: m = 2, absoluteStrokeWidth: h = !1, nonScalingStroke: g = !1, color: v = "currentColor", className: y = "" } = lr() ?? {}, b = !!c || sr(d), [x, S, C = []] = or(u, {
+	let { size: p = 24, strokeWidth: m = 2, absoluteStrokeWidth: h = !1, nonScalingStroke: g = !1, color: v = "currentColor", className: y = "" } = ur() ?? {}, b = !!c || cr(d), [x, S, C = []] = sr(u, {
 		color: e ?? v,
 		width: n ?? t ?? p,
 		height: r ?? t ?? p,
 		strokeWidth: i ?? m,
 		absoluteStrokeWidth: a ?? h,
 		nonScalingStroke: o ?? g,
-		className: nr(y, s),
+		className: rr(y, s),
 		hasA11yProp: b,
 		attributes: d
 	});
@@ -9687,18 +9710,41 @@ var sr = (e) => {
 });
 //#endregion
 //#region node_modules/lucide-react/dist/esm/createLucideIcon.mjs
-function F(e, t = [], n = []) {
-	let r = typeof e == "string" ? $n(e, t, n) : e, i = (0, _.forwardRef)(({ className: e, ...t }, n) => (0, _.createElement)(ur, {
+function P(e, t = [], n = []) {
+	let r = typeof e == "string" ? er(e, t, n) : e, i = (0, _.forwardRef)(({ className: e, ...t }, n) => (0, _.createElement)(dr, {
 		ref: n,
 		icon: r,
 		className: e,
 		...t
 	}));
-	return r.name && (i.displayName = tr(r.name)), i;
+	return r.name && (i.displayName = nr(r.name)), i;
 }
 //#endregion
-//#region node_modules/lucide-react/dist/esm/icons/arrow-left.mjs
-var dr = {
+//#region node_modules/lucide-react/dist/esm/icons/archive.mjs
+var fr = {
+	name: "archive",
+	size: 24,
+	node: [
+		["rect", {
+			width: "20",
+			height: "5",
+			x: "2",
+			y: "3",
+			rx: "1",
+			key: "1wp1u1"
+		}],
+		["path", {
+			d: "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8",
+			key: "1s80jp"
+		}],
+		["path", {
+			d: "M10 12h4",
+			key: "a56b0p"
+		}]
+	]
+};
+fr.node;
+var pr = P(fr), mr = {
 	name: "arrow-left",
 	size: 24,
 	node: [["path", {
@@ -9709,8 +9755,8 @@ var dr = {
 		key: "x3x0zl"
 	}]]
 };
-dr.node;
-var fr = F(dr), pr = {
+mr.node;
+var hr = P(mr), gr = {
 	name: "arrow-right",
 	size: 24,
 	node: [["path", {
@@ -9721,8 +9767,33 @@ var fr = F(dr), pr = {
 		key: "xquz4c"
 	}]]
 };
-pr.node;
-var mr = F(pr), hr = {
+gr.node;
+var _r = P(gr), vr = {
+	name: "banknote",
+	size: 24,
+	node: [
+		["rect", {
+			width: "20",
+			height: "12",
+			x: "2",
+			y: "6",
+			rx: "2",
+			key: "9lu3g6"
+		}],
+		["circle", {
+			cx: "12",
+			cy: "12",
+			r: "2",
+			key: "1c9p78"
+		}],
+		["path", {
+			d: "M6 12h.01M18 12h.01",
+			key: "113zkx"
+		}]
+	]
+};
+vr.node;
+var yr = P(vr), br = {
 	name: "bell-ring",
 	size: 24,
 	node: [
@@ -9744,8 +9815,8 @@ var mr = F(pr), hr = {
 		}]
 	]
 };
-hr.node;
-var gr = F(hr), _r = {
+br.node;
+var xr = P(br), Sr = {
 	name: "bell",
 	size: 24,
 	node: [["path", {
@@ -9756,8 +9827,8 @@ var gr = F(hr), _r = {
 		key: "11g9vi"
 	}]]
 };
-_r.node;
-var vr = F(_r), yr = {
+Sr.node;
+var Cr = P(Sr), wr = {
 	name: "book-open",
 	size: 24,
 	node: [["path", {
@@ -9768,8 +9839,8 @@ var vr = F(_r), yr = {
 		key: "1fyvmf"
 	}]]
 };
-yr.node;
-var br = F(yr), xr = {
+wr.node;
+var Tr = P(wr), Er = {
 	name: "building-2",
 	size: 24,
 	node: [
@@ -9795,8 +9866,8 @@ var br = F(yr), xr = {
 		}]
 	]
 };
-xr.node;
-var Sr = F(xr), Cr = {
+Er.node;
+var Dr = P(Er), Or = {
 	name: "calculator",
 	size: 24,
 	node: [
@@ -9852,8 +9923,8 @@ var Sr = F(xr), Cr = {
 		}]
 	]
 };
-Cr.node;
-var wr = F(Cr), Tr = {
+Or.node;
+var kr = P(Or), Ar = {
 	name: "chart-column",
 	size: 24,
 	node: [
@@ -9876,8 +9947,8 @@ var wr = F(Cr), Tr = {
 	],
 	aliases: ["bar-chart-3"]
 };
-Tr.node;
-var Er = F(Tr), Dr = {
+Ar.node;
+var jr = P(Ar), Mr = {
 	name: "chevron-right",
 	size: 24,
 	node: [["path", {
@@ -9885,8 +9956,8 @@ var Er = F(Tr), Dr = {
 		key: "mthhwq"
 	}]]
 };
-Dr.node;
-var Or = F(Dr), kr = {
+Mr.node;
+var Nr = P(Mr), Pr = {
 	name: "circle-alert",
 	size: 24,
 	node: [
@@ -9913,8 +9984,8 @@ var Or = F(Dr), kr = {
 	],
 	aliases: ["alert-circle"]
 };
-kr.node;
-var Ar = F(kr), jr = {
+Pr.node;
+var Fr = P(Pr), Ir = {
 	name: "circle-check",
 	size: 24,
 	node: [["circle", {
@@ -9928,8 +9999,8 @@ var Ar = F(kr), jr = {
 	}]],
 	aliases: ["check-circle-2"]
 };
-jr.node;
-var Mr = F(jr), Nr = {
+Ir.node;
+var Lr = P(Ir), Rr = {
 	name: "circle-plus",
 	size: 24,
 	node: [
@@ -9950,8 +10021,8 @@ var Mr = F(jr), Nr = {
 	],
 	aliases: ["plus-circle"]
 };
-Nr.node;
-var Pr = F(Nr), Fr = {
+Rr.node;
+var zr = P(Rr), Br = {
 	name: "clock",
 	size: 24,
 	node: [["circle", {
@@ -9964,8 +10035,8 @@ var Pr = F(Nr), Fr = {
 		key: "mmk7yg"
 	}]]
 };
-Fr.node;
-var Ir = F(Fr), Lr = {
+Br.node;
+var Vr = P(Br), Hr = {
 	name: "construction",
 	size: 24,
 	node: [
@@ -10007,8 +10078,8 @@ var Ir = F(Fr), Lr = {
 		}]
 	]
 };
-Lr.node;
-var Rr = F(Lr), zr = {
+Hr.node;
+var Ur = P(Hr), Wr = {
 	name: "download",
 	size: 24,
 	node: [
@@ -10026,8 +10097,8 @@ var Rr = F(Lr), zr = {
 		}]
 	]
 };
-zr.node;
-var Br = F(zr), Vr = {
+Wr.node;
+var Gr = P(Wr), Kr = {
 	name: "external-link",
 	size: 24,
 	node: [
@@ -10045,8 +10116,8 @@ var Br = F(zr), Vr = {
 		}]
 	]
 };
-Vr.node;
-var Hr = F(Vr), Ur = {
+Kr.node;
+var qr = P(Kr), Jr = {
 	name: "eye",
 	size: 24,
 	node: [["path", {
@@ -10059,8 +10130,8 @@ var Hr = F(Vr), Ur = {
 		key: "1v7zrd"
 	}]]
 };
-Ur.node;
-var Wr = F(Ur), Gr = {
+Jr.node;
+var Yr = P(Jr), Xr = {
 	name: "file-check-corner",
 	size: 24,
 	node: [
@@ -10079,8 +10150,8 @@ var Wr = F(Ur), Gr = {
 	],
 	aliases: ["file-check-2"]
 };
-Gr.node;
-var Kr = F(Gr), qr = {
+Xr.node;
+var Zr = P(Xr), Qr = {
 	name: "file-down",
 	size: 24,
 	node: [
@@ -10102,8 +10173,8 @@ var Kr = F(Gr), qr = {
 		}]
 	]
 };
-qr.node;
-var Jr = F(qr), Yr = {
+Qr.node;
+var $r = P(Qr), ei = {
 	name: "file-exclamation-point",
 	size: 24,
 	node: [
@@ -10122,8 +10193,8 @@ var Jr = F(qr), Yr = {
 	],
 	aliases: ["file-warning"]
 };
-Yr.node;
-var Xr = F(Yr), Zr = {
+ei.node;
+var ti = P(ei), ni = {
 	name: "file-text",
 	size: 24,
 	node: [
@@ -10149,8 +10220,8 @@ var Xr = F(Yr), Zr = {
 		}]
 	]
 };
-Zr.node;
-var Qr = F(Zr), $r = {
+ni.node;
+var ri = P(ni), ii = {
 	name: "handshake",
 	size: 24,
 	node: [
@@ -10176,8 +10247,8 @@ var Qr = F(Zr), $r = {
 		}]
 	]
 };
-$r.node;
-var ei = F($r), ti = {
+ii.node;
+var ai = P(ii), oi = {
 	name: "info",
 	size: 24,
 	node: [
@@ -10197,8 +10268,8 @@ var ei = F($r), ti = {
 		}]
 	]
 };
-ti.node;
-var ni = F(ti), ri = {
+oi.node;
+var si = P(oi), ci = {
 	name: "languages",
 	size: 24,
 	node: [
@@ -10228,8 +10299,8 @@ var ni = F(ti), ri = {
 		}]
 	]
 };
-ri.node;
-var ii = F(ri), ai = {
+ci.node;
+var li = P(ci), ui = {
 	name: "layout-dashboard",
 	size: 24,
 	node: [
@@ -10267,8 +10338,30 @@ var ii = F(ri), ai = {
 		}]
 	]
 };
-ai.node;
-var oi = F(ai), si = {
+ui.node;
+var di = P(ui), fi = {
+	name: "link-2",
+	size: 24,
+	node: [
+		["path", {
+			d: "M9 17H7A5 5 0 0 1 7 7h2",
+			key: "8i5ue5"
+		}],
+		["path", {
+			d: "M15 7h2a5 5 0 1 1 0 10h-2",
+			key: "1b9ql8"
+		}],
+		["line", {
+			x1: "8",
+			x2: "16",
+			y1: "12",
+			y2: "12",
+			key: "1jonct"
+		}]
+	]
+};
+fi.node;
+var pi = P(fi), mi = {
 	name: "list-filter",
 	size: 24,
 	node: [
@@ -10286,8 +10379,8 @@ var oi = F(ai), si = {
 		}]
 	]
 };
-si.node;
-var ci = F(si), li = {
+mi.node;
+var hi = P(mi), gi = {
 	name: "map-pin",
 	size: 24,
 	node: [["path", {
@@ -10300,8 +10393,8 @@ var ci = F(si), li = {
 		key: "ilqhr7"
 	}]]
 };
-li.node;
-var ui = F(li), di = {
+gi.node;
+var _i = P(gi), vi = {
 	name: "menu",
 	size: 24,
 	node: [
@@ -10319,8 +10412,8 @@ var ui = F(li), di = {
 		}]
 	]
 };
-di.node;
-var fi = F(di), pi = {
+vi.node;
+var yi = P(vi), bi = {
 	name: "octagon-alert",
 	size: 24,
 	node: [
@@ -10339,8 +10432,8 @@ var fi = F(di), pi = {
 	],
 	aliases: ["alert-octagon"]
 };
-pi.node;
-var mi = F(pi), hi = {
+bi.node;
+var xi = P(bi), Si = {
 	name: "package-check",
 	size: 24,
 	node: [
@@ -10366,8 +10459,8 @@ var mi = F(pi), hi = {
 		}]
 	]
 };
-hi.node;
-var gi = F(hi), _i = {
+Si.node;
+var Ci = P(Si), wi = {
 	name: "package",
 	size: 24,
 	node: [
@@ -10389,8 +10482,8 @@ var gi = F(hi), _i = {
 		}]
 	]
 };
-_i.node;
-var vi = F(_i), yi = {
+wi.node;
+var Ti = P(wi), Ei = {
 	name: "pen-line",
 	size: 24,
 	node: [["path", {
@@ -10402,8 +10495,8 @@ var vi = F(_i), yi = {
 	}]],
 	aliases: ["edit-3"]
 };
-yi.node;
-var bi = F(yi), xi = {
+Ei.node;
+var Di = P(Ei), Oi = {
 	name: "phone",
 	size: 24,
 	node: [["path", {
@@ -10411,8 +10504,8 @@ var bi = F(yi), xi = {
 		key: "9njp5v"
 	}]]
 };
-xi.node;
-var Si = F(xi), Ci = {
+Oi.node;
+var ki = P(Oi), Ai = {
 	name: "plus",
 	size: 24,
 	node: [["path", {
@@ -10423,8 +10516,8 @@ var Si = F(xi), Ci = {
 		key: "s699le"
 	}]]
 };
-Ci.node;
-var wi = F(Ci), Ti = {
+Ai.node;
+var F = P(Ai), ji = {
 	name: "scale",
 	size: 24,
 	node: [
@@ -10450,8 +10543,8 @@ var wi = F(Ci), Ti = {
 		}]
 	]
 };
-Ti.node;
-var Ei = F(Ti), Di = {
+ji.node;
+var Mi = P(ji), Ni = {
 	name: "search",
 	size: 24,
 	node: [["path", {
@@ -10464,8 +10557,8 @@ var Ei = F(Ti), Di = {
 		key: "4ej97u"
 	}]]
 };
-Di.node;
-var Oi = F(Di), ki = {
+Ni.node;
+var Pi = P(Ni), Fi = {
 	name: "shield-check",
 	size: 24,
 	node: [["path", {
@@ -10476,8 +10569,8 @@ var Oi = F(Di), ki = {
 		key: "dzmm74"
 	}]]
 };
-ki.node;
-var Ai = F(ki), ji = {
+Fi.node;
+var Ii = P(Fi), I = {
 	name: "sliders-horizontal",
 	size: 24,
 	node: [
@@ -10519,8 +10612,8 @@ var Ai = F(ki), ji = {
 		}]
 	]
 };
-ji.node;
-var Mi = F(ji), Ni = {
+I.node;
+var L = P(I), Li = {
 	name: "sparkles",
 	size: 24,
 	node: [
@@ -10545,8 +10638,55 @@ var Mi = F(ji), Ni = {
 	],
 	aliases: ["stars"]
 };
-Ni.node;
-var Pi = F(Ni), Fi = {
+Li.node;
+var Ri = P(Li), zi = {
+	name: "stamp",
+	size: 24,
+	node: [
+		["path", {
+			d: "M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13",
+			key: "i9gjdv"
+		}],
+		["path", {
+			d: "M20 15.5a2.5 2.5 0 0 0-2.5-2.5h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1z",
+			key: "1vzg3v"
+		}],
+		["path", {
+			d: "M5 22h14",
+			key: "ehvnwv"
+		}]
+	]
+};
+zi.node;
+var Bi = P(zi), Vi = {
+	name: "trash",
+	size: 24,
+	node: [
+		["path", {
+			d: "M10 11v6",
+			key: "nco0om"
+		}],
+		["path", {
+			d: "M14 11v6",
+			key: "outv1u"
+		}],
+		["path", {
+			d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+			key: "miytrc"
+		}],
+		["path", {
+			d: "M3 6h18",
+			key: "d0wm0j"
+		}],
+		["path", {
+			d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+			key: "e791ji"
+		}]
+	],
+	aliases: ["trash-2"]
+};
+Vi.node;
+var Hi = P(Vi), Ui = {
 	name: "triangle-alert",
 	size: 24,
 	node: [
@@ -10565,8 +10705,8 @@ var Pi = F(Ni), Fi = {
 	],
 	aliases: ["alert-triangle"]
 };
-Fi.node;
-var Ii = F(Fi), I = {
+Ui.node;
+var Wi = P(Ui), Gi = {
 	name: "truck",
 	size: 24,
 	node: [
@@ -10596,8 +10736,27 @@ var Ii = F(Fi), I = {
 		}]
 	]
 };
-I.node;
-var L = F(I), Li = {
+Gi.node;
+var Ki = P(Gi), qi = {
+	name: "upload",
+	size: 24,
+	node: [
+		["path", {
+			d: "M12 3v12",
+			key: "1x0j5s"
+		}],
+		["path", {
+			d: "m17 8-5-5-5 5",
+			key: "7q97r8"
+		}],
+		["path", {
+			d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4",
+			key: "ih7n3h"
+		}]
+	]
+};
+qi.node;
+var Ji = P(qi), Yi = {
 	name: "users",
 	size: 24,
 	node: [
@@ -10621,8 +10780,8 @@ var L = F(I), Li = {
 		}]
 	]
 };
-Li.node;
-var Ri = F(Li), zi = {
+Yi.node;
+var Xi = P(Yi), Zi = {
 	name: "wallet",
 	size: 24,
 	node: [["path", {
@@ -10633,8 +10792,8 @@ var Ri = F(Li), zi = {
 		key: "xoc0q4"
 	}]]
 };
-zi.node;
-var Bi = F(zi), Vi = {
+Zi.node;
+var Qi = P(Zi), $i = {
 	name: "x",
 	size: 24,
 	node: [["path", {
@@ -10645,12 +10804,12 @@ var Bi = F(zi), Vi = {
 		key: "d8bk6v"
 	}]]
 };
-Vi.node;
-var Hi = F(Vi), Ui = {
+$i.node;
+var ea = P($i), ta = {
 	ADMIN: "Quản trị",
 	SUPPORT: "Điều phối",
 	SALE: "Kinh doanh"
-}, Wi = [
+}, na = [
 	{
 		group: "VẬN HÀNH",
 		items: [
@@ -10764,7 +10923,7 @@ var Hi = F(Vi), Ui = {
 			icon: "shield"
 		}]
 	}
-], Gi = {
+], R = {
 	shipments: [],
 	contracts: [],
 	customers: [],
@@ -10772,72 +10931,79 @@ var Hi = F(Vi), Ui = {
 	tasks: [],
 	notifs: []
 };
-function Ki(e, t) {
+function ra(e, t) {
 	e.length = 0, Array.isArray(t) && e.push(...t);
 }
 C(() => {
 	let e = S();
-	e && (Ki(Gi.shipments, e.shipments), Ki(Gi.contracts, e.contracts), Ki(Gi.customers, e.customers), Ki(Gi.quotes, e.quotes), Ki(Gi.tasks, e.tasks), Ki(Gi.notifs, e.notifications));
+	e && (ra(R.shipments, e.shipments), ra(R.contracts, e.contracts), ra(R.customers, e.customers), ra(R.quotes, e.quotes), ra(R.tasks, e.tasks), ra(R.notifs, e.notifications));
 });
 {
 	let e = S();
-	e && (Ki(Gi.shipments, e.shipments), Ki(Gi.contracts, e.contracts), Ki(Gi.customers, e.customers), Ki(Gi.quotes, e.quotes), Ki(Gi.tasks, e.tasks), Ki(Gi.notifs, e.notifications));
+	e && (ra(R.shipments, e.shipments), ra(R.contracts, e.contracts), ra(R.customers, e.customers), ra(R.quotes, e.quotes), ra(R.tasks, e.tasks), ra(R.notifs, e.notifications));
 }
-var qi = Gi.shipments, Ji = Gi.contracts, Yi = Gi.customers, Xi = Gi.quotes, Zi = Gi.tasks;
-Gi.notifs;
+var ia = R.shipments, aa = R.contracts, oa = R.customers, sa = R.quotes, z = R.tasks;
+R.notifs;
 //#endregion
 //#region src/lib/format.ts
-function R(...e) {
+function B(...e) {
 	return e.filter(Boolean).join(" ");
 }
-function Qi(e) {
+function ca(e) {
 	return e == null || e === "" || typeof e == "number" && Number.isNaN(e);
 }
-function $i(e, t) {
-	if (Qi(e)) return "—";
+function la(e, t) {
+	if (ca(e)) return "—";
 	let n = Number(e);
 	return Number.isNaN(n) ? "—" : n.toLocaleString("vi-VN");
 }
-function ea(e) {
-	return Qi(e) ? "— ₫" : `${$i(e)} ₫`;
+function ua(e) {
+	return ca(e) ? "— ₫" : `${la(e)} ₫`;
 }
-function ta(e) {
-	return Qi(e) ? "— tr" : `${(Number(e) / 1e6).toLocaleString("vi-VN")} tr`;
+function da(e) {
+	return ca(e) ? "— tr" : `${(Number(e) / 1e6).toLocaleString("vi-VN")} tr`;
 }
-function na(e) {
-	if (Qi(e)) return "—";
+function fa(e) {
+	if (ca(e)) return "—";
 	let t = Number(e);
 	return Number.isNaN(t) ? String(e) : t.toLocaleString("vi-VN");
 }
-function ra(e) {
+function V(e) {
 	let t = (e ?? "").trim();
 	return t.length > 0 ? t : "—";
 }
+function pa(e, t, n) {
+	if (!t) return;
+	let r = atob(t), i = new Uint8Array(r.length);
+	for (let e = 0; e < r.length; e += 1) i[e] = r.charCodeAt(e);
+	let a = new Blob([i], { type: n }), o = URL.createObjectURL(a), s = document.createElement("a");
+	s.href = o, s.download = e, document.body.appendChild(s), s.click(), document.body.removeChild(s), setTimeout(() => URL.revokeObjectURL(o), 4e3);
+}
 //#endregion
 //#region src/components/ui.tsx
-var ia = {
-	layout: oi,
-	alarm: gr,
-	box: vi,
-	plus: Pr,
-	truck: L,
-	users: Ri,
-	handshake: ei,
-	calc: wr,
-	filecheck: Kr,
-	filetext: Qr,
-	wallet: Bi,
-	scale: Ei,
-	building: Sr,
-	chart: Er,
-	search: Oi,
-	book: br,
-	lang: ii,
-	shield: Ai
+var ma = {
+	layout: di,
+	alarm: xr,
+	box: Ti,
+	plus: zr,
+	truck: Ki,
+	users: Xi,
+	handshake: ai,
+	calc: kr,
+	filecheck: Zr,
+	filetext: ri,
+	wallet: Qi,
+	scale: Mi,
+	building: Dr,
+	chart: jr,
+	search: Pi,
+	book: Tr,
+	lang: li,
+	shield: Ii
 };
-function aa({ tone: e, children: t, size: n = "md" }) {
-	return /* @__PURE__ */ (0, P.jsx)("span", {
-		className: R("inline-flex items-center gap-1.5 font-semibold border rounded-full whitespace-nowrap", n === "sm" ? "text-[12.5px] px-2.5 py-1" : "text-[13.5px] px-3 py-1.5", {
+function ha({ tone: e, children: t, size: n = "md" }) {
+	return /* @__PURE__ */ (0, N.jsx)("span", {
+		className: B("inline-flex items-center gap-1.5 font-semibold border rounded-full whitespace-nowrap", n === "sm" ? "text-[12.5px] px-2.5 py-1" : "text-[13.5px] px-3 py-1.5", {
 			green: "bg-emerald-50 text-emerald-800 border-emerald-200",
 			amber: "bg-amber-50 text-amber-900 border-amber-200",
 			red: "bg-red-50 text-red-800 border-red-200",
@@ -10847,8 +11013,8 @@ function aa({ tone: e, children: t, size: n = "md" }) {
 		children: t
 	});
 }
-function oa({ tone: e }) {
-	return /* @__PURE__ */ (0, P.jsx)("span", { className: R("inline-block w-2.5 h-2.5 rounded-full shrink-0", {
+function ga({ tone: e }) {
+	return /* @__PURE__ */ (0, N.jsx)("span", { className: B("inline-block w-2.5 h-2.5 rounded-full shrink-0", {
 		green: "bg-emerald-500",
 		amber: "bg-amber-500",
 		red: "bg-red-500",
@@ -10856,336 +11022,336 @@ function oa({ tone: e }) {
 		gray: "bg-slate-400"
 	}[e] ?? "bg-slate-400") });
 }
-function sa({ icon: e, title: t, sub: n, right: r }) {
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+function _a({ icon: e, title: t, sub: n, right: r }) {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "flex items-start justify-between gap-3 mb-3",
-		children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "flex items-start gap-2.5",
-			children: [e && /* @__PURE__ */ (0, P.jsx)("span", {
+			children: [e && /* @__PURE__ */ (0, N.jsx)("span", {
 				className: "mt-0.5 w-9 h-9 rounded-xl bg-[#0f2a4a] text-white grid place-items-center shrink-0",
 				children: e
-			}), /* @__PURE__ */ (0, P.jsxs)("div", { children: [/* @__PURE__ */ (0, P.jsx)("h2", {
+			}), /* @__PURE__ */ (0, N.jsxs)("div", { children: [/* @__PURE__ */ (0, N.jsx)("h2", {
 				className: "text-[17px] md:text-[19px] font-800 font-extrabold text-[#0f2a4a] leading-tight",
 				children: t
-			}), n && /* @__PURE__ */ (0, P.jsx)("p", {
+			}), n && /* @__PURE__ */ (0, N.jsx)("p", {
 				className: "text-[13.5px] text-slate-500 mt-0.5",
 				children: n
 			})] })]
 		}), r]
 	});
 }
-function z({ label: e, required: t, hint: n, error: r, children: i }) {
-	return /* @__PURE__ */ (0, P.jsxs)("label", {
+function H({ label: e, required: t, hint: n, error: r, children: i }) {
+	return /* @__PURE__ */ (0, N.jsxs)("label", {
 		className: "block",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("span", {
+			/* @__PURE__ */ (0, N.jsxs)("span", {
 				className: "block text-[14px] font-semibold text-slate-700 mb-1.5",
 				children: [
 					e,
 					" ",
-					t && /* @__PURE__ */ (0, P.jsx)("span", {
+					t && /* @__PURE__ */ (0, N.jsx)("span", {
 						className: "text-red-600 font-bold",
 						children: "*"
 					})
 				]
 			}),
 			i,
-			n && !r && /* @__PURE__ */ (0, P.jsx)("span", {
+			n && !r && /* @__PURE__ */ (0, N.jsx)("span", {
 				className: "block text-[13px] text-slate-500 mt-1",
 				children: n
 			}),
-			r && /* @__PURE__ */ (0, P.jsxs)("span", {
+			r && /* @__PURE__ */ (0, N.jsxs)("span", {
 				className: "block text-[13.5px] text-red-700 font-medium mt-1",
 				children: ["⚠ ", r]
 			})
 		]
 	});
 }
-var B = (e) => R("w-full rounded-xl border-2 bg-white px-3.5 text-[15.5px] min-h-[48px] py-2.5 placeholder:text-slate-400 transition-colors", e === "missing" && "border-amber-400 bg-amber-50/60", e === "invalid" && "border-red-400 bg-red-50/60", (!e || e === "ok") && "border-slate-200 focus:border-[#1e5aa8]");
-function ca({ children: e, onClick: t, className: n, disabled: r }) {
-	return /* @__PURE__ */ (0, P.jsx)("button", {
+var U = (e) => B("w-full rounded-xl border-2 bg-white px-3.5 text-[15.5px] min-h-[48px] py-2.5 placeholder:text-slate-400 transition-colors", e === "missing" && "border-amber-400 bg-amber-50/60", e === "invalid" && "border-red-400 bg-red-50/60", (!e || e === "ok") && "border-slate-200 focus:border-[#1e5aa8]");
+function va({ children: e, onClick: t, className: n, disabled: r }) {
+	return /* @__PURE__ */ (0, N.jsx)("button", {
 		onClick: t,
 		disabled: r,
-		className: R("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] hover:bg-[#14365e] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-navy-900/20 disabled:opacity-50 disabled:cursor-not-allowed", n),
+		className: B("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] hover:bg-[#14365e] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-navy-900/20 disabled:opacity-50 disabled:cursor-not-allowed", n),
 		children: e
 	});
 }
-function la({ children: e, onClick: t, className: n }) {
-	return /* @__PURE__ */ (0, P.jsx)("button", {
+function ya({ children: e, onClick: t, className: n }) {
+	return /* @__PURE__ */ (0, N.jsx)("button", {
 		onClick: t,
-		className: R("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25", n),
+		className: B("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25", n),
 		children: e
 	});
 }
-function ua({ children: e, onClick: t, className: n, danger: r }) {
-	return /* @__PURE__ */ (0, P.jsx)("button", {
+function ba({ children: e, onClick: t, className: n, danger: r }) {
+	return /* @__PURE__ */ (0, N.jsx)("button", {
 		onClick: t,
-		className: R("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white", r ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", n),
+		className: B("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white", r ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", n),
 		children: e
 	});
 }
-function da({ tone: e = "amber", title: t, desc: n, action: r, onAction: i }) {
+function xa({ tone: e = "amber", title: t, desc: n, action: r, onAction: i }) {
 	let a = {
 		amber: "border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50/60",
 		red: "border-red-300 bg-gradient-to-r from-red-50 to-orange-50/60",
 		green: "border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50/60",
 		blue: "border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50/60"
-	}, o = e === "red" ? mi : e === "green" ? Mr : e === "blue" ? ni : Ii, s = e === "red" ? "bg-red-600" : e === "green" ? "bg-emerald-600" : e === "blue" ? "bg-blue-600" : "bg-amber-500";
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
-		className: R("rounded-2xl border-2 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4", a[e]),
-		children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+	}, o = e === "red" ? xi : e === "green" ? Lr : e === "blue" ? si : Wi, s = e === "red" ? "bg-red-600" : e === "green" ? "bg-emerald-600" : e === "blue" ? "bg-blue-600" : "bg-amber-500";
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: B("rounded-2xl border-2 p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4", a[e]),
+		children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "flex items-start gap-3 flex-1 min-w-0",
-			children: [/* @__PURE__ */ (0, P.jsx)("span", {
-				className: R("w-11 h-11 rounded-xl text-white grid place-items-center shrink-0", s),
-				children: /* @__PURE__ */ (0, P.jsx)(o, { size: 22 })
-			}), /* @__PURE__ */ (0, P.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, N.jsx)("span", {
+				className: B("w-11 h-11 rounded-xl text-white grid place-items-center shrink-0", s),
+				children: /* @__PURE__ */ (0, N.jsx)(o, { size: 22 })
+			}), /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "min-w-0",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)("p", {
+					/* @__PURE__ */ (0, N.jsx)("p", {
 						className: "text-[12.5px] font-bold uppercase tracking-wide text-slate-500",
 						children: "Việc tiếp theo"
 					}),
-					/* @__PURE__ */ (0, P.jsx)("p", {
+					/* @__PURE__ */ (0, N.jsx)("p", {
 						className: "text-[16px] md:text-[18px] font-extrabold text-[#0f2a4a] leading-snug",
 						children: t
 					}),
-					n && /* @__PURE__ */ (0, P.jsx)("p", {
+					n && /* @__PURE__ */ (0, N.jsx)("p", {
 						className: "text-[14px] text-slate-600 mt-1",
 						children: n
 					})
 				]
 			})]
-		}), r && /* @__PURE__ */ (0, P.jsxs)("button", {
+		}), r && /* @__PURE__ */ (0, N.jsxs)("button", {
 			onClick: i,
 			className: "btn-press touch-target shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[15.5px] px-6 min-h-[52px] shadow-lg w-full md:w-auto",
 			children: [
 				r,
 				" ",
-				/* @__PURE__ */ (0, P.jsx)(mr, { size: 18 })
+				/* @__PURE__ */ (0, N.jsx)(_r, { size: 18 })
 			]
 		})]
 	});
 }
-function fa({ what: e, where: t, actionLabel: n, onAction: r }) {
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+function Sa({ what: e, where: t, actionLabel: n, onAction: r }) {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 p-3.5 flex flex-col sm:flex-row sm:items-center gap-2.5",
-		children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "flex items-start gap-2 flex-1",
-			children: [/* @__PURE__ */ (0, P.jsx)(Ar, {
+			children: [/* @__PURE__ */ (0, N.jsx)(Fr, {
 				size: 20,
 				className: "text-amber-600 shrink-0 mt-0.5"
-			}), /* @__PURE__ */ (0, P.jsxs)("div", { children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+			}), /* @__PURE__ */ (0, N.jsxs)("div", { children: [/* @__PURE__ */ (0, N.jsxs)("p", {
 				className: "font-bold text-[15px] text-amber-900",
 				children: ["Thiếu ", e]
-			}), t && /* @__PURE__ */ (0, P.jsx)("p", {
+			}), t && /* @__PURE__ */ (0, N.jsx)("p", {
 				className: "text-[13.5px] text-amber-800",
 				children: t
 			})] })]
-		}), /* @__PURE__ */ (0, P.jsxs)("button", {
+		}), /* @__PURE__ */ (0, N.jsxs)("button", {
 			onClick: r,
 			className: "btn-press touch-target inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[14.5px] font-bold px-4 min-h-[44px] whitespace-nowrap",
 			children: [
-				/* @__PURE__ */ (0, P.jsx)(bi, { size: 16 }),
+				/* @__PURE__ */ (0, N.jsx)(Di, { size: 16 }),
 				" ",
 				n
 			]
 		})]
 	});
 }
-function pa({ label: e, value: t, big: n }) {
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+function Ca({ label: e, value: t, big: n }) {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "flex items-start justify-between gap-3 py-2 border-b border-slate-100 last:border-0",
-		children: [/* @__PURE__ */ (0, P.jsx)("span", {
+		children: [/* @__PURE__ */ (0, N.jsx)("span", {
 			className: "text-[13.5px] text-slate-500 font-medium shrink-0 pt-0.5",
 			children: e
-		}), /* @__PURE__ */ (0, P.jsx)("span", {
-			className: R("text-right font-semibold text-slate-800", n ? "text-[17px]" : "text-[14.5px]"),
+		}), /* @__PURE__ */ (0, N.jsx)("span", {
+			className: B("text-right font-semibold text-slate-800", n ? "text-[17px]" : "text-[14.5px]"),
 			children: t
 		})]
 	});
 }
 //#endregion
 //#region src/components/Layout.tsx
-function ma() {
-	return /* @__PURE__ */ (0, P.jsxs)(N, {
+function wa() {
+	return /* @__PURE__ */ (0, N.jsxs)(M, {
 		to: "/",
 		className: "flex items-center gap-2.5 shrink-0",
 		children: [
-			/* @__PURE__ */ (0, P.jsx)("span", {
+			/* @__PURE__ */ (0, N.jsx)("span", {
 				className: "w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow",
 				children: "T"
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("span", {
+			/* @__PURE__ */ (0, N.jsxs)("span", {
 				className: "leading-tight hidden sm:block",
-				children: [/* @__PURE__ */ (0, P.jsx)("span", {
+				children: [/* @__PURE__ */ (0, N.jsx)("span", {
 					className: "block font-extrabold text-[14.5px] text-[#0f2a4a]",
 					children: "TRƯỜNG THÀNH"
-				}), /* @__PURE__ */ (0, P.jsx)("span", {
+				}), /* @__PURE__ */ (0, N.jsx)("span", {
 					className: "block text-[11.5px] text-slate-500 font-medium",
 					children: "Phú Anh Logistics · Nội bộ"
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsx)("span", {
+			/* @__PURE__ */ (0, N.jsx)("span", {
 				className: "text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1",
 				children: "PROTOTYPE"
 			})
 		]
 	});
 }
-function ha({ children: e }) {
-	let { role: t, setRole: n, userName: r, query: i, setQuery: a, searchOpen: o, setSearchOpen: s, navOpen: c, setNavOpen: l, notifOpen: u, setNotifOpen: d, quickAddOpen: f, setQuickAddOpen: p, toasts: m, dismissToast: h, toast: g, notifications: v } = Zn(), y = v, b = y.length, x = Ct(), S = bt(), [C, w] = (0, _.useState)(!1), T = (0, _.useMemo)(() => {
+function Ta({ children: e }) {
+	let { role: t, setRole: n, userName: r, query: i, setQuery: a, searchOpen: o, setSearchOpen: s, navOpen: c, setNavOpen: l, notifOpen: u, setNotifOpen: d, quickAddOpen: f, setQuickAddOpen: p, toasts: m, dismissToast: h, toast: g, notifications: v } = Qn(), y = v, b = y.length, x = Ct(), S = bt(), [C, w] = (0, _.useState)(!1), T = (0, _.useMemo)(() => {
 		let e = i.trim().toLowerCase();
 		return e.length < 2 ? null : {
-			lots: qi.filter((t) => (t.id + t.customer + t.contract + t.route).toLowerCase().includes(e)).slice(0, 4),
-			cts: Ji.filter((t) => (t.id + t.company + t.agent).toLowerCase().includes(e)).slice(0, 3),
-			cus: Yi.filter((t) => (t.name + t.mst).toLowerCase().includes(e)).slice(0, 3),
-			quo: Xi.filter((t) => (t.id + t.customer).toLowerCase().includes(e)).slice(0, 2)
+			lots: ia.filter((t) => (t.id + t.customer + t.contract + t.route).toLowerCase().includes(e)).slice(0, 4),
+			cts: aa.filter((t) => (t.id + t.company + t.agent).toLowerCase().includes(e)).slice(0, 3),
+			cus: oa.filter((t) => (t.name + t.mst).toLowerCase().includes(e)).slice(0, 3),
+			quo: sa.filter((t) => (t.id + t.customer).toLowerCase().includes(e)).slice(0, 2)
 		};
 	}, [i]), E = (e) => {
 		s(!1), a(""), x(e), l(!1);
 	};
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "min-h-screen flex flex-col",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("header", {
+			/* @__PURE__ */ (0, N.jsxs)("header", {
 				className: "no-print sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_12px_rgba(15,42,74,.08)]",
-				children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "flex items-center gap-2 md:gap-4 px-3 md:px-5 h-[64px] max-w-[1600px] mx-auto",
 					children: [
-						/* @__PURE__ */ (0, P.jsx)("button", {
+						/* @__PURE__ */ (0, N.jsx)("button", {
 							onClick: () => l(!0),
 							className: "lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
 							"aria-label": "Mở menu",
-							children: /* @__PURE__ */ (0, P.jsx)(fi, {
+							children: /* @__PURE__ */ (0, N.jsx)(yi, {
 								size: 22,
 								className: "text-[#0f2a4a]"
 							})
 						}),
-						/* @__PURE__ */ (0, P.jsx)(ma, {}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsx)(wa, {}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "hidden md:flex flex-1 max-w-[560px] mx-auto relative",
-							children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)(Oi, {
+									/* @__PURE__ */ (0, N.jsx)(Pi, {
 										size: 19,
 										className: "ml-3.5 text-slate-400 shrink-0"
 									}),
-									/* @__PURE__ */ (0, P.jsx)("input", {
+									/* @__PURE__ */ (0, N.jsx)("input", {
 										value: i,
 										onChange: (e) => a(e.target.value),
 										onFocus: () => s(!0),
 										placeholder: "Tìm mã lô · khách hàng · hợp đồng · container · báo giá…",
 										className: "w-full bg-transparent px-3 py-2.5 text-[15px] outline-none placeholder:text-slate-400"
 									}),
-									i && /* @__PURE__ */ (0, P.jsx)("button", {
+									i && /* @__PURE__ */ (0, N.jsx)("button", {
 										onClick: () => a(""),
 										className: "mr-2 w-8 h-8 grid place-items-center rounded-lg hover:bg-slate-200",
-										children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 16 })
+										children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 16 })
 									})
 								]
-							}), o && T && /* @__PURE__ */ (0, P.jsxs)("div", {
+							}), o && T && /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "absolute top-[52px] left-0 right-0 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 z-50 anim-slide-up max-h-[70vh] overflow-auto",
 								children: [
-									T.lots.length + T.cts.length + T.cus.length + T.quo.length === 0 && /* @__PURE__ */ (0, P.jsxs)("p", {
+									T.lots.length + T.cts.length + T.cus.length + T.quo.length === 0 && /* @__PURE__ */ (0, N.jsxs)("p", {
 										className: "p-4 text-[14.5px] text-slate-500",
 										children: [
 											"Không tìm thấy “",
 											i,
 											"”. Thử mã lô ",
-											/* @__PURE__ */ (0, P.jsx)("b", { children: "LO-0306" }),
+											/* @__PURE__ */ (0, N.jsx)("b", { children: "LO-0306" }),
 											", ",
-											/* @__PURE__ */ (0, P.jsx)("b", { children: "An Phát" }),
+											/* @__PURE__ */ (0, N.jsx)("b", { children: "An Phát" }),
 											" hoặc ",
-											/* @__PURE__ */ (0, P.jsx)("b", { children: "HDMB" }),
+											/* @__PURE__ */ (0, N.jsx)("b", { children: "HDMB" }),
 											"."
 										]
 									}),
-									T.lots.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+									T.lots.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 										onClick: () => E(`/lo-hang/${e.id}`),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-blue-100 grid place-items-center",
-											children: /* @__PURE__ */ (0, P.jsx)(vi, {
+											children: /* @__PURE__ */ (0, N.jsx)(Ti, {
 												size: 17,
 												className: "text-blue-700"
 											})
-										}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 											children: [
 												e.id,
 												" · ",
 												e.customer
 											]
-										}), /* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block text-[12.5px] text-slate-500",
 											children: ["Lô hàng — ", e.status]
 										})] })]
 									}, e.id)),
-									T.cts.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+									T.cts.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 										onClick: () => E(`/hop-dong/${e.id}`),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-emerald-100 grid place-items-center",
-											children: /* @__PURE__ */ (0, P.jsx)(Qr, {
+											children: /* @__PURE__ */ (0, N.jsx)(ri, {
 												size: 17,
 												className: "text-emerald-700"
 											})
-										}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 											children: [
 												e.id,
 												" · ",
 												e.company
 											]
-										}), /* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block text-[12.5px] text-slate-500",
 											children: ["Hợp đồng — ", e.status]
 										})] })]
 									}, e.id)),
-									T.cus.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+									T.cus.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 										onClick: () => E("/khach-hang"),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-amber-100 grid place-items-center",
-											children: /* @__PURE__ */ (0, P.jsx)(L, {
+											children: /* @__PURE__ */ (0, N.jsx)(Ki, {
 												size: 17,
 												className: "text-amber-700"
 											})
-										}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 											children: [
 												e.short,
 												" · MST ",
 												e.mst
 											]
-										}), /* @__PURE__ */ (0, P.jsx)("span", {
+										}), /* @__PURE__ */ (0, N.jsx)("span", {
 											className: "block text-[12.5px] text-slate-500",
 											children: "Khách hàng"
 										})] })]
 									}, e.mst)),
-									T.quo.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+									T.quo.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 										onClick: () => E("/kinh-doanh-bao-gia"),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-violet-100 grid place-items-center",
-											children: /* @__PURE__ */ (0, P.jsx)(wr, {
+											children: /* @__PURE__ */ (0, N.jsx)(kr, {
 												size: 17,
 												className: "text-violet-700"
 											})
-										}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 											children: [
 												e.id,
 												" · ",
 												e.customer
 											]
-										}), /* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block text-[12.5px] text-slate-500",
 											children: ["Báo giá — ", e.status]
 										})] })]
 									}, e.id)),
-									/* @__PURE__ */ (0, P.jsx)("button", {
+									/* @__PURE__ */ (0, N.jsx)("button", {
 										onClick: () => s(!1),
 										className: "w-full text-center py-2 text-[13px] text-slate-400 font-medium",
 										children: "Nhấn ra ngoài để đóng"
@@ -11193,124 +11359,124 @@ function ha({ children: e }) {
 								]
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsx)("div", { className: "flex-1 md:hidden" }),
-						/* @__PURE__ */ (0, P.jsx)("button", {
+						/* @__PURE__ */ (0, N.jsx)("div", { className: "flex-1 md:hidden" }),
+						/* @__PURE__ */ (0, N.jsx)("button", {
 							onClick: () => s(!o),
 							className: "md:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
 							"aria-label": "Tìm kiếm",
-							children: /* @__PURE__ */ (0, P.jsx)(Oi, {
+							children: /* @__PURE__ */ (0, N.jsx)(Pi, {
 								size: 21,
 								className: "text-[#0f2a4a]"
 							})
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "relative hidden sm:block",
-							children: [/* @__PURE__ */ (0, P.jsxs)("button", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("button", {
 								onClick: () => w((e) => !e),
 								className: "flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]",
-								children: [/* @__PURE__ */ (0, P.jsx)("span", {
-									className: R("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", t === "ADMIN" ? "bg-violet-600" : t === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600"),
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: B("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", t === "ADMIN" ? "bg-violet-600" : t === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600"),
 									children: r.charAt(0)
-								}), /* @__PURE__ */ (0, P.jsxs)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "text-left leading-tight",
-									children: [/* @__PURE__ */ (0, P.jsx)("span", {
+									children: [/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block text-[13px] font-bold text-[#0f2a4a]",
 										children: r
-									}), /* @__PURE__ */ (0, P.jsxs)("span", {
+									}), /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "block text-[11.5px] text-slate-500",
 										children: [
-											Ui[t],
+											ta[t],
 											" · ",
 											t
 										]
 									})]
 								})]
-							}), C && /* @__PURE__ */ (0, P.jsxs)("div", {
+							}), C && /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up",
-								children: [/* @__PURE__ */ (0, P.jsx)("p", {
+								children: [/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400",
 									children: "Chuyển vai trò (prototype)"
 								}), [
 									"ADMIN",
 									"SUPPORT",
 									"SALE"
-								].map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+								].map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 									onClick: () => {
-										n(e), w(!1), g(`Đã chuyển sang vai trò ${Ui[e]}`, e === "ADMIN" ? "Xem được hợp đồng, tài chính & người dùng" : e === "SUPPORT" ? "Ưu tiên điều phối lô hàng & chứng từ" : "Ưu tiên khách hàng, báo giá & hợp đồng", "blue");
+										n(e), w(!1), g(`Đã chuyển sang vai trò ${ta[e]}`, e === "ADMIN" ? "Xem được hợp đồng, tài chính & người dùng" : e === "SUPPORT" ? "Ưu tiên điều phối lô hàng & chứng từ" : "Ưu tiên khách hàng, báo giá & hợp đồng", "blue");
 									},
-									className: R("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", t === e && "bg-blue-50"),
-									children: [/* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsx)("span", {
+									className: B("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", t === e && "bg-blue-50"),
+									children: [/* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block font-bold text-[14.5px]",
-										children: Ui[e]
-									}), /* @__PURE__ */ (0, P.jsx)("span", {
+										children: ta[e]
+									}), /* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block text-[12px] text-slate-500",
 										children: e
-									})] }), t === e && /* @__PURE__ */ (0, P.jsx)("span", {
+									})] }), t === e && /* @__PURE__ */ (0, N.jsx)("span", {
 										className: "text-blue-700 font-bold text-[13px]",
 										children: "● Đang dùng"
 									})]
 								}, e))]
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("button", {
+						/* @__PURE__ */ (0, N.jsxs)("button", {
 							onClick: () => d(!0),
 							className: "relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
 							"aria-label": "Thông báo",
-							children: [/* @__PURE__ */ (0, P.jsx)(vr, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Cr, {
 								size: 21,
 								className: "text-[#0f2a4a]"
-							}), b > 0 && /* @__PURE__ */ (0, P.jsx)("span", {
+							}), b > 0 && /* @__PURE__ */ (0, N.jsx)("span", {
 								className: "absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold grid place-items-center",
 								children: b
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("button", {
+						/* @__PURE__ */ (0, N.jsxs)("button", {
 							onClick: () => p(!0),
 							className: "hidden md:inline-flex touch-target items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[44px] hover:bg-[#14365e]",
-							children: [/* @__PURE__ */ (0, P.jsx)(wi, { size: 18 }), " Thêm"]
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 18 }), " Thêm"]
 						})
 					]
-				}), o && /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), o && /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "md:hidden px-3 pb-3 anim-slide-up",
-					children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "flex items-center rounded-xl border-2 border-[#1e5aa8] bg-slate-50",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)(Oi, {
+							/* @__PURE__ */ (0, N.jsx)(Pi, {
 								size: 18,
 								className: "ml-3 text-slate-400"
 							}),
-							/* @__PURE__ */ (0, P.jsx)("input", {
+							/* @__PURE__ */ (0, N.jsx)("input", {
 								autoFocus: !0,
 								value: i,
 								onChange: (e) => a(e.target.value),
 								placeholder: "Tìm mã lô · khách · hợp đồng…",
 								className: "w-full bg-transparent px-2.5 py-3 text-[15px] outline-none"
 							}),
-							/* @__PURE__ */ (0, P.jsx)("button", {
+							/* @__PURE__ */ (0, N.jsx)("button", {
 								onClick: () => {
 									s(!1), a("");
 								},
 								className: "mr-1 w-10 h-10 grid place-items-center",
-								children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 18 })
+								children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 18 })
 							})
 						]
-					}), T && /* @__PURE__ */ (0, P.jsxs)("div", {
+					}), T && /* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "mt-2 bg-white rounded-2xl border shadow-xl divide-y max-h-[50vh] overflow-auto",
 						children: [
-							T.lots.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+							T.lots.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 								onClick: () => E(`/lo-hang/${e.id}`),
 								className: "w-full text-left p-3.5 flex items-center gap-3",
-								children: [/* @__PURE__ */ (0, P.jsx)(vi, {
+								children: [/* @__PURE__ */ (0, N.jsx)(Ti, {
 									size: 18,
 									className: "text-blue-700 shrink-0"
-								}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "block font-bold text-[15px]",
 									children: [
 										e.id,
 										" · ",
 										e.customer
 									]
-								}), /* @__PURE__ */ (0, P.jsxs)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "block text-[13px] text-slate-500",
 									children: [
 										e.status,
@@ -11319,16 +11485,16 @@ function ha({ children: e }) {
 									]
 								})] })]
 							}, e.id)),
-							T.cts.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+							T.cts.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 								onClick: () => E(`/hop-dong/${e.id}`),
 								className: "w-full text-left p-3.5 flex items-center gap-3",
-								children: [/* @__PURE__ */ (0, P.jsx)(Qr, {
+								children: [/* @__PURE__ */ (0, N.jsx)(ri, {
 									size: 18,
 									className: "text-emerald-700 shrink-0"
-								}), /* @__PURE__ */ (0, P.jsxs)("span", { children: [/* @__PURE__ */ (0, P.jsx)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", { children: [/* @__PURE__ */ (0, N.jsx)("span", {
 									className: "block font-bold text-[15px]",
 									children: e.id
-								}), /* @__PURE__ */ (0, P.jsxs)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "block text-[13px] text-slate-500",
 									children: [
 										e.company,
@@ -11337,7 +11503,7 @@ function ha({ children: e }) {
 									]
 								})] })]
 							}, e.id)),
-							T.lots.length + T.cts.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+							T.lots.length + T.cts.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "p-4 text-[14px] text-slate-500",
 								children: "Không tìm thấy. Thử “LO-0306” hoặc “An Phát”."
 							})
@@ -11345,118 +11511,118 @@ function ha({ children: e }) {
 					})]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "flex flex-1 max-w-[1600px] w-full mx-auto",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)("aside", {
+					/* @__PURE__ */ (0, N.jsx)("aside", {
 						className: "no-print hidden lg:block w-[264px] shrink-0 border-r border-slate-200 bg-white min-h-[calc(100vh-64px)] sticky top-[64px] self-start max-h-[calc(100vh-64px)] overflow-y-auto",
-						children: /* @__PURE__ */ (0, P.jsxs)("nav", {
+						children: /* @__PURE__ */ (0, N.jsxs)("nav", {
 							className: "p-3 pb-10",
-							children: [Wi.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+							children: [na.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "mb-4",
-								children: [/* @__PURE__ */ (0, P.jsx)("p", {
+								children: [/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "px-3 mb-1.5 text-[11.5px] font-extrabold tracking-wider text-slate-400",
 									children: e.group
 								}), e.items.map((e) => {
-									let t = ia[e.icon] ?? vi;
-									return /* @__PURE__ */ (0, P.jsxs)(In, {
+									let t = ma[e.icon] ?? Ti;
+									return /* @__PURE__ */ (0, N.jsxs)(Ln, {
 										to: e.to,
-										className: ({ isActive: t }) => R("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", t || e.to !== "/" && S.pathname.startsWith(e.to) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100"),
+										className: ({ isActive: t }) => B("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", t || e.to !== "/" && S.pathname.startsWith(e.to) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100"),
 										children: [
-											/* @__PURE__ */ (0, P.jsx)(t, {
+											/* @__PURE__ */ (0, N.jsx)(t, {
 												size: 19,
 												className: "shrink-0"
 											}),
-											/* @__PURE__ */ (0, P.jsx)("span", {
+											/* @__PURE__ */ (0, N.jsx)("span", {
 												className: "flex-1",
 												children: e.label
 											}),
-											e.to === "/viec-can-xu-ly" && /* @__PURE__ */ (0, P.jsx)("span", {
+											e.to === "/viec-can-xu-ly" && /* @__PURE__ */ (0, N.jsx)("span", {
 												className: "text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1",
 												children: "6"
 											})
 										]
 									}, e.to);
 								})]
-							}, e.group)), /* @__PURE__ */ (0, P.jsxs)("div", {
+							}, e.group)), /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "mx-1 mt-2 rounded-2xl bg-gradient-to-br from-[#0f2a4a] to-[#1e5aa8] text-white p-4",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)("p", {
+									/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "font-bold text-[14px]",
 										children: "Cần hỗ trợ thao tác?"
 									}),
-									/* @__PURE__ */ (0, P.jsx)("p", {
+									/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "text-[12.5px] text-blue-100 mt-1",
 										children: "Sổ tay hướng dẫn từng bước cho Sale & Support mới."
 									}),
-									/* @__PURE__ */ (0, P.jsxs)(N, {
+									/* @__PURE__ */ (0, N.jsxs)(M, {
 										to: "/so-tay",
 										className: "mt-2.5 inline-flex items-center gap-1.5 bg-white text-[#0f2a4a] text-[13.5px] font-bold rounded-lg px-3 py-2",
-										children: ["Mở sổ tay ", /* @__PURE__ */ (0, P.jsx)(Or, { size: 15 })]
+										children: ["Mở sổ tay ", /* @__PURE__ */ (0, N.jsx)(Nr, { size: 15 })]
 									})
 								]
 							})]
 						})
 					}),
-					c && /* @__PURE__ */ (0, P.jsxs)("div", {
+					c && /* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "no-print fixed inset-0 z-50 lg:hidden",
-						children: [/* @__PURE__ */ (0, P.jsx)("div", {
+						children: [/* @__PURE__ */ (0, N.jsx)("div", {
 							className: "absolute inset-0 bg-slate-900/50 anim-fade",
 							onClick: () => l(!1)
-						}), /* @__PURE__ */ (0, P.jsxs)("div", {
+						}), /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "absolute left-0 top-0 bottom-0 w-[300px] max-w-[85vw] bg-white shadow-2xl overflow-y-auto anim-slide-up",
-							children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10",
-								children: [/* @__PURE__ */ (0, P.jsx)("span", {
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
 									className: "font-extrabold text-[#0f2a4a]",
 									children: "Menu điều hành"
-								}), /* @__PURE__ */ (0, P.jsx)("button", {
+								}), /* @__PURE__ */ (0, N.jsx)("button", {
 									onClick: () => l(!1),
 									className: "touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
-									children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 20 })
+									children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 20 })
 								})]
-							}), /* @__PURE__ */ (0, P.jsxs)("div", {
+							}), /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "p-3",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)("div", {
+									/* @__PURE__ */ (0, N.jsx)("div", {
 										className: "flex gap-2 mb-3",
 										children: [
 											"ADMIN",
 											"SUPPORT",
 											"SALE"
-										].map((e) => /* @__PURE__ */ (0, P.jsx)("button", {
+										].map((e) => /* @__PURE__ */ (0, N.jsx)("button", {
 											onClick: () => n(e),
-											className: R("flex-1 touch-target rounded-xl border-2 text-[13px] font-bold py-2", t === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 text-slate-600"),
+											className: B("flex-1 touch-target rounded-xl border-2 text-[13px] font-bold py-2", t === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 text-slate-600"),
 											children: e
 										}, e))
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("p", {
+									/* @__PURE__ */ (0, N.jsxs)("p", {
 										className: "px-2 text-[12px] text-slate-500 mb-2",
 										children: [
 											"Đang dùng: ",
-											/* @__PURE__ */ (0, P.jsx)("b", { children: r }),
+											/* @__PURE__ */ (0, N.jsx)("b", { children: r }),
 											" · ",
-											Ui[t]
+											ta[t]
 										]
 									}),
-									Wi.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+									na.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 										className: "mb-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("p", {
+										children: [/* @__PURE__ */ (0, N.jsx)("p", {
 											className: "px-2 mb-1 text-[11px] font-extrabold tracking-wider text-slate-400",
 											children: e.group
 										}), e.items.map((e) => {
-											let t = ia[e.icon] ?? vi, n = e.to === "/" ? S.pathname === "/" : S.pathname.startsWith(e.to);
-											return /* @__PURE__ */ (0, P.jsxs)(In, {
+											let t = ma[e.icon] ?? Ti, n = e.to === "/" ? S.pathname === "/" : S.pathname.startsWith(e.to);
+											return /* @__PURE__ */ (0, N.jsxs)(Ln, {
 												to: e.to,
 												onClick: () => l(!1),
-												className: R("flex items-center gap-3 px-3 py-3 rounded-xl text-[15px] font-medium mb-0.5", n ? "bg-[#0f2a4a] text-white" : "text-slate-700 hover:bg-slate-100"),
+												className: B("flex items-center gap-3 px-3 py-3 rounded-xl text-[15px] font-medium mb-0.5", n ? "bg-[#0f2a4a] text-white" : "text-slate-700 hover:bg-slate-100"),
 												children: [
-													/* @__PURE__ */ (0, P.jsx)(t, {
+													/* @__PURE__ */ (0, N.jsx)(t, {
 														size: 20,
 														className: "shrink-0"
 													}),
 													e.label,
-													e.to === "/viec-can-xu-ly" && /* @__PURE__ */ (0, P.jsx)("span", {
+													e.to === "/viec-can-xu-ly" && /* @__PURE__ */ (0, N.jsx)("span", {
 														className: "ml-auto text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1",
 														children: "6"
 													})
@@ -11468,107 +11634,107 @@ function ha({ children: e }) {
 							})]
 						})]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("main", {
+					/* @__PURE__ */ (0, N.jsxs)("main", {
 						className: "flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full",
-						children: [e, /* @__PURE__ */ (0, P.jsx)("footer", {
+						children: [e, /* @__PURE__ */ (0, N.jsx)("footer", {
 							className: "mt-10 text-center text-[12.5px] text-slate-400 pb-4",
 							children: "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · Bản prototype nội bộ — dữ liệu minh họa 09/09/2026"
 						})]
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, P.jsx)("nav", {
+			/* @__PURE__ */ (0, N.jsx)("nav", {
 				className: "no-print md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,.08)]",
 				style: { paddingBottom: "env(safe-area-inset-bottom)" },
-				children: /* @__PURE__ */ (0, P.jsxs)("div", {
+				children: /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "grid grid-cols-5",
 					children: [[
 						{
 							to: "/",
 							label: "Tổng quan",
-							icon: ia.layout
+							icon: ma.layout
 						},
 						{
 							to: "/lo-hang",
 							label: "Lô hàng",
-							icon: vi
+							icon: Ti
 						},
 						{
 							to: "/hop-dong",
 							label: "Hợp đồng",
-							icon: Qr
+							icon: ri
 						},
 						{
 							to: "/tai-chinh/thu-tien",
 							label: "Tài chính",
-							icon: Bi
+							icon: Qi
 						}
 					].map((e) => {
 						let t = e.to === "/" ? S.pathname === "/" : S.pathname.startsWith(e.to), n = e.icon;
-						return /* @__PURE__ */ (0, P.jsxs)(In, {
+						return /* @__PURE__ */ (0, N.jsxs)(Ln, {
 							to: e.to,
-							className: R("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[11.5px] font-semibold", t ? "text-[#0f2a4a]" : "text-slate-400"),
+							className: B("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[11.5px] font-semibold", t ? "text-[#0f2a4a]" : "text-slate-400"),
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(n, {
+								/* @__PURE__ */ (0, N.jsx)(n, {
 									size: 22,
 									strokeWidth: t ? 2.4 : 1.8
 								}),
 								e.label,
-								t && /* @__PURE__ */ (0, P.jsx)("span", { className: "w-8 h-1 rounded-full bg-[#0f2a4a]" })
+								t && /* @__PURE__ */ (0, N.jsx)("span", { className: "w-8 h-1 rounded-full bg-[#0f2a4a]" })
 							]
 						}, e.to);
-					}), /* @__PURE__ */ (0, P.jsxs)("button", {
+					}), /* @__PURE__ */ (0, N.jsxs)("button", {
 						onClick: () => p(!0),
 						className: "touch-target flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11.5px] font-semibold text-slate-500",
-						children: [/* @__PURE__ */ (0, P.jsx)("span", {
+						children: [/* @__PURE__ */ (0, N.jsx)("span", {
 							className: "w-11 h-8 -mt-3 rounded-2xl bg-[#0f2a4a] text-white grid place-items-center shadow-lg",
-							children: /* @__PURE__ */ (0, P.jsx)(wi, { size: 22 })
+							children: /* @__PURE__ */ (0, N.jsx)(F, { size: 22 })
 						}), "Thêm"]
 					})]
 				})
 			}),
-			u && /* @__PURE__ */ (0, P.jsxs)("div", {
+			u && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "no-print fixed inset-0 z-50",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "absolute inset-0 bg-slate-900/50 anim-fade",
 					onClick: () => d(!1)
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "absolute right-0 top-0 bottom-0 w-[380px] max-w-[92vw] bg-white shadow-2xl flex flex-col anim-slide-up",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center justify-between p-4 border-b",
-							children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "font-extrabold text-[16px] text-[#0f2a4a]",
 								children: [
 									"Thông báo · ",
 									b,
 									" chưa đọc"
 								]
-							}), /* @__PURE__ */ (0, P.jsx)("button", {
+							}), /* @__PURE__ */ (0, N.jsx)("button", {
 								onClick: () => d(!1),
 								className: "touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
-								children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 20 })
+								children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 20 })
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex-1 overflow-y-auto p-3 space-y-2",
-							children: [y.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+							children: [y.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[14px] text-slate-500 p-4 text-center",
 								children: "Không có cảnh báo nào theo dữ liệu hiện tại."
-							}), y.map((e) => /* @__PURE__ */ (0, P.jsx)("div", {
+							}), y.map((e) => /* @__PURE__ */ (0, N.jsx)("div", {
 								className: "rounded-2xl border border-slate-200 p-3.5 lift",
-								children: /* @__PURE__ */ (0, P.jsxs)("div", {
+								children: /* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "flex items-start gap-2.5",
-									children: [/* @__PURE__ */ (0, P.jsx)("span", { className: R("w-2.5 h-2.5 rounded-full mt-1.5 shrink-0", e.tone === "red" ? "bg-red-500 pulse-dot" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500") }), /* @__PURE__ */ (0, P.jsxs)("div", { children: [
-										/* @__PURE__ */ (0, P.jsx)("p", {
+									children: [/* @__PURE__ */ (0, N.jsx)("span", { className: B("w-2.5 h-2.5 rounded-full mt-1.5 shrink-0", e.tone === "red" ? "bg-red-500 pulse-dot" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500") }), /* @__PURE__ */ (0, N.jsxs)("div", { children: [
+										/* @__PURE__ */ (0, N.jsx)("p", {
 											className: "font-bold text-[14.5px] text-[#0f2a4a]",
 											children: e.title
 										}),
-										/* @__PURE__ */ (0, P.jsx)("p", {
+										/* @__PURE__ */ (0, N.jsx)("p", {
 											className: "text-[13.5px] text-slate-600 mt-0.5",
 											children: e.desc
 										}),
-										/* @__PURE__ */ (0, P.jsx)("p", {
+										/* @__PURE__ */ (0, N.jsx)("p", {
 											className: "text-[12px] text-slate-400 mt-1",
 											children: e.time
 										})
@@ -11576,9 +11742,9 @@ function ha({ children: e }) {
 								})
 							}, e.id))]
 						}),
-						/* @__PURE__ */ (0, P.jsx)("div", {
+						/* @__PURE__ */ (0, N.jsx)("div", {
 							className: "p-3 border-t",
-							children: /* @__PURE__ */ (0, P.jsx)("button", {
+							children: /* @__PURE__ */ (0, N.jsx)("button", {
 								onClick: () => {
 									d(!1), x("/viec-can-xu-ly");
 								},
@@ -11589,90 +11755,90 @@ function ha({ children: e }) {
 					]
 				})]
 			}),
-			f && /* @__PURE__ */ (0, P.jsxs)("div", {
+			f && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "no-print fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "absolute inset-0 bg-slate-900/50 anim-fade",
 					onClick: () => p(!1)
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "relative bg-white w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl p-5 pb-8 anim-slide-up",
 					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
 					children: [
-						/* @__PURE__ */ (0, P.jsx)("div", { className: "w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" }),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsx)("div", { className: "w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" }),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center justify-between mb-1",
-							children: [/* @__PURE__ */ (0, P.jsx)("p", {
+							children: [/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "font-extrabold text-[18px] text-[#0f2a4a]",
 								children: "Thêm mới nhanh"
-							}), /* @__PURE__ */ (0, P.jsx)("button", {
+							}), /* @__PURE__ */ (0, N.jsx)("button", {
 								onClick: () => p(!1),
 								className: "touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
-								children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 20 })
+								children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 20 })
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsx)("p", {
+						/* @__PURE__ */ (0, N.jsx)("p", {
 							className: "text-[13.5px] text-slate-500 mb-4",
 							children: "Chọn việc muốn làm — mỗi nút dẫn thẳng tới màn hình nhập liệu."
 						}),
-						/* @__PURE__ */ (0, P.jsx)("div", {
+						/* @__PURE__ */ (0, N.jsx)("div", {
 							className: "grid gap-2.5",
 							children: [
 								{
 									label: "Tạo lô hàng mới",
 									desc: "Từ báo giá đã chốt hoặc nhập tay",
 									to: "/tao-lo-moi",
-									icon: vi,
+									icon: Ti,
 									bg: "bg-blue-50 text-blue-700"
 								},
 								{
 									label: "Tạo hợp đồng mới",
 									desc: "HDMB / HDNT + phụ lục",
 									to: "/hop-dong/moi",
-									icon: Qr,
+									icon: ri,
 									bg: "bg-emerald-50 text-emerald-700"
 								},
 								{
 									label: "Tạo báo giá",
 									desc: "Dự toán chi phí & giá bán",
 									to: "/kinh-doanh-bao-gia",
-									icon: wr,
+									icon: kr,
 									bg: "bg-violet-50 text-violet-700"
 								},
 								{
 									label: "Ghi nhận thanh toán",
 									desc: "Thu tiền khách / trả đối tác",
 									to: "/tai-chinh/thu-tien",
-									icon: Bi,
+									icon: Qi,
 									bg: "bg-amber-50 text-amber-700"
 								},
 								{
 									label: "Tra cứu thuế / HS",
 									desc: "Mã HS, thuế NK, VAT",
 									to: "/tra-cuu-thue",
-									icon: L,
+									icon: Ki,
 									bg: "bg-slate-100 text-slate-700"
 								}
-							].map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+							].map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 								onClick: () => {
 									p(!1), x(e.to);
 								},
 								className: "touch-target flex items-center gap-3 rounded-2xl border-2 border-slate-100 hover:border-[#1e5aa8] p-3.5 text-left lift bg-white",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)("span", {
-										className: R("w-11 h-11 rounded-xl grid place-items-center shrink-0", e.bg),
-										children: /* @__PURE__ */ (0, P.jsx)(e.icon, { size: 21 })
+									/* @__PURE__ */ (0, N.jsx)("span", {
+										className: B("w-11 h-11 rounded-xl grid place-items-center shrink-0", e.bg),
+										children: /* @__PURE__ */ (0, N.jsx)(e.icon, { size: 21 })
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "flex-1",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "block font-bold text-[15px] text-[#0f2a4a]",
 											children: e.label
-										}), /* @__PURE__ */ (0, P.jsx)("span", {
+										}), /* @__PURE__ */ (0, N.jsx)("span", {
 											className: "block text-[13px] text-slate-500",
 											children: e.desc
 										})]
 									}),
-									/* @__PURE__ */ (0, P.jsx)(Or, {
+									/* @__PURE__ */ (0, N.jsx)(Nr, {
 										size: 19,
 										className: "text-slate-300"
 									})
@@ -11682,34 +11848,34 @@ function ha({ children: e }) {
 					]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsx)("div", {
+			/* @__PURE__ */ (0, N.jsx)("div", {
 				className: "no-print fixed z-[60] left-3 right-3 bottom-[84px] md:left-auto md:right-6 md:bottom-6 md:w-[380px] space-y-2",
-				children: m.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+				children: m.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "toast-in rounded-2xl bg-[#0f2a4a] text-white p-4 shadow-2xl flex items-start gap-3",
 					children: [
-						/* @__PURE__ */ (0, P.jsx)("span", {
-							className: R("w-9 h-9 rounded-xl grid place-items-center shrink-0", e.tone === "green" ? "bg-emerald-500" : e.tone === "red" ? "bg-red-500" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500"),
+						/* @__PURE__ */ (0, N.jsx)("span", {
+							className: B("w-9 h-9 rounded-xl grid place-items-center shrink-0", e.tone === "green" ? "bg-emerald-500" : e.tone === "red" ? "bg-red-500" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500"),
 							children: e.tone === "green" ? "✓" : e.tone === "red" ? "!" : e.tone === "amber" ? "⚠" : "i"
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex-1 min-w-0",
-							children: [/* @__PURE__ */ (0, P.jsx)("p", {
+							children: [/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "font-bold text-[14.5px]",
 								children: e.title
-							}), e.desc && /* @__PURE__ */ (0, P.jsx)("p", {
+							}), e.desc && /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] text-blue-100 mt-0.5",
 								children: e.desc
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsx)("button", {
+						/* @__PURE__ */ (0, N.jsx)("button", {
 							onClick: () => h(e.id),
 							className: "w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 shrink-0",
-							children: /* @__PURE__ */ (0, P.jsx)(Hi, { size: 16 })
+							children: /* @__PURE__ */ (0, N.jsx)(ea, { size: 16 })
 						})
 					]
 				}, e.id))
 			}),
-			o && /* @__PURE__ */ (0, P.jsx)("div", {
+			o && /* @__PURE__ */ (0, N.jsx)("div", {
 				className: "fixed inset-0 z-30 hidden md:block",
 				onClick: () => s(!1)
 			})
@@ -11718,71 +11884,71 @@ function ha({ children: e }) {
 }
 //#endregion
 //#region src/pages/Home.tsx
-var ga = {
+var Ea = {
 	"Lô đang chạy": {
-		icon: L,
+		icon: Ki,
 		bg: "bg-slate-600",
 		bar: "bg-slate-500"
 	},
 	"Chờ lấy hàng": {
-		icon: gi,
+		icon: Ci,
 		bg: "bg-slate-600",
 		bar: "bg-slate-500"
 	},
 	"Đang vận chuyển": {
-		icon: L,
+		icon: Ki,
 		bg: "bg-blue-600",
 		bar: "bg-blue-500"
 	},
 	"Chờ thông quan": {
-		icon: Kr,
+		icon: Zr,
 		bg: "bg-amber-500",
 		bar: "bg-amber-500"
 	},
 	"Chờ giao": {
-		icon: gi,
+		icon: Ci,
 		bg: "bg-blue-600",
 		bar: "bg-blue-500"
 	},
 	"Đã giao": {
-		icon: Kr,
+		icon: Zr,
 		bg: "bg-emerald-600",
 		bar: "bg-emerald-500"
 	}
-}, _a = {
-	icon: Xr,
+}, Da = {
+	icon: ti,
 	bg: "bg-red-500",
 	bar: "bg-red-500"
 };
-function va() {
-	let { shipments: e, home: t, tasks: n, environment: r } = Zn(), i = Ct(), a = t?.tiles ?? [], o = t?.focus ?? null, s = t?.summary, c = (n ?? []).slice(0, 3), l = t?.runningSummary ?? [], u = (/* @__PURE__ */ new Date()).toLocaleDateString("vi-VN", {
+function Oa() {
+	let { shipments: e, home: t, tasks: n, environment: r } = Qn(), i = Ct(), a = t?.tiles ?? [], o = t?.focus ?? null, s = t?.summary, c = (n ?? []).slice(0, 3), l = t?.runningSummary ?? [], u = (/* @__PURE__ */ new Date()).toLocaleDateString("vi-VN", {
 		weekday: "long",
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric"
 	});
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-5 max-w-[1200px]",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-3xl bg-gradient-to-br from-[#0a1f3a] via-[#0f2a4a] to-[#1e5aa8] text-white p-5 md:p-7 relative overflow-hidden",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)("div", { className: "absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/10" }),
-					/* @__PURE__ */ (0, P.jsx)("div", { className: "absolute right-10 bottom-0 w-32 h-32 rounded-full bg-white/5" }),
-					/* @__PURE__ */ (0, P.jsxs)("p", {
+					/* @__PURE__ */ (0, N.jsx)("div", { className: "absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/10" }),
+					/* @__PURE__ */ (0, N.jsx)("div", { className: "absolute right-10 bottom-0 w-32 h-32 rounded-full bg-white/5" }),
+					/* @__PURE__ */ (0, N.jsxs)("p", {
 						className: "text-[13px] font-semibold text-blue-200 uppercase tracking-wider",
 						children: [u, r?.isSandbox ? ` · ${r.label}` : ""]
 					}),
-					/* @__PURE__ */ (0, P.jsx)("h1", {
+					/* @__PURE__ */ (0, N.jsx)("h1", {
 						className: "text-[22px] md:text-[30px] font-extrabold leading-tight mt-1",
 						children: "Hôm nay tôi cần làm gì?"
 					}),
-					/* @__PURE__ */ (0, P.jsx)("p", {
+					/* @__PURE__ */ (0, N.jsx)("p", {
 						className: "text-[14.5px] md:text-[16px] text-blue-100 mt-1.5 max-w-[640px]",
-						children: o ? /* @__PURE__ */ (0, P.jsxs)(P.Fragment, { children: [
+						children: o ? /* @__PURE__ */ (0, N.jsxs)(N.Fragment, { children: [
 							t?.urgentCount ?? 0,
 							" việc khẩn · bắt đầu từ ",
-							/* @__PURE__ */ (0, P.jsxs)("b", {
+							/* @__PURE__ */ (0, N.jsxs)("b", {
 								className: "text-white",
 								children: [
 									o.id,
@@ -11793,13 +11959,13 @@ function va() {
 							"."
 						] }) : "Không có việc khẩn. Toàn bộ lô hàng đang ổn định."
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "flex flex-wrap gap-2.5 mt-4",
-						children: [/* @__PURE__ */ (0, P.jsxs)(N, {
+						children: [/* @__PURE__ */ (0, N.jsxs)(M, {
 							to: "/viec-can-xu-ly",
 							className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]",
-							children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 18 })]
-						}), o && /* @__PURE__ */ (0, P.jsxs)(N, {
+							children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 18 })]
+						}), o && /* @__PURE__ */ (0, N.jsxs)(M, {
 							to: `/lo-hang/${o.id}`,
 							className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]",
 							children: ["Mở ", o.id]
@@ -11807,51 +11973,51 @@ function va() {
 					})
 				]
 			}),
-			o && /* @__PURE__ */ (0, P.jsx)(da, {
+			o && /* @__PURE__ */ (0, N.jsx)(xa, {
 				tone: o.priority === "Khan" ? "red" : "amber",
 				title: `${o.id}: ${o.nextAction}`,
-				desc: ra(o.nextActionDetail),
+				desc: V(o.nextActionDetail),
 				action: "XỬ LÝ NGAY",
 				onAction: () => {
 					i(o.to);
 				}
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("section", { children: [/* @__PURE__ */ (0, P.jsx)(sa, {
+			/* @__PURE__ */ (0, N.jsxs)("section", { children: [/* @__PURE__ */ (0, N.jsx)(_a, {
 				title: "VIỆC TIẾP THEO",
 				sub: "Bấm vào từng thẻ để đi thẳng tới màn hình xử lý"
-			}), /* @__PURE__ */ (0, P.jsx)("div", {
+			}), /* @__PURE__ */ (0, N.jsx)("div", {
 				className: "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3",
 				children: a.map((e) => {
-					let t = ga[e.label] ?? _a, n = t.icon;
-					return /* @__PURE__ */ (0, P.jsxs)(N, {
+					let t = Ea[e.label] ?? Da, n = t.icon;
+					return /* @__PURE__ */ (0, N.jsxs)(M, {
 						to: e.to,
 						className: "lift btn-press rounded-2xl bg-white border border-slate-200 overflow-hidden flex sm:flex-col min-h-[88px]",
-						children: [/* @__PURE__ */ (0, P.jsx)("div", { className: R("w-1.5 sm:w-full sm:h-1.5 shrink-0", t.bar) }), /* @__PURE__ */ (0, P.jsxs)("div", {
+						children: [/* @__PURE__ */ (0, N.jsx)("div", { className: B("w-1.5 sm:w-full sm:h-1.5 shrink-0", t.bar) }), /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "p-3.5 flex items-center sm:items-start gap-3 sm:flex-col sm:gap-2 flex-1",
-							children: [/* @__PURE__ */ (0, P.jsx)("span", {
-								className: R("w-11 h-11 rounded-xl text-white grid place-items-center shrink-0", t.bg),
-								children: /* @__PURE__ */ (0, P.jsx)(n, { size: 21 })
-							}), /* @__PURE__ */ (0, P.jsxs)("div", {
+							children: [/* @__PURE__ */ (0, N.jsx)("span", {
+								className: B("w-11 h-11 rounded-xl text-white grid place-items-center shrink-0", t.bg),
+								children: /* @__PURE__ */ (0, N.jsx)(n, { size: 21 })
+							}), /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex-1 min-w-0",
 								children: [
-									/* @__PURE__ */ (0, P.jsxs)("p", {
+									/* @__PURE__ */ (0, N.jsxs)("p", {
 										className: "font-extrabold text-[15px] text-[#0f2a4a] flex items-center gap-2",
 										children: [
 											e.label,
 											" ",
-											/* @__PURE__ */ (0, P.jsx)("span", {
+											/* @__PURE__ */ (0, N.jsx)("span", {
 												className: "text-[12px] font-extrabold bg-red-600 text-white rounded-full min-w-[24px] h-6 px-1.5 grid place-items-center",
 												children: e.value
 											})
 										]
 									}),
-									/* @__PURE__ */ (0, P.jsx)("p", {
+									/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "text-[13px] text-slate-500 mt-0.5 leading-snug truncate",
 										children: e.sub
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "inline-flex items-center gap-1 text-[13.5px] font-bold text-[#1e5aa8] mt-1.5",
-										children: ["Xem lô ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+										children: ["Xem lô ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 									})
 								]
 							})]
@@ -11859,79 +12025,79 @@ function va() {
 					}, e.label);
 				})
 			})] }),
-			/* @__PURE__ */ (0, P.jsxs)("section", { children: [/* @__PURE__ */ (0, P.jsx)(sa, {
+			/* @__PURE__ */ (0, N.jsxs)("section", { children: [/* @__PURE__ */ (0, N.jsx)(_a, {
 				title: "Chỉ số vận hành hôm nay",
 				sub: "Chỉ hiện số liệu giúp ra quyết định — bấm để lọc danh sách"
-			}), /* @__PURE__ */ (0, P.jsxs)("div", {
+			}), /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3",
 				children: [
-					a.map((e) => /* @__PURE__ */ (0, P.jsxs)(N, {
+					a.map((e) => /* @__PURE__ */ (0, N.jsxs)(M, {
 						to: e.to,
 						className: "lift rounded-2xl bg-white border border-slate-200 p-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] font-semibold text-slate-500",
 								children: e.label
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[24px] md:text-[28px] font-extrabold text-[#0f2a4a] leading-tight mt-0.5",
 								children: e.value
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[12.5px] text-slate-400 mt-0.5 truncate",
 								children: e.sub
 							})
 						]
 					}, e.label)),
-					/* @__PURE__ */ (0, P.jsxs)(N, {
+					/* @__PURE__ */ (0, N.jsxs)(M, {
 						to: "/tai-chinh/thu-tien",
 						className: "lift rounded-2xl bg-emerald-600 text-white p-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] font-semibold text-emerald-100",
 								children: "Phải thu còn lại"
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[24px] md:text-[26px] font-extrabold leading-tight mt-0.5",
-								children: ta(t?.outstandingTotal)
+								children: da(t?.outstandingTotal)
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[12.5px] text-emerald-100 mt-0.5",
 								children: [t?.outstandingCount ?? 0, " lô còn công nợ"]
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)(N, {
+					/* @__PURE__ */ (0, N.jsxs)(M, {
 						to: "/tai-chinh/doi-soat",
 						className: "lift rounded-2xl bg-white border-2 border-amber-300 p-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] font-semibold text-slate-500",
 								children: "Cần đối soát tài chính"
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[24px] md:text-[26px] font-extrabold text-[#0f2a4a] leading-tight mt-0.5",
 								children: s?.financialAttention ?? 0
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[12.5px] text-amber-700 font-semibold mt-0.5",
 								children: "Theo Shipment 360"
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)(N, {
+					/* @__PURE__ */ (0, N.jsxs)(M, {
 						to: "/viec-can-xu-ly",
 						className: "lift rounded-2xl bg-red-600 text-white p-4 col-span-2 md:col-span-1",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] font-semibold text-red-100",
 								children: "Việc quá hạn / khẩn"
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[24px] md:text-[28px] font-extrabold leading-tight mt-0.5",
 								children: [(s?.critical ?? 0) + (t?.urgentCount ?? 0), " việc"]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[12.5px] text-red-100 mt-0.5",
 								children: [s?.deadlineSoon ?? 0, " lô sắp tới hạn khách"]
 							})
@@ -11939,99 +12105,99 @@ function va() {
 					})
 				]
 			})] }),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
-				children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
-					children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "flex items-center justify-between mb-3",
-						children: [/* @__PURE__ */ (0, P.jsxs)("h3", {
+						children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
-							children: [/* @__PURE__ */ (0, P.jsx)(Ir, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Vr, {
 								size: 19,
 								className: "text-red-600"
 							}), " Quá hạn và sắp tới hạn"]
-						}), /* @__PURE__ */ (0, P.jsxs)(N, {
+						}), /* @__PURE__ */ (0, N.jsxs)(M, {
 							to: "/viec-can-xu-ly",
 							className: "text-[13.5px] font-bold text-[#1e5aa8] inline-flex items-center gap-1",
-							children: ["Tất cả ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+							children: ["Tất cả ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 						})]
-					}), /* @__PURE__ */ (0, P.jsxs)("div", {
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "space-y-2.5",
-						children: [c.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+						children: [c.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 							className: "text-[14px] text-slate-500 py-3",
 							children: "Không có việc tới hạn theo readiness hiện tại."
-						}), c.map((e) => /* @__PURE__ */ (0, P.jsxs)(N, {
+						}), c.map((e) => /* @__PURE__ */ (0, N.jsxs)(M, {
 							to: e.route,
 							className: "flex items-center gap-3 rounded-xl border border-slate-200 hover:border-[#1e5aa8] p-3 lift",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("span", { className: R("w-2.5 h-10 rounded-full shrink-0", e.statusTone === "red" ? "bg-red-500" : e.statusTone === "amber" ? "bg-amber-500" : e.statusTone === "blue" ? "bg-blue-500" : "bg-slate-400") }),
-								/* @__PURE__ */ (0, P.jsxs)("span", {
+								/* @__PURE__ */ (0, N.jsx)("span", { className: B("w-2.5 h-10 rounded-full shrink-0", e.statusTone === "red" ? "bg-red-500" : e.statusTone === "amber" ? "bg-amber-500" : e.statusTone === "blue" ? "bg-blue-500" : "bg-slate-400") }),
+								/* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "flex-1 min-w-0",
-									children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+									children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 										children: [
 											e.lot,
 											" · ",
 											e.job
 										]
-									}), /* @__PURE__ */ (0, P.jsxs)("span", {
+									}), /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "block text-[13px] text-slate-500",
 										children: [
-											ra(e.due),
+											V(e.due),
 											" · ",
-											ra(e.dueNote)
+											V(e.dueNote)
 										]
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("span", {
+								/* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "touch-target inline-flex items-center text-[13.5px] font-bold text-[#1e5aa8]",
-									children: ["Xử lý ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+									children: ["Xử lý ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 								})
 							]
 						}, e.id))]
 					})]
-				}), /* @__PURE__ */ (0, P.jsxs)("section", {
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center justify-between mb-3",
-							children: [/* @__PURE__ */ (0, P.jsx)("h3", {
+							children: [/* @__PURE__ */ (0, N.jsx)("h3", {
 								className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
 								children: "Trạng thái các lô đang chạy"
-							}), /* @__PURE__ */ (0, P.jsxs)(N, {
+							}), /* @__PURE__ */ (0, N.jsxs)(M, {
 								to: "/lo-hang",
 								className: "text-[13.5px] font-bold text-[#1e5aa8] inline-flex items-center gap-1",
-								children: ["Tất cả lô ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+								children: ["Tất cả lô ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "space-y-2.5",
-							children: [l.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+							children: [l.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[14px] text-slate-500 py-3",
 								children: "Không có lô nào đang chạy."
 							}), l.map((t) => {
 								let n = e.find((e) => e.id === t.id);
-								return /* @__PURE__ */ (0, P.jsxs)(N, {
+								return /* @__PURE__ */ (0, N.jsxs)(M, {
 									to: t.to,
 									className: "flex items-center gap-3 rounded-xl border border-slate-200 hover:border-[#1e5aa8] p-3 lift",
 									children: [
-										/* @__PURE__ */ (0, P.jsx)(oa, { tone: n?.statusTone ?? "gray" }),
-										/* @__PURE__ */ (0, P.jsxs)("span", {
+										/* @__PURE__ */ (0, N.jsx)(ga, { tone: n?.statusTone ?? "gray" }),
+										/* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "flex-1 min-w-0",
-											children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+											children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 												className: "block font-bold text-[14.5px] text-[#0f2a4a]",
 												children: [
 													t.id,
 													" · ",
 													t.customer
 												]
-											}), /* @__PURE__ */ (0, P.jsxs)("span", {
+											}), /* @__PURE__ */ (0, N.jsxs)("span", {
 												className: "block text-[13px] text-slate-500 truncate",
 												children: ["Tiếp theo: ", t.nextAction]
 											})]
 										}),
-										/* @__PURE__ */ (0, P.jsx)(aa, {
+										/* @__PURE__ */ (0, N.jsx)(ha, {
 											tone: n?.statusTone ?? "gray",
 											size: "sm",
 											children: t.status
@@ -12040,60 +12206,60 @@ function va() {
 								}, t.id);
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-3 rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-start gap-2",
-							children: [/* @__PURE__ */ (0, P.jsx)(Ar, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Fr, {
 								size: 17,
 								className: "text-blue-700 mt-0.5 shrink-0"
-							}), /* @__PURE__ */ (0, P.jsxs)("p", {
+							}), /* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[13.5px] text-blue-900",
-								children: [/* @__PURE__ */ (0, P.jsx)("b", { children: "Luồng gợi ý:" }), " Tổng quan → mở lô → xử lý việc tiếp theo → hợp đồng → xuất chứng từ → thu tiền."]
+								children: [/* @__PURE__ */ (0, N.jsx)("b", { children: "Luồng gợi ý:" }), " Tổng quan → mở lô → xử lý việc tiếp theo → hợp đồng → xuất chứng từ → thu tiền."]
 							})]
 						})
 					]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("section", {
+			/* @__PURE__ */ (0, N.jsxs)("section", {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
-				children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "flex items-center justify-between mb-3",
-					children: [/* @__PURE__ */ (0, P.jsx)("h3", {
+					children: [/* @__PURE__ */ (0, N.jsx)("h3", {
 						className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
 						children: "Tiền hôm nay — hiện trạng → việc thiếu → hành động"
-					}), /* @__PURE__ */ (0, P.jsxs)(N, {
+					}), /* @__PURE__ */ (0, N.jsxs)(M, {
 						to: "/tai-chinh/thu-tien",
 						className: "text-[13.5px] font-bold text-[#1e5aa8] inline-flex items-center gap-1",
-						children: ["Mở tài chính ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+						children: ["Mở tài chính ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 					})]
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "grid grid-cols-1 md:grid-cols-3 gap-3",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-emerald-50 border border-emerald-200 p-4",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13px] font-semibold text-emerald-800",
 									children: [
 										"Còn phải thu · ",
-										ta(t?.outstandingTotal),
+										da(t?.outstandingTotal),
 										" ₫"
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13.5px] text-emerald-900 mt-1",
 									children: [t?.outstandingCount ?? 0, " lô còn công nợ theo core.logic"]
 								}),
-								/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/tai-chinh/thu-tien",
 									className: "btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[14.5px] px-4 min-h-[44px]",
 									children: "GHI NHẬN THANH TOÁN"
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-amber-50 border border-amber-200 p-4",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13px] font-semibold text-amber-800",
 									children: [
 										"Cần đối soát · ",
@@ -12101,29 +12267,29 @@ function va() {
 										" lô"
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[13.5px] text-amber-900 mt-1",
 									children: "Quote Estimate ≠ Finance Actual — đối soát từng lô"
 								}),
-								/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/tai-chinh/doi-soat",
 									className: "btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-[14.5px] px-4 min-h-[44px]",
 									children: "ĐỐI SOÁT NGAY"
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-blue-50 border border-blue-200 p-4",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13px] font-semibold text-blue-800",
 									children: ["Hồ sơ thiếu thông tin · ", t?.missingDocsTotal ?? 0]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13.5px] text-blue-900 mt-1",
 									children: [s?.missingInfo ?? 0, " lô thiếu dữ liệu bắt buộc"]
 								}),
-								/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/viec-can-xu-ly",
 									className: "btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[44px]",
 									children: "MỞ DANH SÁCH VIỆC"
@@ -12138,7 +12304,7 @@ function va() {
 }
 //#endregion
 //#region src/pages/Tasks.tsx
-var ya = {
+var ka = {
 	Khan: {
 		label: "Khẩn",
 		cls: "bg-red-600 text-white"
@@ -12152,108 +12318,108 @@ var ya = {
 		cls: "bg-slate-200 text-slate-700"
 	}
 };
-function ba() {
-	let [e, t] = (0, _.useState)("ALL"), [n, r] = (0, _.useState)(""), i = (0, _.useMemo)(() => Zi.filter((t) => (e === "ALL" || t.level === e) && (!n || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(n.toLowerCase()))), [e, n]), a = (0, _.useMemo)(() => ({
-		ALL: Zi.length,
-		Khan: Zi.filter((e) => e.level === "Khan").length,
-		CanXuLy: Zi.filter((e) => e.level === "CanXuLy").length,
-		BinhThuong: Zi.filter((e) => e.level === "BinhThuong").length
-	}), [Zi.length, Zi]);
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+function Aa() {
+	let [e, t] = (0, _.useState)("ALL"), [n, r] = (0, _.useState)(""), i = (0, _.useMemo)(() => z.filter((t) => (e === "ALL" || t.level === e) && (!n || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(n.toLowerCase()))), [e, n]), a = (0, _.useMemo)(() => ({
+		ALL: z.length,
+		Khan: z.filter((e) => e.level === "Khan").length,
+		CanXuLy: z.filter((e) => e.level === "CanXuLy").length,
+		BinhThuong: z.filter((e) => e.level === "BinhThuong").length
+	}), [z.length, z]);
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
-				children: [/* @__PURE__ */ (0, P.jsx)(sa, {
+				children: [/* @__PURE__ */ (0, N.jsx)(_a, {
 					title: "Việc Cần Xử Lý",
 					sub: "Hiện trạng → việc thiếu → bấm XỬ LÝ NGAY để tới đúng ô cần nhập. Làm mục Khẩn trước 17:00."
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "flex flex-col md:flex-row gap-2.5",
-					children: [/* @__PURE__ */ (0, P.jsx)("input", {
+					children: [/* @__PURE__ */ (0, N.jsx)("input", {
 						value: n,
 						onChange: (e) => r(e.target.value),
 						placeholder: "Lọc theo mã lô, khách hàng, người phụ trách…",
 						className: "flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] focus:border-[#1e5aa8] outline-none"
-					}), /* @__PURE__ */ (0, P.jsx)("div", {
+					}), /* @__PURE__ */ (0, N.jsx)("div", {
 						className: "flex gap-2 overflow-x-auto no-scrollbar",
 						children: [
 							"ALL",
 							"Khan",
 							"CanXuLy",
 							"BinhThuong"
-						].map((n) => /* @__PURE__ */ (0, P.jsx)("button", {
+						].map((n) => /* @__PURE__ */ (0, N.jsx)("button", {
 							onClick: () => t(n),
-							className: R("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-bold", e === n ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							className: B("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-bold", e === n ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: n === "ALL" ? `Tất cả (${a.ALL})` : n === "Khan" ? `Khẩn (${a.Khan})` : n === "CanXuLy" ? `Cần xử lý (${a.CanXuLy})` : `Bình thường (${a.BinhThuong})`
 						}, n))
 					})]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "overflow-x-auto",
-					children: /* @__PURE__ */ (0, P.jsxs)("table", {
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
 						className: "tbl w-full text-[14.5px] min-w-[980px]",
-						children: [/* @__PURE__ */ (0, P.jsx)("thead", { children: /* @__PURE__ */ (0, P.jsxs)("tr", { children: [
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Ưu tiên" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Mã lô" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Khách hàng" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Việc cần làm" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Người phụ trách" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Hạn" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Trạng thái" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Hành động" })
-						] }) }), /* @__PURE__ */ (0, P.jsx)("tbody", { children: i.map((e) => /* @__PURE__ */ (0, P.jsxs)("tr", {
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Ưu tiên" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Mã lô" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Việc cần làm" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Người phụ trách" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hạn" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Trạng thái" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: i.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
 							className: "hover:bg-slate-50",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("td", { children: /* @__PURE__ */ (0, P.jsx)("span", {
-									className: R("inline-flex items-center gap-1.5 text-[12.5px] font-extrabold rounded-full px-2.5 py-1 whitespace-nowrap", ya[e.level].cls),
-									children: ya[e.level].label
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("span", {
+									className: B("inline-flex items-center gap-1.5 text-[12.5px] font-extrabold rounded-full px-2.5 py-1 whitespace-nowrap", ka[e.level].cls),
+									children: ka[e.level].label
 								}) }),
-								/* @__PURE__ */ (0, P.jsx)("td", {
+								/* @__PURE__ */ (0, N.jsx)("td", {
 									className: "font-extrabold text-[#0f2a4a]",
-									children: /* @__PURE__ */ (0, P.jsx)(N, {
+									children: /* @__PURE__ */ (0, N.jsx)(M, {
 										to: e.route,
 										className: "hover:underline whitespace-nowrap",
 										children: e.lot
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)("td", { children: e.customer }),
-								/* @__PURE__ */ (0, P.jsx)("td", {
+								/* @__PURE__ */ (0, N.jsx)("td", { children: e.customer }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
 									className: "max-w-[260px]",
-									children: /* @__PURE__ */ (0, P.jsx)("span", {
+									children: /* @__PURE__ */ (0, N.jsx)("span", {
 										className: "font-semibold",
 										children: e.job
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)("td", {
+								/* @__PURE__ */ (0, N.jsx)("td", {
 									className: "whitespace-nowrap",
 									children: e.assignee
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("td", { children: [/* @__PURE__ */ (0, P.jsx)("span", {
+								/* @__PURE__ */ (0, N.jsxs)("td", { children: [/* @__PURE__ */ (0, N.jsx)("span", {
 									className: "font-bold text-red-700 whitespace-nowrap",
 									children: e.due
-								}), /* @__PURE__ */ (0, P.jsx)("span", {
+								}), /* @__PURE__ */ (0, N.jsx)("span", {
 									className: "block text-[12.5px] text-slate-500",
 									children: e.dueNote
 								})] }),
-								/* @__PURE__ */ (0, P.jsx)("td", { children: /* @__PURE__ */ (0, P.jsx)(aa, {
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(ha, {
 									tone: e.statusTone,
 									size: "sm",
 									children: e.status
 								}) }),
-								/* @__PURE__ */ (0, P.jsx)("td", { children: /* @__PURE__ */ (0, P.jsxs)(N, {
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsxs)(M, {
 									to: e.route,
 									className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white text-[13.5px] font-bold px-3.5 min-h-[44px] whitespace-nowrap",
-									children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 15 })]
+									children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
 								}) })
 							]
 						}, e.id)) })]
 					})
-				}), i.length === 0 && /* @__PURE__ */ (0, P.jsxs)("p", {
+				}), i.length === 0 && /* @__PURE__ */ (0, N.jsxs)("p", {
 					className: "p-8 text-center text-slate-500",
-					children: ["Không có việc nào khớp. ", /* @__PURE__ */ (0, P.jsx)("button", {
+					children: ["Không có việc nào khớp. ", /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: () => {
 							t("ALL"), r("");
 						},
@@ -12262,30 +12428,30 @@ function ba() {
 					})]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "md:hidden space-y-3",
-				children: [i.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+				children: [i.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center gap-2 flex-wrap",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("span", {
-									className: R("inline-flex items-center text-[12px] font-extrabold rounded-full px-2.5 py-1", ya[e.level].cls),
-									children: ya[e.level].label
+								/* @__PURE__ */ (0, N.jsx)("span", {
+									className: B("inline-flex items-center text-[12px] font-extrabold rounded-full px-2.5 py-1", ka[e.level].cls),
+									children: ka[e.level].label
 								}),
-								/* @__PURE__ */ (0, P.jsx)(aa, {
+								/* @__PURE__ */ (0, N.jsx)(ha, {
 									tone: e.statusTone,
 									size: "sm",
 									children: e.status
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("span", {
+								/* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "ml-auto text-[12.5px] font-bold text-red-700",
 									children: ["⏰ ", e.due]
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("p", {
+						/* @__PURE__ */ (0, N.jsxs)("p", {
 							className: "font-extrabold text-[16px] text-[#0f2a4a] mt-2",
 							children: [
 								e.lot,
@@ -12293,18 +12459,18 @@ function ba() {
 								e.customer
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-1.5 rounded-xl bg-slate-50 border border-slate-200 p-3",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[12px] font-bold uppercase tracking-wide text-slate-400",
 									children: "Việc cần làm"
 								}),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[15px] font-semibold text-slate-800 mt-0.5",
 									children: e.job
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13px] text-slate-500 mt-1",
 									children: [
 										"👤 ",
@@ -12315,15 +12481,15 @@ function ba() {
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)(N, {
+						/* @__PURE__ */ (0, N.jsxs)(M, {
 							to: e.route,
 							className: "btn-press touch-target mt-3 flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-extrabold text-[15.5px] min-h-[52px]",
-							children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 18 })]
+							children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 18 })]
 						})
 					]
-				}, e.id)), i.length === 0 && /* @__PURE__ */ (0, P.jsxs)("div", {
+				}, e.id)), i.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border p-8 text-center text-slate-500",
-					children: ["Không có việc nào. ", /* @__PURE__ */ (0, P.jsx)("button", {
+					children: ["Không có việc nào. ", /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: () => {
 							t("ALL"), r("");
 						},
@@ -12332,14 +12498,14 @@ function ba() {
 					})]
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 flex items-start gap-3 text-[14px] text-slate-500",
-				children: [/* @__PURE__ */ (0, P.jsx)(ci, {
+				children: [/* @__PURE__ */ (0, N.jsx)(hi, {
 					size: 19,
 					className: "shrink-0 mt-0.5"
-				}), /* @__PURE__ */ (0, P.jsxs)("p", { children: [
+				}), /* @__PURE__ */ (0, N.jsxs)("p", { children: [
 					"Mẹo cho người mới: xử lý theo thứ tự ",
-					/* @__PURE__ */ (0, P.jsx)("b", { children: "Khẩn → Cần xử lý → Bình thường" }),
+					/* @__PURE__ */ (0, N.jsx)("b", { children: "Khẩn → Cần xử lý → Bình thường" }),
 					". Mỗi dòng đều có nút XỬ LÝ NGAY dẫn tới đúng ô nhập liệu."
 				] })]
 			})
@@ -12348,70 +12514,70 @@ function ba() {
 }
 //#endregion
 //#region src/pages/Shipments.tsx
-function xa() {
-	let { shipments: e } = Zn(), [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)("ALL"), [a, o] = (0, _.useState)(!1), s = (0, _.useMemo)(() => e.filter((e) => (r === "ALL" || e.status === r) && (!t || (e.id + e.customer + e.contract + e.route + e.sale + e.support).toLowerCase().includes(t.toLowerCase()))), [
+function ja() {
+	let { shipments: e } = Qn(), [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)("ALL"), [a, o] = (0, _.useState)(!1), s = (0, _.useMemo)(() => e.filter((e) => (r === "ALL" || e.status === r) && (!t || (e.id + e.customer + e.contract + e.route + e.sale + e.support).toLowerCase().includes(t.toLowerCase()))), [
 		e,
 		t,
 		r
 	]), c = ["ALL", ...Array.from(new Set(e.map((e) => e.status)))];
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)(sa, {
+					/* @__PURE__ */ (0, N.jsx)(_a, {
 						title: "Lô Hàng",
 						sub: "Tìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu",
-						right: /* @__PURE__ */ (0, P.jsx)(N, {
+						right: /* @__PURE__ */ (0, N.jsx)(M, {
 							to: "/tao-lo-moi",
 							className: "btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
 							children: "＋ Tạo lô mới"
 						})
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "flex gap-2",
-						children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+						children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
-							children: [/* @__PURE__ */ (0, P.jsx)(Oi, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Pi, {
 								size: 19,
 								className: "ml-3.5 text-slate-400 shrink-0"
-							}), /* @__PURE__ */ (0, P.jsx)("input", {
+							}), /* @__PURE__ */ (0, N.jsx)("input", {
 								value: t,
 								onChange: (e) => n(e.target.value),
 								placeholder: "Nhập mã lô (LO-0306), khách (An Phát), hợp đồng…",
 								className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
 							})]
-						}), /* @__PURE__ */ (0, P.jsxs)("button", {
+						}), /* @__PURE__ */ (0, N.jsxs)("button", {
 							onClick: () => o((e) => !e),
-							className: R("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", a ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white"),
+							className: B("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", a ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white"),
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(Mi, { size: 18 }),
+								/* @__PURE__ */ (0, N.jsx)(L, { size: 18 }),
 								" ",
-								/* @__PURE__ */ (0, P.jsx)("span", {
+								/* @__PURE__ */ (0, N.jsx)("span", {
 									className: "hidden sm:inline",
 									children: "Lọc"
 								})
 							]
 						})]
 					}),
-					a && /* @__PURE__ */ (0, P.jsx)("div", {
+					a && /* @__PURE__ */ (0, N.jsx)("div", {
 						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
-						children: c.map((e) => /* @__PURE__ */ (0, P.jsx)("button", {
+						children: c.map((e) => /* @__PURE__ */ (0, N.jsx)("button", {
 							onClick: () => i(e),
-							className: R("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", r === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							className: B("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", r === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: e === "ALL" ? "Tất cả" : e
 						}, e))
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("p", {
+					/* @__PURE__ */ (0, N.jsxs)("p", {
 						className: "text-[13.5px] text-slate-500 mt-2.5",
 						children: [
 							"Tìm thấy ",
-							/* @__PURE__ */ (0, P.jsxs)("b", {
+							/* @__PURE__ */ (0, N.jsxs)("b", {
 								className: "text-[#0f2a4a]",
 								children: [s.length, " lô"]
 							}),
-							t ? /* @__PURE__ */ (0, P.jsxs)(P.Fragment, { children: [
+							t ? /* @__PURE__ */ (0, N.jsxs)(N.Fragment, { children: [
 								" cho “",
 								t,
 								"”"
@@ -12421,77 +12587,77 @@ function xa() {
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, P.jsx)("div", {
+			/* @__PURE__ */ (0, N.jsx)("div", {
 				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
-				children: /* @__PURE__ */ (0, P.jsx)("div", {
+				children: /* @__PURE__ */ (0, N.jsx)("div", {
 					className: "overflow-x-auto",
-					children: /* @__PURE__ */ (0, P.jsxs)("table", {
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
 						className: "tbl w-full text-[14px] min-w-[1080px]",
-						children: [/* @__PURE__ */ (0, P.jsx)("thead", { children: /* @__PURE__ */ (0, P.jsxs)("tr", { children: [
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Mã lô" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Khách hàng" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Hợp đồng · Tuyến" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Trạng thái" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Việc tiếp theo" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Sale · Support" }),
-							/* @__PURE__ */ (0, P.jsx)("th", { children: "Hành động" })
-						] }) }), /* @__PURE__ */ (0, P.jsx)("tbody", { children: s.map((e) => /* @__PURE__ */ (0, P.jsxs)("tr", {
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Mã lô" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hợp đồng · Tuyến" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Trạng thái" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Việc tiếp theo" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Sale · Support" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: s.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
 							className: "hover:bg-slate-50",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("td", { children: [/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsxs)("td", { children: [/* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/lo-hang/" + e.id,
 									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
 									children: e.id
-								}), /* @__PURE__ */ (0, P.jsxs)("span", {
+								}), /* @__PURE__ */ (0, N.jsxs)("span", {
 									className: "block text-[12px] text-slate-400",
 									children: ["Cập nhật ", e.updated]
 								})] }),
-								/* @__PURE__ */ (0, P.jsx)("td", {
+								/* @__PURE__ */ (0, N.jsx)("td", {
 									className: "font-semibold max-w-[180px]",
 									children: e.customer
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("td", {
+								/* @__PURE__ */ (0, N.jsxs)("td", {
 									className: "max-w-[220px]",
-									children: [/* @__PURE__ */ (0, P.jsx)("span", {
+									children: [/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block text-[13px] font-semibold text-slate-600",
 										children: e.contract
-									}), /* @__PURE__ */ (0, P.jsx)("span", {
+									}), /* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block text-[13px] text-slate-500",
 										children: e.route
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsx)("td", { children: /* @__PURE__ */ (0, P.jsx)(aa, {
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(ha, {
 									tone: e.statusTone,
 									size: "sm",
 									children: e.status
 								}) }),
-								/* @__PURE__ */ (0, P.jsx)("td", {
+								/* @__PURE__ */ (0, N.jsx)("td", {
 									className: "max-w-[240px]",
-									children: /* @__PURE__ */ (0, P.jsx)("span", {
+									children: /* @__PURE__ */ (0, N.jsx)("span", {
 										className: "block font-semibold text-[13.5px]",
 										children: e.nextAction
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("td", {
+								/* @__PURE__ */ (0, N.jsxs)("td", {
 									className: "text-[13px]",
-									children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+									children: [/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "block whitespace-nowrap",
-										children: ["Sale: ", /* @__PURE__ */ (0, P.jsx)("b", { children: e.sale })]
-									}), /* @__PURE__ */ (0, P.jsxs)("span", {
+										children: ["Sale: ", /* @__PURE__ */ (0, N.jsx)("b", { children: e.sale })]
+									}), /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "block whitespace-nowrap",
-										children: ["SP: ", /* @__PURE__ */ (0, P.jsx)("b", { children: e.support })]
+										children: ["SP: ", /* @__PURE__ */ (0, N.jsx)("b", { children: e.support })]
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsx)("td", { children: /* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "flex gap-1.5",
-									children: [/* @__PURE__ */ (0, P.jsx)(N, {
+									children: [/* @__PURE__ */ (0, N.jsx)(M, {
 										to: e.nextRoute,
 										className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]",
 										children: "XỬ LÝ"
-									}), /* @__PURE__ */ (0, P.jsxs)(N, {
+									}), /* @__PURE__ */ (0, N.jsxs)(M, {
 										to: "/lo-hang/" + e.id,
 										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
-										children: [/* @__PURE__ */ (0, P.jsx)(Wr, { size: 15 }), " 360°"]
+										children: [/* @__PURE__ */ (0, N.jsx)(Yr, { size: 15 }), " 360°"]
 									})]
 								}) })
 							]
@@ -12499,47 +12665,47 @@ function xa() {
 					})
 				})
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "md:hidden space-y-3",
-				children: [s.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+				children: [s.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
-					children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "p-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex items-center gap-2 flex-wrap",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)(oa, { tone: e.statusTone }),
-									/* @__PURE__ */ (0, P.jsx)("span", {
+									/* @__PURE__ */ (0, N.jsx)(ga, { tone: e.statusTone }),
+									/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "font-extrabold text-[17px] text-[#0f2a4a]",
 										children: e.id
 									}),
-									/* @__PURE__ */ (0, P.jsx)(aa, {
+									/* @__PURE__ */ (0, N.jsx)(ha, {
 										tone: e.statusTone,
 										size: "sm",
 										children: e.status
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "font-semibold text-[14.5px] mt-1",
 								children: e.customer
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13px] text-slate-500",
 								children: e.route
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "mt-2.5 rounded-xl bg-amber-50 border border-amber-200 p-3",
-								children: [/* @__PURE__ */ (0, P.jsx)("p", {
+								children: [/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[11.5px] font-bold uppercase tracking-wide text-amber-700",
 									children: "Việc tiếp theo"
-								}), /* @__PURE__ */ (0, P.jsx)("p", {
+								}), /* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[14px] font-semibold text-slate-800 mt-0.5",
 									children: e.nextAction
 								})]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[12.5px] text-slate-400 mt-2",
 								children: [
 									"Sale ",
@@ -12551,30 +12717,30 @@ function xa() {
 								]
 							})
 						]
-					}), /* @__PURE__ */ (0, P.jsxs)("div", {
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "grid grid-cols-2 border-t",
-						children: [/* @__PURE__ */ (0, P.jsxs)(N, {
+						children: [/* @__PURE__ */ (0, N.jsxs)(M, {
 							to: e.nextRoute,
 							className: "touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]",
-							children: ["XỬ LÝ ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 17 })]
-						}), /* @__PURE__ */ (0, P.jsxs)(N, {
+							children: ["XỬ LÝ ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
+						}), /* @__PURE__ */ (0, N.jsxs)(M, {
 							to: "/lo-hang/" + e.id,
 							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]",
-							children: [/* @__PURE__ */ (0, P.jsx)(Wr, { size: 17 }), " XEM 360°"]
+							children: [/* @__PURE__ */ (0, N.jsx)(Yr, { size: 17 }), " XEM 360°"]
 						})]
 					})]
-				}, e.id)), s.length === 0 && /* @__PURE__ */ (0, P.jsxs)("div", {
+				}, e.id)), s.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border p-8 text-center",
 					children: [
-						/* @__PURE__ */ (0, P.jsx)("p", {
+						/* @__PURE__ */ (0, N.jsx)("p", {
 							className: "font-bold text-[16px]",
 							children: "Không tìm thấy lô nào"
 						}),
-						/* @__PURE__ */ (0, P.jsx)("p", {
+						/* @__PURE__ */ (0, N.jsx)("p", {
 							className: "text-[14px] text-slate-500 mt-1",
 							children: "Thử từ khóa khác hoặc tạo lô mới."
 						}),
-						/* @__PURE__ */ (0, P.jsx)(N, {
+						/* @__PURE__ */ (0, N.jsx)(M, {
 							to: "/tao-lo-moi",
 							className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center",
 							children: "＋ Tạo lô mới"
@@ -12587,7 +12753,7 @@ function xa() {
 }
 //#endregion
 //#region src/pages/ShipmentDetail.tsx
-var Sa = [
+var Ma = [
 	{
 		id: "lay-hang",
 		label: "Lấy hàng & Xuất khẩu",
@@ -12614,8 +12780,8 @@ var Sa = [
 		short: "Lịch sử"
 	}
 ];
-function Ca() {
-	let { id: e } = Tt(), [t, n] = Vn(), r = t.get("tab") || "lay-hang", { shipments: i, updateShipment: a, toast: o, contracts: s, dispatch: c } = Zn(), l = Ct(), u = i.find((t) => t.id === e), [d, f] = (0, _.useState)(!1), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)("Thu tiền khách"), [b, x] = (0, _.useState)({}), [S, C] = (0, _.useState)(0);
+function Na() {
+	let { id: e } = Tt(), [t, n] = Hn(), r = t.get("tab") || "lay-hang", { shipments: i, updateShipment: a, toast: o, contracts: s, dispatch: c } = Qn(), l = Ct(), u = i.find((t) => t.id === e), [d, f] = (0, _.useState)(!1), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)("Thu tiền khách"), [b, x] = (0, _.useState)({}), [S, C] = (0, _.useState)(0);
 	(0, _.useEffect)(() => {
 		x({});
 	}, [e, r]);
@@ -12623,18 +12789,18 @@ function Ca() {
 		...n,
 		[e]: t
 	})), T = (e, t) => b[e] ?? t, E = (0, _.useMemo)(() => s.find((e) => e.id === u?.contract), [s, u]);
-	if (!u) return /* @__PURE__ */ (0, P.jsxs)("div", {
+	if (!u) return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("p", {
+			/* @__PURE__ */ (0, N.jsxs)("p", {
 				className: "font-extrabold text-[19px]",
 				children: ["Không tìm thấy lô ", e]
 			}),
-			/* @__PURE__ */ (0, P.jsx)("p", {
+			/* @__PURE__ */ (0, N.jsx)("p", {
 				className: "text-slate-500 mt-1 text-[15px]",
 				children: "Mã lô có thể sai. Về danh sách để tìm lại."
 			}),
-			/* @__PURE__ */ (0, P.jsx)(N, {
+			/* @__PURE__ */ (0, N.jsx)(M, {
 				to: "/lo-hang",
 				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
 				children: "Về danh sách lô"
@@ -12711,88 +12877,88 @@ function Ca() {
 			requestId: ae.current,
 			date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
 			note: v
-		}), f(!1), g(""), o("Đã gửi khoản thu " + ea(e), "Ghi qua save_direct_shipment_payment với request identity.", "green");
+		}), f(!1), g(""), o("Đã gửi khoản thu " + ua(e), "Ghi qua save_direct_shipment_payment với request identity.", "green");
 	}, O = () => {
 		c("pxk_generate", { shipmentId: u.id }) ? o("Đã gửi yêu cầu xuất PXK", "core.docgen kiểm tra gate giao hàng rồi sinh file Office thật.", "blue") : o("Không gửi được", "Component chưa kết nối backend.", "red");
 	}, k = (e) => /tờ khai|thông quan|xe giao|giao hàng/i.test(e) ? "nhap" : /lấy hàng|xe TQ|biển số|packing|container/i.test(e) ? "lay-hang" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", A = u.missingDocs.length;
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
-			/* @__PURE__ */ (0, P.jsxs)("button", {
+			/* @__PURE__ */ (0, N.jsxs)("button", {
 				onClick: () => l(-1),
 				className: "touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
-				children: [/* @__PURE__ */ (0, P.jsx)(fr, { size: 17 }), " Quay lại"]
+				children: [/* @__PURE__ */ (0, N.jsx)(hr, { size: 17 }), " Quay lại"]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)("div", { className: "h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" }),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsx)("div", { className: "h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" }),
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "p-4 md:p-6",
 						children: [
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex flex-wrap items-center gap-2",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)("h1", {
+									/* @__PURE__ */ (0, N.jsx)("h1", {
 										className: "text-[22px] md:text-[26px] font-extrabold text-[#0f2a4a]",
 										children: u.id
 									}),
-									/* @__PURE__ */ (0, P.jsx)(aa, {
+									/* @__PURE__ */ (0, N.jsx)(ha, {
 										tone: u.statusTone,
 										children: u.status
 									}),
-									A > 0 && /* @__PURE__ */ (0, P.jsxs)("span", {
+									A > 0 && /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5",
 										children: [
-											/* @__PURE__ */ (0, P.jsx)(Ar, { size: 15 }),
+											/* @__PURE__ */ (0, N.jsx)(Fr, { size: 15 }),
 											" Thiếu ",
 											A,
 											" thông tin"
 										]
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "ml-auto text-[12.5px] text-slate-400 flex items-center gap-1",
 										children: [
-											/* @__PURE__ */ (0, P.jsx)(Ir, { size: 14 }),
+											/* @__PURE__ */ (0, N.jsx)(Vr, { size: 14 }),
 											" Cập nhật ",
 											u.updated
 										]
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "font-semibold text-[15.5px] mt-1",
 								children: [
 									u.customer,
 									" ",
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "text-slate-400 font-normal",
 										children: ["· MST ", u.customerMST]
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)(pa, {
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
 										label: "Tuyến",
 										value: u.route
 									}),
-									/* @__PURE__ */ (0, P.jsx)(pa, {
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
 										label: "Cửa khẩu",
 										value: u.borderVN
 									}),
-									/* @__PURE__ */ (0, P.jsx)(pa, {
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
 										label: "Hợp đồng",
-										value: /* @__PURE__ */ (0, P.jsx)(N, {
+										value: /* @__PURE__ */ (0, N.jsx)(M, {
 											to: "/hop-dong/" + u.contract,
 											className: "text-[#1e5aa8] font-bold hover:underline",
 											children: u.contract
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(pa, {
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
 										label: "Sale · Support",
-										value: /* @__PURE__ */ (0, P.jsxs)("span", { children: [
+										value: /* @__PURE__ */ (0, N.jsxs)("span", { children: [
 											u.sale,
 											" · ",
 											u.support
@@ -12802,9 +12968,9 @@ function Ca() {
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, P.jsx)("div", {
+					/* @__PURE__ */ (0, N.jsx)("div", {
 						className: "px-4 md:px-6 pb-4 md:pb-5",
-						children: /* @__PURE__ */ (0, P.jsx)(da, {
+						children: /* @__PURE__ */ (0, N.jsx)(xa, {
 							tone: u.statusTone === "green" ? "green" : u.priority === "Khan" ? "red" : "amber",
 							title: u.nextAction,
 							desc: u.nextActionDetail,
@@ -12817,16 +12983,16 @@ function Ca() {
 							}
 						})
 					}),
-					/* @__PURE__ */ (0, P.jsx)("div", {
+					/* @__PURE__ */ (0, N.jsx)("div", {
 						id: "workspace-tabs",
 						className: "px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3",
-						children: Sa.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+						children: Ma.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 							onClick: () => n({ tab: e.id }),
-							className: R("touch-target shrink-0 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", r === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : "border-slate-200 bg-white text-slate-600"),
-							children: [/* @__PURE__ */ (0, P.jsx)("span", {
+							className: B("touch-target shrink-0 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", r === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : "border-slate-200 bg-white text-slate-600"),
+							children: [/* @__PURE__ */ (0, N.jsx)("span", {
 								className: "hidden md:inline",
 								children: e.label
-							}), /* @__PURE__ */ (0, P.jsx)("span", {
+							}), /* @__PURE__ */ (0, N.jsx)("span", {
 								className: "md:hidden",
 								children: e.short
 							})]
@@ -12834,19 +13000,19 @@ function Ca() {
 					})
 				]
 			}),
-			u.missingDocs.length > 0 && r !== "chung-tu" && /* @__PURE__ */ (0, P.jsxs)("div", {
+			u.missingDocs.length > 0 && r !== "chung-tu" && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl bg-white border-2 border-red-200 p-4",
-				children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("p", {
 					className: "font-extrabold text-[15px] text-red-800 flex items-center gap-2 mb-2.5",
 					children: [
-						/* @__PURE__ */ (0, P.jsx)(Ar, { size: 18 }),
+						/* @__PURE__ */ (0, N.jsx)(Fr, { size: 18 }),
 						" Đang thiếu ",
 						u.missingDocs.length,
 						" thông tin — bấm để bổ sung ngay:"
 					]
-				}), /* @__PURE__ */ (0, P.jsx)("div", {
+				}), /* @__PURE__ */ (0, N.jsx)("div", {
 					className: "grid gap-2 md:grid-cols-2",
-					children: u.missingDocs.map((e) => /* @__PURE__ */ (0, P.jsx)(fa, {
+					children: u.missingDocs.map((e) => /* @__PURE__ */ (0, N.jsx)(Sa, {
 						what: e,
 						actionLabel: "Bổ sung ngay",
 						onAction: () => {
@@ -12858,34 +13024,34 @@ function Ca() {
 					}, e))
 				})]
 			}),
-			r === "lay-hang" && /* @__PURE__ */ (0, P.jsxs)("div", {
+			r === "lay-hang" && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
 				id: "missing-anchor",
-				children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
-							children: [/* @__PURE__ */ (0, P.jsx)(ui, {
+							children: [/* @__PURE__ */ (0, N.jsx)(_i, {
 								size: 19,
 								className: "text-[#1e5aa8]"
 							}), " Nhà máy & lịch lấy hàng"]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-slate-50 border border-slate-200 p-3.5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "font-bold text-[15px]",
 									children: u.pickup.factory
 								}),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[13.5px] text-slate-500",
 									children: u.pickup.address
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[14px] mt-1.5 flex items-center gap-1.5",
 									children: [
-										/* @__PURE__ */ (0, P.jsx)(Si, {
+										/* @__PURE__ */ (0, N.jsx)(ki, {
 											size: 15,
 											className: "text-slate-400"
 										}),
@@ -12897,157 +13063,157 @@ function Ca() {
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid sm:grid-cols-2 gap-3",
-							children: [/* @__PURE__ */ (0, P.jsx)(z, {
+							children: [/* @__PURE__ */ (0, N.jsx)(H, {
 								label: "Thời gian lấy hàng",
 								required: !u.pickup.pickupTime,
 								error: T("pickupTime", u.pickup.pickupTime) ? void 0 : "Thiếu giờ lấy — nhà máy cần báo trước 24h",
-								children: /* @__PURE__ */ (0, P.jsx)("input", {
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
 									value: T("pickupTime", u.pickup.pickupTime),
 									onChange: (e) => w("pickupTime", e.target.value),
 									placeholder: "VD: 10/09/2026 09:00",
-									className: B(T("pickupTime", u.pickup.pickupTime) ? "ok" : "missing")
+									className: U(T("pickupTime", u.pickup.pickupTime) ? "ok" : "missing")
 								})
-							}), /* @__PURE__ */ (0, P.jsx)(z, {
+							}), /* @__PURE__ */ (0, N.jsx)(H, {
 								label: "Loại / kích thước xe",
-								children: /* @__PURE__ */ (0, P.jsx)("input", {
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
 									defaultValue: u.pickup.truckType,
-									className: B()
+									className: U()
 								})
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 pt-1",
-							children: [/* @__PURE__ */ (0, P.jsx)(L, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Ki, {
 								size: 19,
 								className: "text-[#1e5aa8]"
 							}), " Xe Trung Quốc"]
 						}),
-						(!u.pickup.plate || !u.pickup.driver) && /* @__PURE__ */ (0, P.jsx)(fa, {
+						(!u.pickup.plate || !u.pickup.driver) && /* @__PURE__ */ (0, N.jsx)(Sa, {
 							what: "biển số + tài xế xe TQ",
 							where: "Chưa đặt được xe — bổ sung để nhà máy cho hàng lên xe",
 							actionLabel: "Nhập xe ngay",
 							onAction: () => document.getElementById("fld-plate")?.focus()
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid sm:grid-cols-2 gap-3",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Biển số xe",
 									required: !u.pickup.plate,
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										id: "fld-plate",
 										value: T("plate", u.pickup.plate),
 										onChange: (e) => w("plate", e.target.value),
 										placeholder: "VD: 粤A·88T36",
-										className: B(T("plate", u.pickup.plate) ? "ok" : "missing")
+										className: U(T("plate", u.pickup.plate) ? "ok" : "missing")
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Tài xế",
 									required: !u.pickup.driver,
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: T("driver", u.pickup.driver),
 										onChange: (e) => w("driver", e.target.value),
 										placeholder: "Tên tài xế",
-										className: B(T("driver", u.pickup.driver) ? "ok" : "missing")
+										className: U(T("driver", u.pickup.driver) ? "ok" : "missing")
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "SĐT tài xế",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: T("driverPhone", u.pickup.driverPhone),
 										onChange: (e) => w("driverPhone", e.target.value),
 										placeholder: "+86…",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "grid grid-cols-2 gap-3",
-									children: [/* @__PURE__ */ (0, P.jsx)(z, {
+									children: [/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Ngày dự kiến",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											defaultValue: u.pickup.eta,
-											className: B()
+											className: U()
 										})
-									}), /* @__PURE__ */ (0, P.jsx)(z, {
+									}), /* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Ngày thực tế",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											defaultValue: u.pickup.ata,
 											placeholder: "—",
-											className: B()
+											className: U()
 										})
 									})]
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsx)(ca, {
+						/* @__PURE__ */ (0, N.jsx)(va, {
 							onClick: te,
 							className: "w-full",
 							children: "💾 LƯU THÔNG TIN LẤY HÀNG"
 						})
 					]
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "space-y-4",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("section", {
+						/* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("h3", {
+								/* @__PURE__ */ (0, N.jsxs)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3",
-									children: [/* @__PURE__ */ (0, P.jsx)(vi, {
+									children: [/* @__PURE__ */ (0, N.jsx)(Ti, {
 										size: 19,
 										className: "text-[#1e5aa8]"
 									}), " Hàng hóa"]
 								}),
-								/* @__PURE__ */ (0, P.jsx)("div", {
+								/* @__PURE__ */ (0, N.jsx)("div", {
 									className: "grid grid-cols-2 md:grid-cols-3 gap-3",
 									children: [
-										["Số kiện / GW", ra(u.cargo.qtyPkg)],
-										["Số kiện", na(u.cargo.packs)],
-										["CBM", na(u.cargo.cbm)],
-										["Kích thước", ra(u.cargo.dims)],
-										["Loại hàng", ra(u.cargo.type)]
-									].map(([e, t]) => /* @__PURE__ */ (0, P.jsxs)("div", {
+										["Số kiện / GW", V(u.cargo.qtyPkg)],
+										["Số kiện", fa(u.cargo.packs)],
+										["CBM", fa(u.cargo.cbm)],
+										["Kích thước", V(u.cargo.dims)],
+										["Loại hàng", V(u.cargo.type)]
+									].map(([e, t]) => /* @__PURE__ */ (0, N.jsxs)("div", {
 										className: "rounded-xl bg-slate-50 border border-slate-200 p-3",
-										children: [/* @__PURE__ */ (0, P.jsx)("p", {
+										children: [/* @__PURE__ */ (0, N.jsx)("p", {
 											className: "text-[12px] font-bold uppercase tracking-wide text-slate-400",
 											children: e
-										}), /* @__PURE__ */ (0, P.jsx)("p", {
+										}), /* @__PURE__ */ (0, N.jsx)("p", {
 											className: "font-bold text-[15px] text-[#0f2a4a] mt-0.5",
 											children: t
 										})]
 									}, e))
 								}),
-								u.cargo.note && /* @__PURE__ */ (0, P.jsxs)("p", {
+								u.cargo.note && /* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "mt-2.5 text-[13.5px] bg-amber-50 border border-amber-200 rounded-xl p-3",
 									children: ["📌 Ghi chú: ", u.cargo.note]
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("section", {
+						/* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("h3", {
+								/* @__PURE__ */ (0, N.jsxs)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
 									children: ["Xuất khẩu — ", u.exportInfo.border]
 								}),
-								/* @__PURE__ */ (0, P.jsx)(pa, {
+								/* @__PURE__ */ (0, N.jsx)(Ca, {
 									label: "Đơn vị khai",
 									value: u.exportInfo.declarant
 								}),
-								/* @__PURE__ */ (0, P.jsx)(pa, {
+								/* @__PURE__ */ (0, N.jsx)(Ca, {
 									label: "Ngày dự kiến / thực tế",
-									value: /* @__PURE__ */ (0, P.jsxs)("span", { children: [
+									value: /* @__PURE__ */ (0, N.jsxs)("span", { children: [
 										u.exportInfo.eta || "—",
 										" / ",
 										u.exportInfo.ata || "chưa có"
 									] })
 								}),
-								/* @__PURE__ */ (0, P.jsx)(pa, {
+								/* @__PURE__ */ (0, N.jsx)(Ca, {
 									label: "Trạng thái",
-									value: /* @__PURE__ */ (0, P.jsx)(aa, {
+									value: /* @__PURE__ */ (0, N.jsx)(ha, {
 										tone: u.exportInfo.state.includes("Đã") ? "green" : "amber",
 										size: "sm",
 										children: u.exportInfo.state
@@ -13055,52 +13221,52 @@ function Ca() {
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("section", {
+						/* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("h3", {
+								/* @__PURE__ */ (0, N.jsx)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-1",
 									children: "Checklist chứng từ xuất khẩu"
 								}),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[13px] text-slate-500 mb-3",
 									children: "Hiện trạng → thiếu gì → bấm để bổ sung. Không có cảnh báo cụt."
 								}),
-								/* @__PURE__ */ (0, P.jsx)("div", {
+								/* @__PURE__ */ (0, N.jsx)("div", {
 									className: "space-y-2",
-									children: u.docs.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
-										className: R("flex items-center gap-3 rounded-xl border-2 p-3", e.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50"),
+									children: u.docs.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+										className: B("flex items-center gap-3 rounded-xl border-2 p-3", e.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50"),
 										children: [
-											/* @__PURE__ */ (0, P.jsx)("span", {
-												className: R("w-8 h-8 rounded-full grid place-items-center font-extrabold shrink-0", e.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"),
+											/* @__PURE__ */ (0, N.jsx)("span", {
+												className: B("w-8 h-8 rounded-full grid place-items-center font-extrabold shrink-0", e.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"),
 												children: e.ok ? "✓" : "!"
 											}),
-											/* @__PURE__ */ (0, P.jsxs)("div", {
+											/* @__PURE__ */ (0, N.jsxs)("div", {
 												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+												children: [/* @__PURE__ */ (0, N.jsxs)("p", {
 													className: "font-bold text-[14.5px]",
 													children: [
 														e.name,
 														" — ",
-														e.ok ? /* @__PURE__ */ (0, P.jsx)("span", {
+														e.ok ? /* @__PURE__ */ (0, N.jsx)("span", {
 															className: "text-emerald-700",
 															children: "✅ Đủ"
-														}) : /* @__PURE__ */ (0, P.jsx)("span", {
+														}) : /* @__PURE__ */ (0, N.jsx)("span", {
 															className: "text-amber-800",
 															children: "Thiếu"
 														})
 													]
-												}), e.note && /* @__PURE__ */ (0, P.jsx)("p", {
+												}), e.note && /* @__PURE__ */ (0, N.jsx)("p", {
 													className: "text-[13px] text-slate-600",
 													children: e.note
 												})]
 											}),
-											!e.ok && /* @__PURE__ */ (0, P.jsxs)("button", {
+											!e.ok && /* @__PURE__ */ (0, N.jsxs)("button", {
 												onClick: () => {
 													n({ tab: "chung-tu" }), o("Mở tab Chứng từ", "Tải file " + e.name + " lên hoặc ghi chú lý do thiếu.", "blue");
 												},
 												className: "btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13.5px] font-bold px-3 min-h-[44px]",
-												children: [/* @__PURE__ */ (0, P.jsx)(bi, { size: 14 }), " Bổ sung"]
+												children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 14 }), " Bổ sung"]
 											})
 										]
 									}, e.name))
@@ -13110,193 +13276,193 @@ function Ca() {
 					]
 				})]
 			}),
-			r === "nhap" && /* @__PURE__ */ (0, P.jsxs)("div", {
+			r === "nhap" && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
 				id: "missing-anchor",
-				children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
 							children: ["Tờ khai & thuế nhập khẩu — ", u.importInfo.borderVN]
 						}),
-						!T("tk", u.importInfo.declarationNo) && /* @__PURE__ */ (0, P.jsx)(fa, {
+						!T("tk", u.importInfo.declarationNo) && /* @__PURE__ */ (0, N.jsx)(Sa, {
 							what: "số tờ khai nhập khẩu",
 							where: "Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được",
 							actionLabel: "Nhập số TK",
 							onAction: () => document.getElementById("fld-tk")?.focus()
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid sm:grid-cols-2 gap-3",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Số tờ khai",
 									required: !u.importInfo.declarationNo,
 									error: T("tk", u.importInfo.declarationNo) ? void 0 : "Nhập 12 số tờ khai — VD: 105588421330",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										id: "fld-tk",
 										value: T("tk", u.importInfo.declarationNo),
 										onChange: (e) => w("tk", e.target.value),
 										placeholder: "12 số tờ khai…",
-										className: B(T("tk", u.importInfo.declarationNo) ? "ok" : "missing")
+										className: U(T("tk", u.importInfo.declarationNo) ? "ok" : "missing")
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Ngày đăng ký",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: T("regDate", u.importInfo.regDate),
 										onChange: (e) => w("regDate", e.target.value),
 										placeholder: "VD: 09/09/2026",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Thuế nhập khẩu (VND)",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: u.importInfo.tax == null ? "" : String(u.importInfo.tax),
 										readOnly: !0,
 										placeholder: "Chưa có dữ liệu — theo dõi ở GNT",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "VAT hàng nhập (VND)",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: u.importInfo.vat == null ? "" : String(u.importInfo.vat),
 										readOnly: !0,
 										placeholder: "Chưa có dữ liệu — theo dõi ở GNT",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Phân luồng / kiểm hóa",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: T("inspection", u.importInfo.inspection),
 										onChange: (e) => w("inspection", e.target.value),
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Giấy phép chuyên ngành",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.importInfo.license,
-										className: B()
+										className: U()
 									})
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsx)(ca, {
+						/* @__PURE__ */ (0, N.jsx)(va, {
 							onClick: ne,
 							className: "w-full",
 							children: "💾 LƯU TỜ KHAI & THUẾ"
 						}),
-						T("tk", u.importInfo.declarationNo) && /* @__PURE__ */ (0, P.jsxs)("div", {
+						T("tk", u.importInfo.declarationNo) && /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900",
 							children: [
 								"✅ Đã có số TK ",
-								/* @__PURE__ */ (0, P.jsx)("b", { children: T("tk", u.importInfo.declarationNo) }),
+								/* @__PURE__ */ (0, N.jsx)("b", { children: T("tk", u.importInfo.declarationNo) }),
 								". Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng."
 							]
 						})
 					]
-				}), /* @__PURE__ */ (0, P.jsxs)("section", {
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
-							children: [/* @__PURE__ */ (0, P.jsx)(L, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Ki, {
 								size: 19,
 								className: "text-[#1e5aa8]"
 							}), " Xe Việt Nam & giao hàng"]
 						}),
-						(!u.importInfo.driverVN || !u.importInfo.plateVN) && !u.importInfo.delivered && /* @__PURE__ */ (0, P.jsx)(fa, {
+						(!u.importInfo.driverVN || !u.importInfo.plateVN) && !u.importInfo.delivered && /* @__PURE__ */ (0, N.jsx)(Sa, {
 							what: "xe VN + tài xế",
 							where: "Chưa đặt xe — đặt trước giờ giao ít nhất 4 tiếng",
 							actionLabel: "Đặt xe ngay",
 							onAction: () => document.getElementById("fld-platevn")?.focus()
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid sm:grid-cols-2 gap-3",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Loại xe VN",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.importInfo.truckVN,
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Biển số VN",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										id: "fld-platevn",
 										value: T("plateVN", u.importInfo.plateVN),
 										onChange: (e) => w("plateVN", e.target.value),
 										placeholder: "VD: 29H-481.36",
-										className: B(T("plateVN", u.importInfo.plateVN) ? "ok" : "missing")
+										className: U(T("plateVN", u.importInfo.plateVN) ? "ok" : "missing")
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Tài xế VN",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										value: T("driverVN", u.importInfo.driverVN),
 										onChange: (e) => w("driverVN", e.target.value),
 										placeholder: "Tên tài xế",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Lịch giao",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.importInfo.schedule,
-										className: B()
+										className: U()
 									})
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-slate-50 border border-slate-200 p-3.5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[12.5px] font-bold uppercase tracking-wide text-slate-400",
 									children: "Địa chỉ giao"
 								}),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "font-bold text-[15px] mt-0.5",
 									children: u.importInfo.deliveryAddr
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[14px] text-slate-600 mt-1",
 									children: [
 										"Người nhận: ",
-										/* @__PURE__ */ (0, P.jsx)("b", { children: u.importInfo.receiver }),
+										/* @__PURE__ */ (0, N.jsx)("b", { children: u.importInfo.receiver }),
 										" · ",
 										u.importInfo.receiverPhone
 									]
 								}),
-								u.importInfo.actualDelivery && /* @__PURE__ */ (0, P.jsxs)("p", {
+								u.importInfo.actualDelivery && /* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[14px] text-emerald-700 font-bold mt-1",
 									children: ["✅ Đã giao: ", u.importInfo.actualDelivery]
 								})
 							]
 						}),
-						u.importInfo.delivered ? /* @__PURE__ */ (0, P.jsxs)("div", {
+						u.importInfo.delivered ? /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "font-extrabold text-[17px] text-emerald-800",
 									children: "✅ ĐÃ GIAO HÀNG XONG"
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[13.5px] text-emerald-700",
 									children: [u.importInfo.actualDelivery, " · Sang tab Chứng từ để xuất PXK →"]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("button", {
+								/* @__PURE__ */ (0, N.jsxs)("button", {
 									onClick: () => n({ tab: "chung-tu" }),
 									className: "btn-press touch-target mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
-									children: ["SANG XUẤT PHIẾU XUẤT KHO ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 17 })]
+									children: ["SANG XUẤT PHIẾU XUẤT KHO ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
 								})
 							]
-						}) : /* @__PURE__ */ (0, P.jsx)(la, {
+						}) : /* @__PURE__ */ (0, N.jsx)(ya, {
 							onClick: () => m(!0),
 							className: "w-full text-[17px] min-h-[56px]",
 							children: "✅ XÁC NHẬN ĐÃ GIAO HÀNG"
@@ -13304,69 +13470,69 @@ function Ca() {
 					]
 				})]
 			}),
-			r === "tai-chinh" && /* @__PURE__ */ (0, P.jsxs)("div", {
+			r === "tai-chinh" && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "space-y-4",
 				id: "missing-anchor",
 				children: [
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
-						children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+						children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border-2 border-dashed border-violet-300 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[12px] font-extrabold uppercase tracking-wider text-violet-600 bg-violet-100 inline-block rounded-md px-2 py-0.5",
 									children: "Báo giá / Dự kiến — chưa phải số thực thu/chi"
 								}),
-								/* @__PURE__ */ (0, P.jsx)("h3", {
+								/* @__PURE__ */ (0, N.jsx)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2",
 									children: "Chi phí dự kiến theo báo giá"
 								}),
-								u.finance.quote.length === 0 && /* @__PURE__ */ (0, P.jsxs)("p", {
+								u.finance.quote.length === 0 && /* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[14px] text-slate-500",
-									children: ["Chưa gắn báo giá. ", /* @__PURE__ */ (0, P.jsx)(N, {
+									children: ["Chưa gắn báo giá. ", /* @__PURE__ */ (0, N.jsx)(M, {
 										to: "/kinh-doanh-bao-gia",
 										className: "font-bold text-[#1e5aa8]",
 										children: "Mở báo giá →"
 									})]
 								}),
-								u.finance.quote.map((e) => /* @__PURE__ */ (0, P.jsx)(pa, {
+								u.finance.quote.map((e) => /* @__PURE__ */ (0, N.jsx)(Ca, {
 									label: e.label,
-									value: /* @__PURE__ */ (0, P.jsxs)("span", {
+									value: /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "font-bold text-[16px]",
 										children: [
-											$i(e.amount, e.ccy),
+											la(e.amount, e.ccy),
 											" ",
-											/* @__PURE__ */ (0, P.jsx)("span", {
+											/* @__PURE__ */ (0, N.jsx)("span", {
 												className: "text-[12px] font-bold text-violet-600",
 												children: e.ccy
 											})
 										]
 									})
 								}, e.label)),
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[12.5px] text-slate-400 mt-2",
 									children: "Mỗi đồng tiền ghi rõ VND / USD / CNY — không gộp chung."
 								})
 							]
-						}), /* @__PURE__ */ (0, P.jsxs)("section", {
+						}), /* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("p", {
+								/* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 inline-block rounded-md px-2 py-0.5",
 									children: "Thực tế — đã phát sinh, có chứng từ"
 								}),
-								/* @__PURE__ */ (0, P.jsx)("h3", {
+								/* @__PURE__ */ (0, N.jsx)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2",
 									children: "Chi phí thực tế"
 								}),
-								u.finance.actual.map((e) => /* @__PURE__ */ (0, P.jsx)(pa, {
+								u.finance.actual.map((e) => /* @__PURE__ */ (0, N.jsx)(Ca, {
 									label: e.label,
-									value: /* @__PURE__ */ (0, P.jsxs)("span", {
+									value: /* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "font-bold text-[16px]",
 										children: [
-											$i(e.amount, e.ccy),
+											la(e.amount, e.ccy),
 											" ",
-											/* @__PURE__ */ (0, P.jsx)("span", {
+											/* @__PURE__ */ (0, N.jsx)("span", {
 												className: "text-[12px] font-bold text-emerald-700",
 												children: e.ccy
 											})
@@ -13376,102 +13542,102 @@ function Ca() {
 							]
 						})]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "grid grid-cols-1 md:grid-cols-2 gap-4",
-						children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+						children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("h3", {
+								/* @__PURE__ */ (0, N.jsxs)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-2",
-									children: [/* @__PURE__ */ (0, P.jsx)(Bi, {
+									children: [/* @__PURE__ */ (0, N.jsx)(Qi, {
 										size: 19,
 										className: "text-emerald-600"
 									}), " Phải thu khách hàng (VND)"]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "grid grid-cols-3 gap-2 text-center",
 									children: [
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-slate-50 border p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-slate-500 font-semibold",
 												children: "Phải thu"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px]",
-												children: ta(u.finance.receivable)
+												children: da(u.finance.receivable)
 											})]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-emerald-50 border border-emerald-200 p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-emerald-700 font-semibold",
 												children: "Đã thu"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px] text-emerald-700",
-												children: ta(u.finance.received)
+												children: da(u.finance.received)
 											})]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-red-50 border border-red-200 p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-red-600 font-semibold",
 												children: "Còn phải thu"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px] text-red-700",
-												children: ta(u.finance.outstanding)
+												children: da(u.finance.outstanding)
 											})]
 										})
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsx)("button", {
+								/* @__PURE__ */ (0, N.jsx)("button", {
 									onClick: () => f(!0),
 									className: "btn-press touch-target mt-3 w-full rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 									children: "＋ GHI NHẬN THANH TOÁN"
 								})
 							]
-						}), /* @__PURE__ */ (0, P.jsxs)("section", {
+						}), /* @__PURE__ */ (0, N.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)("h3", {
+								/* @__PURE__ */ (0, N.jsx)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-2",
 									children: "Phải trả đối tác (VND)"
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "grid grid-cols-3 gap-2 text-center",
 									children: [
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-slate-50 border p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-slate-500 font-semibold",
 												children: "Phải trả"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px]",
-												children: ta(u.finance.payable)
+												children: da(u.finance.payable)
 											})]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-blue-50 border border-blue-200 p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-blue-700 font-semibold",
 												children: "Đã trả"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px] text-blue-700",
-												children: ta(u.finance.paid)
+												children: da(u.finance.paid)
 											})]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("div", {
+										/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "rounded-xl bg-amber-50 border border-amber-200 p-3",
-											children: [/* @__PURE__ */ (0, P.jsx)("p", {
+											children: [/* @__PURE__ */ (0, N.jsx)("p", {
 												className: "text-[12px] text-amber-700 font-semibold",
 												children: "Còn phải trả"
-											}), /* @__PURE__ */ (0, P.jsx)("p", {
+											}), /* @__PURE__ */ (0, N.jsx)("p", {
 												className: "font-extrabold text-[16px] md:text-[18px] text-amber-800",
-												children: ta(u.finance.paid == null ? null : (u.finance.payable ?? 0) - u.finance.paid)
+												children: da(u.finance.paid == null ? null : (u.finance.payable ?? 0) - u.finance.paid)
 											})]
 										})
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/tai-chinh/doi-soat",
 									className: "btn-press touch-target mt-3 w-full rounded-xl border-2 border-slate-200 font-bold min-h-[52px] flex items-center justify-center",
 									children: "MỞ ĐỐI SOÁT"
@@ -13479,42 +13645,42 @@ function Ca() {
 							]
 						})]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("section", {
+					/* @__PURE__ */ (0, N.jsxs)("section", {
 						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
-						children: [/* @__PURE__ */ (0, P.jsx)("h3", {
+						children: [/* @__PURE__ */ (0, N.jsx)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
 							children: "Lịch sử thu / chi — sửa bằng điều chỉnh, không xóa"
-						}), /* @__PURE__ */ (0, P.jsx)("div", {
+						}), /* @__PURE__ */ (0, N.jsx)("div", {
 							className: "space-y-2",
-							children: u.finance.payments.map((e, t) => /* @__PURE__ */ (0, P.jsxs)("div", {
+							children: u.finance.payments.map((e, t) => /* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-3",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)("span", {
+									/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "text-[12.5px] font-bold text-slate-400 w-[92px]",
 										children: e.date
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "flex-1 min-w-[160px]",
-										children: [/* @__PURE__ */ (0, P.jsx)("span", {
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "block font-bold text-[14.5px]",
 											children: e.kind
-										}), /* @__PURE__ */ (0, P.jsxs)("span", {
+										}), /* @__PURE__ */ (0, N.jsxs)("span", {
 											className: "block text-[12.5px] text-slate-500",
 											children: [e.by, e.note ? " · " + e.note : ""]
 										})]
 									}),
-									/* @__PURE__ */ (0, P.jsxs)("span", {
+									/* @__PURE__ */ (0, N.jsxs)("span", {
 										className: "font-extrabold text-[15.5px]",
 										children: [
-											$i(e.amount, e.ccy),
+											la(e.amount, e.ccy),
 											" ",
-											/* @__PURE__ */ (0, P.jsx)("span", {
+											/* @__PURE__ */ (0, N.jsx)("span", {
 												className: "text-[11.5px] text-slate-400",
 												children: e.ccy
 											})
 										]
 									}),
-									/* @__PURE__ */ (0, P.jsx)("button", {
+									/* @__PURE__ */ (0, N.jsx)("button", {
 										onClick: () => o("Tạo bút toán điều chỉnh", "Nhập số điều chỉnh (+/-) thay vì xóa — giữ nguyên lịch sử kiểm toán.", "blue"),
 										className: "touch-target text-[13px] font-bold text-[#1e5aa8] border border-slate-200 rounded-lg px-3 min-h-[40px]",
 										children: "Điều chỉnh"
@@ -13525,86 +13691,86 @@ function Ca() {
 					})
 				]
 			}),
-			r === "chung-tu" && /* @__PURE__ */ (0, P.jsxs)("div", {
+			r === "chung-tu" && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
-				children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3",
-							children: [/* @__PURE__ */ (0, P.jsx)(Qr, {
+							children: [/* @__PURE__ */ (0, N.jsx)(ri, {
 								size: 19,
 								className: "text-[#1e5aa8]"
 							}), " Hợp đồng liên kết"]
 						}),
-						E ? /* @__PURE__ */ (0, P.jsxs)("div", {
+						E ? /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "rounded-xl border-2 border-slate-200 p-4",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "flex flex-wrap items-center gap-2",
-									children: [/* @__PURE__ */ (0, P.jsx)("span", {
+									children: [/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "font-extrabold text-[17px] text-[#0f2a4a]",
 										children: E.id
-									}), /* @__PURE__ */ (0, P.jsx)(aa, {
+									}), /* @__PURE__ */ (0, N.jsx)(ha, {
 										tone: E.statusTone,
 										size: "sm",
 										children: E.status
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("p", {
+								/* @__PURE__ */ (0, N.jsxs)("p", {
 									className: "text-[14px] text-slate-600 mt-1",
 									children: [
 										E.companyLegal,
 										" · Giá trị ",
-										ea(E.value ?? u.finance.receivable)
+										ua(E.value ?? u.finance.receivable)
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "grid grid-cols-2 gap-2 mt-3",
-									children: [/* @__PURE__ */ (0, P.jsxs)(N, {
+									children: [/* @__PURE__ */ (0, N.jsxs)(M, {
 										to: "/hop-dong/" + E.id,
 										className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]",
-										children: [/* @__PURE__ */ (0, P.jsx)(Wr, { size: 16 }), " MỞ HỢP ĐỒNG"]
-									}), /* @__PURE__ */ (0, P.jsxs)("button", {
+										children: [/* @__PURE__ */ (0, N.jsx)(Yr, { size: 16 }), " MỞ HỢP ĐỒNG"]
+									}), /* @__PURE__ */ (0, N.jsxs)("button", {
 										onClick: () => {
 											n({ tab: "chung-tu" }), o("Chứng từ " + E.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue");
 										},
 										className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]",
-										children: [/* @__PURE__ */ (0, P.jsx)(Jr, { size: 16 }), " MỞ CHỨNG TỪ"]
+										children: [/* @__PURE__ */ (0, N.jsx)($r, { size: 16 }), " MỞ CHỨNG TỪ"]
 									})]
 								})
 							]
-						}) : /* @__PURE__ */ (0, P.jsxs)("p", {
+						}) : /* @__PURE__ */ (0, N.jsxs)("p", {
 							className: "text-slate-500 text-[14px]",
-							children: ["Lô chưa gắn hợp đồng. ", /* @__PURE__ */ (0, P.jsx)(N, {
+							children: ["Lô chưa gắn hợp đồng. ", /* @__PURE__ */ (0, N.jsx)(M, {
 								to: "/hop-dong",
 								className: "font-bold text-[#1e5aa8]",
 								children: "Chọn hợp đồng →"
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-4",
-							children: [/* @__PURE__ */ (0, P.jsx)("h4", {
+							children: [/* @__PURE__ */ (0, N.jsx)("h4", {
 								className: "font-bold text-[14.5px] mb-2",
 								children: "Chứng từ lô hàng — bấm để tải / bổ sung"
-							}), /* @__PURE__ */ (0, P.jsx)("div", {
+							}), /* @__PURE__ */ (0, N.jsx)("div", {
 								className: "space-y-2",
-								children: u.docs.map((e) => /* @__PURE__ */ (0, P.jsxs)("div", {
+								children: u.docs.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5",
 									children: [
-										/* @__PURE__ */ (0, P.jsx)("span", {
-											className: R("w-7 h-7 rounded-full grid place-items-center text-[13px] font-extrabold", e.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"),
+										/* @__PURE__ */ (0, N.jsx)("span", {
+											className: B("w-7 h-7 rounded-full grid place-items-center text-[13px] font-extrabold", e.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"),
 											children: e.ok ? "✓" : "!"
 										}),
-										/* @__PURE__ */ (0, P.jsx)("span", {
+										/* @__PURE__ */ (0, N.jsx)("span", {
 											className: "flex-1 font-semibold text-[14px]",
 											children: e.name
 										}),
-										e.ok ? /* @__PURE__ */ (0, P.jsxs)("button", {
+										e.ok ? /* @__PURE__ */ (0, N.jsxs)("button", {
 											onClick: () => o("Đã tải " + e.name, "File minh họa của " + u.id + " đã lưu về máy.", "green"),
 											className: "touch-target inline-flex items-center gap-1 text-[13px] font-bold text-[#1e5aa8] border rounded-lg px-2.5 min-h-[40px]",
-											children: [/* @__PURE__ */ (0, P.jsx)(Br, { size: 14 }), " Tải"]
-										}) : /* @__PURE__ */ (0, P.jsx)("button", {
+											children: [/* @__PURE__ */ (0, N.jsx)(Gr, { size: 14 }), " Tải"]
+										}) : /* @__PURE__ */ (0, N.jsx)("button", {
 											onClick: () => o("Tải lên " + e.name, "Chọn file PDF/ảnh từ máy — prototype mô phỏng thao tác.", "blue"),
 											className: "touch-target inline-flex items-center gap-1 text-[13px] font-bold text-white bg-amber-500 rounded-lg px-2.5 min-h-[40px]",
 											children: "＋ Bổ sung"
@@ -13614,14 +13780,14 @@ function Ca() {
 							})]
 						})
 					]
-				}), /* @__PURE__ */ (0, P.jsxs)("section", {
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
 					className: "rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5",
 					children: [
-						/* @__PURE__ */ (0, P.jsx)("h3", {
+						/* @__PURE__ */ (0, N.jsx)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-1",
 							children: "Phiếu xuất kho (PXK) — theo từng lô"
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("p", {
+						/* @__PURE__ */ (0, N.jsxs)("p", {
 							className: "text-[13px] text-slate-500 mb-3",
 							children: [
 								"PXK gắn với lô đã giao, nguồn từ ",
@@ -13629,78 +13795,78 @@ function Ca() {
 								". Mỗi lô 1 PXK riêng."
 							]
 						}),
-						!u.importInfo.delivered && /* @__PURE__ */ (0, P.jsx)(fa, {
+						!u.importInfo.delivered && /* @__PURE__ */ (0, N.jsx)(Sa, {
 							what: "xác nhận đã giao hàng",
 							where: "Phải giao xong mới được xuất PXK",
 							actionLabel: "Sang xác nhận giao",
 							onAction: () => n({ tab: "nhap" })
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid sm:grid-cols-2 gap-3 mt-3",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Số PXK",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.number,
 										placeholder: "Tự sinh khi xuất",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Ngày PXK",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.date || "09/09/2026",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Địa điểm nhận",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.place || u.importInfo.deliveryAddr,
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Người nhận",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.receiver || u.importInfo.receiver,
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Chức vụ người nhận",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.role || "Thủ kho",
-										className: B()
+										className: U()
 									})
 								}),
-								/* @__PURE__ */ (0, P.jsx)(z, {
+								/* @__PURE__ */ (0, N.jsx)(H, {
 									label: "Nguồn (HDMB/PL)",
-									children: /* @__PURE__ */ (0, P.jsx)("input", {
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
 										defaultValue: u.pxk.source || u.contract,
-										className: B()
+										className: U()
 									})
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-3 rounded-xl bg-slate-50 border p-3 text-[13.5px]",
-							children: [/* @__PURE__ */ (0, P.jsxs)("p", { children: ["Đã giao hàng xong: ", /* @__PURE__ */ (0, P.jsx)("b", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("p", { children: ["Đã giao hàng xong: ", /* @__PURE__ */ (0, N.jsx)("b", {
 								className: u.importInfo.delivered ? "text-emerald-700" : "text-red-600",
 								children: u.importInfo.delivered ? "✅ Rồi — " + u.importInfo.actualDelivery : "❌ Chưa"
-							})] }), /* @__PURE__ */ (0, P.jsxs)("p", { children: ["Ngày giao: ", /* @__PURE__ */ (0, P.jsx)("b", { children: u.importInfo.actualDelivery || u.importInfo.schedule })] })]
+							})] }), /* @__PURE__ */ (0, N.jsxs)("p", { children: ["Ngày giao: ", /* @__PURE__ */ (0, N.jsx)("b", { children: u.importInfo.actualDelivery || u.importInfo.schedule })] })]
 						}),
-						u.pxk.done ? /* @__PURE__ */ (0, P.jsxs)("div", {
+						u.pxk.done ? /* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
-							children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+							children: [/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "font-extrabold text-emerald-800",
 								children: ["✅ ĐÃ XUẤT ", u.pxk.number]
-							}), /* @__PURE__ */ (0, P.jsxs)("button", {
+							}), /* @__PURE__ */ (0, N.jsxs)("button", {
 								onClick: O,
 								className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
-								children: [/* @__PURE__ */ (0, P.jsx)(Br, { size: 17 }), " TẢI LẠI PXK"]
+								children: [/* @__PURE__ */ (0, N.jsx)(Gr, { size: 17 }), " TẢI LẠI PXK"]
 							})]
-						}) : /* @__PURE__ */ (0, P.jsx)(la, {
+						}) : /* @__PURE__ */ (0, N.jsx)(ya, {
 							onClick: O,
 							className: "w-full mt-3 text-[16px] min-h-[56px]",
 							children: "🖨 XUẤT PHIẾU XUẤT KHO"
@@ -13708,26 +13874,26 @@ function Ca() {
 					]
 				})]
 			}),
-			r === "lich-su" && /* @__PURE__ */ (0, P.jsxs)("section", {
+			r === "lich-su" && /* @__PURE__ */ (0, N.jsxs)("section", {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 max-w-[800px]",
-				children: [/* @__PURE__ */ (0, P.jsxs)("h3", {
+				children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
 					className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-4",
 					children: ["Dòng thời gian — ", u.id]
-				}), /* @__PURE__ */ (0, P.jsx)("div", {
+				}), /* @__PURE__ */ (0, N.jsx)("div", {
 					className: "relative pl-6 space-y-4 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200",
-					children: u.timeline.map((e, t) => /* @__PURE__ */ (0, P.jsxs)("div", {
+					children: u.timeline.map((e, t) => /* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "relative",
 						children: [
-							/* @__PURE__ */ (0, P.jsx)("span", { className: R("absolute -left-6 top-1 w-4 h-4 rounded-full border-[3px] border-white shadow", e.tone === "green" ? "bg-emerald-500" : e.tone === "amber" ? "bg-amber-500" : e.tone === "red" ? "bg-red-500" : "bg-blue-500") }),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("span", { className: B("absolute -left-6 top-1 w-4 h-4 rounded-full border-[3px] border-white shadow", e.tone === "green" ? "bg-emerald-500" : e.tone === "amber" ? "bg-amber-500" : e.tone === "red" ? "bg-red-500" : "bg-blue-500") }),
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[12.5px] font-bold text-slate-400",
 								children: e.time
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "font-bold text-[15px] text-[#0f2a4a]",
 								children: e.title
 							}),
-							e.desc && /* @__PURE__ */ (0, P.jsx)("p", {
+							e.desc && /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13.5px] text-slate-600",
 								children: e.desc
 							})
@@ -13735,40 +13901,40 @@ function Ca() {
 					}, t))
 				})]
 			}),
-			/* @__PURE__ */ (0, P.jsxs)("div", {
+			/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2",
 				children: [
-					r === "nhap" && !u.importInfo.delivered && /* @__PURE__ */ (0, P.jsx)("button", {
+					r === "nhap" && !u.importInfo.delivered && /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: () => m(!0),
 						className: "btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 						children: "✅ XÁC NHẬN ĐÃ GIAO"
 					}),
-					r === "chung-tu" && /* @__PURE__ */ (0, P.jsx)("button", {
+					r === "chung-tu" && /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: O,
 						className: "btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]",
 						children: "🖨 XUẤT PHIẾU XUẤT KHO"
 					}),
-					r === "tai-chinh" && /* @__PURE__ */ (0, P.jsx)("button", {
+					r === "tai-chinh" && /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: () => f(!0),
 						className: "btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 						children: "＋ GHI NHẬN THANH TOÁN"
 					}),
-					(r === "lay-hang" || r === "lich-su") && /* @__PURE__ */ (0, P.jsx)("button", {
+					(r === "lay-hang" || r === "lich-su") && /* @__PURE__ */ (0, N.jsx)("button", {
 						onClick: te,
 						className: "btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]",
 						children: "💾 LƯU THAY ĐỔI"
 					})
 				]
 			}),
-			p && /* @__PURE__ */ (0, P.jsxs)("div", {
+			p && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "absolute inset-0 bg-slate-900/55 anim-fade",
 					onClick: () => m(!1)
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[18px] text-[#0f2a4a]",
 							children: [
 								"Xác nhận đã giao ",
@@ -13776,24 +13942,24 @@ function Ca() {
 								"?"
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("p", {
+						/* @__PURE__ */ (0, N.jsxs)("p", {
 							className: "text-[14.5px] text-slate-600 mt-1.5",
 							children: [
 								"Khách ",
-								/* @__PURE__ */ (0, P.jsx)("b", { children: u.customer }),
+								/* @__PURE__ */ (0, N.jsx)("b", { children: u.customer }),
 								" đã ký nhận đủ ",
-								/* @__PURE__ */ (0, P.jsxs)("b", { children: [u.cargo.packs, " kiện"] }),
+								/* @__PURE__ */ (0, N.jsxs)("b", { children: [u.cargo.packs, " kiện"] }),
 								" tại ",
-								/* @__PURE__ */ (0, P.jsx)("b", { children: u.importInfo.deliveryAddr }),
+								/* @__PURE__ */ (0, N.jsx)("b", { children: u.importInfo.deliveryAddr }),
 								"? Sau xác nhận, lô chuyển sang “Đã giao” và mở được PXK."
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid grid-cols-2 gap-2.5 mt-4",
-							children: [/* @__PURE__ */ (0, P.jsx)(ua, {
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
 								onClick: () => m(!1),
 								children: "Chưa, để sau"
-							}), /* @__PURE__ */ (0, P.jsx)(la, {
+							}), /* @__PURE__ */ (0, N.jsx)(ya, {
 								onClick: re,
 								children: "✅ ĐÃ GIAO"
 							})]
@@ -13801,59 +13967,59 @@ function Ca() {
 					]
 				})]
 			}),
-			d && /* @__PURE__ */ (0, P.jsxs)("div", {
+			d && /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "absolute inset-0 bg-slate-900/55 anim-fade",
 					onClick: () => f(!1)
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("h3", {
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
 							className: "font-extrabold text-[18px] text-[#0f2a4a]",
 							children: ["Ghi nhận thanh toán — ", u.id]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("p", {
+						/* @__PURE__ */ (0, N.jsxs)("p", {
 							className: "text-[13.5px] text-slate-500",
-							children: ["Còn phải thu: ", /* @__PURE__ */ (0, P.jsx)("b", {
+							children: ["Còn phải thu: ", /* @__PURE__ */ (0, N.jsx)("b", {
 								className: "text-red-700",
-								children: ea(u.finance.outstanding)
+								children: ua(u.finance.outstanding)
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid gap-3 mt-3",
-							children: [/* @__PURE__ */ (0, P.jsx)(z, {
+							children: [/* @__PURE__ */ (0, N.jsx)(H, {
 								label: "Loại khoản",
-								children: /* @__PURE__ */ (0, P.jsxs)("select", {
+								children: /* @__PURE__ */ (0, N.jsxs)("select", {
 									value: v,
 									onChange: (e) => y(e.target.value),
-									className: B(),
+									className: U(),
 									children: [
-										/* @__PURE__ */ (0, P.jsx)("option", { children: "Thu tiền khách" }),
-										/* @__PURE__ */ (0, P.jsx)("option", { children: "Thu tạm ứng" }),
-										/* @__PURE__ */ (0, P.jsx)("option", { children: "Thu nốt công nợ" }),
-										/* @__PURE__ */ (0, P.jsx)("option", { children: "Trả đối tác" })
+										/* @__PURE__ */ (0, N.jsx)("option", { children: "Thu tiền khách" }),
+										/* @__PURE__ */ (0, N.jsx)("option", { children: "Thu tạm ứng" }),
+										/* @__PURE__ */ (0, N.jsx)("option", { children: "Thu nốt công nợ" }),
+										/* @__PURE__ */ (0, N.jsx)("option", { children: "Trả đối tác" })
 									]
 								})
-							}), /* @__PURE__ */ (0, P.jsx)(z, {
+							}), /* @__PURE__ */ (0, N.jsx)(H, {
 								label: "Số tiền (VND)",
 								required: !0,
 								error: h ? void 0 : "Nhập số tiền — VD: 150000000",
-								children: /* @__PURE__ */ (0, P.jsx)("input", {
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
 									value: h,
 									onChange: (e) => g(e.target.value),
 									inputMode: "numeric",
 									placeholder: "VD: 150000000",
-									className: B(h ? "ok" : "missing")
+									className: U(h ? "ok" : "missing")
 								})
 							})]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid grid-cols-2 gap-2.5 mt-4",
-							children: [/* @__PURE__ */ (0, P.jsx)(ua, {
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
 								onClick: () => f(!1),
 								children: "Hủy"
-							}), /* @__PURE__ */ (0, P.jsx)(la, {
+							}), /* @__PURE__ */ (0, N.jsx)(ya, {
 								onClick: oe,
 								children: "💾 LƯU KHOẢN THU"
 							})]
@@ -13861,14 +14027,14 @@ function Ca() {
 					]
 				})]
 			}),
-			S > 0 && /* @__PURE__ */ (0, P.jsx)("span", { className: "hidden" })
+			S > 0 && /* @__PURE__ */ (0, N.jsx)("span", { className: "hidden" })
 		]
 	});
 }
 //#endregion
 //#region src/pages/CreateShipment.tsx
-function wa() {
-	let { customers: e, quotes: t, contracts: n, dispatch: r, toast: i } = Zn(), a = Ct(), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(""), [f, p] = (0, _.useState)(""), [m, h] = (0, _.useState)("Truck"), [g, v] = (0, _.useState)("DAP"), [y, b] = (0, _.useState)(""), [x, S] = (0, _.useState)(""), [C, w] = (0, _.useState)(""), [T, E] = (0, _.useState)(""), [ee, D] = (0, _.useState)(""), te = (0, _.useMemo)(() => t.filter((e) => (e.status || "").toLowerCase().includes("accept") || (e.status || "").toLowerCase().includes("chốt")), [t]), ne = t.find((e) => e.id === o) ?? null, re = (r) => {
+function Pa() {
+	let { customers: e, quotes: t, contracts: n, dispatch: r, toast: i } = Qn(), a = Ct(), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(""), [f, p] = (0, _.useState)(""), [m, h] = (0, _.useState)("Truck"), [g, v] = (0, _.useState)("DAP"), [y, b] = (0, _.useState)(""), [x, S] = (0, _.useState)(""), [C, w] = (0, _.useState)(""), [T, E] = (0, _.useState)(""), [ee, D] = (0, _.useState)(""), te = (0, _.useMemo)(() => t.filter((e) => (e.status || "").toLowerCase().includes("accept") || (e.status || "").toLowerCase().includes("chốt")), [t]), ne = t.find((e) => e.id === o) ?? null, re = (r) => {
 		s(r);
 		let a = t.find((e) => e.id === r);
 		if (!a) return;
@@ -13877,41 +14043,41 @@ function wa() {
 		let c = n.find((e) => e.company === a.customer);
 		c && p(c.id), i("Đã nạp báo giá " + r, "Giá trị và khách hàng đã được điền sẵn từ báo giá đã chốt.", "blue");
 	};
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-4 max-w-[1000px]",
-		children: [/* @__PURE__ */ (0, P.jsxs)(N, {
+		children: [/* @__PURE__ */ (0, N.jsxs)(M, {
 			to: "/lo-hang",
 			className: "touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
-			children: [/* @__PURE__ */ (0, P.jsx)(fr, { size: 17 }), " Về danh sách lô"]
-		}), /* @__PURE__ */ (0, P.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, N.jsx)(hr, { size: 17 }), " Về danh sách lô"]
+		}), /* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
-			children: [/* @__PURE__ */ (0, P.jsx)("div", { className: "h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" }), /* @__PURE__ */ (0, P.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, N.jsx)("div", { className: "h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" }), /* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "p-4 md:p-6",
 				children: [
-					/* @__PURE__ */ (0, P.jsx)(sa, {
+					/* @__PURE__ */ (0, N.jsx)(_a, {
 						title: "Tạo Lô Hàng Mới",
 						sub: "Bắt đầu từ báo giá đã chốt để tự điền, rồi chỉ bổ sung phần còn thiếu. Ghi bằng writer hiện có của Logistics."
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "rounded-2xl bg-blue-50 border border-blue-200 p-4 mb-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "font-extrabold text-[15px] text-blue-900 flex items-center gap-2",
-								children: [/* @__PURE__ */ (0, P.jsx)(Pi, { size: 17 }), " 1 · Chọn báo giá đã chốt (không bắt buộc)"]
+								children: [/* @__PURE__ */ (0, N.jsx)(Ri, { size: 17 }), " 1 · Chọn báo giá đã chốt (không bắt buộc)"]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3",
-								children: [te.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+								children: [te.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 									className: "text-[14px] text-blue-800",
 									children: "Chưa có báo giá đã chốt trong dữ liệu hiện tại — có thể nhập tay bên dưới."
-								}), te.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+								}), te.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 									onClick: () => re(e.id),
-									className: R("touch-target text-left rounded-xl border-2 bg-white p-3.5 lift", o === e.id ? "border-[#1e5aa8]" : "border-slate-200"),
+									className: B("touch-target text-left rounded-xl border-2 bg-white p-3.5 lift", o === e.id ? "border-[#1e5aa8]" : "border-slate-200"),
 									children: [
-										/* @__PURE__ */ (0, P.jsxs)("p", {
+										/* @__PURE__ */ (0, N.jsxs)("p", {
 											className: "font-extrabold text-[15px] text-[#0f2a4a] flex items-center gap-1.5",
 											children: [
-												/* @__PURE__ */ (0, P.jsx)(Kr, {
+												/* @__PURE__ */ (0, N.jsx)(Zr, {
 													size: 16,
 													className: "text-emerald-600"
 												}),
@@ -13919,18 +14085,18 @@ function wa() {
 												e.id
 											]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("p", {
+										/* @__PURE__ */ (0, N.jsxs)("p", {
 											className: "text-[13.5px] text-slate-600 mt-0.5",
 											children: [
 												e.customer,
 												" · ",
-												ra(e.status)
+												V(e.status)
 											]
 										}),
-										/* @__PURE__ */ (0, P.jsxs)("p", {
+										/* @__PURE__ */ (0, N.jsxs)("p", {
 											className: "text-[13.5px] font-bold text-[#1e5aa8] mt-1",
 											children: [
-												$i(e.total),
+												la(e.total),
 												" ",
 												e.currency ?? "VND"
 											]
@@ -13938,62 +14104,62 @@ function wa() {
 									]
 								}, e.id))]
 							}),
-							ne && /* @__PURE__ */ (0, P.jsxs)("p", {
+							ne && /* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[13.5px] text-blue-900 mt-3",
 								children: [
 									"Đã chọn ",
-									/* @__PURE__ */ (0, P.jsx)("b", { children: ne.id }),
+									/* @__PURE__ */ (0, N.jsx)("b", { children: ne.id }),
 									" — Quote Estimate chỉ dùng để điền trước; Finance Actual sẽ nhập riêng ở tab Tài chính của lô."
 								]
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, P.jsxs)("div", {
+					/* @__PURE__ */ (0, N.jsxs)("div", {
 						className: "rounded-2xl border-2 border-slate-200 p-4",
 						children: [
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "font-extrabold text-[15px] text-[#0f2a4a] flex items-center gap-2",
-								children: [/* @__PURE__ */ (0, P.jsx)(vi, { size: 17 }), " 2 · Thông tin lô"]
+								children: [/* @__PURE__ */ (0, N.jsx)(Ti, { size: 17 }), " 2 · Thông tin lô"]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "grid grid-cols-1 md:grid-cols-2 gap-3 mt-3",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Mã lô (bắt buộc)",
 										required: !0,
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											value: c,
 											onChange: (e) => l(e.target.value.toUpperCase()),
 											placeholder: "LO-0470",
-											className: B(c.trim() ? "ok" : "missing")
+											className: U(c.trim() ? "ok" : "missing")
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Khách hàng (bắt buộc)",
 										required: !0,
-										children: /* @__PURE__ */ (0, P.jsxs)("select", {
+										children: /* @__PURE__ */ (0, N.jsxs)("select", {
 											value: u,
 											onChange: (e) => d(e.target.value),
-											className: B(u ? "ok" : "missing"),
-											children: [/* @__PURE__ */ (0, P.jsx)("option", {
+											className: U(u ? "ok" : "missing"),
+											children: [/* @__PURE__ */ (0, N.jsx)("option", {
 												value: "",
 												children: "-- Chọn khách hàng --"
-											}), e.map((e) => /* @__PURE__ */ (0, P.jsxs)("option", {
+											}), e.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
 												value: e.name,
 												children: [e.name, e.mst ? ` · MST ${e.mst}` : ""]
 											}, e.name))]
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Hợp đồng liên kết",
-										children: /* @__PURE__ */ (0, P.jsxs)("select", {
+										children: /* @__PURE__ */ (0, N.jsxs)("select", {
 											value: f,
 											onChange: (e) => p(e.target.value),
-											className: B(),
-											children: [/* @__PURE__ */ (0, P.jsx)("option", {
+											className: U(),
+											children: [/* @__PURE__ */ (0, N.jsx)("option", {
 												value: "",
 												children: "-- Chưa liên kết --"
-											}), n.map((e) => /* @__PURE__ */ (0, P.jsxs)("option", {
+											}), n.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
 												value: e.id,
 												children: [
 													e.id,
@@ -14003,27 +14169,27 @@ function wa() {
 											}, e.id))]
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Mode / Incoterm",
-										children: /* @__PURE__ */ (0, P.jsxs)("div", {
+										children: /* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "flex gap-2",
-											children: [/* @__PURE__ */ (0, P.jsx)("select", {
+											children: [/* @__PURE__ */ (0, N.jsx)("select", {
 												value: m,
 												onChange: (e) => h(e.target.value),
-												className: B(),
+												className: U(),
 												children: [
 													"Truck",
 													"Sea",
 													"Air",
 													"Rail"
-												].map((e) => /* @__PURE__ */ (0, P.jsx)("option", {
+												].map((e) => /* @__PURE__ */ (0, N.jsx)("option", {
 													value: e,
 													children: e
 												}, e))
-											}), /* @__PURE__ */ (0, P.jsx)("select", {
+											}), /* @__PURE__ */ (0, N.jsx)("select", {
 												value: g,
 												onChange: (e) => v(e.target.value),
-												className: B(),
+												className: U(),
 												children: [
 													"EXW",
 													"FCA",
@@ -14031,66 +14197,66 @@ function wa() {
 													"CIF",
 													"DAP",
 													"DDP"
-												].map((e) => /* @__PURE__ */ (0, P.jsx)("option", {
+												].map((e) => /* @__PURE__ */ (0, N.jsx)("option", {
 													value: e,
 													children: e
 												}, e))
 											})]
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Nơi lấy hàng (POL)",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											value: y,
 											onChange: (e) => b(e.target.value),
 											placeholder: "Bằng Tường (Quảng Tây)",
-											className: B()
+											className: U()
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Điểm đến (POD)",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											value: x,
 											onChange: (e) => S(e.target.value),
 											placeholder: "Hữu Nghị (Lạng Sơn)",
-											className: B()
+											className: U()
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "Ngày khởi hành (ETD)",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											value: C,
 											onChange: (e) => w(e.target.value),
 											placeholder: "DD/MM/YYYY",
-											className: B()
+											className: U()
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)(z, {
+									/* @__PURE__ */ (0, N.jsx)(H, {
 										label: "SĐT người nhận",
-										children: /* @__PURE__ */ (0, P.jsx)("input", {
+										children: /* @__PURE__ */ (0, N.jsx)("input", {
 											value: ee,
 											onChange: (e) => D(e.target.value),
 											placeholder: "0912…",
-											className: B()
+											className: U()
 										})
 									}),
-									/* @__PURE__ */ (0, P.jsx)("div", {
+									/* @__PURE__ */ (0, N.jsx)("div", {
 										className: "md:col-span-2",
-										children: /* @__PURE__ */ (0, P.jsx)(z, {
+										children: /* @__PURE__ */ (0, N.jsx)(H, {
 											label: "Địa chỉ giao hàng",
-											children: /* @__PURE__ */ (0, P.jsx)("input", {
+											children: /* @__PURE__ */ (0, N.jsx)("input", {
 												value: T,
 												onChange: (e) => E(e.target.value),
 												placeholder: "Kho khách — KCN…",
-												className: B()
+												className: U()
 											})
 										})
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex flex-col sm:flex-row gap-2.5 mt-4",
-								children: [/* @__PURE__ */ (0, P.jsxs)(ca, {
+								children: [/* @__PURE__ */ (0, N.jsxs)(va, {
 									onClick: () => {
 										if (!c.trim()) {
 											i("Thiếu mã lô", "Nhập mã lô (ví dụ LO-0470) rồi bấm Tạo lô hàng.", "red");
@@ -14120,18 +14286,18 @@ function wa() {
 										}) ? (i("Đã gửi yêu cầu tạo " + c.trim().toUpperCase(), "Backend validate + ghi + audit. Mã trùng sẽ bị từ chối.", "green"), a("/lo-hang")) : i("Không gửi được", "Component chưa kết nối backend.", "red");
 									},
 									className: "flex-1",
-									children: ["TẠO LÔ HÀNG ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 17 })]
-								}), /* @__PURE__ */ (0, P.jsx)(N, {
+									children: ["TẠO LÔ HÀNG ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
+								}), /* @__PURE__ */ (0, N.jsx)(M, {
 									to: "/lo-hang",
 									className: "btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]",
 									children: "Hủy"
 								})]
 							}),
-							/* @__PURE__ */ (0, P.jsxs)("p", {
+							/* @__PURE__ */ (0, N.jsxs)("p", {
 								className: "text-[13px] text-slate-500 mt-3",
 								children: [
 									"Lô được ghi qua writer hiện có của Logistics, có audit. Mã lô trùng sẽ bị từ chối. Các trường để trống được giữ là ",
-									/* @__PURE__ */ (0, P.jsx)("b", { children: "không xác định" }),
+									/* @__PURE__ */ (0, N.jsx)("b", { children: "không xác định" }),
 									", không bị ép về 0."
 								]
 							})
@@ -14144,28 +14310,28 @@ function wa() {
 }
 //#endregion
 //#region src/pages/Tracking.tsx
-function Ta() {
-	let { shipments: e } = Zn(), [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)(""), a = (0, _.useMemo)(() => e.filter((e) => !r || (e.id + e.customer + (e.transport?.containerNo ?? "")).toLowerCase().includes(r.toLowerCase())), [e, r]), o = e.find((e) => e.id === t) ?? a[0] ?? null, s = o?.tracking ?? null;
-	return /* @__PURE__ */ (0, P.jsxs)("div", {
+function Fa() {
+	let { shipments: e } = Qn(), [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)(""), a = (0, _.useMemo)(() => e.filter((e) => !r || (e.id + e.customer + (e.transport?.containerNo ?? "")).toLowerCase().includes(r.toLowerCase())), [e, r]), o = e.find((e) => e.id === t) ?? a[0] ?? null, s = o?.tracking ?? null;
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
-		children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
-			children: [/* @__PURE__ */ (0, P.jsx)(sa, {
+			children: [/* @__PURE__ */ (0, N.jsx)(_a, {
 				title: "Theo Dõi Vận Chuyển",
 				sub: "Hiện trạng và mốc vận chuyển có thật từ dữ liệu lô hàng. Không mô phỏng vị trí GPS."
-			}), /* @__PURE__ */ (0, P.jsx)("input", {
+			}), /* @__PURE__ */ (0, N.jsx)("input", {
 				value: r,
 				onChange: (e) => i(e.target.value),
 				placeholder: "Lọc theo mã lô, khách, biển số / container…",
 				className: "w-full rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] focus:border-[#1e5aa8] outline-none"
 			})]
-		}), /* @__PURE__ */ (0, P.jsxs)("div", {
+		}), /* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4",
-			children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
-				children: [/* @__PURE__ */ (0, P.jsx)("div", {
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
 					className: "p-3.5 border-b border-slate-200",
-					children: /* @__PURE__ */ (0, P.jsxs)("p", {
+					children: /* @__PURE__ */ (0, N.jsxs)("p", {
 						className: "font-extrabold text-[15px] text-[#0f2a4a]",
 						children: [
 							"Lô hàng (",
@@ -14173,63 +14339,63 @@ function Ta() {
 							")"
 						]
 					})
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "divide-y divide-slate-100 max-h-[620px] overflow-y-auto",
-					children: [a.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+					children: [a.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 						className: "p-6 text-center text-slate-500 text-[14px]",
 						children: "Không có lô nào khớp."
-					}), a.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+					}), a.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
 						onClick: () => n(e.id),
-						className: R("touch-target w-full text-left p-3.5 hover:bg-slate-50", o?.id === e.id ? "bg-blue-50" : ""),
+						className: B("touch-target w-full text-left p-3.5 hover:bg-slate-50", o?.id === e.id ? "bg-blue-50" : ""),
 						children: [
-							/* @__PURE__ */ (0, P.jsxs)("div", {
+							/* @__PURE__ */ (0, N.jsxs)("div", {
 								className: "flex items-center gap-2",
 								children: [
-									/* @__PURE__ */ (0, P.jsx)(oa, { tone: e.statusTone }),
-									/* @__PURE__ */ (0, P.jsx)("span", {
+									/* @__PURE__ */ (0, N.jsx)(ga, { tone: e.statusTone }),
+									/* @__PURE__ */ (0, N.jsx)("span", {
 										className: "font-extrabold text-[15px] text-[#0f2a4a]",
 										children: e.id
 									}),
-									/* @__PURE__ */ (0, P.jsx)(aa, {
+									/* @__PURE__ */ (0, N.jsx)(ha, {
 										tone: e.statusTone,
 										size: "sm",
 										children: e.status
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13.5px] text-slate-600 mt-1",
 								children: e.customer
 							}),
-							/* @__PURE__ */ (0, P.jsx)("p", {
+							/* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[12.5px] text-slate-400 mt-0.5 truncate",
-								children: ra(e.route)
+								children: V(e.route)
 							})
 						]
 					}, e.id))]
 				})]
-			}), /* @__PURE__ */ (0, P.jsx)("div", {
+			}), /* @__PURE__ */ (0, N.jsx)("div", {
 				className: "space-y-4",
-				children: !o || !s ? /* @__PURE__ */ (0, P.jsxs)("div", {
+				children: !o || !s ? /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border p-10 text-center",
-					children: [/* @__PURE__ */ (0, P.jsx)("p", {
+					children: [/* @__PURE__ */ (0, N.jsx)("p", {
 						className: "font-extrabold text-[18px]",
 						children: "Chọn một lô để xem hành trình"
-					}), /* @__PURE__ */ (0, P.jsx)("p", {
+					}), /* @__PURE__ */ (0, N.jsx)("p", {
 						className: "text-slate-500 mt-1 text-[14.5px]",
 						children: "Dữ liệu theo dõi lấy trực tiếp từ trạng thái vận chuyển của lô."
 					})]
-				}) : /* @__PURE__ */ (0, P.jsxs)(P.Fragment, { children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+				}) : /* @__PURE__ */ (0, N.jsxs)(N.Fragment, { children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex flex-wrap items-center gap-2",
 							children: [
-								/* @__PURE__ */ (0, P.jsx)(L, {
+								/* @__PURE__ */ (0, N.jsx)(Ki, {
 									size: 20,
 									className: "text-[#1e5aa8]"
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("h2", {
+								/* @__PURE__ */ (0, N.jsxs)("h2", {
 									className: "font-extrabold text-[19px] text-[#0f2a4a]",
 									children: [
 										o.id,
@@ -14237,112 +14403,112 @@ function Ta() {
 										o.customer
 									]
 								}),
-								/* @__PURE__ */ (0, P.jsx)(aa, {
+								/* @__PURE__ */ (0, N.jsx)(ha, {
 									tone: s.statusTone,
 									children: s.status
 								}),
-								/* @__PURE__ */ (0, P.jsx)(N, {
+								/* @__PURE__ */ (0, N.jsx)(M, {
 									to: `/lo-hang/${o.id}`,
 									className: "ml-auto btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14px] px-4 min-h-[44px]",
 									children: "Mở 360°"
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4",
 							children: [
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "rounded-xl bg-slate-50 border p-3.5",
-									children: [/* @__PURE__ */ (0, P.jsx)("p", {
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "text-[12.5px] font-semibold text-slate-500",
 										children: "Hãng vận chuyển"
-									}), /* @__PURE__ */ (0, P.jsx)("p", {
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
 										className: "font-extrabold text-[15px] text-[#0f2a4a] mt-0.5",
-										children: ra(s.carrier)
+										children: V(s.carrier)
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "rounded-xl bg-slate-50 border p-3.5",
-									children: [/* @__PURE__ */ (0, P.jsx)("p", {
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "text-[12.5px] font-semibold text-slate-500",
 										children: "Mã vận đơn / xe"
-									}), /* @__PURE__ */ (0, P.jsx)("p", {
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
 										className: "font-extrabold text-[15px] text-[#0f2a4a] mt-0.5",
-										children: ra(s.reference)
+										children: V(s.reference)
 									})]
 								}),
-								/* @__PURE__ */ (0, P.jsxs)("div", {
+								/* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "rounded-xl bg-slate-50 border p-3.5",
-									children: [/* @__PURE__ */ (0, P.jsx)("p", {
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
 										className: "text-[12.5px] font-semibold text-slate-500",
 										children: "Tra cứu hãng"
-									}), s.trackingUrl ? /* @__PURE__ */ (0, P.jsxs)("a", {
+									}), s.trackingUrl ? /* @__PURE__ */ (0, N.jsxs)("a", {
 										href: s.trackingUrl,
 										target: "_blank",
 										rel: "noreferrer",
 										className: "inline-flex items-center gap-1.5 font-extrabold text-[14.5px] text-[#1e5aa8] mt-0.5",
-										children: ["Mở trang hãng ", /* @__PURE__ */ (0, P.jsx)(Hr, { size: 15 })]
-									}) : /* @__PURE__ */ (0, P.jsx)("p", {
+										children: ["Mở trang hãng ", /* @__PURE__ */ (0, N.jsx)(qr, { size: 15 })]
+									}) : /* @__PURE__ */ (0, N.jsx)("p", {
 										className: "font-extrabold text-[15px] text-slate-400 mt-0.5",
 										children: "—"
 									})]
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-start gap-2",
-							children: [/* @__PURE__ */ (0, P.jsx)(ui, {
+							children: [/* @__PURE__ */ (0, N.jsx)(_i, {
 								size: 17,
 								className: "text-amber-700 mt-0.5 shrink-0"
-							}), /* @__PURE__ */ (0, P.jsx)("p", {
+							}), /* @__PURE__ */ (0, N.jsx)("p", {
 								className: "text-[13.5px] text-amber-900",
 								children: s.positionNote
 							})]
 						})
 					]
-				}), /* @__PURE__ */ (0, P.jsxs)("div", {
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 					children: [
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "flex items-center gap-2 mb-3",
-							children: [/* @__PURE__ */ (0, P.jsx)(gi, {
+							children: [/* @__PURE__ */ (0, N.jsx)(Ci, {
 								size: 19,
 								className: "text-[#0f2a4a]"
-							}), /* @__PURE__ */ (0, P.jsx)("h3", {
+							}), /* @__PURE__ */ (0, N.jsx)("h3", {
 								className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
 								children: "Mốc vận chuyển"
 							})]
 						}),
-						s.milestones.length === 0 && /* @__PURE__ */ (0, P.jsx)("p", {
+						s.milestones.length === 0 && /* @__PURE__ */ (0, N.jsx)("p", {
 							className: "text-[14px] text-slate-500",
 							children: "Chưa có mốc nào được ghi nhận cho lô này."
 						}),
-						/* @__PURE__ */ (0, P.jsxs)("div", {
+						/* @__PURE__ */ (0, N.jsxs)("div", {
 							className: "relative pl-6",
-							children: [/* @__PURE__ */ (0, P.jsx)("span", { className: "absolute left-[9px] top-2 bottom-2 w-0.5 bg-slate-200" }), /* @__PURE__ */ (0, P.jsx)("div", {
+							children: [/* @__PURE__ */ (0, N.jsx)("span", { className: "absolute left-[9px] top-2 bottom-2 w-0.5 bg-slate-200" }), /* @__PURE__ */ (0, N.jsx)("div", {
 								className: "space-y-3",
-								children: s.milestones.map((e, t) => /* @__PURE__ */ (0, P.jsxs)("div", {
+								children: s.milestones.map((e, t) => /* @__PURE__ */ (0, N.jsxs)("div", {
 									className: "relative",
-									children: [/* @__PURE__ */ (0, P.jsx)("span", { className: R("absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white", e.done ? e.tone === "green" ? "bg-emerald-500" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500" : "bg-slate-300") }), /* @__PURE__ */ (0, P.jsxs)("div", {
+									children: [/* @__PURE__ */ (0, N.jsx)("span", { className: B("absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white", e.done ? e.tone === "green" ? "bg-emerald-500" : e.tone === "amber" ? "bg-amber-500" : "bg-blue-500" : "bg-slate-300") }), /* @__PURE__ */ (0, N.jsxs)("div", {
 										className: "rounded-xl border border-slate-200 p-3.5",
-										children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+										children: [/* @__PURE__ */ (0, N.jsxs)("div", {
 											className: "flex flex-wrap items-center gap-2",
 											children: [
-												/* @__PURE__ */ (0, P.jsx)("p", {
+												/* @__PURE__ */ (0, N.jsx)("p", {
 													className: "font-extrabold text-[15px] text-[#0f2a4a]",
 													children: e.title
 												}),
-												/* @__PURE__ */ (0, P.jsx)("span", {
+												/* @__PURE__ */ (0, N.jsx)("span", {
 													className: "text-[13px] font-bold text-slate-500",
-													children: ra(e.time)
+													children: V(e.time)
 												}),
-												/* @__PURE__ */ (0, P.jsx)(aa, {
+												/* @__PURE__ */ (0, N.jsx)(ha, {
 													tone: e.done ? e.tone : "gray",
 													size: "sm",
 													children: e.done ? "Đã diễn ra" : "Chưa"
 												})
 											]
-										}), e.desc && /* @__PURE__ */ (0, P.jsx)("p", {
+										}), e.desc && /* @__PURE__ */ (0, N.jsx)("p", {
 											className: "text-[13.5px] text-slate-600 mt-1",
 											children: e.desc
 										})]
@@ -14357,8 +14523,2593 @@ function Ta() {
 	});
 }
 //#endregion
+//#region src/pages/Customers.tsx
+var Ia = {
+	id: "",
+	name: "",
+	phone: "",
+	email: "",
+	contactPerson: "",
+	taxCode: "",
+	address: "",
+	note: ""
+};
+function La() {
+	let { customers: e, dispatch: t, toast: n, role: r } = Qn(), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(!1), [c, l] = (0, _.useState)(null), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)(!1), [m, h] = (0, _.useState)(Ia), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)(""), x = (0, _.useMemo)(() => e.filter((e) => !i || (e.id + e.name + e.short + e.mst + e.taxCode + e.phone + e.email).toLowerCase().includes(i.toLowerCase())), [e, i]), S = (e, t) => h((n) => ({
+		...n,
+		[e]: t
+	})), C = () => {
+		h(Ia), s(!0);
+	}, w = (e) => {
+		h({
+			id: e.id,
+			name: e.name,
+			phone: e.phone,
+			email: e.email,
+			contactPerson: e.contactPerson,
+			taxCode: e.taxCode,
+			address: e.address,
+			note: e.note
+		}), l(e);
+	};
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[1300px]",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+				children: [
+					/* @__PURE__ */ (0, N.jsx)(_a, {
+						icon: /* @__PURE__ */ (0, N.jsx)(Xi, { size: 18 }),
+						title: "Khách Hàng",
+						sub: "Tìm theo mã · tên · MST · SĐT · email — tạo, sửa, lưu trữ và import qua backend Logistics thật",
+						right: /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex gap-2",
+							children: [/* @__PURE__ */ (0, N.jsxs)("button", {
+								onClick: () => p(!0),
+								className: "btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] px-4 min-h-[48px]",
+								children: [/* @__PURE__ */ (0, N.jsx)(Ji, { size: 17 }), " Import"]
+							}), /* @__PURE__ */ (0, N.jsxs)("button", {
+								onClick: C,
+								className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
+								children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 18 }), " Khách mới"]
+							})]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
+						children: [/* @__PURE__ */ (0, N.jsx)(Pi, {
+							size: 19,
+							className: "ml-3.5 text-slate-400 shrink-0"
+						}), /* @__PURE__ */ (0, N.jsx)("input", {
+							value: i,
+							onChange: (e) => a(e.target.value),
+							placeholder: "Nhập mã (CUST-ANPHAT), tên (An Phát), MST…",
+							className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
+						})]
+					}),
+					/* @__PURE__ */ (0, N.jsxs)("p", {
+						className: "text-[13.5px] text-slate-500 mt-2.5",
+						children: [
+							"Tìm thấy ",
+							/* @__PURE__ */ (0, N.jsxs)("b", {
+								className: "text-[#0f2a4a]",
+								children: [x.length, " khách hàng"]
+							}),
+							i ? /* @__PURE__ */ (0, N.jsxs)(N.Fragment, { children: [
+								" cho “",
+								i,
+								"”"
+							] }) : null,
+							" · Mỗi khách hiển thị: mã · MST · liên hệ · địa chỉ."
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "overflow-x-auto",
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
+						className: "tbl w-full text-[14px] min-w-[880px]",
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Mã KH" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Tên khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "MST" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Liên hệ" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Địa chỉ" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: x.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
+							className: "hover:bg-slate-50",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[#1e5aa8] text-[15px]",
+									children: e.id
+								}) }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-semibold max-w-[220px]",
+									children: e.name
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: V(e.taxCode) }),
+								/* @__PURE__ */ (0, N.jsxs)("td", {
+									className: "text-[13px]",
+									children: [/* @__PURE__ */ (0, N.jsx)("span", {
+										className: "block",
+										children: V(e.contactPerson)
+									}), /* @__PURE__ */ (0, N.jsx)("span", {
+										className: "block text-slate-500",
+										children: V(e.phone)
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "max-w-[240px] text-[13px] text-slate-600",
+									children: V(e.address)
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "flex gap-1.5",
+									children: [/* @__PURE__ */ (0, N.jsxs)("button", {
+										onClick: () => w(e),
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
+										children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 15 }), " Sửa"]
+									}), r === "ADMIN" && /* @__PURE__ */ (0, N.jsxs)("button", {
+										onClick: () => d(e),
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-red-200 text-red-700 text-[13px] font-bold px-3 min-h-[44px]",
+										children: [/* @__PURE__ */ (0, N.jsx)(pr, { size: 15 }), " Lưu trữ"]
+									})]
+								}) })
+							]
+						}, e.id)) })]
+					})
+				}), x.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "p-8 text-center",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "font-bold text-[16px]",
+							children: "Không tìm thấy khách hàng nào"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[14px] text-slate-500 mt-1",
+							children: "Thử từ khóa khác hoặc tạo khách mới."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: C,
+							className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center gap-1.5",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Khách mới"]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "md:hidden space-y-3",
+				children: [x.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "p-4",
+						children: [
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex items-center gap-2 flex-wrap",
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[17px] text-[#0f2a4a]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsxs)(ha, {
+									tone: "blue",
+									size: "sm",
+									children: ["MST ", V(e.taxCode)]
+								})]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-semibold text-[14.5px] mt-1",
+								children: e.name
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "text-[13px] text-slate-500",
+								children: V(e.address)
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "text-[12.5px] text-slate-400 mt-1",
+								children: [
+									V(e.contactPerson),
+									" · ",
+									V(e.phone)
+								]
+							})
+						]
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "grid grid-cols-2 border-t",
+						children: [/* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: () => w(e),
+							className: "touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 17 }), " SỬA"]
+						}), r === "ADMIN" ? /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: () => d(e),
+							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-red-700 min-h-[52px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(pr, { size: 17 }), " LƯU TRỮ"]
+						}) : /* @__PURE__ */ (0, N.jsxs)(M, {
+							to: "/kinh-doanh-bao-gia",
+							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]",
+							children: ["BÁO GIÁ ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
+						})]
+					})]
+				}, e.id)), x.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border p-8 text-center",
+					children: [/* @__PURE__ */ (0, N.jsx)("p", {
+						className: "font-bold text-[16px]",
+						children: "Không tìm thấy khách hàng nào"
+					}), /* @__PURE__ */ (0, N.jsxs)("button", {
+						onClick: C,
+						className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center",
+						children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Khách mới"]
+					})]
+				})]
+			}),
+			(o || c) && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => {
+						s(!1), l(null);
+					}
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[560px] rounded-t-3xl sm:rounded-3xl p-5 pb-8 anim-slide-up max-h-[90vh] overflow-auto",
+					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: c ? "Sửa khách hàng " + c.id : "Tạo khách hàng mới"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13.5px] text-slate-500",
+							children: "Mọi thay đổi đi qua backend Logistics (RBAC + audit)."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid sm:grid-cols-2 gap-3 mt-4",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Mã khách hàng",
+									required: !0,
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.id,
+										disabled: !!c,
+										onChange: (e) => S("id", e.target.value),
+										placeholder: "VD: CUST-ABC",
+										className: U(m.id ? "ok" : "missing")
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Tên khách hàng",
+									required: !0,
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.name,
+										onChange: (e) => S("name", e.target.value),
+										placeholder: "Công ty / cá nhân",
+										className: U(m.name ? "ok" : "missing")
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Mã số thuế",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.taxCode,
+										onChange: (e) => S("taxCode", e.target.value),
+										placeholder: "MST",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Người liên hệ",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.contactPerson,
+										onChange: (e) => S("contactPerson", e.target.value),
+										placeholder: "Tên người liên hệ",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Số điện thoại",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.phone,
+										onChange: (e) => S("phone", e.target.value),
+										placeholder: "SĐT",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Email",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: m.email,
+										onChange: (e) => S("email", e.target.value),
+										placeholder: "email",
+										className: U()
+									})
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid gap-3 mt-3",
+							children: [/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Địa chỉ",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: m.address,
+									onChange: (e) => S("address", e.target.value),
+									placeholder: "Địa chỉ kho / văn phòng",
+									className: U()
+								})
+							}), /* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Ghi chú",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: m.note,
+									onChange: (e) => S("note", e.target.value),
+									placeholder: "Ghi chú nội bộ",
+									className: U()
+								})
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-5",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => {
+									s(!1), l(null);
+								},
+								children: "Hủy"
+							}), /* @__PURE__ */ (0, N.jsxs)(ya, {
+								onClick: () => {
+									let e = m.id.trim().toUpperCase();
+									if (!e || !m.name.trim()) {
+										n("Thiếu thông tin", "Mã và tên khách hàng là bắt buộc.", "red");
+										return;
+									}
+									c ? (t("customer_edit", {
+										id: e,
+										name: m.name.trim(),
+										phone: m.phone.trim(),
+										email: m.email.trim(),
+										contact_person: m.contactPerson.trim(),
+										tax_code: m.taxCode.trim(),
+										address: m.address.trim(),
+										note: m.note.trim()
+									}), n("Đã gửi cập nhật " + e, "Backend ghi + audit; danh sách tự làm mới từ Logistics.", "green")) : (t("customer_create", {
+										id: e,
+										name: m.name.trim(),
+										phone: m.phone.trim(),
+										email: m.email.trim(),
+										contactPerson: m.contactPerson.trim(),
+										taxCode: m.taxCode.trim(),
+										address: m.address.trim(),
+										note: m.note.trim()
+									}), n("Đã gửi tạo khách hàng " + e, "Backend ghi + audit; danh sách tự làm mới từ Logistics.", "green")), s(!1), l(null), h(Ia);
+								},
+								children: ["💾 ", c ? "LƯU THAY ĐỔI" : "TẠO KHÁCH HÀNG"]
+							})]
+						})
+					]
+				})]
+			}),
+			u && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => d(null)
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up",
+					children: [
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: [
+								"Lưu trữ ",
+								u.id,
+								"?"
+							]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("p", {
+							className: "text-[14.5px] text-slate-600 mt-1.5",
+							children: [
+								"Khách ",
+								/* @__PURE__ */ (0, N.jsx)("b", { children: u.name }),
+								" sẽ bị soft-delete (không xóa vật lý). Chỉ Admin có quyền."
+							]
+						}),
+						/* @__PURE__ */ (0, N.jsx)("div", {
+							className: "grid gap-3 mt-4",
+							children: /* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Lý do lưu trữ",
+								required: !0,
+								error: g ? void 0 : "Nhập lý do trước khi lưu trữ",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: g,
+									onChange: (e) => v(e.target.value),
+									placeholder: "VD: ngừng hợp tác",
+									className: U(g ? "ok" : "missing")
+								})
+							})
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-4",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => d(null),
+								children: "Hủy"
+							}), /* @__PURE__ */ (0, N.jsx)("button", {
+								onClick: () => {
+									if (u) {
+										if (!g.trim()) {
+											n("Cần lý do lưu trữ", "Nhập lý do trước khi lưu trữ khách hàng.", "red");
+											return;
+										}
+										t("customer_archive", {
+											id: u.id,
+											reason: g.trim()
+										}), n("Đã gửi lưu trữ " + u.id, "Chỉ Admin có quyền; backend kiểm tra RBAC.", "blue"), d(null), v("");
+									}
+								},
+								className: "btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[15.5px] px-5 min-h-[48px]",
+								children: "LƯU TRỮ"
+							})]
+						})
+					]
+				})]
+			}),
+			f && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => p(!1)
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[560px] rounded-t-3xl sm:rounded-3xl p-5 pb-8 anim-slide-up",
+					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: "Import khách hàng"
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("p", {
+							className: "text-[13.5px] text-slate-500",
+							children: ["Mỗi dòng một khách: ", /* @__PURE__ */ (0, N.jsx)("b", { children: "Mã;Tên;MST;SĐT;Email;Địa chỉ" })]
+						}),
+						/* @__PURE__ */ (0, N.jsx)("div", {
+							className: "grid gap-3 mt-4",
+							children: /* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Dữ liệu (mỗi dòng 1 khách)",
+								children: /* @__PURE__ */ (0, N.jsx)("textarea", {
+									value: y,
+									onChange: (e) => b(e.target.value),
+									rows: 6,
+									placeholder: "CUST-XYZ;Khách XYZ;0109999000;0988111222;xyz@example.com;KCN Test",
+									className: B(U(), "font-mono text-[13.5px]")
+								})
+							})
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-4",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => p(!1),
+								children: "Hủy"
+							}), /* @__PURE__ */ (0, N.jsx)(va, {
+								onClick: () => {
+									let e = y.split(/\r?\n/).map((e) => e.trim()).filter(Boolean).map((e) => {
+										let [t, n, r, i, a, o] = e.split(/[;,|\t]/).map((e) => e.trim());
+										return {
+											id: t,
+											name: n,
+											taxCode: r,
+											phone: i,
+											email: a,
+											address: o
+										};
+									}).filter((e) => e.id && e.name);
+									if (e.length === 0) {
+										n("Không có dòng để import", "Mỗi dòng: Mã;Tên;MST;SĐT;Email;Địa chỉ", "red");
+										return;
+									}
+									t("customer_import", { rows: e }), n("Đã gửi import " + e.length + " khách hàng", "Backend bỏ qua mã đã tồn tại.", "blue"), p(!1), b("");
+								},
+								children: "IMPORT"
+							})]
+						})
+					]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/pages/SalesQuotes.tsx
+var Ra = {
+	DRAFT: "Nháp",
+	READY_FOR_REVIEW: "Chờ review",
+	SENT: "Đã gửi khách",
+	ACCEPTED: "Khách chốt",
+	REJECTED: "Từ chối",
+	EXPIRED: "Hết hạn",
+	READY_TO_CREATE_SHIPMENT: "Sẵn sàng tạo lô"
+}, za = {
+	DRAFT: "gray",
+	READY_FOR_REVIEW: "blue",
+	SENT: "amber",
+	ACCEPTED: "green",
+	REJECTED: "red",
+	EXPIRED: "gray",
+	READY_TO_CREATE_SHIPMENT: "green"
+}, Ba = {
+	code: "",
+	serviceName: "",
+	unit: "Lần",
+	qty: "1",
+	currency: "VND",
+	costUnit: "",
+	sellUnit: "",
+	taxPct: "8"
+}, Va = {
+	customerId: "",
+	salesOwner: "",
+	origin: "",
+	destination: "",
+	route: "",
+	incoterm: "EXW",
+	transportMode: "Road",
+	goodsDescription: "",
+	expectedDeliveryDate: "",
+	lines: [{ ...Ba }]
+};
+function Ha(e) {
+	return {
+		code: e.code,
+		serviceName: e.serviceName,
+		unit: e.unit,
+		qty: e.qty == null ? "" : String(e.qty),
+		currency: e.currency,
+		costUnit: e.costUnit == null ? "" : String(e.costUnit),
+		sellUnit: e.sellUnit == null ? "" : String(e.sellUnit),
+		taxPct: e.taxPct == null ? "" : String(e.taxPct)
+	};
+}
+function Ua() {
+	let { quotes: e, customers: t, dispatch: n, toast: r } = Qn(), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)("ALL"), [c, l] = (0, _.useState)(!1), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)(Va), m = (0, _.useMemo)(() => e.filter((e) => (o === "ALL" || e.status === o) && (!i || (e.id + e.quoteNo + e.customer + e.salesOwner + e.origin + e.destination).toLowerCase().includes(i.toLowerCase()))), [
+		e,
+		i,
+		o
+	]), h = ["ALL", ...Array.from(new Set(e.map((e) => e.status)))], g = (e, t) => p((n) => ({
+		...n,
+		[e]: t
+	})), v = (e, t, n) => p((r) => ({
+		...r,
+		lines: r.lines.map((r, i) => i === e ? {
+			...r,
+			[t]: n
+		} : r)
+	})), y = () => p((e) => ({
+		...e,
+		lines: [...e.lines, { ...Ba }]
+	})), b = (e) => p((t) => ({
+		...t,
+		lines: t.lines.length > 1 ? t.lines.filter((t, n) => n !== e) : t.lines
+	})), x = () => {
+		p({
+			...Va,
+			lines: [{ ...Ba }],
+			salesOwner: "Minh Tú"
+		}), l(!0);
+	}, S = (e) => {
+		p({
+			customerId: e.customerId,
+			salesOwner: e.salesOwner,
+			origin: e.origin,
+			destination: e.destination,
+			route: e.route,
+			incoterm: e.incoterm,
+			transportMode: e.transportMode,
+			goodsDescription: e.goodsDescription,
+			expectedDeliveryDate: e.expectedDeliveryDate,
+			lines: e.serviceLines.length ? e.serviceLines.map(Ha) : [{ ...Ba }]
+		}), d(e);
+	}, C = () => f.lines.filter((e) => e.code.trim() || e.serviceName.trim()).map((e) => ({
+		code: e.code.trim(),
+		serviceName: e.serviceName.trim(),
+		unit: e.unit.trim() || "Lần",
+		qty: e.qty.trim() === "" ? "" : Number(e.qty),
+		currency: e.currency.trim() || "VND",
+		costUnit: e.costUnit.trim() === "" ? "" : Number(e.costUnit),
+		sellUnit: e.sellUnit.trim() === "" ? "" : Number(e.sellUnit),
+		taxPct: e.taxPct.trim() === "" ? "" : Number(e.taxPct)
+	})), w = () => {
+		if (!f.customerId) {
+			r("Chưa chọn khách hàng", "Chọn khách hàng trước khi tạo báo giá.", "red");
+			return;
+		}
+		let e = C();
+		if (e.length === 0) {
+			r("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
+			return;
+		}
+		u ? (n("quote_edit", {
+			id: u.id,
+			sales_owner: f.salesOwner.trim(),
+			origin: f.origin.trim(),
+			destination: f.destination.trim(),
+			route: f.route.trim(),
+			incoterm: f.incoterm.trim(),
+			goods_description: f.goodsDescription.trim(),
+			expected_delivery_date: f.expectedDeliveryDate.trim(),
+			serviceLines: e
+		}), r("Đã gửi cập nhật " + u.id, "Backend tính lại giá bán + audit.", "green")) : (n("quote_create", {
+			customerId: f.customerId,
+			salesOwner: f.salesOwner.trim(),
+			origin: f.origin.trim(),
+			destination: f.destination.trim(),
+			route: f.route.trim(),
+			incoterm: f.incoterm.trim(),
+			transportMode: f.transportMode.trim(),
+			goodsDescription: f.goodsDescription.trim(),
+			expectedDeliveryDate: f.expectedDeliveryDate.trim(),
+			serviceLines: e
+		}), r("Đã gửi tạo báo giá", "Backend tạo mã Q-… tự động, tính dự toán và audit.", "green")), l(!1), d(null);
+	}, T = (e, t) => {
+		n("quote_transition", {
+			id: e.id,
+			nextStatus: t
+		}), r("Đã gửi chuyển trạng thái " + e.id, `→ ${Ra[t] ?? t}. Backend kiểm tra đúng luồng.`, "blue");
+	};
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[1300px]",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+				children: [
+					/* @__PURE__ */ (0, N.jsx)(_a, {
+						icon: /* @__PURE__ */ (0, N.jsx)(kr, { size: 18 }),
+						title: "Kinh doanh · Báo giá",
+						sub: "Báo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/chi. Tìm theo mã · khách · tuyến.",
+						right: /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: x,
+							className: "btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 18 }), " Tạo báo giá"]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2",
+						children: /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
+							children: [/* @__PURE__ */ (0, N.jsx)(Pi, {
+								size: 19,
+								className: "ml-3.5 text-slate-400 shrink-0"
+							}), /* @__PURE__ */ (0, N.jsx)("input", {
+								value: i,
+								onChange: (e) => a(e.target.value),
+								placeholder: "Nhập mã (Q-…), khách (An Phát), tuyến…",
+								className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
+							})]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
+						children: h.map((e) => /* @__PURE__ */ (0, N.jsx)("button", {
+							onClick: () => s(e),
+							className: B("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", o === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							children: e === "ALL" ? "Tất cả" : Ra[e] ?? e
+						}, e))
+					}),
+					/* @__PURE__ */ (0, N.jsxs)("p", {
+						className: "text-[13.5px] text-slate-500 mt-1.5",
+						children: [
+							"Tìm thấy ",
+							/* @__PURE__ */ (0, N.jsxs)("b", {
+								className: "text-[#0f2a4a]",
+								children: [m.length, " báo giá"]
+							}),
+							" · Trạng thái do backend quyết định theo luồng chốt khách."
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "overflow-x-auto",
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
+						className: "tbl w-full text-[14px] min-w-[960px]",
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Mã báo giá" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Tuyến" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Sale" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Tổng (VND)" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Trạng thái" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: m.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
+							className: "hover:bg-slate-50",
+							children: [
+								/* @__PURE__ */ (0, N.jsxs)("td", { children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[#1e5aa8] text-[15px]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsx)("span", {
+									className: "block text-[12px] text-slate-400",
+									children: e.quoteNo
+								})] }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-semibold max-w-[180px]",
+									children: e.customer
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("td", {
+									className: "max-w-[220px] text-[13px] text-slate-600",
+									children: [
+										V(e.origin),
+										" → ",
+										V(e.destination)
+									]
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: V(e.salesOwner) }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-bold",
+									children: la(e.sellingPriceTotalVnd ?? e.total, "VND")
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: za[e.status] ?? "gray",
+									size: "sm",
+									children: e.statusLabel || e.status
+								}) }),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "flex flex-wrap gap-1.5",
+									children: [e.allowedTransitions.map((t) => /* @__PURE__ */ (0, N.jsx)("button", {
+										onClick: () => T(e, t),
+										className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[40px]",
+										children: Ra[t] ?? t
+									}, t)), /* @__PURE__ */ (0, N.jsxs)("button", {
+										onClick: () => S(e),
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2.5 min-h-[40px]",
+										children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 14 }), " Sửa"]
+									})]
+								}) })
+							]
+						}, e.id)) })]
+					})
+				}), m.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "p-8 text-center",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "font-bold text-[16px]",
+							children: "Không tìm thấy báo giá nào"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[14px] text-slate-500 mt-1",
+							children: "Tạo báo giá từ khách hàng đã có."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: x,
+							className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center gap-1.5",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo báo giá"]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "md:hidden space-y-3",
+				children: [m.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "p-4",
+						children: [
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex items-center gap-2 flex-wrap",
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[16px] text-[#0f2a4a]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: za[e.status] ?? "gray",
+									size: "sm",
+									children: e.statusLabel || e.status
+								})]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-semibold text-[14.5px] mt-1",
+								children: e.customer
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "text-[13px] text-slate-500",
+								children: [
+									V(e.origin),
+									" → ",
+									V(e.destination)
+								]
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "font-extrabold text-[16px] mt-1.5",
+								children: [la(e.sellingPriceTotalVnd ?? e.total, "VND"), " ₫"]
+							})
+						]
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "border-t p-3 flex flex-wrap gap-2",
+						children: [e.allowedTransitions.map((t) => /* @__PURE__ */ (0, N.jsx)("button", {
+							onClick: () => T(e, t),
+							className: "btn-press touch-target rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]",
+							children: Ra[t] ?? t
+						}, t)), /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: () => S(e),
+							className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 14 }), " Sửa"]
+						})]
+					})]
+				}, e.id)), m.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border p-8 text-center",
+					children: [/* @__PURE__ */ (0, N.jsx)("p", {
+						className: "font-bold text-[16px]",
+						children: "Không tìm thấy báo giá nào"
+					}), /* @__PURE__ */ (0, N.jsxs)("button", {
+						onClick: x,
+						className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center",
+						children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo báo giá"]
+					})]
+				})]
+			}),
+			(c || u) && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => {
+						l(!1), d(null);
+					}
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[760px] rounded-t-3xl sm:rounded-3xl p-5 pb-8 anim-slide-up max-h-[92vh] overflow-auto",
+					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: u ? "Sửa báo giá " + u.id : "Tạo báo giá mới"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13.5px] text-slate-500",
+							children: "Dự toán chi phí & giá bán — đi qua backend LOG-C12 (tính toán + audit), không ghi sổ tài chính."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid sm:grid-cols-2 gap-3 mt-4",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Khách hàng",
+									required: !0,
+									children: /* @__PURE__ */ (0, N.jsxs)("select", {
+										value: f.customerId,
+										disabled: !!u,
+										onChange: (e) => g("customerId", e.target.value),
+										className: U(f.customerId ? "ok" : "missing"),
+										children: [/* @__PURE__ */ (0, N.jsx)("option", {
+											value: "",
+											children: "-- Chọn khách --"
+										}), t.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
+											value: e.id,
+											children: [
+												e.name,
+												" (",
+												e.id,
+												")"
+											]
+										}, e.id))]
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Sale phụ trách",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.salesOwner,
+										onChange: (e) => g("salesOwner", e.target.value),
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Nơi lấy (origin)",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.origin,
+										onChange: (e) => g("origin", e.target.value),
+										placeholder: "VD: Bằng Tường (Quảng Tây)",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Nơi giao (destination)",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.destination,
+										onChange: (e) => g("destination", e.target.value),
+										placeholder: "VD: KCN Quế Võ, Bắc Ninh",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Tuyến / cửa khẩu",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.route,
+										onChange: (e) => g("route", e.target.value),
+										placeholder: "VD: Hữu Nghị (Lạng Sơn)",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Incoterm",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.incoterm,
+										onChange: (e) => g("incoterm", e.target.value),
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Phương thức",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.transportMode,
+										onChange: (e) => g("transportMode", e.target.value),
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Ngày giao dự kiến",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: f.expectedDeliveryDate,
+										onChange: (e) => g("expectedDeliveryDate", e.target.value),
+										placeholder: "VD: 2026-09-20",
+										className: U()
+									})
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, N.jsx)(H, {
+							label: "Mô tả hàng hóa",
+							children: /* @__PURE__ */ (0, N.jsx)("input", {
+								value: f.goodsDescription,
+								onChange: (e) => g("goodsDescription", e.target.value),
+								placeholder: "VD: Linh kiện điện tử",
+								className: B(U(), "mt-3")
+							})
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "mt-4",
+							children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex items-center justify-between mb-2",
+								children: [/* @__PURE__ */ (0, N.jsx)("p", {
+									className: "font-extrabold text-[15px] text-[#0f2a4a]",
+									children: "Dòng dịch vụ"
+								}), /* @__PURE__ */ (0, N.jsxs)("button", {
+									onClick: y,
+									className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]",
+									children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 15 }), " Thêm dòng"]
+								})]
+							}), /* @__PURE__ */ (0, N.jsx)("div", {
+								className: "space-y-2",
+								children: f.lines.map((e, t) => /* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "rounded-xl border border-slate-200 p-3 bg-slate-50/60",
+									children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+										className: "grid grid-cols-2 md:grid-cols-4 gap-2",
+										children: [
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Mã dịch vụ",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.code,
+													onChange: (e) => v(t, "code", e.target.value),
+													placeholder: "DV-VC-TQ",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Tên dịch vụ",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.serviceName,
+													onChange: (e) => v(t, "serviceName", e.target.value),
+													placeholder: "Cước xe TQ",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "ĐVT",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.unit,
+													onChange: (e) => v(t, "unit", e.target.value),
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Số lượng",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.qty,
+													onChange: (e) => v(t, "qty", e.target.value),
+													inputMode: "numeric",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Giá vốn (unit)",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.costUnit,
+													onChange: (e) => v(t, "costUnit", e.target.value),
+													inputMode: "numeric",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Giá bán (unit)",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.sellUnit,
+													onChange: (e) => v(t, "sellUnit", e.target.value),
+													inputMode: "numeric",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Thuế %",
+												children: /* @__PURE__ */ (0, N.jsx)("input", {
+													value: e.taxPct,
+													onChange: (e) => v(t, "taxPct", e.target.value),
+													inputMode: "numeric",
+													className: U()
+												})
+											}),
+											/* @__PURE__ */ (0, N.jsx)(H, {
+												label: "Tiền tệ",
+												children: /* @__PURE__ */ (0, N.jsxs)("select", {
+													value: e.currency,
+													onChange: (e) => v(t, "currency", e.target.value),
+													className: U(),
+													children: [
+														/* @__PURE__ */ (0, N.jsx)("option", { children: "VND" }),
+														/* @__PURE__ */ (0, N.jsx)("option", { children: "USD" }),
+														/* @__PURE__ */ (0, N.jsx)("option", { children: "CNY" })
+													]
+												})
+											})
+										]
+									}), f.lines.length > 1 && /* @__PURE__ */ (0, N.jsxs)("button", {
+										onClick: () => b(t),
+										className: "mt-2 inline-flex items-center gap-1 text-[13px] font-bold text-red-600",
+										children: [/* @__PURE__ */ (0, N.jsx)(Hi, { size: 14 }), " Xóa dòng"]
+									})]
+								}, t))
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-5",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => {
+									l(!1), d(null);
+								},
+								children: "Hủy"
+							}), /* @__PURE__ */ (0, N.jsxs)(ya, {
+								onClick: w,
+								children: ["💾 ", u ? "LƯU BÁO GIÁ" : "TẠO BÁO GIÁ"]
+							})]
+						})
+					]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/pages/Agreements.tsx
+var Wa = {
+	DRAFT: "Nháp",
+	REVIEWING: "Đang review",
+	AGREED: "Đã đồng ý",
+	REVISED: "Đã sửa đổi",
+	VOID: "Vô hiệu"
+}, Ga = {
+	DRAFT: "gray",
+	REVIEWING: "blue",
+	AGREED: "green",
+	REVISED: "amber",
+	VOID: "red"
+}, Ka = [
+	"accepted_quotation",
+	"signed_contract",
+	"customer_confirmation",
+	"entrusted_documentation"
+], qa = {
+	accepted_quotation: "Báo giá được khách chốt",
+	signed_contract: "Hợp đồng đã ký",
+	customer_confirmation: "Khách xác nhận (email/tin nhắn)",
+	entrusted_documentation: "Chứng từ ủy thác nhập khẩu"
+};
+function Ja() {
+	let { agreements: e, quotes: t, dispatch: n, toast: r } = Qn(), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)("ALL"), [c, l] = (0, _.useState)(!1), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)(""), [m, h] = (0, _.useState)(""), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)({}), x = (0, _.useMemo)(() => e.filter((e) => (o === "ALL" || e.status === o) && (!i || (e.id + e.agreementNo + e.customer + e.quoteReference).toLowerCase().includes(i.toLowerCase()))), [
+		e,
+		i,
+		o
+	]), S = ["ALL", ...Array.from(new Set(e.map((e) => e.status)))], C = (0, _.useMemo)(() => {
+		let n = new Set(e.map((e) => e.quoteId).filter(Boolean));
+		return t.filter((e) => ["ACCEPTED", "READY_TO_CREATE_SHIPMENT"].includes(e.status) && !n.has(e.id));
+	}, [t, e]), w = () => {
+		p(""), l(!0);
+	}, T = (e) => {
+		h((e.assumptions || []).join("\n")), v((e.unresolvedIssues || []).join("\n"));
+		let t = {};
+		for (let n of Ka) t[n] = !!e.evidence?.[n];
+		b(t), d(e);
+	}, E = () => {
+		if (!f) {
+			r("Chưa chọn báo giá", "Thỏa thuận chỉ được tạo từ báo giá đã khách chốt (ACCEPTED).", "red");
+			return;
+		}
+		n("agreement_create", { quoteId: f }), r("Đã gửi tạo thỏa thuận", "Backend đóng băng điều khoản thương mại từ báo giá chốt.", "green"), l(!1);
+	}, ee = () => {
+		u && (n("agreement_edit", {
+			id: u.id,
+			assumptions: m.split("\n").map((e) => e.trim()).filter(Boolean),
+			unresolved_issues: g.split("\n").map((e) => e.trim()).filter(Boolean),
+			evidence: {
+				...Ka.reduce((e, t) => ({
+					...e,
+					[t]: !!y[t]
+				}), {}),
+				notes: "",
+				source: "Bằng chứng đánh dấu thủ công qua work desk; không suy diễn 'đã ký' từ tên file."
+			}
+		}), r("Đã gửi cập nhật " + u.id, "Backend ghi + audit; bàn giao được tính lại.", "green"), d(null));
+	}, D = (e, t) => {
+		n("agreement_transition", {
+			id: e.id,
+			nextStatus: t
+		}), r("Đã gửi chuyển trạng thái " + e.id, `→ ${Wa[t] ?? t}. Backend kiểm tra đúng luồng.`, "blue");
+	};
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[1300px]",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+				children: [
+					/* @__PURE__ */ (0, N.jsx)(_a, {
+						icon: /* @__PURE__ */ (0, N.jsx)(Zr, { size: 18 }),
+						title: "Thỏa thuận mua bán · Bàn giao",
+						sub: "Đóng băng điều khoản thương mại từ báo giá đã chốt — KHÔNG phải tài chính thực thu/chi",
+						right: /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: w,
+							className: "btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 18 }), " Tạo thỏa thuận"]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2",
+						children: /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
+							children: [/* @__PURE__ */ (0, N.jsx)(Pi, {
+								size: 19,
+								className: "ml-3.5 text-slate-400 shrink-0"
+							}), /* @__PURE__ */ (0, N.jsx)("input", {
+								value: i,
+								onChange: (e) => a(e.target.value),
+								placeholder: "Nhập mã thỏa thuận, khách, báo giá nguồn…",
+								className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
+							})]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
+						children: S.map((e) => /* @__PURE__ */ (0, N.jsx)("button", {
+							onClick: () => s(e),
+							className: B("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", o === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							children: e === "ALL" ? "Tất cả" : Wa[e] ?? e
+						}, e))
+					}),
+					/* @__PURE__ */ (0, N.jsxs)("p", {
+						className: "text-[13.5px] text-slate-500 mt-1.5",
+						children: [
+							"Tìm thấy ",
+							/* @__PURE__ */ (0, N.jsxs)("b", {
+								className: "text-[#0f2a4a]",
+								children: [x.length, " thỏa thuận"]
+							}),
+							" · Trạng thái & bàn giao do backend quyết định."
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "overflow-x-auto",
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
+						className: "tbl w-full text-[14px] min-w-[960px]",
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Mã thỏa thuận" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Báo giá nguồn" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Trạng thái" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Bàn giao" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: x.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
+							className: "hover:bg-slate-50",
+							children: [
+								/* @__PURE__ */ (0, N.jsxs)("td", { children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[#1e5aa8] text-[15px]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsx)("span", {
+									className: "block text-[12px] text-slate-400",
+									children: e.agreementNo
+								})] }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-semibold max-w-[180px]",
+									children: e.customer
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "text-[13px] text-slate-600",
+									children: V(e.quoteReference)
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: Ga[e.status] ?? "gray",
+									size: "sm",
+									children: e.statusLabel || e.status
+								}) }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "max-w-[220px]",
+									children: /* @__PURE__ */ (0, N.jsx)(ha, {
+										tone: e.handoff.state === "READY_FOR_OPERATIONS" ? "green" : e.handoff.state === "MISSING_REQUIRED_DATA" ? "red" : "amber",
+										size: "sm",
+										children: e.handoff.label
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "flex flex-wrap gap-1.5",
+									children: [e.allowedTransitions.map((t) => /* @__PURE__ */ (0, N.jsx)("button", {
+										onClick: () => D(e, t),
+										className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[40px]",
+										children: Wa[t] ?? t
+									}, t)), /* @__PURE__ */ (0, N.jsxs)("button", {
+										onClick: () => T(e),
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2.5 min-h-[40px]",
+										children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 14 }), " Sửa"]
+									})]
+								}) })
+							]
+						}, e.id)) })]
+					})
+				}), x.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "p-8 text-center",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "font-bold text-[16px]",
+							children: "Chưa có thỏa thuận nào"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[14px] text-slate-500 mt-1",
+							children: "Tạo từ báo giá đã được khách chốt (ACCEPTED)."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: w,
+							className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center gap-1.5",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo thỏa thuận"]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "md:hidden space-y-3",
+				children: [x.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "p-4",
+						children: [
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex items-center gap-2 flex-wrap",
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[16px] text-[#0f2a4a]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: Ga[e.status] ?? "gray",
+									size: "sm",
+									children: e.statusLabel || e.status
+								})]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-semibold text-[14.5px] mt-1",
+								children: e.customer
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "text-[13px] text-slate-500",
+								children: ["Nguồn: ", V(e.quoteReference)]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("div", {
+								className: "mt-2",
+								children: /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: e.handoff.state === "READY_FOR_OPERATIONS" ? "green" : e.handoff.state === "MISSING_REQUIRED_DATA" ? "red" : "amber",
+									size: "sm",
+									children: e.handoff.label
+								})
+							})
+						]
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "border-t p-3 flex flex-wrap gap-2",
+						children: [e.allowedTransitions.map((t) => /* @__PURE__ */ (0, N.jsx)("button", {
+							onClick: () => D(e, t),
+							className: "btn-press touch-target rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]",
+							children: Wa[t] ?? t
+						}, t)), /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: () => T(e),
+							className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(Di, { size: 14 }), " Sửa"]
+						})]
+					})]
+				}, e.id)), x.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border p-8 text-center",
+					children: [/* @__PURE__ */ (0, N.jsx)("p", {
+						className: "font-bold text-[16px]",
+						children: "Chưa có thỏa thuận nào"
+					}), /* @__PURE__ */ (0, N.jsxs)("button", {
+						onClick: w,
+						className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center",
+						children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo thỏa thuận"]
+					})]
+				})]
+			}),
+			c && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => l(!1)
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[520px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: "Tạo thỏa thuận từ báo giá chốt"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13.5px] text-slate-500",
+							children: "Chỉ báo giá ACCEPTED / sẵn sàng tạo lô mới dùng được."
+						}),
+						C.length === 0 ? /* @__PURE__ */ (0, N.jsxs)("p", {
+							className: "mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-[14px] text-amber-900",
+							children: [
+								"Chưa có báo giá ACCEPTED. Vào ",
+								/* @__PURE__ */ (0, N.jsx)(M, {
+									to: "/kinh-doanh-bao-gia",
+									className: "font-bold underline",
+									children: "Kinh doanh · Báo giá"
+								}),
+								" để chốt khách trước."
+							]
+						}) : /* @__PURE__ */ (0, N.jsx)("div", {
+							className: "grid gap-3 mt-4",
+							children: /* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Báo giá nguồn",
+								required: !0,
+								children: /* @__PURE__ */ (0, N.jsxs)("select", {
+									value: f,
+									onChange: (e) => p(e.target.value),
+									className: U(f ? "ok" : "missing"),
+									children: [/* @__PURE__ */ (0, N.jsx)("option", {
+										value: "",
+										children: "-- Chọn báo giá đã chốt --"
+									}), C.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
+										value: e.id,
+										children: [
+											e.id,
+											" · ",
+											e.customer,
+											" · ",
+											la(e.sellingPriceTotalVnd ?? e.total),
+											" ₫"
+										]
+									}, e.id))]
+								})
+							})
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-5",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => l(!1),
+								children: "Hủy"
+							}), C.length > 0 ? /* @__PURE__ */ (0, N.jsx)(ya, {
+								onClick: E,
+								children: "TẠO"
+							}) : /* @__PURE__ */ (0, N.jsx)(va, {
+								onClick: () => {
+									l(!1);
+								},
+								children: "ĐÓNG"
+							})]
+						})
+					]
+				})]
+			}),
+			u && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "absolute inset-0 bg-slate-900/55 anim-fade",
+					onClick: () => d(null)
+				}), /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "relative bg-white w-full sm:max-w-[560px] rounded-t-3xl sm:rounded-3xl p-5 pb-8 anim-slide-up max-h-[90vh] overflow-auto",
+					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
+					children: [
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
+							className: "font-extrabold text-[18px] text-[#0f2a4a]",
+							children: ["Sửa thỏa thuận ", u.id]
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13.5px] text-slate-500",
+							children: "Điều khoản thương mại & bằng chứng bàn giao — ghi qua backend, không phải tài chính."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "mt-4",
+							children: [/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-extrabold text-[14.5px] text-[#0f2a4a] mb-2",
+								children: "Bằng chứng chấp nhận"
+							}), /* @__PURE__ */ (0, N.jsx)("div", {
+								className: "grid sm:grid-cols-2 gap-2",
+								children: Ka.map((e) => /* @__PURE__ */ (0, N.jsxs)("label", {
+									className: "flex items-center gap-2.5 rounded-xl border border-slate-200 p-3 cursor-pointer",
+									children: [/* @__PURE__ */ (0, N.jsx)("input", {
+										type: "checkbox",
+										checked: !!y[e],
+										onChange: (t) => b((n) => ({
+											...n,
+											[e]: t.target.checked
+										})),
+										className: "w-5 h-5 accent-[#0f2a4a]"
+									}), /* @__PURE__ */ (0, N.jsx)("span", {
+										className: "text-[14px] font-semibold text-slate-700",
+										children: qa[e]
+									})]
+								}, e))
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid gap-3 mt-4",
+							children: [/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Giả định thương mại (mỗi dòng một mục)",
+								children: /* @__PURE__ */ (0, N.jsx)("textarea", {
+									value: m,
+									onChange: (e) => h(e.target.value),
+									rows: 4,
+									className: U()
+								})
+							}), /* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Vấn đề chưa giải quyết (mỗi dòng một mục)",
+								children: /* @__PURE__ */ (0, N.jsx)("textarea", {
+									value: g,
+									onChange: (e) => v(e.target.value),
+									rows: 3,
+									placeholder: "Các vấn đề chặn bàn giao vận hành",
+									className: U()
+								})
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 gap-2.5 mt-5",
+							children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+								onClick: () => d(null),
+								children: "Hủy"
+							}), /* @__PURE__ */ (0, N.jsx)(va, {
+								onClick: ee,
+								children: "💾 LƯU THỎA THUẬN"
+							})]
+						})
+					]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/pages/Contracts.tsx
+function Ya() {
+	let { contracts: e } = Qn(), [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)("ALL"), a = (0, _.useMemo)(() => e.filter((e) => (r === "ALL" || e.kind === r) && (!t || (e.id + e.contractNo + e.client + e.company + e.agent).toLowerCase().includes(t.toLowerCase()))), [
+		e,
+		t,
+		r
+	]), o = ["ALL", ...Array.from(new Set(e.map((e) => e.kind).filter(Boolean)))];
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[1300px]",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+				children: [
+					/* @__PURE__ */ (0, N.jsx)(_a, {
+						icon: /* @__PURE__ */ (0, N.jsx)(ri, { size: 18 }),
+						title: "Hợp đồng",
+						sub: "HDMB · HDNT · PL — tìm theo số hợp đồng, khách, công ty, đại lý",
+						right: /* @__PURE__ */ (0, N.jsxs)(M, {
+							to: "/hop-dong/moi",
+							className: "btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 18 }), " Tạo hợp đồng"]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2",
+						children: /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden",
+							children: [/* @__PURE__ */ (0, N.jsx)(Pi, {
+								size: 19,
+								className: "ml-3.5 text-slate-400 shrink-0"
+							}), /* @__PURE__ */ (0, N.jsx)("input", {
+								value: t,
+								onChange: (e) => n(e.target.value),
+								placeholder: "Nhập số hợp đồng (HDMB-0306), khách (An Phát)…",
+								className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
+							})]
+						})
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
+						children: o.map((e) => /* @__PURE__ */ (0, N.jsx)("button", {
+							onClick: () => i(e),
+							className: B("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", r === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							children: e === "ALL" ? "Tất cả" : e
+						}, e))
+					}),
+					/* @__PURE__ */ (0, N.jsxs)("p", {
+						className: "text-[13.5px] text-slate-500 mt-1.5",
+						children: [
+							"Tìm thấy ",
+							/* @__PURE__ */ (0, N.jsxs)("b", {
+								className: "text-[#0f2a4a]",
+								children: [a.length, " hợp đồng"]
+							}),
+							" · Mở để xem hàng hóa, sinh chứng từ và liên kết lô."
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
+				children: [/* @__PURE__ */ (0, N.jsx)("div", {
+					className: "overflow-x-auto",
+					children: /* @__PURE__ */ (0, N.jsxs)("table", {
+						className: "tbl w-full text-[14px] min-w-[880px]",
+						children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Số hợp đồng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Loại" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Khách hàng" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Công ty · Đại lý" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Giá trị" }),
+							/* @__PURE__ */ (0, N.jsx)("th", { children: "Hành động" })
+						] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: a.map((e) => /* @__PURE__ */ (0, N.jsxs)("tr", {
+							className: "hover:bg-slate-50",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(M, {
+									to: "/hop-dong/" + e.id,
+									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
+									children: e.id
+								}) }),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: "blue",
+									size: "sm",
+									children: e.kind || "—"
+								}) }),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-semibold max-w-[180px]",
+									children: e.client || "—"
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("td", {
+									className: "text-[13px] text-slate-600",
+									children: [/* @__PURE__ */ (0, N.jsx)("span", {
+										className: "block",
+										children: e.company || "—"
+									}), /* @__PURE__ */ (0, N.jsx)("span", {
+										className: "block text-slate-400",
+										children: e.agent || "—"
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", {
+									className: "font-bold",
+									children: la(e.value, e.currency)
+								}),
+								/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("div", {
+									className: "flex gap-1.5",
+									children: /* @__PURE__ */ (0, N.jsxs)(M, {
+										to: "/hop-dong/" + e.id,
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]",
+										children: [/* @__PURE__ */ (0, N.jsx)(Yr, { size: 15 }), " MỞ"]
+									})
+								}) })
+							]
+						}, e.id)) })]
+					})
+				}), a.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "p-8 text-center",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "font-bold text-[16px]",
+							children: "Không tìm thấy hợp đồng nào"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[14px] text-slate-500 mt-1",
+							children: "Thử từ khóa khác hoặc tạo hợp đồng mới."
+						}),
+						/* @__PURE__ */ (0, N.jsxs)(M, {
+							to: "/hop-dong/moi",
+							className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center gap-1.5",
+							children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo hợp đồng"]
+						})
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "md:hidden space-y-3",
+				children: [a.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
+					children: [/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "p-4",
+						children: [
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex items-center gap-2 flex-wrap",
+								children: [/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "font-extrabold text-[17px] text-[#0f2a4a]",
+									children: e.id
+								}), /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: "blue",
+									size: "sm",
+									children: e.kind || "—"
+								})]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-semibold text-[14.5px] mt-1",
+								children: e.client || "—"
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "text-[13px] text-slate-500",
+								children: [
+									e.company || "—",
+									" · ",
+									e.agent || "—"
+								]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-extrabold text-[16px] mt-1.5",
+								children: la(e.value, e.currency)
+							})
+						]
+					}), /* @__PURE__ */ (0, N.jsx)("div", {
+						className: "border-t",
+						children: /* @__PURE__ */ (0, N.jsxs)(M, {
+							to: "/hop-dong/" + e.id,
+							className: "touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]",
+							children: ["MỞ HỢP ĐỒNG ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
+						})
+					})]
+				}, e.id)), a.length === 0 && /* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "rounded-2xl bg-white border p-8 text-center",
+					children: [/* @__PURE__ */ (0, N.jsx)("p", {
+						className: "font-bold text-[16px]",
+						children: "Không tìm thấy hợp đồng nào"
+					}), /* @__PURE__ */ (0, N.jsxs)(M, {
+						to: "/hop-dong/moi",
+						className: "btn-press touch-target mt-3 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-5 min-h-[48px] items-center",
+						children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 17 }), " Tạo hợp đồng"]
+					})]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/pages/ContractDetail.tsx
+var Xa = [
+	{
+		id: "tong-quan",
+		label: "Tổng quan",
+		short: "Tổng quan"
+	},
+	{
+		id: "hang-hoa",
+		label: "Hàng hóa hợp đồng",
+		short: "Hàng hóa"
+	},
+	{
+		id: "chung-tu",
+		label: "Chứng từ HDNT/PL/HDMB",
+		short: "Chứng từ"
+	},
+	{
+		id: "lo-lien-ket",
+		label: "Lô liên kết",
+		short: "Lô liên kết"
+	}
+], Za = {
+	READY: "green",
+	GENERATED: "blue",
+	MISSING_INFO: "amber",
+	NOT_APPLICABLE: "gray",
+	OWNER_RULE_REQUIRED: "amber",
+	BLOCKED: "red",
+	DEFERRED: "gray",
+	ISSUED: "green"
+}, Qa = {
+	READY: "Sẵn sàng",
+	GENERATED: "Đã sinh",
+	MISSING_INFO: "Thiếu thông tin",
+	NOT_APPLICABLE: "Không áp dụng",
+	OWNER_RULE_REQUIRED: "Cần quy tắc chủ",
+	BLOCKED: "Bị chặn",
+	DEFERRED: "Hoãn lại",
+	ISSUED: "Đã phát hành"
+};
+function $a(e) {
+	return {
+		description: e.description,
+		unit: e.unit,
+		quantity: e.quantity == null ? "" : String(e.quantity),
+		unitPrice: e.unitPrice == null ? "" : String(e.unitPrice)
+	};
+}
+function eo() {
+	let { id: e } = Tt(), [t, n] = Hn(), r = t.get("tab") || "tong-quan", { contracts: i, authority: a, shipments: o, dispatch: s, toast: c } = Qn(), l = Ct(), u = i.find((t) => t.id === e), [d, f] = (0, _.useState)({}), [p, m] = (0, _.useState)([]), [h, g] = (0, _.useState)(""), v = (e) => {
+		f({
+			company_id: e.companyId ?? "",
+			agent_id: e.agentId ?? "",
+			kind: e.kind ?? "",
+			value: e.value == null ? "" : String(e.value),
+			currency: e.currency || "VND",
+			note: e.note ?? "",
+			hdnt_no: e.identity?.hdntNo ?? "",
+			hdnt_date: e.identity?.hdntDate ?? "",
+			valid_from: e.identity?.validFrom ?? "",
+			valid_to: e.identity?.validTo ?? "",
+			pl_no: e.identity?.plNo ?? "",
+			pl_date: e.identity?.plDate ?? "",
+			hdmb_no: e.identity?.hdmbNo ?? "",
+			hdmb_date: e.identity?.hdmbDate ?? ""
+		}), m(e.goodsLines.length ? e.goodsLines.map($a) : [{
+			description: "",
+			unit: "",
+			quantity: "",
+			unitPrice: ""
+		}]);
+	};
+	if ((0, _.useEffect)(() => {
+		u && v(u);
+	}, [u?.id]), !u) return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("p", {
+				className: "font-extrabold text-[19px]",
+				children: ["Không tìm thấy hợp đồng ", e]
+			}),
+			/* @__PURE__ */ (0, N.jsx)("p", {
+				className: "text-slate-500 mt-1 text-[15px]",
+				children: "Số hợp đồng có thể sai. Về danh sách để tìm lại."
+			}),
+			/* @__PURE__ */ (0, N.jsx)(M, {
+				to: "/hop-dong",
+				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
+				children: "Về danh sách hợp đồng"
+			})
+		]
+	});
+	let y = (e, t) => f((n) => ({
+		...n,
+		[e]: t
+	})), b = (e, t, n) => m((r) => r.map((r, i) => i === e ? {
+		...r,
+		[t]: n
+	} : r)), x = () => m((e) => [...e, {
+		description: "",
+		unit: "",
+		quantity: "",
+		unitPrice: ""
+	}]), S = (e) => m((t) => t.length > 1 ? t.filter((t, n) => n !== e) : t), C = () => {
+		s("contract_save", {
+			id: u.id,
+			company_id: d.company_id.trim(),
+			agent_id: d.agent_id.trim(),
+			kind: d.kind.trim(),
+			currency: d.currency.trim(),
+			note: d.note.trim(),
+			value: d.value.trim(),
+			hdnt_no: d.hdnt_no.trim(),
+			hdnt_date: d.hdnt_date.trim(),
+			valid_from: d.valid_from.trim(),
+			valid_to: d.valid_to.trim(),
+			pl_no: d.pl_no.trim(),
+			pl_date: d.pl_date.trim(),
+			hdmb_no: d.hdmb_no.trim(),
+			hdmb_date: d.hdmb_date.trim()
+		}), c("Đã gửi lưu " + u.id, "Backend ghi danh tính pháp lý + audit; đọc lại từ Logistics.", "green");
+	}, w = () => {
+		let e = p.map((e) => ({
+			description: e.description.trim(),
+			unit: e.unit.trim(),
+			quantity: e.quantity.trim(),
+			unitPrice: e.unitPrice.trim()
+		}));
+		s("contract_goods_save", {
+			id: u.id,
+			goodsLines: e
+		}), c("Đã gửi lưu hàng hóa " + u.id, "Blank số lượng/đơn giá = UNKNOWN (không bao giờ thành 0).", "green");
+	}, T = () => {
+		s("contract_docgen_generate", { id: u.id }), c("Đã gửi sinh chứng từ " + u.id, "core.docgen kiểm tra threshold 50 triệu & danh tính pháp lý rồi sinh Office thật.", "blue");
+	}, E = (e, t) => {
+		s("contract_docgen_issue", {
+			documentId: e,
+			revision: t
+		}), c("Đã gửi phát hành " + e, "Chứng từ ISSUED sẽ bất biến (không sửa/xóa).", "blue");
+	}, ee = () => {
+		let e = h.trim().toUpperCase();
+		if (!e) {
+			c("Thiếu mã lô", "Nhập mã lô để liên kết (VD: LO-0306).", "red");
+			return;
+		}
+		s("contract_shipment_link", {
+			id: u.id,
+			shipmentId: e
+		}), c("Đã gửi liên kết " + e, "Liên kết N:M hợp đồng ↔ lô qua backend.", "green"), g("");
+	};
+	u.goodsTotals?.total_after_vat;
+	let D = u.thresholdVnd ?? 5e7, te = u.goodsTotals != null && u.goodsTotals.total_after_vat < D, ne = o.filter((e) => !u.linkedShipments.some((t) => t.id === e.id));
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[1300px]",
+		children: [
+			/* @__PURE__ */ (0, N.jsxs)("button", {
+				onClick: () => l(-1),
+				className: "touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
+				children: [/* @__PURE__ */ (0, N.jsx)(hr, { size: 17 }), " Quay lại"]
+			}),
+			/* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
+				children: [
+					/* @__PURE__ */ (0, N.jsx)("div", { className: "h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" }),
+					/* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "p-4 md:p-6",
+						children: [
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "flex flex-wrap items-center gap-2",
+								children: [
+									/* @__PURE__ */ (0, N.jsx)("h1", {
+										className: "text-[22px] md:text-[26px] font-extrabold text-[#0f2a4a]",
+										children: u.id
+									}),
+									/* @__PURE__ */ (0, N.jsx)(ha, {
+										tone: "blue",
+										size: "sm",
+										children: u.kind || "—"
+									}),
+									/* @__PURE__ */ (0, N.jsx)(ha, {
+										tone: u.statusTone,
+										size: "sm",
+										children: u.status
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-semibold text-[15.5px] mt-1",
+								children: u.client || "—"
+							}),
+							/* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3",
+								children: [
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
+										label: "Công ty (mua)",
+										value: V(u.company)
+									}),
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
+										label: "Đại lý (bán)",
+										value: V(u.agent)
+									}),
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
+										label: "Giá trị",
+										value: ua(u.value)
+									}),
+									/* @__PURE__ */ (0, N.jsx)(Ca, {
+										label: "Số lô liên kết",
+										value: String(u.linkedShipments.length)
+									})
+								]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, N.jsx)("div", {
+						id: "contract-tabs",
+						className: "px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3",
+						children: Xa.map((e) => /* @__PURE__ */ (0, N.jsxs)("button", {
+							onClick: () => n({ tab: e.id }),
+							className: B("touch-target shrink-0 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", r === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : "border-slate-200 bg-white text-slate-600"),
+							children: [/* @__PURE__ */ (0, N.jsx)("span", {
+								className: "hidden md:inline",
+								children: e.label
+							}), /* @__PURE__ */ (0, N.jsx)("span", {
+								className: "md:hidden",
+								children: e.short
+							})]
+						}, e.id))
+					})
+				]
+			}),
+			r === "tong-quan" && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-3",
+					children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
+						className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
+						children: [/* @__PURE__ */ (0, N.jsx)(ri, {
+							size: 19,
+							className: "text-[#1e5aa8]"
+						}), " Danh tính pháp lý"]
+					}), /* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "grid sm:grid-cols-2 gap-3",
+						children: [
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Số HDNT",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.hdnt_no,
+									onChange: (e) => y("hdnt_no", e.target.value),
+									placeholder: "HDNT-…/2026",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Ngày HDNT",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.hdnt_date,
+									onChange: (e) => y("hdnt_date", e.target.value),
+									placeholder: "2026-09-01",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Hiệu lực từ",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.valid_from,
+									onChange: (e) => y("valid_from", e.target.value),
+									placeholder: "2026-09-01",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Hiệu lực đến",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.valid_to,
+									onChange: (e) => y("valid_to", e.target.value),
+									placeholder: "2027-08-31",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Số PL",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.pl_no,
+									onChange: (e) => y("pl_no", e.target.value),
+									placeholder: "PL-…/2026",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Ngày PL",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.pl_date,
+									onChange: (e) => y("pl_date", e.target.value),
+									placeholder: "2026-09-02",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Số HDMB",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.hdmb_no,
+									onChange: (e) => y("hdmb_no", e.target.value),
+									placeholder: "HDMB-…/2026",
+									className: U()
+								})
+							}),
+							/* @__PURE__ */ (0, N.jsx)(H, {
+								label: "Ngày HDMB",
+								children: /* @__PURE__ */ (0, N.jsx)("input", {
+									value: d.hdmb_date,
+									onChange: (e) => y("hdmb_date", e.target.value),
+									placeholder: "2026-09-03",
+									className: U()
+								})
+							})
+						]
+					})]
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-3",
+					children: [
+						/* @__PURE__ */ (0, N.jsxs)("h3", {
+							className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
+							children: [/* @__PURE__ */ (0, N.jsx)(yr, {
+								size: 19,
+								className: "text-[#1e5aa8]"
+							}), " Đối tác & thông tin chung"]
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid sm:grid-cols-2 gap-3",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Công ty (bên mua)",
+									required: !0,
+									children: /* @__PURE__ */ (0, N.jsxs)("select", {
+										value: d.company_id,
+										onChange: (e) => y("company_id", e.target.value),
+										className: U(d.company_id ? "ok" : "missing"),
+										children: [/* @__PURE__ */ (0, N.jsx)("option", {
+											value: "",
+											children: "-- Chọn công ty --"
+										}), a.companies.map((e) => /* @__PURE__ */ (0, N.jsx)("option", {
+											value: e.id,
+											children: e.legalName
+										}, e.id))]
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Đại lý (bên bán)",
+									required: !0,
+									children: /* @__PURE__ */ (0, N.jsxs)("select", {
+										value: d.agent_id,
+										onChange: (e) => y("agent_id", e.target.value),
+										className: U(d.agent_id ? "ok" : "missing"),
+										children: [/* @__PURE__ */ (0, N.jsx)("option", {
+											value: "",
+											children: "-- Chọn đại lý --"
+										}), a.agents.map((e) => /* @__PURE__ */ (0, N.jsx)("option", {
+											value: e.id,
+											children: e.legalName
+										}, e.id))]
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Loại",
+									children: /* @__PURE__ */ (0, N.jsxs)("select", {
+										value: d.kind,
+										onChange: (e) => y("kind", e.target.value),
+										className: U(),
+										children: [
+											/* @__PURE__ */ (0, N.jsx)("option", {
+												value: "HDMB",
+												children: "HDMB"
+											}),
+											/* @__PURE__ */ (0, N.jsx)("option", {
+												value: "HDNT",
+												children: "HDNT"
+											}),
+											/* @__PURE__ */ (0, N.jsx)("option", {
+												value: "PL",
+												children: "PL"
+											})
+										]
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Giá trị (VND)",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: d.value,
+										onChange: (e) => y("value", e.target.value),
+										inputMode: "numeric",
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Tiền tệ",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: d.currency,
+										onChange: (e) => y("currency", e.target.value),
+										className: U()
+									})
+								}),
+								/* @__PURE__ */ (0, N.jsx)(H, {
+									label: "Ghi chú",
+									children: /* @__PURE__ */ (0, N.jsx)("input", {
+										value: d.note,
+										onChange: (e) => y("note", e.target.value),
+										className: U()
+									})
+								})
+							]
+						}),
+						u.parties && (u.parties.company || u.parties.agent) && /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid sm:grid-cols-2 gap-3 pt-1",
+							children: [u.parties.company && /* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "rounded-xl bg-slate-50 border p-3",
+								children: [
+									/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] font-bold uppercase text-slate-400",
+										children: "Công ty — hồ sơ pháp lý"
+									}),
+									/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-bold text-[14px] mt-1",
+										children: u.parties.company.legalName
+									}),
+									/* @__PURE__ */ (0, N.jsxs)("p", {
+										className: "text-[12.5px] text-slate-500",
+										children: [
+											u.parties.company.legalCode,
+											" · ",
+											u.parties.company.legalAddress
+										]
+									})
+								]
+							}), u.parties.agent && /* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "rounded-xl bg-slate-50 border p-3",
+								children: [
+									/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] font-bold uppercase text-slate-400",
+										children: "Đại lý — hồ sơ pháp lý"
+									}),
+									/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-bold text-[14px] mt-1",
+										children: u.parties.agent.legalName
+									}),
+									/* @__PURE__ */ (0, N.jsxs)("p", {
+										className: "text-[12.5px] text-slate-500",
+										children: [
+											u.parties.agent.legalCode,
+											" · ",
+											u.parties.agent.legalAddress
+										]
+									})
+								]
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsx)(va, {
+							onClick: C,
+							className: "w-full",
+							children: "💾 LƯU TỔNG QUAN"
+						})
+					]
+				})]
+			}),
+			r === "hang-hoa" && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "space-y-4",
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center justify-between mb-3",
+							children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
+								className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
+								children: [/* @__PURE__ */ (0, N.jsx)(Ti, {
+									size: 19,
+									className: "text-[#1e5aa8]"
+								}), " Hàng hóa hợp đồng"]
+							}), /* @__PURE__ */ (0, N.jsxs)("button", {
+								onClick: x,
+								className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]",
+								children: [/* @__PURE__ */ (0, N.jsx)(F, { size: 15 }), " Thêm dòng"]
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsx)("div", {
+							className: "overflow-x-auto -mx-1",
+							children: /* @__PURE__ */ (0, N.jsxs)("table", {
+								className: "tbl w-full text-[14px] min-w-[720px]",
+								children: [/* @__PURE__ */ (0, N.jsx)("thead", { children: /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+									/* @__PURE__ */ (0, N.jsx)("th", {
+										className: "w-10",
+										children: "STT"
+									}),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "Mô tả hàng hóa" }),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "Đơn vị" }),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "Số lượng" }),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "Đơn giá (VND)" }),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "VAT" }),
+									/* @__PURE__ */ (0, N.jsx)("th", { children: "Thành tiền" }),
+									/* @__PURE__ */ (0, N.jsx)("th", {})
+								] }) }), /* @__PURE__ */ (0, N.jsx)("tbody", { children: p.map((e, t) => {
+									let n = e.quantity.trim() === "" ? null : Number(e.quantity), r = e.unitPrice.trim() === "" ? null : Number(e.unitPrice), i = n != null && r != null ? n * r : null;
+									return /* @__PURE__ */ (0, N.jsxs)("tr", { children: [
+										/* @__PURE__ */ (0, N.jsx)("td", {
+											className: "font-bold text-slate-400",
+											children: t + 1
+										}),
+										/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("input", {
+											value: e.description,
+											onChange: (e) => b(t, "description", e.target.value),
+											placeholder: "Mô tả hàng hóa",
+											className: U()
+										}) }),
+										/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("input", {
+											value: e.unit,
+											onChange: (e) => b(t, "unit", e.target.value),
+											placeholder: "Bộ / chiếc",
+											className: U()
+										}) }),
+										/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("input", {
+											value: e.quantity,
+											onChange: (e) => b(t, "quantity", e.target.value),
+											inputMode: "numeric",
+											placeholder: "—",
+											className: U()
+										}) }),
+										/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("input", {
+											value: e.unitPrice,
+											onChange: (e) => b(t, "unitPrice", e.target.value),
+											inputMode: "numeric",
+											placeholder: "—",
+											className: U()
+										}) }),
+										/* @__PURE__ */ (0, N.jsx)("td", {
+											className: "text-slate-600",
+											children: "8%"
+										}),
+										/* @__PURE__ */ (0, N.jsx)("td", {
+											className: "font-bold whitespace-nowrap",
+											children: ca(i) ? "—" : la(i)
+										}),
+										/* @__PURE__ */ (0, N.jsx)("td", { children: /* @__PURE__ */ (0, N.jsx)("button", {
+											onClick: () => S(t),
+											className: "touch-target inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-600 hover:bg-red-50",
+											"aria-label": "Xóa dòng",
+											children: /* @__PURE__ */ (0, N.jsx)(Hi, { size: 16 })
+										}) })
+									] }, t);
+								}) })]
+							})
+						}),
+						/* @__PURE__ */ (0, N.jsx)(va, {
+							onClick: w,
+							className: "w-full mt-3",
+							children: "💾 LƯU HÀNG HÓA"
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13px] text-slate-500 mt-2",
+							children: "Số lượng / đơn giá để trống = UNKNOWN (“—”), không bao giờ tự thành 0. Dòng trống hoàn toàn sẽ bị bỏ qua."
+						})
+					]
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [
+						/* @__PURE__ */ (0, N.jsx)("h3", {
+							className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
+							children: "Tổng & quyết định chứng từ (backend)"
+						}),
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "grid grid-cols-2 md:grid-cols-4 gap-3 text-center",
+							children: [
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "rounded-xl bg-slate-50 border p-3",
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] text-slate-500 font-semibold",
+										children: "Tổng trước thuế"
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-extrabold text-[17px]",
+										children: la(u.goodsTotals?.subtotal)
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "rounded-xl bg-slate-50 border p-3",
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] text-slate-500 font-semibold",
+										children: "VAT 8%"
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-extrabold text-[17px]",
+										children: la(u.goodsTotals?.vat_amount)
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "rounded-xl bg-blue-50 border border-blue-200 p-3",
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] text-blue-700 font-semibold",
+										children: "Sau thuế"
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-extrabold text-[17px] text-blue-700",
+										children: la(u.goodsTotals?.total_after_vat)
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "rounded-xl bg-violet-50 border border-violet-200 p-3",
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[12px] text-violet-700 font-semibold",
+										children: "Ngưỡng"
+									}), /* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-extrabold text-[17px] text-violet-700",
+										children: la(D)
+									})]
+								})
+							]
+						}),
+						u.goodsTotals == null ? /* @__PURE__ */ (0, N.jsx)("div", {
+							className: "mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13.5px] text-amber-900",
+							children: "Chưa có tổng đáng tin cậy (có dòng UNKNOWN) — không thể thay bằng 0, chứng từ bị chặn cho tới khi đủ dữ liệu."
+						}) : /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: B("mt-3 rounded-xl border-2 p-3.5", te ? "border-emerald-300 bg-emerald-50" : "border-blue-300 bg-blue-50"),
+							children: [/* @__PURE__ */ (0, N.jsx)("p", {
+								className: "font-extrabold text-[15px]",
+								children: te ? "Sau thuế < 50.000.000 ₫ → HDNT + PL" : "Sau thuế ≥ 50.000.000 ₫ → HDMB"
+							}), /* @__PURE__ */ (0, N.jsxs)("p", {
+								className: "text-[13.5px] mt-0.5",
+								children: ["Áp dụng: ", /* @__PURE__ */ (0, N.jsx)("b", { children: u.applicableDocuments.length ? u.applicableDocuments.join(" + ") : "—" })]
+							})]
+						})
+					]
+				})]
+			}),
+			r === "chung-tu" && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "space-y-4",
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [
+						/* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center justify-between mb-3",
+							children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
+								className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2",
+								children: [/* @__PURE__ */ (0, N.jsx)(Zr, {
+									size: 19,
+									className: "text-[#1e5aa8]"
+								}), " Chứng từ HDNT · PL · HDMB"]
+							}), /* @__PURE__ */ (0, N.jsxs)("button", {
+								onClick: T,
+								className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]",
+								children: [/* @__PURE__ */ (0, N.jsx)(Bi, { size: 17 }), " SINH CHỨNG TỪ"]
+							})]
+						}),
+						/* @__PURE__ */ (0, N.jsx)("p", {
+							className: "text-[13.5px] text-slate-500 mb-3",
+							children: "Quy tắc backend: VAT 8% · VND · làm tròn nửa lên từng đồng · sau thuế < 50M → HDNT + PL, ≥ 50M → HDMB. Chỉ sinh khi READY."
+						}),
+						/* @__PURE__ */ (0, N.jsx)("div", {
+							className: "grid sm:grid-cols-2 gap-2.5",
+							children: u.docCards.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+								className: "rounded-xl border-2 p-3.5",
+								style: { borderColor: "var(--slate-200)" },
+								children: [
+									/* @__PURE__ */ (0, N.jsxs)("div", {
+										className: "flex items-center justify-between gap-2",
+										children: [/* @__PURE__ */ (0, N.jsx)("span", {
+											className: "font-extrabold text-[14.5px] text-[#0f2a4a]",
+											children: e.document_type
+										}), /* @__PURE__ */ (0, N.jsx)(ha, {
+											tone: Za[e.state] ?? "gray",
+											size: "sm",
+											children: Qa[e.state] ?? e.state
+										})]
+									}),
+									/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "text-[13px] text-slate-600 mt-1",
+										children: e.reason
+									}),
+									e.missing.length > 0 && /* @__PURE__ */ (0, N.jsx)("ul", {
+										className: "mt-1.5 text-[12.5px] text-amber-800 list-disc pl-4 space-y-0.5",
+										children: e.missing.map((e) => /* @__PURE__ */ (0, N.jsx)("li", { children: e }, e))
+									})
+								]
+							}, e.document_type))
+						})
+					]
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [/* @__PURE__ */ (0, N.jsx)("h3", {
+						className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
+						children: "Chứng từ đã sinh — tải về / phát hành / lịch sử"
+					}), u.documents.length === 0 ? /* @__PURE__ */ (0, N.jsx)("p", {
+						className: "text-[14px] text-slate-500",
+						children: "Chưa có chứng từ nào. Nhập hàng hóa rồi bấm “SINH CHỨNG TỪ”."
+					}) : /* @__PURE__ */ (0, N.jsx)("div", {
+						className: "space-y-2",
+						children: u.documents.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 p-3",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)("span", {
+									className: B("w-9 h-9 rounded-lg grid place-items-center shrink-0", e.status === "ISSUED" ? "bg-emerald-600 text-white" : "bg-blue-100 text-blue-700"),
+									children: e.status === "ISSUED" ? /* @__PURE__ */ (0, N.jsx)(Lr, { size: 18 }) : /* @__PURE__ */ (0, N.jsx)(ri, { size: 18 })
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "flex-1 min-w-[180px]",
+									children: [/* @__PURE__ */ (0, N.jsxs)("p", {
+										className: "font-bold text-[14.5px] text-[#0f2a4a]",
+										children: [
+											e.documentTypeLabel,
+											" · R",
+											e.revision
+										]
+									}), /* @__PURE__ */ (0, N.jsxs)("p", {
+										className: "text-[12.5px] text-slate-500",
+										children: [
+											e.fileName,
+											" · ",
+											e.status,
+											" · ",
+											e.generatedBy ? "bởi " + e.generatedBy : ""
+										]
+									})]
+								}),
+								e.downloadAvailable && e.downloadBase64 && /* @__PURE__ */ (0, N.jsxs)("button", {
+									onClick: () => pa(e.fileName, e.downloadBase64, e.mime),
+									className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 font-bold text-[13.5px] px-3 min-h-[44px]",
+									children: [/* @__PURE__ */ (0, N.jsx)(Gr, { size: 16 }), " Tải"]
+								}),
+								e.status !== "ISSUED" && /* @__PURE__ */ (0, N.jsxs)("button", {
+									onClick: () => E(e.documentId, e.revision),
+									className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[13.5px] px-3 min-h-[44px]",
+									children: [/* @__PURE__ */ (0, N.jsx)(Bi, { size: 15 }), " Phát hành"]
+								}),
+								e.status === "ISSUED" && /* @__PURE__ */ (0, N.jsx)(ha, {
+									tone: "green",
+									size: "sm",
+									children: "ISSUED — bất biến"
+								})
+							]
+						}, e.id))
+					})]
+				})]
+			}),
+			r === "lo-lien-ket" && /* @__PURE__ */ (0, N.jsxs)("div", {
+				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
+				children: [/* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [/* @__PURE__ */ (0, N.jsxs)("h3", {
+						className: "font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3",
+						children: [/* @__PURE__ */ (0, N.jsx)(pi, {
+							size: 19,
+							className: "text-[#1e5aa8]"
+						}), " Lô hàng liên kết"]
+					}), u.linkedShipments.length === 0 ? /* @__PURE__ */ (0, N.jsx)("p", {
+						className: "text-[14px] text-slate-500",
+						children: "Chưa liên kết lô nào."
+					}) : /* @__PURE__ */ (0, N.jsx)("div", {
+						className: "space-y-2",
+						children: u.linkedShipments.map((e) => /* @__PURE__ */ (0, N.jsxs)("div", {
+							className: "flex items-center gap-2.5 rounded-xl border border-slate-200 p-3",
+							children: [
+								/* @__PURE__ */ (0, N.jsx)("span", {
+									className: "w-9 h-9 rounded-lg bg-blue-100 text-blue-700 grid place-items-center",
+									children: /* @__PURE__ */ (0, N.jsx)(Ti, { size: 18 })
+								}),
+								/* @__PURE__ */ (0, N.jsxs)("div", {
+									className: "flex-1 min-w-0",
+									children: [/* @__PURE__ */ (0, N.jsx)("p", {
+										className: "font-bold text-[14.5px] text-[#0f2a4a]",
+										children: e.id
+									}), /* @__PURE__ */ (0, N.jsxs)("p", {
+										className: "text-[12.5px] text-slate-500",
+										children: [
+											e.customer,
+											" · ",
+											e.status
+										]
+									})]
+								}),
+								/* @__PURE__ */ (0, N.jsxs)(M, {
+									to: e.to,
+									className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]",
+									children: ["MỞ ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 15 })]
+								})
+							]
+						}, e.id))
+					})]
+				}), /* @__PURE__ */ (0, N.jsxs)("section", {
+					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
+					children: [/* @__PURE__ */ (0, N.jsx)("h3", {
+						className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
+						children: "Liên kết lô mới"
+					}), ne.length === 0 ? /* @__PURE__ */ (0, N.jsx)("p", {
+						className: "text-[14px] text-slate-500",
+						children: "Tất cả lô đã được liên kết."
+					}) : /* @__PURE__ */ (0, N.jsxs)("div", {
+						className: "grid gap-3",
+						children: [/* @__PURE__ */ (0, N.jsx)(H, {
+							label: "Chọn lô hàng",
+							required: !0,
+							children: /* @__PURE__ */ (0, N.jsxs)("select", {
+								value: h,
+								onChange: (e) => g(e.target.value),
+								className: U(h ? "ok" : "missing"),
+								children: [/* @__PURE__ */ (0, N.jsx)("option", {
+									value: "",
+									children: "-- Chọn lô --"
+								}), ne.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
+									value: e.id,
+									children: [
+										e.id,
+										" · ",
+										e.customer
+									]
+								}, e.id))]
+							})
+						}), /* @__PURE__ */ (0, N.jsx)(va, {
+							onClick: ee,
+							className: "w-full",
+							children: "🔗 LIÊN KẾT LÔ"
+						})]
+					})]
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/pages/NewContract.tsx
+function to() {
+	let { customers: e, dispatch: t, toast: n } = Qn(), r = Ct(), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)("HDMB"), [u, d] = (0, _.useState)("");
+	return /* @__PURE__ */ (0, N.jsxs)("div", {
+		className: "space-y-4 max-w-[760px]",
+		children: [/* @__PURE__ */ (0, N.jsxs)("button", {
+			onClick: () => r(-1),
+			className: "touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
+			children: [/* @__PURE__ */ (0, N.jsx)(hr, { size: 17 }), " Quay lại"]
+		}), /* @__PURE__ */ (0, N.jsxs)("div", {
+			className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-6",
+			children: [
+				/* @__PURE__ */ (0, N.jsx)(_a, {
+					icon: /* @__PURE__ */ (0, N.jsx)(ri, { size: 18 }),
+					title: "Tạo hợp đồng mới",
+					sub: "HDMB / HDNT + Phụ lục — sau khi tạo sẽ nhập hàng hóa, sinh chứng từ và liên kết lô"
+				}),
+				/* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "grid sm:grid-cols-2 gap-3",
+					children: [/* @__PURE__ */ (0, N.jsx)(H, {
+						label: "Số hợp đồng",
+						required: !0,
+						error: i ? void 0 : "Nhập số hợp đồng",
+						children: /* @__PURE__ */ (0, N.jsx)("input", {
+							value: i,
+							onChange: (e) => a(e.target.value),
+							placeholder: "VD: HDMB-0310",
+							className: U(i ? "ok" : "missing")
+						})
+					}), /* @__PURE__ */ (0, N.jsx)(H, {
+						label: "Loại hợp đồng",
+						required: !0,
+						children: /* @__PURE__ */ (0, N.jsxs)("select", {
+							value: c,
+							onChange: (e) => l(e.target.value),
+							className: U(),
+							children: [
+								/* @__PURE__ */ (0, N.jsx)("option", {
+									value: "HDMB",
+									children: "HDMB — Hợp đồng mua bán (≥ 50 triệu)"
+								}),
+								/* @__PURE__ */ (0, N.jsx)("option", {
+									value: "HDNT",
+									children: "HDNT — Hợp đồng nguyên tắc (< 50 triệu)"
+								}),
+								/* @__PURE__ */ (0, N.jsx)("option", {
+									value: "PL",
+									children: "PL — Phụ lục hợp đồng"
+								})
+							]
+						})
+					})]
+				}),
+				/* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "grid gap-3 mt-3",
+					children: [/* @__PURE__ */ (0, N.jsx)(H, {
+						label: "Khách hàng / đối tác",
+						required: !0,
+						error: o ? void 0 : "Chọn khách hàng",
+						children: /* @__PURE__ */ (0, N.jsxs)("select", {
+							value: o,
+							onChange: (e) => s(e.target.value),
+							className: U(o ? "ok" : "missing"),
+							children: [/* @__PURE__ */ (0, N.jsx)("option", {
+								value: "",
+								children: "-- Chọn khách --"
+							}), e.map((e) => /* @__PURE__ */ (0, N.jsxs)("option", {
+								value: e.id,
+								children: [
+									e.name,
+									" (",
+									e.id,
+									")"
+								]
+							}, e.id))]
+						})
+					}), /* @__PURE__ */ (0, N.jsx)(H, {
+						label: "Ghi chú",
+						children: /* @__PURE__ */ (0, N.jsx)("input", {
+							value: u,
+							onChange: (e) => d(e.target.value),
+							placeholder: "Ghi chú nội bộ",
+							className: U()
+						})
+					})]
+				}),
+				/* @__PURE__ */ (0, N.jsxs)("div", {
+					className: "grid grid-cols-2 gap-2.5 mt-5",
+					children: [/* @__PURE__ */ (0, N.jsx)(ba, {
+						onClick: () => r(-1),
+						children: "Hủy"
+					}), /* @__PURE__ */ (0, N.jsx)(va, {
+						onClick: () => {
+							let e = i.trim().toUpperCase();
+							if (!e) {
+								n("Thiếu số hợp đồng", "Nhập số hợp đồng (VD: HDMB-0310).", "red");
+								return;
+							}
+							if (!o) {
+								n("Chưa chọn khách hàng", "Chọn khách hàng / đối tác cho hợp đồng.", "red");
+								return;
+							}
+							t("contract_create", {
+								id: e,
+								customerId: o,
+								kind: c,
+								note: u.trim()
+							}) ? (n("Đã gửi tạo hợp đồng " + e, "Backend ghi + audit; tiếp tục nhập hàng hóa & sinh chứng từ.", "green"), r("/hop-dong/" + e)) : n("Không gửi được", "Component chưa kết nối backend.", "red");
+						},
+						children: "💾 TẠO HỢP ĐỒNG"
+					})]
+				})
+			]
+		})]
+	});
+}
+//#endregion
 //#region src/pages/PhaseB.tsx
-var Ea = {
+var no = {
 	"/khach-hang": "Khách Hàng",
 	"/ngu-canh-doi-tac": "Ngữ cảnh Đối tác",
 	"/kinh-doanh-bao-gia": "Kinh doanh · Báo giá",
@@ -14374,32 +17125,32 @@ var Ea = {
 	"/dich-thuat": "Dịch thuật",
 	"/nguoi-dung": "Người dùng & Vai trò"
 };
-function Da() {
-	let { pathname: e } = bt(), t = Ea[e] ?? "Màn hình phụ";
-	return /* @__PURE__ */ (0, P.jsx)("div", {
+function ro() {
+	let { pathname: e } = bt(), t = no[e] ?? "Màn hình phụ";
+	return /* @__PURE__ */ (0, N.jsx)("div", {
 		className: "max-w-[680px] mx-auto mt-8",
-		children: /* @__PURE__ */ (0, P.jsxs)("div", {
+		children: /* @__PURE__ */ (0, N.jsxs)("div", {
 			className: "rounded-3xl bg-white border border-slate-200 p-8 text-center anim-slide-up",
 			children: [
-				/* @__PURE__ */ (0, P.jsx)("span", {
+				/* @__PURE__ */ (0, N.jsx)("span", {
 					className: "mx-auto w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 grid place-items-center",
-					children: /* @__PURE__ */ (0, P.jsx)(Rr, { size: 26 })
+					children: /* @__PURE__ */ (0, N.jsx)(Ur, { size: 26 })
 				}),
-				/* @__PURE__ */ (0, P.jsx)("h2", {
+				/* @__PURE__ */ (0, N.jsx)("h2", {
 					className: "text-[20px] font-extrabold text-[#0f2a4a] mt-4",
 					children: t
 				}),
-				/* @__PURE__ */ (0, P.jsx)("p", {
+				/* @__PURE__ */ (0, N.jsx)("p", {
 					className: "text-[14.5px] text-slate-500 mt-2 leading-relaxed",
 					children: "Màn hình này chưa triển khai. Phần vận hành cốt lõi — Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô hàng, Tạo Lô Mới và Theo Dõi — đã chạy trên dữ liệu Logistics thật."
 				}),
-				/* @__PURE__ */ (0, P.jsxs)("div", {
+				/* @__PURE__ */ (0, N.jsxs)("div", {
 					className: "flex flex-wrap justify-center gap-2.5 mt-5",
-					children: [/* @__PURE__ */ (0, P.jsxs)(N, {
+					children: [/* @__PURE__ */ (0, N.jsxs)(M, {
 						to: "/",
 						className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-5 min-h-[48px]",
-						children: ["Về Tổng Quan ", /* @__PURE__ */ (0, P.jsx)(mr, { size: 17 })]
-					}), /* @__PURE__ */ (0, P.jsx)(N, {
+						children: ["Về Tổng Quan ", /* @__PURE__ */ (0, N.jsx)(_r, { size: 17 })]
+					}), /* @__PURE__ */ (0, N.jsx)(M, {
 						to: "/lo-hang",
 						className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]",
 						children: "Xem Lô Hàng"
@@ -14411,80 +17162,104 @@ function Da() {
 }
 //#endregion
 //#region src/App.tsx
-function Oa() {
-	return /* @__PURE__ */ (0, P.jsx)("div", {
+function io() {
+	return /* @__PURE__ */ (0, N.jsx)("div", {
 		className: "min-h-[40vh] grid place-items-center",
-		children: /* @__PURE__ */ (0, P.jsx)("p", {
+		children: /* @__PURE__ */ (0, N.jsx)("p", {
 			className: "text-[15px] font-semibold text-slate-500",
 			children: "Đang tải dữ liệu vận hành…"
 		})
 	});
 }
-function ka() {
+function ao() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
-	return /* @__PURE__ */ (0, P.jsx)(Xn, { children: /* @__PURE__ */ (0, P.jsx)(Kt, { children: /* @__PURE__ */ (0, P.jsx)(ha, { children: e ? /* @__PURE__ */ (0, P.jsxs)(Yt, { children: [
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+	return /* @__PURE__ */ (0, N.jsx)(Zn, { children: /* @__PURE__ */ (0, N.jsx)(qt, { children: /* @__PURE__ */ (0, N.jsx)(Ta, { children: e ? /* @__PURE__ */ (0, N.jsxs)(Xt, { children: [
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/",
-			element: /* @__PURE__ */ (0, P.jsx)(va, {})
+			element: /* @__PURE__ */ (0, N.jsx)(Oa, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/viec-can-xu-ly",
-			element: /* @__PURE__ */ (0, P.jsx)(ba, {})
+			element: /* @__PURE__ */ (0, N.jsx)(Aa, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/lo-hang",
-			element: /* @__PURE__ */ (0, P.jsx)(xa, {})
+			element: /* @__PURE__ */ (0, N.jsx)(ja, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/lo-hang/:id",
-			element: /* @__PURE__ */ (0, P.jsx)(Ca, {})
+			element: /* @__PURE__ */ (0, N.jsx)(Na, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/tao-lo-moi",
-			element: /* @__PURE__ */ (0, P.jsx)(wa, {})
+			element: /* @__PURE__ */ (0, N.jsx)(Pa, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "/theo-doi",
-			element: /* @__PURE__ */ (0, P.jsx)(Ta, {})
+			element: /* @__PURE__ */ (0, N.jsx)(Fa, {})
 		}),
-		/* @__PURE__ */ (0, P.jsx)(qt, {
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/khach-hang",
+			element: /* @__PURE__ */ (0, N.jsx)(La, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/kinh-doanh-bao-gia",
+			element: /* @__PURE__ */ (0, N.jsx)(Ua, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/thoa-thuan-ban-giao",
+			element: /* @__PURE__ */ (0, N.jsx)(Ja, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/hop-dong",
+			element: /* @__PURE__ */ (0, N.jsx)(Ya, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/hop-dong/moi",
+			element: /* @__PURE__ */ (0, N.jsx)(to, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
+			path: "/hop-dong/:id",
+			element: /* @__PURE__ */ (0, N.jsx)(eo, {})
+		}),
+		/* @__PURE__ */ (0, N.jsx)(Jt, {
 			path: "*",
-			element: /* @__PURE__ */ (0, P.jsx)(Da, {})
+			element: /* @__PURE__ */ (0, N.jsx)(ro, {})
 		})
-	] }) : /* @__PURE__ */ (0, P.jsx)(Oa, {}) }) }) });
+	] }) : /* @__PURE__ */ (0, N.jsx)(io, {}) }) }) });
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
-function Aa(e) {
+function oo(e) {
 	"@babel/helpers - typeof";
-	return Aa = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+	return oo = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
 		return typeof e;
 	} : function(e) {
 		return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-	}, Aa(e);
+	}, oo(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
-function ja(e, t) {
-	if (Aa(e) != "object" || !e) return e;
+function so(e, t) {
+	if (oo(e) != "object" || !e) return e;
 	var n = e[Symbol.toPrimitive];
 	if (n !== void 0) {
 		var r = n.call(e, t || "default");
-		if (Aa(r) != "object") return r;
+		if (oo(r) != "object") return r;
 		throw TypeError("@@toPrimitive must return a primitive value.");
 	}
 	return (t === "string" ? String : Number)(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
-function Ma(e) {
-	var t = ja(e, "string");
-	return Aa(t) == "symbol" ? t : t + "";
+function co(e) {
+	var t = so(e, "string");
+	return oo(t) == "symbol" ? t : t + "";
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
-function Na(e, t, n) {
-	return (t = Ma(t)) in e ? Object.defineProperty(e, t, {
+function W(e, t, n) {
+	return (t = co(t)) in e ? Object.defineProperty(e, t, {
 		value: n,
 		enumerable: !0,
 		configurable: !0,
@@ -14493,20 +17268,20 @@ function Na(e, t, n) {
 }
 //#endregion
 //#region src/component-entry.tsx
-var Pa = class extends _.Component {
+var G = class extends _.Component {
 	constructor(...e) {
-		super(...e), Na(this, "state", { error: null });
+		super(...e), W(this, "state", { error: null });
 	}
 	static getDerivedStateFromError(e) {
 		return { error: e };
 	}
 	render() {
-		return this.state.error ? /* @__PURE__ */ (0, P.jsx)("div", {
+		return this.state.error ? /* @__PURE__ */ (0, N.jsx)("div", {
 			style: {
 				padding: 24,
 				fontFamily: "inherit"
 			},
-			children: /* @__PURE__ */ (0, P.jsxs)("div", {
+			children: /* @__PURE__ */ (0, N.jsxs)("div", {
 				style: {
 					border: "2px solid #fca5a5",
 					background: "#fef2f2",
@@ -14515,14 +17290,14 @@ var Pa = class extends _.Component {
 					textAlign: "center",
 					color: "#991b1b"
 				},
-				children: [/* @__PURE__ */ (0, P.jsx)("p", {
+				children: [/* @__PURE__ */ (0, N.jsx)("p", {
 					style: {
 						fontWeight: 800,
 						fontSize: 16,
 						margin: 0
 					},
 					children: "Logi-good shell gặp lỗi khi render"
-				}), /* @__PURE__ */ (0, P.jsxs)("p", {
+				}), /* @__PURE__ */ (0, N.jsxs)("p", {
 					style: {
 						fontSize: 13.5,
 						margin: "8px 0 0",
@@ -14537,23 +17312,23 @@ var Pa = class extends _.Component {
 			})
 		}) : this.props.children;
 	}
-}, Fa = null, Ia = null;
-function La(e) {
-	return Ia && e.contains(Ia) ? Ia : (Ia = document.createElement("div"), Ia.className = "logi-shell", e.appendChild(Ia), Ia);
+}, lo = null, uo = null;
+function fo(e) {
+	return uo && e.contains(uo) ? uo : (uo = document.createElement("div"), uo.className = "logi-shell", e.appendChild(uo), uo);
 }
-function Ra(e) {
+function po(e) {
 	D(e.setTriggerValue ?? null);
-	let t = La(e.parentElement);
-	return Fa || (Fa = (0, v.createRoot)(t), Fa.render(/* @__PURE__ */ (0, P.jsx)(Pa, { children: /* @__PURE__ */ (0, P.jsx)(ka, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
+	let t = fo(e.parentElement);
+	return lo || (lo = (0, v.createRoot)(t), lo.render(/* @__PURE__ */ (0, N.jsx)(G, { children: /* @__PURE__ */ (0, N.jsx)(ao, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
 		try {
-			Fa?.unmount();
+			lo?.unmount();
 		} catch {}
-		Fa = null;
+		lo = null;
 		try {
-			Ia?.remove();
+			uo?.remove();
 		} catch {}
-		Ia = null, D(null);
+		uo = null, D(null);
 	};
 }
 //#endregion
-export { Ra as default };
+export { po as default };

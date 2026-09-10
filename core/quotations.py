@@ -164,6 +164,16 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+def allowed_transitions(status: str) -> tuple[str, ...]:
+    """Return the business-legal next statuses for a quote status (display only).
+
+    The transition itself is still enforced by :func:`transition_quote`, which
+    is the single source of truth; this helper only mirrors that map so a UI
+    can offer the allowed choices without re-interpreting the rule.
+    """
+    return tuple(sorted(_ALLOWED_TRANSITIONS.get(str(status or "").upper(), set())))
+
+
 def transition_quote(quote: Mapping[str, Any], next_status: str, actor: str = "system") -> dict[str, Any]:
     current = str(quote.get("status") or "DRAFT").upper(); target = str(next_status or "").upper()
     if target not in QUOTE_STATUSES or (target != current and target not in _ALLOWED_TRANSITIONS.get(current, set())):

@@ -12,6 +12,8 @@
 
 import { applyViewModel, getViewModel, subscribeViewModel } from "./viewmodel";
 import type {
+  Agreement,
+  AuthorityParty,
   Contract,
   Customer,
   Notif,
