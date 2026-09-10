@@ -20,6 +20,12 @@ import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
 import CreateShipment from "./pages/CreateShipment";
 import Tracking from "./pages/Tracking";
+import Customers from "./pages/Customers";
+import SalesQuotes from "./pages/SalesQuotes";
+import Agreements from "./pages/Agreements";
+import Contracts from "./pages/Contracts";
+import ContractDetail from "./pages/ContractDetail";
+import NewContract from "./pages/NewContract";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -45,6 +51,12 @@ export default function App() {
             <Route path="/lo-hang/:id" element={<ShipmentDetail />} />
             <Route path="/tao-lo-moi" element={<CreateShipment />} />
             <Route path="/theo-doi" element={<Tracking />} />
+            <Route path="/khach-hang" element={<Customers />} />
+            <Route path="/kinh-doanh-bao-gia" element={<SalesQuotes />} />
+            <Route path="/thoa-thuan-ban-giao" element={<Agreements />} />
+            <Route path="/hop-dong" element={<Contracts />} />
+            <Route path="/hop-dong/moi" element={<NewContract />} />
+            <Route path="/hop-dong/:id" element={<ContractDetail />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

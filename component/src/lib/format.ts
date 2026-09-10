@@ -65,9 +65,12 @@ export function fmtText(value: string | null | undefined): string {
  */
 export function downloadBinaryFile(
   name: string,
-  base64: string,
+  base64: string | null,
   mime: string
 ): void {
+  // A document that is not yet available on the session store has no bytes —
+  // fail closed instead of throwing on an empty base64 payload.
+  if (!base64) return;
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
