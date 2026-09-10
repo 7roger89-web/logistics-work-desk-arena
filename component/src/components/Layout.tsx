@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
-import { NAV, NOTIFS, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib/data";
+import { NAV, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib/data";
 import type { Role } from "../lib/data";
 import { ICONS } from "./ui";
 import { useStore } from "../lib/store";
@@ -21,7 +21,10 @@ function Logo() {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast } = useStore();
+  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast, notifications } = useStore();
+  // Real alerts from the Logistics readiness projection (no fixed demo list).
+  const notifs = notifications;
+  const notifCount = notifs.length;
   const nav = useNavigate();
   const loc = useLocation();
   const [roleMenu, setRoleMenu] = useState(false);
@@ -119,7 +122,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* notif */}
           <button onClick={() => setNotifOpen(true)} className="relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Thông báo">
             <Bell size={21} className="text-[#0f2a4a]" />
-            <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold grid place-items-center">4</span>
+            {notifCount > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold grid place-items-center">{notifCount}</span>}
           </button>
           <button onClick={() => setQuickAddOpen(true)} className="hidden md:inline-flex touch-target items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[44px] hover:bg-[#14365e]">
             <Plus size={18} /> Thêm
@@ -258,11 +261,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-slate-900/50 anim-fade" onClick={() => setNotifOpen(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-[380px] max-w-[92vw] bg-white shadow-2xl flex flex-col anim-slide-up">
             <div className="flex items-center justify-between p-4 border-b">
-              <p className="font-extrabold text-[16px] text-[#0f2a4a]">Thông báo · 4 chưa đọc</p>
+              <p className="font-extrabold text-[16px] text-[#0f2a4a]">Thông báo · {notifCount} chưa đọc</p>
               <button onClick={() => setNotifOpen(false)} className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {NOTIFS.map((n) => (
+              {notifs.length === 0 && <p className="text-[14px] text-slate-500 p-4 text-center">Không có cảnh báo nào theo dữ liệu hiện tại.</p>}
+              {notifs.map((n) => (
                 <div key={n.id} className="rounded-2xl border border-slate-200 p-3.5 lift">
                   <div className="flex items-start gap-2.5">
                     <span className={cx("w-2.5 h-2.5 rounded-full mt-1.5 shrink-0", n.tone === "red" ? "bg-red-500 pulse-dot" : n.tone === "amber" ? "bg-amber-500" : "bg-blue-500")} />

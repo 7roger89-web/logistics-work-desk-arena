@@ -113,7 +113,8 @@ def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
     # mean the shipment is waiting on customs — derived from real facts only.
     if text(customs.get("tk_no")) or _arrived(arrival.get("arrival_date")):
         return "Chờ thông quan", "amber"
-    if text(transport.get("etd")):
+    # An ETD still in the future means the shipment has not departed yet.
+    if text(transport.get("etd")) and _arrived(transport.get("etd")):
         return "Đang vận chuyển", "blue"
     return "Chờ lấy hàng", "gray"
 

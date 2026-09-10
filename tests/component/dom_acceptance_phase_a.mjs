@@ -33,7 +33,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const require = createRequire(path.join(ROOT, "component/package.json"));
 const { JSDOM } = require("jsdom");
 const VM = JSON.parse(
-  readFileSync(path.join(ROOT, "tests/component/fixtures/view_model_phase_a.json"), "utf8")
+  readFileSync(path.join(ROOT, "tests/component/fixtures/view_model_phase_b.json"), "utf8")
 );
 
 // ---------------------------------------------------------------------------
@@ -247,14 +247,19 @@ console.log("STEP 5 — click Việc Cần Xử Lý");
   const t = bodyText();
   assert.ok(t.includes("Việc Cần Xử Lý"), "Tasks heading missing");
   const rows = $("table.tbl tbody tr");
-  assert.equal(rows.length, 10, `expected 10 task rows, got ${rows.length}`);
-  // filter interaction (donor UI): Khẩn (3)
-  await click("Khẩn (3)", "button");
+  // Real readiness/task evidence — the row count follows the fixture, not a
+  // hardcoded Phase A number.
+  assert.equal(rows.length, VM.tasks.length, `expected ${VM.tasks.length} task rows, got ${rows.length}`);
+  // filter interaction (donor UI): the counts are computed from the real rows
+  const countOf = (level) => VM.tasks.filter((t) => t.level === level).length;
+  const urgent = countOf("Khan");
+  assert.ok(urgent > 0, "expected at least one urgent task in the seed evidence");
+  await click(`Khẩn (${urgent})`, "button");
   const rows2 = $("table.tbl tbody tr");
-  assert.equal(rows2.length, 3, `expected 3 urgent rows, got ${rows2.length}`);
-  await click("Tất cả (10)", "button");
-  assert.equal($("table.tbl tbody tr").length, 10, "filter reset failed");
-  ok("Tasks rendered with 10 rows + working priority filter");
+  assert.equal(rows2.length, urgent, `expected ${urgent} urgent rows, got ${rows2.length}`);
+  await click(`Tất cả (${VM.tasks.length})`, "button");
+  assert.equal($("table.tbl tbody tr").length, VM.tasks.length, "filter reset failed");
+  ok(`Tasks rendered with ${VM.tasks.length} rows + working priority filter`);
 }
 
 // ---------------------------------------------------------------------------
@@ -267,11 +272,11 @@ console.log("STEP 6 — click Lô Hàng");
   const t = bodyText();
   assert.ok(t.includes("Tìm theo mã lô"), "Shipments page missing");
   const rows = $("table.tbl tbody tr");
-  assert.equal(rows.length, 5, `expected 5 shipment rows, got ${rows.length}`);
-  for (const id of ["LO-0306", "LO-0307", "LO-0308", "LO-0299", "LO-0295"]) {
+  assert.equal(rows.length, VM.shipments.length, `expected ${VM.shipments.length} shipment rows, got ${rows.length}`);
+  for (const id of VM.shipments.map((x) => x.id)) {
     assert.ok(t.includes(id), `shipment ${id} missing`);
   }
-  ok("Shipments rendered with 5 sandbox lots");
+  ok(`Shipments rendered with ${VM.shipments.length} real lots`);
 }
 
 // ---------------------------------------------------------------------------
@@ -286,9 +291,16 @@ console.log("STEP 7 — open LO-0306");
   const t = bodyText();
   assert.ok(t.includes("Chờ thông quan"), "status badge missing");
   assert.ok(t.includes("An Phát"), "customer missing");
-  assert.ok(t.includes("Thiếu 4 thông tin"), "missing-info chip missing");
-  assert.ok(t.includes("Đang thiếu 2 thông tin"), "missing-docs box missing");
-  ok("Shipment Detail LO-0306 rendered (status, missing states)");
+  // Real readiness facts: the chip and the box must agree on one count.
+  const lot = VM.shipments.find((x) => x.id === "LO-0306");
+  const missing = lot.missingDocs.length;
+  assert.ok(missing > 0, "expected LO-0306 to have genuinely missing facts");
+  assert.ok(t.includes(`Thiếu ${missing} thông tin`), "missing-info chip missing");
+  assert.ok(t.includes(`Đang thiếu ${missing} thông tin`), "missing-docs box missing");
+  for (const fact of lot.missingDocs) {
+    assert.ok(t.includes(fact), `missing fact not listed: ${fact}`);
+  }
+  ok(`Shipment Detail LO-0306 rendered (status, ${missing} real missing facts)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -328,8 +340,8 @@ console.log("STEP 9 — global search");
   type(search, "an phát");
   await tick();
   const t = bodyText();
-  assert.ok(t.includes("LO-0306 · An Phát"), "search result for 'an phát' missing");
-  const found = findClickable("LO-0306 · An Phát", "button");
+  assert.ok(t.includes("LO-0306 · An Phát JSC"), "search result for 'an phát' missing");
+  const found = findClickable("LO-0306 · An Phát JSC", "button");
   assert.ok(found, "search result button missing");
   found.click();
   await tick();
@@ -341,7 +353,7 @@ console.log("STEP 9 — global search");
   await tick();
   assert.ok(bodyText().includes("Không tìm thấy"), "search empty state missing");
   search2.dispatchEvent(new window.Event("blur", { bubbles: true }));
-  ok("search finds LO-0306 · An Phát, navigates, shows empty state");
+  ok("search finds LO-0306 · An Phát JSC, navigates, shows empty state");
 }
 
 // ---------------------------------------------------------------------------
@@ -374,8 +386,8 @@ console.log("STEP 11 — Notifications");
 {
   await clickSelector("header button[aria-label='Thông báo']");
   const t = bodyText();
-  assert.ok(t.includes("Thông báo · 4 chưa đọc"), "notifications drawer missing");
-  for (const n of ["LO-0306 · Chờ số tờ khai — hạn 17:00", "LO-0308 · Chưa có xe TQ", "LO-0306 · Tạm ứng đợt 2", "LO-0295 · Đã giao 07:30"]) {
+  assert.ok(t.includes(`Thông báo · ${VM.notifications.length} chưa đọc`), "notifications drawer missing");
+  for (const n of VM.notifications.map((x) => x.title)) {
     assert.ok(t.includes(n), `notification missing: ${n}`);
   }
   // close: X button inside the drawer header
@@ -384,8 +396,8 @@ console.log("STEP 11 — Notifications");
   assert.ok(closeBtn, "notif close button missing");
   closeBtn.click();
   await tick();
-  assert.ok(!bodyText().includes("Thông báo · 4 chưa đọc"), "notifications did not close");
-  ok("Notifications opens with 4 items and closes");
+  assert.ok(!bodyText().includes(`Thông báo · ${VM.notifications.length} chưa đọc`), "notifications did not close");
+  ok(`Notifications opens with ${VM.notifications.length} items and closes`);
 }
 
 // ---------------------------------------------------------------------------
@@ -422,7 +434,7 @@ console.log("STEP 12 — rerender survival");
 }
 
 // ---------------------------------------------------------------------------
-// STEP 13 — typed v2 event contract (save actions emit shipment_update)
+// STEP 13 — typed v2 event contract (Phase B write events)
 // ---------------------------------------------------------------------------
 
 console.log("STEP 13 — v2 typed events");
@@ -435,14 +447,17 @@ console.log("STEP 13 — v2 typed events");
   await click("✅ XÁC NHẬN ĐÃ GIAO HÀNG", "button");
   assert.ok(bodyText().includes("Xác nhận đã giao LO-0299?"), "delivery modal missing");
   await click("✅ ĐÃ GIAO", "button");
-  assert.ok(bodyText().includes("ĐÃ GIAO HÀNG XONG"), "delivery confirmation missing");
-  const ev = triggers.find((t) => t.event === "shipment_update");
-  assert.ok(ev, "shipment_update trigger not emitted");
+  // Phase B: the UI no longer flips the state locally. It emits ONE typed
+  // delivery_confirm event; the delivered banner appears only after the
+  // backend writes, audits and returns a fresh read.
+  assert.ok(bodyText().includes("Đã gửi xác nhận giao hàng LO-0299"), "delivery dispatch toast missing");
+  const ev = triggers.find((t) => t.event === "delivery_confirm");
+  assert.ok(ev, "delivery_confirm trigger not emitted");
   assert.ok(ev.value && typeof ev.value.seq === "number", "trigger payload missing seq");
-  assert.equal(ev.value.event, "shipment_update", "trigger payload missing event name");
-  assert.equal(ev.value.payload.shipment.id, "LO-0299", "trigger payload missing shipment id");
-  assert.equal(ev.value.payload.shipment.status, "Đã giao", "trigger shipment not updated");
-  ok("delivery save → shipment_update {seq, event, payload.shipment} emitted");
+  assert.equal(ev.value.event, "delivery_confirm", "trigger payload missing event name");
+  assert.equal(ev.value.payload.shipmentId, "LO-0299", "trigger payload missing shipment id");
+  assert.ok(ev.value.payload.deliveredAt, "trigger payload missing deliveredAt");
+  ok("delivery save → delivery_confirm {seq, event, payload.shipmentId} emitted");
 
   // LO-0308: save pickup tab (missing-info flow)
   await click("Lô Hàng", "a", $("aside")[0]);
@@ -452,14 +467,79 @@ console.log("STEP 13 — v2 typed events");
   type(plate, "粤B·20T99");
   await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
   assert.ok(bodyText().includes("Đã lưu thông tin lấy hàng LO-0308"), "save toast missing");
-  const evs = triggers.filter((t) => t.event === "shipment_update");
-  assert.equal(evs.length, 2, `expected 2 shipment_update events, got ${evs.length}`);
-  assert.ok(evs[1].value.seq > evs[0].value.seq, "event seq must increase");
-  assert.equal(evs[1].value.payload.shipment.pickup.plate, "粤B·20T99", "pickup save payload wrong");
-  ok("pickup save → second shipment_update with increasing seq");
+  const evs = triggers.filter((t) => t.event === "shipment_field_save");
+  assert.equal(evs.length, 1, `expected 1 shipment_field_save event, got ${evs.length}`);
+  assert.ok(evs[0].value.seq > ev.value.seq, "event seq must increase");
+  assert.equal(evs[0].value.payload.shipmentId, "LO-0308", "field save payload wrong shipment");
+  assert.equal(evs[0].value.payload.fields.container_no, "粤B·20T99", "field save payload wrong plate");
+  assert.ok(
+    !Object.values(evs[0].value.payload.fields).some((v) => v === "" || v === null),
+    "field save must not send blank/UNKNOWN values"
+  );
+  ok("pickup save → shipment_field_save with increasing seq, blanks omitted");
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// STEP 14 — Phase B: Create Shipment (real workflow)
+// ---------------------------------------------------------------------------
+
+console.log("STEP 14 — Create Shipment");
+{
+  await click("Tạo Lô Mới", "a", $("aside")[0]);
+  const t14 = bodyText();
+  assert.ok(t14.includes("Tạo Lô Hàng Mới"), "create page missing");
+  assert.ok(t14.includes("Chọn báo giá đã chốt"), "quote prefill section missing");
+  // Pick an accepted quote: this is the real prefill path (known values are
+  // carried over so only the genuinely missing fields are asked for).
+  const quote = VM.quotes.find((q) => (q.status || "").toLowerCase().includes("accept"));
+  assert.ok(quote, "seed has no accepted quote to prefill from");
+  assert.ok(t14.includes(quote.id), `accepted quote ${quote.id} not offered`);
+  await click(quote.id, "button");
+  assert.ok(bodyText().includes("Đã nạp báo giá " + quote.id), "quote prefill toast missing");
+  assert.ok(bodyText().includes("Quote Estimate chỉ dùng để điền trước"), "quote/actual separation missing");
+
+  const code = $('input[placeholder="LO-0470"]')[0];
+  assert.ok(code, "shipment code input missing");
+  type(code, "LO-0470");
+  const selects = $("select");
+  assert.ok(selects.length >= 2, "customer/contract selects missing");
+  selects[0].value = VM.customers[0].name;
+  selects[0].dispatchEvent(new window.Event("change", { bubbles: true }));
+  await tick();
+
+  await click("TẠO LÔ HÀNG", "button");
+  await tick();
+  const created = triggers.filter((x) => x.event === "shipment_create");
+  assert.equal(created.length, 1, `expected 1 shipment_create event, got ${created.length}`);
+  assert.equal(created[0].value.payload.shipmentId, "LO-0470", "create payload wrong id");
+  assert.equal(created[0].value.payload.customer, VM.customers[0].name, "create payload wrong customer");
+  ok("Create Shipment → shipment_create {shipmentId, customer, ...} emitted");
+}
+
+// ---------------------------------------------------------------------------
+// STEP 15 — Phase B: Tracking (real transport facts, no fabricated GPS)
+// ---------------------------------------------------------------------------
+
+console.log("STEP 15 — Tracking");
+{
+  await click("Theo Dõi Vận Chuyển", "a", $("aside")[0]);
+  const t15 = bodyText();
+  assert.ok(t15.includes("Theo Dõi Vận Chuyển"), "tracking page missing");
+  assert.ok(t15.includes("Không mô phỏng vị trí GPS"), "no-GPS disclaimer missing");
+  assert.ok(t15.includes("LO-0299"), "tracking lot list missing LO-0299");
+  const lot = VM.shipments.find((x) => x.id === "LO-0299");
+  await click("LO-0299", "button");
+  const t15b = bodyText();
+  assert.ok(t15b.includes(lot.tracking.carrier), "carrier missing");
+  assert.ok(t15b.includes(lot.tracking.reference), "tracking reference missing");
+  assert.ok(t15b.includes("Mốc vận chuyển"), "milestones section missing");
+  for (const m of lot.tracking.milestones.slice(0, 2)) {
+    assert.ok(t15b.includes(m.title), `milestone missing: ${m.title}`);
+  }
+  ok(`Tracking renders real carrier/reference + ${lot.tracking.milestones.length} milestones`);
+}
+
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);
 window.close();
 process.exit(0);

@@ -97,6 +97,8 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
     def _stage_rows(stage: str) -> list[dict[str, Any]]:
         return [row for row in rows if row["status"] == stage]
 
+    running = [row for row in rows if row["status"] not in {"Đã giao", "Đã hủy"}]
+
     def _tile(label: str, stage: str) -> dict[str, Any]:
         matches = _stage_rows(stage)
         return {
@@ -106,7 +108,6 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
             "to": f"/lo-hang/{matches[0]['id']}" if matches else "/lo-hang",
         }
 
-    running = [row for row in rows if row["status"] not in {"Đã giao", "Đã hủy"}]
     delivered = _stage_rows("Đã giao")
 
     outstanding = [row["finance"]["outstanding"] for row in rows
@@ -118,7 +119,12 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
 
     return {
         "tiles": [
-            _tile("Lô đang chạy", "Đang vận chuyển"),
+            {
+                "label": "Lô đang chạy",
+                "value": len(running),
+                "sub": ", ".join(r["id"] for r in running[:4]) or rd.UNKNOWN_LABEL,
+                "to": "/lo-hang",
+            },
             _tile("Chờ lấy hàng", "Chờ lấy hàng"),
             _tile("Đang vận chuyển", "Đang vận chuyển"),
             _tile("Chờ thông quan", "Chờ thông quan"),

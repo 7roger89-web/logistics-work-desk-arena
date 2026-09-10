@@ -40,11 +40,16 @@ export default function ShipmentDetail() {
   // dispatcher → RBAC → existing writer → audit → fresh backend read. The UI
   // is then refreshed from the backend; nothing here mutates business state.
   // -----------------------------------------------------------------------
-  const onlyFilled = (keys: Record<string, string>) => {
+  /**
+   * Keep only the fields the operator actually filled. Keys are the canonical
+   * shipment paths; values are already resolved by `val()`. Blank stays absent
+   * so an UNKNOWN value is never written as an empty/zero fact.
+   */
+  const onlyFilled = (resolved: Record<string, string | null | undefined>) => {
     const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(keys)) {
-      const next = (form[k] ?? "").trim();
-      if (next.length > 0) out[k] = next;
+    for (const [key, value] of Object.entries(resolved)) {
+      const next = (value ?? "").trim();
+      if (next.length > 0) out[key] = next;
     }
     return out;
   };
@@ -136,7 +141,18 @@ export default function ShipmentDetail() {
     else toast("Không gửi được", "Component chưa kết nối backend.", "red");
   };
 
-  const missingCount = s.missingDocs.length + s.docs.filter((d) => !d.ok).length;
+  // `missingDocs` is already the not-ok subset of `docs`; counting both
+  // double-counted the same facts (chip said 8 while the box listed 4).
+  // The document checklist emits real Logistics fact names; route each to the
+  // tab that actually owns that field (Phase B labels, not Phase A wording).
+  const missingTarget = (m: string): string => {
+    if (/tờ khai|thông quan|xe giao|giao hàng/i.test(m)) return "nhap";
+    if (/lấy hàng|xe TQ|biển số|packing|container/i.test(m)) return "lay-hang";
+    if (/chứng từ|PXK|HDMB|PL$/i.test(m)) return "chung-tu";
+    return "nhap";
+  };
+
+  const missingCount = s.missingDocs.length;
 
   return (
     <div className="space-y-4 max-w-[1300px]">
@@ -178,7 +194,7 @@ export default function ShipmentDetail() {
           <p className="font-extrabold text-[15px] text-red-800 flex items-center gap-2 mb-2.5"><CircleAlert size={18} /> Đang thiếu {s.missingDocs.length} thông tin — bấm để bổ sung ngay:</p>
           <div className="grid gap-2 md:grid-cols-2">
             {s.missingDocs.map((m) => (
-              <MissingBox key={m} what={m} actionLabel="Bổ sung ngay" onAction={() => { if (m.includes("tờ khai") || m.includes("Xe VN")) setSp({ tab: "nhap" }); else if (m.includes("Biển số") || m.includes("giờ lấy") || m.includes("Packing")) setSp({ tab: "lay-hang" }); else setSp({ tab: "tai-chinh" }); setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }} />
+              <MissingBox key={m} what={m} actionLabel="Bổ sung ngay" onAction={() => { setSp({ tab: missingTarget(m) }); setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }} />
             ))}
           </div>
         </div>

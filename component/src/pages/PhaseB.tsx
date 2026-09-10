@@ -1,12 +1,12 @@
-// Bounded "chưa triển khai Phase A" state for secondary destinations.
+// Bounded "chưa triển khai" state for the remaining Phase C destinations.
 // The donor shell/navigation stays identical; only these screens are deferred.
+// Phase B already wired the operational core (Tổng Quan, Việc Cần Xử Lý,
+// Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi) to the real Logistics backend.
 
 import { Link, useLocation } from "react-router-dom";
 import { Construction, ArrowRight } from "lucide-react";
 
 const PATH_NAMES: Record<string, string> = {
-  "/tao-lo-moi": "Tạo Lô Mới",
-  "/theo-doi": "Theo Dõi Vận Chuyển",
   "/khach-hang": "Khách Hàng",
   "/ngu-canh-doi-tac": "Ngữ cảnh Đối tác",
   "/kinh-doanh-bao-gia": "Kinh doanh · Báo giá",
@@ -34,9 +34,9 @@ export function PhaseBPlaceholder() {
         </span>
         <h2 className="text-[20px] font-extrabold text-[#0f2a4a] mt-4">{name}</h2>
         <p className="text-[14.5px] text-slate-500 mt-2 leading-relaxed">
-          Chưa triển khai Phase A — shell Logi-good đang chạy với dữ liệu
-          sandbox. Tổng Quan, Việc Cần Xử Lý, Lô Hàng và Chi tiết lô hàng đã
-          sẵn sàng.
+          Màn hình này chưa triển khai. Phần vận hành cốt lõi — Tổng Quan,
+          Việc Cần Xử Lý, Lô Hàng, Chi tiết lô hàng, Tạo Lô Mới và Theo Dõi —
+          đã chạy trên dữ liệu Logistics thật.
         </p>
         <div className="flex flex-wrap justify-center gap-2.5 mt-5">
           <Link

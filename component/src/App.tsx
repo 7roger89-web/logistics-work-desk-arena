@@ -3,9 +3,10 @@
 //   * BrowserRouter → MemoryRouter: route state is component-local and does
 //     not require a Python rerun for ordinary navigation (donor routing API
 //     — Link/NavLink/useNavigate/useParams/useSearchParams — is unchanged).
-//   * Secondary (Phase B/C) destinations render a bounded
-//     "chưa triển khai Phase A" state; the shell/navigation structure stays
-//     donor-identical.
+//   * Phase B wired Home, Tasks, Shipments, Shipment Detail, Create Shipment
+//     and Tracking to real Logistics data. The remaining Phase C destinations
+//     render a bounded "chưa triển khai" state; the shell/navigation structure
+//     stays donor-identical.
 // ============================================================================
 
 import { useSyncExternalStore } from "react";
@@ -17,6 +18,8 @@ import Home from "./pages/Home";
 import Tasks from "./pages/Tasks";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
+import CreateShipment from "./pages/CreateShipment";
+import Tracking from "./pages/Tracking";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -40,6 +43,8 @@ export default function App() {
             <Route path="/viec-can-xu-ly" element={<Tasks />} />
             <Route path="/lo-hang" element={<Shipments />} />
             <Route path="/lo-hang/:id" element={<ShipmentDetail />} />
+            <Route path="/tao-lo-moi" element={<CreateShipment />} />
+            <Route path="/theo-doi" element={<Tracking />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

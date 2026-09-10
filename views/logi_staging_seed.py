@@ -136,6 +136,7 @@ def _shipment(
     details: list[dict[str, Any]] | None = None,
     payments: list[dict[str, Any]] | None = None,
     entrustment: dict[str, Any] | None = None,
+    customer_required_date: str = "",
 ) -> dict[str, Any]:
     doc: dict[str, Any] = {
         "id": sid,
@@ -151,6 +152,7 @@ def _shipment(
         "is_archived": False,
         "created_at": _now(),
         "updated_at": _now(),
+        **({"customer_required_date": customer_required_date} if customer_required_date else {}),
         "data": {
             "0.0": {"st": status, "created_at": created, "mode": mode, "incoterm": incoterm},
             "1.2": dict(transport or {}),
@@ -236,6 +238,7 @@ def build_shipments() -> list[dict[str, Any]]:
         _shipment(
             sid="LO-0308", customer="Minh Đức JSC", customer_id="CUST-MINHDUC",
             contract_id="", status="wait", created="2026-09-06",
+            customer_required_date="2026-09-12",
             transport={
                 "booking_no": "", "carrier": "", "etd": "2026-09-12",
                 "pol": "Đông Bằng (Quảng Tây)", "pod": "Hữu Nghị (Lạng Sơn)",
@@ -257,6 +260,7 @@ def build_shipments() -> list[dict[str, Any]]:
         _shipment(
             sid="LO-0299", customer="Hồng Hà Co.", customer_id="CUST-HONGHA",
             contract_id="", status="pending", created="2026-09-01",
+            customer_required_date="2026-09-08",
             transport={
                 "booking_no": "BKG-0299", "carrier": "Bộ (đường bộ TQ–VN)",
                 "etd": "2026-09-05", "pol": "Bằng Tường (Quảng Tây)",

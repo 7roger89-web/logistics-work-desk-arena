@@ -27,9 +27,12 @@ import {
   subscribeViewModel,
   unknownLabel,
   type Contract,
+  type Customer,
   type Environment,
   type Home,
+  type Notif,
   type Role,
+  type Quote,
   type Shipment,
   type Task,
 } from "./viewmodel";
@@ -61,7 +64,10 @@ interface StoreShape {
   toast: (title: string, desc?: string, tone?: Toast["tone"]) => void;
   shipments: Shipment[];
   contracts: Contract[];
+  customers: Customer[];
+  quotes: Quote[];
   tasks: Task[];
+  notifications: Notif[];
   home: Home | null;
   environment: Environment | null;
   unknownLabel: string;
@@ -113,6 +119,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const contracts = useMemo(() => vm?.contracts ?? [], [vm]);
   const tasks = useMemo(() => vm?.tasks ?? [], [vm]);
+  const customers = useMemo(() => vm?.customers ?? [], [vm]);
+  const quotes = useMemo(() => vm?.quotes ?? [], [vm]);
+  const notifications = useMemo(() => vm?.notifications ?? [], [vm]);
   const home = useMemo(() => vm?.home ?? null, [vm]);
   const environment = useMemo(() => vm?.environment ?? null, [vm]);
 
@@ -181,7 +190,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       shipments,
       contracts,
+      customers,
+      quotes,
       tasks,
+      notifications,
       home,
       environment,
       unknownLabel: unknownLabel(),
@@ -201,7 +213,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       shipments,
       contracts,
+      customers,
+      quotes,
       tasks,
+      notifications,
       home,
       environment,
       dispatch,
