@@ -546,6 +546,45 @@ export interface ReceivablesViewModel {
   totals: ReceivableTotals;
 }
 
+/**
+ * C2D — one row of the global partner-payable (THANH TOÁN ĐỐI TÁC / PHẢI TRẢ)
+ * worklist. Grain: SHIPMENT × PARTNER × CURRENCY. payable/paid/remaining are
+ * derived from the canonical ledger (obligation + allocation history). A
+ * shipment/partner with no canonical record contributes NO row at all
+ * (UNKNOWN != ZERO — absence is never a manufactured 0). Currencies are
+ * never summed together (no FX engine).
+ */
+export interface PartnerPayableRow {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  shipmentId: string;
+  currency: string;
+  payable: MaybeNum;
+  paid: MaybeNum;
+  remaining: MaybeNum;
+  status: string;
+  obligationIds: string[];
+}
+
+export interface PartnerPayableTotals {
+  [currency: string]: {
+    payable: number;
+    paid: number;
+    remaining: number;
+    count: number;
+  };
+}
+
+export interface PartnerPayablesViewModel {
+  rows: PartnerPayableRow[];
+  totals: PartnerPayableTotals;
+  status?: string;
+  derived?: boolean;
+  readOnly?: boolean;
+  error?: string;
+}
+
 export interface HomeTile {
   label: string;
   value: number;
@@ -606,6 +645,8 @@ export interface ViewModel {
   notifications: Notif[];
   /** C2C — global customer-receivable worklist (read-only projection). */
   receivables?: ReceivablesViewModel;
+  /** C2D — global partner-payable worklist (read-only projection). */
+  payables?: PartnerPayablesViewModel;
   unknownLabel?: string;
 }
 

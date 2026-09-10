@@ -114,7 +114,7 @@ def test_c2d_global_read_is_empty_without_any_canonical_payable(staging):
     NO row — absence is never reported as a 0 payable."""
     worklist = _worklist()
     assert worklist["rows"] == []
-    assert worklist["totals_by_currency"] == {}
+    assert worklist["totals"] == {}
     assert worklist["status"] == "UNKNOWN"
 
 
@@ -206,7 +206,7 @@ def test_c2d_multi_currency_separation(staging, event_seq):
     assert usd["payable"] == 1_500.0
     # The two currencies are never combined into a single figure.
     assert vnd["payable"] != usd["payable"]
-    assert set(worklist["totals_by_currency"].keys()) == {"VND", "USD"}
+    assert set(worklist["totals"].keys()) == {"VND", "USD"}
     assert "grand_total" not in worklist and "total" not in worklist
 
 
@@ -229,7 +229,7 @@ def test_c2d_payment_from_global_row_updates_fresh_readback(staging, event_seq):
     assert after["paid"] == PAY_ONE
     assert after["remaining"] == ACCRUED_COST - PAY_ONE
 
-    totals = _worklist()["totals_by_currency"][CCY]
+    totals = _worklist()["totals"][CCY]
     assert totals["paid"] >= PAY_ONE
     assert totals["remaining"] == totals["payable"] - totals["paid"]
 

@@ -425,7 +425,7 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
     db = get_db() if db is None else db
     empty: dict[str, Any] = {
         "rows": [],
-        "totals_by_currency": {},
+        "totals": {},
         "status": "UNKNOWN",
         "derived": True,
         "read_only": True,
@@ -525,7 +525,7 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
     )
     return {
         "rows": rows,
-        "totals_by_currency": totals,
+        "totals": totals,
         "status": overall,
         "derived": True,
         "read_only": True,
