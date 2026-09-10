@@ -3,8 +3,11 @@
 // component runtime:
 //   * shipments/contracts now come from the Python view-model (sandbox seed
 //     in Phase A) instead of baked-in mock data;
-//   * `updateShipment` applies an optimistic local update and emits the
-//     `shipment_update` typed event through the single v2 dispatcher;
+//   * `dispatch` sends ONE typed Phase B event to the single Python
+//     dispatcher; the backend performs RBAC → existing writer → audit →
+//     fresh read and returns the authoritative view-model;
+//   * `updateShipment` is an optimistic render aid only (legacy
+//     `shipment_update` echo) and never counts as persistence;
 //   * all UI state (role switcher, search, drawers, toasts) is component-
 //     local, exactly as in the donor prototype.
 // ============================================================================
@@ -22,11 +25,15 @@ import {
 import {
   getViewModel,
   subscribeViewModel,
+  unknownLabel,
   type Contract,
+  type Environment,
+  type Home,
   type Role,
   type Shipment,
+  type Task,
 } from "./viewmodel";
-import { dispatchLogiEvent } from "./dispatcher";
+import { dispatchLogiEvent, type LogiEventName } from "./dispatcher";
 
 export interface Toast {
   id: number;
@@ -54,6 +61,15 @@ interface StoreShape {
   toast: (title: string, desc?: string, tone?: Toast["tone"]) => void;
   shipments: Shipment[];
   contracts: Contract[];
+  tasks: Task[];
+  home: Home | null;
+  environment: Environment | null;
+  unknownLabel: string;
+  /**
+   * Send ONE typed event to the single Python dispatcher. Persistence is
+   * proven by the backend, which returns a fresh readback on the next render.
+   */
+  dispatch: (event: LogiEventName, payload: unknown) => boolean;
   updateShipment: (id: string, fn: (old: Shipment) => Shipment) => void;
 }
 
@@ -96,6 +112,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [vm, overrides]);
 
   const contracts = useMemo(() => vm?.contracts ?? [], [vm]);
+  const tasks = useMemo(() => vm?.tasks ?? [], [vm]);
+  const home = useMemo(() => vm?.home ?? null, [vm]);
+  const environment = useMemo(() => vm?.environment ?? null, [vm]);
+
+  const dispatch = useCallback(
+    (event: LogiEventName, payload: unknown) => dispatchLogiEvent(event, payload),
+    []
+  );
 
   const updateShipment = useCallback(
     (id: string, fn: (old: Shipment) => Shipment) => {
@@ -104,6 +128,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         Object.values(overrides).find((s) => s.id === id);
       if (!current) return;
       const next = fn(current);
+      // Optimistic render only. The authoritative value comes back from the
+      // backend on the next view-model delivery; material writes go through
+      // the typed Phase B events (`dispatch`), never through this path.
       setOverrides((o) => ({ ...o, [id]: next }));
       dispatchLogiEvent("shipment_update", { shipment: next });
     },
@@ -154,6 +181,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       shipments,
       contracts,
+      tasks,
+      home,
+      environment,
+      unknownLabel: unknownLabel(),
+      dispatch,
       updateShipment,
     }),
     [
@@ -169,6 +201,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast,
       shipments,
       contracts,
+      tasks,
+      home,
+      environment,
+      dispatch,
       updateShipment,
     ]
   );

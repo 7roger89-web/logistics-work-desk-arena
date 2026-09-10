@@ -15,6 +15,13 @@ export default function Tasks() {
   const [filter, setFilter] = useState<"ALL" | "Khan" | "CanXuLy" | "BinhThuong">("ALL");
   const [q, setQ] = useState("");
   const list = useMemo(() => TASKS.filter((t) => (filter === "ALL" || t.level === filter) && (!q || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(q.toLowerCase()))), [filter, q]);
+  // Real counts from the readiness/task evidence — never a hardcoded KPI.
+  const counts = useMemo(() => ({
+    ALL: TASKS.length,
+    Khan: TASKS.filter((t) => t.level === "Khan").length,
+    CanXuLy: TASKS.filter((t) => t.level === "CanXuLy").length,
+    BinhThuong: TASKS.filter((t) => t.level === "BinhThuong").length,
+  }), [TASKS.length, TASKS]);
 
   return (
     <div className="space-y-4 max-w-[1300px]">
@@ -24,7 +31,7 @@ export default function Tasks() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Lọc theo mã lô, khách hàng, người phụ trách…" className="flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] focus:border-[#1e5aa8] outline-none" />
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {(["ALL", "Khan", "CanXuLy", "BinhThuong"] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={cx("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-bold", filter === f ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}>{f === "ALL" ? "Tất cả (10)" : f === "Khan" ? "Khẩn (3)" : f === "CanXuLy" ? "Cần xử lý (4)" : "Bình thường (3)"}</button>
+              <button key={f} onClick={() => setFilter(f)} className={cx("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-bold", filter === f ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}>{f === "ALL" ? `Tất cả (${counts.ALL})` : f === "Khan" ? `Khẩn (${counts.Khan})` : f === "CanXuLy" ? `Cần xử lý (${counts.CanXuLy})` : `Bình thường (${counts.BinhThuong})`}</button>
             ))}
           </div>
         </div>

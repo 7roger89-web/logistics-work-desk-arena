@@ -1,18 +1,27 @@
 // ============================================================================
-// View-model contract — LOGI-GOOD / Logistics Work Desk (Phase A)
+// View-model contract — LOGI-GOOD / Logistics Work Desk (Phase B)
 //
-// This is the typed contract for data that flows:
-//   Python Logistics view-model → Streamlit Components v2 `data` channel
+// Typed contract for data that flows:
+//   Python Logistics view-model (views/logi_real_data.py, over the CURRENT
+//   Logistics readers) → Streamlit Components v2 `data` channel
 //   → this module (applyViewModel) → React store / lib-data live arrays.
 //
-// Phase A: the Python view-model is backed by sandbox seed data only
-// (no production DB, no credentials). The shape mirrors the real Logistics
-// app entities so Phase B can swap the Python source without touching UI.
+// Phase B changed the DATA SOURCE and the business actions. The visible donor
+// UI is frozen, so the page-level field names are unchanged.
+//
+// UNKNOWN != ZERO
+// ---------------
+// A numeric the real Logistics model does not carry arrives as `null` and is
+// rendered as an explicit "—". It is never coerced to 0, because for tax, VAT,
+// pack count, weight, CBM, cost, Finance Actual, AR/AP and payments a blank is
+// a statement about knowledge, not about money.
 // ============================================================================
 
 export type Tone = "green" | "amber" | "red" | "blue" | "gray";
-export type Role = "ADMIN" | "SUPPORT" | "SALE";
+export type Role = "ADMIN" | "SUPPORT" | "SALE" | "VIEWER" | string;
 export type Priority = "Khan" | "CanXuLy" | "BinhThuong";
+/** A real number, or null when the backend genuinely does not know it. */
+export type MaybeNum = number | null;
 
 export interface TimelineEntry {
   time: string;
@@ -29,17 +38,25 @@ export interface ShipmentDoc {
 
 export interface MoneyLine {
   label: string;
-  amount: number;
+  amount: MaybeNum;
   ccy: string;
+  /** QUOTE ESTIMATE and FINANCE ACTUAL are distinct objects server-side. */
+  kind?: "quote" | "actual";
+  cost?: MaybeNum;
+  qty?: MaybeNum;
+  vat?: MaybeNum;
 }
 
 export interface Payment {
+  id?: string;
+  requestId?: string;
   date: string;
   kind: string;
-  amount: number;
+  amount: MaybeNum;
   ccy: string;
   by: string;
   note?: string;
+  reversed?: boolean;
 }
 
 export interface Pickup {
@@ -56,13 +73,27 @@ export interface Pickup {
   ata: string;
 }
 
+export interface Transport {
+  bookingNo: string;
+  carrier: string;
+  mbl: string;
+  hbl: string;
+  vessel: string;
+  etd: string;
+  pol: string;
+  pod: string;
+  containerNo: string;
+  qtyPkg: string;
+}
+
 export interface Cargo {
-  packs: number;
-  weight: string;
-  cbm: number;
+  packs: MaybeNum;
+  weight: MaybeNum;
+  cbm: MaybeNum;
   dims: string;
   type: string;
   note?: string;
+  qtyPkg?: string;
 }
 
 export interface ExportInfo {
@@ -71,16 +102,30 @@ export interface ExportInfo {
   eta: string;
   ata: string;
   state: string;
+  chinaDeclNo?: string;
+}
+
+export interface GntInfo {
+  payer: string;
+  taxCode: string;
+  address: string;
+  customsOffice: string;
 }
 
 export interface ImportInfo {
   borderVN: string;
   declarationNo: string;
   regDate: string;
-  tax: number;
-  vat: number;
+  clearDate?: string;
+  /** Not modelled on the shipment document — arrives null, renders "—". */
+  tax: MaybeNum;
+  vat: MaybeNum;
   inspection: string;
+  customsStatus?: boolean;
   license: string;
+  gnt?: GntInfo;
+  arrivalDate?: string;
+  freeTime?: MaybeNum;
   truckVN: string;
   plateVN: string;
   driverVN: string;
@@ -88,35 +133,86 @@ export interface ImportInfo {
   deliveryAddr: string;
   receiver: string;
   receiverPhone: string;
+  receiverTitle?: string;
+  deliveryLocation?: string;
   delivered: boolean;
   actualDelivery?: string;
-  clearDate?: string;
 }
 
 export interface Finance {
   quote: MoneyLine[];
   actual: MoneyLine[];
-  receivable: number;
-  received: number;
-  payable: number;
-  paid: number;
+  currency?: string;
+  receivable: MaybeNum;
+  received: MaybeNum;
+  receivableNet?: MaybeNum;
+  outputVat?: MaybeNum;
+  outstanding?: MaybeNum;
+  payable: MaybeNum;
+  /** No supplier-payment ledger on the shipment — null, never 0. */
+  paid: MaybeNum;
+  commission?: MaybeNum;
+  profit?: MaybeNum;
   payments: Payment[];
+  source?: string;
 }
 
 export interface Pxk {
+  source?: string;
+  sourceName?: string;
+  delivered?: boolean;
+  /** The real core.docgen delivery gate. */
+  gateOpen?: boolean;
+  missingDeliveryFacts?: string[];
   number?: string;
   date?: string;
   place?: string;
   receiver?: string;
   role?: string;
-  source?: string;
   done?: boolean;
+}
+
+export interface OpsAlert {
+  code: string;
+  severity: string;
+  title: string;
+  message: string;
+}
+
+export interface Ops {
+  financialFlag: string;
+  financialLabel: string;
+  alerts: OpsAlert[];
+  arrivalDateLabel?: string;
+  freeTimeExpiryLabel?: string;
+  daysRemaining?: number | null;
+}
+
+export interface TrackingMilestone {
+  time: string;
+  title: string;
+  desc: string;
+  done: boolean;
+  tone: "green" | "amber" | "red" | "blue";
+}
+
+export interface Tracking {
+  status: string;
+  statusTone: Tone;
+  carrier: string;
+  reference: string;
+  trackingUrl: string;
+  /** Never fabricated: the model has no live GPS feed. */
+  hasLivePosition: boolean;
+  positionNote: string;
+  milestones: TrackingMilestone[];
 }
 
 export interface Shipment {
   id: string;
   customer: string;
   customerMST: string;
+  customerId?: string;
   contract: string;
   route: string;
   borderVN: string;
@@ -132,13 +228,21 @@ export interface Shipment {
   updated: string;
   missingDocs: string[];
   docs: ShipmentDoc[];
+  version?: number;
+  rawStatus?: string;
+  mode?: string;
+  incoterm?: string;
+  createdAt?: string;
   pickup: Pickup;
+  transport?: Transport;
   cargo: Cargo;
   exportInfo: ExportInfo;
   importInfo: ImportInfo;
   finance: Finance;
   pxk: Pxk;
   timeline: TimelineEntry[];
+  ops?: Ops;
+  tracking?: Tracking;
 }
 
 export interface Task {
@@ -153,6 +257,7 @@ export interface Task {
   status: string;
   statusTone: Tone;
   route: string;
+  source?: string;
 }
 
 export interface Contract {
@@ -162,7 +267,7 @@ export interface Contract {
   status: string;
   statusTone: Tone;
   companyLegal: string;
-  value?: number;
+  value?: MaybeNum;
 }
 
 export interface Customer {
@@ -175,6 +280,8 @@ export interface Quote {
   id: string;
   customer: string;
   status: string;
+  total?: MaybeNum;
+  currency?: string;
 }
 
 export interface Notif {
@@ -183,17 +290,66 @@ export interface Notif {
   desc: string;
   time: string;
   tone: "red" | "amber" | "blue";
+  route?: string;
+}
+
+export interface HomeTile {
+  label: string;
+  value: number;
+  sub: string;
+  to: string;
+}
+
+export interface HomeSummary {
+  total: number;
+  critical: number;
+  warning: number;
+  deadlineSoon: number;
+  financialAttention: number;
+  missingInfo: number;
+}
+
+export interface Home {
+  tiles: HomeTile[];
+  runningCount: number;
+  runningSummary: { id: string; customer: string; status: string; nextAction: string; to: string }[];
+  outstandingTotal: MaybeNum;
+  outstandingTotalLabel: string;
+  outstandingCount: number;
+  summary: HomeSummary;
+  urgentCount: number;
+  focus: {
+    id: string;
+    customer: string;
+    status: string;
+    nextAction: string;
+    nextActionDetail: string;
+    priority: Priority;
+    to: string;
+  } | null;
+  missingDocsTotal: number;
+  taskCount: number;
+}
+
+export interface Environment {
+  transport: string;
+  label: string;
+  isSandbox: boolean;
+  database: string;
 }
 
 export interface ViewModel {
   version: string;
-  user: { name: string; role: Role };
+  environment?: Environment;
+  user: { name: string; role: Role; username?: string; displayOnly?: boolean };
   shipments: Shipment[];
+  home?: Home;
   tasks: Task[];
   contracts: Contract[];
   customers: Customer[];
   quotes: Quote[];
   notifications: Notif[];
+  unknownLabel?: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -227,4 +383,9 @@ export function subscribeViewModel(fn: () => void): () => void {
   return () => {
     listeners.delete(fn);
   };
+}
+
+/** The em dash used for UNKNOWN, shared with the Python projection. */
+export function unknownLabel(): string {
+  return current?.unknownLabel ?? "—";
 }

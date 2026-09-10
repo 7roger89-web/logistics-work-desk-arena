@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, downloadTextFile, cx } from "../lib/format";
+import { fmtMoney, fmtVND, fmtMillions, fmtNum, fmtText, cx } from "../lib/format";
 
 const TABS = [
   { id: "lay-hang", label: "Lấy hàng & Xuất khẩu", short: "Lấy hàng" },
@@ -17,7 +17,7 @@ export default function ShipmentDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "lay-hang";
-  const { shipments, updateShipment, toast, contracts } = useStore();
+  const { shipments, updateShipment, toast, contracts, dispatch } = useStore();
   const nav = useNavigate();
   const s = shipments.find((x) => x.id === id);
   const [showPay, setShowPay] = useState(false);
@@ -35,52 +35,105 @@ export default function ShipmentDetail() {
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
-  const savePickup = () => {
-    updateShipment(s.id, (old) => ({
-      ...old,
-      pickup: { ...old.pickup, plate: val("plate", old.pickup.plate) || old.pickup.plate, driver: val("driver", old.pickup.driver) || old.pickup.driver, driverPhone: val("driverPhone", old.pickup.driverPhone) || old.pickup.driverPhone, pickupTime: val("pickupTime", old.pickup.pickupTime) || old.pickup.pickupTime },
-      updated: "09/09/2026 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-      timeline: [...old.timeline, { time: "09/09 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }), title: "Đã cập nhật thông tin lấy hàng", desc: "Bổ sung xe TQ / giờ lấy qua workspace", tone: "blue" }],
-    }));
+  // -----------------------------------------------------------------------
+  // Phase B write contract: every save is ONE typed event → the single Python
+  // dispatcher → RBAC → existing writer → audit → fresh backend read. The UI
+  // is then refreshed from the backend; nothing here mutates business state.
+  // -----------------------------------------------------------------------
+  const onlyFilled = (keys: Record<string, string>) => {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(keys)) {
+      const next = (form[k] ?? "").trim();
+      if (next.length > 0) out[k] = next;
+    }
+    return out;
+  };
+
+  const afterSave = (label: string) => {
+    setForm({});
     setSavedTick(Date.now());
-    toast("Đã lưu thông tin lấy hàng " + s.id, "Xe TQ + giờ lấy đã cập nhật. Việc tiếp theo đã chuyển bước.", "green");
+    toast(label, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
+  };
+
+  const savePickup = () => {
+    const fields = onlyFilled({
+      container_no: val("plate", s.pickup.plate),
+      etd: val("pickupTime", s.pickup.pickupTime),
+      booking_no: val("bookingNo", s.transport?.bookingNo ?? ""),
+      carrier: val("carrier", s.transport?.carrier ?? ""),
+      pol: val("pol", s.transport?.pol ?? ""),
+      pod: val("pod", s.transport?.pod ?? ""),
+      qty_pkg: val("qtyPkg", s.transport?.qtyPkg ?? ""),
+    });
+    if (Object.keys(fields).length === 0) {
+      toast("Chưa có gì để lưu", "Nhập ít nhất một trường ở tab Lấy hàng & Xuất khẩu.", "red");
+      return;
+    }
+    dispatch("shipment_field_save", { shipmentId: s.id, fields });
+    afterSave("Đã lưu thông tin lấy hàng " + s.id);
   };
 
   const saveImport = () => {
     const tk = val("tk", s.importInfo.declarationNo);
     if (!tk) { toast("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red"); return; }
-    updateShipment(s.id, (old) => ({
-      ...old,
-      importInfo: { ...old.importInfo, declarationNo: tk, regDate: val("regDate", old.importInfo.regDate) || "09/09/2026", tax: Number(val("tax", String(old.importInfo.tax))) || old.importInfo.tax, vat: Number(val("vat", String(old.importInfo.vat))) || old.importInfo.vat, inspection: val("inspection", old.importInfo.inspection) || old.importInfo.inspection, driverVN: val("driverVN", old.importInfo.driverVN) || old.importInfo.driverVN, plateVN: val("plateVN", old.importInfo.plateVN) || old.importInfo.plateVN },
-      missingDocs: old.missingDocs.filter((d) => d !== "Số tờ khai nhập khẩu"),
-      status: old.importInfo.clearDate ? old.status : "Chờ thông quan",
-      nextAction: "Nộp thuế & chờ phân luồng tờ khai " + tk,
-      timeline: [...old.timeline, { time: "09/09 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }), title: "Đã khai tờ khai " + tk, desc: "Chờ phân luồng — nộp thuế để thông quan", tone: "blue" }],
-      updated: "09/09/2026 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-    }));
-    toast("Đã lưu tờ khai " + tk, "Tiếp theo: nộp thuế NK + VAT để thông quan.", "green");
+    // Import tax / VAT are not modelled on the shipment document, so they are
+    // never sent (UNKNOWN must not be written as a number).
+    const fields: Record<string, string> = {
+      tk_no: tk,
+      ...onlyFilled({
+        phan_luong: val("inspection", s.importInfo.inspection),
+        arrival_date: val("arrivalDate", s.importInfo.arrivalDate ?? ""),
+        free_time: val("freeTime", s.importInfo.freeTime != null ? String(s.importInfo.freeTime) : ""),
+        truck_no: val("plateVN", s.importInfo.plateVN),
+        seal_no: val("driverVN", s.importInfo.driverVN),
+      }),
+    };
+    dispatch("shipment_field_save", { shipmentId: s.id, fields });
+    afterSave("Đã lưu tờ khai " + tk);
   };
 
   const confirmDelivery = () => {
-    updateShipment(s.id, (old) => ({ ...old, importInfo: { ...old.importInfo, delivered: true, actualDelivery: "09/09/2026 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) }, status: "Đã giao", statusTone: "green", nextAction: "Thu nốt công nợ & xuất PXK", nextLabel: "THU TIỀN", nextRoute: "/tai-chinh/thu-tien", timeline: [...old.timeline, { time: "09/09 " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }), title: "Đã giao hàng — khách ký nhận", desc: "Đủ kiện, không khiếu nại tại chỗ", tone: "green" }] }));
+    const sent = dispatch("delivery_confirm", {
+      shipmentId: s.id,
+      deliveredAt: new Date().toISOString().slice(0, 10),
+      receiverName: s.importInfo.receiver,
+      receiverTitle: s.importInfo.receiverTitle ?? "",
+      receiverPhone: s.importInfo.receiverPhone,
+      deliveryLocation: s.importInfo.deliveryLocation || s.importInfo.deliveryAddr,
+    });
     setShowDeliver(false);
-    toast("Đã xác nhận giao hàng " + s.id, "Tiếp theo: xuất Phiếu xuất kho ở tab Chứng từ.", "green");
+    if (sent) toast("Đã gửi xác nhận giao hàng " + s.id, "Backend ghi nhận + audit; PXK sẽ mở ở tab Chứng từ.", "green");
+    else toast("Không gửi được", "Component chưa kết nối backend.", "red");
   };
 
+  // Stable request identity per payment intent: a re-render or double click
+  // replays the SAME id, which the backend treats as one idempotent request.
+  const payIntentRef = useRef("");
+  const payRequestRef = useRef("");
   const recordPay = () => {
     const amt = Number(payAmt.replace(/\D/g, ""));
     if (!amt) { toast("Chưa nhập số tiền", "Nhập số tiền VND rồi bấm Lưu — ví dụ 50.000.000.", "red"); return; }
-    updateShipment(s.id, (old) => ({ ...old, finance: { ...old.finance, received: old.finance.received + amt, payments: [...old.finance.payments, { date: "09/09/2026", kind: payKind, amount: amt, ccy: "VND", by: "Thu Hằng", note: "Ghi nhận từ workspace" }] } }));
+    const intent = `${s.id}|${amt}|${payKind}`;
+    if (payIntentRef.current !== intent) {
+      payIntentRef.current = intent;
+      payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    }
+    dispatch("payment_record", {
+      shipmentId: s.id,
+      amount: amt,
+      requestId: payRequestRef.current,
+      date: new Date().toISOString().slice(0, 10),
+      note: payKind,
+    });
     setShowPay(false); setPayAmt("");
-    toast("Đã ghi nhận " + fmtVND(amt), payKind + " — lịch sử thanh toán đã cập nhật.", "green");
+    toast("Đã gửi khoản thu " + fmtVND(amt), "Ghi qua save_direct_shipment_payment với request identity.", "green");
   };
 
   const exportPXK = () => {
-    const no = s.pxk.number || ("PXK-2026-" + s.id.slice(3));
-    updateShipment(s.id, (old) => ({ ...old, pxk: { ...old.pxk, number: no, date: old.pxk.date || "09/09/2026", place: old.pxk.place || old.importInfo.deliveryAddr, receiver: old.pxk.receiver || old.importInfo.receiver, role: old.pxk.role || "Thủ kho", done: true } }));
-    downloadTextFile(no + ".txt",
-      `${no}\nPHIẾU XUẤT KHO — ${s.id}\nNgày: 09/09/2026\nKhách: ${s.customer}\nĐịa điểm nhận: ${s.importInfo.deliveryAddr}\nNgười nhận: ${s.importInfo.receiver}\nHàng: ${s.cargo.type} — ${s.cargo.packs} kiện — ${s.cargo.weight}\nNguồn: ${s.pxk.source || s.contract}\nĐơn vị: CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH (Đại lý: Phú Anh Logistics VN)\n— Prototype: file minh họa —`);
-    toast("Đã xuất " + no, "File đã tải về. Lịch sử chứng từ đã ghi nhận.", "green");
+    // Real docgen path only. Phase B removed the prototype .txt export.
+    const sent = dispatch("pxk_generate", { shipmentId: s.id });
+    if (sent) toast("Đã gửi yêu cầu xuất PXK", "core.docgen kiểm tra gate giao hàng rồi sinh file Office thật.", "blue");
+    else toast("Không gửi được", "Component chưa kết nối backend.", "red");
   };
 
   const missingCount = s.missingDocs.length + s.docs.filter((d) => !d.ok).length;
@@ -165,7 +218,7 @@ export default function ShipmentDetail() {
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3"><Package size={19} className="text-[#1e5aa8]" /> Hàng hóa</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[["Số kiện", String(s.cargo.packs)], ["Trọng lượng", s.cargo.weight], ["CBM", String(s.cargo.cbm)], ["Kích thước", s.cargo.dims], ["Loại hàng", s.cargo.type]].map(([k, v]) => (
+                {[["Số kiện / GW", fmtText(s.cargo.qtyPkg)], ["Số kiện", fmtNum(s.cargo.packs)], ["CBM", fmtNum(s.cargo.cbm)], ["Kích thước", fmtText(s.cargo.dims)], ["Loại hàng", fmtText(s.cargo.type)]].map(([k, v]) => (
                   <div key={k} className="rounded-xl bg-slate-50 border border-slate-200 p-3"><p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">{k}</p><p className="font-bold text-[15px] text-[#0f2a4a] mt-0.5">{v}</p></div>
                 ))}
               </div>
@@ -205,8 +258,8 @@ export default function ShipmentDetail() {
                 <input id="fld-tk" value={val("tk", s.importInfo.declarationNo)} onChange={(e) => set("tk", e.target.value)} placeholder="12 số tờ khai…" className={inputCls(!val("tk", s.importInfo.declarationNo) ? "missing" : "ok")} />
               </Field>
               <Field label="Ngày đăng ký"><input value={val("regDate", s.importInfo.regDate)} onChange={(e) => set("regDate", e.target.value)} placeholder="VD: 09/09/2026" className={inputCls()} /></Field>
-              <Field label="Thuế nhập khẩu (VND)"><input value={val("tax", String(s.importInfo.tax || ""))} onChange={(e) => set("tax", e.target.value)} placeholder="VD: 48200000" inputMode="numeric" className={inputCls()} /></Field>
-              <Field label="VAT hàng nhập (VND)"><input value={val("vat", String(s.importInfo.vat || ""))} onChange={(e) => set("vat", e.target.value)} placeholder="VD: 96400000" inputMode="numeric" className={inputCls()} /></Field>
+              <Field label="Thuế nhập khẩu (VND)"><input value={s.importInfo.tax == null ? "" : String(s.importInfo.tax)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
+              <Field label="VAT hàng nhập (VND)"><input value={s.importInfo.vat == null ? "" : String(s.importInfo.vat)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
               <Field label="Phân luồng / kiểm hóa"><input value={val("inspection", s.importInfo.inspection)} onChange={(e) => set("inspection", e.target.value)} className={inputCls()} /></Field>
               <Field label="Giấy phép chuyên ngành"><input defaultValue={s.importInfo.license} className={inputCls()} /></Field>
             </div>
@@ -263,18 +316,18 @@ export default function ShipmentDetail() {
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-2"><Wallet size={19} className="text-emerald-600" /> Phải thu khách hàng (VND)</h3>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[16px] md:text-[18px]">{(s.finance.receivable / 1e6).toLocaleString("vi-VN")} tr</p></div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-emerald-700">{(s.finance.received / 1e6).toLocaleString("vi-VN")} tr</p></div>
-                <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-[12px] text-red-600 font-semibold">Còn phải thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-red-700">{((s.finance.receivable - s.finance.received) / 1e6).toLocaleString("vi-VN")} tr</p></div>
+                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillions(s.finance.receivable)}</p></div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-emerald-700">{fmtMillions(s.finance.received)}</p></div>
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3"><p className="text-[12px] text-red-600 font-semibold">Còn phải thu</p><p className="font-extrabold text-[16px] md:text-[18px] text-red-700">{fmtMillions(s.finance.outstanding)}</p></div>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-press touch-target mt-3 w-full rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>
             </section>
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-2">Phải trả đối tác (VND)</h3>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{(s.finance.payable / 1e6).toLocaleString("vi-VN")} tr</p></div>
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{(s.finance.paid / 1e6).toLocaleString("vi-VN")} tr</p></div>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{((s.finance.payable - s.finance.paid) / 1e6).toLocaleString("vi-VN")} tr</p></div>
+                <div className="rounded-xl bg-slate-50 border p-3"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[16px] md:text-[18px]">{fmtMillions(s.finance.payable)}</p></div>
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtMillions(s.finance.paid)}</p></div>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><p className="text-[12px] text-amber-700 font-semibold">Còn phải trả</p><p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtMillions(s.finance.paid == null ? null : (s.finance.payable ?? 0) - s.finance.paid)}</p></div>
               </div>
               <Link to="/tai-chinh/doi-soat" className="btn-press touch-target mt-3 w-full rounded-xl border-2 border-slate-200 font-bold min-h-[52px] flex items-center justify-center">MỞ ĐỐI SOÁT</Link>
             </section>
@@ -303,10 +356,10 @@ export default function ShipmentDetail() {
             {linkedContract ? (
               <div className="rounded-xl border-2 border-slate-200 p-4">
                 <div className="flex flex-wrap items-center gap-2"><span className="font-extrabold text-[17px] text-[#0f2a4a]">{linkedContract.id}</span><ToneBadge tone={linkedContract.statusTone} size="sm">{linkedContract.status}</ToneBadge></div>
-                <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value || s.finance.receivable)}</p>
+                <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <Link to={"/hop-dong/" + linkedContract.id} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
-                  <button onClick={() => { downloadTextFile(linkedContract.id + ".txt", `${linkedContract.id}\nHỢP ĐỒNG MUA BÁN — ${linkedContract.companyLegal}\nGiá trị: ${fmtVND(linkedContract.value || s.finance.receivable)}\n— Prototype: file minh họa —`); toast("Đã tải " + linkedContract.id, "File minh họa đã lưu về máy.", "green"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> TẢI HỢP ĐỒNG</button>
+                  <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
                 </div>
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}
@@ -398,7 +451,7 @@ export default function ShipmentDetail() {
           <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => setShowPay(false)} />
           <div className="relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
             <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận thanh toán — {s.id}</h3>
-            <p className="text-[13.5px] text-slate-500">Còn phải thu: <b className="text-red-700">{fmtVND(s.finance.receivable - s.finance.received)}</b></p>
+            <p className="text-[13.5px] text-slate-500">Còn phải thu: <b className="text-red-700">{fmtVND(s.finance.outstanding)}</b></p>
             <div className="grid gap-3 mt-3">
               <Field label="Loại khoản"><select value={payKind} onChange={(e) => setPayKind(e.target.value)} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option><option>Trả đối tác</option></select></Field>
               <Field label="Số tiền (VND)" required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
