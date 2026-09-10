@@ -17,6 +17,7 @@ from __future__ import annotations
 import base64
 import io
 import zipfile
+from decimal import Decimal
 
 import pytest
 
@@ -264,3 +265,177 @@ def test_rbac_boundary_is_backend_enforced(staging, event_seq):
     assert "customers" in out["error"]
 
     _as("SUPPORT", "staging.support")
+
+
+# ---------------------------------------------------------------------------
+# Astra C1 acceptance gaps — the exact 50M boundary, HDMB branch, fail-closed
+# retry, duplicate-link protection, fresh-session metadata, finance untouched.
+# ---------------------------------------------------------------------------
+
+def _goods_line(description: str, qty: int, unit_price: int) -> dict:
+    return {"description": description, "unit": "Bộ", "quantity": str(qty), "unit_price_vnd_excl_vat": str(unit_price), "vat_rate": "0.08"}
+
+
+def test_threshold_boundary_exact_after_vat_values():
+    """Boundary is on the after-VAT total: < 50M → HDNT+PL; >= 50M → HDMB."""
+    from core.docgen import rules
+    from core.docgen.rules import HDMB, HDNT, NOT_APPLICABLE, PL, READY
+
+    # 46,296,295 × 1.08 = 49,999,998.60 → ROUND_HALF_UP = 49,999,999  (< 50M)
+    totals, _ = rules.compute_goods_totals([_goods_line("A", 1, 46_296_295)])
+    assert totals.total_after_vat == Decimal("49999999")
+    decision = rules.decide_applicable_documents(goods_lines=[_goods_line("A", 1, 46_296_295)])
+    assert decision[HDNT].state == READY
+    assert decision[PL].state == READY
+    assert decision[HDMB].state == NOT_APPLICABLE
+
+    # 46,296,296 × 1.08 = 49,999,999.68 → ROUND_HALF_UP = 50,000,000 (exactly 50M)
+    totals, _ = rules.compute_goods_totals([_goods_line("B", 1, 46_296_296)])
+    assert totals.total_after_vat == Decimal("50000000")
+    decision = rules.decide_applicable_documents(goods_lines=[_goods_line("B", 1, 46_296_296)])
+    assert decision[HDMB].state == READY
+    assert decision[HDNT].state == NOT_APPLICABLE
+    assert decision[PL].state == NOT_APPLICABLE
+
+    # 46,296,297 × 1.08 = 50,000,000.76 → ROUND_HALF_UP = 50,000,001  (> 50M)
+    totals, _ = rules.compute_goods_totals([_goods_line("C", 1, 46_296_297)])
+    assert totals.total_after_vat == Decimal("50000001")
+    decision = rules.decide_applicable_documents(goods_lines=[_goods_line("C", 1, 46_296_297)])
+    assert decision[HDMB].state == READY
+    assert decision[HDNT].state == NOT_APPLICABLE
+
+
+def test_round_half_up_whole_vnd_is_locked():
+    """VAT/amount rounding is ROUND_HALF_UP to whole VND (locked rule)."""
+    from core.docgen.rules import _whole_vnd
+
+    assert _whole_vnd(Decimal("0.5")) == Decimal("1")
+    assert _whole_vnd(Decimal("1.5")) == Decimal("2")
+    assert _whole_vnd(Decimal("2.5")) == Decimal("3")
+    assert _whole_vnd(Decimal("0.4")) == Decimal("0")
+    # The after-VAT boundary cases above embed the same half-up behaviour:
+    # 49,999,998.60 → 49,999,999 and 49,999,999.68 → 50,000,000.
+
+
+def test_hdmb_branch_generates_real_office_file(staging, event_seq):
+    """>= 50M after VAT → HDMB only, produced as a real OOXML file."""
+    cid = "HD-HDMB-E2E"
+    assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT"})["ok"]
+    out = _dispatch(event_seq, "contract_save", {
+        "id": cid, "company_id": "TT-COMPANY", "agent_id": "AGT-PHUANH",
+        "hdmb_no": "HDMB-E2E-001", "hdmb_date": "2026-09-12",
+    })
+    assert out["ok"], out
+    out = _dispatch(event_seq, "contract_goods_save", {
+        "id": cid,
+        "goodsLines": [{"description": "Máy móc", "unit": "Bộ", "quantity": "1", "unitPrice": "50000000"}],
+    })
+    assert out["ok"], out
+    assert out["readback"]["goodsTotals"]["total_after_vat"] == 54_000_000
+    assert out["readback"]["applicableDocuments"] == ["HDMB"]
+
+    out = _dispatch(event_seq, "contract_docgen_generate", {"id": cid})
+    assert out["ok"], out
+    produced = {p["documentType"] for p in out["produced"]}
+    assert produced == {"HDMB"}
+    assert all(p["isOfficeFile"] for p in out["produced"])
+
+    outputs = logi_c1.stored_outputs(cid)
+    assert len(outputs) == 1
+    raw = next(iter(outputs.values()))["bytes"]
+    assert raw[:2] == b"PK"
+    with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+        assert "[Content_Types].xml" in zf.namelist()
+
+
+def test_docgen_fails_closed_then_retry_after_fix(staging, event_seq):
+    """Missing legal identity blocks generation (fail-closed, no fake file);
+    after fixing identity the retry succeeds."""
+    cid = "HD-RETRY-E2E"
+    assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT"})["ok"]
+    assert _dispatch(event_seq, "contract_save", {
+        "id": cid, "company_id": "TT-COMPANY", "agent_id": "AGT-PHUANH",
+    })["ok"]
+    _dispatch(event_seq, "contract_goods_save", {
+        "id": cid, "goodsLines": [{"description": "Hàng", "unit": "Bộ", "quantity": "1", "unitPrice": "1000000"}],
+    })
+    out = _dispatch(event_seq, "contract_docgen_generate", {"id": cid})
+    assert not out["ok"]
+    assert out.get("failClosed") is True
+    assert not logi_c1.stored_outputs(cid), "no fake file persisted on a blocked generation"
+
+    out = _dispatch(event_seq, "contract_save", {
+        "id": cid, "hdnt_no": "HDNT-RETRY-1", "hdnt_date": "2026-09-10",
+        "valid_from": "2026-01-01", "valid_to": "2027-12-31",
+    })
+    assert out["ok"]
+    out = _dispatch(event_seq, "contract_docgen_generate", {"id": cid})
+    assert out["ok"], out
+    assert "HDNT" in {p["documentType"] for p in out["produced"]}
+    assert logi_c1.stored_outputs(cid)
+
+
+def test_duplicate_shipment_link_is_idempotent(staging, event_seq):
+    """Linking the same shipment twice keeps a single additive link."""
+    cid = "HD-DUP-E2E"
+    assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT"})["ok"]
+    first = _dispatch(event_seq, "contract_shipment_link", {"id": cid, "shipmentId": "LO-0306"})
+    assert first["ok"] and first["linkedShipmentIds"] == ["LO-0306"]
+    second = _dispatch(event_seq, "contract_shipment_link", {"id": cid, "shipmentId": "LO-0306"})
+    assert second["ok"] and second["linkedShipmentIds"] == ["LO-0306"]
+    assert len(second["readback"]["linkedShipments"]) == 1
+
+
+def test_fresh_session_metadata_persists_bytes_are_session_scoped(staging, event_seq):
+    """Generated metadata survives a fresh read; the binary bytes are
+    session-scoped (owner storage gate) and never fabricated on re-read."""
+    cid = "HD-SESSION-E2E"
+    assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT"})["ok"]
+    assert _dispatch(event_seq, "contract_save", {
+        "id": cid, "company_id": "TT-COMPANY", "agent_id": "AGT-PHUANH",
+        "hdnt_no": "HDNT-SESS-1", "hdnt_date": "2026-09-10",
+        "valid_from": "2026-01-01", "valid_to": "2027-12-31",
+    })["ok"]
+    _dispatch(event_seq, "contract_goods_save", {
+        "id": cid, "goodsLines": [{"description": "Hàng", "unit": "Bộ", "quantity": "1", "unitPrice": "1000000"}],
+    })
+    assert _dispatch(event_seq, "contract_docgen_generate", {"id": cid})["ok"]
+
+    same_session = next(c for c in vm.build_view_model()["contracts"] if c["id"] == cid)
+    assert any(d["downloadAvailable"] for d in same_session["documents"])
+
+    # Simulate a fresh session: the bytes store is cleared (session-only).
+    import streamlit as st
+
+    st.session_state[logi_c1._outputs_key(cid)] = {}
+    fresh = next(c for c in vm.build_view_model()["contracts"] if c["id"] == cid)
+    docs = {d["documentType"]: d for d in fresh["documents"]}
+    assert "HDNT" in docs, "metadata (history) survives a fresh read"
+    assert docs["HDNT"]["status"] == "GENERATED"
+    assert docs["HDNT"]["downloadAvailable"] is False
+    assert docs["HDNT"]["downloadBase64"] is None
+
+
+def test_finance_actual_untouched_by_c1_flow(staging, event_seq):
+    """The C1 slice performs zero Finance Actual mutations."""
+    from core.database import get_db, load_contract_transactions
+
+    db = get_db()
+    before = db.shipments.find_one({"id": "LO-0306"}, {"_id": 0})
+
+    cid = "HD-FIN-E2E"
+    assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT"})["ok"]
+    _dispatch(event_seq, "contract_save", {
+        "id": cid, "company_id": "TT-COMPANY", "agent_id": "AGT-PHUANH",
+        "hdnt_no": "HDNT-FIN-1", "hdnt_date": "2026-09-10",
+        "valid_from": "2026-01-01", "valid_to": "2027-12-31",
+    })
+    _dispatch(event_seq, "contract_goods_save", {
+        "id": cid, "goodsLines": [{"description": "Hàng", "unit": "Bộ", "quantity": "1", "unitPrice": "1000000"}],
+    })
+    _dispatch(event_seq, "contract_docgen_generate", {"id": cid})
+    _dispatch(event_seq, "contract_shipment_link", {"id": cid, "shipmentId": "LO-0306"})
+
+    after = db.shipments.find_one({"id": "LO-0306"}, {"_id": 0})
+    assert after["data"]["3.4"] == before["data"]["3.4"], "shipment finance unchanged"
+    assert load_contract_transactions(cid) == {}, "no contract finance rows written"
