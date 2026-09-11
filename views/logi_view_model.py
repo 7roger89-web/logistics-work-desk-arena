@@ -29,6 +29,7 @@ import streamlit as st
 from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
+from views import tariff_lookup as logi_tariff
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -300,6 +301,13 @@ def build_view_model() -> dict:
         # read-only over the SAME canonical ledger the C2B per-shipment slice
         # uses. No new ledger: one row per SHIPMENT × PARTNER × CURRENCY.
         "payables": rd.partner_payables_projection(),
+        # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
+        # EXISTING governed reference database (see views/tariff_lookup.py).
+        # Absent from session state until the user submits a query; the
+        # adapter fails honest (UNKNOWN != ZERO) in every empty state.
+        "tariff": logi_tariff.tariff_lookup_view(
+            st.session_state.get(TARIFF_QUERY_KEY) or ""
+        ),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)
@@ -342,7 +350,17 @@ PHASE_B_EVENTS = {
     "partner_payment_record",
 }
 
-ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
+# LOGI_TARIFF_LOOKUP_01 — one bounded READ-ONLY query event for the
+# /tra-cuu-thue workspace. It performs no business mutation: the handler only
+# records the query for the next fresh read in build_view_model(). The
+# authoritative result always comes from the existing canonical reader
+# (core.utils.fast_search_tariff) via views.tariff_lookup.
+TARIFF_EVENTS = {"tariff_lookup"}
+
+ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS | TARIFF_EVENTS
+
+#: Session key holding the current tariff lookup query (read-only surface).
+TARIFF_QUERY_KEY = "logi_tariff_query"
 
 # Whitelist: component field key → canonical shipment document path.
 # Only these paths may be written by the component.
@@ -1208,12 +1226,43 @@ def consume_phase_b_triggers(session: dict, result: Any) -> list[dict[str, Any]]
     return outcomes
 
 
+def consume_tariff_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY tariff query dispatcher (LOGI_TARIFF_LOOKUP_01).
+
+    Mirrors the phase dispatchers' replay protection (one-shot ``seq``), but
+    performs NO business mutation: the handler only records the validated
+    query for the next fresh read in ``build_view_model``. Anything outside
+    ``TARIFF_EVENTS`` is ignored.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(TARIFF_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        query = str(data.get("query") or "").strip()[:120] if isinstance(data, dict) else ""
+        if len(query) < 1:
+            outcomes.append(_result(event_name, "", False, "Truy vấn trống."))
+            continue
+        st.session_state[TARIFF_QUERY_KEY] = query
+        outcomes.append(_result(event_name, "", True, readback={"query": query}))
+    return outcomes
+
+
 def dispatch(result: Any) -> list[dict[str, Any]]:
     """Streamlit-facing entry: consume one script run's component triggers.
 
     Phase B typed writes are executed first against the real backend; the
     Phase A bounded local merge is kept afterwards so the Phase A acceptance
-    contract is unchanged.
+    contract is unchanged. The read-only tariff query is consumed last; when
+    it was consumed, ONE rerun delivers the fresh read-side result (the v2
+    trigger is one-shot, so the rerun cannot loop).
     """
     logi_sandbox.ensure_backend()
     session = {"seq": st.session_state.get(SEQ_KEY, 0)}
@@ -1227,6 +1276,18 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     phase_a_session = {"seq": st.session_state.get(SEQ_KEY, 0), "shipments": _state().get("shipments", {})}
     consume_triggers(phase_a_session, result)
     st.session_state[SEQ_KEY] = max(session["seq"], phase_a_session["seq"])
+
+    # LOGI_TARIFF_LOOKUP_01 — bounded read-only query path. When a fresh
+    # lookup query was recorded, rerun once so build_view_model() embeds the
+    # authoritative reader result (UNKNOWN states included) in the payload.
+    tariff_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    tariff_outcomes = consume_tariff_triggers(tariff_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    tariff_session["seq"])
+    outcomes.extend(tariff_outcomes)
+    if any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
+           for outcome in tariff_outcomes):
+        st.rerun()
 
     if outcomes:
         st.session_state["logi_last_writes"] = outcomes
