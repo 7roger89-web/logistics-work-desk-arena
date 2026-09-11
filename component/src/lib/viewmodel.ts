@@ -630,6 +630,52 @@ export interface Environment {
   database: string;
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup slice, served by
+// views/tariff_lookup.py over the EXISTING canonical reader. UNKNOWN != ZERO:
+// every field the governed reference schema does not carry arrives as null and
+// renders as an explicit "—"; values pass through verbatim, never reformatted.
+// ----------------------------------------------------------------------------
+
+export interface TariffField {
+  label: string;
+  value: string | null;
+}
+
+export interface TariffRow {
+  hsCode: string | null;
+  descriptionVi: string | null;
+  descriptionEn: string | null;
+  /** Verbatim extra columns of a richer deployment DB (uninterpreted). */
+  fields: TariffField[];
+}
+
+export interface TariffSource {
+  configured: boolean;
+  path: string;
+  rows: number | null;
+  note: string | null;
+}
+
+export interface TariffProvenance {
+  source: string | null;
+  effectiveDate: string | null;
+  authoritative: boolean;
+  note: string;
+}
+
+export interface TariffLookup {
+  query: string;
+  searched: boolean;
+  reason: string | null;
+  rows: TariffRow[];
+  count: number;
+  truncated: boolean;
+  limit: number;
+  source: TariffSource;
+  provenance: TariffProvenance;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -647,6 +693,8 @@ export interface ViewModel {
   receivables?: ReceivablesViewModel;
   /** C2D — global partner-payable worklist (read-only projection). */
   payables?: PartnerPayablesViewModel;
+  /** LOGI_TARIFF_LOOKUP_01 — read-only HS/tariff lookup slice. */
+  tariff?: TariffLookup;
   unknownLabel?: string;
 }
 
@@ -686,4 +734,9 @@ export function subscribeViewModel(fn: () => void): () => void {
 /** The em dash used for UNKNOWN, shared with the Python projection. */
 export function unknownLabel(): string {
   return current?.unknownLabel ?? "—";
+}
+
+/** The read-only tariff lookup slice (null until Python delivers it). */
+export function tariffLookup(): TariffLookup | null {
+  return current?.tariff ?? null;
 }

@@ -14,7 +14,6 @@ const PATH_NAMES: Record<string, string> = {
   "/ngu-canh-doi-tac": "Ngữ cảnh Đối tác",
   "/tai-chinh/doi-soat": "Đối soát",
   "/bao-cao-ceo": "Báo cáo CEO",
-  "/tra-cuu-thue": "Tra cứu thuế / HS",
   "/so-tay": "Sổ tay",
   "/dich-thuat": "Dịch thuật",
   "/nguoi-dung": "Người dùng & Vai trò",
