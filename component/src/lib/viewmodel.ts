@@ -1102,6 +1102,78 @@ export interface NotebookHandbook {
   sectionsUnavailable: string[];
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_USER_ACCESS_WORKSPACE_01 — bounded /nguoi-dung user & access slice.
+//
+// A READ-ONLY projection over capability the backend already owns: the user
+// store read through the canonical password-free public view, the single
+// ROLE_PERMISSIONS matrix (verbatim — no role or permission is added here),
+// the real authentication mode (multi-user vs Local Admin) and the current
+// session identity. Deliberately absent: any credential material and any
+// user-management action (create/update/deactivate/reset/role assignment).
+// ----------------------------------------------------------------------------
+
+export interface UserAccessAccount {
+  user_id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  role: string;
+  active: boolean;
+}
+
+export interface UserAccessRoleRow {
+  role: string;
+  permissions: string[];
+  /** Canonical admin wildcard "*" present — rendered as "toàn quyền". */
+  wildcard: boolean;
+  permissionCount: number;
+}
+
+export interface UserAccessCurrentUser {
+  present: boolean;
+  username: string;
+  displayName: string;
+  role: string;
+  permissions: string[];
+  wildcard: boolean;
+}
+
+export interface UserAccessAuthMode {
+  /** True when AUTH_REQUIRED is on (real multi-user login). */
+  required: boolean;
+  mode: "multi_user" | "local_admin" | string;
+  label: string;
+  note: string;
+}
+
+export interface UserAccessWorkspace {
+  classification: "READ_ONLY_READY" | string;
+  readOnly: boolean;
+  authMode: UserAccessAuthMode;
+  currentUser: UserAccessCurrentUser;
+  users: UserAccessAccount[];
+  roles: {
+    /** Roles an account can actually hold (core.users.SUPPORTED_ROLES). */
+    assignable: string[];
+    /** Compatibility roles kept in the matrix for legacy fixtures. */
+    legacy: string[];
+    source: string;
+  };
+  /** The single canonical matrix, verbatim from core.auth.ROLE_PERMISSIONS. */
+  permissionMatrix: UserAccessRoleRow[];
+  counts: {
+    userCount: number;
+    userShown: number;
+    activeCount: number;
+    inactiveCount: number;
+    roleCount: number;
+    assignableRoleCount: number;
+  };
+  /** Explicit scope limits — stated, never filled with guessed features. */
+  unavailable: string[];
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -1131,6 +1203,8 @@ export interface ViewModel {
   ceoReport?: CeoReport;
   /** LOGI_NOTEBOOK_WORKSPACE_01 — bounded read-only /so-tay handbook slice. */
   handbook?: NotebookHandbook;
+  /** LOGI_USER_ACCESS_WORKSPACE_01 — bounded read-only /nguoi-dung slice. */
+  userAccess?: UserAccessWorkspace;
   unknownLabel?: string;
 }
 
@@ -1190,4 +1264,9 @@ export function partnerContext(): PartnerContextSlice | null {
 /** The bounded /tai-chinh/doi-soat reconciliation slice (null until delivered). */
 export function reconciliationDesk(): ReconciliationSlice | null {
   return current?.reconciliation ?? null;
+}
+
+/** The bounded /nguoi-dung user & access slice (null until delivered). */
+export function userAccessWorkspace(): UserAccessWorkspace | null {
+  return current?.userAccess ?? null;
 }

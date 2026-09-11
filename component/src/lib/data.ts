@@ -76,7 +76,10 @@ export const NAV: {
   },
   {
     group: "QUẢN TRỊ",
-    items: [{ to: "/nguoi-dung", soon: true, label: "Người dùng & Vai trò", icon: "shield" }],
+    // LOGI_USER_ACCESS_WORKSPACE_01 — /nguoi-dung is a real read-only
+    // user/access workspace now, so the deferred marker goes. It remains the
+    // only route in this group; no second user-admin route was added.
+    items: [{ to: "/nguoi-dung", label: "Người dùng & Vai trò", icon: "shield" }],
   },
 ];
 

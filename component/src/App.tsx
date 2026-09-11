@@ -34,6 +34,7 @@ import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import Notebook from "./pages/Notebook";
+import UserAccess from "./pages/UserAccess";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -91,6 +92,14 @@ export default function App() {
                 existing knowledge_base reader (no longer a placeholder; no CMS,
                 no authoring event, no search backend). */}
             <Route path="/so-tay" element={<Notebook />} />
+            {/* LOGI_USER_ACCESS_WORKSPACE_01 — real READ-ONLY user & access
+                workspace over the EXISTING auth/user/RBAC capability (the user
+                store's canonical public view, the single ROLE_PERMISSIONS
+                matrix, the real AUTH_REQUIRED mode and the session identity).
+                No credential material, no invented role, and deliberately no
+                user-management write path: the canonical writers stay in
+                core.database and none is exposed from this page yet. */}
+            <Route path="/nguoi-dung" element={<UserAccess />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>
