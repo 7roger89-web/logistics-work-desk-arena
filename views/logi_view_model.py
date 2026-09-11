@@ -296,6 +296,10 @@ def build_view_model() -> dict:
         # the SAME shipment finance truth already delivered above. No new ledger,
         # no new accounting model: one row per shipment + per-currency totals.
         "receivables": rd.receivables_projection(rows),
+        # C2D — global partner-payable worklist (THANH TOÁN ĐỐI TÁC / PHẢI TRẢ),
+        # read-only over the SAME canonical ledger the C2B per-shipment slice
+        # uses. No new ledger: one row per SHIPMENT × PARTNER × CURRENCY.
+        "payables": rd.partner_payables_projection(),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)

@@ -33,6 +33,7 @@ import {
   type Environment,
   type Home,
   type Notif,
+  type PartnerPayablesViewModel,
   type ReceivablesViewModel,
   type Role,
   type Quote,
@@ -76,6 +77,7 @@ interface StoreShape {
   home: Home | null;
   environment: Environment | null;
   receivables: ReceivablesViewModel;
+  payables: PartnerPayablesViewModel;
   unknownLabel: string;
   /**
    * Send ONE typed event to the single Python dispatcher. Persistence is
@@ -137,6 +139,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const environment = useMemo(() => vm?.environment ?? null, [vm]);
   const receivables = useMemo(
     () => vm?.receivables ?? { rows: [], totals: {} },
+    [vm]
+  );
+  const payables = useMemo(
+    () => vm?.payables ?? { rows: [], totals: {} },
     [vm]
   );
 
@@ -214,6 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       home,
       environment,
       receivables,
+      payables,
       unknownLabel: unknownLabel(),
       dispatch,
       updateShipment,
@@ -240,6 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       home,
       environment,
       receivables,
+      payables,
       dispatch,
       updateShipment,
     ]
