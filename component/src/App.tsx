@@ -31,6 +31,7 @@ import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
+import Reconciliation from "./pages/Reconciliation";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -76,6 +77,10 @@ export default function App() {
                 authority_agents legal master and the canonical C2D payable rows
                 (no longer a placeholder; no CRM surface added). */}
             <Route path="/ngu-canh-doi-tac" element={<PartnerContext />} />
+            {/* LOGI_RECONCILIATION_DESK_01 — real READ-ONLY đối soát desk over the
+                allocation matching core.financial_ledger already derives (no new
+                ledger, no accounting engine, no write path). */}
+            <Route path="/tai-chinh/doi-soat" element={<Reconciliation />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

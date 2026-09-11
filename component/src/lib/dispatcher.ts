@@ -58,7 +58,15 @@ export type LogiEventName =
   // /ngu-canh-doi-tac. It mutates nothing: Python records only WHICH existing
   // entity was picked and re-derives the whole context from the authoritative
   // readers (entity_context / authority_agents / C2D ledger) on the next read.
-  | "partner_context_select";
+  | "partner_context_select"
+  // LOGI_RECONCILIATION_DESK_01 — bounded READ-ONLY filter event for
+  // /tai-chinh/doi-soat. It mutates nothing: Python records only WHICH slice of
+  // the existing canonical projection was asked for (query / currency / state /
+  // side) and re-derives every amount, match state and currency total from
+  // core.financial_ledger on the next fresh read. There is deliberately no
+  // reconcile/write event: recording a payable or a payment stays on the
+  // canonical C2B/C2D and C2C surfaces this desk links to.
+  | "reconciliation_filter";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -91,6 +99,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "tariff_lookup",
   "translate_text",
   "partner_context_select",
+  "reconciliation_filter",
 ]);
 
 type Transport = (event: string, value: unknown) => void;
