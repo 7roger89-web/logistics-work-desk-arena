@@ -28,6 +28,7 @@ import Agreements from "./pages/Agreements";
 import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
+import TariffLookup from "./pages/TariffLookup";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -61,6 +62,9 @@ export default function App() {
             <Route path="/hop-dong" element={<Contracts />} />
             <Route path="/hop-dong/moi" element={<NewContract />} />
             <Route path="/hop-dong/:id" element={<ContractDetail />} />
+            {/* LOGI_TARIFF_LOOKUP_01 — real read-only HS/tariff lookup over
+                the existing canonical reader (no longer a placeholder). */}
+            <Route path="/tra-cuu-thue" element={<TariffLookup />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

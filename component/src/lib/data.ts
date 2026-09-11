@@ -69,7 +69,7 @@ export const NAV: {
   {
     group: "CÔNG CỤ",
     items: [
-      { to: "/tra-cuu-thue", soon: true, label: "Tra cứu thuế / HS", icon: "search" },
+      { to: "/tra-cuu-thue", label: "Tra cứu thuế / HS", icon: "search" },
       { to: "/so-tay", soon: true, label: "Sổ tay", icon: "book" },
       { to: "/dich-thuat", soon: true, label: "Dịch thuật", icon: "lang" },
     ],

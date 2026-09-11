@@ -44,7 +44,11 @@ export type LogiEventName =
   | "contract_goods_save"
   | "contract_docgen_generate"
   | "contract_docgen_issue"
-  | "contract_shipment_link";
+  | "contract_shipment_link"
+  // LOGI_TARIFF_LOOKUP_01 — bounded READ-ONLY query event (no mutation):
+  // records the /tra-cuu-thue lookup query; the authoritative result always
+  // comes back from the existing canonical reader in the next fresh read.
+  | "tariff_lookup";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -74,6 +78,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "contract_docgen_generate",
   "contract_docgen_issue",
   "contract_shipment_link",
+  "tariff_lookup",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

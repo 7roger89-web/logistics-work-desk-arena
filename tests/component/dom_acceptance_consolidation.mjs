@@ -7,8 +7,9 @@
 //   1. boot (no process/BidiComponent failure)
 //   2. Home/Dashboard contrast defect fix: the donor gradient chain now has
 //      inheritable custom-property defaults in the shadow-root shell css
-//   3. sidebar: all donor items, honest "Sắp có" markers on the seven
-//      deferred destinations, REAL open-task badge (not the donor sample "6")
+//   3. sidebar: all donor items, honest "Sắp có" markers on the six
+//      remaining deferred destinations, REAL open-task badge (LOGI_TARIFF_LOOKUP_01
+//      promoted /tra-cuu-thue to a real read-only workspace)
 //   4. footer tells the truth (no hardcoded sample date)
 //   5. every REAL_BACKED sidebar destination opens its real page
 //   6. every UNBACKED destination opens the explicit deferred placeholder
@@ -155,9 +156,10 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   ]) {
     assert.ok(at.includes(it), `sidebar item missing: ${it}`);
   }
-  // Exactly the seven deferred destinations carry the marker in the sidebar.
+  // Exactly the six remaining deferred destinations carry the marker
+  // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01).
   const markers = $("aside .uppercase", window.document).filter((el) => text(el) === "Sắp có");
-  assert.equal(markers.length, 7, `expected 7 "Sắp có" markers, got ${markers.length}`);
+  assert.equal(markers.length, 6, `expected 6 "Sắp có" markers, got ${markers.length}`);
   // The badge is the REAL open-work count from the task projection.
   const tasksRow = $('aside a[href="/viec-can-xu-ly"]')[0];
   assert.ok(tasksRow, "tasks nav link missing");
@@ -194,6 +196,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     ["Hợp đồng", "HDMB · HDNT · PL"],
     ["Thu tiền", "Thu tiền khách · Phải thu"],
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
+    ["Tra cứu thuế / HS", "Tra cứu HS & Thuế"],
   ];
   for (const [label, marker] of BACKED) {
     await click(label, "a", aside);
@@ -201,7 +204,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     assert.ok(t.includes(marker), `backed page "${label}" missing marker "${marker}"`);
     assert.ok(!t.includes("chưa triển khai"), `backed page "${label}" unexpectedly shows placeholder`);
   }
-  ok("11 backed destinations all open REAL pages (0 placeholders)");
+  ok("12 backed destinations all open REAL pages (0 placeholders)");
 }
 
 // ---------------------------------------------------------------------------
@@ -212,7 +215,6 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
     ["Ngữ cảnh Đối tác", "Ngữ cảnh Đối tác"],
     ["Đối soát", "Đối soát"],
     ["Báo cáo CEO", "Báo cáo CEO"],
-    ["Tra cứu thuế / HS", "Tra cứu thuế / HS"],
     ["Sổ tay", "Sổ tay"],
     ["Dịch thuật", "Dịch thuật"],
     ["Người dùng & Vai trò", "Người dùng & Vai trò"],
@@ -285,10 +287,13 @@ console.log("STEP 9 — quick-add sheet: deferred tool marked, the rest route re
   const sheetText = bodyText();
   assert.ok(sheetText.includes("Thêm mới nhanh"), "quick-add sheet missing");
   const taxRow = findClickable("Tra cứu thuế", "button");
-  assert.ok(taxRow && text(taxRow).includes("Sắp có"), "deferred quick-add tool must be marked");
+  assert.ok(taxRow && !text(taxRow).includes("Sắp có"), "tariff lookup is REAL now — no deferred marker");
+  await click("Tra cứu thuế", "button");
+  assert.ok(mainText().includes("Tra cứu HS & Thuế"), "quick-add must route to the real tariff workspace");
+  await click("Thêm", "button", $("header")[0]);
   await click("Tạo lô hàng mới", "button");
   assert.ok(mainText().includes("Tạo Lô Hàng Mới"), "quick-add must route to real Create Shipment");
-  ok("quick-add consistent: 4 real creations + 1 honestly marked tool");
+  ok("quick-add consistent: 5 real destinations, zero deferred tools");
 }
 
 // ---------------------------------------------------------------------------
