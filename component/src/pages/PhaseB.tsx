@@ -5,15 +5,14 @@
 // shell already runs on the real Logistics backend:
 //   Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
 //   Khách Hàng, Kinh doanh · Báo giá, Thỏa thuận mua bán, Hợp đồng,
-//   Thu tiền (phải thu), Công nợ đối tác (phải trả), Tra cứu thuế / HS,
-//   Dịch thuật, Ngữ cảnh Đối tác.
+//   Thu tiền (phải thu), Công nợ đối tác (phải trả), Đối soát, Báo cáo CEO,
+//   Tra cứu thuế / HS, Dịch thuật, Ngữ cảnh Đối tác.
 
 import { Link, useLocation } from "react-router-dom";
 import { Construction, ArrowRight } from "lucide-react";
 
 const PATH_NAMES: Record<string, string> = {
   "/tai-chinh/doi-soat": "Đối soát",
-  "/bao-cao-ceo": "Báo cáo CEO",
   "/so-tay": "Sổ tay",
   "/nguoi-dung": "Người dùng & Vai trò",
 };
@@ -36,8 +35,8 @@ export function PhaseBPlaceholder() {
           hiện tại nên chưa được dựng — hệ thống không hiển thị dữ liệu mẫu
           thay thế. Toàn bộ phần vận hành, kinh doanh và tài chính cốt lõi —
           Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
-          Khách Hàng, Báo giá, Thỏa thuận, Hợp đồng, Thu tiền và Công nợ đối
-          tác — đã chạy trên dữ liệu Logistics thật.
+          Khách Hàng, Báo giá, Thỏa thuận, Hợp đồng, Thu tiền, Công nợ đối tác,
+          Đối soát và Báo cáo CEO — đã chạy trên dữ liệu Logistics thật.
         </p>
         <div className="flex flex-wrap justify-center gap-2.5 mt-5">
           <Link

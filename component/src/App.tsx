@@ -32,6 +32,7 @@ import TariffLookup from "./pages/TariffLookup";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
+import CeoReport from "./pages/CeoReport";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -81,6 +82,9 @@ export default function App() {
                 allocation matching core.financial_ledger already derives (no new
                 ledger, no accounting engine, no write path). */}
             <Route path="/tai-chinh/doi-soat" element={<Reconciliation />} />
+            {/* LOGI_CEO_REPORT_01 — bounded READ-ONLY current-position summary
+                over existing Operations, C2C, C2D and reconciliation projections. */}
+            <Route path="/bao-cao-ceo" element={<CeoReport />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

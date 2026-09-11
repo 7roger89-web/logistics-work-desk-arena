@@ -141,23 +141,27 @@ def _receivables(payload: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
     for currency in _ordered_currencies(totals):
         raw_total = _mapping(totals.get(currency))
         currency_rows = [row for row in rows if _currency(row.get("currency")) == currency]
+        known_rows = [
+            row
+            for row in currency_rows
+            if bool(row.get("hasActualLines")) and _number(row.get("outstanding")) is not None
+        ]
         positions.append(
             {
                 "currency": currency,
-                # C2C emits this only from complete Finance Actual rows.  Keep
+                # C2C emits this only from complete Finance Actual rows. Keep
                 # None as None if a malformed source lacks a safe amount.
                 "outstanding": _number(raw_total.get("outstanding")),
-                "openCount": sum(
-                    1
-                    for row in currency_rows
-                    if (_number(row.get("outstanding")) is not None and _number(row.get("outstanding")) > 0)
-                ),
-                "rowCount": len(currency_rows),
+                # This is an explicitly known-subset count, not a claim that
+                # incomplete rows have zero outstanding amount.
+                "openCount": sum(1 for row in known_rows if _number(row.get("outstanding")) > 0),
+                "rowCount": len(known_rows),
+                "incompleteRowCount": len(currency_rows) - len(known_rows),
             }
         )
 
     # Finance Actual is incomplete if the C2C row explicitly says no actual
-    # service line or cannot safely state its outstanding amount.  These rows
+    # service line or cannot safely state its outstanding amount. These rows
     # are excluded from C2C totals; this count makes that limitation visible.
     incomplete = sum(
         1
@@ -180,16 +184,14 @@ def _payables(payload: Mapping[str, Any]) -> dict[str, Any]:
     for currency in _ordered_currencies(totals):
         raw_total = _mapping(totals.get(currency))
         currency_rows = [row for row in rows if _currency(row.get("currency")) == currency]
+        known_rows = [row for row in currency_rows if _number(row.get("remaining")) is not None]
         positions.append(
             {
                 "currency": currency,
                 "outstanding": _number(raw_total.get("remaining")),
-                "openCount": sum(
-                    1
-                    for row in currency_rows
-                    if (_number(row.get("remaining")) is not None and _number(row.get("remaining")) > 0)
-                ),
-                "rowCount": len(currency_rows),
+                "openCount": sum(1 for row in known_rows if _number(row.get("remaining")) > 0),
+                "rowCount": len(known_rows),
+                "incompleteRowCount": len(currency_rows) - len(known_rows),
             }
         )
 

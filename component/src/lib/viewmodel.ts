@@ -978,8 +978,10 @@ export interface CeoCurrencyPosition {
   outstanding: MaybeNum;
   /** Existing source-row count whose outstanding amount is genuinely > 0. */
   openCount: number;
-  /** C2C grain: shipment; C2D grain: shipment × partner × currency. */
+  /** Known source rows only; C2C grain: shipment; C2D: shipment × partner × currency. */
   rowCount: number;
+  /** Missing/unsafe source rows excluded from this currency's amount/count. */
+  incompleteRowCount: number;
 }
 
 export interface CeoStatusCount {

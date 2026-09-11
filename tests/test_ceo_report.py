@@ -90,6 +90,8 @@ def test_ceo_projection_uses_existing_current_position_without_cross_currency_to
     assert set(receivables) == {"VND", "USD"}
     assert receivables["VND"]["outstanding"] == 60_000_000
     assert receivables["VND"]["openCount"] == 1
+    assert receivables["VND"]["rowCount"] == 1
+    assert receivables["VND"]["incompleteRowCount"] == 1
     assert receivables["USD"]["outstanding"] == 800
     assert report["finance"]["incompleteShipmentCount"] == 1
     # The adapter has no cross-currency money total at all.
@@ -178,6 +180,33 @@ def test_reconciliation_summary_counts_existing_states_before_filtering():
         "UNKNOWN": 0,
     }
     assert summary["reviewCount"] == 3
+
+
+def test_reconciliation_summary_remains_complete_when_list_rows_are_bounded():
+    """A CEO count must not silently become a first-400-row count."""
+    positions = [
+        {
+            "shipment_id": f"LO-{index:03d}",
+            "partners": [],
+            "obligations": [
+                {
+                    "obligation_id": f"OBL-{index:03d}",
+                    "currency": "VND",
+                    "amount": 1.0,
+                    "allocated": 0.0,
+                    "outstanding": 1.0,
+                    "status": "CONFIRMED",
+                }
+            ],
+            "payments": [],
+        }
+        for index in range(reconciliation_desk.MAX_ROWS + 1)
+    ]
+
+    projection = reconciliation_desk.reconciliation_projection(positions)
+    assert projection["truncated"] is True
+    assert len(projection["rows"]) == reconciliation_desk.MAX_ROWS
+    assert reconciliation_desk.reconciliation_summary(projection)["obligations"]["UNMATCHED"] == reconciliation_desk.MAX_ROWS + 1
 
 
 @pytest.fixture()

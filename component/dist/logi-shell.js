@@ -9489,7 +9489,7 @@ function Xn({ children: e }) {
 	}, [t]), A = (0, _.useMemo)(() => t?.payables ?? {
 		rows: [],
 		totals: {}
-	}, [t]), j = (0, _.useCallback)((e, t) => D(e, t), []), oe = (0, _.useCallback)((e, n) => {
+	}, [t]), j = (0, _.useMemo)(() => t?.ceoReport ?? null, [t]), oe = (0, _.useCallback)((e, t) => D(e, t), []), se = (0, _.useCallback)((e, n) => {
 		let r = (t?.shipments ?? []).find((t) => t.id === e) ?? Object.values(g).find((t) => t.id === e);
 		if (!r) return;
 		let i = n(r);
@@ -9497,8 +9497,8 @@ function Xn({ children: e }) {
 			...t,
 			[e]: i
 		})), D("shipment_update", { shipment: i });
-	}, [t, g]), se = t?.version, ce = (0, _.useRef)(se);
-	se !== ce.current && (ce.current = se, t && v((e) => {
+	}, [t, g]), ce = t?.version, le = (0, _.useRef)(ce);
+	ce !== le.current && (le.current = ce, t && v((e) => {
 		let n = new Set((t.shipments ?? []).map((e) => e.id)), r = {};
 		for (let [i, a] of Object.entries(e)) {
 			let e = (t.shipments ?? []).find((e) => e.id === i);
@@ -9506,10 +9506,10 @@ function Xn({ children: e }) {
 		}
 		return r;
 	}));
-	let le = t?.user.name ?? "—", ue = (0, _.useMemo)(() => ({
+	let ue = t?.user.name ?? "—", M = (0, _.useMemo)(() => ({
 		role: n,
 		setRole: r,
-		userName: le,
+		userName: ue,
 		query: i,
 		setQuery: a,
 		searchOpen: o,
@@ -9535,12 +9535,13 @@ function Xn({ children: e }) {
 		environment: ae,
 		receivables: k,
 		payables: A,
+		ceoReport: j,
 		unknownLabel: w(),
-		dispatch: j,
-		updateShipment: oe
+		dispatch: oe,
+		updateShipment: se
 	}), [
 		n,
-		le,
+		ue,
 		i,
 		o,
 		c,
@@ -9562,10 +9563,11 @@ function Xn({ children: e }) {
 		k,
 		A,
 		j,
-		oe
+		oe,
+		se
 	]);
 	return /* @__PURE__ */ (0, P.jsx)(Jn.Provider, {
-		value: ue,
+		value: M,
 		children: e
 	});
 }
@@ -11049,7 +11051,6 @@ var Sa = F(xa), Ca = {
 			},
 			{
 				to: "/bao-cao-ceo",
-				soon: !0,
 				label: "Báo cáo CEO",
 				icon: "chart"
 			}
@@ -20438,15 +20439,428 @@ function Qo() {
 	});
 }
 //#endregion
+//#region src/pages/CeoReport.tsx
+function $o({ position: e, kind: t }) {
+	let n = t === "receivable", r = n ? "phải thu" : "phải trả", i = n ? "text-red-700" : "text-amber-800", a = n ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200", o = e.incompleteRowCount > 0 ? "dòng còn mở đã xác định" : "dòng còn mở", s = n ? "dòng chưa đủ Finance Actual, không tính là 0" : "dòng chưa đủ số dư canonical, không tính là 0";
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		"data-testid": `ceo-${t}-${e.currency}`,
+		"data-ceo-currency": e.currency,
+		className: `min-w-0 rounded-2xl border p-3.5 md:p-4 ${a}`,
+		children: [
+			/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "flex items-center justify-between gap-2",
+				children: [/* @__PURE__ */ (0, P.jsx)("span", {
+					className: "rounded-md bg-white/80 border border-slate-200 px-2 py-0.5 text-[12px] font-extrabold tracking-wide text-[#0f2a4a]",
+					children: e.currency
+				}), /* @__PURE__ */ (0, P.jsxs)("span", {
+					className: "text-right text-[12px] leading-snug font-semibold text-slate-500",
+					children: [
+						Ra(e.openCount),
+						" ",
+						o
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("p", {
+				className: "mt-3 text-[12.5px] font-bold uppercase tracking-wide text-slate-600",
+				children: ["Còn ", r]
+			}),
+			/* @__PURE__ */ (0, P.jsx)("p", {
+				className: `mt-1 break-words text-[20px] leading-tight font-extrabold md:text-[23px] ${i}`,
+				children: z(e.outstanding, e.currency)
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("p", {
+				className: "mt-2 text-[12.5px] leading-relaxed text-slate-500",
+				children: [Ra(e.rowCount), " dòng nguồn đủ điều kiện · không quy đổi sang tiền tệ khác"]
+			}),
+			e.incompleteRowCount > 0 ? /* @__PURE__ */ (0, P.jsxs)("p", {
+				className: "mt-1 text-[12.5px] leading-relaxed font-semibold text-amber-800",
+				children: [
+					Ra(e.incompleteRowCount),
+					" ",
+					s,
+					"."
+				]
+			}) : null
+		]
+	});
+}
+function es({ label: e, value: t, tone: n = "gray" }) {
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		className: `min-w-0 rounded-xl border px-3 py-2.5 ${{
+			green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+			amber: "border-amber-200 bg-amber-50 text-amber-900",
+			red: "border-red-200 bg-red-50 text-red-800",
+			gray: "border-slate-200 bg-slate-50 text-slate-700"
+		}[n]}`,
+		children: [/* @__PURE__ */ (0, P.jsx)("p", {
+			className: "text-[11.5px] font-bold uppercase tracking-wide opacity-75",
+			children: e
+		}), /* @__PURE__ */ (0, P.jsx)("p", {
+			className: "mt-0.5 text-[18px] leading-tight font-extrabold",
+			children: Ra(t)
+		})]
+	});
+}
+function ts({ children: e }) {
+	return /* @__PURE__ */ (0, P.jsx)("div", {
+		className: "rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-[14px] leading-relaxed text-slate-600",
+		children: e
+	});
+}
+function ns() {
+	let { ceoReport: e } = Zn();
+	if (!e) return /* @__PURE__ */ (0, P.jsx)("div", {
+		className: "max-w-[1000px]",
+		children: /* @__PURE__ */ (0, P.jsx)(ts, { children: "Chưa nhận được tóm tắt quản trị từ nguồn Logistics. Hệ thống không hiển thị số liệu thay thế." })
+	});
+	let { operations: t, receivables: n, payables: r, finance: i, reconciliation: a, quickLinks: o, unavailable: s } = e, c = a.obligations, l = a.money, u = !!(a.available && c && l);
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		className: "max-w-[1240px] space-y-4 pb-3",
+		children: [
+			/* @__PURE__ */ (0, P.jsxs)("section", {
+				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+				"data-testid": "ceo-header",
+				children: [/* @__PURE__ */ (0, P.jsx)(H, {
+					icon: /* @__PURE__ */ (0, P.jsx)(Ir, { size: 20 }),
+					title: "Báo cáo CEO",
+					sub: "Tóm tắt vị thế hiện tại từ dữ liệu Logistics đã có. Chỉ đọc; tiền tệ luôn tách riêng.",
+					right: /* @__PURE__ */ (0, P.jsx)(V, {
+						tone: "blue",
+						size: "sm",
+						children: "CHỈ ĐỌC"
+					})
+				}), /* @__PURE__ */ (0, P.jsx)("div", {
+					className: "rounded-xl border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-blue-900",
+					children: "Dùng để nhìn nhanh vận hành, phải thu, phải trả và đối soát. Không có biểu đồ xu hướng hay số liệu ước tính."
+				})]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("section", {
+				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+				"data-testid": "ceo-operations",
+				children: [
+					/* @__PURE__ */ (0, P.jsx)(H, {
+						icon: /* @__PURE__ */ (0, P.jsx)(Bi, { size: 20 }),
+						title: "Vận hành",
+						sub: "Đếm từ danh sách lô hiện tại và hàng đợi việc hiện có."
+					}),
+					/* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3",
+						"data-testid": "ceo-operations-cards",
+						children: [
+							/* @__PURE__ */ (0, P.jsxs)("div", {
+								className: "min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3.5",
+								children: [
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "text-[12px] font-bold uppercase tracking-wide text-slate-500",
+										children: "Tổng lô hàng"
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[26px] leading-tight font-extrabold text-[#0f2a4a]",
+										children: Ra(t.totalShipmentCount)
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[12.5px] text-slate-500",
+										children: "Danh sách lô hiện tại"
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, P.jsxs)("div", {
+								className: "min-w-0 rounded-2xl border border-blue-200 bg-blue-50 p-3.5",
+								children: [
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "text-[12px] font-bold uppercase tracking-wide text-blue-700",
+										children: "Lô đang chạy"
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[26px] leading-tight font-extrabold text-[#0f2a4a]",
+										children: Ra(t.openShipmentCount)
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[12.5px] text-blue-800",
+										children: "Theo định nghĩa Tổng quan"
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, P.jsxs)("div", {
+								className: "min-w-0 rounded-2xl border border-amber-200 bg-amber-50 p-3.5",
+								children: [
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "text-[12px] font-bold uppercase tracking-wide text-amber-800",
+										children: "Việc ưu tiên"
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[26px] leading-tight font-extrabold text-[#0f2a4a]",
+										children: Ra(t.actionableTaskCount)
+									}),
+									/* @__PURE__ */ (0, P.jsx)("p", {
+										className: "mt-1 text-[12.5px] text-amber-900",
+										children: "Khẩn + Cần xử lý"
+									})
+								]
+							})
+						]
+					}),
+					t.statusCounts.length > 0 ? /* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "mt-4",
+						children: [/* @__PURE__ */ (0, P.jsx)("p", {
+							className: "text-[12px] font-bold uppercase tracking-wide text-slate-500",
+							children: "Trạng thái lô hiện tại"
+						}), /* @__PURE__ */ (0, P.jsx)("div", {
+							className: "mt-2 flex flex-wrap gap-2",
+							"data-testid": "ceo-status-counts",
+							children: t.statusCounts.map((e) => /* @__PURE__ */ (0, P.jsxs)("span", {
+								className: "inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700",
+								children: [/* @__PURE__ */ (0, P.jsx)("span", {
+									className: "truncate",
+									children: e.status
+								}), /* @__PURE__ */ (0, P.jsx)("b", {
+									className: "text-[#0f2a4a]",
+									children: Ra(e.count)
+								})]
+							}, e.status))
+						})]
+					}) : /* @__PURE__ */ (0, P.jsx)("p", {
+						className: "mt-4 text-[14px] text-slate-500",
+						children: "Chưa có lô hàng trong dữ liệu hiện tại."
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "grid gap-4 lg:grid-cols-2",
+				children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+					className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+					"data-testid": "ceo-receivables",
+					children: [/* @__PURE__ */ (0, P.jsx)(H, {
+						icon: /* @__PURE__ */ (0, P.jsx)(ba, {
+							size: 20,
+							className: "text-emerald-600"
+						}),
+						title: "Phải thu khách",
+						sub: "C2C · chỉ tổng từ lô đã có Finance Actual."
+					}), n.positions.length > 0 ? /* @__PURE__ */ (0, P.jsx)("div", {
+						className: "grid gap-3 sm:grid-cols-2",
+						"data-testid": "ceo-receivable-currency-grid",
+						children: n.positions.map((e) => /* @__PURE__ */ (0, P.jsx)($o, {
+							position: e,
+							kind: "receivable"
+						}, e.currency))
+					}) : /* @__PURE__ */ (0, P.jsxs)(ts, { children: [
+						"Chưa có tổng phải thu đủ điều kiện từ Finance Actual. Đây là trạng thái ",
+						/* @__PURE__ */ (0, P.jsx)("b", { children: "chưa xác định" }),
+						", không phải 0."
+					] })]
+				}), /* @__PURE__ */ (0, P.jsxs)("section", {
+					className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+					"data-testid": "ceo-payables",
+					children: [
+						/* @__PURE__ */ (0, P.jsx)(H, {
+							icon: /* @__PURE__ */ (0, P.jsx)(gi, {
+								size: 20,
+								className: "text-amber-700"
+							}),
+							title: "Phải trả đối tác",
+							sub: "C2D · nghĩa vụ và phân bổ từ ledger canonical."
+						}),
+						r.error ? /* @__PURE__ */ (0, P.jsxs)(ts, { children: [
+							"Chưa đọc được ledger phải trả canonical: ",
+							r.error,
+							". Hệ thống không hiển thị số 0 thay thế."
+						] }) : r.hasCanonicalRecords ? /* @__PURE__ */ (0, P.jsx)("div", {
+							className: "grid gap-3 sm:grid-cols-2",
+							"data-testid": "ceo-payable-currency-grid",
+							children: r.positions.map((e) => /* @__PURE__ */ (0, P.jsx)($o, {
+								position: e,
+								kind: "payable"
+							}, e.currency))
+						}) : /* @__PURE__ */ (0, P.jsxs)(ts, { children: [
+							"Chưa có bản ghi nghĩa vụ hoặc thanh toán canonical. Đây là trạng thái ",
+							/* @__PURE__ */ (0, P.jsx)("b", { children: "chưa có dữ liệu" }),
+							", không phải phải trả bằng 0."
+						] }),
+						r.status === "REVIEW_REQUIRED" ? /* @__PURE__ */ (0, P.jsx)("p", {
+							className: "mt-3 inline-flex rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900",
+							children: "Có bản ghi phải trả cần rà soát trong desk đối soát."
+						}) : null
+					]
+				})]
+			}),
+			/* @__PURE__ */ (0, P.jsx)("section", {
+				className: "rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/70 p-4 md:p-5",
+				"data-testid": "ceo-finance-visibility",
+				children: /* @__PURE__ */ (0, P.jsxs)("div", {
+					className: "flex items-start gap-3",
+					children: [/* @__PURE__ */ (0, P.jsx)(Hr, {
+						size: 21,
+						className: "mt-0.5 shrink-0 text-amber-700"
+					}), /* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "min-w-0",
+						children: [/* @__PURE__ */ (0, P.jsx)("h3", {
+							className: "text-[15px] font-extrabold text-amber-950",
+							children: "Khả năng nhìn thấy tài chính"
+						}), i.incompleteShipmentCount > 0 ? /* @__PURE__ */ (0, P.jsxs)("p", {
+							className: "mt-1 text-[13.5px] leading-relaxed text-amber-900",
+							children: [Ra(i.incompleteShipmentCount), " lô chưa đủ Finance Actual. Các tổng phải thu phía trên không tính các lô này và không coi dữ liệu thiếu là 0."]
+						}) : /* @__PURE__ */ (0, P.jsx)("p", {
+							className: "mt-1 text-[13.5px] leading-relaxed text-amber-900",
+							children: "Trang chỉ hiển thị các vị thế có nguồn hiện tại; không tự suy diễn thêm chỉ số tài chính."
+						})]
+					})]
+				})
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("section", {
+				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+				"data-testid": "ceo-reconciliation",
+				children: [
+					/* @__PURE__ */ (0, P.jsx)(H, {
+						icon: /* @__PURE__ */ (0, P.jsx)(Ji, {
+							size: 20,
+							className: "text-violet-700"
+						}),
+						title: "Đối soát",
+						sub: "Số dòng theo trạng thái phân bổ từ ledger canonical; không phải đối soát sao kê hay sổ kế toán.",
+						right: a.status === "REVIEW_REQUIRED" ? /* @__PURE__ */ (0, P.jsx)(V, {
+							tone: "amber",
+							size: "sm",
+							children: "CẦN RÀ SOÁT"
+						}) : void 0
+					}),
+					!a.available || !c || !l ? /* @__PURE__ */ (0, P.jsx)(ts, { children: a.status === "NO_SOURCE" ? `Chưa đọc được ledger đối soát${a.error ? `: ${a.error}` : ""}. Không hiển thị số 0 thay thế.` : "Chưa có bản ghi đối soát canonical. Đây là trạng thái chưa có dữ liệu, không phải công nợ bằng 0." }) : /* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "grid gap-3 lg:grid-cols-2",
+						children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+							className: "rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5",
+							"data-testid": "ceo-reconciliation-obligations",
+							children: [
+								/* @__PURE__ */ (0, P.jsx)("p", {
+									className: "text-[13px] font-extrabold text-[#0f2a4a]",
+									children: "Nghĩa vụ"
+								}),
+								/* @__PURE__ */ (0, P.jsx)("p", {
+									className: "mt-0.5 text-[12.5px] text-slate-500",
+									children: "MATCHED / PARTIAL / UNMATCHED theo phân bổ đã có"
+								}),
+								/* @__PURE__ */ (0, P.jsxs)("div", {
+									className: "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4",
+									children: [
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Đã đối soát",
+											value: c.MATCHED,
+											tone: "green"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Một phần",
+											value: c.PARTIAL,
+											tone: "amber"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Chưa đối soát",
+											value: c.UNMATCHED,
+											tone: "red"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Chưa xác định",
+											value: c.UNKNOWN
+										})
+									]
+								})
+							]
+						}), /* @__PURE__ */ (0, P.jsxs)("div", {
+							className: "rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5",
+							"data-testid": "ceo-reconciliation-money",
+							children: [
+								/* @__PURE__ */ (0, P.jsx)("p", {
+									className: "text-[13px] font-extrabold text-[#0f2a4a]",
+									children: "Giao dịch tiền"
+								}),
+								/* @__PURE__ */ (0, P.jsx)("p", {
+									className: "mt-0.5 text-[12.5px] text-slate-500",
+									children: "ALLOCATED / PARTIAL / UNALLOCATED theo phân bổ đã có"
+								}),
+								/* @__PURE__ */ (0, P.jsxs)("div", {
+									className: "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4",
+									children: [
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Đã phân bổ",
+											value: l.ALLOCATED,
+											tone: "green"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Một phần",
+											value: l.PARTIAL,
+											tone: "amber"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Chưa phân bổ",
+											value: l.UNALLOCATED,
+											tone: "red"
+										}),
+										/* @__PURE__ */ (0, P.jsx)(es, {
+											label: "Chưa xác định",
+											value: l.UNKNOWN
+										})
+									]
+								})
+							]
+						})]
+					}),
+					u && a.reviewCount !== null && a.reviewCount > 0 ? /* @__PURE__ */ (0, P.jsxs)("p", {
+						className: "mt-3 inline-flex rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900",
+						children: [Ra(a.reviewCount), " dòng ledger cần rà soát."]
+					}) : null
+				]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("section", {
+				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+				"data-testid": "ceo-quick-navigation",
+				children: [/* @__PURE__ */ (0, P.jsx)(H, {
+					icon: /* @__PURE__ */ (0, P.jsx)(vr, { size: 20 }),
+					title: "Đi nhanh tới dữ liệu gốc",
+					sub: "Mỗi liên kết mở desk đã sở hữu dữ liệu và hành động nghiệp vụ tương ứng."
+				}), /* @__PURE__ */ (0, P.jsx)("div", {
+					className: "grid gap-2.5 sm:grid-cols-2",
+					"data-testid": "ceo-quick-links",
+					children: o.map((e) => /* @__PURE__ */ (0, P.jsxs)(N, {
+						to: e.href,
+						className: "btn-press touch-target flex min-h-[52px] min-w-0 items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-left hover:border-[#1e5aa8]",
+						children: [/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "min-w-0",
+							children: [/* @__PURE__ */ (0, P.jsx)("span", {
+								className: "block text-[14px] font-extrabold text-[#0f2a4a]",
+								children: e.label
+							}), /* @__PURE__ */ (0, P.jsx)("span", {
+								className: "block truncate text-[12.5px] text-slate-500",
+								children: e.note
+							})]
+						}), /* @__PURE__ */ (0, P.jsx)(vr, {
+							size: 18,
+							className: "shrink-0 text-[#1e5aa8]"
+						})]
+					}, e.href))
+				})]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("section", {
+				className: "rounded-2xl border border-slate-200 bg-slate-50 p-4",
+				"data-testid": "ceo-scope-note",
+				children: [/* @__PURE__ */ (0, P.jsx)("p", {
+					className: "text-[12px] font-extrabold uppercase tracking-wide text-slate-500",
+					children: "Phạm vi dữ liệu"
+				}), /* @__PURE__ */ (0, P.jsx)("ul", {
+					className: "mt-2 space-y-1.5 text-[13.5px] leading-relaxed text-slate-600",
+					children: s.map((e) => /* @__PURE__ */ (0, P.jsxs)("li", { children: ["• ", e] }, e))
+				})]
+			})
+		]
+	});
+}
+//#endregion
 //#region src/pages/PhaseB.tsx
-var $o = {
+var rs = {
 	"/tai-chinh/doi-soat": "Đối soát",
-	"/bao-cao-ceo": "Báo cáo CEO",
 	"/so-tay": "Sổ tay",
 	"/nguoi-dung": "Người dùng & Vai trò"
 };
-function es() {
-	let { pathname: e } = yt(), t = $o[e] ?? "Màn hình phụ";
+function is() {
+	let { pathname: e } = yt(), t = rs[e] ?? "Màn hình phụ";
 	return /* @__PURE__ */ (0, P.jsx)("div", {
 		className: "max-w-[680px] mx-auto mt-8",
 		children: /* @__PURE__ */ (0, P.jsxs)("div", {
@@ -20466,7 +20880,7 @@ function es() {
 				}),
 				/* @__PURE__ */ (0, P.jsx)("p", {
 					className: "text-[14.5px] text-slate-500 mt-2 leading-relaxed",
-					children: "Màn hình này chưa có nguồn dữ liệu nghiệp vụ chuẩn trong phiên bản hiện tại nên chưa được dựng — hệ thống không hiển thị dữ liệu mẫu thay thế. Toàn bộ phần vận hành, kinh doanh và tài chính cốt lõi — Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi, Khách Hàng, Báo giá, Thỏa thuận, Hợp đồng, Thu tiền và Công nợ đối tác — đã chạy trên dữ liệu Logistics thật."
+					children: "Màn hình này chưa có nguồn dữ liệu nghiệp vụ chuẩn trong phiên bản hiện tại nên chưa được dựng — hệ thống không hiển thị dữ liệu mẫu thay thế. Toàn bộ phần vận hành, kinh doanh và tài chính cốt lõi — Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi, Khách Hàng, Báo giá, Thỏa thuận, Hợp đồng, Thu tiền, Công nợ đối tác, Đối soát và Báo cáo CEO — đã chạy trên dữ liệu Logistics thật."
 				}),
 				/* @__PURE__ */ (0, P.jsxs)("div", {
 					className: "flex flex-wrap justify-center gap-2.5 mt-5",
@@ -20486,7 +20900,7 @@ function es() {
 }
 //#endregion
 //#region src/App.tsx
-function ts() {
+function as() {
 	return /* @__PURE__ */ (0, P.jsx)("div", {
 		className: "min-h-[40vh] grid place-items-center",
 		children: /* @__PURE__ */ (0, P.jsx)("p", {
@@ -20495,7 +20909,7 @@ function ts() {
 		})
 	});
 }
-function ns() {
+function os() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
 	return /* @__PURE__ */ (0, P.jsx)(Xn, { children: /* @__PURE__ */ (0, P.jsx)(Kt, { children: /* @__PURE__ */ (0, P.jsx)(Ya, { children: e ? /* @__PURE__ */ (0, P.jsxs)(Yt, { children: [
 		/* @__PURE__ */ (0, P.jsx)(qt, {
@@ -20571,43 +20985,47 @@ function ns() {
 			element: /* @__PURE__ */ (0, P.jsx)(Qo, {})
 		}),
 		/* @__PURE__ */ (0, P.jsx)(qt, {
+			path: "/bao-cao-ceo",
+			element: /* @__PURE__ */ (0, P.jsx)(ns, {})
+		}),
+		/* @__PURE__ */ (0, P.jsx)(qt, {
 			path: "*",
-			element: /* @__PURE__ */ (0, P.jsx)(es, {})
+			element: /* @__PURE__ */ (0, P.jsx)(is, {})
 		})
-	] }) : /* @__PURE__ */ (0, P.jsx)(ts, {}) }) }) });
+	] }) : /* @__PURE__ */ (0, P.jsx)(as, {}) }) }) });
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
-function rs(e) {
+function ss(e) {
 	"@babel/helpers - typeof";
-	return rs = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+	return ss = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
 		return typeof e;
 	} : function(e) {
 		return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-	}, rs(e);
+	}, ss(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
-function is(e, t) {
-	if (rs(e) != "object" || !e) return e;
+function cs(e, t) {
+	if (ss(e) != "object" || !e) return e;
 	var n = e[Symbol.toPrimitive];
 	if (n !== void 0) {
 		var r = n.call(e, t || "default");
-		if (rs(r) != "object") return r;
+		if (ss(r) != "object") return r;
 		throw TypeError("@@toPrimitive must return a primitive value.");
 	}
 	return (t === "string" ? String : Number)(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
-function as(e) {
-	var t = is(e, "string");
-	return rs(t) == "symbol" ? t : t + "";
+function ls(e) {
+	var t = cs(e, "string");
+	return ss(t) == "symbol" ? t : t + "";
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
-function os(e, t, n) {
-	return (t = as(t)) in e ? Object.defineProperty(e, t, {
+function us(e, t, n) {
+	return (t = ls(t)) in e ? Object.defineProperty(e, t, {
 		value: n,
 		enumerable: !0,
 		configurable: !0,
@@ -20616,9 +21034,9 @@ function os(e, t, n) {
 }
 //#endregion
 //#region src/component-entry.tsx
-var ss = class extends _.Component {
+var ds = class extends _.Component {
 	constructor(...e) {
-		super(...e), os(this, "state", { error: null });
+		super(...e), us(this, "state", { error: null });
 	}
 	static getDerivedStateFromError(e) {
 		return { error: e };
@@ -20660,23 +21078,23 @@ var ss = class extends _.Component {
 			})
 		}) : this.props.children;
 	}
-}, cs = null, ls = null;
-function us(e) {
-	return ls && e.contains(ls) ? ls : (ls = document.createElement("div"), ls.className = "logi-shell", e.appendChild(ls), ls);
+}, fs = null, ps = null;
+function ms(e) {
+	return ps && e.contains(ps) ? ps : (ps = document.createElement("div"), ps.className = "logi-shell", e.appendChild(ps), ps);
 }
-function ds(e) {
+function hs(e) {
 	E(e.setTriggerValue ?? null);
-	let t = us(e.parentElement);
-	return cs || (cs = (0, v.createRoot)(t), cs.render(/* @__PURE__ */ (0, P.jsx)(ss, { children: /* @__PURE__ */ (0, P.jsx)(ns, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
+	let t = ms(e.parentElement);
+	return fs || (fs = (0, v.createRoot)(t), fs.render(/* @__PURE__ */ (0, P.jsx)(ds, { children: /* @__PURE__ */ (0, P.jsx)(os, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
 		try {
-			cs?.unmount();
+			fs?.unmount();
 		} catch {}
-		cs = null;
+		fs = null;
 		try {
-			ls?.remove();
+			ps?.remove();
 		} catch {}
-		ls = null, E(null);
+		ps = null, E(null);
 	};
 }
 //#endregion
-export { ds as default };
+export { hs as default };

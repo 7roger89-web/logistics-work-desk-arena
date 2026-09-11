@@ -374,6 +374,10 @@ def reconciliation_projection(
             if linked:
                 row["transactionIds"] = list(dict.fromkeys(linked))
 
+    # Counts must describe the complete canonical projection, not only the
+    # bounded list payload rendered below. This carries no monetary aggregate.
+    full_summary = reconciliation_summary({"rows": rows, "totals": totals})
+
     if len(rows) > MAX_ROWS:
         rows = rows[:MAX_ROWS]
         truncated = True
@@ -382,6 +386,7 @@ def reconciliation_projection(
     return {
         "rows": rows,
         "totals": {currency: totals[currency] for currency in sorted(totals)},
+        "summary": full_summary,
         "truncated": truncated,
         "maxRows": MAX_ROWS,
     }
@@ -475,7 +480,22 @@ def reconciliation_summary(projection: Mapping[str, Any]) -> dict[str, Any]:
     It deliberately carries no amount and does not derive a new match state:
     ``matchState`` is exactly what the existing canonical allocation projection
     already supplied. A missing match state remains visible as ``UNKNOWN``.
+
+    ``reconciliation_projection`` stores a full count before it bounds rows for
+    the list UI. Reusing it here keeps a CEO summary complete even when the
+    interactive list is truncated.
     """
+    existing = projection.get("summary")
+    if isinstance(existing, Mapping):
+        obligations = existing.get("obligations")
+        money = existing.get("money")
+        if isinstance(obligations, Mapping) and isinstance(money, Mapping):
+            return {
+                "obligations": dict(obligations),
+                "money": dict(money),
+                "reviewCount": existing.get("reviewCount"),
+            }
+
     obligations = {MATCHED: 0, PARTIAL: 0, UNMATCHED: 0, UNKNOWN_CURRENCY: 0}
     money = {ALLOCATED: 0, PARTIAL: 0, UNALLOCATED: 0, UNKNOWN_CURRENCY: 0}
 
