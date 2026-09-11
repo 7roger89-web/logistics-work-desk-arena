@@ -27,6 +27,7 @@ from typing import Any, Mapping
 import streamlit as st
 
 from views import ceo_report as logi_ceo_report
+from views import handbook as logi_handbook
 from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
@@ -83,6 +84,22 @@ def _load_references() -> dict[str, Any]:
         "quotes": load_quotes() or {},
         "tasks": load_tasks() or [],
     }
+
+
+def _knowledge_notes() -> list[dict[str, Any]]:
+    """Team notebook, read through the EXISTING canonical reader (read-only).
+
+    ``core.database.load_knowledge_base`` is the same reader the legacy
+    ``views/knowledge_base.py`` screen uses — no second store and no new query
+    layer are introduced here. An unconfigured deployment yields ``[]``, which
+    the handbook renders as an honest empty state.
+    """
+    from core.database import load_knowledge_base
+
+    try:
+        return list(load_knowledge_base() or [])
+    except Exception:  # noqa: BLE001 — a missing notebook must not blank the desk
+        return []
 
 
 def _dashboard_views(shipments: Mapping[str, Any]) -> dict[str, Any]:
@@ -351,6 +368,17 @@ def build_view_model() -> dict:
         # fields are assembled from the projections already in this response;
         # there is no analytics reader, persistence, event or finance rewrite.
         "ceoReport": ceo_report,
+        # LOGI_NOTEBOOK_WORKSPACE_01 — the /so-tay handbook. A bounded READ-ONLY
+        # slice over reference material this repository already owns and the rest
+        # of the app already reads (core.config constants, the locked docgen
+        # rules, the trade-compliance source registry, the single RBAC matrix)
+        # plus the team's real notes via the existing load_knowledge_base reader.
+        # No content store, no authoring event, no search backend: the page
+        # filters the delivered text client-side.
+        "handbook": logi_handbook.handbook_projection(
+            field_paths=FIELD_PATHS,
+            notes=_knowledge_notes(),
+        ),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the

@@ -33,6 +33,7 @@ import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
+import Notebook from "./pages/Notebook";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -85,6 +86,11 @@ export default function App() {
             {/* LOGI_CEO_REPORT_01 — bounded READ-ONLY current-position summary
                 over existing Operations, C2C, C2D and reconciliation projections. */}
             <Route path="/bao-cao-ceo" element={<CeoReport />} />
+            {/* LOGI_NOTEBOOK_WORKSPACE_01 — READ-ONLY handbook over reference
+                material the repo already owns plus the team's own notes via the
+                existing knowledge_base reader (no longer a placeholder; no CMS,
+                no authoring event, no search backend). */}
+            <Route path="/so-tay" element={<Notebook />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

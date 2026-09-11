@@ -9489,7 +9489,7 @@ function Xn({ children: e }) {
 	}, [t]), A = (0, _.useMemo)(() => t?.payables ?? {
 		rows: [],
 		totals: {}
-	}, [t]), j = (0, _.useMemo)(() => t?.ceoReport ?? null, [t]), oe = (0, _.useCallback)((e, t) => D(e, t), []), se = (0, _.useCallback)((e, n) => {
+	}, [t]), j = (0, _.useMemo)(() => t?.ceoReport ?? null, [t]), oe = (0, _.useMemo)(() => t?.handbook ?? null, [t]), se = (0, _.useCallback)((e, t) => D(e, t), []), ce = (0, _.useCallback)((e, n) => {
 		let r = (t?.shipments ?? []).find((t) => t.id === e) ?? Object.values(g).find((t) => t.id === e);
 		if (!r) return;
 		let i = n(r);
@@ -9497,8 +9497,8 @@ function Xn({ children: e }) {
 			...t,
 			[e]: i
 		})), D("shipment_update", { shipment: i });
-	}, [t, g]), ce = t?.version, le = (0, _.useRef)(ce);
-	ce !== le.current && (le.current = ce, t && v((e) => {
+	}, [t, g]), le = t?.version, ue = (0, _.useRef)(le);
+	le !== ue.current && (ue.current = le, t && v((e) => {
 		let n = new Set((t.shipments ?? []).map((e) => e.id)), r = {};
 		for (let [i, a] of Object.entries(e)) {
 			let e = (t.shipments ?? []).find((e) => e.id === i);
@@ -9506,10 +9506,10 @@ function Xn({ children: e }) {
 		}
 		return r;
 	}));
-	let ue = t?.user.name ?? "—", M = (0, _.useMemo)(() => ({
+	let M = t?.user.name ?? "—", de = (0, _.useMemo)(() => ({
 		role: n,
 		setRole: r,
-		userName: ue,
+		userName: M,
 		query: i,
 		setQuery: a,
 		searchOpen: o,
@@ -9536,12 +9536,13 @@ function Xn({ children: e }) {
 		receivables: k,
 		payables: A,
 		ceoReport: j,
+		handbook: oe,
 		unknownLabel: w(),
-		dispatch: oe,
-		updateShipment: se
+		dispatch: se,
+		updateShipment: ce
 	}), [
 		n,
-		ue,
+		M,
 		i,
 		o,
 		c,
@@ -9564,10 +9565,11 @@ function Xn({ children: e }) {
 		A,
 		j,
 		oe,
-		se
+		se,
+		ce
 	]);
 	return /* @__PURE__ */ (0, P.jsx)(Jn.Provider, {
-		value: M,
+		value: de,
 		children: e
 	});
 }
@@ -11066,7 +11068,6 @@ var Sa = F(xa), Ca = {
 			},
 			{
 				to: "/so-tay",
-				soon: !0,
 				label: "Sổ tay",
 				icon: "book"
 			},
@@ -11731,7 +11732,7 @@ function Ya({ children: e }) {
 									}),
 									/* @__PURE__ */ (0, P.jsx)("p", {
 										className: "text-[12.5px] text-blue-100 mt-1",
-										children: "Sổ tay hướng dẫn từng bước cho Sale & Support mới."
+										children: "Sổ tay tra cứu quy trình, chứng từ và phân quyền cho Sale & Support."
 									}),
 									/* @__PURE__ */ (0, P.jsxs)(N, {
 										to: "/so-tay",
@@ -20853,14 +20854,473 @@ function ns() {
 	});
 }
 //#endregion
+//#region src/pages/Notebook.tsx
+function rs(e, t) {
+	let n = t.table ? t.table.rows.flat().join(" ") : "";
+	return [
+		e.label,
+		t.title,
+		t.summary,
+		t.bullets.join(" "),
+		t.tags.join(" "),
+		n
+	].join(" ").toLowerCase();
+}
+function is(e) {
+	return /^https:\/\//i.test(e.trim());
+}
+function as({ provenance: e }) {
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		"data-testid": "handbook-provenance",
+		className: "rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-[12.5px] leading-relaxed text-slate-600",
+		children: [
+			/* @__PURE__ */ (0, P.jsx)("p", {
+				className: "font-bold uppercase tracking-wide text-slate-500",
+				children: "Nguồn"
+			}),
+			/* @__PURE__ */ (0, P.jsx)("p", {
+				className: "mt-1 break-words font-mono text-[12px] text-[#0f2a4a]",
+				children: e.source
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("ul", {
+				className: "mt-1 space-y-0.5",
+				children: [
+					/* @__PURE__ */ (0, P.jsxs)("li", { children: [
+						"Phiên bản:",
+						" ",
+						/* @__PURE__ */ (0, P.jsx)("span", {
+							className: "font-semibold",
+							children: e.version ?? "không có trong nguồn"
+						})
+					] }),
+					/* @__PURE__ */ (0, P.jsxs)("li", { children: [
+						"Cập nhật:",
+						" ",
+						/* @__PURE__ */ (0, P.jsx)("span", {
+							className: "font-semibold",
+							children: e.updated ?? "không có trong nguồn"
+						})
+					] }),
+					/* @__PURE__ */ (0, P.jsxs)("li", { children: [
+						"Phụ trách:",
+						" ",
+						/* @__PURE__ */ (0, P.jsx)("span", {
+							className: "font-semibold",
+							children: e.owner ?? "không có trong nguồn"
+						})
+					] })
+				]
+			}),
+			e.note ? /* @__PURE__ */ (0, P.jsx)("p", {
+				className: "mt-1.5 border-t border-slate-200 pt-1.5 text-slate-500",
+				children: e.note
+			}) : null
+		]
+	});
+}
+function os({ table: e }) {
+	let t = e.columns.length <= 2 || e.columns.some((e) => /url|link/i.test(e)), n = (e) => t && is(e) ? /* @__PURE__ */ (0, P.jsxs)("a", {
+		href: e,
+		target: "_blank",
+		rel: "noreferrer",
+		className: "inline-flex max-w-full items-start gap-1 break-all font-semibold text-blue-800 underline decoration-blue-300 underline-offset-2",
+		children: [/* @__PURE__ */ (0, P.jsx)(oi, {
+			size: 13,
+			className: "mt-0.5 shrink-0"
+		}), /* @__PURE__ */ (0, P.jsx)("span", {
+			className: "break-all",
+			children: e
+		})]
+	}) : /* @__PURE__ */ (0, P.jsx)("span", {
+		className: "break-words",
+		children: e
+	});
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		className: "mt-3",
+		children: [
+			/* @__PURE__ */ (0, P.jsx)("div", {
+				className: "space-y-2 md:hidden",
+				children: e.rows.map((t, r) => /* @__PURE__ */ (0, P.jsx)("div", {
+					className: "rounded-xl border border-slate-200 bg-white px-3 py-2.5",
+					"data-testid": "handbook-row-mobile",
+					children: t.map((t, r) => /* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "py-0.5 text-[13.5px] leading-relaxed",
+						children: [/* @__PURE__ */ (0, P.jsx)("span", {
+							className: "mr-1.5 text-[11.5px] font-bold uppercase tracking-wide text-slate-500",
+							children: e.columns[r] ?? ""
+						}), n(t)]
+					}, `c-${r}`))
+				}, `m-${r}`))
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("table", {
+				className: "hidden w-full border-collapse md:table",
+				children: [/* @__PURE__ */ (0, P.jsx)("thead", { children: /* @__PURE__ */ (0, P.jsx)("tr", {
+					className: "bg-slate-50",
+					children: e.columns.map((e, t) => /* @__PURE__ */ (0, P.jsx)("th", {
+						scope: "col",
+						className: "border-b border-slate-200 px-2.5 py-2 text-left text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500",
+						children: e
+					}, `h-${t}`))
+				}) }), /* @__PURE__ */ (0, P.jsx)("tbody", { children: e.rows.map((e, t) => /* @__PURE__ */ (0, P.jsx)("tr", {
+					className: "align-top odd:bg-white even:bg-slate-50/50",
+					children: e.map((e, t) => /* @__PURE__ */ (0, P.jsx)("td", {
+						className: "border-b border-slate-100 px-2.5 py-2 text-[13.5px] leading-relaxed text-slate-700",
+						children: n(e)
+					}, `d-${t}`))
+				}, `r-${t}`)) })]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("p", {
+				className: "mt-1.5 text-[12px] text-slate-400",
+				children: [e.rows.length, " dòng · đọc từ nguồn, không phải dữ liệu mẫu"]
+			})
+		]
+	});
+}
+function ss({ section: e, entry: t, onBack: n }) {
+	let r = Ba[e.icon] ?? Ar;
+	return /* @__PURE__ */ (0, P.jsxs)("article", {
+		className: "space-y-3",
+		"data-testid": "handbook-article",
+		"data-article-id": t.id,
+		children: [
+			/* @__PURE__ */ (0, P.jsxs)("button", {
+				type: "button",
+				onClick: n,
+				className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3.5 py-2 text-[13.5px] font-bold text-[#0f2a4a]",
+				"data-testid": "handbook-back",
+				children: [/* @__PURE__ */ (0, P.jsx)(gr, { size: 17 }), " Về danh mục"]
+			}),
+			/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+				children: [
+					/* @__PURE__ */ (0, P.jsxs)("p", {
+						className: "flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-slate-500",
+						children: [
+							/* @__PURE__ */ (0, P.jsx)(r, {
+								size: 15,
+								className: "shrink-0"
+							}),
+							" ",
+							e.label
+						]
+					}),
+					/* @__PURE__ */ (0, P.jsx)("h3", {
+						className: "mt-2 break-words text-[19px] leading-snug font-extrabold text-[#0f2a4a] md:text-[21px]",
+						children: t.title
+					}),
+					/* @__PURE__ */ (0, P.jsx)("p", {
+						className: "mt-1.5 text-[14px] leading-relaxed text-slate-600",
+						children: t.summary
+					}),
+					t.bullets.length > 0 ? /* @__PURE__ */ (0, P.jsx)("ul", {
+						className: "mt-3 space-y-1.5",
+						children: t.bullets.map((e, t) => /* @__PURE__ */ (0, P.jsxs)("li", {
+							className: "flex gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[13.5px] leading-relaxed text-slate-700",
+							children: [/* @__PURE__ */ (0, P.jsx)("span", {
+								className: "mt-0.5 text-slate-400",
+								children: "•"
+							}), /* @__PURE__ */ (0, P.jsx)("span", {
+								className: "min-w-0 break-words",
+								children: e
+							})]
+						}, t))
+					}) : null,
+					t.table ? /* @__PURE__ */ (0, P.jsx)(os, { table: t.table }) : null,
+					t.tags.length > 0 ? /* @__PURE__ */ (0, P.jsx)("p", {
+						className: "mt-3 flex flex-wrap gap-1.5",
+						children: t.tags.map((e) => /* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-semibold text-slate-600",
+							children: ["#", e]
+						}, e))
+					}) : null,
+					t.links.length > 0 ? /* @__PURE__ */ (0, P.jsx)("div", {
+						className: "mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3",
+						children: t.links.map((e) => /* @__PURE__ */ (0, P.jsxs)(N, {
+							to: e.href,
+							className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] px-3.5 py-2 text-[13.5px] font-bold text-white",
+							children: [
+								e.label,
+								" ",
+								/* @__PURE__ */ (0, P.jsx)(vr, { size: 15 })
+							]
+						}, e.href))
+					}) : null
+				]
+			}),
+			/* @__PURE__ */ (0, P.jsx)(as, { provenance: t.provenance ?? e.provenance })
+		]
+	});
+}
+function cs({ section: e, entry: t, onOpen: n }) {
+	return /* @__PURE__ */ (0, P.jsxs)("button", {
+		type: "button",
+		onClick: n,
+		"data-testid": "handbook-entry",
+		"data-entry-id": t.id,
+		className: "btn-press w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left transition-colors hover:border-blue-300",
+		children: [
+			/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "flex items-start justify-between gap-3",
+				children: [/* @__PURE__ */ (0, P.jsx)("h4", {
+					className: "min-w-0 break-words text-[15.5px] leading-snug font-extrabold text-[#0f2a4a]",
+					children: t.title
+				}), /* @__PURE__ */ (0, P.jsx)(vr, {
+					size: 18,
+					className: "mt-0.5 shrink-0 text-slate-400"
+				})]
+			}),
+			/* @__PURE__ */ (0, P.jsx)("p", {
+				className: "mt-1.5 text-[13.5px] leading-relaxed text-slate-600",
+				children: t.summary
+			}),
+			t.table && t.table.rows.length > 0 ? /* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "mt-2 space-y-1",
+				"data-testid": "handbook-preview",
+				children: [t.table.rows.slice(0, 2).map((e, t) => /* @__PURE__ */ (0, P.jsx)("p", {
+					className: "break-words rounded-lg bg-slate-50 px-2 py-1 font-mono text-[12px] text-slate-600",
+					children: e.filter((e) => e.trim() !== "").join(" · ")
+				}, t)), t.table.rows.length > 2 ? /* @__PURE__ */ (0, P.jsxs)("p", {
+					className: "text-[12px] font-semibold text-slate-400",
+					children: [
+						"+",
+						t.table.rows.length - 2,
+						" dòng nữa trong bài"
+					]
+				}) : null]
+			}) : null,
+			/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "mt-2.5 flex flex-wrap items-center gap-2",
+				children: [
+					/* @__PURE__ */ (0, P.jsx)("span", {
+						className: "rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] font-bold text-slate-600",
+						children: e.label
+					}),
+					t.table ? /* @__PURE__ */ (0, P.jsxs)("span", {
+						className: "rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-bold text-blue-800",
+						children: [t.table.rows.length, " dòng"]
+					}) : null,
+					/* @__PURE__ */ (0, P.jsx)("span", {
+						className: "text-[11.5px] font-semibold text-slate-400",
+						children: t.tags.slice(0, 3).map((e) => `#${e}`).join(" ")
+					})
+				]
+			})
+		]
+	});
+}
+function ls({ reason: e }) {
+	return /* @__PURE__ */ (0, P.jsx)("div", {
+		className: "max-w-[760px]",
+		children: /* @__PURE__ */ (0, P.jsx)("div", {
+			className: "rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-[14px] leading-relaxed text-slate-600",
+			children: e === "pending" ? "Chưa nhận được dữ liệu Sổ tay từ backend. Trang không hiển thị nội dung mẫu thay thế." : "Nguồn tham chiếu chưa trả về mục nào có nội dung. Sổ tay hiển thị đúng trạng thái này thay vì tự soạn bài."
+		})
+	});
+}
+function us() {
+	let { handbook: e } = Zn(), [t, n] = (0, _.useState)(null), [r, i] = (0, _.useState)(null), [a, o] = (0, _.useState)(""), s = a.trim().toLowerCase(), c = (0, _.useMemo)(() => {
+		let t = [];
+		for (let n of e?.sections ?? []) for (let e of n.entries) t.push({
+			section: n,
+			entry: e,
+			hay: rs(n, e)
+		});
+		return t;
+	}, [e]), l = (0, _.useMemo)(() => {
+		let e = s.length === 0 && t ? c.filter((e) => e.section.id === t) : c;
+		return s ? e.filter((e) => e.hay.includes(s)) : e;
+	}, [
+		c,
+		s,
+		t
+	]), u = (0, _.useMemo)(() => r ? c.find((e) => e.entry.id === r) ?? null : null, [c, r]);
+	if (!e) return /* @__PURE__ */ (0, P.jsx)(ls, { reason: "pending" });
+	let d = e;
+	if (d.counts.entryCount === 0 && !s) return /* @__PURE__ */ (0, P.jsx)(ls, { reason: "no-source" });
+	let f = d.sections.find((e) => e.id === t) ?? null, p = d.sections.filter((e) => e.state && e.entries.length === 0), m = (e) => {
+		i(e), typeof window < "u" && window.scrollTo({
+			top: 0,
+			behavior: "auto"
+		});
+	}, h = () => i(null), g = (e) => {
+		n(e === t ? null : e), i(null), o("");
+	};
+	return /* @__PURE__ */ (0, P.jsxs)("div", {
+		className: "max-w-[1240px] space-y-4 pb-3",
+		children: [/* @__PURE__ */ (0, P.jsxs)("section", {
+			className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
+			"data-testid": "handbook-header",
+			children: [
+				/* @__PURE__ */ (0, P.jsx)(H, {
+					icon: /* @__PURE__ */ (0, P.jsx)(Ar, { size: 20 }),
+					title: "Sổ tay vận hành",
+					sub: "Tra cứu quy trình, chứng từ, mã dịch vụ và phân quyền — đúng theo tài liệu hệ thống đang dùng.",
+					right: /* @__PURE__ */ (0, P.jsx)(V, {
+						tone: "blue",
+						size: "sm",
+						children: "CHỈ ĐỌC"
+					})
+				}),
+				/* @__PURE__ */ (0, P.jsxs)("div", {
+					className: "mt-3 flex flex-wrap items-center gap-2 text-[12.5px] font-semibold text-slate-600",
+					children: [
+						/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "rounded-lg bg-slate-100 px-2 py-1",
+							children: [
+								d.counts.availableSectionCount,
+								"/",
+								d.counts.sectionCount,
+								" mục có nội dung"
+							]
+						}),
+						/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "rounded-lg bg-slate-100 px-2 py-1",
+							children: [d.counts.entryCount, " bài tham chiếu"]
+						}),
+						/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "rounded-lg bg-slate-100 px-2 py-1",
+							children: [d.counts.noteCount, " ghi chú đội ngũ"]
+						}),
+						/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-emerald-800",
+							children: [
+								/* @__PURE__ */ (0, P.jsx)(ea, { size: 13 }),
+								" ",
+								d.readOnly ? "không sửa từ trang này" : "có chỉnh sửa"
+							]
+						})
+					]
+				}),
+				/* @__PURE__ */ (0, P.jsxs)("div", {
+					className: "relative mt-3",
+					children: [
+						/* @__PURE__ */ (0, P.jsx)(Xi, {
+							size: 17,
+							className: "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+						}),
+						/* @__PURE__ */ (0, P.jsx)("input", {
+							type: "search",
+							value: a,
+							onChange: (e) => {
+								o(e.target.value), i(null);
+							},
+							placeholder: "Tìm theo tiêu đề, nội dung, mã hoặc từ khóa…",
+							"aria-label": "Tìm trong sổ tay",
+							"data-testid": "handbook-search",
+							className: "min-h-[48px] w-full rounded-xl border-2 border-slate-200 bg-white pl-10 pr-10 text-[15px] font-medium text-slate-800 outline-none focus:border-blue-400"
+						}),
+						a ? /* @__PURE__ */ (0, P.jsx)("button", {
+							type: "button",
+							onClick: () => o(""),
+							"aria-label": "Xóa từ khóa",
+							className: "touch-target absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-slate-400 hover:bg-slate-100",
+							children: /* @__PURE__ */ (0, P.jsx)(Sa, { size: 17 })
+						}) : null
+					]
+				}),
+				/* @__PURE__ */ (0, P.jsxs)("div", {
+					className: "mt-3 flex flex-wrap gap-2",
+					"data-testid": "handbook-categories",
+					children: [/* @__PURE__ */ (0, P.jsx)("button", {
+						type: "button",
+						onClick: () => {
+							n(null), i(null), o("");
+						},
+						className: R("min-h-[44px] rounded-xl border px-3 py-2 text-[13px] font-bold transition-colors", t === null ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a] hover:border-blue-300"),
+						"data-testid": "handbook-category-all",
+						children: "Tất cả"
+					}), d.sections.map((e) => /* @__PURE__ */ (0, P.jsxs)("button", {
+						type: "button",
+						onClick: () => g(e.id),
+						className: R("min-h-[44px] rounded-xl border px-3 py-2 text-[13px] font-bold transition-colors", e.id === t ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a] hover:border-blue-300"),
+						"data-testid": `handbook-category-${e.id}`,
+						children: [e.label, /* @__PURE__ */ (0, P.jsx)("span", {
+							className: "ml-1.5 text-[11.5px] font-extrabold opacity-70",
+							children: e.entries.length
+						})]
+					}, e.id))]
+				})
+			]
+		}), u ? /* @__PURE__ */ (0, P.jsx)(ss, {
+			section: u.section,
+			entry: u.entry,
+			onBack: h
+		}) : /* @__PURE__ */ (0, P.jsxs)("div", {
+			className: "grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]",
+			children: [/* @__PURE__ */ (0, P.jsxs)("div", {
+				className: "min-w-0 space-y-2.5",
+				children: [f && !s ? /* @__PURE__ */ (0, P.jsxs)("p", {
+					className: "text-[13px] leading-relaxed text-slate-500",
+					"data-testid": "handbook-section-lead",
+					children: [
+						/* @__PURE__ */ (0, P.jsxs)("span", {
+							className: "font-extrabold text-[#0f2a4a]",
+							children: [f.label, ":"]
+						}),
+						" ",
+						f.lead
+					]
+				}) : null, l.length === 0 ? /* @__PURE__ */ (0, P.jsxs)("div", {
+					className: "rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-[14px] leading-relaxed text-slate-600",
+					"data-testid": "handbook-no-result",
+					children: [
+						"Không có bài nào khớp “",
+						a,
+						"”. Sổ tay chỉ tìm trong nội dung đã có trong nguồn và không tạo bài mới."
+					]
+				}) : l.map(({ section: e, entry: t }) => /* @__PURE__ */ (0, P.jsx)(cs, {
+					section: e,
+					entry: t,
+					onOpen: () => m(t.id)
+				}, `${e.id}-${t.id}`))]
+			}), /* @__PURE__ */ (0, P.jsxs)("aside", {
+				className: "min-w-0 space-y-3",
+				children: [
+					f && !s ? /* @__PURE__ */ (0, P.jsx)(as, { provenance: f.provenance }) : null,
+					p.length > 0 ? /* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5",
+						"data-testid": "handbook-empty-sections",
+						children: [/* @__PURE__ */ (0, P.jsx)("p", {
+							className: "text-[12px] font-extrabold uppercase tracking-wide text-amber-800",
+							children: "Mục chưa có nguồn"
+						}), /* @__PURE__ */ (0, P.jsx)("ul", {
+							className: "mt-1 space-y-1 text-[13px] leading-relaxed text-amber-900",
+							children: p.map((e) => /* @__PURE__ */ (0, P.jsxs)("li", { children: [
+								/* @__PURE__ */ (0, P.jsx)("span", {
+									className: "font-bold",
+									children: e.label
+								}),
+								" — ",
+								e.state?.text
+							] }, e.id))
+						})]
+					}) : null,
+					/* @__PURE__ */ (0, P.jsxs)("div", {
+						className: "rounded-xl border border-slate-200 bg-white px-3 py-2.5",
+						children: [/* @__PURE__ */ (0, P.jsxs)("p", {
+							className: "flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide text-slate-500",
+							children: [/* @__PURE__ */ (0, P.jsx)(bi, { size: 14 }), " Trang này không có"]
+						}), /* @__PURE__ */ (0, P.jsx)("ul", {
+							className: "mt-1 space-y-1 text-[12.5px] leading-relaxed text-slate-600",
+							children: d.unavailable.map((e) => /* @__PURE__ */ (0, P.jsx)("li", {
+								className: "break-words",
+								children: e
+							}, e))
+						})]
+					})
+				]
+			})]
+		})]
+	});
+}
+//#endregion
 //#region src/pages/PhaseB.tsx
-var rs = {
+var ds = {
 	"/tai-chinh/doi-soat": "Đối soát",
-	"/so-tay": "Sổ tay",
 	"/nguoi-dung": "Người dùng & Vai trò"
 };
-function is() {
-	let { pathname: e } = yt(), t = rs[e] ?? "Màn hình phụ";
+function fs() {
+	let { pathname: e } = yt(), t = ds[e] ?? "Màn hình phụ";
 	return /* @__PURE__ */ (0, P.jsx)("div", {
 		className: "max-w-[680px] mx-auto mt-8",
 		children: /* @__PURE__ */ (0, P.jsxs)("div", {
@@ -20900,7 +21360,7 @@ function is() {
 }
 //#endregion
 //#region src/App.tsx
-function as() {
+function ps() {
 	return /* @__PURE__ */ (0, P.jsx)("div", {
 		className: "min-h-[40vh] grid place-items-center",
 		children: /* @__PURE__ */ (0, P.jsx)("p", {
@@ -20909,7 +21369,7 @@ function as() {
 		})
 	});
 }
-function os() {
+function ms() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
 	return /* @__PURE__ */ (0, P.jsx)(Xn, { children: /* @__PURE__ */ (0, P.jsx)(Kt, { children: /* @__PURE__ */ (0, P.jsx)(Ya, { children: e ? /* @__PURE__ */ (0, P.jsxs)(Yt, { children: [
 		/* @__PURE__ */ (0, P.jsx)(qt, {
@@ -20989,43 +21449,47 @@ function os() {
 			element: /* @__PURE__ */ (0, P.jsx)(ns, {})
 		}),
 		/* @__PURE__ */ (0, P.jsx)(qt, {
+			path: "/so-tay",
+			element: /* @__PURE__ */ (0, P.jsx)(us, {})
+		}),
+		/* @__PURE__ */ (0, P.jsx)(qt, {
 			path: "*",
-			element: /* @__PURE__ */ (0, P.jsx)(is, {})
+			element: /* @__PURE__ */ (0, P.jsx)(fs, {})
 		})
-	] }) : /* @__PURE__ */ (0, P.jsx)(as, {}) }) }) });
+	] }) : /* @__PURE__ */ (0, P.jsx)(ps, {}) }) }) });
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
-function ss(e) {
+function hs(e) {
 	"@babel/helpers - typeof";
-	return ss = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+	return hs = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
 		return typeof e;
 	} : function(e) {
 		return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-	}, ss(e);
+	}, hs(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
-function cs(e, t) {
-	if (ss(e) != "object" || !e) return e;
+function gs(e, t) {
+	if (hs(e) != "object" || !e) return e;
 	var n = e[Symbol.toPrimitive];
 	if (n !== void 0) {
 		var r = n.call(e, t || "default");
-		if (ss(r) != "object") return r;
+		if (hs(r) != "object") return r;
 		throw TypeError("@@toPrimitive must return a primitive value.");
 	}
 	return (t === "string" ? String : Number)(e);
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
-function ls(e) {
-	var t = cs(e, "string");
-	return ss(t) == "symbol" ? t : t + "";
+function _s(e) {
+	var t = gs(e, "string");
+	return hs(t) == "symbol" ? t : t + "";
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
-function us(e, t, n) {
-	return (t = ls(t)) in e ? Object.defineProperty(e, t, {
+function vs(e, t, n) {
+	return (t = _s(t)) in e ? Object.defineProperty(e, t, {
 		value: n,
 		enumerable: !0,
 		configurable: !0,
@@ -21034,9 +21498,9 @@ function us(e, t, n) {
 }
 //#endregion
 //#region src/component-entry.tsx
-var ds = class extends _.Component {
+var ys = class extends _.Component {
 	constructor(...e) {
-		super(...e), us(this, "state", { error: null });
+		super(...e), vs(this, "state", { error: null });
 	}
 	static getDerivedStateFromError(e) {
 		return { error: e };
@@ -21078,23 +21542,23 @@ var ds = class extends _.Component {
 			})
 		}) : this.props.children;
 	}
-}, fs = null, ps = null;
-function ms(e) {
-	return ps && e.contains(ps) ? ps : (ps = document.createElement("div"), ps.className = "logi-shell", e.appendChild(ps), ps);
+}, bs = null, xs = null;
+function Ss(e) {
+	return xs && e.contains(xs) ? xs : (xs = document.createElement("div"), xs.className = "logi-shell", e.appendChild(xs), xs);
 }
-function hs(e) {
+function Cs(e) {
 	E(e.setTriggerValue ?? null);
-	let t = ms(e.parentElement);
-	return fs || (fs = (0, v.createRoot)(t), fs.render(/* @__PURE__ */ (0, P.jsx)(ds, { children: /* @__PURE__ */ (0, P.jsx)(os, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
+	let t = Ss(e.parentElement);
+	return bs || (bs = (0, v.createRoot)(t), bs.render(/* @__PURE__ */ (0, P.jsx)(ys, { children: /* @__PURE__ */ (0, P.jsx)(ms, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
 		try {
-			fs?.unmount();
+			bs?.unmount();
 		} catch {}
-		fs = null;
+		bs = null;
 		try {
-			ps?.remove();
+			xs?.remove();
 		} catch {}
-		ps = null, E(null);
+		xs = null, E(null);
 	};
 }
 //#endregion
-export { hs as default };
+export { Cs as default };

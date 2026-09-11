@@ -182,7 +182,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             ))}
             <div className="mx-1 mt-2 rounded-2xl bg-gradient-to-br from-[#0f2a4a] to-[#1e5aa8] text-white p-4">
               <p className="font-bold text-[14px]">Cần hỗ trợ thao tác?</p>
-              <p className="text-[12.5px] text-blue-100 mt-1">Sổ tay hướng dẫn từng bước cho Sale & Support mới.</p>
+              <p className="text-[12.5px] text-blue-100 mt-1">Sổ tay tra cứu quy trình, chứng từ và phân quyền cho Sale & Support.</p>
               <Link to="/so-tay" className="mt-2.5 inline-flex items-center gap-1.5 bg-white text-[#0f2a4a] text-[13.5px] font-bold rounded-lg px-3 py-2">Mở sổ tay <ChevronRight size={15} /></Link>
             </div>
           </nav>
