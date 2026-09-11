@@ -33,7 +33,9 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const NAV: {
   group: string;
-  items: { to: string; label: string; icon: string }[];
+  // `soon` marks a destination that has no authoritative component capability
+  // yet: it renders the explicit deferred placeholder, never a faked page.
+  items: { to: string; label: string; icon: string; soon?: boolean }[];
 }[] = [
   {
     group: "VẬN HÀNH",
@@ -49,7 +51,7 @@ export const NAV: {
     group: "KINH DOANH & ĐỐI TÁC",
     items: [
       { to: "/khach-hang", label: "Khách Hàng", icon: "users" },
-      { to: "/ngu-canh-doi-tac", label: "Ngữ cảnh Đối tác", icon: "handshake" },
+      { to: "/ngu-canh-doi-tac", soon: true, label: "Ngữ cảnh Đối tác", icon: "handshake" },
       { to: "/kinh-doanh-bao-gia", label: "Kinh doanh · Báo giá", icon: "calc" },
       { to: "/thoa-thuan-ban-giao", label: "Thỏa thuận mua bán", icon: "filecheck" },
       { to: "/hop-dong", label: "Hợp đồng", icon: "filetext" },
@@ -59,22 +61,22 @@ export const NAV: {
     group: "TÀI CHÍNH & ĐỐI SOÁT",
     items: [
       { to: "/tai-chinh/thu-tien", label: "Thu tiền", icon: "wallet" },
-      { to: "/tai-chinh/doi-soat", label: "Đối soát", icon: "scale" },
+      { to: "/tai-chinh/doi-soat", soon: true, label: "Đối soát", icon: "scale" },
       { to: "/tai-chinh/cong-no-doi-tac", label: "Công nợ đối tác", icon: "building" },
-      { to: "/bao-cao-ceo", label: "Báo cáo CEO", icon: "chart" },
+      { to: "/bao-cao-ceo", soon: true, label: "Báo cáo CEO", icon: "chart" },
     ],
   },
   {
     group: "CÔNG CỤ",
     items: [
-      { to: "/tra-cuu-thue", label: "Tra cứu thuế / HS", icon: "search" },
-      { to: "/so-tay", label: "Sổ tay", icon: "book" },
-      { to: "/dich-thuat", label: "Dịch thuật", icon: "lang" },
+      { to: "/tra-cuu-thue", soon: true, label: "Tra cứu thuế / HS", icon: "search" },
+      { to: "/so-tay", soon: true, label: "Sổ tay", icon: "book" },
+      { to: "/dich-thuat", soon: true, label: "Dịch thuật", icon: "lang" },
     ],
   },
   {
     group: "QUẢN TRỊ",
-    items: [{ to: "/nguoi-dung", label: "Người dùng & Vai trò", icon: "shield" }],
+    items: [{ to: "/nguoi-dung", soon: true, label: "Người dùng & Vai trò", icon: "shield" }],
   },
 ];
 
