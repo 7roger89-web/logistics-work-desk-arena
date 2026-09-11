@@ -468,6 +468,49 @@ def _currencies(projection: Mapping[str, Any]) -> list[str]:
     return found
 
 
+def reconciliation_summary(projection: Mapping[str, Any]) -> dict[str, Any]:
+    """Count existing canonical match states before any local list filter.
+
+    This is a presentation-only count over ``reconciliation_projection`` rows.
+    It deliberately carries no amount and does not derive a new match state:
+    ``matchState`` is exactly what the existing canonical allocation projection
+    already supplied. A missing match state remains visible as ``UNKNOWN``.
+    """
+    obligations = {MATCHED: 0, PARTIAL: 0, UNMATCHED: 0, UNKNOWN_CURRENCY: 0}
+    money = {ALLOCATED: 0, PARTIAL: 0, UNALLOCATED: 0, UNKNOWN_CURRENCY: 0}
+
+    for row in projection.get("rows") or []:
+        if not isinstance(row, Mapping):
+            continue
+        side = row.get("side")
+        state = row.get("matchState")
+        if side == OBLIGATION:
+            key = state if isinstance(state, str) and state in obligations else UNKNOWN_CURRENCY
+            obligations[key] += 1
+        elif side == MONEY:
+            key = state if isinstance(state, str) and state in money else UNKNOWN_CURRENCY
+            money[key] += 1
+
+    # The existing per-currency projection already identifies rows requiring
+    # review. Counts can be added across currencies; monetary amounts remain
+    # in their original currency blocks and are intentionally absent here.
+    review_count = 0
+    for bucket in (projection.get("totals") or {}).values():
+        if not isinstance(bucket, Mapping):
+            continue
+        review = bucket.get("review")
+        if not isinstance(review, Mapping):
+            continue
+        count = _num(review.get("count"))
+        if count is not None:
+            review_count += int(count)
+    return {
+        "obligations": obligations,
+        "money": money,
+        "reviewCount": review_count,
+    }
+
+
 #: Navigation-only pointers to the surfaces where the WRITE already lives. This
 #: desk exposes no writer of its own, so it links to the canonical ones.
 ACTIONS: tuple[dict[str, str], ...] = (
@@ -502,6 +545,9 @@ def _empty(error: str | None, status: str) -> dict[str, Any]:
         "readOnly": True,
         "shipmentRoutePrefix": SHIPMENT_ROUTE_PREFIX,
         "actions": list(ACTIONS),
+        # No ledger source/records means state counts are UNKNOWN too. Do not
+        # manufacture a row-count zero summary for the CEO presentation.
+        "summary": None,
         "unavailable": list(UNAVAILABLE_CONTEXT),
         "error": error,
     }
@@ -554,9 +600,13 @@ def reconciliation_view(
     )
 
     needs_review = any(row.get("reviewReason") for row in projection["rows"])
+    # Keep this unfiltered. A filter is only a list-view choice and must not
+    # alter the management summary of the canonical ledger.
+    summary = reconciliation_summary(projection)
     return {
         **filtered,
         "totals": projection["totals"],
+        "summary": summary,
         "currencies": _currencies(projection),
         "truncated": projection["truncated"],
         "maxRows": projection["maxRows"],
@@ -589,5 +639,6 @@ __all__ = [
     "UNMATCHED",
     "apply_filters",
     "reconciliation_projection",
+    "reconciliation_summary",
     "reconciliation_view",
 ]

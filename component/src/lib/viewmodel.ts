@@ -940,6 +940,15 @@ export interface ReconciliationSlice {
   rows: ReconciliationRow[];
   /** Per-currency totals over ALL rows — deliberately not filtered. */
   totals: Record<string, ReconciliationCurrencyTotal>;
+  /**
+   * Unfiltered count-only state summary over the same canonical rows. It is
+   * null when the ledger is empty/unavailable, never a manufactured zero book.
+   */
+  summary?: {
+    obligations: Record<string, number>;
+    money: Record<string, number>;
+    reviewCount: number;
+  } | null;
   /** Currencies actually present, UNKNOWN last. */
   currencies: string[];
   visibleCount: number;
@@ -956,6 +965,65 @@ export interface ReconciliationSlice {
   /** Reconciliation context this backend genuinely does not model. */
   unavailable: string[];
   error: string | null;
+}
+
+// ----------------------------------------------------------------------------
+// LOGI_CEO_REPORT_01 — current-position management summary. All money comes
+// from C2C/C2D's already-authoritative *per-currency* projections; there is no
+// cross-currency grand total, forecast, target, profit or margin aggregation.
+// ----------------------------------------------------------------------------
+
+export interface CeoCurrencyPosition {
+  currency: string;
+  outstanding: MaybeNum;
+  /** Existing source-row count whose outstanding amount is genuinely > 0. */
+  openCount: number;
+  /** C2C grain: shipment; C2D grain: shipment × partner × currency. */
+  rowCount: number;
+}
+
+export interface CeoStatusCount {
+  status: string;
+  count: number;
+}
+
+export interface CeoReport {
+  classification: "PARTIAL_BACKED_READY" | string;
+  readOnly: boolean;
+  operations: {
+    totalShipmentCount: number;
+    /** Existing Home meaning: not delivered and not cancelled; null if absent. */
+    openShipmentCount: number | null;
+    statusCounts: CeoStatusCount[];
+    /** Existing work-desk meaning: Khẩn + Cần xử lý. */
+    actionableTaskCount: number;
+  };
+  receivables: {
+    positions: CeoCurrencyPosition[];
+    shipmentRowCount: number;
+    hasAuthoritativeAmounts: boolean;
+  };
+  payables: {
+    positions: CeoCurrencyPosition[];
+    recordCount: number;
+    hasCanonicalRecords: boolean;
+    status: string;
+    error: string | null;
+  };
+  finance: {
+    /** No Finance Actual ⇒ excluded from AR sums, never treated as zero. */
+    incompleteShipmentCount: number;
+  };
+  reconciliation: {
+    status: string;
+    available: boolean;
+    obligations: Record<string, number | null> | null;
+    money: Record<string, number | null> | null;
+    reviewCount: number | null;
+    error: string | null;
+  };
+  quickLinks: { label: string; href: string; note: string }[];
+  unavailable: string[];
 }
 
 export interface ViewModel {
@@ -983,6 +1051,8 @@ export interface ViewModel {
   partnerContext?: PartnerContextSlice;
   /** LOGI_RECONCILIATION_DESK_01 — read-only đối soát slice. */
   reconciliation?: ReconciliationSlice;
+  /** LOGI_CEO_REPORT_01 — bounded read-only current-position summary. */
+  ceoReport?: CeoReport;
   unknownLabel?: string;
 }
 
