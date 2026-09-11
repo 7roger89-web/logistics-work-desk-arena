@@ -137,9 +137,15 @@ console.log("STEP 2 — Sổ tay is a live route; the remaining deferred route s
   assert.ok(noteNav, "Sổ tay sidebar item missing");
   assert.equal(noteNav.getAttribute("href"), "/so-tay", "route changed instead of activated");
   assert.ok(!text(noteNav).includes("Sắp có"), "Sổ tay still marked deferred");
+  // LOGI_USER_ACCESS_WORKSPACE_01 — /nguoi-dung is a real read-only workspace
+  // now, so the marker is gone there too and no destination stays deferred.
   const users = findClickable("Người dùng & Vai trò", "a", aside);
-  assert.ok(users && text(users).includes("Sắp có"), "an unmapped route lost its honest marker");
-  ok("only the destination with real content lost its “Sắp có” marker");
+  assert.ok(users, "user-access sidebar item missing");
+  assert.equal(users.getAttribute("href"), "/nguoi-dung", "user-access route changed");
+  assert.ok(!text(users).includes("Sắp có"), "user access still marked deferred");
+  const markers = $("aside a", window.document).filter((el) => text(el).includes("Sắp có"));
+  assert.equal(markers.length, 0, "a navigation item is still marked deferred");
+  ok("real destinations carry no deferred marker — and none is left");
 }
 
 console.log("STEP 3 — the placeholder is gone and the page is honestly read-only");

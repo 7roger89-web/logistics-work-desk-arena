@@ -41,7 +41,7 @@ navigation honesty and the dashboard contrast defect.
 | `/tra-cuu-thue` | placeholder | UNBACKED_PLACEHOLDER | UNBACKED_PLACEHOLDER (marked) |
 | `/so-tay` | placeholder | UNBACKED_PLACEHOLDER | UNBACKED_PLACEHOLDER (marked) |
 | `/dich-thuat` | placeholder | UNBACKED_PLACEHOLDER | UNBACKED_PLACEHOLDER (marked) |
-| `/nguoi-dung` | placeholder | UNBACKED_PLACEHOLDER | UNBACKED_PLACEHOLDER (marked) |
+| `/nguoi-dung` | placeholder | UNBACKED_PLACEHOLDER | UNBACKED_PLACEHOLDER (marked) → **REAL_BACKED (LOGI_USER_ACCESS_WORKSPACE_01, read-only)** |
 
 Deferred destinations keep real backend capability in the legacy Streamlit
 layer (`views/entity_context.py`, `views/translation.py`, `views/tariff.py`,
