@@ -1,20 +1,18 @@
-// Bounded "chưa triển khai" state for the remaining Phase C destinations.
-// The donor shell/navigation stays identical; only these screens are deferred.
-// Phase B already wired the operational core (Tổng Quan, Việc Cần Xử Lý,
-// Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi) to the real Logistics backend.
+// Explicit deferred state for the destinations that do NOT yet have an
+// authoritative component capability. The donor shell/navigation stays
+// identical; these screens are honestly marked "Sắp có" in the sidebar and
+// are never faked with mock business data. Every other destination in the
+// shell already runs on the real Logistics backend:
+//   Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
+//   Khách Hàng, Kinh doanh · Báo giá, Thỏa thuận mua bán, Hợp đồng,
+//   Thu tiền (phải thu), Công nợ đối tác (phải trả).
 
 import { Link, useLocation } from "react-router-dom";
 import { Construction, ArrowRight } from "lucide-react";
 
 const PATH_NAMES: Record<string, string> = {
-  "/khach-hang": "Khách Hàng",
   "/ngu-canh-doi-tac": "Ngữ cảnh Đối tác",
-  "/kinh-doanh-bao-gia": "Kinh doanh · Báo giá",
-  "/thoa-thuan-ban-giao": "Thòa thuận mua bán",
-  "/hop-dong": "Hợp đồng",
-  "/hop-dong/moi": "Tạo hợp đồng mới",
   "/tai-chinh/doi-soat": "Đối soát",
-  "/tai-chinh/cong-no-doi-tac": "Công nợ đối tác",
   "/bao-cao-ceo": "Báo cáo CEO",
   "/tra-cuu-thue": "Tra cứu thuế / HS",
   "/so-tay": "Sổ tay",
@@ -32,10 +30,16 @@ export function PhaseBPlaceholder() {
           <Construction size={26} />
         </span>
         <h2 className="text-[20px] font-extrabold text-[#0f2a4a] mt-4">{name}</h2>
+        <p className="text-[13px] font-extrabold uppercase tracking-wide text-amber-700 mt-2">
+          Sắp có — chưa triển khai
+        </p>
         <p className="text-[14.5px] text-slate-500 mt-2 leading-relaxed">
-          Màn hình này chưa triển khai. Phần vận hành cốt lõi — Tổng Quan,
-          Việc Cần Xử Lý, Lô Hàng, Chi tiết lô hàng, Tạo Lô Mới và Theo Dõi —
-          đã chạy trên dữ liệu Logistics thật.
+          Màn hình này chưa có nguồn dữ liệu nghiệp vụ chuẩn trong phiên bản
+          hiện tại nên chưa được dựng — hệ thống không hiển thị dữ liệu mẫu
+          thay thế. Toàn bộ phần vận hành, kinh doanh và tài chính cốt lõi —
+          Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
+          Khách Hàng, Báo giá, Thỏa thuận, Hợp đồng, Thu tiền và Công nợ đối
+          tác — đã chạy trên dữ liệu Logistics thật.
         </p>
         <div className="flex flex-wrap justify-center gap-2.5 mt-5">
           <Link

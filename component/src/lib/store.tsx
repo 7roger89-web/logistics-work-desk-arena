@@ -189,7 +189,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const userName = vm?.user.name ?? "Thu Hằng";
+  const userName = vm?.user.name ?? "—";
 
   const value = useMemo<StoreShape>(
     () => ({

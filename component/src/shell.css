@@ -48,3 +48,23 @@
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* ============================================================================
+   Contrast safety net (Owner-reported Home/Dashboard defect):
+   the donor hero and other gradient surfaces carry light/white text. The
+   Tailwind gradient chain resolves through @property-registered custom
+   properties; inside the v2 shadow root some browsers (older Chromium /
+   Android WebView common on phones) ignore those registrations, which
+   silently invalidates background-image and leaves light text on the light
+   shell background. Inheritable defaults at the shell root make the exact
+   donor gradient chain resolve even then — same donor values, no markup
+   change, no new color system.
+   ========================================================================== */
+.logi-shell {
+  --tw-gradient-from-position: 0%;
+  --tw-gradient-via-position: 50%;
+  --tw-gradient-to-position: 100%;
+  --tw-gradient-from: #0000;
+  --tw-gradient-via: #0000;
+  --tw-gradient-to: #0000;
+}

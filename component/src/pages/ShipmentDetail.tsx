@@ -574,14 +574,13 @@ export default function ShipmentDetail() {
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}
             <div className="mt-4">
-              <h4 className="font-bold text-[14.5px] mb-2">Chứng từ lô hàng — bấm để tải / bổ sung</h4>
+              <h4 className="font-bold text-[14.5px] mb-2">Chứng từ lô hàng — hiện trạng & bổ sung</h4>
               <div className="space-y-2">
                 {s.docs.map((d) => (
                   <div key={d.name} className="flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5">
                     <span className={cx("w-7 h-7 rounded-full grid place-items-center text-[13px] font-extrabold", d.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white")}>{d.ok ? "✓" : "!"}</span>
-                    <span className="flex-1 font-semibold text-[14px]">{d.name}</span>
-                    {d.ok ? <button onClick={() => toast("Đã tải " + d.name, "File minh họa của " + s.id + " đã lưu về máy.", "green")} className="touch-target inline-flex items-center gap-1 text-[13px] font-bold text-[#1e5aa8] border rounded-lg px-2.5 min-h-[40px]"><Download size={14} /> Tải</button>
-                    : <button onClick={() => toast("Tải lên " + d.name, "Chọn file PDF/ảnh từ máy — prototype mô phỏng thao tác.", "blue")} className="touch-target inline-flex items-center gap-1 text-[13px] font-bold text-white bg-amber-500 rounded-lg px-2.5 min-h-[40px]">＋ Bổ sung</button>}
+                    <span className="flex-1 font-semibold text-[14px]">{d.name} — {d.ok ? <span className="text-emerald-700">Đã đủ</span> : <span className="text-amber-800">Thiếu</span>}</span>
+                    {!d.ok && <button onClick={() => { setSp({ tab: missingTarget(d.name) }); toast("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + d.name + ".", "blue"); }} className="btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13px] font-bold px-3 min-h-[44px]"><PenLine size={14} /> Bổ sung</button>}
                   </div>
                 ))}
               </div>
@@ -594,10 +593,10 @@ export default function ShipmentDetail() {
             {!s.importInfo.delivered && <MissingBox what="xác nhận đã giao hàng" where="Phải giao xong mới được xuất PXK" actionLabel="Sang xác nhận giao" onAction={() => setSp({ tab: "nhap" })} />}
             <div className="grid sm:grid-cols-2 gap-3 mt-3">
               <Field label="Số PXK"><input defaultValue={s.pxk.number} placeholder="Tự sinh khi xuất" className={inputCls()} /></Field>
-              <Field label="Ngày PXK"><input defaultValue={s.pxk.date || "09/09/2026"} className={inputCls()} /></Field>
+              <Field label="Ngày PXK"><input defaultValue={s.pxk.date} placeholder="Tự sinh khi xuất" className={inputCls()} /></Field>
               <Field label="Địa điểm nhận" ><input defaultValue={s.pxk.place || s.importInfo.deliveryAddr} className={inputCls()} /></Field>
               <Field label="Người nhận"><input defaultValue={s.pxk.receiver || s.importInfo.receiver} className={inputCls()} /></Field>
-              <Field label="Chức vụ người nhận"><input defaultValue={s.pxk.role || "Thủ kho"} className={inputCls()} /></Field>
+              <Field label="Chức vụ người nhận"><input defaultValue={s.pxk.role} placeholder="Theo giấy giới thiệu" className={inputCls()} /></Field>
               <Field label="Nguồn (HDMB/PL)"><input defaultValue={s.pxk.source || s.contract} className={inputCls()} /></Field>
             </div>
             <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-[13.5px]">

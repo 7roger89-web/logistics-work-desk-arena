@@ -21,10 +21,13 @@ function Logo() {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast, notifications } = useStore();
+  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast, notifications, tasks, environment } = useStore();
   // Real alerts from the Logistics readiness projection (no fixed demo list).
   const notifs = notifications;
   const notifCount = notifs.length;
+  // Real open-work count from the task projection (Khẩn + Cần xử lý) — never
+  // the donor's hardcoded sample number.
+  const openTaskCount = tasks.filter((t) => t.level === "Khan" || t.level === "CanXuLy").length;
   const nav = useNavigate();
   const loc = useLocation();
   const [roleMenu, setRoleMenu] = useState(false);
@@ -66,7 +69,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {searchOpen && results && (
               <div className="absolute top-[52px] left-0 right-0 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 z-50 anim-slide-up max-h-[70vh] overflow-auto">
                 {results.lots.length + results.cts.length + results.cus.length + results.quo.length === 0 && (
-                  <p className="p-4 text-[14.5px] text-slate-500">Không tìm thấy “{query}”. Thử mã lô <b>LO-0306</b>, <b>An Phát</b> hoặc <b>HDMB</b>.</p>
+                  <p className="p-4 text-[14.5px] text-slate-500">Không tìm thấy “{query}”. Thử lại theo <b>mã lô</b>, <b>tên khách hàng</b> hoặc <b>số hợp đồng</b> đang có trong hệ thống.</p>
                 )}
                 {results.lots.map((s) => (
                   <button key={s.id} onClick={() => goSearch(`/lo-hang/${s.id}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
@@ -109,7 +112,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
             {roleMenu && (
               <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up">
-                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">Chuyển vai trò (prototype)</p>
+                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">Xem giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập</p>
                 {(["ADMIN", "SUPPORT", "SALE"] as Role[]).map((r) => (
                   <button key={r} onClick={() => { setRole(r); setRoleMenu(false); toast(`Đã chuyển sang vai trò ${ROLE_LABEL[r]}`, r === "ADMIN" ? "Xem được hợp đồng, tài chính & người dùng" : r === "SUPPORT" ? "Ưu tiên điều phối lô hàng & chứng từ" : "Ưu tiên khách hàng, báo giá & hợp đồng", "blue"); }} className={cx("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", role === r && "bg-blue-50")}>
                     <span><span className="block font-bold text-[14.5px]">{ROLE_LABEL[r]}</span><span className="block text-[12px] text-slate-500">{r}</span></span>
@@ -150,7 +153,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <span><span className="block font-bold text-[15px]">{c.id}</span><span className="block text-[13px] text-slate-500">{c.company} — {c.status}</span></span>
                   </button>
                 ))}
-                {(results.lots.length + results.cts.length === 0) && <p className="p-4 text-[14px] text-slate-500">Không tìm thấy. Thử “LO-0306” hoặc “An Phát”.</p>}
+                {(results.lots.length + results.cts.length === 0) && <p className="p-4 text-[14px] text-slate-500">Không tìm thấy. Thử lại theo mã lô, tên khách hàng hoặc số hợp đồng.</p>}
               </div>
             )}
           </div>
@@ -170,7 +173,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <NavLink key={it.to} to={it.to} className={({ isActive }) => cx("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", isActive || (it.to !== "/" && loc.pathname.startsWith(it.to)) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100")}>
                       <Icon size={19} className="shrink-0" />
                       <span className="flex-1">{it.label}</span>
-                      {it.to === "/viec-can-xu-ly" && <span className="text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">6</span>}
+                      {it.to === "/viec-can-xu-ly" && openTaskCount > 0 && <span className="text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">{openTaskCount}</span>}
+                      {it.soon && <span className="text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                     </NavLink>
                   );
                 })}
@@ -209,7 +213,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       return (
                         <NavLink key={it.to} to={it.to} onClick={() => setNavOpen(false)} className={cx("flex items-center gap-3 px-3 py-3 rounded-xl text-[15px] font-medium mb-0.5", active ? "bg-[#0f2a4a] text-white" : "text-slate-700 hover:bg-slate-100")}>
                           <Icon size={20} className="shrink-0" />{it.label}
-                          {it.to === "/viec-can-xu-ly" && <span className="ml-auto text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">6</span>}
+                          {it.to === "/viec-can-xu-ly" && openTaskCount > 0 && <span className="ml-auto text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">{openTaskCount}</span>}
+                          {it.soon && <span className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                         </NavLink>
                       );
                     })}
@@ -224,7 +229,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full">
           {children}
           <footer className="mt-10 text-center text-[12.5px] text-slate-400 pb-4">
-            CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · Bản prototype nội bộ — dữ liệu minh họa 09/09/2026
+            CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · {environment?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"}
           </footer>
         </main>
       </div>
@@ -294,11 +299,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 { label: "Tạo hợp đồng mới", desc: "HDMB / HDNT + phụ lục", to: "/hop-dong/moi", icon: FileText, bg: "bg-emerald-50 text-emerald-700" },
                 { label: "Tạo báo giá", desc: "Dự toán chi phí & giá bán", to: "/kinh-doanh-bao-gia", icon: Calculator, bg: "bg-violet-50 text-violet-700" },
                 { label: "Ghi nhận thanh toán", desc: "Thu tiền khách / trả đối tác", to: "/tai-chinh/thu-tien", icon: Wallet, bg: "bg-amber-50 text-amber-700" },
-                { label: "Tra cứu thuế / HS", desc: "Mã HS, thuế NK, VAT", to: "/tra-cuu-thue", icon: Truck, bg: "bg-slate-100 text-slate-700" },
+                { label: "Tra cứu thuế / HS", desc: "Mã HS, thuế NK, VAT", to: "/tra-cuu-thue", icon: Truck, bg: "bg-slate-100 text-slate-700", soon: true },
               ].map((a) => (
                 <button key={a.label} onClick={() => { setQuickAddOpen(false); nav(a.to); }} className="touch-target flex items-center gap-3 rounded-2xl border-2 border-slate-100 hover:border-[#1e5aa8] p-3.5 text-left lift bg-white">
                   <span className={cx("w-11 h-11 rounded-xl grid place-items-center shrink-0", a.bg)}><a.icon size={21} /></span>
-                  <span className="flex-1"><span className="block font-bold text-[15px] text-[#0f2a4a]">{a.label}</span><span className="block text-[13px] text-slate-500">{a.desc}</span></span>
+                  <span className="flex-1"><span className="font-bold text-[15px] text-[#0f2a4a] flex items-center gap-2">{a.label}{a.soon && <span className="text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}</span><span className="block text-[13px] text-slate-500">{a.desc}</span></span>
                   <ChevronRight size={19} className="text-slate-300" />
                 </button>
               ))}
