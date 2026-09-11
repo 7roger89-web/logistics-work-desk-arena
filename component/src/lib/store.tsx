@@ -33,6 +33,7 @@ import {
   type Customer,
   type Environment,
   type Home,
+  type NotebookHandbook,
   type Notif,
   type PartnerPayablesViewModel,
   type ReceivablesViewModel,
@@ -81,6 +82,8 @@ interface StoreShape {
   payables: PartnerPayablesViewModel;
   /** LOGI_CEO_REPORT_01 — server-derived, read-only management summary. */
   ceoReport: CeoReport | null;
+  /** LOGI_NOTEBOOK_WORKSPACE_01 — read-only /so-tay handbook slice. */
+  handbook: NotebookHandbook | null;
   unknownLabel: string;
   /**
    * Send ONE typed event to the single Python dispatcher. Persistence is
@@ -149,6 +152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [vm]
   );
   const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
+  const handbook = useMemo(() => vm?.handbook ?? null, [vm]);
 
   const dispatch = useCallback(
     (event: LogiEventName, payload: unknown) => dispatchLogiEvent(event, payload),
@@ -226,6 +230,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       receivables,
       payables,
       ceoReport,
+      handbook,
       unknownLabel: unknownLabel(),
       dispatch,
       updateShipment,
@@ -254,6 +259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       receivables,
       payables,
       ceoReport,
+      handbook,
       dispatch,
       updateShipment,
     ]

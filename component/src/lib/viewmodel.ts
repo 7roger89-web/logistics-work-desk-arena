@@ -1028,6 +1028,80 @@ export interface CeoReport {
   unavailable: string[];
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_NOTEBOOK_WORKSPACE_01 — bounded /so-tay handbook slice.
+//
+// Everything below is reference material this repository already owns (the
+// status/Incoterm/service-code constants the app runs on, the locked docgen
+// rules, the official trade-compliance source registry, the single RBAC matrix)
+// plus the team's own notes read through the existing knowledge_base reader.
+// The page is READ-ONLY: no authoring event, no search backend, no second
+// content store. `provenance` mirrors only what a source actually records —
+// a missing version/owner/date stays null and is rendered as "không có".
+// ----------------------------------------------------------------------------
+
+export interface HandbookProvenance {
+  source: string;
+  version: string | null;
+  updated: string | null;
+  owner: string | null;
+  note: string | null;
+}
+
+export interface HandbookTable {
+  columns: string[];
+  rows: string[][];
+}
+
+export interface HandbookLink {
+  label: string;
+  href: string;
+}
+
+export interface HandbookEntry {
+  id: string;
+  title: string;
+  summary: string;
+  bullets: string[];
+  table: HandbookTable | null;
+  links: HandbookLink[];
+  tags: string[];
+  /** Per-item provenance when the source carries its own (e.g. a team note). */
+  provenance?: HandbookProvenance | null;
+}
+
+export interface HandbookSection {
+  id: string;
+  label: string;
+  icon: string;
+  lead: string;
+  provenance: HandbookProvenance;
+  entries: HandbookEntry[];
+  /** Honest empty/unavailable state, shown instead of fabricated material. */
+  state: { tone: "gray" | "amber" | string; text: string } | null;
+}
+
+export interface HandbookCounts {
+  sectionCount: number;
+  availableSectionCount: number;
+  entryCount: number;
+  /** Entries delivered to the page (bounded by MAX_NOTE_ENTRIES on the server). */
+  noteCount: number;
+  /** Full source count, so a bounded payload is not mistaken for the corpus. */
+  noteTotal: number;
+}
+
+export interface NotebookHandbook {
+  classification: "STATIC_CONTENT_READY" | string;
+  readOnly: boolean;
+  sections: HandbookSection[];
+  counts: HandbookCounts;
+  /** Explicit scope limits of this page — stated, never filled with guesses. */
+  unavailable: string[];
+  sectionsAvailable: string[];
+  sectionsUnavailable: string[];
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -1055,6 +1129,8 @@ export interface ViewModel {
   reconciliation?: ReconciliationSlice;
   /** LOGI_CEO_REPORT_01 — bounded read-only current-position summary. */
   ceoReport?: CeoReport;
+  /** LOGI_NOTEBOOK_WORKSPACE_01 — bounded read-only /so-tay handbook slice. */
+  handbook?: NotebookHandbook;
   unknownLabel?: string;
 }
 

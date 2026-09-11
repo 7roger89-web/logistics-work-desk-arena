@@ -157,14 +157,23 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   ]) {
     assert.ok(at.includes(it), `sidebar item missing: ${it}`);
   }
-  // Exactly the three remaining deferred destinations carry the marker
+  // Exactly ONE remaining deferred destination carries the marker
   // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01,
   // /dich-thuat a REAL translation workspace in LOGI_TRANSLATION_WORKSPACE_01,
   // /ngu-canh-doi-tac a REAL read-only partner-context workspace in
   // LOGI_PARTNER_CONTEXT_WORKSPACE_01, and /tai-chinh/doi-soat a REAL read-only
-  // reconciliation desk in LOGI_RECONCILIATION_DESK_01).
+  // reconciliation desk in LOGI_RECONCILIATION_DESK_01). LOGI_CEO_REPORT_01
+  // then made /bao-cao-ceo a real bounded read-only page (this expectation was
+  // left stale at 3 by that phase), and LOGI_NOTEBOOK_WORKSPACE_01 made /so-tay
+  // a real read-only handbook, so only user/role admin is still deferred.
   const markers = $("aside .uppercase", window.document).filter((el) => text(el) === "Sắp có");
-  assert.equal(markers.length, 3, `expected 3 "Sắp có" markers, got ${markers.length}`);
+  assert.equal(markers.length, 1, `expected 1 "Sắp có" marker, got ${markers.length}`);
+  const handbookRow = $('aside a[href="/so-tay"]')[0];
+  assert.ok(handbookRow && !text(handbookRow).includes("Sắp có"),
+    "the handbook is REAL now — no deferred marker");
+  const ceoRow = $('aside a[href="/bao-cao-ceo"]')[0];
+  assert.ok(ceoRow && !text(ceoRow).includes("Sắp có"),
+    "the CEO report is REAL now — no deferred marker");
   const translationRow = $('aside a[href="/dich-thuat"]')[0];
   assert.ok(translationRow && !text(translationRow).includes("Sắp có"),
     "translation is REAL now — no deferred marker");
@@ -180,7 +189,7 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   const badge = $("span.bg-red-500", tasksRow)[0];
   assert.ok(badge, "open-task badge missing");
   assert.equal(text(badge), String(OPEN_TASKS), `badge must be the real open count ${OPEN_TASKS}`);
-  ok(`16+ items, 3 honest markers, badge = real ${OPEN_TASKS} open tasks (no sample "6")`);
+  ok(`16+ items, 1 honest marker, badge = real ${OPEN_TASKS} open tasks (no sample "6")`);
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +229,11 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     // reconciliation desk now; with this older fixture it must render its own
     // honest "chưa có bản ghi đối soát" state rather than the deferred placeholder.
     ["Đối soát", "CHỈ ĐỌC"],
+    // LOGI_CEO_REPORT_01 / LOGI_NOTEBOOK_WORKSPACE_01 — both destinations are
+    // real read-only pages now. This fixture predates their view-model slices,
+    // so each must render its own explicit no-data state, not a placeholder.
+    ["Báo cáo CEO", "Chưa nhận được tóm tắt quản trị"],
+    ["Sổ tay", "Chưa nhận được dữ liệu Sổ tay"],
   ];
   for (const [label, marker] of BACKED) {
     await click(label, "a", aside);
@@ -227,16 +241,16 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     assert.ok(t.includes(marker), `backed page "${label}" missing marker "${marker}"`);
     assert.ok(!t.includes("chưa triển khai"), `backed page "${label}" unexpectedly shows placeholder`);
   }
-  ok("15 backed destinations all open REAL pages (0 placeholders)");
+  ok("17 backed destinations all open REAL pages (0 placeholders)");
 }
 
 // ---------------------------------------------------------------------------
 console.log("STEP 6 — every UNBACKED destination is an explicit honest placeholder");
 {
   const aside = $("aside")[0];
+  // Only /nguoi-dung is still unbacked: /bao-cao-ceo (LOGI_CEO_REPORT_01) and
+  // /so-tay (LOGI_NOTEBOOK_WORKSPACE_01) now render real read-only pages.
   const UNBACKED = [
-    ["Báo cáo CEO", "Báo cáo CEO"],
-    ["Sổ tay", "Sổ tay"],
     ["Người dùng & Vai trò", "Người dùng & Vai trò"],
   ];
   for (const [label, name] of UNBACKED) {
@@ -246,7 +260,7 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
     assert.ok(t.includes("chưa triển khai"), `placeholder honesty text missing for "${label}"`);
     assert.ok(t.includes("không hiển thị dữ liệu mẫu thay thế") || t.includes("dữ liệu mẫu"), `placeholder must state it does not fake data ("${label}")`);
   }
-  ok("3 deferred destinations → explicit placeholder, zero faked capability");
+  ok("1 deferred destination → explicit placeholder, zero faked capability");
 }
 
 // ---------------------------------------------------------------------------
