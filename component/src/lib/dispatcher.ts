@@ -53,7 +53,12 @@ export type LogiEventName =
   // /dich-thuat. Not a business mutation (no document/ledger/shipment write):
   // Python performs ONE call through the EXISTING canonical DeepL client and
   // returns the readback in the next fresh view-model.
-  | "translate_text";
+  | "translate_text"
+  // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded READ-ONLY selection event for
+  // /ngu-canh-doi-tac. It mutates nothing: Python records only WHICH existing
+  // entity was picked and re-derives the whole context from the authoritative
+  // readers (entity_context / authority_agents / C2D ledger) on the next read.
+  | "partner_context_select";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -85,6 +90,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "contract_shipment_link",
   "tariff_lookup",
   "translate_text",
+  "partner_context_select",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

@@ -741,6 +741,120 @@ export interface TranslationWorkspace {
   result: TranslationResult | null;
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded read-only partner-context slice,
+// served by views/partner_context.py over the EXISTING authoritative readers:
+// core.entity_context (shipment-partner index), the authority_agents legal
+// master, and the C2D canonical payable projection built in the same render.
+//
+// NOTHING here is a CRM model: there is no relationship / risk / credit /
+// reliability score, no tier, no account manager, no SLA, no note, no activity
+// timeline and no tag. `unavailable` is the backend's honest list of exactly
+// that. `identity.party` reuses the AuthorityParty master shape verbatim, so
+// one master can never render differently on two screens.
+//
+// UNKNOWN != ZERO: absent fields stay null and render "—". A partner with no
+// canonical payable gets NO finance row and status "UNKNOWN" — never 0.
+// Amounts are the ledger's own, per currency; this slice never re-derives or
+// sums them, and currencies are never combined.
+// ----------------------------------------------------------------------------
+
+export interface PartnerContextOption {
+  key: string;
+  label: string;
+  /** True when an authority_agents master record backs this partner. */
+  master: boolean;
+  sources: string[];
+  shipmentIds: string[];
+  shipmentCount: number;
+  currencies: string[];
+  legalCode?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface PartnerContextIdentity {
+  /** authority_agents master fields, verbatim; null when no approved master. */
+  party: AuthorityParty | null;
+  masterStatus: string;
+  masterSource: string;
+  displayName: string;
+  displayId: string;
+  /** What the shipment-partner index knows (may differ from the master). */
+  contextName: string | null;
+  contextId: string | null;
+}
+
+/** One linked shipment: identity + link ONLY (detail stays on /lo-hang/:id). */
+export interface PartnerContextShipmentRow {
+  shipmentId: string;
+  status: string | null;
+  requiredDate: string | null;
+  plannedDate: string | null;
+  attention: string | null;
+  attentionDetail: string | null;
+  role: string | null;
+  route: string | null;
+  operationalContext: string | null;
+  source: string;
+  financeCurrencies: string[];
+  openHref: string;
+  /** False when the existing shipment route cannot serve this id. */
+  canOpen: boolean;
+}
+
+export interface PartnerPayableContextRow {
+  id: string | null;
+  shipmentId: string | null;
+  currency: string | null;
+  payable: MaybeNum;
+  paid: MaybeNum;
+  remaining: MaybeNum;
+  status: string | null;
+  obligationIds: string[];
+  source: string;
+}
+
+export interface PartnerContextFinance {
+  rows: PartnerPayableContextRow[];
+  status: string;
+  statusLabel: string;
+  /** Counts per currency — deliberately NO partner-level payable total. */
+  byCurrency: Record<string, { rowCount: number; shipmentIds: string[]; obligationCount: number }>;
+  worklistHref: string;
+  note: string;
+}
+
+export interface PartnerContextSlice {
+  readOnly: boolean;
+  /** OK | NO_SELECTION | NO_PARTNER_SOURCE | PARTNER_NOT_FOUND */
+  status: string;
+  reason: string | null;
+  selectedKey: string | null;
+  selectedLabel: string | null;
+  matchedSources: string[];
+  options: PartnerContextOption[];
+  optionCount: number;
+  optionTruncated: boolean;
+  optionLimit: number;
+  /** Exactly the terms this lookup genuinely supports. */
+  searchFields: string[];
+  identity?: PartnerContextIdentity;
+  roles?: string[];
+  shipments?: PartnerContextShipmentRow[];
+  shipmentCount?: number;
+  shipmentTruncated?: boolean;
+  documents?: {
+    shipmentId: string | null;
+    document: string | null;
+    status: string | null;
+    source: string | null;
+  }[];
+  finance?: PartnerContextFinance;
+  gaps?: string[];
+  unavailable?: string[];
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -762,6 +876,8 @@ export interface ViewModel {
   tariff?: TariffLookup;
   /** LOGI_TRANSLATION_WORKSPACE_01 — bounded DeepL translation slice. */
   translation?: TranslationWorkspace;
+  /** LOGI_PARTNER_CONTEXT_WORKSPACE_01 — read-only partner-context slice. */
+  partnerContext?: PartnerContextSlice;
   unknownLabel?: string;
 }
 
@@ -811,4 +927,9 @@ export function tariffLookup(): TariffLookup | null {
 /** The bounded /dich-thuat translation slice (null until Python delivers it). */
 export function translationWorkspace(): TranslationWorkspace | null {
   return current?.translation ?? null;
+}
+
+/** The bounded /ngu-canh-doi-tac partner-context slice (null until delivered). */
+export function partnerContext(): PartnerContextSlice | null {
+  return current?.partnerContext ?? null;
 }

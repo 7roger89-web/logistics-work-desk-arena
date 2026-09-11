@@ -51,7 +51,7 @@ export const NAV: {
     group: "KINH DOANH & ĐỐI TÁC",
     items: [
       { to: "/khach-hang", label: "Khách Hàng", icon: "users" },
-      { to: "/ngu-canh-doi-tac", soon: true, label: "Ngữ cảnh Đối tác", icon: "handshake" },
+      { to: "/ngu-canh-doi-tac", label: "Ngữ cảnh Đối tác", icon: "handshake" },
       { to: "/kinh-doanh-bao-gia", label: "Kinh doanh · Báo giá", icon: "calc" },
       { to: "/thoa-thuan-ban-giao", label: "Thỏa thuận mua bán", icon: "filecheck" },
       { to: "/hop-dong", label: "Hợp đồng", icon: "filetext" },

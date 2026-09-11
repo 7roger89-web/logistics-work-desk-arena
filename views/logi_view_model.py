@@ -29,6 +29,7 @@ import streamlit as st
 from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
+from views import partner_context as logi_partner_context
 from views import tariff_lookup as logi_tariff
 from views import translation as logi_translation
 
@@ -270,6 +271,11 @@ def build_view_model() -> dict:
     user = current_user() or {}
     c1 = logi_c1.assemble_c1_payload()
 
+    # C2D is read ONCE per render and shared by both the global worklist and the
+    # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
+    # derivation of a partner's financial position.
+    payables = rd.partner_payables_projection()
+
     model = {
         "version": _payload_version(rows, references, c1),
         "environment": {
@@ -301,7 +307,18 @@ def build_view_model() -> dict:
         # C2D — global partner-payable worklist (THANH TOÁN ĐỐI TÁC / PHẢI TRẢ),
         # read-only over the SAME canonical ledger the C2B per-shipment slice
         # uses. No new ledger: one row per SHIPMENT × PARTNER × CURRENCY.
-        "payables": rd.partner_payables_projection(),
+        "payables": payables,
+        # LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded READ-ONLY exposure of the
+        # partner/entity context that already exists (core.entity_context over
+        # the shipment-partner index, the authority_agents legal master, and the
+        # C2D payable rows just built above) for the /ngu-canh-doi-tac workspace.
+        # The selection is a key only; every field comes back from the readers.
+        "partnerContext": logi_partner_context.partner_context_view(
+            st.session_state.get(PARTNER_CONTEXT_KEY) or "",
+            payables=payables,
+            customers=references["customers"],
+            shipments=shipments,
+        ),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
@@ -376,8 +393,15 @@ TARIFF_EVENTS = {"tariff_lookup"}
 # DeepL client and stores the readback for the next fresh view-model.
 TRANSLATION_EVENTS = {"translate_text"}
 
+# LOGI_PARTNER_CONTEXT_WORKSPACE_01 — one bounded READ-ONLY selection event for
+# the /ngu-canh-doi-tac workspace. Exactly like tariff_lookup it mutates nothing:
+# the handler only records WHICH existing entity the Owner picked, and the next
+# fresh read in build_view_model() embeds the authoritative context projection
+# (core.entity_context + authority_agents + the canonical C2B/C2D ledger).
+PARTNER_CONTEXT_EVENTS = {"partner_context_select"}
+
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
-              | TARIFF_EVENTS | TRANSLATION_EVENTS)
+              | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS)
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
@@ -385,6 +409,10 @@ TARIFF_QUERY_KEY = "logi_tariff_query"
 #: Session readback of the last /dich-thuat request and of its result.
 TRANSLATION_REQUEST_KEY = "logi_translation_request"
 TRANSLATION_RESULT_KEY = "logi_translation_result"
+
+#: Session readback of the /ngu-canh-doi-tac selection (a partner key only — the
+#: context itself is always re-derived from the authoritative readers below).
+PARTNER_CONTEXT_KEY = "logi_partner_context_selection"
 
 
 def _translation_fingerprint(text: str, source_lang: str, target_lang: str) -> str:
@@ -1363,6 +1391,40 @@ def consume_translation_triggers(session: dict, result: Any) -> list[dict[str, A
     return outcomes
 
 
+def consume_partner_context_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY partner-selection dispatcher.
+
+    Mirrors ``consume_tariff_triggers`` exactly: the same replay protection (one
+    shot ``seq``), NO business mutation — the handler only records which
+    existing entity the Owner selected, and ``build_view_model`` renders the
+    authoritative projection for it on the next fresh read. The partner key is
+    never trusted as data: it is a lookup input only, and an unknown key fails
+    honest in the projection (``PARTNER_NOT_FOUND``) instead of creating one.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(PARTNER_CONTEXT_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        entity_key = str(data.get("entityKey") or "").strip()[:120] if isinstance(data, dict) else ""
+        if not entity_key:
+            # An empty selection is a legitimate intent: clear the workspace back
+            # to the picker instead of leaving a stale partner on screen.
+            st.session_state.pop(PARTNER_CONTEXT_KEY, None)
+            outcomes.append(_result(event_name, "", True, readback={"entityKey": ""}))
+            continue
+        st.session_state[PARTNER_CONTEXT_KEY] = entity_key
+        outcomes.append(_result(event_name, "", True, readback={"entityKey": entity_key}))
+    return outcomes
+
+
 def dispatch(result: Any) -> list[dict[str, Any]]:
     """Streamlit-facing entry: consume one script run's component triggers.
 
@@ -1403,10 +1465,20 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
                                     translation_session["seq"])
     outcomes.extend(translation_outcomes)
 
+    # LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded read-only selection path. It
+    # writes nothing; this rerun only delivers the projected context for the
+    # partner that was just selected (UNKNOWN states included).
+    partner_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    partner_outcomes = consume_partner_context_triggers(partner_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    partner_session["seq"])
+    outcomes.extend(partner_outcomes)
+
     needs_rerun = (
         any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
             for outcome in tariff_outcomes)
         or bool(translation_outcomes)
+        or any(outcome.get("ok") for outcome in partner_outcomes)
     )
     if needs_rerun:
         st.rerun()
