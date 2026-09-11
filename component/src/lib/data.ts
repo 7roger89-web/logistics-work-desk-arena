@@ -71,7 +71,7 @@ export const NAV: {
     items: [
       { to: "/tra-cuu-thue", label: "Tra cứu thuế / HS", icon: "search" },
       { to: "/so-tay", soon: true, label: "Sổ tay", icon: "book" },
-      { to: "/dich-thuat", soon: true, label: "Dịch thuật", icon: "lang" },
+      { to: "/dich-thuat", label: "Dịch thuật", icon: "lang" },
     ],
   },
   {

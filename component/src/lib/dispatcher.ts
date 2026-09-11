@@ -48,7 +48,12 @@ export type LogiEventName =
   // LOGI_TARIFF_LOOKUP_01 — bounded READ-ONLY query event (no mutation):
   // records the /tra-cuu-thue lookup query; the authoritative result always
   // comes back from the existing canonical reader in the next fresh read.
-  | "tariff_lookup";
+  | "tariff_lookup"
+  // LOGI_TRANSLATION_WORKSPACE_01 — ONE bounded translation intent for
+  // /dich-thuat. Not a business mutation (no document/ledger/shipment write):
+  // Python performs ONE call through the EXISTING canonical DeepL client and
+  // returns the readback in the next fresh view-model.
+  | "translate_text";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -79,6 +84,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "contract_docgen_issue",
   "contract_shipment_link",
   "tariff_lookup",
+  "translate_text",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

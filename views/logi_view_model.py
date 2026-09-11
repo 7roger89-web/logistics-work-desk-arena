@@ -30,6 +30,7 @@ from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
 from views import tariff_lookup as logi_tariff
+from views import translation as logi_translation
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -308,6 +309,18 @@ def build_view_model() -> dict:
         "tariff": logi_tariff.tariff_lookup_view(
             st.session_state.get(TARIFF_QUERY_KEY) or ""
         ),
+        # LOGI_TRANSLATION_WORKSPACE_01 — bounded exposure of the EXISTING DeepL
+        # capability (core.deepl_translation via views.translation) for the
+        # /dich-thuat workspace. The translation itself already happened inside
+        # the bounded dispatcher, so this is a pure readback: capability state
+        # (configured? which languages does the provider really accept?) plus
+        # the last request and its authoritative result. No key ever leaves the
+        # backend; an unconfigured deployment shows an honest "chưa được cấu
+        # hình" state instead of a fabricated translation.
+        "translation": logi_translation.translation_view(
+            request=st.session_state.get(TRANSLATION_REQUEST_KEY),
+            result=st.session_state.get(TRANSLATION_RESULT_KEY),
+        ),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)
@@ -357,10 +370,31 @@ PHASE_B_EVENTS = {
 # (core.utils.fast_search_tariff) via views.tariff_lookup.
 TARIFF_EVENTS = {"tariff_lookup"}
 
-ALL_EVENTS = ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS | TARIFF_EVENTS
+# LOGI_TRANSLATION_WORKSPACE_01 — one bounded event for the /dich-thuat
+# workspace. It is NOT a business mutation (no document, ledger or shipment is
+# written): it performs ONE text translation through the EXISTING canonical
+# DeepL client and stores the readback for the next fresh view-model.
+TRANSLATION_EVENTS = {"translate_text"}
+
+ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
+              | TARIFF_EVENTS | TRANSLATION_EVENTS)
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
+
+#: Session readback of the last /dich-thuat request and of its result.
+TRANSLATION_REQUEST_KEY = "logi_translation_request"
+TRANSLATION_RESULT_KEY = "logi_translation_result"
+
+
+def _translation_fingerprint(text: str, source_lang: str, target_lang: str) -> str:
+    """Stable identity of ONE translation intent (never carries a credential).
+
+    Used by the same-intent guard: an enthusiastic thumb must not pay the
+    external provider twice for the identical request.
+    """
+    raw = f"{text}\x00{source_lang}\x00{target_lang}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 # Whitelist: component field key → canonical shipment document path.
 # Only these paths may be written by the component.
@@ -1255,6 +1289,80 @@ def consume_tariff_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
     return outcomes
 
 
+def consume_translation_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded translation dispatcher (LOGI_TRANSLATION_WORKSPACE_01).
+
+    Same replay protection as the other dispatchers (one-shot ``seq``), plus a
+    same-intent guard: when the identical text + language pair already has an
+    authoritative translation, the external DeepL call is NOT repeated. ONE
+    user intent therefore costs at most ONE provider call, and no job
+    framework, queue or worker is involved.
+
+    Authorization uses the EXISTING role matrix (``translation`` permission);
+    the provider is the EXISTING ``core.deepl_translation.DeepLClient``.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(TRANSLATION_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        if not isinstance(data, dict):
+            outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
+            continue
+
+        text = str(data.get("text") or "")
+        source_lang = str(data.get("sourceLang") or "AUTO").strip().upper()
+        target_lang = str(data.get("targetLang") or "VI").strip().upper()
+        fingerprint = _translation_fingerprint(text, source_lang, target_lang)
+
+        previous = st.session_state.get(TRANSLATION_REQUEST_KEY)
+        previous_result = st.session_state.get(TRANSLATION_RESULT_KEY)
+        if (isinstance(previous, dict)
+                and previous.get("fingerprint") == fingerprint
+                and isinstance(previous_result, dict)
+                and previous_result.get("status") == logi_translation.STATUS_TRANSLATED):
+            outcomes.append(_result(
+                event_name, "", True, "",
+                readback={"fingerprint": fingerprint, "duplicate": True},
+                notice=logi_translation.DUPLICATE_TRANSLATION_MESSAGE,
+            ))
+            continue
+
+        from core.auth import can_operate_business
+
+        if not can_operate_business("translation"):
+            outcomes.append(_result(event_name, "", False,
+                                    "RBAC: không có quyền translation."))
+            continue
+
+        # Recorded BEFORE the call so a failed attempt still shows WHICH
+        # request failed (and the UI leaves its loading state honestly).
+        st.session_state[TRANSLATION_REQUEST_KEY] = {
+            "text": text,
+            "sourceLang": source_lang,
+            "targetLang": target_lang,
+            "fingerprint": fingerprint,
+        }
+        translated = logi_translation.run_translation(
+            text, source_lang=source_lang, target_lang=target_lang
+        )
+        st.session_state[TRANSLATION_RESULT_KEY] = translated
+        ok = translated.get("status") == logi_translation.STATUS_TRANSLATED
+        outcomes.append(_result(
+            event_name, "", ok, str(translated.get("error") or ""),
+            readback={"fingerprint": fingerprint,
+                      "status": translated.get("status")},
+        ))
+    return outcomes
+
+
 def dispatch(result: Any) -> list[dict[str, Any]]:
     """Streamlit-facing entry: consume one script run's component triggers.
 
@@ -1285,8 +1393,22 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
                                     tariff_session["seq"])
     outcomes.extend(tariff_outcomes)
-    if any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
-           for outcome in tariff_outcomes):
+
+    # LOGI_TRANSLATION_WORKSPACE_01 — bounded external-provider path. The
+    # translation runs inside consume_translation_triggers (ONE call per user
+    # intent); this rerun only delivers its readback through the view-model.
+    translation_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    translation_outcomes = consume_translation_triggers(translation_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    translation_session["seq"])
+    outcomes.extend(translation_outcomes)
+
+    needs_rerun = (
+        any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
+            for outcome in tariff_outcomes)
+        or bool(translation_outcomes)
+    )
+    if needs_rerun:
         st.rerun()
 
     if outcomes:

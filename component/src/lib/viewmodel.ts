@@ -676,6 +676,71 @@ export interface TariffLookup {
   provenance: TariffProvenance;
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_TRANSLATION_WORKSPACE_01 — bounded /dich-thuat slice, served by
+// views/translation.py over the EXISTING canonical DeepL client
+// (core/deepl_translation.py). Nothing here is fabricated: `capability` says
+// what the backend really accepts and whether it is configured at all, and
+// `request` / `result` stay null until a translation actually happened.
+//
+// PRIVACY: `externalProvider` is always true — the text IS sent to DeepL. This
+// workspace is never presented as a local/private translator.
+//
+// NO SECRETS: the slice carries `configured` / `apiCount` only, never a key.
+// ----------------------------------------------------------------------------
+
+export interface TranslationLanguage {
+  code: string;
+  label: string;
+}
+
+export interface TranslationCapability {
+  provider: string;
+  configured: boolean;
+  apiCount: number;
+  /** The existing RBAC answer for the `translation` permission. */
+  allowed: boolean;
+  autoDetectSupported: boolean;
+  sourceLanguages: TranslationLanguage[];
+  targetLanguages: TranslationLanguage[];
+  maxTextBytes: number;
+  logisticsContext: boolean;
+  externalProvider: boolean;
+  privacyNotice: string;
+  /** Honest "chưa được cấu hình" state, null when keys exist. */
+  configNotice: string | null;
+  /** target code → source code (existing Streamlit view's own mapping). */
+  swapSource: Record<string, string>;
+  /** source code → target code (existing Streamlit view's own mapping). */
+  swapTarget: Record<string, string>;
+}
+
+export interface TranslationRequest {
+  text: string;
+  sourceLang: string;
+  targetLang: string;
+  /** Stable identity of ONE intent — the loading/duplicate guard key. */
+  fingerprint: string;
+}
+
+export interface TranslationResult {
+  /** "translated" | "invalid" | "error" | "config_required" */
+  status: string;
+  /** Verbatim provider text — null unless status === "translated". */
+  text: string | null;
+  error: string | null;
+  detectedSourceLanguage: string | null;
+  billedCharacters: number | null;
+  apiLabel: string | null;
+  provider: string;
+}
+
+export interface TranslationWorkspace {
+  capability: TranslationCapability;
+  request: TranslationRequest | null;
+  result: TranslationResult | null;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -695,6 +760,8 @@ export interface ViewModel {
   payables?: PartnerPayablesViewModel;
   /** LOGI_TARIFF_LOOKUP_01 — read-only HS/tariff lookup slice. */
   tariff?: TariffLookup;
+  /** LOGI_TRANSLATION_WORKSPACE_01 — bounded DeepL translation slice. */
+  translation?: TranslationWorkspace;
   unknownLabel?: string;
 }
 
@@ -739,4 +806,9 @@ export function unknownLabel(): string {
 /** The read-only tariff lookup slice (null until Python delivers it). */
 export function tariffLookup(): TariffLookup | null {
   return current?.tariff ?? null;
+}
+
+/** The bounded /dich-thuat translation slice (null until Python delivers it). */
+export function translationWorkspace(): TranslationWorkspace | null {
+  return current?.translation ?? null;
 }

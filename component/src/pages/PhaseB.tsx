@@ -5,7 +5,8 @@
 // shell already runs on the real Logistics backend:
 //   Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
 //   Khách Hàng, Kinh doanh · Báo giá, Thỏa thuận mua bán, Hợp đồng,
-//   Thu tiền (phải thu), Công nợ đối tác (phải trả).
+//   Thu tiền (phải thu), Công nợ đối tác (phải trả), Tra cứu thuế / HS,
+//   Dịch thuật.
 
 import { Link, useLocation } from "react-router-dom";
 import { Construction, ArrowRight } from "lucide-react";
@@ -15,7 +16,6 @@ const PATH_NAMES: Record<string, string> = {
   "/tai-chinh/doi-soat": "Đối soát",
   "/bao-cao-ceo": "Báo cáo CEO",
   "/so-tay": "Sổ tay",
-  "/dich-thuat": "Dịch thuật",
   "/nguoi-dung": "Người dùng & Vai trò",
 };
 

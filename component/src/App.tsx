@@ -29,6 +29,7 @@ import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
+import TranslationWorkspace from "./pages/TranslationWorkspace";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -65,6 +66,10 @@ export default function App() {
             {/* LOGI_TARIFF_LOOKUP_01 — real read-only HS/tariff lookup over
                 the existing canonical reader (no longer a placeholder). */}
             <Route path="/tra-cuu-thue" element={<TariffLookup />} />
+            {/* LOGI_TRANSLATION_WORKSPACE_01 — real bounded translation
+                workspace over the EXISTING DeepL capability (no longer a
+                placeholder; honest "chưa được cấu hình" when no key exists). */}
+            <Route path="/dich-thuat" element={<TranslationWorkspace />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>
