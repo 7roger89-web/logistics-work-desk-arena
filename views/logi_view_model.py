@@ -35,6 +35,7 @@ from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
 from views import translation as logi_translation
+from views import user_access as logi_user_access
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -99,6 +100,23 @@ def _knowledge_notes() -> list[dict[str, Any]]:
     try:
         return list(load_knowledge_base() or [])
     except Exception:  # noqa: BLE001 — a missing notebook must not blank the desk
+        return []
+
+
+def _users_reader() -> list[dict[str, Any]]:
+    """User accounts, read through the EXISTING canonical reader (read-only).
+
+    ``core.database.load_users`` is the same reader core.auth uses to
+    authenticate.  Only ``views.user_access`` consumes the result and it keeps
+    the canonical password-free public fields, so no credential material can
+    reach the payload.  A deployment with no user store yields ``[]``, which
+    the /nguoi-dung page renders as an honest empty state.
+    """
+    from core.database import load_users
+
+    try:
+        return list(load_users().values())
+    except Exception:  # noqa: BLE001 — a missing user store must not blank the desk
         return []
 
 
@@ -378,6 +396,17 @@ def build_view_model() -> dict:
         "handbook": logi_handbook.handbook_projection(
             field_paths=FIELD_PATHS,
             notes=_knowledge_notes(),
+        ),
+        # LOGI_USER_ACCESS_WORKSPACE_01 — the /nguoi-dung workspace. A bounded
+        # READ-ONLY slice over the auth/user/RBAC capability that already
+        # exists (load_users read through core.users' canonical public view,
+        # the single ROLE_PERMISSIONS matrix, the real AUTH_REQUIRED mode and
+        # the current session identity). No credential material, no invented
+        # role/permission, no write path: user mutations stay with the
+        # canonical core.database writers and none is exposed by this page.
+        "userAccess": logi_user_access.user_access_projection(
+            users=_users_reader(),
+            current_user=user,
         ),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
