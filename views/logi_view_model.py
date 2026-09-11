@@ -30,6 +30,7 @@ from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
 from views import partner_context as logi_partner_context
+from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
 from views import translation as logi_translation
 
@@ -319,6 +320,17 @@ def build_view_model() -> dict:
             customers=references["customers"],
             shipments=shipments,
         ),
+        # LOGI_RECONCILIATION_DESK_01 — bounded READ-ONLY exposure of the
+        # reconciliation capability that already exists: the allocation matching
+        # core.financial_ledger already derives per shipment (obligation ↔
+        # allocation ⇒ matched / partial / unmatched, transaction ⇒ allocated /
+        # unallocated), over the SAME canonical financial_obligations /
+        # financial_transactions / financial_allocations truth. Currencies stay
+        # separate, UNKNOWN stays UNKNOWN, and the desk writes nothing.
+        "reconciliation": logi_reconciliation.reconciliation_view(
+            st.session_state.get(RECONCILIATION_FILTER_KEY),
+            known_shipment_ids=list(shipments.keys()),
+        ),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
@@ -400,8 +412,18 @@ TRANSLATION_EVENTS = {"translate_text"}
 # (core.entity_context + authority_agents + the canonical C2B/C2D ledger).
 PARTNER_CONTEXT_EVENTS = {"partner_context_select"}
 
+# LOGI_RECONCILIATION_DESK_01 — ONE bounded READ-ONLY filter event for the
+# /tai-chinh/doi-soat desk. It mutates nothing: the handler only records the
+# query / currency / state / side the Owner picked, and the next fresh read in
+# build_view_model() re-derives every figure from the canonical ledger
+# (core.financial_ledger.shipment_partner_position). There is deliberately no
+# reconcile/write event here — recording a payable or a payment stays on the
+# existing canonical C2B/C2D and C2C surfaces the desk links to.
+RECONCILIATION_EVENTS = {"reconciliation_filter"}
+
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
-              | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS)
+              | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
+              | RECONCILIATION_EVENTS)
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
@@ -413,6 +435,11 @@ TRANSLATION_RESULT_KEY = "logi_translation_result"
 #: Session readback of the /ngu-canh-doi-tac selection (a partner key only — the
 #: context itself is always re-derived from the authoritative readers below).
 PARTNER_CONTEXT_KEY = "logi_partner_context_selection"
+
+#: Session readback of the /tai-chinh/doi-soat filter (query / currency / state
+#: / side only). Every figure is always re-derived from the canonical ledger on
+#: the next read; this key never holds a money value.
+RECONCILIATION_FILTER_KEY = "logi_reconciliation_filter"
 
 
 def _translation_fingerprint(text: str, source_lang: str, target_lang: str) -> str:
@@ -1425,6 +1452,54 @@ def consume_partner_context_triggers(session: dict, result: Any) -> list[dict[st
     return outcomes
 
 
+#: Filter fields the /tai-chinh/doi-soat desk may record, and their ceilings.
+#: Every value is a lookup input only — never a figure, never canonical data.
+_RECONCILIATION_FILTER_FIELDS = {
+    "query": 120,
+    "currency": 12,
+    "state": 16,
+    "side": 16,
+}
+
+
+def consume_reconciliation_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY reconciliation-filter dispatcher.
+
+    Mirrors ``consume_partner_context_triggers`` exactly: the same replay
+    protection (one-shot ``seq``) and NO business mutation. The handler only
+    records which slice of the existing canonical projection the Owner asked
+    for; ``build_view_model`` re-derives every amount, match state and currency
+    total from ``core.financial_ledger`` on the next fresh read. A filter value
+    is never trusted as data, so a nonsense currency or state simply yields an
+    honest empty view instead of a fabricated one.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(RECONCILIATION_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+        selection = {
+            key: str(data.get(key) or "").strip()[:limit]
+            for key, limit in _RECONCILIATION_FILTER_FIELDS.items()
+        }
+        if not any(selection.values()):
+            # An empty filter is a legitimate intent: clear the desk back to the
+            # full projection instead of leaving a stale filter on screen.
+            st.session_state.pop(RECONCILIATION_FILTER_KEY, None)
+            outcomes.append(_result(event_name, "", True, readback=dict(selection)))
+            continue
+        st.session_state[RECONCILIATION_FILTER_KEY] = selection
+        outcomes.append(_result(event_name, "", True, readback=dict(selection)))
+    return outcomes
+
+
 def dispatch(result: Any) -> list[dict[str, Any]]:
     """Streamlit-facing entry: consume one script run's component triggers.
 
@@ -1474,11 +1549,21 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
                                     partner_session["seq"])
     outcomes.extend(partner_outcomes)
 
+    # LOGI_RECONCILIATION_DESK_01 — bounded read-only filter path. It writes
+    # nothing; this rerun only delivers the canonical reconciliation projection
+    # for the filter that was just recorded (UNKNOWN states included).
+    reconciliation_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    reconciliation_outcomes = consume_reconciliation_triggers(reconciliation_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    reconciliation_session["seq"])
+    outcomes.extend(reconciliation_outcomes)
+
     needs_rerun = (
         any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
             for outcome in tariff_outcomes)
         or bool(translation_outcomes)
         or any(outcome.get("ok") for outcome in partner_outcomes)
+        or any(outcome.get("ok") for outcome in reconciliation_outcomes)
     )
     if needs_rerun:
         st.rerun()
