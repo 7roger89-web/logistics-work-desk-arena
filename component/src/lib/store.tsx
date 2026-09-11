@@ -28,6 +28,7 @@ import {
   unknownLabel,
   type Agreement,
   type AuthorityParty,
+  type CeoReport,
   type Contract,
   type Customer,
   type Environment,
@@ -78,6 +79,8 @@ interface StoreShape {
   environment: Environment | null;
   receivables: ReceivablesViewModel;
   payables: PartnerPayablesViewModel;
+  /** LOGI_CEO_REPORT_01 — server-derived, read-only management summary. */
+  ceoReport: CeoReport | null;
   unknownLabel: string;
   /**
    * Send ONE typed event to the single Python dispatcher. Persistence is
@@ -145,6 +148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => vm?.payables ?? { rows: [], totals: {} },
     [vm]
   );
+  const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
 
   const dispatch = useCallback(
     (event: LogiEventName, payload: unknown) => dispatchLogiEvent(event, payload),
@@ -221,6 +225,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       environment,
       receivables,
       payables,
+      ceoReport,
       unknownLabel: unknownLabel(),
       dispatch,
       updateShipment,
@@ -248,6 +253,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       environment,
       receivables,
       payables,
+      ceoReport,
       dispatch,
       updateShipment,
     ]

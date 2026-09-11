@@ -63,7 +63,7 @@ export const NAV: {
       { to: "/tai-chinh/thu-tien", label: "Thu tiền", icon: "wallet" },
       { to: "/tai-chinh/doi-soat", label: "Đối soát", icon: "scale" },
       { to: "/tai-chinh/cong-no-doi-tac", label: "Công nợ đối tác", icon: "building" },
-      { to: "/bao-cao-ceo", soon: true, label: "Báo cáo CEO", icon: "chart" },
+      { to: "/bao-cao-ceo", label: "Báo cáo CEO", icon: "chart" },
     ],
   },
   {

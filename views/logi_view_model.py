@@ -26,6 +26,7 @@ from typing import Any, Mapping
 
 import streamlit as st
 
+from views import ceo_report as logi_ceo_report
 from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_sandbox
@@ -276,6 +277,24 @@ def build_view_model() -> dict:
     # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
     # derivation of a partner's financial position.
     payables = rd.partner_payables_projection()
+    home = _home_projection(rows, summary, references)
+    tasks = _task_projection(rows, references)
+    receivables = rd.receivables_projection(rows)
+    reconciliation = logi_reconciliation.reconciliation_view(
+        st.session_state.get(RECONCILIATION_FILTER_KEY),
+        known_shipment_ids=list(shipments.keys()),
+    )
+    # LOGI_CEO_REPORT_01 — one bounded READ-ONLY presentation adapter over
+    # projections already built above. It does not open a second reader, create
+    # a finance model or calculate a cross-currency total.
+    ceo_report = logi_ceo_report.ceo_report_projection(
+        shipments=rows,
+        home=home,
+        tasks=tasks,
+        receivables=receivables,
+        payables=payables,
+        reconciliation=reconciliation,
+    )
 
     model = {
         "version": _payload_version(rows, references, c1),
@@ -293,8 +312,8 @@ def build_view_model() -> dict:
             "displayOnly": True,
         },
         "shipments": rows,
-        "home": _home_projection(rows, summary, references),
-        "tasks": _task_projection(rows, references),
+        "home": home,
+        "tasks": tasks,
         "contracts": c1["contracts"],
         "customers": c1["customers"],
         "quotes": c1["quotes"],
@@ -304,7 +323,7 @@ def build_view_model() -> dict:
         # C2C — global customer-receivable worklist, a read-only projection over
         # the SAME shipment finance truth already delivered above. No new ledger,
         # no new accounting model: one row per shipment + per-currency totals.
-        "receivables": rd.receivables_projection(rows),
+        "receivables": receivables,
         # C2D — global partner-payable worklist (THANH TOÁN ĐỐI TÁC / PHẢI TRẢ),
         # read-only over the SAME canonical ledger the C2B per-shipment slice
         # uses. No new ledger: one row per SHIPMENT × PARTNER × CURRENCY.
@@ -327,10 +346,11 @@ def build_view_model() -> dict:
         # unallocated), over the SAME canonical financial_obligations /
         # financial_transactions / financial_allocations truth. Currencies stay
         # separate, UNKNOWN stays UNKNOWN, and the desk writes nothing.
-        "reconciliation": logi_reconciliation.reconciliation_view(
-            st.session_state.get(RECONCILIATION_FILTER_KEY),
-            known_shipment_ids=list(shipments.keys()),
-        ),
+        "reconciliation": reconciliation,
+        # LOGI_CEO_REPORT_01 — a current-position management view only. Its
+        # fields are assembled from the projections already in this response;
+        # there is no analytics reader, persistence, event or finance rewrite.
+        "ceoReport": ceo_report,
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
