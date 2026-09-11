@@ -7,9 +7,10 @@
 //   1. boot (no process/BidiComponent failure)
 //   2. Home/Dashboard contrast defect fix: the donor gradient chain now has
 //      inheritable custom-property defaults in the shadow-root shell css
-//   3. sidebar: all donor items, honest "Sắp có" markers on the six
-//      remaining deferred destinations, REAL open-task badge (LOGI_TARIFF_LOOKUP_01
-//      promoted /tra-cuu-thue to a real read-only workspace)
+//   3. sidebar: all donor items, honest "Sắp có" markers on the five
+//      remaining deferred destinations, REAL open-task badge
+//      (LOGI_TARIFF_LOOKUP_01 promoted /tra-cuu-thue and
+//      LOGI_TRANSLATION_WORKSPACE_01 promoted /dich-thuat to real workspaces)
 //   4. footer tells the truth (no hardcoded sample date)
 //   5. every REAL_BACKED sidebar destination opens its real page
 //   6. every UNBACKED destination opens the explicit deferred placeholder
@@ -156,17 +157,21 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   ]) {
     assert.ok(at.includes(it), `sidebar item missing: ${it}`);
   }
-  // Exactly the six remaining deferred destinations carry the marker
-  // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01).
+  // Exactly the five remaining deferred destinations carry the marker
+  // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01
+  // and /dich-thuat a REAL translation workspace in LOGI_TRANSLATION_WORKSPACE_01).
   const markers = $("aside .uppercase", window.document).filter((el) => text(el) === "Sắp có");
-  assert.equal(markers.length, 6, `expected 6 "Sắp có" markers, got ${markers.length}`);
+  assert.equal(markers.length, 5, `expected 5 "Sắp có" markers, got ${markers.length}`);
+  const translationRow = $('aside a[href="/dich-thuat"]')[0];
+  assert.ok(translationRow && !text(translationRow).includes("Sắp có"),
+    "translation is REAL now — no deferred marker");
   // The badge is the REAL open-work count from the task projection.
   const tasksRow = $('aside a[href="/viec-can-xu-ly"]')[0];
   assert.ok(tasksRow, "tasks nav link missing");
   const badge = $("span.bg-red-500", tasksRow)[0];
   assert.ok(badge, "open-task badge missing");
   assert.equal(text(badge), String(OPEN_TASKS), `badge must be the real open count ${OPEN_TASKS}`);
-  ok(`16+ items, 7 honest markers, badge = real ${OPEN_TASKS} open tasks (no sample "6")`);
+  ok(`16+ items, 5 honest markers, badge = real ${OPEN_TASKS} open tasks (no sample "6")`);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +202,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     ["Thu tiền", "Thu tiền khách · Phải thu"],
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
     ["Tra cứu thuế / HS", "Tra cứu HS & Thuế"],
+    ["Dịch thuật", "Văn bản nguồn"],
   ];
   for (const [label, marker] of BACKED) {
     await click(label, "a", aside);
@@ -204,7 +210,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     assert.ok(t.includes(marker), `backed page "${label}" missing marker "${marker}"`);
     assert.ok(!t.includes("chưa triển khai"), `backed page "${label}" unexpectedly shows placeholder`);
   }
-  ok("12 backed destinations all open REAL pages (0 placeholders)");
+  ok("13 backed destinations all open REAL pages (0 placeholders)");
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +222,6 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
     ["Đối soát", "Đối soát"],
     ["Báo cáo CEO", "Báo cáo CEO"],
     ["Sổ tay", "Sổ tay"],
-    ["Dịch thuật", "Dịch thuật"],
     ["Người dùng & Vai trò", "Người dùng & Vai trò"],
   ];
   for (const [label, name] of UNBACKED) {
@@ -226,7 +231,7 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
     assert.ok(t.includes("chưa triển khai"), `placeholder honesty text missing for "${label}"`);
     assert.ok(t.includes("không hiển thị dữ liệu mẫu thay thế") || t.includes("dữ liệu mẫu"), `placeholder must state it does not fake data ("${label}")`);
   }
-  ok("7 deferred destinations → explicit placeholder, zero faked capability");
+  ok("5 deferred destinations → explicit placeholder, zero faked capability");
 }
 
 // ---------------------------------------------------------------------------
