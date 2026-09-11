@@ -385,8 +385,8 @@ export default function Notebook() {
             {data.counts.availableSectionCount}/{data.counts.sectionCount} mục có nội dung
           </span>
           <span className="rounded-lg bg-slate-100 px-2 py-1">{data.counts.entryCount} bài tham chiếu</span>
-          <span className="rounded-lg bg-slate-100 px-2 py-1">
-            {data.counts.noteCount} ghi chú đội ngũ
+          <span className="rounded-lg bg-slate-100 px-2 py-1" data-testid="handbook-note-count">
+            {data.counts.noteTotal ?? data.counts.noteCount} ghi chú đội ngũ
           </span>
           <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-emerald-800">
             <ShieldCheck size={13} /> {data.readOnly ? "không sửa từ trang này" : "có chỉnh sửa"}

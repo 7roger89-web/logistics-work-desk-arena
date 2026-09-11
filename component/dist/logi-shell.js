@@ -21179,7 +21179,8 @@ function us() {
 						}),
 						/* @__PURE__ */ (0, P.jsxs)("span", {
 							className: "rounded-lg bg-slate-100 px-2 py-1",
-							children: [d.counts.noteCount, " ghi chú đội ngũ"]
+							"data-testid": "handbook-note-count",
+							children: [d.counts.noteTotal ?? d.counts.noteCount, " ghi chú đội ngũ"]
 						}),
 						/* @__PURE__ */ (0, P.jsxs)("span", {
 							className: "inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-emerald-800",

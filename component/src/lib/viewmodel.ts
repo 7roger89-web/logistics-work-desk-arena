@@ -1085,7 +1085,10 @@ export interface HandbookCounts {
   sectionCount: number;
   availableSectionCount: number;
   entryCount: number;
+  /** Entries delivered to the page (bounded by MAX_NOTE_ENTRIES on the server). */
   noteCount: number;
+  /** Full source count, so a bounded payload is not mistaken for the corpus. */
+  noteTotal: number;
 }
 
 export interface NotebookHandbook {

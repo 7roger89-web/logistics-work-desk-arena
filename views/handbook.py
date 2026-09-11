@@ -488,10 +488,10 @@ def _notes_section(notes: Iterable[Mapping[str, Any]] | None) -> dict[str, Any]:
         "Sổ tay kinh nghiệm của đội ngũ. Trang này chỉ đọc: thêm/sửa/xóa vẫn "
         "nằm ở màn hình Streamlit cũ, và Sổ tay không tạo nội dung thay thế.",
     )
+    rows = [note for note in (notes or ()) if isinstance(note, Mapping)]
+    total = len(rows)
     entries: list[dict[str, Any]] = []
-    for index, note in enumerate(notes or ()):
-        if not isinstance(note, Mapping):
-            continue
+    for index, note in enumerate(rows[:MAX_NOTE_ENTRIES]):
         title = str(note.get("title") or "").strip() or "(không tiêu đề)"
         content = str(note.get("content") or "").strip()
         category = str(note.get("category") or "").strip()
@@ -531,11 +531,20 @@ def _notes_section(notes: Iterable[Mapping[str, Any]] | None) -> dict[str, Any]:
             },
         )
 
+    if total > len(entries):
+        # The payload stays bounded; the truncation is stated, never hidden.
+        lead = (
+            f"{len(entries)}/{total} ghi chú kinh nghiệm trong nguồn dùng chung của "
+            f"đội (trang hiển thị tối đa {MAX_NOTE_ENTRIES})."
+        )
+    else:
+        lead = f"{total} ghi chú kinh nghiệm đang có trong nguồn dùng chung của đội."
+
     return _section(
         "ghi-chu",
         "Ghi chú đội ngũ",
         "book",
-        f"{len(entries)} ghi chú kinh nghiệm đang có trong nguồn dùng chung của đội.",
+        lead,
         provenance,
         entries,
     )
@@ -552,13 +561,14 @@ def handbook_projection(
 ) -> dict[str, Any]:
     """Assemble the ``/so-tay`` handbook slice.  Pure read, pure build."""
 
+    note_rows = [note for note in (notes or ()) if isinstance(note, Mapping)]
     sections = [
         _workflow_section(dict(field_paths or {})),
         _documents_section(),
         _service_section(),
         _customs_section(),
         _tools_section(),
-        _notes_section(notes),
+        _notes_section(note_rows),
     ]
 
     entry_count = sum(len(section["entries"]) for section in sections)
@@ -578,6 +588,9 @@ def handbook_projection(
             "availableSectionCount": len(available),
             "entryCount": entry_count,
             "noteCount": len(sections[SECTION_IDS.index("ghi-chu")]["entries"]),
+            # The full source count, so a bounded payload never looks like the
+            # whole corpus.
+            "noteTotal": len(note_rows),
         },
         # What this page explicitly does NOT provide.  These are honest scope
         # statements, not sections with invented content.

@@ -168,6 +168,7 @@ def test_missing_note_corpus_is_reported_not_filled(notes):
     assert section["state"] is not None
     assert "không tự soạn" in section["state"]["text"].lower()
     assert projection["counts"]["noteCount"] == 0
+    assert projection["counts"]["noteTotal"] == 0
     assert "Ghi chú đội ngũ" in projection["sectionsUnavailable"]
     assert projection["counts"]["availableSectionCount"] == projection["counts"]["sectionCount"] - 1
 
@@ -196,7 +197,20 @@ def test_note_rows_keep_their_own_recorded_metadata():
     assert second["provenance"]["updated"] is None
     assert "Cập nhật: chưa ghi nhận" in second["bullets"]
     assert projection["counts"]["noteCount"] == 2
+    assert projection["counts"]["noteTotal"] == 2
     assert "Ghi chú đội ngũ" in projection["sectionsAvailable"]
+
+
+def test_large_note_corpus_is_bounded_and_says_so():
+    notes = [{"id": f"kb-{n}", "title": f"Ghi chú {n}", "content": "nội dung"} for n in range(75)]
+    projection = hb.handbook_projection(field_paths={}, notes=notes)
+    section = next(s for s in projection["sections"] if s["id"] == "ghi-chu")
+
+    assert len(section["entries"]) == hb.MAX_NOTE_ENTRIES
+    # The payload is capped; the real corpus size stays visible.
+    assert projection["counts"]["noteTotal"] == 75
+    assert projection["counts"]["noteCount"] == hb.MAX_NOTE_ENTRIES
+    assert f"{hb.MAX_NOTE_ENTRIES}/75" in section["lead"]
 
 
 def test_non_mapping_note_rows_are_ignored():

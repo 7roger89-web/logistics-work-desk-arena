@@ -1,7 +1,7 @@
 {
  "generatedFrom": "scripts/gen_handbook_fixture.py — isolated mongomock staging",
  "empty": {
-  "version": "54aacf3f5173f7a8",
+  "version": "2363e0f3ce911787",
   "environment": {
    "transport": "SANDBOX_STAGING",
    "label": "Preview / Staging",
@@ -32,7 +32,7 @@
     "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Xác nhận đã giao hàng"
     ],
@@ -171,7 +171,7 @@
      "profitMargin": 10.32,
      "payments": [
       {
-       "id": "PAY-B8A57613368246D2998142C4CABC8076",
+       "id": "PAY-0907CE3F47A3485E89518CB6C858EEA3",
        "requestId": "SEED-REQ-0299-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -210,7 +210,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -307,7 +307,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0295?tab=lay-hang",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [],
     "docs": [
      {
@@ -457,7 +457,7 @@
      "profitMargin": 7.61,
      "payments": [
       {
-       "id": "PAY-FD03A86EE3194DAFA4106B951F84B3E6",
+       "id": "PAY-3905CDD0AC034C2EB11EFC97D2D7CBD1",
        "requestId": "SEED-REQ-0295-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -468,7 +468,7 @@
        "reversed": false
       },
       {
-       "id": "PAY-D0E6F55D91EF43208E55B0D87FE998CC",
+       "id": "PAY-658670833E9E4F808F88FAC25513B390",
        "requestId": "SEED-REQ-0295-2",
        "date": "08/09/2026",
        "kind": "Thu tạm ứng đợt 2",
@@ -507,7 +507,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -599,7 +599,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0306?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -760,7 +760,7 @@
      "profitMargin": 7.94,
      "payments": [
       {
-       "id": "PAY-22836CBE59DB44AB8840C4148CB16FD8",
+       "id": "PAY-EB178E4D9CBD4B8C9D42EE6CCC5C53C4",
        "requestId": "SEED-REQ-0306-1",
        "date": "03/09/2026",
        "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
@@ -799,7 +799,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -863,7 +863,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0307?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Đã thông quan",
      "Xe giao VN + tài xế",
@@ -1017,7 +1017,7 @@
      "profitMargin": 7.87,
      "payments": [
       {
-       "id": "PAY-4702CB238C96488AB7A99D36AE65A784",
+       "id": "PAY-5FAB5CC299C14FD590077968B356F9DC",
        "requestId": "SEED-REQ-0307-1",
        "date": "04/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -1056,7 +1056,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -1127,7 +1127,7 @@
     "nextActionDetail": "Còn 1 ngày đến 12/09/2026.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0308?tab=lay-hang",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -1287,7 +1287,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -2083,8 +2083,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-2AA58CB3",
-    "quoteNo": "QT-20260911-2AA58CB3",
+    "id": "Q-20260911-B0C15235",
+    "quoteNo": "QT-20260911-B0C15235",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
     "salesOwner": "Minh Tú",
@@ -2141,19 +2141,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "Minh Tú"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "READY_FOR_REVIEW",
       "to": "ACCEPTED",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2165,8 +2165,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-32AD04AC",
-    "quoteNo": "QT-20260911-32AD04AC",
+    "id": "Q-20260911-48B52FF3",
+    "quoteNo": "QT-20260911-48B52FF3",
     "customerId": "CUST-DUCLONG",
     "customer": "Đức Long Co.",
     "salesOwner": "Thu Hằng",
@@ -2223,13 +2223,13 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "Thu Hằng"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2246,12 +2246,12 @@
   ],
   "agreements": [
    {
-    "id": "AGR-20260911-F7A83316",
-    "agreementNo": "AG-20260911-F7A83316",
+    "id": "AGR-20260911-EEF4BC56",
+    "agreementNo": "AG-20260911-EEF4BC56",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
-    "quoteId": "Q-20260911-2AA58CB3",
-    "quoteReference": "QT-20260911-2AA58CB3",
+    "quoteId": "Q-20260911-B0C15235",
+    "quoteReference": "QT-20260911-B0C15235",
     "status": "AGREED",
     "statusLabel": "Đã đồng ý",
     "version": 3,
@@ -2365,19 +2365,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "DRAFT",
       "to": "REVIEWING",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "REVIEWING",
       "to": "AGREED",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2433,7 +2433,7 @@
     "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0299 · Quá hạn khách",
     "desc": "Hạn khách 08/09/2026 đã quá 3 ngày.",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "red",
     "route": "/lo-hang/LO-0299?tab=nhap"
    },
@@ -2441,7 +2441,7 @@
     "id": "LO-0295-FINANCE_ATTENTION",
     "title": "LO-0295 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0295?tab=lay-hang"
    },
@@ -2449,7 +2449,7 @@
     "id": "LO-0306-FINANCE_ATTENTION",
     "title": "LO-0306 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0306?tab=nhap"
    },
@@ -2457,7 +2457,7 @@
     "id": "LO-0307-FINANCE_ATTENTION",
     "title": "LO-0307 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0307?tab=nhap"
    },
@@ -2465,7 +2465,7 @@
     "id": "LO-0308-CUSTOMER_DEADLINE_SOON",
     "title": "LO-0308 · Sắp đến hạn khách",
     "desc": "Còn 1 ngày đến 12/09/2026.",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0308?tab=lay-hang"
    }
@@ -3441,7 +3441,8 @@
     "sectionCount": 6,
     "availableSectionCount": 5,
     "entryCount": 9,
-    "noteCount": 0
+    "noteCount": 0,
+    "noteTotal": 0
    },
    "unavailable": [
     "Không có nội dung hướng dẫn từng bước (tutorial) — repo không chứa nguồn đó, nên trang không tự viết ra.",
@@ -3547,7 +3548,7 @@
   "unknownLabel": "—"
  },
  "journey": {
-  "version": "54aacf3f5173f7a8",
+  "version": "2363e0f3ce911787",
   "environment": {
    "transport": "SANDBOX_STAGING",
    "label": "Preview / Staging",
@@ -3578,7 +3579,7 @@
     "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Xác nhận đã giao hàng"
     ],
@@ -3717,7 +3718,7 @@
      "profitMargin": 10.32,
      "payments": [
       {
-       "id": "PAY-B8A57613368246D2998142C4CABC8076",
+       "id": "PAY-0907CE3F47A3485E89518CB6C858EEA3",
        "requestId": "SEED-REQ-0299-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -3756,7 +3757,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3853,7 +3854,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0295?tab=lay-hang",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [],
     "docs": [
      {
@@ -4003,7 +4004,7 @@
      "profitMargin": 7.61,
      "payments": [
       {
-       "id": "PAY-FD03A86EE3194DAFA4106B951F84B3E6",
+       "id": "PAY-3905CDD0AC034C2EB11EFC97D2D7CBD1",
        "requestId": "SEED-REQ-0295-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -4014,7 +4015,7 @@
        "reversed": false
       },
       {
-       "id": "PAY-D0E6F55D91EF43208E55B0D87FE998CC",
+       "id": "PAY-658670833E9E4F808F88FAC25513B390",
        "requestId": "SEED-REQ-0295-2",
        "date": "08/09/2026",
        "kind": "Thu tạm ứng đợt 2",
@@ -4053,7 +4054,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -4145,7 +4146,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0306?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -4306,7 +4307,7 @@
      "profitMargin": 7.94,
      "payments": [
       {
-       "id": "PAY-22836CBE59DB44AB8840C4148CB16FD8",
+       "id": "PAY-EB178E4D9CBD4B8C9D42EE6CCC5C53C4",
        "requestId": "SEED-REQ-0306-1",
        "date": "03/09/2026",
        "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
@@ -4345,7 +4346,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -4409,7 +4410,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0307?tab=nhap",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Đã thông quan",
      "Xe giao VN + tài xế",
@@ -4563,7 +4564,7 @@
      "profitMargin": 7.87,
      "payments": [
       {
-       "id": "PAY-4702CB238C96488AB7A99D36AE65A784",
+       "id": "PAY-5FAB5CC299C14FD590077968B356F9DC",
        "requestId": "SEED-REQ-0307-1",
        "date": "04/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -4602,7 +4603,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -4673,7 +4674,7 @@
     "nextActionDetail": "Còn 1 ngày đến 12/09/2026.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0308?tab=lay-hang",
-    "updated": "11/09/2026 11:55",
+    "updated": "11/09/2026 12:16",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -4833,7 +4834,7 @@
     },
     "timeline": [
      {
-      "time": "11/09 11:55",
+      "time": "11/09 12:16",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -5629,8 +5630,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-2AA58CB3",
-    "quoteNo": "QT-20260911-2AA58CB3",
+    "id": "Q-20260911-B0C15235",
+    "quoteNo": "QT-20260911-B0C15235",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
     "salesOwner": "Minh Tú",
@@ -5687,19 +5688,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "Minh Tú"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "READY_FOR_REVIEW",
       "to": "ACCEPTED",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5711,8 +5712,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-32AD04AC",
-    "quoteNo": "QT-20260911-32AD04AC",
+    "id": "Q-20260911-48B52FF3",
+    "quoteNo": "QT-20260911-48B52FF3",
     "customerId": "CUST-DUCLONG",
     "customer": "Đức Long Co.",
     "salesOwner": "Thu Hằng",
@@ -5769,13 +5770,13 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "Thu Hằng"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5792,12 +5793,12 @@
   ],
   "agreements": [
    {
-    "id": "AGR-20260911-F7A83316",
-    "agreementNo": "AG-20260911-F7A83316",
+    "id": "AGR-20260911-EEF4BC56",
+    "agreementNo": "AG-20260911-EEF4BC56",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
-    "quoteId": "Q-20260911-2AA58CB3",
-    "quoteReference": "QT-20260911-2AA58CB3",
+    "quoteId": "Q-20260911-B0C15235",
+    "quoteReference": "QT-20260911-B0C15235",
     "status": "AGREED",
     "statusLabel": "Đã đồng ý",
     "version": 3,
@@ -5911,19 +5912,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "DRAFT",
       "to": "REVIEWING",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "REVIEWING",
       "to": "AGREED",
-      "at": "2026-09-11T11:55:25+00:00",
+      "at": "2026-09-11T12:16:02+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5979,7 +5980,7 @@
     "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0299 · Quá hạn khách",
     "desc": "Hạn khách 08/09/2026 đã quá 3 ngày.",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "red",
     "route": "/lo-hang/LO-0299?tab=nhap"
    },
@@ -5987,7 +5988,7 @@
     "id": "LO-0295-FINANCE_ATTENTION",
     "title": "LO-0295 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0295?tab=lay-hang"
    },
@@ -5995,7 +5996,7 @@
     "id": "LO-0306-FINANCE_ATTENTION",
     "title": "LO-0306 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0306?tab=nhap"
    },
@@ -6003,7 +6004,7 @@
     "id": "LO-0307-FINANCE_ATTENTION",
     "title": "LO-0307 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0307?tab=nhap"
    },
@@ -6011,7 +6012,7 @@
     "id": "LO-0308-CUSTOMER_DEADLINE_SOON",
     "title": "LO-0308 · Sắp đến hạn khách",
     "desc": "Còn 1 ngày đến 12/09/2026.",
-    "time": "11/09/2026 11:55",
+    "time": "11/09/2026 12:16",
     "tone": "amber",
     "route": "/lo-hang/LO-0308?tab=lay-hang"
    }
@@ -7031,7 +7032,8 @@
     "sectionCount": 6,
     "availableSectionCount": 6,
     "entryCount": 11,
-    "noteCount": 2
+    "noteCount": 2,
+    "noteTotal": 2
    },
    "unavailable": [
     "Không có nội dung hướng dẫn từng bước (tutorial) — repo không chứa nguồn đó, nên trang không tự viết ra.",
