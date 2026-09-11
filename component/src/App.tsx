@@ -30,6 +30,7 @@ import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
+import PartnerContext from "./pages/PartnerContext";
 import { PhaseBPlaceholder } from "./pages/PhaseB";
 
 function Loading() {
@@ -70,6 +71,11 @@ export default function App() {
                 workspace over the EXISTING DeepL capability (no longer a
                 placeholder; honest "chưa được cấu hình" when no key exists). */}
             <Route path="/dich-thuat" element={<TranslationWorkspace />} />
+            {/* LOGI_PARTNER_CONTEXT_WORKSPACE_01 — real read-only partner-context
+                workspace over the EXISTING entity-context projection, the
+                authority_agents legal master and the canonical C2D payable rows
+                (no longer a placeholder; no CRM surface added). */}
+            <Route path="/ngu-canh-doi-tac" element={<PartnerContext />} />
             <Route path="*" element={<PhaseBPlaceholder />} />
           </Routes>
         )}</Layout>

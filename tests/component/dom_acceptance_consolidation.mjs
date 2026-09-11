@@ -157,14 +157,19 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   ]) {
     assert.ok(at.includes(it), `sidebar item missing: ${it}`);
   }
-  // Exactly the five remaining deferred destinations carry the marker
-  // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01
-  // and /dich-thuat a REAL translation workspace in LOGI_TRANSLATION_WORKSPACE_01).
+  // Exactly the four remaining deferred destinations carry the marker
+  // (/tra-cuu-thue became a REAL read-only workspace in LOGI_TARIFF_LOOKUP_01,
+  // /dich-thuat a REAL translation workspace in LOGI_TRANSLATION_WORKSPACE_01,
+  // and /ngu-canh-doi-tac a REAL read-only partner-context workspace in
+  // LOGI_PARTNER_CONTEXT_WORKSPACE_01).
   const markers = $("aside .uppercase", window.document).filter((el) => text(el) === "Sắp có");
-  assert.equal(markers.length, 5, `expected 5 "Sắp có" markers, got ${markers.length}`);
+  assert.equal(markers.length, 4, `expected 4 "Sắp có" markers, got ${markers.length}`);
   const translationRow = $('aside a[href="/dich-thuat"]')[0];
   assert.ok(translationRow && !text(translationRow).includes("Sắp có"),
     "translation is REAL now — no deferred marker");
+  const partnerRow = $('aside a[href="/ngu-canh-doi-tac"]')[0];
+  assert.ok(partnerRow && !text(partnerRow).includes("Sắp có"),
+    "partner context is REAL now — no deferred marker");
   // The badge is the REAL open-work count from the task projection.
   const tasksRow = $('aside a[href="/viec-can-xu-ly"]')[0];
   assert.ok(tasksRow, "tasks nav link missing");
@@ -203,6 +208,10 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
     ["Tra cứu thuế / HS", "Tra cứu HS & Thuế"],
     ["Dịch thuật", "Văn bản nguồn"],
+    // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac is a real read-only
+    // workspace now; with this older fixture it must still render its own honest
+    // "no partner source" state rather than the deferred placeholder.
+    ["Ngữ cảnh Đối tác", "CHỈ ĐỌC"],
   ];
   for (const [label, marker] of BACKED) {
     await click(label, "a", aside);
@@ -210,7 +219,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     assert.ok(t.includes(marker), `backed page "${label}" missing marker "${marker}"`);
     assert.ok(!t.includes("chưa triển khai"), `backed page "${label}" unexpectedly shows placeholder`);
   }
-  ok("13 backed destinations all open REAL pages (0 placeholders)");
+  ok("14 backed destinations all open REAL pages (0 placeholders)");
 }
 
 // ---------------------------------------------------------------------------
@@ -218,7 +227,6 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
 {
   const aside = $("aside")[0];
   const UNBACKED = [
-    ["Ngữ cảnh Đối tác", "Ngữ cảnh Đối tác"],
     ["Đối soát", "Đối soát"],
     ["Báo cáo CEO", "Báo cáo CEO"],
     ["Sổ tay", "Sổ tay"],
@@ -231,7 +239,7 @@ console.log("STEP 6 — every UNBACKED destination is an explicit honest placeho
     assert.ok(t.includes("chưa triển khai"), `placeholder honesty text missing for "${label}"`);
     assert.ok(t.includes("không hiển thị dữ liệu mẫu thay thế") || t.includes("dữ liệu mẫu"), `placeholder must state it does not fake data ("${label}")`);
   }
-  ok("5 deferred destinations → explicit placeholder, zero faked capability");
+  ok("4 deferred destinations → explicit placeholder, zero faked capability");
 }
 
 // ---------------------------------------------------------------------------

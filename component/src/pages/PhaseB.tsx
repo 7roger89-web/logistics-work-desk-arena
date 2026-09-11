@@ -6,13 +6,12 @@
 //   Tổng Quan, Việc Cần Xử Lý, Lô Hàng, Chi tiết lô, Tạo Lô Mới, Theo Dõi,
 //   Khách Hàng, Kinh doanh · Báo giá, Thỏa thuận mua bán, Hợp đồng,
 //   Thu tiền (phải thu), Công nợ đối tác (phải trả), Tra cứu thuế / HS,
-//   Dịch thuật.
+//   Dịch thuật, Ngữ cảnh Đối tác.
 
 import { Link, useLocation } from "react-router-dom";
 import { Construction, ArrowRight } from "lucide-react";
 
 const PATH_NAMES: Record<string, string> = {
-  "/ngu-canh-doi-tac": "Ngữ cảnh Đối tác",
   "/tai-chinh/doi-soat": "Đối soát",
   "/bao-cao-ceo": "Báo cáo CEO",
   "/so-tay": "Sổ tay",
