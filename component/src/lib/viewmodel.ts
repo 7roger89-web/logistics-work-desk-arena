@@ -855,6 +855,109 @@ export interface PartnerContextSlice {
   unavailable?: string[];
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_RECONCILIATION_DESK_01 — bounded read-only reconciliation slice for
+// /tai-chinh/doi-soat, served by views/reconciliation_desk.py over the EXISTING
+// canonical allocation truth (core.financial_ledger). Nothing here is computed
+// in the browser: every amount, match state and currency total is what the
+// ledger already derived.
+//
+// UNKNOWN != ZERO: `amount` / `allocated` / `remaining` are null when the
+// canonical record genuinely carries no such figure, and `matchState` is null
+// when the ledger could not derive one — both render as "—", never as 0 and
+// never as "settled".
+// ----------------------------------------------------------------------------
+
+/** Obligation side vs money side of the reconciliation. */
+export type ReconciliationSide = "obligation" | "money";
+
+/**
+ * Obligation rows: MATCHED | PARTIAL | UNMATCHED.
+ * Money rows:      ALLOCATED | PARTIAL | UNALLOCATED.
+ * null when the canonical figures were not derivable.
+ */
+export type ReconciliationState =
+  | "MATCHED"
+  | "PARTIAL"
+  | "UNMATCHED"
+  | "ALLOCATED"
+  | "UNALLOCATED"
+  | null;
+
+export interface ReconciliationRow {
+  id: string;
+  side: ReconciliationSide;
+  /** Real shipment this record is linked to. */
+  shipmentId: string;
+  shipmentIds: string[];
+  partnerId: string | null;
+  partnerName: string | null;
+  counterparty: string | null;
+  purpose: string | null;
+  /** Money rows only: when the transaction occurred. */
+  occurredAt?: string | null;
+  /** "UNKNOWN" when the record carries no currency — never merged into a real one. */
+  currency: string;
+  amount: MaybeNum;
+  allocated: MaybeNum;
+  /** Obligation: outstanding. Money: unallocated. */
+  remaining: MaybeNum;
+  /** CONFIRMED | REVIEW_REQUIRED | UNKNOWN — the canonical record status. */
+  status: string;
+  matchState: ReconciliationState;
+  matchLabel: string | null;
+  allocationIds: string[];
+  obligationIds: string[];
+  transactionIds: string[];
+  sourceRecordIds: string[];
+  /** The canonical review signal, or null when the record is clean. */
+  reviewReason: string | null;
+  openHref: string;
+  /** False when the existing /lo-hang/:id route cannot serve this shipment. */
+  canOpen: boolean;
+}
+
+export interface ReconciliationCurrencyTotal {
+  currency: string;
+  obligations: { count: number; amount: number; allocated: number; remaining: number };
+  money: { count: number; amount: number; allocated: number; unallocated: number };
+  /** Unconfirmed amounts, reported separately so they cannot hide in a total. */
+  review: { count: number; amount: number };
+  states: Record<string, number>;
+}
+
+export interface ReconciliationAction {
+  label: string;
+  href: string;
+  note: string;
+}
+
+export interface ReconciliationSlice {
+  readOnly: boolean;
+  derived: boolean;
+  /** OK | EMPTY | NO_SOURCE | REVIEW_REQUIRED */
+  status: string;
+  rows: ReconciliationRow[];
+  /** Per-currency totals over ALL rows — deliberately not filtered. */
+  totals: Record<string, ReconciliationCurrencyTotal>;
+  /** Currencies actually present, UNKNOWN last. */
+  currencies: string[];
+  visibleCount: number;
+  totalCount: number;
+  query: string;
+  currency: string;
+  state: string;
+  side: string;
+  truncated: boolean;
+  maxRows: number;
+  shipmentRoutePrefix: string;
+  /** Navigation to the canonical writers — this desk exposes none. */
+  actions: ReconciliationAction[];
+  /** Reconciliation context this backend genuinely does not model. */
+  unavailable: string[];
+  error: string | null;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -878,6 +981,8 @@ export interface ViewModel {
   translation?: TranslationWorkspace;
   /** LOGI_PARTNER_CONTEXT_WORKSPACE_01 — read-only partner-context slice. */
   partnerContext?: PartnerContextSlice;
+  /** LOGI_RECONCILIATION_DESK_01 — read-only đối soát slice. */
+  reconciliation?: ReconciliationSlice;
   unknownLabel?: string;
 }
 
@@ -932,4 +1037,9 @@ export function translationWorkspace(): TranslationWorkspace | null {
 /** The bounded /ngu-canh-doi-tac partner-context slice (null until delivered). */
 export function partnerContext(): PartnerContextSlice | null {
   return current?.partnerContext ?? null;
+}
+
+/** The bounded /tai-chinh/doi-soat reconciliation slice (null until delivered). */
+export function reconciliationDesk(): ReconciliationSlice | null {
+  return current?.reconciliation ?? null;
 }

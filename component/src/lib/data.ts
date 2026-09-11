@@ -61,7 +61,7 @@ export const NAV: {
     group: "TÀI CHÍNH & ĐỐI SOÁT",
     items: [
       { to: "/tai-chinh/thu-tien", label: "Thu tiền", icon: "wallet" },
-      { to: "/tai-chinh/doi-soat", soon: true, label: "Đối soát", icon: "scale" },
+      { to: "/tai-chinh/doi-soat", label: "Đối soát", icon: "scale" },
       { to: "/tai-chinh/cong-no-doi-tac", label: "Công nợ đối tác", icon: "building" },
       { to: "/bao-cao-ceo", soon: true, label: "Báo cáo CEO", icon: "chart" },
     ],
