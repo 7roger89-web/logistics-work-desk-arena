@@ -13149,7 +13149,9 @@ function lo() {
 			o("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red");
 			return;
 		}
-		let t = {
+		let t = {};
+		w.tkDate != null && (t.tk_date = w.tkDate.trim()), w.importDuty != null && (t.import_duty_amount = w.importDuty.trim()), w.importVat != null && (t.import_vat_amount = w.importVat.trim());
+		let n = {
 			tk_no: e,
 			...ne({
 				phan_luong: O("inspection", u.importInfo.inspection),
@@ -13158,11 +13160,12 @@ function lo() {
 				truck_no: O("plateVN", u.importInfo.plateVN),
 				seal_no: O("driverVN", u.importInfo.driverVN),
 				delivery_date: O("schedule", u.importInfo.schedule)
-			})
+			}),
+			...t
 		};
 		c("shipment_field_save", {
 			shipmentId: u.id,
-			fields: t
+			fields: n
 		}), re("Đã lưu tờ khai " + e);
 	}, A = () => {
 		let e = c("delivery_confirm", {
@@ -13745,29 +13748,36 @@ function lo() {
 								}),
 								/* @__PURE__ */ (0, F.jsx)(W, {
 									label: "Ngày đăng ký",
-									hint: "Chỉ đọc — màn hình này chưa có đường ghi ngày đăng ký TK.",
+									hint: "Lưu vào ngày tờ khai (2.4.tk_date).",
 									children: /* @__PURE__ */ (0, F.jsx)("input", {
-										value: u.importInfo.regDate,
-										readOnly: !0,
-										placeholder: "Chưa có dữ liệu",
+										id: "fld-tkdate",
+										value: O("tkDate", u.importInfo.regDate),
+										onChange: (e) => D("tkDate", e.target.value),
+										placeholder: "VD: 15/08/2026",
 										className: G()
 									})
 								}),
 								/* @__PURE__ */ (0, F.jsx)(W, {
 									label: "Thuế nhập khẩu (VND)",
+									hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
 									children: /* @__PURE__ */ (0, F.jsx)("input", {
-										value: u.importInfo.tax == null ? "" : String(u.importInfo.tax),
-										readOnly: !0,
-										placeholder: "Chưa có dữ liệu — theo dõi ở GNT",
+										id: "fld-duty",
+										value: O("importDuty", u.importInfo.tax == null ? "" : String(u.importInfo.tax)),
+										onChange: (e) => D("importDuty", e.target.value),
+										inputMode: "decimal",
+										placeholder: "Bỏ trống = chưa biết",
 										className: G()
 									})
 								}),
 								/* @__PURE__ */ (0, F.jsx)(W, {
 									label: "VAT hàng nhập (VND)",
+									hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
 									children: /* @__PURE__ */ (0, F.jsx)("input", {
-										value: u.importInfo.vat == null ? "" : String(u.importInfo.vat),
-										readOnly: !0,
-										placeholder: "Chưa có dữ liệu — theo dõi ở GNT",
+										id: "fld-vat",
+										value: O("importVat", u.importInfo.vat == null ? "" : String(u.importInfo.vat)),
+										onChange: (e) => D("importVat", e.target.value),
+										inputMode: "decimal",
+										placeholder: "Bỏ trống = chưa biết",
 										className: G()
 									})
 								}),

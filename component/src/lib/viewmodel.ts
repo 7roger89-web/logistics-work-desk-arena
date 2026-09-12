@@ -117,7 +117,13 @@ export interface ImportInfo {
   declarationNo: string;
   regDate: string;
   clearDate?: string;
-  /** Not modelled on the shipment document — arrives null, renders "—". */
+  /**
+   * ACTUAL import duty / import VAT in VND (LOGI_GNT_CANONICAL_FIELDS_01,
+   * Owner-approved 2026-09-12). Recorded by the operator from the real customs
+   * notice or GNT — never calculated, never inferred from a rate or HS code.
+   * Still null (renders "—") until an operator records them: a blank is a
+   * statement about knowledge, not about money.
+   */
   tax: MaybeNum;
   vat: MaybeNum;
   inspection: string;

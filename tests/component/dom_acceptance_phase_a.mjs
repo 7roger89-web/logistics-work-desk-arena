@@ -586,6 +586,83 @@ console.log("STEP 15 — Tracking");
   ok(`Tracking renders real carrier/reference + ${lot.tracking.milestones.length} milestones`);
 }
 
+// ---------------------------------------------------------------------------
+// STEP 16 — CLEAR_FIX: blank = UNKNOWN must survive the save (LOGI_GNT_
+// CANONICAL_FIELDS_01_CLEAR_FIX). Pins the UI half of the contract: the three
+// approved canonical fields are sent from the touched-state, NOT through
+// onlyFilled(), so an actively cleared field travels as "" while an untouched
+// one is omitted entirely.
+// ---------------------------------------------------------------------------
+
+console.log("STEP 16 — import tax clear semantics");
+{
+  // A shipment that already has canonical import tax stored.
+  const vm3 = JSON.parse(JSON.stringify(VM));
+  const lot = vm3.shipments.find((x) => x.id === "LO-0307");
+  lot.importInfo.tax = 5000000;
+  lot.importInfo.vat = 800000;
+  lot.importInfo.regDate = "15/08/2026";
+  invoke(vm3);
+  await tick(120);
+
+  await click("Lô Hàng", "a", $("aside")[0]);
+  await click("LO-0307", "a", $("table.tbl")[0]);
+  const tabRoot16 = window.document.getElementById("workspace-tabs");
+  await click("Nhập khẩu & Giao hàng", "button", tabRoot16);
+
+  const duty = window.document.getElementById("fld-duty");
+  const vat = window.document.getElementById("fld-vat");
+  const tkDate = window.document.getElementById("fld-tkdate");
+  assert.ok(duty && vat && tkDate, "the three canonical inputs must be mounted");
+  // The stored canonical values are what the operator sees.
+  assert.equal(duty.value, "5000000", "stored import duty not rendered");
+  assert.equal(vat.value, "800000", "stored import VAT not rendered");
+  assert.equal(tkDate.value, "15/08/2026", "stored declaration date not rendered");
+
+  const nextSave = () => {
+    const evs = triggers.filter((t) => t.event === "shipment_field_save");
+    return evs[evs.length - 1].value.payload;
+  };
+
+  // (8) UNTOUCHED — an ordinary save on this tab must not touch the three
+  // fields. This is what stops a legacy `reg_date` read fallback from being
+  // silently migrated into canonical `tk_date`.
+  await click("💾 LƯU TỜ KHAI & THUẾ", "button");
+  assert.ok(bodyText().includes("Đã lưu tờ khai 105588421330"), "import save toast missing");
+  let fields = nextSave().fields;
+  assert.equal(fields.tk_no, "105588421330", "declaration number must still be sent");
+  for (const key of ["tk_date", "import_duty_amount", "import_vat_amount"]) {
+    assert.ok(!(key in fields), `untouched ${key} must be omitted, got ${JSON.stringify(fields[key])}`);
+  }
+  ok("untouched canonical fields are omitted from the payload");
+
+  // (1-3) CLEAR the import duty → the empty string must travel.
+  type(duty, "");
+  await click("💾 LƯU TỜ KHAI & THUẾ", "button");
+  fields = nextSave().fields;
+  assert.ok("import_duty_amount" in fields, "cleared import duty was dropped by the payload");
+  assert.equal(fields.import_duty_amount, "", "cleared import duty must be sent as an empty string");
+  // The clear is scoped: the VAT the operator did not touch is not sent.
+  assert.ok(!("import_vat_amount" in fields), "an untouched VAT must not be sent alongside a clear");
+  ok('cleared import duty → import_duty_amount: "" dispatched');
+
+  // (6-7) CLEAR the import VAT and the declaration date together.
+  type(vat, "");
+  type(tkDate, "");
+  await click("💾 LƯU TỜ KHAI & THUẾ", "button");
+  fields = nextSave().fields;
+  assert.equal(fields.import_vat_amount, "", "cleared import VAT must be sent as an empty string");
+  assert.equal(fields.tk_date, "", "cleared declaration date must be sent as an empty string");
+  ok('cleared import VAT + declaration date → "" dispatched for both');
+
+  // (B) An active edit still sends the typed value, not a blank.
+  type(duty, "4200000");
+  await click("💾 LƯU TỜ KHAI & THUẾ", "button");
+  fields = nextSave().fields;
+  assert.equal(fields.import_duty_amount, "4200000", "an edited amount must be sent verbatim");
+  ok("edited import duty → the typed amount is dispatched verbatim");
+}
+
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);
 window.close();
 process.exit(0);
