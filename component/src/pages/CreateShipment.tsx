@@ -19,13 +19,10 @@ export default function CreateShipment() {
   const [code, setCode] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [contractId, setContractId] = useState("");
-  const [mode, setMode] = useState("Truck");
+  const [mode, setMode] = useState("");
   const [incoterm, setIncoterm] = useState("DAP");
   const [pol, setPol] = useState("");
   const [pod, setPod] = useState("");
-  const [etd, setEtd] = useState("");
-  const [addr, setAddr] = useState("");
-  const [phone, setPhone] = useState("");
 
   const acceptedQuotes = useMemo(
     () => quotes.filter((q) => (q.status || "").toLowerCase().includes("accept") || (q.status || "").toLowerCase().includes("chốt")),
@@ -45,6 +42,10 @@ export default function CreateShipment() {
     const customer = customers.find((c) => c.id === quote.customerId)
       ?? customers.find((c) => c.name === quote.customer);
     if (customer) setCustomerId(customer.id);
+    setMode(["Truck", "Sea", "Air", "Rail"].includes(quote.transportMode) ? quote.transportMode : "");
+    setIncoterm(quote.incoterm || "DAP");
+    setPol(quote.origin || "");
+    setPod(quote.destination || "");
     const matches = quote.customerId
       ? contracts.filter((c) => c.customerId === quote.customerId)
       : [];
@@ -65,21 +66,22 @@ export default function CreateShipment() {
   const submit = () => {
     if (!code.trim()) { toast("Thiếu mã lô", "Nhập mã lô (ví dụ LO-0470) rồi bấm Tạo lô hàng.", "red"); return; }
     if (!customerId.trim()) { toast("Thiếu khách hàng", "Chọn khách hàng — backend từ chối lô không có khách.", "red"); return; }
+    if (!mode && (pol.trim() || pod.trim())) { toast("Thiếu mode đầu tiên", "Chọn mode hoặc để trống cả nơi đi/đến để bổ sung sau.", "red"); return; }
+    const shipmentId = code.trim().toUpperCase();
     const sent = dispatch("shipment_create", {
-      shipmentId: code.trim().toUpperCase(),
+      shipmentId,
       // `customerId` is the canonical customer key the backend joins on
       // (quotes / receivables / partner context); the name travels separately.
       customerId: customers.find((c) => c.id === customerId)?.id ?? "",
       customer: customers.find((c) => c.id === customerId)?.name ?? "",
       contractId: contractId.trim(),
       currency: "VND",
-      transport: { mode, incoterm, pol: pol.trim(), pod: pod.trim(), etd: etd.trim() },
-      delivery: { addr: addr.trim(), phone_receiver: phone.trim() },
+      transport: { mode, incoterm, pol: pol.trim(), pod: pod.trim() },
     });
     if (sent) {
       toast("Đã gửi yêu cầu tạo " + code.trim().toUpperCase(),
         "Backend validate + ghi + audit. Mã trùng sẽ bị từ chối.", "green");
-      nav("/lo-hang");
+      nav(`/lo-hang/${shipmentId}?tab=van-tai`);
     } else {
       toast("Không gửi được", "Component chưa kết nối backend.", "red");
     }
@@ -135,9 +137,10 @@ export default function CreateShipment() {
                   {contracts.map((c) => <option key={c.id} value={c.id}>{c.id} · {c.client || "chưa rõ khách"}{c.customerId ? ` · ${c.customerId}` : ""}</option>)}
                 </select>
               </Field>
-              <Field label="Mode / Incoterm">
+              <Field label="Mode đầu tiên (không bắt buộc) / Incoterm" hint="Chọn mode để tạo chặng đầu; xe/container bổ sung sau ở chi tiết lô.">
                 <div className="flex gap-2">
                   <select value={mode} onChange={(e) => setMode(e.target.value)} className={inputCls()}>
+                    <option value="">-- Bổ sung sau --</option>
                     {["Truck", "Sea", "Air", "Rail"].map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={incoterm} onChange={(e) => setIncoterm(e.target.value)} className={inputCls()}>
@@ -145,13 +148,8 @@ export default function CreateShipment() {
                   </select>
                 </div>
               </Field>
-              <Field label="Nơi lấy hàng (POL)"><input value={pol} onChange={(e) => setPol(e.target.value)} placeholder="Bằng Tường (Quảng Tây)" className={inputCls()} /></Field>
-              <Field label="Điểm đến (POD)"><input value={pod} onChange={(e) => setPod(e.target.value)} placeholder="Hữu Nghị (Lạng Sơn)" className={inputCls()} /></Field>
-              <Field label="Ngày khởi hành (ETD)"><input value={etd} onChange={(e) => setEtd(e.target.value)} placeholder="DD/MM/YYYY" className={inputCls()} /></Field>
-              <Field label="SĐT người nhận"><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912…" className={inputCls()} /></Field>
-              <div className="md:col-span-2">
-                <Field label="Địa chỉ giao hàng"><input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Kho khách — KCN…" className={inputCls()} /></Field>
-              </div>
+              <Field label="Nơi đi cơ bản"><input value={pol} onChange={(e) => setPol(e.target.value)} placeholder="Bằng Tường (Quảng Tây)" className={inputCls()} /></Field>
+              <Field label="Nơi đến cơ bản"><input value={pod} onChange={(e) => setPod(e.target.value)} placeholder="Hữu Nghị (Lạng Sơn)" className={inputCls()} /></Field>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2.5 mt-4">

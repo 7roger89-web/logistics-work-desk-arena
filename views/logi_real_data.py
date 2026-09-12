@@ -92,6 +92,43 @@ def _section(shipment: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _transport_leg_projection(leg: Mapping[str, Any]) -> dict[str, Any]:
+    """Map one canonical snake_case leg to the typed component contract."""
+    units = leg.get("units") if isinstance(leg.get("units"), list) else []
+    return {
+        "id": text(leg.get("id")),
+        "sequence": int(leg.get("sequence") or 0),
+        "mode": text(leg.get("mode")),
+        "origin": text(leg.get("origin")),
+        "destination": text(leg.get("destination")),
+        "carrier": text(leg.get("carrier")),
+        "etd": text(leg.get("etd")),
+        "eta": text(leg.get("eta")),
+        "atd": text(leg.get("atd")),
+        "ata": text(leg.get("ata")),
+        "bookingNo": text(leg.get("booking_no")),
+        "mbl": text(leg.get("mbl")),
+        "hbl": text(leg.get("hbl")),
+        "vessel": text(leg.get("vessel")),
+        "voyage": text(leg.get("voyage")),
+        "mawb": text(leg.get("mawb")),
+        "hawb": text(leg.get("hawb")),
+        "flightNo": text(leg.get("flight_no")),
+        "units": [
+            {
+                "id": text(unit.get("id")),
+                "kind": text(unit.get("kind")),
+                "number": text(unit.get("number")),
+                "typeSize": text(unit.get("type_size")),
+                "sealNo": text(unit.get("seal_no")),
+                "driverName": text(unit.get("driver_name")),
+                "driverPhone": text(unit.get("driver_phone")),
+            }
+            for unit in units if isinstance(unit, Mapping)
+        ],
+    }
+
+
 def _declaration_date(customs: Mapping[str, Any]) -> str:
     """Customs declaration date, DD/MM/YYYY, blank when unknown.
 
@@ -108,10 +145,13 @@ def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
 
     Returns ``(label, tone)`` for the donor status badge. No fabricated KPI.
     """
+    from core.shipment_operations import compatibility_facts
+
     delivery = _section(shipment, "2.7")
     customs = _section(shipment, "2.4")
     transport = _section(shipment, "1.2")
     arrival = _section(shipment, "2.6")
+    operational = compatibility_facts(shipment)
     status = text(shipment.get("status") or _section(shipment, "0.0").get("st"))
 
     if delivery.get("is_delivered"):
@@ -124,8 +164,10 @@ def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
     # mean the shipment is waiting on customs — derived from real facts only.
     if text(customs.get("tk_no")) or _arrived(arrival.get("arrival_date")):
         return "Chờ thông quan", "amber"
-    # An ETD still in the future means the shipment has not departed yet.
-    if text(transport.get("etd")) and _arrived(transport.get("etd")):
+    # Structured legs are authoritative when present; legacy ETD is consumed
+    # only through compatibility_facts for pre-V1 documents.
+    operational_etd = operational.get("etd")
+    if text(operational_etd) and _arrived(operational_etd):
         return "Đang vận chuyển", "blue"
     return "Chờ lấy hàng", "gray"
 
@@ -140,16 +182,21 @@ def _arrived(value: Any) -> bool:
 
 def document_checklist(shipment: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Document completeness derived from real shipment facts (no invention)."""
+    from core.shipment_operations import compatibility_facts
+
     customs = _section(shipment, "2.4")
     delivery = _section(shipment, "2.7")
+    operational = compatibility_facts(shipment)
+    delivery_unit = operational.get("delivery_unit") if isinstance(operational.get("delivery_unit"), Mapping) else {}
+    delivery_plate = text(delivery_unit.get("number"))
     tk = text(customs.get("tk_no"))
     rows = [
         {"name": "Số tờ khai nhập khẩu", "ok": bool(tk),
          "note": tk or "Chưa đăng ký tờ khai"},
         {"name": "Đã thông quan", "ok": bool(customs.get("customs_status")),
          "note": text(customs.get("phan_luong")) or ("Chờ kết quả phân luồng" if tk else "Chờ số tờ khai")},
-        {"name": "Xe giao VN + tài xế", "ok": bool(text(delivery.get("truck_no"))),
-         "note": text(delivery.get("truck_no")) or "Chưa đặt xe giao"},
+        {"name": "Xe giao VN + tài xế", "ok": bool(delivery_plate),
+         "note": delivery_plate or "Chưa đặt xe giao"},
         {"name": "Xác nhận đã giao hàng", "ok": bool(delivery.get("is_delivered")),
          "note": _ddmmyyyy(delivery.get("delivered_at")) or "Chưa xác nhận"},
     ]
@@ -585,12 +632,27 @@ def shipment_projection(
     contracts = contracts or {}
     quotes = quotes or {}
 
+    from core.shipment_operations import (
+        cargo_summary_for_read,
+        compatibility_facts,
+        transport_legs_for_read,
+    )
+
     sid = text(shipment.get("id") or shipment.get("shipment_id"))
     transport = _section(shipment, "1.2")
     customs = _section(shipment, "2.4")
     arrival = _section(shipment, "2.6")
     delivery = _section(shipment, "2.7")
     head = _section(shipment, "0.0")
+    legs, has_structured_legs = transport_legs_for_read(shipment)
+    cargo_summary, has_structured_cargo = cargo_summary_for_read(shipment)
+    operational = compatibility_facts(shipment)
+    first_leg = legs[0] if legs else {}
+    pickup_leg = operational.get("pickup_leg") if isinstance(operational.get("pickup_leg"), Mapping) else {}
+    pickup_unit = operational.get("pickup_unit") if isinstance(operational.get("pickup_unit"), Mapping) else {}
+    delivery_leg = operational.get("delivery_leg") if isinstance(operational.get("delivery_leg"), Mapping) else {}
+    delivery_unit = operational.get("delivery_unit") if isinstance(operational.get("delivery_unit"), Mapping) else {}
+    main_leg = operational.get("main_leg") if isinstance(operational.get("main_leg"), Mapping) else {}
 
     customer_id = text(shipment.get("customer_id"))
     customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
@@ -615,6 +677,8 @@ def shipment_projection(
     tab = "nhap" if status_label in {"Chờ thông quan", "Chờ giao"} else ("lay-hang" if status_label == "Chờ lấy hàng" else "lay-hang")
 
     qty_pkg = text(transport.get("qty_pkg"))
+    route_origin = text(operational.get("origin"))
+    route_destination = text(operational.get("destination"))
 
     return {
         "id": sid,
@@ -622,8 +686,8 @@ def shipment_projection(
         "customerMST": text(customer_doc.get("tax_code")),
         "customerId": customer_id,
         "contract": contract_id,
-        "route": " → ".join(part for part in (text(transport.get("pol")), text(transport.get("pod"))) if part) or UNKNOWN_LABEL,
-        "borderVN": text(transport.get("pod")) or UNKNOWN_LABEL,
+        "route": " → ".join(part for part in (route_origin, route_destination) if part) or UNKNOWN_LABEL,
+        "borderVN": route_destination or UNKNOWN_LABEL,
         # Sale owner = the dashboard's authoritative owner resolution
         # (sale_owner / internal_sale_owner / assigned_to / assignee), or
         # "Chưa phân công" when none is assigned. Never a fabricated name.
@@ -642,60 +706,62 @@ def shipment_projection(
         "docs": document_checklist(shipment),
         "version": int(shipment.get("version") or 0),
         "rawStatus": text(shipment.get("status") or head.get("st")),
-        "mode": text(head.get("mode")),
+        "mode": text(operational.get("mode")) or text(head.get("mode")),
         "incoterm": text(head.get("incoterm")),
         "createdAt": _ddmmyyyy(head.get("created_at")),
-        # --- TAB 1: pickup & export (real fields only; unsupported = blank) ---
+        # Canonical repeatable operational model.  For a legacy document this
+        # is a read-only fallback projection; it becomes canonical only when an
+        # operator explicitly saves the transport editor.
+        "transportLegs": [_transport_leg_projection(leg) for leg in legs],
+        "transportLegsStructured": has_structured_legs,
+        "cargoStructured": has_structured_cargo,
+        # --- compatibility summaries for old one-value UI/readers ---------
         "pickup": {
             "factory": text(shipment.get("factory_name")),
-            "address": text(transport.get("pol")),
+            "address": text(pickup_leg.get("origin")) or route_origin,
             "contact": text(shipment.get("factory_contact")),
             "phone": text(shipment.get("factory_phone")),
-            "pickupTime": _ddmmyyyy(transport.get("etd")),
-            # LOGI_CN_TRUCK_TYPE_PERSIST_01 — canonical CN pickup truck
-            # type/size (data.1.2.pickup_truck_type, Owner-approved
-            # 2026-09-12). Operator-keyed free text; blank = UNKNOWN.
-            "truckType": text(transport.get("pickup_truck_type")),
-            "plate": text(transport.get("container_no")),
-            "driver": "",
-            "driverPhone": "",
-            "eta": _ddmmyyyy(arrival.get("arrival_date")),
-            "ata": "",
+            "pickupTime": _ddmmyyyy(pickup_leg.get("etd") or operational.get("etd")),
+            "truckType": text(pickup_unit.get("type_size")),
+            "plate": text(pickup_unit.get("number")),
+            "driver": text(pickup_unit.get("driver_name")),
+            "driverPhone": text(pickup_unit.get("driver_phone")),
+            "eta": _ddmmyyyy(pickup_leg.get("eta")),
+            "ata": _ddmmyyyy(pickup_leg.get("ata")),
         },
         "transport": {
-            "bookingNo": text(transport.get("booking_no")),
-            "carrier": text(transport.get("carrier")),
-            "mbl": text(transport.get("mbl")),
-            "hbl": text(transport.get("hbl")),
-            "vessel": text(transport.get("vessel")),
-            "etd": _ddmmyyyy(transport.get("etd")),
-            "pol": text(transport.get("pol")),
-            "pod": text(transport.get("pod")),
-            "containerNo": text(transport.get("container_no")),
+            "bookingNo": text(main_leg.get("booking_no")),
+            "carrier": text(main_leg.get("carrier")),
+            "mbl": text(main_leg.get("mbl")),
+            "hbl": text(main_leg.get("hbl")),
+            "vessel": text(main_leg.get("vessel")),
+            "etd": _ddmmyyyy(first_leg.get("etd")),
+            "pol": route_origin,
+            "pod": route_destination,
+            "containerNo": text(operational.get("container_no")),
             "qtyPkg": qty_pkg,
         },
-        # The canonical model stores pack count/weight as one free-text field;
-        # separate numeric pack/CBM/weight are therefore UNKNOWN, not zero.
         "cargo": {
-            "packs": UNKNOWN,
-            "weight": UNKNOWN,
-            "cbm": UNKNOWN,
-            "dims": "",
-            "type": "",
-            "note": qty_pkg,
+            "goodsDescription": text(cargo_summary.get("goods_description")),
+            "packs": num(cargo_summary.get("package_count")),
+            "weight": num(cargo_summary.get("gross_weight_kg")),
+            "cbm": num(cargo_summary.get("cbm")),
+            "dims": text(cargo_summary.get("dimensions")),
+            "type": text(cargo_summary.get("package_type")),
+            "note": text(cargo_summary.get("note")),
             "qtyPkg": qty_pkg,
         },
         "exportInfo": {
-            "border": text(transport.get("pol")),
+            "border": route_origin,
             "declarant": text(shipment.get("china_agent")),
-            "eta": _ddmmyyyy(transport.get("etd")),
-            "ata": "",
-            "state": text(transport.get("carrier")),
+            "eta": _ddmmyyyy(first_leg.get("etd")),
+            "ata": _ddmmyyyy(first_leg.get("atd")),
+            "state": text(first_leg.get("carrier")),
             "chinaDeclNo": text(shipment.get("china_export_decl_no")),
         },
         # --- TAB 2: import & delivery ---
         "importInfo": {
-            "borderVN": text(transport.get("pod")),
+            "borderVN": route_destination,
             "declarationNo": text(customs.get("tk_no")),
             "regDate": _declaration_date(customs),
             "clearDate": _ddmmyyyy(customs.get("clearance_date")),
@@ -716,12 +782,12 @@ def shipment_projection(
                 "address": text((customs.get("gnt") or {}).get("dia_chi")),
                 "customsOffice": text((customs.get("gnt") or {}).get("ma_hq")),
             },
-            "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")),
+            "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")) or _ddmmyyyy(operational.get("eta")),
             "freeTime": num(arrival.get("free_time")),
-            "truckVN": "",
-            "plateVN": text(delivery.get("truck_no")),
-            "driverVN": text(delivery.get("seal_no")),
-            "schedule": _ddmmyyyy(delivery.get("delivery_date")),
+            "truckVN": text(delivery_unit.get("type_size")),
+            "plateVN": text(delivery_unit.get("number")),
+            "driverVN": text(delivery_unit.get("driver_name")),
+            "schedule": _ddmmyyyy(delivery.get("delivery_date") or delivery_leg.get("eta") or delivery_leg.get("etd")),
             "deliveryAddr": text(delivery.get("addr")),
             "receiver": text(delivery.get("receiver_name")),
             "receiverPhone": text(delivery.get("phone_receiver")),
@@ -849,24 +915,28 @@ def tracking_projection(shipment: Mapping[str, Any]) -> dict[str, Any]:
     """Tracking from real transport/state facts. No invented GPS position."""
     from core.config import CARRIER_LINKS
 
-    transport = _section(shipment, "1.2")
+    from core.shipment_operations import compatibility_facts
+
     customs = _section(shipment, "2.4")
     delivery = _section(shipment, "2.7")
     arrival = _section(shipment, "2.6")
     status_label, tone = operational_stage(shipment)
+    operational = compatibility_facts(shipment)
+    main_leg = operational.get("main_leg") if isinstance(operational.get("main_leg"), Mapping) else {}
 
-    carrier = text(transport.get("carrier"))
-    reference = text(transport.get("booking_no") or transport.get("mbl") or transport.get("container_no"))
+    carrier = text(main_leg.get("carrier"))
+    reference = text(main_leg.get("booking_no") or main_leg.get("mbl") or operational.get("container_no"))
     link_template = CARRIER_LINKS.get(carrier)
     tracking_url = link_template.format(ref=reference) if link_template and reference else ""
 
     milestones: list[dict[str, Any]] = []
-    if text(transport.get("etd")):
-        milestones.append({"time": _ddmmyyyy(transport.get("etd")), "title": "ETD — rời nơi lấy hàng",
-                           "desc": text(transport.get("pol")), "done": True, "tone": "green"})
-    if text(arrival.get("arrival_date")):
-        milestones.append({"time": _ddmmyyyy(arrival.get("arrival_date")), "title": "ETA — về cửa khẩu/kho đích",
-                           "desc": text(transport.get("pod")), "done": bool(customs.get("tk_no")), "tone": "blue"})
+    if text(operational.get("etd")):
+        milestones.append({"time": _ddmmyyyy(operational.get("etd")), "title": "ETD — rời nơi lấy hàng",
+                           "desc": text(operational.get("origin")), "done": True, "tone": "green"})
+    arrival_fact = arrival.get("arrival_date") or operational.get("eta")
+    if text(arrival_fact):
+        milestones.append({"time": _ddmmyyyy(arrival_fact), "title": "ETA — về cửa khẩu/kho đích",
+                           "desc": text(operational.get("destination")), "done": bool(customs.get("tk_no")), "tone": "blue"})
     if text(customs.get("tk_no")):
         milestones.append({"time": _declaration_date(customs), "title": "Đăng ký tờ khai nhập khẩu",
                            "desc": f"TK {text(customs.get('tk_no'))} · luồng {text(customs.get('phan_luong')) or 'chờ phân luồng'}",

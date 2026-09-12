@@ -86,7 +86,42 @@ export interface Transport {
   qtyPkg: string;
 }
 
+export type TransportMode = "Truck" | "Sea" | "Air" | "Rail";
+
+export interface TransportUnit {
+  id: string;
+  kind: "truck" | "container";
+  number: string;
+  typeSize: string;
+  sealNo: string;
+  driverName: string;
+  driverPhone: string;
+}
+
+export interface TransportLeg {
+  id: string;
+  sequence: number;
+  mode: TransportMode;
+  origin: string;
+  destination: string;
+  carrier: string;
+  etd: string;
+  eta: string;
+  atd: string;
+  ata: string;
+  bookingNo: string;
+  mbl: string;
+  hbl: string;
+  vessel: string;
+  voyage: string;
+  mawb: string;
+  hawb: string;
+  flightNo: string;
+  units: TransportUnit[];
+}
+
 export interface Cargo {
+  goodsDescription: string;
   packs: MaybeNum;
   weight: MaybeNum;
   cbm: MaybeNum;
@@ -298,6 +333,10 @@ export interface Shipment {
   mode?: string;
   incoterm?: string;
   createdAt?: string;
+  /** Ordered canonical legs, or a legacy read projection until explicitly saved. */
+  transportLegs: TransportLeg[];
+  transportLegsStructured: boolean;
+  cargoStructured: boolean;
   pickup: Pickup;
   transport?: Transport;
   cargo: Cargo;

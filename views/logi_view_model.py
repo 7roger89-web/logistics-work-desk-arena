@@ -455,6 +455,10 @@ ALLOWED_EVENTS = {"shipment_update", "navigate"}
 # Phase B typed write events. Anything outside these two sets is dropped.
 PHASE_B_EVENTS = {
     "shipment_field_save",
+    # Repeatable lists cannot be represented safely by the scalar field
+    # whitelist.  This one shipment-local event writes exactly the canonical
+    # operational collections through the existing atomic writer.
+    "shipment_transport_save",
     "delivery_confirm",
     "finance_actual_save",
     "payment_record",
@@ -735,6 +739,63 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
                    version=int((fresh or {}).get("version") or 0),
                    persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},
                    audit=_audit_trail(sid))
+
+
+def _handle_shipment_transport_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Save repeatable legs and/or cargo through the existing atomic writer.
+
+    ``shipment_field_save`` is intentionally scalar and path-whitelisted, so
+    replacing an ordered collection through it would be unsafe.  This bounded
+    handler is the only added semantic surface: RBAC → fresh document → strict
+    normalization → save_shipment_atomic → audit → fresh readback.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.logic import apply_financial_snapshot
+    from core.shipment_operations import normalize_cargo_summary, normalize_transport_legs
+
+    sid = rd.text(payload.get("shipmentId"))
+    has_legs = "transportLegs" in payload
+    has_cargo = "cargoSummary" in payload
+    if not sid or not (has_legs or has_cargo):
+        return _result("shipment_transport_save", sid, False,
+                       "Thiếu shipmentId hoặc dữ liệu vận hành.")
+    if not can_operate_business("shipment_edit"):
+        return _result("shipment_transport_save", sid, False,
+                       "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("shipment_transport_save", sid, False, f"Không tìm thấy lô {sid}.")
+
+    try:
+        section = shipment.setdefault("data", {}).setdefault("1.2", {})
+        if has_legs:
+            section["transport_legs"] = normalize_transport_legs(payload.get("transportLegs"))
+        if has_cargo:
+            section["cargo_summary"] = normalize_cargo_summary(payload.get("cargoSummary"))
+    except ValueError as exc:
+        return _result("shipment_transport_save", sid, False, str(exc))
+
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
+        return _result("shipment_transport_save", sid, False,
+                       get_last_db_error() or "Không lưu được dữ liệu vận hành.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_section = ((fresh.get("data") or {}).get("1.2") or {})
+    persisted: dict[str, Any] = {}
+    if has_legs:
+        persisted["transport_legs"] = fresh_section.get("transport_legs")
+    if has_cargo:
+        persisted["cargo_summary"] = fresh_section.get("cargo_summary")
+    return _result(
+        "shipment_transport_save", sid, True,
+        readback=_projection_for(fresh),
+        persisted=persisted,
+        version=int(fresh.get("version") or 0),
+        audit=_audit_trail(sid),
+    )
 
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1224,6 +1285,45 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
     transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}
     delivery = payload.get("delivery") if isinstance(payload.get("delivery"), Mapping) else {}
+    selected_mode = rd.text(transport.get("mode"))
+    if selected_mode and selected_mode not in {"Truck", "Sea", "Air", "Rail"}:
+        return _result("shipment_create", sid, False, "Mode đầu tiên không hợp lệ.")
+    if not selected_mode and (rd.text(transport.get("pol")) or rd.text(transport.get("pod"))):
+        return _result("shipment_create", sid, False,
+                       "Chọn mode đầu tiên trước khi nhập nơi đi/đến.")
+
+    # Keep creation lightweight while starting new shipments on the canonical
+    # model whenever an optional first mode is selected.  Scalar POL/POD/ETD
+    # are still written once as compatibility fields for existing readers; all
+    # subsequent operational editing is authoritative in transport_legs.
+    transport_section = {k: _coerce(k, transport.get(k)) for k in
+                         ("booking_no", "carrier", "mbl", "hbl", "vessel", "etd",
+                          "pol", "pod", "container_no", "qty_pkg")
+                         if transport.get(k) not in (None, "")}
+    if selected_mode:
+        from core.shipment_operations import normalize_transport_legs
+        from uuid import uuid4
+
+        first_leg = {
+            "id": rd.text(transport.get("first_leg_id")) or f"leg-{uuid4().hex}",
+            "sequence": 1,
+            "mode": selected_mode,
+            "origin": rd.text(transport.get("pol")),
+            "destination": rd.text(transport.get("pod")),
+            "carrier": rd.text(transport.get("carrier")),
+            "etd": transport.get("etd") or "",
+            "eta": transport.get("eta") or "",
+            "atd": "",
+            "ata": "",
+            "units": [],
+        }
+        for key in ("booking_no", "mbl", "hbl", "vessel", "voyage", "mawb", "hawb", "flight_no"):
+            if key in transport:
+                first_leg[key] = transport.get(key)
+        try:
+            transport_section["transport_legs"] = normalize_transport_legs([first_leg])
+        except ValueError as exc:
+            return _result("shipment_create", sid, False, str(exc))
 
     doc: dict[str, Any] = {
         "id": sid,
@@ -1235,11 +1335,9 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         "currency": rd.text(payload.get("currency")) or "VND",
         "data": {
             "0.0": {"st": "wait", "created_at": created_on,
-                    "mode": rd.text(transport.get("mode")) or "Truck",
+                    "mode": selected_mode,
                     "incoterm": rd.text(transport.get("incoterm")) or "EXW"},
-            "1.2": {k: _coerce(k, transport.get(k)) for k in
-                    ("booking_no", "carrier", "mbl", "hbl", "vessel", "etd",
-                     "pol", "pod", "container_no", "qty_pkg") if transport.get(k) not in (None, "")},
+            "1.2": transport_section,
             "2.4": {},
             "2.6": {k: _coerce(k, v) for k, v in (("arrival_date", transport.get("etd")),) if v},
             "2.7": {k: _coerce(k, delivery.get(k)) for k in
@@ -1451,6 +1549,7 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 _HANDLERS = {
     "shipment_field_save": _handle_field_save,
+    "shipment_transport_save": _handle_shipment_transport_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,
     "payment_record": _handle_payment_record,

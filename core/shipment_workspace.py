@@ -138,13 +138,16 @@ def _document_rows(shipment: Mapping[str, Any]) -> tuple[list[dict[str, Any]], s
             )
         return rows, "KNOWN" if rows else UNKNOWN
 
+    from core.shipment_operations import compatibility_facts
+
     data = _data(shipment)
     route = _as_mapping(data.get("1.2")) or {}
+    operational = compatibility_facts(shipment)
     customs = _as_mapping(data.get("2.4")) or {}
     gnt = _as_mapping(customs.get("gnt")) or {}
     finance = _as_mapping(data.get("3.4")) or {}
     known_rows = [
-        ("Booking / vận đơn", route.get("booking_no") or route.get("mbl") or route.get("hbl"), "Xuất khẩu"),
+        ("Booking / vận đơn", operational.get("booking_no") or operational.get("mbl") or operational.get("hbl"), "Xuất khẩu"),
         ("Tờ khai hải quan", customs.get("tk_no"), "Thông quan"),
         ("Giấy nộp thuế (GNT)", gnt.get("ds_thue") or gnt.get("so_tk"), "Thuế nhập khẩu"),
         ("Invoice", route.get("invoice_no") or finance.get("invoice_no"), "Hồ sơ thương mại"),
@@ -173,11 +176,14 @@ def _document_rows(shipment: Mapping[str, Any]) -> tuple[list[dict[str, Any]], s
 
 
 def _timeline(shipment: Mapping[str, Any]) -> list[dict[str, Any]]:
+    from core.shipment_operations import compatibility_facts
+
     data = _data(shipment)
+    operational = compatibility_facts(shipment)
     event_specs = (
         ("Tạo lô", _first_value(shipment, ("created_at", "assigned_date")), "shipment.created_at/assigned_date"),
         ("Sẵn sàng nhà máy", _first_value(shipment, ("factory_ready_date", "ready_date")), "shipment.factory_ready_date/ready_date"),
-        ("ETD", (_as_mapping(data.get("1.2")) or {}).get("etd"), "shipment.data.1.2.etd"),
+        ("ETD", operational.get("etd"), "shipment.data.1.2.transport_legs[*].etd"),
         ("ETA", (_as_mapping(data.get("2.6")) or {}).get("arrival_date"), "shipment.data.2.6.arrival_date"),
         ("Thông quan", _first_value(shipment, ("customs_date", "cleared_at")), "shipment.customs_date/cleared_at"),
         ("Giao hàng", (_as_mapping(data.get("2.7")) or {}).get("delivery_date"), "shipment.data.2.7.delivery_date"),
@@ -211,8 +217,10 @@ def build_shipment_workspace_view(
     lots, lots_status = _factory_lots(shipment)
     documents, documents_status = _document_rows(shipment)
     timeline = _timeline(shipment)
+    from core.shipment_operations import compatibility_facts
+
     data = _data(shipment)
-    route = _as_mapping(data.get("1.2")) or {}
+    operational = compatibility_facts(shipment)
     pickup = _as_mapping(_first_value(shipment, ("pickup", "pickup_info")))
     delivery = _as_mapping(data.get("2.7")) or {}
     agency = _as_mapping((_as_mapping(data.get("3.4")) or {}).get("agency"))
@@ -254,14 +262,14 @@ def build_shipment_workspace_view(
         "free_time_expiry": dashboard.get("free_time_expiry_label", UNKNOWN),
         "free_time_remaining": dashboard.get("days_remaining", UNKNOWN),
         "route": {
-            "pol": _text(route.get("pol")),
-            "pod": _text(route.get("pod")),
-            "mode": _text((_as_mapping(data.get("0.0")) or {}).get("mode")),
+            "pol": _text(operational.get("origin")),
+            "pod": _text(operational.get("destination")),
+            "mode": _text(operational.get("mode")),
             "incoterm": _text((_as_mapping(data.get("0.0")) or {}).get("incoterm")),
-            "booking": _text(route.get("booking_no")),
-            "carrier": _text(route.get("carrier")),
-            "vessel": _text(route.get("vessel")),
-            "container": _text(route.get("container_no")),
+            "booking": _text(operational.get("booking_no")),
+            "carrier": _text(operational.get("carrier")),
+            "vessel": _text(operational.get("vessel")),
+            "container": _text(operational.get("container_no")),
         },
         "context": {
             "supplier": _text(_first_value(shipment, ("supplier", "supplier_name", "factory_supplier"))),
