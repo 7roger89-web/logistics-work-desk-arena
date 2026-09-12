@@ -77,15 +77,29 @@ export default function ShipmentDetail() {
   };
 
   const savePickup = () => {
-    const fields = onlyFilled({
-      container_no: val("plate", s.pickup.plate),
-      etd: val("pickupTime", s.pickup.pickupTime),
-      booking_no: val("bookingNo", s.transport?.bookingNo ?? ""),
-      carrier: val("carrier", s.transport?.carrier ?? ""),
-      pol: val("pol", s.transport?.pol ?? ""),
-      pod: val("pod", s.transport?.pod ?? ""),
-      qty_pkg: val("qtyPkg", s.transport?.qtyPkg ?? ""),
-    });
+    // LOGI_CN_TRUCK_TYPE_PERSIST_01 — pickup_truck_type is a writable
+    // canonical fact (Owner-approved 2026-09-12): free text describing the
+    // CN pickup truck type/size, keyed by the operator, never derived.
+    //
+    // SAME touched-state rule as the GNT CLEAR_FIX: this field must NOT go
+    // through onlyFilled(), which drops blanks. An operator clearing a
+    // stored value would otherwise send nothing, the stale value would stay
+    // canonical and the fresh readback would put it back on screen.
+    //   key absent from `form` → untouched → omitted;
+    //   key present in `form`  → edited → trimmed value sent verbatim,
+    //     INCLUDING "". The backend `_coerce` preserves the blank.
+    const fields: Record<string, string> = {
+      ...onlyFilled({
+        container_no: val("plate", s.pickup.plate),
+        etd: val("pickupTime", s.pickup.pickupTime),
+        booking_no: val("bookingNo", s.transport?.bookingNo ?? ""),
+        carrier: val("carrier", s.transport?.carrier ?? ""),
+        pol: val("pol", s.transport?.pol ?? ""),
+        pod: val("pod", s.transport?.pod ?? ""),
+        qty_pkg: val("qtyPkg", s.transport?.qtyPkg ?? ""),
+      }),
+      ...(form.truckType != null ? { pickup_truck_type: form.truckType.trim() } : {}),
+    };
     if (Object.keys(fields).length === 0) {
       toast("Chưa có gì để lưu", "Nhập ít nhất một trường ở tab Lấy hàng & Xuất khẩu.", "red");
       return;
@@ -382,7 +396,7 @@ export default function ShipmentDetail() {
               <Field label="Ngày lấy hàng (ETD)" required={!s.pickup.pickupTime} hint="Backend lưu theo NGÀY; giờ hẹn trao đổi với nhà máy ngoài hệ thống." error={!val("pickupTime", s.pickup.pickupTime) ? "Thiếu ngày lấy hàng — nhà máy cần báo trước 24h" : undefined}>
                 <input value={val("pickupTime", s.pickup.pickupTime)} onChange={(e) => set("pickupTime", e.target.value)} placeholder="VD: 10/09/2026" className={inputCls(!val("pickupTime", s.pickup.pickupTime) ? "missing" : "ok")} />
               </Field>
-              <Field label="Loại / kích thước xe" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.truckType} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
+              <Field label="Loại / kích thước xe" hint="Loại/kích thước xe lấy hàng TQ — VD: 17.5m · rộng 3m · tải ≤30t. Bỏ trống = chưa biết."><input id="fld-trucktype" value={val("truckType", s.pickup.truckType)} onChange={(e) => set("truckType", e.target.value)} placeholder="VD: 17.5m · rộng 3m · tải ≤30t" className={inputCls()} /></Field>
             </div>
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 pt-1"><Truck size={19} className="text-[#1e5aa8]" /> Xe Trung Quốc</h3>
             {!s.pickup.plate && <MissingBox what="biển số xe TQ" where="Chưa đặt được xe — bổ sung để nhà máy cho hàng lên xe" actionLabel="Nhập xe ngay" onAction={() => document.getElementById("fld-plate")?.focus()} />}

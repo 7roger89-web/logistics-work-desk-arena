@@ -652,7 +652,10 @@ def shipment_projection(
             "contact": text(shipment.get("factory_contact")),
             "phone": text(shipment.get("factory_phone")),
             "pickupTime": _ddmmyyyy(transport.get("etd")),
-            "truckType": "",
+            # LOGI_CN_TRUCK_TYPE_PERSIST_01 — canonical CN pickup truck
+            # type/size (data.1.2.pickup_truck_type, Owner-approved
+            # 2026-09-12). Operator-keyed free text; blank = UNKNOWN.
+            "truckType": text(transport.get("pickup_truck_type")),
             "plate": text(transport.get("container_no")),
             "driver": "",
             "driverPhone": "",

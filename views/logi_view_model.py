@@ -561,6 +561,16 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
     "tk_date": ("data", "2.4", "tk_date"),
     "import_duty_amount": ("data", "2.4", "import_duty_amount"),
     "import_vat_amount": ("data", "2.4", "import_vat_amount"),
+    # LOGI_CN_TRUCK_TYPE_PERSIST_01 — Owner-approved business truth
+    # (2026-09-12). Exactly one new pickup/transport field, and nothing else:
+    #   pickup_truck_type   free-text fact describing the CN pickup truck
+    #                       type/size of THIS shipment (e.g. "17.5m · rộng 3m
+    #                       · tải ≤30t"), keyed by the operator. NEVER derived:
+    #                       no inference, no capacity/weight/CBM/pricing math.
+    # It is NOT the VN delivery truck (data.2.7.truck_no) and NOT the
+    # container/plate identifier (data.1.2.container_no). A blank stays blank,
+    # so UNKNOWN is never written as a value.
+    "pickup_truck_type": ("data", "1.2", "pickup_truck_type"),
     "arrival_date": ("data", "2.6", "arrival_date"),
     "free_time": ("data", "2.6", "free_time"),
     "truck_no": ("data", "2.7", "truck_no"),

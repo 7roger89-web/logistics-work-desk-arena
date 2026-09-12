@@ -663,6 +663,62 @@ console.log("STEP 16 — import tax clear semantics");
   ok("edited import duty → the typed amount is dispatched verbatim");
 }
 
+// ---------------------------------------------------------------------------
+// STEP 17 — CN pickup truck type: untouched omitted, clear travels as "",
+// edit verbatim (LOGI_CN_TRUCK_TYPE_PERSIST_01). Pins the UI half of the
+// contract, mirroring STEP 16: pickup_truck_type is sent from the
+// touched-state, NOT through onlyFilled(), so an actively cleared field
+// travels as "" while an untouched one is omitted entirely.
+// ---------------------------------------------------------------------------
+
+console.log("STEP 17 — CN pickup truck type clear semantics");
+{
+  // A shipment that already has the canonical truck type stored.
+  const vm4 = JSON.parse(JSON.stringify(VM));
+  const lot = vm4.shipments.find((x) => x.id === "LO-0306");
+  lot.pickup.truckType = "17.5m · rộng 3m · tải ≤30t";
+  invoke(vm4);
+  await tick(120);
+
+  await click("Lô Hàng", "a", $("aside")[0]);
+  await click("LO-0306", "a", $("table.tbl")[0]);
+  const tabRoot17 = window.document.getElementById("workspace-tabs");
+  await click("Lấy hàng & Xuất khẩu", "button", tabRoot17);
+
+  const truck = window.document.getElementById("fld-trucktype");
+  assert.ok(truck, "the truck type input must be mounted");
+  assert.ok(!truck.readOnly, "the truck type input must be editable");
+  assert.equal(truck.value, "17.5m · rộng 3m · tải ≤30t", "stored truck type not rendered");
+
+  const nextPickupSave = () => {
+    const evs = triggers.filter((t) => t.event === "shipment_field_save");
+    return evs[evs.length - 1].value.payload;
+  };
+
+  // UNTOUCHED — an ordinary pickup save must not touch the truck type.
+  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
+  assert.ok(bodyText().includes("Đã lưu thông tin lấy hàng LO-0306"), "pickup save toast missing");
+  let pfields = nextPickupSave().fields;
+  assert.ok(!("pickup_truck_type" in pfields),
+    `untouched pickup_truck_type must be omitted, got ${JSON.stringify(pfields.pickup_truck_type)}`);
+  ok("untouched truck type is omitted from the payload");
+
+  // CLEAR the truck type → the empty string must travel.
+  type(truck, "");
+  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
+  pfields = nextPickupSave().fields;
+  assert.ok("pickup_truck_type" in pfields, "cleared truck type was dropped by the payload");
+  assert.equal(pfields.pickup_truck_type, "", "cleared truck type must be sent as an empty string");
+  ok('cleared truck type → pickup_truck_type: "" dispatched');
+
+  // An active edit still sends the typed value verbatim.
+  type(truck, "9.6m · tải 15t");
+  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
+  pfields = nextPickupSave().fields;
+  assert.equal(pfields.pickup_truck_type, "9.6m · tải 15t", "an edited truck type must be sent verbatim");
+  ok("edited truck type → the typed value is dispatched verbatim");
+}
+
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);
 window.close();
 process.exit(0);
