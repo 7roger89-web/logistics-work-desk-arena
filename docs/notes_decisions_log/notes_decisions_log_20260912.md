@@ -81,3 +81,50 @@ untouched omitted, cleared duty `""`, cleared VAT + date `""`, edited value
 verbatim) and by 6 new backend tests in
 `tests/test_logi_gnt_canonical_fields_01.py`. Do not move these three fields
 back behind `onlyFilled`.
+
+## LOGI_CN_TRUCK_TYPE_PERSIST_01 — Owner ruling on the CN pickup truck type fact
+
+Scope-proof task `LOGI_CN_TRUCK_TYPE_PERSIST_01` returned
+`MATERIAL_PRODUCT_CHANGE_REQUIRED` against `main@40d634b` (PR #21). The UI slot
+"Loại / kích thước xe" existed but was read-only: the projection hardcoded
+`pickup.truckType = ""` and the React field said "Chưa có trường dữ liệu trong
+lô." The storage-path proof found **no existing compatible canonical field**:
+
+- `data.1.2.container_no` ("Số Cont/Xe") is a plate/container IDENTIFIER,
+  projected as `pickup.plate` and the tracking reference — reuse would corrupt
+  plate semantics;
+- `data.2.7.truck_no` ("Xe giao") is the VN DELIVERY truck, projected as
+  `plateVN` — the wrong leg of the journey;
+- `qty_pkg` / `seal_no` / `factory_*` / `china_*` all carry different,
+  code-proven semantics.
+
+### Owner decision (approved 2026-09-12)
+
+1. `data.1.2.pickup_truck_type` is the canonical free-text fact describing the
+   CN pickup truck type/size of the shipment itself (e.g.
+   "17.5m · rộng 3m · tải ≤30t"), keyed by the operator.
+2. Exactly that ONE key joins the component write whitelist `FIELD_PATHS`.
+   Nothing else.
+3. It is never derived: no inference, no capacity/weight/CBM/pricing math, and
+   it is never used as the VN delivery truck.
+4. Blank = UNKNOWN; an explicit clear (`""`) removes the stored value.
+
+### What was implemented
+
+`views/logi_view_model.py` (+1 whitelist key, existing text coercion) ·
+`views/logi_real_data.py` (`pickup.truckType` now reads the canonical fact) ·
+`component/src/pages/ShipmentDetail.tsx` (the existing read-only slot made
+editable; the save goes through the existing LƯU THÔNG TIN LẤY HÀNG action via
+the touched-state rule, NOT `onlyFilled`, so untouched is omitted and a clear
+travels as `""` — same invariant as the GNT CLEAR_FIX) · rebuilt
+`component/dist`.
+
+Reused unchanged: `save_shipment_atomic` (transaction, optimistic version,
+audit), the `shipment_field_save` event, fresh backend readback. No new event,
+schema, migration, API or service. CN driver name/phone stay out of scope.
+
+Acceptance: `tests/test_logi_cn_truck_type_persist_01.py` (8 tests: whitelist,
+save + fresh readback, reopen, untouched preservation, explicit clear,
+UNKNOWN blank, unrelated `container_no`/`truck_no` untouched) and STEP 17 of
+`tests/component/dom_acceptance_phase_a.mjs` (3 checks: untouched omitted,
+clear → `""`, edit verbatim).

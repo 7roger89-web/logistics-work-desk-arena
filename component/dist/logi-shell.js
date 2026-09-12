@@ -13126,15 +13126,18 @@ function lo() {
 			return n;
 		}), E(Date.now()), o(e, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
 	}, ie = () => {
-		let e = ne({
-			container_no: O("plate", u.pickup.plate),
-			etd: O("pickupTime", u.pickup.pickupTime),
-			booking_no: O("bookingNo", u.transport?.bookingNo ?? ""),
-			carrier: O("carrier", u.transport?.carrier ?? ""),
-			pol: O("pol", u.transport?.pol ?? ""),
-			pod: O("pod", u.transport?.pod ?? ""),
-			qty_pkg: O("qtyPkg", u.transport?.qtyPkg ?? "")
-		});
+		let e = {
+			...ne({
+				container_no: O("plate", u.pickup.plate),
+				etd: O("pickupTime", u.pickup.pickupTime),
+				booking_no: O("bookingNo", u.transport?.bookingNo ?? ""),
+				carrier: O("carrier", u.transport?.carrier ?? ""),
+				pol: O("pol", u.transport?.pol ?? ""),
+				pod: O("pod", u.transport?.pod ?? ""),
+				qty_pkg: O("qtyPkg", u.transport?.qtyPkg ?? "")
+			}),
+			...w.truckType == null ? {} : { pickup_truck_type: w.truckType.trim() }
+		};
 		if (Object.keys(e).length === 0) {
 			o("Chưa có gì để lưu", "Nhập ít nhất một trường ở tab Lấy hàng & Xuất khẩu.", "red");
 			return;
@@ -13508,11 +13511,12 @@ function lo() {
 								})
 							}), /* @__PURE__ */ (0, F.jsx)(W, {
 								label: "Loại / kích thước xe",
-								hint: "Chưa có trường dữ liệu trong lô.",
+								hint: "Loại/kích thước xe lấy hàng TQ — VD: 17.5m · rộng 3m · tải ≤30t. Bỏ trống = chưa biết.",
 								children: /* @__PURE__ */ (0, F.jsx)("input", {
-									value: u.pickup.truckType,
-									readOnly: !0,
-									placeholder: "Chưa có trường dữ liệu",
+									id: "fld-trucktype",
+									value: O("truckType", u.pickup.truckType),
+									onChange: (e) => D("truckType", e.target.value),
+									placeholder: "VD: 17.5m · rộng 3m · tải ≤30t",
 									className: G()
 								})
 							})]
