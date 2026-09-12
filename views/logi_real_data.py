@@ -92,6 +92,17 @@ def _section(shipment: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _declaration_date(customs: Mapping[str, Any]) -> str:
+    """Customs declaration date, DD/MM/YYYY, blank when unknown.
+
+    LOGI_GNT_CANONICAL_FIELDS_01: ``tk_date`` is the canonical field for new
+    data (Owner-approved 2026-09-12). ``reg_date`` is a READ-ONLY fallback for
+    documents written before that ruling — it is never written, and the new
+    field always wins when both are present.
+    """
+    return _ddmmyyyy(customs.get("tk_date") or customs.get("reg_date"))
+
+
 def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
     """Derive the operational stage from real shipment facts only.
 
@@ -683,12 +694,16 @@ def shipment_projection(
         "importInfo": {
             "borderVN": text(transport.get("pod")),
             "declarationNo": text(customs.get("tk_no")),
-            "regDate": _ddmmyyyy(customs.get("reg_date")),
+            "regDate": _declaration_date(customs),
             "clearDate": _ddmmyyyy(customs.get("clearance_date")),
-            # Import tax / VAT are not modelled on the shipment document, so
-            # they stay UNKNOWN until a real source exists.
-            "tax": UNKNOWN,
-            "vat": UNKNOWN,
+            # LOGI_GNT_CANONICAL_FIELDS_01 — ACTUAL import duty and import VAT
+            # in VND, keyed by the operator from the real customs notice / GNT.
+            # They are recorded facts, never derived: no rate, no HS lookup, no
+            # FX, no arithmetic anywhere in this path. Still UNKNOWN (None →
+            # "—") until an operator records them, because a blank here is a
+            # statement about knowledge, not about money.
+            "tax": num(customs.get("import_duty_amount")),
+            "vat": num(customs.get("import_vat_amount")),
             "inspection": text(customs.get("phan_luong")),
             "customsStatus": bool(customs.get("customs_status")),
             "license": "",
@@ -850,7 +865,7 @@ def tracking_projection(shipment: Mapping[str, Any]) -> dict[str, Any]:
         milestones.append({"time": _ddmmyyyy(arrival.get("arrival_date")), "title": "ETA — về cửa khẩu/kho đích",
                            "desc": text(transport.get("pod")), "done": bool(customs.get("tk_no")), "tone": "blue"})
     if text(customs.get("tk_no")):
-        milestones.append({"time": _ddmmyyyy(customs.get("reg_date")), "title": "Đăng ký tờ khai nhập khẩu",
+        milestones.append({"time": _declaration_date(customs), "title": "Đăng ký tờ khai nhập khẩu",
                            "desc": f"TK {text(customs.get('tk_no'))} · luồng {text(customs.get('phan_luong')) or 'chờ phân luồng'}",
                            "done": True, "tone": "blue"})
     if customs.get("customs_status"):

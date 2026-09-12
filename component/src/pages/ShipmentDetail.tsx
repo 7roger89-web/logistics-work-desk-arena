@@ -97,11 +97,17 @@ export default function ShipmentDetail() {
   const saveImport = () => {
     const tk = val("tk", s.importInfo.declarationNo);
     if (!tk) { toast("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red"); return; }
-    // Import tax / VAT are not modelled on the shipment document, so they are
-    // never sent (UNKNOWN must not be written as a number).
+    // LOGI_GNT_CANONICAL_FIELDS_01 — tk_date / import_duty_amount /
+    // import_vat_amount are now writable canonical facts (Owner-approved
+    // 2026-09-12). They are what the operator reads off the real customs
+    // notice / GNT: never computed here. `onlyFilled` keeps a blank absent, so
+    // an UNKNOWN tax is never written as a number.
     const fields: Record<string, string> = {
       tk_no: tk,
       ...onlyFilled({
+        tk_date: val("tkDate", s.importInfo.regDate),
+        import_duty_amount: val("importDuty", s.importInfo.tax == null ? "" : String(s.importInfo.tax)),
+        import_vat_amount: val("importVat", s.importInfo.vat == null ? "" : String(s.importInfo.vat)),
         phan_luong: val("inspection", s.importInfo.inspection),
         arrival_date: val("arrivalDate", s.importInfo.arrivalDate ?? ""),
         free_time: val("freeTime", s.importInfo.freeTime != null ? String(s.importInfo.freeTime) : ""),
@@ -425,9 +431,9 @@ export default function ShipmentDetail() {
               <Field label="Số tờ khai" required={!s.importInfo.declarationNo} error={!val("tk", s.importInfo.declarationNo) ? "Nhập 12 số tờ khai — VD: 105588421330" : undefined}>
                 <input id="fld-tk" value={val("tk", s.importInfo.declarationNo)} onChange={(e) => set("tk", e.target.value)} placeholder="12 số tờ khai…" className={inputCls(!val("tk", s.importInfo.declarationNo) ? "missing" : "ok")} />
               </Field>
-              <Field label="Ngày đăng ký" hint="Chỉ đọc — màn hình này chưa có đường ghi ngày đăng ký TK."><input value={s.importInfo.regDate} readOnly placeholder="Chưa có dữ liệu" className={inputCls()} /></Field>
-              <Field label="Thuế nhập khẩu (VND)"><input value={s.importInfo.tax == null ? "" : String(s.importInfo.tax)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
-              <Field label="VAT hàng nhập (VND)"><input value={s.importInfo.vat == null ? "" : String(s.importInfo.vat)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
+              <Field label="Ngày đăng ký" hint="Lưu vào ngày tờ khai (2.4.tk_date)."><input id="fld-tkdate" value={val("tkDate", s.importInfo.regDate)} onChange={(e) => set("tkDate", e.target.value)} placeholder="VD: 15/08/2026" className={inputCls()} /></Field>
+              <Field label="Thuế nhập khẩu (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-duty" value={val("importDuty", s.importInfo.tax == null ? "" : String(s.importInfo.tax))} onChange={(e) => set("importDuty", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
+              <Field label="VAT hàng nhập (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-vat" value={val("importVat", s.importInfo.vat == null ? "" : String(s.importInfo.vat))} onChange={(e) => set("importVat", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
               <Field label="Phân luồng / kiểm hóa"><input value={val("inspection", s.importInfo.inspection)} onChange={(e) => set("inspection", e.target.value)} className={inputCls()} /></Field>
               <Field label="Giấy phép chuyên ngành" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.license} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
             </div>

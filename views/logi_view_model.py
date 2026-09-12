@@ -546,6 +546,21 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
     "tk_no": ("data", "2.4", "tk_no"),
     "customs_status": ("data", "2.4", "customs_status"),
     "phan_luong": ("data", "2.4", "phan_luong"),
+    # LOGI_GNT_CANONICAL_FIELDS_01 — Owner-approved business truth
+    # (2026-09-12). Exactly three new customs/tax fields, and nothing else:
+    #   tk_date             canonical customs declaration date for NEW data
+    #   import_duty_amount  ACTUAL import duty in VND
+    #   import_vat_amount   ACTUAL import VAT in VND
+    # Both amounts are operator-keyed from the real customs notice / GNT
+    # paper. They are NEVER calculated here: no rate, no HS lookup, no FX,
+    # no arithmetic. A blank stays blank, so UNKNOWN is never written as 0.
+    # `reg_date` is deliberately NOT writable — it survives only as a read
+    # fallback for legacy documents (see views/logi_real_data.py).
+    # `data.2.4.gnt.ds_thue[]` stays legacy evidence and is NOT promoted to a
+    # source of truth by this change.
+    "tk_date": ("data", "2.4", "tk_date"),
+    "import_duty_amount": ("data", "2.4", "import_duty_amount"),
+    "import_vat_amount": ("data", "2.4", "import_vat_amount"),
     "arrival_date": ("data", "2.6", "arrival_date"),
     "free_time": ("data", "2.6", "free_time"),
     "truck_no": ("data", "2.7", "truck_no"),
@@ -560,8 +575,12 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
 }
 
 _BOOL_FIELDS = {"customs_status"}
-_NUM_FIELDS = {"free_time"}
-_DATE_FIELDS = {"etd", "arrival_date", "delivery_date"}
+# LOGI_GNT_CANONICAL_FIELDS_01 — the two ACTUAL import-tax amounts coerce
+# through the same numeric path `free_time` already uses, so a blank stays ""
+# (UNKNOWN) and is never turned into 0. The declaration date joins the
+# existing date path, which stores the canonical ISO form.
+_NUM_FIELDS = {"free_time", "import_duty_amount", "import_vat_amount"}
+_DATE_FIELDS = {"etd", "arrival_date", "delivery_date", "tk_date"}
 
 
 def _normalize_date(value: Any) -> str:
