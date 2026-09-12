@@ -353,3 +353,146 @@ def test_handbook_stage_table_picks_up_the_new_fields_automatically():
     for field in ("tk_date", "import_duty_amount", "import_vat_amount"):
         assert field in listed, listed
     assert "reg_date" not in listed
+
+
+# ---------------------------------------------------------------------------
+# CLEAR_FIX — BLANK = UNKNOWN, so an operator must be able to CLEAR a value
+#
+# The UI sends "" for a field the operator actively emptied. `onlyFilled`
+# dropped those keys, so a cleared field never reached the backend and the
+# stale number stayed canonical. These tests pin the backend half of the
+# contract: "" is a real update, and it produces UNKNOWN — never 0.
+# ---------------------------------------------------------------------------
+
+def test_clearing_a_stored_import_duty_removes_the_number(staging, event_seq):
+    """Acceptance 1-5: 5000000 stored, operator clears it, readback is UNKNOWN."""
+    seed = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"tk_no": "105588421330", "import_duty_amount": "5000000"},
+    })
+    assert seed["ok"], seed["error"]
+    assert seed["readback"]["importInfo"]["tax"] == 5000000.0
+
+    # The operator empties the field; the UI sends the empty string explicitly.
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"tk_no": "105588421330", "import_duty_amount": ""},
+    })
+    assert out["ok"], out["error"]
+
+    fresh = vm.read_shipment("LO-0307")
+    stored = fresh["data"]["2.4"]["import_duty_amount"]
+    # The numeric truth is gone — a blank, never a silent 0 and never 5000000.
+    assert stored == ""
+    assert not isinstance(stored, (int, float))
+    assert out["readback"]["importInfo"]["tax"] is None
+    assert rd.shipment_projection(fresh)["importInfo"]["tax"] is None
+    # The declaration itself survives the clear.
+    assert fresh["data"]["2.4"]["tk_no"] == "105588421330"
+
+
+def test_clearing_a_stored_import_vat_removes_the_number(staging, event_seq):
+    """Acceptance 6: identical semantics for the import VAT."""
+    seed = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0306",
+        "fields": {"tk_no": "105579900211", "import_vat_amount": "800000"},
+    })
+    assert seed["ok"], seed["error"]
+    assert seed["readback"]["importInfo"]["vat"] == 800000.0
+
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0306",
+        "fields": {"tk_no": "105579900211", "import_vat_amount": ""},
+    })
+    assert out["ok"], out["error"]
+    fresh = vm.read_shipment("LO-0306")
+    assert fresh["data"]["2.4"]["import_vat_amount"] == ""
+    assert out["readback"]["importInfo"]["vat"] is None
+
+
+def test_clearing_one_tax_leaves_the_other_alone(staging, event_seq):
+    """A clear is scoped to the field the operator emptied."""
+    _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"tk_no": "105588421330", "import_duty_amount": "5000000",
+                   "import_vat_amount": "800000"},
+    })
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"tk_no": "105588421330", "import_duty_amount": ""},
+    })
+    assert out["ok"], out["error"]
+    ii = out["readback"]["importInfo"]
+    assert ii["tax"] is None
+    assert ii["vat"] == 800000.0
+
+
+def test_clearing_tk_date_does_not_migrate_legacy_reg_date(staging, event_seq):
+    """Acceptance 7: clearing writes a blank; it never copies reg_date across."""
+    _set_raw("LO-0308", "2.4", {"reg_date": "2026-07-30"})
+    seed = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0308",
+        "fields": {"tk_no": "105500000001", "tk_date": "11/08/2026"},
+    })
+    assert seed["ok"], seed["error"]
+    assert seed["readback"]["importInfo"]["regDate"] == "11/08/2026"
+
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0308",
+        "fields": {"tk_no": "105500000001", "tk_date": ""},
+    })
+    assert out["ok"], out["error"]
+
+    fresh = vm.read_shipment("LO-0308")
+    # The canonical field is a blank — it was NOT filled with the legacy date.
+    assert fresh["data"]["2.4"]["tk_date"] == ""
+    assert fresh["data"]["2.4"]["tk_date"] != fresh["data"]["2.4"]["reg_date"]
+    # The legacy value is still on disk, untouched, and still only a read
+    # fallback (Owner rule 6) — nothing was migrated or deleted.
+    assert fresh["data"]["2.4"]["reg_date"] == "2026-07-30"
+    assert out["readback"]["importInfo"]["regDate"] == "30/07/2026"
+
+
+def test_untouched_fields_survive_an_ordinary_save(staging, event_seq):
+    """Acceptance 8: a save that omits a field must not change it."""
+    _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"tk_no": "105588421330", "tk_date": "15/08/2026",
+                   "import_duty_amount": "5000000", "import_vat_amount": "800000"},
+    })
+    # The operator edits only the lane; the three approved fields are absent
+    # from the payload entirely, exactly as the untouched UI keys produce.
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": "LO-0307", "fields": {"tk_no": "105588421330", "phan_luong": "Xanh"},
+    })
+    assert out["ok"], out["error"]
+    customs = vm.read_shipment("LO-0307")["data"]["2.4"]
+    assert customs["tk_date"] == "2026-08-15"
+    assert customs["import_duty_amount"] == 5000000.0
+    assert customs["import_vat_amount"] == 800000.0
+    assert customs["phan_luong"] == "Xanh"
+    ii = out["readback"]["importInfo"]
+    assert (ii["regDate"], ii["tax"], ii["vat"]) == ("15/08/2026", 5000000.0, 800000.0)
+
+
+def test_clearing_tax_leaves_finance_actual_untouched(staging, event_seq):
+    """Acceptance 9: a clear moves no Finance Actual figure, as a write does not."""
+    sid = "LO-0307"
+    _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": sid,
+        "fields": {"tk_no": "105588421330", "import_duty_amount": "5000000",
+                   "import_vat_amount": "800000"},
+    })
+    before = rd.shipment_projection(vm.read_shipment(sid))["finance"]
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": sid,
+        "fields": {"tk_no": "105588421330", "import_duty_amount": "",
+                   "import_vat_amount": ""},
+    })
+    assert out["ok"], out["error"]
+    assert rd.shipment_projection(vm.read_shipment(sid))["finance"] == before
+
+    from core.database import get_db
+    db = get_db()
+    assert db["financial_obligations"].count_documents({}) == 0
+    assert db["financial_transactions"].count_documents({}) == 0

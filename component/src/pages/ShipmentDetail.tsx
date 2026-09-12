@@ -98,16 +98,28 @@ export default function ShipmentDetail() {
     const tk = val("tk", s.importInfo.declarationNo);
     if (!tk) { toast("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red"); return; }
     // LOGI_GNT_CANONICAL_FIELDS_01 — tk_date / import_duty_amount /
-    // import_vat_amount are now writable canonical facts (Owner-approved
+    // import_vat_amount are writable canonical facts (Owner-approved
     // 2026-09-12). They are what the operator reads off the real customs
-    // notice / GNT: never computed here. `onlyFilled` keeps a blank absent, so
-    // an UNKNOWN tax is never written as a number.
+    // notice / GNT: never computed here.
+    //
+    // CLEAR_FIX — these three must NOT go through onlyFilled(), which drops
+    // blanks: an operator clearing a stored 5.000.000 would send nothing, the
+    // stale number would stay canonical and the fresh readback would put it
+    // back on screen. BLANK = UNKNOWN, so a cleared field has to travel.
+    //
+    // The React touched-state is the discriminator:
+    //   key absent from `form` → untouched → send nothing, so an ordinary save
+    //     never copies the legacy `reg_date` read fallback into `tk_date`;
+    //   key present in `form`  → the operator actually edited it → send the
+    //     trimmed value verbatim, INCLUDING "". The backend `_coerce` preserves
+    //     the blank, so the projection returns UNKNOWN and the UI renders "—".
+    const edited: Record<string, string> = {};
+    if (form.tkDate != null) edited.tk_date = form.tkDate.trim();
+    if (form.importDuty != null) edited.import_duty_amount = form.importDuty.trim();
+    if (form.importVat != null) edited.import_vat_amount = form.importVat.trim();
     const fields: Record<string, string> = {
       tk_no: tk,
       ...onlyFilled({
-        tk_date: val("tkDate", s.importInfo.regDate),
-        import_duty_amount: val("importDuty", s.importInfo.tax == null ? "" : String(s.importInfo.tax)),
-        import_vat_amount: val("importVat", s.importInfo.vat == null ? "" : String(s.importInfo.vat)),
         phan_luong: val("inspection", s.importInfo.inspection),
         arrival_date: val("arrivalDate", s.importInfo.arrivalDate ?? ""),
         free_time: val("freeTime", s.importInfo.freeTime != null ? String(s.importInfo.freeTime) : ""),
@@ -117,6 +129,7 @@ export default function ShipmentDetail() {
         seal_no: val("driverVN", s.importInfo.driverVN),
         delivery_date: val("schedule", s.importInfo.schedule),
       }),
+      ...edited,
     };
     dispatch("shipment_field_save", { shipmentId: s.id, fields });
     afterSave("Đã lưu tờ khai " + tk);

@@ -13149,23 +13149,23 @@ function lo() {
 			o("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red");
 			return;
 		}
-		let t = {
+		let t = {};
+		w.tkDate != null && (t.tk_date = w.tkDate.trim()), w.importDuty != null && (t.import_duty_amount = w.importDuty.trim()), w.importVat != null && (t.import_vat_amount = w.importVat.trim());
+		let n = {
 			tk_no: e,
 			...ne({
-				tk_date: O("tkDate", u.importInfo.regDate),
-				import_duty_amount: O("importDuty", u.importInfo.tax == null ? "" : String(u.importInfo.tax)),
-				import_vat_amount: O("importVat", u.importInfo.vat == null ? "" : String(u.importInfo.vat)),
 				phan_luong: O("inspection", u.importInfo.inspection),
 				arrival_date: O("arrivalDate", u.importInfo.arrivalDate ?? ""),
 				free_time: O("freeTime", u.importInfo.freeTime == null ? "" : String(u.importInfo.freeTime)),
 				truck_no: O("plateVN", u.importInfo.plateVN),
 				seal_no: O("driverVN", u.importInfo.driverVN),
 				delivery_date: O("schedule", u.importInfo.schedule)
-			})
+			}),
+			...t
 		};
 		c("shipment_field_save", {
 			shipmentId: u.id,
-			fields: t
+			fields: n
 		}), re("Đã lưu tờ khai " + e);
 	}, A = () => {
 		let e = c("delivery_confirm", {

@@ -56,3 +56,28 @@ Acceptance: `tests/test_logi_gnt_canonical_fields_01.py`, 16 tests, one per
 clause of the ruling including the negative ones (`reg_date` and `ds_thue`
 writes are rejected; a legacy `ds_thue` total is still readable as evidence but
 projects `tax = None`; Finance Actual is byte-identical across a tax save).
+
+### Addendum — CLEAR_FIX (Control Tower review, same day)
+
+The first implementation routed the three new fields through `onlyFilled(...)`,
+which drops blank strings. An operator clearing a stored `5.000.000` therefore
+sent no key at all, the stale number stayed canonical, and the fresh readback
+put it back on screen — contradicting both **BLANK = UNKNOWN** and the field's
+own hint text *"Bỏ trống = chưa biết"*.
+
+Fix: the three approved fields are no longer passed through `onlyFilled`. They
+are driven by the existing React touched-state in `ShipmentDetail.saveImport`:
+
+- key **absent** from `form` → untouched → omitted, so an ordinary save never
+  copies the legacy `reg_date` read fallback into canonical `tk_date`;
+- key **present** in `form` → the operator edited it → the trimmed value is sent
+  verbatim, **including `""`**.
+
+The backend needed no change: `_coerce` already preserves a blank, and the
+projection already maps it to `None` → "—".
+
+Pinned by `tests/component/dom_acceptance_phase_a.mjs` STEP 16 (4 new checks:
+untouched omitted, cleared duty `""`, cleared VAT + date `""`, edited value
+verbatim) and by 6 new backend tests in
+`tests/test_logi_gnt_canonical_fields_01.py`. Do not move these three fields
+back behind `onlyFilled`.
