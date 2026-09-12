@@ -141,6 +141,80 @@ def test_quote_flow_accepts_only_by_business_rule(staging, event_seq):
     assert out["readback"]["handoff"]["state"] in {"READY_FOR_OPERATIONS", "NEEDS_COMMERCIAL_REVIEW"}
 
 
+def test_quote_never_invents_fx_and_discloses_the_operator_rate(staging, event_seq):
+    """NO FAKE FX — the quotation rate is operator input, and it is disclosed.
+
+    LOGI_REAL_USE_READINESS_01 repair pin. ``_quote_payload`` used to bake
+    ``USD 25500 / CNY 3500`` into every canonical ``fx_snapshot``, so the VND
+    total shown on the desk (and carried into agreements/lots) was derived from
+    a constant nobody had entered. A foreign-currency line without a rate is now
+    refused in Vietnamese, the operator's rate drives the arithmetic, and the
+    projection discloses it next to the converted total.
+    """
+    import json
+
+    cny_line = {"code": "DV-VC-TQ", "serviceName": "Cước xe TQ", "unit": "Lần", "qty": 1,
+                "currency": "CNY", "costUnit": 8000, "sellUnit": 8600, "taxPct": 0}
+
+    # (1) Fail closed: no rate ⇒ no quote (never a silently invented one).
+    out = _dispatch(event_seq, "quote_create",
+                    {"customerId": "CUST-ANPHAT", "serviceLines": [cny_line]})
+    assert out["ok"] is False
+    assert "tỷ giá" in out["error"].lower() and "CNY" in out["error"]
+
+    # (2) The operator's rate is stored verbatim and drives the total.
+    out = _dispatch(event_seq, "quote_create",
+                    {"customerId": "CUST-ANPHAT", "serviceLines": [cny_line],
+                     "fx": {"CNY": 3650}})
+    assert out["ok"], out
+    qid = out["id"]
+    doc = logi_c1.read_quote(qid)
+    rates = doc["fx_snapshot"]["rates_to_vnd"]
+    assert float(rates["CNY"]) == 3650.0
+    assert float(rates["VND"]) == 1.0
+    assert "USD" not in rates, "an unused currency must not carry an invented rate"
+    assert "25500" not in json.dumps(doc, default=str), "the old hardcoded rate leaked"
+    assert out["readback"]["sellingPriceTotalVnd"] == 8600 * 3650      # tax 0%
+    assert doc["service_lines"][0]["currency"] == "CNY"                # currencies stay separate
+
+    # (3) The rate behind a converted total is disclosed to the desk.
+    assert out["readback"]["fxRatesToVnd"]["CNY"] == 3650.0
+    assert out["readback"]["fxNeededFor"] == ["CNY"]
+    assert out["readback"]["fxSource"]
+
+    # (4) Editing the rate re-prices from the NEW operator rate.
+    out = _dispatch(event_seq, "quote_edit", {"id": qid, "fx": {"CNY": 3700}})
+    assert out["ok"], out
+    assert out["readback"]["sellingPriceTotalVnd"] == 8600 * 3700
+    assert float(logi_c1.read_quote(qid)["fx_snapshot"]["rates_to_vnd"]["CNY"]) == 3700.0
+
+
+def test_doc_cards_are_normalized_so_a_deferred_card_cannot_blank_the_shell(staging):
+    """Every readiness card carries the declared payload contract's keys.
+
+    core.docgen emits the deferred DEBIT_USD card without a ``missing`` list
+    (nothing is missing — it is not implemented). ``DocCard.missing`` is
+    declared ``string[]`` and the contract page renders it, so the absent key
+    used to take the WHOLE shell down ("Cannot read properties of undefined").
+    Contract goods totals stay UNKNOWN (null) — never a fabricated 0 ₫ that the
+    HDNT+PL vs HDMB threshold decision would be derived from.
+    """
+    model = vm.build_view_model()
+    assert model["contracts"], "the staging seed must expose contracts"
+    deferred = []
+    for contract in model["contracts"]:
+        assert contract["docCards"], "a contract must expose its readiness cards"
+        for card in contract["docCards"]:
+            assert isinstance(card["missing"], list)
+            assert card["document_type"] and card["state"]
+            if card["state"] == "DEFERRED":
+                deferred.append(card)
+        totals = contract["goodsTotals"]
+        assert totals is None or {"subtotal", "vat_amount", "total_after_vat"} <= set(totals)
+    assert deferred, "the seed carries a deferred card — it must be normalized, not dropped"
+    assert all(card["missing"] == [] for card in deferred)
+
+
 def test_contract_goods_threshold_and_docgen(staging, event_seq):
     cid = "HD-C1-E2E"
     assert _dispatch(event_seq, "contract_create", {"id": cid, "customerId": "CUST-ANPHAT", "kind": "HDNT"})["ok"]
@@ -230,8 +304,10 @@ def test_blank_goods_quantity_is_unknown_not_zero(staging, event_seq):
     assert line["quantity"] is None
     assert line["unitPrice"] is None
     assert line["amount"] is None
-    # Unknown totals never collapse to a fabricated 0 decision.
-    assert out["readback"]["goodsTotals"]["total_after_vat"] == 0
+    # Unknown totals never collapse to a fabricated 0 decision: the projection
+    # reports NO total at all (null), so the desk cannot render "0 ₫" and derive
+    # the HDNT+PL vs HDMB threshold from a number nobody knows.
+    assert out["readback"]["goodsTotals"] is None
     assert out["readback"]["applicableDocuments"] == []
 
 

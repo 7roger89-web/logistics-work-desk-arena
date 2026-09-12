@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, fmtNum, fmtText, fmtCcy, fmtMillionsCcy, fmtPct, cx } from "../lib/format";
+import { fmtMoney, fmtVND, fmtNum, fmtText, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
 
 const TABS = [
   { id: "lay-hang", label: "Lấy hàng & Xuất khẩu", short: "Lấy hàng" },
@@ -62,8 +62,16 @@ export default function ShipmentDetail() {
     return out;
   };
 
-  const afterSave = (label: string) => {
-    setForm({});
+  const afterSave = (label: string, keep: string[] = []) => {
+    // Clear what was just written, but keep the keys the operator still needs
+    // on screen (the PXK legal identity is typed once and used by both the
+    // receiver-facts save and the export that follows).
+    setForm((f) => {
+      if (keep.length === 0) return {};
+      const next: Record<string, string> = {};
+      for (const key of keep) if (f[key] != null) next[key] = f[key];
+      return next;
+    });
     setSavedTick(Date.now());
     toast(label, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
   };
@@ -98,7 +106,10 @@ export default function ShipmentDetail() {
         arrival_date: val("arrivalDate", s.importInfo.arrivalDate ?? ""),
         free_time: val("freeTime", s.importInfo.freeTime != null ? String(s.importInfo.freeTime) : ""),
         truck_no: val("plateVN", s.importInfo.plateVN),
+        // 2.7.seal_no is this system's "Tài xế/SĐT" field, exactly as the
+        // authoritative legacy desk labels it (views/shipment.py).
         seal_no: val("driverVN", s.importInfo.driverVN),
+        delivery_date: val("schedule", s.importInfo.schedule),
       }),
     };
     dispatch("shipment_field_save", { shipmentId: s.id, fields });
@@ -216,11 +227,67 @@ export default function ShipmentDetail() {
     setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" });
   };
 
+  /**
+   * PXK through core.docgen. The service needs the lot's own legal identity
+   * (Số PXK / Ngày PXK) — it refuses to invent them, so the shell hands over
+   * what the operator typed instead of promising "tự sinh khi xuất".
+   */
   const exportPXK = () => {
+    const pxkNo = val("pxkNo", s?.pxk.number ?? "").trim();
+    const pxkDate = val("pxkDate", s?.pxk.date ?? "").trim();
+    if (!s) return;
+    if (!pxkNo || !pxkDate) {
+      toast("Chưa xuất được PXK",
+        "core.docgen từ chối khi thiếu Số PXK hoặc Ngày PXK — nhập 2 ô ở tab Chứng từ rồi bấm lại.",
+        "red");
+      return;
+    }
     // Real docgen path only. Phase B removed the prototype .txt export.
-    const sent = dispatch("pxk_generate", { shipmentId: s.id });
-    if (sent) toast("Đã gửi yêu cầu xuất PXK", "core.docgen kiểm tra gate giao hàng rồi sinh file Office thật.", "blue");
+    const sent = dispatch("pxk_generate", { shipmentId: s.id, pxkNo, pxkDate });
+    if (sent) toast("Đã gửi yêu cầu xuất PXK " + pxkNo,
+      "core.docgen kiểm tra gate giao hàng, sinh file Office thật và lưu metadata chứng từ.", "blue");
     else toast("Không gửi được", "Component chưa kết nối backend.", "red");
+  };
+
+  /**
+   * The four facts core.docgen checks before PXK (delivery location, receiver
+   * name, receiver title, delivery date) are canonical 2.7 fields, so they are
+   * saved through the SAME typed writer as the rest of the lot — never kept in
+   * component state only.
+   */
+  const savePxFacts = () => {
+    const fields = onlyFilled({
+      delivery_location: val("pxPlace", s.pxk.place || s.importInfo.deliveryAddr || ""),
+      receiver_name: val("pxReceiver", s.pxk.receiver || s.importInfo.receiver || ""),
+      receiver_title: val("pxRole", s.pxk.role ?? ""),
+      delivery_date: val("pxDate", s.importInfo.schedule ?? ""),
+    });
+    if (Object.keys(fields).length === 0) {
+      toast("Chưa có gì để lưu", "Nhập ít nhất một trường người nhận / địa điểm / ngày giao.", "red");
+      return;
+    }
+    dispatch("shipment_field_save", { shipmentId: s.id, fields });
+    afterSave("Đã lưu thông tin giao nhận " + s.id, ["pxkNo", "pxkDate"]);
+  };
+
+  /**
+   * Download the file core.docgen really produced. Metadata is durable; the
+   * bytes live on the session store, so a lot generated in an earlier session
+   * says so honestly instead of pretending to download.
+   */
+  const downloadPxk = () => {
+    const doc = s.pxk.document;
+    if (!doc || !doc.downloadBase64) {
+      toast("File không còn trong phiên này",
+        "Metadata PXK " + (s.pxk.number || s.id) + " vẫn còn trên backend; bytes chỉ được giữ trong phiên đã sinh. Bấm sinh lại để có file tải.",
+        "amber");
+      return;
+    }
+    downloadBinaryFile(
+      doc.fileName || "PXK_" + (s.pxk.number || s.id) + ".xlsx",
+      doc.downloadBase64,
+      doc.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
   };
 
   // `missingDocs` is already the not-ok subset of `docs`; counting both
@@ -293,20 +360,23 @@ export default function ShipmentDetail() {
               <p className="text-[14px] mt-1.5 flex items-center gap-1.5"><Phone size={15} className="text-slate-400" /> {s.pickup.contact} · {s.pickup.phone}</p>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Thời gian lấy hàng" required={!s.pickup.pickupTime} error={!val("pickupTime", s.pickup.pickupTime) ? "Thiếu giờ lấy — nhà máy cần báo trước 24h" : undefined}>
-                <input value={val("pickupTime", s.pickup.pickupTime)} onChange={(e) => set("pickupTime", e.target.value)} placeholder="VD: 10/09/2026 09:00" className={inputCls(!val("pickupTime", s.pickup.pickupTime) ? "missing" : "ok")} />
+              <Field label="Ngày lấy hàng (ETD)" required={!s.pickup.pickupTime} hint="Backend lưu theo NGÀY; giờ hẹn trao đổi với nhà máy ngoài hệ thống." error={!val("pickupTime", s.pickup.pickupTime) ? "Thiếu ngày lấy hàng — nhà máy cần báo trước 24h" : undefined}>
+                <input value={val("pickupTime", s.pickup.pickupTime)} onChange={(e) => set("pickupTime", e.target.value)} placeholder="VD: 10/09/2026" className={inputCls(!val("pickupTime", s.pickup.pickupTime) ? "missing" : "ok")} />
               </Field>
-              <Field label="Loại / kích thước xe"><input defaultValue={s.pickup.truckType} className={inputCls()} /></Field>
+              <Field label="Loại / kích thước xe" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.truckType} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
             </div>
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 pt-1"><Truck size={19} className="text-[#1e5aa8]" /> Xe Trung Quốc</h3>
-            {(!s.pickup.plate || !s.pickup.driver) && <MissingBox what="biển số + tài xế xe TQ" where="Chưa đặt được xe — bổ sung để nhà máy cho hàng lên xe" actionLabel="Nhập xe ngay" onAction={() => document.getElementById("fld-plate")?.focus()} />}
+            {!s.pickup.plate && <MissingBox what="biển số xe TQ" where="Chưa đặt được xe — bổ sung để nhà máy cho hàng lên xe" actionLabel="Nhập xe ngay" onAction={() => document.getElementById("fld-plate")?.focus()} />}
             <div className="grid sm:grid-cols-2 gap-3">
               <Field label="Biển số xe" required={!s.pickup.plate}><input id="fld-plate" value={val("plate", s.pickup.plate)} onChange={(e) => set("plate", e.target.value)} placeholder="VD: 粤A·88T36" className={inputCls(!val("plate", s.pickup.plate) ? "missing" : "ok")} /></Field>
-              <Field label="Tài xế" required={!s.pickup.driver}><input value={val("driver", s.pickup.driver)} onChange={(e) => set("driver", e.target.value)} placeholder="Tên tài xế" className={inputCls(!val("driver", s.pickup.driver) ? "missing" : "ok")} /></Field>
-              <Field label="SĐT tài xế"><input value={val("driverPhone", s.pickup.driverPhone)} onChange={(e) => set("driverPhone", e.target.value)} placeholder="+86…" className={inputCls()} /></Field>
+              {/* The lot document has no CN driver/phone field, so these two
+                  stay read-only and say so: typing here used to be discarded
+                  on save without a word. */}
+              <Field label="Tài xế xe TQ" hint="Lô hàng chưa có trường tài xế TQ — ghi ở sổ tay/điều phối, ô này không lưu."><input value={s.pickup.driver} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
+              <Field label="SĐT tài xế TQ" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.driverPhone} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Ngày dự kiến"><input defaultValue={s.pickup.eta} className={inputCls()} /></Field>
-                <Field label="Ngày thực tế"><input defaultValue={s.pickup.ata} placeholder="—" className={inputCls()} /></Field>
+                <Field label="Ngày dự kiến về kho" hint="Là ngày ETA ở tab Nhập & Giao."><input value={s.pickup.eta} readOnly className={inputCls()} /></Field>
+                <Field label="Ngày thực tế" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.ata} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
               </div>
             </div>
             <PrimaryBtn onClick={savePickup} className="w-full">💾 LƯU THÔNG TIN LẤY HÀNG</PrimaryBtn>
@@ -355,11 +425,11 @@ export default function ShipmentDetail() {
               <Field label="Số tờ khai" required={!s.importInfo.declarationNo} error={!val("tk", s.importInfo.declarationNo) ? "Nhập 12 số tờ khai — VD: 105588421330" : undefined}>
                 <input id="fld-tk" value={val("tk", s.importInfo.declarationNo)} onChange={(e) => set("tk", e.target.value)} placeholder="12 số tờ khai…" className={inputCls(!val("tk", s.importInfo.declarationNo) ? "missing" : "ok")} />
               </Field>
-              <Field label="Ngày đăng ký"><input value={val("regDate", s.importInfo.regDate)} onChange={(e) => set("regDate", e.target.value)} placeholder="VD: 09/09/2026" className={inputCls()} /></Field>
+              <Field label="Ngày đăng ký" hint="Chỉ đọc — màn hình này chưa có đường ghi ngày đăng ký TK."><input value={s.importInfo.regDate} readOnly placeholder="Chưa có dữ liệu" className={inputCls()} /></Field>
               <Field label="Thuế nhập khẩu (VND)"><input value={s.importInfo.tax == null ? "" : String(s.importInfo.tax)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
               <Field label="VAT hàng nhập (VND)"><input value={s.importInfo.vat == null ? "" : String(s.importInfo.vat)} readOnly placeholder="Chưa có dữ liệu — theo dõi ở GNT" className={inputCls()} /></Field>
               <Field label="Phân luồng / kiểm hóa"><input value={val("inspection", s.importInfo.inspection)} onChange={(e) => set("inspection", e.target.value)} className={inputCls()} /></Field>
-              <Field label="Giấy phép chuyên ngành"><input defaultValue={s.importInfo.license} className={inputCls()} /></Field>
+              <Field label="Giấy phép chuyên ngành" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.license} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
             </div>
             <PrimaryBtn onClick={saveImport} className="w-full">💾 LƯU TỜ KHAI & THUẾ</PrimaryBtn>
             {val("tk", s.importInfo.declarationNo) && <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900">✅ Đã có số TK <b>{val("tk", s.importInfo.declarationNo)}</b>. Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng.</div>}
@@ -369,10 +439,10 @@ export default function ShipmentDetail() {
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><Truck size={19} className="text-[#1e5aa8]" /> Xe Việt Nam & giao hàng</h3>
             {(!s.importInfo.driverVN || !s.importInfo.plateVN) && !s.importInfo.delivered && <MissingBox what="xe VN + tài xế" where="Chưa đặt xe — đặt trước giờ giao ít nhất 4 tiếng" actionLabel="Đặt xe ngay" onAction={() => document.getElementById("fld-platevn")?.focus()} />}
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Loại xe VN"><input defaultValue={s.importInfo.truckVN} className={inputCls()} /></Field>
+              <Field label="Loại xe VN" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.truckVN} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
               <Field label="Biển số VN"><input id="fld-platevn" value={val("plateVN", s.importInfo.plateVN)} onChange={(e) => set("plateVN", e.target.value)} placeholder="VD: 29H-481.36" className={inputCls(!val("plateVN", s.importInfo.plateVN) ? "missing" : "ok")} /></Field>
               <Field label="Tài xế VN"><input value={val("driverVN", s.importInfo.driverVN)} onChange={(e) => set("driverVN", e.target.value)} placeholder="Tên tài xế" className={inputCls()} /></Field>
-              <Field label="Lịch giao"><input defaultValue={s.importInfo.schedule} className={inputCls()} /></Field>
+              <Field label="Lịch giao" hint="Lưu vào ngày giao (2.7.delivery_date) — PXK cần ngày này."><input id="fld-schedule" value={val("schedule", s.importInfo.schedule)} onChange={(e) => set("schedule", e.target.value)} placeholder="VD: 12/09/2026" className={inputCls()} /></Field>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
               <p className="text-[12.5px] font-bold uppercase tracking-wide text-slate-400">Địa chỉ giao</p>
@@ -592,13 +662,35 @@ export default function ShipmentDetail() {
             <p className="text-[13px] text-slate-500 mb-3">PXK gắn với lô đã giao, nguồn từ {s.pxk.source || s.contract}. Mỗi lô 1 PXK riêng.</p>
             {!s.importInfo.delivered && <MissingBox what="xác nhận đã giao hàng" where="Phải giao xong mới được xuất PXK" actionLabel="Sang xác nhận giao" onAction={() => setSp({ tab: "nhap" })} />}
             <div className="grid sm:grid-cols-2 gap-3 mt-3">
-              <Field label="Số PXK"><input defaultValue={s.pxk.number} placeholder="Tự sinh khi xuất" className={inputCls()} /></Field>
-              <Field label="Ngày PXK"><input defaultValue={s.pxk.date} placeholder="Tự sinh khi xuất" className={inputCls()} /></Field>
-              <Field label="Địa điểm nhận" ><input defaultValue={s.pxk.place || s.importInfo.deliveryAddr} className={inputCls()} /></Field>
-              <Field label="Người nhận"><input defaultValue={s.pxk.receiver || s.importInfo.receiver} className={inputCls()} /></Field>
-              <Field label="Chức vụ người nhận"><input defaultValue={s.pxk.role} placeholder="Theo giấy giới thiệu" className={inputCls()} /></Field>
-              <Field label="Nguồn (HDMB/PL)"><input defaultValue={s.pxk.source || s.contract} className={inputCls()} /></Field>
+              {/* Số PXK / Ngày PXK are the lot's OWN legal identity: core.docgen
+                  refuses to invent them, so they are operator inputs here (same
+                  as the authoritative docgen desk) and sent with the request. */}
+              <Field label="Số PXK" required={!s.pxk.number} hint="Số pháp lý của phiếu — backend không tự đặt.">
+                <input id="fld-pxkno" value={val("pxkNo", s.pxk.number ?? "")} onChange={(e) => set("pxkNo", e.target.value)} placeholder="VD: PXK-2026-0308" className={inputCls(!val("pxkNo", s.pxk.number ?? "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Ngày PXK" required={!s.pxk.date} hint="DD/MM/YYYY hoặc YYYY-MM-DD.">
+                <input id="fld-pxkdate" value={val("pxkDate", s.pxk.date ?? "")} onChange={(e) => set("pxkDate", e.target.value)} placeholder="VD: 11/09/2026" className={inputCls(!val("pxkDate", s.pxk.date ?? "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Địa điểm nhận" required={!s.pxk.place} hint="Lưu vào 2.7.delivery_location — PXK bị chặn nếu thiếu.">
+                <input id="fld-pxplace" value={val("pxPlace", s.pxk.place || s.importInfo.deliveryAddr || "")} onChange={(e) => set("pxPlace", e.target.value)} placeholder="Kho / địa chỉ nhận thực tế" className={inputCls(!val("pxPlace", s.pxk.place || s.importInfo.deliveryAddr || "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Người nhận" required={!s.pxk.receiver} hint="Lưu vào 2.7.receiver_name.">
+                <input id="fld-pxreceiver" value={val("pxReceiver", s.pxk.receiver || s.importInfo.receiver || "")} onChange={(e) => set("pxReceiver", e.target.value)} placeholder="Tên người nhận" className={inputCls(!val("pxReceiver", s.pxk.receiver || s.importInfo.receiver || "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Chức vụ người nhận" required={!s.pxk.role} hint="Lưu vào 2.7.receiver_title.">
+                <input id="fld-pxrole" value={val("pxRole", s.pxk.role ?? "")} onChange={(e) => set("pxRole", e.target.value)} placeholder="Theo giấy giới thiệu" className={inputCls(!val("pxRole", s.pxk.role ?? "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Ngày giao" hint="Lưu vào 2.7.delivery_date — PXK cần ngày này.">
+                <input id="fld-pxdate" value={val("pxDate", s.importInfo.schedule ?? "")} onChange={(e) => set("pxDate", e.target.value)} placeholder="VD: 12/09/2026" className={inputCls()} />
+              </Field>
+              <Field label="Nguồn (HDMB/PL)" hint="Từ hợp đồng đã liên kết với lô — liên kết ở màn Hợp đồng.">
+                <input value={s.pxk.source || s.contract} readOnly placeholder="Chưa liên kết chứng từ nguồn" className={inputCls()} />
+              </Field>
             </div>
+            <PrimaryBtn onClick={savePxFacts} className="w-full mt-3">💾 LƯU THÔNG TIN GIAO NHẬN</PrimaryBtn>
+            {(s.pxk.missingDeliveryFacts ?? []).length > 0 && (
+              <MissingBox what={(s.pxk.missingDeliveryFacts ?? []).join(" · ")} where="core.docgen chặn PXK đến khi đủ thông tin giao nhận" actionLabel="Nhập ở trên" onAction={() => document.getElementById("fld-pxplace")?.focus()} />
+            )}
             <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-[13.5px]">
               <p>Đã giao hàng xong: <b className={s.importInfo.delivered ? "text-emerald-700" : "text-red-600"}>{s.importInfo.delivered ? "✅ Rồi — " + s.importInfo.actualDelivery : "❌ Chưa"}</b></p>
               <p>Ngày giao: <b>{s.importInfo.actualDelivery || s.importInfo.schedule}</b></p>
@@ -606,7 +698,18 @@ export default function ShipmentDetail() {
             {s.pxk.done ? (
               <div className="mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center">
                 <p className="font-extrabold text-emerald-800">✅ ĐÃ XUẤT {s.pxk.number}</p>
-                <button onClick={exportPXK} className="btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]"><Download size={17} /> TẢI LẠI PXK</button>
+                {/* Real readback of the generated document: file, revision,
+                    status and who generated it — not a decorative checkmark. */}
+                <p className="text-[13.5px] text-emerald-700 mt-0.5">
+                  {s.pxk.document?.fileName || "PXK"} · bản R{s.pxk.document?.revision ?? 1} · {s.pxk.document?.status || "GENERATED"}
+                  {s.pxk.document?.generatedBy ? " · " + s.pxk.document.generatedBy : ""}
+                </p>
+                {s.pxk.document?.downloadAvailable ? (
+                  <button onClick={downloadPxk} className="btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]"><Download size={17} /> TẢI {s.pxk.document?.fileName || "PXK"}</button>
+                ) : (
+                  <p className="text-[13px] text-emerald-800 mt-2">File sinh ở phiên trước: metadata còn trên backend, bytes chỉ giữ trong phiên đã sinh — bấm “SINH BẢN MỚI” để có file tải.</p>
+                )}
+                <button onClick={exportPXK} className="btn-press touch-target mt-2 ml-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-600 text-emerald-800 font-bold px-5 min-h-[48px]"><FileDown size={17} /> SINH BẢN MỚI (R+1)</button>
               </div>
             ) : (
               <SuccessBtn onClick={exportPXK} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 XUẤT PHIẾU XUẤT KHO</SuccessBtn>

@@ -39,10 +39,26 @@ export default function CreateShipment() {
     setQuoteId(id);
     const quote = quotes.find((q) => q.id === id);
     if (!quote) return;
-    const customer = customers.find((c) => c.name === quote.customer);
-    if (customer) setCustomerId(customer.name);
-    const contract = contracts.find((c) => c.company === quote.customer);
-    if (contract) setContractId(contract.id);
+    // Resolve by the canonical ids the quote really carries. Matching on names
+    // (and matching a contract by its seller-side legal company) never hit, so
+    // the operator was left re-picking both fields after every prefill.
+    const customer = customers.find((c) => c.id === quote.customerId)
+      ?? customers.find((c) => c.name === quote.customer);
+    if (customer) setCustomerId(customer.id);
+    const matches = quote.customerId
+      ? contracts.filter((c) => c.customerId === quote.customerId)
+      : [];
+    if (matches.length === 1) {
+      setContractId(matches[0].id);
+      toast("Đã nạp báo giá " + id, "Khách hàng + hợp đồng " + matches[0].id + " đã điền sẵn từ báo giá đã chốt.", "blue");
+      return;
+    }
+    if (matches.length > 1) {
+      setContractId("");
+      toast("Đã nạp báo giá " + id,
+        `Khách ${quote.customer} có ${matches.length} hợp đồng — chọn đúng hợp đồng ở ô “Hợp đồng liên kết”.`, "amber");
+      return;
+    }
     toast("Đã nạp báo giá " + id, "Giá trị và khách hàng đã được điền sẵn từ báo giá đã chốt.", "blue");
   };
 
@@ -51,8 +67,10 @@ export default function CreateShipment() {
     if (!customerId.trim()) { toast("Thiếu khách hàng", "Chọn khách hàng — backend từ chối lô không có khách.", "red"); return; }
     const sent = dispatch("shipment_create", {
       shipmentId: code.trim().toUpperCase(),
-      customerId: customers.find((c) => c.name === customerId)?.name ?? "",
-      customer: customerId,
+      // `customerId` is the canonical customer key the backend joins on
+      // (quotes / receivables / partner context); the name travels separately.
+      customerId: customers.find((c) => c.id === customerId)?.id ?? "",
+      customer: customers.find((c) => c.id === customerId)?.name ?? "",
       contractId: contractId.trim(),
       currency: "VND",
       transport: { mode, incoterm, pol: pol.trim(), pod: pod.trim(), etd: etd.trim() },
@@ -106,13 +124,15 @@ export default function CreateShipment() {
               <Field label="Khách hàng (bắt buộc)" required>
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputCls(customerId ? "ok" : "missing")}>
                   <option value="">-- Chọn khách hàng --</option>
-                  {customers.map((c) => <option key={c.name} value={c.name}>{c.name}{c.mst ? ` · MST ${c.mst}` : ""}</option>)}
+                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mst ? ` · MST ${c.mst}` : ""} · {c.id}</option>)}
                 </select>
               </Field>
-              <Field label="Hợp đồng liên kết">
+              <Field label="Hợp đồng liên kết" hint="PXK/chứng từ của lô lấy nguồn từ hợp đồng này; sau khi tạo lô thì không đổi được ở màn lô.">
                 <select value={contractId} onChange={(e) => setContractId(e.target.value)} className={inputCls()}>
                   <option value="">-- Chưa liên kết --</option>
-                  {contracts.map((c) => <option key={c.id} value={c.id}>{c.id} · {c.company}</option>)}
+                  {/* `company` is the seller-side legal entity (the same for every
+                      contract), so the customer is what makes a row readable. */}
+                  {contracts.map((c) => <option key={c.id} value={c.id}>{c.id} · {c.client || "chưa rõ khách"}{c.customerId ? ` · ${c.customerId}` : ""}</option>)}
                 </select>
               </Field>
               <Field label="Mode / Incoterm">

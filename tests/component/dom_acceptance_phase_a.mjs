@@ -534,7 +534,19 @@ console.log("STEP 14 — Create Shipment");
   type(code, "LO-0470");
   const selects = $("select");
   assert.ok(selects.length >= 2, "customer/contract selects missing");
-  selects[0].value = VM.customers[0].name;
+
+  // The prefill resolves the contract through the quote's canonical customerId,
+  // so the lot is born linked to the contract that PXK later needs as a source.
+  const expectedContract = VM.contracts.find((c) => c.customerId === quote.customerId);
+  assert.ok(expectedContract, "fixture has no contract for the accepted quote's customer");
+  assert.equal(selects[1].value, expectedContract.id, "accepted quote must prefill the customer's contract");
+
+  // Contract options must be distinguishable by CUSTOMER: `company` is the same
+  // seller legal entity on every contract, so it cannot identify a row.
+  assert.ok(selects[1].textContent.includes(expectedContract.client),
+    "contract option must name the customer, not only the shared seller entity");
+
+  selects[0].value = VM.customers[0].id;
   selects[0].dispatchEvent(new window.Event("change", { bubbles: true }));
   await tick();
 
@@ -544,7 +556,11 @@ console.log("STEP 14 — Create Shipment");
   assert.equal(created.length, 1, `expected 1 shipment_create event, got ${created.length}`);
   assert.equal(created[0].value.payload.shipmentId, "LO-0470", "create payload wrong id");
   assert.equal(created[0].value.payload.customer, VM.customers[0].name, "create payload wrong customer");
-  ok("Create Shipment → shipment_create {shipmentId, customer, ...} emitted");
+  // The backend joins on the canonical customer key; sending the display name
+  // used to store a bogus customer_id on the new lot.
+  assert.equal(created[0].value.payload.customerId, VM.customers[0].id,
+    "create payload must carry the canonical customerId");
+  ok("Create Shipment → shipment_create {shipmentId, customerId, customer, contractId} emitted");
 }
 
 // ---------------------------------------------------------------------------

@@ -195,6 +195,12 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
             "costVnd": _num(line.get("cost_vnd")),
             "sellVnd": _num(line.get("sell_vnd")),
         })
+    fx = q.get("fx_snapshot") if isinstance(q.get("fx_snapshot"), Mapping) else {}
+    fx_rates = {str(code).upper(): _num(rate)
+                for code, rate in dict(fx.get("rates_to_vnd") or {}).items()}
+    # Only the currencies actually used by the quote's lines are disclosed, so
+    # the VND total is never shown without the rate it was derived from.
+    line_currencies = sorted({str(line.get("currency") or "VND").upper() for line in lines_out})
     return {
         "id": _text(q.get("id")),
         "quoteNo": _text(q.get("quote_no")) or _text(q.get("id")),
@@ -217,6 +223,9 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
         "estimatedMarginVnd": _num(calc.get("estimated_margin_vnd")),
         "isEstimate": True,
         "ledgerPosted": bool(q.get("ledger_posted")),
+        "fxRatesToVnd": fx_rates,
+        "fxSource": _text(fx.get("source")),
+        "fxNeededFor": [code for code in line_currencies if code != "VND"],
         "serviceLines": lines_out,
         "assumptions": list(q.get("assumptions") or []),
         "statusHistory": list(q.get("status_history") or []),
@@ -364,6 +373,55 @@ def _contract_identity(contract: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _goods_totals_view(goods_raw: Any, pack: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Goods totals exactly as the authoritative rule states them.
+
+    ``core.docgen.rules.total_after_vat`` is the single source of the
+    UNKNOWN != ZERO decision: it returns ``None`` when the goods set cannot
+    produce a reliable total (no line at all, or a line with an UNKNOWN
+    quantity/price).  ``compute_goods_totals`` — which ``build_document_pack``
+    reports — returns dataclass zeros in exactly those cases, so forwarding it
+    verbatim made the desk render a hard "0 ₫" and derive the HDNT/PL vs HDMB
+    threshold decision from a fabricated zero while the readiness cards on the
+    same screen said "Tổng đang UNKNOWN, không thể thay bằng 0".
+
+    A genuine zero (real lines that sum to 0) is still returned as 0.
+    """
+    from core.docgen import rules as docgen_rules
+
+    try:
+        authoritative = docgen_rules.total_after_vat(
+            [line for line in (goods_raw or []) if isinstance(line, Mapping)])
+    except Exception:  # noqa: BLE001 - never blank the desk on a rule error
+        return None
+    if authoritative is None:
+        return None
+    totals = pack.get("totals")
+    return dict(totals) if isinstance(totals, Mapping) else None
+
+
+def _doc_card_view(card: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize ONE readiness card to the declared payload contract.
+
+    ``core.docgen.generator.build_document_pack`` emits the deferred DEBIT_USD
+    card without a ``missing`` list (nothing is missing — it is not
+    implemented).  The payload contract (``DocCard.missing: string[]``) and the
+    page that renders it require the key, so an absent list used to take the
+    whole shell down with "Cannot read properties of undefined".  Normalizing
+    here keeps the authoritative card content untouched and the ONE payload
+    self-consistent.
+    """
+    return {
+        "document_type": _text(card.get("document_type")),
+        "state": _text(card.get("state")),
+        "reason": _text(card.get("reason")),
+        "missing": [_text(m) for m in (card.get("missing") or []) if _text(m)],
+        "source_ref": _text(card.get("source_ref")),
+        "goods_count": card.get("goods_count"),
+        "applicable": bool(card.get("applicable")),
+    }
+
+
 def contract_projection(
     c: Mapping[str, Any],
     *,
@@ -424,8 +482,10 @@ def contract_projection(
             contracts=all_contracts,
         )
     except Exception:  # noqa: BLE001 - one bad contract must not blank the desk
-        pack = {"totals": {"lines": [], "subtotal": 0, "vat_amount": 0, "total_after_vat": 0, "currency": "VND"},
-                "threshold_vnd": 50_000_000, "applicable_documents": [], "cards": [], "hdnt_reuse": {}}
+        # Totals stay UNKNOWN (None) on the error path too — an unreadable
+        # contract must never be presented as a 0 ₫ total.
+        pack = {"totals": None, "threshold_vnd": 50_000_000,
+                "applicable_documents": [], "cards": [], "hdnt_reuse": {}}
 
     from core.database import load_shipments_for_contract
 
@@ -470,10 +530,11 @@ def contract_projection(
         "contractDate": _text(c.get("date") or c.get("contract_date")),
         "parties": {"company": _party_view(company, "company"), "agent": _party_view(agent, "agent")},
         "goodsLines": goods,
-        "goodsTotals": pack.get("totals") or {},
+        "goodsTotals": _goods_totals_view(goods_raw, pack),
         "thresholdVnd": pack.get("threshold_vnd"),
         "applicableDocuments": pack.get("applicable_documents") or [],
-        "docCards": pack.get("cards") or [],
+        "docCards": [_doc_card_view(card) for card in (pack.get("cards") or [])
+                     if isinstance(card, Mapping)],
         "hdntReuse": pack.get("hdnt_reuse") or {},
         "identity": identity,
         "linkedShipments": linked_shipments,
@@ -694,6 +755,52 @@ def _handle_customer_import(payload: Mapping[str, Any]) -> dict[str, Any]:
                    created=created, skipped=skipped, failed=list(errors))
 
 
+#: Currencies the quote form can price a service line in besides VND.
+_FX_QUOTE_CURRENCIES = ("USD", "CNY")
+
+
+def _quote_fx_snapshot(payload: Mapping[str, Any], service_lines: list[dict[str, Any]],
+                       base: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Build the canonical ``fx_snapshot`` from rates the operator entered.
+
+    NO FAKE FX: the quotation model requires a quote-time rate for every
+    non-VND line (``core.quotations.convert_to_vnd`` raises without one) and
+    labels it as a quoting rate, not a transaction rate. This handler used to
+    bake ``USD 25500 / CNY 3500`` into every quote, so the VND totals shown on
+    the desk (and carried into agreements/lots) were derived from a constant
+    nobody entered. Rates now come from the payload; a foreign-currency line
+    without an operator rate is refused in Vietnamese instead of converted.
+
+    ``base`` keeps the rates already stored on the quote when an edit only
+    changes one of them (the edit form pre-fills from the same snapshot).
+    """
+    from core.quotations import normalize_fx_snapshot
+
+    previous = dict((base or {}).get("rates_to_vnd") or {}) if isinstance(base, Mapping) else {}
+    supplied = payload.get("fx") if isinstance(payload.get("fx"), Mapping) else {}
+    rates: dict[str, Any] = {"VND": 1}
+    for code in _FX_QUOTE_CURRENCIES:
+        rate = _num(supplied.get(code))
+        if rate is None:
+            rate = _num(previous.get(code))
+        if rate is not None and rate > 0:
+            rates[code] = rate
+    needed = sorted({
+        _text(line.get("currency")).upper()
+        for line in service_lines if isinstance(line, Mapping)
+    } - {"", "VND"})
+    missing = [code for code in needed if _num(rates.get(code)) is None]
+    if missing:
+        raise ValueError(
+            "Thiếu tỷ giá báo giá " + ", ".join(f"{code} → VND" for code in missing)
+            + ". Nhập tỷ giá dùng cho báo giá này — hệ thống không tự đặt tỷ giá."
+        )
+    return normalize_fx_snapshot({
+        "rates_to_vnd": rates,
+        "source": "Tỷ giá SALE nhập khi báo giá; không phải tỷ giá giao dịch thực tế.",
+    })
+
+
 def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.quotations import calculate_quote
 
@@ -727,8 +834,7 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
         "expected_delivery_date": _text(payload.get("expectedDeliveryDate")),
         "factory_lots": payload.get("factoryLots") if isinstance(payload.get("factoryLots"), list) else [],
         "service_lines": service_lines,
-        "fx_snapshot": {"rates_to_vnd": {"USD": 25500, "CNY": 3500, "VND": 1},
-                        "source": "Tỷ giá nhập khi báo giá; không phải tỷ giá giao dịch thực tế."},
+        "fx_snapshot": _quote_fx_snapshot(payload, service_lines),
         "entrusted_import": {"active": False, "goods_value": 0, "goods_currency": "USD", "rate_pct": 0,
                              "review_requested": False, "review_reason": "",
                              "high_value_review_policy": {"status": "POLICY_NOT_CONFIGURED"},
@@ -812,6 +918,14 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
             })
         if service_lines:
             quote["service_lines"] = service_lines
+    if isinstance(payload.get("fx"), Mapping) or isinstance(payload.get("serviceLines"), list):
+        # Re-price with the rates the operator entered for THIS edit; rates they
+        # did not touch stay as stored on the quote (never re-invented here).
+        try:
+            quote["fx_snapshot"] = _quote_fx_snapshot(
+                payload, quote.get("service_lines") or [], base=quote.get("fx_snapshot"))
+        except ValueError as exc:
+            return _result("quote_edit", qid, False, str(exc))
     try:
         recomputed = calculate_quote(quote)
         stamped = prepare_quote_for_persistence(recomputed, actor=_actor())

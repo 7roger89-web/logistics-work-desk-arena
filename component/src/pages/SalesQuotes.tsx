@@ -53,6 +53,20 @@ interface LineForm {
   taxPct: string;
 }
 
+/**
+ * Quote-time FX rates, entered by the operator for THIS quote.
+ *
+ * NO FAKE FX: the quotation model needs a rate for every non-VND line and
+ * refuses without one. The app never supplies a default of its own, so the
+ * VND totals shown on the desk are always derived from a rate a human typed.
+ */
+interface FxForm {
+  USD: string;
+  CNY: string;
+}
+
+const FX_CODES = ["USD", "CNY"] as const;
+
 interface QuoteForm {
   customerId: string;
   salesOwner: string;
@@ -64,6 +78,7 @@ interface QuoteForm {
   goodsDescription: string;
   expectedDeliveryDate: string;
   lines: LineForm[];
+  fx: FxForm;
 }
 
 const EMPTY_LINE: LineForm = { code: "", serviceName: "", unit: "Lần", qty: "1", currency: "VND", costUnit: "", sellUnit: "", taxPct: "8" };
@@ -79,6 +94,20 @@ const EMPTY_FORM: QuoteForm = {
   goodsDescription: "",
   expectedDeliveryDate: "",
   lines: [{ ...EMPTY_LINE }],
+  fx: { USD: "", CNY: "" },
+};
+
+/** Rate text for one currency, or "" when the operator has not entered one. */
+const rateText = (value: number | null | undefined): string =>
+  value == null ? "" : Number(value).toLocaleString("vi-VN");
+
+/** "Tỷ giá báo giá: CNY 3.650" — the disclosure behind a converted VND total. */
+const fxNote = (x: Quote): string => {
+  const rates = x.fxRatesToVnd ?? {};
+  const parts = (x.fxNeededFor ?? [])
+    .filter((code) => rates[code] != null)
+    .map((code) => `${code} ${rateText(rates[code])}`);
+  return parts.length ? "Tỷ giá báo giá: " + parts.join(" · ") : "";
 };
 
 function lineToForm(l: QuoteServiceLine): LineForm {
@@ -112,15 +141,19 @@ export default function SalesQuotes() {
     [quotes, q, status]
   );
   const statuses = ["ALL", ...Array.from(new Set(quotes.map((x) => x.status)))];
+  // Currencies the lines currently being edited need a quote rate for.
+  const neededFxCodes = FX_CODES.filter((code) =>
+    form.lines.some((l) => (l.currency || "VND").trim().toUpperCase() === code));
 
   const set = (k: keyof Omit<QuoteForm, "lines">, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const setFx = (code: keyof FxForm, v: string) => setForm((f) => ({ ...f, fx: { ...f.fx, [code]: v } }));
   const setLine = (i: number, k: keyof LineForm, v: string) =>
     setForm((f) => ({ ...f, lines: f.lines.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)) }));
   const addLine = () => setForm((f) => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE }] }));
   const removeLine = (i: number) => setForm((f) => ({ ...f, lines: f.lines.length > 1 ? f.lines.filter((_, idx) => idx !== i) : f.lines }));
 
   const openCreate = () => {
-    setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], salesOwner: "Minh Tú" });
+    setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], fx: { USD: "", CNY: "" }, salesOwner: "Minh Tú" });
     setCreating(true);
   };
   const openEdit = (x: Quote) => {
@@ -135,6 +168,9 @@ export default function SalesQuotes() {
       goodsDescription: x.goodsDescription,
       expectedDeliveryDate: x.expectedDeliveryDate,
       lines: x.serviceLines.length ? x.serviceLines.map(lineToForm) : [{ ...EMPTY_LINE }],
+      // Pre-fill with the rates already stored on the quote so an edit keeps
+      // (and can correct) the same disclosed rate instead of losing it.
+      fx: { USD: rateText(x.fxRatesToVnd?.USD), CNY: rateText(x.fxRatesToVnd?.CNY) },
     });
     setEditing(x);
   };
@@ -163,6 +199,24 @@ export default function SalesQuotes() {
       toast("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
       return;
     }
+    // Currencies the lines actually need a quote rate for.
+    const neededFx = FX_CODES.filter((code) => serviceLines.some((l) => l.currency === code));
+    const missingFx = neededFx.filter((code) => {
+      const raw = String(form.fx[code] ?? "").replace(/\s|\./g, "").replace(",", ".");
+      const value = Number(raw);
+      return !(raw.trim() !== "" && Number.isFinite(value) && value > 0);
+    });
+    if (missingFx.length > 0) {
+      toast("Thiếu tỷ giá báo giá",
+        "Cần tỷ giá " + missingFx.map((c) => c + " → VND").join(", ")
+        + " cho các dòng ngoại tệ. Hệ thống không tự đặt tỷ giá.", "red");
+      return;
+    }
+    const fx: Record<string, number> = {};
+    for (const code of neededFx) {
+      const raw = String(form.fx[code]).replace(/\s|\./g, "").replace(",", ".");
+      fx[code] = Number(raw);
+    }
     if (editing) {
       dispatch("quote_edit", {
         id: editing.id,
@@ -174,6 +228,7 @@ export default function SalesQuotes() {
         goods_description: form.goodsDescription.trim(),
         expected_delivery_date: form.expectedDeliveryDate.trim(),
         serviceLines,
+        fx,
       });
       toast("Đã gửi cập nhật " + editing.id, "Backend tính lại giá bán + audit.", "green");
     } else {
@@ -188,6 +243,7 @@ export default function SalesQuotes() {
         goodsDescription: form.goodsDescription.trim(),
         expectedDeliveryDate: form.expectedDeliveryDate.trim(),
         serviceLines,
+        fx,
       });
       toast("Đã gửi tạo báo giá", "Backend tạo mã Q-… tự động, tính dự toán và audit.", "green");
     }
@@ -238,7 +294,10 @@ export default function SalesQuotes() {
                   <td className="font-semibold max-w-[180px]">{x.customer}</td>
                   <td className="max-w-[220px] text-[13px] text-slate-600">{fmtText(x.origin)} → {fmtText(x.destination)}</td>
                   <td>{fmtText(x.salesOwner)}</td>
-                  <td className="font-bold">{fmtMoney(x.sellingPriceTotalVnd ?? x.total, "VND")}</td>
+                  <td className="font-bold">{fmtMoney(x.sellingPriceTotalVnd ?? x.total, "VND")}
+                    {/* A converted total is never shown without the rate behind it. */}
+                    {fxNote(x) && <span className="block text-[11.5px] font-semibold text-slate-400">{fxNote(x)}</span>}
+                  </td>
                   <td><ToneBadge tone={STATUS_TONE[x.status] ?? "gray"} size="sm">{x.statusLabel || x.status}</ToneBadge></td>
                   <td>
                     <div className="flex flex-wrap gap-1.5">
@@ -275,6 +334,7 @@ export default function SalesQuotes() {
               <p className="font-semibold text-[14.5px] mt-1">{x.customer}</p>
               <p className="text-[13px] text-slate-500">{fmtText(x.origin)} → {fmtText(x.destination)}</p>
               <p className="font-extrabold text-[16px] mt-1.5">{fmtMoney(x.sellingPriceTotalVnd ?? x.total, "VND")} ₫</p>
+              {fxNote(x) && <p className="text-[12px] font-semibold text-slate-400 mt-0.5">{fxNote(x)}</p>}
             </div>
             <div className="border-t p-3 flex flex-wrap gap-2">
               {x.allowedTransitions.map((t) => (
@@ -315,6 +375,22 @@ export default function SalesQuotes() {
               <Field label="Ngày giao dự kiến"><input value={form.expectedDeliveryDate} onChange={(e) => set("expectedDeliveryDate", e.target.value)} placeholder="VD: 2026-09-20" className={inputCls()} /></Field>
             </div>
             <Field label="Mô tả hàng hóa"><input value={form.goodsDescription} onChange={(e) => set("goodsDescription", e.target.value)} placeholder="VD: Linh kiện điện tử" className={cx(inputCls(), "mt-3")} /></Field>
+
+            {neededFxCodes.length > 0 && (
+              <div className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50/70 p-3.5">
+                <p className="font-extrabold text-[15px] text-amber-900">Tỷ giá báo giá — bắt buộc cho dòng ngoại tệ</p>
+                <p className="text-[13px] text-amber-800 mt-0.5">Tổng VND của báo giá được quy đổi theo tỷ giá bạn nhập ở đây. Hệ thống không tự đặt tỷ giá và đây không phải tỷ giá giao dịch thực tế.</p>
+                <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+                  {neededFxCodes.map((code) => (
+                    <Field key={code} label={`Tỷ giá ${code} → VND`} required hint="Số có dấu chấm phân cách hàng nghìn.">
+                      <input value={form.fx[code]} onChange={(e) => setFx(code, e.target.value)} inputMode="decimal"
+                        placeholder={code === "USD" ? "VD: 25.500" : "VD: 3.650"}
+                        className={inputCls(!form.fx[code].trim() ? "missing" : "ok")} />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
