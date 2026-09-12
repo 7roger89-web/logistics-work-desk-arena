@@ -418,6 +418,65 @@ def test_pxk_gate_opens_after_delivery_then_uses_real_service(staging, event_seq
     assert zipfile.ZipFile(io.BytesIO(produced)).namelist(), "must be a readable .xlsx"
 
 
+def test_pxk_operator_identity_generates_persisted_office_file(staging, event_seq):
+    """PXK: operator-supplied legal identity → real generation → persistence.
+
+    LOGI_REAL_USE_READINESS_01 repair pin. core.docgen refuses to invent the
+    lot's own ``pxk_no`` / ``pxk_date`` (as the authoritative docgen desk does,
+    they are operator inputs), so without them the gate must stay fail-closed
+    and NAME the missing facts. With them, the real service must produce an
+    OOXML file, persist canonical document metadata, and the fresh view model
+    must read the document back (number/date/done + downloadable bytes) — the
+    UI used to drop all three and only showed a toast.
+    """
+    import base64
+
+    from core.database import get_db
+
+    sid = _make_pxk_ready_shipment(event_seq)
+    confirm = _dispatch(event_seq, "delivery_confirm", {
+        "shipmentId": sid, "deliveredAt": "2026-09-12",
+        "receiverName": "A. Nam", "receiverTitle": "Thủ kho",
+        "deliveryLocation": "Kho An Phát — KCN Quế Võ"})
+    assert confirm["ok"], confirm["error"]
+
+    # (1) Fail closed while the legal identity is missing.
+    out = _dispatch(event_seq, "pxk_generate", {"shipmentId": sid})
+    assert out["ok"] is False
+    assert out["gate"] == "MISSING_INFO"
+    assert out["missing"], "a refusal must name the missing facts"
+    assert "Phiếu xuất kho" in " ".join(out["missing"])
+    assert get_db()["docgen_documents"].count_documents({"shipment_id": sid}) == 0
+
+    # (2) With the operator's identity the real service generates + persists.
+    out = _dispatch(event_seq, "pxk_generate", {
+        "shipmentId": sid, "pxkNo": "PXK-2026-0460", "pxkDate": "2026-09-12"})
+    assert out["ok"], out
+    assert out["service"] == "core.docgen.generator.generate_document"
+    assert out["persisted"]["isOfficeFile"] is True
+    assert out["persisted"]["fileName"].endswith(".xlsx")
+    assert out["persisted"]["pxkNo"] == "PXK-2026-0460"
+
+    row = get_db()["docgen_documents"].find_one({"shipment_id": sid}, {"_id": 0})
+    assert row is not None, "PXK metadata was not persisted canonically"
+    assert row["document_type"] == "PXK"
+    assert row["status"] == "GENERATED"
+    assert row["output_file_name"].endswith(".xlsx")
+
+    # (3) Fresh readback through a rebuilt view model (not frontend state).
+    pxk = next(s["pxk"] for s in vm.build_view_model()["shipments"] if s["id"] == sid)
+    assert pxk["done"] is True
+    assert pxk["number"] == "PXK-2026-0460"
+    assert pxk["date"] == "2026-09-12"
+    assert pxk["source"] == "HDMB-0306"
+    document = pxk["document"]
+    assert document and document["status"] == "GENERATED"
+    assert document["downloadAvailable"] is True
+    raw = base64.b64decode(document["downloadBase64"])
+    assert raw[:2] == b"PK", "the downloadable payload must be a real OOXML container"
+    assert zipfile.ZipFile(io.BytesIO(raw)).namelist()
+
+
 def test_pxk_requires_linked_source_contract(staging, event_seq):
     """PXK needs an explicitly linked HDMB/PL source — no invented legal data."""
     out = _dispatch(event_seq, "pxk_generate", {"shipmentId": "LO-0295"})

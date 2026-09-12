@@ -194,6 +194,26 @@ export interface Finance {
   source?: string;
 }
 
+/**
+ * One PXK that core.docgen really generated for the lot: metadata from the
+ * canonical ``docgen_documents`` collection plus the file kept on the session
+ * download store (bytes are session-scoped by design, metadata is durable).
+ */
+export interface PxkDocument {
+  documentId?: string;
+  recordId?: string;
+  revision?: number;
+  status?: string;
+  fileName?: string;
+  mime?: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  downloadAvailable?: boolean;
+  downloadBase64?: string | null;
+  number?: string;
+  date?: string;
+}
+
 export interface Pxk {
   source?: string;
   sourceName?: string;
@@ -207,6 +227,8 @@ export interface Pxk {
   receiver?: string;
   role?: string;
   done?: boolean;
+  /** null while nothing has been generated — never a fabricated document. */
+  document?: PxkDocument | null;
 }
 
 export interface OpsAlert {
@@ -347,6 +369,16 @@ export interface Quote {
   estimatedMarginVnd?: MaybeNum;
   isEstimate?: boolean;
   ledgerPosted?: boolean;
+  /**
+   * Quote-time rates the operator entered for THIS quote (VND base). The VND
+   * totals above are derived from them, so they are always disclosed next to
+   * the total. NO FAKE FX: the app never invents a rate — a quote whose lines
+   * need one cannot be saved without it.
+   */
+  fxRatesToVnd?: Record<string, number | null>;
+  fxSource?: string;
+  /** Line currencies that required a rate (empty for a VND-only quote). */
+  fxNeededFor?: string[];
   serviceLines: QuoteServiceLine[];
   assumptions: string[];
   statusHistory: Array<Record<string, unknown>>;
@@ -491,7 +523,12 @@ export interface Contract {
   contractDate: string;
   parties: { company: AuthorityParty | null; agent: AuthorityParty | null };
   goodsLines: GoodsLine[];
-  goodsTotals: GoodsTotals;
+  /**
+   * null while the authoritative rule cannot produce a reliable total (no goods
+   * line yet, or a line with an UNKNOWN quantity/price). UNKNOWN != ZERO: the
+   * HDNT+PL vs HDMB threshold decision is only shown for a real total.
+   */
+  goodsTotals: GoodsTotals | null;
   thresholdVnd: number;
   applicableDocuments: string[];
   docCards: DocCard[];

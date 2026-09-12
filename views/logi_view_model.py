@@ -1272,6 +1272,26 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     contracts = load_contracts() or {}
     contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
     if not contract:
+        # The canonical N:M linkage written from the contract page
+        # ("Lô liên kết → Thêm") is the same fact read back from the shipment
+        # side, so a lot linked to exactly ONE contract has an unambiguous
+        # source. Several linked contracts stay refused: PXK must be driven by
+        # an explicitly selected source, never by a guess.
+        from core.database import load_contracts_for_shipment
+
+        try:
+            linked = load_contracts_for_shipment(sid) or {}
+        except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+            linked = {}
+        if len(linked) == 1:
+            contract_id, contract = next(iter(linked.items()))
+        elif len(linked) > 1:
+            ids = ", ".join(sorted(str(k).upper() for k in linked))
+            return _result("pxk_generate", sid, False,
+                           f"PXK cần đúng 1 chứng từ nguồn; lô đang liên kết {len(linked)} hợp đồng ({ids}).",
+                           gate="BLOCKED_AMBIGUOUS_SOURCE", delivered=True,
+                           missing=["Chọn chứng từ nguồn cho PXK"])
+    if not contract:
         return _result("pxk_generate", sid, False,
                        "PXK cần chứng từ nguồn (HDMB hoặc PL) đã liên kết với lô.",
                        gate="BLOCKED_NO_SOURCE", delivered=True)
@@ -1291,15 +1311,44 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
         "source_goods_line": source_line,
     }
 
+    # PXK owns its own legal identity (``pxk_no`` / ``pxk_date``), exactly like
+    # the authoritative docgen desk (views/docgen.py collects "Số PXK" +
+    # "Ngày PXK" from the operator). core.docgen.rules refuses to invent them —
+    # an absent legal number/date must stay MISSING_INFO — so the shell has to
+    # hand them over instead of promising "tự sinh khi xuất".
+    pxk_no = rd.text(payload.get("pxkNo")).strip()
+    pxk_date = _normalize_date(payload.get("pxkDate"))
+    pxk_identity = {
+        "id": pxk_no.upper(),
+        "pxk_no": pxk_no,
+        "pxk_date": pxk_date,
+        "currency": rd.text(shipment.get("currency")) or "VND",
+    }
+
+    # core.docgen speaks its own delivery view (DELIVERY_COMPLETED + the four
+    # receiver facts), while the canonical shipment document stores the same
+    # facts as ``is_delivered`` / ``delivered_at``. Translate, never invent:
+    # every value below is the one delivery_confirm just persisted.
+    delivery_view = {
+        "delivery_completed": delivered,
+        "delivery_date": rd.text(delivery.get("delivered_at") or delivery.get("delivery_date")),
+        "delivery_location": rd.text(delivery.get("delivery_location") or delivery.get("addr")),
+        "receiver_name": rd.text(delivery.get("receiver_name")),
+        "receiver_title": rd.text(delivery.get("receiver_title")),
+    }
+
     readiness = docgen_rules.evaluate_document_readiness(
         PXK, goods_lines=goods_lines, agent=agent, company=company,
-        selected_contract=contract, delivery_completed=True,
-        document_identity=contract, pxk_source=pxk_source, delivery=delivery,
+        selected_contract=pxk_identity, delivery_completed=delivered,
+        document_identity=pxk_identity, pxk_source=pxk_source, delivery=delivery_view,
     )
     gate_state = "READY" if readiness.state == READY else readiness.state
     if readiness.state != READY:
-        return _result("pxk_generate", sid, False, readiness.reason or "PXK chưa sẵn sàng.",
-                       gate=gate_state, delivered=True, missing=list(readiness.missing))
+        missing = list(readiness.missing)
+        return _result("pxk_generate", sid, False,
+                       (readiness.reason or "PXK chưa sẵn sàng.")
+                       + (f" Thiếu: {' '.join(missing)}" if missing else ""),
+                       gate=gate_state, delivered=True, missing=missing)
 
     if not can_generate_documents():
         return _result("pxk_generate", sid, False, "RBAC: không có quyền sales_write để sinh chứng từ.",
@@ -1308,13 +1357,19 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     # Real service call. Legal templates are Owner-controlled assets; when they
     # are not present the canonical service fails closed — it never falls back
     # to a prototype text file.
-    template_xlsx = payload.get("templatePathXlsx")
+    from views import logi_c1
+
+    template_xlsx = rd.text(payload.get("templatePathXlsx"))
+    if not template_xlsx:
+        # SAME resolution as the contract docgen path: the Owner's
+        # DOCGEN_TEMPLATE_DIR when configured, the staging template in sandbox.
+        template_xlsx = rd.text(logi_c1._resolve_template_paths()[0])
     try:
         generated = docgen.generate_document(
             PXK, shipment_id=sid, agent=agent, company=company,
-            goods_lines=goods_lines, contract=contract, delivery=delivery,
+            goods_lines=goods_lines, contract=pxk_identity, delivery=delivery_view,
             pxk_source=pxk_source,
-            template_path_xlsx=rd.text(template_xlsx) or None,
+            template_path_xlsx=template_xlsx or None,
         )
     except docgen.DocumentGenerationError as exc:
         readiness_err = getattr(exc, "args", [None])[0]
@@ -1328,15 +1383,40 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     raw = generated.get("bytes") or b""
     is_office = raw[:2] == b"PK"  # OOXML container
+
+    # Persist the generated document through the canonical metadata writer and
+    # keep the file on the SAME session download store the contract documents
+    # already use, so "đã sinh PXK" is a durable, downloadable fact and not
+    # only a toast that leaves nothing behind.
+    from core.database import get_last_db_error, save_docgen_document
+
+    metadata = dict(generated.get("metadata") or {})
+    record_id = (rd.text(metadata.get("id"))
+                 or f"{generated.get('document_id')}::R{generated.get('revision')}")
+    metadata["id"] = record_id
+    if not save_docgen_document(metadata):
+        return _result("pxk_generate", sid, False,
+                       get_last_db_error() or "Không lưu được metadata PXK.",
+                       gate=gate_state, delivered=True,
+                       service="core.docgen.generator.generate_document", failClosed=True)
+    logi_c1.store_output(sid, record_id, {
+        "file_name": generated.get("output_file_name"), "mime": logi_c1._MIME_XLSX,
+        "bytes": raw, "document_type": PXK, "revision": generated.get("revision"),
+    })
+
     return _result("pxk_generate", sid, True, "Đã sinh PXK bằng dịch vụ docgen thật.",
                    gate=gate_state, delivered=True,
                    service="core.docgen.generator.generate_document",
                    persisted={"documentId": rd.text(generated.get("document_id")),
+                              "recordId": record_id,
                               "fileName": rd.text(generated.get("output_file_name")),
-                              "outputHash": rd.text(generated.get("output_hash")),
+                              "status": rd.text(generated.get("status")),
                               "revision": generated.get("revision"),
+                              "outputHash": rd.text(generated.get("output_hash")),
+                              "pxkNo": pxk_no, "pxkDate": pxk_date,
                               "bytes": len(raw),
                               "isOfficeFile": is_office},
+                   readback=_projection_for(read_shipment(sid) or {}),
                    audit=_audit_trail(sid))
 
 

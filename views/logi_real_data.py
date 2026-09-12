@@ -746,19 +746,84 @@ def pxk_projection(shipment: Mapping[str, Any], contracts: Mapping[str, Any]) ->
     missing_delivery = docgen_rules.delivery_facts_missing(delivery) if delivered else []
     contract_id = text(shipment.get("contract_id") or _section(shipment, "entrustment").get("contract_no"))
     contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    if not contract:
+        # Same canonical N:M linkage the contract page writes ("Lô liên kết →
+        # Thêm"): exactly one linked contract is an unambiguous source, several
+        # stay UNKNOWN rather than being guessed for display.
+        from core.database import load_contracts_for_shipment
 
+        try:
+            linked = load_contracts_for_shipment(text(shipment.get("id"))) or {}
+        except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+            linked = {}
+        if len(linked) == 1:
+            contract_id, contract = next(iter(linked.items()))
+
+    generated = _pxk_document(text(shipment.get("id")))
     return {
         "source": contract_id,
         "sourceName": text(contract.get("contract_no") or contract.get("hdmb_no") or contract.get("hdnt_no")),
         "delivered": delivered,
         "gateOpen": delivered and not missing_delivery,
         "missingDeliveryFacts": list(missing_delivery),
-        "number": "",
-        "date": "",
+        # Read back from the canonical docgen metadata: the number/date/done
+        # facts describe a file that really exists, they are never fabricated.
+        "number": generated.get("number", ""),
+        "date": generated.get("date", ""),
         "place": text(delivery.get("delivery_location") or delivery.get("addr")),
         "receiver": text(delivery.get("receiver_name")),
         "role": text(delivery.get("receiver_title")),
-        "done": False,
+        "done": bool(generated),
+        "document": generated or None,
+    }
+
+
+def _pxk_document(shipment_id: str) -> dict[str, Any]:
+    """Latest PXK generated for one shipment: metadata + downloadable file.
+
+    Reads the canonical ``docgen_documents`` collection (the writer the contract
+    documents already use) and pairs it with the session file store through the
+    existing ``views.logi_c1.document_projection``. Returns ``{}`` when nothing
+    has been generated — UNKNOWN, never a fabricated "done".
+    """
+    if not shipment_id:
+        return {}
+    from core.database import load_docgen_documents
+
+    try:
+        docs = load_docgen_documents(shipment_id) or {}
+    except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+        return {}
+    pxk = [d for d in docs.values()
+           if isinstance(d, Mapping) and text(d.get("document_type")).upper() == "PXK"]
+    if not pxk:
+        return {}
+
+    def _revision(doc: Mapping[str, Any]) -> int:
+        try:
+            return int(doc.get("generation_revision") or doc.get("revision") or 1)
+        except Exception:  # noqa: BLE001
+            return 1
+
+    latest = max(pxk, key=_revision)
+    snapshot = latest.get("source_snapshot")
+    snapshot = snapshot if isinstance(snapshot, Mapping) else {}
+    from views import logi_c1
+
+    file_view = logi_c1.document_projection(latest, logi_c1.stored_outputs(shipment_id))
+    return {
+        "documentId": file_view["documentId"],
+        "recordId": file_view["id"],
+        "revision": file_view["revision"],
+        "status": file_view["status"],
+        "fileName": file_view["fileName"],
+        "mime": file_view["mime"],
+        "generatedAt": file_view["generatedAt"],
+        "generatedBy": file_view["generatedBy"],
+        "downloadAvailable": file_view["downloadAvailable"],
+        "downloadBase64": file_view["downloadBase64"],
+        "number": text(snapshot.get("pxk_no")),
+        "date": text(snapshot.get("pxk_date")),
     }
 
 

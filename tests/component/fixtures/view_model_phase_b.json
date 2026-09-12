@@ -1479,57 +1479,68 @@
   "contracts": [
     {
       "id": "HDMB-0306",
-      "company": "An Phát JSC",
-      "agent": "",
+      "company": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "agent": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
       "status": "active",
       "statusTone": "green",
-      "companyLegal": "An Phát JSC",
-      "value": 385000000.0
+      "companyLegal": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "value": 385000000.0,
+      "client": "An Phát JSC",
+      "customerId": "CUST-ANPHAT"
     },
     {
       "id": "HDNT-0307",
-      "company": "Đức Long Co.",
-      "agent": "",
+      "company": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "agent": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
       "status": "active",
       "statusTone": "green",
-      "companyLegal": "Đức Long Co.",
-      "value": 452000000.0
+      "companyLegal": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "value": 452000000.0,
+      "client": "Đức Long Co.",
+      "customerId": "CUST-DUCLONG"
     },
     {
       "id": "HDMB-0295",
-      "company": "Thiên Ân JSC",
-      "agent": "",
+      "company": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "agent": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
       "status": "active",
       "statusTone": "green",
-      "companyLegal": "Thiên Ân JSC",
-      "value": 320000000.0
+      "companyLegal": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+      "value": 320000000.0,
+      "client": "Thiên Ân JSC",
+      "customerId": "CUST-THIENAN"
     }
   ],
   "customers": [
     {
       "name": "An Phát JSC",
       "short": "An Phát JSC",
-      "mst": "0101234567"
+      "mst": "0101234567",
+      "id": "CUST-ANPHAT"
     },
     {
       "name": "Đức Long Co.",
       "short": "Đức Long Co.",
-      "mst": "0312987654"
+      "mst": "0312987654",
+      "id": "CUST-DUCLONG"
     },
     {
       "name": "Minh Đức JSC",
       "short": "Minh Đức JSC",
-      "mst": "0102345678"
+      "mst": "0102345678",
+      "id": "CUST-MINHDUC"
     },
     {
       "name": "Hồng Hà Co.",
       "short": "Hồng Hà Co.",
-      "mst": "0103456789"
+      "mst": "0103456789",
+      "id": "CUST-HONGHA"
     },
     {
       "name": "Thiên Ân JSC",
       "short": "Thiên Ân JSC",
-      "mst": "0104567890"
+      "mst": "0104567890",
+      "id": "CUST-THIENAN"
     }
   ],
   "quotes": [
@@ -1538,21 +1549,24 @@
       "customer": "An Phát JSC",
       "status": "accepted",
       "total": 385000000.0,
-      "currency": "VND"
+      "currency": "VND",
+      "customerId": "CUST-ANPHAT"
     },
     {
       "id": "BG-0307",
       "customer": "Đức Long Co.",
       "status": "accepted",
       "total": 452000000.0,
-      "currency": "VND"
+      "currency": "VND",
+      "customerId": "CUST-DUCLONG"
     },
     {
       "id": "BG-0295",
       "customer": "Thiên Ân JSC",
       "status": "accepted",
       "total": 320000000.0,
-      "currency": "VND"
+      "currency": "VND",
+      "customerId": "CUST-THIENAN"
     }
   ],
   "notifications": [
