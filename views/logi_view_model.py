@@ -297,6 +297,52 @@ def _last_writes_readback() -> list[dict[str, Any]]:
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
+def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any]) -> dict[str, Any]:
+    """ONE fresh request/render-local snapshot of the shared read sources.
+
+    PERFORMANCE REPAIR (no cache layer, no new store): every projection built by
+    ``build_view_model`` needs the same canonical rows, and reading them once per
+    shipment was the proven N+1 defect — with ~95 real shipments the finance path
+    alone issued ~570 full ledger collection reads for a single render.
+
+    This reads each shared source exactly once, for THIS render, and hands the
+    very same in-memory rows to every consumer below:
+
+    * ``ledger``          — the three canonical financial collections
+      (``core.financial_ledger.load_ledger_snapshot``), shared by the per-shipment
+      C2B block, the C2D payables worklist and the reconciliation desk;
+    * ``agents``          — the authority_agents legal master;
+    * ``timelines``       — shipment audit history for the worklist rows, in ONE
+      bounded audit read instead of one read per shipment;
+    * ``docgenDocuments`` — canonical docgen metadata grouped by shipment, ONE
+      read instead of one per projected PXK;
+    * ``linkedContracts`` — the contract ↔ shipment linkage, indexed in memory
+      from the contracts already loaded (zero reads);
+    * ``shipmentIds``     — the ids the two global finance worklists both need,
+      read once instead of once each.
+
+    Nothing is stored on the session, the module or the process: the next
+    Streamlit rerun calls this again and therefore sees the freshest data, so a
+    write is visible on the very next render exactly as before.
+    """
+    from core.database import load_authority_agents, load_shipment_ids
+    from core.financial_ledger import load_ledger_snapshot
+
+    shipment_ids = [str(sid) for sid in shipments.keys()]
+    try:
+        agents = load_authority_agents() or {}
+    except Exception:  # noqa: BLE001 - a missing master must not blank the desk
+        agents = {}
+    return {
+        "ledger": load_ledger_snapshot(),
+        "agents": agents,
+        "timelines": rd.timelines_projection(shipment_ids),
+        "docgenDocuments": rd.docgen_documents_by_shipment(),
+        "linkedContracts": rd.linked_contracts_index(references.get("contracts")),
+        "shipmentIds": load_shipment_ids(),
+    }
+
+
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
     from core.auth import current_user
@@ -306,6 +352,7 @@ def build_view_model() -> dict:
     shipments = load_shipments()
     references = _load_references()
     views = _dashboard_views(shipments)
+    sources = _read_sources(shipments, references)
 
     rows = [
         rd.shipment_projection(
@@ -314,7 +361,15 @@ def build_view_model() -> dict:
             contracts=references["contracts"],
             quotes=references["quotes"],
             dashboard=views.get(sid, {}),
-            history=rd.timeline_projection(sid),
+            # One bounded audit read for the whole worklist, grouped in memory;
+            # a shipment with no audit row stays [] exactly as before.
+            history=sources["timelines"].get(sid, []),
+            # The SAME render-local snapshot every row and every global worklist
+            # below share: one ledger read, one docgen read, one agents read.
+            ledger=sources["ledger"],
+            agents=sources["agents"],
+            docgen_documents=sources["docgenDocuments"],
+            linked_contracts=sources["linkedContracts"],
         )
         for sid, ship in shipments.items()
     ]
@@ -323,18 +378,29 @@ def build_view_model() -> dict:
 
     summary = build_dashboard_summary(views.values())
     user = current_user() or {}
-    c1 = logi_c1.assemble_c1_payload()
+    # The contract→shipment links read the SAME shipment map this render already
+    # loaded, so C1 adds no second full shipments read.
+    c1 = logi_c1.assemble_c1_payload(shipments=shipments)
 
     # C2D is read ONCE per render and shared by both the global worklist and the
     # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
-    # derivation of a partner's financial position.
-    payables = rd.partner_payables_projection()
+    # derivation of a partner's financial position. It derives from the SAME
+    # render-local ledger snapshot the per-shipment C2B block used.
+    payables = rd.partner_payables_projection(
+        records=sources["ledger"],
+        shipment_ids=sources["shipmentIds"],
+        agents=sources["agents"],
+    )
     home = _home_projection(rows, summary, references)
     tasks = _task_projection(rows, references)
     receivables = rd.receivables_projection(rows)
+    # The reconciliation desk derives from the SAME render-local snapshot (ids +
+    # ledger rows) instead of re-reading both collections once per shipment.
     reconciliation = logi_reconciliation.reconciliation_view(
         st.session_state.get(RECONCILIATION_FILTER_KEY),
         known_shipment_ids=list(shipments.keys()),
+        shipment_ids=sources["shipmentIds"],
+        records=sources["ledger"],
     )
     # LOGI_CEO_REPORT_01 — one bounded READ-ONLY presentation adapter over
     # projections already built above. It does not open a second reader, create

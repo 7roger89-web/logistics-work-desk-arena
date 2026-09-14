@@ -578,11 +578,20 @@ def reconciliation_view(
     *,
     db: Any = None,
     known_shipment_ids: Iterable[str] | None = None,
+    shipment_ids: Iterable[str] | None = None,
+    records: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The ONE-READ wrapper: canonical ledger → filter → bounded payload.
 
     ``selection`` is the bounded read-only filter the dispatcher recorded. It is
     a lookup input only and is never trusted as data.
+
+    PERFORMANCE REPAIR — the component build path passes the render-local
+    snapshot it already read: ``shipment_ids`` (``core.database.load_shipment_ids``,
+    the identical query/projection this wrapper used to run) and ``records``
+    (``core.financial_ledger.load_ledger_snapshot``), so the per-shipment
+    derivation reads no collection. Both are optional: a standalone caller keeps
+    the original reads.
     """
     from core.database import get_db
     from core.financial_ledger import shipment_partner_position
@@ -592,17 +601,18 @@ def reconciliation_view(
     if db is None:
         return _empty("MongoDB is not available", NO_SOURCE)
 
-    try:
-        shipment_ids = [
-            _text(doc.get("id"))
-            for doc in db.shipments.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1})
-            if isinstance(doc, Mapping)
-        ]
-    except Exception as exc:  # noqa: BLE001 - read path fails honest, never fabricates
-        return _empty(str(exc), NO_SOURCE)
+    if shipment_ids is None:
+        try:
+            shipment_ids = [
+                _text(doc.get("id"))
+                for doc in db.shipments.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1})
+                if isinstance(doc, Mapping)
+            ]
+        except Exception as exc:  # noqa: BLE001 - read path fails honest, never fabricates
+            return _empty(str(exc), NO_SOURCE)
 
     positions = [
-        shipment_partner_position(sid, db=db)
+        shipment_partner_position(sid, db=db, records=records)
         for sid in shipment_ids
         if sid
     ]

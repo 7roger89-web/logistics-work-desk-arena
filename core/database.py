@@ -400,6 +400,30 @@ def load_archived_data(limit: int = 5000) -> dict[str, dict[str, Any]]:
         return {}
 
 
+def load_shipment_ids() -> list[str]:
+    """IDs of the non-deleted shipments, in one bounded read.
+
+    PERFORMANCE REPAIR: this is the exact query the two global finance
+    worklists (``views.logi_real_data.partner_payables_projection`` and
+    ``views.reconciliation_desk.reconciliation_view``) each ran, one after the
+    other, during the SAME render. Reading it once and handing the SAME ids to
+    both removes the duplicate full collection read without changing which
+    shipments either worklist considers.
+
+    Read-only, projection ``{"_id": 0, "id": 1}`` — the rows are identical to
+    the inline query it replaces.
+    """
+    db = get_db()
+    if db is None:
+        return []
+    try:
+        cursor = db.shipments.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return []
+    return [str(doc.get("id") or "").strip() for doc in cursor if isinstance(doc, Mapping)]
+
+
 def _audit(db, entity_type: str, entity_id: str, action: str, before: Any = None, after: Any = None, actor: str | None = None, session=None) -> None:
     # LOG-LG08.1: Prevent password_hash leakage into audit logs
     from core.users import redact_password_material
@@ -1618,6 +1642,44 @@ def load_audit_logs(entity_type: str, entity_id: str, limit: int = 100) -> list[
     if db is None:
         return []
     return list(db.audit_logs.find({"entity_type": entity_type, "entity_id": entity_id}, {"_id": 0}).sort("created_at", -1).limit(limit))
+
+
+def load_audit_logs_bulk(entity_type: str, entity_ids: Iterable[str], limit_per_entity: int = 100) -> dict[str, list[dict[str, Any]]]:
+    """Audit history for MANY entities in ONE bounded collection read.
+
+    PERFORMANCE REPAIR: the component build path previously called
+    ``load_audit_logs`` once per shipment, i.e. one collection read per row.
+    This performs exactly one read of the same rows (same collection, same
+    ``entity_type`` filter, ``_id`` excluded) for the ids the caller already
+    has, then groups them in memory. Each entity keeps the same "newest first,
+    at most ``limit_per_entity`` rows" semantics as the single-entity reader.
+
+    Read-only; no schema, writer or index is changed. A read failure returns
+    ``{}`` — an honest empty history, never a fabricated entry.
+    """
+    ids = [str(item).strip() for item in (entity_ids or []) if str(item or "").strip()]
+    if not ids:
+        return {}
+    db = get_db()
+    if db is None:
+        return {}
+    try:
+        cursor = db.audit_logs.find(
+            {"entity_type": entity_type, "entity_id": {"$in": ids}}, {"_id": 0}
+        ).sort("created_at", -1)
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    limit = max(0, int(limit_per_entity))
+    for row in cursor:
+        if not isinstance(row, Mapping):
+            continue
+        entity_id = str(row.get("entity_id") or "")
+        bucket = grouped.setdefault(entity_id, [])
+        if len(bucket) < limit:
+            bucket.append(dict(row))
+    return grouped
 
 
 def load_proxy_payments() -> dict[str, dict[str, Any]]:
