@@ -8,7 +8,7 @@ Usage (from the repo root):
 
 Output (docs/goals/LOG-LG02/backups/<timestamp>/):
     metadata.json          backup manifest (db, collections, counts, timestamps, digests)
-    <collection>.jsonl     one document per line, compact JSON
+    <collection>.jsonl     one document per line, MongoDB Canonical Extended JSON
     schema/<collection>.json   first document sample shape + index spec
 
 This script is READ-ONLY against the database: it only runs countDocuments,
@@ -32,6 +32,7 @@ STREAMLIT_SECRETS = os.path.join(APP_ROOT, ".streamlit", "secrets.toml")
 BACKUP_ROOT = os.path.join(APP_ROOT, "docs", "goals", "LOG-LG02", "backups")
 PROD_DB = "logistics_db"
 EXPECTED_ALLOWED = ["logistics_workdesk_logc14", "logistics_workdesk_LG01_E2E", "logistics_db"]
+SERIALIZATION = "mongodb_extended_json_canonical_v1"
 
 
 def fail(msg):
@@ -68,10 +69,11 @@ def main() -> None:
         )
 
     try:
+        from bson import json_util
         from pymongo import MongoClient
         from pymongo.errors import PyMongoError
     except ImportError:
-        fail("Thiếu pymongo. Chạy: pip install pymongo")
+        fail("Thiếu pymongo/bson. Chạy: pip install -r requirements.txt")
 
     try:
         client = MongoClient(uri, serverSelectionTimeoutMS=10000)
@@ -93,6 +95,7 @@ def main() -> None:
         "purpose": "pre-release production backup (R2)",
         "cluster": "cluster0.qvjh5ji.mongodb.net (Atlas free tier, no Atlas-managed backup)",
         "db": PROD_DB,
+        "serialization": SERIALIZATION,
         "export_timestamp_utc": stamp,
         "script": "docs/goals/LOG-LG02/tools/export_production.py",
         "collections": [],
@@ -107,10 +110,16 @@ def main() -> None:
         first_doc_shape = None
         with open(jsonl_path, "w", encoding="utf-8") as fh:
             for doc in coll.find():
-                doc["_id"] = str(doc.get("_id"))
                 if first_doc_shape is None:
                     first_doc_shape = {k: type(v).__name__ for k, v in doc.items()}
-                fh.write(json.dumps(doc, ensure_ascii=False, default=str) + "\n")
+                fh.write(
+                    json_util.dumps(
+                        doc,
+                        json_options=json_util.CANONICAL_JSON_OPTIONS,
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
                 written += 1
         indexes = [
             {"name": idx["name"], "key": idx["key"], "unique": idx.get("unique", False)}
@@ -135,6 +144,7 @@ def main() -> None:
         json.dump(manifest, fh, ensure_ascii=False, indent=2)
 
     print(f"OK: export hoàn tất -> {out_dir}")
+    print(f"    serialization: {SERIALIZATION}")
     print(f"    collections: {len(collections)}, total documents: {manifest['total_documents']}")
     for c in manifest["collections"]:
         flag = "OK" if c["ok"] else "MISMATCH"
