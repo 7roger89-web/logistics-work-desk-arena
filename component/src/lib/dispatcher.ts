@@ -60,6 +60,11 @@ export type LogiEventName =
   // entity was picked and re-derives the whole context from the authoritative
   // readers (entity_context / authority_agents / C2D ledger) on the next read.
   | "partner_context_select"
+  // LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — ONE bounded write event for
+  // the "Đại Lý Trường Thành" agent master (authority_agents): CREATE or EDIT
+  // through the EXISTING canonical writer core.database.save_authority_agent
+  // (sales_write RBAC → upsert → audit → fresh readback). No new collection.
+  | "authority_agent_save"
   // LOGI_RECONCILIATION_DESK_01 — bounded READ-ONLY filter event for
   // /tai-chinh/doi-soat. It mutates nothing: Python records only WHICH slice of
   // the existing canonical projection was asked for (query / currency / state /
@@ -101,6 +106,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "tariff_lookup",
   "translate_text",
   "partner_context_select",
+  "authority_agent_save",
   "reconciliation_filter",
 ]);
 

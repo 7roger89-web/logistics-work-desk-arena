@@ -1,8 +1,13 @@
 // ============================================================================
-// LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac (Ngữ cảnh Đối tác).
+// LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac ("Đại Lý Trường Thành").
 //
-// A REAL, READ-ONLY partner-context workspace over capabilities that already
-// exist in Logistics Work Desk:
+// LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01: the visible workspace is now
+// the AGENT MASTER MANAGEMENT desk of Trường Thành — CREATE / EDIT of the
+// existing canonical authority_agents master through ONE bounded typed event
+// (authority_agent_save → sales_write RBAC → the EXISTING writer
+// core.database.save_authority_agent → audit → fresh readback). The linked
+// shipment / document / payable context underneath stays exactly what it was:
+// a READ-ONLY projection over capabilities that already exist:
 //
 //   identity/contact  → authority_agents legal master (via views.logi_c1's own
 //                       party projection, so one master never renders two ways)
@@ -25,21 +30,65 @@
 // reachable without horizontal scroll.
 // ============================================================================
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, Building2, CircleAlert, Eye, Handshake, Info, Lock,
-  Phone, Search, ShieldQuestion, Wallet,
+  PencilLine, Phone, Plus, Save, Search, ShieldQuestion, Wallet,
 } from "lucide-react";
-import { SectionTitle, ToneBadge } from "../components/ui";
+import { Field, SectionTitle, ToneBadge, inputCls } from "../components/ui";
 import { dispatchLogiEvent } from "../lib/dispatcher";
 import { cx, fmtCcy, fmtText, isUnknown, UNKNOWN } from "../lib/format";
+import { useStore } from "../lib/store";
 import {
   getViewModel,
   subscribeViewModel,
   type PartnerContextOption,
   type PartnerContextShipmentRow,
 } from "../lib/viewmodel";
+
+// ----------------------------------------------------------------------------
+// LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — agent master form contract.
+// EXACTLY the fields the existing canonical authority_agents master projects
+// (views.logi_c1._party_view ↔ core.database.save_authority_agent): nothing is
+// invented here — no tax/credit/SLA/risk/rating field exists, so none is shown.
+// ----------------------------------------------------------------------------
+
+type AgentFormValues = {
+  agentId: string;
+  legalName: string;
+  legalCode: string;
+  legalAddress: string;
+  legalRepresentative: string;
+  representativeTitle: string;
+  phone: string;
+  email: string;
+  bankAccountHolder: string;
+  bankAccountNumber: string;
+  bankName: string;
+  bankBranch: string;
+};
+
+const EMPTY_AGENT_FORM: AgentFormValues = {
+  agentId: "", legalName: "", legalCode: "", legalAddress: "",
+  legalRepresentative: "", representativeTitle: "", phone: "", email: "",
+  bankAccountHolder: "", bankAccountNumber: "", bankName: "", bankBranch: "",
+};
+
+const AGENT_FIELDS: { key: keyof AgentFormValues; label: string; required?: boolean; lockedOnEdit?: boolean; wide?: boolean; mono?: boolean }[] = [
+  { key: "agentId", label: "Mã đại lý", required: true, lockedOnEdit: true, mono: true },
+  { key: "legalName", label: "Tên pháp lý", required: true, wide: true },
+  { key: "legalCode", label: "Mã số / mã pháp lý", mono: true },
+  { key: "legalAddress", label: "Địa chỉ", wide: true },
+  { key: "legalRepresentative", label: "Người đại diện" },
+  { key: "representativeTitle", label: "Chức vụ" },
+  { key: "phone", label: "Điện thoại", mono: true },
+  { key: "email", label: "Email" },
+  { key: "bankAccountHolder", label: "Chủ tài khoản" },
+  { key: "bankAccountNumber", label: "Số tài khoản", mono: true },
+  { key: "bankName", label: "Ngân hàng" },
+  { key: "bankBranch", label: "Chi nhánh ngân hàng" },
+];
 
 const STATUS_TONE: Record<string, "green" | "amber" | "red" | "blue" | "gray"> = {
   CONFIRMED: "blue",
@@ -126,10 +175,110 @@ function ShipmentRow({ row }: { row: PartnerContextShipmentRow }) {
 }
 
 export default function PartnerContext() {
-  useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const slice = getViewModel()?.partnerContext ?? null;
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
+  const slice = vm?.partnerContext ?? null;
+  const { toast } = useStore();
   const [query, setQuery] = useState("");
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+
+  // --------------------------------------------------------------------------
+  // Agent master CREATE / EDIT form. Local inputs only — persistence happens
+  // EXCLUSIVELY through the ONE bounded `authority_agent_save` event and is
+  // confirmed by its authoritative readback in `lastWrites` (never optimistically).
+  // --------------------------------------------------------------------------
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [formValues, setFormValues] = useState<AgentFormValues>({ ...EMPTY_AGENT_FORM });
+  const [savePending, setSavePending] = useState<{ requestId: string; agentId: string; mode: "create" | "edit" } | null>(null);
+  const [saveError, setSaveError] = useState("");
+
+  const openCreateForm = () => {
+    setFormMode("create");
+    setFormValues({ ...EMPTY_AGENT_FORM });
+    setSaveError("");
+    setFormOpen(true);
+  };
+
+  const openEditForm = () => {
+    const current = slice?.identity?.party ?? null;
+    if (!current) return;
+    setFormMode("edit");
+    setFormValues({
+      agentId: current.id ?? "",
+      legalName: current.legalName ?? "",
+      legalCode: current.legalCode ?? "",
+      legalAddress: current.legalAddress ?? "",
+      legalRepresentative: current.representative ?? "",
+      representativeTitle: current.representativeTitle ?? "",
+      phone: current.phone ?? "",
+      email: current.email ?? "",
+      bankAccountHolder: current.bankAccountHolder ?? "",
+      bankAccountNumber: current.bankAccountNumber ?? "",
+      bankName: current.bankName ?? "",
+      bankBranch: current.bankBranch ?? "",
+    });
+    setSaveError("");
+    setFormOpen(true);
+  };
+
+  const setField = (key: keyof AgentFormValues, value: string) =>
+    setFormValues((v) => ({ ...v, [key]: value }));
+
+  const submitAgentForm = () => {
+    if (savePending) return; // one click = one request; backend seq stays intact
+    const agentId = formValues.agentId.trim().toUpperCase();
+    const legalName = formValues.legalName.trim();
+    if (!agentId) { setSaveError("Mã đại lý là bắt buộc."); return; }
+    if (!legalName) { setSaveError("Tên pháp lý là bắt buộc — hồ sơ đại lý không tên không dùng được."); return; }
+    const requestId = `agent-save-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sent = dispatchLogiEvent("authority_agent_save", {
+      agentId,
+      requestId,
+      legalName,
+      legalCode: formValues.legalCode.trim(),
+      legalAddress: formValues.legalAddress.trim(),
+      legalRepresentative: formValues.legalRepresentative.trim(),
+      representativeTitle: formValues.representativeTitle.trim(),
+      phone: formValues.phone.trim(),
+      email: formValues.email.trim(),
+      bankAccountHolder: formValues.bankAccountHolder.trim(),
+      bankAccountNumber: formValues.bankAccountNumber.trim(),
+      bankName: formValues.bankName.trim(),
+      bankBranch: formValues.bankBranch.trim(),
+    });
+    if (!sent) {
+      setSaveError("Component chưa kết nối backend.");
+      return;
+    }
+    setSaveError("");
+    setSavePending({ requestId, agentId, mode: formMode });
+  };
+
+  // Consume the AUTHORITATIVE backend outcome once the fresh view-model carries
+  // it. Success closes the form (the saved master arrives via the normal
+  // readers); failure keeps the form open with the real backend error.
+  useEffect(() => {
+    if (!savePending || !vm) return;
+    const outcome = (vm.lastWrites ?? []).find(
+      (w) => w.event === "authority_agent_save" && w.requestId === savePending.requestId
+    );
+    if (!outcome) return;
+    if (outcome.ok) {
+      setSavePending(null);
+      setFormOpen(false);
+      toast("Đã lưu hồ sơ đại lý " + savePending.agentId,
+        "Ghi qua writer canonical authority_agents, có audit.", "green");
+      if (savePending.mode === "create") {
+        // Open the saved master's context immediately (the same bounded
+        // READ-ONLY selection event the picker uses — nothing new).
+        setPendingKey(savePending.agentId);
+        dispatchLogiEvent("partner_context_select", { entityKey: savePending.agentId });
+      }
+    } else {
+      setSavePending(null);
+      setSaveError(outcome.error || "Backend từ chối lưu hồ sơ đại lý.");
+    }
+  }, [vm, savePending, toast]);
 
   const options = slice?.options ?? [];
   const selectedKey = slice?.selectedKey ?? null;
@@ -180,12 +329,16 @@ export default function PartnerContext() {
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <SectionTitle
           icon={<Handshake size={20} className="text-[#1e5aa8]" />}
-          title="Ngữ cảnh Đối tác"
-          sub="Tra cứu đối tác/đại lý và đọc ngữ cảnh đã có trong hệ thống: hồ sơ pháp lý master, các lô liên kết, công nợ phải trả theo từng lô. Màn hình chỉ đọc — không sửa, không ghi."
+          title="Đại Lý Trường Thành"
+          sub="Quản lý hồ sơ đại lý của Trường Thành và xem các lô hàng, chứng từ, công nợ liên quan."
           right={
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-[12px] font-bold text-slate-600">
-              <Lock size={13} /> CHỈ ĐỌC
-            </span>
+            <button
+              onClick={openCreateForm}
+              aria-label="Thêm đại lý"
+              className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[13.5px] px-4 min-h-[48px]"
+            >
+              <Plus size={16} /> THÊM ĐẠI LÝ
+            </button>
           }
         />
 
@@ -248,6 +401,72 @@ export default function PartnerContext() {
         </div>
       </div>
 
+      {/* AGENT MASTER FORM — create/edit through the ONE bounded write event.
+          The saved master is shown only after the authoritative readback
+          arrives; there is no optimistic persistence. */}
+      {formOpen && (
+        <div className="rounded-2xl bg-white border-2 border-[#1e5aa8]/40 p-4 md:p-5">
+          <SectionTitle
+            icon={formMode === "create" ? <Plus size={18} /> : <PencilLine size={18} />}
+            title={formMode === "create" ? "Thêm đại lý mới" : `Sửa hồ sơ đại lý · ${formValues.agentId}`}
+            sub="Ghi vào master authority_agents hiện có qua writer canonical (quyền sales_write, có audit). Trường để trống được giữ là không xác định."
+            right={
+              <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[12px] font-bold text-blue-700">
+                {formMode === "create" ? "TẠO MỚI" : "CẬP NHẬT"}
+              </span>
+            }
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            {AGENT_FIELDS.map((f) => {
+              const locked = formMode === "edit" && f.lockedOnEdit;
+              return (
+                <div key={f.key} className={cx(f.wide && "md:col-span-2")}>
+                  <Field label={f.label} required={f.required}>
+                    <input
+                      value={formValues[f.key]}
+                      onChange={(e) => setField(f.key, e.target.value)}
+                      disabled={locked || !!savePending}
+                      aria-label={f.label}
+                      placeholder={locked ? "" : "—"}
+                      className={cx(inputCls(formValues[f.key].trim() ? "ok" : undefined),
+                        f.mono && "font-mono", locked && "opacity-60 cursor-not-allowed")}
+                    />
+                  </Field>
+                </div>
+              );
+            })}
+          </div>
+
+          {saveError && (
+            <div className="mt-4 rounded-xl border-2 border-red-200 bg-red-50 p-3.5 flex items-start gap-2.5" role="alert">
+              <CircleAlert size={18} className="text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-extrabold text-[14.5px] text-red-800">Backend từ chối — hồ sơ chưa được lưu</p>
+                <p className="text-[13.5px] text-red-700 mt-0.5 break-words">{saveError}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
+            <button
+              onClick={submitAgentForm}
+              disabled={!!savePending}
+              aria-label="Lưu hồ sơ đại lý"
+              className="btn-press touch-target flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-5 min-h-[48px] disabled:opacity-60"
+            >
+              <Save size={16} /> {savePending ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : "LƯU HỒ SƠ ĐẠI LÝ"}
+            </button>
+            <button
+              onClick={() => { if (!savePending) { setFormOpen(false); setSaveError(""); } }}
+              disabled={!!savePending}
+              className="btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px] disabled:opacity-60"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* PENDING: the readback is authoritative, so nothing is rendered early */}
       {pending && (
         <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center">
@@ -300,6 +519,15 @@ export default function PartnerContext() {
                 <ToneBadge tone={toneFor(identity?.masterStatus)} size="sm">
                   master: {identity?.masterStatus === "KNOWN" ? "CÓ HỒ SƠ" : "CHƯA CÓ"}
                 </ToneBadge>
+                {party && (
+                  <button
+                    onClick={openEditForm}
+                    aria-label="Sửa hồ sơ đại lý"
+                    className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#1e5aa8]/50 text-[#1e5aa8] font-bold text-[13px] px-3.5 min-h-[44px]"
+                  >
+                    <PencilLine size={15} /> Sửa hồ sơ đại lý
+                  </button>
+                )}
               </span>
             </div>
             <p className="text-[12.5px] text-slate-400 mt-2 break-words">

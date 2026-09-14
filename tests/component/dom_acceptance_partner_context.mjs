@@ -1,26 +1,41 @@
 // ============================================================================
 // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — DOM/navigation acceptance for
-// /ngu-canh-doi-tac (Ngữ cảnh Đối tác).
+// /ngu-canh-doi-tac ("Đại Lý Trường Thành").
+//
+// LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 extended this suite: the
+// visible workspace is now the AGENT MASTER MANAGEMENT desk (CREATE / EDIT of
+// the existing authority_agents master through ONE bounded typed event) while
+// the linked shipment / document / payable context stays the same READ-ONLY
+// projection as before.
 //
 // Runs the REAL production bundle (component/dist/logi-shell.js) in jsdom with a
 // REAL-backend fixture (scripts/gen_partner_context_fixture.py — isolated
 // mongomock staging, one C2B obligation + one payment recorded through the
 // canonical handlers) and verifies:
 //   1. boot (no process/BidiComponent failure)
-//   2. sidebar "Ngữ cảnh Đối tác" carries NO "Sắp có" marker anymore
-//   3. the route renders the REAL workspace over the existing picker — the
-//      PhaseB "Sắp có — chưa triển khai" screen is gone
+//   2. sidebar "Đại Lý Trường Thành" carries NO "Sắp có" marker anymore and
+//      keeps the existing route /ngu-canh-doi-tac
+//   3. the route renders the REAL workspace — new visible label + subtitle,
+//      "+ THÊM ĐẠI LÝ" action present, NO misleading whole-page "CHỈ ĐỌC"
 //   4. selecting a partner emits the ONE bounded READ-ONLY
 //      "partner_context_select" trigger carrying only the entity key
 //   5. the fresh readback renders authoritative identity (authority_agents
 //      master, verbatim), the real linked shipment with a working Open-Shipment
 //      link on the existing /lo-hang/:id route, and the canonical payable
-//      figures with their currency
+//      figures with their currency — EXISTING CONTEXT PRESERVED
 //   6. a partner with no canonical payable stays UNKNOWN (no "0" payable)
 //   7. an unknown partner key fails honest (no fabricated record)
 //   8. no CRM surface exists (no score/tier/note/activity/tab) and the
 //      unavailable-context panel states exactly what the backend lacks
-//   9. mobile: drawer routes to the same workspace, cards (not a min-width
+//   9. EDIT flow: form prefills from the master, one authority_agent_save
+//      trigger, and the saved master appears only via the authoritative
+//      readback (no optimistic persistence)
+//  10. CREATE flow: "+ THÊM ĐẠI LÝ" saves a NEW master; it appears in the
+//      picker "có master" and its context opens via the same read-only
+//      selection event
+//  11. RBAC refusal: the ok=False backend outcome is displayed verbatim, the
+//      form stays open, nothing is faked as saved
+//  12. mobile: drawer routes to the same workspace, cards (not a min-width
 //      table) carry the shipment list, touch targets are >= 48px
 //
 // Run: node tests/component/dom_acceptance_partner_context.mjs
@@ -42,9 +57,23 @@ const VM = FIX.journey;
 const EMPTY = FIX.empty;
 const NO_FINANCE = FIX.noFinance;
 const MISSING = FIX.unknownPartner;
+const AGENT_EDIT_OK = FIX.agentEditOk;
+const AGENT_CREATE_OK = FIX.agentCreateOk;
+const AGENT_SAVE_ERROR = FIX.agentSaveError;
 const PARTNER = FIX.partner;          // AGT-PHUANH (authority_agents master)
 const SHIPMENT = FIX.shipment;         // LO-0308
 const PARTNER_LABEL = "CÔNG TY TNHH PHÚ ANH LOGISTICS";
+const NEW_AGENT = "AGT-MINHPHAT";
+const NEW_AGENT_LABEL = "CÔNG TY TNHH ĐẠI LÝ MINH PHÁT";
+const PAGE_TITLE = "Đại Lý Trường Thành";
+
+/** Rewrite the fixture outcome's requestId to the one the real click produced —
+ *  exactly how the live backend echoes the component's request identity. */
+function withRequestId(state, requestId) {
+  const clone = structuredClone(state);
+  for (const w of clone.lastWrites ?? []) w.requestId = requestId;
+  return clone;
+}
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
   url: "http://localhost:8501/",
@@ -128,7 +157,7 @@ function invoke(data) {
 /** Simulate leaving the page and coming back: React remounts (route resets to
  *  "/") while Python re-delivers the last authoritative read. */
 let lastInvokeCleanup = null;
-async function remount(data, item = "Ngữ cảnh Đối tác") {
+async function remount(data, item = PAGE_TITLE) {
   if (lastInvokeCleanup) lastInvokeCleanup();
   const cleanup = invoke(data);
   lastInvokeCleanup = cleanup;
@@ -154,24 +183,33 @@ console.log("STEP 1 — boot production bundle (unselected state)");
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 2 — sidebar honesty: no 'Sắp có' on Ngữ cảnh Đối tác");
+console.log("STEP 2 — sidebar honesty: no 'Sắp có' on " + PAGE_TITLE);
 {
   const aside = $("aside")[0];
-  const item = findClickable("Ngữ cảnh Đối tác", "a", aside);
+  const item = findClickable(PAGE_TITLE, "a", aside);
   assert.ok(item, "sidebar item missing");
   assert.ok(!text(item).includes("Sắp có"), "item still marked 'Sắp có'");
   assert.equal(item.getAttribute("href"), "/ngu-canh-doi-tac", "route must stay the existing one");
-  ok("sidebar item active on the existing route, no deferred marker");
+  ok("visible label renamed; the route stays /ngu-canh-doi-tac, no deferred marker");
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 3 — /ngu-canh-doi-tac renders the REAL workspace (picker only)");
-await click("Ngữ cảnh Đối tác", "a", $("aside")[0]);
+console.log("STEP 3 — /ngu-canh-doi-tac renders " + PAGE_TITLE + " (agent master desk)");
+await click(PAGE_TITLE, "a", $("aside")[0]);
 {
   const t = mainText();
   assert.ok(!t.includes("Sắp có — chưa triển khai"), "route still falls through to the placeholder");
-  assert.ok(t.includes("Ngữ cảnh Đối tác"), "workspace heading missing");
-  assert.ok(t.includes("CHỈ ĐỌC"), "read-only marker missing");
+  assert.ok(t.includes(PAGE_TITLE), "workspace heading missing");
+  assert.ok(!t.includes("Ngữ cảnh Đối tác"), "old visible label must be gone");
+  // The misleading whole-page "CHỈ ĐỌC" description is removed — the linked
+  // shipment/finance context keeps its own read-only notes below.
+  assert.ok(!t.includes("CHỈ ĐỌC"), "whole-page read-only badge must be gone");
+  assert.ok(!t.includes("Màn hình chỉ đọc — không sửa, không ghi"),
+    "misleading whole-page read-only subtitle must be gone");
+  assert.ok(t.includes("Quản lý hồ sơ đại lý của Trường Thành"), "new subtitle missing");
+  // The agent-master management action is exposed.
+  const addBtn = findClickable("THÊM ĐẠI LÝ", "button");
+  assert.ok(addBtn, "+ THÊM ĐẠI LÝ action missing");
   // The picker lists the partner the backend really has, and nothing else.
   assert.ok(t.includes(PARTNER_LABEL), "authoritative partner option missing from picker");
   assert.ok(t.includes("có master"), "master/unknown distinction missing");
@@ -179,7 +217,7 @@ await click("Ngữ cảnh Đối tác", "a", $("aside")[0]);
   // No fabricated context: nothing about the unselected partner is rendered.
   assert.ok(!t.includes("57.000.000"), "payable shown before any authoritative read");
   assert.ok(!/điểm quan hệ|rủi ro: |credit|tín dụng: [0-9]/i.test(t), "a score-like surface appeared");
-  ok("real workspace over the existing picker; no placeholder, no invented context");
+  ok("renamed agent-master desk over the existing picker; no placeholder, no invented context");
 }
 
 // ---------------------------------------------------------------------------
@@ -290,17 +328,121 @@ console.log("STEP 8 — no CRM surface; unavailable context is stated, not faked
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 9 — mobile: drawer reaches the workspace; cards + 48px targets");
+console.log("STEP 9 — EDIT: form prefills from the master; saved only via readback");
 {
+  await remount(VM);
+  await tick(120);
+  // The selected partner (AGT-PHUANH) has a master → the edit action exists.
+  const editBtn = findClickable("Sửa hồ sơ đại lý", "button");
+  assert.ok(editBtn, "edit action missing for a master-backed agent");
+  await click("Sửa hồ sơ đại lý", "button");
+  // Prefilled from the canonical master, verbatim; the id is locked on edit.
+  const phone = $('input[aria-label="Điện thoại"]')[0];
+  const agentId = $('input[aria-label="Mã đại lý"]')[0];
+  assert.ok(phone && phone.value === "0281234567", `form must prefill master phone, got "${phone?.value}"`);
+  assert.ok(agentId && agentId.value === PARTNER && agentId.disabled,
+    "agent id must prefill and stay locked on edit");
+  // Change ONE field and save.
+  await type(phone, "0289999888");
+  const before = triggers.length;
+  await click("LƯU HỒ SƠ ĐẠI LÝ", "button");
+  await tick(40);
+  // While the outcome is in flight: pending, no optimistic display.
+  assert.ok(mainText().includes("ĐANG CHỜ BACKEND XÁC NHẬN…"), "no bounded pending state on save");
+  const saves = triggers.slice(before).filter((tr) => tr.event === "authority_agent_save");
+  assert.equal(saves.length, 1, "expected exactly one authority_agent_save trigger");
+  assert.equal(saves[0].value.payload.agentId, PARTNER);
+  assert.equal(saves[0].value.payload.phone, "0289999888");
+  assert.equal(typeof saves[0].value.payload.requestId, "string");
+  const sentReq = saves[0].value.payload.requestId;
+  // The authoritative readback arrives → form closes, updated master renders.
+  lastInvokeCleanup = invoke(withRequestId(AGENT_EDIT_OK, sentReq));
+  await tick(140);
+  const t = mainText();
+  assert.ok(!t.includes("LƯU HỒ SƠ ĐẠI LÝ"), "form must close after the authoritative readback");
+  assert.ok(t.includes("0289999888"), "updated phone must render from the fresh master");
+  assert.ok(t.includes(PARTNER_LABEL), "identity must stay rendered after the edit");
+  ok("edit goes through ONE authority_agent_save; the saved master arrives via readback");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 10 — CREATE: + THÊM ĐẠI LÝ saves a NEW master, shown immediately");
+{
+  await remount(VM);
+  await tick(120);
+  await click("THÊM ĐẠI LÝ", "button");
+  const agentId = $('input[aria-label="Mã đại lý"]')[0];
+  const legalName = $('input[aria-label="Tên pháp lý"]')[0];
+  const bankName = $('input[aria-label="Ngân hàng"]')[0];
+  assert.ok(agentId && !agentId.disabled && agentId.value === "", "create form must start empty/unlocked");
+  await type(agentId, NEW_AGENT);
+  await type(legalName, NEW_AGENT_LABEL);
+  await type(bankName, "Vietcombank");
+  const before = triggers.length;
+  await click("LƯU HỒ SƠ ĐẠI LÝ", "button");
+  await tick(40);
+  const saves = triggers.slice(before).filter((tr) => tr.event === "authority_agent_save");
+  assert.equal(saves.length, 1, "expected exactly one authority_agent_save trigger");
+  assert.equal(saves[0].value.payload.agentId, NEW_AGENT);
+  assert.equal(saves[0].value.payload.legalName, NEW_AGENT_LABEL);
+  assert.equal(typeof saves[0].value.payload.requestId, "string");
+  const sentReq = saves[0].value.payload.requestId;
+  // Authoritative readback: the NEW master is in the picker ("có master") and
+  // its context opens through the same bounded read-only selection event.
+  lastInvokeCleanup = invoke(withRequestId(AGENT_CREATE_OK, sentReq));
+  await tick(140);
+  const selects = triggers.slice(before + 1).filter((tr) => tr.event === "partner_context_select");
+  assert.equal(selects.length, 1, "saved master must be opened via partner_context_select");
+  assert.equal(selects[0].value.payload.entityKey, NEW_AGENT);
+  const t = mainText();
+  assert.ok(t.includes(NEW_AGENT_LABEL), "new master must be visible immediately after save");
+  assert.ok(t.includes("AGT-MINHPHAT"), "new master id missing");
+  assert.ok(t.includes("Vietcombank"), "new master bank missing");
+  assert.ok(!t.includes("LƯU HỒ SƠ ĐẠI LÝ"), "form must close after the authoritative readback");
+  ok("create writes through the existing writer; saved master visible immediately");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 11 — RBAC refusal: real backend error shown, nothing faked");
+{
+  await remount(VM);
+  await tick(120);
+  await click("THÊM ĐẠI LÝ", "button");
+  await type($('input[aria-label="Mã đại lý"]')[0], "AGT-TRAITUYEN");
+  await type($('input[aria-label="Tên pháp lý"]')[0], "CÔNG TY TRÁI TUYẾN");
+  const before = triggers.length;
+  await click("LƯU HỒ SƠ ĐẠI LÝ", "button");
+  await tick(40);
+  const saves = triggers.slice(before).filter((tr) => tr.event === "authority_agent_save");
+  assert.equal(saves.length, 1);
+  const sentReq = saves[0].value.payload.requestId;
+  // Backend refuses (viewer has no sales_write): the ok=False outcome must be
+  // displayed verbatim, the form stays open, nothing is faked as saved.
+  lastInvokeCleanup = invoke(withRequestId(AGENT_SAVE_ERROR, sentReq));
+  await tick(140);
+  const t = mainText();
+  assert.ok(t.includes("Backend từ chối — hồ sơ chưa được lưu"), "refusal banner missing");
+  assert.ok(t.includes("RBAC: không có quyền sales_write."), "real backend error must be visible");
+  assert.ok(t.includes("LƯU HỒ SƠ ĐẠI LÝ"), "form must stay open after a refusal");
+  assert.ok(!t.includes("AGT-TRAITUYEN · ") || !t.includes("Hồ sơ pháp lý · danh tính"),
+    "a refused agent must not render an identity card");
+  ok("RBAC refusal displayed verbatim; form stays, nothing persisted");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 12 — mobile: drawer reaches the workspace; cards + 48px targets");
+{
+  await remount(VM);
+  await tick(120);
   await clickSelector('button[aria-label="Mở menu"]');
   const drawer = $("div.anim-slide-up").filter((el) => text(el).includes("Menu điều hành"))[0]
     ?? $(".fixed.inset-0.z-50")[0];
   assert.ok(drawer, "mobile drawer missing");
-  const drawerItem = findClickable("Ngữ cảnh Đối tác", "a", drawer);
+  const drawerItem = findClickable(PAGE_TITLE, "a", drawer);
   assert.ok(drawerItem, "drawer item missing");
   assert.ok(!text(drawerItem).includes("Sắp có"), "drawer item still marked 'Sắp có'");
-  await click("Ngữ cảnh Đối tác", "a", drawer);
-  assert.ok(mainText().includes("Ngữ cảnh Đối tác"), "drawer must open the partner-context workspace");
+  await click(PAGE_TITLE, "a", drawer);
+  assert.ok(mainText().includes(PAGE_TITLE), "drawer must open the agent-master workspace");
   // The shipment list is a card stack at narrow widths (lg:hidden), and the
   // min-width table is hidden below lg — no unusable horizontal scroll.
   assert.ok($("div[class*='lg:hidden']").length > 0, "mobile card container missing");
@@ -319,7 +461,7 @@ console.log("STEP 9 — mobile: drawer reaches the workspace; cards + 48px targe
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 10 — other real routes are undisturbed");
+console.log("STEP 13 — other real routes are undisturbed");
 {
   await click("Công nợ đối tác", "a", $("aside")[0]);
   assert.ok(mainText().includes("Thanh toán đối tác"), "C2D route was disturbed");
