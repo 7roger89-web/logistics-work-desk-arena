@@ -1,5 +1,21 @@
 # AGENTS.md — Logistics Work Desk
 
+## P2P Supreme Law bootstrap (mandatory)
+
+Before substantive analysis, planning, implementation, review, or merge decisions, establish exactly one valid P2P law source in this order:
+
+1. `CANONICAL_AUTHENTICATED` — read `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md` when actually reachable.
+2. `LOCAL_INSTALLED` — otherwise use `.p2p/system/docs/P2P-OPERATIONS-NOTEBOOK.md` only when it contains `P2P_SUPREME_OPERATING_LAW_V1` and is not known stale.
+3. `LOCAL_PORTABLE` — otherwise use generated `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` only when it carries `P2P_PORTABLE_LAW_PROJECTION=YES`, canonical-source provenance, and source-content SHA.
+4. `INLINE_CAPSULE` — otherwise use only a fresh explicit `SUPREME_LAW_CAPSULE` supplied by the current P2P Control Tower prompt.
+
+If none is available, stop before substantive work with `P2P_LAW_SOURCE=LAW_CONTEXT_BLOCKED`.
+
+Do not treat an unauthenticated or repo-scoped 404 as proof that canonical law is absent. Do not claim a law source was read unless it actually was. `TASK_BRANCH != LAW_AUTHORITY`. Fresh reachable canonical law wins over stale local projections or chat memory.
+
+At task start report exactly one:
+`P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
+
 ## Baseline hiện tại
 
 - **Branch verified:** `log-c15-user-identity-rbac` @ `e518cae` (LOG-C13 + LOG-C14 + LOG-C15, đã kiểm chứng).
