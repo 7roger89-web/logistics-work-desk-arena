@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, Package, FileDown, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
+import ShipmentOperations from "../components/ShipmentOperations";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, fmtNum, fmtText, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
+import { fmtMoney, fmtVND, fmtNum, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
 
 const TABS = [
-  { id: "lay-hang", label: "Lấy hàng & Xuất khẩu", short: "Lấy hàng" },
+  { id: "van-tai", label: "Vận chuyển & Hàng hóa", short: "Vận chuyển" },
+  { id: "lay-hang", label: "Xuất khẩu", short: "Xuất khẩu" },
   { id: "nhap", label: "Nhập khẩu & Giao hàng", short: "Nhập & Giao" },
   { id: "tai-chinh", label: "Tài chính / Công nợ", short: "Tài chính" },
   { id: "chung-tu", label: "Chứng từ & PXK", short: "Chứng từ" },
@@ -16,7 +18,7 @@ const TABS = [
 export default function ShipmentDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
-  const tab = sp.get("tab") || "lay-hang";
+  const tab = sp.get("tab") || "van-tai";
   const { shipments, updateShipment, toast, contracts, dispatch } = useStore();
   const nav = useNavigate();
   const s = shipments.find((x) => x.id === id);
@@ -76,38 +78,6 @@ export default function ShipmentDetail() {
     toast(label, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
   };
 
-  const savePickup = () => {
-    // LOGI_CN_TRUCK_TYPE_PERSIST_01 — pickup_truck_type is a writable
-    // canonical fact (Owner-approved 2026-09-12): free text describing the
-    // CN pickup truck type/size, keyed by the operator, never derived.
-    //
-    // SAME touched-state rule as the GNT CLEAR_FIX: this field must NOT go
-    // through onlyFilled(), which drops blanks. An operator clearing a
-    // stored value would otherwise send nothing, the stale value would stay
-    // canonical and the fresh readback would put it back on screen.
-    //   key absent from `form` → untouched → omitted;
-    //   key present in `form`  → edited → trimmed value sent verbatim,
-    //     INCLUDING "". The backend `_coerce` preserves the blank.
-    const fields: Record<string, string> = {
-      ...onlyFilled({
-        container_no: val("plate", s.pickup.plate),
-        etd: val("pickupTime", s.pickup.pickupTime),
-        booking_no: val("bookingNo", s.transport?.bookingNo ?? ""),
-        carrier: val("carrier", s.transport?.carrier ?? ""),
-        pol: val("pol", s.transport?.pol ?? ""),
-        pod: val("pod", s.transport?.pod ?? ""),
-        qty_pkg: val("qtyPkg", s.transport?.qtyPkg ?? ""),
-      }),
-      ...(form.truckType != null ? { pickup_truck_type: form.truckType.trim() } : {}),
-    };
-    if (Object.keys(fields).length === 0) {
-      toast("Chưa có gì để lưu", "Nhập ít nhất một trường ở tab Lấy hàng & Xuất khẩu.", "red");
-      return;
-    }
-    dispatch("shipment_field_save", { shipmentId: s.id, fields });
-    afterSave("Đã lưu thông tin lấy hàng " + s.id);
-  };
-
   const saveImport = () => {
     const tk = val("tk", s.importInfo.declarationNo);
     if (!tk) { toast("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red"); return; }
@@ -137,10 +107,6 @@ export default function ShipmentDetail() {
         phan_luong: val("inspection", s.importInfo.inspection),
         arrival_date: val("arrivalDate", s.importInfo.arrivalDate ?? ""),
         free_time: val("freeTime", s.importInfo.freeTime != null ? String(s.importInfo.freeTime) : ""),
-        truck_no: val("plateVN", s.importInfo.plateVN),
-        // 2.7.seal_no is this system's "Tài xế/SĐT" field, exactly as the
-        // authoritative legacy desk labels it (views/shipment.py).
-        seal_no: val("driverVN", s.importInfo.driverVN),
         delivery_date: val("schedule", s.importInfo.schedule),
       }),
       ...edited,
@@ -328,8 +294,8 @@ export default function ShipmentDetail() {
   // The document checklist emits real Logistics fact names; route each to the
   // tab that actually owns that field (Phase B labels, not Phase A wording).
   const missingTarget = (m: string): string => {
-    if (/tờ khai|thông quan|xe giao|giao hàng/i.test(m)) return "nhap";
-    if (/lấy hàng|xe TQ|biển số|packing|container/i.test(m)) return "lay-hang";
+    if (/xe giao|xe TQ|biển số|packing|container|lấy hàng/i.test(m)) return "van-tai";
+    if (/tờ khai|thông quan|giao hàng/i.test(m)) return "nhap";
     if (/chứng từ|PXK|HDMB|PL$/i.test(m)) return "chung-tu";
     return "nhap";
   };
@@ -351,7 +317,7 @@ export default function ShipmentDetail() {
             <span className="ml-auto text-[12.5px] text-slate-400 flex items-center gap-1"><Clock size={14} /> Cập nhật {s.updated}</span>
           </div>
           <p className="font-semibold text-[15.5px] mt-1">{s.customer} <span className="text-slate-400 font-normal">· MST {s.customerMST}</span></p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Tuyến" value={s.route} />
             <StateRow label="Cửa khẩu" value={s.borderVN} />
             <StateRow label="Hợp đồng" value={<Link to={"/hop-dong/" + s.contract} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
@@ -382,49 +348,29 @@ export default function ShipmentDetail() {
         </div>
       )}
 
+      {/* ============ TAB: OPERATIONAL TRANSPORT + CARGO ============ */}
+      {tab === "van-tai" && (
+        <ShipmentOperations shipment={s} dispatch={dispatch} toast={toast} />
+      )}
+
       {/* ============ TAB: PICKUP ============ */}
       {tab === "lay-hang" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4" id="missing-anchor">
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
-            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><MapPin size={19} className="text-[#1e5aa8]" /> Nhà máy & lịch lấy hàng</h3>
+            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><MapPin size={19} className="text-[#1e5aa8]" /> Nhà máy & xuất khẩu</h3>
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-              <p className="font-bold text-[15px]">{s.pickup.factory}</p>
-              <p className="text-[13.5px] text-slate-500">{s.pickup.address}</p>
-              <p className="text-[14px] mt-1.5 flex items-center gap-1.5"><Phone size={15} className="text-slate-400" /> {s.pickup.contact} · {s.pickup.phone}</p>
+              <p className="font-bold text-[15px]">{s.pickup.factory || "Chưa có nhà máy"}</p>
+              <p className="text-[13.5px] text-slate-500">{s.pickup.address || "Chưa có địa chỉ lấy hàng"}</p>
+              <p className="text-[14px] mt-1.5 flex items-center gap-1.5"><Phone size={15} className="text-slate-400" /> {s.pickup.contact || "Chưa có liên hệ"} · {s.pickup.phone || "—"}</p>
             </div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Ngày lấy hàng (ETD)" required={!s.pickup.pickupTime} hint="Backend lưu theo NGÀY; giờ hẹn trao đổi với nhà máy ngoài hệ thống." error={!val("pickupTime", s.pickup.pickupTime) ? "Thiếu ngày lấy hàng — nhà máy cần báo trước 24h" : undefined}>
-                <input value={val("pickupTime", s.pickup.pickupTime)} onChange={(e) => set("pickupTime", e.target.value)} placeholder="VD: 10/09/2026" className={inputCls(!val("pickupTime", s.pickup.pickupTime) ? "missing" : "ok")} />
-              </Field>
-              <Field label="Loại / kích thước xe" hint="Loại/kích thước xe lấy hàng TQ — VD: 17.5m · rộng 3m · tải ≤30t. Bỏ trống = chưa biết."><input id="fld-trucktype" value={val("truckType", s.pickup.truckType)} onChange={(e) => set("truckType", e.target.value)} placeholder="VD: 17.5m · rộng 3m · tải ≤30t" className={inputCls()} /></Field>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-[13.5px] text-blue-950">
+              <p className="font-extrabold">Xe/container và lịch chặng được quản lý tại “Vận chuyển & Hàng hóa”.</p>
+              <p className="mt-1">Không nhập biển số TQ và xe giao VN vào cùng một trường.</p>
+              <button onClick={() => setSp({ tab: "van-tai" })} className="touch-target mt-3 rounded-xl bg-[#1e5aa8] text-white font-bold px-4 min-h-[44px]">MỞ CÁC CHẶNG VẬN CHUYỂN</button>
             </div>
-            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 pt-1"><Truck size={19} className="text-[#1e5aa8]" /> Xe Trung Quốc</h3>
-            {!s.pickup.plate && <MissingBox what="biển số xe TQ" where="Chưa đặt được xe — bổ sung để nhà máy cho hàng lên xe" actionLabel="Nhập xe ngay" onAction={() => document.getElementById("fld-plate")?.focus()} />}
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Biển số xe" required={!s.pickup.plate}><input id="fld-plate" value={val("plate", s.pickup.plate)} onChange={(e) => set("plate", e.target.value)} placeholder="VD: 粤A·88T36" className={inputCls(!val("plate", s.pickup.plate) ? "missing" : "ok")} /></Field>
-              {/* The lot document has no CN driver/phone field, so these two
-                  stay read-only and say so: typing here used to be discarded
-                  on save without a word. */}
-              <Field label="Tài xế xe TQ" hint="Lô hàng chưa có trường tài xế TQ — ghi ở sổ tay/điều phối, ô này không lưu."><input value={s.pickup.driver} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
-              <Field label="SĐT tài xế TQ" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.driverPhone} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Ngày dự kiến về kho" hint="Là ngày ETA ở tab Nhập & Giao."><input value={s.pickup.eta} readOnly className={inputCls()} /></Field>
-                <Field label="Ngày thực tế" hint="Chưa có trường dữ liệu trong lô."><input value={s.pickup.ata} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
-              </div>
-            </div>
-            <PrimaryBtn onClick={savePickup} className="w-full">💾 LƯU THÔNG TIN LẤY HÀNG</PrimaryBtn>
           </section>
 
           <div className="space-y-4">
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3"><Package size={19} className="text-[#1e5aa8]" /> Hàng hóa</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[["Số kiện / GW", fmtText(s.cargo.qtyPkg)], ["Số kiện", fmtNum(s.cargo.packs)], ["CBM", fmtNum(s.cargo.cbm)], ["Kích thước", fmtText(s.cargo.dims)], ["Loại hàng", fmtText(s.cargo.type)]].map(([k, v]) => (
-                  <div key={k} className="rounded-xl bg-slate-50 border border-slate-200 p-3"><p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">{k}</p><p className="font-bold text-[15px] text-[#0f2a4a] mt-0.5">{v}</p></div>
-                ))}
-              </div>
-              {s.cargo.note && <p className="mt-2.5 text-[13.5px] bg-amber-50 border border-amber-200 rounded-xl p-3">📌 Ghi chú: {s.cargo.note}</p>}
-            </section>
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-3">Xuất khẩu — {s.exportInfo.border}</h3>
               <StateRow label="Đơn vị khai" value={s.exportInfo.declarant} />
@@ -470,11 +416,11 @@ export default function ShipmentDetail() {
 
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><Truck size={19} className="text-[#1e5aa8]" /> Xe Việt Nam & giao hàng</h3>
-            {(!s.importInfo.driverVN || !s.importInfo.plateVN) && !s.importInfo.delivered && <MissingBox what="xe VN + tài xế" where="Chưa đặt xe — đặt trước giờ giao ít nhất 4 tiếng" actionLabel="Đặt xe ngay" onAction={() => document.getElementById("fld-platevn")?.focus()} />}
+            {(!s.importInfo.driverVN || !s.importInfo.plateVN) && !s.importInfo.delivered && <MissingBox what="chặng xe giao VN" where="Thêm một chặng Truck riêng; không dùng lại xe lấy hàng TQ" actionLabel="Mở chặng vận chuyển" onAction={() => setSp({ tab: "van-tai" })} />}
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Loại xe VN" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.truckVN} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
-              <Field label="Biển số VN"><input id="fld-platevn" value={val("plateVN", s.importInfo.plateVN)} onChange={(e) => set("plateVN", e.target.value)} placeholder="VD: 29H-481.36" className={inputCls(!val("plateVN", s.importInfo.plateVN) ? "missing" : "ok")} /></Field>
-              <Field label="Tài xế VN"><input value={val("driverVN", s.importInfo.driverVN)} onChange={(e) => set("driverVN", e.target.value)} placeholder="Tên tài xế" className={inputCls()} /></Field>
+              <Field label="Loại xe VN" hint="Đọc từ xe đầu tiên của chặng Truck giao hàng."><input value={s.importInfo.truckVN} readOnly placeholder="Chưa có chặng xe giao" className={inputCls()} /></Field>
+              <Field label="Biển số VN" hint="Đọc từ chặng Truck giao hàng; sửa tại tab Vận chuyển."><input value={s.importInfo.plateVN} readOnly placeholder="Chưa có chặng xe giao" className={inputCls()} /></Field>
+              <Field label="Tài xế VN" hint="Đọc từ chặng Truck giao hàng; sửa tại tab Vận chuyển."><input value={s.importInfo.driverVN} readOnly placeholder="Chưa có tài xế" className={inputCls()} /></Field>
               <Field label="Lịch giao" hint="Lưu vào ngày giao (2.7.delivery_date) — PXK cần ngày này."><input id="fld-schedule" value={val("schedule", s.importInfo.schedule)} onChange={(e) => set("schedule", e.target.value)} placeholder="VD: 12/09/2026" className={inputCls()} /></Field>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
@@ -773,7 +719,6 @@ export default function ShipmentDetail() {
         {tab === "nhap" && !s.importInfo.delivered && <button onClick={() => setShowDeliver(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">✅ XÁC NHẬN ĐÃ GIAO</button>}
         {tab === "chung-tu" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
         {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
-        {(tab === "lay-hang" || tab === "lich-su") && <button onClick={savePickup} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">💾 LƯU THAY ĐỔI</button>}
       </div>
 
       {/* MODAL: deliver */}

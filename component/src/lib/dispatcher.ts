@@ -18,6 +18,7 @@ export type LogiEventName =
   | "shipment_update"
   | "navigate"
   | "shipment_field_save"
+  | "shipment_transport_save"
   | "delivery_confirm"
   | "finance_actual_save"
   | "payment_record"
@@ -72,6 +73,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
   "navigate",
   "shipment_field_save",
+  "shipment_transport_save",
   "delivery_confirm",
   "finance_actual_save",
   "payment_record",

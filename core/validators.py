@@ -48,6 +48,28 @@ def validate_shipment(ship_obj: dict[str, Any]) -> ValidationResult:
     if eta and delivery and delivery < eta:
         result.warnings.append(ValidationIssue("DELIVERY_BEFORE_ETA", "Ngày giao hàng đang trước ETA.", "data.2.7.delivery_date"))
 
+    # LOGI_SHIPMENT_OPERATIONAL_DATA_V1: structured operational collections
+    # are validated at the canonical shipment boundary too, not only by the
+    # component handler.  This protects every existing save_shipment_atomic
+    # caller while leaving legacy scalar-only documents untouched.
+    from core.shipment_operations import normalize_cargo_summary, normalize_transport_legs
+
+    transport = data.get("1.2", {}) if isinstance(data.get("1.2", {}), dict) else {}
+    if "transport_legs" in transport:
+        try:
+            normalize_transport_legs(transport.get("transport_legs"))
+        except ValueError as exc:
+            result.errors.append(ValidationIssue(
+                "INVALID_TRANSPORT_LEGS", str(exc), "data.1.2.transport_legs"
+            ))
+    if "cargo_summary" in transport:
+        try:
+            normalize_cargo_summary(transport.get("cargo_summary"))
+        except ValueError as exc:
+            result.errors.append(ValidationIssue(
+                "INVALID_CARGO_SUMMARY", str(exc), "data.1.2.cargo_summary"
+            ))
+
     finance = data.get("3.4", {}) if isinstance(data.get("3.4", {}), dict) else {}
     for index, item in enumerate(finance.get("details", [])):
         qty = to_decimal(item.get("qty", 1))

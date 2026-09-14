@@ -314,12 +314,12 @@ console.log("STEP 7 — open LO-0306");
   };
   const expectRoute = [
     ["Số tờ khai nhập khẩu", "Nhập khẩu & Giao hàng"],
-    ["Xe giao VN + tài xế", "Nhập khẩu & Giao hàng"],
+    ["Xe giao VN + tài xế", "Vận chuyển & Hàng hóa"],
     ["Xác nhận đã giao hàng", "Nhập khẩu & Giao hàng"],
   ];
   for (const [fact, expected] of expectRoute) {
-    // back to tab 1 so every assertion starts from a known state
-    await click("Lấy hàng & Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+    // back to the operational tab so every assertion starts from a known state
+    await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
     const box = $("div").find((d) => d.className.includes("border-dashed") && text(d).includes("Thiếu " + fact));
     assert.ok(box, `missing box for ${fact} not found`);
     const btn = $("button", box).find((b) => text(b).includes("Bổ sung ngay"));
@@ -329,18 +329,19 @@ console.log("STEP 7 — open LO-0306");
     assert.equal(activeTab(), expected, `"${fact}" routed to ${activeTab()}, expected ${expected}`);
   }
   // restore the default tab so the next step starts from a clean state
-  await click("Lấy hàng & Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+  await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
   ok("Bổ sung ngay routes each real missing fact to the tab that owns it");
 }
 
 // ---------------------------------------------------------------------------
-// STEP 8 — all five donor tabs
+// STEP 8 — all Shipment Detail tabs
 // ---------------------------------------------------------------------------
 
-console.log("STEP 8 — five donor tabs");
+console.log("STEP 8 — Shipment Detail tabs");
 {
   const tabs = {
-    "Lấy hàng & Xuất khẩu": "Nhà máy & lịch lấy hàng",
+    "Vận chuyển & Hàng hóa": "CÁC CHẶNG VẬN CHUYỂN",
+    "Xuất khẩu": "Nhà máy & xuất khẩu",
     "Nhập khẩu & Giao hàng": "Tờ khai & thuế nhập khẩu",
     "Tài chính / Công nợ": "Phải thu khách hàng (VND)",
     "Chứng từ & PXK": "Phiếu xuất kho (PXK) — theo từng lô",
@@ -349,10 +350,10 @@ console.log("STEP 8 — five donor tabs");
   const tabRoot = window.document.getElementById("workspace-tabs");
   assert.ok(tabRoot, "workspace tabs missing");
   // default tab
-  assert.ok(bodyText().includes(tabs["Lấy hàng & Xuất khẩu"]), "default tab content missing");
-  ok("tab 1: Lấy hàng & Xuất khẩu (default)");
+  assert.ok(bodyText().includes(tabs["Vận chuyển & Hàng hóa"]), "default tab content missing");
+  ok("tab 1: Vận chuyển & Hàng hóa (default)");
   for (const [label, marker] of Object.entries(tabs)) {
-    if (label === "Lấy hàng & Xuất khẩu") continue;
+    if (label === "Vận chuyển & Hàng hóa") continue;
     await click(label, "button", tabRoot);
     assert.ok(bodyText().includes(marker), `tab ${label} content missing`);
     ok(`tab: ${label}`);
@@ -489,24 +490,26 @@ console.log("STEP 13 — v2 typed events");
   assert.ok(ev.value.payload.deliveredAt, "trigger payload missing deliveredAt");
   ok("delivery save → delivery_confirm {seq, event, payload.shipmentId} emitted");
 
-  // LO-0308: save pickup tab (missing-info flow)
+  // LO-0308: add a canonical truck leg and truck unit (missing-info flow)
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("LO-0308", "a", $("table.tbl")[0]);
-  const plate = window.document.getElementById("fld-plate");
-  assert.ok(plate, "plate input missing on LO-0308");
+  await click("+ THÊM CHẶNG", "button");
+  const leg = $("details")[0];
+  assert.ok(leg, "new transport leg missing on LO-0308");
+  $("summary", leg)[0].click();
+  await tick();
+  await click("+ Thêm xe", "button", leg);
+  const plate = $('input[data-field="unit-number"]', leg)[0];
+  assert.ok(plate, "canonical truck plate input missing on LO-0308");
   type(plate, "粤B·20T99");
-  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
-  assert.ok(bodyText().includes("Đã lưu thông tin lấy hàng LO-0308"), "save toast missing");
-  const evs = triggers.filter((t) => t.event === "shipment_field_save");
-  assert.equal(evs.length, 1, `expected 1 shipment_field_save event, got ${evs.length}`);
+  await click("LƯU CÁC CHẶNG", "button");
+  assert.ok(bodyText().includes("Đã gửi các chặng vận chuyển"), "transport save toast missing");
+  const evs = triggers.filter((t) => t.event === "shipment_transport_save");
+  assert.equal(evs.length, 1, `expected 1 shipment_transport_save event, got ${evs.length}`);
   assert.ok(evs[0].value.seq > ev.value.seq, "event seq must increase");
-  assert.equal(evs[0].value.payload.shipmentId, "LO-0308", "field save payload wrong shipment");
-  assert.equal(evs[0].value.payload.fields.container_no, "粤B·20T99", "field save payload wrong plate");
-  assert.ok(
-    !Object.values(evs[0].value.payload.fields).some((v) => v === "" || v === null),
-    "field save must not send blank/UNKNOWN values"
-  );
-  ok("pickup save → shipment_field_save with increasing seq, blanks omitted");
+  assert.equal(evs[0].value.payload.shipmentId, "LO-0308", "transport save payload wrong shipment");
+  assert.equal(evs[0].value.payload.transportLegs[0].units[0].number, "粤B·20T99", "truck plate payload wrong");
+  ok("transport save → shipment_transport_save with ordered legs/units emitted");
 }
 
 // ---------------------------------------------------------------------------
@@ -664,59 +667,182 @@ console.log("STEP 16 — import tax clear semantics");
 }
 
 // ---------------------------------------------------------------------------
-// STEP 17 — CN pickup truck type: untouched omitted, clear travels as "",
-// edit verbatim (LOGI_CN_TRUCK_TYPE_PERSIST_01). Pins the UI half of the
-// contract, mirroring STEP 16: pickup_truck_type is sent from the
-// touched-state, NOT through onlyFilled(), so an actively cleared field
-// travels as "" while an untouched one is omitted entirely.
+// STEP 17 — PR #22 pickup truck type remains editable through the canonical
+// truck-unit projection. The old scalar writer remains backend-compatible,
+// while the Shipment Detail has one operational source of truth.
 // ---------------------------------------------------------------------------
 
-console.log("STEP 17 — CN pickup truck type clear semantics");
+console.log("STEP 17 — CN pickup truck type compatibility");
 {
-  // A shipment that already has the canonical truck type stored.
   const vm4 = JSON.parse(JSON.stringify(VM));
   const lot = vm4.shipments.find((x) => x.id === "LO-0306");
-  lot.pickup.truckType = "17.5m · rộng 3m · tải ≤30t";
+  lot.transportLegsStructured = false;
+  lot.transportLegs = [{
+    id: "legacy-primary-leg",
+    sequence: 1,
+    mode: "Truck",
+    origin: lot.transport.pol,
+    destination: lot.transport.pod,
+    carrier: lot.transport.carrier,
+    etd: "",
+    eta: "",
+    atd: "",
+    ata: "",
+    bookingNo: "",
+    mbl: "",
+    hbl: "",
+    vessel: "",
+    voyage: "",
+    mawb: "",
+    hawb: "",
+    flightNo: "",
+    units: [{
+      id: "legacy-primary-unit",
+      kind: "truck",
+      number: lot.pickup.plate,
+      typeSize: "17.5m · rộng 3m · tải ≤30t",
+      sealNo: "",
+      driverName: "",
+      driverPhone: "",
+    }],
+  }];
   invoke(vm4);
   await tick(120);
 
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("LO-0306", "a", $("table.tbl")[0]);
-  const tabRoot17 = window.document.getElementById("workspace-tabs");
-  await click("Lấy hàng & Xuất khẩu", "button", tabRoot17);
+  const leg = $("details")[0];
+  $("summary", leg)[0].click();
+  await tick();
 
-  const truck = window.document.getElementById("fld-trucktype");
-  assert.ok(truck, "the truck type input must be mounted");
-  assert.ok(!truck.readOnly, "the truck type input must be editable");
+  const truck = $('input[data-field="unit-type-size"]', leg)[0];
+  assert.ok(truck, "projected truck type input must be mounted");
+  assert.ok(!truck.readOnly, "projected truck type must remain editable");
   assert.equal(truck.value, "17.5m · rộng 3m · tải ≤30t", "stored truck type not rendered");
 
-  const nextPickupSave = () => {
-    const evs = triggers.filter((t) => t.event === "shipment_field_save");
-    return evs[evs.length - 1].value.payload;
-  };
-
-  // UNTOUCHED — an ordinary pickup save must not touch the truck type.
-  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
-  assert.ok(bodyText().includes("Đã lưu thông tin lấy hàng LO-0306"), "pickup save toast missing");
-  let pfields = nextPickupSave().fields;
-  assert.ok(!("pickup_truck_type" in pfields),
-    `untouched pickup_truck_type must be omitted, got ${JSON.stringify(pfields.pickup_truck_type)}`);
-  ok("untouched truck type is omitted from the payload");
-
-  // CLEAR the truck type → the empty string must travel.
-  type(truck, "");
-  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
-  pfields = nextPickupSave().fields;
-  assert.ok("pickup_truck_type" in pfields, "cleared truck type was dropped by the payload");
-  assert.equal(pfields.pickup_truck_type, "", "cleared truck type must be sent as an empty string");
-  ok('cleared truck type → pickup_truck_type: "" dispatched');
-
-  // An active edit still sends the typed value verbatim.
   type(truck, "9.6m · tải 15t");
-  await click("💾 LƯU THÔNG TIN LẤY HÀNG", "button");
-  pfields = nextPickupSave().fields;
-  assert.equal(pfields.pickup_truck_type, "9.6m · tải 15t", "an edited truck type must be sent verbatim");
-  ok("edited truck type → the typed value is dispatched verbatim");
+  await click("LƯU CÁC CHẶNG", "button");
+  const evs = triggers.filter((t) => t.event === "shipment_transport_save");
+  const payload = evs[evs.length - 1].value.payload;
+  assert.equal(payload.transportLegs[0].units[0].type_size, "9.6m · tải 15t",
+    "edited truck type must be sent verbatim in the canonical unit");
+  assert.ok(!("pickup_truck_type" in payload), "structured save must not flatten back to the scalar field");
+  ok("PR #22 truck type projects into the canonical unit and remains editable");
+}
+
+// ---------------------------------------------------------------------------
+// STEP 18 — independent operational drafts survive unrelated readbacks.
+// ---------------------------------------------------------------------------
+
+console.log("STEP 18 — independent Cargo/Transport draft synchronization");
+{
+  const vm5 = JSON.parse(JSON.stringify(VM));
+  const canonical = vm5.shipments.find((x) => x.id === "LO-0306");
+  canonical.version = 100;
+  canonical.transportLegsStructured = true;
+  canonical.transportLegs = [{
+    id: "sync-leg",
+    sequence: 1,
+    mode: "Truck",
+    origin: "Factory",
+    destination: "Warehouse",
+    carrier: "Road Partner",
+    etd: "2026-10-01",
+    eta: "2026-10-02",
+    atd: "",
+    ata: "",
+    bookingNo: "",
+    mbl: "",
+    hbl: "",
+    vessel: "",
+    voyage: "",
+    mawb: "",
+    hawb: "",
+    flightNo: "",
+    units: [{
+      id: "sync-truck",
+      kind: "truck",
+      number: "BASE-TRUCK",
+      typeSize: "9.6m",
+      sealNo: "",
+      driverName: "Driver A",
+      driverPhone: "0901000000",
+    }],
+  }];
+  canonical.cargoStructured = true;
+  canonical.cargo = {
+    goodsDescription: "BASE CARGO",
+    packs: 10,
+    weight: 1200,
+    cbm: 4.5,
+    dims: "100 x 100 x 100 cm",
+    type: "Pallet",
+    note: "Base note",
+    qtyPkg: "",
+  };
+  vm5.version = "draft-sync-100";
+  invoke(vm5);
+  await tick(120);
+
+  // Create independent local edits without saving either one.
+  let leg = $("details")[0];
+  if (!leg.open) {
+    $("summary", leg)[0].click();
+    await tick();
+  }
+  await click("+ Thêm xe", "button", leg);
+  let truckNumbers = $('input[data-field="unit-number"]', leg);
+  type(truckNumbers[truckNumbers.length - 1], "UNSAVED-TRUCK");
+  let cargoInput = $('input[data-field="cargo-goods-description"]')[0];
+  type(cargoInput, "UNSAVED CARGO BEFORE REJECTION");
+
+  // An unchanged canonical readback (for example, backend rejection) must not
+  // erase either rejected draft even though the parent/version changes.
+  const rejectedReadback = JSON.parse(JSON.stringify(vm5));
+  rejectedReadback.version = "draft-sync-101";
+  rejectedReadback.shipments.find((x) => x.id === "LO-0306").version = 101;
+  invoke(rejectedReadback);
+  await tick(120);
+  assert.ok($('input[data-field="unit-number"]').some((input) => input.value === "UNSAVED-TRUCK"),
+    "unchanged readback erased the unsaved transport draft");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value,
+    "UNSAVED CARGO BEFORE REJECTION", "unchanged readback erased the unsaved cargo draft");
+  ok("unchanged/rejected readback preserves both local drafts");
+
+  // CASE A + D: a real Cargo readback synchronizes Cargo only; unsaved
+  // Transport must survive the unrelated parent/version update.
+  const cargoReadback = JSON.parse(JSON.stringify(rejectedReadback));
+  cargoReadback.version = "draft-sync-102";
+  const cargoLot = cargoReadback.shipments.find((x) => x.id === "LO-0306");
+  cargoLot.version = 102;
+  cargoLot.cargo.goodsDescription = "SERVER CARGO READBACK";
+  invoke(cargoReadback);
+  await tick(120);
+  assert.ok($('input[data-field="unit-number"]').some((input) => input.value === "UNSAVED-TRUCK"),
+    "Cargo readback erased the unsaved transport draft");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value,
+    "SERVER CARGO READBACK", "real Cargo readback did not synchronize Cargo");
+  ok("unsaved Transport survives Cargo save/readback");
+  ok("real Cargo readback synchronizes the Cargo editor");
+
+  // CASE B + C: now edit Cargo locally, then apply a real Transport readback.
+  // Transport must synchronize while the unrelated Cargo draft stays intact.
+  cargoInput = $('input[data-field="cargo-goods-description"]')[0];
+  type(cargoInput, "UNSAVED-CARGO");
+  const transportReadback = JSON.parse(JSON.stringify(cargoReadback));
+  transportReadback.version = "draft-sync-103";
+  const transportLot = transportReadback.shipments.find((x) => x.id === "LO-0306");
+  transportLot.version = 103;
+  transportLot.transportLegs[0].units[0].number = "SERVER-TRUCK-READBACK";
+  invoke(transportReadback);
+  await tick(120);
+  truckNumbers = $('input[data-field="unit-number"]');
+  assert.deepEqual(truckNumbers.map((input) => input.value), ["SERVER-TRUCK-READBACK"],
+    "real Transport readback did not synchronize Transport");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value, "UNSAVED-CARGO",
+    "Transport readback erased the unsaved Cargo draft");
+  ok("unsaved Cargo survives Transport save/readback");
+  ok("real Transport readback synchronizes the Transport editor");
 }
 
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);
