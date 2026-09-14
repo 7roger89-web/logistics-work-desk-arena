@@ -1,4 +1,4 @@
-name: LOGI pilot copy once
+name: LOGI verify existing pilot once
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  pilot-copy:
+  verify-pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -27,7 +27,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Mongo dependency
-        run: python -m pip install 'pymongo[srv]>=4.10,<5'
+        run: python -m pip install 'pymongo>=4.10,<5' dnspython
 
       - name: Check secret presence only
         shell: bash
@@ -39,26 +39,125 @@ jobs:
           fi
           echo 'MONGO_URI_PRESENT=YES'
 
-      - name: Dry run precheck
+      - name: Verify existing pilot read-only
         shell: bash
         run: |
           set -euo pipefail
-          python docs/goals/LOG-LG02/tools/copy_production_to_pilot.py | tee dryrun.log
-          grep -Fq 'SOURCE_AUTHORITY_CHECK=PASS' dryrun.log
-          grep -Fq 'PILOT_PRECHECK=ABSENT' dryrun.log
-          echo 'DRY_RUN_GATE=PASS'
+          python - <<'PY'
+          import os
+          import sys
+          from bson import json_util
+          from pymongo import MongoClient
 
-      - name: Execute one-time pilot copy
-        shell: bash
-        run: |
-          set -euo pipefail
-          python docs/goals/LOG-LG02/tools/copy_production_to_pilot.py --execute | tee execute.log
-          grep -Fq 'SOURCE_MUTATIONS=0' execute.log
-          grep -Fq 'VERIFY users in pilot=NO' execute.log
-          grep -Fq 'VERIFY notification_outbox in pilot=NO' execute.log
-          grep -Fq 'OK: pilot copy complete.' execute.log
-          if grep -Fq 'MISMATCH' execute.log; then
-            echo 'POST_VERIFY=MISMATCH'
-            exit 2
-          fi
-          echo 'POST_VERIFY=PASS'
+          SOURCE_DB = 'logistics_db'
+          PILOT_DB = 'logistics_pilot'
+          EXCLUDED = {'users', 'notification_outbox'}
+          REQUIRED = {'customers', 'shipments'}
+
+          def index_map(coll):
+              out = {}
+              for idx in coll.list_indexes():
+                  name = idx.get('name')
+                  if not name or name == '_id_':
+                      continue
+                  key = tuple(tuple(pair) for pair in list(idx.get('key') or {}))
+                  out[name] = (key, bool(idx.get('unique', False)))
+              return out
+
+          uri = os.environ.get('MONGO_URI', '').strip()
+          if not uri:
+              print('MONGO_URI_PRESENT=NO')
+              sys.exit(2)
+
+          client = MongoClient(uri, serverSelectionTimeoutMS=10000)
+          try:
+              client.admin.command('ping')
+              src = client[SOURCE_DB]
+              pilot = client[PILOT_DB]
+
+              src_names = set(src.list_collection_names())
+              pilot_names = set(pilot.list_collection_names())
+              missing_required = sorted(REQUIRED - src_names)
+              if missing_required:
+                  print('SOURCE_AUTHORITY_CHECK=FAIL')
+                  print('MISSING_REQUIRED_COLLECTIONS=' + ','.join(missing_required))
+                  sys.exit(2)
+              print('SOURCE_AUTHORITY_CHECK=PASS')
+
+              expected_pilot = src_names - EXCLUDED
+              print(f'SOURCE_COLLECTION_COUNT={len(src_names)}')
+              print(f'EXPECTED_PILOT_COLLECTION_COUNT={len(expected_pilot)}')
+              print(f'ACTUAL_PILOT_COLLECTION_COUNT={len(pilot_names)}')
+
+              missing = sorted(expected_pilot - pilot_names)
+              extra = sorted(pilot_names - expected_pilot)
+              if missing:
+                  print('PILOT_MISSING_COLLECTIONS=' + ','.join(missing))
+              if extra:
+                  print('PILOT_EXTRA_COLLECTIONS=' + ','.join(extra))
+
+              failures = []
+              if missing or extra:
+                  failures.append('collection-set')
+
+              for name in sorted(expected_pilot):
+                  source_count = src[name].count_documents({})
+                  pilot_count = pilot[name].count_documents({})
+                  count_ok = source_count == pilot_count
+                  print(f'COUNT {name}: source={source_count} pilot={pilot_count} ' + ('OK' if count_ok else 'MISMATCH'))
+                  if not count_ok:
+                      failures.append(f'count:{name}')
+
+                  src_indexes = index_map(src[name])
+                  pilot_indexes = index_map(pilot[name])
+                  index_ok = src_indexes == pilot_indexes
+                  print(f'INDEX_VERIFY {name}: ' + ('OK' if index_ok else 'MISMATCH'))
+                  if not index_ok:
+                      failures.append(f'index:{name}')
+
+                  mismatched_docs = 0
+                  checked_docs = 0
+                  for source_doc in src[name].find():
+                      checked_docs += 1
+                      pilot_doc = pilot[name].find_one({'_id': source_doc.get('_id')})
+                      if pilot_doc is None:
+                          mismatched_docs += 1
+                          continue
+                      source_canonical = json_util.dumps(
+                          source_doc,
+                          json_options=json_util.CANONICAL_JSON_OPTIONS,
+                          sort_keys=True,
+                          ensure_ascii=False,
+                      )
+                      pilot_canonical = json_util.dumps(
+                          pilot_doc,
+                          json_options=json_util.CANONICAL_JSON_OPTIONS,
+                          sort_keys=True,
+                          ensure_ascii=False,
+                      )
+                      if source_canonical != pilot_canonical:
+                          mismatched_docs += 1
+                  exact_ok = mismatched_docs == 0 and checked_docs == source_count
+                  print(
+                      f'EXACT_DOC_VERIFY {name}: checked={checked_docs} mismatched={mismatched_docs} '
+                      + ('OK' if exact_ok else 'MISMATCH')
+                  )
+                  if not exact_ok:
+                      failures.append(f'doc:{name}')
+
+              for name in sorted(EXCLUDED):
+                  present = name in pilot_names
+                  print(f'VERIFY {name} in pilot=' + ('YES' if present else 'NO'))
+                  if present:
+                      failures.append(f'excluded:{name}')
+
+              print('SOURCE_MUTATIONS=0')
+              print('PILOT_MUTATIONS=0')
+              if failures:
+                  print('EXISTING_PILOT_VERIFY=FAIL')
+                  print('FAILURES=' + ','.join(failures))
+                  sys.exit(2)
+              print('EXISTING_PILOT_VERIFY=PASS')
+          finally:
+              client.close()
+          PY
