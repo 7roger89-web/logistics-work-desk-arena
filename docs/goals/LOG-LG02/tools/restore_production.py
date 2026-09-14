@@ -28,6 +28,9 @@ Behaviour:
 * ``--dry-run`` prints the plan (target, included collections, skipped
   exclusions) and performs zero database connection and zero mutation, so it
   requires no secrets.
+* New controlled exports marked ``mongodb_extended_json_canonical_v1`` are
+  decoded through PyMongo's BSON Extended JSON codec so ObjectId/datetime and
+  other BSON values keep their types. Older plain-JSON backups remain readable.
 
 Credentials come from the same ``.streamlit/secrets.toml`` used by the app.
 Only the existing JSONL + metadata.json + schema/ + pymongo restore path is
@@ -50,9 +53,6 @@ APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 STREAMLIT_SECRETS = os.path.join(APP_ROOT, ".streamlit", "secrets.toml")
 
 PROD_DB = "logistics_db"
-# Non-production destinations the importer may write into. ``logistics_pilot``
-# is the STAGING pilot snapshot target (LOGI_PILOT_DATA_CONNECTION_01); the
-# other two are the historical LOG-LG01/LG02 rehearsal databases.
 NON_PROD_DBS = [
     "logistics_workdesk_LG01_E2E",
     "logistics_workdesk_logc14",
@@ -61,6 +61,7 @@ NON_PROD_DBS = [
 ALLOWED_TARGET_DBS = [PROD_DB] + NON_PROD_DBS
 
 CONFIRMATION_TOKEN = "ROLLBACK CONFIRM"
+EXTENDED_JSON_SERIALIZATION = "mongodb_extended_json_canonical_v1"
 
 
 def fail(msg: str) -> None:
@@ -69,12 +70,7 @@ def fail(msg: str) -> None:
 
 
 def requires_confirmation(target: str, no_confirm: bool = False, dry_run: bool = False) -> bool:
-    """Production write boundary.
-
-    ``logistics_db`` always requires the typed confirmation unless the
-    controlled automation override (``--no-confirm``) is present. A dry-run
-    performs no mutation and therefore never requires confirmation.
-    """
+    """Production write boundary."""
     return target == PROD_DB and not no_confirm and not dry_run
 
 
@@ -132,8 +128,7 @@ def plan_collections(meta: Mapping[str, Any], excluded: frozenset[str]) -> list[
 
 
 def _clear_non_id_indexes(coll: Any) -> None:
-    """Best-effort removal of non-``_id`` indexes so unique constraints cannot
-    block the drop-and-reinsert. Failures are non-fatal (an index may not exist)."""
+    """Best-effort removal of non-``_id`` indexes."""
     try:
         for idx in coll.list_indexes():
             name = idx.get("name") if isinstance(idx, dict) else getattr(idx, "name", None)
@@ -146,9 +141,30 @@ def _clear_non_id_indexes(coll: Any) -> None:
         pass
 
 
-def _restore_collection(coll: Any, backup_dir: str, coll_meta: Mapping[str, Any]) -> int:
-    """Drop + reinsert one collection from its JSONL file, then recreate its
-    non-``_id`` indexes from schema/<collection>.json. Returns imported count."""
+def _decode_jsonl_document(line: str, serialization: str) -> dict[str, Any]:
+    """Decode one backup line, preserving BSON types for new Extended JSON backups."""
+    if serialization == EXTENDED_JSON_SERIALIZATION:
+        try:
+            from bson import json_util
+        except ImportError as exc:
+            raise RuntimeError(
+                "Backup dùng MongoDB Extended JSON nhưng môi trường thiếu bson/pymongo."
+            ) from exc
+        decoded = json_util.loads(line)
+    else:
+        decoded = json.loads(line)
+    if not isinstance(decoded, dict):
+        raise ValueError("Backup JSONL phải chứa một document object trên mỗi dòng.")
+    return decoded
+
+
+def _restore_collection(
+    coll: Any,
+    backup_dir: str,
+    coll_meta: Mapping[str, Any],
+    serialization: str = "",
+) -> int:
+    """Drop + reinsert one collection from its JSONL file, then recreate indexes."""
     src = os.path.join(backup_dir, str(coll_meta.get("file", "")))
     imported = 0
     if os.path.exists(src):
@@ -159,7 +175,7 @@ def _restore_collection(coll: Any, backup_dir: str, coll_meta: Mapping[str, Any]
                 line = line.strip()
                 if not line:
                     continue
-                coll.insert_one(json.loads(line))
+                coll.insert_one(_decode_jsonl_document(line, serialization))
                 imported += 1
         schema_path = os.path.join(backup_dir, "schema", f"{coll_meta.get('name')}.json")
         if os.path.exists(schema_path):
@@ -173,20 +189,26 @@ def _restore_collection(coll: Any, backup_dir: str, coll_meta: Mapping[str, Any]
     return imported
 
 
-def restore_backup(db: Any, backup_dir: str, meta: Mapping[str, Any],
-                   excluded: frozenset[str] = frozenset()) -> dict[str, tuple[str, int]]:
-    """Import every manifest collection into ``db`` except those in ``excluded``.
-
-    Returns ``{collection: (status, count)}`` where status is ``"skipped"`` or
-    ``"imported"``. Excluded collections are neither dropped nor created.
-    """
+def restore_backup(
+    db: Any,
+    backup_dir: str,
+    meta: Mapping[str, Any],
+    excluded: frozenset[str] = frozenset(),
+) -> dict[str, tuple[str, int]]:
+    """Import every manifest collection into ``db`` except those in ``excluded``."""
     results: dict[str, tuple[str, int]] = {}
+    serialization = str(meta.get("serialization") or "")
     for coll_meta, skipped in plan_collections(meta, excluded):
         name = str(coll_meta.get("name", ""))
         if skipped:
             results[name] = ("skipped", 0)
             continue
-        imported = _restore_collection(db[name], backup_dir, coll_meta)
+        imported = _restore_collection(
+            db[name],
+            backup_dir,
+            coll_meta,
+            serialization=serialization,
+        )
         results[name] = ("imported", imported)
     return results
 
@@ -237,6 +259,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         print("DRY-RUN: no database connection, no mutation.")
         print(f"TARGET_DB={target}")
+        print("SERIALIZATION=" + str(meta.get("serialization") or "legacy_plain_json"))
         excluded_list = sorted(excluded)
         print("EXCLUDED_COLLECTIONS=" + (",".join(excluded_list) if excluded_list else "(none)"))
         for coll_meta, skipped in plan:
@@ -268,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
         fail(f"Không kết nối được MongoDB: {exc}")
 
     print(f"IMPORT TARGET_DB={target}")
+    print("SERIALIZATION=" + str(meta.get("serialization") or "legacy_plain_json"))
     for name in sorted(excluded):
         print(f"SKIPPED {name} (excluded)")
 
@@ -275,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
     for coll_meta, skipped in plan:
         name = str(coll_meta.get("name", ""))
         if skipped:
-            continue  # already reported as SKIPPED above
+            continue
         status, count = results.get(name, ("unknown", 0))
         expected = coll_meta.get("count_exported", "?")
         print(f"IMPORTED {name}: {count} docs, expected {expected}")
