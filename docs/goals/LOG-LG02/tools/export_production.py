@@ -1,7 +1,9 @@
 """Pre-release production backup exporter for LOG-LG02.
 
-Run on the Owner's machine where .streamlit/secrets.toml already contains the
-application connection string (same config the Streamlit app uses).
+Run on the Owner's machine where a Streamlit secrets file already contains the
+application connection string (same config the Streamlit app uses). By default
+this is .streamlit/secrets.toml; set LOGISTICS_PRO_SECRETS_FILE to use another
+existing local secrets path without copying credentials into this repo.
 
 Usage (from the repo root):
     python docs/goals/LOG-LG02/tools/export_production.py
@@ -40,12 +42,23 @@ def fail(msg):
     sys.exit(2)
 
 
+def _secrets_path() -> str:
+    explicit = os.getenv("LOGISTICS_PRO_SECRETS_FILE", "").strip()
+    if explicit:
+        return os.path.expanduser(explicit)
+    return STREAMLIT_SECRETS
+
+
 def main() -> None:
-    if not os.path.exists(STREAMLIT_SECRETS):
-        fail(f"Không tìm thấy {STREAMLIT_SECRETS}. Chạy script này tại repo gốc của ứng dụng.")
+    secrets_path = _secrets_path()
+    if not os.path.exists(secrets_path):
+        fail(
+            f"Không tìm thấy {secrets_path}. Đặt LOGISTICS_PRO_SECRETS_FILE tới "
+            "secrets hiện có hoặc chạy trong repo có .streamlit/secrets.toml."
+        )
 
     try:
-        with open(STREAMLIT_SECRETS, "rb") as fh:
+        with open(secrets_path, "rb") as fh:
             secrets = tomllib.load(fh)
     except (OSError, tomllib.TOMLDecodeError) as exc:
         fail(f"Không đọc được secrets: {exc}")
