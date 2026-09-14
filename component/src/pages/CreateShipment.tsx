@@ -16,12 +16,17 @@ import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 // when the event was merely TRANSPORTED. It waits for the authoritative
 // backend outcome delivered in the next fresh view-model (`lastWrites`,
 // matched by the requestId this click sent):
-//   SUCCESS → the fresh view-model genuinely contains the new shipment →
-//             only then navigate to /lo-hang/<id> (the detail really exists);
+//   SUCCESS requires BOTH a matching backend outcome
+//   (event == "shipment_create" && requestId == pending.requestId && ok)
+//   AND the fresh view-model containing the shipment — only then navigate to
+//   /lo-hang/<id> (the detail really exists). CONTROL_TOWER_REPAIR_01: there
+//   is deliberately NO fallback — transport success, a version change, or the
+//   shipment id merely existing (it may pre-date this click) can NEVER count
+//   as proof that THIS create request succeeded.
 //   FAILURE → stay on the form and show the real backend error (duplicate id,
-//             RBAC, validation). One click can never create two shipments:
-//             the backend seq guard + duplicate-id check stay intact and the
-//             button is disabled while the outcome is in flight.
+//   RBAC, validation). One click can never create two shipments: the backend
+//   seq guard + duplicate-id check stay intact and the button is disabled
+//   while the outcome is in flight.
 
 export default function CreateShipment() {
   const { customers, quotes, contracts, dispatch, toast } = useStore();
@@ -40,7 +45,7 @@ export default function CreateShipment() {
   // The in-flight create intent. While set, the button is disabled (one click
   // = one request) and the page waits for the backend's AUTHORITATIVE outcome
   // in `lastWrites` instead of trusting the transport.
-  const [pending, setPending] = useState<{ shipmentId: string; requestId: string; sinceVersion: string } | null>(null);
+  const [pending, setPending] = useState<{ shipmentId: string; requestId: string } | null>(null);
   const [backendError, setBackendError] = useState("");
 
   const acceptedQuotes = useMemo(
@@ -104,7 +109,7 @@ export default function CreateShipment() {
     });
     if (sent) {
       setBackendError("");
-      setPending({ shipmentId, requestId, sinceVersion: vm?.version ?? "" });
+      setPending({ shipmentId, requestId });
       toast("Đã gửi yêu cầu tạo " + shipmentId,
         "Chờ kết quả thật từ backend (validate + ghi + audit). Chưa chuyển màn hình.", "blue");
     } else {
@@ -113,39 +118,35 @@ export default function CreateShipment() {
   };
 
   // Consume the authoritative backend outcome once the fresh view-model
-  // delivers it. Transport alone never counts as success.
+  // delivers it. SUCCESS requires BOTH a matching backend outcome
+  // (event == "shipment_create" && requestId == this click's requestId && ok)
+  // AND the fresh view-model genuinely containing the shipment. Nothing else
+  // may navigate as success: transport success is insufficient, a view-model
+  // version change is insufficient, and the shipment id merely existing is
+  // insufficient — it may pre-date this click (CONTROL_TOWER_REPAIR_01: the
+  // previous fallback that treated those as proof was removed, deliberately
+  // with no replacement).
   useEffect(() => {
     if (!pending || !vm) return;
     const outcome = (vm.lastWrites ?? []).find(
       (w) => w.event === "shipment_create" && w.requestId === pending.requestId
     );
-    if (outcome) {
-      if (outcome.ok) {
-        const exists = (vm.shipments ?? []).some((s) => s.id === pending.shipmentId);
-        if (exists) {
-          setPending(null);
-          toast("Đã tạo lô " + pending.shipmentId,
-            "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green");
-          nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
-        } else {
-          setPending(null);
-          setBackendError("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.");
-        }
+    if (!outcome) return; // still waiting for the authoritative backend answer
+    if (outcome.ok) {
+      const exists = (vm.shipments ?? []).some((s) => s.id === pending.shipmentId);
+      if (exists) {
+        setPending(null);
+        toast("Đã tạo lô " + pending.shipmentId,
+          "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green");
+        nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
       } else {
         setPending(null);
-        setBackendError(outcome.error || "Backend từ chối yêu cầu tạo lô.");
-        toast("Không tạo được lô", outcome.error || "Backend từ chối.", "red");
+        setBackendError("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.");
       }
-      return;
-    }
-    // Fallback for delivery edges: if a FRESH view-model (version changed)
-    // already contains the shipment, the backend truth wins even without a
-    // matching outcome record. Never fires on the stale pre-submit payload.
-    if (vm.version !== pending.sinceVersion
-        && (vm.shipments ?? []).some((s) => s.id === pending.shipmentId)) {
+    } else {
       setPending(null);
-      toast("Đã tạo lô " + pending.shipmentId, "Lô đã có trong dữ liệu mới từ backend.", "green");
-      nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
+      setBackendError(outcome.error || "Backend từ chối yêu cầu tạo lô.");
+      toast("Không tạo được lô", outcome.error || "Backend từ chối.", "red");
     }
   }, [vm, pending, nav, toast]);
 

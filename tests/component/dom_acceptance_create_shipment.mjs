@@ -18,6 +18,10 @@
 //      view-model
 //   5. one click can never double-send: while the outcome is in flight the
 //      button is disabled, and no second shipment_create is emitted
+//   6. CONTROL_TOWER_REPAIR_01 regression — a PRE-EXISTING duplicate id plus
+//      an unrelated view-model/version change can NEVER false-navigate:
+//      success requires the matching backend outcome (event, requestId, ok)
+//      AND the fresh view-model containing the shipment; nothing else.
 //
 // Run: node tests/component/dom_acceptance_create_shipment.mjs
 // ============================================================================
@@ -37,6 +41,8 @@ const FIX = JSON.parse(
 const INITIAL = FIX.initial;
 const CREATE_OK = FIX.createOk;
 const DUPLICATE_ERROR = FIX.duplicateError;
+const PREEXISTING_INITIAL = FIX.preexistingInitial;
+const UNRELATED_CHANGE = FIX.unrelatedChange;
 const SHIPMENT = FIX.shipment; // LO-0470
 const CUSTOMER = "An Phát";
 
@@ -238,6 +244,64 @@ console.log("STEP 4 — backend SUCCESS navigates only after the fresh readback"
   const extraCreates = triggers.slice(before).filter((tr) => tr.event === "shipment_create");
   assert.equal(extraCreates.length, 0, "success handling must not re-emit shipment_create");
   ok("success readback → navigated to the existing shipment detail, no re-emit");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 5 — REGRESSION: pre-existing duplicate + unrelated version change never false-navigate");
+{
+  // Fresh boot on a view-model where LO-0470 ALREADY EXISTS before any submit.
+  invoke(PREEXISTING_INITIAL);
+  await tick(120);
+  await click("Tạo Lô Mới", "a", $("aside")[0]);
+  assert.ok(mainText().includes("Tạo Lô Hàng Mới"), "create page missing after regression remount");
+  assert.ok((PREEXISTING_INITIAL.shipments ?? []).some((s) => s.id === SHIPMENT),
+    "fixture precondition: the id must pre-exist the click");
+  assert.equal((PREEXISTING_INITIAL.lastWrites ?? []).length, 0,
+    "fixture precondition: no outcome is pending yet");
+
+  const code = $('input[placeholder="LO-0470"]')[0];
+  await type(code, SHIPMENT);
+  const customerSelect = $("select").find((s) =>
+    [...s.options].some((o) => text(o).includes(CUSTOMER)));
+  await selectOption(customerSelect, CUSTOMER);
+
+  const before = triggers.length;
+  await click("TẠO LÔ HÀNG", "button");
+  await tick(60);
+  const creates = triggers.slice(before).filter((tr) => tr.event === "shipment_create");
+  assert.equal(creates.length, 1, "expected exactly one shipment_create trigger");
+  const pendingRequestId = creates[0].value.payload.requestId;
+  assert.ok(mainText().includes("ĐANG CHỜ BACKEND XÁC NHẬN…"), "must wait for the backend outcome");
+
+  // NO matching outcome is delivered — an UNRELATED fresh view-model arrives:
+  // its version genuinely changed and the id is present (it pre-dated the
+  // click), yet there is NO shipment_create outcome for the pending requestId.
+  assert.notEqual(UNRELATED_CHANGE.version, PREEXISTING_INITIAL.version,
+    "the unrelated state must really change the payload version");
+  assert.ok((UNRELATED_CHANGE.lastWrites ?? []).every((w) => w.event !== "shipment_create"),
+    "fixture precondition: the unrelated state carries no shipment_create outcome");
+  deliver(UNRELATED_CHANGE);
+  await tick(160);
+
+  // NAVIGATION=NO, SUCCESS_TOAST=NO — the form remains waiting.
+  let t = mainText();
+  assert.ok(t.includes("Tạo Lô Hàng Mới"),
+    "an unrelated version change must NOT navigate (id pre-existed the click)");
+  assert.ok(t.includes("ĐANG CHỜ BACKEND XÁC NHẬN…"),
+    "the form must keep waiting for the authoritative outcome");
+  assert.ok(!text(window.document.body).includes("Đã tạo lô"),
+    "no success toast may appear from a version change + pre-existing id");
+
+  // Now the REAL duplicate outcome arrives for THIS request.
+  deliver(withRequestId(DUPLICATE_ERROR, pendingRequestId));
+  await tick(140);
+  t = mainText();
+  assert.ok(t.includes("Tạo Lô Hàng Mới"), "the refusal must keep the form visible");
+  assert.ok(t.includes("Backend từ chối — lô chưa được tạo"), "refusal banner missing");
+  assert.ok(t.includes(`Mã lô ${SHIPMENT} đã tồn tại.`),
+    "the real backend duplicate error must be visible verbatim");
+  assert.ok(!text(window.document.body).includes("Đã tạo lô"), "no success toast after a refusal");
+  ok("pre-existing duplicate + unrelated version change can never false-navigate");
 }
 
 console.log(`\nCREATE-SHIPMENT DOM acceptance PASSED — ${passed} checks`);

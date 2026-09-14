@@ -19,6 +19,18 @@ each state is the genuine backend readback:
                           refusal (ok=False) the form must display verbatim.
   4. ``rbacError``      — a VIEWER attempt refused by RBAC (ok=False).
 
+CONTROL_TOWER_REPAIR_01 additionally generates the regression states for the
+"pre-existing duplicate must never false-navigate" scenario:
+
+  5. ``preexistingInitial`` — boot state where LO-0470 ALREADY EXISTS before
+                          any submit (fresh view-model, no lastWrites).
+  6. ``unrelatedChange``  — an UNRELATED backend write (a field save on
+                          another shipment) delivered while the create intent
+                          is still unanswered: the version genuinely changes
+                          and LO-0470 is present, yet NO shipment_create
+                          outcome for the pending requestId exists — this must
+                          NOT be treated as success.
+
 The DOM test rewrites each state's ``requestId`` to the one the real click
 produced before invoking, exactly matching live behaviour.
 
@@ -62,6 +74,15 @@ def main() -> None:
         assert len(outcomes) == 1
         return outcomes[0]
 
+    def dispatch_named(name: str, payload: dict) -> dict:
+        seq["n"] += 1
+        outcomes = vm.consume_phase_b_triggers(
+            {"seq": 0},
+            {name: {"seq": seq["n"], "event": name, "payload": payload}},
+        )
+        assert len(outcomes) == 1
+        return outcomes[0]
+
     # 1. initial — the form page before any create intent.
     initial = vm.build_view_model()
     assert not any(s["id"] == SHIPMENT for s in initial["shipments"])
@@ -84,6 +105,39 @@ def main() -> None:
     create_ok = vm.build_view_model()
     assert any(s["id"] == SHIPMENT for s in create_ok["shipments"]), \
         "the fresh view-model must contain the newly created shipment"
+
+    # -------------------------------------------------------------------
+    # CONTROL_TOWER_REPAIR_01 — pre-existing-duplicate regression states.
+    # The id already exists BEFORE any submit; the create intent stays
+    # unanswered while an UNRELATED backend write changes the version.
+    # Neither may be mistaken for a successful create.
+    # -------------------------------------------------------------------
+
+    # 5. preexistingInitial — the id exists, but NO outcome is pending yet.
+    st.session_state.pop(vm.LAST_WRITES_KEY, None)
+    preexisting_initial = vm.build_view_model()
+    assert any(s["id"] == SHIPMENT for s in preexisting_initial["shipments"])
+    assert preexisting_initial["lastWrites"] == []
+
+    # 6. unrelatedChange — an UNRELATED write (field save on another shipment)
+    #    lands while the create intent is still in flight: the version really
+    #    changes and the id is present, yet lastWrites carries NO
+    #    shipment_create outcome for the pending requestId.
+    unrelated_out = dispatch_named("shipment_field_save", {
+        "shipmentId": "LO-0307",
+        "fields": {"carrier": "Bộ (đường bộ TQ–VN) — unrelated regression write"},
+        "requestId": "CSX-FIX-UNRELATED-1",
+    })
+    assert unrelated_out["ok"], unrelated_out["error"]
+    assert unrelated_out["event"] == "shipment_field_save"
+    st.session_state[vm.LAST_WRITES_KEY] = [unrelated_out]
+    unrelated_change = vm.build_view_model()
+    assert any(s["id"] == SHIPMENT for s in unrelated_change["shipments"])
+    assert unrelated_change["version"] != preexisting_initial["version"], \
+        "the unrelated write must genuinely change the payload version"
+    assert not any(w.get("event") == "shipment_create"
+                   for w in unrelated_change["lastWrites"]), \
+        "no shipment_create outcome may be present in the unrelated state"
 
     # 3. duplicateError — same id again: canonical refusal, nothing new written.
     dup_out = dispatch(dict(create_payload, requestId="CSX-FIX-DUP-1"))
@@ -108,6 +162,8 @@ def main() -> None:
         "createOk": create_ok,
         "duplicateError": duplicate_error,
         "rbacError": rbac_error,
+        "preexistingInitial": preexisting_initial,
+        "unrelatedChange": unrelated_change,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
@@ -118,6 +174,11 @@ def main() -> None:
           f"lastWrites={[(w['ok'], w.get('requestId')) for w in create_ok['lastWrites']]}")
     print(f"  duplicateError: {duplicate_error['lastWrites'][0]['error']}")
     print(f"  rbacError: {rbac_error['lastWrites'][0]['error']}")
+    print(f"  preexistingInitial: hasLO0470={any(s['id'] == SHIPMENT for s in preexisting_initial['shipments'])} "
+          f"lastWrites={len(preexisting_initial['lastWrites'])}")
+    print(f"  unrelatedChange: version_changed="
+          f"{unrelated_change['version'] != preexisting_initial['version']} "
+          f"lastWrites={[(w.get('event'), w.get('ok')) for w in unrelated_change['lastWrites']]}")
 
     logi_sandbox.reset_backend()
 

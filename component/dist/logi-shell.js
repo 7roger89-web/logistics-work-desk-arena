@@ -15499,11 +15499,7 @@ function Eo() {
 	return (0, _.useEffect)(() => {
 		if (!E || !o) return;
 		let e = (o.lastWrites ?? []).find((e) => e.event === "shipment_create" && e.requestId === E.requestId);
-		if (e) {
-			e.ok ? (o.shipments ?? []).some((e) => e.id === E.shipmentId) ? (D(null), i("Đã tạo lô " + E.shipmentId, "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green"), a(`/lo-hang/${E.shipmentId}?tab=van-tai`)) : (D(null), k("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.")) : (D(null), k(e.error || "Backend từ chối yêu cầu tạo lô."), i("Không tạo được lô", e.error || "Backend từ chối.", "red"));
-			return;
-		}
-		o.version !== E.sinceVersion && (o.shipments ?? []).some((e) => e.id === E.shipmentId) && (D(null), i("Đã tạo lô " + E.shipmentId, "Lô đã có trong dữ liệu mới từ backend.", "green"), a(`/lo-hang/${E.shipmentId}?tab=van-tai`));
+		e && (e.ok ? (o.shipments ?? []).some((e) => e.id === E.shipmentId) ? (D(null), i("Đã tạo lô " + E.shipmentId, "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green"), a(`/lo-hang/${E.shipmentId}?tab=van-tai`)) : (D(null), k("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.")) : (D(null), k(e.error || "Backend từ chối yêu cầu tạo lô."), i("Không tạo được lô", e.error || "Backend từ chối.", "red")));
 	}, [
 		o,
 		E,
@@ -15748,8 +15744,7 @@ function Eo() {
 											requestId: n
 										}) ? (k(""), D({
 											shipmentId: t,
-											requestId: n,
-											sinceVersion: o?.version ?? ""
+											requestId: n
 										}), i("Đã gửi yêu cầu tạo " + t, "Chờ kết quả thật từ backend (validate + ghi + audit). Chưa chuyển màn hình.", "blue")) : i("Không gửi được", "Component chưa kết nối backend.", "red");
 									},
 									disabled: !!E,
