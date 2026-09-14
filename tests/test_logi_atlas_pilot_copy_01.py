@@ -6,7 +6,8 @@ copy_production_to_pilot.py``):
 
   1. default (dry-run) performs NO destination writes
   2. never mutates the source (only read-only ops reach logistics_db)
-  3. refuses a non-empty pilot with PILOT_NOT_EMPTY (no overwrite/merge/clean)
+  3. refuses a non-pristine pilot with PILOT_NOT_PRISTINE (no
+     overwrite/merge/clean/drop)
   4. never copies the excluded collections (users, notification_outbox)
   5. documents retain representative BSON types (ObjectId, datetime, ...)
   6. included collection counts match source == pilot
@@ -14,6 +15,14 @@ copy_production_to_pilot.py``):
      never recreated manually
   8. --execute is required for writes (CLI default is dry-run; without a
      credential the tool fails closed before any connection)
+  9. source authority fail-closed: the source must contain customers +
+     shipments; an empty or unrelated source exits 2 with zero pilot writes
+     in BOTH dry-run and --execute (SOURCE_AUTHORITY_CHECK=PASS/FAIL)
+ 10. the pilot must be COMPLETELY pristine before --execute: zero collection
+     names — even an existing EMPTY collection (e.g. empty users) is refused
+     before anything is written (PILOT_NOT_PRISTINE)
+ 11. indexes are independently re-verified after the copy (name + ordered
+     keys + unique; automatic ``_id_`` ignored); any mismatch exits 2
 
 Transport for behavioural tests is the existing mongomock convention (see
 views/logi_sandbox.py); source read-only discipline is additionally pinned
@@ -250,6 +259,7 @@ class DryRunAndSourceReadOnlyTests(unittest.TestCase):
         self.assertIn("MODE=DRY_RUN", out)
         self.assertIn("SOURCE_DB=logistics_db", out)
         self.assertIn("DESTINATION_DB=logistics_pilot", out)
+        self.assertIn("SOURCE_AUTHORITY_CHECK=PASS", out)
         self.assertIn("PILOT_PRECHECK=ABSENT", out)
         self.assertIn("SOURCE_COLLECTION_COUNT=6 (included=4, excluded=2)", out)
         self.assertIn("INCLUDE shipments: 3 docs, 3 indexes", out)
@@ -275,6 +285,8 @@ class DryRunAndSourceReadOnlyTests(unittest.TestCase):
         )
         src["users"] = FakeCollection("users", docs=[{"_id": "u1"}])
         src["tasks"] = FakeCollection("tasks", docs=[{"_id": "t1"}])
+        # customers: part of the minimum source authority
+        src["customers"] = FakeCollection("customers", docs=[{"_id": "c1"}])
         before = {name: [dict(d) for d in coll.docs] for name, coll in src.items()}
 
         for execute in (False, True):
@@ -292,27 +304,33 @@ class DryRunAndSourceReadOnlyTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 3: non-empty pilot is refused
+# 3: non-pristine pilot is refused (B1: non-empty, B2: empty collection,
+#    B3: empty users before any write, B4: pristine accepted)
 # ---------------------------------------------------------------------------
 
-class PilotNotEmptyRefusalTests(unittest.TestCase):
-    def test_3_non_empty_pilot_refused_without_overwrite(self):
+def _run_failing(tc, client, execute):
+    """Run the tool expecting a fail-closed SystemExit(2); return (out, err)."""
+    err = io.StringIO()
+    with contextlib.redirect_stdout(io.StringIO()) as out_buf, \
+            contextlib.redirect_stderr(err):
+        with tc.assertRaises(SystemExit) as ctx:
+            tool.run(client, execute=execute)
+    tc.assertEqual(ctx.exception.code, 2)
+    return out_buf.getvalue(), err.getvalue()
+
+
+class PilotPristineRefusalTests(unittest.TestCase):
+    def test_b1_non_empty_pilot_refused_without_overwrite(self):
         client = _mongomock_client()
         _seed_source(client)
         existing = {"_id": "keep-me", "title": "prior pilot data"}
         client[PILOT_DB]["tasks"].insert_one(existing)
 
-        err = io.StringIO()
-        with contextlib.redirect_stdout(io.StringIO()) as out_buf, \
-                contextlib.redirect_stderr(err):
-            with self.assertRaises(SystemExit) as ctx:
-                tool.run(client, execute=True)
-        self.assertEqual(ctx.exception.code, 2)
-        out = out_buf.getvalue()
-        self.assertIn("PILOT_NOT_EMPTY", out)
-        self.assertIn("PILOT_NOT_EMPTY tasks: 1 docs", out)
-        self.assertIn("FAIL", err.getvalue())
-        self.assertIn(PILOT_DB, err.getvalue())
+        out, err = _run_failing(self, client, execute=True)
+        self.assertIn("PILOT_NOT_PRISTINE", out)
+        self.assertIn("PILOT_NOT_PRISTINE tasks: 1 docs", out)
+        self.assertIn("FAIL", err)
+        self.assertIn(PILOT_DB, err)
 
         pilot = client[PILOT_DB]
         # No overwrite, no merge, no clean, no drop: prior data intact,
@@ -320,6 +338,45 @@ class PilotNotEmptyRefusalTests(unittest.TestCase):
         self.assertEqual(pilot["tasks"].count_documents({}), 1)
         self.assertEqual(pilot["tasks"].find_one({"_id": "keep-me"})["title"], "prior pilot data")
         self.assertEqual(pilot.list_collection_names(), ["tasks"])
+
+    def test_b2_empty_pilot_collection_refused(self):
+        client = _mongomock_client()
+        _seed_source(client)
+        # A pilot collection that EXISTS but is EMPTY (materialized by an index).
+        client[PILOT_DB]["tasks"].create_index([("title", 1)], name="ix_title")
+
+        out, _err = _run_failing(self, client, execute=True)
+        self.assertIn("PILOT_NOT_PRISTINE", out)
+        self.assertIn("PILOT_NOT_PRISTINE tasks: 0 docs", out)
+
+        pilot = client[PILOT_DB]
+        # Refused BEFORE any write, and the existing collection was neither
+        # dropped nor cleaned.
+        self.assertEqual(pilot.list_collection_names(), ["tasks"])
+        self.assertEqual(pilot["tasks"].count_documents({}), 0)
+        self.assertIn("ix_title", [i["name"] for i in pilot["tasks"].list_indexes()])
+
+    def test_b3_empty_users_refused_before_any_write(self):
+        client = _mongomock_client()
+        _seed_source(client)
+        # An empty EXISTING users collection in the pilot.
+        client[PILOT_DB]["users"].create_index([("username", 1)], name="ix_username")
+
+        out, _err = _run_failing(self, client, execute=True)
+        self.assertIn("PILOT_NOT_PRISTINE users: 0 docs", out)
+
+        pilot = client[PILOT_DB]
+        # Nothing else was written: no shipments/customers materialized.
+        self.assertEqual(pilot.list_collection_names(), ["users"])
+
+    def test_b4_pristine_pilot_accepted(self):
+        client = _mongomock_client()
+        _seed_source(client)
+        code, out, _err = _captured(tool.run, client, execute=True)
+        self.assertEqual(code, 0)
+        self.assertIn("SOURCE_AUTHORITY_CHECK=PASS", out)
+        self.assertIn("PILOT_PRECHECK=ABSENT", out)
+        self.assertIn("OK: pilot copy complete.", out)
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +453,11 @@ class ExecuteCopyTests(unittest.TestCase):
         self.assertIn("VERIFY legacy_historical_staging: source=0 pilot=0 OK", self.out)
         self.assertIn("PILOT_COLLECTION_COUNT=4", self.out)
         self.assertIn("OK: pilot copy complete.", self.out)
+        # A3 (execute path) + C1 (matching indexes verify OK for every
+        # included collection).
+        self.assertIn("SOURCE_AUTHORITY_CHECK=PASS", self.out)
+        for name in ("shipments", "customers", "tasks", "legacy_historical_staging"):
+            self.assertIn(f"INDEX_VERIFY {name}: OK", self.out)
 
     def test_7_relevant_indexes_reproduced_and_id_index_not_manual(self):
         self.assertEqual(self.code, 0)
@@ -424,6 +486,116 @@ class ExecuteCopyTests(unittest.TestCase):
         cust_by_name = {i["name"]: i for i in self.client[PILOT_DB]["customers"].list_indexes()}
         self.assertTrue(cust_by_name["uq_customer_id"].get("unique"))
         self.assertIn("INDEX shipments: uq_shipment_id recreated", self.out)
+
+
+# ---------------------------------------------------------------------------
+# 9: source authority fail-closed (A1 zero source, A2 unrelated source,
+#    A3 valid source passes)
+# ---------------------------------------------------------------------------
+
+class SourceAuthorityTests(unittest.TestCase):
+    def test_a1_zero_source_fails_closed_with_zero_writes(self):
+        client = _mongomock_client()
+        # The source database exists but contains 0 collections.
+        for execute in (False, True):
+            out, err = _run_failing(self, client, execute=execute)
+            self.assertIn("SOURCE_AUTHORITY_CHECK=FAIL", out)
+            self.assertIn("0 collections", err)
+        pilot = client[PILOT_DB]
+        self.assertEqual(
+            pilot.list_collection_names(), [],
+            "an invalid source must not create any pilot collection",
+        )
+
+    def test_a2_unrelated_source_fails_closed_with_zero_writes(self):
+        client = _mongomock_client()
+        src = client[SOURCE_DB]
+        src["orders"].insert_one({"_id": "o1", "total": 10})
+        src["widgets"].insert_many([{"_id": "w1"}, {"_id": "w2"}])
+
+        out, err = _run_failing(self, client, execute=True)
+        self.assertIn("SOURCE_AUTHORITY_CHECK=FAIL", out)
+        self.assertIn("missing required collection(s): customers, shipments", err)
+        self.assertEqual(
+            client[PILOT_DB].list_collection_names(), [],
+            "an unrelated source must not produce any pilot write",
+        )
+
+    def test_a3_valid_source_with_customers_and_shipments_passes(self):
+        client = _mongomock_client()
+        _seed_source(client)
+        code, out, _err = _captured(tool.run, client, execute=True)
+        self.assertEqual(code, 0)
+        self.assertIn("SOURCE_AUTHORITY_CHECK=PASS", out)
+        self.assertIn("OK: pilot copy complete.", out)
+
+
+# ---------------------------------------------------------------------------
+# 11: post-copy index verification (C1 matching, C2 mismatch, C3 _id_ ignored)
+# ---------------------------------------------------------------------------
+
+class IndexVerificationTests(unittest.TestCase):
+    def test_c2_deliberate_index_mismatch_fails_closed(self):
+        client = _mongomock_client()
+        _seed_source(client)
+        # Sabotage: indexes are NOT recreated, so the independent
+        # post-copy comparison must catch it.
+        original = tool.copy_indexes
+        tool.copy_indexes = lambda src_coll, dst_coll: []
+        try:
+            out, _err = _run_failing(self, client, execute=True)
+        finally:
+            tool.copy_indexes = original
+        self.assertIn("INDEX_VERIFY shipments: MISMATCH", out)
+        self.assertIn("uq_shipment_id: missing-in-pilot", out)
+        self.assertNotIn("OK: pilot copy complete", out)
+
+    def test_c3_id_index_ignored_in_verification(self):
+        src_db = FakeDb()
+        dst_db = FakeDb()
+        src_db["shipments"] = FakeCollection(
+            "shipments",
+            docs=[{"_id": "s1"}],
+            indexes=[
+                {"name": "_id_", "key": [("_id", 1)]},
+                {"name": "uq_shipment_id", "key": [("id", 1)], "unique": True},
+            ],
+        )
+        # Deliberately different automatic _id_ spec on the pilot side:
+        # it must be ignored by the comparison.
+        dst_db["shipments"] = FakeCollection(
+            "shipments",
+            docs=[{"_id": "s1"}],
+            indexes=[
+                {"name": "_id_", "key": [("tenant_id", 1)]},
+                {"name": "uq_shipment_id", "key": [("id", 1)], "unique": True},
+            ],
+        )
+        rows = tool.verify_indexes(src_db, dst_db, ["shipments"])
+        self.assertEqual(rows, [("shipments", True, "")])
+
+    def test_c3b_key_order_and_uniqueness_are_compared(self):
+        src_db = FakeDb()
+        dst_db = FakeDb()
+        src_db["shipments"] = FakeCollection(
+            "shipments",
+            docs=[{"_id": "s1"}],
+            indexes=[
+                {"name": "ix", "key": [("status", 1), ("updated_at", -1)], "unique": False},
+            ],
+        )
+        # Same fields but reversed order / different unique => mismatch.
+        dst_db["shipments"] = FakeCollection(
+            "shipments",
+            docs=[{"_id": "s1"}],
+            indexes=[
+                {"name": "ix", "key": [("updated_at", -1), ("status", 1)], "unique": True},
+            ],
+        )
+        rows = tool.verify_indexes(src_db, dst_db, ["shipments"])
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0][1])
+        self.assertIn("ix: spec differs", rows[0][2])
 
 
 # ---------------------------------------------------------------------------

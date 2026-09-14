@@ -16,18 +16,26 @@ Safety contract (fail closed):
 
 * SOURCE (logistics_db) is touched ONLY with read-only operations:
   list_collection_names, count_documents, find, list_indexes.
-* DESTINATION (logistics_pilot) is inspected BEFORE any write. If it already
-  contains ANY document in ANY collection the tool STOPS with
-  PILOT_NOT_EMPTY (collection names + counts) — no overwrite, no merge,
-  no clean, no drop.
-* Default mode is DRY RUN / PRECHECK: it connects, inventories the source
-  and prechecks the pilot, and performs ZERO writes. Actual writes require
-  the explicit ``--execute`` flag.
+* SOURCE AUTHORITY: before ANY destination write (and also in dry-run) the
+  source must be a plausible logistics source: the collections ``customers``
+  and ``shipments`` must exist (presence only — counts are not pinned). An
+  empty or unrelated database fails closed: SOURCE_AUTHORITY_CHECK=FAIL,
+  exit 2, zero destination writes.
+* DESTINATION (logistics_pilot) is inspected BEFORE any write (and re-checked
+  immediately before the first write). The only allowed pre-write state is a
+  COMPLETELY PRISTINE pilot: zero collection names. If ANY collection exists
+  — even an empty one — the tool STOPS with PILOT_NOT_PRISTINE (collection
+  names + counts): no overwrite, no merge, no clean, no drop.
+* Default mode is DRY RUN / PRECHECK: it connects, runs the fail-closed
+  prechecks and inventories the source, and performs ZERO writes. Actual
+  writes require the explicit ``--execute`` flag.
 * ``users`` and ``notification_outbox`` are NEVER copied and must not exist
   in the pilot afterwards (verified after the copy).
 * For each included source collection the non-automatic indexes are
-  recreated in the pilot (keys + unique + name). Mongo's automatic ``_id_``
-  index is never recreated manually.
+  recreated in the pilot (keys + unique + name), then independently verified
+  after the copy (INDEX_VERIFY <collection>: OK, exit 2 on mismatch). Mongo's
+  automatic ``_id_`` index is never recreated manually and is ignored in the
+  comparison.
 * After the copy, every included collection is verified: SOURCE_COUNT ==
   PILOT_COUNT, plus a representative-document BSON spot check on
   ``_id`` / ``created_at`` / ``updated_at`` (where present).
@@ -56,6 +64,9 @@ STREAMLIT_SECRETS = os.path.join(APP_ROOT, ".streamlit", "secrets.toml")
 SOURCE_DB = "logistics_db"
 DESTINATION_DB = "logistics_pilot"
 EXCLUDED_COLLECTIONS = frozenset({"users", "notification_outbox"})
+# Minimum source authority: a valid logistics source must contain these
+# collections (presence only — document counts may legitimately change).
+REQUIRED_SOURCE_COLLECTIONS = frozenset({"customers", "shipments"})
 NAMED_CHECK_COLLECTIONS = [
     "customers",
     "shipments",
@@ -115,25 +126,33 @@ def _index_key_pairs(key: Any) -> list[tuple[str, int]]:
     return list(key)
 
 
-def pilot_precheck(pilot_db: Any) -> tuple[str, list[tuple[str, int]]]:
-    """Inspect the pilot before any write.
+def check_source_authority(src_db: Any) -> tuple[bool, str]:
+    """Fail-closed minimum source authority (read-only).
 
-    Returns (status, occupants) where status is one of:
-      "ABSENT"    — the pilot database has no collections at all;
-      "EMPTY"     — collections exist but every one holds 0 documents;
-      "NOT_EMPTY" — occupants lists (collection_name, doc_count) for every
-                    collection that already contains documents.
+    The source must be a plausible logistics source: it may not be empty and
+    must contain every collection in REQUIRED_SOURCE_COLLECTIONS. Presence
+    only — no document counts are hardcoded (counts may legitimately change).
+    Returns (ok, reason).
+    """
+    names = set(src_db.list_collection_names())
+    if not names:
+        return False, "source database contains 0 collections"
+    missing = sorted(REQUIRED_SOURCE_COLLECTIONS - names)
+    if missing:
+        return False, "source missing required collection(s): " + ", ".join(missing)
+    return True, "required collections present: " + ", ".join(sorted(REQUIRED_SOURCE_COLLECTIONS))
+
+
+def check_pilot_pristine(pilot_db: Any) -> tuple[bool, list[tuple[str, int]]]:
+    """The only allowed pre-write destination state: ZERO collection names.
+
+    Returns (pristine, evidence) where evidence lists (collection_name,
+    doc_count) for every existing collection — including empty ones.
     Read-only.
     """
     names = sorted(pilot_db.list_collection_names())
-    occupants: list[tuple[str, int]] = []
-    for name in names:
-        count = pilot_db[name].count_documents({})
-        if count > 0:
-            occupants.append((name, count))
-    if occupants:
-        return "NOT_EMPTY", occupants
-    return ("EMPTY" if names else "ABSENT"), []
+    evidence = [(name, pilot_db[name].count_documents({})) for name in names]
+    return len(names) == 0, evidence
 
 
 def source_inventory(src_db: Any) -> list[dict[str, Any]]:
@@ -186,6 +205,49 @@ def copy_indexes(src_coll: Any, dst_coll: Any) -> list[str]:
     return copied
 
 
+def _index_spec_map(coll: Any) -> dict[str, tuple]:
+    """Non-automatic index name -> (ordered key pairs, unique) for one collection."""
+    specs: dict[str, tuple] = {}
+    for idx in coll.list_indexes():
+        name = idx.get("name")
+        if not name or name == "_id_":
+            continue
+        specs[name] = (
+            tuple(tuple(pair) for pair in _index_key_pairs(idx.get("key") or {})),
+            bool(idx.get("unique", False)),
+        )
+    return specs
+
+
+def verify_indexes(
+    src_db: Any, dst_db: Any, names: Iterable[str]
+) -> list[tuple[str, bool, str]]:
+    """Independent post-copy index comparison for every included collection.
+
+    Compares index name, ordered key specification and the unique boolean,
+    ignoring Mongo's automatic ``_id_`` index on both sides. Returns
+    (collection, matched, detail) rows.
+    """
+    results: list[tuple[str, bool, str]] = []
+    for name in names:
+        src_specs = _index_spec_map(src_db[name])
+        dst_specs = _index_spec_map(dst_db[name])
+        if src_specs == dst_specs:
+            results.append((name, True, ""))
+            continue
+        detail: list[str] = []
+        for index_name in sorted(set(src_specs) | set(dst_specs)):
+            src_spec, dst_spec = src_specs.get(index_name), dst_specs.get(index_name)
+            if dst_spec is None:
+                detail.append(f"{index_name}: missing-in-pilot")
+            elif src_spec is None:
+                detail.append(f"{index_name}: extra-in-pilot")
+            else:
+                detail.append(f"{index_name}: spec differs")
+        results.append((name, False, "; ".join(detail)))
+    return results
+
+
 def verify_collection_counts(
     src_db: Any, dst_db: Any, names: Iterable[str]
 ) -> list[tuple[str, int, int, bool]]:
@@ -232,13 +294,22 @@ def bson_spot_check(
     return results
 
 
-def _report_pilot_not_empty(occupants: list[tuple[str, int]]) -> None:
-    print("PILOT_NOT_EMPTY")
-    for name, count in occupants:
-        print(f"PILOT_NOT_EMPTY {name}: {count} docs")
+def _fail_source_authority(reason: str) -> None:
+    print("SOURCE_AUTHORITY_CHECK=FAIL")
     fail(
-        f"{DESTINATION_DB} đã chứa document — KHÔNG ghi đè, KHÔNG merge, "
-        "KHÔNG clean, KHÔNG drop. Hủy thao tác."
+        f"SOURCE_AUTHORITY_CHECK=FAIL: {reason}. "
+        "Source không phải logistics source hợp lệ — KHÔNG ghi gì vào destination."
+    )
+
+
+def _fail_pilot_not_pristine(evidence: list[tuple[str, int]]) -> None:
+    print("PILOT_NOT_PRISTINE")
+    for name, count in evidence:
+        print(f"PILOT_NOT_PRISTINE {name}: {count} docs")
+    fail(
+        f"{DESTINATION_DB} không pristine (trạng thái duy nhất được phép trước write: "
+        "0 collection) — KHÔNG drop, KHÔNG clean, KHÔNG ghi đè, KHÔNG merge. "
+        "Hủy thao tác."
     )
 
 
@@ -251,15 +322,19 @@ def run(client: Any, execute: bool = False) -> int:
     print(f"SOURCE_DB={SOURCE_DB}")
     print(f"DESTINATION_DB={DESTINATION_DB}")
 
-    status, occupants = pilot_precheck(pilot_db)
-    if status == "NOT_EMPTY":
-        _report_pilot_not_empty(occupants)
-    print(f"PILOT_PRECHECK={'ABSENT' if status == 'ABSENT' else 'EMPTY'}")
+    # Fail-closed prechecks (applied in dry-run AND execute).
+    ok, reason = check_source_authority(src_db)
+    if not ok:
+        _fail_source_authority(reason)
+    print("SOURCE_AUTHORITY_CHECK=PASS")
+
+    ok, evidence = check_pilot_pristine(pilot_db)
+    if not ok:
+        _fail_pilot_not_pristine(evidence)
+    print("PILOT_PRECHECK=ABSENT")
 
     inventory = source_inventory(src_db)
     included = [c for c in inventory if c["name"] not in EXCLUDED_COLLECTIONS]
-    if not inventory:
-        print("WARN: source database có 0 collection — kiểm tra lại connection.")
     print(
         f"SOURCE_COLLECTION_COUNT={len(inventory)} "
         f"(included={len(included)}, excluded={len(inventory) - len(included)})"
@@ -280,10 +355,14 @@ def run(client: Any, execute: bool = False) -> int:
 
     # ---- write phase: writes go to DESTINATION_DB only ----
     try:
-        # Re-inspect immediately before the first write (fail closed).
-        status, occupants = pilot_precheck(pilot_db)
-        if status == "NOT_EMPTY":
-            _report_pilot_not_empty(occupants)
+        # Re-establish the preconditions immediately before the first write
+        # (fail closed).
+        ok, evidence = check_pilot_pristine(pilot_db)
+        if not ok:
+            _fail_pilot_not_pristine(evidence)
+        ok, reason = check_source_authority(src_db)
+        if not ok:
+            _fail_source_authority(reason)
 
         for c in included:
             copied = copy_collection(src_db[c["name"]], pilot_db[c["name"]])
@@ -305,6 +384,13 @@ def run(client: Any, execute: bool = False) -> int:
             present = name in pilot_names
             print(f"VERIFY {name} in pilot={'YES' if present else 'NO'}")
 
+        idx_rows = verify_indexes(src_db, pilot_db, included_names)
+        for name, matched, detail in idx_rows:
+            print(
+                f"INDEX_VERIFY {name}: {'OK' if matched else 'MISMATCH'}"
+                + (f" ({detail})" if detail else "")
+            )
+
         spot = bson_spot_check(src_db, pilot_db, included_names)
         for name, field, src_value, matched in spot:
             print(
@@ -313,12 +399,14 @@ def run(client: Any, execute: bool = False) -> int:
             )
 
         bad_counts = [r for r in rows if not r[3]]
+        bad_indexes = [r for r in idx_rows if not r[1]]
         bad_spot = [r for r in spot if not r[3]]
         leaked = sorted(n for n in EXCLUDED_COLLECTIONS if n in pilot_names)
-        if bad_counts or bad_spot or leaked:
+        if bad_counts or bad_indexes or bad_spot or leaked:
             fail(
-                f"Verification failed: counts={bad_counts}, bson={bad_spot}, "
-                f"excluded_leaked={leaked}. SOURCE_MUTATIONS=0 (source untouched)."
+                f"Verification failed: counts={bad_counts}, indexes={bad_indexes}, "
+                f"bson={bad_spot}, excluded_leaked={leaked}. "
+                "SOURCE_MUTATIONS=0 (source untouched)."
             )
 
         print(f"PILOT_COLLECTION_COUNT={len(pilot_db.list_collection_names())}")
