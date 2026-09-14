@@ -22,7 +22,10 @@ import os
 import sys
 from datetime import datetime, timezone
 
-import toml  # pip install toml  (or use tomllib on Python >= 3.11)
+try:
+    import tomllib  # Python 3.11+
+except ImportError:  # Python 3.10
+    import tomli as tomllib  # type: ignore[no-redef]
 
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 STREAMLIT_SECRETS = os.path.join(APP_ROOT, ".streamlit", "secrets.toml")
@@ -40,7 +43,11 @@ def main() -> None:
     if not os.path.exists(STREAMLIT_SECRETS):
         fail(f"Không tìm thấy {STREAMLIT_SECRETS}. Chạy script này tại repo gốc của ứng dụng.")
 
-    secrets = toml.load(STREAMLIT_SECRETS)
+    try:
+        with open(STREAMLIT_SECRETS, "rb") as fh:
+            secrets = tomllib.load(fh)
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        fail(f"Không đọc được secrets: {exc}")
 
     mongo = secrets.get("mongodb") or secrets.get("mongo") or {}
     uri = (mongo.get("uri") or os.environ.get("MONGO_URI", "")).strip()
@@ -69,7 +76,6 @@ def main() -> None:
     try:
         client = MongoClient(uri, serverSelectionTimeoutMS=10000)
         db = client[PROD_DB]
-        # Fail-closed: refuse to run if identity guard would reject this DB name.
         if PROD_DB not in EXPECTED_ALLOWED:
             fail(f"{PROD_DB} không nằm trong MONGO_ALLOWED_DB_NAMES của ứng dụng.")
         client.admin.command("ping")
