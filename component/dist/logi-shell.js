@@ -13177,19 +13177,21 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 	let [r, i] = (0, _.useState)(() => (e.transportLegs ?? []).map((e) => ({
 		...e,
 		units: (e.units ?? []).map((e) => ({ ...e }))
-	}))), [a, o] = (0, _.useState)(() => xo(e.cargo));
+	}))), [a, o] = (0, _.useState)(() => xo(e.cargo)), s = JSON.stringify(e.transportLegs ?? []), c = JSON.stringify(xo(e.cargo));
 	(0, _.useEffect)(() => {
 		i((e.transportLegs ?? []).map((e) => ({
 			...e,
 			units: (e.units ?? []).map((e) => ({ ...e }))
-		}))), o(xo(e.cargo));
-	}, [e.id, e.version]);
-	let s = (e, t, n) => {
+		})));
+	}, [e.id, s]), (0, _.useEffect)(() => {
+		o(xo(e.cargo));
+	}, [e.id, c]);
+	let l = (e, t, n) => {
 		i((r) => r.map((r) => r.id === e ? {
 			...r,
 			[t]: n
 		} : r));
-	}, c = (e, t, n, r) => {
+	}, u = (e, t, n, r) => {
 		i((i) => i.map((i) => i.id === e ? {
 			...i,
 			units: i.units.map((e) => e.id === t ? {
@@ -13197,28 +13199,28 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 				[n]: r
 			} : e)
 		} : i));
-	}, l = (e, t) => {
+	}, d = (e, t) => {
 		t !== e.mode && (e.units.length > 0 && !window.confirm("Đổi mode sẽ xóa xe/container trong bản nháp của chặng này. Tiếp tục?") || i((n) => n.map((n) => n.id === e.id ? {
 			...n,
 			mode: t,
 			units: []
 		} : n)));
-	}, u = (e) => e.map((e, t) => ({
+	}, f = (e) => e.map((e, t) => ({
 		...e,
 		sequence: t + 1
-	})), d = (e, t) => {
+	})), p = (e, t) => {
 		let n = e + t;
 		if (n < 0 || n >= r.length) return;
 		let a = [...r];
-		[a[e], a[n]] = [a[n], a[e]], i(u(a));
-	}, f = (e) => {
-		window.confirm(`Xóa chặng ${e.sequence} (${e.mode}) khỏi bản nháp?`) && i((t) => u(t.filter((t) => t.id !== e.id)));
-	}, p = (e, t) => {
+		[a[e], a[n]] = [a[n], a[e]], i(f(a));
+	}, m = (e) => {
+		window.confirm(`Xóa chặng ${e.sequence} (${e.mode}) khỏi bản nháp?`) && i((t) => f(t.filter((t) => t.id !== e.id)));
+	}, h = (e, t) => {
 		i((n) => n.map((n) => n.id === e ? {
 			...n,
 			units: [...n.units, bo(t)]
 		} : n));
-	}, m = (e, t) => {
+	}, g = (e, t) => {
 		let n = t.number || (t.kind === "truck" ? "xe chưa có biển số" : "container chưa có số");
 		window.confirm(`Xóa ${n} khỏi bản nháp?`) && i((n) => n.map((n) => n.id === e ? {
 			...n,
@@ -13266,6 +13268,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 								children: /* @__PURE__ */ (0, P.jsx)(H, {
 									label: "Mô tả hàng",
 									children: /* @__PURE__ */ (0, P.jsx)("input", {
+										"data-field": "cargo-goods-description",
 										value: a.goodsDescription,
 										onChange: (e) => o((t) => ({
 											...t,
@@ -13449,19 +13452,19 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 										className: "flex flex-wrap gap-2",
 										children: [
 											/* @__PURE__ */ (0, P.jsx)("button", {
-												onClick: () => d(t, -1),
+												onClick: () => p(t, -1),
 												disabled: t === 0,
 												className: "touch-target rounded-lg border bg-white px-3 text-[13px] font-bold disabled:opacity-40",
 												children: "↑ Lên"
 											}),
 											/* @__PURE__ */ (0, P.jsx)("button", {
-												onClick: () => d(t, 1),
+												onClick: () => p(t, 1),
 												disabled: t === r.length - 1,
 												className: "touch-target rounded-lg border bg-white px-3 text-[13px] font-bold disabled:opacity-40",
 												children: "↓ Xuống"
 											}),
 											/* @__PURE__ */ (0, P.jsxs)("button", {
-												onClick: () => f(e),
+												onClick: () => m(e),
 												className: "touch-target ml-auto rounded-lg border border-red-200 bg-white px-3 text-[13px] font-bold text-red-700 inline-flex items-center gap-1",
 												children: [/* @__PURE__ */ (0, P.jsx)(Ea, { size: 14 }), " Xóa chặng"]
 											})
@@ -13474,7 +13477,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "Mode",
 												children: /* @__PURE__ */ (0, P.jsx)("select", {
 													value: e.mode,
-													onChange: (t) => l(e, t.target.value),
+													onChange: (t) => d(e, t.target.value),
 													className: U(),
 													children: _o.map((e) => /* @__PURE__ */ (0, P.jsx)("option", { children: e }, e))
 												})
@@ -13483,7 +13486,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "Hãng vận chuyển",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.carrier,
-													onChange: (t) => s(e.id, "carrier", t.target.value),
+													onChange: (t) => l(e.id, "carrier", t.target.value),
 													placeholder: e.mode === "Air" ? "Airline" : "Carrier / nhà xe",
 													className: U()
 												})
@@ -13492,7 +13495,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: e.mode === "Air" ? "Sân bay đi" : "Nơi đi",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.origin,
-													onChange: (t) => s(e.id, "origin", t.target.value),
+													onChange: (t) => l(e.id, "origin", t.target.value),
 													className: U()
 												})
 											}),
@@ -13500,7 +13503,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: e.mode === "Air" ? "Sân bay đến" : "Nơi đến",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.destination,
-													onChange: (t) => s(e.id, "destination", t.target.value),
+													onChange: (t) => l(e.id, "destination", t.target.value),
 													className: U()
 												})
 											}),
@@ -13508,7 +13511,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "ETD",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.etd,
-													onChange: (t) => s(e.id, "etd", t.target.value),
+													onChange: (t) => l(e.id, "etd", t.target.value),
 													placeholder: "YYYY-MM-DD",
 													className: U()
 												})
@@ -13517,7 +13520,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "ETA",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.eta,
-													onChange: (t) => s(e.id, "eta", t.target.value),
+													onChange: (t) => l(e.id, "eta", t.target.value),
 													placeholder: "YYYY-MM-DD",
 													className: U()
 												})
@@ -13526,7 +13529,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "ATD",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.atd,
-													onChange: (t) => s(e.id, "atd", t.target.value),
+													onChange: (t) => l(e.id, "atd", t.target.value),
 													placeholder: "YYYY-MM-DD",
 													className: U()
 												})
@@ -13535,7 +13538,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												label: "ATA",
 												children: /* @__PURE__ */ (0, P.jsx)("input", {
 													value: e.ata,
-													onChange: (t) => s(e.id, "ata", t.target.value),
+													onChange: (t) => l(e.id, "ata", t.target.value),
 													placeholder: "YYYY-MM-DD",
 													className: U()
 												})
@@ -13554,7 +13557,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "Booking",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.bookingNo,
-														onChange: (t) => s(e.id, "bookingNo", t.target.value),
+														onChange: (t) => l(e.id, "bookingNo", t.target.value),
 														className: U()
 													})
 												}),
@@ -13562,7 +13565,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "Vessel",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.vessel,
-														onChange: (t) => s(e.id, "vessel", t.target.value),
+														onChange: (t) => l(e.id, "vessel", t.target.value),
 														className: U()
 													})
 												}),
@@ -13570,7 +13573,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "Voyage",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.voyage,
-														onChange: (t) => s(e.id, "voyage", t.target.value),
+														onChange: (t) => l(e.id, "voyage", t.target.value),
 														className: U()
 													})
 												}),
@@ -13578,7 +13581,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "MBL",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.mbl,
-														onChange: (t) => s(e.id, "mbl", t.target.value),
+														onChange: (t) => l(e.id, "mbl", t.target.value),
 														className: U()
 													})
 												}),
@@ -13586,7 +13589,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "HBL",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.hbl,
-														onChange: (t) => s(e.id, "hbl", t.target.value),
+														onChange: (t) => l(e.id, "hbl", t.target.value),
 														className: U()
 													})
 												})
@@ -13605,7 +13608,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "Flight no",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.flightNo,
-														onChange: (t) => s(e.id, "flightNo", t.target.value),
+														onChange: (t) => l(e.id, "flightNo", t.target.value),
 														className: U()
 													})
 												}),
@@ -13613,7 +13616,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "MAWB",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.mawb,
-														onChange: (t) => s(e.id, "mawb", t.target.value),
+														onChange: (t) => l(e.id, "mawb", t.target.value),
 														className: U()
 													})
 												}),
@@ -13621,7 +13624,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 													label: "HAWB",
 													children: /* @__PURE__ */ (0, P.jsx)("input", {
 														value: e.hawb,
-														onChange: (t) => s(e.id, "hawb", t.target.value),
+														onChange: (t) => l(e.id, "hawb", t.target.value),
 														className: U()
 													})
 												})
@@ -13636,7 +13639,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 												className: "font-extrabold text-[14px] text-[#0f2a4a]",
 												children: e.mode === "Truck" ? "Xe tải" : "Container"
 											}), /* @__PURE__ */ (0, P.jsxs)("button", {
-												onClick: () => p(e.id, e.mode === "Truck" ? "truck" : "container"),
+												onClick: () => h(e.id, e.mode === "Truck" ? "truck" : "container"),
 												className: "btn-press touch-target ml-auto rounded-xl bg-[#1e5aa8] text-white font-bold px-4 min-h-[44px]",
 												children: ["+ ", e.mode === "Truck" ? "Thêm xe" : "Thêm container"]
 											})]
@@ -13652,7 +13655,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														n + 1
 													]
 												}), /* @__PURE__ */ (0, P.jsxs)("button", {
-													onClick: () => m(e.id, t),
+													onClick: () => g(e.id, t),
 													className: "touch-target ml-auto text-red-700 text-[12.5px] font-bold inline-flex items-center gap-1",
 													children: [/* @__PURE__ */ (0, P.jsx)(Ea, { size: 13 }), " Xóa"]
 												})]
@@ -13664,7 +13667,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															"data-field": "unit-type-size",
 															value: t.typeSize,
-															onChange: (n) => c(e.id, t.id, "typeSize", n.target.value),
+															onChange: (n) => u(e.id, t.id, "typeSize", n.target.value),
 															placeholder: "VD: 17.5m / tải 30t",
 															className: U()
 														})
@@ -13674,7 +13677,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															"data-field": "unit-number",
 															value: t.number,
-															onChange: (n) => c(e.id, t.id, "number", n.target.value),
+															onChange: (n) => u(e.id, t.id, "number", n.target.value),
 															className: U()
 														})
 													}),
@@ -13682,7 +13685,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														label: "Tài xế",
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															value: t.driverName,
-															onChange: (n) => c(e.id, t.id, "driverName", n.target.value),
+															onChange: (n) => u(e.id, t.id, "driverName", n.target.value),
 															className: U()
 														})
 													}),
@@ -13690,7 +13693,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														label: "SĐT tài xế",
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															value: t.driverPhone,
-															onChange: (n) => c(e.id, t.id, "driverPhone", n.target.value),
+															onChange: (n) => u(e.id, t.id, "driverPhone", n.target.value),
 															className: U()
 														})
 													})
@@ -13702,7 +13705,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														label: "Số container",
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															value: t.number,
-															onChange: (n) => c(e.id, t.id, "number", n.target.value),
+															onChange: (n) => u(e.id, t.id, "number", n.target.value),
 															className: U()
 														})
 													}),
@@ -13710,7 +13713,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														label: "Loại / kích thước",
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															value: t.typeSize,
-															onChange: (n) => c(e.id, t.id, "typeSize", n.target.value),
+															onChange: (n) => u(e.id, t.id, "typeSize", n.target.value),
 															placeholder: "20GP / 40HC",
 															className: U()
 														})
@@ -13719,7 +13722,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 														label: "Seal",
 														children: /* @__PURE__ */ (0, P.jsx)("input", {
 															value: t.sealNo,
-															onChange: (n) => c(e.id, t.id, "sealNo", n.target.value),
+															onChange: (n) => u(e.id, t.id, "sealNo", n.target.value),
 															className: U()
 														})
 													})
@@ -13739,7 +13742,7 @@ function Co({ shipment: e, dispatch: t, toast: n }) {
 						className: "flex flex-col sm:flex-row gap-2.5 mt-4",
 						children: [/* @__PURE__ */ (0, P.jsxs)(W, {
 							onClick: () => {
-								let i = u(r).map((e) => ({
+								let i = f(r).map((e) => ({
 									id: e.id,
 									sequence: e.sequence,
 									mode: e.mode,

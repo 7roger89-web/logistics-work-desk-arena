@@ -730,6 +730,121 @@ console.log("STEP 17 — CN pickup truck type compatibility");
   ok("PR #22 truck type projects into the canonical unit and remains editable");
 }
 
+// ---------------------------------------------------------------------------
+// STEP 18 — independent operational drafts survive unrelated readbacks.
+// ---------------------------------------------------------------------------
+
+console.log("STEP 18 — independent Cargo/Transport draft synchronization");
+{
+  const vm5 = JSON.parse(JSON.stringify(VM));
+  const canonical = vm5.shipments.find((x) => x.id === "LO-0306");
+  canonical.version = 100;
+  canonical.transportLegsStructured = true;
+  canonical.transportLegs = [{
+    id: "sync-leg",
+    sequence: 1,
+    mode: "Truck",
+    origin: "Factory",
+    destination: "Warehouse",
+    carrier: "Road Partner",
+    etd: "2026-10-01",
+    eta: "2026-10-02",
+    atd: "",
+    ata: "",
+    bookingNo: "",
+    mbl: "",
+    hbl: "",
+    vessel: "",
+    voyage: "",
+    mawb: "",
+    hawb: "",
+    flightNo: "",
+    units: [{
+      id: "sync-truck",
+      kind: "truck",
+      number: "BASE-TRUCK",
+      typeSize: "9.6m",
+      sealNo: "",
+      driverName: "Driver A",
+      driverPhone: "0901000000",
+    }],
+  }];
+  canonical.cargoStructured = true;
+  canonical.cargo = {
+    goodsDescription: "BASE CARGO",
+    packs: 10,
+    weight: 1200,
+    cbm: 4.5,
+    dims: "100 x 100 x 100 cm",
+    type: "Pallet",
+    note: "Base note",
+    qtyPkg: "",
+  };
+  vm5.version = "draft-sync-100";
+  invoke(vm5);
+  await tick(120);
+
+  // Create independent local edits without saving either one.
+  let leg = $("details")[0];
+  if (!leg.open) {
+    $("summary", leg)[0].click();
+    await tick();
+  }
+  await click("+ Thêm xe", "button", leg);
+  let truckNumbers = $('input[data-field="unit-number"]', leg);
+  type(truckNumbers[truckNumbers.length - 1], "UNSAVED-TRUCK");
+  let cargoInput = $('input[data-field="cargo-goods-description"]')[0];
+  type(cargoInput, "UNSAVED CARGO BEFORE REJECTION");
+
+  // An unchanged canonical readback (for example, backend rejection) must not
+  // erase either rejected draft even though the parent/version changes.
+  const rejectedReadback = JSON.parse(JSON.stringify(vm5));
+  rejectedReadback.version = "draft-sync-101";
+  rejectedReadback.shipments.find((x) => x.id === "LO-0306").version = 101;
+  invoke(rejectedReadback);
+  await tick(120);
+  assert.ok($('input[data-field="unit-number"]').some((input) => input.value === "UNSAVED-TRUCK"),
+    "unchanged readback erased the unsaved transport draft");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value,
+    "UNSAVED CARGO BEFORE REJECTION", "unchanged readback erased the unsaved cargo draft");
+  ok("unchanged/rejected readback preserves both local drafts");
+
+  // CASE A + D: a real Cargo readback synchronizes Cargo only; unsaved
+  // Transport must survive the unrelated parent/version update.
+  const cargoReadback = JSON.parse(JSON.stringify(rejectedReadback));
+  cargoReadback.version = "draft-sync-102";
+  const cargoLot = cargoReadback.shipments.find((x) => x.id === "LO-0306");
+  cargoLot.version = 102;
+  cargoLot.cargo.goodsDescription = "SERVER CARGO READBACK";
+  invoke(cargoReadback);
+  await tick(120);
+  assert.ok($('input[data-field="unit-number"]').some((input) => input.value === "UNSAVED-TRUCK"),
+    "Cargo readback erased the unsaved transport draft");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value,
+    "SERVER CARGO READBACK", "real Cargo readback did not synchronize Cargo");
+  ok("unsaved Transport survives Cargo save/readback");
+  ok("real Cargo readback synchronizes the Cargo editor");
+
+  // CASE B + C: now edit Cargo locally, then apply a real Transport readback.
+  // Transport must synchronize while the unrelated Cargo draft stays intact.
+  cargoInput = $('input[data-field="cargo-goods-description"]')[0];
+  type(cargoInput, "UNSAVED-CARGO");
+  const transportReadback = JSON.parse(JSON.stringify(cargoReadback));
+  transportReadback.version = "draft-sync-103";
+  const transportLot = transportReadback.shipments.find((x) => x.id === "LO-0306");
+  transportLot.version = 103;
+  transportLot.transportLegs[0].units[0].number = "SERVER-TRUCK-READBACK";
+  invoke(transportReadback);
+  await tick(120);
+  truckNumbers = $('input[data-field="unit-number"]');
+  assert.deepEqual(truckNumbers.map((input) => input.value), ["SERVER-TRUCK-READBACK"],
+    "real Transport readback did not synchronize Transport");
+  assert.equal($('input[data-field="cargo-goods-description"]')[0].value, "UNSAVED-CARGO",
+    "Transport readback erased the unsaved Cargo draft");
+  ok("unsaved Cargo survives Transport save/readback");
+  ok("real Transport readback synchronizes the Transport editor");
+}
+
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);
 window.close();
 process.exit(0);

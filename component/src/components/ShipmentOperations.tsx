@@ -84,13 +84,23 @@ export default function ShipmentOperations({ shipment, dispatch, toast }: Props)
   );
   const [cargo, setCargo] = useState<CargoDraft>(() => cargoDraft(shipment.cargo));
 
+  // The two editors are intentionally independent. A generic shipment version
+  // bump may come from saving the other editor (or from a rejected write's
+  // unchanged readback), so only that editor's canonical content may reset its
+  // local draft.
+  const transportRevision = JSON.stringify(shipment.transportLegs ?? []);
+  const cargoRevision = JSON.stringify(cargoDraft(shipment.cargo));
+
   useEffect(() => {
     setLegs((shipment.transportLegs ?? []).map((leg) => ({
       ...leg,
       units: (leg.units ?? []).map((unit) => ({ ...unit })),
     })));
+  }, [shipment.id, transportRevision]);
+
+  useEffect(() => {
     setCargo(cargoDraft(shipment.cargo));
-  }, [shipment.id, shipment.version]);
+  }, [shipment.id, cargoRevision]);
 
   const updateLeg = <K extends keyof TransportLeg>(id: string, key: K, value: TransportLeg[K]) => {
     setLegs((rows) => rows.map((leg) => leg.id === id ? { ...leg, [key]: value } : leg));
@@ -212,7 +222,7 @@ export default function ShipmentOperations({ shipment, dispatch, toast }: Props)
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="sm:col-span-2 lg:col-span-4">
-            <Field label="Mô tả hàng"><input value={cargo.goodsDescription} onChange={(e) => setCargo((v) => ({ ...v, goodsDescription: e.target.value }))} placeholder="Tên/mô tả hàng thực tế" className={inputCls()} /></Field>
+            <Field label="Mô tả hàng"><input data-field="cargo-goods-description" value={cargo.goodsDescription} onChange={(e) => setCargo((v) => ({ ...v, goodsDescription: e.target.value }))} placeholder="Tên/mô tả hàng thực tế" className={inputCls()} /></Field>
           </div>
           <Field label="Số kiện"><input value={cargo.packageCount} onChange={(e) => setCargo((v) => ({ ...v, packageCount: e.target.value }))} inputMode="numeric" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
           <Field label="Loại kiện"><input value={cargo.packageType} onChange={(e) => setCargo((v) => ({ ...v, packageType: e.target.value }))} placeholder="Thùng / pallet / bao…" className={inputCls()} /></Field>
