@@ -45,6 +45,12 @@ C1_EVENTS = {
     "contract_docgen_generate",
     "contract_docgen_issue",
     "contract_shipment_link",
+    # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — ONE bounded write event
+    # for the /ngu-canh-doi-tac agent master. authority_agents is already part
+    # of the C1 authority payload, so the C1 dispatcher is its natural surface:
+    # RBAC → existing core.database.save_authority_agent → audit → fresh read.
+    # No agents_v2 collection, no partner table, no new writer.
+    "authority_agent_save",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1423,6 +1429,92 @@ def _handle_contract_shipment_link(payload: Mapping[str, Any]) -> dict[str, Any]
                    audit=_audit("contract", cid))
 
 
+# ---------------------------------------------------------------------------
+# LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — Đại Lý Trường Thành agent
+# master CREATE / EDIT through the EXISTING canonical writer.
+# ---------------------------------------------------------------------------
+
+#: The ONLY fields this event may write — exactly what the existing
+#: authority_agents master projects (views.logi_c1._party_view). No tax /
+#: credit / SLA / risk / rating field exists, so none is accepted.
+AGENT_SAVE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("legalName", "legal_name"),
+    ("legalCode", "legal_code"),
+    ("legalAddress", "legal_address"),
+    ("legalRepresentative", "legal_representative"),
+    ("representativeTitle", "representative_title"),
+    ("phone", "phone"),
+    ("email", "email"),
+    ("bankAccountHolder", "bank_account_holder"),
+    ("bankAccountNumber", "bank_account_number"),
+    ("bankName", "bank_name"),
+    ("bankBranch", "bank_branch"),
+)
+
+
+def read_authority_agent(agent_id: str) -> dict[str, Any] | None:
+    """Fresh read of ONE agent master straight from the canonical reader."""
+    from core.database import load_authority_agents
+
+    agents = load_authority_agents() or {}
+    record = agents.get(agent_id)
+    if isinstance(record, Mapping):
+        return dict(record)
+    record = next(
+        (d for d in agents.values()
+         if isinstance(d, Mapping) and _text(d.get("agent_id")) == agent_id),
+        None,
+    )
+    return dict(record) if record else None
+
+
+def _handle_authority_agent_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """CREATE or EDIT one authority_agents master via the existing writer.
+
+    Flow: RBAC (sales_write — Admin/Support/Sale allowed, viewer refused)
+      → core.database.save_authority_agent (upsert + audit, canonical agent_id
+        handling — the writer itself re-enforces the same permission)
+      → fresh load_authority_agents readback through the SAME _party_view
+        projection every other screen uses, so one master never renders two
+        ways. No optimistic persistence: the component shows the saved master
+        only when this readback arrives.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_authority_agent
+
+    agent_id = _text(payload.get("agentId") or payload.get("id")).strip().upper()
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("authority_agent_save", agent_id, ok, error,
+                       requestId=request_id, **extra)
+
+    if not agent_id:
+        return _res(False, "Thiếu mã đại lý.")
+    legal_name = _text(payload.get("legalName"))
+    if not legal_name:
+        return _res(False, "Tên pháp lý là bắt buộc — hồ sơ đại lý không tên không dùng được.")
+    if not can_operate_business("sales_write"):
+        return _res(False, "RBAC: không có quyền sales_write.")
+
+    # Merge-on-edit: only the fields this form genuinely carries are overlaid,
+    # so an edit can never blank master data this slice does not manage.
+    doc = read_authority_agent(agent_id) or {}
+    doc["agent_id"] = agent_id
+    doc["legal_name"] = legal_name
+    for payload_key, doc_key in AGENT_SAVE_FIELDS:
+        if payload_key in payload:
+            doc[doc_key] = _text(payload.get(payload_key))
+
+    if not save_authority_agent(doc):
+        return _res(False, get_last_db_error() or "Không lưu được hồ sơ đại lý.")
+
+    fresh = read_authority_agent(agent_id)
+    return _res(True, readback=_party_view(fresh or {}, "agent"),
+                persisted={"agentId": agent_id, "legalName": _text((fresh or {}).get("legal_name"))},
+                audit=_audit("authority_agent", agent_id))
+
+
 _HANDLERS = {
     "customer_create": _handle_customer_create,
     "customer_edit": _handle_customer_edit,
@@ -1440,6 +1532,7 @@ _HANDLERS = {
     "contract_docgen_generate": _handle_contract_docgen_generate,
     "contract_docgen_issue": _handle_contract_docgen_issue,
     "contract_shipment_link": _handle_contract_shipment_link,
+    "authority_agent_save": _handle_authority_agent_save,
 }
 
 

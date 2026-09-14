@@ -1,19 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, FileCheck2, Package, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleAlert, FileCheck2, Package, Sparkles } from "lucide-react";
 import { Field, PrimaryBtn, SectionTitle, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
 import { cx, fmtMoney, fmtText } from "../lib/format";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 
 // Phase B — real Create Shipment workflow.
 // The donor "Thêm mới nhanh → Tạo lô hàng mới" destination now runs the
 // existing Logistics creation logic: accepted quote → prefill known values →
 // ask only what is missing → real validation → existing save writer → audit →
 // fresh read. Duplicate shipment codes are rejected by the backend.
+//
+// LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the page no longer navigates
+// when the event was merely TRANSPORTED. It waits for the authoritative
+// backend outcome delivered in the next fresh view-model (`lastWrites`,
+// matched by the requestId this click sent):
+//   SUCCESS → the fresh view-model genuinely contains the new shipment →
+//             only then navigate to /lo-hang/<id> (the detail really exists);
+//   FAILURE → stay on the form and show the real backend error (duplicate id,
+//             RBAC, validation). One click can never create two shipments:
+//             the backend seq guard + duplicate-id check stay intact and the
+//             button is disabled while the outcome is in flight.
 
 export default function CreateShipment() {
   const { customers, quotes, contracts, dispatch, toast } = useStore();
   const nav = useNavigate();
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
 
   const [quoteId, setQuoteId] = useState("");
   const [code, setCode] = useState("");
@@ -23,6 +36,12 @@ export default function CreateShipment() {
   const [incoterm, setIncoterm] = useState("DAP");
   const [pol, setPol] = useState("");
   const [pod, setPod] = useState("");
+
+  // The in-flight create intent. While set, the button is disabled (one click
+  // = one request) and the page waits for the backend's AUTHORITATIVE outcome
+  // in `lastWrites` instead of trusting the transport.
+  const [pending, setPending] = useState<{ shipmentId: string; requestId: string; sinceVersion: string } | null>(null);
+  const [backendError, setBackendError] = useState("");
 
   const acceptedQuotes = useMemo(
     () => quotes.filter((q) => (q.status || "").toLowerCase().includes("accept") || (q.status || "").toLowerCase().includes("chốt")),
@@ -64,10 +83,12 @@ export default function CreateShipment() {
   };
 
   const submit = () => {
+    if (pending) return; // outcome in flight — a second click must not double-send
     if (!code.trim()) { toast("Thiếu mã lô", "Nhập mã lô (ví dụ LO-0470) rồi bấm Tạo lô hàng.", "red"); return; }
     if (!customerId.trim()) { toast("Thiếu khách hàng", "Chọn khách hàng — backend từ chối lô không có khách.", "red"); return; }
     if (!mode && (pol.trim() || pod.trim())) { toast("Thiếu mode đầu tiên", "Chọn mode hoặc để trống cả nơi đi/đến để bổ sung sau.", "red"); return; }
     const shipmentId = code.trim().toUpperCase();
+    const requestId = `create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const sent = dispatch("shipment_create", {
       shipmentId,
       // `customerId` is the canonical customer key the backend joins on
@@ -77,15 +98,56 @@ export default function CreateShipment() {
       contractId: contractId.trim(),
       currency: "VND",
       transport: { mode, incoterm, pol: pol.trim(), pod: pod.trim() },
+      // The backend echoes this id so the outcome in `lastWrites` can be
+      // matched to THIS click — never to another request.
+      requestId,
     });
     if (sent) {
-      toast("Đã gửi yêu cầu tạo " + code.trim().toUpperCase(),
-        "Backend validate + ghi + audit. Mã trùng sẽ bị từ chối.", "green");
-      nav(`/lo-hang/${shipmentId}?tab=van-tai`);
+      setBackendError("");
+      setPending({ shipmentId, requestId, sinceVersion: vm?.version ?? "" });
+      toast("Đã gửi yêu cầu tạo " + shipmentId,
+        "Chờ kết quả thật từ backend (validate + ghi + audit). Chưa chuyển màn hình.", "blue");
     } else {
       toast("Không gửi được", "Component chưa kết nối backend.", "red");
     }
   };
+
+  // Consume the authoritative backend outcome once the fresh view-model
+  // delivers it. Transport alone never counts as success.
+  useEffect(() => {
+    if (!pending || !vm) return;
+    const outcome = (vm.lastWrites ?? []).find(
+      (w) => w.event === "shipment_create" && w.requestId === pending.requestId
+    );
+    if (outcome) {
+      if (outcome.ok) {
+        const exists = (vm.shipments ?? []).some((s) => s.id === pending.shipmentId);
+        if (exists) {
+          setPending(null);
+          toast("Đã tạo lô " + pending.shipmentId,
+            "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green");
+          nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
+        } else {
+          setPending(null);
+          setBackendError("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.");
+        }
+      } else {
+        setPending(null);
+        setBackendError(outcome.error || "Backend từ chối yêu cầu tạo lô.");
+        toast("Không tạo được lô", outcome.error || "Backend từ chối.", "red");
+      }
+      return;
+    }
+    // Fallback for delivery edges: if a FRESH view-model (version changed)
+    // already contains the shipment, the backend truth wins even without a
+    // matching outcome record. Never fires on the stale pre-submit payload.
+    if (vm.version !== pending.sinceVersion
+        && (vm.shipments ?? []).some((s) => s.id === pending.shipmentId)) {
+      setPending(null);
+      toast("Đã tạo lô " + pending.shipmentId, "Lô đã có trong dữ liệu mới từ backend.", "green");
+      nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
+    }
+  }, [vm, pending, nav, toast]);
 
   return (
     <div className="space-y-4 max-w-[1000px]">
@@ -152,10 +214,30 @@ export default function CreateShipment() {
               <Field label="Nơi đến cơ bản"><input value={pod} onChange={(e) => setPod(e.target.value)} placeholder="Hữu Nghị (Lạng Sơn)" className={inputCls()} /></Field>
             </div>
 
+            {/* The REAL backend refusal (duplicate id, RBAC, validation…) —
+                shown verbatim; the page stayed on the form on purpose. */}
+            {backendError && (
+              <div className="mt-4 rounded-xl border-2 border-red-200 bg-red-50 p-3.5 flex items-start gap-2.5" role="alert">
+                <CircleAlert size={18} className="text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-extrabold text-[14.5px] text-red-800">Backend từ chối — lô chưa được tạo</p>
+                  <p className="text-[13.5px] text-red-700 mt-0.5 break-words">{backendError}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
-              <PrimaryBtn onClick={submit} className="flex-1">TẠO LÔ HÀNG <ArrowRight size={17} /></PrimaryBtn>
+              <PrimaryBtn onClick={submit} disabled={!!pending} className="flex-1">
+                {pending ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : <>TẠO LÔ HÀNG <ArrowRight size={17} /></>}
+              </PrimaryBtn>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]">Hủy</Link>
             </div>
+            {pending && (
+              <p className="text-[13px] font-semibold text-blue-700 mt-2.5">
+                Đang chờ kết quả thật từ backend (RBAC → validate → ghi → audit → đọc lại).
+                Chỉ chuyển sang màn lô khi dữ liệu mới xác nhận lô tồn tại.
+              </p>
+            )}
             <p className="text-[13px] text-slate-500 mt-3">
               Lô được ghi qua writer hiện có của Logistics, có audit. Mã lô trùng sẽ bị từ chối. Các trường để trống được giữ là <b>không xác định</b>, không bị ép về 0.
             </p>

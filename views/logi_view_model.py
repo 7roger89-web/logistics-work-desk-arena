@@ -40,6 +40,12 @@ from views import user_access as logi_user_access
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
 
+#: Session key where ``dispatch()`` records the authoritative outcome of every
+#: business event it handled. Embedding it back into the NEXT view-model is
+#: what lets the component learn the backend's real answer (ok + fresh
+#: readback, or the actual refusal reason) — never from transport alone.
+LAST_WRITES_KEY = "logi_last_writes"
+
 
 # ---------------------------------------------------------------------------
 # Read side
@@ -280,6 +286,17 @@ def _notifications(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _last_writes_readback() -> list[dict[str, Any]]:
+    """Authoritative outcomes of the events the dispatcher already handled.
+
+    ``dispatch()`` stores them under ``LAST_WRITES_KEY``; the component matches
+    them by the ``requestId`` it sent with the event, so one outcome can never
+    be mistaken for the answer to a different request.
+    """
+    rows = st.session_state.get(LAST_WRITES_KEY) or []
+    return [dict(row) for row in rows if isinstance(row, Mapping)]
+
+
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
     from core.auth import current_user
@@ -427,6 +444,12 @@ def build_view_model() -> dict:
             request=st.session_state.get(TRANSLATION_REQUEST_KEY),
             result=st.session_state.get(TRANSLATION_RESULT_KEY),
         ),
+        # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the authoritative
+        # outcome(s) of the business event(s) the bounded dispatcher handled on
+        # the previous run. The UI must never treat "event transported" as
+        # "write succeeded": success, duplicate/RBAC/validation refusals and the
+        # fresh readback all arrive HERE, after the canonical writer ran.
+        "lastWrites": _last_writes_readback(),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)
@@ -1267,30 +1290,37 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     sid = rd.text(payload.get("shipmentId")).upper()
     customer_id = rd.text(payload.get("customerId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        # Echo the request identity so the component matches THIS backend
+        # outcome to the exact click that sent it — it can never navigate or
+        # report from transport alone.
+        return _result("shipment_create", sid, ok, error, requestId=request_id, **extra)
+
     if not sid:
-        return _result("shipment_create", sid, False, "Thiếu mã lô.")
+        return _res(False, "Thiếu mã lô.")
     if not can_operate_business("shipment_create"):
-        return _result("shipment_create", sid, False, "RBAC: không có quyền shipment_create.")
+        return _res(False, "RBAC: không có quyền shipment_create.")
 
     db = get_db()
     if db is not None and db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}):
-        return _result("shipment_create", sid, False, f"Mã lô {sid} đã tồn tại.")
+        return _res(False, f"Mã lô {sid} đã tồn tại.")
 
     customers = load_customers() or {}
     customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
     customer_name = rd.text(payload.get("customer")) or rd.text(customer_doc.get("name"))
     if not customer_name:
-        return _result("shipment_create", sid, False, "Vui lòng chọn khách hàng.")
+        return _res(False, "Vui lòng chọn khách hàng.")
 
     created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
     transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}
     delivery = payload.get("delivery") if isinstance(payload.get("delivery"), Mapping) else {}
     selected_mode = rd.text(transport.get("mode"))
     if selected_mode and selected_mode not in {"Truck", "Sea", "Air", "Rail"}:
-        return _result("shipment_create", sid, False, "Mode đầu tiên không hợp lệ.")
+        return _res(False, "Mode đầu tiên không hợp lệ.")
     if not selected_mode and (rd.text(transport.get("pol")) or rd.text(transport.get("pod"))):
-        return _result("shipment_create", sid, False,
-                       "Chọn mode đầu tiên trước khi nhập nơi đi/đến.")
+        return _res(False, "Chọn mode đầu tiên trước khi nhập nơi đi/đến.")
 
     # Keep creation lightweight while starting new shipments on the canonical
     # model whenever an optional first mode is selected.  Scalar POL/POD/ETD
@@ -1323,7 +1353,7 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         try:
             transport_section["transport_legs"] = normalize_transport_legs([first_leg])
         except ValueError as exc:
-            return _result("shipment_create", sid, False, str(exc))
+            return _res(False, str(exc))
 
     doc: dict[str, Any] = {
         "id": sid,
@@ -1351,17 +1381,17 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     validation = validate_shipment(doc)
     if not validation.is_valid:
-        return _result("shipment_create", sid, False, validation.message)
+        return _res(False, validation.message)
 
     apply_financial_snapshot(doc)
     if not save_shipment_atomic(doc, actor=_actor()):
-        return _result("shipment_create", sid, False, get_last_db_error() or "Không tạo được lô hàng.")
+        return _res(False, get_last_db_error() or "Không tạo được lô hàng.")
 
     fresh = read_shipment(sid) or {}
-    return _result("shipment_create", sid, True, readback=_projection_for(fresh),
-                   persisted={"id": rd.text(fresh.get("id")), "customer": rd.text(fresh.get("customer")),
-                              "version": int(fresh.get("version") or 0)},
-                   audit=_audit_trail(sid))
+    return _res(True, readback=_projection_for(fresh),
+                persisted={"id": rd.text(fresh.get("id")), "customer": rd.text(fresh.get("customer")),
+                           "version": int(fresh.get("version") or 0)},
+                audit=_audit_trail(sid))
 
 
 def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1793,6 +1823,12 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     contract is unchanged. The read-only tariff query is consumed last; when
     it was consumed, ONE rerun delivers the fresh read-side result (the v2
     trigger is one-shot, so the rerun cannot loop).
+
+    LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01: every material write
+    outcome (Phase B + C1) is stored in ``LAST_WRITES_KEY`` BEFORE the rerun
+    and forces ONE rerun, so the next fresh view-model carries both the
+    persisted data and the authoritative backend outcome to the component.
+    The UI must never act on "event transported" — only on that readback.
     """
     logi_sandbox.ensure_backend()
     session = {"seq": st.session_state.get(SEQ_KEY, 0)}
@@ -1801,6 +1837,10 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     # Phase C1 path (business contracts slice) — shares the same seq counter so
     # a replayed trigger value can never double-write across phase sets.
     outcomes.extend(logi_c1.consume_c1_triggers(session, result))
+
+    # Phase B + C1 material write outcomes: whatever the backend answered
+    # (success, duplicate, RBAC, validation) must reach the component.
+    write_outcomes = list(outcomes)
 
     # Phase A path (bounded local merge over the legacy event set).
     phase_a_session = {"seq": st.session_state.get(SEQ_KEY, 0), "shipments": _state().get("shipments", {})}
@@ -1843,9 +1883,20 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
                                     reconciliation_session["seq"])
     outcomes.extend(reconciliation_outcomes)
 
+    # Store the outcomes BEFORE any rerun so the fresh view-model built on the
+    # rerun embeds them (``_last_writes_readback``) — the rerun restarts the
+    # script and anything assigned afterwards would be lost.
+    if outcomes:
+        st.session_state[LAST_WRITES_KEY] = outcomes
+
     needs_rerun = (
-        any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
-            for outcome in tariff_outcomes)
+        # A material write was just handled (success OR refusal): ONE rerun
+        # delivers the fresh read-side view-model + the authoritative outcome.
+        # The v2 trigger is one-shot and the seq guard already consumed it, so
+        # the rerun cannot re-execute the write (no double-write, no loop).
+        bool(write_outcomes)
+        or any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
+               for outcome in tariff_outcomes)
         or bool(translation_outcomes)
         or any(outcome.get("ok") for outcome in partner_outcomes)
         or any(outcome.get("ok") for outcome in reconciliation_outcomes)
@@ -1853,8 +1904,6 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     if needs_rerun:
         st.rerun()
 
-    if outcomes:
-        st.session_state["logi_last_writes"] = outcomes
     return outcomes
 
 

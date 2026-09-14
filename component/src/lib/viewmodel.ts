@@ -1256,6 +1256,31 @@ export interface UserAccessWorkspace {
   unavailable: string[];
 }
 
+// ----------------------------------------------------------------------------
+// LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — authoritative write outcomes.
+//
+// The bounded Python dispatcher stores the result of every business event it
+// handled (RBAC → canonical writer → audit → fresh read) in the session and
+// embeds it in the NEXT fresh view-model. The UI must never treat "event was
+// transported" as "write succeeded": success, duplicate/RBAC/validation
+// refusals and the fresh readback all arrive here. Outcomes are matched to the
+// originating click by the `requestId` the component sent with the event.
+// ----------------------------------------------------------------------------
+
+export interface LastWriteOutcome {
+  event: string;
+  ok: boolean;
+  error?: string;
+  /** Phase B shipment-scoped events carry shipmentId; C1 events carry id. */
+  shipmentId?: string;
+  id?: string;
+  /** Echoed identity of the UI request that produced this outcome. */
+  requestId?: string;
+  /** Fresh backend readback (e.g. the created shipment / saved agent). */
+  readback?: unknown;
+  [extra: string]: unknown;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -1287,6 +1312,8 @@ export interface ViewModel {
   handbook?: NotebookHandbook;
   /** LOGI_USER_ACCESS_WORKSPACE_01 — bounded read-only /nguoi-dung slice. */
   userAccess?: UserAccessWorkspace;
+  /** Authoritative outcomes of the last handled business events (see above). */
+  lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
 }
 

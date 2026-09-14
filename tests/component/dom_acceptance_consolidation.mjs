@@ -150,7 +150,7 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   const at = text(aside);
   for (const it of [
     "Tổng Quan Công Việc", "Việc Cần Xử Lý", "Lô Hàng", "Tạo Lô Mới",
-    "Theo Dõi Vận Chuyển", "Khách Hàng", "Ngữ cảnh Đối tác", "Báo giá",
+    "Theo Dõi Vận Chuyển", "Khách Hàng", "Đại Lý Trường Thành", "Báo giá",
     "Thỏa thuận mua bán", "Hợp đồng", "Thu tiền", "Đối soát",
     "Công nợ đối tác", "Báo cáo CEO", "Tra cứu thuế / HS", "Sổ tay",
     "Dịch thuật", "Người dùng & Vai trò",
@@ -226,10 +226,11 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
     ["Tra cứu thuế / HS", "Tra cứu HS & Thuế"],
     ["Dịch thuật", "Văn bản nguồn"],
-    // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac is a real read-only
-    // workspace now; with this older fixture it must still render its own honest
-    // "no partner source" state rather than the deferred placeholder.
-    ["Ngữ cảnh Đối tác", "CHỈ ĐỌC"],
+    // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac is a real workspace
+    // now (LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 renamed the visible
+    // label to the agent master desk); with this older fixture it must still
+    // render its own honest state rather than the deferred placeholder.
+    ["Đại Lý Trường Thành", "Đại Lý Trường Thành"],
     // LOGI_RECONCILIATION_DESK_01 — /tai-chinh/doi-soat is a real read-only
     // reconciliation desk now; with this older fixture it must render its own
     // honest "chưa có bản ghi đối soát" state rather than the deferred placeholder.

@@ -343,8 +343,8 @@ console.log("STEP 11 — neighbouring routes are untouched");
   assert.ok(mainText().includes("Đối soát"), "reconciliation route disturbed");
   await click("Sổ tay", "a", aside);
   assert.ok(mainText().includes("Sổ tay vận hành"), "handbook did not come back");
-  await click("Ngữ cảnh Đối tác", "a", aside);
-  assert.ok(mainText().includes("Ngữ cảnh Đối tác"), "partner-context route disturbed");
+  await click("Đại Lý Trường Thành", "a", aside);
+  assert.ok(mainText().includes("Đại Lý Trường Thành"), "agent-master route disturbed");
   ok("/bao-cao-ceo, /tai-chinh/doi-soat and /ngu-canh-doi-tac still render");
 }
 

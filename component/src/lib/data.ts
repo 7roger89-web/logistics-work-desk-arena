@@ -51,7 +51,9 @@ export const NAV: {
     group: "KINH DOANH & ĐỐI TÁC",
     items: [
       { to: "/khach-hang", label: "Khách Hàng", icon: "users" },
-      { to: "/ngu-canh-doi-tac", label: "Ngữ cảnh Đối tác", icon: "handshake" },
+      // LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — visible label renamed
+      // to the agent master workspace; the route itself stays /ngu-canh-doi-tac.
+      { to: "/ngu-canh-doi-tac", label: "Đại Lý Trường Thành", icon: "handshake" },
       { to: "/kinh-doanh-bao-gia", label: "Kinh doanh · Báo giá", icon: "calc" },
       { to: "/thoa-thuan-ban-giao", label: "Thỏa thuận mua bán", icon: "filecheck" },
       { to: "/hop-dong", label: "Hợp đồng", icon: "filetext" },
