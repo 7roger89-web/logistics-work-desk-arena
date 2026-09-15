@@ -13861,7 +13861,7 @@ var Do = {
 	qty: "1",
 	cost: "",
 	price: "",
-	vat: "8",
+	vat: "",
 	note: ""
 };
 function Oo(e) {
@@ -14244,7 +14244,7 @@ function jo({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 							/* @__PURE__ */ (0, R.jsx)(q, {
 								label: "VAT %",
 								required: !0,
-								hint: "0 là giá trị hợp lệ (không VAT)",
+								hint: "Phải tự nhập — 0 là giá trị hợp lệ (không VAT)",
 								children: /* @__PURE__ */ (0, R.jsx)("input", {
 									value: s.vat,
 									onChange: (e) => w("vat", e.target.value),

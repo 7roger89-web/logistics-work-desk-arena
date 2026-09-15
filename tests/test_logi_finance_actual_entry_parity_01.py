@@ -166,6 +166,25 @@ def test_view_model_carries_the_catalog_slice_to_the_component(staging):
     json.dumps(model["financeServiceCatalog"], ensure_ascii=False)
 
 
+def test_a_new_line_starts_with_no_vat_rate():
+    """UNKNOWN != 8 — the form must not pre-book a rate nobody typed.
+
+    The writer keeps the blank-vs-zero rule, so this guard protects the other
+    half of the invariant: a NEW draft carries no VAT rate at all, while EDIT
+    still reads back the rate stored on the row (0 included).
+    """
+    entry = (COMPONENT_SRC / "components" / "FinanceActualEntry.tsx").read_text(encoding="utf-8")
+    draft = entry[entry.index("const BLANK_DRAFT"):entry.index("/** Prefill the editor")]
+    assert 'vat: ""' in draft, "BLANK_DRAFT must leave VAT blank"
+    for rate in ("0", "5", "8", "10"):
+        assert f'vat: "{rate}"' not in draft, f"VAT must not default to {rate}%"
+    # Blank stays refused, so a stated 0 / 8 / 10 is the only way to book one.
+    assert 'label="VAT %" required' in entry
+    assert '["VAT %", draft.vat]' in entry, "VAT must stay in the required-money check"
+    assert 'vat: line.vat == null ? "" : String(line.vat)' in entry, \
+        "editing a row must prefill the stored rate exactly, including 0"
+
+
 # ---------------------------------------------------------------------------
 # 2 — the read model carries the canonical fields of an existing row
 # ---------------------------------------------------------------------------

@@ -272,12 +272,70 @@ console.log("STEP 4 — auto-filled code/unit + new-line payload");
 }
 
 // ---------------------------------------------------------------------------
-// STEP 5 — a blank money field never reaches the backend
+// STEP 5 — a NEW line carries NO VAT rate until the operator states one
 // ---------------------------------------------------------------------------
 
-console.log("STEP 5 — blank cost/price/VAT refused locally");
+console.log("STEP 5 — new line starts with VAT blank; an untouched VAT is never booked");
 {
-  // Re-open the form for the "Hàng tiêu dùng" lot entry and leave the money blank.
+  await click("HỦY, KHÔNG LƯU", "button", FORM());
+  await click("THÊM DỊCH VỤ / CHI PHÍ", "button", SECTION());
+  const form = FORM();
+  const vatField = () => inputByLabel("VAT %", form);
+
+  // 1. Nothing about the money is pre-filled on a new row.
+  assert.equal(vatField().value, "", "a NEW line must not start with an invented VAT rate");
+  assert.equal(inputByLabel("Giá vốn", form).value, "", "cost starts blank");
+  assert.equal(inputByLabel("Giá bán", form).value, "", "price starts blank");
+  assert.equal(inputByLabel("Số lượng", form).value, "1", "qty keeps its documented default of 1");
+
+  // 2. Choosing a service must not change that: the catalog supplies code +
+  //    unit, never a tax rate.
+  selectByValue($("select", form)[0], "TTHQ");
+  await tick();
+  assert.equal(vatField().value, "", "picking a service must not fill VAT");
+  assert.equal(inputByLabel("Mã dịch vụ", form).value, "TTHQ");
+
+  // 3. Enter the money the operator actually knows, leave VAT untouched.
+  type(inputByLabel("Giá vốn", form), "600000");
+  type(inputByLabel("Giá bán", form), "900000");
+  await tick();
+  assert.ok(vatField().className.includes("border-amber-400"), "the untouched VAT field must read as required");
+
+  // 4. Save with VAT still blank → NOTHING leaves the browser, the message
+  //    names VAT, and the form stays open with the draft intact.
+  triggers = [];
+  await click("LƯU DÒNG THỰC TẾ", "button", form);
+  await tick(80);
+  assert.equal(eventsOf("finance_actual_save").length, 0, "FINANCE_ACTUAL_SAVE_EVENT_COUNT=0");
+  const err = text(FORM());
+  assert.ok(err.includes("VAT") && err.includes("chưa nhập"), `validation must mention VAT: ${err.slice(-240)}`);
+  assert.ok(err.includes("để trống thì không"), "the message must say blank is not a value");
+  assert.ok(err.includes("0 là giá trị hợp lệ"), "the message must offer 0 as the explicit answer");
+  assert.ok(FORM(), "FORM_REMAINS_OPEN=YES — a refusal must not close the editor");
+  assert.equal(inputByLabel("Giá bán", FORM()).value, "900000", "the draft must survive the refusal");
+  assert.equal(vatField().value, "", "nothing is typed into VAT behind the operator's back");
+
+  // 5. Stating zero is a real answer and is booked as exactly that.
+  type(vatField(), "0");
+  await tick();
+  assert.ok(!vatField().className.includes("border-amber-400"), "a stated rate is no longer missing");
+  triggers = [];
+  await click("LƯU DÒNG THỰC TẾ", "button", form);
+  await tick(120);
+  const sent = eventsOf("finance_actual_save");
+  assert.equal(sent.length, 1, "FINANCE_ACTUAL_SAVE_EVENT_COUNT=1 once VAT is stated");
+  assert.equal(sent[0].payload.line.vat, "0", "the operator's explicit 0 travels verbatim");
+  assert.equal(sent[0].payload.line.cost, "600000");
+  assert.equal(sent[0].payload.line.price, "900000");
+  ok("blank VAT refused with no dispatch; explicit VAT=0 accepted");
+}
+
+// ---------------------------------------------------------------------------
+// STEP 5B — the same rule for the other amounts, and rates the desk expects
+// ---------------------------------------------------------------------------
+
+console.log("STEP 5B — blank cost refused too; 8 and 10 stay ordinary values");
+{
   await click("HỦY, KHÔNG LƯU", "button", FORM());
   await click("THÊM DỊCH VỤ / CHI PHÍ", "button", SECTION());
   const form = FORM();
@@ -292,20 +350,31 @@ console.log("STEP 5 — blank cost/price/VAT refused locally");
   const err = text(form);
   assert.ok(err.includes("chưa nhập"), `blank-value message missing: ${err.slice(-260)}`);
   assert.ok(err.includes("Giá vốn") && err.includes("VAT"), "the message must name what is missing");
-  assert.ok(err.includes("để trống thì không"), "the message must say blank ≠ zero");
-  assert.ok(err.includes("0 là giá trị hợp lệ"), "the message must say 0 is a valid answer");
 
-  // Zero, however, is a legitimate answer and stays sendable.
   type(inputByLabel("Giá vốn", form), "0");
-  type(inputByLabel("VAT %", form), "0");
+  type(inputByLabel("VAT %", form), "8");
   triggers = [];
   await click("LƯU DÒNG THỰC TẾ", "button", form);
   await tick(80);
   const sent = eventsOf("finance_actual_save");
   assert.equal(sent.length, 1, "an explicit 0 is a value, not a blank");
   assert.equal(sent[0].payload.line.cost, "0");
-  assert.equal(sent[0].payload.line.vat, "0");
-  ok("blank refused, explicit 0 accepted");
+  assert.equal(sent[0].payload.line.vat, "8", "a stated 8% is booked because the operator typed it");
+
+  // The first save is still awaiting its authoritative outcome, so the editor is
+  // locked (no optimistic truth). Reopen from scratch to state a different rate.
+  await click("HỦY, KHÔNG LƯU", "button", FORM());
+  await click("THÊM DỊCH VỤ / CHI PHÍ", "button", SECTION());
+  const again = FORM();
+  selectByValue($("select", again)[0], "GP");
+  type(inputByLabel("Giá vốn", again), "100000");
+  type(inputByLabel("Giá bán", again), "200000");
+  type(inputByLabel("VAT %", again), "10");
+  triggers = [];
+  await click("LƯU DÒNG THỰC TẾ", "button", again);
+  await tick(80);
+  assert.equal(eventsOf("finance_actual_save").slice(-1)[0].payload.line.vat, "10");
+  ok("cost blank refused; a typed 8 and a typed 10 are both accepted");
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +399,10 @@ console.log("STEP 6 — SỬA prefills the canonical row and sends its id");
   assert.equal(inputByLabel("Giá vốn", form).value, String(target.cost), "cost prefilled from the row");
   assert.equal(inputByLabel("Giá bán", form).value, String(target.price), "price prefilled from the row");
   assert.equal(inputByLabel("VAT %", form).value, String(target.vat), "VAT prefilled from the row");
+  // EDIT keeps reading the STORED rate — the blank new-line default must not
+  // erase a booked row's own answer (0 stays "0", not "").
+  assert.equal(inputByLabel("VAT %", form).value === "" && target.vat !== "", false,
+    "an edited row never loses its stored VAT");
   assert.equal(inputByLabel("Ghi chú", form).value, target.note, "note prefilled from the row");
   assert.equal(inputByLabel("Mã dịch vụ", form).value, target.code, "code prefilled from the row");
 
@@ -405,11 +478,15 @@ console.log("STEP 7 — writer refusal message reaches the operator");
   const form = FORM();
   selectByValue($("select", form)[0], "DVK");
   await tick();
+  // Every money field IS stated here, so this is a line the browser lets go —
+  // what must stop it is the backend's own answer, not a UI guess.
   type(inputByLabel("Giá bán", form), "700000");
   type(inputByLabel("Giá vốn", form), "600000");
+  type(inputByLabel("VAT %", form), "8");
   await click("LƯU DÒNG THỰC TẾ", "button", form);
   await tick(80);
   const emitted = eventsOf("finance_actual_save").slice(-1)[0];
+  assert.equal(emitted.payload.line.vat, "8", "the stated rate is what travels to the writer");
   refused.lastWrites[0].requestId = emitted.payload.requestId;
   invoke(refused);
   await tick(160);
@@ -432,7 +509,13 @@ console.log("STEP 8 — no delete in this slice; no fabricated numbers");
   assert.ok(!buttons.some((b) => /xóa|xoa|delete|🗑/i.test(b)), `no delete control allowed: ${buttons.join(" | ")}`);
   assert.ok(buttons.some((b) => b.includes("SỬA")), "SỬA is the correction path");
   const section = text(SECTION());
-  assert.ok(section.includes("không xóa lịch sử") || section.includes("không có ghi chú") || true);
+  // Nothing is invented in the editor either: a fresh line carries no rate.
+  if (FORM()) await click("HỦY, KHÔNG LƯU", "button", FORM());
+  await click("THÊM DỊCH VỤ / CHI PHÍ", "button", SECTION());
+  const fresh = FORM();
+  assert.equal(inputByLabel("VAT %", fresh).value, "", "the form must not pre-book a VAT rate");
+  assert.ok(inputByLabel("VAT %", fresh).placeholder.startsWith("VD:"), "8 is offered as an example, never as a value");
+  await click("HỦY, KHÔNG LƯU", "button", fresh);
   // Unknown never renders as zero: a row without a note shows the em dash.
   const noNote = FIN.actual.find((l) => !l.note);
   if (noNote) assert.ok(section.includes("Ghi chú: —"), "an empty note stays an em dash, never invented text");

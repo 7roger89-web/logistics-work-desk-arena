@@ -72,9 +72,11 @@ const BLANK_DRAFT: LineDraft = {
   qty: "1",
   cost: "",
   price: "",
-  // The desk's usual rate is a STARTING value the operator still confirms: it
-  // travels explicitly on save, so the writer never invents it.
-  vat: "8",
+  // A NEW line has NO VAT rate until the operator states one. The desk's usual
+  // 8% is not a starting value here: booking an actual line is a claim about
+  // money that really happened, so UNKNOWN is neither 0 nor 8. Blank stays
+  // blank, the form refuses it below, and the writer refuses it again.
+  vat: "",
   note: "",
 };
 
@@ -465,7 +467,7 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
                 className={inputCls(draft.price.trim() ? "ok" : "missing")}
               />
             </Field>
-            <Field label="VAT %" required hint="0 là giá trị hợp lệ (không VAT)">
+            <Field label="VAT %" required hint="Phải tự nhập — 0 là giá trị hợp lệ (không VAT)">
               <input
                 value={draft.vat}
                 onChange={(e) => set("vat", e.target.value)}

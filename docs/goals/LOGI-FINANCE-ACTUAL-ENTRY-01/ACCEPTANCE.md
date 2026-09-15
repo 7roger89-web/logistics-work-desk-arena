@@ -69,12 +69,12 @@ a new finance model, table, collection, API, ledger or service layer.
 cd component && npx tsc --noEmit                                  -> clean
 cd component && npm run build                                     -> dist/logi-shell.js 843.25 kB · logi-shell.css 59.69 kB
 cd component && npm run scan                                      -> FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0
-node tests/component/dom_acceptance_finance_actual_entry.mjs      -> FINANCE ACTUAL ENTRY DOM ACCEPTANCE PASS — 11 checks
+node tests/component/dom_acceptance_finance_actual_entry.mjs      -> FINANCE ACTUAL ENTRY DOM ACCEPTANCE PASS — 12 checks
 node tests/component/dom_acceptance_c2a.mjs                       -> C2A DOM ACCEPTANCE PASS — 9 checks
 node tests/component/dom_acceptance_{c2b,c2c,c2d,phase_a,handbook,reconciliation,
    partner_context,consolidation,ceo_report,tariff,translation,user_access}.mjs -> all PASS
 python scripts/gen_c2a_fixture.py                                 -> fixture regenerated from the real staging backend
-.venv/bin/python -m pytest tests/test_logi_finance_actual_entry_parity_01.py -q -> 29 passed
+.venv/bin/python -m pytest tests/test_logi_finance_actual_entry_parity_01.py -q -> 30 passed
 .venv/bin/python -m pytest tests/test_logi_c2a_finance_actual.py tests/test_phase_b_real_data.py -q -> passed
 .venv/bin/python -m pytest tests -q (2 modules that fail to collect at base excluded)
    -> with this slice: 13 failed, 792 passed, 38 skipped, 6 errors
@@ -96,12 +96,12 @@ suite. `dom_acceptance_create_shipment.mjs` expects the string
 | --- | --- |
 | `views/logi_real_data.py` | `finance_service_catalog()` (read-only projection of `GETFLY_SERVICES_LIST`); `finance_projection` actual rows gain `id`, `name`, `code`, `unit`, `note`, `price` |
 | `views/logi_view_model.py` | `build_view_model` exposes `financeServiceCatalog`; `_handle_finance_actual_save` requires cost/price/VAT to be stated (blank refused, explicit 0 kept, `qty > 0`), updates the row whose `line.id` matches, refuses an unknown id, echoes `requestId`, and returns `persisted` + fresh `readback` + `audit`; `FINANCE_ACTUAL_REQUIRED_FIELDS`, `_actual_amount`, `_is_blank_amount` |
-| `component/src/components/FinanceActualEntry.tsx` | NEW — `#finance-actual-lines` cards + `#finance-actual-form` editor (catalog `<select>`, readonly auto-filled code, unit, qty 1 default, cost/price/VAT/note, live preview, `SỬA` prefills the same canonical id, backend refusal shown, local blank refusal, no delete) |
+| `component/src/components/FinanceActualEntry.tsx` | NEW — `#finance-actual-lines` cards + `#finance-actual-form` editor (catalog `<select>`, readonly auto-filled code, unit, qty 1 default, cost/price/VAT/note **all blank until typed — no VAT rate is pre-filled**, live preview, `SỬA` prefills the same canonical id and its stored rate, backend refusal shown, local blank refusal, no delete) |
 | `component/src/pages/ShipmentDetail.tsx` | the tiny "Ghi nhận dòng thực tế" form and its `saveActualLine` handler removed; `<FinanceActualEntry/>` mounted under the actual summary |
 | `component/src/lib/viewmodel.ts`, `lib/store.tsx` | `FinanceServiceCatalogEntry`, `ViewModel.financeServiceCatalog`, `financeServices` slice |
 | `component/src/lib/format.ts` | `parseAmountVN` — browser mirror of `to_decimal`, `null` for blanks (blank never becomes 0) |
-| `tests/test_logi_finance_actual_entry_parity_01.py` | NEW — 29 cases (A–J above) |
-| `tests/component/dom_acceptance_finance_actual_entry.mjs` | NEW — 11 DOM checks against the built bundle |
+| `tests/test_logi_finance_actual_entry_parity_01.py` | NEW — 30 cases (A–J above) |
+| `tests/component/dom_acceptance_finance_actual_entry.mjs` | NEW — 12 DOM checks against the built bundle |
 | `tests/component/dom_acceptance_c2a.mjs`, `scripts/gen_c2a_fixture.py`, `tests/component/fixtures/view_model_c2a.json` | step 5 drives the service picker; fixture regenerated and extended (catalog slice, second catalog line with a note, a real writer `refused` variant) |
 | `component/dist/logi-shell.js`, `component/dist/logi-shell.css` | rebuilt production bundle committed with the sources |
 
@@ -111,3 +111,38 @@ delete of a booked line (a wrong row is corrected by editing it, audit history
 stays); gross-up commission; payment correction modal; multi-currency/FX;
 agent→shipment assignment; user admin; Excel export changes; payment writer
 parsing of thousands-separated text (see the note above).
+
+## CONTROL_TOWER_REPAIR_01 — a new line carries no VAT rate
+
+Reviewed head `1b6ab2b` shipped `BLANK_DRAFT.vat = "8"`. A new row therefore
+booked VAT 8% if the operator picked a service, typed cost and price, and saved
+without touching VAT — an invented financial fact. The invariant is
+`UNKNOWN != ZERO` **and** `UNKNOWN != 8`, so:
+
+| Change | Surface |
+| --- | --- |
+| `BLANK_DRAFT.vat` is `""`; the caption reads `Phải tự nhập — 0 là giá trị hợp lệ (không VAT)` and `VD: 8` survives only as a placeholder example | `component/src/components/FinanceActualEntry.tsx` |
+| Nothing else moved: backend validation, the `finance_actual_save` writer, cost/price semantics, catalog, finance model, currency logic, RBAC and the surrounding finance UI are untouched; EDIT still prefills the stored rate verbatim | — |
+
+Proof (re-run at this head):
+
+```
+node tests/component/dom_acceptance_finance_actual_entry.mjs  STEP 5   -> PASS
+  new form: VAT value == ""            (picking a service does not fill it)
+  cost + price typed, VAT untouched, Save:
+    FINANCE_ACTUAL_SAVE_EVENT_COUNT=0
+    VALIDATION_MENTIONS_VAT=YES  ("VAT % chưa nhập" + "để trống thì không" + "0 là giá trị hợp lệ")
+    FORM_REMAINS_OPEN=YES        (draft kept: Giá bán still "900000")
+  then VAT="0", Save: FINANCE_ACTUAL_SAVE_EVENT_COUNT=1 and line.vat == "0"
+  STEP 5B: blank cost refused the same way; a typed 8 and a typed 10 are booked
+  STEP 6 : editing the row whose stored VAT is 0 prefills "0" (never blank)
+.venv/bin/python -m pytest tests/test_logi_finance_actual_entry_parity_01.py -q -> 30 passed
+  incl. test_a_new_line_starts_with_no_vat_rate (blank default, VAT still in the
+  required-money check, edit prefills the stored rate) and the unchanged
+  writer-level tests test_blank_actual_money_is_refused / test_explicit_zero_is_accepted_and_stays_zero
+Mutation check: restoring vat "8" in BLANK_DRAFT fails BOTH the Python guard and
+DOM STEP 5 — the invariant is pinned, not asserted by prose.
+```
+
+`SalesQuotes.tsx` still keeps its own `taxPct: "8"` default — that is Quote
+*Estimate*, explicitly out of this contract, and was not touched.
