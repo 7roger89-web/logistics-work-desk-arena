@@ -553,7 +553,16 @@ def contract_projection(
 # Assemble the C1 payload for the view-model `data` channel
 # ---------------------------------------------------------------------------
 
-def assemble_c1_payload() -> dict[str, Any]:
+def assemble_c1_payload(*, shipments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Assemble the C1 reference payload.
+
+    PERFORMANCE REPAIR: ``shipments`` lets the component build path hand over
+    the canonical shipment map it ALREADY read for this render
+    (``views.logi_view_model.load_shipments()``) instead of the render loading
+    the same full collection a second time for contract links. The data is the
+    identical reader result, so nothing about the projection changes; a
+    standalone caller that passes nothing keeps the original read.
+    """
     from core.database import (
         load_agreements,
         load_authority_agents,
@@ -570,7 +579,8 @@ def assemble_c1_payload() -> dict[str, Any]:
     contracts = load_contracts() or {}
     companies = load_authority_companies() or {}
     agents = load_authority_agents() or {}
-    shipments = _load_shipments_for_links()
+    if shipments is None:
+        shipments = _load_shipments_for_links()
 
     docs_by_scope: dict[str, dict[str, Any]] = {}
     for doc in (load_docgen_documents() or {}).values():

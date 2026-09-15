@@ -250,7 +250,12 @@ def _quote_lines(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> list
     return []
 
 
-def _partner_projection(shipment_id: str) -> dict[str, Any]:
+def _partner_projection(
+    shipment_id: str,
+    *,
+    ledger: Mapping[str, Any] | None = None,
+    agents: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Partner payable truth for ONE shipment, read from the canonical ledger.
 
     UNKNOWN != ZERO: with no canonical obligation/payment records the money
@@ -258,11 +263,16 @@ def _partner_projection(shipment_id: str) -> dict[str, Any]:
     from the ledger when established; before that, the single existing
     authority_agents master record is offered as a clearly-marked suggestion
     so the shell can start the journey without inventing a partner.
+
+    ``ledger`` (a pre-loaded ``core.financial_ledger.load_ledger_snapshot``)
+    and ``agents`` (the already-loaded authority_agents master) are the
+    render-local snapshot the component build path passes in; without them the
+    original per-call readers run exactly as before.
     """
     from core.database import load_authority_agents
     from core.financial_ledger import shipment_partner_position
 
-    position = shipment_partner_position(shipment_id)
+    position = shipment_partner_position(shipment_id, records=ledger)
     result: dict[str, Any] = {
         "partnerId": None,
         "partnerName": None,
@@ -309,10 +319,11 @@ def _partner_projection(shipment_id: str) -> dict[str, Any]:
         return result
 
     # Nothing established yet: suggest the single existing catalog agent, if any.
-    try:
-        agents = load_authority_agents() or {}
-    except Exception:  # noqa: BLE001 - suggestion is best-effort only
-        agents = {}
+    if agents is None:
+        try:
+            agents = load_authority_agents() or {}
+        except Exception:  # noqa: BLE001 - suggestion is best-effort only
+            agents = {}
     docs = [d for d in agents.values() if isinstance(d, Mapping) and text(d.get("agent_id") or d.get("id"))]
     if len(docs) == 1:
         doc = docs[0]
@@ -322,11 +333,21 @@ def _partner_projection(shipment_id: str) -> dict[str, Any]:
     return result
 
 
-def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> dict[str, Any]:
+def finance_projection(
+    shipment: Mapping[str, Any],
+    quotes: Mapping[str, Any],
+    *,
+    ledger: Mapping[str, Any] | None = None,
+    agents: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Finance Actual from the canonical snapshot; AR/AP from core.logic.
 
     ``quote`` (estimate) and ``actual`` (booked service lines) are sourced from
     different objects and are never merged or interchanged.
+
+    ``ledger`` / ``agents`` are the render-local snapshot the component build
+    path already read (see ``_partner_projection``); passing them down costs
+    zero additional reads and leaves the derived figures identical.
     """
     from core.logic import calculate_from_shipment
 
@@ -403,7 +424,7 @@ def finance_projection(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -
         # C2B — partner payable truth for THIS shipment, from the canonical
         # ledger (financial_obligations/transactions/allocations). `paid` above
         # stays UNKNOWN; the partner block carries the ledger-derived figures.
-        "partner": _partner_projection(text(shipment.get("id"))),
+        "partner": _partner_projection(text(shipment.get("id")), ledger=ledger, agents=agents),
         "source": "core.logic.calculate_from_shipment over data.3.4",
     }
 
@@ -463,7 +484,13 @@ def receivables_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"rows": out_rows, "totals": totals}
 
 
-def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
+def partner_payables_projection(
+    db: Any | None = None,
+    *,
+    records: Mapping[str, Any] | None = None,
+    shipment_ids: list[str] | None = None,
+    agents: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Global THANH TOÁN ĐỐI TÁC / PHẢI TRẢ worklist over canonical C2B truth.
 
     Reuses ``core.financial_ledger.shipment_partner_position`` per shipment —
@@ -475,6 +502,18 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
     are never summed together (no FX engine). Partner identity resolves against
     the authority_agents master and only falls back to the canonical record's
     party name when the master has no match.
+
+    PERFORMANCE REPAIR — the component build path passes the render-local
+    snapshot it already read:
+
+    * ``records``  — ``core.financial_ledger.load_ledger_snapshot`` rows, so the
+      per-shipment derivation reads no collection;
+    * ``shipment_ids`` — the ids the render already loaded
+      (``core.database.load_shipment_ids``), so ``db.shipments`` is not read a
+      second time for the same answer;
+    * ``agents`` — the already-loaded authority_agents master.
+
+    Every argument is optional: a standalone caller keeps the original reads.
     """
 
     from core.database import get_db, load_authority_agents
@@ -491,10 +530,11 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
     if db is None:
         return {**empty, "error": "MongoDB is not available"}
 
-    try:
-        agents = load_authority_agents() or {}
-    except Exception:  # noqa: BLE001 - name resolution is best-effort only
-        agents = {}
+    if agents is None:
+        try:
+            agents = load_authority_agents() or {}
+        except Exception:  # noqa: BLE001 - name resolution is best-effort only
+            agents = {}
 
     def _master_name(party_id: str, fallback: str) -> str:
         doc = agents.get(party_id) if isinstance(agents.get(party_id), Mapping) else None
@@ -507,18 +547,20 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
             return fallback or party_id
         return text(doc.get("legal_name")) or fallback or party_id
 
-    shipment_ids = [
-        text(doc.get("id"))
-        for doc in db.shipments.find({"is_deleted": {"$ne": True}}, {"_id": 0, "id": 1})
-        if isinstance(doc, Mapping)
-    ]
+    if shipment_ids is None:
+        # Same query, same projection and same order as before; it is only
+        # hoisted so that a render which already has the ids reads them once.
+        from core.database import load_shipment_ids
+
+        shipment_ids = load_shipment_ids()
 
     rows: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Any]] = {}
-    for sid in shipment_ids:
+    for raw_sid in shipment_ids:
+        sid = text(raw_sid)
         if not sid:
             continue
-        position = shipment_partner_position(sid, db=db)
+        position = shipment_partner_position(sid, db=db, records=records)
         for group in position.get("partners") or []:
             if not isinstance(group, Mapping):
                 continue
@@ -594,12 +636,14 @@ def partner_payables_projection(db: Any | None = None) -> dict[str, Any]:
 # History — real audit only
 # --------------------------------------------------------------------------
 
-def timeline_projection(shipment_id: str, limit: int = 30) -> list[dict[str, Any]]:
-    from core.database import load_audit_logs
+def timeline_rows(rows: Any) -> list[dict[str, Any]]:
+    """Shape canonical audit rows into the frozen timeline entries.
 
-    rows = load_audit_logs("shipment", shipment_id, limit=limit) or []
+    ONE shaper for every caller, so the single-shipment read and the bulk read
+    can never drift apart.
+    """
     out: list[dict[str, Any]] = []
-    for row in rows:
+    for row in rows or []:
         if not isinstance(row, Mapping):
             continue
         created = row.get("created_at")
@@ -614,6 +658,30 @@ def timeline_projection(shipment_id: str, limit: int = 30) -> list[dict[str, Any
     return out
 
 
+def timeline_projection(shipment_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Timeline for ONE shipment (single read) — the standalone/fallback path."""
+    from core.database import load_audit_logs
+
+    return timeline_rows(load_audit_logs("shipment", shipment_id, limit=limit))
+
+
+def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[dict[str, Any]]]:
+    """Timelines for MANY shipments in ONE bounded audit read.
+
+    PERFORMANCE REPAIR: the component build path used to call
+    ``timeline_projection`` once per shipment, i.e. one ``audit_logs`` read per
+    row of the worklist. This reads the same rows for the shipment ids the
+    caller already loaded, in one query, groups them by shipment in memory and
+    applies the same "newest first, at most ``limit`` entries" rule per
+    shipment. No audit writer, schema or entry is changed.
+    """
+    from core.database import load_audit_logs_bulk
+
+    ids = [text(item) for item in (shipment_ids or [])]
+    grouped = load_audit_logs_bulk("shipment", [sid for sid in ids if sid], limit_per_entity=limit)
+    return {sid: timeline_rows(rows) for sid, rows in grouped.items()}
+
+
 # --------------------------------------------------------------------------
 # Shipment projection
 # --------------------------------------------------------------------------
@@ -626,8 +694,21 @@ def shipment_projection(
     quotes: Mapping[str, Any] | None = None,
     dashboard: Mapping[str, Any] | None = None,
     history: list[dict[str, Any]] | None = None,
+    ledger: Mapping[str, Any] | None = None,
+    agents: Mapping[str, Any] | None = None,
+    docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """Project one canonical shipment document into the frozen UI shape."""
+    """Project one canonical shipment document into the frozen UI shape.
+
+    ``ledger`` / ``agents`` / ``docgen_documents`` / ``linked_contracts`` are the
+    render-local snapshot the component build path reads ONCE and shares across
+    every row (see ``core.financial_ledger.load_ledger_snapshot``,
+    ``docgen_documents_by_shipment``, ``linked_contracts_index``). They project
+    the same facts as the per-call readers and exist only so one render does not
+    repeat the same collection reads per shipment; omitting them keeps the
+    original behaviour for every standalone caller.
+    """
     customers = customers or {}
     contracts = contracts or {}
     quotes = quotes or {}
@@ -798,9 +879,14 @@ def shipment_projection(
             if delivery.get("is_delivered") else "",
         },
         # --- TAB 3 ---
-        "finance": finance_projection(shipment, quotes),
+        "finance": finance_projection(shipment, quotes, ledger=ledger, agents=agents),
         # --- TAB 4 ---
-        "pxk": pxk_projection(shipment, contracts),
+        "pxk": pxk_projection(
+            shipment,
+            contracts,
+            docgen_documents=docgen_documents,
+            linked_contracts=linked_contracts,
+        ),
         # --- TAB 5 ---
         "timeline": list(history or []),
         # Dashboard/readiness evidence (canonical projection, read-only).
@@ -821,10 +907,75 @@ def shipment_projection(
     }
 
 
-def pxk_projection(shipment: Mapping[str, Any], contracts: Mapping[str, Any]) -> dict[str, Any]:
-    """PXK facts + the real delivery gate, from core.docgen rules."""
+def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
+    """Canonical docgen metadata for ALL shipments, read ONCE and grouped.
+
+    PERFORMANCE REPAIR: ``_pxk_document`` used to read ``docgen_documents``
+    once per projected shipment (one query per worklist row). This performs the
+    same read — same collection, same ``is_deleted`` filter, same ``_id``
+    exclusion, same ``id`` keying — a single time for the whole render and
+    groups it by shipment in memory. Document identity and persistence are
+    untouched; only repeated canonical reads are removed.
+    """
+    from core.database import load_docgen_documents
+
+    try:
+        documents = load_docgen_documents() or {}
+    except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+        return {}
+    grouped: dict[str, dict[str, Any]] = {}
+    for record_id, doc in documents.items():
+        if not isinstance(doc, Mapping):
+            continue
+        scope = text(doc.get("shipment_id"))
+        if not scope:
+            continue
+        grouped.setdefault(scope, {})[record_id] = doc
+    return grouped
+
+
+def linked_contracts_index(contracts: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """In-memory ``load_contracts_for_shipment`` index over contracts already read.
+
+    The canonical reader resolves a shipment's linked contracts by scanning the
+    whole ``contracts`` collection; the component render already holds those
+    exact records (``core.database.load_contracts`` returns the same documents,
+    merely re-keyed by ``ContractNo``). Building the same linkage here therefore
+    costs no read at all while keeping the identical result shape: contract
+    ``id`` → document, matched case-insensitively on ``shipment_ids`` /
+    ``shipment_id``.
+    """
+    index: dict[str, dict[str, Any]] = {}
+    for contract in (contracts or {}).values():
+        if not isinstance(contract, Mapping) or contract.get("id") is None:
+            continue
+        contract_id = str(contract.get("id"))
+        shipment_ids = [str(item).upper() for item in (contract.get("shipment_ids") or [])]
+        single = str(contract.get("shipment_id") or "").upper()
+        for scope in shipment_ids:
+            index.setdefault(scope, {})[contract_id] = contract
+        if single:
+            index.setdefault(single, {})[contract_id] = contract
+    return index
+
+
+def pxk_projection(
+    shipment: Mapping[str, Any],
+    contracts: Mapping[str, Any],
+    *,
+    docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """PXK facts + the real delivery gate, from core.docgen rules.
+
+    ``docgen_documents`` (``docgen_documents_by_shipment``) and
+    ``linked_contracts`` (``linked_contracts_index``) are the render-local
+    snapshot the component build path passes; a standalone caller keeps the
+    per-call readers unchanged.
+    """
     from core.docgen import rules as docgen_rules
 
+    shipment_id = text(shipment.get("id"))
     delivery = _section(shipment, "2.7")
     delivered = bool(delivery.get("is_delivered"))
     missing_delivery = docgen_rules.delivery_facts_missing(delivery) if delivered else []
@@ -834,16 +985,19 @@ def pxk_projection(shipment: Mapping[str, Any], contracts: Mapping[str, Any]) ->
         # Same canonical N:M linkage the contract page writes ("Lô liên kết →
         # Thêm"): exactly one linked contract is an unambiguous source, several
         # stay UNKNOWN rather than being guessed for display.
-        from core.database import load_contracts_for_shipment
+        if linked_contracts is not None:
+            linked = linked_contracts.get(shipment_id.upper()) or {}
+        else:
+            from core.database import load_contracts_for_shipment
 
-        try:
-            linked = load_contracts_for_shipment(text(shipment.get("id"))) or {}
-        except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
-            linked = {}
+            try:
+                linked = load_contracts_for_shipment(shipment_id) or {}
+            except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+                linked = {}
         if len(linked) == 1:
             contract_id, contract = next(iter(linked.items()))
 
-    generated = _pxk_document(text(shipment.get("id")))
+    generated = _pxk_document(shipment_id, grouped=docgen_documents)
     return {
         "source": contract_id,
         "sourceName": text(contract.get("contract_no") or contract.get("hdmb_no") or contract.get("hdnt_no")),
@@ -862,22 +1016,35 @@ def pxk_projection(shipment: Mapping[str, Any], contracts: Mapping[str, Any]) ->
     }
 
 
-def _pxk_document(shipment_id: str) -> dict[str, Any]:
+def _pxk_document(
+    shipment_id: str,
+    *,
+    grouped: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+) -> dict[str, Any]:
     """Latest PXK generated for one shipment: metadata + downloadable file.
 
     Reads the canonical ``docgen_documents`` collection (the writer the contract
     documents already use) and pairs it with the session file store through the
     existing ``views.logi_c1.document_projection``. Returns ``{}`` when nothing
     has been generated — UNKNOWN, never a fabricated "done".
+
+    ``grouped`` is the whole canonical collection, already loaded and grouped by
+    shipment (see ``docgen_documents_by_shipment``). When it is supplied this
+    shipment's slice comes from memory — an empty slice means "no document for
+    this shipment", exactly like the empty result of the single-shipment read —
+    and only a caller that supplies nothing pays for the per-shipment read.
     """
     if not shipment_id:
         return {}
-    from core.database import load_docgen_documents
+    if grouped is None:
+        from core.database import load_docgen_documents
 
-    try:
-        docs = load_docgen_documents(shipment_id) or {}
-    except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
-        return {}
+        try:
+            docs = load_docgen_documents(shipment_id) or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+            return {}
+    else:
+        docs = grouped.get(shipment_id) or {}
     pxk = [d for d in docs.values()
            if isinstance(d, Mapping) and text(d.get("document_type")).upper() == "PXK"]
     if not pxk:

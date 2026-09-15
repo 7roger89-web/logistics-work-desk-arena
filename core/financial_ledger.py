@@ -1305,10 +1305,45 @@ def project_partner_financial_position(
     }
 
 
+def load_ledger_snapshot(db: Any = None) -> dict[str, Any]:
+    """Read the three canonical ledger collections ONCE for one render.
+
+    PERFORMANCE REPAIR (no new source of truth, no cache layer): the projection
+    path derives a partner position per shipment, and each derivation needs the
+    same complete ``financial_obligations`` / ``financial_transactions`` /
+    ``financial_allocations`` records.  Reading them per shipment is the proven
+    N+1 defect (N shipments ⇒ 3N collection reads in this path alone).
+
+    This returns ONE request-local, in-memory snapshot of exactly the rows the
+    per-shipment reader would have fetched — same collections, same query
+    (``{}``, ``_id`` excluded), same row shape — to be passed straight back as
+    ``shipment_partner_position(..., records=snapshot)``.
+
+    It is deliberately NOT a cache: nothing is stored in a module, a session or
+    a process; the caller reads once per render and the next render reads
+    again, so a fresh write is visible on the very next read exactly as before.
+    """
+    db = db if db is not None else database.get_db()
+    if db is None:
+        return {OBLIGATIONS: [], TRANSACTIONS: [], ALLOCATIONS: [], "available": False}
+    try:
+        return {
+            OBLIGATIONS: _all(db, OBLIGATIONS),
+            TRANSACTIONS: _all(db, TRANSACTIONS),
+            ALLOCATIONS: _all(db, ALLOCATIONS),
+            "available": True,
+        }
+    except (PyMongoError, FinancialLedgerValidationError, TypeError, ValueError) as exc:
+        # A read failure stays UNKNOWN: no record is never reported as 0.
+        database._set_last_error(str(exc))
+        return {OBLIGATIONS: [], TRANSACTIONS: [], ALLOCATIONS: [], "available": False}
+
+
 def shipment_partner_position(
     shipment_id: str,
     *,
     db: Any = None,
+    records: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive the payable/paid/remaining truth for ONE shipment's partner debt.
 
@@ -1318,6 +1353,11 @@ def shipment_partner_position(
     — absence of a record is never reported as 0.  With an obligation present,
     its allocation history is complete information, so derived values (including
     a true 0) are reported per currency and never combined across currencies.
+
+    ``records`` is an optional pre-loaded ledger snapshot (see
+    ``load_ledger_snapshot``).  When supplied, THIS call reads no collection:
+    it derives from the rows it was handed.  Existing callers that pass no
+    snapshot keep the original database read path unchanged.
     """
 
     sid = str(shipment_id or "").strip()
@@ -1340,21 +1380,30 @@ def shipment_partner_position(
     if not sid:
         empty["error"] = "shipment id is required"
         return empty
-    db = db if db is not None else database.get_db()
-    if db is None:
-        return {**empty, "status": UNKNOWN, "error": "MongoDB is not available"}
+    if records is None:
+        db = db if db is not None else database.get_db()
+        if db is None:
+            return {**empty, "status": UNKNOWN, "error": "MongoDB is not available"}
     try:
+        if records is not None:
+            # Request-local snapshot: same rows, same filters, no collection read.
+            raw_obligations = records.get(OBLIGATIONS) or []
+            raw_transactions = records.get(TRANSACTIONS) or []
+            allocations = [dict(item) for item in (records.get(ALLOCATIONS) or []) if isinstance(item, Mapping)]
+        else:
+            raw_obligations = _all(db, OBLIGATIONS)
+            raw_transactions = _all(db, TRANSACTIONS)
+            allocations = _all(db, ALLOCATIONS)
         obligations = [
             dict(item)
-            for item in _all(db, OBLIGATIONS)
+            for item in raw_obligations
             if isinstance(item, Mapping) and _effective(item) and sid in _shipment_ids(item)
         ]
         transactions = [
             dict(item)
-            for item in _all(db, TRANSACTIONS)
+            for item in raw_transactions
             if isinstance(item, Mapping) and _effective(item) and sid in _shipment_ids(item)
         ]
-        allocations = _all(db, ALLOCATIONS)
         if not obligations and not transactions:
             return empty
 
@@ -1534,6 +1583,7 @@ __all__ = [
     "derive_obligation_position",
     "derive_transaction_position",
     "link_financial_record_to_shipment",
+    "load_ledger_snapshot",
     "party_key",
     "project_partner_financial_position",
     "reverse_allocation",
