@@ -47,6 +47,44 @@ export interface MoneyLine {
   vat?: MaybeNum;
 }
 
+/**
+ * LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — one booked Finance Actual service line.
+ *
+ * Every field is the canonical field of ``data["3.4"].details`` re-shaped for
+ * display by ``views.logi_real_data.finance_projection`` — nothing here is
+ * computed in the browser:
+ *   id      canonical line id; sending it back on save UPDATES that row
+ *   name    ``name_full`` (``label`` stays the display fallback)
+ *   code    the service code (blank on a legacy row that never had one)
+ *   unit    ``Lần`` / ``Cont`` … (blank when the stored row never said)
+ *   qty / price / cost / vat / note  the operator-keyed facts
+ * A field the document does not carry arrives as null/"" and renders as "—";
+ * it is never filled with a fabricated 0 or a guessed service code.
+ */
+export interface FinanceActualLine extends MoneyLine {
+  id: string;
+  name: string;
+  code: string;
+  unit: string;
+  note: string;
+  /** Sell price — the same figure ``amount`` carries, named for the editor. */
+  price: MaybeNum;
+}
+
+/**
+ * One entry of the ONE canonical service catalog
+ * (``core.config.GETFLY_SERVICES_LIST``), projected read-only by the backend
+ * through ``views.logi_real_data.finance_service_catalog``. The component owns
+ * no copy of this list: picking an entry only pre-fills the service line the
+ * operator then books.
+ */
+export interface FinanceServiceCatalogEntry {
+  code: string;
+  name: string;
+  unit: string;
+  group: string;
+}
+
 export interface Payment {
   id?: string;
   requestId?: string;
@@ -212,7 +250,8 @@ export interface PartnerFinance {
 
 export interface Finance {
   quote: MoneyLine[];
-  actual: MoneyLine[];
+  /** Booked actual service lines — the canonical editor rows, see above. */
+  actual: FinanceActualLine[];
   currency?: string;
   /** True when at least one actual service line is booked. Without one,
    *  actual revenue/cost/profit are UNKNOWN — never a manufactured 0. */
@@ -1312,6 +1351,13 @@ export interface ViewModel {
   handbook?: NotebookHandbook;
   /** LOGI_USER_ACCESS_WORKSPACE_01 — bounded read-only /nguoi-dung slice. */
   userAccess?: UserAccessWorkspace;
+  /**
+   * LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — read-only service catalog slice
+   * (``core.config.GETFLY_SERVICES_LIST`` projected by the backend) used by the
+   * Finance Actual editor's service picker. Absent = not delivered yet, which
+   * the page renders as an honest empty picker, never a hard-coded list.
+   */
+  financeServiceCatalog?: FinanceServiceCatalogEntry[];
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
@@ -1378,4 +1424,13 @@ export function reconciliationDesk(): ReconciliationSlice | null {
 /** The bounded /nguoi-dung user & access slice (null until delivered). */
 export function userAccessWorkspace(): UserAccessWorkspace | null {
   return current?.userAccess ?? null;
+}
+
+/**
+ * The read-only service catalog the backend projected from
+ * ``core.config.GETFLY_SERVICES_LIST`` (empty until delivered). This is the
+ * component's ONLY source of service codes — the list is never copied here.
+ */
+export function financeServiceCatalog(): FinanceServiceCatalogEntry[] {
+  return current?.financeServiceCatalog ?? [];
 }

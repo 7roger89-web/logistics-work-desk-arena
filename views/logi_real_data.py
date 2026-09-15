@@ -333,6 +333,34 @@ def _partner_projection(
     return result
 
 
+def finance_service_catalog() -> list[dict[str, Any]]:
+    """The ONE canonical service catalog, projected read-only for the component.
+
+    ``core.config.GETFLY_SERVICES_LIST`` is the same list the legacy Streamlit
+    shipment screen (``views/shipment.py``), ``views/quotations.py`` and the
+    GetFly Excel writers already use. This is a presentation projection of that
+    existing constant — no second catalog, no copy in the frontend, no new
+    collection, and nothing here is writable: the actual service line written
+    by ``finance_actual_save`` carries the ``code``/``name``/``unit`` the
+    operator picked.
+
+    A deployment whose catalog is empty yields ``[]`` (an honest empty state),
+    never a fabricated list.
+    """
+    from core.config import GETFLY_SERVICES_LIST
+
+    return [
+        {
+            "code": text(item.get("code")),
+            "name": text(item.get("name")),
+            "unit": text(item.get("unit")) or "Lần",
+            "group": text(item.get("group")),
+        }
+        for item in GETFLY_SERVICES_LIST
+        if isinstance(item, Mapping) and text(item.get("code"))
+    ]
+
+
 def finance_projection(
     shipment: Mapping[str, Any],
     quotes: Mapping[str, Any],
@@ -358,8 +386,19 @@ def finance_projection(
 
     actual = [
         {
+            # Every field below is the SOURCE FIELD the operator already books
+            # on ``data["3.4"].details`` — re-shaped for display only, never
+            # recomputed. ``id`` is what lets the UI edit the SAME canonical row
+            # instead of appending a new one; ``amount`` stays as the sell-side
+            # figure the summary rows have always rendered.
+            "id": text(line.get("id")),
             "label": text(line.get("display_name") or line.get("name_full") or line.get("name")) or "Dịch vụ",
+            "name": text(line.get("name_full") or line.get("display_name")),
+            "code": text(line.get("code")),
+            "unit": text(line.get("unit")),
+            "note": text(line.get("note")),
             "amount": num(line.get("price", line.get("price_out"))),
+            "price": num(line.get("price", line.get("price_out"))),
             "cost": num(line.get("cost", line.get("price_in"))),
             "qty": num(line.get("qty")),
             "vat": num(line.get("vat_line", line.get("vat"))),

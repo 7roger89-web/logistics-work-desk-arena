@@ -228,17 +228,29 @@ def test_c2a_unknown_never_becomes_zero(staging):
     assert fin["received"] == 0.0
 
 
-def test_c2a_blank_actual_amount_is_not_stored_as_a_business_value(staging, event_seq):
-    """A blank price on the write path does not become a claimed actual."""
+def test_c2a_blank_actual_amount_is_refused_not_stored_as_zero(staging, event_seq):
+    """UNKNOWN != ZERO on the WRITE path: a blank amount is refused, never booked.
+
+    A booked actual line is a claim about money that really happened, so a
+    blank price/cost/VAT must not be stored as ``0.0``. The writer refuses the
+    save, writes nothing, and leaves the projection's UNKNOWN untouched.
+    """
+    before = _finance()
+    lines_before = len(vm.read_shipment(SHIPMENT)["data"]["3.4"]["details"])
+
     out = _dispatch(event_seq, "finance_actual_save", {
         "shipmentId": SHIPMENT,
         "line": {"name": "Chi phí chờ xác nhận", "qty": 1, "price": "", "cost": ""},
     })
-    assert out["ok"], out["error"]
-    # The projection reports UNKNOWN for facts the model genuinely lacks.
-    projection = out["readback"]
-    assert projection["cargo"]["packs"] is None
-    assert projection["importInfo"]["tax"] is None
+    assert out["ok"] is False
+    assert "Chưa nhập" in out["error"]
+    for caption in ("Giá bán", "Giá vốn", "VAT"):
+        assert caption in out["error"], out["error"]
+    assert out["readback"] is None, "a refusal must not claim a fresh readback"
+
+    # Nothing was appended and nothing changed — no half-written line.
+    assert len(vm.read_shipment(SHIPMENT)["data"]["3.4"]["details"]) == lines_before
+    assert _finance() == before
 
 
 # ---------------------------------------------------------------------------

@@ -510,6 +510,13 @@ def build_view_model() -> dict:
             request=st.session_state.get(TRANSLATION_REQUEST_KEY),
             result=st.session_state.get(TRANSLATION_RESULT_KEY),
         ),
+        # LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — the ONE canonical service catalog
+        # (``core.config.GETFLY_SERVICES_LIST``) projected read-only so the
+        # Finance Actual editor can offer the real service picker instead of a
+        # free-text box. No second catalog, no copy in the frontend, no write
+        # path: picking an entry only pre-fills ``code`` / ``name`` / ``unit`` on
+        # the service line that ``finance_actual_save`` books in data.3.4.
+        "financeServiceCatalog": rd.finance_service_catalog(),
         # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the authoritative
         # outcome(s) of the business event(s) the bounded dispatcher handled on
         # the previous run. The UI must never treat "event transported" as
@@ -937,10 +944,53 @@ def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
                    audit=_audit_trail(sid))
 
 
+#: Money facts a booked Finance Actual line must state explicitly. Keyed by the
+#: component payload field → the Vietnamese caption an operator recognises.
+FINANCE_ACTUAL_REQUIRED_FIELDS = (("price", "Giá bán"), ("cost", "Giá vốn"), ("vat", "VAT %"))
+
+
+def _actual_amount(value: Any) -> float | None:
+    """Strict amount parse for a BOOKED actual line. None = not stated.
+
+    Parsing itself is the EXISTING canonical money parser
+    (``core.utils.to_decimal``), which already understands both desk input
+    styles ``1.200.000`` and ``1,234,567``; only its zero-default is refused
+    here, because on a booked-actual write path a value the operator did not
+    state (or that carries no digit at all) is UNKNOWN — UNKNOWN != ZERO.
+    """
+    from decimal import InvalidOperation
+
+    from core.utils import to_decimal
+
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    raw = str(value).strip()
+    if not raw or not any(ch.isdigit() for ch in raw):
+        return None
+    try:
+        parsed = to_decimal(raw)
+    except (InvalidOperation, ValueError):  # pragma: no cover - to_decimal guards
+        return None
+    return float(parsed)
+
+
+def _is_blank_amount(value: Any) -> bool:
+    """True when the operator stated NOTHING (absent, None or whitespace)."""
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
 def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Finance Actual = a real service line in ``data.3.4.details``.
 
     Quote Estimate is a separate object and is never written here.
+
+    UNKNOWN != ZERO on this writer path: a booked actual line is a claim about
+    money that really happened, so every amount has to be stated. A blank never
+    silently becomes ``0.0`` — the save is REFUSED with an explicit Vietnamese
+    message and nothing is written; ``0`` itself is a legitimate, deliberate
+    answer (a service genuinely billed at 0, or genuinely without VAT).
     """
     from core.auth import can_operate_business
     from core.database import get_last_db_error, save_shipment_atomic
@@ -948,28 +998,63 @@ def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     sid = rd.text(payload.get("shipmentId"))
     line = payload.get("line") if isinstance(payload.get("line"), Mapping) else {}
+    # Optional intent identity from the component: it is echoed back on every
+    # outcome so the UI can match THIS click's authoritative answer (success or
+    # refusal) instead of guessing from "the event was transported".
+    request_id = rd.text(payload.get("requestId"))
+
+    def _out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("finance_actual_save", sid, ok, error, requestId=request_id, **extra)
+
     if not sid or not line:
-        return _result("finance_actual_save", sid, False, "Thiếu shipmentId hoặc line.")
+        return _out(False, "Thiếu shipmentId hoặc line.")
     if not can_operate_business("finance_write"):
-        return _result("finance_actual_save", sid, False, "RBAC: không có quyền finance_write.")
+        return _out(False, "RBAC: không có quyền finance_write.")
 
     shipment = read_shipment(sid)
     if shipment is None:
-        return _result("finance_actual_save", sid, False, f"Không tìm thấy lô {sid}.")
+        return _out(False, f"Không tìm thấy lô {sid}.")
 
     finance = shipment.setdefault("data", {}).setdefault("3.4", {})
     details = finance.setdefault("details", [])
 
-    # UNKNOWN != ZERO: a blank amount stays absent rather than becoming 0.
-    qty = rd.num(line.get("qty"))
-    price = rd.num(line.get("price"))
-    cost = rd.num(line.get("cost"))
-    vat = rd.num(line.get("vat"))
     name = rd.text(line.get("name"))
     if not name:
-        return _result("finance_actual_save", sid, False, "Thiếu tên dịch vụ.")
-    if qty is not None and qty <= 0:
-        return _result("finance_actual_save", sid, False, "Số lượng phải lớn hơn 0.")
+        return _out(False, "Thiếu tên dịch vụ.")
+
+    # Validation happens BEFORE anything is touched, so a refusal leaves no
+    # half-written line behind.
+    numbers: dict[str, float] = {}
+    missing: list[str] = []
+    invalid: list[str] = []
+    for key, caption in FINANCE_ACTUAL_REQUIRED_FIELDS:
+        raw = line.get(key)
+        value = _actual_amount(raw)
+        if value is None and _is_blank_amount(raw):
+            missing.append(caption)
+        elif value is None:
+            invalid.append(caption)
+        else:
+            numbers[key] = value
+    if missing:
+        return _out(False, "Chưa nhập: " + ", ".join(missing)
+                    + " — dòng thực tế phải nêu rõ số tiền (0 là giá trị hợp lệ; "
+                      "để trống không phải là 0).")
+    if invalid:
+        return _out(False, "Giá trị không hợp lệ: " + ", ".join(invalid)
+                    + " — nhập dạng số, ví dụ 1500000 hoặc VAT 8.")
+
+    qty_raw = line.get("qty")
+    qty = _actual_amount(qty_raw)
+    qty_blank = _is_blank_amount(qty_raw)
+    if qty is None and not qty_blank:
+        return _out(False, "Số lượng không hợp lệ — nhập số lớn hơn 0, ví dụ 1 hoặc 2.")
+    if qty is None:
+        # A service line is booked per unit of service; the quantity itself is
+        # not a money claim, so "not stated" keeps the canonical default of 1.
+        qty = 1.0
+    if qty <= 0:
+        return _out(False, "Số lượng phải lớn hơn 0.")
 
     from uuid import uuid4
 
@@ -977,8 +1062,13 @@ def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     entry: dict[str, Any] | None = None
     if target_id:
         entry = next((d for d in details if isinstance(d, Mapping) and rd.text(d.get("id")) == target_id), None)
-    if entry is None:
-        entry = {"id": target_id or f"PAY-LINE-{uuid4().hex.upper()[:12]}"}
+        if entry is None:
+            # Editing must target an existing canonical row. Minting a row from
+            # a client-supplied id would let a stale screen create a second line.
+            return _out(False, f"Không tìm thấy dòng thực tế cần sửa (mã {target_id})"
+                           " — mở lại lô để đọc dữ liệu mới nhất.")
+    else:
+        entry = {"id": f"PAY-LINE-{uuid4().hex.upper()[:12]}"}
         details.append(entry)
 
     entry["name_full"] = name
@@ -987,44 +1077,30 @@ def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     entry["note"] = rd.text(line.get("note"))
     if rd.text(line.get("code")):
         entry["code"] = rd.text(line.get("code"))
-    # Only write numerics that were actually supplied.
-    if qty is not None:
-        entry["qty"] = qty
-    else:
-        entry.setdefault("qty", 1.0)
-    if price is not None:
-        entry["price"] = price
-        entry["price_out"] = price
-    else:
-        entry.setdefault("price", 0.0)
-        entry.setdefault("price_out", 0.0)
-    if cost is not None:
-        entry["cost"] = cost
-        entry["price_in"] = cost
-    else:
-        entry.setdefault("cost", 0.0)
-        entry.setdefault("price_in", 0.0)
-    if vat is not None:
-        entry["vat_line"] = vat
-        entry["vat"] = vat
-    else:
-        entry.setdefault("vat_line", 0.0)
-        entry.setdefault("vat", 0.0)
+    # Every numeric below was explicitly supplied (or is the canonical qty
+    # default) — there is deliberately no zero-filling fallback any more.
+    entry["qty"] = qty
+    entry["price"] = numbers["price"]
+    entry["price_out"] = numbers["price"]
+    entry["cost"] = numbers["cost"]
+    entry["price_in"] = numbers["cost"]
+    entry["vat_line"] = numbers["vat"]
+    entry["vat"] = numbers["vat"]
 
     apply_financial_snapshot(shipment)
     if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
-        return _result("finance_actual_save", sid, False, get_last_db_error() or "Không lưu được.")
+        return _out(False, get_last_db_error() or "Không lưu được.")
 
     fresh = read_shipment(sid) or {}
     fresh_lines = _get_path(fresh, ("data", "3.4", "details")) or []
-    return _result("finance_actual_save", sid, True, readback=_projection_for(fresh),
-                   lineId=entry["id"],
-                   persisted={"lineCount": len(fresh_lines),
-                              "line": next((d for d in fresh_lines
-                                            if rd.text(d.get("id")) == entry["id"]), None),
-                              "receivable": _get_path(fresh, ("data", "3.4", "out")),
-                              "cost": _get_path(fresh, ("data", "3.4", "in"))},
-                   audit=_audit_trail(sid))
+    return _out(True, readback=_projection_for(fresh),
+                lineId=entry["id"],
+                persisted={"lineCount": len(fresh_lines),
+                           "line": next((d for d in fresh_lines
+                                        if rd.text(d.get("id")) == entry["id"]), None),
+                           "receivable": _get_path(fresh, ("data", "3.4", "out")),
+                           "cost": _get_path(fresh, ("data", "3.4", "in"))},
+                audit=_audit_trail(sid))
 
 
 def _handle_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
