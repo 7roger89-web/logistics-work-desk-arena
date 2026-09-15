@@ -68,3 +68,14 @@ For a clear long-running task on a host that supports native `/goal`, use `/goal
 - Before completion, compare the exact original baseline with the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
 - Before claiming done, replay the original task contract and re-check acceptance requirements and evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
 - If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
+
+## Native `/goal` auto-activation (P2P)
+
+After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but before the first substantive execution turn for that goal, decide native `/goal` activation automatically. Do not ask the Owner whether to use `/goal`.
+
+- If installed runtime contains `.p2p/system/p2p_capabilities/native_goal_activation.py`, run `python .p2p/system/p2p_capabilities/native_goal_activation.py --host <claude_code|codex_cli> --format json`. Host identity comes from the current executor; Claude Code may use its stable in-session markers, while Codex passes `codex_cli` from known executor identity and must not infer it from `CODEX_HOME` alone.
+- `decision=ACTIVATE_NATIVE_GOAL` -> if this same goal is not already active in the current host session, immediately invoke the returned `command` once, then continue the same P2P task.
+- `decision=NORMAL_P2P_PATH` -> continue the normal P2P path.
+- helper `status=BLOCKED` -> treat it as a durable-state/control-plane blocker; never fabricate a `/goal` condition.
+- If the helper is absent, apply the exact same deterministic rule directly from authoritative durable state: activate only for Goal `APPROVED|IN_PROGRESS` + TaskPlan `ACTIVE` + at least two tasks + unfinished work; otherwise use the normal P2P path. Do not create another detector, state machine, router, ledger, daemon, or scheduler.
+- Native `/goal` remains session continuation only. P2P task state, Owner Gates, evidence and independent verifier remain authoritative.
