@@ -6,7 +6,7 @@ import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
+import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile, parseAmountVN } from "../lib/format";
 
 const TABS = [
   { id: "van-tai", label: "Vận chuyển & Hàng hóa", short: "Vận chuyển" },
@@ -147,18 +147,19 @@ export default function ShipmentDetail() {
     setShowPay(true);
   };
   const recordPay = () => {
-    const amt = Number(payAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền ${ccy} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
+    const raw = payAmt.trim();
+    const parsed = parseAmountVN(raw);
+    if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền ${ccy} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
     const sent = dispatch("payment_record", {
       shipmentId: s.id,
-      amount: amt,
+      amount: raw,
       requestId: payRequestRef.current,
       date: new Date().toISOString().slice(0, 10),
       note: payKind,
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
     setShowPay(false); setPayAmt("");
-    toast("Đã gửi khoản thu " + fmtCcy(amt, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+    toast("Đã gửi khoản thu " + fmtCcy(parsed, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
   };
 
   // C2B — partner payable / payment to partner. SAME contract as receipts:
@@ -175,31 +176,33 @@ export default function ShipmentDetail() {
   const recordPartnerPayable = () => {
     const partner = s.finance.partner;
     if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red"); return; }
-    const amt = Number(partnerAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền phải trả ${ccy} — ví dụ 57.000.000.`, "red"); return; }
+    const raw = partnerAmt.trim();
+    const parsed = parseAmountVN(raw);
+    if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền phải trả ${ccy} — ví dụ 57.000.000.`, "red"); return; }
     if (!partnerOblRef.current) mintPartnerObl();
     const sent = dispatch("partner_payable_record", {
       shipmentId: s.id,
       partnerId: partner.partnerId,
-      amount: amt,
+      amount: raw,
       currency: ccy,
       requestId: partnerOblRef.current,
       note: "Phải trả chi phí đối tác theo thực tế lô",
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
     setPartnerAmt("");
-    toast("Đã gửi phải trả đối tác " + fmtCcy(amt, ccy), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+    toast("Đã gửi phải trả đối tác " + fmtCcy(parsed, ccy), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
   };
   const recordPartnerPayment = () => {
     const partner = s.finance.partner;
     if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red"); return; }
-    const amt = Number(partnerAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền thanh toán ${ccy} — ví dụ 20.000.000.`, "red"); return; }
+    const raw = partnerAmt.trim();
+    const parsed = parseAmountVN(raw);
+    if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền thanh toán ${ccy} — ví dụ 20.000.000.`, "red"); return; }
     if (!partnerPayRef.current) mintPartnerPay();
     const sent = dispatch("partner_payment_record", {
       shipmentId: s.id,
       partnerId: partner.partnerId,
-      amount: amt,
+      amount: raw,
       currency: ccy,
       requestId: partnerPayRef.current,
       date: new Date().toISOString().slice(0, 10),
@@ -207,7 +210,7 @@ export default function ShipmentDetail() {
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
     setPartnerAmt("");
-    toast("Đã gửi thanh toán đối tác " + fmtCcy(amt, ccy), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
+    toast("Đã gửi thanh toán đối tác " + fmtCcy(parsed, ccy), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
   };
 
   // FINANCE ACTUAL — the service lines themselves are entered in the bounded

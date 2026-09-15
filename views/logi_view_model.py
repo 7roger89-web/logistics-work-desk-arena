@@ -981,6 +981,23 @@ def _is_blank_amount(value: Any) -> bool:
     return value is None or (isinstance(value, str) and not value.strip())
 
 
+def _financial_amount(value: Any) -> float | None:
+    """Strict money parse for the financial WRITE boundary, reusing canonical parser.
+
+    Reuses the existing Finance Actual helper's logic which itself is based on
+    ``core.utils.to_decimal`` — the canonical money parser that understands
+    Vietnamese grouping (``500.000`` → 500000) and mixed separators.
+
+    Contract:
+    - blank / None / whitespace / no digit → None (UNKNOWN / invalid)
+    - numeric → float
+    - string with grouping → parsed via to_decimal
+    - garbage like ``abc`` → None, never 0
+    - explicit ``0`` → 0.0 (business rule decides if zero is allowed)
+    """
+    return _actual_amount(value)
+
+
 def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Finance Actual = a real service line in ``data.3.4.details``.
 
@@ -1108,7 +1125,7 @@ def _handle_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.database import save_direct_shipment_payment
 
     sid = rd.text(payload.get("shipmentId"))
-    amount = rd.num(payload.get("amount"))
+    amount = _financial_amount(payload.get("amount"))
     request_id = rd.text(payload.get("requestId"))
     if not sid or amount is None or not request_id:
         return _result("payment_record", sid, False,
@@ -1154,7 +1171,7 @@ def _handle_payment_correction(payload: Mapping[str, Any]) -> dict[str, Any]:
         correction_request_id,
         rd.text(payload.get("reason")) or "Điều chỉnh khoản thu theo yêu cầu vận hành",
         {k: v for k, v in {
-            "amount": rd.num(payload.get("amount")),
+            "amount": _financial_amount(payload.get("amount")),
             "date": _normalize_date(payload.get("date")) or None,
             "note": rd.text(payload.get("note")) or None,
         }.items() if v is not None},
@@ -1230,7 +1247,7 @@ def _handle_partner_payable_record(payload: Mapping[str, Any]) -> dict[str, Any]
     sid = rd.text(payload.get("shipmentId"))
     partner_id = rd.text(payload.get("partnerId"))
     request_id = rd.text(payload.get("requestId"))
-    amount = rd.num(payload.get("amount"))
+    amount = _financial_amount(payload.get("amount"))
     if not sid or not partner_id or not request_id:
         return _result("partner_payable_record", sid, False,
                        "Thiếu shipmentId, partnerId hoặc requestId (idempotency key).")
@@ -1311,7 +1328,7 @@ def _handle_partner_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]
     sid = rd.text(payload.get("shipmentId"))
     partner_id = rd.text(payload.get("partnerId"))
     request_id = rd.text(payload.get("requestId"))
-    amount = rd.num(payload.get("amount"))
+    amount = _financial_amount(payload.get("amount"))
     if not sid or not partner_id or not request_id:
         return _result("partner_payment_record", sid, False,
                        "Thiếu shipmentId, partnerId hoặc requestId (idempotency key).")

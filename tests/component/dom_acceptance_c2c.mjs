@@ -201,7 +201,7 @@ console.log("STEP 3 — payment_record identity and idempotency from the worklis
   const ids = new Set(sent.map((e) => e.payload.requestId));
   assert.equal(ids.size, 1, `one intent must replay ONE request id, got ${[...ids].join(", ")}`);
   const first = sent[0].payload;
-  assert.equal(first.amount, 25000000);
+  assert.equal(first.amount, "25000000"); // raw preserved
   assert.match(first.requestId, /^PAY-REQ-/, "request identity must be namespaced");
   ok(`double click replayed one request identity: ${first.requestId}`);
 
@@ -214,7 +214,7 @@ console.log("STEP 3 — payment_record identity and idempotency from the worklis
   await tick(150);
   const second = eventsOf("payment_record");
   assert.equal(second.length, 1, "a new intent must post exactly one event");
-  assert.equal(second[0].payload.amount, 25000000);
+  assert.equal(second[0].payload.amount, "25000000"); // raw preserved
   assert.notEqual(second[0].payload.requestId, first.requestId,
     "a second genuine receipt must mint a NEW request identity");
   ok(`new intent minted a new request identity: ${second[0].payload.requestId}`);
