@@ -191,21 +191,21 @@ def test_goods_and_finance_actual_save_readback(staging, event_seq):
     assert out["persisted"]["receivable"] > 0
 
 
-def test_finance_actual_blank_amount_stays_unknown(staging, event_seq):
-    """UNKNOWN != ZERO on the write path: a blank price is not stored as 0."""
+def test_finance_actual_blank_amount_is_refused_on_the_write_path(staging, event_seq):
+    """UNKNOWN != ZERO (LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01) on the writer.
+
+    A blank price/cost on a booked actual line is REFUSED with an explicit
+    Vietnamese message instead of being normalised into a business ``0``.
+    """
+    lines_before = len(vm.read_shipment("LO-0308")["data"]["3.4"]["details"])
+
     out = _dispatch(event_seq, "finance_actual_save", {
         "shipmentId": "LO-0308",
         "line": {"name": "Chi phí chờ xác nhận", "qty": 1, "price": "", "cost": ""},
     })
-    assert out["ok"], out["error"]
-    saved = out["persisted"]["line"]
-    # The writer's normalisation defaults a never-supplied numeric to 0 for
-    # arithmetic; the important assertion is that the projection keeps
-    # genuinely-absent business values as None, covered below.
-    assert saved is not None
-    projection = out["readback"]
-    assert projection["cargo"]["packs"] is None
-    assert projection["importInfo"]["tax"] is None
+    assert out["ok"] is False
+    assert "Chưa nhập" in out["error"]
+    assert len(vm.read_shipment("LO-0308")["data"]["3.4"]["details"]) == lines_before
 
 
 def test_delivery_save_readback(staging, event_seq):

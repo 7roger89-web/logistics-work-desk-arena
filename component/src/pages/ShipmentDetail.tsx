@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
+import FinanceActualEntry from "../components/FinanceActualEntry";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
-import { fmtMoney, fmtVND, fmtNum, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
+import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile } from "../lib/format";
 
 const TABS = [
   { id: "van-tai", label: "Vận chuyển & Hàng hóa", short: "Vận chuyển" },
@@ -19,7 +21,10 @@ export default function ShipmentDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
-  const { shipments, updateShipment, toast, contracts, dispatch } = useStore();
+  const { shipments, updateShipment, toast, contracts, dispatch, financeServices } = useStore();
+  // The authoritative outcome of a saved actual line comes back in the NEXT
+  // fresh view-model (`lastWrites`), never from the transport.
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const nav = useNavigate();
   const s = shipments.find((x) => x.id === id);
   const [showPay, setShowPay] = useState(false);
@@ -27,11 +32,10 @@ export default function ShipmentDetail() {
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
   const [partnerAmt, setPartnerAmt] = useState("");
-  const [lineForm, setLineForm] = useState({ name: "", qty: "1", price: "", cost: "", vat: "8" });
   const [form, setForm] = useState<Record<string, string>>({});
   const [savedTick, setSavedTick] = useState(0);
 
-  useEffect(() => { setForm({}); setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" }); setPartnerAmt(""); }, [id, tab]);
+  useEffect(() => { setForm({}); setPartnerAmt(""); }, [id, tab]);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const val = (k: string, fb: string) => form[k] ?? fb;
 
@@ -206,25 +210,10 @@ export default function ShipmentDetail() {
     toast("Đã gửi thanh toán đối tác " + fmtCcy(amt, ccy), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
   };
 
-  // FINANCE ACTUAL — one booked service line in data["3.4"].details, saved
-  // through the canonical writer. Quote Estimate is never touched here.
-  const lineSet = (k: keyof typeof lineForm, v: string) => setLineForm((f) => ({ ...f, [k]: v }));
-  const saveActualLine = () => {
-    if (!lineForm.name.trim()) { toast("Thiếu tên dịch vụ", "Nhập tên dòng thực tế — ví dụ: Cước xe TQ.", "red"); return; }
-    const sent = dispatch("finance_actual_save", {
-      shipmentId: s.id,
-      line: {
-        name: lineForm.name.trim(),
-        qty: lineForm.qty,
-        price: lineForm.price,
-        cost: lineForm.cost,
-        vat: lineForm.vat,
-      },
-    });
-    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    toast("Đã gửi dòng thực tế", "Ghi vào data['3.4'].details rồi core.logic tính lại phải thu / chi phí / lợi nhuận.", "green");
-    setLineForm({ name: "", qty: "1", price: "", cost: "", vat: "8" });
-  };
+  // FINANCE ACTUAL — the service lines themselves are entered in the bounded
+  // `FinanceActualEntry` section below (canonical catalog + full line fields +
+  // edit of the SAME row), all of it saved through the ONE existing
+  // `finance_actual_save` event. Quote Estimate is never touched there.
 
   /**
    * PXK through core.docgen. The service needs the lot's own legal identity
@@ -459,19 +448,9 @@ export default function ShipmentDetail() {
               {s.finance.actual.length === 0 && (
                 <p className="text-[14px] text-slate-500">Chưa ghi nhận dòng thực tế nào — doanh thu / chi phí / lợi nhuận thực tế đang <b>chưa xác định</b>, không phải 0.</p>
               )}
-              {s.finance.actual.map((c, i) => (
-                <div key={`${c.label}-${i}`} className="py-2 border-b border-slate-100 last:border-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-[13.5px] text-slate-500 font-medium pt-0.5">{c.label}</span>
-                    <span className="text-right font-semibold text-slate-800 text-[14.5px]">
-                      <span className="font-bold text-[16px]">{fmtCcy(c.amount, c.ccy)}</span>
-                    </span>
-                  </div>
-                  <p className="text-[12.5px] text-slate-400 mt-0.5 text-right">
-                    Chi phí {fmtCcy(c.cost, c.ccy)}{c.qty != null ? ` · SL ${fmtNum(c.qty)}` : ""}{c.vat != null ? ` · VAT ${fmtNum(c.vat)}%` : ""}
-                  </p>
-                </div>
-              ))}
+              {s.finance.actual.length > 0 && (
+                <p className="text-[13.5px] text-slate-500 mb-1">{s.finance.actual.length} dòng dịch vụ đã ghi nhận · tổng hợp theo {ccy}:</p>
+              )}
               <StateRow label="Doanh thu thực tế (chưa VAT)" value={<span className="font-bold">{fmtCcy(s.finance.receivableNet, ccy)}</span>} />
               <StateRow label="Chi phí thực tế" value={<span className="font-bold">{fmtCcy(s.finance.payable, ccy)}</span>} />
               {/* ACTUAL PROFIT — from booked actuals only. Never from the quote. */}
@@ -487,26 +466,22 @@ export default function ShipmentDetail() {
                   = Doanh thu thực tế − chi phí thực tế − hoa hồng. Không gồm VAT đầu ra. Không lấy số báo giá để bù chỗ trống.
                 </p>
               </div>
-              {/* One booked actual service line → the canonical writer. */}
-              <div className="mt-3 rounded-xl border border-slate-200 p-3">
-                <p className="text-[13px] font-extrabold text-[#0f2a4a] mb-2">Ghi nhận dòng thực tế</p>
-                <div className="grid gap-2.5">
-                  <Field label="Dịch vụ" required error={!lineForm.name.trim() ? "Nhập tên dịch vụ" : undefined}>
-                    <input value={lineForm.name} onChange={(e) => lineSet("name", e.target.value)} placeholder="VD: Cước xe TQ Đông Bằng → Hữu Nghị" className={inputCls(!lineForm.name.trim() ? "missing" : "ok")} />
-                  </Field>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <Field label={`Giá bán (${ccy})`}><input value={lineForm.price} onChange={(e) => lineSet("price", e.target.value)} inputMode="numeric" placeholder="VD: 62000000" className={inputCls()} /></Field>
-                    <Field label={`Chi phí (${ccy})`}><input value={lineForm.cost} onChange={(e) => lineSet("cost", e.target.value)} inputMode="numeric" placeholder="VD: 57000000" className={inputCls()} /></Field>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <Field label="Số lượng"><input value={lineForm.qty} onChange={(e) => lineSet("qty", e.target.value)} inputMode="numeric" placeholder="VD: 1" className={inputCls()} /></Field>
-                    <Field label="VAT %" hint="Bỏ trống = chưa xác định"><input value={lineForm.vat} onChange={(e) => lineSet("vat", e.target.value)} inputMode="decimal" placeholder="VD: 8" className={inputCls()} /></Field>
-                  </div>
-                </div>
-                <PrimaryBtn onClick={saveActualLine} className="mt-3 w-full">💾 LƯU DÒNG THỰC TẾ</PrimaryBtn>
-              </div>
+              <p className="text-[12.5px] text-slate-400 mt-2">
+                Chi tiết từng dịch vụ (mã phí · SL · đơn vị · giá vốn · giá bán · VAT · ghi chú) và nút SỬA nằm ở mục
+                “DỊCH VỤ &amp; CHI PHÍ THỰC TẾ” bên dưới.
+              </p>
             </section>
           </div>
+          {/* One booked service line per row — the restored practical entry. */}
+          <FinanceActualEntry
+            shipment={s}
+            services={financeServices}
+            ccy={ccy}
+            dispatch={dispatch}
+            toast={toast}
+            lastWrites={vm?.lastWrites}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-2"><Wallet size={19} className="text-emerald-600" /> Phải thu khách hàng ({ccy})</h3>

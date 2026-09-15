@@ -98,6 +98,12 @@ function type(input, value) {
   input.dispatchEvent(new window.Event("change", { bubbles: true }));
 }
 
+/** Choose an option of a real <select> through React's own value tracking. */
+function selectByValue(sel, value) {
+  Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value").set.call(sel, value);
+  sel.dispatchEvent(new window.Event("change", { bubbles: true }));
+}
+
 const byPlaceholder = (needle) => {
   const el = $(`input[placeholder^="${needle}"]`)[0];
   assert.ok(el, `input with placeholder "${needle}" not found`);
@@ -209,29 +215,63 @@ console.log("STEP 4 — currency explicit + outstanding");
 // STEP 5 — B: Finance Actual WRITE emits the real typed event
 // ---------------------------------------------------------------------------
 
-console.log("STEP 5 — finance_actual_save typed event");
+console.log("STEP 5 — finance_actual_save typed event (restored service entry)");
 {
-  triggers = [];
-  type(byPlaceholder("VD: Cước xe TQ"), "Phí kiểm hóa (thực tế)");
-  type(byPlaceholder("VD: 62000000"), "1200000");
-  type(byPlaceholder("VD: 57000000"), "800000");
-  type(byPlaceholder("VD: 1"), "3");
-  type(byPlaceholder("VD: 8"), "8");
+  // LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 replaced the free-text box with the
+  // canonical service picker, so the write is now: pick a catalog service →
+  // type the money → save. Same typed event, same canonical row.
+  await click("THÊM DỊCH VỤ / CHI PHÍ", "button");
+  const form = window.document.getElementById("finance-actual-form");
+  assert.ok(form, "the service/cost entry form must open");
+
+  const picker = $("select", form)[0];
+  assert.ok(picker, "the service picker must be a real <select>");
+  const optionValues = $("option", form).map((o) => o.value).filter(Boolean);
+  const catalog = FIXTURE.journey.financeServiceCatalog;
+  assert.equal(optionValues.length, catalog.length,
+    `picker options must come from the projected catalog (${catalog.length}), got ${optionValues.length}`);
+  assert.deepEqual(optionValues, catalog.map((e) => e.code), "the picker IS the backend catalog");
+
+  selectByValue(picker, "PKH");
   await tick();
-  await click("LƯU DÒNG THỰC TẾ", "button");
+  const codeInput = $("input[readonly]", form)[0];
+  assert.equal(codeInput.value, "PKH", "Mã dịch vụ must arrive auto-filled from the catalog");
+  const inputs = $("input", form);
+  const unit = inputs.find((i) => i.placeholder === "Lần");
+  assert.equal(unit.value, "Lần", "Đơn vị must arrive from the catalog entry");
+
+  const inp = (ph) => {
+    const el = $("input", form).find((i) => (i.placeholder || "").startsWith(ph));
+    assert.ok(el, `input with placeholder "${ph}" not found in the entry form`);
+    return el;
+  };
+  type(inp("VD: 57000000"), "800000");
+  type(inp("VD: 62000000"), "1200000");
+  type(inp("1"), "3");
+  type(inp("VD: 8"), "8");
+  type(inp("Ghi chú cho dòng này"), "Hóa đơn số 12");
+  await tick();
+
+  triggers = [];
+  await click("LƯU DÒNG THỰC TẾ", "button", form);
   await tick(120);
 
   const sent = eventsOf("finance_actual_save");
   assert.equal(sent.length, 1, `expected exactly 1 finance_actual_save, got ${sent.length}`);
   const payload = sent[0].payload;
   assert.equal(payload.shipmentId, SHIPMENT);
-  assert.equal(payload.line.name, "Phí kiểm hóa (thực tế)");
+  assert.equal(payload.line.name, "Phí kiểm hóa", "the catalog name is what gets booked");
+  assert.equal(payload.line.code, "PKH");
+  assert.equal(payload.line.unit, "Lần");
   assert.equal(payload.line.qty, "3");
   assert.equal(payload.line.price, "1200000");
   assert.equal(payload.line.cost, "800000");
   assert.equal(payload.line.vat, "8");
+  assert.equal(payload.line.note, "Hóa đơn số 12");
+  assert.ok(!("id" in payload.line), "a NEW line must not carry an id — the backend mints it");
+  assert.match(payload.requestId, /^FACTUAL-REQ-/, "the write must carry its request identity");
   assert.ok(typeof sent[0].seq === "number" && sent[0].seq > 0, "seq must be a positive number");
-  ok("finance_actual_save emitted with the real line payload");
+  ok("finance_actual_save emitted with the catalog code + unit + note payload");
 }
 
 // ---------------------------------------------------------------------------

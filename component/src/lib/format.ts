@@ -73,6 +73,51 @@ export function fmtMillions(n: number | null | undefined): string {
   return `${(Number(n) / 1e6).toLocaleString("vi-VN")} tr`;
 }
 
+/**
+ * Parse an amount the way the operator types it: `1.200.000`, `1,200,000`,
+ * `1200000`, `8,5` or `8.5` → a number. `null` when nothing usable was typed.
+ *
+ * The RULES ARE THE APP'S OWN: this mirrors `core.utils.to_decimal`, the
+ * canonical money parser already used by `safe_float` / `smart_money_parse` in
+ * the Python writers, so a preview computed here cannot disagree with the
+ * figure the backend books. It is a display/validation aid only — the amount
+ * that is actually saved is the raw text the operator typed, re-read by the
+ * backend. Returning `null` (instead of 0) for a blank is deliberate: UNKNOWN
+ * != ZERO also holds in the browser.
+ */
+export function parseAmountVN(raw: string | number | null | undefined): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  const cleaned = String(raw).replace(/[^\d.,-]/g, "");
+  if (!cleaned || !/\d/.test(cleaned)) return null;
+
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  const commas = (cleaned.match(/,/g) || []).length;
+  const dots = (cleaned.match(/\./g) || []).length;
+  let normalized = cleaned;
+
+  if (commas > 0 && dots > 0) {
+    const decimal = lastComma > lastDot ? "," : ".";
+    const grouping = decimal === "," ? "." : ",";
+    const tail = cleaned.split(decimal).pop() ?? "";
+    normalized = tail.length <= 2
+      ? cleaned.split(grouping).join("").replace(decimal, ".")
+      : cleaned.replace(/[.,]/g, "");
+  } else if (commas > 1 || dots > 1) {
+    normalized = cleaned.replace(/[.,]/g, "");
+  } else if (commas === 1) {
+    const [head, tail = ""] = cleaned.split(",");
+    normalized = tail.length <= 2 ? `${head.replace(/,/g, "")}.${tail}` : cleaned.replace(/,/g, "");
+  } else if (dots === 1) {
+    const [head, tail = ""] = cleaned.split(".");
+    if (tail.length === 3 && head.replace("-", "").length >= 1) normalized = cleaned.replace(/\./g, "");
+  }
+
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
 /** Plain count/number cell with UNKNOWN support. */
 export function fmtNum(n: number | string | null | undefined): string {
   if (isUnknown(n)) return UNKNOWN;

@@ -32,11 +32,21 @@ OUT = ROOT / "tests" / "component" / "fixtures" / "view_model_c2a.json"
 
 
 def _dispatch(vm, state, name, payload):
+    outcome = _dispatch_raw(vm, state, name, payload)
+    assert outcome["ok"], f"{name} failed: {outcome['error']}"
+    return outcome
+
+
+def _dispatch_raw(vm, state, name, payload):
+    """Run ONE event through the real bounded dispatcher, WITHOUT requiring ok.
+
+    The journey uses the writer's genuine refusals too, so the fixture carries
+    the backend's own Vietnamese validation message instead of an invented one.
+    """
     state["n"] += 1
     event = {name: {"seq": state["n"], "event": name, "payload": payload}}
     outcomes = vm.consume_phase_b_triggers({"seq": 0}, event)
     assert len(outcomes) == 1, outcomes
-    assert outcomes[0]["ok"], f"{name} failed: {outcomes[0]['error']}"
     return outcomes[0]
 
 
@@ -54,11 +64,21 @@ def main() -> None:
 
     seq = {"n": 0}
 
-    # --- the real journey: one actual line, then one receipt -----------------
+    # --- the real journey: two actual lines, then one receipt ----------------
     _dispatch(vm, seq, "finance_actual_save", {
         "shipmentId": SHIPMENT,
         "line": {"name": "Phí nâng hạ container (thực tế)", "qty": 2,
                  "price": 1_500_000, "cost": 1_100_000, "vat": 8, "unit": "Lần"},
+    })
+    # LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — a line entered through the restored
+    # service picker: the canonical catalog supplies code + unit, and the note
+    # is the operator's own. So the fixture carries one row WITH a service code
+    # (the DOM test reads the code/unit/note back off the shipped projection).
+    _dispatch(vm, seq, "finance_actual_save", {
+        "shipmentId": SHIPMENT,
+        "line": {"name": "Phí kiểm hóa", "code": "PKH", "unit": "Lần", "qty": 1,
+                 "price": 1_200_000, "cost": 800_000, "vat": 0,
+                 "note": "Theo thông báo của hải quan"},
     })
     _dispatch(vm, seq, "payment_record", {
         "shipmentId": SHIPMENT, "amount": 40_000_000,
@@ -66,7 +86,28 @@ def main() -> None:
         "note": "Thu tạm ứng đợt 1",
     })
 
+    # The REAL refusal the repaired writer produces for a blank amount. The DOM
+    # acceptance replays it through `lastWrites` to prove the UI shows the
+    # backend's own message instead of pretending the line was saved.
+    refusal = _dispatch_raw(vm, seq, "finance_actual_save", {
+        "shipmentId": SHIPMENT,
+        "line": {"name": "Phí làm hàng", "code": "DVK", "unit": "Lần", "qty": 1,
+                 "price": "", "cost": "", "vat": ""},
+    })
+    assert refusal["ok"] is False, "the writer must refuse a blank actual amount"
+
+    st.session_state[vm.LAST_WRITES_KEY] = []
     journey = vm.build_view_model()
+    # A refused write books nothing, so the state the operator sees afterwards is
+    # the SAME fresh view model with only `lastWrites` carrying the writer's real
+    # outcome. That is asserted below instead of shipping a second full model.
+    st.session_state[vm.LAST_WRITES_KEY] = [refusal]
+    after_refusal = vm.build_view_model()
+    assert after_refusal["shipments"] == journey["shipments"], \
+        "a refused actual line must not change any shipment projection"
+    # Only the authoritative outcome is carried; the DOM acceptance splices it
+    # onto `journey` as `lastWrites`, because the refusal changed nothing else.
+    refusal_outcome = after_refusal["lastWrites"][0]
 
     # --- probes: same projection code, in-memory only ------------------------
     base_ship = vm.read_shipment(SHIPMENT)
@@ -104,6 +145,9 @@ def main() -> None:
         "journey": journey,
         "emptyBook": _model_for(empty_doc),
         "usd": _model_for(usd_doc),
+        # The bounded dispatcher's own outcome for a blank actual line: the real
+        # refusal (ok=false + Vietnamese message) the operator must be shown.
+        "refusal": refusal_outcome,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -118,6 +162,7 @@ def main() -> None:
     ufin = next(r for r in payload["usd"]["shipments"] if r["id"] == SHIPMENT)["finance"]
     print(f"  emptyBook profit={efin['profit']} margin={efin['profitMargin']} hasActualLines={efin['hasActualLines']}")
     print(f"  usd      currency={ufin['currency']} receivableNet={ufin['receivableNet']} profit={ufin['profit']}")
+    print(f"  refusal  ok={refusal_outcome['ok']} error={refusal_outcome['error']}")
 
 
 if __name__ == "__main__":

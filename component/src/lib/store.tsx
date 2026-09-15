@@ -32,6 +32,7 @@ import {
   type Contract,
   type Customer,
   type Environment,
+  type FinanceServiceCatalogEntry,
   type Home,
   type NotebookHandbook,
   type Notif,
@@ -84,6 +85,12 @@ interface StoreShape {
   ceoReport: CeoReport | null;
   /** LOGI_NOTEBOOK_WORKSPACE_01 — read-only /so-tay handbook slice. */
   handbook: NotebookHandbook | null;
+  /**
+   * LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — the read-only service catalog the
+   * backend projected from ``core.config.GETFLY_SERVICES_LIST``. The Finance
+   * Actual picker reads it from here; React never keeps its own copy.
+   */
+  financeServices: FinanceServiceCatalogEntry[];
   unknownLabel: string;
   /**
    * Send ONE typed event to the single Python dispatcher. Persistence is
@@ -153,6 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
   const handbook = useMemo(() => vm?.handbook ?? null, [vm]);
+  const financeServices = useMemo(() => vm?.financeServiceCatalog ?? [], [vm]);
 
   const dispatch = useCallback(
     (event: LogiEventName, payload: unknown) => dispatchLogiEvent(event, payload),
@@ -231,6 +239,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payables,
       ceoReport,
       handbook,
+      financeServices,
       unknownLabel: unknownLabel(),
       dispatch,
       updateShipment,
@@ -260,6 +269,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payables,
       ceoReport,
       handbook,
+      financeServices,
       dispatch,
       updateShipment,
     ]
