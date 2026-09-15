@@ -1453,11 +1453,23 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not save_shipment_atomic(doc, actor=_actor()):
         return _res(False, get_last_db_error() or "Không tạo được lô hàng.")
 
+    # FAST PATH for Create Shipment: the success invariant is
+    #   matching backend outcome (event+requestId+ok) AND fresh vm contains id.
+    # The full projection (_projection_for) that loads reference/timeline/finance/PXK
+    # is redundant because build_view_model() will construct the authoritative
+    # complete shipment on the forced rerun.  We therefore return a MINIMAL
+    # authoritative readback that proves the fresh persisted document really
+    # exists, without the expensive projection reads.
     fresh = read_shipment(sid) or {}
-    return _res(True, readback=_projection_for(fresh),
-                persisted={"id": rd.text(fresh.get("id")), "customer": rd.text(fresh.get("customer")),
-                           "version": int(fresh.get("version") or 0)},
-                audit=_audit_trail(sid))
+    if not fresh:
+        return _res(False, "Không đọc được lô vừa tạo sau khi ghi.")
+
+    minimal = {
+        "id": rd.text(fresh.get("id")),
+        "customer": rd.text(fresh.get("customer")),
+        "version": int(fresh.get("version") or 0),
+    }
+    return _res(True, readback=minimal, persisted=dict(minimal), audit=_audit_trail(sid))
 
 
 def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:

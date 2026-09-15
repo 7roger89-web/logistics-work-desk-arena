@@ -111,7 +111,7 @@ export default function CreateShipment() {
       setBackendError("");
       setPending({ shipmentId, requestId });
       toast("Đã gửi yêu cầu tạo " + shipmentId,
-        "Chờ kết quả thật từ backend (validate + ghi + audit). Chưa chuyển màn hình.", "blue");
+        "Đang lưu và xác nhận lô hàng…", "blue");
     } else {
       toast("Không gửi được", "Component chưa kết nối backend.", "red");
     }
@@ -229,14 +229,13 @@ export default function CreateShipment() {
 
             <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
               <PrimaryBtn onClick={submit} disabled={!!pending} className="flex-1">
-                {pending ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : <>TẠO LÔ HÀNG <ArrowRight size={17} /></>}
+                {pending ? "ĐANG TẠO LÔ…" : <>TẠO LÔ HÀNG <ArrowRight size={17} /></>}
               </PrimaryBtn>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]">Hủy</Link>
             </div>
             {pending && (
               <p className="text-[13px] font-semibold text-blue-700 mt-2.5">
-                Đang chờ kết quả thật từ backend (RBAC → validate → ghi → audit → đọc lại).
-                Chỉ chuyển sang màn lô khi dữ liệu mới xác nhận lô tồn tại.
+                Đang lưu và xác nhận lô hàng…
               </p>
             )}
             <p className="text-[13px] text-slate-500 mt-3">
