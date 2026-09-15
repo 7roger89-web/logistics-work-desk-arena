@@ -22,7 +22,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Building2, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
 import { Field, GhostBtn, SectionTitle, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
-import { cx, fmtCcy, fmtText, isUnknown } from "../lib/format";
+import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
 import type { PartnerPayableRow } from "../lib/viewmodel";
 
 const toneFor = (status: string): "green" | "amber" | "red" | "blue" | "gray" =>
@@ -75,19 +75,20 @@ export default function PartnerPayables() {
 
   const recordPay = () => {
     if (!paying) return;
-    const amt = Number(payAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền ${paying.currency} rồi bấm Lưu.`, "red"); return; }
+    const raw = payAmt.trim();
+    const parsed = parseAmountVN(raw);
+    if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền ${paying.currency} rồi bấm Lưu.`, "red"); return; }
     const sent = dispatch("partner_payment_record", {
       shipmentId: paying.shipmentId,
       partnerId: paying.partnerId,
-      amount: amt,
+      amount: raw,
       currency: paying.currency,
       requestId: payRequestRef.current,
       date: new Date().toISOString().slice(0, 10),
       note: "Trả đối tác từ bàn công nợ đối tác",
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    toast("Đã gửi thanh toán " + fmtCcy(amt, paying.currency), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
+    toast("Đã gửi thanh toán " + fmtCcy(parsed, paying.currency), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
     setPaying(null); setPayAmt("");
   };
 

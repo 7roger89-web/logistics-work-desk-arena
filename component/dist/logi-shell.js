@@ -14466,8 +14466,8 @@ function No() {
 	}, re = (0, _.useRef)(""), ie = () => {
 		re.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, m(!0);
 	}, ae = () => {
-		let e = Number(v.replace(/\D/g, ""));
-		if (!e) {
+		let e = v.trim(), t = to(e);
+		if (t == null || t <= 0) {
 			o("Chưa nhập số tiền", `Nhập số tiền ${M} rồi bấm Lưu — ví dụ 50.000.000.`, "red");
 			return;
 		}
@@ -14481,7 +14481,7 @@ function No() {
 			o("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		m(!1), y(""), o("Đã gửi khoản thu " + U(e, M), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+		m(!1), y(""), o("Đã gửi khoản thu " + U(t, M), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
 	}, oe = (0, _.useRef)(""), se = (0, _.useRef)(""), F = (e) => `${e}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, ce = () => {
 		oe.current = F("POBL");
 	}, le = () => {
@@ -14492,8 +14492,8 @@ function No() {
 			o("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red");
 			return;
 		}
-		let t = Number(w.replace(/\D/g, ""));
-		if (!t) {
+		let t = w.trim(), n = to(t);
+		if (n == null || n <= 0) {
 			o("Chưa nhập số tiền", `Nhập số tiền phải trả ${M} — ví dụ 57.000.000.`, "red");
 			return;
 		}
@@ -14508,15 +14508,15 @@ function No() {
 			o("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		T(""), o("Đã gửi phải trả đối tác " + U(t, M), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+		T(""), o("Đã gửi phải trả đối tác " + U(n, M), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
 	}, de = () => {
 		let e = f.finance.partner;
 		if (!e?.partnerId) {
 			o("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red");
 			return;
 		}
-		let t = Number(w.replace(/\D/g, ""));
-		if (!t) {
+		let t = w.trim(), n = to(t);
+		if (n == null || n <= 0) {
 			o("Chưa nhập số tiền", `Nhập số tiền thanh toán ${M} — ví dụ 20.000.000.`, "red");
 			return;
 		}
@@ -14532,7 +14532,7 @@ function No() {
 			o("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		T(""), o("Đã gửi thanh toán đối tác " + U(t, M), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
+		T(""), o("Đã gửi thanh toán đối tác " + U(n, M), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
 	}, fe = () => {
 		let e = A("pxkNo", f?.pxk.number ?? "").trim(), t = A("pxkDate", f?.pxk.date ?? "").trim();
 		if (f) {
@@ -16842,8 +16842,8 @@ function Io() {
 							}), /* @__PURE__ */ (0, R.jsx)(oo, {
 								onClick: () => {
 									if (!v) return;
-									let e = Number(b.replace(/\D/g, ""));
-									if (!e) {
+									let e = b.trim(), r = to(e);
+									if (r == null || r <= 0) {
 										n("Chưa nhập số tiền", `Nhập số tiền ${v.currency} rồi bấm Lưu — ví dụ 50.000.000.`, "red");
 										return;
 									}
@@ -16857,7 +16857,7 @@ function Io() {
 										n("Không gửi được", "Component chưa kết nối backend.", "red");
 										return;
 									}
-									n("Đã gửi khoản thu " + U(e, v.currency), "Ghi qua save_direct_shipment_payment — gửi lại cùng intent không nhân đôi.", "green"), y(null), x("");
+									n("Đã gửi khoản thu " + U(r, v.currency), "Ghi qua save_direct_shipment_payment — gửi lại cùng intent không nhân đôi.", "green"), y(null), x("");
 								},
 								children: "💾 LƯU KHOẢN THU"
 							})]
@@ -17280,8 +17280,8 @@ function Ro() {
 							}), /* @__PURE__ */ (0, R.jsx)(oo, {
 								onClick: () => {
 									if (!h) return;
-									let e = Number(v.replace(/\D/g, ""));
-									if (!e) {
+									let e = v.trim(), r = to(e);
+									if (r == null || r <= 0) {
 										n("Chưa nhập số tiền", `Nhập số tiền ${h.currency} rồi bấm Lưu.`, "red");
 										return;
 									}
@@ -17297,7 +17297,7 @@ function Ro() {
 										n("Không gửi được", "Component chưa kết nối backend.", "red");
 										return;
 									}
-									n("Đã gửi thanh toán " + U(e, h.currency), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green"), g(null), y("");
+									n("Đã gửi thanh toán " + U(r, h.currency), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green"), g(null), y("");
 								},
 								children: "💸 LƯU THANH TOÁN"
 							})]

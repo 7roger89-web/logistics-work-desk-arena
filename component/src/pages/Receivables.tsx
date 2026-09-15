@@ -18,7 +18,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
 import { Field, GhostBtn, SectionTitle, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
-import { cx, fmtCcy, fmtText, isUnknown } from "../lib/format";
+import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
 import type { ReceivableRow } from "../lib/viewmodel";
 
 export default function Receivables() {
@@ -70,17 +70,18 @@ export default function Receivables() {
 
   const recordPay = () => {
     if (!paying) return;
-    const amt = Number(payAmt.replace(/\D/g, ""));
-    if (!amt) { toast("Chưa nhập số tiền", `Nhập số tiền ${paying.currency} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
+    const raw = payAmt.trim();
+    const parsed = parseAmountVN(raw);
+    if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền ${paying.currency} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
     const sent = dispatch("payment_record", {
       shipmentId: paying.id,
-      amount: amt,
+      amount: raw,
       requestId: payRequestRef.current,
       date: new Date().toISOString().slice(0, 10),
       note: payKind,
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    toast("Đã gửi khoản thu " + fmtCcy(amt, paying.currency), "Ghi qua save_direct_shipment_payment — gửi lại cùng intent không nhân đôi.", "green");
+    toast("Đã gửi khoản thu " + fmtCcy(parsed, paying.currency), "Ghi qua save_direct_shipment_payment — gửi lại cùng intent không nhân đôi.", "green");
     setPaying(null); setPayAmt("");
   };
 

@@ -209,7 +209,7 @@ assert.equal(obls.length, 1, "exactly one partner_payable_record trigger");
 const oblPayload = obls[0].payload;
 assert.equal(oblPayload.shipmentId, SHIPMENT);
 assert.equal(oblPayload.partnerId, PARTNER_ID);
-assert.equal(oblPayload.amount, 57000000);
+assert.equal(oblPayload.amount, "57.000.000"); // raw preserved (LOGI_FINANCIAL_AMOUNT_INPUT_INTEGRITY_01)
 assert.equal(oblPayload.currency, "VND");
 assert.ok(oblPayload.requestId, "request identity present");
 ok(`partner_payable_record emitted for ${oblPayload.partnerId} · ${nf(oblPayload.amount)} ${oblPayload.currency}`);
@@ -228,7 +228,7 @@ await tick(150);
 const pays = eventsOf("partner_payment_record");
 assert.equal(pays.length, 2, "double click must reach the handler twice");
 assert.equal(pays[0].payload.requestId, pays[1].payload.requestId, "double click replays ONE request identity");
-assert.equal(pays[0].payload.amount, 20000000);
+assert.equal(pays[0].payload.amount, "20.000.000"); // raw preserved
 assert.equal(pays[0].payload.currency, "VND");
 assert.equal(pays[0].payload.partnerId, PARTNER_ID);
 
@@ -239,7 +239,7 @@ await tick();
 const pays2 = eventsOf("partner_payment_record");
 assert.equal(pays2.length, 3);
 assert.notEqual(pays2[2].payload.requestId, pays[0].payload.requestId, "new intent = new request identity");
-assert.equal(pays2[2].payload.amount, 17000000);
+assert.equal(pays2[2].payload.amount, "17.000.000"); // raw preserved
 ok(`double click replayed ${pays[0].payload.requestId}`);
 ok(`new intent minted ${pays2[2].payload.requestId}`);
 
