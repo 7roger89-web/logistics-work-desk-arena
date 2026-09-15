@@ -15745,11 +15745,11 @@ function Eo() {
 										}) ? (k(""), D({
 											shipmentId: t,
 											requestId: n
-										}), i("Đã gửi yêu cầu tạo " + t, "Chờ kết quả thật từ backend (validate + ghi + audit). Chưa chuyển màn hình.", "blue")) : i("Không gửi được", "Component chưa kết nối backend.", "red");
+										}), i("Đã gửi yêu cầu tạo " + t, "Đang lưu và xác nhận lô hàng…", "blue")) : i("Không gửi được", "Component chưa kết nối backend.", "red");
 									},
 									disabled: !!E,
 									className: "flex-1",
-									children: E ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : /* @__PURE__ */ (0, I.jsxs)(I.Fragment, { children: ["TẠO LÔ HÀNG ", /* @__PURE__ */ (0, I.jsx)(_r, { size: 17 })] })
+									children: E ? "ĐANG TẠO LÔ…" : /* @__PURE__ */ (0, I.jsxs)(I.Fragment, { children: ["TẠO LÔ HÀNG ", /* @__PURE__ */ (0, I.jsx)(_r, { size: 17 })] })
 								}), /* @__PURE__ */ (0, I.jsx)(F, {
 									to: "/lo-hang",
 									className: "btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]",
@@ -15758,7 +15758,7 @@ function Eo() {
 							}),
 							E && /* @__PURE__ */ (0, I.jsx)("p", {
 								className: "text-[13px] font-semibold text-blue-700 mt-2.5",
-								children: "Đang chờ kết quả thật từ backend (RBAC → validate → ghi → audit → đọc lại). Chỉ chuyển sang màn lô khi dữ liệu mới xác nhận lô tồn tại."
+								children: "Đang lưu và xác nhận lô hàng…"
 							}),
 							/* @__PURE__ */ (0, I.jsxs)("p", {
 								className: "text-[13px] text-slate-500 mt-3",

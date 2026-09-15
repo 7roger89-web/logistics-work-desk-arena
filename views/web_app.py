@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from core.auth import require_login
 from views import logi_shell, logi_view_model
 
 
@@ -21,6 +22,14 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="collapsed",
     )
+
+    # AUTH GATE — must be before any business view-model is built or the
+    # Logistics component is mounted.  When AUTH_REQUIRED=true and no session
+    # exists, require_login() renders the existing login/bootstrap UI and
+    # returns None, so we stop this Streamlit run immediately.
+    user = require_login()
+    if user is None:
+        return
 
     # Real Logistics view-model. With no MONGO_URI configured the app runs on
     # an isolated staging transport; a real URI always takes precedence.
