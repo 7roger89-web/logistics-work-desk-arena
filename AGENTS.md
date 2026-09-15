@@ -56,3 +56,15 @@ admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowled
 ## Bootstrap
 
 Chưa có user → app render form tạo Admin đầu tiên (không default credential). CLI: `python scripts/setup_first_user.py` (tương tác, mật khẩu không qua args).
+
+## Native long-running goal bridge (P2P)
+
+For a clear long-running task on a host that supports native `/goal`, use `/goal` only as a session-continuation primitive. Canonical P2P GoalPlan/TaskPlan, durable task state, evidence, and verifier remain authoritative.
+
+- Prefer `.p2p/system/p2p_capabilities/native_goal_bridge.py` when an installed P2P runtime is present.
+- If installed runtime is absent in a fresh clone, derive the `/goal` completion condition directly from the active P2P goal/task contract. Do not create a second roadmap, state machine, memory authority, router, ledger, daemon, or scheduler.
+- Do not conflate host semantics. Only claim automatic continuation or evaluator behavior that is documented or directly verified for that host; do not assume Codex CLI has Claude Code's evaluator semantics.
+- Recovery remains failure-class adaptive. Never introduce a fixed retry-count hard stop such as `three strikes => BLOCKED`.
+- Before completion, compare the exact original baseline with the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
+- Before claiming done, replay the original task contract and re-check acceptance requirements and evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
+- If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
