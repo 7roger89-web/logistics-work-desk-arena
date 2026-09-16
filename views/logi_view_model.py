@@ -1157,19 +1157,35 @@ def _handle_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _handle_payment_correction(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """One canonical payment reversal via ``save_direct_payment_correction``.
+
+    Semantics are the WRITER's, not the UI's: the original payment is never
+    edited in place nor deleted — the canonical writer appends a linked
+    ``financial_corrections`` row, marks the payment reversed, audits
+    ``payment_reversed`` and recomputes the derived totals. ``amount``/
+    ``date``/``note`` are OPTIONAL EVIDENCE attached to the correction; they
+    are not a replacement payment. The outcome echoes ``correctionRequestId``
+    so the UI can match it to the pending intent exactly like the requestId
+    echo on ``payment_record`` — transport success is never treated as write
+    success.
+    """
     from core.database import save_direct_payment_correction
 
     sid = rd.text(payload.get("shipmentId"))
     payment_id = rd.text(payload.get("paymentId"))
     correction_request_id = rd.text(payload.get("correctionRequestId"))
-    if not sid or not payment_id or not correction_request_id:
+    reason = rd.text(payload.get("reason"))
+    # Required identity per the write contract — the writer itself also
+    # refuses a blank reason, but the handler must never substitute one.
+    if not sid or not payment_id or not correction_request_id or not reason:
         return _result("payment_correction", sid, False,
-                       "Thiếu shipmentId, paymentId hoặc correctionRequestId.")
+                       "Thiếu shipmentId, paymentId, correctionRequestId hoặc LÝ DO điều chỉnh (bắt buộc).",
+                       correctionRequestId=correction_request_id, paymentId=payment_id)
     ok, result, message = save_direct_payment_correction(
         sid,
         payment_id,
         correction_request_id,
-        rd.text(payload.get("reason")) or "Điều chỉnh khoản thu theo yêu cầu vận hành",
+        reason,
         {k: v for k, v in {
             "amount": _financial_amount(payload.get("amount")),
             "date": _normalize_date(payload.get("date")) or None,
@@ -1178,10 +1194,12 @@ def _handle_payment_correction(payload: Mapping[str, Any]) -> dict[str, Any]:
         actor=_actor(),
     )
     if not ok:
-        return _result("payment_correction", sid, False, message or "Không điều chỉnh được.")
+        return _result("payment_correction", sid, False, message or "Không điều chỉnh được.",
+                       correctionRequestId=correction_request_id, paymentId=payment_id)
     fresh = read_shipment(sid) or {}
     return _result("payment_correction", sid, True, message, readback=_projection_for(fresh),
-                   persisted=result, audit=_audit_trail(sid))
+                   persisted=result, audit=_audit_trail(sid),
+                   correctionRequestId=correction_request_id, paymentId=payment_id)
 
 
 def _company_party() -> dict[str, str] | None:

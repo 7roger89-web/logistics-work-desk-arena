@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, 
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
-import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
+import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
 import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile, parseAmountVN } from "../lib/format";
 
@@ -161,6 +161,95 @@ export default function ShipmentDetail() {
     setShowPay(false); setPayAmt("");
     toast("Đã gửi khoản thu " + fmtCcy(parsed, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
   };
+
+  // -------------------------------------------------------------------
+  // CUSTOMER PAYMENT CORRECTION — the real canonical reversal workflow.
+  //
+  // The decorative toast is gone. One sheet → the EXISTING `payment_correction`
+  // event → dispatcher → RBAC → `core.database.save_direct_payment_correction`
+  // → `financial_corrections` + audit `payment_reversed` + domain event →
+  // forced fresh readback. The writer's semantics are the UI's semantics:
+  //   * the original payment is NEVER edited in place, replaced or deleted —
+  //     it stays in history, marked reversed by the backend itself;
+  //   * the optional money/date/note fields are EVIDENCE attached to the
+  //     correction (they travel with the correction's fingerprint), never a
+  //     replacement amount;
+  //   * the derived totals move because the backend recomputes them and the
+  //     read model excludes reversed rows — not because this component said so.
+  //
+  // Request identity: minted when the sheet opens and held for that one intent
+  // — a rerender or a double click replays the SAME correctionRequestId and
+  // the writer's unique `correction_request_id` index absorbs the replay;
+  // closing and reopening is a NEW intent and mints a NEW id. The id is
+  // deliberately never derived from paymentId|amount|reason.
+  //
+  // Authoritative outcome: the fresh view-model's `lastWrites` carries the
+  // backend's answer matched by correctionRequestId. Success closes the sheet;
+  // a refusal keeps it open with the backend's real message. "Event was
+  // transported" is never success.
+  const [correctionFor, setCorrectionFor] = useState<Payment | null>(null);
+  const [corrReason, setCorrReason] = useState("");
+  const [corrAmt, setCorrAmt] = useState("");
+  const [corrDate, setCorrDate] = useState("");
+  const [corrNote, setCorrNote] = useState("");
+  const [corrError, setCorrError] = useState("");
+  const [corrPending, setCorrPending] = useState("");
+  const corrRequestRef = useRef("");
+  const openCorrection = (p: Payment) => {
+    corrRequestRef.current = `CORR-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    setCorrectionFor(p);
+    setCorrReason(""); setCorrAmt(""); setCorrDate(""); setCorrNote("");
+    setCorrError(""); setCorrPending("");
+  };
+  const closeCorrection = () => { setCorrectionFor(null); setCorrPending(""); };
+  const submitCorrection = () => {
+    if (!correctionFor || corrPending) return; // pending = in flight: never double-send
+    const reason = corrReason.trim();
+    if (!reason) {
+      setCorrError("LÝ DO ĐIỀU CHỈNH là bắt buộc — backend từ chối correction không có lý do.");
+      return;
+    }
+    const amtRaw = corrAmt.trim();
+    // Existing canonical VN parser validates; the RAW string still travels —
+    // the backend's payment_correction path parses via _financial_amount.
+    // Blank stays absent (never 0); garbage is refused here AND yields no
+    // evidence amount on the backend (it can silently become nothing, never 0).
+    if (amtRaw && parseAmountVN(amtRaw) == null) {
+      setCorrError("Số tiền bằng chứng không phải số hợp lệ — sửa lại hoặc để trống (không tự thành 0).");
+      return;
+    }
+    const sent = dispatch("payment_correction", {
+      shipmentId: s.id,
+      paymentId: correctionFor.id,
+      correctionRequestId: corrRequestRef.current,
+      reason,
+      ...(amtRaw ? { amount: amtRaw } : {}),
+      ...(corrDate.trim() ? { date: corrDate.trim() } : {}),
+      ...(corrNote.trim() ? { note: corrNote.trim() } : {}),
+    });
+    if (!sent) { setCorrError("Component chưa kết nối backend — yêu cầu chưa được gửi đi."); return; }
+    setCorrError("");
+    setCorrPending(corrRequestRef.current);
+  };
+  useEffect(() => {
+    if (!corrPending) return;
+    const outcome = (vm?.lastWrites ?? []).find(
+      (w) => w.event === "payment_correction"
+        && (w.correctionRequestId as string | undefined) === corrPending
+    );
+    if (!outcome) return; // still waiting for the authoritative backend answer
+    if (outcome.ok) {
+      closeCorrection();
+      toast("Đã ghi bút toán hoàn tác có liên kết",
+        "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.",
+        "green");
+    } else {
+      setCorrPending("");
+      setCorrError(outcome.error || "Backend từ chối bút toán điều chỉnh này.");
+      toast("Chưa điều chỉnh được", outcome.error || "Backend từ chối.", "red");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vm?.lastWrites, corrPending]);
 
   // C2B — partner payable / payment to partner. SAME contract as receipts:
   // one stable request identity per PAYABLE/PAYMENT INTENT, minted with the
@@ -573,11 +662,22 @@ export default function ShipmentDetail() {
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-3">Lịch sử thu / chi — sửa bằng điều chỉnh, không xóa</h3>
             <div className="space-y-2">
               {s.finance.payments.map((p, i) => (
-                <div key={i} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-3">
+                // "Đã hoàn tác" comes ONLY from the backend projection's
+                // `reversed` flag (is_reversed / status on the stored row) —
+                // never a client-side guess. The action button stays visible
+                // to every role; authorization is enforced in the writer.
+                <div key={p.id || i} data-payment-row={p.id || undefined} className={cx("flex flex-wrap items-center gap-2 rounded-xl border p-3", p.reversed ? "border-slate-200 bg-slate-50/80" : "border-slate-200")}>
                   <span className="text-[12.5px] font-bold text-slate-400 w-[92px]">{p.date}</span>
-                  <span className="flex-1 min-w-[160px]"><span className="block font-bold text-[14.5px]">{p.kind}</span><span className="block text-[12.5px] text-slate-500">{p.by}{p.note ? " · " + p.note : ""}</span></span>
-                  <span className="font-extrabold text-[15.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[11.5px] text-slate-400">{p.ccy}</span></span>
-                  <button onClick={() => toast("Tạo bút toán điều chỉnh", "Nhập số điều chỉnh (+/-) thay vì xóa — giữ nguyên lịch sử kiểm toán.", "blue")} className="touch-target text-[13px] font-bold text-[#1e5aa8] border border-slate-200 rounded-lg px-3 min-h-[40px]">Điều chỉnh</button>
+                  <span className="flex-1 min-w-[160px]">
+                    <span className="block font-bold text-[14.5px]">{p.kind}{p.reversed && <span className="ml-2 align-middle rounded-full bg-slate-200 text-slate-600 text-[11px] font-extrabold px-2 py-0.5">Đã hoàn tác</span>}</span>
+                    <span className="block text-[12.5px] text-slate-500">{p.by}{p.note ? " · " + p.note : ""}{p.id ? " · " + p.id : ""}</span>
+                  </span>
+                  <span className={cx("font-extrabold text-[15.5px]", p.reversed && "text-slate-400 line-through")}>{fmtMoney(p.amount, p.ccy)} <span className="text-[11.5px] text-slate-400">{p.ccy}</span></span>
+                  {p.reversed
+                    ? <span className="text-[12.5px] font-semibold text-slate-400 px-3">Đã điều chỉnh — khóa</span>
+                    : p.id
+                      ? <button onClick={() => openCorrection(p)} className="touch-target text-[13px] font-bold text-[#1e5aa8] border border-slate-200 rounded-lg px-3 min-h-[40px]" data-payment-id={p.id}>Điều chỉnh</button>
+                      : <span className="text-[12px] font-semibold text-amber-700 px-2" title="Khoản thu legacy không có mã — backend không có đối tượng để liên kết correction.">chưa có mã khoản thu</span>}
                 </div>
               ))}
             </div>
@@ -728,6 +828,80 @@ export default function ShipmentDetail() {
             <div className="grid grid-cols-2 gap-2.5 mt-4">
               <GhostBtn onClick={() => setShowPay(false)}>Hủy</GhostBtn>
               <SuccessBtn onClick={recordPay}>💾 LƯU KHOẢN THU</SuccessBtn>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ============ SHEET: PAYMENT CORRECTION (canonical reversal) ============
+          Read-only original facts + REQUIRED reason + OPTIONAL evidence.
+          This sheet never edits the old payment: the backend appends a linked
+          correction and marks the row reversed. Submit is disabled while the
+          outcome is in flight; the sheet closes ONLY on the authoritative
+          backend success and stays open (fields frozen) on refusal. */}
+      {correctionFor && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" id="payment-correction-sheet">
+          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={corrPending ? undefined : closeCorrection} />
+          <div className="relative bg-white w-full sm:max-w-[520px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
+            <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Điều chỉnh khoản thu — hoàn tác có kiểm toán</h3>
+            <p className="text-[13px] text-slate-500 mt-0.5">
+              Khoản thu gốc không bị sửa nội dung và không bị xóa: backend ghi một correction liên kết
+              (financial_corrections + audit payment_reversed) rồi đánh dấu khoản thu “Đã hoàn tác”.
+              Số dư phải thu đọc lại từ backend — không phải từ màn hình này.
+            </p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13px]" id="correction-original-facts">
+              <span className="text-slate-400 font-bold">Payment ID</span>
+              <span className="font-bold text-slate-700 break-all text-right">{correctionFor.id}</span>
+              <span className="text-slate-400 font-bold">Ngày</span>
+              <span className="font-bold text-slate-700 text-right">{correctionFor.date || "—"}</span>
+              <span className="text-slate-400 font-bold">Số tiền</span>
+              <span className="font-extrabold text-slate-700 text-right">{fmtMoney(correctionFor.amount, correctionFor.ccy)}</span>
+              <span className="text-slate-400 font-bold">Loại</span>
+              <span className="font-bold text-slate-700 text-right">{correctionFor.kind}{correctionFor.note && correctionFor.note !== correctionFor.kind ? " · " + correctionFor.note : ""}</span>
+              <span className="text-slate-400 font-bold">Đồng tiền</span>
+              <span className="font-bold text-slate-700 text-right">{correctionFor.ccy}</span>
+            </div>
+            <div className="grid gap-3 mt-3">
+              <Field label="Lý do điều chỉnh" required
+                     error={corrError && !corrReason.trim() ? corrError : undefined}
+                     hint="Bắt buộc — backend từ chối correction không có lý do.">
+                <textarea value={corrReason} onChange={(e) => setCorrReason(e.target.value)} disabled={!!corrPending}
+                  rows={2} placeholder="VD: Khách chuyển khoản sai nội dung — hoàn tác khoản này, khoản ghi lại sẽ nhập riêng."
+                  className={inputCls(corrReason.trim() ? "ok" : "missing")} />
+              </Field>
+              <details className="rounded-xl border border-slate-200 p-3">
+                <summary className="cursor-pointer text-[13.5px] font-bold text-slate-600">
+                  Bằng chứng kèm theo (không bắt buộc — KHÔNG phải số tiền thay thế)
+                </summary>
+                <div className="grid gap-3 mt-3">
+                  <Field label={`Số tiền liên quan (${correctionFor.ccy || ccy})`}
+                         error={corrError && corrAmt.trim() && parseAmountVN(corrAmt) == null ? corrError : undefined}
+                         hint="Chỉ lưu kèm correction làm bằng chứng. Để trống = không nhập, không tự thành 0.">
+                    <input value={corrAmt} onChange={(e) => setCorrAmt(e.target.value)} disabled={!!corrPending}
+                      inputMode="decimal" placeholder="VD: 1.200.000" className={inputCls(corrAmt.trim() ? (parseAmountVN(corrAmt) == null ? "invalid" : "ok") : "ok")} />
+                  </Field>
+                  <Field label="Ngày liên quan">
+                    <input value={corrDate} onChange={(e) => setCorrDate(e.target.value)} disabled={!!corrPending}
+                      placeholder="VD: 11/09/2026" className={inputCls("ok")} />
+                  </Field>
+                  <Field label="Ghi chú">
+                    <input value={corrNote} onChange={(e) => setCorrNote(e.target.value)} disabled={!!corrPending}
+                      placeholder="Chứng từ, ủy nhiệm chi, email khách…" className={inputCls("ok")} />
+                  </Field>
+                </div>
+              </details>
+            </div>
+            {corrError && corrReason.trim() && (
+              <p className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700" role="alert" id="correction-backend-error">{corrError}</p>
+            )}
+            <p className="text-[12.5px] text-slate-400 mt-2">
+              Mã yêu cầu: <b className="font-mono">{corrRequestRef.current}</b> — bấm lặp lại cùng ý định này không tạo
+              correction thứ hai; đóng rồi mở lại là ý định mới với mã mới.
+            </p>
+            <div className="grid grid-cols-2 gap-2.5 mt-4">
+              <GhostBtn onClick={closeCorrection}>{corrPending ? "Đang chờ backend…" : "Hủy"}</GhostBtn>
+              <PrimaryBtn onClick={submitCorrection} disabled={!!corrPending}>
+                {corrPending ? "⏳ ĐANG GHI…" : "✅ XÁC NHẬN ĐIỀU CHỈNH / HOÀN TÁC"}
+              </PrimaryBtn>
             </div>
           </div>
         </div>
