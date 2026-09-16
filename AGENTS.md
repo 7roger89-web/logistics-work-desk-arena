@@ -16,6 +16,20 @@ Do not treat an unauthenticated or repo-scoped 404 as proof that canonical law i
 At task start report exactly one:
 `P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
 
+## Evidence-first verification (P2P)
+
+For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
+`7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-EVIDENCE-FIRST-VERIFICATION.md`.
+
+If that profile cannot be read, apply this minimum capsule:
+- `AGENT_CLAIM_IS_NOT_EVIDENCE`: worker self-report is never acceptance authority.
+- `TEST_PASS_PROVES_ONLY_CHALLENGED_BEHAVIOR`: a passing test/build/lint/coverage/static check proves only the boundary/property it actually exercised.
+- Reuse existing execution lanes `FAST|STANDARD|STRICT|CRITICAL`; do not create a second risk classifier.
+- Non-trivial changes carry recoverable intent, behavior/regression proof, relevant environment/risk proof, provenance, and a truthful `PROVEN|INCOMPLETE|FAILED` verdict using existing P2P evidence stores.
+- `STRICT`/`CRITICAL` require an independent challenge appropriate to the changed surface. Targeted mutation, adversarial, negative, or property checks are tools, not rituals.
+- UI/API/provider/deployment/migration claims require representative real-path evidence when practical; otherwise downgrade the claim to the strongest truthful unverified/incomplete state.
+- Stop once bounded acceptance is proven; do not run broad mutation campaigns, extra reviewers, or full-suite ceremonies without decision value.
+
 ## Mandatory prompt serialization contract
 
 Every P2P-generated operational prompt handed to another executor must explicitly serialize both gates below. Do not leave them implicit merely because the current chat already read the law.
