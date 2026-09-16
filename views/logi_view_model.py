@@ -36,6 +36,7 @@ from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
 from views import translation as logi_translation
 from views import user_access as logi_user_access
+from views import user_management as logi_user_management
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -598,9 +599,15 @@ PARTNER_CONTEXT_EVENTS = {"partner_context_select"}
 # existing canonical C2B/C2D and C2C surfaces the desk links to.
 RECONCILIATION_EVENTS = {"reconciliation_filter"}
 
+# LOGI_USER_MANAGEMENT_01 — the four Admin-only account-management events for
+# /nguoi-dung (see views.user_management for the bounded dispatcher). Every
+# handler re-checks the Admin RBAC boundary itself; this set only decides
+# which typed events the shell forwards to Python at all.
+USER_MANAGEMENT_EVENTS = logi_user_management.USER_MANAGEMENT_EVENTS
+
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
-              | RECONCILIATION_EVENTS)
+              | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS)
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
@@ -2071,6 +2078,19 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
                                     reconciliation_session["seq"])
     outcomes.extend(reconciliation_outcomes)
+
+    # LOGI_USER_MANAGEMENT_01 — Admin-only account-management writes for
+    # /nguoi-dung. Shares the same seq counter so a replayed trigger can never
+    # double-write; every outcome (success or Admin/lockout/duplicate refusal)
+    # is embedded in lastWrites exactly like every other write path.
+    user_management_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    user_management_outcomes = logi_user_management.consume_user_management_triggers(
+        user_management_session, result
+    )
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    user_management_session["seq"])
+    outcomes.extend(user_management_outcomes)
+    write_outcomes.extend(user_management_outcomes)
 
     # Store the outcomes BEFORE any rerun so the fresh view-model built on the
     # rerun embeds them (``_last_writes_readback``) — the rerun restarts the

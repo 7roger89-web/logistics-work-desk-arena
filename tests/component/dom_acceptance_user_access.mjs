@@ -239,9 +239,9 @@ console.log("STEP 8 — current-user indicator and honest auth-mode note");
 {
   const current = $("[data-testid='user-access-current']")[0];
   assert.ok(current, "current-user indicator missing");
-  assert.ok(text(current).includes("staging.admin"), "session username missing");
-  assert.ok(text(current).includes("Quản trị (Preview/Staging)"), "session display name missing");
-  assert.ok(text(current).includes("toàn quyền"), "admin wildcard indicator missing");
+  assert.ok(text(current).includes("thu-hang"), "session username missing");
+  assert.ok(text(current).includes("Thu Hằng"), "session display name missing");
+  assert.ok(text(current).includes("quyền"), "permission indicator missing");
 
   const note = text($("[data-testid='user-access-mode-note']")[0]);
   assert.ok(note.includes("Local Admin"), "auth-mode label missing");

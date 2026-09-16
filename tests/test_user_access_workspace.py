@@ -233,15 +233,23 @@ def test_projection_declares_read_only_scope_limits():
     assert any("hash" in line for line in projection["unavailable"])
 
 
-def test_no_user_management_event_was_added():
+def test_user_management_events_are_exactly_the_bounded_four():
+    """LOGI_USER_MANAGEMENT_01 — the page now has a bounded Admin write path.
+
+    Exactly the four declared events exist (create / role / active / password
+    reset) — no delete event, no invite/SSO/email event, no second identity
+    system was added alongside them.
+    """
     from views import logi_view_model as vm
 
-    # The page needs no server-side action: no event, no writer bridge.
+    assert vm.USER_MANAGEMENT_EVENTS == {
+        "user_create", "user_role_set", "user_active_set", "user_password_reset",
+    }
+    assert vm.USER_MANAGEMENT_EVENTS <= vm.ALL_EVENTS
     assert not any(
         token in name
         for name in vm.ALL_EVENTS
-        for token in ("user_create", "user_update", "user_delete", "user_disable",
-                      "user_role", "password_reset", "invite_user")
+        for token in ("user_delete", "user_disable", "invite_user", "sso", "oauth")
     )
 
 
