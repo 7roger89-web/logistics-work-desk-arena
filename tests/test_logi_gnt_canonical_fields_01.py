@@ -99,13 +99,16 @@ def test_whitelist_gained_exactly_the_three_approved_keys():
     """FIELD_PATHS = the 26 pre-existing keys + exactly these three.
 
     LOGI_CN_TRUCK_TYPE_PERSIST_01 (Owner-approved 2026-09-12) later added one
-    further key (``pickup_truck_type``), so the total is now 30. The customs
-    block below still pins that THIS ruling contributed exactly its three.
+    further key (``pickup_truck_type``), so the total was 30;
+    LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 adds exactly one more —
+    ``created_at``, the lot's own header date under ``data/0.0`` — so the total
+    is now 31. The customs block below still pins that THIS ruling contributed
+    exactly its three.
     """
     assert vm.FIELD_PATHS["tk_date"] == ("data", "2.4", "tk_date")
     assert vm.FIELD_PATHS["import_duty_amount"] == ("data", "2.4", "import_duty_amount")
     assert vm.FIELD_PATHS["import_vat_amount"] == ("data", "2.4", "import_vat_amount")
-    assert len(vm.FIELD_PATHS) == 30
+    assert len(vm.FIELD_PATHS) == 31
 
     # Every customs/tax-adjacent key under 2.4 is one of the five the Owner
     # has now ruled on — no smuggled extra field.

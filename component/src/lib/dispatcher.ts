@@ -18,6 +18,12 @@ export type LogiEventName =
   | "shipment_update"
   | "navigate"
   | "shipment_field_save"
+  // LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the customer half of a lot's
+  // name ("tên lô hàng" = mã lô + khách hàng) through the EXISTING canonical
+  // writer core.database.update_shipment_customer. The lot code itself stays
+  // read-only here: core.database.rename_shipment_id does not re-point
+  // contracts.shipment_ids, so exposing it would silently break links.
+  | "shipment_customer_save"
   | "shipment_transport_save"
   | "delivery_confirm"
   | "finance_actual_save"
@@ -34,6 +40,12 @@ export type LogiEventName =
   | "customer_edit"
   | "customer_archive"
   | "customer_import"
+  // LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — paste a GetFly DSDH block in the
+  // contract flow and take ONLY the customer identity it really carries
+  // (Tên KH / Mã KH). Python parses it with core.getfly_reader's own column
+  // keywords and hands the rows to the EXISTING customer_import writer: one
+  // importer, one canonical writer, no invented contract/MST/company data.
+  | "customer_getfly_import"
   | "quote_create"
   | "quote_edit"
   | "quote_transition"
@@ -87,6 +99,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
   "navigate",
   "shipment_field_save",
+  "shipment_customer_save",
   "shipment_transport_save",
   "delivery_confirm",
   "finance_actual_save",
@@ -100,6 +113,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "customer_edit",
   "customer_archive",
   "customer_import",
+  "customer_getfly_import",
   "quote_create",
   "quote_edit",
   "quote_transition",

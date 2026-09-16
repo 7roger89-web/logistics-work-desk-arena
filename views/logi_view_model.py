@@ -552,6 +552,9 @@ ALLOWED_EVENTS = {"shipment_update", "navigate"}
 # Phase B typed write events. Anything outside these two sets is dropped.
 PHASE_B_EVENTS = {
     "shipment_field_save",
+    # LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the customer half of a lot's
+    # name, written by the EXISTING core.database.update_shipment_customer.
+    "shipment_customer_save",
     # Repeatable lists cannot be represented safely by the scalar field
     # whitelist.  This one shipment-local event writes exactly the canonical
     # operational collections through the existing atomic writer.
@@ -689,6 +692,13 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
     "receiver_title": ("data", "2.7", "receiver_title"),
     "delivery_location": ("data", "2.7", "delivery_location"),
     "status": ("status",),
+    # LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the shipment's own header date.
+    # `data.0.0.created_at` is already the canonical field the legacy desk
+    # edits (views/shipment.py "Ngày tạo"), that GetFly import writes
+    # (views/dashboard.py) and that every reader already projects back as
+    # `createdAt`; only the component whitelist could not reach it. A blank
+    # stays blank, so "no date yet" never becomes "today" or "0".
+    "created_at": ("data", "0.0", "created_at"),
 }
 
 _BOOL_FIELDS = {"customs_status"}
@@ -697,7 +707,7 @@ _BOOL_FIELDS = {"customs_status"}
 # (UNKNOWN) and is never turned into 0. The declaration date joins the
 # existing date path, which stores the canonical ISO form.
 _NUM_FIELDS = {"free_time", "import_duty_amount", "import_vat_amount"}
-_DATE_FIELDS = {"etd", "arrival_date", "delivery_date", "tk_date"}
+_DATE_FIELDS = {"etd", "arrival_date", "delivery_date", "tk_date", "created_at"}
 
 
 def _normalize_date(value: Any) -> str:
@@ -841,6 +851,77 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
                    applied=applied, rejected=rejected,
                    version=int((fresh or {}).get("version") or 0),
                    persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},
+                   audit=_audit_trail(sid))
+
+
+def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Fix the customer half of a lot's name through the EXISTING canonical writer.
+
+    A lot in this app has no separate free-text title: what the shell shows and
+    what the team calls "tên lô hàng" is the lot code plus its customer (see
+    ``docs/goals/LOG-LG05``), and the customer half is exactly what
+    ``core.database.update_shipment_customer`` already writes — with its own
+    ``shipment_edit`` gate, ``customer_updated`` audit row and version bump —
+    for the legacy Streamlit desk. This handler is only the missing bounded
+    shell around it (RBAC → known-customer resolution → writer → fresh read);
+    it adds no field, no collection and no fallback name.
+
+    Resolution mirrors ``_handle_shipment_create``: a known ``customerId`` wins
+    and its master name is what gets stored; a raw ``customer`` string is
+    accepted only when the operator typed it. Nothing is invented and a
+    mismatched picker never blanks the master data.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_customers, update_shipment_customer
+
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("shipment_customer_save", sid, False, "Thiếu shipmentId.")
+    if not can_operate_business("shipment_edit"):
+        return _result("shipment_customer_save", sid, False, "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("shipment_customer_save", sid, False, f"Không tìm thấy lô {sid}.")
+
+    customer_id = rd.text(payload.get("customerId")).upper()
+    typed_name = rd.text(payload.get("customer"))
+    customers = load_customers() or {}
+    if customer_id:
+        document = customers.get(customer_id)
+        if not isinstance(document, Mapping):
+            return _result("shipment_customer_save", sid, False,
+                           f"Không có khách hàng {customer_id} trong danh bạ.")
+        name = rd.text(document.get("name"))
+        if not name:
+            return _result("shipment_customer_save", sid, False,
+                           f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+    else:
+        # No invented identity: an empty picker with no typed name is a
+        # mistake, not a business fact, and is refused rather than written.
+        if not typed_name:
+            return _result("shipment_customer_save", sid, False,
+                           "Chọn khách hàng trong danh bạ hoặc gõ đúng tên khách.")
+        name = typed_name
+        customer_id = ""
+
+    previous = rd.text(shipment.get("customer") or shipment.get("client"))
+    if name == previous and (not customer_id or customer_id == rd.text(shipment.get("customer_id"))):
+        # Nothing to write: report the unchanged truth instead of a no-op
+        # version bump that would look like a change in the audit trail.
+        return _result("shipment_customer_save", sid, True, "Không có thay đổi để lưu.",
+                       readback=_projection_for(shipment), noop=True,
+                       persisted={"customer": previous})
+
+    if not update_shipment_customer(sid, name, customer_id):
+        return _result("shipment_customer_save", sid, False,
+                       get_last_db_error() or "Không cập nhật được khách hàng của lô.")
+
+    fresh = read_shipment(sid) or {}
+    return _result("shipment_customer_save", sid, True, readback=_projection_for(fresh),
+                   persisted={"customer": rd.text(fresh.get("customer")),
+                              "customerId": rd.text(fresh.get("customer_id"))},
+                   version=int(fresh.get("version") or 0),
                    audit=_audit_trail(sid))
 
 
@@ -1775,6 +1856,7 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 _HANDLERS = {
     "shipment_field_save": _handle_field_save,
+    "shipment_customer_save": _handle_shipment_customer_save,
     "shipment_transport_save": _handle_shipment_transport_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,

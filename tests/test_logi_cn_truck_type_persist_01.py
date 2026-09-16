@@ -69,9 +69,15 @@ def _dispatch(seq_fn, name, payload):
 # ---------------------------------------------------------------------------
 
 def test_whitelist_gained_exactly_the_one_approved_key():
-    """FIELD_PATHS = the 29 prior keys + exactly ``pickup_truck_type``."""
+    """FIELD_PATHS = the 29 prior keys + exactly ``pickup_truck_type``.
+
+    LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 later added one further key
+    (``created_at`` — the lot's header date, under ``data/0.0``, not under the
+    transport section), so the total is now 31; the ``under_12`` pin below still
+    proves this ruling contributed exactly its one key.
+    """
     assert vm.FIELD_PATHS["pickup_truck_type"] == ("data", "1.2", "pickup_truck_type")
-    assert len(vm.FIELD_PATHS) == 30
+    assert len(vm.FIELD_PATHS) == 31
 
     # No smuggled extra field under the transport section: the nine
     # pre-existing 1.2 keys plus the one the Owner has now ruled on.
