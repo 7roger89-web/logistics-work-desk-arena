@@ -1126,8 +1126,8 @@ the proposed step must be reduced, removed, or deferred before continuing.
 
 ### RULE 15 — ARENA_TASK_COMPLETION_DIALOG
 
-When the beginner is asked "Was this task successful?" (Yes / No / Keep working),
-the mapping is canonical:
+When the beginner is asked "Was this task successful?" (Yes / No / Keep
+working), the mapping is canonical:
 
 ```text
 YES
@@ -1646,9 +1646,9 @@ context before substantive analysis or execution.
 - It does not add a router, scheduler, orchestrator, memory framework,
   ticketing system, or second handoff framework.
 - Verification is structural: presence of the canonical rule sets, the
-  assimilation gate, the machine-readable ledger, install-inheritance via
-  the thin `docs/p2p-development/P2P-AGENTS-INSTALL.md` source projected into
-  the target project's `AGENTS.md` entrypoint and shipped in release `DOC_FILES`,
+  assimilation gate, the machine-readable ledger, install-inheritance via the
+  thin `docs/p2p-development/P2P-AGENTS-INSTALL.md` source projected into the
+  target project's `AGENTS.md` entrypoint and shipped in release `DOC_FILES`,
   generated remote-clone projection via
   `scripts/p2p_portable_law_projection.py`, and Arena/Control Tower linkage.
 - Promotion/deployment of anything in this notebook remains subject to the
