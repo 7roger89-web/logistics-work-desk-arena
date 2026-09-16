@@ -18,7 +18,7 @@ import {
   FileCheck2, Stamp, CircleCheck, Banknote,
 } from "lucide-react";
 import {
-  Field, PrimaryBtn, StateRow, ToneBadge, inputCls,
+  Field, PlChoice, PrimaryBtn, SearchPicker, StateRow, ToneBadge, inputCls,
 } from "../components/ui";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText, fmtVND, isUnknown } from "../lib/format";
@@ -73,7 +73,7 @@ export default function ContractDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "tong-quan";
-  const { contracts, authority, shipments, dispatch, toast } = useStore();
+  const { contracts, authority, shipments, customers, dispatch, toast } = useStore();
   const nav = useNavigate();
   const c = contracts.find((x) => x.id === id);
 
@@ -86,10 +86,16 @@ export default function ContractDetail() {
     setForm({
       company_id: contract.companyId ?? "",
       agent_id: contract.agentId ?? "",
+      customerId: contract.customerId ?? "",
       kind: contract.kind ?? "",
       value: contract.value == null ? "" : String(contract.value),
       currency: contract.currency || "VND",
       note: contract.note ?? "",
+      // The two facts LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 made keepable.
+      // Both are seeded from the BACKEND readback, never from a local guess, so
+      // a reopened contract shows what is stored ("" = chưa chọn / chưa có).
+      date: contract.contractDate ?? "",
+      pl_required: contract.plRequired ?? "",
       hdnt_no: contract.identity?.hdntNo ?? "",
       hdnt_date: contract.identity?.hdntDate ?? "",
       valid_from: contract.identity?.validFrom ?? "",
@@ -123,7 +129,12 @@ export default function ContractDetail() {
   const removeGood = (i: number) => setGoods((g) => (g.length > 1 ? g.filter((_, idx) => idx !== i) : g));
 
   const saveOverview = () => {
-    dispatch("contract_save", {
+    // The customer half travels ONLY when the operator actually re-picked it:
+    // a legacy contract without customer_id must stay saveable, while an
+    // explicit re-selection is validated by the backend (unknown/blank id is
+    // refused there instead of blanking the client).
+    const picked = (form.customerId ?? "").trim();
+    const payload: Record<string, string> = {
       id: c.id,
       company_id: form.company_id.trim(),
       agent_id: form.agent_id.trim(),
@@ -131,6 +142,10 @@ export default function ContractDetail() {
       currency: form.currency.trim(),
       note: form.note.trim(),
       value: form.value.trim(),
+      // Explicit and always sent: the backend treats the key as "the operator
+      // answered", and "" is a real answer (chưa chọn), not a silent default.
+      date: (form.date ?? "").trim(),
+      pl_required: (form.pl_required ?? "").trim(),
       hdnt_no: form.hdnt_no.trim(),
       hdnt_date: form.hdnt_date.trim(),
       valid_from: form.valid_from.trim(),
@@ -139,7 +154,9 @@ export default function ContractDetail() {
       pl_date: form.pl_date.trim(),
       hdmb_no: form.hdmb_no.trim(),
       hdmb_date: form.hdmb_date.trim(),
-    });
+    };
+    if (picked !== (c.customerId ?? "")) payload.customerId = picked;
+    dispatch("contract_save", payload);
     toast("Đã gửi lưu " + c.id, "Backend ghi danh tính pháp lý + audit; đọc lại từ Logistics.", "green");
   };
 
@@ -196,10 +213,19 @@ export default function ContractDetail() {
           </div>
           <p className="font-semibold text-[15.5px] mt-1">{c.client || "—"}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3">
-            <StateRow label="Công ty (mua)" value={fmtText(c.company)} />
+            <StateRow label="Công ty bên mua" value={fmtText(c.company)} />
             <StateRow label="Đại lý (bán)" value={fmtText(c.agent)} />
             <StateRow label="Giá trị" value={fmtVND(c.value)} />
             <StateRow label="Số lô liên kết" value={String(c.linkedShipments.length)} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-1">
+            <StateRow label="Khách hàng / đối tác" value={fmtText(c.client)} />
+            <StateRow label="Ngày hợp đồng" value={fmtText(c.contractDate)} />
+            <StateRow
+              label="Phụ lục (PL)"
+              value={c.plRequired === "YES" ? "Có PL" : c.plRequired === "NO" ? "Không cần PL" : "Chưa chọn"}
+            />
+            <StateRow label="Loại" value={fmtText(c.kind)} />
           </div>
         </div>
         <div id="contract-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
@@ -231,18 +257,65 @@ export default function ContractDetail() {
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-3">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><Banknote size={19} className="text-[#1e5aa8]" /> Đối tác & thông tin chung</h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Công ty (bên mua)" required>
-                <select value={form.company_id} onChange={(e) => set("company_id", e.target.value)} className={inputCls(!form.company_id ? "missing" : "ok")}>
-                  <option value="">-- Chọn công ty --</option>
-                  {authority.companies.map((p) => <option key={p.id} value={p.id}>{p.legalName}</option>)}
-                </select>
-              </Field>
+              {/* LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the buyer is labelled
+                  the way the team says it ("Công ty bên mua"), is chosen through
+                  a real search over the legal master, and is written through the
+                  existing contract_save → save_contract_to_cloud path so the
+                  value comes back from the backend on the next read. */}
+              <SearchPicker
+                label="Công ty bên mua"
+                testId="contract-buyer-picker"
+                required
+                options={authority.companies.map((p) => ({
+                  id: p.id,
+                  label: p.legalName || p.id,
+                  sub: p.legalCode ? `MST ${p.legalCode} · ${p.id}` : p.id,
+                }))}
+                selectedId={form.company_id}
+                selectedLabel={authority.companies.find((p) => p.id === form.company_id)?.legalName ?? ""}
+                placeholder="Gõ tên công ty hoặc MST để tìm…"
+                emptyHint="Chưa có hồ sơ pháp lý Công ty trong master — bổ sung ở màn Hồ sơ đại lý / Công ty trước."
+                onSelect={(idValue) => set("company_id", idValue)}
+              />
               <Field label="Đại lý (bên bán)" required>
                 <select value={form.agent_id} onChange={(e) => set("agent_id", e.target.value)} className={inputCls(!form.agent_id ? "missing" : "ok")}>
                   <option value="">-- Chọn đại lý --</option>
                   {authority.agents.map((p) => <option key={p.id} value={p.id}>{p.legalName}</option>)}
                 </select>
               </Field>
+              {/* LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — post-create editability
+                  of the counterparty: the picker writes the SAME customer fields
+                  the create form uses, through the SAME canonical writer, and the
+                  row below it shows what the backend just read back. */}
+              <SearchPicker
+                label="Khách hàng / đối tác"
+                testId="contract-customer-picker"
+                options={customers.map((x) => ({
+                  id: x.id,
+                  label: x.name || x.id,
+                  sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
+                }))}
+                selectedId={form.customerId}
+                selectedLabel={customers.find((x) => x.id === form.customerId)?.name ?? ""}
+                placeholder="Gõ tên khách hoặc mã khách để tìm…"
+                emptyHint="Danh bạ khách hàng đang trống — nhập từ GetFly ở màn Tạo hợp đồng."
+                onSelect={(idValue) => set("customerId", idValue)}
+              />
+              <Field label="Ngày hợp đồng" hint="2026-09-05 · để trống = chưa có ngày.">
+                <input value={form.date ?? ""} onChange={(e) => set("date", e.target.value)} placeholder="2026-09-05" className={inputCls()} />
+              </Field>
+              <div className="sm:col-span-2 rounded-xl bg-slate-50 border p-3">
+                <PlChoice
+                  testId="contract-pl-choice"
+                  value={form.pl_required ?? ""}
+                  onChange={(next) => set("pl_required", next)}
+                  stored={c.plRequired === "YES" ? "Có PL" : c.plRequired === "NO" ? "Không cần PL" : "chưa chọn"}
+                />
+                <p className="text-[12.5px] text-slate-500 mt-1.5">
+                  Bấm một trong hai ô rồi LƯU TỔNG QUAN: lựa chọn được ghi vào hợp đồng và đọc lại
+                  đúng nguyên văn. Để nguyên “Chưa chọn” khi chưa có quyết định — app không tự điền.
+                </p>
+              </div>
               <Field label="Loại"><select value={form.kind} onChange={(e) => set("kind", e.target.value)} className={inputCls()}><option value="HDMB">HDMB</option><option value="HDNT">HDNT</option><option value="PL">PL</option></select></Field>
               <Field label="Giá trị (VND)"><input value={form.value} onChange={(e) => set("value", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
               <Field label="Tiền tệ"><input value={form.currency} onChange={(e) => set("currency", e.target.value)} className={inputCls()} /></Field>

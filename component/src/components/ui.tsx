@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LayoutDashboard, BellRing, Package, PlusCircle, Truck, Users, Handshake,
   Calculator, FileCheck2, FileText, Wallet, Scale, Building2, BarChart3,
@@ -169,3 +170,184 @@ export function StateRow({ label, value, big }: { label: string; value: React.Re
 
 export { Menu, X, Bell, CheckCircle2, ChevronRight, ChevronDown, ArrowRight, Clock, FileDown, Eye, Trash2, Ban, CircleCheck };
 export type { LucideIcon };
+
+// ============================================================================
+// LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — two shared controls the contract
+// and shipment desks were missing. Both are presentation only: they never hold
+// business truth, they hand a value back to the page, and the page sends ONE
+// typed event to the single Python dispatcher.
+// ============================================================================
+
+export interface PickerOption {
+  id: string;
+  label: string;
+  sub?: string;
+}
+
+/**
+ * A visible search-then-select control for one party (customer / company).
+ *
+ * A bare `<select>` over a real customer master (360+ rows) is not a search:
+ * the operator cannot see what matches, so this renders an explicit "Tìm"
+ * control, a filter field, the live match count and the picking list. An empty
+ * master is stated honestly instead of being silently filled with an option.
+ */
+export function SearchPicker({
+  label, testId, options, selectedId, selectedLabel, placeholder, emptyHint, required, onSelect,
+}: {
+  label: string;
+  testId: string;
+  options: PickerOption[];
+  selectedId: string;
+  selectedLabel?: string;
+  placeholder?: string;
+  emptyHint?: string;
+  required?: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matched = needle
+    ? options.filter((o) => (o.id + o.label + (o.sub ?? "")).toLowerCase().includes(needle))
+    : options;
+
+  const pick = (id: string) => {
+    onSelect(id);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div
+      className="rounded-xl border-2 border-slate-200 bg-white p-2.5"
+      data-testid={testId}
+      data-selected={selectedId || ""}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">
+            {label}{required ? " *" : ""}
+          </p>
+          <p
+            className={cx("truncate text-[14.5px] font-semibold mt-0.5", selectedId ? "text-slate-800" : "text-slate-400")}
+            data-testid={`${testId}-value`}
+          >
+            {selectedLabel || selectedId || "— chưa chọn —"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className={cx(
+            "btn-press touch-target shrink-0 inline-flex items-center gap-1.5 rounded-lg border-2 px-3 min-h-[40px] text-[13px] font-bold",
+            open ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"
+          )}
+          data-testid={`${testId}-toggle`}
+        >
+          <Search size={15} /> {open ? "Đóng" : "Tìm / đổi"}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-2.5 space-y-2" data-testid={`${testId}-panel`}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={placeholder ?? "Gõ tên hoặc mã để tìm…"}
+            className={inputCls()}
+            aria-label={`Tìm ${label.toLowerCase()}`}
+            data-testid={`${testId}-search`}
+          />
+          {options.length === 0 ? (
+            <p className="rounded-lg bg-amber-50 px-2.5 py-2 text-[13px] font-semibold text-amber-800" data-testid={`${testId}-empty`}>
+              {emptyHint ?? "Danh bạ đang trống — chưa có gì để chọn."}
+            </p>
+          ) : (
+            <>
+              <p className="text-[12.5px] text-slate-500" data-testid={`${testId}-count`}>
+                Thấy <b className="text-[#0f2a4a]">{matched.length}</b>/{options.length}
+                {needle ? ` cho “${query.trim()}”` : null}
+              </p>
+              <div className="max-h-[240px] overflow-y-auto space-y-1" data-testid={`${testId}-list`}>
+                {matched.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => pick(option.id)}
+                    className={cx(
+                      "btn-press touch-target w-full rounded-lg border-2 px-2.5 py-2 text-left text-[13.5px] font-semibold",
+                      option.id === selectedId ? "border-[#0f2a4a] bg-[#eef4fb] text-[#0f2a4a]" : "border-slate-200 bg-white text-slate-700"
+                    )}
+                    data-testid={`${testId}-option-${option.id}`}
+                  >
+                    <span className="block truncate">{option.label}</span>
+                    <span className="block text-[12px] font-medium text-slate-400">{option.sub ?? option.id}</span>
+                  </button>
+                ))}
+                {matched.length === 0 && (
+                  <p className="rounded-lg bg-slate-50 px-2.5 py-2 text-[13px] font-semibold text-slate-500" data-testid={`${testId}-nomatch`}>
+                    Không có mục nào khớp “{query.trim()}”.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The explicit, operator-controlled PL choice.
+ *
+ * Three states are possible on purpose: `YES` ("Có PL"), `NO` ("Không cần PL")
+ * and `""` (chưa chọn). `""` is rendered as its own honest chip and is what a
+ * legacy contract reads back — choosing "Không cần PL" is an action, never a
+ * default. The current value is marked so the operator sees what is STORED,
+ * not what was last clicked.
+ */
+export function PlChoice({
+  value, onChange, testId, stored,
+}: {
+  value: string;
+  onChange: (next: "YES" | "NO" | "") => void;
+  testId: string;
+  /** Optional caption of what the backend currently holds. */
+  stored?: string;
+}) {
+  const options: { key: "YES" | "NO" | ""; label: string }[] = [
+    { key: "YES", label: "Có PL" },
+    { key: "NO", label: "Không cần PL" },
+    { key: "", label: "Chưa chọn" },
+  ];
+  const current = value === "YES" || value === "NO" ? value : "";
+  return (
+    <div className="space-y-1.5" data-testid={testId}>
+      <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">
+        Phụ lục (PL){stored ? ` · đang lưu: ${stored}` : ""}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((option) => (
+          <button
+            key={option.key || "unknown"}
+            type="button"
+            onClick={() => onChange(option.key)}
+            aria-pressed={current === option.key}
+            className={cx(
+              "btn-press touch-target rounded-lg border-2 px-3 min-h-[40px] text-[13.5px] font-bold",
+              current === option.key
+                ? "border-[#0f2a4a] bg-[#0f2a4a] text-white"
+                : "border-slate-200 bg-white text-slate-600"
+            )}
+            data-testid={`${testId}-${option.key || "unknown"}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

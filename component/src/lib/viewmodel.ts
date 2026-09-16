@@ -605,6 +605,14 @@ export interface Contract {
   currency: string;
   note: string;
   contractDate: string;
+  /**
+   * LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the operator's OWN phụ lục
+   * decision, read back verbatim from the stored contract: "YES" (Có PL),
+   * "NO" (Không cần PL) or "" (= chưa chọn). A legacy contract that never
+   * recorded it reads back "" and the desk keeps asking; "" is never rendered
+   * as "Không cần PL", exactly like an unknown amount is never 0.
+   */
+  plRequired: string;
   parties: { company: AuthorityParty | null; agent: AuthorityParty | null };
   goodsLines: GoodsLine[];
   /**

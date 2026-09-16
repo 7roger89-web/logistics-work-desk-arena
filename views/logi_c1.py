@@ -33,6 +33,11 @@ C1_EVENTS = {
     "customer_edit",
     "customer_archive",
     "customer_import",
+    # LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — paste a GetFly DSDH block and
+    # take ONLY the customer identity it really carries, through the existing
+    # customer_import writer above. No Excel upload, no second importer, no
+    # invented contract field.
+    "customer_getfly_import",
     "quote_create",
     "quote_edit",
     "quote_transition",
@@ -534,6 +539,11 @@ def contract_projection(
         "currency": _text(c.get("currency")) or "VND",
         "note": _text(c.get("note")),
         "contractDate": _text(c.get("date") or c.get("contract_date")),
+        # LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the operator's explicit PL
+        # decision, read back VERBATIM from the stored contract: "YES", "NO" or
+        # "" (= chưa chọn). An absent field on a legacy contract is "" — it is
+        # never presented as "Không cần PL".
+        "plRequired": _pl_required_decision(c.get("pl_required")) or "",
         "parties": {"company": _party_view(company, "company"), "agent": _party_view(agent, "agent")},
         "goodsLines": goods,
         "goodsTotals": _goods_totals_view(goods_raw, pack),
@@ -769,6 +779,60 @@ def _handle_customer_import(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _result("customer_import", "", not bool(errors),
                    f"Đã thêm {created} khách hàng, bỏ qua {skipped} đã tồn tại, lỗi {len(errors)}.",
                    created=created, skipped=skipped, failed=list(errors))
+
+
+def _handle_customer_getfly_import(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Import the CUSTOMER identity a pasted GetFly DSDH table really carries.
+
+    GetFly's order sheet carries ``Tên KH`` / ``Mã KH`` (plus order id/date and
+    service lines) and nothing about a contract number, a buyer-company legal
+    record or an MST. So this is the whole importable surface, and it is handed
+    to the EXISTING ``customer_import`` handler — the same canonical
+    ``save_customer_to_cloud`` writer, the same duplicate rule, the same RBAC —
+    instead of a second importer. Column keywords come from
+    ``core.getfly_reader`` so the Excel path and this text path can never map
+    ``Tên KH`` differently.
+
+    A file upload is not available on this bridge (the component transport only
+    carries typed JSON events), which is why the entry point is paste, exactly
+    like the existing customer import sheet on /khach-hang.
+    """
+    from core.auth import can_operate_business
+    from core.getfly_reader import customer_rows_from_text
+    from core.database import load_customers
+
+    text_value = _text(payload.get("text"))
+    # Echoed so the component matches THIS outcome to the exact paste it sent —
+    # the same contract shipment_create uses; "event transported" is never a
+    # success claim.
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("customer_getfly_import", "", ok, error,
+                       requestId=request_id, **extra)
+
+    if not can_operate_business("customers"):
+        return _res(False, "RBAC: không có quyền customers.")
+    extracted = customer_rows_from_text(text_value)
+    rows = list(extracted.get("rows") or [])
+    if not rows:
+        return _res(False,
+                    extracted.get("reason") or "Không đọc được khách hàng nào từ dữ liệu dán.",
+                    orders=list(extracted.get("orders") or []),
+                    skippedMissing=list(extracted.get("skipped") or []))
+    outcome = _handle_customer_import({"rows": rows})
+    fresh = load_customers() or {}
+    imported = [
+        {"id": _text(row.get("id")).upper(), "name": _text(row.get("name"))}
+        for row in rows
+        if isinstance(fresh.get(_text(row.get("id")).upper()), Mapping)
+    ]
+    return _res(bool(outcome.get("ok")),
+                _text(outcome.get("error")),
+                customers=imported,
+                requested=len(rows),
+                orders=list(extracted.get("orders") or []),
+                skippedMissing=list(extracted.get("skipped") or []))
 
 
 #: Currencies the quote form can price a service line in besides VND.
@@ -1064,6 +1128,69 @@ def _handle_agreement_transition(payload: Mapping[str, Any]) -> dict[str, Any]:
                    persisted={"status": _text((fresh or {}).get("status"))}, audit=_audit("agreement", aid))
 
 
+# ---------------------------------------------------------------------------
+# LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the two explicit contract facts
+# the desk could display but never record.
+#
+# ``pl_required``: the operator's OWN decision about a phụ lục. It is stored
+# verbatim as "YES" / "NO" / "" and "" is a real state ("chưa chọn"), never a
+# silent "Không cần PL". This field records the decision on the contract; it
+# deliberately does NOT override core.docgen's HDNT+PL-vs-HDMB threshold rule.
+#
+# ``date``: the contract signing date. ``contract_projection`` already reads it
+# (``contractDate``) and ``core.docgen.generator`` falls back to it for a
+# document date, but no component event could write it before this slice.
+# ---------------------------------------------------------------------------
+
+PL_REQUIRED = "YES"
+PL_NOT_REQUIRED = "NO"
+
+#: Operator-facing refusal when the PL answer is neither label and not blank.
+_PL_REFUSAL = ("PL chỉ nhận 'Có PL', 'Không cần PL', hoặc để trống (chưa xác định) "
+               "— app không tự đoán.")
+
+#: Every spelling of the two operator labels (plus the honest "not chosen"),
+#: folded to ASCII so "Có PL" and "Co PL" mean the same stored fact.
+_PL_ALIASES = {
+    "CO PL": PL_REQUIRED,
+    "COPL": PL_REQUIRED,
+    "PL": PL_REQUIRED,
+    "YES": PL_REQUIRED,
+    "TRUE": PL_REQUIRED,
+    "1": PL_REQUIRED,
+    "KHONG CAN PL": PL_NOT_REQUIRED,
+    "KHONGCANPL": PL_NOT_REQUIRED,
+    "KHONG PL": PL_NOT_REQUIRED,
+    "NO": PL_NOT_REQUIRED,
+    "FALSE": PL_NOT_REQUIRED,
+    "0": PL_NOT_REQUIRED,
+    "": "",
+    "CHUA CHON": "",
+    "UNKNOWN": "",
+    "NONE": "",
+}
+
+
+def _pl_required_decision(value: Any) -> str | None:
+    """Normalize the explicit PL choice: ``YES`` / ``NO`` / ``""`` (not chosen).
+
+    Returns ``None`` for anything the two-label contract cannot represent, so a
+    handler refuses instead of guessing. ``False``/``0``/``""`` mean "the
+    operator has not decided", never "Không cần PL".
+    """
+    import unicodedata
+
+    raw = "" if value is None else str(value)
+    folded = "".join(
+        char for char in unicodedata.normalize("NFD", raw).lower()
+        if unicodedata.category(char) != "Mn"
+    )
+    folded = " ".join(folded.replace("_", " ").replace("-", " ").split()).upper()
+    if folded in {"None", "NULL", "-"}:
+        folded = ""
+    return _PL_ALIASES.get(folded)
+
+
 def _contract_doc(cid: str, customer_id: str | None, customer_name: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "id": cid,
@@ -1077,6 +1204,11 @@ def _contract_doc(cid: str, customer_id: str | None, customer_name: str, payload
         "value": _num(payload.get("value")) if payload.get("value") not in (None, "") else None,
         "currency": _text(payload.get("currency")) or "VND",
         "note": _text(payload.get("note")),
+        # Key present = an explicit choice was made on the create form; a blank
+        # choice stays "" (UNKNOWN) so the desk keeps asking instead of writing
+        # a decision nobody made.
+        "date": _text(payload.get("date") or payload.get("contract_date")),
+        "pl_required": _pl_required_decision(payload.get("pl_required")) or "",
     }
 
 
@@ -1098,6 +1230,10 @@ def _handle_contract_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     customer_name = _text(customer.get("name")) or _text(payload.get("client"))
     if not customer_name:
         return _result("contract_create", cid, False, "Cần đối tác / khách hàng cho hợp đồng.")
+    # An unparseable PL answer must never be quietly recorded as "no PL": the
+    # whole point of the flag is that a blank means "not decided yet".
+    if "pl_required" in payload and _pl_required_decision(payload.get("pl_required")) is None:
+        return _result("contract_create", cid, False, _PL_REFUSAL)
     doc = _contract_doc(cid, customer_id or None, customer_name, payload)
     if not save_contract_to_cloud(doc):
         return _result("contract_create", cid, False, get_last_db_error() or "Không lưu được hợp đồng.")
@@ -1140,6 +1276,38 @@ def _handle_contract_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         if key in payload:
             value = _text(payload.get(key))
             contract[key] = value.upper() if key in ("company_id", "agent_id") else value
+    # LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the three facts the desk could
+    # show but not keep. Key presence is the intent marker: an absent key leaves
+    # the stored value untouched, so a save of one field never blanks another.
+    if "pl_required" in payload:
+        decision = _pl_required_decision(payload.get("pl_required"))
+        if decision is None:
+            return _result("contract_save", cid, False, _PL_REFUSAL)
+        contract["pl_required"] = decision
+    if "date" in payload or "contract_date" in payload:
+        supplied = payload.get("date") if "date" in payload else payload.get("contract_date")
+        contract["date"] = _text(supplied)
+    if "customerId" in payload or "customer_id" in payload:
+        supplied_customer = _text(payload.get("customerId") or payload.get("customer_id")).upper()
+        if not supplied_customer:
+            # A contract always has a counterparty: clearing the picker is a
+            # mistake, not a business fact, so it is refused rather than stored.
+            return _result("contract_save", cid, False,
+                           "Hợp đồng luôn cần một khách hàng — hãy chọn khách khác thay vì để trống.")
+        from core.database import load_customers
+
+        customers = load_customers() or {}
+        customer = customers.get(supplied_customer)
+        if not isinstance(customer, Mapping):
+            return _result("contract_save", cid, False,
+                           f"Không có khách hàng {supplied_customer} trong danh bạ.")
+        customer_name = _text(customer.get("name"))
+        if not customer_name:
+            return _result("contract_save", cid, False,
+                           f"Khách hàng {supplied_customer} chưa có tên trong danh bạ.")
+        contract["customer_id"] = supplied_customer
+        contract["customer"] = customer_name
+        contract["client"] = customer_name
     if "value" in payload:
         contract["value"] = _num(payload.get("value")) if payload.get("value") not in (None, "") else None
     # Document legal identity (per-document numbers/dates) live on the contract.
@@ -1530,6 +1698,7 @@ _HANDLERS = {
     "customer_edit": _handle_customer_edit,
     "customer_archive": _handle_customer_archive,
     "customer_import": _handle_customer_import,
+    "customer_getfly_import": _handle_customer_getfly_import,
     "quote_create": _handle_quote_create,
     "quote_edit": _handle_quote_edit,
     "quote_transition": _handle_quote_transition,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock } from "lucide-react";
-import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
+import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
@@ -21,7 +21,7 @@ export default function ShipmentDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
-  const { shipments, updateShipment, toast, contracts, dispatch, financeServices } = useStore();
+  const { shipments, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
   // The authoritative outcome of a saved actual line comes back in the NEXT
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -117,6 +117,43 @@ export default function ShipmentDetail() {
     };
     dispatch("shipment_field_save", { shipmentId: s.id, fields });
     afterSave("Đã lưu tờ khai " + tk);
+  };
+
+  /**
+   * LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 — the two header facts of a lot.
+   *
+   * A lot in this app has no free-text title: what the team calls the lot's
+   * name is its CODE plus its CUSTOMER, and only the customer half is a data
+   * field that can be corrected (``core.database.update_shipment_customer``
+   * already writes it, audits it and bumps the version for the legacy desk).
+   * The code stays read-only here on purpose: the existing rename writer does
+   * not re-point ``contracts.shipment_ids``, so exposing it would silently
+   * break contract links.
+   *
+   * Both saves are ONE typed event → the single dispatcher → RBAC → existing
+   * writer → audit → fresh backend read. A blank date is only sent when the
+   * operator actually edited the field, so an untouched lot never gets a
+   * fabricated date and an UNKNOWN one never becomes 0/today.
+   */
+  const saveHeaderDate = () => {
+    const edited = form.createdAt != null ? form.createdAt.trim() : null;
+    if (edited === null) {
+      toast("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
+      return;
+    }
+    dispatch("shipment_field_save", { shipmentId: s.id, fields: { created_at: edited } });
+    afterSave(edited ? "Đã lưu ngày tạo " + edited : "Đã xoá ngày tạo (để trống = chưa biết)");
+  };
+
+  const saveHeaderCustomer = () => {
+    const picked = (form.lotCustomer ?? "").trim();
+    if (!picked || picked === (s.customerId ?? "")) {
+      toast("Chưa đổi khách hàng", "Bấm “Tìm / đổi”, chọn khách trong danh bạ rồi bấm Lưu.", "amber");
+      return;
+    }
+    dispatch("shipment_customer_save", { shipmentId: s.id, customerId: picked });
+    setForm((f) => ({ ...f, lotCustomer: "" }));
+    afterSave("Đã gửi đổi khách hàng của lô");
   };
 
   const confirmDelivery = () => {
@@ -417,6 +454,75 @@ export default function ShipmentDetail() {
           ))}
         </div>
       </div>
+
+      {/* ============ LOT HEADER: NAME (customer half) + CREATION DATE ============ */}
+      <section
+        className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5"
+        data-testid="shipment-header-edit"
+      >
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2">
+            <PenLine size={18} className="text-[#1e5aa8]" /> Tên lô & ngày tạo
+          </h3>
+          <span className="text-[12.5px] font-semibold text-slate-500">
+            Tên lô = <b className="text-[#0f2a4a]">{s.id}</b> · {s.customer}
+          </span>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[1fr_300px] items-start">
+          <div className="space-y-2">
+            <SearchPicker
+              label="Khách hàng của lô"
+              testId="shipment-customer-picker"
+              options={customers.map((x) => ({
+                id: x.id,
+                label: x.name || x.id,
+                sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
+              }))}
+              selectedId={form.lotCustomer || s.customerId || ""}
+              selectedLabel={
+                customers.find((x) => x.id === (form.lotCustomer || s.customerId))?.name || s.customer
+              }
+              placeholder="Gõ tên khách hoặc mã khách để tìm…"
+              emptyHint="Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước."
+              onSelect={(idValue) => set("lotCustomer", idValue)}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <PrimaryBtn onClick={saveHeaderCustomer} className="min-h-[44px] px-4 text-[13.5px]">
+                💾 LƯU KHÁCH HÀNG CỦA LÔ
+              </PrimaryBtn>
+              {(form.lotCustomer ?? "") !== "" && (form.lotCustomer ?? "") !== (s.customerId ?? "") && (
+                <GhostBtn onClick={() => set("lotCustomer", "")} className="min-h-[44px]">Hủy chọn</GhostBtn>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Field label="Ngày tạo lô" hint="DD/MM/YYYY hoặc YYYY-MM-DD · để trống = chưa biết">
+              <input
+                id="fld-created-at"
+                value={val("createdAt", s.createdAt ?? "")}
+                onChange={(e) => set("createdAt", e.target.value)}
+                placeholder="VD: 03/09/2026"
+                className={inputCls()}
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-2">
+              <PrimaryBtn onClick={saveHeaderDate} className="min-h-[44px] px-4 text-[13.5px]">
+                💾 LƯU NGÀY TẠO
+              </PrimaryBtn>
+              {form.createdAt != null && form.createdAt.trim() === "" && (
+                <span className="text-[12.5px] font-semibold text-amber-700">
+                  Đang lưu = để trống (chưa biết)
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <p className="text-[12.5px] text-slate-500 mt-2.5">
+          Mã lô <b>{s.id}</b> là định danh và không đổi ở màn này — đổi mã lô sẽ làm lệch các liên
+          kết hợp đồng đang trỏ vào mã cũ. Ngày tạo là ngày bộ phận vận hành mở lô, không tự suy ra
+          từ ETD/ETA.
+        </p>
+      </section>
 
       {s.missingDocs.length > 0 && tab !== "chung-tu" && (
         <div className="rounded-2xl bg-white border-2 border-red-200 p-4">
