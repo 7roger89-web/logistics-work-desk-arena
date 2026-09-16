@@ -722,6 +722,92 @@ def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[d
 
 
 # --------------------------------------------------------------------------
+# GNT projection
+# --------------------------------------------------------------------------
+
+def _gnt_projection(
+    shipment: Mapping[str, Any],
+    customs: Mapping[str, Any],
+    customer_doc: Mapping[str, Any],
+    shipment_id: str,
+) -> dict[str, Any]:
+    import base64
+    from views import logi_c1
+
+    gnt_customs = customs.get("gnt") if isinstance(customs.get("gnt"), Mapping) else {}
+    payer = text(
+        gnt_customs.get("nguoi_nop")
+        or customer_doc.get("name")
+        or shipment.get("customer")
+        or shipment.get("client")
+    )
+    tax_code = text(
+        gnt_customs.get("mst")
+        or customs.get("taxpayer_tax_code")
+        or customer_doc.get("tax_code")
+        or shipment.get("customer_tax_code")
+    )
+    address = text(
+        gnt_customs.get("dia_chi")
+        or customer_doc.get("address")
+        or shipment.get("customer_address")
+    )
+    customs_office = text(gnt_customs.get("ma_hq"))
+
+    stored = logi_c1.stored_outputs(shipment_id)
+    gnt_entries = [
+        v for k, v in stored.items()
+        if isinstance(v, Mapping) and (v.get("document_type") == "GNT" or str(k).startswith(f"GNT::{shipment_id}"))
+    ]
+    latest_gnt = gnt_entries[-1] if gnt_entries else None
+
+    gnt_doc = None
+    if latest_gnt:
+        gnt_raw = latest_gnt.get("bytes")
+        b64 = None
+        if gnt_raw:
+            try:
+                b64 = base64.b64encode(gnt_raw).decode("ascii")
+            except Exception:  # noqa: BLE001
+                b64 = None
+        gnt_doc = {
+            "fileName": text(latest_gnt.get("file_name") or f"GNT_{shipment_id}.xlsx"),
+            "mime": text(latest_gnt.get("mime") or logi_c1._MIME_XLSX),
+            "generatedAt": text(latest_gnt.get("generated_at")),
+            "generatedBy": text(latest_gnt.get("generated_by")),
+            "downloadAvailable": bool(gnt_raw),
+            "downloadBase64": b64,
+        }
+
+    missing = []
+    if not text(customs.get("tk_no")):
+        missing.append("Số tờ khai (TK)")
+    if not _declaration_date(customs):
+        missing.append("Ngày tờ khai")
+    duty = num(customs.get("import_duty_amount"))
+    if duty is None or duty <= 0:
+        missing.append("Thuế nhập khẩu")
+    vat = num(customs.get("import_vat_amount"))
+    if vat is None or vat <= 0:
+        missing.append("VAT hàng nhập khẩu")
+    if not payer:
+        missing.append("Người nộp thuế")
+    if not tax_code:
+        missing.append("Mã số thuế")
+
+    return {
+        "payer": payer,
+        "taxCode": tax_code,
+        "address": address,
+        "customsOffice": customs_office,
+        "ready": len(missing) == 0,
+        "missing": missing,
+        "done": bool(gnt_doc),
+        "document": gnt_doc,
+    }
+
+
+# --------------------------------------------------------------------------
 # Shipment projection
 # --------------------------------------------------------------------------
 
@@ -896,12 +982,7 @@ def shipment_projection(
             "inspection": text(customs.get("phan_luong")),
             "customsStatus": bool(customs.get("customs_status")),
             "license": "",
-            "gnt": {
-                "payer": text((customs.get("gnt") or {}).get("nguoi_nop")),
-                "taxCode": text((customs.get("gnt") or {}).get("mst")),
-                "address": text((customs.get("gnt") or {}).get("dia_chi")),
-                "customsOffice": text((customs.get("gnt") or {}).get("ma_hq")),
-            },
+            "gnt": _gnt_projection(shipment, customs, customer_doc, sid),
             "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")) or _ddmmyyyy(operational.get("eta")),
             "freeTime": num(arrival.get("free_time")),
             "truckVN": text(delivery_unit.get("type_size")),

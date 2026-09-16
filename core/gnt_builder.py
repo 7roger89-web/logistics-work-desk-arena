@@ -1,12 +1,17 @@
 # FILE: core/gnt_builder.py
 """
-LOG-LG05 — GNT Generation (Giấy Nộp Thuế)
+LOG-LG05 / LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 — GNT Generation (Giấy Nộp Thuế)
 
 Builds a 2-sheet Excel workbook:
   Sheet 1: NHẬP THÔNG TIN (editable input form with auto-filled values)
   Sheet 2: GIẤY NỘP THUẾ (C1-02/NS official form, print-friendly)
 
-Legal reference: Thông tư số 184/2015/TT-BTC (current as of Aug 2026)
+Legal reference: Mẫu số C1-02/NS ban hành kèm theo Thông tư 84/2016/TT-BTC và
+Thông tư 328/2016/TT-BTC (sửa đổi, bổ sung bởi Thông tư 72/2021/TT-BTC);
+Mã Mục lục NSNN theo Thông tư 324/2016/TT-BTC:
+  - Tiểu mục 1901: Thuế nhập khẩu (Mục 1900)
+  - Tiểu mục 1702: Thuế giá trị gia tăng hàng nhập khẩu (Mục 1700)
+  (Tiểu mục 1701 là Thuế GTGT hàng SXKD trong nước - KHÔNG dùng cho hàng NK)
 
 Prerequisites (all must be KNOWN, not guessed):
   - tk_no: customs declaration number
@@ -156,7 +161,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
 
     # Title
     ws1.cell(row=1, column=1, value="GIẤY NỘP THUẾ (GNT) — THÔNG TIN NHẬP LIỆU").font = title_font
-    ws1.cell(row=2, column=1, value=f"Lô: {data.get('shipment_id', '')} | Mẫu C1-02/NS (TT 184/2015/TT-BTC)").font = note_font
+    ws1.cell(row=2, column=1, value=f"Lô: {data.get('shipment_id', '')} | Mẫu C1-02/NS (TT 84/2016/TT-BTC & TT 328/2016/TT-BTC)").font = note_font
 
     row = 4
     # Section: Thông tin Tờ khai
@@ -217,14 +222,14 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
         ws1.cell(row=row, column=col).fill = section_fill
     row += 1
 
-    # LOG-LG08.1: Support dynamic tax list from UI
+    # LOG-LG08.1 / LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01: Support dynamic tax list from UI
     tax_list = data.get("ds_thue", [])
     if not tax_list:
         duty = float(data.get("import_duty_amount", 0) or 0)
         vat = float(data.get("import_vat_amount", 0) or 0)
         tax_list = [
             {"ten": "Thuế nhập khẩu", "ndkt": "1901", "tien": duty},
-            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1701", "tien": vat}
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1702", "tien": vat}
         ]
     
     total = sum(t.get("tien", 0) for t in tax_list)
@@ -291,7 +296,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
     # Title
     ws2.cell(row=1, column=1, value="GIẤY NỘP TIỀN VÀO NGÂN SÁCH NHÀ NƯỚC").font = Font(bold=True, size=12)
     ws2.cell(row=2, column=1, value="Mẫu số: C1-02/NS").font = Font(size=10)
-    ws2.cell(row=2, column=3, value="(Ban hành kèm theo Thông tư số 184/2015/TT-BTC)").font = Font(italic=True, size=9)
+    ws2.cell(row=2, column=3, value="(Ban hành kèm theo TT số 84/2016/TT-BTC và TT số 328/2016/TT-BTC)").font = Font(italic=True, size=9)
     ws2.cell(row=3, column=1, value="Ngày ... tháng ... năm .......").font = Font(size=10)
 
     # Taxpayer info
@@ -422,7 +427,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
     return output.getvalue()
 
 
-def check_gnt_prerequisites(ship_data: Dict[str, Any]) -> Dict[str, Any]:
+def check_gnt_prerequisites(ship_data: Dict[str, Any], customer_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Check if a shipment has all prerequisites for GNT generation.
 
@@ -431,23 +436,30 @@ def check_gnt_prerequisites(ship_data: Dict[str, Any]) -> Dict[str, Any]:
       missing: List[str] - list of missing fields
       data: Dict - extracted values for GNT (if available)
     """
-    customs = ship_data.get("data", {}).get("2.4", {})
+    customs = ship_data.get("data", {}).get("2.4", {}) if isinstance(ship_data.get("data"), dict) else {}
+    gnt_section = customs.get("gnt", {}) if isinstance(customs.get("gnt"), dict) else {}
+    customer_doc = customer_doc or {}
     missing = []
     result_data = {}
 
     # Check tk_no
     tk_no = customs.get("tk_no", "")
-    if not tk_no or tk_no == "None":
+    if not tk_no or str(tk_no).strip() == "" or str(tk_no) == "None":
         missing.append("Số tờ khai (TK)")
     else:
-        result_data["tk_no"] = tk_no
+        result_data["tk_no"] = str(tk_no).strip()
 
     # Check tk_date
-    tk_date = customs.get("tk_date", "")
-    if not tk_date or tk_date == "None":
+    tk_date = customs.get("tk_date", "") or customs.get("reg_date", "")
+    if not tk_date or str(tk_date).strip() == "" or str(tk_date) == "None":
         missing.append("Ngày tờ khai")
     else:
-        result_data["tk_date"] = tk_date
+        tk_date_str = str(tk_date).strip()
+        if "-" in tk_date_str and len(tk_date_str.split("-")) == 3:
+            parts = tk_date_str.split("-")
+            if len(parts[0]) == 4:
+                tk_date_str = f"{parts[2]}/{parts[1]}/{parts[0]}"
+        result_data["tk_date"] = tk_date_str
 
     # Check import duty amount
     duty = customs.get("import_duty_amount", 0)
@@ -469,20 +481,42 @@ def check_gnt_prerequisites(ship_data: Dict[str, Any]) -> Dict[str, Any]:
         missing.append("Thuế GTGT hàng NK (số tiền)")
     result_data["import_vat_amount"] = vat
 
-    # Taxpayer info (from ship top-level or customer)
-    taxpayer_name = ship_data.get("customer", "") or ship_data.get("client", "")
-    if not taxpayer_name:
+    # Taxpayer info (from gnt, customer doc, or top-level shipment)
+    taxpayer_name = (
+        gnt_section.get("nguoi_nop")
+        or customer_doc.get("name")
+        or ship_data.get("customer")
+        or ship_data.get("client")
+        or ""
+    )
+    if not taxpayer_name or str(taxpayer_name).strip() == "":
         missing.append("Tên người nộp thuế")
-    result_data["taxpayer_name"] = taxpayer_name
+    result_data["taxpayer_name"] = str(taxpayer_name).strip()
 
     # Tax code from customer data if available
-    result_data["taxpayer_tax_code"] = customs.get("taxpayer_tax_code", "")
-    result_data["taxpayer_address"] = ship_data.get("customer_address", "")
-    result_data["taxpayer_province"] = ship_data.get("customer_province", "")
-    result_data["taxpayer_district"] = ship_data.get("customer_district", "")
-    result_data["payer_on_behalf"] = customs.get("payer_on_behalf", "")
+    taxpayer_tax_code = (
+        gnt_section.get("mst")
+        or customs.get("taxpayer_tax_code")
+        or customer_doc.get("tax_code")
+        or ship_data.get("customer_tax_code")
+        or ""
+    )
+    result_data["taxpayer_tax_code"] = str(taxpayer_tax_code).strip()
+    result_data["taxpayer_address"] = str(
+        gnt_section.get("dia_chi")
+        or customer_doc.get("address")
+        or ship_data.get("customer_address")
+        or ""
+    ).strip()
+    result_data["taxpayer_province"] = str(
+        customer_doc.get("province") or ship_data.get("customer_province") or ""
+    ).strip()
+    result_data["taxpayer_district"] = str(
+        customer_doc.get("district") or ship_data.get("customer_district") or ""
+    ).strip()
+    result_data["payer_on_behalf"] = str(customs.get("payer_on_behalf") or "").strip()
 
-    result_data["shipment_id"] = ship_data.get("id", "")
+    result_data["shipment_id"] = str(ship_data.get("id", "")).strip()
 
     return {
         "ready": len(missing) == 0,

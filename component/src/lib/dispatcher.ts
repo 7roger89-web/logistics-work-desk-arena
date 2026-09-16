@@ -34,6 +34,7 @@ export type LogiEventName =
   | "partner_payment_record"
   | "shipment_create"
   | "pxk_generate"
+  | "gnt_generate"
   // LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — real XLSX preview then explicit
   // commit. The browser sends bytes only for preview; commit references the
   // server-issued previewId and operator VAT choices.
@@ -114,6 +115,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "partner_payment_record",
   "shipment_create",
   "pxk_generate",
+  "gnt_generate",
   "getfly_preview",
   "getfly_import",
   "customer_create",

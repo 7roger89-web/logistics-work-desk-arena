@@ -11,6 +11,7 @@ Covers:
 """
 
 import io
+import os
 import datetime
 import pytest
 import pandas as pd
@@ -88,6 +89,8 @@ def sample_shipment_partial_gnt():
 def owner_excel_bytes():
     """Read the Owner's actual Excel file for round-trip testing."""
     path = "/home/ubuntu/upload/danhsachdonhang-.xlsx"
+    if not os.path.exists(path):
+        pytest.skip("Owner's Excel file not present in test environment")
     with open(path, "rb") as f:
         return f.read()
 

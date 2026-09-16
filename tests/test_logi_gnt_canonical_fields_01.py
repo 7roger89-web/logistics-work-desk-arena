@@ -339,8 +339,8 @@ def test_finance_actual_is_unchanged_by_a_tax_save(staging, event_seq):
 
 
 def test_no_new_event_and_no_new_ledger_write(staging, event_seq):
-    """The slice reuses shipment_field_save; it adds no event and no posting."""
-    assert not [e for e in sorted(vm.ALL_EVENTS) if "gnt" in e or "tax" in e]
+    """The field save reuses shipment_field_save; gnt_generate is the sole bounded generation event."""
+    assert [e for e in sorted(vm.ALL_EVENTS) if "gnt" in e or "tax" in e] == ["gnt_generate"]
     out = _dispatch(event_seq, "shipment_field_save", {
         "shipmentId": "LO-0307", "fields": {"import_duty_amount": "5000000"},
     })
