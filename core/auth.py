@@ -20,6 +20,7 @@ import base64
 import hashlib
 import hmac
 import os
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -239,6 +240,113 @@ def current_actor() -> str:
 
 # ------------------------------------------------------------------ login UI
 
+# LOG-LG05 — cinematic compact login.
+#
+# Visual surface only: ONE repo-owned hero asset inlined as a data URI plus
+# scoped CSS, injected ONLY while the login / first-admin setup screen
+# renders. A logged-in rerun never emits these rules, so the authenticated
+# application is not restyled. No external image, CDN, asset server or
+# runtime dependency; the auth flow below is unchanged.
+
+_LOGIN_HERO_ASSET = Path(__file__).resolve().parents[1] / "assets" / "login_container_ship_hero.svg"
+
+_LOGIN_HERO_CSS_TEMPLATE = """
+[data-testid="stHeader"] {
+  background: transparent;
+}
+[data-testid="stHeader"] * {
+  color: #cfe0ea !important;
+}
+[data-testid="stAppViewContainer"] {
+  background-color: #071019;
+  background-image: linear-gradient(180deg, rgba(4,10,16,0.30) 0%, rgba(4,10,16,0.02) 30%, rgba(4,10,16,0.16) 78%, rgba(3,8,13,0.40) 100%), url("__BG__");
+  background-size: cover;
+  background-position: 50% 42%;
+  background-repeat: no-repeat;
+}
+/* Compact frosted card. The <form> element is the real DOM wrapper around
+   the Streamlit widgets, so the panel style actually encloses them. */
+[data-testid="stForm"] {
+  max-width: 300px;
+  background: rgba(8, 17, 26, 0.58);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(151, 197, 216, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 22px 55px rgba(2, 6, 10, 0.55);
+  padding: 20px 18px 16px;
+  margin-top: 11vh;
+}
+[data-testid="stForm"]:has(.lg05-bootstrap) {
+  max-width: 340px;
+}
+[data-testid="stForm"] [data-testid="stMarkdownContainer"] {
+  margin-bottom: 6px;
+}
+.lg05-identity { margin: 0 0 12px; }
+.lg05-identity .lg05-brand { font-size: .66rem; letter-spacing: .22em; color: #6fd3e0; font-weight: 600; }
+.lg05-identity .lg05-h { font-size: 1.3rem; font-weight: 700; color: #f2f7fa; margin-top: 3px; }
+.lg05-identity .lg05-sub { font-size: .72rem; color: #93a9ba; margin-top: 3px; }
+[data-testid="stForm"] [data-testid="stTextInput"] { margin-top: 0; margin-bottom: 4px; }
+[data-testid="stForm"] label { font-size: .78rem !important; color: #9db4c4 !important; }
+[data-testid="stForm"] input {
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #eef5f9 !important;
+  border-radius: 8px !important;
+}
+[data-testid="stForm"] input::placeholder { color: #6d8494; }
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] {
+  width: 100%;
+  background-color: #2e93a8;
+  color: #f4fbfd;
+  border-radius: 8px;
+  font-weight: 600;
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"]:hover { background-color: #37a7bd; }
+/* generic credential error stays compact, centered under the card */
+[data-testid="stError"] {
+  max-width: 320px;
+  margin: 12px auto 0;
+}
+@media (max-width: 768px) {
+  [data-testid="stForm"] { max-width: min(300px, 88vw); margin-top: 7vh; }
+  [data-testid="stForm"]:has(.lg05-bootstrap) { max-width: min(340px, 90vw); }
+  [data-testid="stAppViewContainer"] { background-position: 28% 45%; }
+}
+"""
+
+_LOGIN_IDENTITY_HTML = (
+    '<div class="lg05-identity">'
+    '<div class="lg05-brand">LOGISTICS</div>'
+    '<div class="lg05-h">Đăng nhập</div>'
+    '<div class="lg05-sub">Phú Anh Logistics · Nội bộ</div>'
+    "</div>"
+)
+
+_BOOTSTRAP_IDENTITY_HTML = (
+    '<div class="lg05-identity lg05-bootstrap">'
+    '<div class="lg05-brand">LOGISTICS</div>'
+    '<div class="lg05-h">Thiết lập hệ thống</div>'
+    '<div class="lg05-sub">Tạo tài khoản Admin đầu tiên</div>'
+    "</div>"
+)
+
+
+def _login_background_uri() -> str:
+    """Data URI of the repo-owned login hero asset (self-contained, no CDN)."""
+    try:
+        data = _LOGIN_HERO_ASSET.read_bytes()
+    except OSError:
+        return ""
+    return "data:image/svg+xml;base64," + base64.b64encode(data).decode("ascii")
+
+
+def _login_hero_css() -> str:
+    """Scoped CSS for the compact hero login screen (login state only)."""
+    css = _LOGIN_HERO_CSS_TEMPLATE.replace("__BG__", _login_background_uri())
+    return f"<style>{css}</style>"
+
+
 def require_login() -> dict[str, str] | None:
     if not AUTH_REQUIRED:
         user = {"username": "local-admin", "display_name": "Local Admin", "role": "admin"}
@@ -264,39 +372,32 @@ def require_login() -> dict[str, str] | None:
     except Exception:  # noqa: BLE001
         pass
 
+    # LOG-LG05 — hero background + compact card, injected only while the
+    # login / first-admin setup screen renders (a logged-in rerun never
+    # emits it, so the authenticated app is not restyled).
+    st.markdown(_login_hero_css(), unsafe_allow_html=True)
+
     if user_count == 0:
         _render_bootstrap_setup()
         return None
 
-    # LOG-LG04 Final UX: compact centered login
-    st.markdown(
-        """
-        <style>
-        .lg04-login-container {
-            max-width: 320px;
-            margin: 3rem auto;
-            padding: 1.5rem;
-            border: 1px solid #E4E7EC;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    with st.container():
-        st.markdown('<div class="lg04-login-container">', unsafe_allow_html=True)
-        st.markdown("### 🔐 Đăng nhập")
+    # LOG-LG05 Final UX: compact card (~300px) over the hero. The <form>
+    # element is the real DOM wrapper around the widgets, so the frosted
+    # panel style actually encloses them. Auth flow is unchanged: same
+    # keys, _authenticate(), session + rerun on success, generic error on
+    # failure.
+    with st.form("login_form"):
+        st.markdown(_LOGIN_IDENTITY_HTML, unsafe_allow_html=True)
         username = st.text_input("Tài khoản", key="login_username").strip()
         password = st.text_input("Mật khẩu", type="password", key="login_password")
-        submitted = st.button("Đăng nhập", type="primary", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        submitted = st.form_submit_button("Đăng nhập", type="primary", use_container_width=True)
     if submitted:
         identity = _authenticate(username, password)
         if identity:
             st.session_state.current_user = identity
             st.rerun()
-        st.error("Tài khoản hoặc mật khẩu không đúng.")
+        else:
+            st.error("Tài khoản hoặc mật khẩu không đúng.")
     return None
 
 
@@ -375,6 +476,7 @@ def _render_bootstrap_setup() -> None:
         "Chưa có tài khoản quản trị nào. Hãy tạo tài khoản Admin đầu tiên để bắt đầu."
     )
     with st.form("bootstrap_form"):
+        st.markdown(_BOOTSTRAP_IDENTITY_HTML, unsafe_allow_html=True)
         username = st.text_input("Tên đăng nhập (3-30 ký tự, chữ thường)", key="bootstrap_username").strip().lower()
         display_name = st.text_input("Tên hiển thị", key="bootstrap_display").strip()
         email = st.text_input("Email (không bắt buộc)", key="bootstrap_email").strip().lower()
