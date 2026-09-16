@@ -316,11 +316,13 @@ def _revalidate_session(session_user: dict[str, Any]) -> dict[str, str] | None:
     again and no new session store, token or daemon is introduced.
 
     Returns the refreshed public identity, or ``None`` when the account no
-    longer exists or is inactive (the caller then clears the session). A
-    transient read failure (e.g. the database is briefly unreachable) must
-    not silently log an already-authenticated operator out, so it returns the
-    unchanged session identity in that case — only a confirmed missing or
-    inactive canonical record revokes the session.
+    longer exists, is inactive, or the canonical store could not be read at
+    all. Authorization must fail CLOSED: if ``load_users`` raises, the
+    session is cleared exactly like a missing/inactive account rather than
+    keeping the operator logged in under a role the canonical store could
+    not confirm. This mirrors the existing fresh-login path, where a
+    ``load_users`` failure in ``_authenticate`` already returns ``None``
+    instead of granting access.
     """
     username = str(session_user.get("username") or "").strip().lower()
     if not username:
@@ -330,8 +332,8 @@ def _revalidate_session(session_user: dict[str, Any]) -> dict[str, str] | None:
 
     try:
         users = load_users()
-    except Exception:  # noqa: BLE001 - fail open on a transient read error
-        return dict(session_user)
+    except Exception:  # noqa: BLE001 - fail closed: never keep a stale session
+        return None
 
     document = users.get(username)
     if document is None or not document.get("active", True):

@@ -138,17 +138,35 @@ def test_unchanged_session_is_not_rewritten(patched_load_users):
         assert result["role"] == "sale"
 
 
-def test_transient_read_failure_fails_open_not_closed(patched_load_users):
-    """A brief database hiccup must not silently log an operator out."""
+@pytest.mark.parametrize("role", ["admin", "sale"])
+def test_canonical_read_failure_fails_closed_not_open(patched_load_users, role):
+    """CONTROL_TOWER_SECURITY_REPAIR_01 — a canonical read failure must never
+    preserve stale session authority.
+
+    A stale/compromised assumption ("transient read failure fails open") let
+    an already-authenticated session keep acting under its OLD role/identity
+    whenever ``load_users`` raised while revalidating it. That is fail-open
+    authorization: if the canonical store cannot be read, the browser must
+    NOT get to keep whatever role/active status it already had cached.
+
+    This must behave exactly like a missing/inactive account: the session is
+    cleared and ``require_login()`` returns ``None`` — mirroring the fresh
+    login path (`_authenticate`), which already returns ``None`` on the same
+    kind of failure instead of granting access.
+
+    This test fails if ``_revalidate_session`` is reverted to
+    ``except Exception: return dict(session_user)``.
+    """
     from core import auth
 
-    session_user = {"username": "sale.one", "display_name": "Sale One", "role": "sale"}
+    session_user = {"username": "sale.one", "display_name": "Sale One", "role": role}
     mock_st = _session_st(session_user, {})
     with patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True), \
-         patch("core.database.load_users", side_effect=RuntimeError("boom")):
+         patch("core.database.load_users", side_effect=RuntimeError("boom")), \
+         patch.object(auth, "_render_bootstrap_setup"):
         result = auth.require_login()
-        assert result is not None
-        assert result["username"] == "sale.one"
+        assert result is None
+        assert "current_user" not in mock_st.session_state
 
 
 def test_bootstrap_first_admin_flow_still_runs_with_no_session_and_no_users():
