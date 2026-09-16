@@ -395,7 +395,7 @@ console.log("STEP 13 — other real routes are undisturbed");
   await click("Đại Lý Trường Thành", "a", $("aside")[0]);
   assert.ok(mainText().includes("Đại Lý Trường Thành"), "agent-master route was disturbed");
   await click("Dịch thuật", "a", $("aside")[0]);
-  assert.ok(mainText().includes("Văn bản nguồn"), "translation route was disturbed");
+  assert.ok(mainText().includes("Văn bản gốc"), "translation route was disturbed");
   ok("C2C / C2D / partner-context / translation all still render their real pages");
 }
 

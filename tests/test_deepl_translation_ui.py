@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import ExitStack
-from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -11,7 +10,6 @@ from core.deepl_translation import TranslationResult, UsageRow
 from views import translation as translation_view
 
 
-APP_PATH = Path(__file__).resolve().parents[1] / "web_app.py"
 FAKE_KEY_ONE = "fake-ui-key-one"
 FAKE_KEY_TWO = "fake-ui-key-two"
 
@@ -166,43 +164,58 @@ class DeepLTranslationViewTests(unittest.TestCase):
             self.assertIn("Hết quota", str(app.dataframe[0].value))
 
 
-class DeepLMountedSupportAccessTests(unittest.TestCase):
-    def test_support_user_can_mount_translation_route_without_database(self) -> None:
-        fake_client = FakeClient()
+class DeepLSupportAccessTests(unittest.TestCase):
+    """LOGI_TRANSLATION_RUNTIME_UI_PARITY_01 — repaired for the React shell.
+
+    The old variant mounted the dead multi-page Streamlit shell
+    (``views.web_app.refresh_core_data`` / sidebar page buttons no longer
+    exist since PR #44), so it could only fail. The CURRENT equivalent of
+    "support can reach translation without touching the database": the
+    capability adapter answers ``allowed`` from the EXISTING RBAC matrix for a
+    support session, stays configured-state honest, and never exposes key
+    material.
+    """
+
+    def test_support_capability_is_allowed_and_never_exposes_keys(self) -> None:
+        from views import translation as translation_view
+
         support_user = {
             "username": "support-user",
             "display_name": "Support User",
             "role": "support",
         }
-
-        def login_fixture() -> dict[str, str]:
-            import streamlit as st
-
-            st.session_state.current_user = support_user
-            return support_user
-
-        with ExitStack() as stack:
-            stack.enter_context(patch("views.web_app.require_login", side_effect=login_fixture))
-            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
-            stack.enter_context(
-                patch.object(translation_view, "DEEPL_API_KEYS", [FAKE_KEY_ONE, FAKE_KEY_TWO])
+        with patch("core.auth.st") as streamlit:
+            streamlit.session_state = {"current_user": support_user}
+            capability = translation_view.translation_capability(
+                api_keys=[FAKE_KEY_ONE, FAKE_KEY_TWO]
             )
-            stack.enter_context(
-                patch.object(translation_view, "DeepLClient", return_value=fake_client)
-            )
-            app = AppTest.from_file(str(APP_PATH), default_timeout=90)
-            app.session_state.current_user = support_user
-            app.session_state.active_page = "Dịch Thuật DeepL"
-            app.run()
 
-        _assert_no_exceptions(self, app)
-        sidebar_labels = [str(button.label) for button in app.sidebar.button]
-        self.assertTrue(any("Dịch Thuật DeepL" in label for label in sidebar_labels))
-        self.assertTrue(any("Dịch Thuật DeepL" in str(element.value) for element in app.title))
-        self.assertIn("deepl_source_text", {element.key for element in app.text_area})
-        rendered = _visible_text(app)
+        self.assertTrue(capability["allowed"])
+        self.assertTrue(capability["configured"])
+        self.assertEqual(capability["apiCount"], 2)
+        rendered = _render_capability_text(capability)
         self.assertNotIn(FAKE_KEY_ONE, rendered)
         self.assertNotIn(FAKE_KEY_TWO, rendered)
+
+    def test_viewer_capability_is_denied(self) -> None:
+        from views import translation as translation_view
+
+        with patch("core.auth.st") as streamlit:
+            streamlit.session_state = {
+                "current_user": {"username": "viewer-user", "role": "viewer"}
+            }
+            capability = translation_view.translation_capability(
+                api_keys=[FAKE_KEY_ONE]
+            )
+
+        self.assertFalse(capability["allowed"])
+        self.assertNotIn(FAKE_KEY_ONE, _render_capability_text(capability))
+
+
+def _render_capability_text(capability: dict) -> str:
+    import json
+
+    return json.dumps(capability, ensure_ascii=False, default=str)
 
 
 if __name__ == "__main__":
