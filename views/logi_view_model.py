@@ -19,10 +19,15 @@ backend, never from local state alone.
 
 from __future__ import annotations
 
+import base64
 import copy
 import hashlib
+import io
 import json
+import math
+import unicodedata
 from typing import Any, Mapping
+from uuid import uuid4
 
 import streamlit as st
 
@@ -518,6 +523,10 @@ def build_view_model() -> dict:
         # path: picking an entry only pre-fills ``code`` / ``name`` / ``unit`` on
         # the service line that ``finance_actual_save`` books in data.3.4.
         "financeServiceCatalog": rd.finance_service_catalog(),
+        # LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — the only XLSX preview exposed to
+        # React. The normalized rows remain in ephemeral session state; this is
+        # a projection only and contains no uploaded bytes.
+        "getfly": _getfly_preview_projection(),
         # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the authoritative
         # outcome(s) of the business event(s) the bounded dispatcher handled on
         # the previous run. The UI must never treat "event transported" as
@@ -571,6 +580,11 @@ PHASE_B_EVENTS = {
     # (RBAC → writer → audit → fresh readback), mirroring payment_record.
     "partner_payable_record",
     "partner_payment_record",
+    # LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — preview transports bounded XLSX
+    # bytes; commit carries only the server-issued previewId and explicit VAT
+    # choices. Both handlers remain in this ONE dispatcher.
+    "getfly_preview",
+    "getfly_import",
 }
 
 # LOGI_TARIFF_LOOKUP_01 — one bounded READ-ONLY query event for the
@@ -777,6 +791,498 @@ def _result(event: str, shipment_id: str, ok: bool, error: str = "",
             readback: dict[str, Any] | None = None, **extra: Any) -> dict[str, Any]:
     return {"event": event, "shipmentId": shipment_id, "ok": ok, "error": error,
             "readback": readback, **extra}
+
+
+# ---------------------------------------------------------------------------
+# GetFly DSDH import — one bounded XLSX preview/commit path
+# ---------------------------------------------------------------------------
+
+GETFLY_PREVIEW_KEY = "logi_getfly_preview"
+GETFLY_MAX_BYTES = 10 * 1024 * 1024
+GETFLY_MODE_SHIPMENT_ONLY = "SHIPMENT_ONLY"
+GETFLY_MODE_SHIPMENT_AND_FINANCE = "SHIPMENT_AND_FINANCE"
+
+
+def _getfly_clean(value: Any) -> str:
+    """Return a source text fact, keeping missing text blank/UNKNOWN."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    raw = str(value).strip()
+    if raw.lower() in {"nan", "none", "null", "<na>", "nat", "-"}:
+        return ""
+    return raw
+
+
+def _getfly_date(value: Any) -> str:
+    """Normalise a GetFly date to canonical ISO or return blank when invalid."""
+    from core.utils import parse_date_optional
+
+    raw = _getfly_clean(value)
+    parsed = parse_date_optional(raw)
+    return parsed.strftime("%Y-%m-%d") if parsed else ""
+
+
+def _getfly_customer_key(value: Any) -> str:
+    """Exact normalized name key; deliberately no fuzzy similarity."""
+    raw = unicodedata.normalize("NFKC", _getfly_clean(value))
+    return " ".join(raw.split()).casefold()
+
+
+def _getfly_customer_match(name: str, code: str, customers: Mapping[str, Any]) -> tuple[str, str]:
+    """Resolve a real customer id by exact code first, then exact name only."""
+    wanted_code = _getfly_clean(code)
+    if wanted_code:
+        for customer_id, customer in customers.items():
+            if not isinstance(customer, Mapping):
+                continue
+            stored_id = _getfly_clean(customer.get("id") or customer_id)
+            if stored_id == wanted_code:
+                return stored_id, "MATCHED_BY_CODE"
+        # A supplied but unknown code is an UNKNOWN customer. Do not let a
+        # familiar-looking name override the source's stronger identity fact.
+        return "", "UNKNOWN"
+    wanted_name = _getfly_customer_key(name)
+    if wanted_name:
+        for customer_id, customer in customers.items():
+            if not isinstance(customer, Mapping):
+                continue
+            if _getfly_customer_key(customer.get("name")) == wanted_name:
+                return _getfly_clean(customer.get("id") or customer_id), "MATCHED_BY_NAME"
+    return "", "UNKNOWN"
+
+
+def _getfly_sum_known(lines: list[Mapping[str, Any]], key: str) -> float | None:
+    """Sum a source KPI only when every source row states that fact."""
+    values = [line.get(key) for line in lines]
+    if not values or any(value is None for value in values):
+        return None
+    return float(sum(float(value) for value in values))
+
+
+def _getfly_build_preview(df: Any, *, filename: str, fingerprint: str,
+                          request_id: str) -> dict[str, Any]:
+    """Build normalized server state from the already parsed DataFrame."""
+    import pandas as pd
+
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        raise ValueError("File DSDH không có dòng dữ liệu.")
+    if "order_id" not in df.columns:
+        raise ValueError("File DSDH thiếu cột Mã ĐH / Mã đơn hàng.")
+
+    grouped: dict[str, dict[str, Any]] = {}
+    normalized_rows: list[dict[str, Any]] = []
+    for row_number, (_, row) in enumerate(df.iterrows(), start=2):
+        order_id = _getfly_clean(row.get("order_id"))
+        # Blank rows before the first order are not a valid order and are not
+        # allowed to become an invented id. Merged order cells are already
+        # forward-filled by core.getfly_reader.
+        if not order_id:
+            continue
+        order = grouped.setdefault(order_id, {
+            "order_id": order_id,
+            "customer_name": "",
+            "customer_code": "",
+            "order_date": "",
+            "source_status": "",
+            "lines": [],
+        })
+        for field in ("customer_name", "customer_code", "order_date", "source_status"):
+            raw_key = {
+                "customer_name": "customer_name",
+                "customer_code": "customer_code",
+                "order_date": "order_date",
+                "source_status": "status",
+            }[field]
+            value = _getfly_clean(row.get(raw_key))
+            if value and not order[field]:
+                order[field] = value
+        line = {
+            "line_id": f"{order_id}::L{len(order['lines']) + 1}",
+            "source_row": row_number,
+            "product_code": _getfly_clean(row.get("product_code")),
+            "product_name": _getfly_clean(row.get("product_name")),
+            "product_note": _getfly_clean(row.get("product_note")),
+            "qty": row.get("qty") if row.get("qty") is not None else None,
+            "cost": row.get("cost") if row.get("cost") is not None else None,
+            "price": row.get("price") if row.get("price") is not None else None,
+            "revenue": row.get("revenue") if row.get("revenue") is not None else None,
+            "profit": row.get("profit") if row.get("profit") is not None else None,
+        }
+        # Pandas/numpy scalar values must become ordinary JSON-safe numbers;
+        # object columns can turn a ``None`` back into ``NaN`` after map(), so
+        # check missingness again at the server preview boundary.
+        for key in ("qty", "cost", "price", "revenue", "profit"):
+            if line[key] is not None:
+                try:
+                    line[key] = None if bool(pd.isna(line[key])) else float(line[key])
+                    if line[key] is not None and not math.isfinite(line[key]):
+                        line[key] = None
+                except (TypeError, ValueError):
+                    line[key] = None
+        order["lines"].append(line)
+        normalized_rows.append({"order_id": order_id, **line})
+
+    if not grouped:
+        raise ValueError("File DSDH không có Mã ĐH hợp lệ.")
+
+    from core.database import load_customers
+
+    customers = load_customers() or {}
+    existing_ids = set(load_shipments().keys())
+    orders: list[dict[str, Any]] = []
+    for order in grouped.values():
+        customer_id, customer_match = _getfly_customer_match(
+            order["customer_name"], order["customer_code"], customers
+        )
+        order_date = _getfly_date(order["order_date"])
+        # Preserve an invalid source date for honest preview; commit validation
+        # will refuse it rather than choosing today.
+        display_date = order_date or order["order_date"]
+        lines = [dict(line) for line in order["lines"]]
+        orders.append({
+            "orderId": order["order_id"],
+            "customerName": order["customer_name"],
+            "customerCode": order["customer_code"],
+            "customerId": customer_id,
+            "customerMatch": customer_match,
+            "orderDate": display_date,
+            "orderDateValid": bool(order_date),
+            "sourceStatus": order["source_status"],
+            "existing": order["order_id"] in existing_ids,
+            "serviceLines": lines,
+            "revenue": _getfly_sum_known(lines, "revenue"),
+            "profit": _getfly_sum_known(lines, "profit"),
+        })
+
+    all_lines = [line for order in orders for line in order["serviceLines"]]
+    return {
+        "status": "READY",
+        "previewId": f"GF-PREVIEW-{uuid4().hex.upper()[:16]}",
+        "requestId": request_id,
+        "filename": filename,
+        "fingerprint": fingerprint,
+        "normalizedRows": normalized_rows,
+        "orders": orders,
+        "summary": {
+            "orders": len(orders),
+            "revenue": _getfly_sum_known(all_lines, "revenue"),
+            "profit": _getfly_sum_known(all_lines, "profit"),
+        },
+    }
+
+
+def _getfly_preview_projection() -> dict[str, Any]:
+    """Project ephemeral server preview state; never expose source bytes."""
+    state = st.session_state.get(GETFLY_PREVIEW_KEY)
+    if not isinstance(state, Mapping):
+        return {"status": "EMPTY", "previewId": "", "filename": "", "orders": [],
+                "normalizedRows": [],
+                "summary": {"orders": 0, "revenue": None, "profit": None}, "error": ""}
+
+    orders: list[dict[str, Any]] = []
+    for source_order in state.get("orders") or []:
+        if not isinstance(source_order, Mapping):
+            continue
+        lines: list[dict[str, Any]] = []
+        for source_line in source_order.get("serviceLines") or []:
+            if not isinstance(source_line, Mapping):
+                continue
+            lines.append({
+                "lineId": source_line.get("line_id", ""),
+                "code": source_line.get("product_code", ""),
+                "name": source_line.get("product_name", ""),
+                "description": source_line.get("product_note", ""),
+                "qty": source_line.get("qty"),
+                "cost": source_line.get("cost"),
+                "price": source_line.get("price"),
+                "revenue": source_line.get("revenue"),
+                "profit": source_line.get("profit"),
+            })
+        orders.append({
+            "orderId": source_order.get("orderId", ""),
+            "customer": source_order.get("customerName", ""),
+            "customerName": source_order.get("customerName", ""),
+            "customerCode": source_order.get("customerCode", ""),
+            "customerId": source_order.get("customerId", ""),
+            "customerMatch": source_order.get("customerMatch", "UNKNOWN"),
+            "orderDate": source_order.get("orderDate", ""),
+            "sourceStatus": source_order.get("sourceStatus", ""),
+            "existing": bool(source_order.get("existing")),
+            "serviceLines": lines,
+            "revenue": source_order.get("revenue"),
+            "profit": source_order.get("profit"),
+        })
+    return {
+        "status": state.get("status", "READY"),
+        "previewId": state.get("previewId", ""),
+        "requestId": state.get("requestId", ""),
+        "filename": state.get("filename", ""),
+        "fingerprint": state.get("fingerprint", ""),
+        # Keep the parser's normalized row projection available for audit/UI
+        # evidence while never returning the uploaded XLSX bytes.
+        "normalizedRows": copy.deepcopy(state.get("normalizedRows") or []),
+        "orders": orders,
+        "summary": copy.deepcopy(state.get("summary") or {"orders": 0, "revenue": None, "profit": None}),
+        "error": state.get("error", ""),
+    }
+
+
+def _decode_getfly_payload(payload: Mapping[str, Any]) -> tuple[bytes, str]:
+    filename = _getfly_clean(payload.get("filename"))
+    if not filename.lower().endswith(".xlsx"):
+        raise ValueError("Chỉ nhận file DSDH.xlsx / .xlsx.")
+    encoded = _getfly_clean(payload.get("contentBase64"))
+    if "," in encoded and encoded.lower().startswith("data:"):
+        encoded = encoded.split(",", 1)[1]
+    if not encoded:
+        raise ValueError("File DSDH không có dữ liệu.")
+    # Bound the encoded transport before decoding as well as the decoded XLSX;
+    # otherwise an untrusted event could allocate an arbitrarily large string
+    # before the byte limit is checked.
+    max_encoded = ((GETFLY_MAX_BYTES + 2) // 3) * 4 + 4
+    if len(encoded) > max_encoded:
+        raise ValueError(f"File DSDH vượt giới hạn {GETFLY_MAX_BYTES // (1024 * 1024)} MB.")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, base64.binascii.Error) as exc:
+        raise ValueError("Không giải mã được bytes XLSX từ file đã chọn.") from exc
+    if not raw:
+        raise ValueError("File DSDH rỗng.")
+    if len(raw) > GETFLY_MAX_BYTES:
+        raise ValueError(f"File DSDH vượt giới hạn {GETFLY_MAX_BYTES // (1024 * 1024)} MB.")
+    declared_size = payload.get("size")
+    if declared_size not in (None, ""):
+        try:
+            if int(declared_size) != len(raw):
+                raise ValueError("Kích thước file không khớp bytes nhận được.")
+        except (TypeError, ValueError) as exc:
+            if isinstance(exc, ValueError) and str(exc) == "Kích thước file không khớp bytes nhận được.":
+                raise
+            raise ValueError("Kích thước file không hợp lệ.") from exc
+    return raw, filename
+
+
+def _handle_getfly_preview(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Parse real XLSX bytes into a session-only authoritative preview."""
+    from core.auth import can_operate_business
+
+    request_id = _getfly_clean(payload.get("requestId"))
+    if not can_operate_business("dashboard"):
+        return _result("getfly_preview", "", False,
+                       "RBAC: cần đăng nhập nội bộ để xem trước GetFly.",
+                       requestId=request_id)
+    try:
+        raw, filename = _decode_getfly_payload(payload)
+        fingerprint = hashlib.sha256(raw).hexdigest()
+        from core.getfly_reader import process_getfly_excel
+
+        df, error = process_getfly_excel(io.BytesIO(raw))
+        if error:
+            raise ValueError(str(error))
+        preview = _getfly_build_preview(
+            df, filename=filename, fingerprint=fingerprint, request_id=request_id
+        )
+        st.session_state[GETFLY_PREVIEW_KEY] = preview
+        return _result("getfly_preview", "", True, "",
+                       requestId=request_id,
+                       readback={"previewId": preview["previewId"],
+                                 "fingerprint": fingerprint,
+                                 "orders": preview["summary"]["orders"]})
+    except Exception as exc:  # noqa: BLE001 - bounded user-file failure
+        st.session_state.pop(GETFLY_PREVIEW_KEY, None)
+        return _result("getfly_preview", "", False,
+                       f"Không thể đọc DSDH.xlsx: {exc}", requestId=request_id)
+
+
+def _getfly_internal_status(source_status: Any) -> str:
+    raw = _getfly_clean(source_status).casefold()
+    if any(token in raw for token in ("hủy", "cancel", "cancelled")):
+        return "cancel"
+    if any(token in raw for token in ("hoàn thành", "completed", "done", "đã giao")):
+        return "done"
+    return "wait"
+
+
+def _getfly_validate_order(order: Mapping[str, Any], mode: str,
+                           vat_by_line: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+    order_id = _getfly_clean(order.get("orderId"))
+    customer = _getfly_clean(order.get("customerName"))
+    order_date = _getfly_date(order.get("orderDate"))
+    if not order_id:
+        errors.append("Thiếu Mã ĐH.")
+    if not customer:
+        errors.append("Thiếu Tên KH.")
+    if not order_date:
+        errors.append("Ngày đặt hàng trống hoặc không hợp lệ.")
+    if mode != GETFLY_MODE_SHIPMENT_AND_FINANCE:
+        return errors
+
+    for index, line in enumerate(order.get("serviceLines") or [], start=1):
+        if not isinstance(line, Mapping):
+            errors.append(f"Dòng dịch vụ {index} không hợp lệ.")
+            continue
+        name = _getfly_clean(line.get("product_name"))
+        if not name:
+            errors.append(f"Dòng dịch vụ {index} thiếu tên dịch vụ.")
+        qty = _actual_amount(line.get("qty"))
+        cost = _actual_amount(line.get("cost"))
+        price = _actual_amount(line.get("price"))
+        if qty is None or qty <= 0:
+            errors.append(f"Dòng dịch vụ {index} thiếu/không hợp lệ Số lượng.")
+        if cost is None:
+            errors.append(f"Dòng dịch vụ {index} thiếu/không hợp lệ Giá vốn.")
+        if price is None:
+            errors.append(f"Dòng dịch vụ {index} thiếu/không hợp lệ Giá bán.")
+        line_id = _getfly_clean(line.get("line_id"))
+        raw_vat = vat_by_line.get(line_id) if line_id else None
+        vat = _actual_amount(raw_vat)
+        if _is_blank_amount(raw_vat):
+            errors.append(f"Dòng dịch vụ {index} thiếu VAT — 0 là hợp lệ nhưng để trống thì không.")
+        elif vat is None or vat < 0 or vat > 100:
+            errors.append(f"Dòng dịch vụ {index} có VAT không hợp lệ (0–100%).")
+    return errors
+
+
+def _getfly_document(order: Mapping[str, Any], mode: str,
+                     vat_by_line: Mapping[str, Any]) -> dict[str, Any]:
+    order_id = _getfly_clean(order.get("orderId"))
+    order_date = _getfly_date(order.get("orderDate"))
+    details: list[dict[str, Any]] = []
+    if mode == GETFLY_MODE_SHIPMENT_AND_FINANCE:
+        for line in order.get("serviceLines") or []:
+            line_id = _getfly_clean(line.get("line_id"))
+            details.append({
+                "id": line_id,
+                "name_full": _getfly_clean(line.get("product_name")),
+                "display_name": _getfly_clean(line.get("product_name")),
+                "code": _getfly_clean(line.get("product_code")),
+                "qty": _actual_amount(line.get("qty")),
+                "cost": _actual_amount(line.get("cost")),
+                "price": _actual_amount(line.get("price")),
+                "vat_line": _actual_amount(vat_by_line.get(line_id)),
+                "note": _getfly_clean(line.get("product_note")),
+            })
+    head = {
+        "st": _getfly_internal_status(order.get("sourceStatus")),
+        "created_at": order_date,
+        "order_date": order_date,
+        "source_status": _getfly_clean(order.get("sourceStatus")),
+        "source_customer_code": _getfly_clean(order.get("customerCode")),
+    }
+    return {
+        "id": order_id,
+        "shipment_id": order_id,
+        "customer": _getfly_clean(order.get("customerName")),
+        "client": _getfly_clean(order.get("customerName")),
+        "customer_id": _getfly_clean(order.get("customerId")),
+        "status": head["st"],
+        # Deliberately no route, mode, Incoterm, customs, vehicle, contract or
+        # FX facts: the source file did not state any of them.
+        "data": {
+            "0.0": head,
+            "1.2": {},
+            "2.4": {},
+            "2.6": {},
+            "2.7": {},
+            "3.4": {"details": details, "payments": [], "commission": {}},
+            "entrustment": {},
+        },
+    }
+
+
+def _getfly_readback(shipment: Mapping[str, Any], *, mode: str) -> dict[str, Any]:
+    head = shipment.get("data", {}).get("0.0", {}) if isinstance(shipment.get("data"), Mapping) else {}
+    finance = shipment.get("data", {}).get("3.4", {}) if isinstance(shipment.get("data"), Mapping) else {}
+    return {
+        "id": _getfly_clean(shipment.get("id")),
+        "customer": _getfly_clean(shipment.get("customer") or shipment.get("client")),
+        "customerId": _getfly_clean(shipment.get("customer_id")),
+        "orderDate": _getfly_clean(head.get("order_date") or head.get("created_at")),
+        "sourceStatus": _getfly_clean(head.get("source_status")),
+        "status": _getfly_clean(shipment.get("status") or head.get("st")),
+        "importMode": mode,
+        "transportMode": _getfly_clean(head.get("mode")),
+        "financeActualLineCount": len(finance.get("details") or []) if isinstance(finance, Mapping) else 0,
+        "route": _getfly_clean(shipment.get("data", {}).get("1.2", {}).get("pol"))
+        if isinstance(shipment.get("data", {}).get("1.2"), Mapping) else "",
+        "currency": _getfly_clean(shipment.get("currency") or finance.get("currency"))
+        if isinstance(finance, Mapping) else "",
+    }
+
+
+def _handle_getfly_import(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Commit only missing orders using one canonical shipment write per order."""
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+
+    request_id = _getfly_clean(payload.get("requestId"))
+    preview_id = _getfly_clean(payload.get("previewId"))
+    mode = _getfly_clean(payload.get("mode")).upper()
+    vat_by_line = payload.get("vatByLineId") if isinstance(payload.get("vatByLineId"), Mapping) else {}
+    preview = st.session_state.get(GETFLY_PREVIEW_KEY)
+
+    def _failure(message: str, results: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        return _result("getfly_import", "", False, message, requestId=request_id,
+                       previewId=preview_id, mode=mode, results=results or [])
+
+    if not isinstance(preview, Mapping) or preview.get("previewId") != preview_id:
+        return _failure("Preview GetFly đã hết hạn hoặc không tồn tại. Hãy chọn lại DSDH.xlsx.")
+    if mode not in {GETFLY_MODE_SHIPMENT_ONLY, GETFLY_MODE_SHIPMENT_AND_FINANCE}:
+        return _failure("Chưa chọn chế độ nhập GetFly hợp lệ.")
+    if not can_operate_business("shipment_create"):
+        results = [{"orderId": _getfly_clean(order.get("orderId")),
+                    "status": "REFUSED_VALIDATION", "error": "RBAC: không có quyền shipment_create."}
+                   for order in preview.get("orders") or []]
+        return _failure("RBAC: không có quyền shipment_create.", results)
+    if mode == GETFLY_MODE_SHIPMENT_AND_FINANCE and not can_operate_business("finance_write"):
+        results = [{"orderId": _getfly_clean(order.get("orderId")),
+                    "status": "REFUSED_VALIDATION", "error": "RBAC: không có quyền finance_write."}
+                   for order in preview.get("orders") or []]
+        return _failure("RBAC: không có quyền finance_write.", results)
+
+    fresh_ids = set(load_shipments().keys())
+    results: list[dict[str, Any]] = []
+    for order in preview.get("orders") or []:
+        order_id = _getfly_clean(order.get("orderId"))
+        if order_id in fresh_ids:
+            results.append({"orderId": order_id, "status": "SKIPPED_ALREADY_EXISTS",
+                            "customer": _getfly_clean(order.get("customerName")),
+                            "message": "Đã có trong hệ thống"})
+            continue
+
+        errors = _getfly_validate_order(order, mode, vat_by_line)
+        if errors:
+            results.append({"orderId": order_id, "status": "REFUSED_VALIDATION",
+                            "customer": _getfly_clean(order.get("customerName")),
+                            "errors": errors})
+            continue
+
+        document = _getfly_document(order, mode, vat_by_line)
+        if not save_shipment_atomic(document, actor=_actor()):
+            results.append({"orderId": order_id, "status": "FAILED_WRITE",
+                            "customer": _getfly_clean(order.get("customerName")),
+                            "error": get_last_db_error() or "Không tạo được lô từ GetFly."})
+            continue
+        fresh = read_shipment(order_id)
+        if not fresh:
+            results.append({"orderId": order_id, "status": "FAILED_WRITE",
+                            "error": "Đã ghi nhưng không đọc lại được lô vừa tạo."})
+            continue
+        fresh_ids.add(order_id)
+        results.append({"orderId": order_id, "status": "CREATED",
+                        "customer": _getfly_clean(order.get("customerName")),
+                        "readback": _getfly_readback(fresh, mode=mode)})
+
+    failed = [row for row in results if row.get("status") in {"REFUSED_VALIDATION", "FAILED_WRITE"}]
+    ok = not failed
+    return _result("getfly_import", "", ok,
+                   "" if ok else "Một hoặc nhiều đơn chưa được nhập; xem kết quả từng đơn.",
+                   requestId=request_id, previewId=preview_id, mode=mode,
+                   results=results,
+                   readback={"previewId": preview_id, "mode": mode, "results": results})
 
 
 def _projection_for(shipment: Mapping[str, Any]) -> dict[str, Any]:
@@ -1866,6 +2372,8 @@ _HANDLERS = {
     "pxk_generate": _handle_pxk_generate,
     "partner_payable_record": _handle_partner_payable_record,
     "partner_payment_record": _handle_partner_payment_record,
+    "getfly_preview": _handle_getfly_preview,
+    "getfly_import": _handle_getfly_import,
 }
 
 

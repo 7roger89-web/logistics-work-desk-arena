@@ -304,8 +304,10 @@ def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str
             if not isinstance(data.get(section), dict):
                 data[section] = {}
         data["0.0"].setdefault("st", item["status"])
-        data["0.0"].setdefault("mode", "Sea")
-        data["0.0"].setdefault("incoterm", "EXW")
+        # Do not manufacture transport or commercial facts while repairing a
+        # document. Existing writers that know these facts still write them
+        # explicitly; an import with no source mode/Incoterm must remain
+        # UNKNOWN rather than inheriting the old Sea/EXW defaults.
 
         finance = data["3.4"]
         finance.setdefault("details", [])

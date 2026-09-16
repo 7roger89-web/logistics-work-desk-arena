@@ -1,10 +1,16 @@
 # FILE: core/getfly_reader.py
+import math
 import re
 
 import pandas as pd
 import streamlit as st
 from core.utils import safe_float
 from core.logic import calculate_from_shipment
+
+#: GetFly's own customer-code column ("Mã KH" in the DSDH sheet). It is
+#: intentionally kept beside the shared map so the real XLSX path and the
+#: existing pasted-customer helper use the same identity vocabulary.
+GETFLY_CUSTOMER_CODE_KEYWORDS = ["mã kh", "ma kh", "mã khách hàng"]
 
 #: The ONE GetFly column-identity map of this repository (LOGI_CONTRACT_AND_-
 #: SHIPMENT_CORE_GAPS_01). `process_getfly_excel` below reads it verbatim, and
@@ -15,6 +21,7 @@ GETFLY_COLUMN_KEYWORDS = {
     "order_id": ["mã đh", "mã đơn hàng"],
     "order_date": ["ngày đặt hàng", "ngày tạo"],
     "customer_name": ["tên kh", "khách hàng"],
+    "customer_code": GETFLY_CUSTOMER_CODE_KEYWORDS,
     "product_code": ["mã sp", "mã sản phẩm", "mã hàng"],
     "product_name": ["tên sp", "tên sản phẩm", "tên hàng"],
     "product_note": ["mô tả"],  # ĐÃ BẮT CỘT MÔ TẢ CỦA GETFLY
@@ -26,11 +33,30 @@ GETFLY_COLUMN_KEYWORDS = {
     "status": ["trạng thái"]
 }
 
-#: GetFly's own customer-code column ("Mã KH" in the DSDH sheet). It is NOT in
-#: `GETFLY_COLUMN_KEYWORDS` because the Excel path never needed it and its
-#: keyword ("mã kh") would shadow the customer-name match; only the bounded
-#: text extraction for the contract/customer flow uses it.
-GETFLY_CUSTOMER_CODE_KEYWORDS = ["mã kh", "ma kh", "mã khách hàng"]
+
+def _optional_getfly_number(value) -> float | None:
+    """Parse a source number without collapsing UNKNOWN into zero.
+
+    The legacy dashboard can still call ``safe_float`` on the returned frame,
+    but the real import preview must distinguish an empty/invalid price from an
+    explicit numeric zero before it offers Finance Actual import.
+    """
+    if value is None:
+        return None
+    try:
+        if bool(pd.isna(value)):
+            return None
+    except (TypeError, ValueError):
+        pass
+    raw = str(value).strip()
+    if not raw or raw.lower() in {"nan", "none", "null", "-"} or not any(ch.isdigit() for ch in raw):
+        return None
+    parsed = safe_float(value)
+    try:
+        parsed_float = float(parsed)
+    except (TypeError, ValueError):
+        return None
+    return parsed_float if math.isfinite(parsed_float) else None
 
 
 def process_getfly_excel(file_path_or_buffer):
@@ -57,13 +83,34 @@ def process_getfly_excel(file_path_or_buffer):
         # Lấp ô trống do Merge Cell (Bản chất file GetFly là các dòng dưới bị rỗng thông tin Đơn hàng)
         fill_cols = ['order_id', 'order_date', 'customer_name']
         for c in fill_cols:
-            if c in df.columns: df[c] = df[c].ffill()
+            if c not in df.columns:
+                continue
+            # Do this explicitly instead of pandas ffill(): pandas 2.3 warns
+            # about implicit object downcasting, and the explicit loop keeps a
+            # genuinely missing leading value as UNKNOWN.
+            carried = None
+            filled = []
+            for value in df[c].tolist():
+                missing = value is None
+                if not missing:
+                    try:
+                        missing = bool(pd.isna(value))
+                    except (TypeError, ValueError):
+                        missing = False
+                if missing:
+                    filled.append(carried)
+                else:
+                    carried = value
+                    filled.append(value)
+            df[c] = pd.Series(filled, index=df.index, dtype=object)
 
         numeric_cols = ['qty', 'cost', 'price', 'revenue', 'profit']
         for c in numeric_cols:
             if c in df.columns:
-                # safe_float hỗ trợ cả 1,234,567 và 1.234.567 theo định dạng Việt Nam.
-                df[c] = df[c].map(safe_float)
+                # Keep an explicit 0 as 0, but retain blank/invalid source facts
+                # as None so the real import can refuse a financial line instead
+                # of silently booking UNKNOWN as zero.
+                df[c] = df[c].map(_optional_getfly_number)
 
         return df, None
     except Exception as e:

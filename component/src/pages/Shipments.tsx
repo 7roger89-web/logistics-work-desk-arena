@@ -4,6 +4,7 @@ import { Search, ArrowRight, Eye, SlidersHorizontal } from "lucide-react";
 import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
+import GetFlyImport from "../components/GetFlyImport";
 
 export default function Shipments() {
   const { shipments } = useStore();
@@ -15,6 +16,7 @@ export default function Shipments() {
 
   return (
     <div className="space-y-4 max-w-[1300px]">
+      <GetFlyImport />
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <SectionTitle title="Lô Hàng" sub="Tìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu" right={<Link to="/tao-lo-moi" className="btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]">＋ Tạo lô mới</Link>} />
         <div className="flex gap-2">
