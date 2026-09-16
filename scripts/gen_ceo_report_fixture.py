@@ -86,6 +86,16 @@ def main() -> None:
     report = journey["ceoReport"]
     assert {row["currency"] for row in report["payables"]["positions"]} == {"VND", "CNY"}
     assert report["reconciliation"]["available"] is True
+    # REAL_PARITY — the new donor-shaped sections must be backed by the real
+    # staging facts, never by mock numbers:
+    assert report["financeActual"]["available"] is True
+    assert {row["currency"] for row in report["financeActual"]["positions"]} == {"VND"}
+    assert report["financeActual"]["positions"][0]["rowCount"] > 0
+    assert report["topCustomers"] and report["topCustomers"][0]["currency"] == "VND"
+    assert report["actionables"], "staging must surface real actionable work"
+    assert all(item["route"].startswith("/lo-hang/") for item in report["actionables"])
+    for item in report["operations"]["statusCounts"]:
+        assert item["count"] > 0 and 0 < item["share"] <= 1
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
@@ -115,6 +125,12 @@ def main() -> None:
         f"payableCurrencies={[r['currency'] for r in report['payables']['positions']]} "
         f"obligations={report['reconciliation']['obligations']} "
         f"money={report['reconciliation']['money']}"
+    )
+    print(
+        "  parity: "
+        f"financeActual={[ (r['currency'], r['revenueNet'], r['profit']) for r in report['financeActual']['positions'] ]} "
+        f"topCustomers={[c['name'] for c in report['topCustomers'][0]['customers']]} "
+        f"actionables={[a['id'] for a in report['actionables']]}"
     )
 
     logi_sandbox.reset_backend()

@@ -11,6 +11,14 @@
 //   6. quick navigation reaches the pre-existing receivables desk;
 //   7. the primary card structure stacks responsively without desktop tables.
 //
+// LOGI_CEO_REPORT_REAL_PARITY_01 additions (steps 8–13):
+//   8. the status distribution renders as real proportional bars;
+//   9. per-currency ACTUAL finance positions render the canonical sums;
+//  10. top customers rank actual revenue inside one currency only;
+//  11. the bottleneck panel lists real actionable rows routing to real routes;
+//  12. donor mock sample values never reach the rendered page or the bundle;
+//  13. the report stays strictly read-only (no buttons/forms/writes).
+//
 // Run: node tests/component/dom_acceptance_ceo_report.mjs
 // ============================================================================
 
@@ -214,6 +222,124 @@ await remount(JOURNEY);
   }
   assert.ok(text($("[data-testid='ceo-payable-CNY']")[0]).includes("3.000 CNY"), "currency is not paired with mobile amount");
   ok("cards stack, currencies stay paired with amounts, and quick links are touch-sized");
+}
+
+console.log("STEP 8 — REAL_PARITY: status distribution is a real proportional visual");
+{
+  const section = $("[data-testid='ceo-status-section']")[0];
+  assert.ok(section, "status distribution section missing");
+  const rows = $("[data-testid='ceo-status-row']", section);
+  assert.equal(rows.length, 3, "expected the 3 real staging statuses");
+  const joined = rows.map(text).join(" | ");
+  assert.ok(joined.includes("Chờ thông quan"), "real status label missing");
+  assert.ok(joined.includes("/ 5 lô"), "denominator is not the real current shipment total");
+  // Bars are divs with an explicit width share, stacked vertically (no table,
+  // no horizontal scroll, no chart library canvas/svg requirement).
+  const bars = $("[data-testid='ceo-status-visual'] .h-2\\.5", section);
+  assert.equal(bars.length, 3, "one bar per status expected");
+  for (const bar of bars) {
+    const fill = bar.firstElementChild;
+    assert.ok(fill, "status bar has no fill element");
+    assert.ok(/width:\s*\d+(\.\d+)?%/.test(fill.getAttribute("style") || ""), "bar width is not a real share");
+  }
+  assert.equal($("[data-testid='ceo-status-section'] table").length, 0, "status visual must not be a table");
+  assert.ok(!section.className.includes("overflow-x-auto"), "status visual forces horizontal scroll");
+  ok("status bars render from real counts with the real denominator");
+}
+
+console.log("STEP 9 — REAL_PARITY: actual finance positions equal the canonical sums");
+{
+  const section = $("[data-testid='ceo-finance-actual']")[0];
+  assert.ok(section, "actual finance section missing");
+  const vnd = $("[data-testid='ceo-finance-actual-VND']")[0];
+  assert.ok(vnd, "VND actual finance card missing");
+  const vndText = text(vnd);
+  // Exact canonical core.logic sums over the 5 staging shipments (VND only).
+  assert.ok(vndText.includes("556.100.000 VND"), "actual revenue is not the canonical sum");
+  assert.ok(vndText.includes("510.200.000 VND"), "actual cost is not the canonical sum");
+  assert.ok(vndText.includes("45.900.000 VND"), "actual profit is not the canonical sum");
+  assert.ok(vndText.includes("Doanh thu thực tế"), "revenue label missing");
+  assert.ok(vndText.includes("Chi phí thực tế"), "cost label missing");
+  assert.ok(vndText.includes("Lợi nhuận thực tế"), "profit label missing");
+  assert.ok(vndText.includes("VND"), "currency is not visibly labelled");
+  assert.equal($("[data-testid='ceo-finance-actual-grid'] [data-ceo-currency]").length, 1, "fixture has exactly one currency");
+  ok("per-currency actual revenue/cost/profit render the canonical values");
+}
+
+console.log("STEP 10 — REAL_PARITY: top customers rank inside one currency only");
+{
+  const section = $("[data-testid='ceo-top-customers']")[0];
+  assert.ok(section, "top customers section missing");
+  const vnd = $("[data-testid='ceo-top-customers-VND']")[0];
+  assert.ok(vnd, "VND top-customer block missing");
+  const vndText = text(vnd);
+  const order = ["Đức Long Co.", "Thiên Ân JSC", "An Phát JSC", "Hồng Hà Co.", "Minh Đức JSC"];
+  let cursor = 0;
+  for (const name of order) {
+    const at = vndText.indexOf(name);
+    assert.ok(at >= 0, `expected customer ${name} missing`);
+    assert.ok(at > cursor, `ranking order broken at ${name}`);
+    cursor = at;
+  }
+  assert.ok(vndText.includes("160.200.000 VND"), "top customer actual revenue missing");
+  assert.ok(vndText.includes("62.000.000 VND"), "last ranked customer's real revenue missing");
+  assert.equal($("[data-testid='ceo-top-customers-grid'] [data-ceo-currency]").length, 1, "ranking must not span currencies");
+  ok("customers rank by actual revenue strictly inside VND");
+}
+
+console.log("STEP 11 — REAL_PARITY: bottleneck panel routes to the real work surface");
+{
+  const section = $("[data-testid='ceo-actionables']")[0];
+  assert.ok(section, "bottleneck section missing");
+  const main = mainText();
+  assert.ok(main.includes("Điểm nghẽn cần xử lý"), "bottleneck heading missing");
+  const cards = $("[data-testid='ceo-actionable-card']", section);
+  assert.equal(cards.length, 5, "bounded top of the real actionable queue");
+  const first = cards[0];
+  assert.equal(first.getAttribute("href"), "/lo-hang/LO-0299?tab=nhap", "first bottleneck must keep its real route");
+  assert.equal(first.getAttribute("data-ceo-shipment"), "LO-0299", "card must carry the real shipment id");
+  assert.ok(text(first).includes("Khẩn"), "Khẩn level badge missing");
+  assert.ok(text(first).includes("Hồng Hà Co."), "real customer name missing");
+  for (const card of cards) {
+    const href = card.getAttribute("href") || "";
+    assert.ok(href.startsWith("/lo-hang/"), `bottleneck route is not a real shipment route: ${href}`);
+  }
+  assert.ok(text(section).includes("Còn 3 việc khác"), "hidden remainder of the real queue must stay visible");
+  // Clicking a bottleneck reaches the real shipment workspace. The card is a
+  // react-router <Link>; dispatch a real click on the anchor itself.
+  first.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  assert.ok(mainText().includes("LO-0299"), "bottleneck click did not open the shipment workspace");
+  ok("bottleneck cards are real rows that open the real shipment tab");
+}
+
+console.log("STEP 12 — REAL_PARITY: donor mock sample firewall");
+{
+  await remount(JOURNEY);
+  const rendered = bodyText();
+  for (const sample of [
+    "1.510 tr", "262 tr", "+22% vs kỳ trước", "873 tr",
+    "Thông quan Hữu Nghị chậm 1,5 ngày",
+  ]) {
+    assert.ok(!rendered.includes(sample), `donor sample ${JSON.stringify(sample)} leaked into the rendered page`);
+  }
+  const bundle = readFileSync(path.join(ROOT, "component/dist/logi-shell.js"), "utf8");
+  for (const sample of [
+    "1.510 tr", "262 tr", "+22% vs kỳ trước", "873 tr",
+    "Thông quan Hữu Nghị chậm 1,5 ngày",
+  ]) {
+    assert.ok(!bundle.includes(sample), `donor sample ${JSON.stringify(sample)} baked into the production bundle`);
+  }
+  ok("no donor business sample reaches the page or the bundle");
+}
+
+console.log("STEP 13 — REAL_PARITY: the report remains strictly read-only");
+{
+  const main = $("main")[0];
+  assert.ok(main, "main content missing");
+  assert.equal($("button", main).length, 0, "CEO report must not expose any write button");
+  assert.equal($("form, input, select, textarea", main).length, 0, "CEO report must not expose form controls");
+  ok("no write surface exists on the CEO report");
 }
 
 if (cleanup) cleanup();

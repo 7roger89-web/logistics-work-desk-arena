@@ -1,7 +1,7 @@
 {
  "generatedFrom": "scripts/gen_ceo_report_fixture.py — isolated mongomock staging",
  "empty": {
-  "version": "bd0e37502b4b0c9b",
+  "version": "db382c6b25807a63",
   "environment": {
    "transport": "SANDBOX_STAGING",
    "label": "Preview / Staging",
@@ -21,18 +21,18 @@
     "customerMST": "0103456789",
     "customerId": "CUST-HONGHA",
     "contract": "",
-    "route": "Bằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
-    "borderVN": "Hữu Nghị (Lạng Sơn)",
+    "route": "Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
+    "borderVN": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
     "sale": "Chưa phân công",
     "support": "staging.support",
     "status": "Chờ giao",
     "statusTone": "blue",
     "priority": "Khan",
     "nextAction": "Quá hạn khách",
-    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Xác nhận đã giao hàng"
     ],
@@ -63,6 +63,72 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "01/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Bằng Tường (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-05",
+      "eta": "2026-09-06",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0299",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤B·31K09",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     },
+     {
+      "id": "legacy-delivery-leg",
+      "sequence": 2,
+      "mode": "Truck",
+      "origin": "",
+      "destination": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
+      "carrier": "",
+      "etd": "2026-09-10",
+      "eta": "",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-delivery-unit",
+        "kind": "truck",
+        "number": "29H-481.36",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "Lê Đức / 0904118822",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Bằng Tường (Quảng Tây)",
@@ -84,11 +150,12 @@
      "vessel": "",
      "etd": "05/09/2026",
      "pol": "Bằng Tường (Quảng Tây)",
-     "pod": "Hữu Nghị (Lạng Sơn)",
+     "pod": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "containerNo": "粤B·31K09",
      "qtyPkg": "18 kiện / 12.600 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -106,7 +173,7 @@
      "chinaDeclNo": ""
     },
     "importInfo": {
-     "borderVN": "Hữu Nghị (Lạng Sơn)",
+     "borderVN": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "declarationNo": "105579900211",
      "regDate": "",
      "clearDate": "",
@@ -139,8 +206,14 @@
      "quote": [],
      "actual": [
       {
+       "id": "ea9418cc-d2fb-4d97-9938-11086fb3bc6f",
        "label": "Cước xe TQ + VN",
+       "name": "Cước xe TQ + VN",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 88000000.0,
+       "price": 88000000.0,
        "cost": 79500000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -148,8 +221,14 @@
        "kind": "actual"
       },
       {
+       "id": "09afe1d5-c4c2-4410-be07-f069c071cdaa",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 6000000.0,
+       "price": 6000000.0,
        "cost": 4800000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -171,7 +250,7 @@
      "profitMargin": 10.32,
      "payments": [
       {
-       "id": "PAY-B3EA5884F90443F786BF23044C217EA4",
+       "id": "PAY-10ABFEFC122B4649A9541DFC589763E0",
        "requestId": "SEED-REQ-0299-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -206,11 +285,12 @@
      "place": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -224,13 +304,13 @@
        "code": "CUSTOMER_DEADLINE_OVERDUE",
        "severity": "critical",
        "title": "Quá hạn khách",
-       "message": "Hạn khách 08/09/2026 đã quá 3 ngày."
+       "message": "Hạn khách 08/09/2026 đã quá 8 ngày."
       },
       {
-       "code": "FREE_TIME_SOON",
-       "severity": "warning",
-       "title": "Sắp hết free time",
-       "message": "Còn 2 ngày, hạn 13/09/2026."
+       "code": "FREE_TIME_OVERDUE",
+       "severity": "critical",
+       "title": "Quá free time",
+       "message": "Hạn free time 13/09/2026 đã quá 3 ngày."
       },
       {
        "code": "FINANCE_ATTENTION",
@@ -241,7 +321,7 @@
      ],
      "arrivalDateLabel": "06/09/2026",
      "freeTimeExpiryLabel": "13/09/2026",
-     "daysRemaining": 2
+     "daysRemaining": -3
     },
     "tracking": {
      "status": "Chờ giao",
@@ -262,7 +342,7 @@
       {
        "time": "06/09/2026",
        "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Hữu Nghị (Lạng Sơn)",
+       "desc": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
        "done": true,
        "tone": "blue"
       },
@@ -291,13 +371,276 @@
     }
    },
    {
+    "id": "LO-0308",
+    "customer": "Minh Đức JSC",
+    "customerMST": "0102345678",
+    "customerId": "CUST-MINHDUC",
+    "contract": "",
+    "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
+    "borderVN": "Hữu Nghị (Lạng Sơn)",
+    "sale": "Chưa phân công",
+    "support": "staging.support",
+    "status": "Chờ thông quan",
+    "statusTone": "amber",
+    "priority": "Khan",
+    "nextAction": "Quá hạn khách",
+    "nextActionDetail": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "nextLabel": "XỬ LÝ NGAY",
+    "nextRoute": "/lo-hang/LO-0308?tab=nhap",
+    "updated": "16/09/2026 15:01",
+    "missingDocs": [
+     "Số tờ khai nhập khẩu",
+     "Đã thông quan",
+     "Xe giao VN + tài xế",
+     "Xác nhận đã giao hàng"
+    ],
+    "docs": [
+     {
+      "name": "Số tờ khai nhập khẩu",
+      "ok": false,
+      "note": "Chưa đăng ký tờ khai"
+     },
+     {
+      "name": "Đã thông quan",
+      "ok": false,
+      "note": "Chờ số tờ khai"
+     },
+     {
+      "name": "Xe giao VN + tài xế",
+      "ok": false,
+      "note": "Chưa đặt xe giao"
+     },
+     {
+      "name": "Xác nhận đã giao hàng",
+      "ok": false,
+      "note": "Chưa xác nhận"
+     }
+    ],
+    "version": 1,
+    "rawStatus": "wait",
+    "mode": "Truck",
+    "incoterm": "DAP",
+    "createdAt": "06/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Đông Bằng (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "",
+      "etd": "2026-09-12",
+      "eta": "2026-09-12",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": []
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
+    "pickup": {
+     "factory": "",
+     "address": "Đông Bằng (Quảng Tây)",
+     "contact": "",
+     "phone": "",
+     "pickupTime": "12/09/2026",
+     "truckType": "",
+     "plate": "",
+     "driver": "",
+     "driverPhone": "",
+     "eta": "12/09/2026",
+     "ata": ""
+    },
+    "transport": {
+     "bookingNo": "",
+     "carrier": "",
+     "mbl": "",
+     "hbl": "",
+     "vessel": "",
+     "etd": "12/09/2026",
+     "pol": "Đông Bằng (Quảng Tây)",
+     "pod": "Hữu Nghị (Lạng Sơn)",
+     "containerNo": "",
+     "qtyPkg": ""
+    },
+    "cargo": {
+     "goodsDescription": "",
+     "packs": null,
+     "weight": null,
+     "cbm": null,
+     "dims": "",
+     "type": "",
+     "note": "",
+     "qtyPkg": ""
+    },
+    "exportInfo": {
+     "border": "Đông Bằng (Quảng Tây)",
+     "declarant": "",
+     "eta": "12/09/2026",
+     "ata": "",
+     "state": "",
+     "chinaDeclNo": ""
+    },
+    "importInfo": {
+     "borderVN": "Hữu Nghị (Lạng Sơn)",
+     "declarationNo": "",
+     "regDate": "",
+     "clearDate": "",
+     "tax": null,
+     "vat": null,
+     "inspection": "",
+     "customsStatus": false,
+     "license": "",
+     "gnt": {
+      "payer": "",
+      "taxCode": "",
+      "address": "",
+      "customsOffice": ""
+     },
+     "arrivalDate": "12/09/2026",
+     "freeTime": 14.0,
+     "truckVN": "",
+     "plateVN": "",
+     "driverVN": "",
+     "schedule": "",
+     "deliveryAddr": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+     "receiver": "",
+     "receiverPhone": "",
+     "receiverTitle": "",
+     "deliveryLocation": "",
+     "delivered": false,
+     "actualDelivery": ""
+    },
+    "finance": {
+     "quote": [],
+     "actual": [
+      {
+       "id": "f7d0690f-aea0-497b-bc80-0093a6ed8408",
+       "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
+       "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
+       "amount": 62000000.0,
+       "price": 62000000.0,
+       "cost": 57000000.0,
+       "qty": 1.0,
+       "vat": 8.0,
+       "ccy": "VND",
+       "kind": "actual"
+      }
+     ],
+     "currency": "VND",
+     "hasActualLines": true,
+     "receivable": 66960000.0,
+     "received": 0.0,
+     "receivableNet": 62000000.0,
+     "outputVat": 4960000.0,
+     "outstanding": 66960000.0,
+     "payable": 57000000.0,
+     "paid": null,
+     "commission": 0.0,
+     "profit": 5000000.0,
+     "profitMargin": 8.06,
+     "payments": [],
+     "partner": {
+      "partnerId": "AGT-PHUANH",
+      "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+      "suggested": true,
+      "status": "UNKNOWN",
+      "payable": null,
+      "paid": null,
+      "remaining": null,
+      "currency": null,
+      "payments": []
+     },
+     "source": "core.logic.calculate_from_shipment over data.3.4"
+    },
+    "pxk": {
+     "source": "",
+     "sourceName": "",
+     "delivered": false,
+     "gateOpen": false,
+     "missingDeliveryFacts": [],
+     "number": "",
+     "date": "",
+     "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+     "receiver": "",
+     "role": "",
+     "done": false,
+     "document": null
+    },
+    "timeline": [
+     {
+      "time": "16/09 15:01",
+      "title": "create",
+      "desc": "staging.support",
+      "tone": "green"
+     }
+    ],
+    "ops": {
+     "financialFlag": "open",
+     "financialLabel": "Đang mở",
+     "alerts": [
+      {
+       "code": "CUSTOMER_DEADLINE_OVERDUE",
+       "severity": "critical",
+       "title": "Quá hạn khách",
+       "message": "Hạn khách 12/09/2026 đã quá 4 ngày."
+      },
+      {
+       "code": "FINANCE_ATTENTION",
+       "severity": "warning",
+       "title": "Tài chính cần theo dõi",
+       "message": "CHỜ THU"
+      }
+     ],
+     "arrivalDateLabel": "12/09/2026",
+     "freeTimeExpiryLabel": "26/09/2026",
+     "daysRemaining": 10
+    },
+    "tracking": {
+     "status": "Chờ thông quan",
+     "statusTone": "amber",
+     "carrier": "",
+     "reference": "",
+     "trackingUrl": "",
+     "hasLivePosition": false,
+     "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
+     "milestones": [
+      {
+       "time": "12/09/2026",
+       "title": "ETD — rời nơi lấy hàng",
+       "desc": "Đông Bằng (Quảng Tây)",
+       "done": true,
+       "tone": "green"
+      },
+      {
+       "time": "12/09/2026",
+       "title": "ETA — về cửa khẩu/kho đích",
+       "desc": "Hữu Nghị (Lạng Sơn)",
+       "done": false,
+       "tone": "blue"
+      }
+     ]
+    }
+   },
+   {
     "id": "LO-0295",
     "customer": "Thiên Ân JSC",
     "customerMST": "0104567890",
     "customerId": "CUST-THIENAN",
     "contract": "HDMB-0295",
-    "route": "Quảng Châu → Mộc Bài (Tây Ninh)",
-    "borderVN": "Mộc Bài (Tây Ninh)",
+    "route": "Quảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
+    "borderVN": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
     "sale": "Chưa phân công",
     "support": "staging.support",
     "status": "Đã giao",
@@ -307,7 +650,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0295?tab=lay-hang",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [],
     "docs": [
      {
@@ -336,6 +679,72 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "02/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Quảng Châu",
+      "destination": "Mộc Bài (Tây Ninh)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-04",
+      "eta": "2026-09-06",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0295",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤B·90M21",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     },
+     {
+      "id": "legacy-delivery-leg",
+      "sequence": 2,
+      "mode": "Truck",
+      "origin": "",
+      "destination": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
+      "carrier": "",
+      "etd": "2026-09-09",
+      "eta": "",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-delivery-unit",
+        "kind": "truck",
+        "number": "51D-720.44",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "Ngô Văn Hải / 0908334190",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Quảng Châu",
@@ -357,11 +766,12 @@
      "vessel": "",
      "etd": "04/09/2026",
      "pol": "Quảng Châu",
-     "pod": "Mộc Bài (Tây Ninh)",
+     "pod": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "containerNo": "粤B·90M21",
      "qtyPkg": "30 kiện / 19.800 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -379,7 +789,7 @@
      "chinaDeclNo": ""
     },
     "importInfo": {
-     "borderVN": "Mộc Bài (Tây Ninh)",
+     "borderVN": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "declarationNo": "105571288466",
      "regDate": "",
      "clearDate": "",
@@ -425,8 +835,14 @@
      ],
      "actual": [
       {
+       "id": "db476f9d-916b-4479-8d00-aa81a7d461c3",
        "label": "Cước đường bộ TQ + VN",
+       "name": "Cước đường bộ TQ + VN",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 128000000.0,
+       "price": 128000000.0,
        "cost": 119000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -434,8 +850,14 @@
        "kind": "actual"
       },
       {
+       "id": "6eecc43b-1fbc-409e-b1e8-479ed4979373",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 7400000.0,
+       "price": 7400000.0,
        "cost": 6100000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -457,7 +879,7 @@
      "profitMargin": 7.61,
      "payments": [
       {
-       "id": "PAY-44C9C567185F41E59FC8A30721862A78",
+       "id": "PAY-8C179CCDADDC4C3E9BD8185E8FBC98D2",
        "requestId": "SEED-REQ-0295-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -468,7 +890,7 @@
        "reversed": false
       },
       {
-       "id": "PAY-F680D47858CB4DA48C742530420B5D25",
+       "id": "PAY-E41CCB66E1C4474C9E4B62B06940055A",
        "requestId": "SEED-REQ-0295-2",
        "date": "08/09/2026",
        "kind": "Thu tạm ứng đợt 2",
@@ -503,11 +925,12 @@
      "place": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "receiver": "A. Kiệt",
      "role": "Thủ kho",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -526,7 +949,7 @@
      ],
      "arrivalDateLabel": "06/09/2026",
      "freeTimeExpiryLabel": "13/09/2026",
-     "daysRemaining": 2
+     "daysRemaining": -3
     },
     "tracking": {
      "status": "Đã giao",
@@ -547,7 +970,7 @@
       {
        "time": "06/09/2026",
        "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Mộc Bài (Tây Ninh)",
+       "desc": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
        "done": true,
        "tone": "blue"
       },
@@ -599,7 +1022,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0306?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -633,6 +1056,41 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "03/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Bằng Tường (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-08",
+      "eta": "2026-09-08",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0306",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤A·88T36",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Bằng Tường (Quảng Tây)",
@@ -659,6 +1117,7 @@
      "qtyPkg": "24 kiện / 18.400 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -728,8 +1187,14 @@
      ],
      "actual": [
       {
+       "id": "8e56099a-6865-498a-bb90-ae8259cf1d80",
        "label": "Cước xe TQ Bằng Tường → Hữu Nghị",
+       "name": "Cước xe TQ Bằng Tường → Hữu Nghị",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 98000000.0,
+       "price": 98000000.0,
        "cost": 91000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -737,8 +1202,14 @@
        "kind": "actual"
       },
       {
+       "id": "ed52f7f5-51d0-4a47-80e0-37480e2ed997",
        "label": "Thủ tục thông quan 2 đầu",
+       "name": "Thủ tục thông quan 2 đầu",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 6500000.0,
+       "price": 6500000.0,
        "cost": 5200000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -760,7 +1231,7 @@
      "profitMargin": 7.94,
      "payments": [
       {
-       "id": "PAY-808641B9EA7D4FC0B7ABC43BD571AD41",
+       "id": "PAY-379878E9793B4CC98EFB367446655EE4",
        "requestId": "SEED-REQ-0306-1",
        "date": "03/09/2026",
        "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
@@ -795,11 +1266,12 @@
      "place": "Kho An Phát — KCN Quế Võ, Bắc Ninh",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -818,7 +1290,7 @@
      ],
      "arrivalDateLabel": "08/09/2026",
      "freeTimeExpiryLabel": "22/09/2026",
-     "daysRemaining": 11
+     "daysRemaining": 6
     },
     "tracking": {
      "status": "Chờ thông quan",
@@ -863,7 +1335,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0307?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Đã thông quan",
      "Xe giao VN + tài xế",
@@ -896,6 +1368,41 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "04/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Nam Ninh (Quảng Tây)",
+      "destination": "Hữu Nghị → Hải Phòng",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-08",
+      "eta": "2026-09-09",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0307",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "桂A·12D78",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Nam Ninh (Quảng Tây)",
@@ -922,6 +1429,7 @@
      "qtyPkg": "40 kiện / 22.100 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -985,8 +1493,14 @@
      ],
      "actual": [
       {
+       "id": "b8c804b5-2878-4984-90b1-55efd19d431f",
        "label": "Cước đường bộ TQ + container",
+       "name": "Cước đường bộ TQ + container",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 152000000.0,
+       "price": 152000000.0,
        "cost": 141000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -994,8 +1508,14 @@
        "kind": "actual"
       },
       {
+       "id": "c5012722-8779-47cc-a94c-093a18fac1b8",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 8200000.0,
+       "price": 8200000.0,
        "cost": 6600000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -1017,7 +1537,7 @@
      "profitMargin": 7.87,
      "payments": [
       {
-       "id": "PAY-55433ED5B2084876A09667F27B979FCE",
+       "id": "PAY-CCBCEEF700624FB3B013AB0403BC7066",
        "requestId": "SEED-REQ-0307-1",
        "date": "04/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -1052,11 +1572,12 @@
      "place": "Kho Đức Long — KCN Nam Sơn, Hải Phòng",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -1075,7 +1596,7 @@
      ],
      "arrivalDateLabel": "09/09/2026",
      "freeTimeExpiryLabel": "19/09/2026",
-     "daysRemaining": 8
+     "daysRemaining": 3
     },
     "tracking": {
      "status": "Chờ thông quan",
@@ -1109,236 +1630,6 @@
       }
      ]
     }
-   },
-   {
-    "id": "LO-0308",
-    "customer": "Minh Đức JSC",
-    "customerMST": "0102345678",
-    "customerId": "CUST-MINHDUC",
-    "contract": "",
-    "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
-    "borderVN": "Hữu Nghị (Lạng Sơn)",
-    "sale": "Chưa phân công",
-    "support": "staging.support",
-    "status": "Chờ lấy hàng",
-    "statusTone": "gray",
-    "priority": "CanXuLy",
-    "nextAction": "Sắp đến hạn khách",
-    "nextActionDetail": "Còn 1 ngày đến 12/09/2026.",
-    "nextLabel": "XỬ LÝ NGAY",
-    "nextRoute": "/lo-hang/LO-0308?tab=lay-hang",
-    "updated": "11/09/2026 11:08",
-    "missingDocs": [
-     "Số tờ khai nhập khẩu",
-     "Đã thông quan",
-     "Xe giao VN + tài xế",
-     "Xác nhận đã giao hàng"
-    ],
-    "docs": [
-     {
-      "name": "Số tờ khai nhập khẩu",
-      "ok": false,
-      "note": "Chưa đăng ký tờ khai"
-     },
-     {
-      "name": "Đã thông quan",
-      "ok": false,
-      "note": "Chờ số tờ khai"
-     },
-     {
-      "name": "Xe giao VN + tài xế",
-      "ok": false,
-      "note": "Chưa đặt xe giao"
-     },
-     {
-      "name": "Xác nhận đã giao hàng",
-      "ok": false,
-      "note": "Chưa xác nhận"
-     }
-    ],
-    "version": 1,
-    "rawStatus": "wait",
-    "mode": "Truck",
-    "incoterm": "DAP",
-    "createdAt": "06/09/2026",
-    "pickup": {
-     "factory": "",
-     "address": "Đông Bằng (Quảng Tây)",
-     "contact": "",
-     "phone": "",
-     "pickupTime": "12/09/2026",
-     "truckType": "",
-     "plate": "",
-     "driver": "",
-     "driverPhone": "",
-     "eta": "12/09/2026",
-     "ata": ""
-    },
-    "transport": {
-     "bookingNo": "",
-     "carrier": "",
-     "mbl": "",
-     "hbl": "",
-     "vessel": "",
-     "etd": "12/09/2026",
-     "pol": "Đông Bằng (Quảng Tây)",
-     "pod": "Hữu Nghị (Lạng Sơn)",
-     "containerNo": "",
-     "qtyPkg": ""
-    },
-    "cargo": {
-     "packs": null,
-     "weight": null,
-     "cbm": null,
-     "dims": "",
-     "type": "",
-     "note": "",
-     "qtyPkg": ""
-    },
-    "exportInfo": {
-     "border": "Đông Bằng (Quảng Tây)",
-     "declarant": "",
-     "eta": "12/09/2026",
-     "ata": "",
-     "state": "",
-     "chinaDeclNo": ""
-    },
-    "importInfo": {
-     "borderVN": "Hữu Nghị (Lạng Sơn)",
-     "declarationNo": "",
-     "regDate": "",
-     "clearDate": "",
-     "tax": null,
-     "vat": null,
-     "inspection": "",
-     "customsStatus": false,
-     "license": "",
-     "gnt": {
-      "payer": "",
-      "taxCode": "",
-      "address": "",
-      "customsOffice": ""
-     },
-     "arrivalDate": "12/09/2026",
-     "freeTime": 14.0,
-     "truckVN": "",
-     "plateVN": "",
-     "driverVN": "",
-     "schedule": "",
-     "deliveryAddr": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
-     "receiver": "",
-     "receiverPhone": "",
-     "receiverTitle": "",
-     "deliveryLocation": "",
-     "delivered": false,
-     "actualDelivery": ""
-    },
-    "finance": {
-     "quote": [],
-     "actual": [
-      {
-       "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
-       "amount": 62000000.0,
-       "cost": 57000000.0,
-       "qty": 1.0,
-       "vat": 8.0,
-       "ccy": "VND",
-       "kind": "actual"
-      }
-     ],
-     "currency": "VND",
-     "hasActualLines": true,
-     "receivable": 66960000.0,
-     "received": 0.0,
-     "receivableNet": 62000000.0,
-     "outputVat": 4960000.0,
-     "outstanding": 66960000.0,
-     "payable": 57000000.0,
-     "paid": null,
-     "commission": 0.0,
-     "profit": 5000000.0,
-     "profitMargin": 8.06,
-     "payments": [],
-     "partner": {
-      "partnerId": "AGT-PHUANH",
-      "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
-      "suggested": true,
-      "status": "UNKNOWN",
-      "payable": null,
-      "paid": null,
-      "remaining": null,
-      "currency": null,
-      "payments": []
-     },
-     "source": "core.logic.calculate_from_shipment over data.3.4"
-    },
-    "pxk": {
-     "source": "",
-     "sourceName": "",
-     "delivered": false,
-     "gateOpen": false,
-     "missingDeliveryFacts": [],
-     "number": "",
-     "date": "",
-     "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
-     "receiver": "",
-     "role": "",
-     "done": false
-    },
-    "timeline": [
-     {
-      "time": "11/09 11:08",
-      "title": "create",
-      "desc": "staging.support",
-      "tone": "green"
-     }
-    ],
-    "ops": {
-     "financialFlag": "open",
-     "financialLabel": "Đang mở",
-     "alerts": [
-      {
-       "code": "CUSTOMER_DEADLINE_SOON",
-       "severity": "warning",
-       "title": "Sắp đến hạn khách",
-       "message": "Còn 1 ngày đến 12/09/2026."
-      },
-      {
-       "code": "FINANCE_ATTENTION",
-       "severity": "warning",
-       "title": "Tài chính cần theo dõi",
-       "message": "CHỜ THU"
-      }
-     ],
-     "arrivalDateLabel": "12/09/2026",
-     "freeTimeExpiryLabel": "26/09/2026",
-     "daysRemaining": 15
-    },
-    "tracking": {
-     "status": "Chờ lấy hàng",
-     "statusTone": "gray",
-     "carrier": "",
-     "reference": "",
-     "trackingUrl": "",
-     "hasLivePosition": false,
-     "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
-     "milestones": [
-      {
-       "time": "12/09/2026",
-       "title": "ETD — rời nơi lấy hàng",
-       "desc": "Đông Bằng (Quảng Tây)",
-       "done": true,
-       "tone": "green"
-      },
-      {
-       "time": "12/09/2026",
-       "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Hữu Nghị (Lạng Sơn)",
-       "done": false,
-       "tone": "blue"
-      }
-     ]
-    }
    }
   ],
   "home": {
@@ -1346,14 +1637,14 @@
     {
      "label": "Lô đang chạy",
      "value": 4,
-     "sub": "LO-0299, LO-0306, LO-0307, LO-0308",
+     "sub": "LO-0299, LO-0308, LO-0306, LO-0307",
      "to": "/lo-hang"
     },
     {
      "label": "Chờ lấy hàng",
-     "value": 1,
-     "sub": "LO-0308",
-     "to": "/lo-hang/LO-0308"
+     "value": 0,
+     "sub": "—",
+     "to": "/lo-hang"
     },
     {
      "label": "Đang vận chuyển",
@@ -1363,9 +1654,9 @@
     },
     {
      "label": "Chờ thông quan",
-     "value": 2,
-     "sub": "LO-0306, LO-0307",
-     "to": "/lo-hang/LO-0306"
+     "value": 3,
+     "sub": "LO-0308, LO-0306, LO-0307",
+     "to": "/lo-hang/LO-0308"
     },
     {
      "label": "Chờ giao",
@@ -1390,6 +1681,13 @@
      "to": "/lo-hang/LO-0299"
     },
     {
+     "id": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "status": "Chờ thông quan",
+     "nextAction": "Quá hạn khách",
+     "to": "/lo-hang/LO-0308"
+    },
+    {
      "id": "LO-0306",
      "customer": "An Phát JSC",
      "status": "Chờ thông quan",
@@ -1402,13 +1700,6 @@
      "status": "Chờ thông quan",
      "nextAction": "Tài chính cần theo dõi",
      "to": "/lo-hang/LO-0307"
-    },
-    {
-     "id": "LO-0308",
-     "customer": "Minh Đức JSC",
-     "status": "Chờ lấy hàng",
-     "nextAction": "Sắp đến hạn khách",
-     "to": "/lo-hang/LO-0308"
     }
    ],
    "outstandingTotal": 260588000.0,
@@ -1416,19 +1707,19 @@
    "outstandingCount": 5,
    "summary": {
     "total": 5,
-    "critical": 1,
-    "warning": 4,
+    "critical": 2,
+    "warning": 3,
     "deadlineSoon": 2,
     "financialAttention": 5,
     "missingInfo": 0
    },
-   "urgentCount": 1,
+   "urgentCount": 2,
    "focus": {
     "id": "LO-0299",
     "customer": "Hồng Hà Co.",
     "status": "Chờ giao",
     "nextAction": "Quá hạn khách",
-    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "priority": "Khan",
     "to": "/lo-hang/LO-0299?tab=nhap"
    },
@@ -1444,10 +1735,24 @@
     "job": "Quá hạn khách",
     "assignee": "staging.support",
     "due": "06/09/2026",
-    "dueNote": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "dueNote": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "status": "Chờ giao",
     "statusTone": "blue",
     "route": "/lo-hang/LO-0299?tab=nhap",
+    "source": "core.shipment_dashboard (readiness/alerts)"
+   },
+   {
+    "id": "OPS-LO-0308",
+    "level": "Khan",
+    "lot": "LO-0308",
+    "customer": "Minh Đức JSC",
+    "job": "Quá hạn khách",
+    "assignee": "staging.support",
+    "due": "12/09/2026",
+    "dueNote": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "status": "Chờ thông quan",
+    "statusTone": "amber",
+    "route": "/lo-hang/LO-0308?tab=nhap",
     "source": "core.shipment_dashboard (readiness/alerts)"
    },
    {
@@ -1521,20 +1826,6 @@
     "source": "core.shipment_dashboard (readiness/alerts)"
    },
    {
-    "id": "OPS-LO-0308",
-    "level": "CanXuLy",
-    "lot": "LO-0308",
-    "customer": "Minh Đức JSC",
-    "job": "Sắp đến hạn khách",
-    "assignee": "staging.support",
-    "due": "12/09/2026",
-    "dueNote": "Còn 1 ngày đến 12/09/2026.",
-    "status": "Chờ lấy hàng",
-    "statusTone": "gray",
-    "route": "/lo-hang/LO-0308?tab=lay-hang",
-    "source": "core.shipment_dashboard (readiness/alerts)"
-   },
-   {
     "id": "TASK-0308-XE",
     "level": "CanXuLy",
     "lot": "LO-0308",
@@ -1567,6 +1858,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -1598,13 +1890,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -1656,6 +1942,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -1691,6 +1980,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -1722,13 +2012,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -1780,6 +2064,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -1815,6 +2102,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -1846,13 +2134,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -1904,6 +2186,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -2008,6 +2293,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -2040,6 +2328,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -2072,6 +2363,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -2083,8 +2377,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-AD272824",
-    "quoteNo": "QT-20260911-AD272824",
+    "id": "Q-20260916-0531E83B",
+    "quoteNo": "QT-20260916-0531E83B",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
     "salesOwner": "Minh Tú",
@@ -2104,6 +2398,13 @@
     "estimatedMarginVnd": 3800000.0,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {
+     "USD": 25500.0,
+     "CNY": 3500.0,
+     "VND": 1.0
+    },
+    "fxSource": "Tỷ giá nhập khi báo giá.",
+    "fxNeededFor": [],
     "serviceLines": [
      {
       "code": "DV-VC-TQ",
@@ -2141,19 +2442,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "Minh Tú"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "READY_FOR_REVIEW",
       "to": "ACCEPTED",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2165,8 +2466,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-273008BD",
-    "quoteNo": "QT-20260911-273008BD",
+    "id": "Q-20260916-71E5DB93",
+    "quoteNo": "QT-20260916-71E5DB93",
     "customerId": "CUST-DUCLONG",
     "customer": "Đức Long Co.",
     "salesOwner": "Thu Hằng",
@@ -2186,6 +2487,13 @@
     "estimatedMarginVnd": 4800000.0,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {
+     "USD": 25500.0,
+     "CNY": 3500.0,
+     "VND": 1.0
+    },
+    "fxSource": "Tỷ giá nhập khi báo giá.",
+    "fxNeededFor": [],
     "serviceLines": [
      {
       "code": "DV-VC-TQ",
@@ -2223,13 +2531,13 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "Thu Hằng"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2246,16 +2554,16 @@
   ],
   "agreements": [
    {
-    "id": "AGR-20260911-EC3CEB52",
-    "agreementNo": "AG-20260911-EC3CEB52",
+    "id": "AGR-20260916-BF98E2E2",
+    "agreementNo": "AG-20260916-BF98E2E2",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
-    "quoteId": "Q-20260911-AD272824",
-    "quoteReference": "QT-20260911-AD272824",
+    "quoteId": "Q-20260916-0531E83B",
+    "quoteReference": "QT-20260916-0531E83B",
     "status": "AGREED",
     "statusLabel": "Đã đồng ý",
     "version": 3,
-    "effectiveDate": "2026-09-11",
+    "effectiveDate": "2026-09-16",
     "commercialSnapshot": {
      "origin": "Bằng Tường (Quảng Tây)",
      "destination": "KCN Quế Võ, Bắc Ninh",
@@ -2365,19 +2673,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "DRAFT",
       "to": "REVIEWING",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "REVIEWING",
       "to": "AGREED",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -2432,16 +2740,24 @@
    {
     "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0299 · Quá hạn khách",
-    "desc": "Hạn khách 08/09/2026 đã quá 3 ngày.",
-    "time": "11/09/2026 11:08",
+    "desc": "Hạn khách 08/09/2026 đã quá 8 ngày.",
+    "time": "16/09/2026 15:01",
     "tone": "red",
     "route": "/lo-hang/LO-0299?tab=nhap"
+   },
+   {
+    "id": "LO-0308-CUSTOMER_DEADLINE_OVERDUE",
+    "title": "LO-0308 · Quá hạn khách",
+    "desc": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "time": "16/09/2026 15:01",
+    "tone": "red",
+    "route": "/lo-hang/LO-0308?tab=nhap"
    },
    {
     "id": "LO-0295-FINANCE_ATTENTION",
     "title": "LO-0295 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0295?tab=lay-hang"
    },
@@ -2449,7 +2765,7 @@
     "id": "LO-0306-FINANCE_ATTENTION",
     "title": "LO-0306 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0306?tab=nhap"
    },
@@ -2457,17 +2773,9 @@
     "id": "LO-0307-FINANCE_ATTENTION",
     "title": "LO-0307 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0307?tab=nhap"
-   },
-   {
-    "id": "LO-0308-CUSTOMER_DEADLINE_SOON",
-    "title": "LO-0308 · Sắp đến hạn khách",
-    "desc": "Còn 1 ngày đến 12/09/2026.",
-    "time": "11/09/2026 11:08",
-    "tone": "amber",
-    "route": "/lo-hang/LO-0308?tab=lay-hang"
    }
   ],
   "receivables": {
@@ -2484,6 +2792,20 @@
      "support": "staging.support",
      "status": "Chờ giao",
      "statusTone": "blue",
+     "hasActualLines": true
+    },
+    {
+     "id": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "customerId": "CUST-MINHDUC",
+     "currency": "VND",
+     "receivable": 66960000.0,
+     "received": 0.0,
+     "outstanding": 66960000.0,
+     "sale": "Chưa phân công",
+     "support": "staging.support",
+     "status": "Chờ thông quan",
+     "statusTone": "amber",
      "hasActualLines": true
     },
     {
@@ -2526,20 +2848,6 @@
      "support": "staging.support",
      "status": "Chờ thông quan",
      "statusTone": "amber",
-     "hasActualLines": true
-    },
-    {
-     "id": "LO-0308",
-     "customer": "Minh Đức JSC",
-     "customerId": "CUST-MINHDUC",
-     "currency": "VND",
-     "receivable": 66960000.0,
-     "received": 0.0,
-     "outstanding": 66960000.0,
-     "sale": "Chưa phân công",
-     "support": "staging.support",
-     "status": "Chờ lấy hàng",
-     "statusTone": "gray",
      "hasActualLines": true
     }
    ],
@@ -2637,23 +2945,69 @@
     "statusCounts": [
      {
       "status": "Chờ giao",
-      "count": 1
-     },
-     {
-      "status": "Đã giao",
-      "count": 1
+      "count": 1,
+      "share": 0.2
      },
      {
       "status": "Chờ thông quan",
-      "count": 2
+      "count": 3,
+      "share": 0.6
      },
      {
-      "status": "Chờ lấy hàng",
-      "count": 1
+      "status": "Đã giao",
+      "count": 1,
+      "share": 0.2
      }
     ],
     "actionableTaskCount": 8
    },
+   "actionables": [
+    {
+     "id": "OPS-LO-0299",
+     "level": "Khan",
+     "shipmentId": "LO-0299",
+     "customer": "Hồng Hà Co.",
+     "job": "Quá hạn khách",
+     "detail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
+     "route": "/lo-hang/LO-0299?tab=nhap"
+    },
+    {
+     "id": "OPS-LO-0308",
+     "level": "Khan",
+     "shipmentId": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "job": "Quá hạn khách",
+     "detail": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+     "route": "/lo-hang/LO-0308?tab=nhap"
+    },
+    {
+     "id": "OPS-LO-0295",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0295",
+     "customer": "Thiên Ân JSC",
+     "job": "Tài chính cần theo dõi",
+     "detail": "CHỜ THU",
+     "route": "/lo-hang/LO-0295?tab=chung-tu"
+    },
+    {
+     "id": "TASK-0295-THU",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0295",
+     "customer": "Thiên Ân JSC",
+     "job": "Thu nốt công nợ lô LO-0295",
+     "detail": "Việc được giao",
+     "route": "/lo-hang/LO-0295?tab=lay-hang"
+    },
+    {
+     "id": "OPS-LO-0306",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0306",
+     "customer": "An Phát JSC",
+     "job": "Tài chính cần theo dõi",
+     "detail": "CHỜ THU",
+     "route": "/lo-hang/LO-0306?tab=nhap"
+    }
+   ],
    "receivables": {
     "positions": [
      {
@@ -2674,6 +3028,52 @@
     "status": "UNKNOWN",
     "error": null
    },
+   "financeActual": {
+    "positions": [
+     {
+      "currency": "VND",
+      "revenueNet": 556100000.0,
+      "cost": 510200000.0,
+      "profit": 45900000.0,
+      "marginPct": 8.25,
+      "rowCount": 5,
+      "incompleteRowCount": 0
+     }
+    ],
+    "available": true
+   },
+   "topCustomers": [
+    {
+     "currency": "VND",
+     "customers": [
+      {
+       "name": "Đức Long Co.",
+       "revenueNet": 160200000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Thiên Ân JSC",
+       "revenueNet": 135400000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "An Phát JSC",
+       "revenueNet": 104500000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Hồng Hà Co.",
+       "revenueNet": 94000000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Minh Đức JSC",
+       "revenueNet": 62000000.0,
+       "shipmentCount": 1
+      }
+     ]
+    }
+   ],
    "finance": {
     "incompleteShipmentCount": 0
    },
@@ -2710,6 +3110,974 @@
    "unavailable": [
     "Chỉ hiển thị vị thế hiện tại có nguồn dữ liệu; không tạo chỉ số thay thế.",
     "Không có quy đổi tiền tệ, mục tiêu, dự báo hoặc xu hướng trên trang này."
+   ]
+  },
+  "handbook": {
+   "classification": "STATIC_CONTENT_READY",
+   "readOnly": true,
+   "sections": [
+    {
+     "id": "quy-trinh",
+     "label": "Luồng lô hàng",
+     "icon": "truck",
+     "lead": "Trạng thái và khung dữ liệu mà chính ứng dụng đang dùng cho một lô.",
+     "provenance": {
+      "source": "core/config.py · views/logi_view_model.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Giá trị nguyên bản từ hằng số đang chạy trong app; đây là tài liệu tham chiếu của hệ thống, không phải quy định bên ngoài."
+     },
+     "entries": [
+      {
+       "id": "trang-thai",
+       "title": "Bốn trạng thái lô hàng",
+       "summary": "Danh sách trạng thái hợp lệ và nhãn app hiển thị cho từng trạng thái.",
+       "bullets": [
+        "Không có trạng thái thứ năm: bộ lọc và kiểm tra của app chỉ nhận các mã ở bảng này."
+       ],
+       "table": {
+        "columns": [
+         "Mã trong hệ thống",
+         "Nhãn việc cần làm",
+         "Nhãn trạng thái lô"
+        ],
+        "rows": [
+         [
+          "wait",
+          "Chưa xử lý",
+          "Chờ chứng từ"
+         ],
+         [
+          "pending",
+          "Đang xử lý",
+          "Đang thông quan/Giao hàng"
+         ],
+         [
+          "done",
+          "Hoàn thành",
+          "Hoàn thành"
+         ],
+         [
+          "cancel",
+          "Đã hủy",
+          "Đã hủy"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Việc Cần Xử Lý",
+         "href": "/viec-can-xu-ly"
+        }
+       ],
+       "tags": [
+        "trạng thái",
+        "workflow"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "nganh-du-lieu",
+       "title": "Mỗi giai đoạn lưu trường nào",
+       "summary": "Bộ trường một lô hàng được tổ chức theo nhánh dữ liệu. Danh sách này lấy đúng từ whitelist mà mọi thao tác sửa đang đi qua.",
+       "bullets": [
+        "Ngoài danh sách này, không có trường nào khác được cập nhật từ màn hình.",
+        "Số liệu chưa có vẫn để trống — app không thay thế bằng 0."
+       ],
+       "table": {
+        "columns": [
+         "Nhánh dữ liệu",
+         "Trường được phép cập nhật"
+        ],
+        "rows": [
+         [
+          "data.0.0",
+          "created_at, incoterm, mode"
+         ],
+         [
+          "data.1.2",
+          "booking_no, carrier, container_no, etd, hbl, mbl, pickup_truck_type, pod, pol, qty_pkg, vessel"
+         ],
+         [
+          "data.2.4",
+          "customs_status, import_duty_amount, import_vat_amount, phan_luong, tk_date, tk_no"
+         ],
+         [
+          "data.2.6",
+          "arrival_date, free_time"
+         ],
+         [
+          "data.2.7",
+          "addr, delivery_date, delivery_location, phone_receiver, receiver_name, receiver_title, seal_no, truck_no"
+         ],
+         [
+          "(đỉnh lô hàng)",
+          "status"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Chi Tiết Lô 360°",
+         "href": "/lo-hang"
+        }
+       ],
+       "tags": [
+        "dữ liệu",
+        "nhập liệu"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "chung-tu",
+     "label": "Chứng từ",
+     "icon": "filecheck",
+     "lead": "Khung kiểm tra chứng từ và các quy tắc sinh chứng từ đã chốt trong app.",
+     "provenance": {
+      "source": "views/logi_real_data.py · core/docgen/rules.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Quy tắc sinh chứng từ là RULE NỘI BỘ đã chốt cho bộ sinh chứng từ (LOG-DOCGEN-01 V1) — không phải hướng dẫn nghiệp vụ hải quan hay quy định pháp luật."
+     },
+     "entries": [
+      {
+       "id": "kiem-tra-chung-tu",
+       "title": "Bốn mục kiểm tra của một lô nhập",
+       "summary": "Khung checklist mà hệ thống tự đánh giá cho từng lô. Trạng thái thật của mỗi lô hiển thị trong Chi Tiết Lô 360°.",
+       "bullets": [
+        "Bảng này liệt kê KHUNG kiểm tra; cột bên phải là mặc định khi chưa có dữ liệu, không phải trạng thái của một lô cụ thể."
+       ],
+       "table": {
+        "columns": [
+         "Mục kiểm tra",
+         "Mặc định khi lô chưa có dữ liệu"
+        ],
+        "rows": [
+         [
+          "Số tờ khai nhập khẩu",
+          "Chưa đăng ký tờ khai"
+         ],
+         [
+          "Đã thông quan",
+          "Chờ số tờ khai"
+         ],
+         [
+          "Xe giao VN + tài xế",
+          "Chưa đặt xe giao"
+         ],
+         [
+          "Xác nhận đã giao hàng",
+          "Chưa xác nhận"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Việc Cần Xử Lý",
+         "href": "/viec-can-xu-ly"
+        }
+       ],
+       "tags": [
+        "chứng từ",
+        "checklist",
+        "nhập khẩu"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "chung-tu-sinh",
+       "title": "Chứng từ bộ sinh tạo ra",
+       "summary": "Bốn loại chứng từ và trường định danh pháp lý của từng loại.",
+       "bullets": [
+        "Loại áp dụng cho hợp đồng: HDNT, PL, HDMB",
+        "Số dòng tối đa — HDMB: 1 · Phụ lục: 18",
+        "Trạng thái bộ sinh: READY, MISSING_INFO, NOT_APPLICABLE, OWNER_RULE_REQUIRED, BLOCKED",
+        "Trạng thái bản soạn: DRAFT, GENERATED, ISSUED"
+       ],
+       "table": {
+        "columns": [
+         "Loại",
+         "Tên chứng từ",
+         "Trường số",
+         "Trường ngày"
+        ],
+        "rows": [
+         [
+          "HDNT",
+          "Hợp đồng nguyên tắc",
+          "hdnt_no",
+          "hdnt_date"
+         ],
+         [
+          "PL",
+          "Phụ lục Hợp đồng",
+          "pl_no",
+          "pl_date"
+         ],
+         [
+          "HDMB",
+          "Hợp đồng mua bán",
+          "hdmb_no",
+          "hdmb_date"
+         ],
+         [
+          "PXK",
+          "Phiếu xuất kho",
+          "pxk_no",
+          "pxk_date"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Hợp Đồng",
+         "href": "/hop-dong"
+        }
+       ],
+       "tags": [
+        "docgen",
+        "hợp đồng",
+        "chứng từ"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "dich-vu",
+     "label": "Dịch vụ & mã phí",
+     "icon": "calc",
+     "lead": "Danh mục mã dịch vụ dùng khi nhập/xuất file GetFly, và bộ Incoterm app cho phép.",
+     "provenance": {
+      "source": "core/config.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Danh mục mã do app dùng cho luồng GetFly; Incoterm chỉ là tập mã được chấp nhận khi nhập — repo không chứa nội dung giải thích quy tắc Incoterms, nên trang này không tự đặt ra."
+     },
+     "entries": [
+      {
+       "id": "ma-dich-vu",
+       "title": "Mã dịch vụ GetFly (27 mã)",
+       "summary": "Mã · tên dịch vụ · đơn vị tính · nhóm, đúng như danh mục đang chạy.",
+       "bullets": [],
+       "table": {
+        "columns": [
+         "Mã",
+         "Tên dịch vụ",
+         "Đơn vị",
+         "Nhóm"
+        ],
+        "rows": [
+         [
+          "DVK",
+          "Phí dịch vụ khác",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "VCND 40",
+          "Vận chuyển nội địa cont 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "DH",
+          "Đóng hộ",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "BHHH",
+          "Bảo hiểm hàng hóa",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOFLCL",
+          "Cước biển hàng LCL nhập khẩu (M3)",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKAF",
+          "Cước vận chuyển quốc tế hàng không (AF) hàng xuất",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKAF",
+          "Cước vận chuyển quốc tế hàng không (air) hàng NK",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "CNHQ",
+          "Chứng nhận hợp quy",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOFLCL",
+          "Cước vận tải biển quốc tế hàng lẻ (LCL) xuất khẩu",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOF20",
+          "Cước vận tải biển quốc tế hàng NK cont 20",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOF40",
+          "Cước vận tải biển quốc tế hàng NK cont 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOF40",
+          "Cước vận tải biển quốc tế hàng xuất container 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOF20",
+          "Cước vận tải biển quốc tế hàng xuất container 20",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "TQ",
+          "Dịch vụ thông quan",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "DDC",
+          "Door - to - door",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "LCC",
+          "Local charges (Phụ phí tại cảng)",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "LCX",
+          "Lưu ca xe",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "EXW",
+          "Phí EXWORK",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NH",
+          "Nâng hạ",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "PKH",
+          "Phí kiểm hóa",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "TTHQ",
+          "Thủ tục hải quan",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "GP",
+          "Giấy phép",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "HT",
+          "Hun trùng",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "HHNKUT",
+          "Tiền hàng NK ủy thác",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "KD",
+          "Kiểm dịch",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "KTCL",
+          "Kiểm tra chất lượng",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "CO",
+          "Xin C/O",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Kinh doanh · Báo giá",
+         "href": "/kinh-doanh-bao-gia"
+        }
+       ],
+       "tags": [
+        "getfly",
+        "báo giá",
+        "mã phí"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "incoterm",
+       "title": "Incoterm hệ thống ghi nhận",
+       "summary": "Các mã Incoterm mà app cho phép lưu trên lô hàng và báo giá.",
+       "bullets": [
+        "Đây là danh sách giá trị nhập liệu của app, KHÔNG phải định nghĩa hay quy tắc pháp lý của Incoterms — repo không chứa nguồn đó."
+       ],
+       "table": {
+        "columns": [
+         "Incoterm"
+        ],
+        "rows": [
+         [
+          "EXW"
+         ],
+         [
+          "FCA"
+         ],
+         [
+          "FAS"
+         ],
+         [
+          "FOB"
+         ],
+         [
+          "CFR"
+         ],
+         [
+          "CIF"
+         ],
+         [
+          "CPT"
+         ],
+         [
+          "CIP"
+         ],
+         [
+          "DAP"
+         ],
+         [
+          "DPU"
+         ],
+         [
+          "DDP"
+         ]
+        ]
+       },
+       "links": [],
+       "tags": [
+        "incoterm",
+        "nhập liệu"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "hai-quan",
+     "label": "Hải quan · tham chiếu",
+     "icon": "scale",
+     "lead": "Điểm truy cập nguồn chính thức Việt Nam mà hệ thống đăng ký — kèm trạng thái chứng cứ thật của từng nguồn.",
+     "provenance": {
+      "source": "core/trade_compliance/source_registry.json · logistics.trade_compliance.authoritative_sources",
+      "version": "0.1.0",
+      "updated": null,
+      "owner": null,
+      "note": "Danh mục đăng ký nguồn (discovery) — chưa truy xuất, không chứa thuế suất hay kết luận pháp lý. Không mục nào ở đây được coi là xác nhận chính thức cho một lô hàng cụ thể."
+     },
+     "entries": [
+      {
+       "id": "nguon-chinh-thuc",
+       "title": "Điểm truy cập chính thức (3 nguồn)",
+       "summary": "Trạng thái `NOT_RETRIEVED` nghĩa là hệ thống chưa lấy và chưa xác minh nội dung của nguồn này.",
+       "bullets": [
+        "Số hóa nguồn sống trong registry: TẮT.",
+        "Thuế suất/HS cụ thể phải tra ở mục Tra cứu thuế / HS, không suy ra từ đây."
+       ],
+       "table": {
+        "columns": [
+         "Khu vực pháp lý",
+         "Cơ quan",
+         "URL",
+         "Phạm vi",
+         "Trạng thái chứng cứ"
+        ],
+        "rows": [
+         [
+          "VN",
+          "Vietnam Trade Information Portal",
+          "https://vietnamtradeportal.gov.vn/",
+          "Vietnam import/export procedures and regulatory information",
+          "NOT_RETRIEVED"
+         ],
+         [
+          "VN",
+          "Vietnam Customs",
+          "https://www.customs.gov.vn/",
+          "Vietnam customs administration and official customs information",
+          "NOT_RETRIEVED"
+         ],
+         [
+          "VN",
+          "Vietnam Government legal-document portal",
+          "https://vanban.chinhphu.vn/",
+          "Official Vietnamese legal instruments and government documents",
+          "NOT_RETRIEVED"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Tra cứu thuế / HS",
+         "href": "/tra-cuu-thue"
+        }
+       ],
+       "tags": [
+        "hải quan",
+        "nguồn",
+        "trade compliance"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "cong-cu",
+     "label": "Công cụ & phân quyền",
+     "icon": "search",
+     "lead": "Liên kết tracking hãng tàu app dùng, và ma trận quyền duy nhất theo vai trò.",
+     "provenance": {
+      "source": "core/config.py · core/auth.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Liên kết tracking là mẫu URL cấu hình sẵn (`{ref}` = số vận đơn/container). Ma trận quyền là CHÍNH SÁCH server-side; UI chỉ hiển thị."
+     },
+     "entries": [
+      {
+       "id": "tracking",
+       "title": "Liên kết theo dõi theo hãng tàu (12)",
+       "summary": "Mẫu URL app dùng khi dựng link theo dõi container/vận đơn.",
+       "bullets": [],
+       "table": {
+        "columns": [
+         "Hãng tàu / hãng chuyển phát",
+         "Mẫu URL"
+        ],
+        "rows": [
+         [
+          "Maersk",
+          "https://www.maersk.com/tracking/{ref}"
+         ],
+         [
+          "MSC",
+          "https://www.msc.com/track-a-shipment?agencyPath=usa&trackingNumber={ref}"
+         ],
+         [
+          "CMA CGM",
+          "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&Reference={ref}"
+         ],
+         [
+          "COSCO",
+          "https://elines.coscoshipping.com/ebusiness/cargoTracking?trackingType=CONTAINER&number={ref}"
+         ],
+         [
+          "Evergreen",
+          "https://ct.shipmentlink.com/servlet/TDB1_CargoTracking.do?TYPE=BL&BL={ref}"
+         ],
+         [
+          "ONE",
+          "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking?trakNoParam={ref}"
+         ],
+         [
+          "Hapag-Lloyd",
+          "https://www.hapag-lloyd.com/en/online-business/track/track-by-container-solution.html?container={ref}"
+         ],
+         [
+          "Wan Hai",
+          "https://www.wanhai.com/views/cargoTrack/CargoTrack.xhtml?refNo={ref}"
+         ],
+         [
+          "SITC",
+          "https://www.sitc.com/track?number={ref}"
+         ],
+         [
+          "DHL",
+          "https://www.dhl.com/global-en/home/tracking.html?tracking-id={ref}"
+         ],
+         [
+          "FedEx",
+          "https://www.fedex.com/fedextrack/?trknbr={ref}"
+         ],
+         [
+          "UPS",
+          "https://www.ups.com/track?tracknum={ref}"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Theo Dõi",
+         "href": "/theo-doi"
+        }
+       ],
+       "tags": [
+        "tracking",
+        "hãng tàu"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "phan-quyen",
+       "title": "Ai được làm gì (ma trận vai trò)",
+       "summary": "Quyền theo vai trò, đúng như `ROLE_PERMISSIONS` đang chạy.",
+       "bullets": [
+        "admin = `*` (toàn quyền); các vai trò khác chỉ có quyền liệt kê ở đây.",
+        "Role switcher trên thanh bên chỉ để xem — ranh giới thật là core.auth ở server."
+       ],
+       "table": {
+        "columns": [
+         "Vai trò",
+         "Quyền"
+        ],
+        "rows": [
+         [
+          "accounting",
+          "contracts, customers, dashboard, entrustment, finance_view, knowledge, proxy_payment, receivables, reports, shipment_edit"
+         ],
+         [
+          "admin",
+          "*"
+         ],
+         [
+          "operations",
+          "contracts, customers, dashboard, knowledge, operations_write, shipment_create, shipment_edit, tariff, tracking"
+         ],
+         [
+          "sale",
+          "commercial_view, commercial_write, contracts, customers, dashboard, entity_context, knowledge, sales, sales_write, shipment_360_read, shipment_create, shipment_edit, tariff, tracking, translation"
+         ],
+         [
+          "sales",
+          "commercial_view, contracts, customers, dashboard, knowledge, sales, sales_write, shipment_create, shipment_edit, tracking"
+         ],
+         [
+          "support",
+          "commercial_view, commercial_write, contracts, customers, dashboard, entity_context, entrustment, finance_view, finance_write, knowledge, operations_write, proxy_payment, receivables, reports, sales, sales_write, shipment_360_read, shipment_create, shipment_edit, tariff, tracking, translation"
+         ],
+         [
+          "viewer",
+          "commercial_view, dashboard, finance_view, knowledge, reports, tracking"
+         ]
+        ]
+       },
+       "links": [],
+       "tags": [
+        "rbac",
+        "vai trò"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "ghi-chu",
+     "label": "Ghi chú đội ngũ",
+     "icon": "book",
+     "lead": "Kho ghi chú kinh nghiệm chung của đội, đọc từ cùng một nguồn mà màn hình Sổ tay cũ dùng.",
+     "provenance": {
+      "source": "core/database.load_knowledge_base · views/knowledge_base.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Sổ tay kinh nghiệm của đội ngũ. Trang này chỉ đọc: thêm/sửa/xóa vẫn nằm ở màn hình Streamlit cũ, và Sổ tay không tạo nội dung thay thế."
+     },
+     "entries": [],
+     "state": {
+      "tone": "gray",
+      "text": "Cơ sở dữ liệu đang dùng chưa có ghi chú nào. Sổ tay hiển thị đúng trạng thái này và không tự soạn nội dung thay thế."
+     }
+    }
+   ],
+   "counts": {
+    "sectionCount": 6,
+    "availableSectionCount": 5,
+    "entryCount": 9,
+    "noteCount": 0,
+    "noteTotal": 0
+   },
+   "unavailable": [
+    "Không có nội dung hướng dẫn từng bước (tutorial) — repo không chứa nguồn đó, nên trang không tự viết ra.",
+    "Không có quy tắc Incoterms, quy định hải quan, thuế suất hay tư vấn pháp lý; chỉ có danh mục giá trị/danh mục nguồn mà app đang dùng.",
+    "Không có bộ máy soạn thảo, phiên bản, duyệt bài hay tìm kiếm toàn văn trong trang này; bộ lọc chỉ là so khớp chữ trên dữ liệu đã tải."
+   ],
+   "sectionsUnavailable": [
+    "Ghi chú đội ngũ"
+   ],
+   "sectionsAvailable": [
+    "Luồng lô hàng",
+    "Chứng từ",
+    "Dịch vụ & mã phí",
+    "Hải quan · tham chiếu",
+    "Công cụ & phân quyền"
+   ]
+  },
+  "userAccess": {
+   "classification": "READ_ONLY_READY",
+   "readOnly": true,
+   "canManage": false,
+   "authMode": {
+    "required": false,
+    "mode": "local_admin",
+    "label": "Local Admin (một tài khoản cục bộ)",
+    "note": "AUTH_REQUIRED đang tắt: ứng dụng chạy với một tài khoản cục bộ (local-admin) có vai trò admin. Đây KHÔNG phải đăng nhập đa người dùng thực sự; trang này hiển thị trung thực chế độ hiện có, không tự ý nâng cấp thành hệ thống xác thực mới."
+   },
+   "currentUser": {
+    "present": true,
+    "username": "staging.support",
+    "displayName": "Thu Hằng (Preview/Staging)",
+    "role": "support",
+    "permissions": [
+     "commercial_view",
+     "commercial_write",
+     "contracts",
+     "customers",
+     "dashboard",
+     "entity_context",
+     "entrustment",
+     "finance_view",
+     "finance_write",
+     "knowledge",
+     "operations_write",
+     "proxy_payment",
+     "receivables",
+     "reports",
+     "sales",
+     "sales_write",
+     "shipment_360_read",
+     "shipment_create",
+     "shipment_edit",
+     "tariff",
+     "tracking",
+     "translation"
+    ],
+    "wildcard": false
+   },
+   "users": [
+    {
+     "user_id": "admin",
+     "username": "admin",
+     "display_name": "admin",
+     "email": "",
+     "role": "ADMIN",
+     "active": true
+    },
+    {
+     "user_id": "minhtu",
+     "username": "minhtu",
+     "display_name": "minhtu",
+     "email": "",
+     "role": "SALE",
+     "active": true
+    },
+    {
+     "user_id": "thuhang",
+     "username": "thuhang",
+     "display_name": "thuhang",
+     "email": "",
+     "role": "SUPPORT",
+     "active": true
+    }
+   ],
+   "roles": {
+    "assignable": [
+     "admin",
+     "sale",
+     "support"
+    ],
+    "legacy": [
+     "accounting",
+     "operations",
+     "sales",
+     "viewer"
+    ],
+    "source": "core.users.SUPPORTED_ROLES + core.auth.ROLE_PERMISSIONS"
+   },
+   "permissionMatrix": [
+    {
+     "role": "admin",
+     "permissions": [
+      "*"
+     ],
+     "wildcard": true,
+     "permissionCount": 1
+    },
+    {
+     "role": "sale",
+     "permissions": [
+      "commercial_view",
+      "commercial_write",
+      "contracts",
+      "customers",
+      "dashboard",
+      "entity_context",
+      "knowledge",
+      "sales",
+      "sales_write",
+      "shipment_360_read",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking",
+      "translation"
+     ],
+     "wildcard": false,
+     "permissionCount": 15
+    },
+    {
+     "role": "support",
+     "permissions": [
+      "commercial_view",
+      "commercial_write",
+      "contracts",
+      "customers",
+      "dashboard",
+      "entity_context",
+      "entrustment",
+      "finance_view",
+      "finance_write",
+      "knowledge",
+      "operations_write",
+      "proxy_payment",
+      "receivables",
+      "reports",
+      "sales",
+      "sales_write",
+      "shipment_360_read",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking",
+      "translation"
+     ],
+     "wildcard": false,
+     "permissionCount": 22
+    },
+    {
+     "role": "accounting",
+     "permissions": [
+      "contracts",
+      "customers",
+      "dashboard",
+      "entrustment",
+      "finance_view",
+      "knowledge",
+      "proxy_payment",
+      "receivables",
+      "reports",
+      "shipment_edit"
+     ],
+     "wildcard": false,
+     "permissionCount": 10
+    },
+    {
+     "role": "operations",
+     "permissions": [
+      "contracts",
+      "customers",
+      "dashboard",
+      "knowledge",
+      "operations_write",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 9
+    },
+    {
+     "role": "sales",
+     "permissions": [
+      "commercial_view",
+      "contracts",
+      "customers",
+      "dashboard",
+      "knowledge",
+      "sales",
+      "sales_write",
+      "shipment_create",
+      "shipment_edit",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 10
+    },
+    {
+     "role": "viewer",
+     "permissions": [
+      "commercial_view",
+      "dashboard",
+      "finance_view",
+      "knowledge",
+      "reports",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 6
+    }
+   ],
+   "counts": {
+    "userCount": 3,
+    "userShown": 3,
+    "activeCount": 3,
+    "inactiveCount": 0,
+    "roleCount": 7,
+    "assignableRoleCount": 3
+   },
+   "unavailable": [
+    "Trang này CHỈ ĐỌC với vai trò hiện tại: không tạo / sửa / khóa tài khoản, không đổi mật khẩu, không gán vai trò. Các thao tác ghi chỉ dành cho Admin và luôn được core.database kiểm tra lại phía máy chủ.",
+    "Không hiện mật khẩu, hash mật khẩu, token hay bất kỳ dữ liệu bí mật nào — danh sách tài khoản dùng đúng public view chuẩn của core.users.",
+    "Không thêm vai trò mới hay quyền mới: ma trận dưới đây là nguyên văn ROLE_PERMISSIONS của core.auth.",
+    "Không có thao tác xóa tài khoản (hard delete) — chỉ vô hiệu hóa / kích hoạt lại, giữ nguyên lịch sử."
    ]
   },
   "tariff": {
@@ -2797,10 +4165,188 @@
    "request": null,
    "result": null
   },
+  "financeServiceCatalog": [
+   {
+    "code": "DVK",
+    "name": "Phí dịch vụ khác",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "VCND 40",
+    "name": "Vận chuyển nội địa cont 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "DH",
+    "name": "Đóng hộ",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "BHHH",
+    "name": "Bảo hiểm hàng hóa",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOFLCL",
+    "name": "Cước biển hàng LCL nhập khẩu (M3)",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKAF",
+    "name": "Cước vận chuyển quốc tế hàng không (AF) hàng xuất",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKAF",
+    "name": "Cước vận chuyển quốc tế hàng không (air) hàng NK",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "CNHQ",
+    "name": "Chứng nhận hợp quy",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOFLCL",
+    "name": "Cước vận tải biển quốc tế hàng lẻ (LCL) xuất khẩu",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOF20",
+    "name": "Cước vận tải biển quốc tế hàng NK cont 20",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOF40",
+    "name": "Cước vận tải biển quốc tế hàng NK cont 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOF40",
+    "name": "Cước vận tải biển quốc tế hàng xuất container 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOF20",
+    "name": "Cước vận tải biển quốc tế hàng xuất container 20",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "TQ",
+    "name": "Dịch vụ thông quan",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "DDC",
+    "name": "Door - to - door",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "LCC",
+    "name": "Local charges (Phụ phí tại cảng)",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "LCX",
+    "name": "Lưu ca xe",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "EXW",
+    "name": "Phí EXWORK",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NH",
+    "name": "Nâng hạ",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "PKH",
+    "name": "Phí kiểm hóa",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "TTHQ",
+    "name": "Thủ tục hải quan",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "GP",
+    "name": "Giấy phép",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "HT",
+    "name": "Hun trùng",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "HHNKUT",
+    "name": "Tiền hàng NK ủy thác",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "KD",
+    "name": "Kiểm dịch",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "KTCL",
+    "name": "Kiểm tra chất lượng",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "CO",
+    "name": "Xin C/O",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   }
+  ],
+  "getfly": {
+   "status": "EMPTY",
+   "previewId": "",
+   "filename": "",
+   "orders": [],
+   "normalizedRows": [],
+   "summary": {
+    "orders": 0,
+    "revenue": null,
+    "profit": null
+   },
+   "error": ""
+  },
+  "lastWrites": [],
   "unknownLabel": "—"
  },
  "journey": {
-  "version": "1da18e31b473fba3",
+  "version": "3ff63f42d638790e",
   "environment": {
    "transport": "SANDBOX_STAGING",
    "label": "Preview / Staging",
@@ -2820,18 +4366,18 @@
     "customerMST": "0103456789",
     "customerId": "CUST-HONGHA",
     "contract": "",
-    "route": "Bằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
-    "borderVN": "Hữu Nghị (Lạng Sơn)",
+    "route": "Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
+    "borderVN": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
     "sale": "Chưa phân công",
     "support": "staging.support",
     "status": "Chờ giao",
     "statusTone": "blue",
     "priority": "Khan",
     "nextAction": "Quá hạn khách",
-    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Xác nhận đã giao hàng"
     ],
@@ -2862,6 +4408,72 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "01/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Bằng Tường (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-05",
+      "eta": "2026-09-06",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0299",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤B·31K09",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     },
+     {
+      "id": "legacy-delivery-leg",
+      "sequence": 2,
+      "mode": "Truck",
+      "origin": "",
+      "destination": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
+      "carrier": "",
+      "etd": "2026-09-10",
+      "eta": "",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-delivery-unit",
+        "kind": "truck",
+        "number": "29H-481.36",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "Lê Đức / 0904118822",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Bằng Tường (Quảng Tây)",
@@ -2883,11 +4495,12 @@
      "vessel": "",
      "etd": "05/09/2026",
      "pol": "Bằng Tường (Quảng Tây)",
-     "pod": "Hữu Nghị (Lạng Sơn)",
+     "pod": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "containerNo": "粤B·31K09",
      "qtyPkg": "18 kiện / 12.600 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -2905,7 +4518,7 @@
      "chinaDeclNo": ""
     },
     "importInfo": {
-     "borderVN": "Hữu Nghị (Lạng Sơn)",
+     "borderVN": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "declarationNo": "105579900211",
      "regDate": "",
      "clearDate": "",
@@ -2938,8 +4551,14 @@
      "quote": [],
      "actual": [
       {
+       "id": "ea9418cc-d2fb-4d97-9938-11086fb3bc6f",
        "label": "Cước xe TQ + VN",
+       "name": "Cước xe TQ + VN",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 88000000.0,
+       "price": 88000000.0,
        "cost": 79500000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -2947,8 +4566,14 @@
        "kind": "actual"
       },
       {
+       "id": "09afe1d5-c4c2-4410-be07-f069c071cdaa",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 6000000.0,
+       "price": 6000000.0,
        "cost": 4800000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -2970,7 +4595,7 @@
      "profitMargin": 10.32,
      "payments": [
       {
-       "id": "PAY-B3EA5884F90443F786BF23044C217EA4",
+       "id": "PAY-10ABFEFC122B4649A9541DFC589763E0",
        "requestId": "SEED-REQ-0299-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -3005,11 +4630,12 @@
      "place": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3023,13 +4649,13 @@
        "code": "CUSTOMER_DEADLINE_OVERDUE",
        "severity": "critical",
        "title": "Quá hạn khách",
-       "message": "Hạn khách 08/09/2026 đã quá 3 ngày."
+       "message": "Hạn khách 08/09/2026 đã quá 8 ngày."
       },
       {
-       "code": "FREE_TIME_SOON",
-       "severity": "warning",
-       "title": "Sắp hết free time",
-       "message": "Còn 2 ngày, hạn 13/09/2026."
+       "code": "FREE_TIME_OVERDUE",
+       "severity": "critical",
+       "title": "Quá free time",
+       "message": "Hạn free time 13/09/2026 đã quá 3 ngày."
       },
       {
        "code": "FINANCE_ATTENTION",
@@ -3040,7 +4666,7 @@
      ],
      "arrivalDateLabel": "06/09/2026",
      "freeTimeExpiryLabel": "13/09/2026",
-     "daysRemaining": 2
+     "daysRemaining": -3
     },
     "tracking": {
      "status": "Chờ giao",
@@ -3061,7 +4687,7 @@
       {
        "time": "06/09/2026",
        "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Hữu Nghị (Lạng Sơn)",
+       "desc": "Kho Hồng Hà — KCN Yên Phong, Bắc Ninh",
        "done": true,
        "tone": "blue"
       },
@@ -3090,13 +4716,288 @@
     }
    },
    {
+    "id": "LO-0308",
+    "customer": "Minh Đức JSC",
+    "customerMST": "0102345678",
+    "customerId": "CUST-MINHDUC",
+    "contract": "",
+    "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
+    "borderVN": "Hữu Nghị (Lạng Sơn)",
+    "sale": "Chưa phân công",
+    "support": "staging.support",
+    "status": "Chờ thông quan",
+    "statusTone": "amber",
+    "priority": "Khan",
+    "nextAction": "Quá hạn khách",
+    "nextActionDetail": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "nextLabel": "XỬ LÝ NGAY",
+    "nextRoute": "/lo-hang/LO-0308?tab=nhap",
+    "updated": "16/09/2026 15:01",
+    "missingDocs": [
+     "Số tờ khai nhập khẩu",
+     "Đã thông quan",
+     "Xe giao VN + tài xế",
+     "Xác nhận đã giao hàng"
+    ],
+    "docs": [
+     {
+      "name": "Số tờ khai nhập khẩu",
+      "ok": false,
+      "note": "Chưa đăng ký tờ khai"
+     },
+     {
+      "name": "Đã thông quan",
+      "ok": false,
+      "note": "Chờ số tờ khai"
+     },
+     {
+      "name": "Xe giao VN + tài xế",
+      "ok": false,
+      "note": "Chưa đặt xe giao"
+     },
+     {
+      "name": "Xác nhận đã giao hàng",
+      "ok": false,
+      "note": "Chưa xác nhận"
+     }
+    ],
+    "version": 1,
+    "rawStatus": "wait",
+    "mode": "Truck",
+    "incoterm": "DAP",
+    "createdAt": "06/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Đông Bằng (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "",
+      "etd": "2026-09-12",
+      "eta": "2026-09-12",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": []
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
+    "pickup": {
+     "factory": "",
+     "address": "Đông Bằng (Quảng Tây)",
+     "contact": "",
+     "phone": "",
+     "pickupTime": "12/09/2026",
+     "truckType": "",
+     "plate": "",
+     "driver": "",
+     "driverPhone": "",
+     "eta": "12/09/2026",
+     "ata": ""
+    },
+    "transport": {
+     "bookingNo": "",
+     "carrier": "",
+     "mbl": "",
+     "hbl": "",
+     "vessel": "",
+     "etd": "12/09/2026",
+     "pol": "Đông Bằng (Quảng Tây)",
+     "pod": "Hữu Nghị (Lạng Sơn)",
+     "containerNo": "",
+     "qtyPkg": ""
+    },
+    "cargo": {
+     "goodsDescription": "",
+     "packs": null,
+     "weight": null,
+     "cbm": null,
+     "dims": "",
+     "type": "",
+     "note": "",
+     "qtyPkg": ""
+    },
+    "exportInfo": {
+     "border": "Đông Bằng (Quảng Tây)",
+     "declarant": "",
+     "eta": "12/09/2026",
+     "ata": "",
+     "state": "",
+     "chinaDeclNo": ""
+    },
+    "importInfo": {
+     "borderVN": "Hữu Nghị (Lạng Sơn)",
+     "declarationNo": "",
+     "regDate": "",
+     "clearDate": "",
+     "tax": null,
+     "vat": null,
+     "inspection": "",
+     "customsStatus": false,
+     "license": "",
+     "gnt": {
+      "payer": "",
+      "taxCode": "",
+      "address": "",
+      "customsOffice": ""
+     },
+     "arrivalDate": "12/09/2026",
+     "freeTime": 14.0,
+     "truckVN": "",
+     "plateVN": "",
+     "driverVN": "",
+     "schedule": "",
+     "deliveryAddr": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+     "receiver": "",
+     "receiverPhone": "",
+     "receiverTitle": "",
+     "deliveryLocation": "",
+     "delivered": false,
+     "actualDelivery": ""
+    },
+    "finance": {
+     "quote": [],
+     "actual": [
+      {
+       "id": "f7d0690f-aea0-497b-bc80-0093a6ed8408",
+       "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
+       "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
+       "amount": 62000000.0,
+       "price": 62000000.0,
+       "cost": 57000000.0,
+       "qty": 1.0,
+       "vat": 8.0,
+       "ccy": "VND",
+       "kind": "actual"
+      }
+     ],
+     "currency": "VND",
+     "hasActualLines": true,
+     "receivable": 66960000.0,
+     "received": 0.0,
+     "receivableNet": 62000000.0,
+     "outputVat": 4960000.0,
+     "outstanding": 66960000.0,
+     "payable": 57000000.0,
+     "paid": null,
+     "commission": 0.0,
+     "profit": 5000000.0,
+     "profitMargin": 8.06,
+     "payments": [],
+     "partner": {
+      "partnerId": "AGT-PHUANH",
+      "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+      "suggested": false,
+      "status": "CONFIRMED",
+      "payable": 10000000.0,
+      "paid": 10000000.0,
+      "remaining": 0.0,
+      "currency": "VND",
+      "payments": [
+       {
+        "id": "TX-1B54052397B546728CC761F8D7D3D740",
+        "requestId": "CEO-FIX-MATCHED:PAY",
+        "date": "10/09/2026",
+        "kind": "payment",
+        "amount": 10000000.0,
+        "ccy": "VND",
+        "allocated": 10000000.0,
+        "unallocated": 0.0,
+        "note": "Chuyển khoản thanh toán đối tác"
+       }
+      ]
+     },
+     "source": "core.logic.calculate_from_shipment over data.3.4"
+    },
+    "pxk": {
+     "source": "",
+     "sourceName": "",
+     "delivered": false,
+     "gateOpen": false,
+     "missingDeliveryFacts": [],
+     "number": "",
+     "date": "",
+     "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+     "receiver": "",
+     "role": "",
+     "done": false,
+     "document": null
+    },
+    "timeline": [
+     {
+      "time": "16/09 15:01",
+      "title": "create",
+      "desc": "staging.support",
+      "tone": "green"
+     }
+    ],
+    "ops": {
+     "financialFlag": "open",
+     "financialLabel": "Đang mở",
+     "alerts": [
+      {
+       "code": "CUSTOMER_DEADLINE_OVERDUE",
+       "severity": "critical",
+       "title": "Quá hạn khách",
+       "message": "Hạn khách 12/09/2026 đã quá 4 ngày."
+      },
+      {
+       "code": "FINANCE_ATTENTION",
+       "severity": "warning",
+       "title": "Tài chính cần theo dõi",
+       "message": "CHỜ THU"
+      }
+     ],
+     "arrivalDateLabel": "12/09/2026",
+     "freeTimeExpiryLabel": "26/09/2026",
+     "daysRemaining": 10
+    },
+    "tracking": {
+     "status": "Chờ thông quan",
+     "statusTone": "amber",
+     "carrier": "",
+     "reference": "",
+     "trackingUrl": "",
+     "hasLivePosition": false,
+     "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
+     "milestones": [
+      {
+       "time": "12/09/2026",
+       "title": "ETD — rời nơi lấy hàng",
+       "desc": "Đông Bằng (Quảng Tây)",
+       "done": true,
+       "tone": "green"
+      },
+      {
+       "time": "12/09/2026",
+       "title": "ETA — về cửa khẩu/kho đích",
+       "desc": "Hữu Nghị (Lạng Sơn)",
+       "done": false,
+       "tone": "blue"
+      }
+     ]
+    }
+   },
+   {
     "id": "LO-0295",
     "customer": "Thiên Ân JSC",
     "customerMST": "0104567890",
     "customerId": "CUST-THIENAN",
     "contract": "HDMB-0295",
-    "route": "Quảng Châu → Mộc Bài (Tây Ninh)",
-    "borderVN": "Mộc Bài (Tây Ninh)",
+    "route": "Quảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
+    "borderVN": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
     "sale": "Chưa phân công",
     "support": "staging.support",
     "status": "Đã giao",
@@ -3106,7 +5007,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0295?tab=lay-hang",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [],
     "docs": [
      {
@@ -3135,6 +5036,72 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "02/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Quảng Châu",
+      "destination": "Mộc Bài (Tây Ninh)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-04",
+      "eta": "2026-09-06",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0295",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤B·90M21",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     },
+     {
+      "id": "legacy-delivery-leg",
+      "sequence": 2,
+      "mode": "Truck",
+      "origin": "",
+      "destination": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
+      "carrier": "",
+      "etd": "2026-09-09",
+      "eta": "",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-delivery-unit",
+        "kind": "truck",
+        "number": "51D-720.44",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "Ngô Văn Hải / 0908334190",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Quảng Châu",
@@ -3156,11 +5123,12 @@
      "vessel": "",
      "etd": "04/09/2026",
      "pol": "Quảng Châu",
-     "pod": "Mộc Bài (Tây Ninh)",
+     "pod": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "containerNo": "粤B·90M21",
      "qtyPkg": "30 kiện / 19.800 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -3178,7 +5146,7 @@
      "chinaDeclNo": ""
     },
     "importInfo": {
-     "borderVN": "Mộc Bài (Tây Ninh)",
+     "borderVN": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "declarationNo": "105571288466",
      "regDate": "",
      "clearDate": "",
@@ -3224,8 +5192,14 @@
      ],
      "actual": [
       {
+       "id": "db476f9d-916b-4479-8d00-aa81a7d461c3",
        "label": "Cước đường bộ TQ + VN",
+       "name": "Cước đường bộ TQ + VN",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 128000000.0,
+       "price": 128000000.0,
        "cost": 119000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3233,8 +5207,14 @@
        "kind": "actual"
       },
       {
+       "id": "6eecc43b-1fbc-409e-b1e8-479ed4979373",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 7400000.0,
+       "price": 7400000.0,
        "cost": 6100000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3256,7 +5236,7 @@
      "profitMargin": 7.61,
      "payments": [
       {
-       "id": "PAY-44C9C567185F41E59FC8A30721862A78",
+       "id": "PAY-8C179CCDADDC4C3E9BD8185E8FBC98D2",
        "requestId": "SEED-REQ-0295-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -3267,7 +5247,7 @@
        "reversed": false
       },
       {
-       "id": "PAY-F680D47858CB4DA48C742530420B5D25",
+       "id": "PAY-E41CCB66E1C4474C9E4B62B06940055A",
        "requestId": "SEED-REQ-0295-2",
        "date": "08/09/2026",
        "kind": "Thu tạm ứng đợt 2",
@@ -3302,11 +5282,12 @@
      "place": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
      "receiver": "A. Kiệt",
      "role": "Thủ kho",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3325,7 +5306,7 @@
      ],
      "arrivalDateLabel": "06/09/2026",
      "freeTimeExpiryLabel": "13/09/2026",
-     "daysRemaining": 2
+     "daysRemaining": -3
     },
     "tracking": {
      "status": "Đã giao",
@@ -3346,7 +5327,7 @@
       {
        "time": "06/09/2026",
        "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Mộc Bài (Tây Ninh)",
+       "desc": "Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM",
        "done": true,
        "tone": "blue"
       },
@@ -3398,7 +5379,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0306?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -3432,6 +5413,41 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "03/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Bằng Tường (Quảng Tây)",
+      "destination": "Hữu Nghị (Lạng Sơn)",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-08",
+      "eta": "2026-09-08",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0306",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "粤A·88T36",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Bằng Tường (Quảng Tây)",
@@ -3458,6 +5474,7 @@
      "qtyPkg": "24 kiện / 18.400 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -3527,8 +5544,14 @@
      ],
      "actual": [
       {
+       "id": "8e56099a-6865-498a-bb90-ae8259cf1d80",
        "label": "Cước xe TQ Bằng Tường → Hữu Nghị",
+       "name": "Cước xe TQ Bằng Tường → Hữu Nghị",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 98000000.0,
+       "price": 98000000.0,
        "cost": 91000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3536,8 +5559,14 @@
        "kind": "actual"
       },
       {
+       "id": "ed52f7f5-51d0-4a47-80e0-37480e2ed997",
        "label": "Thủ tục thông quan 2 đầu",
+       "name": "Thủ tục thông quan 2 đầu",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 6500000.0,
+       "price": 6500000.0,
        "cost": 5200000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3559,7 +5588,7 @@
      "profitMargin": 7.94,
      "payments": [
       {
-       "id": "PAY-808641B9EA7D4FC0B7ABC43BD571AD41",
+       "id": "PAY-379878E9793B4CC98EFB367446655EE4",
        "requestId": "SEED-REQ-0306-1",
        "date": "03/09/2026",
        "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
@@ -3594,11 +5623,12 @@
      "place": "Kho An Phát — KCN Quế Võ, Bắc Ninh",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3617,7 +5647,7 @@
      ],
      "arrivalDateLabel": "08/09/2026",
      "freeTimeExpiryLabel": "22/09/2026",
-     "daysRemaining": 11
+     "daysRemaining": 6
     },
     "tracking": {
      "status": "Chờ thông quan",
@@ -3662,7 +5692,7 @@
     "nextActionDetail": "CHỜ THU",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0307?tab=nhap",
-    "updated": "11/09/2026 11:08",
+    "updated": "16/09/2026 15:01",
     "missingDocs": [
      "Đã thông quan",
      "Xe giao VN + tài xế",
@@ -3695,6 +5725,41 @@
     "mode": "Truck",
     "incoterm": "DAP",
     "createdAt": "04/09/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "Nam Ninh (Quảng Tây)",
+      "destination": "Hữu Nghị → Hải Phòng",
+      "carrier": "Bộ (đường bộ TQ–VN)",
+      "etd": "2026-09-08",
+      "eta": "2026-09-09",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "BKG-0307",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": [
+       {
+        "id": "legacy-primary-unit",
+        "kind": "truck",
+        "number": "桂A·12D78",
+        "typeSize": "",
+        "sealNo": "",
+        "driverName": "",
+        "driverPhone": ""
+       }
+      ]
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
     "pickup": {
      "factory": "",
      "address": "Nam Ninh (Quảng Tây)",
@@ -3721,6 +5786,7 @@
      "qtyPkg": "40 kiện / 22.100 kg"
     },
     "cargo": {
+     "goodsDescription": "",
      "packs": null,
      "weight": null,
      "cbm": null,
@@ -3784,8 +5850,14 @@
      ],
      "actual": [
       {
+       "id": "b8c804b5-2878-4984-90b1-55efd19d431f",
        "label": "Cước đường bộ TQ + container",
+       "name": "Cước đường bộ TQ + container",
+       "code": "DV-VC-TQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 152000000.0,
+       "price": 152000000.0,
        "cost": 141000000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3793,8 +5865,14 @@
        "kind": "actual"
       },
       {
+       "id": "c5012722-8779-47cc-a94c-093a18fac1b8",
        "label": "Thủ tục thông quan",
+       "name": "Thủ tục thông quan",
+       "code": "DV-TTQ",
+       "unit": "Lần",
+       "note": "",
        "amount": 8200000.0,
+       "price": 8200000.0,
        "cost": 6600000.0,
        "qty": 1.0,
        "vat": 8.0,
@@ -3816,7 +5894,7 @@
      "profitMargin": 7.87,
      "payments": [
       {
-       "id": "PAY-55433ED5B2084876A09667F27B979FCE",
+       "id": "PAY-CCBCEEF700624FB3B013AB0403BC7066",
        "requestId": "SEED-REQ-0307-1",
        "date": "04/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -3838,7 +5916,7 @@
       "currency": "VND",
       "payments": [
        {
-        "id": "TX-338FA210B1804B05976A78D946C71F87",
+        "id": "TX-338962BD68184F1A8A4BA536FEB50A50",
         "requestId": "CEO-FIX-PARTIAL:PAY",
         "date": "10/09/2026",
         "kind": "payment",
@@ -3863,11 +5941,12 @@
      "place": "Kho Đức Long — KCN Nam Sơn, Hải Phòng",
      "receiver": "",
      "role": "",
-     "done": false
+     "done": false,
+     "document": null
     },
     "timeline": [
      {
-      "time": "11/09 11:08",
+      "time": "16/09 15:01",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3886,7 +5965,7 @@
      ],
      "arrivalDateLabel": "09/09/2026",
      "freeTimeExpiryLabel": "19/09/2026",
-     "daysRemaining": 8
+     "daysRemaining": 3
     },
     "tracking": {
      "status": "Chờ thông quan",
@@ -3920,248 +5999,6 @@
       }
      ]
     }
-   },
-   {
-    "id": "LO-0308",
-    "customer": "Minh Đức JSC",
-    "customerMST": "0102345678",
-    "customerId": "CUST-MINHDUC",
-    "contract": "",
-    "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
-    "borderVN": "Hữu Nghị (Lạng Sơn)",
-    "sale": "Chưa phân công",
-    "support": "staging.support",
-    "status": "Chờ lấy hàng",
-    "statusTone": "gray",
-    "priority": "CanXuLy",
-    "nextAction": "Sắp đến hạn khách",
-    "nextActionDetail": "Còn 1 ngày đến 12/09/2026.",
-    "nextLabel": "XỬ LÝ NGAY",
-    "nextRoute": "/lo-hang/LO-0308?tab=lay-hang",
-    "updated": "11/09/2026 11:08",
-    "missingDocs": [
-     "Số tờ khai nhập khẩu",
-     "Đã thông quan",
-     "Xe giao VN + tài xế",
-     "Xác nhận đã giao hàng"
-    ],
-    "docs": [
-     {
-      "name": "Số tờ khai nhập khẩu",
-      "ok": false,
-      "note": "Chưa đăng ký tờ khai"
-     },
-     {
-      "name": "Đã thông quan",
-      "ok": false,
-      "note": "Chờ số tờ khai"
-     },
-     {
-      "name": "Xe giao VN + tài xế",
-      "ok": false,
-      "note": "Chưa đặt xe giao"
-     },
-     {
-      "name": "Xác nhận đã giao hàng",
-      "ok": false,
-      "note": "Chưa xác nhận"
-     }
-    ],
-    "version": 1,
-    "rawStatus": "wait",
-    "mode": "Truck",
-    "incoterm": "DAP",
-    "createdAt": "06/09/2026",
-    "pickup": {
-     "factory": "",
-     "address": "Đông Bằng (Quảng Tây)",
-     "contact": "",
-     "phone": "",
-     "pickupTime": "12/09/2026",
-     "truckType": "",
-     "plate": "",
-     "driver": "",
-     "driverPhone": "",
-     "eta": "12/09/2026",
-     "ata": ""
-    },
-    "transport": {
-     "bookingNo": "",
-     "carrier": "",
-     "mbl": "",
-     "hbl": "",
-     "vessel": "",
-     "etd": "12/09/2026",
-     "pol": "Đông Bằng (Quảng Tây)",
-     "pod": "Hữu Nghị (Lạng Sơn)",
-     "containerNo": "",
-     "qtyPkg": ""
-    },
-    "cargo": {
-     "packs": null,
-     "weight": null,
-     "cbm": null,
-     "dims": "",
-     "type": "",
-     "note": "",
-     "qtyPkg": ""
-    },
-    "exportInfo": {
-     "border": "Đông Bằng (Quảng Tây)",
-     "declarant": "",
-     "eta": "12/09/2026",
-     "ata": "",
-     "state": "",
-     "chinaDeclNo": ""
-    },
-    "importInfo": {
-     "borderVN": "Hữu Nghị (Lạng Sơn)",
-     "declarationNo": "",
-     "regDate": "",
-     "clearDate": "",
-     "tax": null,
-     "vat": null,
-     "inspection": "",
-     "customsStatus": false,
-     "license": "",
-     "gnt": {
-      "payer": "",
-      "taxCode": "",
-      "address": "",
-      "customsOffice": ""
-     },
-     "arrivalDate": "12/09/2026",
-     "freeTime": 14.0,
-     "truckVN": "",
-     "plateVN": "",
-     "driverVN": "",
-     "schedule": "",
-     "deliveryAddr": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
-     "receiver": "",
-     "receiverPhone": "",
-     "receiverTitle": "",
-     "deliveryLocation": "",
-     "delivered": false,
-     "actualDelivery": ""
-    },
-    "finance": {
-     "quote": [],
-     "actual": [
-      {
-       "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
-       "amount": 62000000.0,
-       "cost": 57000000.0,
-       "qty": 1.0,
-       "vat": 8.0,
-       "ccy": "VND",
-       "kind": "actual"
-      }
-     ],
-     "currency": "VND",
-     "hasActualLines": true,
-     "receivable": 66960000.0,
-     "received": 0.0,
-     "receivableNet": 62000000.0,
-     "outputVat": 4960000.0,
-     "outstanding": 66960000.0,
-     "payable": 57000000.0,
-     "paid": null,
-     "commission": 0.0,
-     "profit": 5000000.0,
-     "profitMargin": 8.06,
-     "payments": [],
-     "partner": {
-      "partnerId": "AGT-PHUANH",
-      "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
-      "suggested": false,
-      "status": "CONFIRMED",
-      "payable": 10000000.0,
-      "paid": 10000000.0,
-      "remaining": 0.0,
-      "currency": "VND",
-      "payments": [
-       {
-        "id": "TX-A726346DE2A64ADBB10F2E686F2FBCD1",
-        "requestId": "CEO-FIX-MATCHED:PAY",
-        "date": "10/09/2026",
-        "kind": "payment",
-        "amount": 10000000.0,
-        "ccy": "VND",
-        "allocated": 10000000.0,
-        "unallocated": 0.0,
-        "note": "Chuyển khoản thanh toán đối tác"
-       }
-      ]
-     },
-     "source": "core.logic.calculate_from_shipment over data.3.4"
-    },
-    "pxk": {
-     "source": "",
-     "sourceName": "",
-     "delivered": false,
-     "gateOpen": false,
-     "missingDeliveryFacts": [],
-     "number": "",
-     "date": "",
-     "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
-     "receiver": "",
-     "role": "",
-     "done": false
-    },
-    "timeline": [
-     {
-      "time": "11/09 11:08",
-      "title": "create",
-      "desc": "staging.support",
-      "tone": "green"
-     }
-    ],
-    "ops": {
-     "financialFlag": "open",
-     "financialLabel": "Đang mở",
-     "alerts": [
-      {
-       "code": "CUSTOMER_DEADLINE_SOON",
-       "severity": "warning",
-       "title": "Sắp đến hạn khách",
-       "message": "Còn 1 ngày đến 12/09/2026."
-      },
-      {
-       "code": "FINANCE_ATTENTION",
-       "severity": "warning",
-       "title": "Tài chính cần theo dõi",
-       "message": "CHỜ THU"
-      }
-     ],
-     "arrivalDateLabel": "12/09/2026",
-     "freeTimeExpiryLabel": "26/09/2026",
-     "daysRemaining": 15
-    },
-    "tracking": {
-     "status": "Chờ lấy hàng",
-     "statusTone": "gray",
-     "carrier": "",
-     "reference": "",
-     "trackingUrl": "",
-     "hasLivePosition": false,
-     "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
-     "milestones": [
-      {
-       "time": "12/09/2026",
-       "title": "ETD — rời nơi lấy hàng",
-       "desc": "Đông Bằng (Quảng Tây)",
-       "done": true,
-       "tone": "green"
-      },
-      {
-       "time": "12/09/2026",
-       "title": "ETA — về cửa khẩu/kho đích",
-       "desc": "Hữu Nghị (Lạng Sơn)",
-       "done": false,
-       "tone": "blue"
-      }
-     ]
-    }
    }
   ],
   "home": {
@@ -4169,14 +6006,14 @@
     {
      "label": "Lô đang chạy",
      "value": 4,
-     "sub": "LO-0299, LO-0306, LO-0307, LO-0308",
+     "sub": "LO-0299, LO-0308, LO-0306, LO-0307",
      "to": "/lo-hang"
     },
     {
      "label": "Chờ lấy hàng",
-     "value": 1,
-     "sub": "LO-0308",
-     "to": "/lo-hang/LO-0308"
+     "value": 0,
+     "sub": "—",
+     "to": "/lo-hang"
     },
     {
      "label": "Đang vận chuyển",
@@ -4186,9 +6023,9 @@
     },
     {
      "label": "Chờ thông quan",
-     "value": 2,
-     "sub": "LO-0306, LO-0307",
-     "to": "/lo-hang/LO-0306"
+     "value": 3,
+     "sub": "LO-0308, LO-0306, LO-0307",
+     "to": "/lo-hang/LO-0308"
     },
     {
      "label": "Chờ giao",
@@ -4213,6 +6050,13 @@
      "to": "/lo-hang/LO-0299"
     },
     {
+     "id": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "status": "Chờ thông quan",
+     "nextAction": "Quá hạn khách",
+     "to": "/lo-hang/LO-0308"
+    },
+    {
      "id": "LO-0306",
      "customer": "An Phát JSC",
      "status": "Chờ thông quan",
@@ -4225,13 +6069,6 @@
      "status": "Chờ thông quan",
      "nextAction": "Tài chính cần theo dõi",
      "to": "/lo-hang/LO-0307"
-    },
-    {
-     "id": "LO-0308",
-     "customer": "Minh Đức JSC",
-     "status": "Chờ lấy hàng",
-     "nextAction": "Sắp đến hạn khách",
-     "to": "/lo-hang/LO-0308"
     }
    ],
    "outstandingTotal": 260588000.0,
@@ -4239,19 +6076,19 @@
    "outstandingCount": 5,
    "summary": {
     "total": 5,
-    "critical": 1,
-    "warning": 4,
+    "critical": 2,
+    "warning": 3,
     "deadlineSoon": 2,
     "financialAttention": 5,
     "missingInfo": 0
    },
-   "urgentCount": 1,
+   "urgentCount": 2,
    "focus": {
     "id": "LO-0299",
     "customer": "Hồng Hà Co.",
     "status": "Chờ giao",
     "nextAction": "Quá hạn khách",
-    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "nextActionDetail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "priority": "Khan",
     "to": "/lo-hang/LO-0299?tab=nhap"
    },
@@ -4267,10 +6104,24 @@
     "job": "Quá hạn khách",
     "assignee": "staging.support",
     "due": "06/09/2026",
-    "dueNote": "Hạn khách 08/09/2026 đã quá 3 ngày.",
+    "dueNote": "Hạn khách 08/09/2026 đã quá 8 ngày.",
     "status": "Chờ giao",
     "statusTone": "blue",
     "route": "/lo-hang/LO-0299?tab=nhap",
+    "source": "core.shipment_dashboard (readiness/alerts)"
+   },
+   {
+    "id": "OPS-LO-0308",
+    "level": "Khan",
+    "lot": "LO-0308",
+    "customer": "Minh Đức JSC",
+    "job": "Quá hạn khách",
+    "assignee": "staging.support",
+    "due": "12/09/2026",
+    "dueNote": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "status": "Chờ thông quan",
+    "statusTone": "amber",
+    "route": "/lo-hang/LO-0308?tab=nhap",
     "source": "core.shipment_dashboard (readiness/alerts)"
    },
    {
@@ -4344,20 +6195,6 @@
     "source": "core.shipment_dashboard (readiness/alerts)"
    },
    {
-    "id": "OPS-LO-0308",
-    "level": "CanXuLy",
-    "lot": "LO-0308",
-    "customer": "Minh Đức JSC",
-    "job": "Sắp đến hạn khách",
-    "assignee": "staging.support",
-    "due": "12/09/2026",
-    "dueNote": "Còn 1 ngày đến 12/09/2026.",
-    "status": "Chờ lấy hàng",
-    "statusTone": "gray",
-    "route": "/lo-hang/LO-0308?tab=lay-hang",
-    "source": "core.shipment_dashboard (readiness/alerts)"
-   },
-   {
     "id": "TASK-0308-XE",
     "level": "CanXuLy",
     "lot": "LO-0308",
@@ -4390,6 +6227,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -4421,13 +6259,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -4479,6 +6311,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -4514,6 +6349,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -4545,13 +6381,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -4603,6 +6433,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -4638,6 +6471,7 @@
     "currency": "VND",
     "note": "",
     "contractDate": "",
+    "plRequired": "",
     "parties": {
      "company": {
       "id": "TT-COMPANY",
@@ -4669,13 +6503,7 @@
      }
     },
     "goodsLines": [],
-    "goodsTotals": {
-     "lines": [],
-     "subtotal": 0,
-     "vat_amount": 0,
-     "total_after_vat": 0,
-     "currency": "VND"
-    },
+    "goodsTotals": null,
     "thresholdVnd": 50000000,
     "applicableDocuments": [],
     "docCards": [
@@ -4727,6 +6555,9 @@
       "document_type": "DEBIT_USD",
       "state": "DEFERRED",
       "reason": "Chưa triển khai",
+      "missing": [],
+      "source_ref": "",
+      "goods_count": null,
       "applicable": false
      }
     ],
@@ -4831,6 +6662,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -4863,6 +6697,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -4895,6 +6732,9 @@
     "estimatedMarginVnd": null,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {},
+    "fxSource": "",
+    "fxNeededFor": [],
     "serviceLines": [],
     "assumptions": [],
     "statusHistory": [],
@@ -4906,8 +6746,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-AD272824",
-    "quoteNo": "QT-20260911-AD272824",
+    "id": "Q-20260916-0531E83B",
+    "quoteNo": "QT-20260916-0531E83B",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
     "salesOwner": "Minh Tú",
@@ -4927,6 +6767,13 @@
     "estimatedMarginVnd": 3800000.0,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {
+     "USD": 25500.0,
+     "CNY": 3500.0,
+     "VND": 1.0
+    },
+    "fxSource": "Tỷ giá nhập khi báo giá.",
+    "fxNeededFor": [],
     "serviceLines": [
      {
       "code": "DV-VC-TQ",
@@ -4964,19 +6811,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "Minh Tú"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "READY_FOR_REVIEW",
       "to": "ACCEPTED",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -4988,8 +6835,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20260911-273008BD",
-    "quoteNo": "QT-20260911-273008BD",
+    "id": "Q-20260916-71E5DB93",
+    "quoteNo": "QT-20260916-71E5DB93",
     "customerId": "CUST-DUCLONG",
     "customer": "Đức Long Co.",
     "salesOwner": "Thu Hằng",
@@ -5009,6 +6856,13 @@
     "estimatedMarginVnd": 4800000.0,
     "isEstimate": true,
     "ledgerPosted": false,
+    "fxRatesToVnd": {
+     "USD": 25500.0,
+     "CNY": 3500.0,
+     "VND": 1.0
+    },
+    "fxSource": "Tỷ giá nhập khi báo giá.",
+    "fxNeededFor": [],
     "serviceLines": [
      {
       "code": "DV-VC-TQ",
@@ -5046,13 +6900,13 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "Thu Hằng"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5069,16 +6923,16 @@
   ],
   "agreements": [
    {
-    "id": "AGR-20260911-EC3CEB52",
-    "agreementNo": "AG-20260911-EC3CEB52",
+    "id": "AGR-20260916-BF98E2E2",
+    "agreementNo": "AG-20260916-BF98E2E2",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
-    "quoteId": "Q-20260911-AD272824",
-    "quoteReference": "QT-20260911-AD272824",
+    "quoteId": "Q-20260916-0531E83B",
+    "quoteReference": "QT-20260916-0531E83B",
     "status": "AGREED",
     "statusLabel": "Đã đồng ý",
     "version": 3,
-    "effectiveDate": "2026-09-11",
+    "effectiveDate": "2026-09-16",
     "commercialSnapshot": {
      "origin": "Bằng Tường (Quảng Tây)",
      "destination": "KCN Quế Võ, Bắc Ninh",
@@ -5188,19 +7042,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "DRAFT",
       "to": "REVIEWING",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "REVIEWING",
       "to": "AGREED",
-      "at": "2026-09-11T11:08:27+00:00",
+      "at": "2026-09-16T15:01:01+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5255,16 +7109,24 @@
    {
     "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0299 · Quá hạn khách",
-    "desc": "Hạn khách 08/09/2026 đã quá 3 ngày.",
-    "time": "11/09/2026 11:08",
+    "desc": "Hạn khách 08/09/2026 đã quá 8 ngày.",
+    "time": "16/09/2026 15:01",
     "tone": "red",
     "route": "/lo-hang/LO-0299?tab=nhap"
+   },
+   {
+    "id": "LO-0308-CUSTOMER_DEADLINE_OVERDUE",
+    "title": "LO-0308 · Quá hạn khách",
+    "desc": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+    "time": "16/09/2026 15:01",
+    "tone": "red",
+    "route": "/lo-hang/LO-0308?tab=nhap"
    },
    {
     "id": "LO-0295-FINANCE_ATTENTION",
     "title": "LO-0295 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0295?tab=lay-hang"
    },
@@ -5272,7 +7134,7 @@
     "id": "LO-0306-FINANCE_ATTENTION",
     "title": "LO-0306 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0306?tab=nhap"
    },
@@ -5280,17 +7142,9 @@
     "id": "LO-0307-FINANCE_ATTENTION",
     "title": "LO-0307 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "11/09/2026 11:08",
+    "time": "16/09/2026 15:01",
     "tone": "amber",
     "route": "/lo-hang/LO-0307?tab=nhap"
-   },
-   {
-    "id": "LO-0308-CUSTOMER_DEADLINE_SOON",
-    "title": "LO-0308 · Sắp đến hạn khách",
-    "desc": "Còn 1 ngày đến 12/09/2026.",
-    "time": "11/09/2026 11:08",
-    "tone": "amber",
-    "route": "/lo-hang/LO-0308?tab=lay-hang"
    }
   ],
   "receivables": {
@@ -5307,6 +7161,20 @@
      "support": "staging.support",
      "status": "Chờ giao",
      "statusTone": "blue",
+     "hasActualLines": true
+    },
+    {
+     "id": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "customerId": "CUST-MINHDUC",
+     "currency": "VND",
+     "receivable": 66960000.0,
+     "received": 0.0,
+     "outstanding": 66960000.0,
+     "sale": "Chưa phân công",
+     "support": "staging.support",
+     "status": "Chờ thông quan",
+     "statusTone": "amber",
      "hasActualLines": true
     },
     {
@@ -5350,20 +7218,6 @@
      "status": "Chờ thông quan",
      "statusTone": "amber",
      "hasActualLines": true
-    },
-    {
-     "id": "LO-0308",
-     "customer": "Minh Đức JSC",
-     "customerId": "CUST-MINHDUC",
-     "currency": "VND",
-     "receivable": 66960000.0,
-     "received": 0.0,
-     "outstanding": 66960000.0,
-     "sale": "Chưa phân công",
-     "support": "staging.support",
-     "status": "Chờ lấy hàng",
-     "statusTone": "gray",
-     "hasActualLines": true
     }
    ],
    "totals": {
@@ -5387,7 +7241,7 @@
      "remaining": 3000.0,
      "status": "CONFIRMED",
      "obligationIds": [
-      "OBL-46C0AB5407C64257A252B6A6AD55A830"
+      "OBL-20F559E0ADA9470E948B54ECFBEE0018"
      ]
     },
     {
@@ -5401,7 +7255,7 @@
      "remaining": 30000000.0,
      "status": "CONFIRMED",
      "obligationIds": [
-      "OBL-1A40EF56C8BE47B1988DCF5E52B7B87E"
+      "OBL-28AD042690434622B51E61A7DF24EBE5"
      ]
     },
     {
@@ -5415,7 +7269,7 @@
      "remaining": 0.0,
      "status": "CONFIRMED",
      "obligationIds": [
-      "OBL-0C32ABA57FFC4D31984A13C58F94A3B7"
+      "OBL-E38C4C1DEE5B42DC98F823A36909DFA2"
      ]
     }
    ],
@@ -5480,7 +7334,7 @@
   "reconciliation": {
    "rows": [
     {
-     "id": "LO-0306|OB|OBL-46C0AB5407C64257A252B6A6AD55A830",
+     "id": "LO-0306|OB|OBL-20F559E0ADA9470E948B54ECFBEE0018",
      "side": "obligation",
      "shipmentId": "LO-0306",
      "shipmentIds": [
@@ -5499,18 +7353,18 @@
      "matchLabel": "Chưa đối soát",
      "allocationIds": [],
      "obligationIds": [
-      "OBL-46C0AB5407C64257A252B6A6AD55A830"
+      "OBL-20F559E0ADA9470E948B54ECFBEE0018"
      ],
      "transactionIds": [],
      "sourceRecordIds": [
-      "OBL-46C0AB5407C64257A252B6A6AD55A830"
+      "OBL-20F559E0ADA9470E948B54ECFBEE0018"
      ],
      "reviewReason": null,
      "openHref": "/lo-hang/LO-0306",
      "canOpen": true
     },
     {
-     "id": "LO-0307|TX|TX-338FA210B1804B05976A78D946C71F87",
+     "id": "LO-0307|TX|TX-338962BD68184F1A8A4BA536FEB50A50",
      "side": "money",
      "shipmentId": "LO-0307",
      "shipmentIds": [
@@ -5529,24 +7383,24 @@
      "matchState": "ALLOCATED",
      "matchLabel": "Đã phân bổ hết",
      "allocationIds": [
-      "ALC-5FE735A9EC2E4CEE9E42423C63BB46C3"
+      "ALC-27C72A6E7CDE439197AA75D9AC27BECA"
      ],
      "obligationIds": [
-      "OBL-1A40EF56C8BE47B1988DCF5E52B7B87E"
+      "OBL-28AD042690434622B51E61A7DF24EBE5"
      ],
      "transactionIds": [
-      "TX-338FA210B1804B05976A78D946C71F87"
+      "TX-338962BD68184F1A8A4BA536FEB50A50"
      ],
      "sourceRecordIds": [
-      "TX-338FA210B1804B05976A78D946C71F87",
-      "ALC-5FE735A9EC2E4CEE9E42423C63BB46C3"
+      "TX-338962BD68184F1A8A4BA536FEB50A50",
+      "ALC-27C72A6E7CDE439197AA75D9AC27BECA"
      ],
      "reviewReason": null,
      "openHref": "/lo-hang/LO-0307",
      "canOpen": true
     },
     {
-     "id": "LO-0307|OB|OBL-1A40EF56C8BE47B1988DCF5E52B7B87E",
+     "id": "LO-0307|OB|OBL-28AD042690434622B51E61A7DF24EBE5",
      "side": "obligation",
      "shipmentId": "LO-0307",
      "shipmentIds": [
@@ -5564,24 +7418,24 @@
      "matchState": "PARTIAL",
      "matchLabel": "Đối soát một phần",
      "allocationIds": [
-      "ALC-5FE735A9EC2E4CEE9E42423C63BB46C3"
+      "ALC-27C72A6E7CDE439197AA75D9AC27BECA"
      ],
      "obligationIds": [
-      "OBL-1A40EF56C8BE47B1988DCF5E52B7B87E"
+      "OBL-28AD042690434622B51E61A7DF24EBE5"
      ],
      "transactionIds": [
-      "TX-338FA210B1804B05976A78D946C71F87"
+      "TX-338962BD68184F1A8A4BA536FEB50A50"
      ],
      "sourceRecordIds": [
-      "OBL-1A40EF56C8BE47B1988DCF5E52B7B87E",
-      "ALC-5FE735A9EC2E4CEE9E42423C63BB46C3"
+      "OBL-28AD042690434622B51E61A7DF24EBE5",
+      "ALC-27C72A6E7CDE439197AA75D9AC27BECA"
      ],
      "reviewReason": null,
      "openHref": "/lo-hang/LO-0307",
      "canOpen": true
     },
     {
-     "id": "LO-0308|TX|TX-A726346DE2A64ADBB10F2E686F2FBCD1",
+     "id": "LO-0308|TX|TX-1B54052397B546728CC761F8D7D3D740",
      "side": "money",
      "shipmentId": "LO-0308",
      "shipmentIds": [
@@ -5600,24 +7454,24 @@
      "matchState": "ALLOCATED",
      "matchLabel": "Đã phân bổ hết",
      "allocationIds": [
-      "ALC-EFB100C5F2654CE792778FF28AC7E143"
+      "ALC-C74D0D8F0E4642A0B8BC30D2132FB898"
      ],
      "obligationIds": [
-      "OBL-0C32ABA57FFC4D31984A13C58F94A3B7"
+      "OBL-E38C4C1DEE5B42DC98F823A36909DFA2"
      ],
      "transactionIds": [
-      "TX-A726346DE2A64ADBB10F2E686F2FBCD1"
+      "TX-1B54052397B546728CC761F8D7D3D740"
      ],
      "sourceRecordIds": [
-      "TX-A726346DE2A64ADBB10F2E686F2FBCD1",
-      "ALC-EFB100C5F2654CE792778FF28AC7E143"
+      "TX-1B54052397B546728CC761F8D7D3D740",
+      "ALC-C74D0D8F0E4642A0B8BC30D2132FB898"
      ],
      "reviewReason": null,
      "openHref": "/lo-hang/LO-0308",
      "canOpen": true
     },
     {
-     "id": "LO-0308|OB|OBL-0C32ABA57FFC4D31984A13C58F94A3B7",
+     "id": "LO-0308|OB|OBL-E38C4C1DEE5B42DC98F823A36909DFA2",
      "side": "obligation",
      "shipmentId": "LO-0308",
      "shipmentIds": [
@@ -5635,17 +7489,17 @@
      "matchState": "MATCHED",
      "matchLabel": "Đã đối soát đủ",
      "allocationIds": [
-      "ALC-EFB100C5F2654CE792778FF28AC7E143"
+      "ALC-C74D0D8F0E4642A0B8BC30D2132FB898"
      ],
      "obligationIds": [
-      "OBL-0C32ABA57FFC4D31984A13C58F94A3B7"
+      "OBL-E38C4C1DEE5B42DC98F823A36909DFA2"
      ],
      "transactionIds": [
-      "TX-A726346DE2A64ADBB10F2E686F2FBCD1"
+      "TX-1B54052397B546728CC761F8D7D3D740"
      ],
      "sourceRecordIds": [
-      "OBL-0C32ABA57FFC4D31984A13C58F94A3B7",
-      "ALC-EFB100C5F2654CE792778FF28AC7E143"
+      "OBL-E38C4C1DEE5B42DC98F823A36909DFA2",
+      "ALC-C74D0D8F0E4642A0B8BC30D2132FB898"
      ],
      "reviewReason": null,
      "openHref": "/lo-hang/LO-0308",
@@ -5767,23 +7621,69 @@
     "statusCounts": [
      {
       "status": "Chờ giao",
-      "count": 1
-     },
-     {
-      "status": "Đã giao",
-      "count": 1
+      "count": 1,
+      "share": 0.2
      },
      {
       "status": "Chờ thông quan",
-      "count": 2
+      "count": 3,
+      "share": 0.6
      },
      {
-      "status": "Chờ lấy hàng",
-      "count": 1
+      "status": "Đã giao",
+      "count": 1,
+      "share": 0.2
      }
     ],
     "actionableTaskCount": 8
    },
+   "actionables": [
+    {
+     "id": "OPS-LO-0299",
+     "level": "Khan",
+     "shipmentId": "LO-0299",
+     "customer": "Hồng Hà Co.",
+     "job": "Quá hạn khách",
+     "detail": "Hạn khách 08/09/2026 đã quá 8 ngày.",
+     "route": "/lo-hang/LO-0299?tab=nhap"
+    },
+    {
+     "id": "OPS-LO-0308",
+     "level": "Khan",
+     "shipmentId": "LO-0308",
+     "customer": "Minh Đức JSC",
+     "job": "Quá hạn khách",
+     "detail": "Hạn khách 12/09/2026 đã quá 4 ngày.",
+     "route": "/lo-hang/LO-0308?tab=nhap"
+    },
+    {
+     "id": "OPS-LO-0295",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0295",
+     "customer": "Thiên Ân JSC",
+     "job": "Tài chính cần theo dõi",
+     "detail": "CHỜ THU",
+     "route": "/lo-hang/LO-0295?tab=chung-tu"
+    },
+    {
+     "id": "TASK-0295-THU",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0295",
+     "customer": "Thiên Ân JSC",
+     "job": "Thu nốt công nợ lô LO-0295",
+     "detail": "Việc được giao",
+     "route": "/lo-hang/LO-0295?tab=lay-hang"
+    },
+    {
+     "id": "OPS-LO-0306",
+     "level": "CanXuLy",
+     "shipmentId": "LO-0306",
+     "customer": "An Phát JSC",
+     "job": "Tài chính cần theo dõi",
+     "detail": "CHỜ THU",
+     "route": "/lo-hang/LO-0306?tab=nhap"
+    }
+   ],
    "receivables": {
     "positions": [
      {
@@ -5819,6 +7719,52 @@
     "status": "CONFIRMED",
     "error": null
    },
+   "financeActual": {
+    "positions": [
+     {
+      "currency": "VND",
+      "revenueNet": 556100000.0,
+      "cost": 510200000.0,
+      "profit": 45900000.0,
+      "marginPct": 8.25,
+      "rowCount": 5,
+      "incompleteRowCount": 0
+     }
+    ],
+    "available": true
+   },
+   "topCustomers": [
+    {
+     "currency": "VND",
+     "customers": [
+      {
+       "name": "Đức Long Co.",
+       "revenueNet": 160200000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Thiên Ân JSC",
+       "revenueNet": 135400000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "An Phát JSC",
+       "revenueNet": 104500000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Hồng Hà Co.",
+       "revenueNet": 94000000.0,
+       "shipmentCount": 1
+      },
+      {
+       "name": "Minh Đức JSC",
+       "revenueNet": 62000000.0,
+       "shipmentCount": 1
+      }
+     ]
+    }
+   ],
    "finance": {
     "incompleteShipmentCount": 0
    },
@@ -5865,6 +7811,974 @@
    "unavailable": [
     "Chỉ hiển thị vị thế hiện tại có nguồn dữ liệu; không tạo chỉ số thay thế.",
     "Không có quy đổi tiền tệ, mục tiêu, dự báo hoặc xu hướng trên trang này."
+   ]
+  },
+  "handbook": {
+   "classification": "STATIC_CONTENT_READY",
+   "readOnly": true,
+   "sections": [
+    {
+     "id": "quy-trinh",
+     "label": "Luồng lô hàng",
+     "icon": "truck",
+     "lead": "Trạng thái và khung dữ liệu mà chính ứng dụng đang dùng cho một lô.",
+     "provenance": {
+      "source": "core/config.py · views/logi_view_model.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Giá trị nguyên bản từ hằng số đang chạy trong app; đây là tài liệu tham chiếu của hệ thống, không phải quy định bên ngoài."
+     },
+     "entries": [
+      {
+       "id": "trang-thai",
+       "title": "Bốn trạng thái lô hàng",
+       "summary": "Danh sách trạng thái hợp lệ và nhãn app hiển thị cho từng trạng thái.",
+       "bullets": [
+        "Không có trạng thái thứ năm: bộ lọc và kiểm tra của app chỉ nhận các mã ở bảng này."
+       ],
+       "table": {
+        "columns": [
+         "Mã trong hệ thống",
+         "Nhãn việc cần làm",
+         "Nhãn trạng thái lô"
+        ],
+        "rows": [
+         [
+          "wait",
+          "Chưa xử lý",
+          "Chờ chứng từ"
+         ],
+         [
+          "pending",
+          "Đang xử lý",
+          "Đang thông quan/Giao hàng"
+         ],
+         [
+          "done",
+          "Hoàn thành",
+          "Hoàn thành"
+         ],
+         [
+          "cancel",
+          "Đã hủy",
+          "Đã hủy"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Việc Cần Xử Lý",
+         "href": "/viec-can-xu-ly"
+        }
+       ],
+       "tags": [
+        "trạng thái",
+        "workflow"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "nganh-du-lieu",
+       "title": "Mỗi giai đoạn lưu trường nào",
+       "summary": "Bộ trường một lô hàng được tổ chức theo nhánh dữ liệu. Danh sách này lấy đúng từ whitelist mà mọi thao tác sửa đang đi qua.",
+       "bullets": [
+        "Ngoài danh sách này, không có trường nào khác được cập nhật từ màn hình.",
+        "Số liệu chưa có vẫn để trống — app không thay thế bằng 0."
+       ],
+       "table": {
+        "columns": [
+         "Nhánh dữ liệu",
+         "Trường được phép cập nhật"
+        ],
+        "rows": [
+         [
+          "data.0.0",
+          "created_at, incoterm, mode"
+         ],
+         [
+          "data.1.2",
+          "booking_no, carrier, container_no, etd, hbl, mbl, pickup_truck_type, pod, pol, qty_pkg, vessel"
+         ],
+         [
+          "data.2.4",
+          "customs_status, import_duty_amount, import_vat_amount, phan_luong, tk_date, tk_no"
+         ],
+         [
+          "data.2.6",
+          "arrival_date, free_time"
+         ],
+         [
+          "data.2.7",
+          "addr, delivery_date, delivery_location, phone_receiver, receiver_name, receiver_title, seal_no, truck_no"
+         ],
+         [
+          "(đỉnh lô hàng)",
+          "status"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Chi Tiết Lô 360°",
+         "href": "/lo-hang"
+        }
+       ],
+       "tags": [
+        "dữ liệu",
+        "nhập liệu"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "chung-tu",
+     "label": "Chứng từ",
+     "icon": "filecheck",
+     "lead": "Khung kiểm tra chứng từ và các quy tắc sinh chứng từ đã chốt trong app.",
+     "provenance": {
+      "source": "views/logi_real_data.py · core/docgen/rules.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Quy tắc sinh chứng từ là RULE NỘI BỘ đã chốt cho bộ sinh chứng từ (LOG-DOCGEN-01 V1) — không phải hướng dẫn nghiệp vụ hải quan hay quy định pháp luật."
+     },
+     "entries": [
+      {
+       "id": "kiem-tra-chung-tu",
+       "title": "Bốn mục kiểm tra của một lô nhập",
+       "summary": "Khung checklist mà hệ thống tự đánh giá cho từng lô. Trạng thái thật của mỗi lô hiển thị trong Chi Tiết Lô 360°.",
+       "bullets": [
+        "Bảng này liệt kê KHUNG kiểm tra; cột bên phải là mặc định khi chưa có dữ liệu, không phải trạng thái của một lô cụ thể."
+       ],
+       "table": {
+        "columns": [
+         "Mục kiểm tra",
+         "Mặc định khi lô chưa có dữ liệu"
+        ],
+        "rows": [
+         [
+          "Số tờ khai nhập khẩu",
+          "Chưa đăng ký tờ khai"
+         ],
+         [
+          "Đã thông quan",
+          "Chờ số tờ khai"
+         ],
+         [
+          "Xe giao VN + tài xế",
+          "Chưa đặt xe giao"
+         ],
+         [
+          "Xác nhận đã giao hàng",
+          "Chưa xác nhận"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Việc Cần Xử Lý",
+         "href": "/viec-can-xu-ly"
+        }
+       ],
+       "tags": [
+        "chứng từ",
+        "checklist",
+        "nhập khẩu"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "chung-tu-sinh",
+       "title": "Chứng từ bộ sinh tạo ra",
+       "summary": "Bốn loại chứng từ và trường định danh pháp lý của từng loại.",
+       "bullets": [
+        "Loại áp dụng cho hợp đồng: HDNT, PL, HDMB",
+        "Số dòng tối đa — HDMB: 1 · Phụ lục: 18",
+        "Trạng thái bộ sinh: READY, MISSING_INFO, NOT_APPLICABLE, OWNER_RULE_REQUIRED, BLOCKED",
+        "Trạng thái bản soạn: DRAFT, GENERATED, ISSUED"
+       ],
+       "table": {
+        "columns": [
+         "Loại",
+         "Tên chứng từ",
+         "Trường số",
+         "Trường ngày"
+        ],
+        "rows": [
+         [
+          "HDNT",
+          "Hợp đồng nguyên tắc",
+          "hdnt_no",
+          "hdnt_date"
+         ],
+         [
+          "PL",
+          "Phụ lục Hợp đồng",
+          "pl_no",
+          "pl_date"
+         ],
+         [
+          "HDMB",
+          "Hợp đồng mua bán",
+          "hdmb_no",
+          "hdmb_date"
+         ],
+         [
+          "PXK",
+          "Phiếu xuất kho",
+          "pxk_no",
+          "pxk_date"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Hợp Đồng",
+         "href": "/hop-dong"
+        }
+       ],
+       "tags": [
+        "docgen",
+        "hợp đồng",
+        "chứng từ"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "dich-vu",
+     "label": "Dịch vụ & mã phí",
+     "icon": "calc",
+     "lead": "Danh mục mã dịch vụ dùng khi nhập/xuất file GetFly, và bộ Incoterm app cho phép.",
+     "provenance": {
+      "source": "core/config.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Danh mục mã do app dùng cho luồng GetFly; Incoterm chỉ là tập mã được chấp nhận khi nhập — repo không chứa nội dung giải thích quy tắc Incoterms, nên trang này không tự đặt ra."
+     },
+     "entries": [
+      {
+       "id": "ma-dich-vu",
+       "title": "Mã dịch vụ GetFly (27 mã)",
+       "summary": "Mã · tên dịch vụ · đơn vị tính · nhóm, đúng như danh mục đang chạy.",
+       "bullets": [],
+       "table": {
+        "columns": [
+         "Mã",
+         "Tên dịch vụ",
+         "Đơn vị",
+         "Nhóm"
+        ],
+        "rows": [
+         [
+          "DVK",
+          "Phí dịch vụ khác",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "VCND 40",
+          "Vận chuyển nội địa cont 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "DH",
+          "Đóng hộ",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "BHHH",
+          "Bảo hiểm hàng hóa",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOFLCL",
+          "Cước biển hàng LCL nhập khẩu (M3)",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKAF",
+          "Cước vận chuyển quốc tế hàng không (AF) hàng xuất",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKAF",
+          "Cước vận chuyển quốc tế hàng không (air) hàng NK",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "CNHQ",
+          "Chứng nhận hợp quy",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOFLCL",
+          "Cước vận tải biển quốc tế hàng lẻ (LCL) xuất khẩu",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOF20",
+          "Cước vận tải biển quốc tế hàng NK cont 20",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NKOF40",
+          "Cước vận tải biển quốc tế hàng NK cont 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOF40",
+          "Cước vận tải biển quốc tế hàng xuất container 40",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "XKOF20",
+          "Cước vận tải biển quốc tế hàng xuất container 20",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "TQ",
+          "Dịch vụ thông quan",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "DDC",
+          "Door - to - door",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "LCC",
+          "Local charges (Phụ phí tại cảng)",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "LCX",
+          "Lưu ca xe",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "EXW",
+          "Phí EXWORK",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "NH",
+          "Nâng hạ",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "PKH",
+          "Phí kiểm hóa",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "TTHQ",
+          "Thủ tục hải quan",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "GP",
+          "Giấy phép",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "HT",
+          "Hun trùng",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "HHNKUT",
+          "Tiền hàng NK ủy thác",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "KD",
+          "Kiểm dịch",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "KTCL",
+          "Kiểm tra chất lượng",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ],
+         [
+          "CO",
+          "Xin C/O",
+          "Lần",
+          "DỊCH VỤ XNK"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Kinh doanh · Báo giá",
+         "href": "/kinh-doanh-bao-gia"
+        }
+       ],
+       "tags": [
+        "getfly",
+        "báo giá",
+        "mã phí"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "incoterm",
+       "title": "Incoterm hệ thống ghi nhận",
+       "summary": "Các mã Incoterm mà app cho phép lưu trên lô hàng và báo giá.",
+       "bullets": [
+        "Đây là danh sách giá trị nhập liệu của app, KHÔNG phải định nghĩa hay quy tắc pháp lý của Incoterms — repo không chứa nguồn đó."
+       ],
+       "table": {
+        "columns": [
+         "Incoterm"
+        ],
+        "rows": [
+         [
+          "EXW"
+         ],
+         [
+          "FCA"
+         ],
+         [
+          "FAS"
+         ],
+         [
+          "FOB"
+         ],
+         [
+          "CFR"
+         ],
+         [
+          "CIF"
+         ],
+         [
+          "CPT"
+         ],
+         [
+          "CIP"
+         ],
+         [
+          "DAP"
+         ],
+         [
+          "DPU"
+         ],
+         [
+          "DDP"
+         ]
+        ]
+       },
+       "links": [],
+       "tags": [
+        "incoterm",
+        "nhập liệu"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "hai-quan",
+     "label": "Hải quan · tham chiếu",
+     "icon": "scale",
+     "lead": "Điểm truy cập nguồn chính thức Việt Nam mà hệ thống đăng ký — kèm trạng thái chứng cứ thật của từng nguồn.",
+     "provenance": {
+      "source": "core/trade_compliance/source_registry.json · logistics.trade_compliance.authoritative_sources",
+      "version": "0.1.0",
+      "updated": null,
+      "owner": null,
+      "note": "Danh mục đăng ký nguồn (discovery) — chưa truy xuất, không chứa thuế suất hay kết luận pháp lý. Không mục nào ở đây được coi là xác nhận chính thức cho một lô hàng cụ thể."
+     },
+     "entries": [
+      {
+       "id": "nguon-chinh-thuc",
+       "title": "Điểm truy cập chính thức (3 nguồn)",
+       "summary": "Trạng thái `NOT_RETRIEVED` nghĩa là hệ thống chưa lấy và chưa xác minh nội dung của nguồn này.",
+       "bullets": [
+        "Số hóa nguồn sống trong registry: TẮT.",
+        "Thuế suất/HS cụ thể phải tra ở mục Tra cứu thuế / HS, không suy ra từ đây."
+       ],
+       "table": {
+        "columns": [
+         "Khu vực pháp lý",
+         "Cơ quan",
+         "URL",
+         "Phạm vi",
+         "Trạng thái chứng cứ"
+        ],
+        "rows": [
+         [
+          "VN",
+          "Vietnam Trade Information Portal",
+          "https://vietnamtradeportal.gov.vn/",
+          "Vietnam import/export procedures and regulatory information",
+          "NOT_RETRIEVED"
+         ],
+         [
+          "VN",
+          "Vietnam Customs",
+          "https://www.customs.gov.vn/",
+          "Vietnam customs administration and official customs information",
+          "NOT_RETRIEVED"
+         ],
+         [
+          "VN",
+          "Vietnam Government legal-document portal",
+          "https://vanban.chinhphu.vn/",
+          "Official Vietnamese legal instruments and government documents",
+          "NOT_RETRIEVED"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Tra cứu thuế / HS",
+         "href": "/tra-cuu-thue"
+        }
+       ],
+       "tags": [
+        "hải quan",
+        "nguồn",
+        "trade compliance"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "cong-cu",
+     "label": "Công cụ & phân quyền",
+     "icon": "search",
+     "lead": "Liên kết tracking hãng tàu app dùng, và ma trận quyền duy nhất theo vai trò.",
+     "provenance": {
+      "source": "core/config.py · core/auth.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Liên kết tracking là mẫu URL cấu hình sẵn (`{ref}` = số vận đơn/container). Ma trận quyền là CHÍNH SÁCH server-side; UI chỉ hiển thị."
+     },
+     "entries": [
+      {
+       "id": "tracking",
+       "title": "Liên kết theo dõi theo hãng tàu (12)",
+       "summary": "Mẫu URL app dùng khi dựng link theo dõi container/vận đơn.",
+       "bullets": [],
+       "table": {
+        "columns": [
+         "Hãng tàu / hãng chuyển phát",
+         "Mẫu URL"
+        ],
+        "rows": [
+         [
+          "Maersk",
+          "https://www.maersk.com/tracking/{ref}"
+         ],
+         [
+          "MSC",
+          "https://www.msc.com/track-a-shipment?agencyPath=usa&trackingNumber={ref}"
+         ],
+         [
+          "CMA CGM",
+          "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&Reference={ref}"
+         ],
+         [
+          "COSCO",
+          "https://elines.coscoshipping.com/ebusiness/cargoTracking?trackingType=CONTAINER&number={ref}"
+         ],
+         [
+          "Evergreen",
+          "https://ct.shipmentlink.com/servlet/TDB1_CargoTracking.do?TYPE=BL&BL={ref}"
+         ],
+         [
+          "ONE",
+          "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking?trakNoParam={ref}"
+         ],
+         [
+          "Hapag-Lloyd",
+          "https://www.hapag-lloyd.com/en/online-business/track/track-by-container-solution.html?container={ref}"
+         ],
+         [
+          "Wan Hai",
+          "https://www.wanhai.com/views/cargoTrack/CargoTrack.xhtml?refNo={ref}"
+         ],
+         [
+          "SITC",
+          "https://www.sitc.com/track?number={ref}"
+         ],
+         [
+          "DHL",
+          "https://www.dhl.com/global-en/home/tracking.html?tracking-id={ref}"
+         ],
+         [
+          "FedEx",
+          "https://www.fedex.com/fedextrack/?trknbr={ref}"
+         ],
+         [
+          "UPS",
+          "https://www.ups.com/track?tracknum={ref}"
+         ]
+        ]
+       },
+       "links": [
+        {
+         "label": "Mở Theo Dõi",
+         "href": "/theo-doi"
+        }
+       ],
+       "tags": [
+        "tracking",
+        "hãng tàu"
+       ],
+       "provenance": null
+      },
+      {
+       "id": "phan-quyen",
+       "title": "Ai được làm gì (ma trận vai trò)",
+       "summary": "Quyền theo vai trò, đúng như `ROLE_PERMISSIONS` đang chạy.",
+       "bullets": [
+        "admin = `*` (toàn quyền); các vai trò khác chỉ có quyền liệt kê ở đây.",
+        "Role switcher trên thanh bên chỉ để xem — ranh giới thật là core.auth ở server."
+       ],
+       "table": {
+        "columns": [
+         "Vai trò",
+         "Quyền"
+        ],
+        "rows": [
+         [
+          "accounting",
+          "contracts, customers, dashboard, entrustment, finance_view, knowledge, proxy_payment, receivables, reports, shipment_edit"
+         ],
+         [
+          "admin",
+          "*"
+         ],
+         [
+          "operations",
+          "contracts, customers, dashboard, knowledge, operations_write, shipment_create, shipment_edit, tariff, tracking"
+         ],
+         [
+          "sale",
+          "commercial_view, commercial_write, contracts, customers, dashboard, entity_context, knowledge, sales, sales_write, shipment_360_read, shipment_create, shipment_edit, tariff, tracking, translation"
+         ],
+         [
+          "sales",
+          "commercial_view, contracts, customers, dashboard, knowledge, sales, sales_write, shipment_create, shipment_edit, tracking"
+         ],
+         [
+          "support",
+          "commercial_view, commercial_write, contracts, customers, dashboard, entity_context, entrustment, finance_view, finance_write, knowledge, operations_write, proxy_payment, receivables, reports, sales, sales_write, shipment_360_read, shipment_create, shipment_edit, tariff, tracking, translation"
+         ],
+         [
+          "viewer",
+          "commercial_view, dashboard, finance_view, knowledge, reports, tracking"
+         ]
+        ]
+       },
+       "links": [],
+       "tags": [
+        "rbac",
+        "vai trò"
+       ],
+       "provenance": null
+      }
+     ],
+     "state": null
+    },
+    {
+     "id": "ghi-chu",
+     "label": "Ghi chú đội ngũ",
+     "icon": "book",
+     "lead": "Kho ghi chú kinh nghiệm chung của đội, đọc từ cùng một nguồn mà màn hình Sổ tay cũ dùng.",
+     "provenance": {
+      "source": "core/database.load_knowledge_base · views/knowledge_base.py",
+      "version": null,
+      "updated": null,
+      "owner": null,
+      "note": "Sổ tay kinh nghiệm của đội ngũ. Trang này chỉ đọc: thêm/sửa/xóa vẫn nằm ở màn hình Streamlit cũ, và Sổ tay không tạo nội dung thay thế."
+     },
+     "entries": [],
+     "state": {
+      "tone": "gray",
+      "text": "Cơ sở dữ liệu đang dùng chưa có ghi chú nào. Sổ tay hiển thị đúng trạng thái này và không tự soạn nội dung thay thế."
+     }
+    }
+   ],
+   "counts": {
+    "sectionCount": 6,
+    "availableSectionCount": 5,
+    "entryCount": 9,
+    "noteCount": 0,
+    "noteTotal": 0
+   },
+   "unavailable": [
+    "Không có nội dung hướng dẫn từng bước (tutorial) — repo không chứa nguồn đó, nên trang không tự viết ra.",
+    "Không có quy tắc Incoterms, quy định hải quan, thuế suất hay tư vấn pháp lý; chỉ có danh mục giá trị/danh mục nguồn mà app đang dùng.",
+    "Không có bộ máy soạn thảo, phiên bản, duyệt bài hay tìm kiếm toàn văn trong trang này; bộ lọc chỉ là so khớp chữ trên dữ liệu đã tải."
+   ],
+   "sectionsUnavailable": [
+    "Ghi chú đội ngũ"
+   ],
+   "sectionsAvailable": [
+    "Luồng lô hàng",
+    "Chứng từ",
+    "Dịch vụ & mã phí",
+    "Hải quan · tham chiếu",
+    "Công cụ & phân quyền"
+   ]
+  },
+  "userAccess": {
+   "classification": "READ_ONLY_READY",
+   "readOnly": true,
+   "canManage": false,
+   "authMode": {
+    "required": false,
+    "mode": "local_admin",
+    "label": "Local Admin (một tài khoản cục bộ)",
+    "note": "AUTH_REQUIRED đang tắt: ứng dụng chạy với một tài khoản cục bộ (local-admin) có vai trò admin. Đây KHÔNG phải đăng nhập đa người dùng thực sự; trang này hiển thị trung thực chế độ hiện có, không tự ý nâng cấp thành hệ thống xác thực mới."
+   },
+   "currentUser": {
+    "present": true,
+    "username": "staging.support",
+    "displayName": "Thu Hằng (Preview/Staging)",
+    "role": "support",
+    "permissions": [
+     "commercial_view",
+     "commercial_write",
+     "contracts",
+     "customers",
+     "dashboard",
+     "entity_context",
+     "entrustment",
+     "finance_view",
+     "finance_write",
+     "knowledge",
+     "operations_write",
+     "proxy_payment",
+     "receivables",
+     "reports",
+     "sales",
+     "sales_write",
+     "shipment_360_read",
+     "shipment_create",
+     "shipment_edit",
+     "tariff",
+     "tracking",
+     "translation"
+    ],
+    "wildcard": false
+   },
+   "users": [
+    {
+     "user_id": "admin",
+     "username": "admin",
+     "display_name": "admin",
+     "email": "",
+     "role": "ADMIN",
+     "active": true
+    },
+    {
+     "user_id": "minhtu",
+     "username": "minhtu",
+     "display_name": "minhtu",
+     "email": "",
+     "role": "SALE",
+     "active": true
+    },
+    {
+     "user_id": "thuhang",
+     "username": "thuhang",
+     "display_name": "thuhang",
+     "email": "",
+     "role": "SUPPORT",
+     "active": true
+    }
+   ],
+   "roles": {
+    "assignable": [
+     "admin",
+     "sale",
+     "support"
+    ],
+    "legacy": [
+     "accounting",
+     "operations",
+     "sales",
+     "viewer"
+    ],
+    "source": "core.users.SUPPORTED_ROLES + core.auth.ROLE_PERMISSIONS"
+   },
+   "permissionMatrix": [
+    {
+     "role": "admin",
+     "permissions": [
+      "*"
+     ],
+     "wildcard": true,
+     "permissionCount": 1
+    },
+    {
+     "role": "sale",
+     "permissions": [
+      "commercial_view",
+      "commercial_write",
+      "contracts",
+      "customers",
+      "dashboard",
+      "entity_context",
+      "knowledge",
+      "sales",
+      "sales_write",
+      "shipment_360_read",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking",
+      "translation"
+     ],
+     "wildcard": false,
+     "permissionCount": 15
+    },
+    {
+     "role": "support",
+     "permissions": [
+      "commercial_view",
+      "commercial_write",
+      "contracts",
+      "customers",
+      "dashboard",
+      "entity_context",
+      "entrustment",
+      "finance_view",
+      "finance_write",
+      "knowledge",
+      "operations_write",
+      "proxy_payment",
+      "receivables",
+      "reports",
+      "sales",
+      "sales_write",
+      "shipment_360_read",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking",
+      "translation"
+     ],
+     "wildcard": false,
+     "permissionCount": 22
+    },
+    {
+     "role": "accounting",
+     "permissions": [
+      "contracts",
+      "customers",
+      "dashboard",
+      "entrustment",
+      "finance_view",
+      "knowledge",
+      "proxy_payment",
+      "receivables",
+      "reports",
+      "shipment_edit"
+     ],
+     "wildcard": false,
+     "permissionCount": 10
+    },
+    {
+     "role": "operations",
+     "permissions": [
+      "contracts",
+      "customers",
+      "dashboard",
+      "knowledge",
+      "operations_write",
+      "shipment_create",
+      "shipment_edit",
+      "tariff",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 9
+    },
+    {
+     "role": "sales",
+     "permissions": [
+      "commercial_view",
+      "contracts",
+      "customers",
+      "dashboard",
+      "knowledge",
+      "sales",
+      "sales_write",
+      "shipment_create",
+      "shipment_edit",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 10
+    },
+    {
+     "role": "viewer",
+     "permissions": [
+      "commercial_view",
+      "dashboard",
+      "finance_view",
+      "knowledge",
+      "reports",
+      "tracking"
+     ],
+     "wildcard": false,
+     "permissionCount": 6
+    }
+   ],
+   "counts": {
+    "userCount": 3,
+    "userShown": 3,
+    "activeCount": 3,
+    "inactiveCount": 0,
+    "roleCount": 7,
+    "assignableRoleCount": 3
+   },
+   "unavailable": [
+    "Trang này CHỈ ĐỌC với vai trò hiện tại: không tạo / sửa / khóa tài khoản, không đổi mật khẩu, không gán vai trò. Các thao tác ghi chỉ dành cho Admin và luôn được core.database kiểm tra lại phía máy chủ.",
+    "Không hiện mật khẩu, hash mật khẩu, token hay bất kỳ dữ liệu bí mật nào — danh sách tài khoản dùng đúng public view chuẩn của core.users.",
+    "Không thêm vai trò mới hay quyền mới: ma trận dưới đây là nguyên văn ROLE_PERMISSIONS của core.auth.",
+    "Không có thao tác xóa tài khoản (hard delete) — chỉ vô hiệu hóa / kích hoạt lại, giữ nguyên lịch sử."
    ]
   },
   "tariff": {
@@ -5952,6 +8866,184 @@
    "request": null,
    "result": null
   },
+  "financeServiceCatalog": [
+   {
+    "code": "DVK",
+    "name": "Phí dịch vụ khác",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "VCND 40",
+    "name": "Vận chuyển nội địa cont 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "DH",
+    "name": "Đóng hộ",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "BHHH",
+    "name": "Bảo hiểm hàng hóa",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOFLCL",
+    "name": "Cước biển hàng LCL nhập khẩu (M3)",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKAF",
+    "name": "Cước vận chuyển quốc tế hàng không (AF) hàng xuất",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKAF",
+    "name": "Cước vận chuyển quốc tế hàng không (air) hàng NK",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "CNHQ",
+    "name": "Chứng nhận hợp quy",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOFLCL",
+    "name": "Cước vận tải biển quốc tế hàng lẻ (LCL) xuất khẩu",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOF20",
+    "name": "Cước vận tải biển quốc tế hàng NK cont 20",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NKOF40",
+    "name": "Cước vận tải biển quốc tế hàng NK cont 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOF40",
+    "name": "Cước vận tải biển quốc tế hàng xuất container 40",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "XKOF20",
+    "name": "Cước vận tải biển quốc tế hàng xuất container 20",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "TQ",
+    "name": "Dịch vụ thông quan",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "DDC",
+    "name": "Door - to - door",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "LCC",
+    "name": "Local charges (Phụ phí tại cảng)",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "LCX",
+    "name": "Lưu ca xe",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "EXW",
+    "name": "Phí EXWORK",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "NH",
+    "name": "Nâng hạ",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "PKH",
+    "name": "Phí kiểm hóa",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "TTHQ",
+    "name": "Thủ tục hải quan",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "GP",
+    "name": "Giấy phép",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "HT",
+    "name": "Hun trùng",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "HHNKUT",
+    "name": "Tiền hàng NK ủy thác",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "KD",
+    "name": "Kiểm dịch",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "KTCL",
+    "name": "Kiểm tra chất lượng",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   },
+   {
+    "code": "CO",
+    "name": "Xin C/O",
+    "unit": "Lần",
+    "group": "DỊCH VỤ XNK"
+   }
+  ],
+  "getfly": {
+   "status": "EMPTY",
+   "previewId": "",
+   "filename": "",
+   "orders": [],
+   "normalizedRows": [],
+   "summary": {
+    "orders": 0,
+    "revenue": null,
+    "profit": null
+   },
+   "error": ""
+  },
+  "lastWrites": [],
   "unknownLabel": "—"
  }
 }
