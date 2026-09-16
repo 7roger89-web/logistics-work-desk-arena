@@ -79,6 +79,20 @@ def _commit(preview: dict, *, mode: str, seq: int = 2, **payload) -> dict:
     return outcomes[0]
 
 
+def test_repair_data_preserves_global_legacy_mode_incoterm_defaults(staging):
+    """Generic legacy loads retain pre-GetFly repair semantics."""
+    from core.database import repair_data
+
+    generic = {
+        "id": "LEGACY-MISSING-FACTS",
+        "status": "wait",
+        "data": {"0.0": {"st": "wait"}},
+    }
+    repaired = repair_data({generic["id"]: generic})[generic["id"]]
+    assert repaired["data"]["0.0"]["mode"] == "Sea"
+    assert repaired["data"]["0.0"]["incoterm"] == "EXW"
+
+
 def test_real_xlsx_parser_and_preview_have_zero_writes(staging):
     raw = FIXTURE.read_bytes()
     parsed, error = process_getfly_excel(io.BytesIO(raw))
@@ -114,6 +128,11 @@ def test_real_xlsx_parser_and_preview_have_zero_writes(staging):
 
 def test_mode_a_creates_only_missing_shipment_and_replay_skips(staging):
     preview = _preview()
+    missing_order = next(order for order in preview["orders"] if not order["existing"])
+    candidate = vm._getfly_document(missing_order, vm.GETFLY_MODE_SHIPMENT_ONLY, {})
+    assert candidate["data"]["0.0"]["mode"] == ""
+    assert candidate["data"]["0.0"]["incoterm"] == ""
+
     out = _commit(preview, mode=vm.GETFLY_MODE_SHIPMENT_ONLY)
     assert out["ok"], out
     assert [row["status"] for row in out["results"]] == [

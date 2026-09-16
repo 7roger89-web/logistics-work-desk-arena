@@ -1167,6 +1167,11 @@ def _getfly_document(order: Mapping[str, Any], mode: str,
             })
     head = {
         "st": _getfly_internal_status(order.get("sourceStatus")),
+        # GetFly DSDH does not state operational mode or Incoterm. Keep these
+        # explicit UNKNOWN/blank facts so generic repair_data() defaults cannot
+        # invent Sea/EXW on this import-specific document.
+        "mode": "",
+        "incoterm": "",
         "created_at": order_date,
         "order_date": order_date,
         "source_status": _getfly_clean(order.get("sourceStatus")),
