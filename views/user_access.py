@@ -24,10 +24,15 @@ Guarantees enforced by this module:
 * Auth-mode honesty: when ``AUTH_REQUIRED`` is off the app runs as a single
   Local Admin account.  The page says exactly that instead of presenting the
   deployment as multi-user production auth.
-* No write path: this projection takes its inputs as arguments and performs no
-  I/O and no mutation.  User management (create / update / deactivate) stays
-  with the existing canonical writers in ``core.database``; this page exposes
-  none of them yet, and says so in ``unavailable``.
+* No write path in THIS module: it takes its inputs as arguments and performs
+  no I/O and no mutation. Every actual write (create / role / active /
+  password) still goes through the canonical ``core.users`` transforms and
+  ``core.database`` writers — see ``views/user_management.py`` for the bounded
+  dispatcher that performs them. This module only decides, from the CURRENT
+  session identity, whether the account-management controls may be offered
+  at all (``canManage``) — the real authorization boundary stays server-side
+  in ``core.database`` (Admin-only), so hiding the controls here is a display
+  choice, never the security boundary.
 """
 
 from __future__ import annotations
@@ -78,6 +83,18 @@ def _current_user_view(current_user: Mapping[str, Any] | None) -> dict[str, Any]
         "permissions": sorted(str(permission) for permission in permissions),
         "wildcard": "*" in permissions,
     }
+
+
+def _can_manage(current: Mapping[str, Any]) -> bool:
+    """Display-only hint: offer the account-management controls to an Admin.
+
+    This NEVER is the security boundary — every mutation is re-checked
+    server-side by ``core.database`` (Admin-only via ``can_operate_business
+    ("*")``). A non-Admin who forces the events anyway is refused there, not
+    just hidden here. This flag only decides whether the UI bothers to render
+    the controls at all.
+    """
+    return bool(current.get("present")) and current.get("role") == "admin"
 
 
 def _auth_mode_view(required: bool | None) -> dict[str, Any]:
@@ -147,10 +164,40 @@ def user_access_projection(
     legacy = [row["role"] for row in matrix if row["role"] not in supported]
     active_count = sum(1 for row in rows if row.get("active"))
     current = _current_user_view(current_user)
+    can_manage = _can_manage(current)
+
+    unavailable = [
+        "Không hiện mật khẩu, hash mật khẩu, token hay bất kỳ dữ liệu bí "
+        "mật nào — danh sách tài khoản dùng đúng public view chuẩn của "
+        "core.users.",
+        "Không thêm vai trò mới hay quyền mới: ma trận dưới đây là nguyên "
+        "văn ROLE_PERMISSIONS của core.auth.",
+        "Không có thao tác xóa tài khoản (hard delete) — chỉ vô hiệu hóa / "
+        "kích hoạt lại, giữ nguyên lịch sử.",
+    ]
+    if can_manage:
+        unavailable.insert(
+            0,
+            "Trang này KHÔNG gửi email mời/đặt lại mật khẩu và không đăng "
+            "xuất các phiên trình duyệt khác đang mở — Admin đặt mật khẩu "
+            "mới trực tiếp tại đây.",
+        )
+    else:
+        unavailable.insert(
+            0,
+            "Trang này CHỈ ĐỌC với vai trò hiện tại: không tạo / sửa / khóa "
+            "tài khoản, không đổi mật khẩu, không gán vai trò. Các thao tác "
+            "ghi chỉ dành cho Admin và luôn được core.database kiểm tra lại "
+            "phía máy chủ.",
+        )
 
     return {
         "classification": CLASSIFICATION,
-        "readOnly": True,
+        # Kept for backward compatibility with existing read-only assertions:
+        # true for every non-Admin viewer; an Admin session additionally gets
+        # `canManage: true` below, which is what the UI actually keys off.
+        "readOnly": not can_manage,
+        "canManage": can_manage,
         "authMode": _auth_mode_view(auth_required),
         "currentUser": current,
         "users": rows,
@@ -170,19 +217,8 @@ def user_access_projection(
             "roleCount": len(matrix),
             "assignableRoleCount": len(supported),
         },
-        # What this page explicitly does NOT provide.  These are honest scope
-        # statements: the canonical writers exist in core.database but no
-        # proven, safe UI write path is exposed yet — the page refuses to
-        # pretend otherwise.
-        "unavailable": [
-            "Trang này CHỈ ĐỌC: không tạo / sửa / khóa / xóa tài khoản, không "
-            "đổi mật khẩu, không gán vai trò. Các thao tác ghi vẫn nằm ở tầng "
-            "core.database (save_user / update_user / delete_user) và chưa có "
-            "kênh UI được chứng minh an toàn để mở.",
-            "Không hiện mật khẩu, hash mật khẩu, token hay bất kỳ dữ liệu bí "
-            "mật nào — danh sách tài khoản dùng đúng public view chuẩn của "
-            "core.users.",
-            "Không thêm vai trò mới hay quyền mới: ma trận dưới đây là nguyên "
-            "văn ROLE_PERMISSIONS của core.auth.",
-        ],
+        # What this page explicitly does NOT provide (scope honesty). The
+        # server-side Admin boundary is enforced again by core.database on
+        # every mutation regardless of what this flag says.
+        "unavailable": unavailable,
     }

@@ -1230,8 +1230,13 @@ export interface NotebookHandbook {
 // store read through the canonical password-free public view, the single
 // ROLE_PERMISSIONS matrix (verbatim — no role or permission is added here),
 // the real authentication mode (multi-user vs Local Admin) and the current
-// session identity. Deliberately absent: any credential material and any
-// user-management action (create/update/deactivate/reset/role assignment).
+// session identity.
+//
+// LOGI_USER_MANAGEMENT_01 — an Admin session additionally gets `canManage:
+// true`, which is a DISPLAY hint only (whether to offer the account-
+// management controls at all); the real Admin-only boundary is re-checked
+// server-side on every mutation by core.database, never by this flag. No
+// credential material (password / password_hash) is ever carried here.
 // ----------------------------------------------------------------------------
 
 export interface UserAccessAccount {
@@ -1270,7 +1275,10 @@ export interface UserAccessAuthMode {
 
 export interface UserAccessWorkspace {
   classification: "READ_ONLY_READY" | string;
+  /** True for every non-Admin viewer; false once `canManage` is true. */
   readOnly: boolean;
+  /** LOGI_USER_MANAGEMENT_01 — display hint: offer the Admin controls. */
+  canManage: boolean;
   authMode: UserAccessAuthMode;
   currentUser: UserAccessCurrentUser;
   users: UserAccessAccount[];

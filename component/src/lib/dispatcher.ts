@@ -72,7 +72,16 @@ export type LogiEventName =
   // core.financial_ledger on the next fresh read. There is deliberately no
   // reconcile/write event: recording a payable or a payment stays on the
   // canonical C2B/C2D and C2C surfaces this desk links to.
-  | "reconciliation_filter";
+  | "reconciliation_filter"
+  // LOGI_USER_MANAGEMENT_01 — the bounded Admin write path for /nguoi-dung.
+  // Every event is re-checked Admin-only server-side (core.auth.
+  // can_operate_business("*")), reuses the EXISTING core.users transforms +
+  // core.database writers, and returns its outcome via the same lastWrites
+  // pattern every other write uses. No delete event exists.
+  | "user_create"
+  | "user_role_set"
+  | "user_active_set"
+  | "user_password_reset";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -108,6 +117,10 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "partner_context_select",
   "authority_agent_save",
   "reconciliation_filter",
+  "user_create",
+  "user_role_set",
+  "user_active_set",
+  "user_password_reset",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

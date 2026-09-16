@@ -247,7 +247,15 @@ def require_login() -> dict[str, str] | None:
 
     session_user = current_user()
     if session_user:
-        return session_user
+        revalidated = _revalidate_session(session_user)
+        if revalidated is None:
+            # The account behind this session no longer exists, or was
+            # deactivated after login. A stale session must never keep
+            # acting under a role/identity the canonical store no longer
+            # grants — clear it and fall through to the login screen.
+            st.session_state.pop("current_user", None)
+        else:
+            return revalidated
 
     user_count = 0
     try:
@@ -290,6 +298,58 @@ def require_login() -> dict[str, str] | None:
             st.rerun()
         st.error("Tài khoản hoặc mật khẩu không đúng.")
     return None
+
+
+def _revalidate_session(session_user: dict[str, Any]) -> dict[str, str] | None:
+    """Re-check an existing session against the canonical user record.
+
+    ``require_login()`` used to trust ``st.session_state.current_user``
+    verbatim once it was set, so a role change or a deactivation made by an
+    Admin never applied to a browser tab that was already logged in — it kept
+    the OLD role/display identity for the rest of that session.
+
+    This is a narrow correction, not a new session framework: on every rerun
+    (while ``AUTH_REQUIRED`` is on) the session identity is re-derived from
+    ``core.database.load_users`` — the SAME canonical store ``_authenticate``
+    already reads — via ``core.users.public_identity`` — the SAME
+    password-free projection the rest of the app uses. No password is asked
+    again and no new session store, token or daemon is introduced.
+
+    Returns the refreshed public identity, or ``None`` when the account no
+    longer exists, is inactive, or the canonical store could not be read at
+    all. Authorization must fail CLOSED: if ``load_users`` raises, the
+    session is cleared exactly like a missing/inactive account rather than
+    keeping the operator logged in under a role the canonical store could
+    not confirm. This mirrors the existing fresh-login path, where a
+    ``load_users`` failure in ``_authenticate`` already returns ``None``
+    instead of granting access.
+    """
+    username = str(session_user.get("username") or "").strip().lower()
+    if not username:
+        return None
+    from core.database import load_users  # noqa: PLC0415
+    from core.users import public_identity  # noqa: PLC0415
+
+    try:
+        users = load_users()
+    except Exception:  # noqa: BLE001 - fail closed: never keep a stale session
+        return None
+
+    document = users.get(username)
+    if document is None or not document.get("active", True):
+        return None
+
+    identity = public_identity(document)
+    refreshed = {
+        "user_id": identity["user_id"],
+        "username": identity["username"],
+        "display_name": identity["display_name"],
+        "email": identity["email"],
+        "role": identity["role"],
+    }
+    if refreshed != {k: session_user.get(k) for k in refreshed}:
+        st.session_state.current_user = refreshed
+    return refreshed
 
 
 def _authenticate(username: str, password: str) -> dict[str, str] | None:
