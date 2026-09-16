@@ -11,8 +11,13 @@ existing, current-position facts for ``/bao-cao-ceo``:
         → one CEO presentation slice
 
 It opens no database, persists nothing, dispatches no event, applies no FX, and
-introduces no finance calculation.  In particular, revenue, cost, profit,
-margin, targets, forecasts and trends are deliberately outside this slice.
+introduces no finance calculation.  The current-position figures it surfaces
+(operations counts, per-currency receivable/payable totals, actual revenue /
+cost / profit summed INSIDE one currency from the canonical per-shipment
+``core.logic`` snapshot, top customers by actual revenue, actionable work) are
+either direct source facts or trivial presentation aggregation over already-
+authoritative homogeneous data.  Targets, forecasts, trends and period
+comparisons remain outside this slice: no source for them exists.
 """
 
 from __future__ import annotations
@@ -26,6 +31,13 @@ from typing import Any, Mapping
 # badge: only Khẩn + Cần xử lý are actionable work.  This adapter does not
 # redefine task completion from a presentation-only status string.
 ACTIONABLE_TASK_LEVELS = frozenset({"Khan", "CanXuLy"})
+
+# Bounded presentation lists: the CEO page shows the FIRST N rows of sources
+# that already carry their own complete ordering (the task projection sorts
+# Khan → Cần xử lý → Bình thường, then lot id).  The full desk stays on the
+# page that owns the data (/viec-can-xu-ly).
+ACTIONABLE_LIMIT = 5
+TOP_CUSTOMER_LIMIT = 5
 
 # Navigation only; each target already owns its own business capability.
 QUICK_LINKS: tuple[dict[str, str], ...] = (
@@ -111,7 +123,17 @@ def _status_counts(shipments: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
         # not, expose that uncertainty instead of placing the shipment in an
         # arbitrary operational stage.
         counts[_text(shipment.get("status")) or "Chưa xác định"] += 1
-    return [{"status": status, "count": count} for status, count in counts.items()]
+    # The denominator is the REAL current shipment row count (every row is
+    # counted exactly once above), never an invented period total.
+    total = len(shipments)
+    return [
+        {
+            "status": status,
+            "count": count,
+            "share": round(count / total, 4) if total else None,
+        }
+        for status, count in counts.items()
+    ]
 
 
 def _operations(
@@ -130,6 +152,158 @@ def _operations(
             1 for task in tasks if _text(task.get("level")) in ACTIONABLE_TASK_LEVELS
         ),
     }
+
+
+def _actionables(tasks: list[Mapping[str, Any]], limit: int = ACTIONABLE_LIMIT) -> list[dict[str, Any]]:
+    """Bounded top of the ALREADY-ORDERED real task projection.
+
+    The task projection is built by ``views.logi_view_model`` from dashboard
+    readiness evidence + the real tasks collection, sorted Khan → Cần xử lý →
+    Bình thường.  This adapter only forwards the first actionable rows; it
+    invents no deadline, lateness, assignee or severity, and every route is the
+    projection's own route into the real shipment workspace.
+    """
+    rows: list[dict[str, Any]] = []
+    for task in tasks:
+        level = _text(task.get("level"))
+        if level not in ACTIONABLE_TASK_LEVELS:
+            continue
+        rows.append(
+            {
+                "id": _text(task.get("id")) or "UNKNOWN",
+                "level": level,
+                "shipmentId": _text(task.get("lot")) or "UNKNOWN",
+                "customer": _text(task.get("customer")) or "Chưa xác định",
+                "job": _text(task.get("job")) or "Chưa xác định",
+                # nextActionDetail / missing-doc note exactly as the projection
+                # states it; stays None when the source has nothing to say.
+                "detail": _text(task.get("dueNote")),
+                "route": _text(task.get("route")) or "/lo-hang",
+            }
+        )
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _finance_actual_positions(shipments: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Per-currency CURRENT position from the canonical per-shipment finance.
+
+    Each shipment row already carries ``core.logic``'s authoritative snapshot
+    (``receivableNet`` = revenue_net, ``cost`` = booked service cost,
+    ``profit`` — UNKNOWN until at least one actual line is booked).  This only
+    sums those SAME values inside one currency — the identical pattern the C2C
+    receivable totals already use.  Rows without Finance Actual never enter a
+    sum and are never treated as zero; they stay visible through the existing
+    ``finance.incompleteShipmentCount``.  No FX, no cross-currency total.
+    """
+    buckets: dict[str, dict[str, Any]] = {}
+    for row in shipments:
+        finance = _mapping(row.get("finance"))
+        if not bool(finance.get("hasActualLines")):
+            continue
+        currency = _currency(finance.get("currency"))
+        revenue = _number(finance.get("receivableNet"))
+        cost = _number(finance.get("payable"))
+        profit = _number(finance.get("profit"))
+        bucket = buckets.setdefault(
+            currency, {"revenue": 0.0, "cost": 0.0, "profit": 0.0, "rowCount": 0, "incompleteRowCount": 0}
+        )
+        if revenue is None or cost is None or profit is None:
+            # A booked-but-unsafe row is evidence of incompleteness, not 0.
+            bucket["incompleteRowCount"] += 1
+            continue
+        bucket["revenue"] += revenue
+        bucket["cost"] += cost
+        bucket["profit"] += profit
+        bucket["rowCount"] += 1
+
+    positions: list[dict[str, Any]] = []
+    for currency in _ordered_currencies(buckets):
+        bucket = buckets[currency]
+        if bucket["rowCount"] == 0:
+            positions.append(
+                {
+                    "currency": currency,
+                    "revenueNet": None,
+                    "cost": None,
+                    "profit": None,
+                    "marginPct": None,
+                    "rowCount": 0,
+                    "incompleteRowCount": bucket["incompleteRowCount"],
+                }
+            )
+            continue
+        # Presentation ratio over the two same-currency sums just assembled —
+        # the same shape core.logic uses per shipment.  UNKNOWN when revenue is
+        # zero/unknown, never a forced 0%.
+        margin = round(bucket["profit"] / bucket["revenue"] * 100, 2) if bucket["revenue"] else None
+        positions.append(
+            {
+                "currency": currency,
+                "revenueNet": bucket["revenue"],
+                "cost": bucket["cost"],
+                "profit": bucket["profit"],
+                "marginPct": margin,
+                "rowCount": bucket["rowCount"],
+                "incompleteRowCount": bucket["incompleteRowCount"],
+            }
+        )
+
+    return {
+        "positions": positions,
+        "available": any(position["revenueNet"] is not None for position in positions),
+    }
+
+
+def _top_customers(shipments: list[Mapping[str, Any]], limit: int = TOP_CUSTOMER_LIMIT) -> list[dict[str, Any]]:
+    """Top customers by ACTUAL net revenue, strictly inside one currency.
+
+    Identity (customer name/id), currency and ``receivableNet`` all come from
+    the shipment rows already passed in; rows with unknown identity or unknown
+    actual revenue are excluded rather than zero-filled.  Quote values are
+    never involved.  No ranking ever crosses a currency boundary.
+    """
+    per_currency: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in shipments:
+        finance = _mapping(row.get("finance"))
+        if not bool(finance.get("hasActualLines")):
+            continue
+        revenue = _number(finance.get("receivableNet"))
+        if revenue is None:
+            continue
+        name = _text(row.get("customer"))
+        customer_id = _text(row.get("customerId"))
+        if not name and not customer_id:
+            continue
+        key = customer_id or name
+        currency = _currency(finance.get("currency"))
+        bucket = per_currency.setdefault(currency, {}).setdefault(
+            key, {"name": name or customer_id, "revenueNet": 0.0, "shipmentCount": 0}
+        )
+        bucket["revenueNet"] += revenue
+        bucket["shipmentCount"] += 1
+
+    out: list[dict[str, Any]] = []
+    for currency in _ordered_currencies(per_currency):
+        ranked = sorted(
+            per_currency[currency].values(),
+            key=lambda item: (-item["revenueNet"], item["name"]),
+        )[:limit]
+        out.append(
+            {
+                "currency": currency,
+                "customers": [
+                    {
+                        "name": item["name"],
+                        "revenueNet": item["revenueNet"],
+                        "shipmentCount": item["shipmentCount"],
+                    }
+                    for item in ranked
+                ],
+            }
+        )
+    return out
 
 
 def _receivables(payload: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
@@ -255,8 +429,16 @@ def ceo_report_projection(
         "classification": "PARTIAL_BACKED_READY",
         "readOnly": True,
         "operations": _operations(shipment_rows, _mapping(home), task_rows),
+        # Bounded top of the already-ordered real task projection: the page's
+        # "điểm nghẽn cần xử lý" panel.  Facts and routes are pass-through.
+        "actionables": _actionables(task_rows),
         "receivables": receivable_section,
         "payables": _payables(_mapping(payables)),
+        # Current ACTUAL finance position per currency, summed from the
+        # canonical per-shipment core.logic snapshots inside one currency only.
+        "financeActual": _finance_actual_positions(shipment_rows),
+        # Actual-revenue customer ranking per currency; never cross-currency.
+        "topCustomers": _top_customers(shipment_rows),
         "finance": {
             "incompleteShipmentCount": incomplete_finance_count,
         },
@@ -267,8 +449,10 @@ def ceo_report_projection(
 
 
 __all__ = [
+    "ACTIONABLE_LIMIT",
     "ACTIONABLE_TASK_LEVELS",
     "QUICK_LINKS",
+    "TOP_CUSTOMER_LIMIT",
     "UNAVAILABLE_CONTEXT",
     "ceo_report_projection",
 ]

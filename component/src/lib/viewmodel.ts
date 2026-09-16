@@ -1116,6 +1116,44 @@ export interface CeoCurrencyPosition {
 export interface CeoStatusCount {
   status: string;
   count: number;
+  /**
+   * count / the REAL current shipment row count (every row counted once).
+   * null only when there is no shipment row at all — never an invented total.
+   */
+  share: number | null;
+}
+
+/** LOGI_CEO_REPORT_REAL_PARITY_01 — current ACTUAL position of one currency. */
+export interface CeoFinancePosition {
+  currency: string;
+  /** core.logic revenue_net of booked Finance Actual rows, same currency only. */
+  revenueNet: MaybeNum;
+  /** core.logic cost of the SAME booked rows, same currency only. */
+  cost: MaybeNum;
+  /** core.logic profit; UNKNOWN until at least one actual line is booked. */
+  profit: MaybeNum;
+  /** profit / revenueNet × 100 inside this currency; null when revenue ≤ 0/unknown. */
+  marginPct: MaybeNum;
+  rowCount: number;
+  /** Booked rows whose figures were unsafe; excluded, never zero-filled. */
+  incompleteRowCount: number;
+}
+
+/** Actual-revenue ranking strictly INSIDE one currency. */
+export interface CeoTopCustomerGroup {
+  currency: string;
+  customers: { name: string; revenueNet: number; shipmentCount: number }[];
+}
+
+/** One real actionable row passed through from the existing task projection. */
+export interface CeoActionable {
+  id: string;
+  level: "Khan" | "CanXuLy" | string;
+  shipmentId: string;
+  customer: string;
+  job: string;
+  detail: string | null;
+  route: string;
 }
 
 export interface CeoReport {
@@ -1129,6 +1167,8 @@ export interface CeoReport {
     /** Existing work-desk meaning: Khẩn + Cần xử lý. */
     actionableTaskCount: number;
   };
+  /** Bounded top of the already-ordered real task projection (read-only). */
+  actionables: CeoActionable[];
   receivables: {
     positions: CeoCurrencyPosition[];
     shipmentRowCount: number;
@@ -1141,6 +1181,13 @@ export interface CeoReport {
     status: string;
     error: string | null;
   };
+  /** Current actual revenue/cost/profit per currency — never cross-currency. */
+  financeActual: {
+    positions: CeoFinancePosition[];
+    available: boolean;
+  };
+  /** Top customers by actual revenue, ranked inside one currency only. */
+  topCustomers: CeoTopCustomerGroup[];
   finance: {
     /** No Finance Actual ⇒ excluded from AR sums, never treated as zero. */
     incompleteShipmentCount: number;
