@@ -49,6 +49,19 @@ function intentKey(text: string, sourceLang: string, targetLang: string): string
   return `${sourceLang}\u0000${targetLang}\u0000${text}`;
 }
 
+/**
+ * LOGI_TRANSLATION_RUNTIME_UI_PARITY_01 — the useful logi-good quick chips.
+ * A click fills the SOURCE text only (exactly like typing the phrase); it
+ * NEVER dispatches a translation and NEVER fabricates a translated output —
+ * the BẢN DỊCH area only ever shows what the real provider returned.
+ */
+const QUICK_PHRASES: ReadonlyArray<{ zh: string; hint: string }> = [
+  { zh: "装箱单", hint: "Phiếu đóng gói (Packing List)" },
+  { zh: "商业发票", hint: "Hóa đơn thương mại (Commercial Invoice)" },
+  { zh: "提单", hint: "Vận đơn (Bill of Lading)" },
+  { zh: "原产地证", hint: "Giấy chứng nhận xuất xứ (C/O)" },
+];
+
 function LanguageSelect({
   label,
   value,
@@ -224,10 +237,35 @@ export default function TranslationWorkspace() {
           />
         </div>
 
+        {/* Quick document-name chips (logi-good usability): click fills the
+            SOURCE text only — no provider call, no fabricated translation. */}
+        <div
+          className="mt-3 flex flex-wrap gap-2"
+          role="group"
+          aria-label="Cụm từ nhanh"
+        >
+          {QUICK_PHRASES.map((phrase) => (
+            <button
+              key={phrase.zh}
+              type="button"
+              onClick={() => {
+                setText(phrase.zh);
+                setSubmitted(null);
+                setCopyState("idle");
+              }}
+              title={phrase.hint}
+              aria-label={`${phrase.zh} — ${phrase.hint}`}
+              className="btn-press touch-target inline-flex items-center rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-[14.5px] font-semibold text-[#0f2a4a] min-h-[44px] hover:bg-slate-100 hover:border-slate-300"
+            >
+              {phrase.zh}
+            </button>
+          ))}
+        </div>
+
         {/* Source text — 16px so mobile keyboards do not zoom the page. */}
         <label className="block mt-3">
           <span className="block text-[14px] font-semibold text-slate-700 mb-1.5">
-            Văn bản nguồn
+            Văn bản gốc
           </span>
           <textarea
             value={text}
@@ -236,7 +274,7 @@ export default function TranslationWorkspace() {
               setSubmitted(null);
             }}
             placeholder="Dán nội dung cần dịch: email khách, mô tả hàng hóa, chứng từ…"
-            aria-label="Văn bản nguồn"
+            aria-label="Văn bản gốc"
             className="w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 py-3 text-[16px] leading-relaxed min-h-[190px] focus:border-[#1e5aa8] outline-none resize-y"
           />
         </label>
@@ -299,7 +337,7 @@ export default function TranslationWorkspace() {
         <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h3 className="text-[16px] font-extrabold text-[#0f2a4a]">
-              Kết quả dịch
+              Bản dịch
             </h3>
             <div className="flex flex-wrap gap-2">
               <button
@@ -313,7 +351,7 @@ export default function TranslationWorkspace() {
                   </>
                 ) : (
                   <>
-                    <Copy size={16} /> Sao chép
+                    <Copy size={16} /> Sao chép bản dịch
                   </>
                 )}
               </button>

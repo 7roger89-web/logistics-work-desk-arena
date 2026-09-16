@@ -225,7 +225,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     ["Thu tiền", "Thu tiền khách · Phải thu"],
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
     ["Tra cứu thuế / HS", "Tra cứu HS & Thuế"],
-    ["Dịch thuật", "Văn bản nguồn"],
+    ["Dịch thuật", "Văn bản gốc"],
     // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — /ngu-canh-doi-tac is a real workspace
     // now (LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 renamed the visible
     // label to the agent master desk); with this older fixture it must still

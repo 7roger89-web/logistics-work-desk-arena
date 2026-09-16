@@ -368,6 +368,16 @@ def test_empty_text_event_is_refused_without_provider_call(staging, provider):
     assert provider.calls == []
 
 
+def test_oversized_text_event_is_refused_without_provider_call(staging, provider):
+    from core.deepl_translation import MAX_TEXT_BYTES, OVERSIZED_TEXT_MESSAGE
+
+    outcomes = vm.consume_translation_triggers(
+        {"seq": 0}, _trigger(1, text="x" * (MAX_TEXT_BYTES + 1)))
+    assert outcomes[0]["ok"] is False
+    assert outcomes[0]["error"] == OVERSIZED_TEXT_MESSAGE
+    assert provider.calls == []
+
+
 def test_rbac_denies_translation_event_without_provider_call(staging, provider):
     import streamlit as st
 

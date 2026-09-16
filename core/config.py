@@ -136,20 +136,27 @@ def get_setting(
     return default
 
 
+def _parse_list_env_value(raw: str) -> list[str]:
+    """Parse one environment variable as a JSON list or comma-separated list."""
+    raw = raw.strip()
+    if not raw:
+        return []
+    try:
+        decoded = json.loads(raw)
+        if isinstance(decoded, list):
+            return [str(item).strip() for item in decoded if str(item).strip()]
+    except json.JSONDecodeError:
+        pass
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 def get_list_setting(
     env_name: str,
     *secret_paths: str | Iterable[str],
 ) -> list[str]:
     env_value = os.getenv(env_name)
     if env_value:
-        raw = env_value.strip()
-        try:
-            decoded = json.loads(raw)
-            if isinstance(decoded, list):
-                return [str(item).strip() for item in decoded if str(item).strip()]
-        except json.JSONDecodeError:
-            pass
-        return [item.strip() for item in raw.split(",") if item.strip()]
+        return _parse_list_env_value(env_value)
 
     for path in secret_paths:
         value = _secret_value(*_normalize_path(path), default=None)
@@ -184,11 +191,58 @@ ENV_IDENTITY = get_setting("ENV_IDENTITY", ("env", "identity"),
 # DeepL credentials remain server-side.  Keep the list loader shared with the
 # existing Gemini configuration so TOML and environment-list forms behave the
 # same way without adding a credential-management subsystem.
-DEEPL_API_KEYS = get_list_setting(
-    "DEEPL_API_KEYS",
-    ("deepl", "api_keys"),
-    "DEEPL_API_KEYS",
-)
+def _deepl_api_keys() -> list[str]:
+    """Resolve DeepL credentials from every supported shape.
+
+    LOGI_TRANSLATION_RUNTIME_UI_PARITY_01 — backward-compatible fix for the
+    deployed failure: the previous loader only accepted the PLURAL shapes, so
+    a key configured as ``[deepl].api_key`` / ``DEEPL_API_KEY`` (singular)
+    yielded an empty list and the whole translation capability reported
+    "chưa cấu hình" even though a key WAS present in Streamlit secrets.
+
+    Deterministic precedence — the FIRST non-empty source wins and sources are
+    never concatenated, so duplicated credential shapes can never double-bill:
+
+      1. env ``DEEPL_API_KEYS``        (JSON list or comma-separated)
+      2. env ``DEEPL_API_KEY``         (single key)
+      3. secrets ``[deepl].api_keys``  (then legacy flat ``DEEPL_API_KEYS``)
+      4. secrets ``[deepl].api_key``   (then legacy flat ``DEEPL_API_KEY``)
+
+    Normalized result: ``list[str]`` (possibly empty). No value is ever
+    logged or returned for display.
+    """
+    env_plural = os.getenv("DEEPL_API_KEYS")
+    if env_plural:
+        keys = _parse_list_env_value(env_plural)
+        if keys:
+            return keys
+
+    env_single = str(os.getenv("DEEPL_API_KEY") or "").strip()
+    if env_single:
+        return [env_single]
+
+    for path in (("deepl", "api_keys"), "DEEPL_API_KEYS"):
+        value = _secret_value(*_normalize_path(path), default=None)
+        if isinstance(value, (list, tuple)):
+            keys = [str(item).strip() for item in value if str(item).strip()]
+            if keys:
+                return keys
+        if value not in (None, ""):
+            cleaned = str(value).strip()
+            if cleaned:
+                return [cleaned]
+
+    for path in (("deepl", "api_key"), "DEEPL_API_KEY"):
+        value = _secret_value(*_normalize_path(path), default=None)
+        if value not in (None, ""):
+            cleaned = str(value).strip()
+            if cleaned:
+                return [cleaned]
+
+    return []
+
+
+DEEPL_API_KEYS = _deepl_api_keys()
 
 # LOG-LG02 release gate (default OFF: production DB remains fail-closed).
 def _parse_bool(val: Any) -> bool:

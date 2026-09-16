@@ -9,6 +9,9 @@
 //   2. sidebar "Dịch thuật" carries NO "Sắp có" marker anymore
 //   3. the route opens the REAL workspace: heading, backend-derived language
 //      options, external-provider privacy disclosure, last readback
+//   3b. LOGI_TRANSLATION_RUNTIME_UI_PARITY_01 — all four logi-good quick
+//      chips render; a click fills the SOURCE text ONLY — it emits no
+//      translate_text trigger and never fabricates a translated output
 //   4. Translate emits ONE typed "translate_text" trigger, and an enthusiastic
 //      double click does NOT emit a second one (paid-call guard)
 //   5. fresh readback renders the provider text VERBATIM (line breaks + HS
@@ -190,16 +193,47 @@ console.log("STEP 3 — /dich-thuat opens the REAL translation workspace");
   assert.ok(t.includes("KHÔNG phải bộ dịch chạy cục bộ"), "privacy disclosure missing");
 
   // The last authoritative readback is present; nothing is fabricated.
-  assert.ok(t.includes("Kết quả dịch"), "result card missing");
+  assert.ok(t.includes("Bản dịch"), "result card missing");
   assert.ok(t.includes("SHP-2026-0147"), "last readback text missing");
   assert.ok(t.includes("ZH"), "detected source language missing");
   ok("real workspace: backend language options + privacy disclosure + last readback");
 }
 
 // ---------------------------------------------------------------------------
+console.log("STEP 3b — quick chips fill the SOURCE text only");
+{
+  const chipLabels = ["装箱单", "商业发票", "提单", "原产地证"];
+  const chips = $('button[aria-label^="装箱单"], button[aria-label^="商业发票"], button[aria-label^="提单"], button[aria-label^="原产地证"]');
+  assert.equal(chips.length, 4, `expected 4 quick chips, got ${chips.length}`);
+  for (const label of chipLabels) {
+    assert.ok(chips.some((c) => text(c) === label), `chip ${label} missing`);
+  }
+  assert.ok($('div[role="group"][aria-label="Cụm từ nhanh"]')[0], "chip group missing");
+
+  const source = $('textarea[aria-label="Văn bản gốc"]')[0];
+  const resultBefore = $('textarea[aria-label="Bản dịch"]')[0];
+  assert.ok(resultBefore, "prior authoritative result missing before chip click");
+  const resultValueBefore = resultBefore.value;
+
+  const triggersBefore = triggers.length;
+  await click("装箱单", "button");
+  assert.equal(source.value, "装箱单", "chip must fill the SOURCE text");
+  assert.equal($('textarea[aria-label="Bản dịch"]')[0].value, resultValueBefore,
+    "chip click must NOT change the translated output");
+  assert.equal(triggers.length, triggersBefore,
+    "chip click must NOT dispatch any event (no paid call)");
+
+  // A second chip simply replaces the source text — still source-only.
+  await click("提单", "button");
+  assert.equal(source.value, "提单", "second chip must replace the source text");
+  assert.equal(triggers.length, triggersBefore, "second chip dispatched an event");
+  ok("all 4 chips render; click fills SOURCE only, zero triggers, output untouched");
+}
+
+// ---------------------------------------------------------------------------
 console.log("STEP 4 — Translate emits ONE trigger; double click cannot pay twice");
 {
-  const source = $('textarea[aria-label="Văn bản nguồn"]')[0];
+  const source = $('textarea[aria-label="Văn bản gốc"]')[0];
   assert.ok(source, "source textarea missing");
   await typeTextarea(source, NEW_SOURCE);
   await selectOption($('select[aria-label="Ngôn ngữ nguồn"]')[0], "ZH");
@@ -310,9 +344,18 @@ console.log("STEP 7 — unconfigured deployment is honest and inert");
   const translateBtn = findClickable("Dịch", "button");
   assert.ok(translateBtn && translateBtn.disabled, "Translate must be disabled when unconfigured");
   // Typing must not enable a call the backend cannot serve.
-  await typeTextarea($('textarea[aria-label="Văn bản nguồn"]')[0], "Xin chào");
+  await typeTextarea($('textarea[aria-label="Văn bản gốc"]')[0], "Xin chào");
   assert.ok(findClickable("Dịch", "button").disabled, "Translate must stay disabled");
-  ok("config-required state honest; action stays disabled");
+  // A quick chip still fills SOURCE only — it must NOT fabricate a
+  // translation on an unconfigured deployment.
+  const triggersBefore = triggers.length;
+  await click("商业发票", "button");
+  assert.equal($('textarea[aria-label="Văn bản gốc"]')[0].value, "商业发票",
+    "chip must fill source even when unconfigured");
+  assert.ok(!$('textarea[aria-label="Bản dịch"]')[0],
+    "chip click fabricated a translation on an unconfigured deployment");
+  assert.equal(triggers.length, triggersBefore, "chip dispatched on unconfigured deployment");
+  ok("config-required state honest; action stays disabled; chips never fabricate");
 }
 
 // ---------------------------------------------------------------------------
@@ -358,7 +401,7 @@ console.log("STEP 9 — mobile: drawer routes here; touch targets; no fixed over
   const row = $('select[aria-label="Ngôn ngữ nguồn"]')[0].closest("div.flex");
   assert.ok(row.className.includes("flex-col") && row.className.includes("md:flex-row"),
     "language row must stack on narrow viewports");
-  const sourceArea = $('textarea[aria-label="Văn bản nguồn"]')[0];
+  const sourceArea = $('textarea[aria-label="Văn bản gốc"]')[0];
   assert.ok(sourceArea.className.includes("w-full"), "source textarea must be full width");
   assert.ok(sourceArea.className.includes("text-[16px]"),
     "16px text prevents mobile keyboard zoom");
