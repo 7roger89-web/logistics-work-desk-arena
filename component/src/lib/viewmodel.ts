@@ -1336,6 +1336,59 @@ export interface LastWriteOutcome {
   [extra: string]: unknown;
 }
 
+export interface GetFlyServiceLine {
+  lineId: string;
+  code: string;
+  name: string;
+  description: string;
+  qty: MaybeNum;
+  cost: MaybeNum;
+  price: MaybeNum;
+  revenue: MaybeNum;
+  profit: MaybeNum;
+}
+
+export interface GetFlyOrderPreview {
+  orderId: string;
+  customer: string;
+  customerName?: string;
+  customerCode: string;
+  customerId: string;
+  customerMatch: "MATCHED_BY_CODE" | "MATCHED_BY_NAME" | "UNKNOWN" | string;
+  orderDate: string;
+  sourceStatus: string;
+  existing: boolean;
+  serviceLines: GetFlyServiceLine[];
+  revenue: MaybeNum;
+  profit: MaybeNum;
+}
+
+export interface GetFlyNormalizedRow {
+  order_id: string;
+  line_id: string;
+  source_row: number;
+  product_code: string;
+  product_name: string;
+  product_note: string;
+  qty: MaybeNum;
+  cost: MaybeNum;
+  price: MaybeNum;
+  revenue: MaybeNum;
+  profit: MaybeNum;
+}
+
+export interface GetFlyPreview {
+  status: "EMPTY" | "READY" | string;
+  previewId: string;
+  requestId?: string;
+  filename: string;
+  fingerprint?: string;
+  normalizedRows?: GetFlyNormalizedRow[];
+  orders: GetFlyOrderPreview[];
+  summary: { orders: number; revenue: MaybeNum; profit: MaybeNum };
+  error?: string;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -1374,6 +1427,8 @@ export interface ViewModel {
    * the page renders as an honest empty picker, never a hard-coded list.
    */
   financeServiceCatalog?: FinanceServiceCatalogEntry[];
+  /** LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — ephemeral server-authoritative XLSX preview. */
+  getfly?: GetFlyPreview;
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;

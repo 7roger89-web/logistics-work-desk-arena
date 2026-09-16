@@ -34,6 +34,11 @@ export type LogiEventName =
   | "partner_payment_record"
   | "shipment_create"
   | "pxk_generate"
+  // LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — real XLSX preview then explicit
+  // commit. The browser sends bytes only for preview; commit references the
+  // server-issued previewId and operator VAT choices.
+  | "getfly_preview"
+  | "getfly_import"
   // Phase C1 — business-contracts slice (KHÁCH HÀNG → BÁO GIÁ → THỎA THUẬN →
   // HỢP ĐỒNG → HÀNG HÓA → HDNT/PL/HDMB → LINK SHIPMENT → DOWNLOAD/HISTORY).
   | "customer_create"
@@ -109,6 +114,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "partner_payment_record",
   "shipment_create",
   "pxk_generate",
+  "getfly_preview",
+  "getfly_import",
   "customer_create",
   "customer_edit",
   "customer_archive",
