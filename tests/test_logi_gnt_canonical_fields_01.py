@@ -100,22 +100,25 @@ def test_whitelist_gained_exactly_the_three_approved_keys():
 
     LOGI_CN_TRUCK_TYPE_PERSIST_01 (Owner-approved 2026-09-12) later added one
     further key (``pickup_truck_type``), so the total was 30;
-    LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 adds exactly one more —
-    ``created_at``, the lot's own header date under ``data/0.0`` — so the total
-    is now 31. The customs block below still pins that THIS ruling contributed
-    exactly its three.
+    LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 adds ``created_at`` (31);
+    LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 adds exactly the three explicit customs/GNT
+    taxpayer identity keys (``gnt_taxpayer_name``, ``gnt_taxpayer_tax_code``,
+    ``gnt_taxpayer_address``), bringing the total to 34.
     """
     assert vm.FIELD_PATHS["tk_date"] == ("data", "2.4", "tk_date")
     assert vm.FIELD_PATHS["import_duty_amount"] == ("data", "2.4", "import_duty_amount")
     assert vm.FIELD_PATHS["import_vat_amount"] == ("data", "2.4", "import_vat_amount")
-    assert len(vm.FIELD_PATHS) == 31
+    assert vm.FIELD_PATHS["gnt_taxpayer_name"] == ("data", "2.4", "gnt", "nguoi_nop")
+    assert vm.FIELD_PATHS["gnt_taxpayer_tax_code"] == ("data", "2.4", "gnt", "mst")
+    assert vm.FIELD_PATHS["gnt_taxpayer_address"] == ("data", "2.4", "gnt", "dia_chi")
+    assert len(vm.FIELD_PATHS) == 34
 
-    # Every customs/tax-adjacent key under 2.4 is one of the five the Owner
-    # has now ruled on — no smuggled extra field.
+    # Every customs/tax-adjacent key under 2.4 is one of the ruled fields
     under_24 = {k: p for k, p in vm.FIELD_PATHS.items() if p[1:2] == ("2.4",)}
     assert set(under_24) == {
         "tk_no", "customs_status", "phan_luong",
         "tk_date", "import_duty_amount", "import_vat_amount",
+        "gnt_taxpayer_name", "gnt_taxpayer_tax_code", "gnt_taxpayer_address",
     }
 
 

@@ -96,6 +96,12 @@ function findClickable(needle, sel = "a,button", root = window.document) {
   );
 }
 
+function type(input, value) {
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, value);
+  input.dispatchEvent(new window.Event("input", { bubbles: true }));
+  input.dispatchEvent(new window.Event("change", { bubbles: true }));
+}
+
 async function click(needle, sel = "a,button", root = window.document) {
   const el = findClickable(needle, sel, root);
   assert.ok(el, `clickable "${needle}" not found`);
@@ -146,6 +152,29 @@ assert.ok(body.includes("800.000"), "Import VAT amount should be present");
 assert.ok(body.includes("Cần kiểm tra/hoàn thiện các trường Kho bạc trước khi sử dụng để nộp."), "Treasury disclaimer notice must be present");
 assert.ok(!body.includes("Đã sẵn sàng nộp chính thức"), "Must NOT claim 'Đã sẵn sàng nộp chính thức'");
 console.log("  ✓ GNT section rendered faithfully with disclaimer notice and no false official-ready claim");
+
+console.log("STEP 2B — Edit explicit taxpayer fields and dispatch shipment_field_save");
+const payerInput = window.document.getElementById("fld-gnt-payer");
+assert.ok(payerInput, "fld-gnt-payer input must be present");
+type(payerInput, "CÔNG TY NHẬP KHẨU MINH TÂN");
+
+const taxCodeInput = window.document.getElementById("fld-gnt-taxcode");
+assert.ok(taxCodeInput, "fld-gnt-taxcode input must be present");
+type(taxCodeInput, "0108887777");
+
+const addrInput = window.document.getElementById("fld-gnt-address");
+assert.ok(addrInput, "fld-gnt-address input must be present");
+type(addrInput, "Số 45 Cầu Giấy, Hà Nội");
+
+await click("LƯU THÔNG TIN NGƯỜI NỘP THUẾ", "button");
+
+const saveEv = triggers.find((t) => t.event === "shipment_field_save");
+assert.ok(saveEv, "shipment_field_save trigger not emitted when saving taxpayer facts");
+assert.equal(saveEv.value.payload.shipmentId, "LO-0307");
+assert.equal(saveEv.value.payload.fields.gnt_taxpayer_name, "CÔNG TY NHẬP KHẨU MINH TÂN");
+assert.equal(saveEv.value.payload.fields.gnt_taxpayer_tax_code, "0108887777");
+assert.equal(saveEv.value.payload.fields.gnt_taxpayer_address, "Số 45 Cầu Giấy, Hà Nội");
+console.log("  ✓ shipment_field_save successfully dispatched with explicit taxpayer facts");
 
 console.log("STEP 3 — Click TẠO GIẤY NỘP THUẾ XLSX and verify gnt_generate dispatch");
 await click("TẠO GIẤY NỘP THUẾ XLSX", "button");

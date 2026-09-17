@@ -407,6 +407,30 @@ export default function ShipmentDetail() {
     );
   };
 
+  const saveGntTaxpayer = () => {
+    if (!s) return;
+    const currentGnt = s.importInfo.gnt || { payer: "", taxCode: "", address: "" };
+    const payerVal = val("gntPayer", currentGnt.payer || "");
+    const taxCodeVal = val("gntTaxCode", currentGnt.taxCode || "");
+    const addrVal = val("gntAddress", currentGnt.address || "");
+
+    const fields: Record<string, string> = {
+      gnt_taxpayer_name: payerVal,
+      gnt_taxpayer_tax_code: taxCodeVal,
+      gnt_taxpayer_address: addrVal,
+    };
+
+    const sent = dispatch("shipment_field_save", {
+      shipmentId: s.id,
+      fields,
+    });
+    if (sent) {
+      toast("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue");
+    } else {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+    }
+  };
+
   const generateGNT = () => {
     if (!s) return;
     const sent = dispatch("gnt_generate", { shipmentId: s.id });
@@ -634,7 +658,7 @@ export default function ShipmentDetail() {
             </section>
 
             {/* GIẤY NỘP THUẾ (GNT) */}
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-3.5">
+            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-extrabold text-[16px] text-[#0f2a4a] flex items-center gap-2">
                   <FileSpreadsheet size={18} className="text-[#1e5aa8]" /> GIẤY NỘP THUẾ (GNT) — Mẫu C1-02/NS
@@ -646,6 +670,7 @@ export default function ShipmentDetail() {
                 )}
               </div>
 
+              {/* Read-only summary of declaration & taxes */}
               <div className="grid sm:grid-cols-2 gap-2 text-[13px]">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                   <span className="text-slate-500 block text-[11.5px] font-medium">Số tờ khai</span>
@@ -663,17 +688,57 @@ export default function ShipmentDetail() {
                   <span className="text-slate-500 block text-[11.5px] font-medium">VAT hàng nhập khẩu</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.vat != null ? fmtVND(s.importInfo.vat) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Người nộp thuế</span>
-                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.payer || <span className="text-amber-600 italic font-normal">Chưa có (cần điền)</span>}</span>
-                  {s.importInfo.gnt?.customerHint && !s.importInfo.gnt?.payer && (
-                    <span className="text-[11px] text-slate-400 block truncate">Khách hàng: {s.importInfo.gnt.customerHint}</span>
+              </div>
+
+              {/* Explicit Operator Input for Taxpayer */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13.5px] text-[#0f2a4a]">Thông tin Người nộp thuế (Pháp nhân chịu thuế)</span>
+                  {s.importInfo.gnt?.customerHint && (
+                    <span className="text-[11.5px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
                   )}
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Mã số thuế (MST)</span>
-                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.taxCode || <span className="text-amber-600 italic font-normal">Chưa có (cần điền)</span>}</span>
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <Field label="Người nộp thuế *" hint="Tên pháp nhân trên tờ khai HQ">
+                    <input
+                      id="fld-gnt-payer"
+                      data-field="gnt-payer"
+                      value={val("gntPayer", s.importInfo.gnt?.payer || "")}
+                      onChange={(e) => set("gntPayer", e.target.value)}
+                      placeholder="VD: CÔNG TY TNHH ABC…"
+                      className={inputCls(!val("gntPayer", s.importInfo.gnt?.payer || "") ? "missing" : "ok")}
+                    />
+                  </Field>
+                  <Field label="Mã số thuế (MST) *" hint="MST 10 hoặc 13 số">
+                    <input
+                      id="fld-gnt-taxcode"
+                      data-field="gnt-taxcode"
+                      value={val("gntTaxCode", s.importInfo.gnt?.taxCode || "")}
+                      onChange={(e) => set("gntTaxCode", e.target.value)}
+                      placeholder="VD: 0101234567"
+                      className={inputCls(!val("gntTaxCode", s.importInfo.gnt?.taxCode || "") ? "missing" : "ok")}
+                    />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Địa chỉ" hint="Địa chỉ trụ sở / đăng ký kinh doanh">
+                      <input
+                        id="fld-gnt-address"
+                        data-field="gnt-address"
+                        value={val("gntAddress", s.importInfo.gnt?.address || "")}
+                        onChange={(e) => set("gntAddress", e.target.value)}
+                        placeholder="Địa chỉ doanh nghiệp nộp thuế…"
+                        className={inputCls()}
+                      />
+                    </Field>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={saveGntTaxpayer}
+                  className="btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white font-semibold px-3.5 py-2 text-[13px] hover:bg-[#1e5aa8]"
+                >
+                  <PenLine size={14} /> LƯU THÔNG TIN NGƯỜI NỘP THUẾ
+                </button>
               </div>
 
               {s.importInfo.gnt?.noPayable && (
@@ -684,7 +749,7 @@ export default function ShipmentDetail() {
 
               {s.importInfo.gnt?.missing && s.importInfo.gnt.missing.length > 0 && !s.importInfo.gnt.noPayable && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900">
-                  ⚠️ <b>Chưa đủ điều kiện tạo GNT:</b> Thiếu {s.importInfo.gnt.missing.join(", ")}. Vui lòng cập nhật và lưu ở trên.
+                  ⚠️ <b>Chưa đủ điều kiện tạo GNT:</b> Thiếu {s.importInfo.gnt.missing.join(", ")}. Vui lòng hoàn thiện và lưu ở trên.
                 </div>
               )}
 

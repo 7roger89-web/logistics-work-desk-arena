@@ -686,6 +686,13 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
     "tk_date": ("data", "2.4", "tk_date"),
     "import_duty_amount": ("data", "2.4", "import_duty_amount"),
     "import_vat_amount": ("data", "2.4", "import_vat_amount"),
+    # LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 — Explicit customs/GNT taxpayer fields:
+    #   gnt_taxpayer_name       authoritative importer legal name
+    #   gnt_taxpayer_tax_code   authoritative importer tax code (MST)
+    #   gnt_taxpayer_address    authoritative importer legal address
+    "gnt_taxpayer_name": ("data", "2.4", "gnt", "nguoi_nop"),
+    "gnt_taxpayer_tax_code": ("data", "2.4", "gnt", "mst"),
+    "gnt_taxpayer_address": ("data", "2.4", "gnt", "dia_chi"),
     # LOGI_CN_TRUCK_TYPE_PERSIST_01 — Owner-approved business truth
     # (2026-09-12). Exactly one new pickup/transport field, and nothing else:
     #   pickup_truck_type   free-text fact describing the CN pickup truck
