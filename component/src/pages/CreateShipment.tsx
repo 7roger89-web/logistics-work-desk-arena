@@ -228,8 +228,13 @@ export default function CreateShipment() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
+              {/* The waiting label is the SAME canonical wording every other
+                  authoritative-outcome surface uses (PartnerContext agent save,
+                  Customers create/edit): it states that the backend, not the
+                  transport, is being waited on. The create-shipment DOM oracle
+                  asserts exactly this string. */}
               <PrimaryBtn onClick={submit} disabled={!!pending} className="flex-1">
-                {pending ? "ĐANG TẠO LÔ…" : <>TẠO LÔ HÀNG <ArrowRight size={17} /></>}
+                {pending ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : <>TẠO LÔ HÀNG <ArrowRight size={17} /></>}
               </PrimaryBtn>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-5 min-h-[48px]">Hủy</Link>
             </div>

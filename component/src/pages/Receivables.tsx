@@ -186,7 +186,7 @@ export default function Receivables() {
                   <td className="text-emerald-700 font-semibold">{fmtCcy(r.received, r.currency)}</td>
                   <td className={cx("font-extrabold", !isUnknown(r.outstanding) && (r.outstanding ?? 0) > 0 ? "text-red-700" : "text-slate-500")}>{fmtCcy(r.outstanding, r.currency)}</td>
                   <td><span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold">{r.currency}</span></td>
-                  <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{fmtText(r.sale)}</b></span><span className="block whitespace-nowrap">SP: <b>{fmtText(r.support)}</b></span></td>
+                  <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{fmtText(r.sale)}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{fmtText(r.support)}</b></span></td>
                   <td><ToneBadge tone={r.statusTone} size="sm">{fmtText(r.status)}</ToneBadge></td>
                   <td>
                     <div className="flex gap-1.5">
@@ -220,7 +220,7 @@ export default function Receivables() {
                 <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5"><p className="text-[11px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[14px] text-emerald-700">{fmtCcy(r.received, r.currency)}</p></div>
                 <div className="rounded-xl bg-red-50 border border-red-200 p-2.5"><p className="text-[11px] text-red-600 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-red-700">{fmtCcy(r.outstanding, r.currency)}</p></div>
               </div>
-              <p className="text-[12.5px] text-slate-400 mt-2">Sale {fmtText(r.sale)} · SP {fmtText(r.support)}</p>
+              <p className="text-[12.5px] text-slate-400 mt-2">Sale {fmtText(r.sale)} · cập nhật bởi {fmtText(r.support)}</p>
             </div>
             <div className="grid grid-cols-2 border-t">
               <Link to={"/lo-hang/" + r.id + "?tab=tai-chinh"} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> MỞ LÔ</Link>

@@ -47,7 +47,7 @@ export default function Shipments() {
                 <td className="max-w-[220px]"><span className="block text-[13px] font-semibold text-slate-600">{s.contract}</span><span className="block text-[13px] text-slate-500">{s.route}</span></td>
                 <td><ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge></td>
                 <td className="max-w-[240px]"><span className="block font-semibold text-[13.5px]">{s.nextAction}</span></td>
-                <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">SP: <b>{s.support}</b></span></td>
+                <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
                 <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={"/lo-hang/" + s.id} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
               </tr>
             ))}
@@ -70,7 +70,7 @@ export default function Shipments() {
                 <p className="text-[11.5px] font-bold uppercase tracking-wide text-amber-700">Việc tiếp theo</p>
                 <p className="text-[14px] font-semibold text-slate-800 mt-0.5">{s.nextAction}</p>
               </div>
-              <p className="text-[12.5px] text-slate-400 mt-2">Sale {s.sale} · SP {s.support} · {s.updated}</p>
+              <p className="text-[12.5px] text-slate-400 mt-2">Sale {s.sale} · cập nhật bởi {s.support || "—"} · {s.updated}</p>
             </div>
             <div className="grid grid-cols-2 border-t">
               <Link to={s.nextRoute} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">XỬ LÝ <ArrowRight size={17} /></Link>

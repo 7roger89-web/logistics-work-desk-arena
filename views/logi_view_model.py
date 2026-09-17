@@ -238,7 +238,16 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "lot": row["id"],
             "customer": row["customer"],
             "job": row["nextAction"],
-            "assignee": row["support"] or rd.UNKNOWN_LABEL,
+            # LOGI_UAT_REAL_USE_REPAIR_02 — a derived ops row has no task
+            # document, so its responsible person is the CANONICAL owner
+            # resolution of the shipment itself (core.shipment_dashboard._owner
+            # over internal_sale_owner/sale_owner/owner/assigned_to/assignee,
+            # already projected as `sale`, "Chưa phân công" when unassigned).
+            # It used to show `support`, i.e. `updated_by` — merely the last
+            # person who saved the document, which is not a responsibility.
+            # Real rows from the tasks collection keep their own canonical
+            # `tasks.assignee` below.
+            "assignee": row["sale"] or rd.UNKNOWN_LABEL,
             "due": row["ops"].get("arrivalDateLabel") or rd.UNKNOWN_LABEL,
             "dueNote": row["nextActionDetail"] or (", ".join(f"thiếu {m}" for m in row["missingDocs"][:3])),
             "status": row["status"],
