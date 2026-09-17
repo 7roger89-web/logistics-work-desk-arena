@@ -62,20 +62,63 @@ def _renderer():
     return _state["renderer"]
 
 
+COMPONENT_KEY = "logi-shell"
+CALLBACK_DISPATCHED_FLAG = "_logi_callback_dispatched"
+
+
+def _on_component_event() -> None:
+    """Streamlit Components v2 trigger callback.
+
+    Executes as a prefix BEFORE the main script rerun starts. Reads the
+    component trigger state from ``st.session_state[COMPONENT_KEY]`` and
+    dispatches the business action in CALLBACK MODE (no explicit st.rerun).
+    The pending normal rerun then builds ONE fresh view-model carrying the
+    updated data and authoritative readback.
+
+    Security gate: fresh-revalidates the authenticated session against the
+    canonical users store BEFORE dispatching any business actions.
+    """
+    if st.session_state.get(CALLBACK_DISPATCHED_FLAG):
+        return
+    raw = st.session_state.get(COMPONENT_KEY)
+    if raw is None:
+        return
+
+    from core.auth import fresh_session_identity_for_action
+
+    user = fresh_session_identity_for_action()
+    if user is None:
+        st.session_state.pop(CALLBACK_DISPATCHED_FLAG, None)
+        return
+
+    logi_view_model.dispatch(raw, is_callback=True)
+    st.session_state[CALLBACK_DISPATCHED_FLAG] = True
+
+
 def render(view_model: dict) -> None:
     """Mount the ONE component root and run the bounded event dispatcher.
 
     Each declared event gets its own ``on_<event>_change`` trigger callback so
-    the v2 runtime surfaces it as a typed trigger value. The set below is
-    exactly ``logi_view_model.ALL_EVENTS`` — nothing else can reach Python.
+    the v2 runtime surfaces it as a typed trigger value and executes
+    ``_on_component_event`` as a prefix before the main script rerun. The set
+    below is exactly ``logi_view_model.ALL_EVENTS`` — nothing else can reach
+    Python.
     """
     kwargs: dict = {
-        "key": "logi-shell",
+        "key": COMPONENT_KEY,
         "data": view_model,
         "width": "stretch",
         "height": "content",
     }
     for event_name in sorted(logi_view_model.ALL_EVENTS):
-        kwargs[f"on_{event_name}_change"] = lambda: None
+        kwargs[f"on_{event_name}_change"] = _on_component_event
     result = _renderer()(**kwargs)
-    logi_view_model.dispatch(result)
+    # Post-mount guard: if the trigger was already dispatched in prefix
+    # callback mode, do NOT dispatch the same trigger a second time.
+    # Fallback only dispatches if authenticated session is valid.
+    if not st.session_state.pop(CALLBACK_DISPATCHED_FLAG, False):
+        from core.auth import fresh_session_identity_for_action
+
+        if fresh_session_identity_for_action() is not None:
+            logi_view_model.dispatch(result)
+
