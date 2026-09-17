@@ -1,4 +1,4 @@
-# LOGI_UAT_REAL_USE_REPAIR_02 — real-use repair set (P0-A, P1-A, P1-B, P1-C)
+# LOGI_UAT_REAL_USE_REPAIR_02 — real-use repair set (P0-A, P1-A, P1-C fixed; P1-B deferred)
 
 Continuation of the Logistics Work Desk real-use completion goal. Clean task
 branch from `main@344add65273500fd39eb15f3c19d8036ffc78f1b`.
@@ -106,30 +106,55 @@ vacuous).
 
 ---
 
-## P1-B — CONTRACT DOCUMENT HANDOFF
+## P1-B — CONTRACT DOCUMENT HANDOFF — **DEFERRED_DEPENDS_ON_PR52 (NOT FIXED)**
 
-**BASELINE_FAILURE** "MỞ CHỨNG TỪ" on a linked contract left the employee in
-the shipment's own documents/PXK surface.
+> **Status change.** An earlier revision of this PR claimed P1-B was repaired.
+> That claim was **withdrawn** after Control Tower review `5237391551`. The
+> code change has been reverted; this branch ships **no** P1-B fix.
 
-**ROOT_CAUSE** The button called `setSp({ tab: "chung-tu" })` — it re-selected
-the SHIPMENT tab the employee was already standing on. It never navigated to
-the contract.
+**BASELINE_FAILURE** "MỞ CHỨNG TỪ" on a linked contract leaves the employee in
+the shipment's own documents/PXK surface. **Still true on this branch.**
 
-**CHANGED_PATHS** `component/src/pages/ShipmentDetail.tsx` — the control is now
-a `Link` to the EXISTING contract document workdesk
-`/hop-dong/<contractId>?tab=chung-tu` (`ContractDetail`'s "Chứng từ
-HDNT/PL/HDMB" tab: generate, download, issue, history). No new document UI was
-created. Safe encoding of contract ids containing slashes is deliberately left
-to PR #52's `contractPath`, to avoid a second divergent implementation.
+**ROOT_CAUSE** The button calls `setSp({ tab: "chung-tu" })` — it re-selects the
+SHIPMENT tab the employee is already standing on. It never navigates to the
+contract. (Root cause confirmed; only the remedy is deferred.)
 
-**OLD_BEHAVIOR_REJECTED_BY** `--only 9` against the old bundle:
-`AssertionError: OLD BEHAVIOUR: the contract document workdesk (HDNT/PL/HDMB)
-did not open`.
+**WHY THE ATTEMPTED FIX WAS WITHDRAWN** The attempted remedy was a `Link` to
+`/hop-dong/<id>?tab=chung-tu` built from a raw `linkedContract.id`. A contract
+number is ONE route segment but can contain `/` — the repo reproduces
+`05/2026/HDMB`. Independently reproduced against this PR's own bundle before
+accepting the review:
 
-**NEW_BEHAVIOR_PROOF** `--only 9` on the new bundle: starting from the shipment
-documents tab (asserted as the precondition), the click lands on contract
-`HDMB-0295`, the HDNT·PL·HDMB workdesk with `SINH CHỨNG TỪ`, and the shipment
-PXK surface is gone.
+```
+contract id under test : 05/2026/HDMB
+emitted href           : /hop-dong/05/2026/HDMB?tab=chung-tu
+reached HDNT/PL/HDMB   : false
+fell through to '*'    : true
+```
+
+`App.tsx` declares single-segment `/hop-dong/:id`, so the raw path misses the
+detail route and lands on the wildcard. The repair was therefore **false at the
+slash-ID boundary** — it worked only for ids that happen to contain no slash.
+
+**WHY IT IS NOT FIXED HERE INSTEAD** PR #52 (APPROVED_FROZEN) already owns this
+route class via `contractPath()`, and this branch is based on pre-#52 `main`.
+Adding a second, divergent encoder would duplicate a frozen slice and create two
+implementations of one routing rule. Per instruction, no `contractPath` is
+reimplemented here.
+
+**CHANGED_PATHS** none — `component/src/pages/ShipmentDetail.tsx`'s
+"MỞ CHỨNG TỪ" control is now **byte-identical to `main`** (verified by diffing
+against `git show main:`).
+
+**CURRENT TEST STATUS** DOM `--only 9` no longer asserts a repair. It is a
+**deferral guard** that pins the known-broken behaviour and fails if anyone
+re-introduces a slash-unsafe `/hop-dong/<a>/<b>` route. It passes on BOTH the
+old and new bundles — by design, because `main` has the same defect. It is
+explicitly **not** acceptance evidence of a fix.
+
+**UNBLOCK CONDITION** After PR #52 integrates, this becomes a one-line change
+using the shared `contractPath()` helper, plus flipping STEP 9 back to a real
+acceptance assertion.
 
 ---
 

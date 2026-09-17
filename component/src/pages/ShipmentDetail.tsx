@@ -1028,21 +1028,30 @@ export default function ShipmentDetail() {
                 <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <Link to={"/hop-dong/" + linkedContract.id} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
-                  {/* LOGI_UAT_REAL_USE_REPAIR_02 — "MỞ CHỨNG TỪ" on a LINKED
-                      CONTRACT must reach that contract's OWN document workdesk
-                      (HDNT/PL/HDMB: generate, download, issue, history), which
-                      already exists at /hop-dong/<id>?tab=chung-tu. It used to
-                      call setSp({tab:"chung-tu"}), i.e. it only re-selected the
-                      SHIPMENT's own "Chứng từ & PXK" tab the employee was
-                      already standing on — the contract documents were never
-                      opened. No new document UI is introduced here.
+                  {/* P1-B (contract-document handoff) is KNOWN BROKEN and is
+                      deliberately NOT repaired on this branch.
 
-                      The link is built exactly like the sibling "MỞ HỢP ĐỒNG"
-                      link above it. Safe encoding of contract ids that contain
-                      slashes is deliberately NOT re-implemented here: that is
-                      PR #52's slice (contractPath), and a second divergent
-                      implementation would be worse than one shared one. */}
-                  <Link to={"/hop-dong/" + linkedContract.id + "?tab=chung-tu"} onClick={() => toast("Chứng từ hợp đồng " + linkedContract.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue")} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</Link>
+                      The defect is real: this action only re-selects the
+                      SHIPMENT's own "Chứng từ & PXK" tab the employee is
+                      already standing on, so the linked contract's own
+                      HDNT/PL/HDMB workdesk is never opened.
+
+                      The fix is a route to /hop-dong/<id>?tab=chung-tu, but a
+                      contract number is ONE route segment that can contain "/"
+                      (real case: 05/2026/HDMB). Built raw here it emits
+                      /hop-dong/05/2026/HDMB?tab=chung-tu, which does not match
+                      the single-segment /hop-dong/:id route and falls through
+                      to the "*" wildcard — reproduced in
+                      tests/component/dom_acceptance_real_use_repair.mjs
+                      (STEP 9), which is why that step asserts the CURRENT
+                      broken behaviour instead of claiming a repair.
+
+                      PR #52 already owns this route class via contractPath().
+                      Implementing a second encoder here would duplicate frozen
+                      PR52's slice, so P1-B stays deferred until PR52 is
+                      integrated; then this becomes a one-line change using the
+                      shared helper. */}
+                  <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
                 </div>
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}

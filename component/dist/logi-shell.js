@@ -16612,9 +16612,10 @@ function $o() {
 										to: "/hop-dong/" + M.id,
 										className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]",
 										children: [/* @__PURE__ */ (0, L.jsx)(fi, { size: 16 }), " MỞ HỢP ĐỒNG"]
-									}), /* @__PURE__ */ (0, L.jsxs)(I, {
-										to: "/hop-dong/" + M.id + "?tab=chung-tu",
-										onClick: () => o("Chứng từ hợp đồng " + M.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue"),
+									}), /* @__PURE__ */ (0, L.jsxs)("button", {
+										onClick: () => {
+											n({ tab: "chung-tu" }), o("Chứng từ " + M.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue");
+										},
 										className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]",
 										children: [/* @__PURE__ */ (0, L.jsx)(gi, { size: 16 }), " MỞ CHỨNG TỪ"]
 									})]
