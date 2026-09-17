@@ -1,3 +1,4 @@
+import { contractPath } from "../lib/contractRoute";
 // ============================================================================
 // Tạo hợp đồng mới — Phase C1, donor Logi-good visual shell.
 //
@@ -15,7 +16,7 @@
 //     because the event was transported.
 // ============================================================================
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ClipboardPaste, FileText } from "lucide-react";
 import {
@@ -31,6 +32,25 @@ export default function NewContract() {
   const { customers, dispatch, toast } = useStore();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const nav = useNavigate();
+  const pendingRef = useRef<{ id: string; requestId: string } | null>(null);
+  const [pending, setPending] = useState<{ id: string; requestId: string } | null>(null);
+  const [createError, setCreateError] = useState("");
+  useEffect(() => {
+    if (!pending || pendingRef.current !== pending) return;
+    const outcome = vm?.lastWrites?.find(
+      (w) => w.event === "contract_create" && w.requestId === pending.requestId
+    );
+    if (!outcome) return;
+    if (outcome.ok === false) {
+      pendingRef.current = null;
+      setPending(null);
+      setCreateError(String(outcome.error || "Máy chủ từ chối tạo hợp đồng."));
+    } else if (outcome.ok === true && vm?.contracts.some((c) => c.id === pending.id)) {
+      pendingRef.current = null;
+      setPending(null);
+      nav(contractPath(pending.id));
+    }
+  }, [vm, pending, nav]);
   const [id, setId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [kind, setKind] = useState("HDMB");
@@ -73,6 +93,7 @@ export default function NewContract() {
   };
 
   const submit = () => {
+    if (pendingRef.current) return;
     const cid = id.trim().toUpperCase();
     if (!cid) {
       toast("Thiếu số hợp đồng", "Nhập số hợp đồng (VD: HDMB-0310).", "red");
@@ -82,7 +103,12 @@ export default function NewContract() {
       toast("Chưa chọn khách hàng", "Bấm “Tìm / đổi” rồi chọn khách hàng / đối tác.", "red");
       return;
     }
+    const request = { id: cid, requestId: crypto.randomUUID() };
+    pendingRef.current = request;
+    setPending(request);
+    setCreateError("");
     const sent = dispatch("contract_create", {
+      requestId: request.requestId,
       id: cid,
       customerId,
       kind,
@@ -90,11 +116,10 @@ export default function NewContract() {
       date: date.trim(),
       pl_required: plRequired,
     });
-    if (sent) {
-      toast("Đã gửi tạo hợp đồng " + cid, "Backend ghi + audit; tiếp tục nhập hàng hóa & sinh chứng từ.", "green");
-      nav("/hop-dong/" + cid);
-    } else {
-      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+    if (!sent) {
+      pendingRef.current = null;
+      setPending(null);
+      setCreateError("Không gửi được. Component chưa kết nối backend.");
     }
   };
 
@@ -227,9 +252,11 @@ export default function NewContract() {
         )}
         </div>
 
+        {createError && <p role="alert" className="mt-4 text-red-700" data-testid="contract-create-error">{createError}</p>}
+        {pending && <p role="status" className="mt-4 text-slate-600" data-testid="contract-create-pending">Đang chờ kết quả và dữ liệu hợp đồng từ máy chủ… Không gửi lại yêu cầu.</p>}
         <div className="grid grid-cols-2 gap-2.5 mt-5">
           <GhostBtn onClick={() => nav(-1)}>Hủy</GhostBtn>
-          <PrimaryBtn onClick={submit}>💾 TẠO HỢP ĐỒNG</PrimaryBtn>
+          <PrimaryBtn onClick={submit} disabled={!!pending}>💾 TẠO HỢP ĐỒNG</PrimaryBtn>
         </div>
       </div>
     </div>
