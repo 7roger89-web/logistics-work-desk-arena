@@ -360,10 +360,12 @@ def fresh_session_identity_for_action() -> dict[str, str] | None:
               deactivated/missing/deleted, or load_users fails closed.
     """
     if not AUTH_REQUIRED:
-        user = current_user()
-        if not user:
-            user = {"username": "local-admin", "display_name": "Local Admin", "role": "admin"}
-            st.session_state.current_user = user
+        user = {
+            "username": "local-admin",
+            "display_name": "Local Admin",
+            "role": "admin",
+        }
+        st.session_state.current_user = user
         return user
 
     session_user = current_user()

@@ -83,10 +83,22 @@ class InteractionLatencyRepairTests(unittest.TestCase):
         from streamlit.components.v2.bidi_component.state import ComponentResult
         renderer_return = mock_renderer_result or ComponentResult({}, trigger_dict)
 
+        user_doc = {
+            "username": "test_user",
+            "display_name": "Test User",
+            "role": auth_role,
+            "active": True,
+            "user_id": "u_test",
+        }
+        users_db = {"test_user": user_doc}
+        from core import auth
+
         with patch("views.logi_view_model.build_view_model", side_effect=tracked_bvm), \
              patch("streamlit.rerun", side_effect=tracked_rerun), \
              patch("views.logi_shell._renderer", return_value=lambda **kw: renderer_return), \
-             patch("views.web_app.require_login", return_value={"username": "test_user", "role": auth_role}):
+             patch("views.web_app.require_login", return_value={"username": "test_user", "role": auth_role}), \
+             patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db):
 
             # Step 1: Callback prefix
             trace.append(("CALLBACK_PREFIX_START", None))
@@ -646,6 +658,29 @@ class InteractionLatencyRepairTests(unittest.TestCase):
             logi_shell._on_component_event()
             self.assertEqual(mock_save_real.call_count, 0, "Secure callback strictly blocked stale write")
             self.assertEqual(st.session_state["current_user"]["role"], "viewer")
+
+    def test_regression_auth_required_false_always_establishes_local_admin(self) -> None:
+        """AUTH_REQUIRED=False + session initially contains viewer/support user
+        -> fresh_session_identity_for_action() returns local-admin/admin
+        -> session current_user becomes local-admin/admin.
+        """
+        from core import auth
+
+        for stale_role in ("viewer", "support"):
+            st.session_state["current_user"] = {
+                "username": f"stale.{stale_role}",
+                "display_name": f"Stale {stale_role.capitalize()}",
+                "role": stale_role,
+                "user_id": f"u_{stale_role}",
+            }
+            with patch.object(auth, "AUTH_REQUIRED", False):
+                user = auth.fresh_session_identity_for_action()
+                self.assertEqual(user["username"], "local-admin")
+                self.assertEqual(user["role"], "admin")
+                self.assertEqual(user["display_name"], "Local Admin")
+                self.assertEqual(st.session_state["current_user"]["username"], "local-admin")
+                self.assertEqual(st.session_state["current_user"]["role"], "admin")
+                self.assertEqual(st.session_state["current_user"]["display_name"], "Local Admin")
 
 
 if __name__ == "__main__":
