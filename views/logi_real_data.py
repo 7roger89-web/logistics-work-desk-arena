@@ -930,6 +930,16 @@ def shipment_projection(
         # (sale_owner / internal_sale_owner / assigned_to / assignee), or
         # "Chưa phân công" when none is assigned. Never a fabricated name.
         "sale": text(view.get("owner")) or UNKNOWN_LABEL,
+        # LOGI_UAT_REAL_USE_REPAIR_02 — `support` is the LAST PERSON WHO WROTE
+        # this document (core.database sets `updated_by` on every save). It is
+        # NOT an assignment: no canonical "assigned support/handling employee"
+        # field, writer or RBAC permission exists anywhere in this repo (the
+        # only canonical responsibility semantics are core.shipment_dashboard's
+        # owner resolution — already projected as `sale` — and the per-task
+        # `tasks.assignee` written by core.database.add_task). The UI therefore
+        # labels this value for what it provably is ("Cập nhật bởi") instead of
+        # claiming a responsibility the data does not carry. Introducing a real
+        # assignment field is a product-authority decision, not an inference.
         "support": text(shipment.get("updated_by")),
         "status": status_label,
         "statusTone": status_tone,

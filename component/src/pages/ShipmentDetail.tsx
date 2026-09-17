@@ -18,6 +18,27 @@ const TABS = [
   { id: "lich-su", label: "Lịch sử", short: "Lịch sử" },
 ];
 
+const TAB_IDS = new Set(TABS.map((t) => t.id));
+
+/**
+ * The tab the backend's own `nextRoute` points at.
+ *
+ * LOGI_UAT_REAL_USE_REPAIR_02 — "XỬ LÝ NGAY" used to read the tab with
+ * `/tab=(\w+)/`, and `\w` excludes `-`: every hyphenated tab the backend
+ * really emits (`lay-hang`, `tai-chinh`, `van-tai`, `chung-tu`, `lich-su`)
+ * was truncated to its first segment (`lay`, `tai`, …), which matches no tab,
+ * so the intended work section never opened. The route is parsed with the
+ * real URL query parser and validated against the SAME canonical tab list the
+ * tab bar renders; an unknown tab falls back to the default view instead of
+ * selecting a section that does not exist.
+ */
+export function nextRouteTab(nextRoute: string): string | null {
+  const q = nextRoute.indexOf("?");
+  if (q < 0) return null;
+  const tab = new URLSearchParams(nextRoute.slice(q + 1)).get("tab");
+  return tab && TAB_IDS.has(tab) ? tab : null;
+}
+
 export default function ShipmentDetail() {
   const { id } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -494,12 +515,17 @@ export default function ShipmentDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Tuyến" value={s.route} />
             <StateRow label="Cửa khẩu" value={s.borderVN} />
+            {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
             <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
-            <StateRow label="Sale · Support" value={<span>{s.sale} · {s.support}</span>} />
+            {/* `support` is the backend's `updated_by` (who last wrote this
+                document), not an assigned handler — the repo has no canonical
+                shipment-assignment field. It is labelled truthfully. */}
+            <StateRow label="Sale phụ trách" value={<span>{s.sale}</span>} />
+            <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
           </div>
         </div>
         <div className="px-4 md:px-6 pb-4 md:pb-5">
-          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { const t = sp.get("tab"); if (s.nextRoute.startsWith("/lo-hang")) { const m = s.nextRoute.match(/tab=(\w+)/); setSp(m ? { tab: m[1] } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
+          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); setSp(t ? { tab: t } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
         </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
@@ -1004,7 +1030,21 @@ export default function ShipmentDetail() {
                 <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <Link to={contractPath(linkedContract.id)} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
-                  <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
+                  {/* P1-B — now COMPLETED, unblocked by PR #52.
+
+                      This used to call setSp({tab:"chung-tu"}), which only
+                      re-selected the SHIPMENT's own documents tab the employee
+                      already stood on; the contract's HDNT/PL/HDMB workdesk
+                      never opened.
+
+                      It now reaches that existing workdesk through PR52's
+                      shared contractPath helper — no second encoder, no new
+                      router, no new document UI. That helper percent-encodes
+                      the contract number as ONE route segment, so slash ids
+                      (05/2026/HDMB) reach /hop-dong/:id instead of the "*"
+                      wildcard; "?tab=chung-tu" is read by ContractDetail's
+                      existing useSearchParams tab mechanism. */}
+                  <Link to={contractPath(linkedContract.id) + "?tab=chung-tu"} onClick={() => toast("Chứng từ hợp đồng " + linkedContract.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue")} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</Link>
                 </div>
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}

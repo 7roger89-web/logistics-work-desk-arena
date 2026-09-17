@@ -10,7 +10,10 @@ def test_active_contract_path_builders_use_single_encoded_segment():
         'pages/NewContract.tsx': 1,
         'pages/Contracts.tsx': 3,
         'components/Layout.tsx': 2,
-        'pages/ShipmentDetail.tsx': 2,
+        # 3 since LOGI_UAT_APPROVED_REPAIRS_INTEGRATE_DEPLOY_01: the linked-contract
+        # "Hợp đồng" row, "MỞ HỢP ĐỒNG", and the P1-B "MỞ CHỨNG TỪ" document handoff
+        # all route through the shared helper. The raw-concat ban below is unchanged.
+        'pages/ShipmentDetail.tsx': 3,
     }
     for relative, count in expected.items():
         source = (ROOT / 'component/src' / relative).read_text()

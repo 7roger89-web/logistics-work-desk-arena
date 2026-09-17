@@ -677,17 +677,32 @@ def _audit(entity_type: str, entity_id: str, limit: int = 6) -> list[dict[str, A
 
 
 def _handle_customer_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """CREATE one customer through the EXISTING canonical writer.
+
+    LOGI_UAT_REAL_USE_REPAIR_02: the outcome now echoes the ``requestId`` the
+    component sent, exactly like ``shipment_create`` / ``authority_agent_save``
+    already do. No new framework: this reuses the SAME lastWrites correlation
+    mechanism, so the form can tell "the event was transported" apart from
+    "the canonical writer accepted it", and a refusal can never be rendered as
+    success. ``persisted`` carries the fresh readback identity so the UI can
+    require the customer to genuinely exist before it claims anything.
+    """
     from core.auth import can_operate_business
     from core.database import get_last_db_error, load_customers, save_customer_to_cloud
 
     cid = _text(payload.get("id")).strip().upper()
     name = _text(payload.get("name"))
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("customer_create", cid, ok, error, requestId=request_id, **extra)
+
     if not cid or not name:
-        return _result("customer_create", cid, False, "Mã và tên khách hàng là bắt buộc.")
+        return _res(False, "Mã và tên khách hàng là bắt buộc.")
     if not can_operate_business("customers"):
-        return _result("customer_create", cid, False, "RBAC: không có quyền customers.")
+        return _res(False, "RBAC: không có quyền customers.")
     if cid in (load_customers() or {}):
-        return _result("customer_create", cid, False, f"Mã khách hàng {cid} đã tồn tại.")
+        return _res(False, f"Mã khách hàng {cid} đã tồn tại.")
     doc = {
         "id": cid, "name": name,
         "phone": _text(payload.get("phone")), "email": _text(payload.get("email")),
@@ -696,10 +711,17 @@ def _handle_customer_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         "note": _text(payload.get("note")),
     }
     if not save_customer_to_cloud(doc):
-        return _result("customer_create", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+        return _res(False, get_last_db_error() or "Không lưu được khách hàng.")
     fresh = read_customer(cid)
-    return _result("customer_create", cid, True, readback=customer_projection(fresh or {}),
-                   audit=_audit("customer", cid))
+    if fresh is None:
+        # Writer reported success but the canonical readback does not carry the
+        # customer: TRANSPORT/WRITE_RETURN != PERSISTENCE. Report the truth.
+        return _res(False,
+                    f"Writer báo thành công nhưng đọc lại không thấy khách hàng {cid}.")
+    return _res(True, readback=customer_projection(fresh),
+                persisted={"id": _text(fresh.get("id")).upper() or cid,
+                           "name": _text(fresh.get("name"))},
+                audit=_audit("customer", cid))
 
 
 def _handle_customer_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -707,23 +729,33 @@ def _handle_customer_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.database import get_last_db_error, save_customer_to_cloud
 
     cid = _text(payload.get("id")).strip().upper()
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("customer_edit", cid, ok, error, requestId=request_id, **extra)
+
     if not cid:
-        return _result("customer_edit", cid, False, "Thiếu mã khách hàng.")
+        return _res(False, "Thiếu mã khách hàng.")
     if not can_operate_business("customers"):
-        return _result("customer_edit", cid, False, "RBAC: không có quyền customers.")
+        return _res(False, "RBAC: không có quyền customers.")
     existing = read_customer(cid)
     if existing is None:
-        return _result("customer_edit", cid, False, f"Không tìm thấy khách hàng {cid}.")
+        return _res(False, f"Không tìm thấy khách hàng {cid}.")
     for key in ("name", "phone", "email", "contact_person", "tax_code", "address", "note"):
         if key in payload:
             existing[key] = _text(payload.get(key))
     if not _text(existing.get("name")):
-        return _result("customer_edit", cid, False, "Tên khách hàng không được để trống.")
+        return _res(False, "Tên khách hàng không được để trống.")
     if not save_customer_to_cloud(existing):
-        return _result("customer_edit", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+        return _res(False, get_last_db_error() or "Không lưu được khách hàng.")
     fresh = read_customer(cid)
-    return _result("customer_edit", cid, True, readback=customer_projection(fresh or {}),
-                   audit=_audit("customer", cid))
+    if fresh is None:
+        return _res(False,
+                    f"Writer báo thành công nhưng đọc lại không thấy khách hàng {cid}.")
+    return _res(True, readback=customer_projection(fresh),
+                persisted={"id": _text(fresh.get("id")).upper() or cid,
+                           "name": _text(fresh.get("name"))},
+                audit=_audit("customer", cid))
 
 
 def _handle_customer_archive(payload: Mapping[str, Any]) -> dict[str, Any]:
