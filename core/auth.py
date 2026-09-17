@@ -347,23 +347,44 @@ def _login_hero_css() -> str:
     return f"<style>{css}</style>"
 
 
-def require_login() -> dict[str, str] | None:
+def fresh_session_identity_for_action() -> dict[str, str] | None:
+    """Side-effect-free auth revalidation for action/callback execution.
+
+    Re-checks current session identity against the canonical user store BEFORE
+    dispatching business events from component callbacks. Emits zero UI (no
+    login cards, no HTML/CSS injection).
+
+    Returns:
+        dict: The refreshed public user identity if active and confirmed.
+        None: When AUTH_REQUIRED and the session has no user, the user is
+              deactivated/missing/deleted, or load_users fails closed.
+    """
     if not AUTH_REQUIRED:
-        user = {"username": "local-admin", "display_name": "Local Admin", "role": "admin"}
-        st.session_state.current_user = user
+        user = current_user()
+        if not user:
+            user = {"username": "local-admin", "display_name": "Local Admin", "role": "admin"}
+            st.session_state.current_user = user
         return user
 
     session_user = current_user()
-    if session_user:
-        revalidated = _revalidate_session(session_user)
-        if revalidated is None:
-            # The account behind this session no longer exists, or was
-            # deactivated after login. A stale session must never keep
-            # acting under a role/identity the canonical store no longer
-            # grants — clear it and fall through to the login screen.
-            st.session_state.pop("current_user", None)
-        else:
-            return revalidated
+    if not session_user:
+        return None
+
+    revalidated = _revalidate_session(session_user)
+    if revalidated is None:
+        # The account behind this session no longer exists, or was
+        # deactivated after login. A stale session must never keep
+        # acting under a role/identity the canonical store no longer
+        # grants — clear it immediately.
+        st.session_state.pop("current_user", None)
+        return None
+    return revalidated
+
+
+def require_login() -> dict[str, str] | None:
+    fresh = fresh_session_identity_for_action()
+    if fresh is not None:
+        return fresh
 
     user_count = 0
     try:

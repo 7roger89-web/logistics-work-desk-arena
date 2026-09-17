@@ -384,6 +384,269 @@ class InteractionLatencyRepairTests(unittest.TestCase):
 
             self.assertEqual(mock_save.call_count, 1, "Handler must be invoked exactly once across callback batch")
 
+    # -----------------------------------------------------------------------
+    # CONTROL_TOWER_SECURITY_REPAIR_01: Canonical Auth Revalidation Regressions
+    # -----------------------------------------------------------------------
+
+    def test_regression_a_stale_role_downgrade_refuses_writer(self) -> None:
+        """A. STALE ROLE DOWNGRADE:
+        Session before callback: role=support
+        Canonical load_users: same user now role=viewer
+        Trigger: shipment_field_save
+        Assert:
+        - canonical revalidation happens before business permission decision;
+        - save_shipment_atomic call count = 0;
+        - no stale support authority is used;
+        - session role becomes viewer if that is the existing auth behavior.
+        """
+        user_before = {"username": "op.support", "display_name": "Op Support", "role": "support", "user_id": "u1"}
+        users_db = {"op.support": {"username": "op.support", "display_name": "Op Support", "role": "viewer", "active": True, "user_id": "u1"}}
+
+        st.session_state["current_user"] = dict(user_before)
+        trigger = {
+            "shipment_field_save": {
+                "seq": 1,
+                "event": "shipment_field_save",
+                "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-ROLE-DOWNGRADE"}},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        from core import auth
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+            logi_shell._on_component_event()
+
+            self.assertEqual(mock_save.call_count, 0, "save_shipment_atomic must NOT be called when role is downgraded to viewer")
+            self.assertEqual(st.session_state["current_user"]["role"], "viewer", "Session state role must be revalidated to viewer")
+            last_writes = st.session_state.get(logi_view_model.LAST_WRITES_KEY, [])
+            self.assertTrue(any(w.get("ok") is False and "shipment_edit" in w.get("error", "") for w in last_writes),
+                            "Refusal must be recorded in LAST_WRITES")
+
+    def test_regression_b_deactivated_account_refuses_callback_dispatch(self) -> None:
+        """B. DEACTIVATED ACCOUNT:
+        Session: active support/admin identity
+        Canonical record: active=false
+        Trigger: shipment_create or shipment_field_save
+        Assert:
+        - writer call count = 0;
+        - current_user removed/invalidated;
+        - callback does not dispatch using old role.
+        """
+        user_before = {"username": "op.support", "display_name": "Op Support", "role": "support", "user_id": "u1"}
+        users_db = {"op.support": {"username": "op.support", "display_name": "Op Support", "role": "support", "active": False, "user_id": "u1"}}
+
+        st.session_state["current_user"] = dict(user_before)
+        trigger = {
+            "shipment_create": {
+                "seq": 1,
+                "event": "shipment_create",
+                "payload": {"service_type": "SEA_IMPORT", "customer": "KH-001"},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        from core import auth
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+            logi_shell._on_component_event()
+
+            self.assertEqual(mock_save.call_count, 0, "Writer must not be called when account is deactivated")
+            self.assertNotIn("current_user", st.session_state, "current_user must be removed/invalidated")
+            self.assertNotIn(logi_shell.CALLBACK_DISPATCHED_FLAG, st.session_state, "CALLBACK_DISPATCHED_FLAG must not be set on refusal")
+
+    def test_regression_c_canonical_user_store_failure_fails_closed(self) -> None:
+        """C. CANONICAL USER STORE FAILURE:
+        load_users raises.
+        Assert:
+        - fail CLOSED;
+        - writer/provider call count = 0.
+        """
+        user_before = {"username": "op.admin", "display_name": "Op Admin", "role": "admin", "user_id": "u1"}
+        st.session_state["current_user"] = dict(user_before)
+        trigger = {
+            "shipment_create": {
+                "seq": 1,
+                "event": "shipment_create",
+                "payload": {"service_type": "SEA_IMPORT", "customer": "KH-001"},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        from core import auth
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", side_effect=RuntimeError("Canonical user store network drop")), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+            logi_shell._on_component_event()
+
+            self.assertEqual(mock_save.call_count, 0, "Writer must not be called on user store failure (fail closed)")
+            self.assertNotIn("current_user", st.session_state, "current_user must be purged on store failure")
+            self.assertNotIn(logi_shell.CALLBACK_DISPATCHED_FLAG, st.session_state)
+
+    def test_regression_d_valid_active_user_preserves_single_vm_build_invariants(self) -> None:
+        """D. VALID ACTIVE USER:
+        Canonical store confirms permitted role.
+        Assert existing performance property still holds:
+        handler calls = 1
+        VM builds/event = 1
+        explicit second st.rerun = 0
+        """
+        users_db = {"op.admin": {"username": "op.admin", "display_name": "Op Admin", "role": "admin", "active": True, "user_id": "u1"}}
+        st.session_state["current_user"] = dict(users_db["op.admin"])
+
+        trigger = {
+            "shipment_field_save": {
+                "seq": 1,
+                "event": "shipment_field_save",
+                "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-VALID-01"}},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        bvm_calls = []
+        rerun_calls = []
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from core import auth
+
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("views.logi_view_model.build_view_model", side_effect=lambda: bvm_calls.append(1) or {}), \
+             patch("streamlit.rerun", side_effect=lambda: rerun_calls.append(1)), \
+             patch("views.logi_shell._renderer", return_value=lambda **kw: ComponentResult({}, trigger)), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+
+            # Execute normal Streamlit lifecycle: prefix callback then script body
+            logi_shell._on_component_event()
+            web_app.main()
+
+            self.assertEqual(mock_save.call_count, 1, "Handler must be called exactly once")
+            self.assertEqual(len(bvm_calls), 1, "Exactly 1 VM build per event")
+            self.assertEqual(len(rerun_calls), 0, "Zero explicit second st.rerun()")
+
+    def test_regression_e_translation_auth_downgrade_refuses_provider_call(self) -> None:
+        """E. TRANSLATION AUTH DOWNGRADE:
+        Session role currently has translation permission.
+        Canonical record changes to a role without translation.
+        Trigger translate_text.
+        Assert:
+        run_translation call count = 0.
+        This proves provider billing cannot occur under stale authority.
+        """
+        user_before = {"username": "op.sale", "display_name": "Op Sale", "role": "sale", "user_id": "u1"}
+        users_db = {"op.sale": {"username": "op.sale", "display_name": "Op Sale", "role": "viewer", "active": True, "user_id": "u1"}}
+
+        st.session_state["current_user"] = dict(user_before)
+        trigger = {
+            "translate_text": {
+                "seq": 1,
+                "event": "translate_text",
+                "payload": {"text": "Bill of Lading", "sourceLang": "EN", "targetLang": "VI"},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        from core import auth
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("views.translation.run_translation") as mock_translate:
+            logi_shell._on_component_event()
+
+            self.assertEqual(mock_translate.call_count, 0, "run_translation provider must NOT be called after role downgrade")
+            self.assertEqual(st.session_state["current_user"]["role"], "viewer")
+
+    def test_regression_f_callback_flag_recovery_after_auth_refusal(self) -> None:
+        """F. CALLBACK FLAG RECOVERY:
+        Auth refusal on one callback -> later valid authenticated event.
+        Assert:
+        second legitimate event is not swallowed by stale callback flag.
+        """
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from core import auth
+
+        # 1. Event 1 arrives under deactivated identity
+        users_db = {"op.support": {"username": "op.support", "display_name": "Op Support", "role": "support", "active": False, "user_id": "u1"}}
+        st.session_state["current_user"] = {"username": "op.support", "display_name": "Op Support", "role": "support", "user_id": "u1"}
+        trigger1 = {
+            "shipment_field_save": {
+                "seq": 1,
+                "event": "shipment_field_save",
+                "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-EVT-1"}},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger1
+
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save1:
+            logi_shell._on_component_event()
+            self.assertEqual(mock_save1.call_count, 0, "Event 1 writer must be refused")
+            self.assertNotIn(logi_shell.CALLBACK_DISPATCHED_FLAG, st.session_state, "No lingering flag on refusal")
+
+        # 2. Event 2 arrives under restored/valid identity
+        users_db["op.support"]["active"] = True
+        st.session_state["current_user"] = dict(users_db["op.support"])
+        trigger2 = {
+            "shipment_field_save": {
+                "seq": 2,
+                "event": "shipment_field_save",
+                "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-EVT-2"}},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger2
+
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save2:
+            logi_shell._on_component_event()
+            self.assertEqual(mock_save2.call_count, 1, "Legitimate Event 2 must be dispatched and executed")
+            self.assertTrue(st.session_state.get(logi_shell.CALLBACK_DISPATCHED_FLAG))
+
+            # Simulate render consuming the callback flag
+            with patch("views.logi_shell._renderer", return_value=lambda **kw: ComponentResult({}, trigger2)):
+                logi_shell.render({})
+            self.assertNotIn(logi_shell.CALLBACK_DISPATCHED_FLAG, st.session_state)
+            self.assertEqual(mock_save2.call_count, 1, "Event 2 must not be double dispatched in render")
+
+    def test_adversarial_bypassing_canonical_revalidation_allows_stale_role_write(self) -> None:
+        """Adversarial check: proves that bypassing callback-time canonical revalidation
+        would allow a downgraded session to execute forbidden writes under stale authority."""
+        user_before = {"username": "op.support", "display_name": "Op Support", "role": "support", "user_id": "u1"}
+        users_db = {"op.support": {"username": "op.support", "display_name": "Op Support", "role": "viewer", "active": True, "user_id": "u1"}}
+
+        st.session_state["current_user"] = dict(user_before)
+        trigger = {
+            "shipment_field_save": {
+                "seq": 1,
+                "event": "shipment_field_save",
+                "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-ROLE-DOWNGRADE"}},
+            }
+        }
+        st.session_state[COMPONENT_KEY] = trigger
+
+        from core import auth
+        # Simulate an insecure/bypassed callback that does not revalidate canonical store
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.auth.fresh_session_identity_for_action", return_value=dict(user_before)), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+            logi_shell._on_component_event()
+            # Under bypass, the writer is vulnerably invoked with stale support authority:
+            self.assertEqual(mock_save.call_count, 1, "Bypassing canonical revalidation allowed stale write")
+
+        # Now verify that the REAL secure implementation properly blocks the write:
+        st.session_state.pop(logi_shell.CALLBACK_DISPATCHED_FLAG, None)
+        st.session_state["current_user"] = dict(user_before)
+        trigger["shipment_field_save"]["seq"] = 2
+        st.session_state[COMPONENT_KEY] = trigger
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save_real:
+            logi_shell._on_component_event()
+            self.assertEqual(mock_save_real.call_count, 0, "Secure callback strictly blocked stale write")
+            self.assertEqual(st.session_state["current_user"]["role"], "viewer")
+
 
 if __name__ == "__main__":
     unittest.main()
