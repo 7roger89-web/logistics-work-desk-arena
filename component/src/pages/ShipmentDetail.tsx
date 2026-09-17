@@ -498,7 +498,12 @@ export default function ShipmentDetail() {
           </div>
         </div>
         <div className="px-4 md:px-6 pb-4 md:pb-5">
-          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { const t = sp.get("tab"); if (s.nextRoute.startsWith("/lo-hang")) { const m = s.nextRoute.match(/tab=(\w+)/); setSp(m ? { tab: m[1] } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
+          {/* LOGI_NEXT_ACTION_TAB_REPAIR_01: the banner's own nextRoute carries
+              hyphenated tab ids (lay-hang / tai-chinh / chung-tu). The old
+              /\w+/ capture stopped at the first hyphen, turning "lay-hang"
+              into the non-existent tab "lay" (no work section rendered). The
+              character class now keeps the whole tab id. */}
+          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const m = s.nextRoute.match(/tab=([\w-]+)/); setSp(m ? { tab: m[1] } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
         </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
@@ -1003,7 +1008,12 @@ export default function ShipmentDetail() {
                 <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <Link to={"/hop-dong/" + linkedContract.id} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
-                  <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
+                  {/* LOGI_CONTRACT_DOC_HANDOFF_01: contract documents (HDNT/PL/
+                      HDMB — generated/issued/downloaded by core.docgen) live on
+                      the EXISTING contract workdesk, not in this shipment PXK
+                      tab. The handoff now routes there directly, on the
+                      contract's own Chứng từ tab, for THIS linked contract. */}
+                  <Link to={"/hop-dong/" + linkedContract.id + "?tab=chung-tu"} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</Link>
                 </div>
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}

@@ -4,9 +4,17 @@
 // Every write goes: typed event → the ONE bounded Python dispatcher → RBAC →
 // existing writer (core.database.save_customer_to_cloud / delete_customer) →
 // audit → fresh backend read → refreshed view-model. No frontend-only truth.
+//
+// LOGI_CUSTOMER_CREATE_TRUTHFULNESS_01: create/edit is no longer a fire-and-
+// forget with an instant success claim. TRANSPORT_FAILURE keeps the modal open
+// with the entered data and shows a red failure state — never "Đã gửi", never
+// a close. TRANSPORT_SUCCESS is also not persistence: the modal waits for the
+// authoritative backend outcome (lastWrites, matched by the requestId this
+// click sent — the same correlated readback shipment_create and
+// customer_getfly_import already use) and only closes on ok=True.
 // ============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { Search, Plus, PenLine, Archive, Upload, Users, ArrowRight } from "lucide-react";
 import {
@@ -19,6 +27,7 @@ import {
   inputCls,
 } from "../components/ui";
 import { useStore } from "../lib/store";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { cx, fmtText } from "../lib/format";
 import type { Customer } from "../lib/viewmodel";
 
@@ -35,6 +44,7 @@ const EMPTY_FORM = {
 
 export default function Customers() {
   const { customers, dispatch, toast, role } = useStore();
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -43,6 +53,11 @@ export default function Customers() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [archiveReason, setArchiveReason] = useState("");
   const [importText, setImportText] = useState("");
+  // The in-flight create/edit intent. While set, the submit button is disabled
+  // (one click = one request) and the modal waits for the backend's
+  // AUTHORITATIVE outcome in `lastWrites` instead of trusting the transport.
+  const [pending, setPending] = useState<{ id: string; requestId: string; mode: "create" | "edit" } | null>(null);
+  const [backendError, setBackendError] = useState("");
 
   const list = useMemo(
     () =>
@@ -60,10 +75,12 @@ export default function Customers() {
     setForm((f) => ({ ...f, [k]: v }));
 
   const openCreate = () => {
+    setBackendError("");
     setForm(EMPTY_FORM);
     setCreating(true);
   };
   const openEdit = (c: Customer) => {
+    setBackendError("");
     setForm({
       id: c.id,
       name: c.name,
@@ -78,14 +95,18 @@ export default function Customers() {
   };
 
   const submit = () => {
+    if (pending) return; // outcome in flight — a second click must not double-send
     const id = form.id.trim().toUpperCase();
     if (!id || !form.name.trim()) {
       toast("Thiếu thông tin", "Mã và tên khách hàng là bắt buộc.", "red");
       return;
     }
+    // The backend echoes this id so the outcome in `lastWrites` can be matched
+    // to THIS click — never to another request.
+    const requestId = `cust-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     if (editing) {
       // customer_edit writes canonical snake_case fields on the existing doc.
-      dispatch("customer_edit", {
+      const sent = dispatch("customer_edit", {
         id,
         name: form.name.trim(),
         phone: form.phone.trim(),
@@ -94,10 +115,20 @@ export default function Customers() {
         tax_code: form.taxCode.trim(),
         address: form.address.trim(),
         note: form.note.trim(),
+        requestId,
       });
-      toast("Đã gửi cập nhật " + id, "Backend ghi + audit; danh sách tự làm mới từ Logistics.", "green");
+      if (!sent) {
+        // TRANSPORT_FAILURE: no event crossed the bridge. Keep the entered
+        // data, keep the modal open, and say what actually happened.
+        setBackendError("Component chưa kết nối backend — yêu cầu chưa được gửi.");
+        toast("Không gửi được", "Component chưa kết nối backend — dữ liệu còn lại trên form.", "red");
+        return;
+      }
+      setBackendError("");
+      setPending({ id, requestId, mode: "edit" });
+      toast("Đã gửi yêu cầu cập nhật " + id, "Đang lưu và xác nhận qua backend…", "blue");
     } else {
-      dispatch("customer_create", {
+      const sent = dispatch("customer_create", {
         id,
         name: form.name.trim(),
         phone: form.phone.trim(),
@@ -106,13 +137,48 @@ export default function Customers() {
         taxCode: form.taxCode.trim(),
         address: form.address.trim(),
         note: form.note.trim(),
+        requestId,
       });
-      toast("Đã gửi tạo khách hàng " + id, "Backend ghi + audit; danh sách tự làm mới từ Logistics.", "green");
+      if (!sent) {
+        setBackendError("Component chưa kết nối backend — yêu cầu chưa được gửi.");
+        toast("Không gửi được", "Component chưa kết nối backend — dữ liệu còn lại trên form.", "red");
+        return;
+      }
+      setBackendError("");
+      setPending({ id, requestId, mode: "create" });
+      toast("Đã gửi yêu cầu tạo " + id, "Đang lưu và xác nhận qua backend…", "blue");
     }
-    setCreating(false);
-    setEditing(null);
-    setForm(EMPTY_FORM);
   };
+
+  // Consume the authoritative backend outcome once the fresh view-model
+  // delivers it. The form only closes on a matching ok=True outcome
+  // (event + requestId of THIS click); a refusal keeps the modal open with the
+  // entered data and shows the real backend error verbatim. An unrelated
+  // view-model change (version bump, another event's outcome) is never
+  // treated as the answer.
+  useEffect(() => {
+    if (!pending || !vm) return;
+    const outcome = (vm.lastWrites ?? []).find(
+      (w) => w.event === (pending.mode === "create" ? "customer_create" : "customer_edit")
+        && w.requestId === pending.requestId
+    );
+    if (!outcome) return; // still waiting for the authoritative backend answer
+    if (outcome.ok) {
+      setPending(null);
+      setCreating(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
+      toast(
+        pending.mode === "create" ? "Đã tạo khách hàng " + pending.id : "Đã cập nhật " + pending.id,
+        "Backend ghi + audit thành công; danh sách đã làm mới từ Logistics.",
+        "green",
+      );
+    } else {
+      setPending(null);
+      setBackendError(outcome.error || "Backend từ chối.");
+      toast("Không lưu được khách hàng", outcome.error || "Backend từ chối.", "red");
+    }
+  }, [vm, pending, toast]);
 
   const doArchive = () => {
     if (!archiving) return;
@@ -120,7 +186,11 @@ export default function Customers() {
       toast("Cần lý do lưu trữ", "Nhập lý do trước khi lưu trữ khách hàng.", "red");
       return;
     }
-    dispatch("customer_archive", { id: archiving.id, reason: archiveReason.trim() });
+    const sent = dispatch("customer_archive", { id: archiving.id, reason: archiveReason.trim() });
+    if (!sent) {
+      toast("Không gửi được", "Component chưa kết nối backend — yêu cầu lưu trữ chưa được gửi.", "red");
+      return;
+    }
     toast("Đã gửi lưu trữ " + archiving.id, "Chỉ Admin có quyền; backend kiểm tra RBAC.", "blue");
     setArchiving(null);
     setArchiveReason("");
@@ -140,7 +210,11 @@ export default function Customers() {
       toast("Không có dòng để import", "Mỗi dòng: Mã;Tên;MST;SĐT;Email;Địa chỉ", "red");
       return;
     }
-    dispatch("customer_import", { rows });
+    const sent = dispatch("customer_import", { rows });
+    if (!sent) {
+      toast("Không gửi được", "Component chưa kết nối backend — yêu cầu import chưa được gửi.", "red");
+      return;
+    }
     toast("Đã gửi import " + rows.length + " khách hàng", "Backend bỏ qua mã đã tồn tại.", "blue");
     setImporting(false);
     setImportText("");
@@ -255,10 +329,16 @@ export default function Customers() {
       {/* MODAL: create / edit */}
       {(creating || editing) && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => { setCreating(false); setEditing(null); }} />
+          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => { if (!pending) { setCreating(false); setEditing(null); } }} />
           <div className="relative bg-white w-full sm:max-w-[560px] rounded-t-3xl sm:rounded-3xl p-5 pb-8 anim-slide-up max-h-[90vh] overflow-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}>
             <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">{editing ? "Sửa khách hàng " + editing.id : "Tạo khách hàng mới"}</h3>
             <p className="text-[13.5px] text-slate-500">Mọi thay đổi đi qua backend Logistics (RBAC + audit).</p>
+            {backendError && (
+              <div className="mt-3 rounded-xl border-2 border-red-300 bg-red-50 p-3.5" data-testid="customer-backend-error">
+                <p className="font-extrabold text-[14.5px] text-red-800">Backend từ chối — khách hàng chưa được lưu</p>
+                <p className="text-[13.5px] text-red-700 mt-0.5">{backendError}</p>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-3 mt-4">
               <Field label="Mã khách hàng" required><input value={form.id} disabled={!!editing} onChange={(e) => set("id", e.target.value)} placeholder="VD: CUST-ABC" className={inputCls(!form.id ? "missing" : "ok")} /></Field>
               <Field label="Tên khách hàng" required><input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Công ty / cá nhân" className={inputCls(!form.name ? "missing" : "ok")} /></Field>
@@ -272,8 +352,10 @@ export default function Customers() {
               <Field label="Ghi chú"><input value={form.note} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú nội bộ" className={inputCls()} /></Field>
             </div>
             <div className="grid grid-cols-2 gap-2.5 mt-5">
-              <GhostBtn onClick={() => { setCreating(false); setEditing(null); }}>Hủy</GhostBtn>
-              <SuccessBtn onClick={submit}>💾 {editing ? "LƯU THAY ĐỔI" : "TẠO KHÁCH HÀNG"}</SuccessBtn>
+              <GhostBtn onClick={() => { if (!pending) { setCreating(false); setEditing(null); } }} disabled={!!pending}>Hủy</GhostBtn>
+              <SuccessBtn onClick={submit} disabled={!!pending}>
+                {pending ? "ĐANG CHỜ BACKEND XÁC NHẬN…" : <>💾 {editing ? "LƯU THAY ĐỔI" : "TẠO KHÁCH HÀNG"}</>}
+              </SuccessBtn>
             </div>
           </div>
         </div>

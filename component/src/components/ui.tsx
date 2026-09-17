@@ -98,17 +98,17 @@ export function PrimaryBtn({ children, onClick, className, disabled }: { childre
   );
 }
 
-export function SuccessBtn({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
+export function SuccessBtn({ children, onClick, className, disabled }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25", className)}>
+    <button onClick={onClick} disabled={disabled} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25 disabled:opacity-50 disabled:cursor-not-allowed", className)}>
       {children}
     </button>
   );
 }
 
-export function GhostBtn({ children, onClick, className, danger }: { children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean }) {
+export function GhostBtn({ children, onClick, className, danger, disabled }: { children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean; disabled?: boolean }) {
   return (
-    <button onClick={onClick} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white", danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", className)}>
+    <button onClick={onClick} disabled={disabled} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white disabled:opacity-50 disabled:cursor-not-allowed", danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", className)}>
       {children}
     </button>
   );

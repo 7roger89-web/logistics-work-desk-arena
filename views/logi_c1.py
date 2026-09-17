@@ -682,12 +682,23 @@ def _handle_customer_create(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     cid = _text(payload.get("id")).strip().upper()
     name = _text(payload.get("name"))
+    # LOGI_CUSTOMER_CREATE_TRUTHFULNESS_01: echoed so the component can match
+    # THIS outcome (in lastWrites) to the exact click that sent the event —
+    # the same correlated-readback contract shipment_create and
+    # customer_getfly_import already use. "Event transported" is never a
+    # success claim.
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("customer_create", cid, ok, error,
+                       requestId=request_id, **extra)
+
     if not cid or not name:
-        return _result("customer_create", cid, False, "Mã và tên khách hàng là bắt buộc.")
+        return _res(False, "Mã và tên khách hàng là bắt buộc.")
     if not can_operate_business("customers"):
-        return _result("customer_create", cid, False, "RBAC: không có quyền customers.")
+        return _res(False, "RBAC: không có quyền customers.")
     if cid in (load_customers() or {}):
-        return _result("customer_create", cid, False, f"Mã khách hàng {cid} đã tồn tại.")
+        return _res(False, f"Mã khách hàng {cid} đã tồn tại.")
     doc = {
         "id": cid, "name": name,
         "phone": _text(payload.get("phone")), "email": _text(payload.get("email")),
@@ -696,10 +707,10 @@ def _handle_customer_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         "note": _text(payload.get("note")),
     }
     if not save_customer_to_cloud(doc):
-        return _result("customer_create", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+        return _res(False, get_last_db_error() or "Không lưu được khách hàng.")
     fresh = read_customer(cid)
-    return _result("customer_create", cid, True, readback=customer_projection(fresh or {}),
-                   audit=_audit("customer", cid))
+    return _res(True, readback=customer_projection(fresh or {}),
+                audit=_audit("customer", cid))
 
 
 def _handle_customer_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -707,23 +718,29 @@ def _handle_customer_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.database import get_last_db_error, save_customer_to_cloud
 
     cid = _text(payload.get("id")).strip().upper()
+    request_id = _text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("customer_edit", cid, ok, error,
+                       requestId=request_id, **extra)
+
     if not cid:
-        return _result("customer_edit", cid, False, "Thiếu mã khách hàng.")
+        return _res(False, "Thiếu mã khách hàng.")
     if not can_operate_business("customers"):
-        return _result("customer_edit", cid, False, "RBAC: không có quyền customers.")
+        return _res(False, "RBAC: không có quyền customers.")
     existing = read_customer(cid)
     if existing is None:
-        return _result("customer_edit", cid, False, f"Không tìm thấy khách hàng {cid}.")
+        return _res(False, f"Không tìm thấy khách hàng {cid}.")
     for key in ("name", "phone", "email", "contact_person", "tax_code", "address", "note"):
         if key in payload:
             existing[key] = _text(payload.get(key))
     if not _text(existing.get("name")):
-        return _result("customer_edit", cid, False, "Tên khách hàng không được để trống.")
+        return _res(False, "Tên khách hàng không được để trống.")
     if not save_customer_to_cloud(existing):
-        return _result("customer_edit", cid, False, get_last_db_error() or "Không lưu được khách hàng.")
+        return _res(False, get_last_db_error() or "Không lưu được khách hàng.")
     fresh = read_customer(cid)
-    return _result("customer_edit", cid, True, readback=customer_projection(fresh or {}),
-                   audit=_audit("customer", cid))
+    return _res(True, readback=customer_projection(fresh or {}),
+                audit=_audit("customer", cid))
 
 
 def _handle_customer_archive(payload: Mapping[str, Any]) -> dict[str, Any]:
