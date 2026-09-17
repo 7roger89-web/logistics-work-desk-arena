@@ -2744,7 +2744,12 @@ def consume_reconciliation_triggers(session: dict, result: Any) -> list[dict[str
     return outcomes
 
 
-def dispatch(result: Any) -> list[dict[str, Any]]:
+def dispatch(
+    result: Any,
+    *,
+    allow_rerun: bool = True,
+    is_callback: bool = False,
+) -> list[dict[str, Any]]:
     """Streamlit-facing entry: consume one script run's component triggers.
 
     Phase B typed writes are executed first against the real backend; the
@@ -2758,7 +2763,16 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
     and forces ONE rerun, so the next fresh view-model carries both the
     persisted data and the authoritative backend outcome to the component.
     The UI must never act on "event transported" — only on that readback.
+
+    LOGI_INTERACTION_LATENCY_REPAIR_01: In CALLBACK MODE (``is_callback=True``
+    or ``allow_rerun=False``), dispatch executes as a prefix before the script
+    body runs. The normal Streamlit rerun already scheduled by the component
+    event will build the ONE fresh view model. Therefore, explicit second
+    st.rerun() is skipped.
     """
+    if is_callback:
+        allow_rerun = False
+
     logi_sandbox.ensure_backend()
     session = {"seq": st.session_state.get(SEQ_KEY, 0)}
     outcomes = consume_phase_b_triggers(session, result)
@@ -2843,7 +2857,7 @@ def dispatch(result: Any) -> list[dict[str, Any]]:
         or any(outcome.get("ok") for outcome in partner_outcomes)
         or any(outcome.get("ok") for outcome in reconciliation_outcomes)
     )
-    if needs_rerun:
+    if needs_rerun and allow_rerun:
         st.rerun()
 
     return outcomes
