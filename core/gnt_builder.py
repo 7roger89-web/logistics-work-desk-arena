@@ -234,16 +234,17 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
             {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1702", "tien": vat}
         ]
     else:
-        # Validate known canonical tax concepts in custom tax_list (fail closed on invalid NDKT)
+        # Validate known canonical tax concepts in custom tax_list (fail closed on invalid/blank NDKT)
         for t in tax_list:
             ten_norm = str(t.get("ten") or "").strip().lower()
             ndkt_val = str(t.get("ndkt") or "").strip()
-            # Guard Import Duty (Thuế nhập khẩu) -> 1901
-            if ("thuế nhập khẩu" in ten_norm or ten_norm == "thuế nk") and ndkt_val and ndkt_val != "1901":
+            # Guard Import Duty (Thuế nhập khẩu) -> MUST be exactly 1901
+            is_import_duty = "thuế nhập khẩu" in ten_norm or ten_norm == "thuế nk"
+            if is_import_duty and ndkt_val != "1901":
                 raise ValueError(
                     f"Mã NDKT không hợp lệ cho Thuế nhập khẩu: '{ndkt_val}'. Yêu cầu bắt buộc: 1901 theo MLNS TT 324/2016/TT-BTC."
                 )
-            # Guard Import VAT (Thuế GTGT hàng nhập khẩu) -> 1702
+            # Guard Import VAT (Thuế GTGT hàng nhập khẩu) -> MUST be exactly 1702
             is_import_vat = (
                 "thuế gtgt hàng nhập" in ten_norm
                 or "thuế gtgt hàng nk" in ten_norm
@@ -252,7 +253,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
                 or ("gtgt" in ten_norm and "nhập" in ten_norm)
                 or ("vat" in ten_norm and "nhập" in ten_norm)
             )
-            if is_import_vat and ndkt_val and ndkt_val != "1702":
+            if is_import_vat and ndkt_val != "1702":
                 raise ValueError(
                     f"Mã NDKT không hợp lệ cho Thuế GTGT hàng nhập khẩu: '{ndkt_val}'. Yêu cầu bắt buộc: 1702 theo MLNS TT 324/2016/TT-BTC (Mã 1701 là thuế GTGT nội địa, tuyệt đối không dùng cho hàng NK)."
                 )

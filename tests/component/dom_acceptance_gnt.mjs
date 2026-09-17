@@ -1,5 +1,7 @@
 /**
  * LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 — DOM acceptance test for GNT in ShipmentDetail.
+ * Tests realistic state transitions: starts uninitialized (ready=false) -> operator entry ->
+ * shipment_field_save -> fresh authoritative VM readback (ready=true) -> gnt_generate -> download.
  */
 
 import { readFileSync } from "node:fs";
@@ -20,7 +22,7 @@ assert(fixturePath, "fixture exists");
 
 const VM = JSON.parse(readFileSync(fixturePath, "utf8"));
 
-// Seed customs and GNT fields on fixture
+// FIX 2: Seed initial uninitialized GNT taxpayer state (ready=false, missing taxpayer facts)
 const targetLot = VM.shipments.find((s) => s.id === "LO-0307") || VM.shipments[0];
 targetLot.importInfo = targetLot.importInfo || {};
 targetLot.importInfo.declarationNo = "105588421330";
@@ -30,12 +32,15 @@ targetLot.importInfo.vat = 800000;
 targetLot.customer = "CÔNG TY TNHH AN PHÁT";
 targetLot.customerMST = "0101234567";
 targetLot.importInfo.gnt = {
-  payer: "CÔNG TY TNHH AN PHÁT",
-  taxCode: "0101234567",
-  address: "Hà Nội",
+  payer: "",
+  taxCode: "",
+  address: "",
   customsOffice: "HQ Hữu Nghị",
-  ready: true,
-  missing: [],
+  customerHint: "CÔNG TY TNHH AN PHÁT",
+  customerTaxHint: "0101234567",
+  ready: false,
+  noPayable: false,
+  missing: ["Người nộp thuế", "Mã số thuế"],
   done: false,
   document: null,
 };
@@ -142,7 +147,7 @@ await click("LO-0307", "a", $("table.tbl")[0]);
 const tabRoot = window.document.getElementById("workspace-tabs");
 await click("Nhập khẩu & Giao hàng", "button", tabRoot);
 
-console.log("STEP 2 — Check GNT card presence and field values");
+console.log("STEP 2 — Verify initial uninitialized GNT state");
 const body = text(window.document.body);
 assert.ok(body.includes("GIẤY NỘP THUẾ (GNT)"), "GNT section title should be present");
 assert.ok(body.includes("105588421330"), "Declaration number should be present");
@@ -151,59 +156,124 @@ assert.ok(body.includes("5.000.000"), "Import duty amount should be present");
 assert.ok(body.includes("800.000"), "Import VAT amount should be present");
 assert.ok(body.includes("Cần kiểm tra/hoàn thiện các trường Kho bạc trước khi sử dụng để nộp."), "Treasury disclaimer notice must be present");
 assert.ok(!body.includes("Đã sẵn sàng nộp chính thức"), "Must NOT claim 'Đã sẵn sàng nộp chính thức'");
-console.log("  ✓ GNT section rendered faithfully with disclaimer notice and no false official-ready claim");
 
-console.log("STEP 2B — Edit explicit taxpayer fields and dispatch shipment_field_save");
+// 1. Customer hint is visible
+assert.ok(body.includes("Gợi ý khách hàng: CÔNG TY TNHH AN PHÁT"), "Customer hint must be visible as non-authoritative reference");
+console.log("  ✓ 1. Customer hint is visible");
+
+// 2. Authoritative taxpayer inputs are EMPTY (not auto-copied)
 const payerInput = window.document.getElementById("fld-gnt-payer");
-assert.ok(payerInput, "fld-gnt-payer input must be present");
-type(payerInput, "CÔNG TY NHẬP KHẨU MINH TÂN");
-
 const taxCodeInput = window.document.getElementById("fld-gnt-taxcode");
-assert.ok(taxCodeInput, "fld-gnt-taxcode input must be present");
-type(taxCodeInput, "0108887777");
-
 const addrInput = window.document.getElementById("fld-gnt-address");
+
+assert.ok(payerInput, "fld-gnt-payer input must be present");
+assert.ok(taxCodeInput, "fld-gnt-taxcode input must be present");
 assert.ok(addrInput, "fld-gnt-address input must be present");
+
+assert.equal(payerInput.value, "", "Payer input must NOT auto-copy customer name");
+assert.equal(taxCodeInput.value, "", "MST input must NOT auto-copy customer MST");
+assert.equal(addrInput.value, "", "Address input must be empty initially");
+console.log("  ✓ 2. Authoritative taxpayer inputs are EMPTY — customer facts NOT auto-copied");
+
+// 3. GNT generation button is disabled while backend VM says ready=false
+const genBtnBefore = findClickable("TẠO GIẤY NỘP THUẾ XLSX", "button");
+assert.ok(genBtnBefore, "Generate button must exist");
+assert.equal(genBtnBefore.disabled, true, "Generate button must be disabled when ready=false");
+console.log("  ✓ 3. GNT generation button is DISABLED while ready=false");
+
+console.log("STEP 3 — Operator types explicit taxpayer facts and saves");
+// 4. Operator types payer, MST, address
+type(payerInput, "CÔNG TY NHẬP KHẨU MINH TÂN");
+type(taxCodeInput, "0108887777");
 type(addrInput, "Số 45 Cầu Giấy, Hà Nội");
 
+// 5. Click LƯU THÔNG TIN NGƯỜI NỘP THUẾ
 await click("LƯU THÔNG TIN NGƯỜI NỘP THUẾ", "button");
 
-const saveEv = triggers.find((t) => t.event === "shipment_field_save");
-assert.ok(saveEv, "shipment_field_save trigger not emitted when saving taxpayer facts");
-assert.equal(saveEv.value.payload.shipmentId, "LO-0307");
-assert.equal(saveEv.value.payload.fields.gnt_taxpayer_name, "CÔNG TY NHẬP KHẨU MINH TÂN");
-assert.equal(saveEv.value.payload.fields.gnt_taxpayer_tax_code, "0108887777");
-assert.equal(saveEv.value.payload.fields.gnt_taxpayer_address, "Số 45 Cầu Giấy, Hà Nội");
-console.log("  ✓ shipment_field_save successfully dispatched with explicit taxpayer facts");
+// 6. Exactly ONE shipment_field_save is dispatched
+const saveEvents = triggers.filter((t) => t.event === "shipment_field_save");
+assert.equal(saveEvents.length, 1, "Exactly ONE shipment_field_save must be dispatched");
+console.log("  ✓ 5/6. Exactly ONE shipment_field_save dispatched");
 
-console.log("STEP 3 — Click TẠO GIẤY NỘP THUẾ XLSX and verify gnt_generate dispatch");
+// 7. Payload contains the three explicit taxpayer fields
+const savePayload = saveEvents[0].value.payload;
+assert.equal(savePayload.shipmentId, "LO-0307");
+assert.equal(savePayload.fields.gnt_taxpayer_name, "CÔNG TY NHẬP KHẨU MINH TÂN");
+assert.equal(savePayload.fields.gnt_taxpayer_tax_code, "0108887777");
+assert.equal(savePayload.fields.gnt_taxpayer_address, "Số 45 Cầu Giấy, Hà Nội");
+console.log("  ✓ 7. Payload contains explicit taxpayer name, MST, address");
+
+// 8. Before authoritative rerender: ZERO gnt_generate events
+const gntEventsBefore = triggers.filter((t) => t.event === "gnt_generate");
+assert.equal(gntEventsBefore.length, 0, "ZERO gnt_generate events before authoritative rerender");
+console.log("  ✓ 8. ZERO gnt_generate events before authoritative rerender");
+
+console.log("STEP 4 — Simulate fresh authoritative backend VM readback and rerender");
+// 9. Simulate fresh authoritative backend VM
+const vmReadback = JSON.parse(JSON.stringify(VM));
+const sReadback = vmReadback.shipments.find((x) => x.id === "LO-0307");
+sReadback.importInfo.gnt = {
+  payer: "CÔNG TY NHẬP KHẨU MINH TÂN",
+  taxCode: "0108887777",
+  address: "Số 45 Cầu Giấy, Hà Nội",
+  customsOffice: "HQ Hữu Nghị",
+  customerHint: "CÔNG TY TNHH AN PHÁT",
+  customerTaxHint: "0101234567",
+  ready: true,
+  noPayable: false,
+  missing: [],
+  done: false,
+  document: null,
+};
+vmReadback.version = "readback-gnt-0001";
+
+// 10. Reinvoke / rerender component with fresh backend VM
+invoke(vmReadback);
+await tick(120);
+
+// 11. Verify exact saved taxpayer values are visible
+const payerInputAfter = window.document.getElementById("fld-gnt-payer");
+const taxCodeInputAfter = window.document.getElementById("fld-gnt-taxcode");
+const addrInputAfter = window.document.getElementById("fld-gnt-address");
+assert.equal(payerInputAfter.value, "CÔNG TY NHẬP KHẨU MINH TÂN", "Payer input must reflect fresh readback");
+assert.equal(taxCodeInputAfter.value, "0108887777", "MST input must reflect fresh readback");
+assert.equal(addrInputAfter.value, "Số 45 Cầu Giấy, Hà Nội", "Address input must reflect fresh readback");
+console.log("  ✓ 11. Exact saved taxpayer values visible after readback");
+
+// 12. Verify GNT generation button is now enabled
+const genBtnAfter = findClickable("TẠO GIẤY NỘP THUẾ XLSX", "button");
+assert.ok(genBtnAfter, "Generate button must exist");
+assert.equal(genBtnAfter.disabled, false, "Generate button must be ENABLED now that backend VM says ready=true");
+console.log("  ✓ 12. GNT generation button is now ENABLED");
+
+// 13. Click generation
 await click("TẠO GIẤY NỘP THUẾ XLSX", "button");
 
-assert.ok(triggers.length > 0, "An event should have been dispatched");
-const ev = triggers.find((t) => t.event === "gnt_generate");
-assert.ok(ev, "gnt_generate trigger not emitted");
-assert.equal(ev.value.event, "gnt_generate", "Event name must be gnt_generate");
-assert.equal(ev.value.payload.shipmentId, "LO-0307", "Payload must carry shipmentId");
-console.log("  ✓ gnt_generate event successfully dispatched with shipmentId:", ev.value.payload.shipmentId);
+// 14. Exactly ONE gnt_generate event occurs
+const gntEventsAfter = triggers.filter((t) => t.event === "gnt_generate");
+assert.equal(gntEventsAfter.length, 1, "Exactly ONE gnt_generate event must occur");
+assert.equal(gntEventsAfter[0].value.event, "gnt_generate");
+assert.equal(gntEventsAfter[0].value.payload.shipmentId, "LO-0307");
+console.log("  ✓ 13/14. Exactly ONE gnt_generate event dispatched with shipmentId: LO-0307");
 
-console.log("STEP 4 — Update model with generated GNT and verify Download button");
-const vm2 = JSON.parse(JSON.stringify(VM));
-const s2 = vm2.shipments.find((x) => x.id === "LO-0307");
-s2.importInfo.gnt.done = true;
-s2.importInfo.gnt.document = {
+console.log("STEP 5 — Update model with generated GNT and verify Download button");
+const vmGenerated = JSON.parse(JSON.stringify(vmReadback));
+const sGenerated = vmGenerated.shipments.find((x) => x.id === "LO-0307");
+sGenerated.importInfo.gnt.done = true;
+sGenerated.importInfo.gnt.document = {
   fileName: "GNT_LO-0307_105588421330.xlsx",
   mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   downloadAvailable: true,
   downloadBase64: "UEsDBBQAAAAIA...",
-  generatedAt: "2026-09-16T15:30:00Z",
+  generatedAt: "2026-09-17T00:30:00Z",
 };
-vm2.version = "rerun-gnt-0001";
+vmGenerated.version = "generated-gnt-0002";
 
-invoke(vm2);
+invoke(vmGenerated);
 await tick(120);
 
 const downloadBtn = findClickable("TẢI XLSX", "button");
 assert.ok(downloadBtn, "Download button must be rendered when GNT document is present");
-console.log("  ✓ TẢI XLSX button rendered with file:", s2.importInfo.gnt.document.fileName);
+console.log("  ✓ TẢI XLSX button rendered with file:", sGenerated.importInfo.gnt.document.fileName);
 
-console.log("\nGNT DOM ACCEPTANCE PASS — all 4 steps verified!");
+console.log("\nGNT DOM ACCEPTANCE PASS — all 14 state transition requirements + download verified!");

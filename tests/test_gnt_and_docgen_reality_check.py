@@ -724,8 +724,9 @@ def test_pxk_generation_refused_before_delivery():
 # ===========================================================================
 
 def test_adversarial_mutation_1701_fails():
-    """Mutating import VAT subitem to 1701 MUST be refused by GNT builder with ValueError."""
-    corrupted_data = {
+    """Mutating import VAT subitem to 1701 or blank MUST be refused by GNT builder with ValueError."""
+    # 1. Import VAT + 1701 -> refused
+    corrupted_data_1701 = {
         "shipment_id": "LO-ADVERSARIAL",
         "tk_no": "105588421330",
         "tk_date": "15/08/2026",
@@ -734,11 +735,49 @@ def test_adversarial_mutation_1701_fails():
             {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1701", "tien": 800000},  # Adversarial 1701
         ],
     }
-    # Builder MUST fail closed with ValueError
     with pytest.raises(ValueError, match="1702"):
-        build_gnt_workbook(corrupted_data)
+        build_gnt_workbook(corrupted_data_1701)
 
-    # Prove 1702 is accepted
+    # 2. Import VAT + blank ndkt -> refused
+    corrupted_vat_blank = {
+        "shipment_id": "LO-ADVERSARIAL-VAT-BLANK",
+        "tk_no": "105588421330",
+        "tk_date": "15/08/2026",
+        "ds_thue": [
+            {"ten": "Thuế nhập khẩu", "ndkt": "1901", "tien": 5000000},
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "", "tien": 800000},  # Blank NDKT
+        ],
+    }
+    with pytest.raises(ValueError, match="1702"):
+        build_gnt_workbook(corrupted_vat_blank)
+
+    # 3. Import Duty + blank ndkt -> refused
+    corrupted_duty_blank = {
+        "shipment_id": "LO-ADVERSARIAL-DUTY-BLANK",
+        "tk_no": "105588421330",
+        "tk_date": "15/08/2026",
+        "ds_thue": [
+            {"ten": "Thuế nhập khẩu", "ndkt": "", "tien": 5000000},  # Blank NDKT
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1702", "tien": 800000},
+        ],
+    }
+    with pytest.raises(ValueError, match="1901"):
+        build_gnt_workbook(corrupted_duty_blank)
+
+    # 4. Import Duty + wrong ndkt (1902) -> refused
+    corrupted_duty_wrong = {
+        "shipment_id": "LO-ADVERSARIAL-DUTY-WRONG",
+        "tk_no": "105588421330",
+        "tk_date": "15/08/2026",
+        "ds_thue": [
+            {"ten": "Thuế nhập khẩu", "ndkt": "1902", "tien": 5000000},  # Wrong NDKT
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1702", "tien": 800000},
+        ],
+    }
+    with pytest.raises(ValueError, match="1901"):
+        build_gnt_workbook(corrupted_duty_wrong)
+
+    # 5. Prove 1901 + 1702 is accepted
     valid_data = {
         "shipment_id": "LO-VALID",
         "tk_no": "105588421330",
@@ -751,13 +790,14 @@ def test_adversarial_mutation_1701_fails():
     raw = build_gnt_workbook(valid_data)
     assert raw[:2] == b"PK"
 
-    # Prove custom unrelated tax row is preserved
+    # 6. Prove custom unrelated tax row is preserved even with custom NDKT
     custom_data = {
         "shipment_id": "LO-CUSTOM",
         "tk_no": "105588421330",
         "tk_date": "15/08/2026",
         "ds_thue": [
             {"ten": "Thuế bảo vệ môi trường", "ndkt": "2600", "tien": 1500000},
+            {"ten": "Phí khác", "ndkt": "", "tien": 200000},
         ],
     }
     custom_raw = build_gnt_workbook(custom_data)
