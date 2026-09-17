@@ -1776,6 +1776,9 @@ def consume_c1_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
         except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
             outcomes.append(_result(event_name, _text(data.get("id")), False,
                                     f"{type(exc).__name__}: {exc}"))
+        # Correlate every create result, including caught writer exceptions.
+        if event_name == "contract_create":
+            outcomes[-1]["requestId"] = _text(data.get("requestId"))
     if outcomes:
         session["writes"] = outcomes
     return outcomes

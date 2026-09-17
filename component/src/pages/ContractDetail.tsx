@@ -12,7 +12,7 @@
 // ============================================================================
 
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Download, FileText, Link2, Package, Plus, Trash2,
   FileCheck2, Stamp, CircleCheck, Banknote,
@@ -70,7 +70,12 @@ function rowToForm(l: GoodsLine): GoodsRow {
 }
 
 export default function ContractDetail() {
-  const { id } = useParams();
+  // React Router 7 params collapse a literal "%2F" into "/" even after
+  // segment encoding. Decode the original location segment exactly ONCE.
+  const { pathname } = useLocation();
+  let id: string | undefined;
+  try { id = decodeURIComponent(pathname.slice("/hop-dong/".length)); }
+  catch { id = undefined; }
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "tong-quan";
   const { contracts, authority, shipments, customers, dispatch, toast } = useStore();
@@ -156,8 +161,11 @@ export default function ContractDetail() {
       hdmb_date: form.hdmb_date.trim(),
     };
     if (picked !== (c.customerId ?? "")) payload.customerId = picked;
-    dispatch("contract_save", payload);
-    toast("Đã gửi lưu " + c.id, "Backend ghi danh tính pháp lý + audit; đọc lại từ Logistics.", "green");
+    if (!dispatch("contract_save", payload)) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    toast("Đã gửi lưu " + c.id, "Chờ máy chủ xử lý; dữ liệu sẽ được đọc lại từ Logistics.", "blue");
   };
 
   const saveGoods = () => {
@@ -167,17 +175,26 @@ export default function ContractDetail() {
       quantity: g.quantity.trim(),
       unitPrice: g.unitPrice.trim(),
     }));
-    dispatch("contract_goods_save", { id: c.id, goodsLines: rows });
-    toast("Đã gửi lưu hàng hóa " + c.id, "Blank số lượng/đơn giá = UNKNOWN (không bao giờ thành 0).", "green");
+    if (!dispatch("contract_goods_save", { id: c.id, goodsLines: rows })) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    toast("Đã gửi lưu hàng hóa " + c.id, "Blank số lượng/đơn giá = UNKNOWN (không bao giờ thành 0).", "blue");
   };
 
   const generateDocs = () => {
-    dispatch("contract_docgen_generate", { id: c.id });
+    if (!dispatch("contract_docgen_generate", { id: c.id })) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
     toast("Đã gửi sinh chứng từ " + c.id, "core.docgen kiểm tra threshold 50 triệu & danh tính pháp lý rồi sinh Office thật.", "blue");
   };
 
   const issueDoc = (documentId: string, revision: number) => {
-    dispatch("contract_docgen_issue", { documentId, revision });
+    if (!dispatch("contract_docgen_issue", { documentId, revision })) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
     toast("Đã gửi phát hành " + documentId, "Chứng từ ISSUED sẽ bất biến (không sửa/xóa).", "blue");
   };
 
@@ -187,8 +204,11 @@ export default function ContractDetail() {
       toast("Thiếu mã lô", "Nhập mã lô để liên kết (VD: LO-0306).", "red");
       return;
     }
-    dispatch("contract_shipment_link", { id: c.id, shipmentId: sid });
-    toast("Đã gửi liên kết " + sid, "Liên kết N:M hợp đồng ↔ lô qua backend.", "green");
+    if (!dispatch("contract_shipment_link", { id: c.id, shipmentId: sid })) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    toast("Đã gửi liên kết " + sid, "Chờ máy chủ xử lý liên kết N:M hợp đồng ↔ lô.", "blue");
     setLinkShipmentId("");
   };
 

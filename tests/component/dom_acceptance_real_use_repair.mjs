@@ -363,9 +363,27 @@ if (run(8)) {
 }
 
 // ---------------------------------------------------------------------------
-if (run(9)) console.log("STEP 9 — P1-B · DEFERRED (depends on PR #52) · guard: no false handoff claim");
+if (run(9)) console.log("STEP 9 — P1-B · 'MỞ CHỨNG TỪ' reaches the CONTRACT document workdesk (SLASH-ID boundary)");
 if (run(9)) {
-  invoke(CREATE_OK);
+  // P1-B acceptance, unblocked by PR #52's contractPath().
+  //
+  // This deliberately drives the REAL slash boundary "05/2026/HDMB" (the same
+  // id PR52 committed in view_model_contract_workflow.json). A contract number
+  // is ONE route segment yet can contain "/", so a raw path emits
+  // /hop-dong/05/2026/HDMB and misses single-segment /hop-dong/:id, landing on
+  // the "*" wildcard. Exercising a slash-free id here would prove nothing.
+  const SLASH_ID = "05/2026/HDMB";
+  const state = structuredClone(CREATE_OK);
+  const ship = state.shipments.find((x) => x.id === LINKED_SHIPMENT);
+  assert.ok(ship, `fixture shipment ${LINKED_SHIPMENT} missing`);
+  const con = state.contracts.find((c) => c.id === ship.contract);
+  assert.ok(con, `fixture contract ${ship.contract} missing`);
+  ship.contract = SLASH_ID;
+  con.id = SLASH_ID;
+  if (con.contractNo !== undefined) con.contractNo = SLASH_ID;
+  assert.ok(SLASH_ID.includes("/"), "the boundary under test must contain a slash");
+
+  invoke(state);
   await tick(140);
   await click("Lô Hàng", "a", $("aside")[0]);
   await tick(80);
@@ -374,8 +392,8 @@ if (run(9)) {
   lotLink.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(160);
 
-  // Go to the shipment's own documents tab — this is exactly where the old
-  // behaviour left the employee standing.
+  // Start on the shipment's own documents tab — exactly where the old
+  // behaviour stranded the employee.
   const docsTab = $("button", window.document.getElementById("workspace-tabs"))
     .find((b) => text(b).includes("Chứng từ"));
   assert.ok(docsTab, "shipment documents tab missing");
@@ -387,31 +405,28 @@ if (run(9)) {
 
   const openDocs = findClickable("MỞ CHỨNG TỪ", "a,button");
   assert.ok(openDocs, "MỞ CHỨNG TỪ control missing");
+  // The emitted route must keep the slash id as ONE encoded segment.
+  const href = openDocs.getAttribute("href") || "";
+  assert.ok(!/^\/hop-dong\/[^?#]*\/[^?#]*/.test(href),
+    `slash-unsafe contract route emitted: ${href}`);
+  assert.ok(href.includes("tab=chung-tu"), `contract documents tab not requested: ${href}`);
+
   openDocs.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
-  await tick(200);
+  await tick(220);
 
   const t = mainText();
-  // P1-B IS NOT REPAIRED ON THIS BRANCH. This step does NOT assert a fix; it
-  // pins the known-broken behaviour so the defect stays visible and so nobody
-  // "fixes" it by emitting a raw, slash-unsafe contract route.
-  //
-  // Why deferred: a contract number is ONE route segment yet can contain "/"
-  // (real case: 05/2026/HDMB). A raw link emits /hop-dong/05/2026/HDMB which
-  // misses the single-segment /hop-dong/:id route and lands on the "*"
-  // wildcard. PR #52 already owns that route class via contractPath(); a
-  // second encoder here would duplicate a frozen slice.
-  assert.ok(t.includes("Phiếu xuất kho"),
-    "DEFERRED P1-B: the employee is still left on the shipment PXK surface");
-  assert.ok(!t.includes("Chứng từ HDNT · PL · HDMB"),
-    "unexpected: contract docgen workdesk opened — P1-B may now be fixed; " +
-    "re-classify this step instead of leaving a stale DEFERRED guard");
-
-  // Negative guard: no slash-unsafe contract route may be emitted from here.
-  const anchors = $("a").map((a) => a.getAttribute("href") || "");
-  const unsafe = anchors.filter((h) => /^\/hop-dong\/[^?#]*\/[^?#]*/.test(h));
-  assert.deepEqual(unsafe, [],
-    `slash-unsafe contract route emitted: ${JSON.stringify(unsafe)}`);
-  ok("P1-B DEFERRED: defect pinned, no false handoff and no slash-unsafe route");
+  // Must land on the contract's OWN document workdesk, not the wildcard.
+  assert.ok(!t.includes("Sắp có") && !t.includes("Không tìm thấy"),
+    `OLD BEHAVIOUR: slash id ${SLASH_ID} fell through to wildcard/NotFound (href=${href})`);
+  assert.ok(t.includes(SLASH_ID),
+    `the contract ${SLASH_ID} detail surface was not reached`);
+  assert.ok(t.includes("Chứng từ HDNT · PL · HDMB"),
+    "OLD BEHAVIOUR: the contract document workdesk (HDNT/PL/HDMB) did not open");
+  assert.ok(t.includes("SINH CHỨNG TỪ"),
+    "the real contract docgen action must be reachable");
+  assert.ok(!t.includes("Phiếu xuất kho"),
+    "OLD BEHAVIOUR: the employee was left in the shipment PXK documents surface");
+  ok(`MỞ CHỨNG TỪ opened the real contract document workdesk for slash id ${SLASH_ID}`);
 }
 
 // ---------------------------------------------------------------------------

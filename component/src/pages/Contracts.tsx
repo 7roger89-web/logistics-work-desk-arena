@@ -1,3 +1,4 @@
+import { contractPath } from "../lib/contractRoute";
 // ============================================================================
 // Hợp đồng — Phase C1 list, donor Logi-good visual shell.
 //
@@ -63,12 +64,12 @@ export default function Contracts() {
             <tbody>
               {list.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
-                  <td><Link to={"/hop-dong/" + c.id} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{c.id}</Link></td>
+                  <td><Link to={contractPath(c.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{c.id}</Link></td>
                   <td><ToneBadge tone="blue" size="sm">{c.kind || "—"}</ToneBadge></td>
                   <td className="font-semibold max-w-[180px]">{c.client || "—"}</td>
                   <td className="text-[13px] text-slate-600"><span className="block">{c.company || "—"}</span><span className="block text-slate-400">{c.agent || "—"}</span></td>
                   <td className="font-bold">{fmtMoney(c.value, c.currency)}</td>
-                  <td><div className="flex gap-1.5"><Link to={"/hop-dong/" + c.id} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]"><Eye size={15} /> MỞ</Link></div></td>
+                  <td><div className="flex gap-1.5"><Link to={contractPath(c.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]"><Eye size={15} /> MỞ</Link></div></td>
                 </tr>
               ))}
             </tbody>
@@ -96,7 +97,7 @@ export default function Contracts() {
               <p className="font-extrabold text-[16px] mt-1.5">{fmtMoney(c.value, c.currency)}</p>
             </div>
             <div className="border-t">
-              <Link to={"/hop-dong/" + c.id} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">MỞ HỢP ĐỒNG <ArrowRight size={17} /></Link>
+              <Link to={contractPath(c.id)} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">MỞ HỢP ĐỒNG <ArrowRight size={17} /></Link>
             </div>
           </div>
         ))}

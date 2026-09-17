@@ -1,3 +1,4 @@
+import { contractPath } from "../lib/contractRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
@@ -514,7 +515,8 @@ export default function ShipmentDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Tuyến" value={s.route} />
             <StateRow label="Cửa khẩu" value={s.borderVN} />
-            <StateRow label="Hợp đồng" value={<Link to={"/hop-dong/" + s.contract} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
+            {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
+            <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
             {/* `support` is the backend's `updated_by` (who last wrote this
                 document), not an assigned handler — the repo has no canonical
                 shipment-assignment field. It is labelled truthfully. */}
@@ -1027,31 +1029,22 @@ export default function ShipmentDetail() {
                 <div className="flex flex-wrap items-center gap-2"><span className="font-extrabold text-[17px] text-[#0f2a4a]">{linkedContract.id}</span><ToneBadge tone={linkedContract.statusTone} size="sm">{linkedContract.status}</ToneBadge></div>
                 <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
-                  <Link to={"/hop-dong/" + linkedContract.id} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
-                  {/* P1-B (contract-document handoff) is KNOWN BROKEN and is
-                      deliberately NOT repaired on this branch.
+                  <Link to={contractPath(linkedContract.id)} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
+                  {/* P1-B — now COMPLETED, unblocked by PR #52.
 
-                      The defect is real: this action only re-selects the
-                      SHIPMENT's own "Chứng từ & PXK" tab the employee is
-                      already standing on, so the linked contract's own
-                      HDNT/PL/HDMB workdesk is never opened.
+                      This used to call setSp({tab:"chung-tu"}), which only
+                      re-selected the SHIPMENT's own documents tab the employee
+                      already stood on; the contract's HDNT/PL/HDMB workdesk
+                      never opened.
 
-                      The fix is a route to /hop-dong/<id>?tab=chung-tu, but a
-                      contract number is ONE route segment that can contain "/"
-                      (real case: 05/2026/HDMB). Built raw here it emits
-                      /hop-dong/05/2026/HDMB?tab=chung-tu, which does not match
-                      the single-segment /hop-dong/:id route and falls through
-                      to the "*" wildcard — reproduced in
-                      tests/component/dom_acceptance_real_use_repair.mjs
-                      (STEP 9), which is why that step asserts the CURRENT
-                      broken behaviour instead of claiming a repair.
-
-                      PR #52 already owns this route class via contractPath().
-                      Implementing a second encoder here would duplicate frozen
-                      PR52's slice, so P1-B stays deferred until PR52 is
-                      integrated; then this becomes a one-line change using the
-                      shared helper. */}
-                  <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
+                      It now reaches that existing workdesk through PR52's
+                      shared contractPath helper — no second encoder, no new
+                      router, no new document UI. That helper percent-encodes
+                      the contract number as ONE route segment, so slash ids
+                      (05/2026/HDMB) reach /hop-dong/:id instead of the "*"
+                      wildcard; "?tab=chung-tu" is read by ContractDetail's
+                      existing useSearchParams tab mechanism. */}
+                  <Link to={contractPath(linkedContract.id) + "?tab=chung-tu"} onClick={() => toast("Chứng từ hợp đồng " + linkedContract.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue")} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</Link>
                 </div>
               </div>
             ) : <p className="text-slate-500 text-[14px]">Lô chưa gắn hợp đồng. <Link to="/hop-dong" className="font-bold text-[#1e5aa8]">Chọn hợp đồng →</Link></p>}
