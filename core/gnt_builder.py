@@ -1,20 +1,27 @@
 # FILE: core/gnt_builder.py
 """
-LOG-LG05 — GNT Generation (Giấy Nộp Thuế)
+LOG-LG05 / LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 — GNT Generation (Giấy Nộp Thuế)
 
 Builds a 2-sheet Excel workbook:
   Sheet 1: NHẬP THÔNG TIN (editable input form with auto-filled values)
   Sheet 2: GIẤY NỘP THUẾ (C1-02/NS official form, print-friendly)
 
-Legal reference: Thông tư số 184/2015/TT-BTC (current as of Aug 2026)
+Legal basis:
+  - Mẫu số C1-02/NS ban hành kèm theo Thông tư 84/2016/TT-BTC.
+    (Theo Điều 14 khoản 3 Thông tư 328/2016/TT-BTC, mẫu C1-02/NS sử dụng theo mẫu ban hành tại TT 84/2016/TT-BTC;
+     được sửa đổi/bổ sung bởi TT 72/2021/TT-BTC và TT 23/2025/TT-BTC).
+  - Mã Mục lục NSNN theo Thông tư 324/2016/TT-BTC:
+      + Tiểu mục 1901: Thuế nhập khẩu (Mục 1900)
+      + Tiểu mục 1702: Thuế giá trị gia tăng hàng nhập khẩu (Mục 1700)
+      (Tiểu mục 1701 là Thuế GTGT hàng SXKD trong nước - KHÔNG dùng cho hàng NK)
 
 Prerequisites (all must be KNOWN, not guessed):
   - tk_no: customs declaration number
   - tk_date: customs declaration date
-  - import_duty_amount: import duty (Thuế nhập khẩu)
-  - import_vat_amount: import VAT (Thuế GTGT hàng nhập khẩu)
-  - taxpayer_name: importer name (legally responsible entity)
-  - taxpayer_tax_code: importer MST
+  - import_duty_amount: import duty (Thuế nhập khẩu) — known numeric >= 0
+  - import_vat_amount: import VAT (Thuế GTGT hàng nhập khẩu) — known numeric >= 0
+  - taxpayer_name: importer name (legally responsible entity from explicit customs/GNT record)
+  - taxpayer_tax_code: importer MST (from explicit customs/GNT record)
 
 DO NOT GUESS:
   - Bank name, account number
@@ -156,7 +163,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
 
     # Title
     ws1.cell(row=1, column=1, value="GIẤY NỘP THUẾ (GNT) — THÔNG TIN NHẬP LIỆU").font = title_font
-    ws1.cell(row=2, column=1, value=f"Lô: {data.get('shipment_id', '')} | Mẫu C1-02/NS (TT 184/2015/TT-BTC)").font = note_font
+    ws1.cell(row=2, column=1, value=f"Lô: {data.get('shipment_id', '')} | Mẫu C1-02/NS ban hành kèm theo Thông tư 84/2016/TT-BTC").font = note_font
 
     row = 4
     # Section: Thông tin Tờ khai
@@ -188,8 +195,8 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
 
     autofill_data2 = [
         ("Tên tổ chức/cá nhân", data.get("taxpayer_name", ""), "Tự động — chủ hàng/importer"),
-        ("Mã số thuế (MST)", data.get("taxpayer_tax_code", ""), "Tự động từ hồ sơ khách hàng"),
-        ("Địa chỉ", data.get("taxpayer_address", ""), "Tự động từ hồ sơ khách hàng"),
+        ("Mã số thuế (MST)", data.get("taxpayer_tax_code", ""), "Tự động từ hồ sơ hải quan"),
+        ("Địa chỉ", data.get("taxpayer_address", ""), "Tự động từ hồ sơ hải quan"),
         ("Quận/Huyện", data.get("taxpayer_district", ""), "Tự động"),
         ("Tỉnh/TP", data.get("taxpayer_province", ""), "Tự động"),
     ]
@@ -217,15 +224,39 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
         ws1.cell(row=row, column=col).fill = section_fill
     row += 1
 
-    # LOG-LG08.1: Support dynamic tax list from UI
+    # LOG-LG08.1 / LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01: Support dynamic tax list from UI
     tax_list = data.get("ds_thue", [])
     if not tax_list:
         duty = float(data.get("import_duty_amount", 0) or 0)
         vat = float(data.get("import_vat_amount", 0) or 0)
         tax_list = [
             {"ten": "Thuế nhập khẩu", "ndkt": "1901", "tien": duty},
-            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1701", "tien": vat}
+            {"ten": "Thuế GTGT hàng nhập khẩu", "ndkt": "1702", "tien": vat}
         ]
+    else:
+        # Validate known canonical tax concepts in custom tax_list (fail closed on invalid/blank NDKT)
+        for t in tax_list:
+            ten_norm = str(t.get("ten") or "").strip().lower()
+            ndkt_val = str(t.get("ndkt") or "").strip()
+            # Guard Import Duty (Thuế nhập khẩu) -> MUST be exactly 1901
+            is_import_duty = "thuế nhập khẩu" in ten_norm or ten_norm == "thuế nk"
+            if is_import_duty and ndkt_val != "1901":
+                raise ValueError(
+                    f"Mã NDKT không hợp lệ cho Thuế nhập khẩu: '{ndkt_val}'. Yêu cầu bắt buộc: 1901 theo MLNS TT 324/2016/TT-BTC."
+                )
+            # Guard Import VAT (Thuế GTGT hàng nhập khẩu) -> MUST be exactly 1702
+            is_import_vat = (
+                "thuế gtgt hàng nhập" in ten_norm
+                or "thuế gtgt hàng nk" in ten_norm
+                or "thuế vat hàng nhập" in ten_norm
+                or "thuế vat hàng nk" in ten_norm
+                or ("gtgt" in ten_norm and "nhập" in ten_norm)
+                or ("vat" in ten_norm and "nhập" in ten_norm)
+            )
+            if is_import_vat and ndkt_val != "1702":
+                raise ValueError(
+                    f"Mã NDKT không hợp lệ cho Thuế GTGT hàng nhập khẩu: '{ndkt_val}'. Yêu cầu bắt buộc: 1702 theo MLNS TT 324/2016/TT-BTC (Mã 1701 là thuế GTGT nội địa, tuyệt đối không dùng cho hàng NK)."
+                )
     
     total = sum(t.get("tien", 0) for t in tax_list)
 
@@ -273,9 +304,9 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
         row += 1
 
     # Column widths for sheet 1
-    ws1.column_dimensions["A"].width = 30
-    ws1.column_dimensions["B"].width = 35
-    ws1.column_dimensions["C"].width = 30
+    widths1 = [32, 38, 45]
+    for i, w in enumerate(widths1, 1):
+        ws1.column_dimensions[get_column_letter(i)].width = w
 
     # ─── Sheet 2: GIẤY NỘP THUẾ (C1-02/NS) ───
     ws2 = wb.create_sheet("GIẤY NỘP THUẾ")
@@ -291,7 +322,7 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
     # Title
     ws2.cell(row=1, column=1, value="GIẤY NỘP TIỀN VÀO NGÂN SÁCH NHÀ NƯỚC").font = Font(bold=True, size=12)
     ws2.cell(row=2, column=1, value="Mẫu số: C1-02/NS").font = Font(size=10)
-    ws2.cell(row=2, column=3, value="(Ban hành kèm theo Thông tư số 184/2015/TT-BTC)").font = Font(italic=True, size=9)
+    ws2.cell(row=2, column=3, value="(Ban hành kèm theo Thông tư số 84/2016/TT-BTC)").font = Font(italic=True, size=9)
     ws2.cell(row=3, column=1, value="Ngày ... tháng ... năm .......").font = Font(size=10)
 
     # Taxpayer info
@@ -422,70 +453,131 @@ def build_gnt_workbook(data: Dict[str, Any]) -> bytes:
     return output.getvalue()
 
 
-def check_gnt_prerequisites(ship_data: Dict[str, Any]) -> Dict[str, Any]:
+def check_gnt_prerequisites(ship_data: Dict[str, Any], customer_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Check if a shipment has all prerequisites for GNT generation.
 
     Returns dict with:
       ready: bool - all prerequisites met
+      no_payable: bool - tax amounts are known but sum to 0
       missing: List[str] - list of missing fields
+      reason: str - reason when not ready
       data: Dict - extracted values for GNT (if available)
     """
-    customs = ship_data.get("data", {}).get("2.4", {})
+    customs = ship_data.get("data", {}).get("2.4", {}) if isinstance(ship_data.get("data"), dict) else {}
+    gnt_section = customs.get("gnt", {}) if isinstance(customs.get("gnt"), dict) else {}
     missing = []
     result_data = {}
 
     # Check tk_no
     tk_no = customs.get("tk_no", "")
-    if not tk_no or tk_no == "None":
+    if not tk_no or str(tk_no).strip() == "" or str(tk_no) == "None":
         missing.append("Số tờ khai (TK)")
     else:
-        result_data["tk_no"] = tk_no
+        result_data["tk_no"] = str(tk_no).strip()
 
     # Check tk_date
-    tk_date = customs.get("tk_date", "")
-    if not tk_date or tk_date == "None":
+    tk_date = customs.get("tk_date", "") or customs.get("reg_date", "")
+    if not tk_date or str(tk_date).strip() == "" or str(tk_date) == "None":
         missing.append("Ngày tờ khai")
     else:
-        result_data["tk_date"] = tk_date
+        tk_date_str = str(tk_date).strip()
+        if "-" in tk_date_str and len(tk_date_str.split("-")) == 3:
+            parts = tk_date_str.split("-")
+            if len(parts[0]) == 4:
+                tk_date_str = f"{parts[2]}/{parts[1]}/{parts[0]}"
+        result_data["tk_date"] = tk_date_str
 
-    # Check import duty amount
-    duty = customs.get("import_duty_amount", 0)
-    try:
-        duty = float(duty or 0)
-    except (ValueError, TypeError):
-        duty = 0
-    if duty <= 0:
+    # Check import duty amount (UNKNOWN != ZERO semantics)
+    raw_duty = customs.get("import_duty_amount")
+    duty = None
+    if raw_duty is None or str(raw_duty).strip() == "" or str(raw_duty).strip() == "None":
         missing.append("Thuế nhập khẩu (số tiền)")
-    result_data["import_duty_amount"] = duty
+    else:
+        try:
+            duty_val = float(raw_duty)
+            if duty_val < 0:
+                missing.append("Thuế nhập khẩu không hợp lệ (âm)")
+            else:
+                duty = duty_val
+                result_data["import_duty_amount"] = duty
+        except (ValueError, TypeError):
+            missing.append("Thuế nhập khẩu (số tiền không hợp lệ)")
 
-    # Check import VAT amount
-    vat = customs.get("import_vat_amount", 0)
-    try:
-        vat = float(vat or 0)
-    except (ValueError, TypeError):
-        vat = 0
-    if vat <= 0:
+    # Check import VAT amount (UNKNOWN != ZERO semantics)
+    raw_vat = customs.get("import_vat_amount")
+    vat = None
+    if raw_vat is None or str(raw_vat).strip() == "" or str(raw_vat).strip() == "None":
         missing.append("Thuế GTGT hàng NK (số tiền)")
-    result_data["import_vat_amount"] = vat
+    else:
+        try:
+            vat_val = float(raw_vat)
+            if vat_val < 0:
+                missing.append("Thuế GTGT hàng NK không hợp lệ (âm)")
+            else:
+                vat = vat_val
+                result_data["import_vat_amount"] = vat
+        except (ValueError, TypeError):
+            missing.append("Thuế GTGT hàng NK (số tiền không hợp lệ)")
 
-    # Taxpayer info (from ship top-level or customer)
-    taxpayer_name = ship_data.get("customer", "") or ship_data.get("client", "")
-    if not taxpayer_name:
+    # Taxpayer info: ONLY from explicit customs / GNT fields
+    taxpayer_name = (
+        gnt_section.get("nguoi_nop")
+        or customs.get("taxpayer_name")
+        or customs.get("nguoi_nop")
+        or ""
+    )
+    if not taxpayer_name or str(taxpayer_name).strip() == "":
         missing.append("Tên người nộp thuế")
-    result_data["taxpayer_name"] = taxpayer_name
+    result_data["taxpayer_name"] = str(taxpayer_name).strip()
 
-    # Tax code from customer data if available
-    result_data["taxpayer_tax_code"] = customs.get("taxpayer_tax_code", "")
-    result_data["taxpayer_address"] = ship_data.get("customer_address", "")
-    result_data["taxpayer_province"] = ship_data.get("customer_province", "")
-    result_data["taxpayer_district"] = ship_data.get("customer_district", "")
-    result_data["payer_on_behalf"] = customs.get("payer_on_behalf", "")
+    taxpayer_tax_code = (
+        gnt_section.get("mst")
+        or customs.get("taxpayer_tax_code")
+        or customs.get("mst")
+        or ""
+    )
+    if not taxpayer_tax_code or str(taxpayer_tax_code).strip() == "":
+        missing.append("Mã số thuế (MST)")
+    result_data["taxpayer_tax_code"] = str(taxpayer_tax_code).strip()
 
-    result_data["shipment_id"] = ship_data.get("id", "")
+    result_data["taxpayer_address"] = str(
+        gnt_section.get("dia_chi")
+        or customs.get("taxpayer_address")
+        or customs.get("dia_chi")
+        or ""
+    ).strip()
+    result_data["taxpayer_province"] = str(
+        gnt_section.get("tinh_tp")
+        or customs.get("taxpayer_province")
+        or ""
+    ).strip()
+    result_data["taxpayer_district"] = str(
+        gnt_section.get("quan_huyen")
+        or customs.get("taxpayer_district")
+        or ""
+    ).strip()
+    result_data["payer_on_behalf"] = str(customs.get("payer_on_behalf") or "").strip()
+
+    result_data["shipment_id"] = str(ship_data.get("id", "")).strip()
+
+    # Total tax obligation check: both known zero is not missing, but no payable amount
+    no_payable = False
+    if duty is not None and vat is not None and duty == 0 and vat == 0 and len(missing) == 0:
+        no_payable = True
+
+    ready = (len(missing) == 0) and not no_payable
+
+    reason = ""
+    if no_payable:
+        reason = "NO_PAYABLE_AMOUNT"
+    elif not ready:
+        reason = f"Thiếu: {', '.join(missing)}"
 
     return {
-        "ready": len(missing) == 0,
+        "ready": ready,
+        "no_payable": no_payable,
         "missing": missing,
+        "reason": reason,
         "data": result_data,
     }

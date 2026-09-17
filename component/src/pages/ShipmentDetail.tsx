@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
@@ -407,6 +407,61 @@ export default function ShipmentDetail() {
     );
   };
 
+  const saveGntTaxpayer = () => {
+    if (!s) return;
+    const currentGnt = s.importInfo.gnt || { payer: "", taxCode: "", address: "" };
+    const payerVal = val("gntPayer", currentGnt.payer || "");
+    const taxCodeVal = val("gntTaxCode", currentGnt.taxCode || "");
+    const addrVal = val("gntAddress", currentGnt.address || "");
+
+    const fields: Record<string, string> = {
+      gnt_taxpayer_name: payerVal,
+      gnt_taxpayer_tax_code: taxCodeVal,
+      gnt_taxpayer_address: addrVal,
+    };
+
+    const sent = dispatch("shipment_field_save", {
+      shipmentId: s.id,
+      fields,
+    });
+    if (sent) {
+      toast("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue");
+    } else {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+    }
+  };
+
+  const generateGNT = () => {
+    if (!s) return;
+    const sent = dispatch("gnt_generate", { shipmentId: s.id });
+    if (sent) {
+      toast(
+        "Đã gửi yêu cầu tạo Giấy Nộp Thuế",
+        "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.",
+        "blue"
+      );
+    } else {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+    }
+  };
+
+  const downloadGNT = () => {
+    const doc = s?.importInfo.gnt?.document;
+    if (!doc || !doc.downloadBase64) {
+      toast(
+        "File không còn trong phiên này",
+        "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.",
+        "amber"
+      );
+      return;
+    }
+    downloadBinaryFile(
+      doc.fileName || "GNT_" + s.id + ".xlsx",
+      doc.downloadBase64,
+      doc.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  };
+
   // `missingDocs` is already the not-ok subset of `docs`; counting both
   // double-counted the same facts (chip said 8 while the box listed 4).
   // The document checklist emits real Logistics fact names; route each to the
@@ -584,22 +639,168 @@ export default function ShipmentDetail() {
       {/* ============ TAB: IMPORT ============ */}
       {tab === "nhap" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4" id="missing-anchor">
-          <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
-            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a]">Tờ khai & thuế nhập khẩu — {s.importInfo.borderVN}</h3>
-            {!val("tk", s.importInfo.declarationNo) && <MissingBox what="số tờ khai nhập khẩu" where="Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được" actionLabel="Nhập số TK" onAction={() => document.getElementById("fld-tk")?.focus()} />}
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Số tờ khai" required={!s.importInfo.declarationNo} error={!val("tk", s.importInfo.declarationNo) ? "Nhập 12 số tờ khai — VD: 105588421330" : undefined}>
-                <input id="fld-tk" value={val("tk", s.importInfo.declarationNo)} onChange={(e) => set("tk", e.target.value)} placeholder="12 số tờ khai…" className={inputCls(!val("tk", s.importInfo.declarationNo) ? "missing" : "ok")} />
-              </Field>
-              <Field label="Ngày đăng ký" hint="Lưu vào ngày tờ khai (2.4.tk_date)."><input id="fld-tkdate" value={val("tkDate", s.importInfo.regDate)} onChange={(e) => set("tkDate", e.target.value)} placeholder="VD: 15/08/2026" className={inputCls()} /></Field>
-              <Field label="Thuế nhập khẩu (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-duty" value={val("importDuty", s.importInfo.tax == null ? "" : String(s.importInfo.tax))} onChange={(e) => set("importDuty", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
-              <Field label="VAT hàng nhập (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-vat" value={val("importVat", s.importInfo.vat == null ? "" : String(s.importInfo.vat))} onChange={(e) => set("importVat", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
-              <Field label="Phân luồng / kiểm hóa"><input value={val("inspection", s.importInfo.inspection)} onChange={(e) => set("inspection", e.target.value)} className={inputCls()} /></Field>
-              <Field label="Giấy phép chuyên ngành" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.license} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
-            </div>
-            <PrimaryBtn onClick={saveImport} className="w-full">💾 LƯU TỜ KHAI & THUẾ</PrimaryBtn>
-            {val("tk", s.importInfo.declarationNo) && <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900">✅ Đã có số TK <b>{val("tk", s.importInfo.declarationNo)}</b>. Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng.</div>}
-          </section>
+          <div className="space-y-4">
+            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a]">Tờ khai & thuế nhập khẩu — {s.importInfo.borderVN}</h3>
+              {!val("tk", s.importInfo.declarationNo) && <MissingBox what="số tờ khai nhập khẩu" where="Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được" actionLabel="Nhập số TK" onAction={() => document.getElementById("fld-tk")?.focus()} />}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Field label="Số tờ khai" required={!s.importInfo.declarationNo} error={!val("tk", s.importInfo.declarationNo) ? "Nhập 12 số tờ khai — VD: 105588421330" : undefined}>
+                  <input id="fld-tk" value={val("tk", s.importInfo.declarationNo)} onChange={(e) => set("tk", e.target.value)} placeholder="12 số tờ khai…" className={inputCls(!val("tk", s.importInfo.declarationNo) ? "missing" : "ok")} />
+                </Field>
+                <Field label="Ngày đăng ký" hint="Lưu vào ngày tờ khai (2.4.tk_date)."><input id="fld-tkdate" value={val("tkDate", s.importInfo.regDate)} onChange={(e) => set("tkDate", e.target.value)} placeholder="VD: 15/08/2026" className={inputCls()} /></Field>
+                <Field label="Thuế nhập khẩu (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-duty" value={val("importDuty", s.importInfo.tax == null ? "" : String(s.importInfo.tax))} onChange={(e) => set("importDuty", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
+                <Field label="VAT hàng nhập (VND)" hint="Số thực tế trên thông báo thuế/GNT — app không tự tính."><input id="fld-vat" value={val("importVat", s.importInfo.vat == null ? "" : String(s.importInfo.vat))} onChange={(e) => set("importVat", e.target.value)} inputMode="decimal" placeholder="Bỏ trống = chưa biết" className={inputCls()} /></Field>
+                <Field label="Phân luồng / kiểm hóa"><input value={val("inspection", s.importInfo.inspection)} onChange={(e) => set("inspection", e.target.value)} className={inputCls()} /></Field>
+                <Field label="Giấy phép chuyên ngành" hint="Chỉ đọc — chưa có trường dữ liệu trong lô."><input value={s.importInfo.license} readOnly placeholder="Chưa có trường dữ liệu" className={inputCls()} /></Field>
+              </div>
+              <PrimaryBtn onClick={saveImport} className="w-full">💾 LƯU TỜ KHAI & THUẾ</PrimaryBtn>
+              {val("tk", s.importInfo.declarationNo) && <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900">✅ Đã có số TK <b>{val("tk", s.importInfo.declarationNo)}</b>. Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng.</div>}
+            </section>
+
+            {/* GIẤY NỘP THUẾ (GNT) */}
+            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-[16px] text-[#0f2a4a] flex items-center gap-2">
+                  <FileSpreadsheet size={18} className="text-[#1e5aa8]" /> GIẤY NỘP THUẾ (GNT) — Mẫu C1-02/NS
+                </h3>
+                {s.importInfo.gnt?.done && (
+                  <span className="rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-bold px-2.5 py-0.5">
+                    ✅ Đã tạo
+                  </span>
+                )}
+              </div>
+
+              {/* Read-only summary of declaration & taxes */}
+              <div className="grid sm:grid-cols-2 gap-2 text-[13px]">
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <span className="text-slate-500 block text-[11.5px] font-medium">Số tờ khai</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.declarationNo || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <span className="text-slate-500 block text-[11.5px] font-medium">Ngày tờ khai</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.regDate || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <span className="text-slate-500 block text-[11.5px] font-medium">Thuế nhập khẩu</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.tax != null ? fmtVND(s.importInfo.tax) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <span className="text-slate-500 block text-[11.5px] font-medium">VAT hàng nhập khẩu</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.vat != null ? fmtVND(s.importInfo.vat) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                </div>
+              </div>
+
+              {/* Explicit Operator Input for Taxpayer */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13.5px] text-[#0f2a4a]">Thông tin Người nộp thuế (Pháp nhân chịu thuế)</span>
+                  {s.importInfo.gnt?.customerHint && (
+                    <span className="text-[11.5px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
+                  )}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <Field label="Người nộp thuế *" hint="Tên pháp nhân trên tờ khai HQ">
+                    <input
+                      id="fld-gnt-payer"
+                      data-field="gnt-payer"
+                      value={val("gntPayer", s.importInfo.gnt?.payer || "")}
+                      onChange={(e) => set("gntPayer", e.target.value)}
+                      placeholder="VD: CÔNG TY TNHH ABC…"
+                      className={inputCls(!val("gntPayer", s.importInfo.gnt?.payer || "") ? "missing" : "ok")}
+                    />
+                  </Field>
+                  <Field label="Mã số thuế (MST) *" hint="MST 10 hoặc 13 số">
+                    <input
+                      id="fld-gnt-taxcode"
+                      data-field="gnt-taxcode"
+                      value={val("gntTaxCode", s.importInfo.gnt?.taxCode || "")}
+                      onChange={(e) => set("gntTaxCode", e.target.value)}
+                      placeholder="VD: 0101234567"
+                      className={inputCls(!val("gntTaxCode", s.importInfo.gnt?.taxCode || "") ? "missing" : "ok")}
+                    />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Địa chỉ" hint="Địa chỉ trụ sở / đăng ký kinh doanh">
+                      <input
+                        id="fld-gnt-address"
+                        data-field="gnt-address"
+                        value={val("gntAddress", s.importInfo.gnt?.address || "")}
+                        onChange={(e) => set("gntAddress", e.target.value)}
+                        placeholder="Địa chỉ doanh nghiệp nộp thuế…"
+                        className={inputCls()}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={saveGntTaxpayer}
+                  className="btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white font-semibold px-3.5 py-2 text-[13px] hover:bg-[#1e5aa8]"
+                >
+                  <PenLine size={14} /> LƯU THÔNG TIN NGƯỜI NỘP THUẾ
+                </button>
+              </div>
+
+              {s.importInfo.gnt?.noPayable && (
+                <div className="rounded-xl bg-slate-100 border border-slate-300 p-3 text-[13px] text-slate-700">
+                  ℹ️ <b>Không có nghĩa vụ thuế:</b> Thuế NK và VAT đều bằng 0 (không cần nộp qua GNT).
+                </div>
+              )}
+
+              {s.importInfo.gnt?.missing && s.importInfo.gnt.missing.length > 0 && !s.importInfo.gnt.noPayable && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900">
+                  ⚠️ <b>Chưa đủ điều kiện tạo GNT:</b> Thiếu {s.importInfo.gnt.missing.join(", ")}. Vui lòng hoàn thiện và lưu ở trên.
+                </div>
+              )}
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-[12.5px] text-slate-600">
+                ℹ️ <i>Cần kiểm tra/hoàn thiện các trường Kho bạc trước khi sử dụng để nộp.</i>
+              </div>
+
+              {s.importInfo.gnt?.done && s.importInfo.gnt.document ? (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-300 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-emerald-900 text-[14px]">✅ GNT đã tạo: {s.importInfo.gnt.document.fileName}</p>
+                      <p className="text-[12px] text-emerald-700">Mẫu C1-02/NS (2 sheet) · {s.importInfo.gnt.document.generatedAt ? new Date(s.importInfo.gnt.document.generatedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "Vừa tạo"}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    {s.importInfo.gnt.document.downloadAvailable ? (
+                      <button
+                        onClick={downloadGNT}
+                        className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-4 min-h-[44px] text-[13.5px]"
+                      >
+                        <Download size={16} /> TẢI XLSX
+                      </button>
+                    ) : (
+                      <p className="text-[12.5px] text-emerald-800 self-center">Bytes trong phiên trước. Bấm “Tạo lại” để tải.</p>
+                    )}
+                    <button
+                      onClick={generateGNT}
+                      disabled={!s.importInfo.gnt?.ready}
+                      className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white font-semibold px-3 min-h-[44px] text-[13px]"
+                    >
+                      <FileSpreadsheet size={15} /> Tạo lại XLSX
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={generateGNT}
+                  disabled={!s.importInfo.gnt?.ready}
+                  className={cx(
+                    "btn-press touch-target w-full rounded-xl font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]",
+                    s.importInfo.gnt?.ready
+                      ? "bg-[#0f2a4a] text-white hover:bg-[#1e5aa8]"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  )}
+                >
+                  <FileSpreadsheet size={17} /> TẠO GIẤY NỘP THUẾ XLSX
+                </button>
+              )}
+            </section>
+          </div>
 
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><Truck size={19} className="text-[#1e5aa8]" /> Xe Việt Nam & giao hàng</h3>

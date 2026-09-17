@@ -8061,7 +8061,7 @@ function T() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset".split(".")), D = null, O = 0;
+var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset".split(".")), D = null, O = 0;
 function ee(e) {
 	D = e;
 }
@@ -15330,7 +15330,31 @@ function Qo() {
 			return;
 		}
 		po(e.fileName || "PXK_" + (p.pxk.number || p.id) + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, Le = (e) => /xe giao|xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", Re = p.missingDocs.length;
+	}, Le = () => {
+		if (!p) return;
+		let e = p.importInfo.gnt || {
+			payer: "",
+			taxCode: "",
+			address: ""
+		}, t = {
+			gnt_taxpayer_name: A("gntPayer", e.payer || ""),
+			gnt_taxpayer_tax_code: A("gntTaxCode", e.taxCode || ""),
+			gnt_taxpayer_address: A("gntAddress", e.address || "")
+		};
+		l("shipment_field_save", {
+			shipmentId: p.id,
+			fields: t
+		}) ? o("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue") : o("Không gửi được", "Component chưa kết nối backend.", "red");
+	}, Re = () => {
+		p && (l("gnt_generate", { shipmentId: p.id }) ? o("Đã gửi yêu cầu tạo Giấy Nộp Thuế", "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.", "blue") : o("Không gửi được", "Component chưa kết nối backend.", "red"));
+	}, ze = () => {
+		let e = p?.importInfo.gnt?.document;
+		if (!e || !e.downloadBase64) {
+			o("File không còn trong phiên này", "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.", "amber");
+			return;
+		}
+		po(e.fileName || "GNT_" + p.id + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}, Be = (e) => /xe giao|xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", Ve = p.missingDocs.length;
 	return /* @__PURE__ */ (0, I.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
@@ -15357,12 +15381,12 @@ function Qo() {
 										tone: p.statusTone,
 										children: p.status
 									}),
-									Re > 0 && /* @__PURE__ */ (0, I.jsxs)("span", {
+									Ve > 0 && /* @__PURE__ */ (0, I.jsxs)("span", {
 										className: "inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5",
 										children: [
 											/* @__PURE__ */ (0, I.jsx)(Ur, { size: 15 }),
 											" Thiếu ",
-											Re,
+											Ve,
 											" thông tin"
 										]
 									}),
@@ -15555,7 +15579,7 @@ function Qo() {
 						what: e,
 						actionLabel: "Bổ sung ngay",
 						onAction: () => {
-							n({ tab: Le(e) }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
+							n({ tab: Be(e) }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
 								behavior: "smooth",
 								block: "center"
 							}), 150);
@@ -15713,103 +15737,303 @@ function Qo() {
 			r === "nhap" && /* @__PURE__ */ (0, I.jsxs)("div", {
 				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
 				id: "missing-anchor",
-				children: [/* @__PURE__ */ (0, I.jsxs)("section", {
-					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
-					children: [
-						/* @__PURE__ */ (0, I.jsxs)("h3", {
-							className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
-							children: ["Tờ khai & thuế nhập khẩu — ", p.importInfo.borderVN]
-						}),
-						!A("tk", p.importInfo.declarationNo) && /* @__PURE__ */ (0, I.jsx)(bo, {
-							what: "số tờ khai nhập khẩu",
-							where: "Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được",
-							actionLabel: "Nhập số TK",
-							onAction: () => document.getElementById("fld-tk")?.focus()
-						}),
-						/* @__PURE__ */ (0, I.jsxs)("div", {
-							className: "grid sm:grid-cols-2 gap-3",
-							children: [
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "Số tờ khai",
-									required: !p.importInfo.declarationNo,
-									error: A("tk", p.importInfo.declarationNo) ? void 0 : "Nhập 12 số tờ khai — VD: 105588421330",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										id: "fld-tk",
-										value: A("tk", p.importInfo.declarationNo),
-										onChange: (e) => k("tk", e.target.value),
-										placeholder: "12 số tờ khai…",
-										className: Y(A("tk", p.importInfo.declarationNo) ? "ok" : "missing")
+				children: [/* @__PURE__ */ (0, I.jsxs)("div", {
+					className: "space-y-4",
+					children: [/* @__PURE__ */ (0, I.jsxs)("section", {
+						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
+						children: [
+							/* @__PURE__ */ (0, I.jsxs)("h3", {
+								className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
+								children: ["Tờ khai & thuế nhập khẩu — ", p.importInfo.borderVN]
+							}),
+							!A("tk", p.importInfo.declarationNo) && /* @__PURE__ */ (0, I.jsx)(bo, {
+								what: "số tờ khai nhập khẩu",
+								where: "Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được",
+								actionLabel: "Nhập số TK",
+								onAction: () => document.getElementById("fld-tk")?.focus()
+							}),
+							/* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "grid sm:grid-cols-2 gap-3",
+								children: [
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "Số tờ khai",
+										required: !p.importInfo.declarationNo,
+										error: A("tk", p.importInfo.declarationNo) ? void 0 : "Nhập 12 số tờ khai — VD: 105588421330",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											id: "fld-tk",
+											value: A("tk", p.importInfo.declarationNo),
+											onChange: (e) => k("tk", e.target.value),
+											placeholder: "12 số tờ khai…",
+											className: Y(A("tk", p.importInfo.declarationNo) ? "ok" : "missing")
+										})
+									}),
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "Ngày đăng ký",
+										hint: "Lưu vào ngày tờ khai (2.4.tk_date).",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											id: "fld-tkdate",
+											value: A("tkDate", p.importInfo.regDate),
+											onChange: (e) => k("tkDate", e.target.value),
+											placeholder: "VD: 15/08/2026",
+											className: Y()
+										})
+									}),
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "Thuế nhập khẩu (VND)",
+										hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											id: "fld-duty",
+											value: A("importDuty", p.importInfo.tax == null ? "" : String(p.importInfo.tax)),
+											onChange: (e) => k("importDuty", e.target.value),
+											inputMode: "decimal",
+											placeholder: "Bỏ trống = chưa biết",
+											className: Y()
+										})
+									}),
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "VAT hàng nhập (VND)",
+										hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											id: "fld-vat",
+											value: A("importVat", p.importInfo.vat == null ? "" : String(p.importInfo.vat)),
+											onChange: (e) => k("importVat", e.target.value),
+											inputMode: "decimal",
+											placeholder: "Bỏ trống = chưa biết",
+											className: Y()
+										})
+									}),
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "Phân luồng / kiểm hóa",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											value: A("inspection", p.importInfo.inspection),
+											onChange: (e) => k("inspection", e.target.value),
+											className: Y()
+										})
+									}),
+									/* @__PURE__ */ (0, I.jsx)(J, {
+										label: "Giấy phép chuyên ngành",
+										hint: "Chỉ đọc — chưa có trường dữ liệu trong lô.",
+										children: /* @__PURE__ */ (0, I.jsx)("input", {
+											value: p.importInfo.license,
+											readOnly: !0,
+											placeholder: "Chưa có trường dữ liệu",
+											className: Y()
+										})
 									})
-								}),
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "Ngày đăng ký",
-									hint: "Lưu vào ngày tờ khai (2.4.tk_date).",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										id: "fld-tkdate",
-										value: A("tkDate", p.importInfo.regDate),
-										onChange: (e) => k("tkDate", e.target.value),
-										placeholder: "VD: 15/08/2026",
-										className: Y()
+								]
+							}),
+							/* @__PURE__ */ (0, I.jsx)(go, {
+								onClick: P,
+								className: "w-full",
+								children: "💾 LƯU TỜ KHAI & THUẾ"
+							}),
+							A("tk", p.importInfo.declarationNo) && /* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900",
+								children: [
+									"✅ Đã có số TK ",
+									/* @__PURE__ */ (0, I.jsx)("b", { children: A("tk", p.importInfo.declarationNo) }),
+									". Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng."
+								]
+							})
+						]
+					}), /* @__PURE__ */ (0, I.jsxs)("section", {
+						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
+						children: [
+							/* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "flex items-center justify-between",
+								children: [/* @__PURE__ */ (0, I.jsxs)("h3", {
+									className: "font-extrabold text-[16px] text-[#0f2a4a] flex items-center gap-2",
+									children: [/* @__PURE__ */ (0, I.jsx)(xi, {
+										size: 18,
+										className: "text-[#1e5aa8]"
+									}), " GIẤY NỘP THUẾ (GNT) — Mẫu C1-02/NS"]
+								}), p.importInfo.gnt?.done && /* @__PURE__ */ (0, I.jsx)("span", {
+									className: "rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-bold px-2.5 py-0.5",
+									children: "✅ Đã tạo"
+								})]
+							}),
+							/* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "grid sm:grid-cols-2 gap-2 text-[13px]",
+								children: [
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
+										children: [/* @__PURE__ */ (0, I.jsx)("span", {
+											className: "text-slate-500 block text-[11.5px] font-medium",
+											children: "Số tờ khai"
+										}), /* @__PURE__ */ (0, I.jsx)("span", {
+											className: "font-bold text-[#0f2a4a]",
+											children: p.importInfo.declarationNo || /* @__PURE__ */ (0, I.jsx)("span", {
+												className: "text-amber-600 italic font-normal",
+												children: "Chưa có"
+											})
+										})]
+									}),
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
+										children: [/* @__PURE__ */ (0, I.jsx)("span", {
+											className: "text-slate-500 block text-[11.5px] font-medium",
+											children: "Ngày tờ khai"
+										}), /* @__PURE__ */ (0, I.jsx)("span", {
+											className: "font-bold text-[#0f2a4a]",
+											children: p.importInfo.regDate || /* @__PURE__ */ (0, I.jsx)("span", {
+												className: "text-amber-600 italic font-normal",
+												children: "Chưa có"
+											})
+										})]
+									}),
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
+										children: [/* @__PURE__ */ (0, I.jsx)("span", {
+											className: "text-slate-500 block text-[11.5px] font-medium",
+											children: "Thuế nhập khẩu"
+										}), /* @__PURE__ */ (0, I.jsx)("span", {
+											className: "font-bold text-[#0f2a4a]",
+											children: p.importInfo.tax == null ? /* @__PURE__ */ (0, I.jsx)("span", {
+												className: "text-amber-600 italic font-normal",
+												children: "Chưa có"
+											}) : co(p.importInfo.tax)
+										})]
+									}),
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
+										children: [/* @__PURE__ */ (0, I.jsx)("span", {
+											className: "text-slate-500 block text-[11.5px] font-medium",
+											children: "VAT hàng nhập khẩu"
+										}), /* @__PURE__ */ (0, I.jsx)("span", {
+											className: "font-bold text-[#0f2a4a]",
+											children: p.importInfo.vat == null ? /* @__PURE__ */ (0, I.jsx)("span", {
+												className: "text-amber-600 italic font-normal",
+												children: "Chưa có"
+											}) : co(p.importInfo.vat)
+										})]
 									})
-								}),
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "Thuế nhập khẩu (VND)",
-									hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										id: "fld-duty",
-										value: A("importDuty", p.importInfo.tax == null ? "" : String(p.importInfo.tax)),
-										onChange: (e) => k("importDuty", e.target.value),
-										inputMode: "decimal",
-										placeholder: "Bỏ trống = chưa biết",
-										className: Y()
+								]
+							}),
+							/* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3",
+								children: [
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "flex items-center justify-between",
+										children: [/* @__PURE__ */ (0, I.jsx)("span", {
+											className: "font-bold text-[13.5px] text-[#0f2a4a]",
+											children: "Thông tin Người nộp thuế (Pháp nhân chịu thuế)"
+										}), p.importInfo.gnt?.customerHint && /* @__PURE__ */ (0, I.jsxs)("span", {
+											className: "text-[11.5px] text-slate-500 italic",
+											children: ["Gợi ý khách hàng: ", /* @__PURE__ */ (0, I.jsx)("b", { children: p.importInfo.gnt.customerHint })]
+										})]
+									}),
+									/* @__PURE__ */ (0, I.jsxs)("div", {
+										className: "grid sm:grid-cols-2 gap-2.5",
+										children: [
+											/* @__PURE__ */ (0, I.jsx)(J, {
+												label: "Người nộp thuế *",
+												hint: "Tên pháp nhân trên tờ khai HQ",
+												children: /* @__PURE__ */ (0, I.jsx)("input", {
+													id: "fld-gnt-payer",
+													"data-field": "gnt-payer",
+													value: A("gntPayer", p.importInfo.gnt?.payer || ""),
+													onChange: (e) => k("gntPayer", e.target.value),
+													placeholder: "VD: CÔNG TY TNHH ABC…",
+													className: Y(A("gntPayer", p.importInfo.gnt?.payer || "") ? "ok" : "missing")
+												})
+											}),
+											/* @__PURE__ */ (0, I.jsx)(J, {
+												label: "Mã số thuế (MST) *",
+												hint: "MST 10 hoặc 13 số",
+												children: /* @__PURE__ */ (0, I.jsx)("input", {
+													id: "fld-gnt-taxcode",
+													"data-field": "gnt-taxcode",
+													value: A("gntTaxCode", p.importInfo.gnt?.taxCode || ""),
+													onChange: (e) => k("gntTaxCode", e.target.value),
+													placeholder: "VD: 0101234567",
+													className: Y(A("gntTaxCode", p.importInfo.gnt?.taxCode || "") ? "ok" : "missing")
+												})
+											}),
+											/* @__PURE__ */ (0, I.jsx)("div", {
+												className: "sm:col-span-2",
+												children: /* @__PURE__ */ (0, I.jsx)(J, {
+													label: "Địa chỉ",
+													hint: "Địa chỉ trụ sở / đăng ký kinh doanh",
+													children: /* @__PURE__ */ (0, I.jsx)("input", {
+														id: "fld-gnt-address",
+														"data-field": "gnt-address",
+														value: A("gntAddress", p.importInfo.gnt?.address || ""),
+														onChange: (e) => k("gntAddress", e.target.value),
+														placeholder: "Địa chỉ doanh nghiệp nộp thuế…",
+														className: Y()
+													})
+												})
+											})
+										]
+									}),
+									/* @__PURE__ */ (0, I.jsxs)("button", {
+										type: "button",
+										onClick: Le,
+										className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white font-semibold px-3.5 py-2 text-[13px] hover:bg-[#1e5aa8]",
+										children: [/* @__PURE__ */ (0, I.jsx)(ea, { size: 14 }), " LƯU THÔNG TIN NGƯỜI NỘP THUẾ"]
 									})
-								}),
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "VAT hàng nhập (VND)",
-									hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										id: "fld-vat",
-										value: A("importVat", p.importInfo.vat == null ? "" : String(p.importInfo.vat)),
-										onChange: (e) => k("importVat", e.target.value),
-										inputMode: "decimal",
-										placeholder: "Bỏ trống = chưa biết",
-										className: Y()
-									})
-								}),
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "Phân luồng / kiểm hóa",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										value: A("inspection", p.importInfo.inspection),
-										onChange: (e) => k("inspection", e.target.value),
-										className: Y()
-									})
-								}),
-								/* @__PURE__ */ (0, I.jsx)(J, {
-									label: "Giấy phép chuyên ngành",
-									hint: "Chỉ đọc — chưa có trường dữ liệu trong lô.",
-									children: /* @__PURE__ */ (0, I.jsx)("input", {
-										value: p.importInfo.license,
-										readOnly: !0,
-										placeholder: "Chưa có trường dữ liệu",
-										className: Y()
-									})
-								})
-							]
-						}),
-						/* @__PURE__ */ (0, I.jsx)(go, {
-							onClick: P,
-							className: "w-full",
-							children: "💾 LƯU TỜ KHAI & THUẾ"
-						}),
-						A("tk", p.importInfo.declarationNo) && /* @__PURE__ */ (0, I.jsxs)("div", {
-							className: "rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900",
-							children: [
-								"✅ Đã có số TK ",
-								/* @__PURE__ */ (0, I.jsx)("b", { children: A("tk", p.importInfo.declarationNo) }),
-								". Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng."
-							]
-						})
-					]
+								]
+							}),
+							p.importInfo.gnt?.noPayable && /* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-slate-100 border border-slate-300 p-3 text-[13px] text-slate-700",
+								children: [
+									"ℹ️ ",
+									/* @__PURE__ */ (0, I.jsx)("b", { children: "Không có nghĩa vụ thuế:" }),
+									" Thuế NK và VAT đều bằng 0 (không cần nộp qua GNT)."
+								]
+							}),
+							p.importInfo.gnt?.missing && p.importInfo.gnt.missing.length > 0 && !p.importInfo.gnt.noPayable && /* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900",
+								children: [
+									"⚠️ ",
+									/* @__PURE__ */ (0, I.jsx)("b", { children: "Chưa đủ điều kiện tạo GNT:" }),
+									" Thiếu ",
+									p.importInfo.gnt.missing.join(", "),
+									". Vui lòng hoàn thiện và lưu ở trên."
+								]
+							}),
+							/* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-[12.5px] text-slate-600",
+								children: ["ℹ️ ", /* @__PURE__ */ (0, I.jsx)("i", { children: "Cần kiểm tra/hoàn thiện các trường Kho bạc trước khi sử dụng để nộp." })]
+							}),
+							p.importInfo.gnt?.done && p.importInfo.gnt.document ? /* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-emerald-50 border border-emerald-300 p-3.5 space-y-2",
+								children: [/* @__PURE__ */ (0, I.jsx)("div", {
+									className: "flex items-center justify-between",
+									children: /* @__PURE__ */ (0, I.jsxs)("div", { children: [/* @__PURE__ */ (0, I.jsxs)("p", {
+										className: "font-bold text-emerald-900 text-[14px]",
+										children: ["✅ GNT đã tạo: ", p.importInfo.gnt.document.fileName]
+									}), /* @__PURE__ */ (0, I.jsxs)("p", {
+										className: "text-[12px] text-emerald-700",
+										children: ["Mẫu C1-02/NS (2 sheet) · ", p.importInfo.gnt.document.generatedAt ? new Date(p.importInfo.gnt.document.generatedAt).toLocaleTimeString("vi-VN", {
+											hour: "2-digit",
+											minute: "2-digit"
+										}) : "Vừa tạo"]
+									})] })
+								}), /* @__PURE__ */ (0, I.jsxs)("div", {
+									className: "flex gap-2 pt-1",
+									children: [p.importInfo.gnt.document.downloadAvailable ? /* @__PURE__ */ (0, I.jsxs)("button", {
+										onClick: ze,
+										className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-4 min-h-[44px] text-[13.5px]",
+										children: [/* @__PURE__ */ (0, I.jsx)(si, { size: 16 }), " TẢI XLSX"]
+									}) : /* @__PURE__ */ (0, I.jsx)("p", {
+										className: "text-[12.5px] text-emerald-800 self-center",
+										children: "Bytes trong phiên trước. Bấm “Tạo lại” để tải."
+									}), /* @__PURE__ */ (0, I.jsxs)("button", {
+										onClick: Re,
+										disabled: !p.importInfo.gnt?.ready,
+										className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white font-semibold px-3 min-h-[44px] text-[13px]",
+										children: [/* @__PURE__ */ (0, I.jsx)(xi, { size: 15 }), " Tạo lại XLSX"]
+									})]
+								})]
+							}) : /* @__PURE__ */ (0, I.jsxs)("button", {
+								onClick: Re,
+								disabled: !p.importInfo.gnt?.ready,
+								className: B("btn-press touch-target w-full rounded-xl font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]", p.importInfo.gnt?.ready ? "bg-[#0f2a4a] text-white hover:bg-[#1e5aa8]" : "bg-slate-200 text-slate-400 cursor-not-allowed"),
+								children: [/* @__PURE__ */ (0, I.jsx)(xi, { size: 17 }), " TẠO GIẤY NỘP THUẾ XLSX"]
+							})
+						]
+					})]
 				}), /* @__PURE__ */ (0, I.jsxs)("section", {
 					className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4",
 					children: [
@@ -16427,7 +16651,7 @@ function Qo() {
 										}),
 										!e.ok && /* @__PURE__ */ (0, I.jsxs)("button", {
 											onClick: () => {
-												n({ tab: Le(e.name) }), o("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
+												n({ tab: Be(e.name) }), o("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
 											},
 											className: "btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13px] font-bold px-3 min-h-[44px]",
 											children: [/* @__PURE__ */ (0, I.jsx)(ea, { size: 14 }), " Bổ sung"]

@@ -353,7 +353,7 @@ def ui_shipment_detail_tabs(sid, ship):
 
                     _gnt_tax_default = [
                         {"Nội dung": "Thuế Nhập khẩu", "Mã NDKT": "1901", "Số tiền": 0},
-                        {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1701", "Số tiền": 0},
+                        {"Nội dung": "Thuế GTGT hàng NK", "Mã NDKT": "1702", "Số tiền": 0},
                     ]
                     if f"gnt_tax_data_{sid}" not in st.session_state:
                         st.session_state[f"gnt_tax_data_{sid}"] = pd.DataFrame(_gnt_tax_default)

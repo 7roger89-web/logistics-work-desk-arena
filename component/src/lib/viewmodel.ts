@@ -178,11 +178,27 @@ export interface ExportInfo {
   chinaDeclNo?: string;
 }
 
+export interface GntDocInfo {
+  fileName: string;
+  mime: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  downloadAvailable: boolean;
+  downloadBase64?: string | null;
+}
+
 export interface GntInfo {
   payer: string;
   taxCode: string;
   address: string;
   customsOffice: string;
+  customerHint?: string;
+  customerTaxHint?: string;
+  ready?: boolean;
+  noPayable?: boolean;
+  missing?: string[];
+  done?: boolean;
+  document?: GntDocInfo | null;
 }
 
 export interface ImportInfo {

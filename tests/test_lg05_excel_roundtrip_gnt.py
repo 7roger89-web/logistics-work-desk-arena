@@ -11,6 +11,7 @@ Covers:
 """
 
 import io
+import os
 import datetime
 import pytest
 import pandas as pd
@@ -39,6 +40,10 @@ def sample_shipment():
                 "tk_date": "15/08/2026",
                 "import_duty_amount": 5000000,
                 "import_vat_amount": 800000,
+                "gnt": {
+                    "nguoi_nop": "CÔNG TY TNHH A",
+                    "mst": "0101234567",
+                },
             },
             "3.4": {"details": [
                 {"name": "Thủ tục hải quan", "unit": "Lô", "qty": 1, "cost": 2000000, "price": 3000000},
@@ -88,6 +93,8 @@ def sample_shipment_partial_gnt():
 def owner_excel_bytes():
     """Read the Owner's actual Excel file for round-trip testing."""
     path = "/home/ubuntu/upload/danhsachdonhang-.xlsx"
+    if not os.path.exists(path):
+        pytest.skip("Owner's Excel file not present in test environment")
     with open(path, "rb") as f:
         return f.read()
 
@@ -250,13 +257,15 @@ class TestGntPrerequisites:
             "data": {"2.4": {
                 "tk_no": "111",
                 "tk_date": "01/01/2026",
-                "import_duty_amount": 0,  # Zero = not ready
+                "import_duty_amount": 0,  # Zero = known zero, no payable amount
                 "import_vat_amount": 0,
+                "gnt": {"nguoi_nop": "Công ty A", "mst": "0101234567"},
             }},
         }
         prereq = check_gnt_prerequisites(ship)
         assert prereq["ready"] is False
-        assert any("Thuế" in m for m in prereq["missing"])
+        assert prereq["no_payable"] is True
+        assert prereq["reason"] == "NO_PAYABLE_AMOUNT"
 
     def test_gnt_data_fields(self, sample_shipment):
         from core.gnt_builder import check_gnt_prerequisites

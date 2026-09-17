@@ -574,6 +574,7 @@ PHASE_B_EVENTS = {
     "payment_correction",
     "shipment_create",
     "pxk_generate",
+    "gnt_generate",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -685,6 +686,13 @@ FIELD_PATHS: dict[str, tuple[str, ...]] = {
     "tk_date": ("data", "2.4", "tk_date"),
     "import_duty_amount": ("data", "2.4", "import_duty_amount"),
     "import_vat_amount": ("data", "2.4", "import_vat_amount"),
+    # LOGI_GNT_DOC_EXPORT_REALITY_CHECK_01 — Explicit customs/GNT taxpayer fields:
+    #   gnt_taxpayer_name       authoritative importer legal name
+    #   gnt_taxpayer_tax_code   authoritative importer tax code (MST)
+    #   gnt_taxpayer_address    authoritative importer legal address
+    "gnt_taxpayer_name": ("data", "2.4", "gnt", "nguoi_nop"),
+    "gnt_taxpayer_tax_code": ("data", "2.4", "gnt", "mst"),
+    "gnt_taxpayer_address": ("data", "2.4", "gnt", "dia_chi"),
     # LOGI_CN_TRUCK_TYPE_PERSIST_01 — Owner-approved business truth
     # (2026-09-12). Exactly one new pickup/transport field, and nothing else:
     #   pickup_truck_type   free-text fact describing the CN pickup truck
@@ -2365,6 +2373,135 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
                    audit=_audit_trail(sid))
 
 
+def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """GNT generation through the existing core.gnt_builder — real 2-sheet XLSX."""
+    from datetime import datetime, timezone
+    import streamlit as st
+
+    from core.auth import can_generate_documents
+    from core.database import load_customers
+    from core.gnt_builder import build_gnt_workbook, check_gnt_prerequisites
+
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("gnt_generate", sid, False, "Thiếu shipmentId.")
+
+    # Server RBAC: same sales_write permission used for document generation
+    if not can_generate_documents():
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            "RBAC: không có quyền sales_write để sinh giấy nộp thuế.",
+            gate="BLOCKED_PERMISSION_DENIED",
+        )
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("gnt_generate", sid, False, f"Không tìm thấy lô {sid}.")
+
+    # Load customers to resolve unambiguous taxpayer info
+    customers = load_customers() or {}
+    customer_id = rd.text(shipment.get("customer_id"))
+    customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+
+    # Check prerequisites with existing builder logic
+    prereq = check_gnt_prerequisites(shipment)
+    gnt_data = prereq.get("data") or {}
+    missing = list(prereq.get("missing") or [])
+
+    if prereq.get("no_payable"):
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            "Không có nghĩa vụ thuế phải nộp qua GNT (Thuế NK và VAT đều bằng 0).",
+            gate="NO_PAYABLE_AMOUNT",
+        )
+
+    # Taxpayer MST check: must not be empty or guessed
+    if not gnt_data.get("taxpayer_tax_code"):
+        if "Mã số thuế (MST)" not in missing:
+            missing.append("Mã số thuế (MST)")
+
+    if missing:
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            f"Chưa đủ điều kiện tạo GNT. Thiếu: {', '.join(missing)}",
+            gate="BLOCKED_MISSING_PREREQUISITES",
+            missing=missing,
+        )
+
+    try:
+        raw_bytes = build_gnt_workbook(gnt_data)
+    except Exception as exc:
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            f"Lỗi khi tạo Giấy Nộp Thuế: {exc}",
+            gate="FAILED_GENERATION",
+        )
+
+    is_office = raw_bytes[:2] == b"PK"
+    tk_no = gnt_data.get("tk_no", "")
+    file_name = f"GNT_{sid}_{tk_no}.xlsx" if tk_no else f"GNT_{sid}.xlsx"
+
+    from views import logi_c1
+
+    existing_gnts = [k for k in logi_c1.stored_outputs(sid) if k.startswith(f"GNT::{sid}")]
+    rev = len(existing_gnts) + 1
+    record_id = f"GNT::{sid}::R{rev}"
+
+    actor_name = ""
+    if hasattr(st, "session_state") and "current_user" in st.session_state:
+        actor_name = str(
+            st.session_state["current_user"].get("display_name")
+            or st.session_state["current_user"].get("username")
+            or ""
+        )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    logi_c1.store_output(
+        sid,
+        record_id,
+        {
+            "file_name": file_name,
+            "mime": logi_c1._MIME_XLSX,
+            "bytes": raw_bytes,
+            "document_type": "GNT",
+            "revision": rev,
+            "generated_at": now_iso,
+            "generated_by": actor_name,
+        },
+    )
+
+    return _result(
+        "gnt_generate",
+        sid,
+        True,
+        "Đã tạo Giấy Nộp Thuế (GNT) thành công.",
+        gate="READY",
+        persisted={
+            "recordId": record_id,
+            "fileName": file_name,
+            "revision": rev,
+            "bytes": len(raw_bytes),
+            "isOfficeFile": is_office,
+            "tkNo": tk_no,
+            "tkDate": gnt_data.get("tk_date"),
+            "duty": gnt_data.get("import_duty_amount"),
+            "vat": gnt_data.get("import_vat_amount"),
+            "taxpayer": gnt_data.get("taxpayer_name"),
+            "taxCode": gnt_data.get("taxpayer_tax_code"),
+        },
+        readback=_projection_for(read_shipment(sid) or {}),
+        audit=_audit_trail(sid),
+    )
+
+
 _HANDLERS = {
     "shipment_field_save": _handle_field_save,
     "shipment_customer_save": _handle_shipment_customer_save,
@@ -2375,6 +2512,7 @@ _HANDLERS = {
     "payment_correction": _handle_payment_correction,
     "shipment_create": _handle_shipment_create,
     "pxk_generate": _handle_pxk_generate,
+    "gnt_generate": _handle_gnt_generate,
     "partner_payable_record": _handle_partner_payable_record,
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
