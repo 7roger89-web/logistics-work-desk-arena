@@ -855,16 +855,25 @@ def shipment_projection(
     agents: Mapping[str, Any] | None = None,
     docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    attachments: Mapping[str, list[dict[str, Any]]] | None = None,
+    attachment_download: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Project one canonical shipment document into the frozen UI shape.
 
-    ``ledger`` / ``agents`` / ``docgen_documents`` / ``linked_contracts`` are the
-    render-local snapshot the component build path reads ONCE and shares across
-    every row (see ``core.financial_ledger.load_ledger_snapshot``,
-    ``docgen_documents_by_shipment``, ``linked_contracts_index``). They project
-    the same facts as the per-call readers and exist only so one render does not
-    repeat the same collection reads per shipment; omitting them keeps the
-    original behaviour for every standalone caller.
+    ``ledger`` / ``agents`` / ``docgen_documents`` / ``linked_contracts`` /
+    ``attachments`` are the render-local snapshot the component build path reads
+    ONCE and shares across every row (see
+    ``core.financial_ledger.load_ledger_snapshot``,
+    ``docgen_documents_by_shipment``, ``linked_contracts_index``,
+    ``attachments_by_shipment``). They project the same facts as the per-call
+    readers and exist only so one render does not repeat the same collection
+    reads per shipment; omitting them keeps the original behaviour for every
+    standalone caller.
+
+    ``attachment_download`` is the session-scoped byte readback of the ONE
+    attachment a user just asked to open (see
+    ``views.logi_view_model.ATTACHMENT_DOWNLOAD_KEY``); only that attachment is
+    marked downloadable, so the payload never carries the whole Drive folder.
     """
     customers = customers or {}
     contracts = contracts or {}
@@ -942,6 +951,11 @@ def shipment_projection(
         else shipment["updated_at"].strftime("%d/%m/%Y %H:%M"),
         "missingDocs": missing,
         "docs": document_checklist(shipment),
+        # LOGI_SHIPMENT_DOCUMENTS_DRIVE_01 — real attachments of the lot: bounded
+        # metadata read back from the canonical ``shipment_attachments``
+        # collection. Bytes live in Google Drive; no Drive id, folder id or
+        # credential is projected here.
+        "attachments": attachment_rows(sid, grouped=attachments, download=attachment_download),
         "version": int(shipment.get("version") or 0),
         "rawStatus": text(shipment.get("status") or head.get("st")),
         "mode": text(operational.get("mode")) or text(head.get("mode")),
@@ -1084,6 +1098,54 @@ def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
             continue
         grouped.setdefault(scope, {})[record_id] = doc
     return grouped
+
+
+def attachments_by_shipment() -> dict[str, list[dict[str, Any]]]:
+    """Attachment METADATA for ALL shipments, read ONCE and grouped.
+
+    Same performance repair as ``docgen_documents_by_shipment``: the canonical
+    ``shipment_attachments`` collection is read a single time per render
+    instead of once per projected row. Google Drive holds the bytes; only the
+    bounded metadata described in ``core.shipment_attachments`` is grouped here.
+    """
+    from core.database import load_shipment_attachments
+
+    try:
+        records = load_shipment_attachments() or {}
+    except Exception:  # noqa: BLE001 - an attachment read failure must not blank the desk
+        return {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for record in records.values():
+        if not isinstance(record, Mapping):
+            continue
+        scope = text(record.get("shipment_id"))
+        if not scope:
+            continue
+        grouped.setdefault(scope, []).append(dict(record))
+    return grouped
+
+
+def attachment_rows(
+    shipment_id: str,
+    *,
+    grouped: Mapping[str, list[dict[str, Any]]] | None = None,
+    download: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """UI projection of ONE shipment's attachments (``grouped`` = render-local)."""
+    from core.shipment_attachments import project_attachments
+
+    if not shipment_id:
+        return []
+    if grouped is None:
+        from core.database import load_shipment_attachments
+
+        try:
+            records: Any = load_shipment_attachments(shipment_id) or {}
+        except Exception:  # noqa: BLE001
+            return []
+    else:
+        records = grouped.get(shipment_id) or []
+    return project_attachments(records, download=download)
 
 
 def linked_contracts_index(contracts: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:

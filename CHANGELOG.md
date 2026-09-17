@@ -1,5 +1,34 @@
 # Changelog
 
+## LOGI_SHIPMENT_DOCUMENTS_DRIVE_01
+
+### Shipment attachments (Google Drive bytes, MongoDB metadata)
+
+- ONE vertical slice on the EXISTING shipment "Chứng từ & PXK" tab: real
+  document/photo upload → bounded server validation → real image optimization →
+  Google Drive upload → metadata persistence → authoritative readback, with
+  server-authoritative download back into the app.
+- Binary authority: Google Drive owns the bytes; MongoDB stores bounded metadata
+  only. `core.database.save_shipment_attachment` REFUSES any document carrying
+  bytes/base64 values (`RAW_BINARY_IN_MONGO=NO`).
+- NEW `core/drive_client.py`: the smallest Drive adapter — service account via
+  `google-auth` on top of the EXISTING `requests`, talking to Drive REST v3
+  directly (no `google-api-python-client`). Folders, upload, metadata, download
+  and the ONE bounded compensating delete. No public links, no browser OAuth,
+  no credential in the payload.
+- NEW `core/shipment_attachments.py`: 20 MB ceiling, extension + MIME +
+  magic-byte validation, same-shipment SHA-256 duplicate guard, Pillow JPEG/PNG
+  optimization that is kept ONLY when materially smaller (PDF/DOCX/XLSX stay
+  byte-identical), and the upload/compensation order that avoids orphan files.
+- Two bounded events in the ONE dispatcher: `shipment_attachment_upload`
+  (EXISTING `sales_write` boundary) and `attachment_download` (EXISTING read
+  boundary). No delete event, no queue, no worker, no new RBAC role.
+- UI: "TỆP ĐÍNH KÈM" section in ShipmentDetail rendering the backend projection,
+  honest `original → stored` sizes, "Ảnh đã tối ưu"/"Giữ nguyên", real pending
+  state and honest refusals; viewers see a read-only note (server refuses too).
+- Docs: `docs/LOGI_SHIPMENT_DOCUMENTS_DRIVE_01.md` (including the Owner runtime
+  runbook for the Drive folder + service account).
+
 ## LOGI_LOGIN_VISUAL_COMPACT_01
 
 ### Login UX

@@ -17,6 +17,15 @@ pydantic>=2.0,<3
 pyTelegramBotAPI>=4.0,<5
 tomli>=2.0,<3; python_version < "3.11"
 
+# LOGI_SHIPMENT_DOCUMENTS_DRIVE_01 — Google Drive byte store for shipment
+# attachments. Auth uses the SMALL service-account library on top of the
+# `requests` dependency already declared above, talking to Drive REST v3
+# directly; the full google-api-python-client SDK is deliberately NOT installed.
+google-auth>=2.30,<3
+# LOGI_SHIPMENT_DOCUMENTS_DRIVE_01 — real (and honest) JPEG/PNG optimization
+# for document photos. PDF/DOCX/XLSX stay byte-identical; nothing else uses it.
+Pillow>=10.0,<13
+
 # Sandbox/Preview staging transport only (LOGI-GOOD-V6 Phase B).
 # Used ONLY when no real MONGO_URI is configured; a real URI always wins.
 mongomock>=4.1,<5
