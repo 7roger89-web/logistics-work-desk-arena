@@ -1,3 +1,4 @@
+import { contractPath } from "../lib/contractRoute";
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
@@ -78,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 ))}
                 {results.cts.map((c) => (
-                  <button key={c.id} onClick={() => goSearch(`/hop-dong/${c.id}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  <button key={c.id} onClick={() => goSearch(contractPath(c.id))} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-emerald-100 grid place-items-center"><FileText size={17} className="text-emerald-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{c.id} · {c.company}</span><span className="block text-[12.5px] text-slate-500">Hợp đồng — {c.status}</span></span>
                   </button>
@@ -148,7 +149,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 ))}
                 {results.cts.map((c) => (
-                  <button key={c.id} onClick={() => goSearch(`/hop-dong/${c.id}`)} className="w-full text-left p-3.5 flex items-center gap-3">
+                  <button key={c.id} onClick={() => goSearch(contractPath(c.id))} className="w-full text-left p-3.5 flex items-center gap-3">
                     <FileText size={18} className="text-emerald-700 shrink-0" />
                     <span><span className="block font-bold text-[15px]">{c.id}</span><span className="block text-[13px] text-slate-500">{c.company} — {c.status}</span></span>
                   </button>

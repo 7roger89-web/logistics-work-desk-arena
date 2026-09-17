@@ -1,3 +1,4 @@
+import { contractPath } from "../lib/contractRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
@@ -493,7 +494,7 @@ export default function ShipmentDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Tuyến" value={s.route} />
             <StateRow label="Cửa khẩu" value={s.borderVN} />
-            <StateRow label="Hợp đồng" value={<Link to={"/hop-dong/" + s.contract} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
+            <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
             <StateRow label="Sale · Support" value={<span>{s.sale} · {s.support}</span>} />
           </div>
         </div>
@@ -1002,7 +1003,7 @@ export default function ShipmentDetail() {
                 <div className="flex flex-wrap items-center gap-2"><span className="font-extrabold text-[17px] text-[#0f2a4a]">{linkedContract.id}</span><ToneBadge tone={linkedContract.statusTone} size="sm">{linkedContract.status}</ToneBadge></div>
                 <p className="text-[14px] text-slate-600 mt-1">{linkedContract.companyLegal} · Giá trị {fmtVND(linkedContract.value ?? s.finance.receivable)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-3">
-                  <Link to={"/hop-dong/" + linkedContract.id} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
+                  <Link to={contractPath(linkedContract.id)} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]"><Eye size={16} /> MỞ HỢP ĐỒNG</Link>
                   <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Chứng từ " + linkedContract.id, "Chứng từ được sinh bởi core.docgen (Office thật) ở tab Chứng từ & PXK.", "blue"); }} className="btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]"><FileDown size={16} /> MỞ CHỨNG TỪ</button>
                 </div>
               </div>

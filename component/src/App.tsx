@@ -4,9 +4,8 @@
 //     not require a Python rerun for ordinary navigation (donor routing API
 //     — Link/NavLink/useNavigate/useParams/useSearchParams — is unchanged).
 //   * Phase B wired Home, Tasks, Shipments, Shipment Detail, Create Shipment
-//     and Tracking to real Logistics data. The remaining Phase C destinations
-//     render a bounded "chưa triển khai" state; the shell/navigation structure
-//     stays donor-identical.
+//     and Tracking to real Logistics data. All current navigation destinations
+//     are implemented; unmatched paths render a truthful NotFound.
 // ============================================================================
 
 import { useSyncExternalStore } from "react";
@@ -35,7 +34,7 @@ import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import Notebook from "./pages/Notebook";
 import UserAccess from "./pages/UserAccess";
-import { PhaseBPlaceholder } from "./pages/PhaseB";
+import NotFound from "./pages/NotFound";
 
 function Loading() {
   return (
@@ -100,7 +99,7 @@ export default function App() {
                 user-management write path: the canonical writers stay in
                 core.database and none is exposed from this page yet. */}
             <Route path="/nguoi-dung" element={<UserAccess />} />
-            <Route path="*" element={<PhaseBPlaceholder />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         )}</Layout>
       </MemoryRouter>

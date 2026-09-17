@@ -189,6 +189,25 @@ class InteractionLatencyRepairTests(unittest.TestCase):
         self.assertEqual(bvm_count, 1)
         self.assertNotIn("st.rerun", [t[0] for t in trace])
 
+    def test_contract_create_handler_and_vm_once(self) -> None:
+        from views import logi_c1
+        from core import database as db
+        trigger = {"contract_create": {"seq": 1, "event": "contract_create",
+                   "payload": {"id": "05/2026/HDMB", "customerId": "CUST-ANPHAT",
+                               "requestId": "REQ-CONTRACT-ONCE"}}}
+        with patch.dict(logi_c1._HANDLERS, {"contract_create": MagicMock(wraps=logi_c1._handle_contract_create)}), \
+             patch.object(db, "save_contract_to_cloud", wraps=db.save_contract_to_cloud) as writer:
+            handler = logi_c1._HANDLERS["contract_create"]
+            trace = self._simulate_streamlit_event_lifecycle(trigger)
+            self.assertEqual(handler.call_count, 1)
+            self.assertEqual(writer.call_count, 1)
+        self.assertEqual(sum(t[0] == "build_view_model" for t in trace), 1)
+        self.assertNotIn("st.rerun", [t[0] for t in trace])
+        outcome = st.session_state[logi_view_model.LAST_WRITES_KEY][0]
+        self.assertTrue(outcome["ok"], outcome)
+        self.assertEqual(outcome["requestId"], "REQ-CONTRACT-ONCE")
+        self.assertEqual(outcome["readback"]["id"], "05/2026/HDMB")
+
     def test_translate_provider_called_exactly_once(self) -> None:
         """translate_text invokes run_translation provider exactly once."""
         trigger = {
