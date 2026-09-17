@@ -16,6 +16,16 @@ Do not treat an unauthenticated or repo-scoped 404 as proof that canonical law i
 At task start report exactly one:
 `P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
 
+## Actor separation and self-law preflight (P2P)
+
+Every actor — Control Tower, project chat/prompt writer, executor, reviewer, supervisor, or tool session — must establish its own valid Supreme Law context before substantive work. A law read or receipt belonging to one actor never satisfies another actor's preflight.
+
+- `PARENT_SELF_LAW_PREFLIGHT != EXECUTOR_LAW_PREFLIGHT`.
+- `EXECUTOR_P2P_LAW_SOURCE` cannot satisfy the parent/project-chat/prompt-writer preflight.
+- `CONTROL_TOWER_SELF_LAW_RECEIPT=PASS`, when serialized by Control Tower, proves only that Control Tower performed its own preflight; the executor must still perform `P2P_LAW_PREFLIGHT` independently.
+- Never fake, infer, copy, or reuse another actor's receipt/source as proof of the current actor's read.
+- No valid source for the current actor => `LAW_CONTEXT_BLOCKED`; no substantive reasoning, prompt construction, implementation, review, or delegation may continue.
+
 ## Evidence-first verification (P2P)
 
 For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
