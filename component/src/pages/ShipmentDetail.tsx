@@ -665,15 +665,24 @@ export default function ShipmentDetail() {
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                   <span className="text-slate-500 block text-[11.5px] font-medium">Người nộp thuế</span>
-                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.payer || s.customer || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.payer || <span className="text-amber-600 italic font-normal">Chưa có (cần điền)</span>}</span>
+                  {s.importInfo.gnt?.customerHint && !s.importInfo.gnt?.payer && (
+                    <span className="text-[11px] text-slate-400 block truncate">Khách hàng: {s.importInfo.gnt.customerHint}</span>
+                  )}
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                   <span className="text-slate-500 block text-[11.5px] font-medium">Mã số thuế (MST)</span>
-                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.taxCode || s.customerMST || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
+                  <span className="font-bold text-[#0f2a4a]">{s.importInfo.gnt?.taxCode || <span className="text-amber-600 italic font-normal">Chưa có (cần điền)</span>}</span>
                 </div>
               </div>
 
-              {s.importInfo.gnt?.missing && s.importInfo.gnt.missing.length > 0 && (
+              {s.importInfo.gnt?.noPayable && (
+                <div className="rounded-xl bg-slate-100 border border-slate-300 p-3 text-[13px] text-slate-700">
+                  ℹ️ <b>Không có nghĩa vụ thuế:</b> Thuế NK và VAT đều bằng 0 (không cần nộp qua GNT).
+                </div>
+              )}
+
+              {s.importInfo.gnt?.missing && s.importInfo.gnt.missing.length > 0 && !s.importInfo.gnt.noPayable && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900">
                   ⚠️ <b>Chưa đủ điều kiện tạo GNT:</b> Thiếu {s.importInfo.gnt.missing.join(", ")}. Vui lòng cập nhật và lưu ở trên.
                 </div>

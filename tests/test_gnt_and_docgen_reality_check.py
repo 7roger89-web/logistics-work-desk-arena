@@ -2,13 +2,14 @@
 
 Covers:
 1. GNT legal & semantic audit:
-   - Form C1-02/NS legal basis: TT 84/2016/TT-BTC & TT 328/2016/TT-BTC (amended by TT 72/2021/TT-BTC)
+   - Form C1-02/NS legal basis: TT 84/2016/TT-BTC (under TT 328/2016 Art 14(3), amended by TT 72/2021 & TT 23/2025)
    - Budget classification subitem: 1901 (Thuế NK) and 1702 (Thuế GTGT hàng NK, NOT 1701)
-2. GNT workbook structure and fidelity via openpyxl inspection (2 sheets, exact amounts, total in words, no fabricated treasury facts)
-3. Bounded gnt_generate event dispatching, server RBAC, session-scoped output & readback
-4. Office export reality check for HDNT (DOCX), PL (XLSX), HDMB (XLSX), PXK (XLSX)
-5. Download contract verification (downloadAvailable, base64, MIME)
-6. Focused adversarial mutation test (1701 vs 1702)
+2. Taxpayer authority: No auto-promotion of customer to legal importer/taxpayer without explicit record
+3. UNKNOWN != ZERO semantics for import duty and VAT (cases A–E)
+4. GNT workbook structure and fidelity via openpyxl inspection (2 sheets, exact amounts, total in words, no fabricated treasury facts)
+5. Bounded gnt_generate event dispatching, server RBAC, session-scoped output & readback
+6. Office export reality check for HDNT (DOCX), PL (XLSX), HDMB (XLSX), PXK (XLSX)
+7. Focused adversarial mutation checks (1701 guard and customer auto-promotion guard)
 """
 
 from __future__ import annotations
@@ -109,7 +110,10 @@ def test_gnt_import_vat_subitem_is_1702_not_1701():
 
 
 def test_gnt_legal_references_are_accurate():
-    """Verify legal reference strings in generated GNT workbook."""
+    """Verify legal reference strings in generated GNT workbook.
+    
+    Must accurately cite TT 84/2016/TT-BTC without claiming TT 328 co-promulgated the form.
+    """
     data = {
         "shipment_id": "LO-TEST",
         "tk_no": "105588421330",
@@ -125,18 +129,155 @@ def test_gnt_legal_references_are_accurate():
     ws1 = wb["NHẬP THÔNG TIN"]
     subtitle1 = str(ws1.cell(row=2, column=1).value)
     assert "84/2016/TT-BTC" in subtitle1
-    assert "328/2016/TT-BTC" in subtitle1
+    assert "328/2016" not in subtitle1
     assert "184/2015" not in subtitle1
+    assert "100%" not in subtitle1
 
     ws2 = wb["GIẤY NỘP THUẾ"]
     subtitle2 = str(ws2.cell(row=2, column=3).value)
     assert "84/2016/TT-BTC" in subtitle2
-    assert "328/2016/TT-BTC" in subtitle2
+    assert "328/2016" not in subtitle2
     assert "184/2015" not in subtitle2
+    assert "100%" not in subtitle2
 
 
 # ===========================================================================
-# 2. Detailed Workbook Structure & OOXML Fidelity
+# 2. Taxpayer Authority & UNKNOWN != ZERO Tax Semantics
+# ===========================================================================
+
+def test_gnt_taxpayer_authority_semantics():
+    """Customer is NOT automatically promoted to legal importer/taxpayer without explicit record."""
+    # Case 1: Shipment has customer but no explicit GNT taxpayer in 2.4
+    ship_no_taxpayer = {
+        "id": "S-NO-TAXPAYER",
+        "customer_id": "CUS-ANPHAT",
+        "customer": "CÔNG TY TNHH AN PHÁT",
+        "customer_tax_code": "0101234567",
+        "data": {
+            "2.4": {
+                "tk_no": "105588421330",
+                "tk_date": "15/08/2026",
+                "import_duty_amount": 5000000,
+                "import_vat_amount": 800000,
+            }
+        },
+    }
+    prereq = check_gnt_prerequisites(ship_no_taxpayer)
+    assert prereq["ready"] is False
+    assert "Tên người nộp thuế" in prereq["missing"]
+    assert "Mã số thuế (MST)" in prereq["missing"]
+
+    proj = rd._gnt_projection(ship_no_taxpayer, ship_no_taxpayer["data"]["2.4"], {}, "S-NO-TAXPAYER")
+    assert proj["ready"] is False
+    assert "Người nộp thuế" in proj["missing"]
+    assert "Mã số thuế" in proj["missing"]
+    assert proj["payer"] == ""
+    assert proj["taxCode"] == ""
+    assert proj["customerHint"] == "CÔNG TY TNHH AN PHÁT"
+
+    # Case 2: Explicit taxpayer present in customs.gnt
+    ship_explicit_taxpayer = {
+        "id": "S-EXPLICIT",
+        "customer": "CÔNG TY ỦY THÁC ABC",
+        "data": {
+            "2.4": {
+                "tk_no": "105588421330",
+                "tk_date": "15/08/2026",
+                "import_duty_amount": 5000000,
+                "import_vat_amount": 800000,
+                "gnt": {
+                    "nguoi_nop": "CÔNG TY NHẬP KHẨU ĐÍCH THỰC",
+                    "mst": "0109998888",
+                    "dia_chi": "Hà Nội",
+                },
+            }
+        },
+    }
+    prereq_ok = check_gnt_prerequisites(ship_explicit_taxpayer)
+    assert prereq_ok["ready"] is True
+    assert prereq_ok["data"]["taxpayer_name"] == "CÔNG TY NHẬP KHẨU ĐÍCH THỰC"
+    assert prereq_ok["data"]["taxpayer_tax_code"] == "0109998888"
+
+
+def test_gnt_unknown_vs_zero_tax_semantics():
+    """Test Cases A–E for UNKNOWN != ZERO tax amounts."""
+    base_ship = {
+        "id": "S-TAX-TEST",
+        "data": {
+            "2.4": {
+                "tk_no": "105588421330",
+                "tk_date": "15/08/2026",
+                "gnt": {
+                    "nguoi_nop": "CÔNG TY TNHH TEST",
+                    "mst": "0101234567",
+                },
+            }
+        },
+    }
+
+    # A. import duty = 0, import VAT > 0 -> READY
+    ship_a = {
+        "id": "S-A",
+        "data": {
+            "2.4": dict(base_ship["data"]["2.4"], import_duty_amount=0, import_vat_amount=800000)
+        },
+    }
+    prereq_a = check_gnt_prerequisites(ship_a)
+    assert prereq_a["ready"] is True
+    assert prereq_a["data"]["import_duty_amount"] == 0
+    assert prereq_a["data"]["import_vat_amount"] == 800000
+
+    # B. import duty > 0, import VAT = 0 -> READY
+    ship_b = {
+        "id": "S-B",
+        "data": {
+            "2.4": dict(base_ship["data"]["2.4"], import_duty_amount=5000000, import_vat_amount=0)
+        },
+    }
+    prereq_b = check_gnt_prerequisites(ship_b)
+    assert prereq_b["ready"] is True
+    assert prereq_b["data"]["import_duty_amount"] == 5000000
+    assert prereq_b["data"]["import_vat_amount"] == 0
+
+    # C. blank duty (None or "") with VAT > 0 -> BLOCKED UNKNOWN
+    ship_c = {
+        "id": "S-C",
+        "data": {
+            "2.4": dict(base_ship["data"]["2.4"], import_duty_amount="", import_vat_amount=800000)
+        },
+    }
+    prereq_c = check_gnt_prerequisites(ship_c)
+    assert prereq_c["ready"] is False
+    assert any("Thuế nhập khẩu" in m for m in prereq_c["missing"])
+
+    # D. negative duty/VAT -> BLOCKED INVALID
+    ship_d = {
+        "id": "S-D",
+        "data": {
+            "2.4": dict(base_ship["data"]["2.4"], import_duty_amount=-5000, import_vat_amount=800000)
+        },
+    }
+    prereq_d = check_gnt_prerequisites(ship_d)
+    assert prereq_d["ready"] is False
+    assert any("không hợp lệ" in m or "âm" in m for m in prereq_d["missing"])
+
+    # E. both duty=0 and VAT=0 -> honest NO_PAYABLE_AMOUNT
+    ship_e = {
+        "id": "S-E",
+        "data": {
+            "2.4": dict(base_ship["data"]["2.4"], import_duty_amount=0, import_vat_amount=0)
+        },
+    }
+    prereq_e = check_gnt_prerequisites(ship_e)
+    assert prereq_e["ready"] is False
+    assert prereq_e["no_payable"] is True
+    assert prereq_e["reason"] == "NO_PAYABLE_AMOUNT"
+    # Neither duty nor VAT is called "missing"
+    assert not any("Thuế" in m for m in prereq_e["missing"])
+
+
+# ===========================================================================
+# 3. Detailed Workbook Structure & OOXML Fidelity
 # ===========================================================================
 
 def test_gnt_workbook_complete_structure_and_values():
@@ -228,13 +369,13 @@ def test_gnt_workbook_complete_structure_and_values():
 
 
 # ===========================================================================
-# 3. Bounded gnt_generate Event & Fresh Readback
+# 4. Bounded gnt_generate Event & Fresh Readback
 # ===========================================================================
 
 def test_gnt_generate_end_to_end_flow(staging, event_seq):
     """Save customs & tax facts → dispatch gnt_generate → receive XLSX bytes & readback."""
     sid = "LO-0307"
-    # Seed required customs & tax facts
+    # Seed required customs, GNT taxpayer & tax facts
     save_res = _dispatch(event_seq, "shipment_field_save", {
         "shipmentId": sid,
         "fields": {
@@ -246,27 +387,25 @@ def test_gnt_generate_end_to_end_flow(staging, event_seq):
     })
     assert save_res["ok"], save_res["error"]
 
-    # Dispatch ONE bounded gnt_generate event
     gnt_res = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
-    assert gnt_res["ok"], gnt_res["error"]
-    assert gnt_res["event"] == "gnt_generate"
+    assert gnt_res["ok"] is True, gnt_res.get("error")
+    assert gnt_res["gate"] == "READY"
+    assert gnt_res["persisted"]["isOfficeFile"] is True
+    assert gnt_res["persisted"]["duty"] == 5000000.0
+    assert gnt_res["persisted"]["vat"] == 800000.0
 
-    # Persisted metadata
-    persisted = gnt_res["persisted"]
-    assert persisted["fileName"] == "GNT_LO-0307_105588421330.xlsx"
-    assert persisted["isOfficeFile"] is True
-    assert persisted["bytes"] > 0
-    assert persisted["duty"] == 5000000.0
-    assert persisted["vat"] == 800000.0
+    # Verify logi_c1 session-scoped storage (not in MongoDB)
+    outputs = logi_c1.stored_outputs(sid)
+    record_id = gnt_res["persisted"]["recordId"]
+    assert record_id in outputs
+    assert outputs[record_id]["document_type"] == "GNT"
+    assert outputs[record_id]["bytes"][:2] == b"PK"
 
-    # Readback projection
-    readback = gnt_res["readback"]
-    gnt_proj = readback["importInfo"]["gnt"]
+    # Readback projection verification
+    shipment_read = vm.read_shipment(sid)
+    gnt_proj = rd._gnt_projection(shipment_read, shipment_read.get("data", {}).get("2.4", {}), {}, sid)
     assert gnt_proj["done"] is True
-    assert gnt_proj["ready"] is True
-    assert gnt_proj["missing"] == []
     assert gnt_proj["document"] is not None
-    assert gnt_proj["document"]["fileName"] == "GNT_LO-0307_105588421330.xlsx"
     assert gnt_proj["document"]["downloadAvailable"] is True
     assert gnt_proj["document"]["downloadBase64"] is not None
 
@@ -293,7 +432,7 @@ def test_gnt_generate_fails_closed_when_facts_are_missing(staging, event_seq):
 
 
 # ===========================================================================
-# 4. RBAC Authorization Gate
+# 5. RBAC Authorization Gate
 # ===========================================================================
 
 def test_gnt_generate_rbac_rejection(staging, event_seq):
@@ -328,7 +467,7 @@ def test_gnt_generate_rbac_rejection(staging, event_seq):
 
 
 # ===========================================================================
-# 5. Existing Office Export Reality Check (HDNT, PL, HDMB, PXK)
+# 6. Existing Office Export Reality Check (HDNT, PL, HDMB, PXK)
 # ===========================================================================
 
 def test_office_export_reality_check_hdnt_pl_hdmb_pxk(staging):
@@ -510,7 +649,7 @@ def test_pxk_generation_refused_before_delivery():
 
 
 # ===========================================================================
-# 6. Focused Adversarial Mutation Check
+# 7. Focused Adversarial Mutation Checks
 # ===========================================================================
 
 def test_adversarial_mutation_1701_fails():
@@ -550,3 +689,30 @@ def test_adversarial_mutation_1701_fails():
     for row in clean_ws2.iter_rows(values_only=True):
         row_str = " ".join(str(c) for c in row if c is not None)
         assert "1701" not in row_str, f"Clean generation must not produce 1701: {row_str}"
+
+
+def test_adversarial_customer_auto_promotion_fails(staging, event_seq):
+    """Negative check: customer presence must NEVER auto-promote to GNT taxpayer authority."""
+    # Create a fresh lot with customer facts but NO explicit customs taxpayer
+    sid = "LO-ADVERSARIAL-CUST"
+    _dispatch(event_seq, "shipment_create", {
+        "shipmentId": sid,
+        "customerId": "CUS-SAMPLE",
+        "customer": "CÔNG TY KHÁCH HÀNG MẪU",
+        "contractId": "CT-NONE",
+    })
+    _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": sid,
+        "fields": {
+            "tk_no": "105588421330",
+            "tk_date": "15/08/2026",
+            "import_duty_amount": "5000000",
+            "import_vat_amount": "800000",
+        },
+    })
+
+    # GNT generation MUST fail closed because legal taxpayer is not explicitly known
+    gnt_res = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
+    assert gnt_res["ok"] is False
+    assert gnt_res["gate"] == "BLOCKED_MISSING_PREREQUISITES"
+    assert any("người nộp thuế" in m.lower() or "mst" in m.lower() for m in gnt_res["missing"])

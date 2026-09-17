@@ -737,22 +737,22 @@ def _gnt_projection(
     gnt_customs = customs.get("gnt") if isinstance(customs.get("gnt"), Mapping) else {}
     payer = text(
         gnt_customs.get("nguoi_nop")
-        or customer_doc.get("name")
-        or shipment.get("customer")
-        or shipment.get("client")
+        or customs.get("taxpayer_name")
+        or customs.get("nguoi_nop")
     )
     tax_code = text(
         gnt_customs.get("mst")
         or customs.get("taxpayer_tax_code")
-        or customer_doc.get("tax_code")
-        or shipment.get("customer_tax_code")
+        or customs.get("mst")
     )
     address = text(
         gnt_customs.get("dia_chi")
-        or customer_doc.get("address")
-        or shipment.get("customer_address")
+        or customs.get("taxpayer_address")
+        or customs.get("dia_chi")
     )
-    customs_office = text(gnt_customs.get("ma_hq"))
+    customs_office = text(gnt_customs.get("ma_hq") or customs.get("ma_hq"))
+    customer_hint = text(customer_doc.get("name") or shipment.get("customer") or shipment.get("client"))
+    customer_tax_hint = text(customer_doc.get("tax_code") or shipment.get("customer_tax_code"))
 
     stored = logi_c1.stored_outputs(shipment_id)
     gnt_entries = [
@@ -784,23 +784,55 @@ def _gnt_projection(
         missing.append("Số tờ khai (TK)")
     if not _declaration_date(customs):
         missing.append("Ngày tờ khai")
-    duty = num(customs.get("import_duty_amount"))
-    if duty is None or duty <= 0:
+
+    raw_duty = customs.get("import_duty_amount")
+    duty = None
+    if raw_duty is None or str(raw_duty).strip() == "" or str(raw_duty).strip() == "None":
         missing.append("Thuế nhập khẩu")
-    vat = num(customs.get("import_vat_amount"))
-    if vat is None or vat <= 0:
+    else:
+        try:
+            d_val = float(raw_duty)
+            if d_val < 0:
+                missing.append("Thuế nhập khẩu (< 0)")
+            else:
+                duty = d_val
+        except (ValueError, TypeError):
+            missing.append("Thuế nhập khẩu")
+
+    raw_vat = customs.get("import_vat_amount")
+    vat = None
+    if raw_vat is None or str(raw_vat).strip() == "" or str(raw_vat).strip() == "None":
         missing.append("VAT hàng nhập khẩu")
+    else:
+        try:
+            v_val = float(raw_vat)
+            if v_val < 0:
+                missing.append("VAT hàng nhập khẩu (< 0)")
+            else:
+                vat = v_val
+        except (ValueError, TypeError):
+            missing.append("VAT hàng nhập khẩu")
+
     if not payer:
         missing.append("Người nộp thuế")
     if not tax_code:
         missing.append("Mã số thuế")
+
+    no_payable = False
+    if duty is not None and vat is not None and duty == 0 and vat == 0 and len(missing) == 0:
+        no_payable = True
+
+    ready = (len(missing) == 0) and not no_payable
 
     return {
         "payer": payer,
         "taxCode": tax_code,
         "address": address,
         "customsOffice": customs_office,
-        "ready": len(missing) == 0,
+        "customerHint": customer_hint,
+        "customerTaxHint": customer_tax_hint,
+        "ready": ready,
+        "noPayable": no_payable,
         "missing": missing,
         "done": bool(gnt_doc),
         "document": gnt_doc,

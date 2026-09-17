@@ -15894,16 +15894,23 @@ function Qo() {
 									}),
 									/* @__PURE__ */ (0, I.jsxs)("div", {
 										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
-										children: [/* @__PURE__ */ (0, I.jsx)("span", {
-											className: "text-slate-500 block text-[11.5px] font-medium",
-											children: "Người nộp thuế"
-										}), /* @__PURE__ */ (0, I.jsx)("span", {
-											className: "font-bold text-[#0f2a4a]",
-											children: p.importInfo.gnt?.payer || p.customer || /* @__PURE__ */ (0, I.jsx)("span", {
-												className: "text-amber-600 italic font-normal",
-												children: "Chưa có"
+										children: [
+											/* @__PURE__ */ (0, I.jsx)("span", {
+												className: "text-slate-500 block text-[11.5px] font-medium",
+												children: "Người nộp thuế"
+											}),
+											/* @__PURE__ */ (0, I.jsx)("span", {
+												className: "font-bold text-[#0f2a4a]",
+												children: p.importInfo.gnt?.payer || /* @__PURE__ */ (0, I.jsx)("span", {
+													className: "text-amber-600 italic font-normal",
+													children: "Chưa có (cần điền)"
+												})
+											}),
+											p.importInfo.gnt?.customerHint && !p.importInfo.gnt?.payer && /* @__PURE__ */ (0, I.jsxs)("span", {
+												className: "text-[11px] text-slate-400 block truncate",
+												children: ["Khách hàng: ", p.importInfo.gnt.customerHint]
 											})
-										})]
+										]
 									}),
 									/* @__PURE__ */ (0, I.jsxs)("div", {
 										className: "p-2.5 rounded-lg bg-slate-50 border border-slate-200",
@@ -15912,15 +15919,23 @@ function Qo() {
 											children: "Mã số thuế (MST)"
 										}), /* @__PURE__ */ (0, I.jsx)("span", {
 											className: "font-bold text-[#0f2a4a]",
-											children: p.importInfo.gnt?.taxCode || p.customerMST || /* @__PURE__ */ (0, I.jsx)("span", {
+											children: p.importInfo.gnt?.taxCode || /* @__PURE__ */ (0, I.jsx)("span", {
 												className: "text-amber-600 italic font-normal",
-												children: "Chưa có"
+												children: "Chưa có (cần điền)"
 											})
 										})]
 									})
 								]
 							}),
-							p.importInfo.gnt?.missing && p.importInfo.gnt.missing.length > 0 && /* @__PURE__ */ (0, I.jsxs)("div", {
+							p.importInfo.gnt?.noPayable && /* @__PURE__ */ (0, I.jsxs)("div", {
+								className: "rounded-xl bg-slate-100 border border-slate-300 p-3 text-[13px] text-slate-700",
+								children: [
+									"ℹ️ ",
+									/* @__PURE__ */ (0, I.jsx)("b", { children: "Không có nghĩa vụ thuế:" }),
+									" Thuế NK và VAT đều bằng 0 (không cần nộp qua GNT)."
+								]
+							}),
+							p.importInfo.gnt?.missing && p.importInfo.gnt.missing.length > 0 && !p.importInfo.gnt.noPayable && /* @__PURE__ */ (0, I.jsxs)("div", {
 								className: "rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900",
 								children: [
 									"⚠️ ",

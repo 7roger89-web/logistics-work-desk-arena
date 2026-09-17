@@ -192,7 +192,10 @@ export interface GntInfo {
   taxCode: string;
   address: string;
   customsOffice: string;
+  customerHint?: string;
+  customerTaxHint?: string;
   ready?: boolean;
+  noPayable?: boolean;
   missing?: string[];
   done?: boolean;
   document?: GntDocInfo | null;

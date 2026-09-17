@@ -2399,9 +2399,18 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
 
     # Check prerequisites with existing builder logic
-    prereq = check_gnt_prerequisites(shipment, customer_doc=customer_doc)
+    prereq = check_gnt_prerequisites(shipment)
     gnt_data = prereq.get("data") or {}
     missing = list(prereq.get("missing") or [])
+
+    if prereq.get("no_payable"):
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            "Không có nghĩa vụ thuế phải nộp qua GNT (Thuế NK và VAT đều bằng 0).",
+            gate="NO_PAYABLE_AMOUNT",
+        )
 
     # Taxpayer MST check: must not be empty or guessed
     if not gnt_data.get("taxpayer_tax_code"):
