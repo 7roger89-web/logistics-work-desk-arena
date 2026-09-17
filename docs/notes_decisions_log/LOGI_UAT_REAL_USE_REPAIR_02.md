@@ -270,3 +270,72 @@ decide (none of this can be inferred from the repo):
 Once (1)–(4) are decided, the implementation is small: one writable field on
 the existing `save_shipment_atomic` path + one bounded typed event through the
 existing dispatcher + one picker. It is intentionally NOT built on a guess.
+
+---
+
+## INTEGRATION + DEPLOY — LOGI_UAT_APPROVED_REPAIRS_INTEGRATE_DEPLOY_01
+
+`P2P_LAW_SOURCE=LOCAL_PORTABLE` · Owner gate: `MERGE_TO_MAIN=APPROVED`,
+`DEPLOY_EXISTING_APP=APPROVED`.
+
+| Step | Result |
+|---|---|
+| PRE_MAIN_SHA | `344add65273500fd39eb15f3c19d8036ffc78f1b` |
+| PR52 merged | head `137de0eb` verified → main `245bc05d` |
+| PR54 merged | head `ea2c766d` verified, integrated → main `682a72d8` |
+| MAIN_SHA | `682a72d8cedc0369a80a96acfc5a9cc7cc7fa19e` |
+
+### Overlap resolved semantically (not ours/theirs)
+
+Both PRs edited `ShipmentDetail.tsx` and `component/dist`.
+
+- **"Hợp đồng" state row** — kept PR52's slash-safe `contractPath()` **and**
+  PR54's truthful `Sale phụ trách` / `Cập nhật bởi` split. The incoming side
+  would have reverted the labels to the fabricated `Sale · Support`.
+- **Linked-contract card** — PR52 `contractPath()` for `MỞ HỢP ĐỒNG`.
+- **`component/dist`** — regenerated from merged source, never hand-resolved.
+
+### P1-B — COMPLETED (was `DEFERRED_DEPENDS_ON_PR52`)
+
+`MỞ CHỨNG TỪ` now routes to `contractPath(linkedContract.id) + "?tab=chung-tu"`,
+reaching the existing `ContractDetail` HDNT/PL/HDMB workdesk through its
+existing `useSearchParams` tab mechanism. **No new encoder, router, helper or
+document UI** — the shared PR52 helper is reused.
+
+`P1_B_SLASH_ID_PROOF` — STEP 9 is now genuine acceptance evidence: it drives the
+real boundary `05/2026/HDMB` (the id PR52 committed in
+`view_model_contract_workflow.json`), asserts the emitted href keeps one encoded
+segment and carries `tab=chung-tu`, and asserts the docgen workdesk opens rather
+than `*`/NotFound. Independently challenged — STEP 9 **fails** on the
+pre-integration bundle (`contract documents tab not requested`) and passes on
+the integrated bundle.
+
+`tests/test_contract_route_contract.py` ShipmentDetail `contractPath` census
+`2 → 3` for the new P1-B call site. The raw-concat ban is unchanged and still
+enforced; zero `/hop-dong/` concatenations remain in that file.
+
+### Deployment
+
+`DEPLOYMENT_PATH` = the repository's pre-existing Streamlit Cloud push webhook
+(`share.streamlit.io/hook`, id `678055509`) — no new server, proxy, framework,
+secret, database or infrastructure. Merge to main delivered `push` → **200 OK**
+at `2026-09-17T15:47:28Z` (guid `157b4dd6-b2af-11f1-8689-f6f8833c43bb`).
+
+### Runtime verification boundary — `LIVE_RUNTIME_EVIDENCE=UNVERIFIED_RUNTIME`
+
+The deployed employee-path smoke was **not** performed, because it cannot be
+performed honestly from this sandbox:
+
+- `https://tienthanhlog.streamlit.app/` is unreachable — egress TLS is blocked
+  (`SSL_ERROR_SYSCALL`, curl status `000`);
+- no Chromium/Playwright browser binary is installed;
+- `.streamlit/secrets.toml` is absent, so there are no credentials to log in.
+
+Accepting the webhook `200` as proof of a working app would be a transport
+success mistaken for an application success — the exact `TRANSPORT_SUCCESS !=
+PERSISTENCE_SUCCESS` error this goal repaired. **`LIVE_UAT_PASS` is therefore
+NOT claimed.** The five-point smoke (customer-create truthfulness, contract
+create → detail, slash contract route, `XỬ LÝ NGAY` hyphenated tab, `MỞ CHỨNG
+TỪ` → document workdesk) remains **OPEN** for whoever can open the deployed app.
+
+`PRODUCTION_MUTATIONS=0` · `PILOT_MUTATIONS=0` · `SECRETS_CHANGED=NO`
