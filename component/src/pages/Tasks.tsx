@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryParam } from "../lib/queryParam";
 import { ArrowRight, ListFilter } from "lucide-react";
 import { SectionTitle, ToneBadge } from "../components/ui";
 import { TASKS } from "../lib/data";
@@ -12,8 +13,12 @@ const LEVEL = {
 } as const;
 
 export default function Tasks() {
-  const [filter, setFilter] = useState<"ALL" | "Khan" | "CanXuLy" | "BinhThuong">("ALL");
-  const [q, setQ] = useState("");
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — filter/query survive opening a task
+  // target and coming back (route search params, no global store).
+  const [levelRaw, setLevelRaw] = useQueryParam("level");
+  const filter = (levelRaw || "ALL") as "ALL" | "Khan" | "CanXuLy" | "BinhThuong";
+  const setFilter = (f: "ALL" | "Khan" | "CanXuLy" | "BinhThuong") => setLevelRaw(f === "ALL" ? "" : f);
+  const [q, setQ] = useQueryParam("q");
   const list = useMemo(() => TASKS.filter((t) => (filter === "ALL" || t.level === filter) && (!q || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(q.toLowerCase()))), [filter, q]);
   // Real counts from the readiness/task evidence — never a hardcoded KPI.
   const counts = useMemo(() => ({

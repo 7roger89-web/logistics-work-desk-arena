@@ -14,10 +14,11 @@
 // ============================================================================
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
 import { Field, GhostBtn, SectionTitle, SheetDialog, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
+import { useQueryParam, useQueryFlag } from "../lib/queryParam";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
 import type { ReceivableRow } from "../lib/viewmodel";
@@ -28,13 +29,29 @@ export default function Receivables() {
   // view-model (`lastWrites`), correlated by requestId — never from the
   // transport (LOGI_FRONTEND_WORKFLOW_OVERHAUL_01, P0 payment trust).
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const [q, setQ] = useState("");
-  const [showFilter, setShowFilter] = useState(false);
-  const [outstandingOnly, setOutstandingOnly] = useState(false);
-  const [currency, setCurrency] = useState("ALL");
-  const [sale, setSale] = useState("ALL");
-  const [support, setSupport] = useState("ALL");
-  const [status, setStatus] = useState("ALL");
+  const [receivableParams] = useSearchParams();
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — the whole worklist context (search +
+  // every important filter) lives in the route's search params: lọc → mở lô →
+  // Quay lại restores the exact slice the operator was working on.
+  const [q, setQ] = useQueryParam("q");
+  // Returning to the desk with any active filter re-opens the filter panel,
+  // so the restored context is VISIBLE, not just applied silently.
+  const [showFilter, setShowFilter] = useState(() =>
+    ["noPaid", "ccy", "sale", "support", "status"].some((k) => receivableParams.get(k))
+  );
+  const [outstandingOnly, setOutstandingOnly] = useQueryFlag("noPaid");
+  const [currencyRaw, setCurrencyRaw] = useQueryParam("ccy");
+  const currency = currencyRaw || "ALL";
+  const setCurrency = (v: string) => setCurrencyRaw(v === "ALL" ? "" : v);
+  const [saleRaw, setSaleRaw] = useQueryParam("sale");
+  const sale = saleRaw || "ALL";
+  const setSale = (v: string) => setSaleRaw(v === "ALL" ? "" : v);
+  const [supportRaw, setSupportRaw] = useQueryParam("support");
+  const support = supportRaw || "ALL";
+  const setSupport = (v: string) => setSupportRaw(v === "ALL" ? "" : v);
+  const [statusRaw, setStatusRaw] = useQueryParam("status");
+  const status = statusRaw || "ALL";
+  const setStatus = (v: string) => setStatusRaw(v === "ALL" ? "" : v);
 
   // Receipt sheet (per row) — mirrors the donor ShipmentDetail pay sheet.
   const [paying, setPaying] = useState<ReceivableRow | null>(null);
@@ -176,7 +193,7 @@ export default function Receivables() {
 
         {showFilter && (
           <div className="mt-3 space-y-2.5">
-            <button onClick={() => setOutstandingOnly((v) => !v)} className={cx("touch-target inline-flex items-center gap-2 rounded-xl border-2 px-4 min-h-[44px] text-[14px] font-bold", outstandingOnly ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600")}>
+            <button onClick={() => setOutstandingOnly(!outstandingOnly)} className={cx("touch-target inline-flex items-center gap-2 rounded-xl border-2 px-4 min-h-[44px] text-[14px] font-bold", outstandingOnly ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600")}>
               <CircleAlert size={16} /> Chỉ lô còn phải thu
             </button>
             <div className="flex flex-wrap gap-2">

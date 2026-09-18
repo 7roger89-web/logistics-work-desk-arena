@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Plus, PenLine, ArrowRight, Calculator, Trash2 } from "lucide-react";
 import {
   Field,
@@ -124,8 +125,17 @@ function lineToForm(l: QuoteServiceLine): LineForm {
 }
 
 export default function SalesQuotes() {
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — the global search lands here with
+  // ?q=<quote> so the exact quote is already filtered, no second search.
+  const [sp] = useSearchParams();
   const { quotes, customers, dispatch, toast } = useStore();
-  const [q, setQ] = useState("");
+  const [q, setQState] = useState(sp.get("q") ?? "");
+  const setQ = (v: string) => {
+    setQState(v);
+    const next = new URLSearchParams(sp);
+    if (v) next.set("q", v); else next.delete("q");
+    window.history.replaceState(null, "", `?${next.toString()}`);
+  };
   const [status, setStatus] = useState("ALL");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Quote | null>(null);

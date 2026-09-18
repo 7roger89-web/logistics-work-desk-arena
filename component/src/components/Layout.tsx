@@ -85,13 +85,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 ))}
                 {results.cus.map((c) => (
-                  <button key={c.mst} onClick={() => goSearch(`/khach-hang`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — no customer detail
+                  // route exists, so the destination RECEIVES the entity:
+                  // /khach-hang opens with the exact customer already
+                  // filtered — never a generic list to search again.
+                  <button key={c.mst} onClick={() => goSearch(`/khach-hang?q=${encodeURIComponent(c.name || c.short || c.mst)}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-amber-100 grid place-items-center"><Truck size={17} className="text-amber-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{c.short} · MST {c.mst}</span><span className="block text-[12.5px] text-slate-500">Khách hàng</span></span>
                   </button>
                 ))}
                 {results.quo.map((q) => (
-                  <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  // Same for quotes: land with the exact quote filtered.
+                  <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia?q=${encodeURIComponent(q.id)}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center"><Calculator size={17} className="text-violet-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{q.id} · {q.customer}</span><span className="block text-[12.5px] text-slate-500">Báo giá — {q.status}</span></span>
                   </button>

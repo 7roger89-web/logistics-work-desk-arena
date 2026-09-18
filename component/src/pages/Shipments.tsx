@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryParam } from "../lib/queryParam";
 import { Search, ArrowRight, Eye, SlidersHorizontal } from "lucide-react";
 import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
 import { useStore } from "../lib/store";
@@ -8,9 +9,15 @@ import GetFlyImport from "../components/GetFlyImport";
 
 export default function Shipments() {
   const { shipments } = useStore();
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [showFilter, setShowFilter] = useState(false);
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — query/status live in the route's own
+  // search params: lọc → mở lô → Quay lại restores the exact list context.
+  const [q, setQ] = useQueryParam("q");
+  const [statusRaw, setStatusRaw] = useQueryParam("status");
+  const status = statusRaw || "ALL";
+  const setStatus = (v: string) => setStatusRaw(v === "ALL" ? "" : v);
+  // Returning from a record with an active status filter re-opens the filter
+  // panel, so the restored context is VISIBLE, not just applied silently.
+  const [showFilter, setShowFilter] = useState(() => statusRaw !== "");
   const list = useMemo(() => shipments.filter((s) => (status === "ALL" || s.status === status) && (!q || (s.id + s.customer + s.contract + s.route + s.sale + s.support).toLowerCase().includes(q.toLowerCase()))), [shipments, q, status]);
   const statuses = ["ALL", ...Array.from(new Set(shipments.map((s) => s.status)))];
 

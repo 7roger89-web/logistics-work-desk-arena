@@ -9,6 +9,7 @@ import { contractPath } from "../lib/contractRoute";
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryParam } from "../lib/queryParam";
 import { Search, Plus, Eye, ArrowRight, FileText } from "lucide-react";
 import { SectionTitle, ToneBadge } from "../components/ui";
 import { useStore } from "../lib/store";
@@ -16,8 +17,11 @@ import { cx, fmtMoney } from "../lib/format";
 
 export default function Contracts() {
   const { contracts } = useStore();
-  const [q, setQ] = useState("");
-  const [kind, setKind] = useState("ALL");
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — search/kind survive open → back.
+  const [q, setQ] = useQueryParam("q");
+  const [kindRaw, setKindRaw] = useQueryParam("kind");
+  const kind = kindRaw || "ALL";
+  const setKind = (v: string) => setKindRaw(v === "ALL" ? "" : v);
 
   const list = useMemo(
     () =>
