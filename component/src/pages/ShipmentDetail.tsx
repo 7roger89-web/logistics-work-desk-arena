@@ -1,7 +1,7 @@
 import { contractPath } from "../lib/contractRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
@@ -56,6 +56,9 @@ export default function ShipmentDetail() {
   const s = shipments.find((x) => x.id === id);
   const [showPay, setShowPay] = useState(false);
   const [showDeliver, setShowDeliver] = useState(false);
+  // P1.4 — metadata maintenance lives behind an explicit disclosure so the
+  // operational tab content sits closer to the next action.
+  const [headerEditOpen, setHeaderEditOpen] = useState(false);
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
   const [partnerAmt, setPartnerAmt] = useState("");
@@ -638,20 +641,39 @@ export default function ShipmentDetail() {
         </div>
       </div>
 
-      {/* ============ LOT HEADER: NAME (customer half) + CREATION DATE ============ */}
+      {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
+          LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
+          to sit permanently between the header+tabs and the operational tab
+          content, pushing daily work below the fold. It is now an explicit
+          "Sửa thông tin lô" disclosure: the identity summary STAYS visible on
+          the main path, and every edit capability (customer change, creation
+          date, save semantics) is one click away — nothing removed. */}
       <section
         className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5"
         data-testid="shipment-header-edit"
       >
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2">
-            <PenLine size={18} className="text-[#1e5aa8]" /> Tên lô & ngày tạo
-          </h3>
-          <span className="text-[12.5px] font-semibold text-slate-500">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setHeaderEditOpen((v) => !v)}
+            aria-expanded={headerEditOpen}
+            data-testid="shipment-header-edit-toggle"
+            className={cx(
+              "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 px-3.5 min-h-[44px] text-[14px] font-bold",
+              headerEditOpen ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a]"
+            )}
+          >
+            <PenLine size={17} className={headerEditOpen ? "text-white" : "text-[#1e5aa8]"} /> Sửa thông tin lô
+            <ChevronDown size={16} className={cx("transition-transform", headerEditOpen && "rotate-180")} />
+          </button>
+          <span className="text-[12.5px] font-semibold text-slate-500 text-right">
             Tên lô = <b className="text-[#0f2a4a]">{s.id}</b> · {s.customer}
+            {!headerEditOpen && <span className="hidden md:inline"> · tạo {s.createdAt || "chưa biết"}</span>}
           </span>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_300px] items-start">
+        {headerEditOpen && (
+        <>
+        <div className="grid gap-3 lg:grid-cols-[1fr_300px] items-start mt-3">
           <div className="space-y-2">
             <SearchPicker
               label="Khách hàng của lô"
@@ -705,6 +727,8 @@ export default function ShipmentDetail() {
           kết hợp đồng đang trỏ vào mã cũ. Ngày tạo là ngày bộ phận vận hành mở lô, không tự suy ra
           từ ETD/ETA.
         </p>
+        </>
+        )}
       </section>
 
       {s.missingDocs.length > 0 && tab !== "chung-tu" && (
