@@ -306,13 +306,34 @@ console.log("STEP 6 — payment_record identity and authoritative outcome");
   assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green success before the correlated answer");
   ok(`one intent ${first.requestId}; double click absorbed; waiting truthfully`);
 
-  // Only the CORRELATED backend success closes the sheet.
+  // (C) correlated ok WITHOUT the finance readback stays pending — transport
+  // truth never impersonates persistence truth.
+  const okNoReadback = structuredClone(JOURNEY);
+  okNoReadback.lastWrites = [{ event: "payment_record", ok: true, requestId: first.requestId, shipmentId: SHIPMENT }];
+  invoke(okNoReadback); await tick(160);
+  assert.ok(window.document.getElementById("payment-record-sheet"), "ok without readback keeps the sheet open");
+  assert.ok(bodyText().includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "ok without readback stays pending");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green without the authoritative readback");
+  ok("ok-without-readback stays pending — truthful, not a failure");
+
+  // (D) success requires ok AND the SAME fresh view-model already showing the
+  // payment (finance.payments[].requestId) — patch the readback like the backend.
   const settled = structuredClone(JOURNEY);
+  const lot = settled.shipments.find((x) => x.id === SHIPMENT);
+  lot.finance.payments = lot.finance.payments ?? [];
+  lot.finance.payments.push({
+    requestId: first.requestId,
+    date: "18/09/2026",
+    kind: "Thu tiền khách",
+    amount: 25000000,
+    ccy: FIN.currency,
+    by: "staging.support",
+  });
   settled.lastWrites = [{ event: "payment_record", ok: true, requestId: first.requestId, shipmentId: SHIPMENT }];
   invoke(settled); await tick(160);
-  assert.ok(!window.document.getElementById("payment-record-sheet"), "correlated success closes the sheet");
-  assert.ok(bodyText().includes("Đã ghi nhận khoản thu"), "green success appears only after the backend answer");
-  ok("success closes only on the correlated authoritative outcome");
+  assert.ok(!window.document.getElementById("payment-record-sheet"), "ok + fresh readback closes the sheet");
+  assert.ok(bodyText().includes("Đã ghi nhận khoản thu"), "green success appears only after ok AND readback");
+  ok("success closes only on ok + authoritative finance readback");
 
   // A genuinely NEW receipt intent must NOT be swallowed as a replay.
   triggers = [];

@@ -217,12 +217,23 @@ assert.ok(oblPayload.requestId, "request identity present");
 assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payable pending is truthful while waiting");
 ok(`partner_payable_record emitted for ${oblPayload.partnerId} · ${nf(oblPayload.amount)} ${oblPayload.currency}`);
 
-// Deliver the payable's correlated SUCCESS, exactly as the backend would.
+// Deliver the payable's correlated SUCCESS — WITH the finance readback, exactly
+// as the backend would (ok + the booked entry visible in the fresh readback).
 const oblOk = structuredClone(JOURNEY);
+const oblLot = oblOk.shipments.find((x) => x.id === SHIPMENT);
+oblLot.finance.payments = oblLot.finance.payments ?? [];
+oblLot.finance.payments.push({
+  requestId: oblPayload.requestId,
+  date: "18/09/2026",
+  kind: "Phải trả đối tác",
+  amount: 57000000,
+  ccy: "VND",
+  by: "staging.support",
+});
 oblOk.lastWrites = [{ event: "partner_payable_record", ok: true, requestId: oblPayload.requestId, shipmentId: SHIPMENT }];
 invoke(oblOk); await tick(160);
-assert.ok(text(window.document.body).includes("Đã ghi nhận phải trả đối tác"), "green success only after the correlated answer");
-ok("payable success shows only on the correlated authoritative outcome");
+assert.ok(text(window.document.body).includes("Đã ghi nhận phải trả đối tác"), "green success only after ok AND fresh readback");
+ok("payable success shows only on ok + authoritative readback");
 
 console.log("STEP 6 — payment intent identity: pending guard, refusal keeps the draft, new intent distinct");
 triggers = [];
@@ -253,36 +264,47 @@ assert.ok(text(window.document.body).includes("Request identity"), "refusal mess
 assert.ok(!findClickable("TRẢ ĐỐI TÁC", "button").disabled, "button re-enabled for retry");
 ok("refusal keeps the form and shows the backend's own error");
 
-// Retrying the SAME open intent replays the SAME requestId (writer dedupe).
+// The refused request stays historical: the retry is a NEW write attempt with
+// a FRESH requestId (Control-Tower repair). The stale refusal still sitting in
+// lastWrites (X) must NOT instantly settle the retry (Y).
 triggers = [];
 await click("TRẢ ĐỐI TÁC");
 await tick();
 const paysRetry = eventsOf("partner_payment_record");
 assert.equal(paysRetry.length, 1, "one retry dispatch");
-assert.equal(paysRetry[0].payload.requestId, pays[0].payload.requestId, "same open intent ⇒ same requestId");
-ok("retry replays the same request identity");
+const retryId = paysRetry[0].payload.requestId;
+assert.notEqual(retryId, pays[0].payload.requestId, "retry after refusal mints a NEW requestId (≠ refused X)");
+assert.equal(paysRetry[0].payload.amount, "20.000.000", "amount preserved into the retry intent");
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "stale refusal X cannot settle the retry — still pending");
+assert.ok(!window.document.getElementById("partner-pay-error"), "stale refusal does not re-pop the inline error");
+ok(`retry minted a NEW identity ${retryId}; old refusal X cannot settle it`);
 
-// Settle the retried intent so the desk returns to idle before a new draft.
-const retryOk = structuredClone(JOURNEY);
-retryOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: pays[0].payload.requestId, shipmentId: SHIPMENT }];
-invoke(retryOk); await tick(160);
+// (C) correlated ok for the retry WITHOUT the finance readback: still pending.
+const okNoReadback = structuredClone(JOURNEY);
+okNoReadback.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: retryId, shipmentId: SHIPMENT }];
+invoke(okNoReadback); await tick(160);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "ok without readback stays pending");
+assert.ok(!text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "no green without the authoritative readback");
+ok("correlated ok WITHOUT finance readback = still pending, truthful");
 
-// A NEW amount draft mints a NEW intent — never swallowed as a replay.
-triggers = [];
-type(byPlaceholder("VD: 20000000"), "17.000.000");
-await click("TRẢ ĐỐI TÁC");
-await tick();
-const pays2 = eventsOf("partner_payment_record");
-assert.equal(pays2.length, 1);
-assert.notEqual(pays2[0].payload.requestId, pays[0].payload.requestId, "new intent = new request identity");
-assert.equal(pays2[0].payload.amount, "17.000.000"); // raw preserved
-
-// Only the CORRELATED success shows green.
+// (D) success requires the SAME fresh view-model to already show the payment
+// (finance.payments[].requestId) — patch the readback like the backend does.
 const payOk = structuredClone(JOURNEY);
-payOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: pays2[0].payload.requestId, shipmentId: SHIPMENT }];
+const lot = payOk.shipments.find((x) => x.id === SHIPMENT);
+lot.finance.payments = lot.finance.payments ?? [];
+lot.finance.payments.push({
+  requestId: retryId,
+  date: "18/09/2026",
+  kind: "Trả đối tác",
+  amount: 20000000,
+  ccy: "VND",
+  by: "staging.support",
+});
+payOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: retryId, shipmentId: SHIPMENT }];
 invoke(payOk); await tick(160);
-assert.ok(text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "payment success only after the correlated answer");
-ok(`new intent minted ${pays2[0].payload.requestId}`);
+assert.ok(text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "green only AFTER ok AND fresh readback");
+assert.ok(!findClickable("TRẢ ĐỐI TÁC", "button").disabled, "desk returns to idle after the settled outcome");
+ok(`success = ok + fresh readback for ${retryId}`);
 ok("payment success shows only on the correlated authoritative outcome");
 
 console.log(`\nC2B DOM ACCEPTANCE PASS — ${passed} checks`);

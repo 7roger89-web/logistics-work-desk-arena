@@ -106,7 +106,12 @@ ok(`Finance tab open for ${SHIPMENT}`);
 // Deliver the correlated backend success for an in-flight write, exactly as
 // the real backend does through lastWrites, so the desk returns to idle.
 async function settle(event, requestId){
+  // Success now requires ok AND the fresh finance readback: stitch the booked
+  // payment (requestId) into the read model exactly as the backend would.
   const settled=structuredClone(JOURNEY);
+  const lot=settled.shipments.find((x)=>x.id===SHIPMENT);
+  lot.finance.payments=lot.finance.payments ?? [];
+  lot.finance.payments.push({ requestId, date:"18/09/2026", kind:"Đối soát probe", amount: 1, ccy: lot.currency || "VND", by:"staging.support" });
   settled.lastWrites=[{ event, ok:true, requestId, shipmentId: SHIPMENT }];
   invoke(settled);
   await tick(140);

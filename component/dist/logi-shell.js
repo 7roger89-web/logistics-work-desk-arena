@@ -15283,7 +15283,12 @@ function cs() {
 	(0, _.useEffect)(() => {
 		if (!se) return;
 		let e = (d?.lastWrites ?? []).find((e) => e.event === "payment_record" && e.requestId === se);
-		e && (e.ok ? (h(!1), w(""), de(""), pe(), o("Đã ghi nhận khoản thu " + p.id, "Backend đã xác nhận ghi sổ (lastWrites khớp mã yêu cầu). Số dư đọc lại từ Logistics.", "green")) : (pe(), de(e.error || "Backend từ chối khoản thu này."), o("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red")));
+		if (e) {
+			if (e.ok) {
+				if (!(d?.shipments ?? []).find((e) => e.id === p.id)?.finance?.payments?.some((e) => e.requestId === se)) return;
+				h(!1), w(""), de(""), pe(), o("Đã ghi nhận khoản thu " + p.id, "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
+			} else pe(), de(e.error || "Backend từ chối khoản thu này."), I.current = os("PAY"), o("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
+		}
 	}, [d?.lastWrites, se]);
 	let [he, ge] = (0, _.useState)(null), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(""), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(""), [Te, Ee] = (0, _.useState)(""), [De, Oe] = (0, _.useState)(""), ke = (0, _.useRef)(""), Ae = (0, _.useRef)(""), je = (e) => {
 		ke.current = os("CORR"), Ae.current = "", ge(e), ve(""), be(""), Se(""), we(""), Ee(""), Oe("");
@@ -15318,7 +15323,7 @@ function cs() {
 	(0, _.useEffect)(() => {
 		if (!De) return;
 		let e = (d?.lastWrites ?? []).find((e) => e.event === "payment_correction" && e.correctionRequestId === De);
-		e && (e.ok ? (Me(), o("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Ae.current = "", Oe(""), Ee(e.error || "Backend từ chối bút toán điều chỉnh này."), o("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
+		e && (e.ok ? (Me(), o("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Ae.current = "", Oe(""), Ee(e.error || "Backend từ chối bút toán điều chỉnh này."), ke.current = os("CORR"), o("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
 	}, [d?.lastWrites, De]);
 	let Pe = (0, _.useRef)(""), Fe = (0, _.useRef)(""), [Ie, Le] = (0, _.useState)({}), Re = (0, _.useRef)({}), [ze, Be] = (0, _.useState)({}), Ve = (e) => os(e), He = () => {
 		Pe.current = Ve("POBL");
@@ -15391,7 +15396,13 @@ function cs() {
 			let n = Re.current[t];
 			if (!n) continue;
 			let r = t === "obl" ? "partner_payable_record" : "partner_payment_record", i = e.find((e) => e.event === r && e.requestId === n);
-			i && (i.ok ? (We(t, "", ""), O(""), o(t === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác", "Backend đã xác nhận ghi sổ canonical — số còn lại đọc lại từ Logistics.", "green")) : (We(t, "", i.error || "Backend từ chối bút toán này."), o("Chưa ghi nhận được", i.error || "Backend từ chối.", "red")));
+			if (i) {
+				if (i.ok) {
+					let e = i.shipmentId || p.id;
+					if (!(d?.shipments ?? []).find((t) => t.id === e)?.finance?.payments?.some((e) => e.requestId === n)) continue;
+					We(t, "", ""), O(""), o(t === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác", "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
+				} else We(t, "", i.error || "Backend từ chối bút toán này."), t === "obl" ? He() : Ue(), o("Chưa ghi nhận được", i.error || "Backend từ chối.", "red");
+			}
 		}
 	}, [d?.lastWrites]);
 	let qe = () => {
@@ -17849,7 +17860,12 @@ function ds() {
 	return (0, _.useEffect)(() => {
 		if (!F) return;
 		let e = (r?.lastWrites ?? []).find((e) => e.event === "payment_record" && e.requestId === F);
-		e && (e.ok ? (ee(null), M(""), ae(""), re.current = "", ne(""), n("Đã ghi nhận khoản thu", "Backend đã xác nhận ghi sổ (lastWrites khớp mã yêu cầu). Phải thu đọc lại từ Logistics.", "green")) : (re.current = "", ne(""), ae(e.error || "Backend từ chối khoản thu này."), n("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red")));
+		if (e) {
+			if (e.ok) {
+				if (!(r?.shipments ?? []).find((e) => e.id === A?.id)?.finance?.payments?.some((e) => e.requestId === F)) return;
+				ee(null), M(""), ae(""), re.current = "", ne(""), n("Đã ghi nhận khoản thu", "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
+			} else re.current = "", ne(""), ae(e.error || "Backend từ chối khoản thu này."), P.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, n("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
+		}
 	}, [r?.lastWrites, F]), /* @__PURE__ */ (0, R.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [

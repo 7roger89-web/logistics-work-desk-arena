@@ -121,23 +121,35 @@ export default function Receivables() {
 
   useEffect(() => {
     if (!payPending) return;
+    // Correlation is scoped to the PENDING request id: a stale refusal for an
+    // OLDER requestId in the same lastWrites array can never settle this retry.
     const outcome = (vm?.lastWrites ?? []).find(
       (w) => w.event === "payment_record" && (w.requestId as string | undefined) === payPending
     );
     if (!outcome) return; // still waiting for the authoritative backend answer
     if (outcome.ok) {
+      // Success requires BOTH the correlated ok AND the authoritative finance
+      // readback in the SAME fresh view-model (finance.payments[].requestId).
+      const fresh = (vm?.shipments ?? []).find((x) => x.id === paying?.id);
+      const readbackConfirmed = !!fresh?.finance?.payments?.some(
+        (p) => (p.requestId as string | undefined) === payPending
+      );
+      if (!readbackConfirmed) return; // ok without readback = not yet refreshed; stay pending
       setPaying(null);
       setPayAmt("");
       setPayError("");
       payPendingRef.current = "";
       setPayPending("");
       toast("Đã ghi nhận khoản thu",
-        "Backend đã xác nhận ghi sổ (lastWrites khớp mã yêu cầu). Phải thu đọc lại từ Logistics.",
+        "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.",
         "green");
     } else {
+      // Refusal keeps the form (amount/kind preserved); the refused request
+      // stays historical and the NEXT retry is a NEW intent with a FRESH id.
       payPendingRef.current = "";
       setPayPending("");
       setPayError(outcome.error || "Backend từ chối khoản thu này.");
+      payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       toast("Chưa ghi nhận được", outcome.error || "Backend từ chối khoản thu.", "red");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

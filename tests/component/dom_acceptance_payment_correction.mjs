@@ -219,19 +219,34 @@ console.log("STEP 5 — backend REFUSAL keeps the sheet open with the writer's o
   ok("backend refusal surfaces verbatim; sheet stays open for the operator");
 }
 
-console.log("STEP 6 — re-submitting the SAME intent replays the SAME id (no re-mint)");
+console.log("STEP 6 — retry after refusal mints a NEW correctionRequestId; stale refusal cannot settle it");
 {
   triggers=[];
-  clickNode(submitBtn(sheet())); await tick(100);
+  clickNode(submitBtn(sheet())); await tick(120);
   const again = eventsOf("payment_correction");
-  assert.equal(again.length, 1, "one more dispatch for the same intent");
-  assert.equal(again[0].payload.correctionRequestId, intentId, "same intent ⇒ replayed correctionRequestId");
-  ok("re-submit never mints a new id for the unchanged open intent — backend dedupe stays possible");
+  assert.equal(again.length, 1, "one more dispatch for the retry");
+  const retryId = again[0].payload.correctionRequestId;
+  assert.notEqual(retryId, intentId, "retry is a NEW write attempt with a FRESH correctionRequestId");
+  assert.equal(again[0].payload.reason, "Khách chuyển khoản sai nội dung — hoàn tác để ghi nhận lại", "reason preserved into the retry");
+  // The CURRENT lastWrites still carries the OLD refusal for intentId — it must
+  // NOT instantly re-settle the retry (control-tower repair, stale-refusal).
+  assert.ok(sheet(), "retry stays open");
+  assert.ok(!window.document.getElementById("correction-backend-error"), "stale refusal does not re-pop the error");
+  ok(`retry minted a NEW id ${retryId}; the old refusal (${intentId}) cannot settle it`);
+  // Deliver a fresh refusal for the NEW id: only that settles the retry.
+  const refusedRetry = structuredClone(FIXTURE.before);
+  refusedRetry.lastWrites = [structuredClone(FIXTURE.refusalOutcome)];
+  refusedRetry.lastWrites[0].correctionRequestId = retryId;
+  invoke(refusedRetry); await tick(160);
+  assert.ok(text(window.document.getElementById("correction-backend-error")).includes("Đã được reversal trước đó"), "fresh refusal for the retry id settles only that id");
+  ok("fresh refusal for the retry id settles only the retry id");
+  // Leave a clean open intent for STEP 6b: re-open (fresh id) below.
+  clickNode(findClickable("Hủy","button",sheet())); await tick(80);
 }
 
 console.log("STEP 6b — NEW intent (reopened sheet) + backend SUCCESS closes on authoritative outcome");
 {
-  clickNode(findClickable("Hủy","button",sheet())); await tick(80);
+  // STEP 6 already closed the sheet; the fixture VM re-opened here mints a fresh id.
   await openFinance(FIXTURE.before); // operator sees a state where the row is live again
   clickNode($(`button[data-payment-id="${CORRECTED_ID}"]`)[0]); await tick(120);
   const sh = sheet();

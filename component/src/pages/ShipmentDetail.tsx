@@ -263,21 +263,37 @@ export default function ShipmentDetail() {
   };
   useEffect(() => {
     if (!payPending) return;
+    // Correlation is scoped to the PENDING request id: a stale refusal for an
+    // OLDER requestId in the same lastWrites array can never settle this retry.
     const outcome = (vm?.lastWrites ?? []).find(
       (w) => w.event === "payment_record" && (w.requestId as string | undefined) === payPending
     );
     if (!outcome) return; // still waiting for the authoritative backend answer
     if (outcome.ok) {
+      // Success requires BOTH the correlated ok AND the authoritative finance
+      // readback: the SAME fresh view-model must already show the payment
+      // (finance.payments[].requestId). ok-without-readback stays pending —
+      // it may simply be a not-yet-refreshed readback, never a failure.
+      const fresh = (vm?.shipments ?? []).find((x) => x.id === s.id);
+      const readbackConfirmed = !!fresh?.finance?.payments?.some(
+        (p) => (p.requestId as string | undefined) === payPending
+      );
+      if (!readbackConfirmed) return; // truthful: still waiting for the fresh readback
       setShowPay(false);
       setPayAmt("");
       setPayError("");
       clearPayPending();
       toast("Đã ghi nhận khoản thu " + s.id,
-        "Backend đã xác nhận ghi sổ (lastWrites khớp mã yêu cầu). Số dư đọc lại từ Logistics.",
+        "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.",
         "green");
     } else {
+      // Authoritative refusal: the refused request stays historical evidence.
+      // The form keeps amount/kind and the NEXT retry is a NEW write attempt
+      // with a FRESH requestId — so the stale refusal (old id) in the current
+      // lastWrites can never reconsume and instantly "settle" the retry.
       clearPayPending();
       setPayError(outcome.error || "Backend từ chối khoản thu này.");
+      payRequestRef.current = mintRequestId("PAY");
       toast("Chưa ghi nhận được", outcome.error || "Backend từ chối khoản thu.", "red");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -371,6 +387,10 @@ export default function ShipmentDetail() {
       corrPendingRef.current = "";
       setCorrPending("");
       setCorrError(outcome.error || "Backend từ chối bút toán điều chỉnh này.");
+      // Same retry contract: the refused correction stays historical; the next
+      // submit mints a FRESH correctionRequestId so the stale refusal (old id)
+      // in the current lastWrites can never instantly settle the retry.
+      corrRequestRef.current = mintRequestId("CORR");
       toast("Chưa điều chỉnh được", outcome.error || "Backend từ chối.", "red");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -450,15 +470,31 @@ export default function ShipmentDetail() {
       );
       if (!outcome) continue; // still waiting for the authoritative answer
       if (outcome.ok) {
+        // Same trust contract as the customer receipts: success requires BOTH
+        // the correlated ok AND the authoritative finance readback — the SAME
+        // fresh view-model must already show the payment
+        // (finance.payments[].requestId). ok-without-readback stays pending;
+        // it may simply be a not-yet-refreshed readback, never a failure.
+        const targetId = (outcome.shipmentId as string | undefined) || s.id;
+        const fresh = (vm?.shipments ?? []).find((x) => x.id === targetId);
+        const readbackConfirmed = !!fresh?.finance?.payments?.some(
+          (p) => (p.requestId as string | undefined) === pendingId
+        );
+        if (!readbackConfirmed) continue; // truthful: still waiting for the fresh readback
         setPartnerState(key, "", "");
         setPartnerAmt("");
         toast(
           key === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác",
-          "Backend đã xác nhận ghi sổ canonical — số còn lại đọc lại từ Logistics.",
+          "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.",
           "green"
         );
       } else {
         setPartnerState(key, "", outcome.error || "Backend từ chối bút toán này.");
+        // Same retry contract as the customer receipts: the refused request
+        // stays historical; the next submit is a NEW intent with a FRESH id,
+        // so the stale refusal (old id) can never reconsume the retry.
+        if (key === "obl") mintPartnerObl();
+        else mintPartnerPay();
         toast("Chưa ghi nhận được", outcome.error || "Backend từ chối.", "red");
       }
     }
