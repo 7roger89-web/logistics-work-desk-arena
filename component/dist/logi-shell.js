@@ -11756,30 +11756,35 @@ function wo({ what: e, where: t, actionLabel: n, onAction: r }) {
 }
 function To({ id: e, labelledBy: t, onClose: n, pending: r, children: i, testId: a, width: o = 480 }) {
 	let s = (0, _.useRef)(null);
-	(0, _.useEffect)(() => {
-		let e = window.document.activeElement, t = s.current;
-		return (t?.querySelector("input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])") ?? t)?.focus(), () => {
-			e?.focus?.();
+	return (0, _.useEffect)(() => {
+		let e = s.current;
+		if (!e) return;
+		let t = e.getRootNode().activeElement;
+		return (e.querySelector("input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])") ?? e).focus(), () => {
+			t?.isConnected && t.focus();
 		};
 	}, []), (0, _.useEffect)(() => {
-		let e = (e) => {
-			e.key === "Escape" && (r || (e.stopPropagation(), n()));
+		let e = s.current;
+		if (!e) return;
+		let t = e.getRootNode(), i = () => Array.from(e.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])")), a = (a) => {
+			let o = a;
+			if (o.key === "Escape") {
+				o.preventDefault(), o.stopPropagation(), r || n();
+				return;
+			}
+			if (o.key !== "Tab") return;
+			let s = i();
+			if (s.length === 0) {
+				o.preventDefault(), e.focus();
+				return;
+			}
+			let c = s[0], l = s[s.length - 1], u = t.activeElement, d = !u || !e.contains(u);
+			o.shiftKey ? (u === c || d) && (o.preventDefault(), l.focus()) : (u === l || d) && (o.preventDefault(), c.focus());
 		};
-		return window.document.addEventListener("keydown", e), () => window.document.removeEventListener("keydown", e);
-	}, [r, n]);
-	let c = (e) => {
-		if (e.key !== "Tab") return;
-		let t = s.current;
-		if (!t) return;
-		let n = Array.from(t.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"])"));
-		if (n.length === 0) return;
-		let r = n[0], i = n[n.length - 1], a = window.document.activeElement;
-		e.shiftKey && (a === r || a === t) ? (e.preventDefault(), i.focus()) : !e.shiftKey && a === i && (e.preventDefault(), r.focus());
-	};
-	return /* @__PURE__ */ (0, R.jsxs)("div", {
+		return t.addEventListener("keydown", a, !0), () => t.removeEventListener("keydown", a, !0);
+	}, [r, n]), /* @__PURE__ */ (0, R.jsxs)("div", {
 		...e ? { id: e } : {},
 		className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-		onKeyDown: c,
 		...a ? { "data-testid": a } : {},
 		children: [/* @__PURE__ */ (0, R.jsx)("div", {
 			className: "absolute inset-0 bg-slate-900/55 anim-fade",
