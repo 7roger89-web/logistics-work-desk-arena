@@ -1,0 +1,64 @@
+name: PR56 Temporary Dist Sync
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-dist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_HEAD: a3c956137bd6e2b47e3bec30ceb7eefdf568ed5f
+      TARGET_BRANCH: arena/01a0b23b-logistics-work-desk-arena
+    steps:
+      - name: Checkout PR56 branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Identity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL="$(git rev-parse HEAD)"
+          echo "ACTUAL=$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED_HEAD"
+
+      - name: Build exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd component
+          npm ci
+          npm run typecheck
+          npm run build
+          npm run scan
+
+      - name: Commit only generated dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          OTHER="$(git status --porcelain | grep -vE '^.. component/dist/(logi-shell\.js|logi-shell\.css)$' || true)"
+          if [ -n "$OTHER" ]; then
+            echo "UNEXPECTED_WORKTREE_CHANGES"
+            echo "$OTHER"
+            exit 1
+          fi
+          if git diff --quiet -- component/dist; then
+            echo "DIST_ALREADY_SYNCED=YES"
+            exit 0
+          fi
+          git config user.name "pr56-visual-gate-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add component/dist/logi-shell.js component/dist/logi-shell.css
+          git commit -m "LOGI frontend: sync built bundle after ShadowRoot focus fix"
+          NEW_HEAD="$(git rev-parse HEAD)"
+          echo "NEW_HEAD=$NEW_HEAD"
+          git push origin "HEAD:$TARGET_BRANCH"
