@@ -3,9 +3,16 @@
 `TASK_ID=LOGI_THU_LOG_DEPLOYMENT_RECOVERY_02` · `DATE=2026-09-18` ·
 `P2P_LAW_SOURCE=LOCAL_PORTABLE` · `TARGET_APP=thu-log` · `FORBIDDEN_APP=tienthanhlog`
 
-**Status: `BLOCKED_DEPLOYMENT_IDENTITY`.** No deployment mutation was performed,
-and none was possible: the deployment mapping of `thu-log` could not be
-positively established from any surface available to this executor.
+**Status: `THU_LOG_DEPLOYED_RUNTIME_UNVERIFIED`.** Independent establishment of
+the deployment mapping failed (§2–§5) and Arena has no provider session, so the
+runtime half of this task could not be executed from here. The Owner then
+attested `thu-log.streamlit.app` as the target app (§7), which unblocks the
+identity *question* by Owner authority only — not by independent verification —
+and leaves `Reboot app` + the five-point smoke as Owner-side actions.
+
+Terminology used in this note: `INDEPENDENT_PROOF` = evidence this executor
+reproduced itself; `OWNER_ATTESTED` = the Owner's own statement about their
+deployment, recorded verbatim, never presented as independent proof.
 
 This note is evidence only. It supersedes the (Owner-invalidated) app
 association recorded in `docs/notes_decisions_log/LOGI_UAT_REAL_USE_REPAIR_02.md`
@@ -26,12 +33,12 @@ its app association.
 
 | Field | Value | Evidence class |
 |---|---|---|
-| `THU_LOG_APP_URL` | **UNVERIFIED** | see §2a |
-| `THU_LOG_REPO` | **UNVERIFIED** | no source names it |
-| `THU_LOG_BRANCH` | **UNVERIFIED** | no source names it |
-| `THU_LOG_ENTRYPOINT` | **UNVERIFIED** | repo has *two* launchers (`app.py`, `web_app.py`); the Cloud main-file is a provider setting, not a repo fact |
+| `THU_LOG_APP_URL` | `https://thu-log.streamlit.app/` | `OWNER_ATTESTED` (2026-09-18, §7) — not independently proven |
+| `THU_LOG_REPO` | **UNVERIFIED** — only candidate in this repo: `7roger89-web/logistics-work-desk-arena` | no source names it |
+| `THU_LOG_BRANCH` | **UNVERIFIED** — only candidate: `main` | no source names it |
+| `THU_LOG_ENTRYPOINT` | **UNVERIFIED** — repo has *two* launchers (`app.py`, `web_app.py`); the Cloud main-file is a provider setting, not a repo fact | no source names it |
 | `THU_LOG_CURRENT_REVISION` | **UNVERIFIED** | no provider/runtime read surface |
-| `THU_LOG_IDENTITY_PROOF` | **NONE** | — |
+| `THU_LOG_IDENTITY_PROOF` | `OWNER_ATTESTED` (independent proof: NONE) | §7, §2a |
 | `DEPLOYMENT_PATH` | **UNVERIFIED** | one repo-level Streamlit hook exists, but it does not name its app (§3) |
 
 ### 2a. What the anonymous probes do and do not prove
@@ -148,4 +155,58 @@ app or a no-op commit as a workaround.
 one anonymous read-only GET to the forbidden app's public URL was used only as a
 calibration control and is disclosed here).
 
-**`FINAL_VERDICT=BLOCKED_DEPLOYMENT_IDENTITY`**
+`INDEPENDENT_IDENTITY_VERDICT=BLOCKED_DEPLOYMENT_IDENTITY` (unchanged — no
+independent mapping evidence exists).
+
+## 7. Owner attestation and the remaining Owner-side action (2026-09-18)
+
+Asked how to proceed while identity rested on a provider value only the Owner's
+account can read, the Owner selected:
+
+> **"Treat thu-log.streamlit.app as the target (Owner attestation)"**
+
+Recorded exactly as `THU_LOG_IDENTITY_PROOF=OWNER_ATTESTED`, which is
+`TARGET_APP=thu-log` confirmed by the deployment's owner. It is **not**
+independent verification, and it does not assert `repo` / `branch` /
+`main file path` — those remain unread (§5, item 1). It also does not relax any
+mutation boundary: no secret, database, infrastructure, app identity or
+deployment-architecture change is implied.
+
+Consequence: the code half is already delivered — `main@c8f3fbc` was pushed
+`2026-09-17T15:49:21Z` and the repository's only deployment artifact, the
+Streamlit Cloud push hook, answered `200 OK` at `15:49:22Z`. Nothing further was
+pushed, and no no-op commit was manufactured. What remains cannot be done by an
+executor without a provider session.
+
+### Owner-side handover — smallest runtime acceptance on the real app
+
+1. `share.streamlit.io` → app **`thu-log`** → **⋮ → Reboot app** (only if the app
+   is not already serving the post-`2026-09-17` build). Optional but useful:
+   while in that menu, read `Settings → Repository / Branch / Main file path`
+   and paste them here, which converts `OWNER_ATTESTED` into verified identity.
+2. Then, in the app itself (read-mostly, no meaningful production data needed):
+   - **A — App + login boundary:** app loads; unauthenticated visit shows the
+     login screen, not the dashboard.
+   - **B — Customer create:** on `Khách Hàng`, create/persist a customer — success
+     appears **only after** the authoritative readback; a rejected/failed write
+     must not report success.
+   - **C — Contract create:** `Hợp đồng → tạo mới` must continue to the **real
+     contract detail**; the `Sắp có` placeholder (unbuilt-screen badge) must not
+     appear for a created contract.
+   - **D — Slash-safe id:** open contract `05/2026/HDMB` (the id PR52 committed in
+     the workflow fixture) — real detail, not `*`/NotFound.
+   - **E — `XỬ LÝ NGAY`:** from `Việc Cần Xử Lý`, the button follows
+     `nextRoute = /lo-hang/{sid}?tab={tab}` and lands on the **canonical
+     next-work tab** for that task (hyphenated id, e.g. `lay-hang`, `tai-chinh`,
+     `van-tai`, `chung-tu`, `lich-su`), not the wildcard and not a neighbouring tab.
+   - **F — `MỞ CHỨNG TỪ`:** on a shipment with a linked contract, the button
+     opens `contractPath(id) + "?tab=chung-tu"`, i.e. `ContractDetail`'s
+     `Chứng từ HDNT/PL/HDMB` tab (the `core.docgen` workdesk), not the wildcard.
+
+Any failure in B–F is a **code** finding against `main@c8f3fbc` and belongs in a
+new evidence note; it must not be attributed to the deployment path.
+
+**`FINAL_VERDICT=THU_LOG_DEPLOYED_RUNTIME_UNVERIFIED`**
+`PROVIDER_AUTH_SUBBLOCKER=YES` — `Reboot app` and the smoke both require the
+Owner's authenticated `share.streamlit.io` / browser session; Arena holds no
+provider credential and the app is not anonymously reachable.
