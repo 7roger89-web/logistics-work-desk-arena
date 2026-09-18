@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      CANDIDATE_SHA: fb116407e5ac02865348f783c56e90074d736c9b
+      CANDIDATE_SHA: a3c956137bd6e2b47e3bec30ceb7eefdf568ed5f
       MONGO_URI: mongodb://mongomock.local/logistics_staging
       MONGO_DB_NAME: logistics_staging
       MONGO_ALLOWED_DB_NAMES: logistics_staging
@@ -65,6 +65,18 @@ jobs:
           echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
           echo "CHROME_PATH=$CHROME"
 
+      - name: Typecheck and build exact candidate component
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd candidate/component
+          npm ci
+          npm run typecheck
+          npm run build
+          npm run scan
+          mkdir -p /tmp/pr56-built-dist
+          cp -a dist/. /tmp/pr56-built-dist/
+
       - name: Start isolated Streamlit preview
         shell: bash
         run: |
@@ -96,7 +108,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr56-visual-gate-r3-${{ env.CANDIDATE_SHA }}
-          path: /tmp/pr56-visual
+          name: pr56-visual-gate-r4-${{ env.CANDIDATE_SHA }}
+          path: |
+            /tmp/pr56-visual
+            /tmp/pr56-built-dist
           if-no-files-found: error
           retention-days: 1
