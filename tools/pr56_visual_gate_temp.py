@@ -389,30 +389,25 @@ with sync_playwright() as p:
     rec("mobile_shipments", "LO-0306" in mlist and "XỬ LÝ" in mlist and "360°" in mlist,
         "mobile shipment cards preserve action distinction")
     shot(page,"13-shipments-mobile.png")
-    if page.get_by_text("LO-0306", exact=True).count():
-        mobile_lo=None
-        for candidate in page.get_by_text("LO-0306", exact=True).all():
-            if candidate.is_visible():
-                mobile_lo=candidate
-                break
-        if mobile_lo is None:
-            rec("mobile_detail", False, "LO-0306 exists only in hidden desktop markup")
-        else:
-            mobile_lo.click(); page.wait_for_timeout(500)
-            rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
-                "shipment detail usable on mobile")
-            shot(page,"14-detail-mobile.png")
-            if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
-                page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
-                if page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
-                    page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); page.wait_for_timeout(180)
-                    box=page.locator('[role="dialog"]').first.bounding_box()
-                    fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]<844)
-                    rec("mobile_payment_sheet", fits, box)
-                    shot(page,"15-payment-mobile.png")
-                    page.keyboard.press("Escape"); page.wait_for_timeout(100)
+    # The shipment id on a mobile card is display text, not a link.
+    # Navigate exactly as an employee does: use that card's XEM 360° action.
+    mobile_card=page.locator("div.rounded-2xl.bg-white.border", has_text="LO-0306").filter(has_text="An Phát").first
+    if mobile_card.count() and mobile_card.get_by_text("XEM 360°", exact=True).count():
+        mobile_card.get_by_text("XEM 360°", exact=True).click(); page.wait_for_timeout(500)
+        rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
+            "shipment detail opened through the real mobile card action")
+        shot(page,"14-detail-mobile.png")
+        if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
+            page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
+            if page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
+                page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); page.wait_for_timeout(180)
+                box=page.locator('[role="dialog"]').first.bounding_box()
+                fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]+box["height"]<=845)
+                rec("mobile_payment_sheet", fits, box)
+                shot(page,"15-payment-mobile.png")
+                page.keyboard.press("Escape"); page.wait_for_timeout(100)
     else:
-        rec("mobile_detail", False, "LO-0306 not visible")
+        rec("mobile_detail", False, "LO-0306 mobile card or XEM 360° action not found")
 
     # Console/network scope: ignore favicon-only noise, flag app/runtime failures.
     rec("no_uncaught_page_errors", len(page_errors)==0, page_errors)
