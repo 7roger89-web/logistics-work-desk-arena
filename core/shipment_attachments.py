@@ -1,31 +1,17 @@
-"""LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded shipment-attachment service.
+"""LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — bounded shipment attachments.
 
-Ported (source only) from donor PR #49 onto current main; contract unchanged:
-Drive owns bytes, Mongo owns bounded metadata only.
+One vertical slice is preserved from PR65, with the deployable default changed
+from the unavailable service-account Drive path to the MongoDB/PyMongo GridFS
+path already owned by the application:
 
-ONE vertical slice: shipment attachment upload → safe preprocessing → Google
-Drive (bytes) → Mongo (bounded metadata only) → shipment document UI readback.
+    validate → hash ORIGINAL → same-shipment dedupe → store bytes →
+    persist ``shipment_attachments`` metadata → fresh authoritative readback.
 
-Hard rules enforced here (not in the UI):
-
-* Google Drive owns the BYTES. No raw PDF/image/DOCX/XLSX bytes and no base64
-  body ever enters Mongo — :func:`core.database.save_shipment_attachment`
-  refuses such a document outright.
-* Authentication is the deployment's own service account; nothing here can
-  return a credential, a bearer token or a signed URL to the browser.
-* Size and type are checked BEFORE any Drive call, and again on the decoded
-  bytes (the browser's claim is usability only, never the boundary).
-* "Compression" means a REAL size reduction: JPEG/PNG are re-encoded with
-  Pillow and the optimized bytes are kept only when they are materially
-  smaller; PDF/DOCX/XLSX are kept byte-identical in this slice.
-* Duplicate guard: within the SAME shipment the SHA-256 of the ORIGINAL upload
-  identifies the attachment. A duplicate returns the existing attachment and
-  performs NO second Drive upload. Cross-shipment dedupe is out of scope.
-* External side-effect order: validate → hash → (dedupe) → upload Drive →
-  persist metadata. If metadata persistence fails, the just-created Drive file
-  is deleted ONCE using the exact file id the upload returned; when that cannot
-  be proven the result says so explicitly (``orphan_risk``) and logs only
-  non-sensitive repair evidence.
+GridFS is not transactional with the metadata collection. If metadata storage
+fails, this service attempts exactly one deletion of the exact newly-created
+GridFS file and reports ``orphanRisk`` when that deletion cannot be proven.
+The optional ``drive_shared`` path retains PR65's Shared Drive-only rule and
+never becomes a fallback for an unknown or failing backend.
 """
 
 from __future__ import annotations
@@ -38,12 +24,18 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 from uuid import uuid4
 
+from core.config import get_attachment_storage_backend
 from core.drive_client import (
     DriveError,
     build_drive_client,
     is_unsafe_drive_name,
     load_drive_settings,
     sanitize_drive_name,
+)
+from core.gridfs_client import (
+    GRIDFS_BUCKET,
+    GridFSFileNotFound,
+    GridFSStorageError,
 )
 
 LOGGER = logging.getLogger("logistics_pro.attachments")
@@ -60,6 +52,15 @@ IMAGE_MAX_DIMENSION = 2200
 IMAGE_JPEG_QUALITY = 82
 #: Keep optimized output only when it is at least this much smaller.
 IMAGE_MATERIAL_REDUCTION = 0.95
+
+STORAGE_BACKEND_GRIDFS = "gridfs"
+STORAGE_BACKEND_DRIVE_SHARED = "drive_shared"
+SUPPORTED_STORAGE_BACKENDS = frozenset({STORAGE_BACKEND_GRIDFS, STORAGE_BACKEND_DRIVE_SHARED})
+
+# GridFS bucket is deliberately fixed: it is an implementation detail, not a
+# user/provider setting. Expected collections are
+# ``shipment_attachment_files.files`` and ``shipment_attachment_files.chunks``.
+SHIPMENT_ATTACHMENT_GRIDFS_BUCKET = GRIDFS_BUCKET
 
 DRIVE_SHIPMENTS_FOLDER = "shipments"
 DRIVE_ATTACHMENTS_FOLDER = "attachments"
@@ -103,16 +104,20 @@ CODE_INVALID = "INVALID_UPLOAD"
 CODE_TYPE = "TYPE_NOT_ALLOWED"
 CODE_SIZE = "SIZE_LIMIT_EXCEEDED"
 CODE_MISMATCH = "CONTENT_MISMATCH"
-CODE_DRIVE_UNCONFIGURED = "DRIVE_NOT_CONFIGURED"
-CODE_DRIVE_FAILED = "DRIVE_FAILED"
+CODE_STORAGE_UNSUPPORTED = "ATTACHMENT_STORAGE_BACKEND_UNSUPPORTED"
+CODE_GRIDFS_UNCONFIGURED = "GRIDFS_NOT_CONFIGURED"
+CODE_GRIDFS_FAILED = "GRIDFS_FAILED"
+CODE_DRIVE_UNCONFIGURED = "DRIVE_NOT_CONFIGURED"  # legacy drive_shared outcome
+CODE_DRIVE_FAILED = "DRIVE_FAILED"  # legacy drive_shared outcome
 CODE_METADATA_FAILED = "METADATA_WRITE_FAILED"
+CODE_METADATA_READBACK_UNPROVEN = "METADATA_READBACK_UNPROVEN"
 CODE_DUPLICATE = "DUPLICATE"
 CODE_NOT_FOUND = "ATTACHMENT_NOT_FOUND"
 
 
 @dataclass(frozen=True)
 class PreparedFile:
-    """The bytes that will actually reach Drive, plus how they were obtained."""
+    """The bytes that will reach the selected storage backend."""
 
     data: bytes
     mime: str
@@ -222,7 +227,7 @@ def validate_upload(file_name: str, mime: str, declared_size: Any, data: bytes) 
     if (declared is not None and declared > MAX_UPLOAD_BYTES) or size > MAX_UPLOAD_BYTES:
         raise UploadRefused(
             CODE_SIZE,
-            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi Google Drive, chưa ghi dữ liệu.",
+            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi kho chứng từ, chưa lưu dữ liệu.",
         )
     if declared is not None and declared != size:
         # The browser's number is a convenience; the decoded bytes are the
@@ -310,6 +315,28 @@ def optimize_image(data: bytes, extension: str) -> bytes | None:
 # Upload orchestration
 # ---------------------------------------------------------------------------
 
+def resolve_storage_backend() -> str:
+    """Return the selected backend; unsupported values remain unsupported."""
+    return str(get_attachment_storage_backend() or "").strip().lower()
+
+
+def build_gridfs_client() -> Any:
+    """Build the bounded GridFS store over the app's existing Mongo database."""
+    from core.database import get_db
+    from core.gridfs_client import GridFSAttachmentStore
+
+    db = get_db()
+    if db is None:
+        return None
+    return GridFSAttachmentStore(db, bucket_name=SHIPMENT_ATTACHMENT_GRIDFS_BUCKET)
+
+
+def _resolve_gridfs_store(gridfs: Any = None) -> Any:
+    if gridfs is not None:
+        return gridfs
+    return build_gridfs_client()
+
+
 def _resolve_drive_client(drive: Any = None) -> Any:
     if drive is not None:
         return drive
@@ -318,6 +345,31 @@ def _resolve_drive_client(drive: Any = None) -> Any:
 
 def _shipment_folder_name(shipment_id: str) -> str:
     return sanitize_drive_name(shipment_id, fallback="lo-hang")
+
+
+def storage_label(backend: str | None = None) -> str:
+    """Operator-neutral storage wording, with Drive wording only when selected."""
+    selected = str(backend or resolve_storage_backend()).strip().lower()
+    return "Shared Drive" if selected == STORAGE_BACKEND_DRIVE_SHARED else "Kho chứng từ"
+
+
+def _storage_error_label(backend: str) -> str:
+    # PR65's optional drive_shared path retains its established wording; the
+    # default GridFS path is deliberately provider-neutral for operators.
+    return "Google Drive" if backend == STORAGE_BACKEND_DRIVE_SHARED else "Kho chứng từ"
+
+
+def storage_is_configured(backend: str | None = None) -> bool:
+    selected = str(backend or resolve_storage_backend()).strip().lower()
+    if selected == STORAGE_BACKEND_GRIDFS:
+        from core.database import get_db
+        try:
+            return get_db() is not None
+        except Exception:  # noqa: BLE001 - policy must fail closed
+            return False
+    if selected == STORAGE_BACKEND_DRIVE_SHARED:
+        return bool(load_drive_settings().configured)
+    return False
 
 
 def upload_attachment(
@@ -330,80 +382,128 @@ def upload_attachment(
     uploaded_by: str = "",
     declared_size: Any = None,
     drive: Any = None,
+    gridfs: Any = None,
+    storage_backend: str | None = None,
 ) -> dict[str, Any]:
-    """The whole bounded upload contract, returning a plain outcome dict."""
-    from core.database import find_shipment_attachment_by_sha, save_shipment_attachment
+    """Run the bounded upload order for GridFS or explicit ``drive_shared``.
+
+    ``drive`` and ``gridfs`` are test seams only; production chooses the
+    configured backend.  They do not bypass validation, RBAC, dedupe, or the
+    metadata boundary.
+    """
+    from core.database import (
+        ATTACHMENT_PROBE_ABSENT_PROVEN,
+        ATTACHMENT_PROBE_FOUND_MATCHING,
+        find_shipment_attachment_by_sha,
+        load_shipment_attachment,
+        probe_shipment_attachment_identity,
+        save_shipment_attachment,
+    )
 
     sid = str(shipment_id or "").strip()
     if not sid:
         return {"ok": False, "code": CODE_INVALID, "error": "Thiếu shipmentId."}
     resolved_category = category_of(category)
+    backend = str(storage_backend or resolve_storage_backend()).strip().lower()
+    if backend not in SUPPORTED_STORAGE_BACKENDS:
+        return {
+            "ok": False,
+            "code": CODE_STORAGE_UNSUPPORTED,
+            "error": "Kho chứng từ chưa được cấu hình đúng; không có tệp nào được lưu.",
+        }
 
+    # Required order: validate ORIGINAL → hash ORIGINAL → same-shipment dedupe.
     try:
         safe_name, canonical_mime, _kind = validate_upload(file_name, mime, declared_size, data)
     except UploadRefused as refusal:
         return {"ok": False, "code": refusal.code, "error": refusal.message}
-
-    # SHA-256 of the ORIGINAL upload — the attachment's durable identity, even
-    # when the stored bytes are an optimized derivative.
     digest = sha256_hex(data)
-
     existing = find_shipment_attachment_by_sha(sid, digest)
     if existing:
-        # Same shipment + same original bytes ⇒ no second Drive copy.
         return {
             "ok": True,
             "code": CODE_DUPLICATE,
             "duplicate": True,
             "error": "",
-            "message": "Tệp này đã có trên Google Drive của lô — không tải lên bản sao.",
+            "message": "Tệp này đã có trong kho chứng từ của lô — không tải lên bản sao.",
             "record": existing,
         }
 
-    client = _resolve_drive_client(drive)
-    if client is None:
-        settings = load_drive_settings()
+    # Optimization has no external side effect and therefore follows the
+    # dedupe guard but precedes the single provider write.
+    prepared = prepare_stored_bytes(data, extension_of(safe_name), canonical_mime)
+    client: Any = None
+    uploaded: dict[str, Any]
+    try:
+        if backend == STORAGE_BACKEND_GRIDFS:
+            client = _resolve_gridfs_store(gridfs)
+            if client is None:
+                return {
+                    "ok": False,
+                    "code": CODE_GRIDFS_UNCONFIGURED,
+                    "error": "Kho chứng từ chưa sẵn sàng trên máy chủ. Không có tệp nào được lưu.",
+                }
+            uploaded = client.upload_file(
+                name=safe_name,
+                mime=prepared.mime,
+                data=prepared.data,
+                metadata={"shipment_id": sid, "category": resolved_category},
+            )
+        else:
+            client = _resolve_drive_client(drive)
+            if client is None:
+                settings = load_drive_settings()
+                return {
+                    "ok": False,
+                    "code": CODE_DRIVE_UNCONFIGURED,
+                    "error": (
+                        "Google Drive chưa được cấu hình trên máy chủ (thiếu "
+                        + ", ".join(settings.missing)
+                        + "). Không có tệp nào được tải lên."
+                    ),
+                }
+            root_id = str(client.settings.root_folder_id or "")
+            shipments_folder = client.ensure_folder(DRIVE_SHIPMENTS_FOLDER, root_id)
+            shipment_folder = client.ensure_folder(_shipment_folder_name(sid), shipments_folder)
+            attachments_folder = client.ensure_folder(DRIVE_ATTACHMENTS_FOLDER, shipment_folder)
+            uploaded = client.upload_file(
+                name=safe_name,
+                mime=prepared.mime,
+                data=prepared.data,
+                parent_id=attachments_folder,
+                description=f"{sid} · {category_label(resolved_category)}",
+            )
+            uploaded = {
+                "storage_file_id": str(uploaded.get("fileId") or ""),
+                "stored_name": str(uploaded.get("name") or safe_name),
+                "stored_size": len(prepared.data),
+            }
+    except (DriveError, GridFSStorageError) as exc:
+        code = CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED
+        return {"ok": False, "code": code, "error": f"{_storage_error_label(backend)} lỗi: {exc}"}
+    except Exception as exc:  # noqa: BLE001 - provider faults never become success
+        code = CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED
+        return {"ok": False, "code": code, "error": f"{_storage_error_label(backend)} lỗi ({type(exc).__name__})."}
+
+    storage_file_id = str(uploaded.get("storage_file_id") or "").strip()
+    if not storage_file_id:
         return {
             "ok": False,
-            "code": CODE_DRIVE_UNCONFIGURED,
-            "error": (
-                "Google Drive chưa được cấu hình trên máy chủ (thiếu "
-                + ", ".join(settings.missing)
-                + "). Không có tệp nào được tải lên."
-            ),
+            "code": CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED,
+            "error": f"{_storage_error_label(backend)} không trả về mã tệp; không ghi metadata.",
         }
-
-    prepared = prepare_stored_bytes(data, extension_of(safe_name), canonical_mime)
-
-    try:
-        root_id = str(client.settings.root_folder_id or "")
-        shipments_folder = client.ensure_folder(DRIVE_SHIPMENTS_FOLDER, root_id)
-        shipment_folder = client.ensure_folder(_shipment_folder_name(sid), shipments_folder)
-        attachments_folder = client.ensure_folder(DRIVE_ATTACHMENTS_FOLDER, shipment_folder)
-        uploaded = client.upload_file(
-            name=safe_name,
-            mime=prepared.mime,
-            data=prepared.data,
-            parent_id=attachments_folder,
-            description=f"{sid} · {category_label(resolved_category)}",
-        )
-    except DriveError as exc:
-        return {"ok": False, "code": CODE_DRIVE_FAILED, "error": f"Google Drive lỗi: {exc}"}
-    except Exception as exc:  # noqa: BLE001 - a provider fault must not blank the desk
-        return {"ok": False, "code": CODE_DRIVE_FAILED, "error": f"Google Drive lỗi ({type(exc).__name__})."}
-
     record = {
         "id": f"ATT-{sid}-{uuid4().hex[:12]}",
+        "storage_backend": backend,
+        "storage_file_id": storage_file_id,
         "shipment_id": sid,
         "original_name": safe_name,
-        "stored_name": str(uploaded.get("name") or safe_name),
+        "stored_name": str(uploaded.get("stored_name") or safe_name),
         "mime": prepared.mime,
         "category": resolved_category,
         "original_size": len(data),
-        "stored_size": len(prepared.data),
+        "stored_size": int(uploaded.get("stored_size") or len(prepared.data)),
         "sha256": digest,
-        "drive_file_id": str(uploaded.get("fileId") or ""),
-        "drive_folder_id": str(attachments_folder),
         "uploaded_at": utc_now_iso(),
         "uploaded_by": str(uploaded_by or ""),
         "compression_mode": prepared.compression_mode,
@@ -411,34 +511,129 @@ def upload_attachment(
         "status": STATUS_AVAILABLE,
     }
 
-    if save_shipment_attachment(record):
-        return {"ok": True, "code": "", "error": "", "record": record, "duplicate": False}
+    metadata_probe_state: str | None = None
+    try:
+        metadata_saved = bool(save_shipment_attachment(record))
+    except Exception:  # noqa: BLE001 - save may have committed before audit failed
+        # ``save_shipment_attachment`` writes the row before its audit insert.
+        # A raised audit exception therefore cannot be treated as proof that
+        # the metadata write was absent. The tri-state exact-id probe is the
+        # only gate allowed to authorize the existing compensation delete.
+        probe_state, durable = probe_shipment_attachment_identity(record)
+        metadata_probe_state = probe_state
+        if probe_state == ATTACHMENT_PROBE_FOUND_MATCHING:
+            return {
+                "ok": False,
+                "code": CODE_METADATA_READBACK_UNPROVEN,
+                "error": (
+                    "Bước ghi metadata không hoàn tất rõ ràng nhưng đã thấy hồ sơ tệp tương ứng; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+                "metadata_committed": True,
+                "readback_proven": False,
+                "compensation_attempted": False,
+                "compensated": False,
+                "orphan_risk": False,
+            }
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return {
+                "ok": False,
+                "code": CODE_METADATA_READBACK_UNPROVEN,
+                "error": (
+                    "Bước ghi metadata không hoàn tất rõ ràng và chưa chứng minh được hồ sơ tệp; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+                "metadata_committed": False,
+                "readback_proven": False,
+                "compensation_attempted": False,
+                "compensated": False,
+                "orphan_risk": False,
+            }
+        # Only a successful exact-id lookup that returned no row may enter the
+        # existing one-delete compensation path below.
+        metadata_saved = False
 
-    # Metadata could not be persisted: compensate with exactly ONE bounded
-    # delete of the file this same call created.
-    drive_file_id = str(record["drive_file_id"])
-    if drive_file_id and client.delete_file(drive_file_id):
+    if metadata_saved:
+        # A successful metadata writer call and a failed/unproven fresh read are
+        # different states. The row may already be durable, so deleting bytes
+        # here could create the invalid row-without-file state. Preserve both
+        # sides and let the next request's SHA dedupe reconcile it.
+        try:
+            fresh = load_shipment_attachment(record["id"])
+        except Exception:  # noqa: BLE001 - readback proof is unavailable
+            fresh = None
+        if fresh is not None:
+            return {"ok": True, "code": "", "error": "", "record": fresh, "duplicate": False}
+        return {
+            "ok": False,
+            "code": CODE_METADATA_READBACK_UNPROVEN,
+            "error": (
+                "Đã ghi metadata nhưng chưa xác minh được readback mới; "
+                "giữ nguyên metadata và nội dung tệp, không xoá bù."
+            ),
+            "metadata_committed": True,
+            "readback_proven": False,
+            "compensation_attempted": False,
+            "compensated": False,
+            "orphan_risk": False,
+        }
+
+    # A false metadata result is not proof of absence either: the write helper
+    # may have failed after an upsert, or its state may be unavailable. Only a
+    # successful exact-id probe returning ABSENT_PROVEN may authorize cleanup.
+    if metadata_probe_state is None:
+        metadata_probe_state, durable = probe_shipment_attachment_identity(record)
+    if metadata_probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+        matching = metadata_probe_state == ATTACHMENT_PROBE_FOUND_MATCHING
+        return {
+            "ok": False,
+            "code": CODE_METADATA_READBACK_UNPROVEN,
+            "error": (
+                "Không xác minh được metadata nhưng đã thấy hồ sơ tệp tương ứng; "
+                "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                if matching else
+                "Không xác minh được metadata và cũng chưa chứng minh được hồ sơ tệp vắng mặt; "
+                "giữ nguyên nội dung tệp, không xoá bù."
+            ),
+            "metadata_committed": matching,
+            "readback_proven": False,
+            "compensation_attempted": False,
+            "compensated": False,
+            "orphan_risk": False,
+        }
+
+    # GridFS has no multi-document transaction. Compensation is now gated by
+    # authoritative absence and gets exactly ONE delete attempt for the exact
+    # identity created by this call.
+    compensation_attempted = True
+    deleted = False
+    try:
+        deleted = bool(client.delete_file(storage_file_id))
+    except Exception:  # noqa: BLE001 - a failed proof is orphan risk
+        deleted = False
+    if deleted:
         return {
             "ok": False,
             "code": CODE_METADATA_FAILED,
-            "error": "Không ghi được metadata vào MongoDB; tệp vừa tạo trên Google Drive đã được xoá.",
+            "error": f"Không ghi được metadata vào MongoDB; tệp vừa tạo trong {storage_label(backend)} đã được xoá.",
+            "compensation_attempted": compensation_attempted,
             "compensated": True,
+            "orphan_risk": False,
         }
 
-    # Cleanup could not be proven: say so explicitly, log non-sensitive repair
-    # evidence only, and never fabricate a success.
     LOGGER.warning(
-        "ATTACHMENT_ORPHAN_RISK shipment_id=%s drive_file_id=%s name=%s bytes=%s",
-        sid, drive_file_id or "(none)", record["stored_name"], record["stored_size"],
+        "ATTACHMENT_ORPHAN_RISK backend=%s shipment_id=%s storage_file_id=%s name=%s bytes=%s",
+        backend, sid, storage_file_id or "(none)", record["stored_name"], record["stored_size"],
     )
     return {
         "ok": False,
         "code": CODE_METADATA_FAILED,
         "error": (
-            "Không ghi được metadata vào MongoDB và chưa xoá được tệp vừa tạo trên Google Drive "
+            f"Không ghi được metadata và chưa chứng minh được việc xoá tệp trong {storage_label(backend)} "
             "— đã ghi log để xử lý thủ công (orphan risk)."
         ),
         "orphan_risk": True,
+        "compensation_attempted": compensation_attempted,
         "compensated": False,
     }
 
@@ -447,8 +642,20 @@ def upload_attachment(
 # Download (server-authoritative; Drive stays restricted)
 # ---------------------------------------------------------------------------
 
-def fetch_attachment_bytes(record: Mapping[str, Any], *, drive: Any = None) -> dict[str, Any]:
-    """Fetch ONE attachment's bytes from Drive for server-side delivery."""
+def fetch_attachment_bytes(
+    record: Mapping[str, Any],
+    *,
+    shipment_id: str | None = None,
+    drive: Any = None,
+    gridfs: Any = None,
+    storage_backend: str | None = None,
+) -> dict[str, Any]:
+    """Fetch ONE file after metadata and shipment ownership checks.
+
+    The ownership check is deliberately before backend construction/read. A
+    caller that supplies a mismatched shipment therefore causes zero GridFS or
+    Drive reads.
+    """
     from core.database import load_shipment_attachment
 
     attachment_id = str((record or {}).get("id") or "").strip()
@@ -457,31 +664,56 @@ def fetch_attachment_bytes(record: Mapping[str, Any], *, drive: Any = None) -> d
     stored = load_shipment_attachment(attachment_id)
     if not stored:
         return {"ok": False, "code": CODE_NOT_FOUND, "error": "Không tìm thấy tệp đính kèm này."}
-    file_id = str(stored.get("drive_file_id") or "")
-    if not file_id:
-        return {"ok": False, "code": CODE_NOT_FOUND, "error": "Metadata không có mã tệp Google Drive."}
+    expected_shipment = str(shipment_id or "").strip()
+    if expected_shipment and str(stored.get("shipment_id") or "") != expected_shipment:
+        return {"ok": False, "code": "SHIPMENT_MISMATCH", "error": "Tệp đính kèm không thuộc lô hàng này."}
 
-    client = _resolve_drive_client(drive)
-    if client is None:
-        settings = load_drive_settings()
-        return {
-            "ok": False,
-            "code": CODE_DRIVE_UNCONFIGURED,
-            "error": (
-                "Google Drive chưa được cấu hình trên máy chủ (thiếu "
-                + ", ".join(settings.missing)
-                + ") — không đọc được tệp."
-            ),
-        }
+    backend = str(storage_backend or stored.get("storage_backend") or "").strip().lower()
+    # Backward-compatible reads for rows created by PR65 before the selector.
+    if not backend and str(stored.get("drive_file_id") or "").strip():
+        backend = STORAGE_BACKEND_DRIVE_SHARED
+    if backend not in SUPPORTED_STORAGE_BACKENDS:
+        return {"ok": False, "code": CODE_STORAGE_UNSUPPORTED, "error": "Kho chứng từ chưa được cấu hình đúng."}
+    file_id = str(stored.get("storage_file_id") or stored.get("drive_file_id") or "").strip()
+    if not file_id:
+        return {"ok": False, "code": CODE_NOT_FOUND, "error": "Metadata không có mã tệp trong kho chứng từ."}
+
     try:
-        data = client.download_file(file_id)
-    except DriveError as exc:
-        return {"ok": False, "code": CODE_DRIVE_FAILED, "error": f"Google Drive lỗi: {exc}"}
+        if backend == STORAGE_BACKEND_GRIDFS:
+            client = _resolve_gridfs_store(gridfs)
+            if client is None:
+                return {
+                    "ok": False,
+                    "code": CODE_GRIDFS_UNCONFIGURED,
+                    "error": "Kho chứng từ chưa sẵn sàng trên máy chủ — không đọc được tệp.",
+                }
+            data = client.download_file(file_id)
+        else:
+            client = _resolve_drive_client(drive)
+            if client is None:
+                settings = load_drive_settings()
+                return {
+                    "ok": False,
+                    "code": CODE_DRIVE_UNCONFIGURED,
+                    "error": (
+                        "Google Drive chưa được cấu hình trên máy chủ (thiếu "
+                        + ", ".join(settings.missing)
+                        + ") — không đọc được tệp."
+                    ),
+                }
+            data = client.download_file(file_id)
+    except GridFSFileNotFound as exc:
+        return {"ok": False, "code": CODE_NOT_FOUND, "error": str(exc)}
+    except (DriveError, GridFSStorageError) as exc:
+        code = CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED
+        return {"ok": False, "code": code, "error": f"{_storage_error_label(backend)} lỗi: {exc}"}
     except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "code": CODE_DRIVE_FAILED, "error": f"Google Drive lỗi ({type(exc).__name__})."}
+        code = CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED
+        return {"ok": False, "code": code, "error": f"{_storage_error_label(backend)} lỗi ({type(exc).__name__})."}
     if not data:
-        return {"ok": False, "code": CODE_DRIVE_FAILED, "error": "Google Drive trả về tệp rỗng."}
-    return {"ok": True, "code": "", "error": "", "record": stored, "data": data}
+        code = CODE_GRIDFS_FAILED if backend == STORAGE_BACKEND_GRIDFS else CODE_DRIVE_FAILED
+        return {"ok": False, "code": code, "error": f"{_storage_error_label(backend)} trả về tệp rỗng."}
+    return {"ok": True, "code": "", "error": "", "record": stored, "data": bytes(data)}
 
 
 # ---------------------------------------------------------------------------
@@ -491,8 +723,9 @@ def fetch_attachment_bytes(record: Mapping[str, Any], *, drive: Any = None) -> d
 def project_attachment(record: Mapping[str, Any], *, download: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Project ONE attachment for the shipment document list.
 
-    Deliberately absent: ``drive_file_id``, ``drive_folder_id``, the raw
-    SHA-256 and any credential. The operator sees the file, its category, its
+    Deliberately absent: ``storage_file_id``, GridFS/ObjectId internals,
+    legacy ``drive_file_id``, ``drive_folder_id``, the raw SHA-256 and any
+    credential. The operator sees the file, its category, its
     honest sizes and who uploaded it.
     """
     attachment_id = str(record.get("id") or "")
@@ -568,7 +801,7 @@ def decode_upload_payload(payload: Mapping[str, Any]) -> tuple[bytes, int]:
     if len(encoded) > MAX_BASE64_CHARS:
         raise UploadRefused(
             CODE_SIZE,
-            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi Google Drive, chưa ghi dữ liệu.",
+            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi kho chứng từ, chưa lưu dữ liệu.",
         )
     try:
         data = base64.b64decode(encoded, validate=True)
@@ -584,9 +817,13 @@ __all__ = [
     "CATEGORIES",
     "CODE_DRIVE_FAILED",
     "CODE_DRIVE_UNCONFIGURED",
+    "CODE_GRIDFS_FAILED",
+    "CODE_GRIDFS_UNCONFIGURED",
+    "CODE_STORAGE_UNSUPPORTED",
     "CODE_DUPLICATE",
     "CODE_INVALID",
     "CODE_METADATA_FAILED",
+    "CODE_METADATA_READBACK_UNPROVEN",
     "CODE_MISMATCH",
     "CODE_NOT_FOUND",
     "CODE_SIZE",
@@ -599,6 +836,7 @@ __all__ = [
     "STATUS_AVAILABLE",
     "STATUS_UPLOAD_FAILED",
     "UploadRefused",
+    "build_gridfs_client",
     "category_of",
     "decode_upload_payload",
     "fetch_attachment_bytes",
@@ -606,6 +844,11 @@ __all__ = [
     "prepare_stored_bytes",
     "project_attachment",
     "project_attachments",
+    "resolve_storage_backend",
     "sha256_hex",
+    "storage_is_configured",
+    "storage_label",
     "upload_attachment",
+    "GRIDFS_BUCKET",
+    "SHIPMENT_ATTACHMENT_GRIDFS_BUCKET",
 ]

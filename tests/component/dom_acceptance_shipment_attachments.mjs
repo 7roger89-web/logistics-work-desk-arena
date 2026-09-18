@@ -169,6 +169,11 @@ const tabs = window.document.getElementById("workspace-tabs");
 assert.ok(tabs, "workspace tabs must exist");
 await click("Chứng từ & PXK", "button", tabs);
 assert.ok(mainText().includes("Tệp đính kèm lô hàng"), "attachment section title missing");
+assert.ok(!mainText().includes("Google Drive"), "gridfs mode must use provider-neutral wording");
+assert.ok(
+  mainText().includes("nội dung tệp được lưu trong Kho chứng từ; thông tin mô tả được lưu cùng hồ sơ lô."),
+  "attachment copy must explain that both content and description are retained"
+);
 ok("attachment section is visible in the Chứng từ tab");
 
 console.log("STEP 2 — the list comes from the backend projection");
@@ -233,7 +238,7 @@ assert.equal(payload.size, fileBytes.length);
 assert.equal(payload.category, "customs", "the selected category must travel with the file");
 assert.equal(typeof payload.requestId, "string");
 assert.ok(payload.base64.length > 0 && !payload.base64.includes(","), "bounded base64 body, no data-url prefix");
-assert.ok(mainText().includes("ĐANG TẢI LÊN GOOGLE DRIVE"), "a pending state must be visible");
+assert.ok(mainText().includes("ĐANG LƯU VÀO KHO CHỨNG TỪ"), "a pending state must be visible");
 assert.ok(triggers.filter((t) => t.event === "attachment_download").length === 0, "no download event on upload");
 ok("ONE bounded upload event + visible pending state");
 
@@ -244,7 +249,7 @@ rerender.lastWrites = [];
 invoke(rerender);
 await tick(120);
 assert.ok(
-  mainText().includes("ĐANG TẢI LÊN GOOGLE DRIVE"),
+  mainText().includes("ĐANG LƯU VÀO KHO CHỨNG TỪ"),
   "pending must survive a fresh view-model that carries no backend outcome"
 );
 assert.equal($("[data-testid='attachment-outcome']").length, 0, "no outcome may be shown before the backend answers");
@@ -292,7 +297,7 @@ await tick(120);
 const afterUpload = $("[data-testid='shipment-attachments']")[0];
 assert.ok(text(afterUpload).includes("To khai moi.pdf"), "the authoritative readback must show the new attachment");
 assert.equal($("[data-testid='attachment-row']", afterUpload).length, 3, "three attachments after the write");
-assert.ok(!mainText().includes("ĐANG TẢI LÊN GOOGLE DRIVE"), "the pending state must clear on the backend answer");
+assert.ok(!mainText().includes("ĐANG LƯU VÀO KHO CHỨNG TỪ"), "the pending state must clear on the backend answer");
 assert.ok(text(afterUpload).includes("Đã lưu tệp đính kèm vào lô."), "the backend outcome must be shown");
 ok("fresh backend readback drives the list; pending state clears");
 
@@ -317,7 +322,7 @@ duplicated.lastWrites = [
     error: "",
     gate: "DUPLICATE",
     duplicate: true,
-    message: "Tệp này đã có trên Google Drive của lô — không tải lên bản sao.",
+    message: "Tệp này đã có trong kho chứng từ của lô — không tải lên bản sao.",
     requestId: lastUploadEvent.value.payload.requestId,
   },
 ];
@@ -330,21 +335,28 @@ assert.ok(
 );
 ok("duplicate refusal displayed from the backend outcome");
 
-const driveOff = clone(readback);
-driveOff.version = "attachments-drive-unconfigured";
-driveOff.lastWrites = [
+const refused = new window.File([new Uint8Array([37, 80, 68, 70])], "Kho khong san sang.pdf", { type: "application/pdf" });
+Object.defineProperty(slot, "files", { value: [refused], configurable: true });
+slot.dispatchEvent(new window.Event("change", { bubbles: true }));
+await tick();
+$("[data-testid='attachment-upload']")[0].dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+await tick(120);
+const refusedUploadEvent = triggers.filter((t) => t.event === "shipment_attachment_upload").at(-1);
+const storageOff = clone(readback);
+storageOff.version = "attachments-storage-unconfigured";
+storageOff.lastWrites = [
   {
     event: "shipment_attachment_upload",
     shipmentId: "LO-0306",
     ok: false,
-    error: "Google Drive chưa được cấu hình trên máy chủ (thiếu GOOGLE_SERVICE_ACCOUNT_JSON). Không có tệp nào được tải lên.",
-    gate: "DRIVE_NOT_CONFIGURED",
-    requestId: lastUploadEvent.value.payload.requestId,
+    error: "Kho chứng từ chưa sẵn sàng trên máy chủ. Không có tệp nào được lưu.",
+    gate: "GRIDFS_NOT_CONFIGURED",
+    requestId: refusedUploadEvent.value.payload.requestId,
   },
 ];
-invoke(driveOff);
+invoke(storageOff);
 await tick(120);
-assert.ok(mainText().includes("Google Drive chưa được cấu hình trên máy chủ"), "an unconfigured Drive must be reported honestly");
+assert.ok(mainText().includes("Kho chứng từ chưa sẵn sàng trên máy chủ"), "an unconfigured storage backend must be reported honestly");
 assert.ok(!mainText().includes("Đã lưu tệp đính kèm"), "a refused upload must not be reported as saved");
 ok("refused upload is reported honestly (no fake success)");
 
@@ -375,6 +387,11 @@ for (const needle of [
   "PRIVATE KEY",
   "service_account",
   "sha256",
+  "Google Drive",
+  "MongoDB",
+  "GridFS",
+  "bucket",
+  "chunks",
 ]) {
   assert.ok(!html.includes(needle), `DOM must not contain "${needle}"`);
 }

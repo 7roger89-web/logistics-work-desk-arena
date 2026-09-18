@@ -15165,70 +15165,72 @@ var ls = {
 	accept: "",
 	maxUploadBytes: 0,
 	maxUploadLabel: "",
-	driveConfigured: !1
+	storageBackend: "gridfs",
+	storageConfigured: !1,
+	storageLabel: "Kho chứng từ"
 };
 function us({ shipmentId: e, attachments: t, policy: n }) {
-	let { dispatch: r, toast: i } = Jn(), a = (0, _.useSyncExternalStore)(C, S, S)?.lastWrites ?? [], o = n ?? ls, s = (0, _.useRef)(null), [c, l] = (0, _.useState)(o.categories[0]?.id ?? "other"), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)(""), [m, h] = (0, _.useState)(null), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)(""), [x, w] = (0, _.useState)(!1), T = (0, _.useRef)({});
+	let { dispatch: r, toast: i } = Jn(), a = (0, _.useSyncExternalStore)(C, S, S)?.lastWrites ?? [], o = n ?? ls, s = o.storageLabel || (o.driveConfigured ? "Shared Drive" : "Kho chứng từ"), c = o.storageConfigured ?? o.driveConfigured ?? !1, l = (0, _.useRef)(null), [u, d] = (0, _.useState)(o.categories[0]?.id ?? "other"), [f, p] = (0, _.useState)(null), [m, h] = (0, _.useState)(""), [g, v] = (0, _.useState)(null), [y, b] = (0, _.useState)(""), [x, w] = (0, _.useState)(""), [T, E] = (0, _.useState)(!1), D = (0, _.useRef)({});
 	(0, _.useEffect)(() => {
-		if (!f) return;
-		let e = a.find((e) => e.event === "shipment_attachment_upload" && e.requestId === f);
-		if (!e) return;
-		p(""), w(!!e.ok);
-		let t = String(e.message || e.error || "");
-		b(t || (e.ok ? "Đã lưu tệp đính kèm vào lô." : "Tải tệp thất bại.")), e.ok && (d(null), s.current && (s.current.value = ""));
-	}, [a, f]), (0, _.useEffect)(() => {
 		if (!m) return;
-		let e = a.find((e) => e.event === "attachment_download" && e.requestId === m.requestId);
-		e && (h(null), e.ok || (w(!1), b(String(e.error || "Không đọc được tệp từ Google Drive."))));
+		let e = a.find((e) => e.event === "shipment_attachment_upload" && e.requestId === m);
+		if (!e) return;
+		h(""), E(!!e.ok);
+		let t = String(e.message || e.error || "");
+		w(t || (e.ok ? "Đã lưu tệp đính kèm vào lô." : "Tải tệp thất bại.")), e.ok && (p(null), l.current && (l.current.value = ""));
 	}, [a, m]), (0, _.useEffect)(() => {
+		if (!g) return;
+		let e = a.find((e) => e.event === "attachment_download" && e.requestId === g.requestId);
+		e && (v(null), e.ok || (E(!1), w(String(e.error || `Không đọc được tệp từ ${s}.`))));
+	}, [a, g]), (0, _.useEffect)(() => {
 		for (let e of t) {
 			if (!e.downloadAvailable || !e.downloadBase64) continue;
 			let t = e.downloadSeq ?? 0;
-			T.current[e.id] !== t && (T.current[e.id] = t, xo(e.name, e.downloadBase64, e.mime || "application/octet-stream"), i("Đã tải " + e.name, "Bytes đọc từ Google Drive qua máy chủ.", "green"));
+			D.current[e.id] !== t && (D.current[e.id] = t, xo(e.name, e.downloadBase64, e.mime || "application/octet-stream"), i("Đã tải " + e.name, `Bytes đọc từ ${s.toLowerCase()} qua máy chủ.`, "green"));
 		}
 	}, [t, i]);
-	let E = o.accept || void 0, D = () => {
-		if (v(""), b(""), !u) {
-			v("Chưa chọn tệp.");
+	let O = o.accept || void 0, k = () => {
+		if (b(""), w(""), !f) {
+			b("Chưa chọn tệp.");
 			return;
 		}
-		if (o.maxUploadBytes > 0 && u.size > o.maxUploadBytes) {
-			v(`Tệp vượt giới hạn ${o.maxUploadLabel}. Chưa gửi lên máy chủ.`);
+		if (o.maxUploadBytes > 0 && f.size > o.maxUploadBytes) {
+			b(`Tệp vượt giới hạn ${o.maxUploadLabel}. Chưa gửi lên máy chủ.`);
 			return;
 		}
 		let t = cs("ATT");
-		p(t);
+		h(t);
 		let n = new FileReader();
 		n.onerror = () => {
-			p(""), v("Không đọc được nội dung tệp đã chọn.");
+			h(""), b("Không đọc được nội dung tệp đã chọn.");
 		}, n.onload = () => {
 			let i = typeof n.result == "string" ? n.result : "", a = i.indexOf(","), o = a >= 0 ? i.slice(a + 1) : i;
 			if (!o) {
-				p(""), v("Tệp không có dữ liệu.");
+				h(""), b("Tệp không có dữ liệu.");
 				return;
 			}
 			r("shipment_attachment_upload", {
 				shipmentId: e,
-				category: c,
-				fileName: u.name,
-				mime: u.type,
-				size: u.size,
+				category: u,
+				fileName: f.name,
+				mime: f.type,
+				size: f.size,
 				base64: o,
 				requestId: t
-			}) || (p(""), v("Không gửi được tệp tới backend."));
-		}, n.readAsDataURL(u);
-	}, O = (t) => {
-		v(""), b("");
+			}) || (h(""), b("Không gửi được tệp tới backend."));
+		}, n.readAsDataURL(f);
+	}, A = (t) => {
+		b(""), w("");
 		let n = cs("ATTDOWN");
-		h({
+		v({
 			requestId: n,
 			attachmentId: t.id
 		}), r("attachment_download", {
 			shipmentId: e,
 			attachmentId: t.id,
 			requestId: n
-		}) || (h(null), v("Không gửi được yêu cầu mở tệp tới backend."));
-	}, k = Array.isArray(t) ? t : [];
+		}) || (v(null), b("Không gửi được yêu cầu mở tệp tới backend."));
+	}, ee = Array.isArray(t) ? t : [];
 	return /* @__PURE__ */ (0, R.jsxs)("section", {
 		className: "mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 		"data-testid": "shipment-attachments",
@@ -15239,11 +15241,11 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 					className: "text-[#1e5aa8]"
 				}),
 				title: "Tệp đính kèm lô hàng",
-				sub: "Tệp thật của lô: bytes lưu trên Shared Drive của chủ sở hữu, hệ thống chỉ lưu metadata.",
+				sub: `Tệp thật của lô: nội dung tệp được lưu trong ${s}; thông tin mô tả được lưu cùng hồ sơ lô.`,
 				right: /* @__PURE__ */ (0, R.jsxs)(q, {
-					tone: k.length > 0 ? "green" : "gray",
+					tone: ee.length > 0 ? "green" : "gray",
 					size: "sm",
-					children: [k.length, " tệp"]
+					children: [ee.length, " tệp"]
 				})
 			}),
 			o.allowUpload ? /* @__PURE__ */ (0, R.jsxs)("div", {
@@ -15256,8 +15258,8 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 					}), /* @__PURE__ */ (0, R.jsx)("select", {
 						id: "fld-attach-category",
 						"data-testid": "attachment-category",
-						value: c,
-						onChange: (e) => l(e.target.value),
+						value: u,
+						onChange: (e) => d(e.target.value),
 						className: X(),
 						children: o.categories.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
 							value: e.id,
@@ -15274,13 +15276,13 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 							")"
 						]
 					}), /* @__PURE__ */ (0, R.jsx)("input", {
-						ref: s,
+						ref: l,
 						id: "fld-attach-file",
 						"data-testid": "attachment-file",
 						type: "file",
-						accept: E,
+						accept: O,
 						onChange: (e) => {
-							d(e.target.files?.[0] ?? null), v(""), b("");
+							p(e.target.files?.[0] ?? null), b(""), w("");
 						},
 						className: U("w-full max-w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-[14px] min-h-[44px]", "file:mr-3 file:rounded-lg file:border-0 file:bg-[#0f2a4a] file:px-3 file:py-2 file:text-white file:font-bold")
 					})]
@@ -15296,43 +15298,43 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 					/* @__PURE__ */ (0, R.jsxs)("button", {
 						type: "button",
 						"data-testid": "attachment-upload",
-						disabled: !u || !!f,
-						onClick: D,
-						className: U("btn-press touch-target inline-flex items-center gap-2 rounded-xl px-5 min-h-[48px] font-extrabold", !u || f ? "bg-slate-300 text-slate-600" : "bg-[#0f2a4a] text-white"),
-						children: [f ? /* @__PURE__ */ (0, R.jsx)(Ui, {
+						disabled: !f || !!m,
+						onClick: k,
+						className: U("btn-press touch-target inline-flex items-center gap-2 rounded-xl px-5 min-h-[48px] font-extrabold", !f || m ? "bg-slate-300 text-slate-600" : "bg-[#0f2a4a] text-white"),
+						children: [m ? /* @__PURE__ */ (0, R.jsx)(Ui, {
 							size: 17,
 							className: "animate-spin"
-						}) : /* @__PURE__ */ (0, R.jsx)(ni, { size: 17 }), f ? "ĐANG TẢI LÊN GOOGLE DRIVE…" : "TẢI LÊN GOOGLE DRIVE"]
+						}) : /* @__PURE__ */ (0, R.jsx)(ni, { size: 17 }), m ? `ĐANG LƯU VÀO ${s.toUpperCase()}…` : `LƯU VÀO ${s.toUpperCase()}`]
 					}),
-					u && /* @__PURE__ */ (0, R.jsx)("span", {
+					f && /* @__PURE__ */ (0, R.jsx)("span", {
 						className: "text-[13px] text-slate-600 min-w-0 break-words",
-						children: u.name
+						children: f.name
 					}),
-					!o.driveConfigured && /* @__PURE__ */ (0, R.jsx)("span", {
+					!c && /* @__PURE__ */ (0, R.jsxs)("span", {
 						className: "text-[13px] text-amber-800",
-						"data-testid": "attachment-drive-state",
-						children: "Google Drive chưa được cấu hình trên máy chủ — máy chủ sẽ từ chối trung thực."
+						"data-testid": "attachment-storage-state",
+						children: [s, " chưa sẵn sàng trên máy chủ — hệ thống sẽ từ chối trung thực."]
 					})
 				]
 			}),
-			g && /* @__PURE__ */ (0, R.jsx)("p", {
+			y && /* @__PURE__ */ (0, R.jsx)("p", {
 				className: "mt-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[13.5px] font-semibold text-red-700",
 				"data-testid": "attachment-local-error",
-				children: g
-			}),
-			y && /* @__PURE__ */ (0, R.jsx)("p", {
-				"data-testid": "attachment-outcome",
-				className: U("mt-3 rounded-xl border px-3 py-2 text-[13.5px] font-semibold", x ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-200 text-amber-900"),
 				children: y
 			}),
-			k.length === 0 ? /* @__PURE__ */ (0, R.jsx)("p", {
+			x && /* @__PURE__ */ (0, R.jsx)("p", {
+				"data-testid": "attachment-outcome",
+				className: U("mt-3 rounded-xl border px-3 py-2 text-[13.5px] font-semibold", T ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-200 text-amber-900"),
+				children: x
+			}),
+			ee.length === 0 ? /* @__PURE__ */ (0, R.jsx)("p", {
 				className: "mt-3 text-slate-500 text-[14px]",
 				"data-testid": "attachment-empty",
 				children: "Lô chưa có tệp đính kèm nào."
 			}) : /* @__PURE__ */ (0, R.jsx)("ul", {
 				className: "mt-3 space-y-2",
 				"data-testid": "attachment-list",
-				children: k.map((e) => /* @__PURE__ */ (0, R.jsxs)("li", {
+				children: ee.map((e) => /* @__PURE__ */ (0, R.jsxs)("li", {
 					"data-testid": "attachment-row",
 					"data-attachment-id": e.id,
 					className: "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-slate-200 p-3 min-w-0",
@@ -15368,10 +15370,10 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 						/* @__PURE__ */ (0, R.jsxs)("button", {
 							type: "button",
 							"data-testid": "attachment-download",
-							disabled: !!m,
-							onClick: () => O(e),
+							disabled: !!g,
+							onClick: () => A(e),
 							className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#0f2a4a] text-[#0f2a4a] font-bold px-4 min-h-[44px] shrink-0",
-							children: [m?.attachmentId === e.id ? /* @__PURE__ */ (0, R.jsx)(Ui, {
+							children: [g?.attachmentId === e.id ? /* @__PURE__ */ (0, R.jsx)(Ui, {
 								size: 15,
 								className: "animate-spin"
 							}) : /* @__PURE__ */ (0, R.jsx)(ci, { size: 15 }), "TẢI"]
@@ -15381,7 +15383,7 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 			}),
 			/* @__PURE__ */ (0, R.jsx)("p", {
 				className: "mt-3 text-[12.5px] text-slate-500",
-				children: "Trùng tệp trong cùng lô được nhận diện bằng SHA-256 của bản gốc: bản sao không tải lên Drive lần hai. Tệp giữ nguyên quyền riêng tư trong Shared Drive của chủ sở hữu — hệ thống không tạo liên kết công khai."
+				children: "Tệp trùng trong cùng lô không được lưu bản sao lần hai. Tệp giữ nguyên quyền riêng tư trong kho chứng từ — hệ thống không tạo liên kết công khai."
 			})
 		]
 	});

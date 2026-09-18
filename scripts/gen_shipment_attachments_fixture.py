@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 DOM-acceptance fixture.
+"""Generate the LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 DOM fixture.
 
 The fixture comes from the real, isolated mongomock staging view-model — never
-from hand-written browser data and never from production, and the Drive side is
-a DETERMINISTIC FAKE ADAPTER (no service account, no real folder, no live Drive
-write):
+from hand-written browser data and never from production, and the byte store is
+a DETERMINISTIC FAKE GRIDFS ADAPTER (no Atlas, no live provider write):
 
 * one optimized document photo (``Tờ khai hải quan.jpg``) so the UI has to
   render an honest "Ảnh đã tối ưu" + "x MB → y KB" row;
@@ -56,35 +55,16 @@ def _pdf_bytes() -> bytes:
     )
 
 
-class _FakeDrive:
-    """Deterministic in-memory Drive stand-in (staging fixture only)."""
+class _FakeGridFS:
+    """Deterministic in-memory GridFS stand-in (fixture only)."""
 
     def __init__(self) -> None:
-        from core.drive_client import DriveSettings
-
-        self.settings = DriveSettings(
-            root_folder_id="ROOT-FOLDER-FIXTURE",
-            service_account={
-                "client_email": "fixture@example.iam.gserviceaccount.com",
-                "private_key": "-----BEGIN PRIVATE KEY-----fixture-----END PRIVATE KEY-----",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            },
-        )
-        self._folders: dict[tuple[str, str], str] = {}
         self._files: dict[str, bytes] = {}
 
-    def ensure_folder(self, name: str, parent_id: str) -> str:
-        key = (parent_id, name)
-        if key not in self._folders:
-            self._folders[key] = f"folder-{len(self._folders) + 1}"
-        return self._folders[key]
-
-    def upload_file(self, *, name: str, mime: str, data: bytes, parent_id: str,
-                    description: str = "") -> dict:
-        file_id = f"drive-file-{len(self._files) + 1}"
+    def upload_file(self, *, name: str, mime: str, data: bytes, metadata=None) -> dict:
+        file_id = f"fixture-gridfs-{len(self._files) + 1}"
         self._files[file_id] = bytes(data)
-        return {"fileId": file_id, "name": name, "mime": mime, "size": len(data),
-                "parents": [parent_id], "webViewLink": ""}
+        return {"storage_file_id": file_id, "stored_name": name, "stored_size": len(data)}
 
     def download_file(self, file_id: str) -> bytes:
         return self._files.get(file_id, b"")
@@ -105,7 +85,7 @@ def main() -> None:
     assert transport == logi_sandbox.SANDBOX_TRANSPORT, "fixture must not touch production"
     st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
 
-    drive = _FakeDrive()
+    gridfs = _FakeGridFS()
     photo = _photo_bytes()
     pdf = _pdf_bytes()
     for name, mime, payload, category in (
@@ -119,7 +99,8 @@ def main() -> None:
             mime=mime,
             data=payload,
             uploaded_by="staging.support",
-            drive=drive,
+            gridfs=gridfs,
+            storage_backend="gridfs",
         )
         assert outcome.get("ok") and not outcome.get("duplicate"), outcome
 

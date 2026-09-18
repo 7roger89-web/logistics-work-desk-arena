@@ -1,5 +1,5 @@
 // ============================================================================
-// LOGI_SHIPMENT_DOCUMENTS_DRIVE_01 — "TỆP ĐÍNH KÈM" for the shipment
+// LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — "TỆP ĐÍNH KÈM" for the shipment
 // "Chứng từ" tab.
 //
 // The whole flow is the ONE existing write contract:
@@ -7,18 +7,17 @@
 //   pick file → ONE typed `shipment_attachment_upload` event (bounded base64,
 //   the same transport the GetFly preview already uses) → Python dispatcher
 //   (RBAC → size/MIME validation → decode → SHA-256 → dedupe → image
-//   optimization → Google Drive upload → Mongo metadata) → fresh shipment
+//   optimization → selected server storage → Mongo metadata) → fresh shipment
 //   readback → this list.
 //
 // Nothing here is authoritative: the list is rendered from the backend
 // projection, the upload button shows a pending state until the backend's own
 // outcome arrives in `lastWrites`, and a refusal (duplicate, oversize, RBAC,
-// Drive not configured) is displayed verbatim instead of a fake success.
+// storage unavailable) is displayed verbatim instead of a fake success.
 //
-// Google Drive owns the bytes. The browser therefore NEVER receives a Drive
-// file id, folder id, credential or public link: opening a file is ONE
-// `attachment_download` event that reads the bytes server-side, and only the
-// attachment just requested carries them.
+// The browser NEVER receives a storage file id, GridFS/Mongo id, credential or
+// public link: opening a file is ONE `attachment_download` event that reads the
+// bytes server-side, and only the attachment just requested carries them.
 // ============================================================================
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -44,7 +43,9 @@ const FALLBACK_POLICY: AttachmentPolicy = {
   accept: "",
   maxUploadBytes: 0,
   maxUploadLabel: "",
-  driveConfigured: false,
+  storageBackend: "gridfs",
+  storageConfigured: false,
+  storageLabel: "Kho chứng từ",
 };
 
 export default function ShipmentAttachments({
@@ -60,6 +61,8 @@ export default function ShipmentAttachments({
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const lastWrites = vm?.lastWrites ?? [];
   const effective = policy ?? FALLBACK_POLICY;
+  const storageLabel = effective.storageLabel || (effective.driveConfigured ? "Shared Drive" : "Kho chứng từ");
+  const storageConfigured = effective.storageConfigured ?? effective.driveConfigured ?? false;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
@@ -101,7 +104,7 @@ export default function ShipmentAttachments({
     setPendingDownload(null);
     if (!outcome.ok) {
       setOutcomeOk(false);
-      setOutcomeText(String(outcome.error || "Không đọc được tệp từ Google Drive."));
+      setOutcomeText(String(outcome.error || `Không đọc được tệp từ ${storageLabel}.`));
     }
   }, [lastWrites, pendingDownload]);
 
@@ -115,7 +118,7 @@ export default function ShipmentAttachments({
       if (handledDownloadSeq.current[item.id] === seq) continue;
       handledDownloadSeq.current[item.id] = seq;
       downloadBinaryFile(item.name, item.downloadBase64, item.mime || "application/octet-stream");
-      toast("Đã tải " + item.name, "Bytes đọc từ Google Drive qua máy chủ.", "green");
+      toast("Đã tải " + item.name, `Bytes đọc từ ${storageLabel.toLowerCase()} qua máy chủ.`, "green");
     }
   }, [attachments, toast]);
 
@@ -190,7 +193,7 @@ export default function ShipmentAttachments({
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
         title="Tệp đính kèm lô hàng"
-        sub="Tệp thật của lô: bytes lưu trên Shared Drive của chủ sở hữu, hệ thống chỉ lưu metadata."
+        sub={`Tệp thật của lô: nội dung tệp được lưu trong ${storageLabel}; thông tin mô tả được lưu cùng hồ sơ lô.`}
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp
@@ -257,12 +260,12 @@ export default function ShipmentAttachments({
             )}
           >
             {pendingUpload ? <LoaderCircle size={17} className="animate-spin" /> : <CloudUpload size={17} />}
-            {pendingUpload ? "ĐANG TẢI LÊN GOOGLE DRIVE…" : "TẢI LÊN GOOGLE DRIVE"}
+            {pendingUpload ? `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…` : `LƯU VÀO ${storageLabel.toUpperCase()}`}
           </button>
           {file && <span className="text-[13px] text-slate-600 min-w-0 break-words">{file.name}</span>}
-          {!effective.driveConfigured && (
-            <span className="text-[13px] text-amber-800" data-testid="attachment-drive-state">
-              Google Drive chưa được cấu hình trên máy chủ — máy chủ sẽ từ chối trung thực.
+          {!storageConfigured && (
+            <span className="text-[13px] text-amber-800" data-testid="attachment-storage-state">
+              {storageLabel} chưa sẵn sàng trên máy chủ — hệ thống sẽ từ chối trung thực.
             </span>
           )}
         </div>
@@ -332,8 +335,7 @@ export default function ShipmentAttachments({
       )}
 
       <p className="mt-3 text-[12.5px] text-slate-500">
-        Trùng tệp trong cùng lô được nhận diện bằng SHA-256 của bản gốc: bản sao không tải lên Drive lần hai. Tệp giữ nguyên
-        quyền riêng tư trong Shared Drive của chủ sở hữu — hệ thống không tạo liên kết công khai.
+        Tệp trùng trong cùng lô không được lưu bản sao lần hai. Tệp giữ nguyên quyền riêng tư trong kho chứng từ — hệ thống không tạo liên kết công khai.
       </p>
     </section>
   );

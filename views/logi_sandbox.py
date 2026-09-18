@@ -112,6 +112,15 @@ def _install_sandbox_transport():
     """Point ``core.database`` at an isolated mongomock staging database."""
     import mongomock
 
+    # The default attachment backend is GridFS. Enable mongomock's isolated
+    # GridFS integration for Preview/Staging only; this never changes the real
+    # MongoDB path or any production configuration.
+    try:
+        import mongomock.gridfs
+        mongomock.gridfs.enable_gridfs_integration()
+    except Exception:  # pragma: no cover - version-specific optional shim
+        pass
+
     from core import config as core_config
     from core import database as core_database
 
