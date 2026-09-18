@@ -355,6 +355,11 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any]) -
         "docgenDocuments": rd.docgen_documents_by_shipment(),
         "linkedContracts": rd.linked_contracts_index(references.get("contracts")),
         "shipmentIds": load_shipment_ids(),
+        # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — attachment METADATA for
+        # the whole render, read once and grouped (the same repair as the docgen
+        # read above). No bytes: the files themselves live in Google Drive.
+        "attachments": rd.attachments_by_shipment(),
+        "attachmentDownload": _attachment_download_state(),
     }
 
 
@@ -385,6 +390,8 @@ def build_view_model() -> dict:
             agents=sources["agents"],
             docgen_documents=sources["docgenDocuments"],
             linked_contracts=sources["linkedContracts"],
+            attachments=sources["attachments"],
+            attachment_download=sources["attachmentDownload"],
         )
         for sid, ship in shipments.items()
     ]
@@ -536,6 +543,13 @@ def build_view_model() -> dict:
         # React. The normalized rows remain in ephemeral session state; this is
         # a projection only and contains no uploaded bytes.
         "getfly": _getfly_preview_projection(),
+        # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment
+        # policy delivered to the shipment document form. Read-only facts only:
+        # the accepted extensions the server really enforces, the server's own
+        # byte ceiling, the real categories, and whether THIS session may upload
+        # at all (server RBAC — the form hides itself when the backend says no,
+        # but the dispatcher refuses independently either way).
+        "attachmentPolicy": _attachment_policy(),
         # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the authoritative
         # outcome(s) of the business event(s) the bounded dispatcher handled on
         # the previous run. The UI must never treat "event transported" as
@@ -595,7 +609,20 @@ PHASE_B_EVENTS = {
     # choices. Both handlers remain in this ONE dispatcher.
     "getfly_preview",
     "getfly_import",
+    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
+    # for the shipment "Chứng từ" tab. ``shipment_attachment_upload`` carries the
+    # ONE chosen file (bounded base64, same transport precedent as the GetFly
+    # preview above) and the server owns permission, size/MIME validation,
+    # decode, SHA-256, compression, the Drive upload and the metadata write;
+    # ``attachment_download`` re-reads ONE stored file from Drive so the bytes
+    # can be delivered server-side. There is deliberately NO delete event.
+    "shipment_attachment_upload",
+    "attachment_download",
 }
+
+#: Session key holding the ONE attachment whose bytes were just read back from
+#: Google Drive for server-authoritative delivery to the browser.
+ATTACHMENT_DOWNLOAD_KEY = "logi_attachment_download"
 
 # LOGI_TARIFF_LOOKUP_01 — one bounded READ-ONLY query event for the
 # /tra-cuu-thue workspace. It performs no business mutation: the handler only
@@ -1307,6 +1334,46 @@ def _handle_getfly_import(payload: Mapping[str, Any]) -> dict[str, Any]:
                    readback={"previewId": preview_id, "mode": mode, "results": results})
 
 
+def _attachment_policy() -> dict[str, Any]:
+    """The bounded attachment policy delivered to the shipment document form.
+
+    Every value is the SAME constant the server enforces (one source of truth):
+    a browser that ignores the form still hits the identical limits in
+    ``core.shipment_attachments``. Contains no credential and no Drive id —
+    whether Drive is configured is reported only as a boolean.
+    """
+    from core.auth import can_generate_documents
+    from core.drive_client import load_drive_settings
+    from core.shipment_attachments import (
+        ALLOWED_ACCEPT,
+        ALLOWED_EXTENSIONS,
+        CATEGORIES,
+        MAX_UPLOAD_BYTES,
+    )
+
+    settings = load_drive_settings()
+    return {
+        "allowUpload": bool(can_generate_documents()),
+        "categories": [dict(item) for item in CATEGORIES],
+        "allowedExtensions": list(ALLOWED_EXTENSIONS),
+        "accept": ALLOWED_ACCEPT,
+        "maxUploadBytes": MAX_UPLOAD_BYTES,
+        "maxUploadLabel": f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
+        "driveConfigured": bool(settings.configured),
+    }
+
+
+def _attachment_download_state() -> dict[str, Any]:
+    """The ONE attachment whose bytes were just read from Drive (session-scoped).
+
+    Holds no credential and no Drive id: only the attachment id, its shipment,
+    a monotonically increasing ``seq`` that tells the UI "this is a NEW
+    download", and the base64 body of the file the operator asked for.
+    """
+    state = st.session_state.get(ATTACHMENT_DOWNLOAD_KEY)
+    return dict(state) if isinstance(state, Mapping) else {}
+
+
 def _projection_for(shipment: Mapping[str, Any]) -> dict[str, Any]:
     """Project one canonical shipment for the post-write readback payload."""
     from core.database import load_contracts, load_customers, load_quotes
@@ -1324,6 +1391,193 @@ def _projection_for(shipment: Mapping[str, Any]) -> dict[str, Any]:
         quotes=load_quotes() or {},
         dashboard=view,
         history=rd.timeline_projection(sid),
+        # A fresh, shipment-scoped attachment read: the readback proves the
+        # metadata write landed instead of echoing what the browser sent.
+        attachments={sid: _attachment_records(sid)} if sid else None,
+        attachment_download=_attachment_download_state(),
+    )
+
+
+def _attachment_records(shipment_id: str) -> list[dict[str, Any]]:
+    """Raw attachment metadata for ONE shipment, straight from the database."""
+    from core.database import load_shipment_attachments
+
+    try:
+        return [dict(row) for row in (load_shipment_attachments(shipment_id) or {}).values()]
+    except Exception:  # noqa: BLE001 - a read failure must not blank the readback
+        return []
+
+
+def _attachment_result_extras(shipment_id: str) -> dict[str, Any]:
+    """Shared readback/audit tail for the two attachment events."""
+    return {
+        "readback": _projection_for(read_shipment(shipment_id) or {}),
+        "audit": _audit_trail(shipment_id),
+    }
+
+
+def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — ONE bounded attachment upload.
+
+    Order is deliberate and matches the external-side-effect rule:
+    RBAC → shipment exists → bounded decode → validate → SHA-256 → duplicate
+    guard → Drive upload → Mongo metadata. Unauthorized, oversized and
+    duplicate requests never reach Google Drive.
+    """
+    from core.auth import can_generate_documents
+    from core.shipment_attachments import (
+        CODE_INVALID,
+        CODE_SIZE,
+        MAX_UPLOAD_BYTES,
+        UploadRefused,
+        decode_upload_payload,
+        project_attachment,
+        upload_attachment,
+    )
+
+    request_id = rd.text(payload.get("requestId"))
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("shipment_attachment_upload", sid, False, "Thiếu shipmentId.",
+                       gate="INVALID_REQUEST", requestId=request_id)
+
+    # Server RBAC first: the same sales_write boundary document work already
+    # uses (core.auth.can_generate_documents). Unauthorized = zero Drive calls.
+    if not can_generate_documents():
+        return _result("shipment_attachment_upload", sid, False,
+                       "RBAC: không có quyền sales_write để tải chứng từ lên lô hàng.",
+                       gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
+
+    if read_shipment(sid) is None:
+        return _result("shipment_attachment_upload", sid, False, f"Không tìm thấy lô {sid}.",
+                       gate="SHIPMENT_NOT_FOUND", requestId=request_id)
+
+    # The browser's declared size is checked FIRST (cheapest refusal), then the
+    # base64 body is bounded before decoding, then the SERVICE re-checks the
+    # decoded byte count — a lying client cannot get an oversized file to Drive.
+    declared_raw = payload.get("size")
+    declared_size: int | None = None
+    if declared_raw is not None:
+        try:
+            declared_size = int(declared_raw)
+        except (TypeError, ValueError):
+            return _result("shipment_attachment_upload", sid, False, "Kích thước tệp không hợp lệ.",
+                           gate=CODE_INVALID, requestId=request_id)
+        if declared_size > MAX_UPLOAD_BYTES:
+            return _result(
+                "shipment_attachment_upload", sid, False,
+                f"Tệp vượt giới hạn {MAX_UPLOAD_BYTES // (1024 * 1024)} MB — "
+                "chưa gọi Google Drive, chưa ghi dữ liệu.",
+                gate=CODE_SIZE, requestId=request_id,
+            )
+
+    try:
+        data, size = decode_upload_payload(payload)
+    except UploadRefused as refusal:
+        return _result("shipment_attachment_upload", sid, False, refusal.message,
+                       gate=refusal.code, requestId=request_id)
+
+    outcome = upload_attachment(
+        shipment_id=sid,
+        category=payload.get("category"),
+        file_name=rd.text(payload.get("fileName")),
+        mime=rd.text(payload.get("mime")),
+        data=data,
+        declared_size=declared_size if declared_size is not None else size,
+        uploaded_by=_actor(),
+    )
+
+    if not outcome.get("ok"):
+        return _result("shipment_attachment_upload", sid, False,
+                       rd.text(outcome.get("error")) or "Tải tệp lên thất bại.",
+                       gate=rd.text(outcome.get("code")) or "UPLOAD_FAILED",
+                       requestId=request_id,
+                       orphanRisk=bool(outcome.get("orphan_risk")),
+                       compensationAttempted=bool(outcome.get("compensated")),
+                       **_attachment_result_extras(sid))
+
+    record = outcome.get("record") or {}
+    duplicate = bool(outcome.get("duplicate"))
+    attachment = project_attachment(record)
+    persisted = {
+        "attachmentId": attachment["id"],
+        "fileName": attachment["name"],
+        "category": attachment["category"],
+        "originalSize": attachment["originalSize"],
+        "storedSize": attachment["storedSize"],
+        "compressionMode": attachment["compressionMode"],
+        "status": attachment["status"],
+        "duplicate": duplicate,
+    }
+    return _result(
+        "shipment_attachment_upload", sid, True,
+        rd.text(outcome.get("message")) or "Đã tải tệp lên Google Drive và ghi metadata vào lô hàng.",
+        gate="DUPLICATE" if duplicate else "UPLOADED",
+        requestId=request_id, duplicate=duplicate, attachment=attachment,
+        persisted=persisted, **_attachment_result_extras(sid),
+    )
+
+
+def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — server-authoritative download.
+
+    Read access is the EXISTING shipment read boundary (``dashboard``), so any
+    role that may see the lot may open its files; nothing is written to Mongo
+    and no Drive id, folder id or token is ever handed to the browser.
+    """
+    import base64 as _base64
+
+    from core.auth import can_operate_business
+    from core.shipment_attachments import fetch_attachment_bytes
+
+    request_id = rd.text(payload.get("requestId"))
+    sid = rd.text(payload.get("shipmentId"))
+    attachment_id = rd.text(payload.get("attachmentId"))
+    if not sid or not attachment_id:
+        return _result("attachment_download", sid, False, "Thiếu shipmentId hoặc attachmentId.",
+                       gate="INVALID_REQUEST", requestId=request_id)
+
+    if not can_operate_business("dashboard"):
+        return _result("attachment_download", sid, False,
+                       "RBAC: không có quyền đọc chứng từ của lô hàng.",
+                       gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
+
+    outcome = fetch_attachment_bytes({"id": attachment_id})
+    if not outcome.get("ok"):
+        return _result("attachment_download", sid, False,
+                       rd.text(outcome.get("error")) or "Không đọc được tệp từ Google Drive.",
+                       gate=rd.text(outcome.get("code")) or "DOWNLOAD_FAILED", requestId=request_id)
+
+    record = outcome.get("record") or {}
+    if rd.text(record.get("shipment_id")) != sid:
+        # A stored file belongs to exactly one lot; a mismatched pair is refused
+        # rather than served under the wrong shipment's permissions.
+        return _result("attachment_download", sid, False,
+                       "Tệp đính kèm không thuộc lô hàng này.",
+                       gate="SHIPMENT_MISMATCH", requestId=request_id)
+
+    data = bytes(outcome.get("data") or b"")
+    previous = _attachment_download_state()
+    seq = int(previous.get("seq") or 0) + 1
+    st.session_state[ATTACHMENT_DOWNLOAD_KEY] = {
+        "attachmentId": attachment_id,
+        "shipmentId": sid,
+        "fileName": rd.text(record.get("original_name")) or rd.text(record.get("stored_name")),
+        "mime": rd.text(record.get("mime")),
+        "bytes": len(data),
+        "seq": seq,
+        "base64": _base64.b64encode(data).decode("ascii"),
+    }
+    return _result(
+        "attachment_download", sid, True, "Đã đọc tệp từ Google Drive.",
+        gate="DOWNLOADED", requestId=request_id,
+        persisted={
+            "attachmentId": attachment_id,
+            "fileName": rd.text(record.get("original_name")),
+            "size": len(data),
+            "seq": seq,
+        },
+        **_attachment_result_extras(sid),
     )
 
 
@@ -2526,6 +2780,11 @@ _HANDLERS = {
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
     "getfly_import": _handle_getfly_import,
+    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
+    # (upload + server-authoritative download). Same dispatcher, same seq replay
+    # guard.
+    "shipment_attachment_upload": _handle_shipment_attachment_upload,
+    "attachment_download": _handle_attachment_download,
 }
 
 

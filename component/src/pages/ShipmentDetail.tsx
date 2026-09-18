@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAler
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
+import ShipmentAttachments from "../components/ShipmentAttachments";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
 import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile, parseAmountVN } from "../lib/format";
@@ -1293,6 +1294,16 @@ export default function ShipmentDetail() {
               <SuccessBtn onClick={exportPXK} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 XUẤT PHIẾU XUẤT KHO</SuccessBtn>
             )}
           </section>
+          {/* LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of
+              the lot. Metadata comes from the backend projection; the bytes stay
+              in the Owner-controlled Google Drive folder and are read through the
+              bounded attachment_download event, so no Drive id, folder id or
+              credential ever reaches the DOM. */}
+          <ShipmentAttachments
+            shipmentId={s.id}
+            attachments={s.attachments ?? []}
+            policy={vm?.attachmentPolicy}
+          />
         </div>
       )}
 

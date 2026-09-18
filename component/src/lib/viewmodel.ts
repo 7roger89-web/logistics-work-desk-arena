@@ -36,6 +36,53 @@ export interface ShipmentDoc {
   note?: string;
 }
 
+/**
+ * LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — ONE real attachment of a lot,
+ * projected by the backend from the canonical attachment METADATA. Google Drive
+ * holds the bytes, so this shape deliberately carries NO Drive file id, folder
+ * id, raw SHA-256 or credential: only what the operator may see, plus (for the
+ * single attachment just requested) the server-read base64 body used to save
+ * the file.
+ */
+export interface ShipmentAttachment {
+  id: string;
+  name: string;
+  category: string;
+  categoryLabel: string;
+  mime: string;
+  originalSize: number;
+  storedSize: number;
+  /** Honest size text: "1.8 MB → 620 KB" only when the bytes really shrank. */
+  sizeLabel: string;
+  compressionMode: string;
+  /** "Ảnh đã tối ưu" or "Giữ nguyên" — never a fake claim. */
+  compressionLabel: string;
+  compressionNote?: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  status: string;
+  downloadAvailable: boolean;
+  downloadBase64?: string | null;
+  /** Increments on every backend download read, so the UI saves each new one. */
+  downloadSeq?: number | null;
+}
+
+export interface AttachmentCategory {
+  id: string;
+  label: string;
+}
+
+/** Server-enforced attachment policy (the form never invents its own limits). */
+export interface AttachmentPolicy {
+  allowUpload: boolean;
+  categories: AttachmentCategory[];
+  allowedExtensions: string[];
+  accept: string;
+  maxUploadBytes: number;
+  maxUploadLabel: string;
+  driveConfigured: boolean;
+}
+
 export interface MoneyLine {
   label: string;
   amount: MaybeNum;
@@ -383,6 +430,8 @@ export interface Shipment {
   updated: string;
   missingDocs: string[];
   docs: ShipmentDoc[];
+  /** Real attachments of the lot (metadata only; bytes live in Google Drive). */
+  attachments: ShipmentAttachment[];
   version?: number;
   rawStatus?: string;
   mode?: string;
@@ -1492,6 +1541,12 @@ export interface ViewModel {
   financeServiceCatalog?: FinanceServiceCatalogEntry[];
   /** LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — ephemeral server-authoritative XLSX preview. */
   getfly?: GetFlyPreview;
+  /**
+   * LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the server's own attachment
+   * policy. Absent = not delivered: the form stays hidden rather than inventing
+   * its own extension list or size limit.
+   */
+  attachmentPolicy?: AttachmentPolicy;
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
@@ -1507,6 +1562,12 @@ const listeners = new Set<() => void>();
 
 export function applyViewModel(next: ViewModel): void {
   if (!next || typeof next !== "object") return;
+  // A payload from before this slice (or an older fixture) carries no
+  // attachment list. Normalise it to an empty array so the shipment document
+  // tab renders an honest empty state instead of crashing on a missing field.
+  for (const shipment of next.shipments ?? []) {
+    if (!Array.isArray(shipment.attachments)) shipment.attachments = [];
+  }
   const prev = current;
   current = next;
   if (prev === next) return;

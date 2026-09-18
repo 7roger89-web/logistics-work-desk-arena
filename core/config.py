@@ -136,6 +136,26 @@ def get_setting(
     return default
 
 
+def get_raw_setting(env_name: str, *secret_paths: str | Iterable[str], default: Any = None) -> Any:
+    """Like :func:`get_setting` but returns the RAW value (never stringified).
+
+    JSON- or table-shaped settings (for example a Google service-account
+    payload, which may arrive as a JSON string OR as a TOML table) must not be
+    passed through ``str()``, which would corrupt them. Precedence is unchanged:
+    environment variable first, then the same secrets paths ``get_setting``
+    already supports.
+    """
+    env_value = os.getenv(env_name)
+    if env_value not in (None, ""):
+        return env_value
+
+    for path in secret_paths:
+        value = _secret_value(*_normalize_path(path), default=None)
+        if value not in (None, ""):
+            return value
+    return default
+
+
 def _parse_list_env_value(raw: str) -> list[str]:
     """Parse one environment variable as a JSON list or comma-separated list."""
     raw = raw.strip()

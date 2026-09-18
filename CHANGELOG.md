@@ -1,5 +1,40 @@
 # Changelog
 
+## LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02
+
+### Shipment attachments reintegrated (Google Drive bytes, MongoDB metadata)
+
+- ONE vertical slice on the CURRENT shipment "Chứng từ" tab (donor PR #49 used
+  as reference only, never merged): real document/photo upload → bounded server
+  validation → real image optimization → Google Drive upload → metadata
+  persistence → authoritative readback, with server-authoritative download.
+- Binary authority: Google Drive owns the bytes; MongoDB stores bounded metadata
+  only. `core.database.save_shipment_attachment` REFUSES any document carrying
+  bytes/base64 values (`RAW_BINARY_IN_MONGO=NO`).
+- NEW `core/drive_client.py`: the smallest Drive adapter — service account via
+  `google-auth` on top of the EXISTING `requests`, talking to Drive REST v3
+  directly (no `google-api-python-client`). Folders, upload, metadata, download
+  and the ONE bounded compensating delete. No public links, no browser OAuth,
+  no credential in the payload. Missing config fails closed as
+  `DRIVE_NOT_CONFIGURED`.
+- NEW `core/shipment_attachments.py`: 20 MB ceiling, extension + MIME +
+  magic-byte validation, same-shipment SHA-256 duplicate guard, Pillow JPEG/PNG
+  optimization kept ONLY when ≥5% smaller (PDF/DOCX/XLSX stay byte-identical),
+  and the validate → Drive → Mongo order with exactly-one compensation and
+  explicit `orphanRisk` evidence.
+- Two bounded events in the ONE dispatcher: `shipment_attachment_upload`
+  (EXISTING `sales_write` boundary via `can_generate_documents`) and
+  `attachment_download` (EXISTING `dashboard` read boundary). No delete event,
+  no queue, no worker, no new RBAC role. Viewer may download but may not upload.
+- UI: "Tệp đính kèm lô hàng" section in ShipmentDetail rendering the backend
+  projection, honest `original → stored` sizes, "Ảnh đã tối ưu"/"Giữ nguyên",
+  real pending state and honest refusals; `component/dist` rebuilt from the
+  current source tree (never copied from the donor).
+- Evidence: `tests/test_logi_shipment_documents_drive_02.py` (45 focused
+  tests, fake Drive only, `LIVE_DRIVE_MUTATIONS=0`) and
+  `tests/component/dom_acceptance_shipment_attachments.mjs` (12 checks on the
+  real rebuilt bundle).
+
 ## LOGI_LOGIN_VISUAL_COMPACT_01
 
 ### Login UX
