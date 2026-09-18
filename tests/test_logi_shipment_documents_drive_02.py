@@ -326,8 +326,21 @@ class _StubSession:
         self._responses = list(responses or [])
         self._status = status
 
-    def request(self, method, url, **kwargs):
-        self.calls.append({"method": method, "url": url, **kwargs})
+    def request(self, method, url, *, params=None, data=None, headers=None,
+                json=None, timeout=None, **kwargs):
+        # Production-shaped guard: the real transport is
+        # google.auth.transport.requests.AuthorizedSession, a requests.Session
+        # subclass, so ONLY real requests keywords are accepted here. An
+        # invented kwarg (e.g. the old `json_body`) fails exactly as it would
+        # in production instead of being silently recorded.
+        if kwargs:
+            bad = next(iter(kwargs))
+            raise TypeError(
+                f"Session.request() got an unexpected keyword argument '{bad}'"
+            )
+        self.calls.append({"method": method, "url": url, "params": params,
+                           "data": data, "headers": headers, "json": json,
+                           "timeout": timeout})
         if self._responses:
             return self._responses.pop(0)
         if self._status >= 400:
@@ -358,7 +371,24 @@ class TestDriveRestAdapter:
         assert "trashed = false" in search["params"]["q"]
         assert "'ROOT-FOLDER' in parents" in search["params"]["q"]
         assert search["params"]["supportsAllDrives"] == "true"
-        assert session.calls[1]["json_body"]["parents"] == ["ROOT-FOLDER"]
+        assert session.calls[1]["json"]["parents"] == ["ROOT-FOLDER"]
+
+    def test_create_folder_executes_through_a_requests_compatible_signature(self):
+        # CONTROL_TOWER_REPAIR regression: create_folder once sent
+        # `json_body=`, which a real requests.Session.request rejects with
+        # TypeError. The hardened stub above enforces the same boundary, so
+        # reaching this assertion proves the production-shaped call works.
+        session = _StubSession([_StubResponse({"id": "FOLDER-1", "name": "lo-hang"})])
+        client = GoogleDriveClient(_stub_settings(), session=session)
+        assert client.create_folder("lo-hang", "ROOT-FOLDER") == "FOLDER-1"
+        (call,) = session.calls
+        assert call["method"] == "POST" and call["url"].endswith("/drive/v3/files")
+        assert call["json"] == {
+            "name": "lo-hang",
+            "mimeType": dc.DRIVE_FOLDER_MIME,
+            "parents": ["ROOT-FOLDER"],
+        }
+        assert call["params"]["supportsAllDrives"] == "true"
 
     def test_upload_sends_exact_bytes_as_multipart_related(self):
         payload = b"\x89PNG\r\n\x1a\nEXACT-BYTES-\xa9"
@@ -781,13 +811,17 @@ class TestDownload:
         fake = FakeDrive()
         self._upload_one(staging, seq, fake)
         attachment_id = next(iter(_stored().values()))["id"]
-        with patch("core.shipment_attachments.build_drive_client", CountingFactory(fake)):
+        factory = CountingFactory(fake)
+        with patch("core.shipment_attachments.build_drive_client", factory):
             missing = _dispatch("attachment_download",
                                 {"shipmentId": SHIPMENT_ID, "attachmentId": "ATT-NOPE", "requestId": "m"}, seq)
             other_shipment = _dispatch("attachment_download",
                                        {"shipmentId": "LO-0307", "attachmentId": attachment_id, "requestId": "o"}, seq)
         assert missing["ok"] is False and missing["gate"] == att.CODE_NOT_FOUND
         assert other_shipment["ok"] is False and other_shipment["gate"] == "SHIPMENT_MISMATCH"
+        # Ownership is refused from metadata alone: zero Drive client builds,
+        # zero Drive reads for both refusals.
+        assert factory.calls == 0 and fake.downloads == []
 
     def test_drive_download_failure_is_reported_honestly(self, staging, seq):
         fake = FakeDrive(fail_download=True)

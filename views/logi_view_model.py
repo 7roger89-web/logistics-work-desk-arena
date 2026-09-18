@@ -1528,7 +1528,8 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     import base64 as _base64
 
     from core.auth import can_operate_business
-    from core.shipment_attachments import fetch_attachment_bytes
+    from core.database import load_shipment_attachment
+    from core.shipment_attachments import CODE_NOT_FOUND, fetch_attachment_bytes
 
     request_id = rd.text(payload.get("requestId"))
     sid = rd.text(payload.get("shipmentId"))
@@ -1541,6 +1542,19 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
         return _result("attachment_download", sid, False,
                        "RBAC: không có quyền đọc chứng từ của lô hàng.",
                        gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
+
+    # CONTROL_TOWER_REPAIR: ownership is verified from the canonical metadata
+    # BEFORE any Drive read, so a mismatched pair costs zero Drive calls. The
+    # post-read check below stays as defense-in-depth.
+    stored = load_shipment_attachment(attachment_id)
+    if stored is None:
+        return _result("attachment_download", sid, False,
+                       "Không tìm thấy tệp đính kèm này.",
+                       gate=CODE_NOT_FOUND, requestId=request_id)
+    if rd.text(stored.get("shipment_id")) != sid:
+        return _result("attachment_download", sid, False,
+                       "Tệp đính kèm không thuộc lô hàng này.",
+                       gate="SHIPMENT_MISMATCH", requestId=request_id)
 
     outcome = fetch_attachment_bytes({"id": attachment_id})
     if not outcome.get("ok"):

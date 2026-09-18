@@ -271,7 +271,7 @@ class GoogleDriveClient:
             "POST",
             f"{DRIVE_API}/files",
             params={"fields": "id,name", "supportsAllDrives": "true"},
-            json_body={"name": name, "mimeType": DRIVE_FOLDER_MIME, "parents": [parent_id]},
+            json={"name": name, "mimeType": DRIVE_FOLDER_MIME, "parents": [parent_id]},
         )
         return str((response.json() or {}).get("id") or "")
 
