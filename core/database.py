@@ -245,6 +245,12 @@ def ensure_indexes() -> bool:
         (db.financial_allocations, "id", {"unique": True, "name": "uq_financial_allocation_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.financial_allocations, [("transaction_id", 1), ("status", 1)], {"name": "ix_financial_allocation_transaction"}),
         (db.financial_allocations, [("obligation_id", 1), ("status", 1)], {"name": "ix_financial_allocation_obligation"}),
+        # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — attachment METADATA only
+        # (the bytes live in Google Drive). The compound unique index is the
+        # durable half of the same-shipment duplicate guard.
+        (db.shipment_attachments, "id", {"unique": True, "name": "uq_shipment_attachment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.shipment_attachments, [("shipment_id", 1), ("sha256", 1)], {"unique": True, "name": "uq_shipment_attachment_sha", "partialFilterExpression": {"sha256": {"$type": "string"}}}),
+        (db.shipment_attachments, [("shipment_id", 1), ("uploaded_at", -1)], {"name": "ix_shipment_attachment_worklist"}),
     ]
     all_ok = True
     errors: list[str] = []
@@ -1905,6 +1911,94 @@ def save_authority_agent(document: Mapping[str, Any]) -> bool:
         return False
     _audit(db, "authority_agent", agent_id, "create" if old is None else "update", before=old, after=payload)
     return True
+
+
+# --------------------------------------------------------------------------
+# LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — shipment attachment METADATA.
+#
+# Google Drive owns the attachment bytes. This collection therefore stores
+# bounded metadata (name, mime, category, sizes, sha256, Drive ids, audit) and
+# the writer below REFUSES any document carrying binary/base64 payload keys.
+# --------------------------------------------------------------------------
+
+_ATTACHMENT_BINARY_KEYS = frozenset({"bytes", "data", "base64", "content", "blob", "file_bytes"})
+_ATTACHMENT_REQUIRED_FIELDS = ("id", "shipment_id", "original_name", "sha256", "drive_file_id")
+
+
+def _attachment_metadata_is_clean(payload: Mapping[str, Any]) -> str:
+    """Return the refusal reason when a payload carries binary, else ``""``."""
+    for key, value in payload.items():
+        if str(key).lower() in _ATTACHMENT_BINARY_KEYS:
+            return f"trường '{key}' không được phép (chỉ lưu metadata, bytes thuộc Google Drive)"
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return f"trường '{key}' chứa dữ liệu nhị phân (chỉ lưu metadata)"
+    return ""
+
+
+def save_shipment_attachment(document: Mapping[str, Any]) -> bool:
+    """Persist ONE attachment metadata record (never a binary blob).
+
+    The record is immutable: an existing ``id`` may not be rewritten. The
+    binary guard is part of the writer, not of the caller, so no path — UI,
+    service or script — can put attachment bytes into MongoDB.
+    """
+    db = get_db()
+    if db is None:
+        return False
+    payload = copy.deepcopy(dict(document))
+    attachment_id = str(payload.get("id") or "").strip()
+    if not attachment_id:
+        _set_last_error("Tệp đính kèm cần có id.")
+        return False
+    missing = [field for field in _ATTACHMENT_REQUIRED_FIELDS if not str(payload.get(field) or "").strip()]
+    if missing:
+        _set_last_error("Tệp đính kèm thiếu trường bắt buộc: " + ", ".join(missing) + ".")
+        return False
+    unclean = _attachment_metadata_is_clean(payload)
+    if unclean:
+        _set_last_error("Tệp đính kèm chỉ lưu metadata: " + unclean + ".")
+        return False
+    payload["id"] = attachment_id
+    payload["shipment_id"] = str(payload.get("shipment_id") or "").strip()
+    old = db["shipment_attachments"].find_one({"id": attachment_id}, {"_id": 0})
+    if old is not None:
+        if old.get("sha256") != payload.get("sha256") or old.get("drive_file_id") != payload.get("drive_file_id"):
+            _set_last_error("Không thể sửa metadata tệp đính kèm đã tồn tại.")
+            return False
+        return True
+    if not _save_document("shipment_attachments", payload):
+        return False
+    _audit(db, "shipment_attachment", attachment_id, "create", before=None, after=payload)
+    return True
+
+
+def load_shipment_attachments(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:
+    """Load attachment metadata, optionally scoped to ONE shipment."""
+    query: dict[str, Any] = {"is_deleted": {"$ne": True}}
+    if shipment_id:
+        query["shipment_id"] = str(shipment_id).strip()
+    return _load_dict("shipment_attachments", query=query)
+
+
+def load_shipment_attachment(attachment_id: str) -> dict[str, Any] | None:
+    db = get_db()
+    if db is None or not str(attachment_id or "").strip():
+        return None
+    return db["shipment_attachments"].find_one(
+        {"id": str(attachment_id).strip(), "is_deleted": {"$ne": True}}, {"_id": 0}
+    )
+
+
+def find_shipment_attachment_by_sha(shipment_id: str, sha256: str) -> dict[str, Any] | None:
+    """Duplicate guard scope: the SAME shipment and the SAME original bytes."""
+    db = get_db()
+    sid = str(shipment_id or "").strip()
+    digest = str(sha256 or "").strip()
+    if db is None or not sid or not digest:
+        return None
+    return db["shipment_attachments"].find_one(
+        {"shipment_id": sid, "sha256": digest, "is_deleted": {"$ne": True}}, {"_id": 0}
+    )
 
 
 def load_docgen_documents(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:
