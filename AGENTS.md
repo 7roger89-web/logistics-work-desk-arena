@@ -2,20 +2,22 @@
 
 ## P2P Supreme Law bootstrap (mandatory)
 
-Before substantive analysis, planning, prompt writing, implementation, review, testing, or merge decisions, establish exactly one valid P2P law source in this order:
+Before substantive P2P-managed analysis, planning, prompt writing, implementation, review, testing, or merge decisions, the current actor must establish its own valid law source.
 
-1. `CANONICAL_AUTHENTICATED` — read `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md` when actually reachable.
-2. `LOCAL_INSTALLED` — otherwise use `.p2p/system/docs/P2P-OPERATIONS-NOTEBOOK.md` only when it contains `P2P_SUPREME_OPERATING_LAW_V1` and is not known stale.
-3. `LOCAL_PORTABLE` — otherwise use `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` only when it carries `P2P_PORTABLE_LAW_PROJECTION=YES`, canonical-source provenance, and a source identity (`SOURCE_CONTENT_SHA256` from the canonical projector or `SOURCE_GIT_BLOB_SHA` from an authenticated GitHub transport snapshot).
-4. `INLINE_CAPSULE` — otherwise use only a fresh explicit `SUPREME_LAW_CAPSULE` supplied by the current P2P Control Tower prompt.
+Use this operational order:
 
-If none is available, stop before substantive work with `P2P_LAW_SOURCE=LAW_CONTEXT_BLOCKED`.
+1. `CANONICAL_AUTHENTICATED` — use the canonical P2P notebook only when this same actor/session has already successfully reached `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md`.
+2. `LOCAL_INSTALLED` — otherwise use a valid, not-known-stale installed projection under `.p2p/system` when present.
+3. `LOCAL_PORTABLE` — in a repo-scoped remote clone, use `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` directly when it carries `P2P_PORTABLE_LAW_PROJECTION=YES`, canonical provenance, and a valid source identity.
+4. `INLINE_CAPSULE` — otherwise use only a fresh explicit `SUPREME_LAW_CAPSULE` from the current Control Tower handoff.
+5. If none is valid, stop at `P2P_LAW_SOURCE=LAW_CONTEXT_BLOCKED`.
 
-Do not treat an unauthenticated or repo-scoped 404 as proof that canonical law is absent. Do not claim a law source was read unless it actually was. `TASK_BRANCH != LAW_AUTHORITY`. `TARGET_PROJECT != LAW_SOURCE`. Fresh reachable canonical law wins over stale local projections or chat memory.
+`TARGET_REPO_AUTH != CANONICAL_CROSS_REPO_REACHABILITY`. Authentication to this project does not prove that the private canonical P2P repository is readable. A repo-scoped executor with valid portable law must not issue a cross-repository `gh`/API request solely to manufacture a 404 before fallback. If canonical is already successfully reachable in that same session, canonical wins.
+
+Never claim a law source was read when it was not. `TASK_BRANCH != LAW_AUTHORITY`. `TARGET_PROJECT != LAW_SOURCE`.
 
 At task start report exactly one:
 `P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
-
 ## Evidence-first verification (P2P)
 
 For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
@@ -34,7 +36,7 @@ If that profile cannot be read, apply this minimum capsule:
 
 Every P2P-generated operational prompt handed to another executor must explicitly serialize both gates below. Do not leave them implicit merely because the current chat already read the law.
 
-`P2P_LAW_PREFLIGHT` must tell the executor to read repository-root `AGENTS.md`, establish the valid law source using canonical > installed > portable > inline capsule > blocked, and report exactly one `P2P_LAW_SOURCE=<actual source>`.
+`P2P_LAW_PREFLIGHT` must tell the executor to read repository-root `AGENTS.md`, use canonical only if already successfully reachable; otherwise installed > valid portable > inline capsule > blocked; repo-scoped portable requires no cross-repo probe solely for fallback, and report exactly one `P2P_LAW_SOURCE=<actual source>`.
 
 `OE_GATE` must ask exactly `Không bị over engineering chứ?`, evaluate `SIMPLER_PATH`, `MATERIAL_PROGRESS`, `NECESSITY`, `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`, then return `OE_VERDICT=DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED` with one concrete reason. A weak/negative answer means reduce, remove, or defer the step; never return a ceremonial PASS.
 
