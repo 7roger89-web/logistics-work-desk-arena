@@ -410,15 +410,22 @@ with sync_playwright() as p:
         rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
             f"shipment detail opened through exact LO-0306 mobile href: {mobile_target}")
         shot(page,"14-detail-mobile.png")
-        if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
-            page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
-            if page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
-                page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); page.wait_for_timeout(180)
-                box=page.locator('[role="dialog"]').first.bounding_box()
+        finance_tab=page.get_by_role("button", name="Tài chính", exact=True)
+        if finance_tab.count():
+            finance_tab.first.click(); page.wait_for_timeout(320)
+            pay_btn=page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN"))
+            if pay_btn.count():
+                pay_btn.first.click(); page.wait_for_timeout(180)
+                dlg=page.locator('[role="dialog"]').first
+                box=dlg.bounding_box() if dlg.count() else None
                 fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]+box["height"]<=845)
                 rec("mobile_payment_sheet", fits, box)
                 shot(page,"15-payment-mobile.png")
                 page.keyboard.press("Escape"); page.wait_for_timeout(100)
+            else:
+                rec("mobile_payment_sheet", False, "finance tab opened but payment action not found")
+        else:
+            rec("mobile_payment_sheet", False, "mobile short tab 'Tài chính' not found")
     else:
         rec("mobile_detail", False, "no visible mobile href for LO-0306 found")
 
