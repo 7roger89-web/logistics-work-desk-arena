@@ -170,6 +170,10 @@ assert.ok(tabs, "workspace tabs must exist");
 await click("Chứng từ & PXK", "button", tabs);
 assert.ok(mainText().includes("Tệp đính kèm lô hàng"), "attachment section title missing");
 assert.ok(!mainText().includes("Google Drive"), "gridfs mode must use provider-neutral wording");
+assert.ok(
+  mainText().includes("nội dung tệp được lưu trong Kho chứng từ; thông tin mô tả được lưu cùng hồ sơ lô."),
+  "attachment copy must explain that both content and description are retained"
+);
 ok("attachment section is visible in the Chứng từ tab");
 
 console.log("STEP 2 — the list comes from the backend projection");

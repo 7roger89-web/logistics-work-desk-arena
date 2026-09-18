@@ -1496,7 +1496,10 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
                        gate=rd.text(outcome.get("code")) or "UPLOAD_FAILED",
                        requestId=request_id,
                        orphanRisk=bool(outcome.get("orphan_risk")),
-                       compensationAttempted=bool(outcome.get("compensated")),
+                       compensationAttempted=bool(outcome.get("compensation_attempted", False)),
+                       compensated=bool(outcome.get("compensated", False)),
+                       metadataCommitted=bool(outcome.get("metadata_committed", False)),
+                       readbackProven=bool(outcome.get("readback_proven", False)),
                        **_attachment_result_extras(sid))
 
     record = outcome.get("record") or {}

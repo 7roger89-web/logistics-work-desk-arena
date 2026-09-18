@@ -110,6 +110,7 @@ CODE_GRIDFS_FAILED = "GRIDFS_FAILED"
 CODE_DRIVE_UNCONFIGURED = "DRIVE_NOT_CONFIGURED"  # legacy drive_shared outcome
 CODE_DRIVE_FAILED = "DRIVE_FAILED"  # legacy drive_shared outcome
 CODE_METADATA_FAILED = "METADATA_WRITE_FAILED"
+CODE_METADATA_READBACK_UNPROVEN = "METADATA_READBACK_UNPROVEN"
 CODE_DUPLICATE = "DUPLICATE"
 CODE_NOT_FOUND = "ATTACHMENT_NOT_FOUND"
 
@@ -505,22 +506,38 @@ def upload_attachment(
 
     try:
         metadata_saved = bool(save_shipment_attachment(record))
-    except Exception:  # noqa: BLE001 - any uncertain metadata outcome is failure
+    except Exception:  # noqa: BLE001 - an uncertain write is a write failure
         metadata_saved = False
+
     if metadata_saved:
-        # Fresh authoritative readback: never return the local write as the
-        # source of truth. The dispatcher also performs a fresh shipment read.
+        # A successful metadata writer call and a failed/unproven fresh read are
+        # different states. The row may already be durable, so deleting bytes
+        # here could create the invalid row-without-file state. Preserve both
+        # sides and let the next request's SHA dedupe reconcile it.
         try:
             fresh = load_shipment_attachment(record["id"])
-        except Exception:  # noqa: BLE001 - an unproven readback is not success
+        except Exception:  # noqa: BLE001 - readback proof is unavailable
             fresh = None
         if fresh is not None:
             return {"ok": True, "code": "", "error": "", "record": fresh, "duplicate": False}
-        # Metadata was reported saved but cannot be read back. Do not silently
-        # claim success; the exact new file is still compensated once.
+        return {
+            "ok": False,
+            "code": CODE_METADATA_READBACK_UNPROVEN,
+            "error": (
+                "Đã ghi metadata nhưng chưa xác minh được readback mới; "
+                "giữ nguyên metadata và nội dung tệp, không xoá bù."
+            ),
+            "metadata_committed": True,
+            "readback_proven": False,
+            "compensation_attempted": False,
+            "compensated": False,
+            "orphan_risk": False,
+        }
 
-    # GridFS has no multi-document transaction. Exactly ONE cleanup attempt is
-    # made for the exact identity created by this call.
+    # GridFS has no multi-document transaction. Only a genuine metadata write
+    # failure may trigger compensation, and it gets exactly ONE delete attempt
+    # for the exact identity created by this call.
+    compensation_attempted = True
     deleted = False
     try:
         deleted = bool(client.delete_file(storage_file_id))
@@ -531,7 +548,9 @@ def upload_attachment(
             "ok": False,
             "code": CODE_METADATA_FAILED,
             "error": f"Không ghi được metadata vào MongoDB; tệp vừa tạo trong {storage_label(backend)} đã được xoá.",
+            "compensation_attempted": compensation_attempted,
             "compensated": True,
+            "orphan_risk": False,
         }
 
     LOGGER.warning(
@@ -546,6 +565,7 @@ def upload_attachment(
             "— đã ghi log để xử lý thủ công (orphan risk)."
         ),
         "orphan_risk": True,
+        "compensation_attempted": compensation_attempted,
         "compensated": False,
     }
 
@@ -735,6 +755,7 @@ __all__ = [
     "CODE_DUPLICATE",
     "CODE_INVALID",
     "CODE_METADATA_FAILED",
+    "CODE_METADATA_READBACK_UNPROVEN",
     "CODE_MISMATCH",
     "CODE_NOT_FOUND",
     "CODE_SIZE",

@@ -193,7 +193,7 @@ export default function ShipmentAttachments({
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
         title="Tệp đính kèm lô hàng"
-        sub={`Tệp thật của lô: lưu an toàn trong ${storageLabel}, hệ thống chỉ lưu metadata.`}
+        sub={`Tệp thật của lô: nội dung tệp được lưu trong ${storageLabel}; thông tin mô tả được lưu cùng hồ sơ lô.`}
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp

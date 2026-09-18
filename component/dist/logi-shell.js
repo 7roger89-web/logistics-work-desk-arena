@@ -15241,7 +15241,7 @@ function us({ shipmentId: e, attachments: t, policy: n }) {
 					className: "text-[#1e5aa8]"
 				}),
 				title: "Tệp đính kèm lô hàng",
-				sub: `Tệp thật của lô: lưu an toàn trong ${s}, hệ thống chỉ lưu metadata.`,
+				sub: `Tệp thật của lô: nội dung tệp được lưu trong ${s}; thông tin mô tả được lưu cùng hồ sơ lô.`,
 				right: /* @__PURE__ */ (0, R.jsxs)(q, {
 					tone: ee.length > 0 ? "green" : "gray",
 					size: "sm",

@@ -177,8 +177,54 @@ class TestGridFSAttachmentService:
         assert result["ok"] is True
         assert result["record"] is fresh
         assert len(store.uploads) == 1
+        assert store.deletes == []
         assert store.uploads[0]["data"] == PDF
         assert store.uploads[0]["metadata"] == {"shipment_id": "SHP-1", "category": "customs"}
+
+    def test_unproven_metadata_readback_preserves_file_and_retry_dedupes(self):
+        store = FakeStore()
+        saved = []
+
+        def save(record):
+            saved.append(dict(record))
+            return True
+
+        with patch("core.database.find_shipment_attachment_by_sha", side_effect=lambda *args, **kwargs: None), \
+             patch("core.database.save_shipment_attachment", side_effect=save), \
+             patch("core.database.load_shipment_attachment", return_value=None):
+            first = att.upload_attachment(
+                shipment_id="SHP-1", category="customs", file_name="chung-tu.pdf",
+                mime="application/pdf", data=PDF, uploaded_by="operator",
+                storage_backend="gridfs", gridfs=store,
+            )
+
+        assert first["ok"] is False
+        assert first["code"] == att.CODE_METADATA_READBACK_UNPROVEN
+        assert first["metadata_committed"] is True
+        assert first["readback_proven"] is False
+        assert first["compensation_attempted"] is False
+        assert first["compensated"] is False
+        assert first["orphan_risk"] is False
+        assert len(store.uploads) == 1
+        assert store.deletes == []
+        assert len(saved) == 1
+
+        # The next request sees the durable metadata by SHA and must not create
+        # a second GridFS object, even though the first request could not prove
+        # its immediate fresh readback.
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=saved[0]), \
+             patch("core.database.save_shipment_attachment") as save_retry:
+            second = att.upload_attachment(
+                shipment_id="SHP-1", category="customs", file_name="chung-tu.pdf",
+                mime="application/pdf", data=PDF, uploaded_by="operator",
+                storage_backend="gridfs", gridfs=store,
+            )
+
+        assert second["ok"] is True
+        assert second["duplicate"] is True
+        assert len(store.uploads) == 1
+        assert store.deletes == []
+        save_retry.assert_not_called()
 
     def test_duplicate_has_zero_second_gridfs_write(self):
         store = FakeStore()
@@ -219,9 +265,37 @@ class TestGridFSAttachmentService:
                 mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,
             )
         assert result["ok"] is False
+        assert result["compensation_attempted"] is True
         assert result["compensated"] is True
+        assert result["orphan_risk"] is False
         assert len(store.deletes) == 1
         assert store.deletes[0] == store.uploads[0]["storage_file_id"]
+
+    def test_dispatcher_keeps_compensation_attempt_separate_from_success(self):
+        from views import logi_view_model as vm
+
+        outcome = {
+            "ok": False,
+            "code": att.CODE_METADATA_READBACK_UNPROVEN,
+            "error": "readback unproven",
+            # A failed delete is an attempted-but-unsuccessful compensation:
+            # the dispatcher must preserve both explicit service fields.
+            "compensation_attempted": True,
+            "compensated": False,
+        }
+        with patch("core.auth.can_generate_documents", return_value=True), \
+             patch("views.logi_view_model.read_shipment", return_value={"id": "SHP-1"}), \
+             patch("core.shipment_attachments.upload_attachment", return_value=outcome), \
+             patch("views.logi_view_model._attachment_result_extras", return_value={}):
+            result = vm._handle_shipment_attachment_upload({
+                "shipmentId": "SHP-1", "fileName": "a.pdf", "mime": "application/pdf",
+                "size": len(PDF), "base64": "JVBERi0xLjQKZXhhY3QtZ3JpZGZzLWJ5dGVz",
+                "requestId": "readback-unproven",
+            })
+
+        assert result["gate"] == att.CODE_METADATA_READBACK_UNPROVEN
+        assert result["compensationAttempted"] is True
+        assert result["compensated"] is False
 
     def test_failed_compensation_reports_orphan_risk(self):
         store = FakeStore(fail_delete=True)
@@ -232,6 +306,8 @@ class TestGridFSAttachmentService:
                 mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,
             )
         assert result["ok"] is False
+        assert result["compensation_attempted"] is True
+        assert result["compensated"] is False
         assert result["orphan_risk"] is True
         assert len(store.deletes) == 1
 
