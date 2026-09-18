@@ -1,0 +1,38 @@
+{
+  "transport": "SANDBOX_STAGING",
+  "environment": {
+    "transport": "SANDBOX_STAGING",
+    "label": "Preview / Staging",
+    "isSandbox": true,
+    "database": "isolated staging (mongomock)"
+  },
+  "user": {
+    "name": "Thu Hằng (Preview/Staging)",
+    "role": "SUPPORT",
+    "username": "staging.support",
+    "displayOnly": true
+  },
+  "shipments": 5,
+  "tasks": 8,
+  "contracts": 3,
+  "customers": 5,
+  "quotes": 5,
+  "home_tiles": [
+    "Lô đang chạy",
+    "Chờ lấy hàng",
+    "Đang vận chuyển",
+    "Chờ thông quan",
+    "Chờ giao",
+    "Đã giao"
+  ],
+  "home_focus": "LO-0299",
+  "receivables_rows": 5,
+  "has_lastWrites_key": true,
+  "runtime_payment_outcome": {
+    "event": "payment_record",
+    "ok": true,
+    "requestIdEchoed": "PAY-REQ-RUNTIMEPROBE-01",
+    "error": "Đã ghi nhận khoản thu."
+  },
+  "probe_kind": "REAL_SANDBOX_TRANSPORT (mongomock staging through canonical writers) — not a fixture"
+}

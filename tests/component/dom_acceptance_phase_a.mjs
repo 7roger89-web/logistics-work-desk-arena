@@ -408,9 +408,10 @@ console.log("STEP 10 — Quick Add");
   for (const a of ["Tạo lô hàng mới", "Tạo hợp đồng mới", "Tạo báo giá", "Ghi nhận thanh toán", "Tra cứu thuế / HS"]) {
     assert.ok(findClickable(a, "button"), `quick-add action missing: ${a}`);
   }
-  // close via the X (first svg button inside the sheet)
-  const sheet = $("div").find((d) => d.className.includes("sm:max-w-[520px]"));
-  const closeBtn = $("button", sheet).find((b) => b.querySelector("svg"));
+  // close via the X inside the sheet (stable id from SheetDialog)
+  const sheet = window.document.getElementById("quick-add-sheet");
+  assert.ok(sheet, "quick-add sheet element missing");
+  const closeBtn = $("button", sheet).find((b) => b.querySelector("svg") && (b.getAttribute("aria-label") || "").includes("Đóng"));
   assert.ok(closeBtn, "quick-add close button missing");
   closeBtn.click();
   await tick();
