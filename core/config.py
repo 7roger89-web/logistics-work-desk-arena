@@ -196,6 +196,30 @@ MONGO_DB_NAME = get_setting(
     default="",
 )
 
+# LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — the bounded attachment selector.
+# GridFS is the deployable default because it uses the MongoDB Atlas/PyMongo
+# infrastructure already owned by the application. ``drive_shared`` remains an
+# explicit, optional legacy path; it never silently becomes a fallback.
+ATTACHMENT_STORAGE_BACKEND = get_setting(
+    "ATTACHMENT_STORAGE_BACKEND",
+    ("attachments", "storage_backend"),
+    "ATTACHMENT_STORAGE_BACKEND",
+    default="gridfs",
+).strip().lower() or "gridfs"
+ATTACHMENT_STORAGE_BACKENDS = frozenset({"gridfs", "drive_shared"})
+
+
+def get_attachment_storage_backend() -> str:
+    """Resolve the current bounded selector without treating unknown as valid."""
+    # Environment values are intentionally read at call time so isolated tests
+    # and preview processes can select a backend without reloading the module.
+    return get_setting(
+        "ATTACHMENT_STORAGE_BACKEND",
+        ("attachments", "storage_backend"),
+        "ATTACHMENT_STORAGE_BACKEND",
+        default=ATTACHMENT_STORAGE_BACKEND,
+    ).strip().lower() or ATTACHMENT_STORAGE_BACKEND
+
 # LG01 (W1): fail-closed data boundary. App chỉ được ghi vào các database
 # được phép liệt kê rõ ràng; URI thiếu hoặc tên DB ngoài danh sách sẽ FAIL.
 MONGO_ALLOWED_DB_NAMES = get_list_setting(

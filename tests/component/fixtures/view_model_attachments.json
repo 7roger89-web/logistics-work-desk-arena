@@ -1,5 +1,5 @@
 {
-  "version": "5650b5a771d889b3",
+  "version": "961224370b376422",
   "environment": {
     "transport": "SANDBOX_STAGING",
     "label": "Preview / Staging",
@@ -30,7 +30,7 @@
       "nextActionDetail": "Hạn khách 08/09/2026 đã quá 10 ngày.",
       "nextLabel": "XỬ LÝ NGAY",
       "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-      "updated": "18/09/2026 08:57",
+      "updated": "18/09/2026 13:23",
       "missingDocs": [
         "Xác nhận đã giao hàng"
       ],
@@ -216,7 +216,7 @@
         "quote": [],
         "actual": [
           {
-            "id": "c2bf516e-6744-4692-af72-d4ca1f33d2a1",
+            "id": "017436ba-d90e-4f14-abf9-1f55a3119eee",
             "label": "Cước xe TQ + VN",
             "name": "Cước xe TQ + VN",
             "code": "DV-VC-TQ",
@@ -231,7 +231,7 @@
             "kind": "actual"
           },
           {
-            "id": "b4f047c0-76ae-4caa-b913-ace56660628f",
+            "id": "de7ff883-5abe-4396-9063-b4c76dbe96a4",
             "label": "Thủ tục thông quan",
             "name": "Thủ tục thông quan",
             "code": "DV-TTQ",
@@ -260,7 +260,7 @@
         "profitMargin": 10.32,
         "payments": [
           {
-            "id": "PAY-52102CCE9DD347E5BFBD9640ACEF1F60",
+            "id": "PAY-DB0E88E6AD6F4EAF998CE0CDBC7BB5AA",
             "requestId": "SEED-REQ-0299-1",
             "date": "02/09/2026",
             "kind": "Thu tạm ứng đợt 1",
@@ -300,7 +300,7 @@
       },
       "timeline": [
         {
-          "time": "18/09 08:57",
+          "time": "18/09 13:23",
           "title": "create",
           "desc": "staging.support",
           "tone": "green"
@@ -397,7 +397,7 @@
       "nextActionDetail": "Hạn khách 12/09/2026 đã quá 6 ngày.",
       "nextLabel": "XỬ LÝ NGAY",
       "nextRoute": "/lo-hang/LO-0308?tab=nhap",
-      "updated": "18/09/2026 08:57",
+      "updated": "18/09/2026 13:23",
       "missingDocs": [
         "Số tờ khai nhập khẩu",
         "Đã thông quan",
@@ -548,7 +548,7 @@
         "quote": [],
         "actual": [
           {
-            "id": "65eee458-88a8-4ab2-8ed8-b02d95547663",
+            "id": "bf216bcf-c2e3-4f3f-9b1d-fea76f1f5cd0",
             "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
             "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
             "code": "DV-VC-TQ",
@@ -605,7 +605,7 @@
       },
       "timeline": [
         {
-          "time": "18/09 08:57",
+          "time": "18/09 13:23",
           "title": "create",
           "desc": "staging.support",
           "tone": "green"
@@ -675,7 +675,7 @@
       "nextActionDetail": "CHỜ THU",
       "nextLabel": "XỬ LÝ NGAY",
       "nextRoute": "/lo-hang/LO-0295?tab=lay-hang",
-      "updated": "18/09/2026 08:57",
+      "updated": "18/09/2026 13:23",
       "missingDocs": [],
       "docs": [
         {
@@ -872,7 +872,7 @@
         ],
         "actual": [
           {
-            "id": "21769dc0-30f9-48c0-b11e-8e5ac0513bc0",
+            "id": "cc412493-bf2f-47bb-9dc4-4b06e7285ed8",
             "label": "Cước đường bộ TQ + VN",
             "name": "Cước đường bộ TQ + VN",
             "code": "DV-VC-TQ",
@@ -887,7 +887,7 @@
             "kind": "actual"
           },
           {
-            "id": "ae2440c5-a85a-4677-8d6a-1d8927b5b67e",
+            "id": "176774a8-0c5e-4e8f-b4b0-4bd6eedd7b8c",
             "label": "Thủ tục thông quan",
             "name": "Thủ tục thông quan",
             "code": "DV-TTQ",
@@ -916,7 +916,7 @@
         "profitMargin": 7.61,
         "payments": [
           {
-            "id": "PAY-E18570170767429183B32563C9E986C8",
+            "id": "PAY-C98E2593B1B64DC0864945EE6F598304",
             "requestId": "SEED-REQ-0295-1",
             "date": "02/09/2026",
             "kind": "Thu tạm ứng đợt 1",
@@ -927,7 +927,7 @@
             "reversed": false
           },
           {
-            "id": "PAY-4C12EB0130F14F69BE5D0CDA2481FD01",
+            "id": "PAY-91E74EBA7AE2488D90CCFF92193A5390",
             "requestId": "SEED-REQ-0295-2",
             "date": "08/09/2026",
             "kind": "Thu tạm ứng đợt 2",
@@ -967,7 +967,7 @@
       },
       "timeline": [
         {
-          "time": "18/09 08:57",
+          "time": "18/09 13:23",
           "title": "create",
           "desc": "staging.support",
           "tone": "green"
@@ -1059,7 +1059,7 @@
       "nextActionDetail": "CHỜ THU",
       "nextLabel": "XỬ LÝ NGAY",
       "nextRoute": "/lo-hang/LO-0306?tab=nhap",
-      "updated": "18/09/2026 08:57",
+      "updated": "18/09/2026 13:23",
       "missingDocs": [
         "Số tờ khai nhập khẩu",
         "Đã thông quan",
@@ -1090,7 +1090,7 @@
       ],
       "attachments": [
         {
-          "id": "ATT-LO-0306-643acb04ccbb",
+          "id": "ATT-LO-0306-1d93ecdfb324",
           "name": "Bang chung giao hang.pdf",
           "category": "contract",
           "categoryLabel": "Hợp đồng",
@@ -1101,7 +1101,7 @@
           "compressionMode": "KEPT_ORIGINAL",
           "compressionLabel": "Giữ nguyên",
           "compressionNote": "Giữ nguyên bản gốc.",
-          "uploadedAt": "18/09/2026 08:57",
+          "uploadedAt": "18/09/2026 13:23",
           "uploadedBy": "staging.support",
           "status": "AVAILABLE",
           "downloadAvailable": false,
@@ -1109,7 +1109,7 @@
           "downloadSeq": 0
         },
         {
-          "id": "ATT-LO-0306-7e9b265ac733",
+          "id": "ATT-LO-0306-baf6c716e302",
           "name": "Tờ khai hải quan.jpg",
           "category": "customs",
           "categoryLabel": "Hải quan",
@@ -1120,7 +1120,7 @@
           "compressionMode": "IMAGE_OPTIMIZED",
           "compressionLabel": "Ảnh đã tối ưu",
           "compressionNote": "Ảnh đã tối ưu (tối đa 2200px, JPEG q82).",
-          "uploadedAt": "18/09/2026 08:57",
+          "uploadedAt": "18/09/2026 13:23",
           "uploadedBy": "staging.support",
           "status": "AVAILABLE",
           "downloadAvailable": false,
@@ -1276,7 +1276,7 @@
         ],
         "actual": [
           {
-            "id": "f8815b4d-8a21-4b9b-b0e6-8f8ba5a1f727",
+            "id": "6674caa5-c466-46d3-bbe8-f6b3ed2b1d94",
             "label": "Cước xe TQ Bằng Tường → Hữu Nghị",
             "name": "Cước xe TQ Bằng Tường → Hữu Nghị",
             "code": "DV-VC-TQ",
@@ -1291,7 +1291,7 @@
             "kind": "actual"
           },
           {
-            "id": "2b13f4ba-ae24-4a64-910a-fab0848db351",
+            "id": "246aa0b5-e072-4cac-ab5d-c0ff2723540b",
             "label": "Thủ tục thông quan 2 đầu",
             "name": "Thủ tục thông quan 2 đầu",
             "code": "DV-TTQ",
@@ -1320,7 +1320,7 @@
         "profitMargin": 7.94,
         "payments": [
           {
-            "id": "PAY-3B65BE2898734E09ABC817276F71965D",
+            "id": "PAY-96DBA6599B5F48FC9B11CA136B94B70D",
             "requestId": "SEED-REQ-0306-1",
             "date": "03/09/2026",
             "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
@@ -1360,7 +1360,7 @@
       },
       "timeline": [
         {
-          "time": "18/09 08:57",
+          "time": "18/09 13:23",
           "title": "create",
           "desc": "staging.support",
           "tone": "green"
@@ -1424,7 +1424,7 @@
       "nextActionDetail": "Còn 1 ngày, hạn 19/09/2026.",
       "nextLabel": "XỬ LÝ NGAY",
       "nextRoute": "/lo-hang/LO-0307?tab=nhap",
-      "updated": "18/09/2026 08:57",
+      "updated": "18/09/2026 13:23",
       "missingDocs": [
         "Đã thông quan",
         "Xe giao VN + tài xế",
@@ -1594,7 +1594,7 @@
         ],
         "actual": [
           {
-            "id": "c66b4524-e474-4ada-87a1-e1393eecc768",
+            "id": "f29f7848-474a-4ba9-bf1e-e4d6d7a78516",
             "label": "Cước đường bộ TQ + container",
             "name": "Cước đường bộ TQ + container",
             "code": "DV-VC-TQ",
@@ -1609,7 +1609,7 @@
             "kind": "actual"
           },
           {
-            "id": "7c6f7633-a5c7-4754-a946-65331e5ec4cc",
+            "id": "fc80faf6-2b44-4540-81a4-e158e411f8a9",
             "label": "Thủ tục thông quan",
             "name": "Thủ tục thông quan",
             "code": "DV-TTQ",
@@ -1638,7 +1638,7 @@
         "profitMargin": 7.87,
         "payments": [
           {
-            "id": "PAY-8D81FC6E1AEF4271B16E9DDFE5E6DA58",
+            "id": "PAY-E6D90A73645D4CFEAC96F69F67B63B49",
             "requestId": "SEED-REQ-0307-1",
             "date": "04/09/2026",
             "kind": "Thu tạm ứng đợt 1",
@@ -1678,7 +1678,7 @@
       },
       "timeline": [
         {
-          "time": "18/09 08:57",
+          "time": "18/09 13:23",
           "title": "create",
           "desc": "staging.support",
           "tone": "green"
@@ -2484,8 +2484,8 @@
       "source": "core.database.load_quotes"
     },
     {
-      "id": "Q-20260918-24EF8977",
-      "quoteNo": "QT-20260918-24EF8977",
+      "id": "Q-20260918-1443798D",
+      "quoteNo": "QT-20260918-1443798D",
       "customerId": "CUST-ANPHAT",
       "customer": "An Phát JSC",
       "salesOwner": "Minh Tú",
@@ -2549,19 +2549,19 @@
         {
           "from": null,
           "to": "DRAFT",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "Minh Tú"
         },
         {
           "from": "DRAFT",
           "to": "READY_FOR_REVIEW",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         },
         {
           "from": "READY_FOR_REVIEW",
           "to": "ACCEPTED",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         }
       ],
@@ -2573,8 +2573,8 @@
       "source": "core.database.load_quotes"
     },
     {
-      "id": "Q-20260918-2AB9FBE9",
-      "quoteNo": "QT-20260918-2AB9FBE9",
+      "id": "Q-20260918-AE3C7A34",
+      "quoteNo": "QT-20260918-AE3C7A34",
       "customerId": "CUST-DUCLONG",
       "customer": "Đức Long Co.",
       "salesOwner": "Thu Hằng",
@@ -2638,13 +2638,13 @@
         {
           "from": null,
           "to": "DRAFT",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "Thu Hằng"
         },
         {
           "from": "DRAFT",
           "to": "READY_FOR_REVIEW",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         }
       ],
@@ -2661,12 +2661,12 @@
   ],
   "agreements": [
     {
-      "id": "AGR-20260918-63380152",
-      "agreementNo": "AG-20260918-63380152",
+      "id": "AGR-20260918-FDBD58CF",
+      "agreementNo": "AG-20260918-FDBD58CF",
       "customerId": "CUST-ANPHAT",
       "customer": "An Phát JSC",
-      "quoteId": "Q-20260918-24EF8977",
-      "quoteReference": "QT-20260918-24EF8977",
+      "quoteId": "Q-20260918-1443798D",
+      "quoteReference": "QT-20260918-1443798D",
       "status": "AGREED",
       "statusLabel": "Đã đồng ý",
       "version": 3,
@@ -2780,19 +2780,19 @@
         {
           "from": null,
           "to": "DRAFT",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         },
         {
           "from": "DRAFT",
           "to": "REVIEWING",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         },
         {
           "from": "REVIEWING",
           "to": "AGREED",
-          "at": "2026-09-18T08:57:13+00:00",
+          "at": "2026-09-18T13:23:49+00:00",
           "actor": "staging.seed"
         }
       ],
@@ -2848,7 +2848,7 @@
       "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
       "title": "LO-0299 · Quá hạn khách",
       "desc": "Hạn khách 08/09/2026 đã quá 10 ngày.",
-      "time": "18/09/2026 08:57",
+      "time": "18/09/2026 13:23",
       "tone": "red",
       "route": "/lo-hang/LO-0299?tab=nhap"
     },
@@ -2856,7 +2856,7 @@
       "id": "LO-0308-CUSTOMER_DEADLINE_OVERDUE",
       "title": "LO-0308 · Quá hạn khách",
       "desc": "Hạn khách 12/09/2026 đã quá 6 ngày.",
-      "time": "18/09/2026 08:57",
+      "time": "18/09/2026 13:23",
       "tone": "red",
       "route": "/lo-hang/LO-0308?tab=nhap"
     },
@@ -2864,7 +2864,7 @@
       "id": "LO-0295-FINANCE_ATTENTION",
       "title": "LO-0295 · Tài chính cần theo dõi",
       "desc": "CHỜ THU",
-      "time": "18/09/2026 08:57",
+      "time": "18/09/2026 13:23",
       "tone": "amber",
       "route": "/lo-hang/LO-0295?tab=lay-hang"
     },
@@ -2872,7 +2872,7 @@
       "id": "LO-0306-FINANCE_ATTENTION",
       "title": "LO-0306 · Tài chính cần theo dõi",
       "desc": "CHỜ THU",
-      "time": "18/09/2026 08:57",
+      "time": "18/09/2026 13:23",
       "tone": "amber",
       "route": "/lo-hang/LO-0306?tab=nhap"
     },
@@ -2880,7 +2880,7 @@
       "id": "LO-0307-FREE_TIME_SOON",
       "title": "LO-0307 · Sắp hết free time",
       "desc": "Còn 1 ngày, hạn 19/09/2026.",
-      "time": "18/09/2026 08:57",
+      "time": "18/09/2026 13:23",
       "tone": "amber",
       "route": "/lo-hang/LO-0307?tab=nhap"
     }
@@ -4482,6 +4482,9 @@
     "accept": "application/msword,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/jpg,image/png",
     "maxUploadBytes": 20971520,
     "maxUploadLabel": "20 MB",
+    "storageBackend": "gridfs",
+    "storageConfigured": true,
+    "storageLabel": "Kho chứng từ",
     "driveConfigured": false
   },
   "lastWrites": [],

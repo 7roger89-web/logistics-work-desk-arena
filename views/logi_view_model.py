@@ -1335,23 +1335,20 @@ def _handle_getfly_import(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _attachment_policy() -> dict[str, Any]:
-    """The bounded attachment policy delivered to the shipment document form.
-
-    Every value is the SAME constant the server enforces (one source of truth):
-    a browser that ignores the form still hits the identical limits in
-    ``core.shipment_attachments``. Contains no credential and no Drive id —
-    whether Drive is configured is reported only as a boolean.
-    """
+    """The server-enforced, provider-neutral attachment policy."""
     from core.auth import can_generate_documents
-    from core.drive_client import load_drive_settings
     from core.shipment_attachments import (
         ALLOWED_ACCEPT,
         ALLOWED_EXTENSIONS,
         CATEGORIES,
         MAX_UPLOAD_BYTES,
+        resolve_storage_backend,
+        storage_is_configured,
+        storage_label,
     )
 
-    settings = load_drive_settings()
+    backend = resolve_storage_backend()
+    configured = storage_is_configured(backend)
     return {
         "allowUpload": bool(can_generate_documents()),
         "categories": [dict(item) for item in CATEGORIES],
@@ -1359,7 +1356,12 @@ def _attachment_policy() -> dict[str, Any]:
         "accept": ALLOWED_ACCEPT,
         "maxUploadBytes": MAX_UPLOAD_BYTES,
         "maxUploadLabel": f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
-        "driveConfigured": bool(settings.configured),
+        "storageBackend": backend,
+        "storageConfigured": configured,
+        "storageLabel": storage_label(backend),
+        # Compatibility-only boolean for older fixtures. New UI wording uses
+        # storageLabel/storageConfigured and does not expose provider details.
+        "driveConfigured": bool(configured) if backend == "drive_shared" else False,
     }
 
 
@@ -1432,6 +1434,7 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
         UploadRefused,
         decode_upload_payload,
         project_attachment,
+        storage_label,
         upload_attachment,
     )
 
@@ -1511,7 +1514,9 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
     }
     return _result(
         "shipment_attachment_upload", sid, True,
-        rd.text(outcome.get("message")) or "Đã tải tệp lên Google Drive và ghi metadata vào lô hàng.",
+        rd.text(outcome.get("message")) or (
+            f"Đã lưu tệp vào {storage_label()} và ghi metadata vào lô hàng."
+        ),
         gate="DUPLICATE" if duplicate else "UPLOADED",
         requestId=request_id, duplicate=duplicate, attachment=attachment,
         persisted=persisted, **_attachment_result_extras(sid),
@@ -1529,7 +1534,7 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     from core.auth import can_operate_business
     from core.database import load_shipment_attachment
-    from core.shipment_attachments import CODE_NOT_FOUND, fetch_attachment_bytes
+    from core.shipment_attachments import CODE_NOT_FOUND, fetch_attachment_bytes, storage_label
 
     request_id = rd.text(payload.get("requestId"))
     sid = rd.text(payload.get("shipmentId"))
@@ -1556,10 +1561,10 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
                        "Tệp đính kèm không thuộc lô hàng này.",
                        gate="SHIPMENT_MISMATCH", requestId=request_id)
 
-    outcome = fetch_attachment_bytes({"id": attachment_id})
+    outcome = fetch_attachment_bytes({"id": attachment_id}, shipment_id=sid)
     if not outcome.get("ok"):
         return _result("attachment_download", sid, False,
-                       rd.text(outcome.get("error")) or "Không đọc được tệp từ Google Drive.",
+                       rd.text(outcome.get("error")) or f"Không đọc được tệp từ {storage_label()}.",
                        gate=rd.text(outcome.get("code")) or "DOWNLOAD_FAILED", requestId=request_id)
 
     record = outcome.get("record") or {}
@@ -1583,7 +1588,7 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
         "base64": _base64.b64encode(data).decode("ascii"),
     }
     return _result(
-        "attachment_download", sid, True, "Đã đọc tệp từ Google Drive.",
+        "attachment_download", sid, True, "Đã đọc tệp từ kho chứng từ qua máy chủ.",
         gate="DOWNLOADED", requestId=request_id,
         persisted={
             "attachmentId": attachment_id,

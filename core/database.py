@@ -1914,22 +1914,25 @@ def save_authority_agent(document: Mapping[str, Any]) -> bool:
 
 
 # --------------------------------------------------------------------------
-# LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — shipment attachment METADATA.
+# LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — shipment attachment METADATA.
 #
-# Google Drive owns the attachment bytes. This collection therefore stores
-# bounded metadata (name, mime, category, sizes, sha256, Drive ids, audit) and
-# the writer below REFUSES any document carrying binary/base64 payload keys.
+# ``shipment_attachments`` remains the canonical business metadata collection.
+# Bytes belong to the selected server-side backend (GridFS by default); this
+# writer accepts backend-neutral identities for new rows and keeps a narrow
+# backward-compatible read/write guard for legacy ``drive_file_id`` rows.
+# The writer below REFUSES any document carrying binary/base64 payload keys.
 # --------------------------------------------------------------------------
 
 _ATTACHMENT_BINARY_KEYS = frozenset({"bytes", "data", "base64", "content", "blob", "file_bytes"})
-_ATTACHMENT_REQUIRED_FIELDS = ("id", "shipment_id", "original_name", "sha256", "drive_file_id")
+_ATTACHMENT_REQUIRED_FIELDS = ("id", "shipment_id", "original_name", "sha256")
+_ATTACHMENT_IDENTITY_FIELDS = ("storage_file_id", "drive_file_id")
 
 
 def _attachment_metadata_is_clean(payload: Mapping[str, Any]) -> str:
     """Return the refusal reason when a payload carries binary, else ``""``."""
     for key, value in payload.items():
         if str(key).lower() in _ATTACHMENT_BINARY_KEYS:
-            return f"trường '{key}' không được phép (chỉ lưu metadata, bytes thuộc Google Drive)"
+            return f"trường '{key}' không được phép (chỉ lưu metadata, bytes thuộc kho chứng từ)"
         if isinstance(value, (bytes, bytearray, memoryview)):
             return f"trường '{key}' chứa dữ liệu nhị phân (chỉ lưu metadata)"
     return ""
@@ -1954,6 +1957,18 @@ def save_shipment_attachment(document: Mapping[str, Any]) -> bool:
     if missing:
         _set_last_error("Tệp đính kèm thiếu trường bắt buộc: " + ", ".join(missing) + ".")
         return False
+    if not any(str(payload.get(field) or "").strip() for field in _ATTACHMENT_IDENTITY_FIELDS):
+        _set_last_error("Tệp đính kèm thiếu storage_file_id (hoặc identity Drive legacy).")
+        return False
+    storage_backend = str(payload.get("storage_backend") or "").strip().lower()
+    if storage_backend and storage_backend not in {"gridfs", "drive_shared"}:
+        _set_last_error("Tệp đính kèm có storage_backend không được hỗ trợ.")
+        return False
+    # New rows are backend-neutral. Legacy rows may omit the selector and carry
+    # only drive_file_id; reads below continue to support those rows safely.
+    if not storage_backend and not str(payload.get("drive_file_id") or "").strip():
+        _set_last_error("Tệp đính kèm mới cần có storage_backend.")
+        return False
     unclean = _attachment_metadata_is_clean(payload)
     if unclean:
         _set_last_error("Tệp đính kèm chỉ lưu metadata: " + unclean + ".")
@@ -1962,7 +1977,9 @@ def save_shipment_attachment(document: Mapping[str, Any]) -> bool:
     payload["shipment_id"] = str(payload.get("shipment_id") or "").strip()
     old = db["shipment_attachments"].find_one({"id": attachment_id}, {"_id": 0})
     if old is not None:
-        if old.get("sha256") != payload.get("sha256") or old.get("drive_file_id") != payload.get("drive_file_id"):
+        old_identity = str(old.get("storage_file_id") or old.get("drive_file_id") or "")
+        new_identity = str(payload.get("storage_file_id") or payload.get("drive_file_id") or "")
+        if old.get("sha256") != payload.get("sha256") or old_identity != new_identity:
             _set_last_error("Không thể sửa metadata tệp đính kèm đã tồn tại.")
             return False
         return True

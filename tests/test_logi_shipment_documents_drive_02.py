@@ -10,7 +10,8 @@ ADAPTER — never a real service account, real folder or real Drive:
 Covers:
 
 1. provider contract (folder resolved/created once, upload receives the exact
-   post-processing bytes, correct MIME/name, returned drive_file_id persisted,
+   post-processing bytes, correct MIME/name, returned backend file identity
+   persisted,
    NO binary in Mongo, duplicate SHA refuses the second upload, Drive failure
    leaves no Mongo attachment, metadata failure compensates exactly once,
    unauthorized/oversized requests reach Drive ZERO times);
@@ -214,6 +215,12 @@ def _upload_payload(file_name: str, mime: str, data: bytes, *, shipment_id: str 
 # ---------------------------------------------------------------------------
 # Staging environment (mongomock) — never production, never real Drive
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def pr65_drive_backend(monkeypatch):
+    """Keep PR65's focused contract explicit after GridFS became the default."""
+    monkeypatch.setenv("ATTACHMENT_STORAGE_BACKEND", "drive_shared")
 
 
 @pytest.fixture()
@@ -526,12 +533,13 @@ class TestProviderContract:
             (fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID)
         ] or uploaded["parentId"].startswith("folder-")
 
-        # Metadata: the returned drive_file_id is what was persisted.
+        # Metadata: new rows use the backend-neutral identity.
         rows = _stored()
         assert len(rows) == 1
         record = next(iter(rows.values()))
-        assert record["drive_file_id"] == "drive-file-1"
-        assert record["drive_folder_id"] == uploaded["parentId"]
+        assert record["storage_backend"] == "drive_shared"
+        assert record["storage_file_id"] == "drive-file-1"
+        assert "drive_folder_id" not in record
         assert record["shipment_id"] == SHIPMENT_ID
         assert record["status"] == att.STATUS_AVAILABLE
         assert record["category"] == "customs"

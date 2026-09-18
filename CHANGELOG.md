@@ -1,5 +1,25 @@
 # Changelog
 
+## LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01
+
+### GridFS attachment runtime (Issue #66)
+
+- Keeps `shipment_attachments` as the canonical bounded metadata collection,
+  but stores new attachment bytes in the existing MongoDB/PyMongo GridFS
+  bucket `shipment_attachment_files` by default.
+- Adds the smallest fail-closed selector: `ATTACHMENT_STORAGE_BACKEND=gridfs`
+  (default) or explicit `drive_shared`; the Drive path remains Shared Drive
+  only and is never a fallback.
+- New metadata uses `storage_backend` + `storage_file_id`; the browser
+  receives neither storage identity nor Mongo/provider implementation details.
+  Legacy `drive_file_id` rows remain readable when their existence cannot be
+  disproven.
+- Preserves validation, original-byte SHA dedupe, image policy, RBAC,
+  server-proxied download, fresh readback, and exactly-one compensation with
+  explicit orphan-risk reporting.
+- Focused evidence uses isolated fake/mongomock/GridFS storage only;
+  `PRODUCTION_MUTATIONS=0`, `PILOT_MUTATIONS=0`, `NEW_PROVIDER_DEPENDENCIES=0`.
+
 ## LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02
 
 ### Shipment attachments reintegrated (Google Drive bytes, MongoDB metadata)

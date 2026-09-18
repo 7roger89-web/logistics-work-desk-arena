@@ -37,12 +37,12 @@ export interface ShipmentDoc {
 }
 
 /**
- * LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — ONE real attachment of a lot,
- * projected by the backend from the canonical attachment METADATA. Google Drive
- * holds the bytes, so this shape deliberately carries NO Drive file id, folder
- * id, raw SHA-256 or credential: only what the operator may see, plus (for the
- * single attachment just requested) the server-read base64 body used to save
- * the file.
+ * LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — ONE real attachment of a lot,
+ * projected by the backend from canonical business metadata. The selected
+ * provider holds the bytes server-side, so this shape deliberately carries NO
+ * storage file id, GridFS/Mongo id, raw SHA-256 or credential: only what the
+ * operator may see, plus (for the single attachment just requested) the
+ * server-read base64 body used to save the file.
  */
 export interface ShipmentAttachment {
   id: string;
@@ -80,7 +80,11 @@ export interface AttachmentPolicy {
   accept: string;
   maxUploadBytes: number;
   maxUploadLabel: string;
-  driveConfigured: boolean;
+  storageBackend?: string;
+  storageConfigured?: boolean;
+  storageLabel?: string;
+  /** Legacy PR65 fixture compatibility; not used for operator wording. */
+  driveConfigured?: boolean;
 }
 
 export interface MoneyLine {
@@ -430,7 +434,7 @@ export interface Shipment {
   updated: string;
   missingDocs: string[];
   docs: ShipmentDoc[];
-  /** Real attachments of the lot (metadata only; bytes live in Google Drive). */
+  /** Real attachments of the lot (metadata only; bytes live server-side). */
   attachments: ShipmentAttachment[];
   version?: number;
   rawStatus?: string;
