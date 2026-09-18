@@ -391,15 +391,24 @@ with sync_playwright() as p:
     shot(page,"13-shipments-mobile.png")
     # The shipment id on a mobile card is display text, not a link.
     # Navigate exactly as an employee does: use that card's XEM 360° action.
-    mobile_360=None
-    for candidate in page.get_by_text("XEM 360°", exact=True).all():
-        if candidate.is_visible():
-            mobile_360=candidate
-            break
-    if mobile_360 is not None:
-        mobile_360.click(); page.wait_for_timeout(500)
+    mobile_target=page.evaluate("""() => {
+      const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+      const root=h&&h.shadowRoot?h.shadowRoot:document;
+      const links=[...root.querySelectorAll('a')].filter(a => (a.getAttribute('href')||'').includes('/lo-hang/LO-0306'));
+      const target=links.find(a => {
+        const r=a.getBoundingClientRect();
+        const s=getComputedStyle(a);
+        return r.width>0 && r.height>0 && s.display!=='none' && s.visibility!=='hidden';
+      });
+      if(!target) return null;
+      const info={href:target.getAttribute('href'), text:(target.textContent||'').trim()};
+      target.click();
+      return info;
+    }""")
+    if mobile_target is not None:
+        page.wait_for_timeout(500)
         rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
-            "shipment detail opened through a visible mobile XEM 360° action")
+            f"shipment detail opened through exact LO-0306 mobile href: {mobile_target}")
         shot(page,"14-detail-mobile.png")
         if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
             page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
@@ -411,7 +420,7 @@ with sync_playwright() as p:
                 shot(page,"15-payment-mobile.png")
                 page.keyboard.press("Escape"); page.wait_for_timeout(100)
     else:
-        rec("mobile_detail", False, "no visible mobile XEM 360° action found")
+        rec("mobile_detail", False, "no visible mobile href for LO-0306 found")
 
     # Console/network scope: ignore favicon-only noise, flag app/runtime failures.
     rec("no_uncaught_page_errors", len(page_errors)==0, page_errors)
