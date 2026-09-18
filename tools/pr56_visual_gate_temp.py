@@ -70,11 +70,17 @@ def active_in_dialog(page, label_fragment):
     }})()""")
 
 def active_summary(page):
-    return shadow_eval(page, """(() => {
+    return page.evaluate("""() => {
+      const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+      const root=h&&h.shadowRoot?h.shadowRoot:document;
       const a=root.activeElement;
-      return a ? {tag:a.tagName, text:(a.textContent||'').trim().slice(0,80),
-                  placeholder:a.getAttribute('placeholder'), testid:a.getAttribute('data-testid')} : null;
-    })()""")
+      const d=document.activeElement;
+      return {
+        shadow: a ? {tag:a.tagName, text:(a.textContent||'').trim().slice(0,80),
+                     placeholder:a.getAttribute('placeholder'), testid:a.getAttribute('data-testid')} : null,
+        document: d ? {tag:d.tagName, testid:d.getAttribute?.('data-testid')||null} : null
+      };
+    }""")
 
 def click_sidebar(page, label):
     page.get_by_text(label, exact=True).first.click()
@@ -326,39 +332,25 @@ with sync_playwright() as p:
         rec("payment_authoritative_success", False, f"no success/readback within 15s: {e}")
     shot(page,"10-payment-after-outcome.png")
 
-    # RECEIVABLES — same payment entry point, idle close returns focus.
-    # If a broken focus trap accidentally focused global search, its desktop
-    # backdrop may still be open. Close that overlay explicitly so this
-    # independent flow can continue and report the remaining gates.
-    try:
-        closed_search_overlay=shadow_eval(page, """(() => {
-          const o=[...root.querySelectorAll('div')].find(x =>
-            typeof x.className==='string' &&
-            x.className.includes('fixed inset-0 z-30 hidden md:block'));
-          if(o){ o.click(); return true; }
-          return false;
-        })()""")
-        if closed_search_overlay:
-            page.wait_for_timeout(120)
-            note("search_overlay_cleanup","closed overlay opened by escaped focus; independent flow continues")
-    except Exception as e:
-        minor_notes.append(f"search overlay cleanup failed: {e}")
-    click_sidebar(page,"Thu tiền")
-    page.wait_for_timeout(450)
-    rtext=root_text(page)
+    # RECEIVABLES — clean context so prior global-search state cannot
+    # contaminate this dialog/accessibility verification.
+    c5=browser.new_context(viewport={"width":1440,"height":900})
+    p5=c5.new_page(); wait_shell(p5)
+    p5.get_by_text("Thu tiền", exact=True).first.click(); p5.wait_for_timeout(450)
+    rtext=root_text(p5)
     rec("receivables_page", "Thu tiền khách · Phải thu" in rtext and "LO-0306" in rtext,
-        "receivables desk rendered")
-    row=page.locator(".logi-shell table.tbl tbody tr", has_text="LO-0306").first
+        "receivables desk rendered in clean context")
+    row=p5.locator(".logi-shell table.tbl tbody tr", has_text="LO-0306").first
     if row.count() and row.get_by_role("button", name="Thu tiền", exact=True).count():
         opener=row.get_by_role("button", name="Thu tiền", exact=True).first
-        opener.click(); page.wait_for_timeout(180)
-        rdlg=page.locator('[role="dialog"]').filter(has_text="Ghi nhận khoản thu").first
-        rec("receivables_payment_dialog", rdlg.count()==1 and active_in_dialog(page,"Ghi nhận khoản thu"),
+        opener.click(); p5.wait_for_timeout(180)
+        rdlg=p5.locator('[role="dialog"]').filter(has_text="Ghi nhận khoản thu").first
+        rec("receivables_payment_dialog", rdlg.count()==1 and active_in_dialog(p5,"Ghi nhận khoản thu"),
             "second payment entry uses accessible sheet and focuses inside")
-        shot(page,"11-receivables-payment.png")
-        page.keyboard.press("Escape"); page.wait_for_timeout(180)
-        closed=page.locator('[role="dialog"]').filter(has_text="Ghi nhận khoản thu").count()==0
-        focus_return=shadow_eval(page, """(() => {
+        shot(p5,"11-receivables-payment.png")
+        p5.keyboard.press("Escape"); p5.wait_for_timeout(180)
+        closed=p5.locator('[role="dialog"]').filter(has_text="Ghi nhận khoản thu").count()==0
+        focus_return=shadow_eval(p5, """(() => {
           const a=root.activeElement;
           return !!(a && (a.textContent||'').includes('Thu tiền'));
         })()""")
@@ -366,15 +358,19 @@ with sync_playwright() as p:
             f"closed={closed}, focus_return={focus_return}")
     else:
         rec("receivables_payment_dialog", False, "LO-0306 Thu tiền action not found")
+    c5.close()
 
-    # QUICK ADD — representative non-financial dialog keyboard behavior.
-    page.get_by_role("button", name="Thêm", exact=True).first.click(); page.wait_for_timeout(180)
-    qdlg=page.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh").first
-    rec("quick_add_dialog", qdlg.count()==1 and active_in_dialog(page,"Thêm mới nhanh"),
+    # QUICK ADD — clean context, representative non-financial dialog.
+    c6=browser.new_context(viewport={"width":1440,"height":900})
+    p6=c6.new_page(); wait_shell(p6)
+    p6.get_by_role("button", name="Thêm", exact=True).first.click(); p6.wait_for_timeout(180)
+    qdlg=p6.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh").first
+    rec("quick_add_dialog", qdlg.count()==1 and active_in_dialog(p6,"Thêm mới nhanh"),
         "quick-add real dialog + focus")
-    page.keyboard.press("Escape"); page.wait_for_timeout(150)
-    rec("quick_add_escape", page.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh").count()==0,
+    p6.keyboard.press("Escape"); p6.wait_for_timeout(150)
+    rec("quick_add_escape", p6.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh").count()==0,
         "idle Escape closes")
+    c6.close()
 
     # MOBILE — actual 390x844 rendering
     page.set_viewport_size({"width":390,"height":844})
