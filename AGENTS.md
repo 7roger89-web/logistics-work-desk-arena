@@ -172,3 +172,28 @@ For a clear long-running task on a host that supports native `/goal`, use native
 This serialization requirement applies to NEW_CHAT and SAME_CHAT execution prompts, including Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. It does not require repeating the whole law body in every prompt.
 
 <!-- END P2P PORTABLE LAW -->
+
+<!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
+## P2P project-local frontend capability pack
+
+This repository carries a project-local, read-only-at-discovery projection of the curated P2P frontend capability pack from:
+
+`7roger89-web/P2P-upgrade-github-1@562764f1cdf5b672a4870d8e8311470861a2f76e`
+
+For frontend work:
+
+1. Concrete UI/UX outcome or review -> read `.agents/skills/p2p-uiux/SKILL.md` first.
+2. Frontend implementation/change -> read `.agents/skills/frontend-development/SKILL.md`; it is the thin hub and must load only relevant specialist skills.
+3. Creative visual direction -> `.agents/skills/frontend-design/SKILL.md`.
+4. React engineering/performance -> `.agents/skills/react-best-practices/SKILL.md`.
+5. Component API/composition -> `.agents/skills/composition-patterns/SKILL.md`.
+6. Frontend code review -> `.agents/skills/frontend-code-review/SKILL.md`.
+7. Baseline accessibility/usability guardrails -> `.agents/skills/baseline-ui/SKILL.md`.
+8. React diagnostics -> `.agents/skills/react-doctor/SKILL.md` (optional pinned external-tool adapter).
+9. Motion work -> `.agents/skills/UI-animation-design/SKILL.md` only when motion is materially relevant.
+
+Runtime/visual claims remain governed by the `p2p-uiux` runtime evidence contract. Backend-only work must not mechanically load this pack. Project code, established components, tokens, workflows, and project-specific contracts take precedence over generic examples in a skill.
+
+The files under these projected skill roots are P2P-managed transport copies. Do not silently rewrite vendored upstream bytes or treat this block as a second P2P law, router, registry, package manager, or release authority.
+<!-- END P2P FRONTEND CAPABILITY PACK -->
+
