@@ -212,35 +212,77 @@ assert.equal(oblPayload.partnerId, PARTNER_ID);
 assert.equal(oblPayload.amount, "57.000.000"); // raw preserved (LOGI_FINANCIAL_AMOUNT_INPUT_INTEGRITY_01)
 assert.equal(oblPayload.currency, "VND");
 assert.ok(oblPayload.requestId, "request identity present");
+// Authoritative outcome: the write is PENDING until the backend's correlated
+// lastWrites answer arrives — never green on transport ack.
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payable pending is truthful while waiting");
 ok(`partner_payable_record emitted for ${oblPayload.partnerId} · ${nf(oblPayload.amount)} ${oblPayload.currency}`);
 
-console.log("STEP 6 — payment intent identity: replay absorbed, new intent distinct");
+// Deliver the payable's correlated SUCCESS, exactly as the backend would.
+const oblOk = structuredClone(JOURNEY);
+oblOk.lastWrites = [{ event: "partner_payable_record", ok: true, requestId: oblPayload.requestId, shipmentId: SHIPMENT }];
+invoke(oblOk); await tick(160);
+assert.ok(text(window.document.body).includes("Đã ghi nhận phải trả đối tác"), "green success only after the correlated answer");
+ok("payable success shows only on the correlated authoritative outcome");
+
+console.log("STEP 6 — payment intent identity: pending guard, refusal keeps the draft, new intent distinct");
 triggers = [];
 type(byPlaceholder("VD: 20000000"), "20.000.000");
 await tick();
 const payBtn = findClickable("TRẢ ĐỐI TÁC", "button");
 assert.ok(payBtn, "partner payment button missing");
-// Double click with no re-render in between: React has not cleared the
-// amount draft, so the handler runs twice — it MUST replay the same id.
+// A forced synchronous double click reaches the writer ONCE: the in-flight
+// guard absorbs the second click before React even re-renders.
 payBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 payBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 await tick(150);
 const pays = eventsOf("partner_payment_record");
-assert.equal(pays.length, 2, "double click must reach the handler twice");
-assert.equal(pays[0].payload.requestId, pays[1].payload.requestId, "double click replays ONE request identity");
+assert.equal(pays.length, 1, "double click must NOT double-post");
 assert.equal(pays[0].payload.amount, "20.000.000"); // raw preserved
 assert.equal(pays[0].payload.currency, "VND");
 assert.equal(pays[0].payload.partnerId, PARTNER_ID);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payment pending is truthful");
+assert.ok(payBtn.disabled, "payment button disabled while the outcome is in flight");
+ok(`double click absorbed; one intent ${pays[0].payload.requestId} pending`);
+
+// Backend REFUSAL: the draft survives and the writer's message shows inline —
+// never a success.
+const payRefused = structuredClone(JOURNEY);
+payRefused.lastWrites = [{ event: "partner_payment_record", ok: false, requestId: pays[0].payload.requestId, shipmentId: SHIPMENT, error: "Request identity Đã được dùng cho financial action khác." }];
+invoke(payRefused); await tick(160);
+assert.ok(text(window.document.body).includes("Request identity"), "refusal message visible inline");
+assert.ok(!findClickable("TRẢ ĐỐI TÁC", "button").disabled, "button re-enabled for retry");
+ok("refusal keeps the form and shows the backend's own error");
+
+// Retrying the SAME open intent replays the SAME requestId (writer dedupe).
+triggers = [];
+await click("TRẢ ĐỐI TÁC");
+await tick();
+const paysRetry = eventsOf("partner_payment_record");
+assert.equal(paysRetry.length, 1, "one retry dispatch");
+assert.equal(paysRetry[0].payload.requestId, pays[0].payload.requestId, "same open intent ⇒ same requestId");
+ok("retry replays the same request identity");
+
+// Settle the retried intent so the desk returns to idle before a new draft.
+const retryOk = structuredClone(JOURNEY);
+retryOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: pays[0].payload.requestId, shipmentId: SHIPMENT }];
+invoke(retryOk); await tick(160);
 
 // A NEW amount draft mints a NEW intent — never swallowed as a replay.
+triggers = [];
 type(byPlaceholder("VD: 20000000"), "17.000.000");
 await click("TRẢ ĐỐI TÁC");
 await tick();
 const pays2 = eventsOf("partner_payment_record");
-assert.equal(pays2.length, 3);
-assert.notEqual(pays2[2].payload.requestId, pays[0].payload.requestId, "new intent = new request identity");
-assert.equal(pays2[2].payload.amount, "17.000.000"); // raw preserved
-ok(`double click replayed ${pays[0].payload.requestId}`);
-ok(`new intent minted ${pays2[2].payload.requestId}`);
+assert.equal(pays2.length, 1);
+assert.notEqual(pays2[0].payload.requestId, pays[0].payload.requestId, "new intent = new request identity");
+assert.equal(pays2[0].payload.amount, "17.000.000"); // raw preserved
+
+// Only the CORRELATED success shows green.
+const payOk = structuredClone(JOURNEY);
+payOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: pays2[0].payload.requestId, shipmentId: SHIPMENT }];
+invoke(payOk); await tick(160);
+assert.ok(text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "payment success only after the correlated answer");
+ok(`new intent minted ${pays2[0].payload.requestId}`);
+ok("payment success shows only on the correlated authoritative outcome");
 
 console.log(`\nC2B DOM ACCEPTANCE PASS — ${passed} checks`);

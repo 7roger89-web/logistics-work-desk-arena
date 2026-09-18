@@ -13,16 +13,21 @@
 // double-posts and a new intent stays distinct.
 // ============================================================================
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
-import { Field, GhostBtn, SectionTitle, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
+import { Field, GhostBtn, SectionTitle, SheetDialog, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
 import type { ReceivableRow } from "../lib/viewmodel";
 
 export default function Receivables() {
   const { receivables, dispatch, toast } = useStore();
+  // The authoritative outcome of a recorded receipt arrives in the NEXT fresh
+  // view-model (`lastWrites`), correlated by requestId — never from the
+  // transport (LOGI_FRONTEND_WORKFLOW_OVERHAUL_01, P0 payment trust).
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const [q, setQ] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [outstandingOnly, setOutstandingOnly] = useState(false);
@@ -36,6 +41,9 @@ export default function Receivables() {
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
   const payRequestRef = useRef("");
+  const [payPending, setPayPending] = useState("");
+  const payPendingRef = useRef(""); // synchronous guard: two clicks in one tick
+  const [payError, setPayError] = useState("");
 
   const rows = receivables.rows ?? [];
   const totals = receivables.totals ?? {};
@@ -63,12 +71,20 @@ export default function Receivables() {
 
   const openPay = (row: ReceivableRow) => {
     payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    payPendingRef.current = "";
+    setPayPending("");
+    setPayError("");
     setPayAmt("");
     setPayKind("Thu tiền khách");
     setPaying(row);
   };
 
+  // ONE click = ONE payment intent. The sheet stays open while the backend
+  // decides: submit is disabled, the pending line is shown, and the fresh
+  // view-model's `lastWrites` entry correlated by requestId is the ONLY thing
+  // that closes the sheet (success) or surfaces the refusal inline (error).
   const recordPay = () => {
+    if (payPendingRef.current) return; // outcome in flight: never double-send
     if (!paying) return;
     const raw = payAmt.trim();
     const parsed = parseAmountVN(raw);
@@ -81,9 +97,34 @@ export default function Receivables() {
       note: payKind,
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    toast("Đã gửi khoản thu " + fmtCcy(parsed, paying.currency), "Ghi qua save_direct_shipment_payment — gửi lại cùng intent không nhân đôi.", "green");
-    setPaying(null); setPayAmt("");
+    setPayError("");
+    payPendingRef.current = payRequestRef.current;
+    setPayPending(payRequestRef.current);
   };
+
+  useEffect(() => {
+    if (!payPending) return;
+    const outcome = (vm?.lastWrites ?? []).find(
+      (w) => w.event === "payment_record" && (w.requestId as string | undefined) === payPending
+    );
+    if (!outcome) return; // still waiting for the authoritative backend answer
+    if (outcome.ok) {
+      setPaying(null);
+      setPayAmt("");
+      setPayError("");
+      payPendingRef.current = "";
+      setPayPending("");
+      toast("Đã ghi nhận khoản thu",
+        "Backend đã xác nhận ghi sổ (lastWrites khớp mã yêu cầu). Phải thu đọc lại từ Logistics.",
+        "green");
+    } else {
+      payPendingRef.current = "";
+      setPayPending("");
+      setPayError(outcome.error || "Backend từ chối khoản thu này.");
+      toast("Chưa ghi nhận được", outcome.error || "Backend từ chối khoản thu.", "red");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vm?.lastWrites, payPending]);
 
   return (
     <div className="space-y-4 max-w-[1300px]">
@@ -238,24 +279,33 @@ export default function Receivables() {
         )}
       </div>
 
-      {/* MODAL: record receipt */}
+      {/* MODAL: record receipt — authoritative outcome sheet */}
       {paying && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => setPaying(null)} />
-          <div className="relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
-            <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận khoản thu — {paying.id}</h3>
+        <SheetDialog id="receivable-pay-sheet" testId="receivable-pay-sheet" labelledBy="receivable-pay-title" pending={!!payPending} width={480} onClose={() => setPaying(null)}>
+            <h3 id="receivable-pay-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận khoản thu — {paying.id}</h3>
             <p className="text-[13.5px] text-slate-500 mt-1">Khách <b>{fmtText(paying.customer)}</b> · Còn phải thu: <b className="text-red-700">{fmtCcy(paying.outstanding, paying.currency)}</b></p>
             <div className="grid gap-3 mt-3">
-              <Field label="Loại khoản"><select value={payKind} onChange={(e) => setPayKind(e.target.value)} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option></select></Field>
-              <Field label={`Số tiền (${paying.currency})`} required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
+              <Field label="Loại khoản"><select value={payKind} disabled={!!payPending} onChange={(e) => { setPayKind(e.target.value); payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`; }} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option></select></Field>
+              <Field label={`Số tiền (${paying.currency})`} required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} disabled={!!payPending} onChange={(e) => { setPayAmt(e.target.value); payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`; }} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
             </div>
-            <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({paying.currency}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
+            {payPending ? (
+              <p role="status" data-testid="receivable-pay-pending" className="mt-2.5 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13.5px] font-semibold text-blue-800">
+                ⏳ ĐANG CHỜ BACKEND XÁC NHẬN… Không gửi lại và không đóng trang.
+              </p>
+            ) : (
+              <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({paying.currency}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
+            )}
+            {payError && (
+              <p role="alert" id="receivable-pay-error" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{payError}</p>
+            )}
+            <p className="text-[12.5px] text-slate-400 mt-2">Mã yêu cầu: <b className="font-mono">{payRequestRef.current}</b></p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
-              <GhostBtn onClick={() => setPaying(null)}>Hủy</GhostBtn>
-              <SuccessBtn onClick={recordPay}>💾 LƯU KHOẢN THU</SuccessBtn>
+              <GhostBtn onClick={() => setPaying(null)} disabled={!!payPending}>Hủy</GhostBtn>
+              <SuccessBtn onClick={recordPay} testId="receivable-pay-submit" disabled={!!payPending}>
+                {payPending ? "⏳ ĐANG CHỜ BACKEND XÁC NHẬN…" : "💾 LƯU KHOẢN THU"}
+              </SuccessBtn>
             </div>
-          </div>
-        </div>
+        </SheetDialog>
       )}
 
       {/* sticky mobile primary */}

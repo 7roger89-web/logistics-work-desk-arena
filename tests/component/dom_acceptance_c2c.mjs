@@ -98,6 +98,19 @@ const byPlaceholder = (needle) => {
   return el;
 };
 
+const byTestId = (testId) => {
+  const el = window.document.querySelector(`[data-testid="${testId}"]`);
+  assert.ok(el, `[data-testid=${testId}] not found`);
+  return el;
+};
+
+async function clickTestId(testId) {
+  const el = byTestId(testId);
+  el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  return el;
+}
+
 const bodyText = () => text(window.document.body);
 let passed = 0;
 function ok(name) {
@@ -180,7 +193,7 @@ console.log("STEP 2 — summary tiles, rows, currency separation");
 // STEP 3 — record receipt: stable request identity + new intent distinct
 // ---------------------------------------------------------------------------
 
-console.log("STEP 3 — payment_record identity and idempotency from the worklist");
+console.log("STEP 3 — payment_record: authoritative outcome (LOGI_FRONTEND_WORKFLOW_OVERHAUL_01)");
 {
   triggers = [];
   await click("Thu tiền", "button");
@@ -189,35 +202,81 @@ console.log("STEP 3 — payment_record identity and idempotency from the worklis
 
   type(byPlaceholder("VD: 150000000"), "25000000");
   await tick();
-  const saveBtn = findClickable("LƯU KHOẢN THU", "button");
+  const saveBtn = window.document.querySelector(`button[data-testid="receivable-pay-submit"]`);
   assert.ok(saveBtn, "save button missing");
+  assert.equal(saveBtn.disabled, false, "submit enabled before sending");
 
+  // A forced synchronous double click must reach the writer ONCE: the in-flight
+  // ref absorbs the second click before React even re-renders.
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(150);
 
   const sent = eventsOf("payment_record");
-  assert.equal(sent.length, 2, `double click must reach the handler twice, got ${sent.length}`);
-  const ids = new Set(sent.map((e) => e.payload.requestId));
-  assert.equal(ids.size, 1, `one intent must replay ONE request id, got ${[...ids].join(", ")}`);
+  assert.equal(sent.length, 1, `one click = one payment intent dispatched, got ${sent.length}`);
   const first = sent[0].payload;
   assert.equal(first.amount, "25000000"); // raw preserved
   assert.match(first.requestId, /^PAY-REQ-/, "request identity must be namespaced");
-  ok(`double click replayed one request identity: ${first.requestId}`);
+  ok(`one intent dispatched with identity ${first.requestId}; double click absorbed`);
 
-  // A genuinely NEW intent must NOT be swallowed as a replay.
+  // TRANSPORT ack is NOT persistence: the sheet stays open, pending is named,
+  // submit is disabled, and no green success exists yet.
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "sheet stays open while the outcome is in flight");
+  const pendingLine = window.document.querySelector('[data-testid="receivable-pay-pending"]');
+  assert.ok(pendingLine && pendingLine.textContent.includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "pending state names waiting for the backend");
+  assert.ok(saveBtn.disabled, "submit disabled while pending");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green success before the correlated backend answer");
+
+  // An UNRELATED lastWrites entry (different requestId) must not fake success.
+  const unrelated = structuredClone(FIXTURE.journey);
+  unrelated.lastWrites = [{ event: "payment_record", ok: true, requestId: "PAY-REQ-NOT-MINE", shipmentId: first.shipmentId }];
+  invoke(unrelated); await tick(160);
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "unrelated lastWrites cannot close the sheet or fake success");
+  ok("unrelated lastWrites cannot fake success");
+
+  // Backend REFUSAL: sheet open, amount preserved, the writer's message inline.
+  const refused = structuredClone(FIXTURE.journey);
+  refused.lastWrites = [{ event: "payment_record", ok: false, requestId: first.requestId, shipmentId: first.shipmentId, error: "Request identity Đã được dùng cho financial action khác." }];
+  invoke(refused); await tick(160);
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "refusal keeps the sheet open");
+  const amountInput = byPlaceholder("VD: 150000000");
+  assert.equal(amountInput.value, "25000000", "the original amount survives a refusal");
+  const err = window.document.getElementById("receivable-pay-error");
+  assert.ok(err && text(err).includes("Request identity"), "actionable backend refusal shown inline");
+  assert.ok(!byTestId("receivable-pay-submit").disabled, "submit re-enabled so the operator can retry");
+  ok("refusal preserves the form and surfaces the backend's own error");
+
+  // Retrying the SAME open intent replays the SAME requestId (writer dedupe).
   triggers = [];
-  await click("Thu tiền", "button");
-  type(byPlaceholder("VD: 150000000"), "25000000");
+  const submit2 = window.document.querySelector(`button[data-testid="receivable-pay-submit"]`);
+  submit2.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(120);
+  const retried = eventsOf("payment_record");
+  assert.equal(retried.length, 1, "retry dispatches exactly one event");
+  assert.equal(retried[0].payload.requestId, first.requestId, "same open intent ⇒ same requestId (backend dedupe possible)");
+  ok("retry replays the same request identity");
+
+  // A genuinely NEW intent (edited amount) must NOT be swallowed as a replay.
+  triggers = [];
+  const input2 = byPlaceholder("VD: 150000000");
+  type(input2, "26000000");
   await tick();
-  await click("LƯU KHOẢN THU", "button");
+  await clickTestId("receivable-pay-submit");
   await tick(150);
   const second = eventsOf("payment_record");
   assert.equal(second.length, 1, "a new intent must post exactly one event");
-  assert.equal(second[0].payload.amount, "25000000"); // raw preserved
+  assert.equal(second[0].payload.amount, "26000000"); // raw preserved
   assert.notEqual(second[0].payload.requestId, first.requestId,
     "a second genuine receipt must mint a NEW request identity");
-  ok(`new intent minted a new request identity: ${second[0].payload.requestId}`);
+  ok(`edited intent minted a new request identity: ${second[0].payload.requestId}`);
+
+  // Only the CORRELATED backend success closes the sheet.
+  const succeeded = structuredClone(FIXTURE.journey);
+  succeeded.lastWrites = [{ event: "payment_record", ok: true, requestId: second[0].payload.requestId, shipmentId: second[0].payload.shipmentId }];
+  invoke(succeeded); await tick(160);
+  assert.ok(!window.document.getElementById("receivable-pay-sheet"), "correlated success closes the sheet");
+  assert.ok(bodyText().includes("Đã ghi nhận khoản thu"), "green success only AFTER the backend answer");
+  ok("success closes only on the correlated authoritative outcome");
 }
 
 // ---------------------------------------------------------------------------

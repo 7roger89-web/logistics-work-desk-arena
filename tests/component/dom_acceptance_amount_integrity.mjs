@@ -103,6 +103,15 @@ await click("Tài chính / Công nợ","button",window.document.getElementById("
 await tick();
 ok(`Finance tab open for ${SHIPMENT}`);
 
+// Deliver the correlated backend success for an in-flight write, exactly as
+// the real backend does through lastWrites, so the desk returns to idle.
+async function settle(event, requestId){
+  const settled=structuredClone(JOURNEY);
+  settled.lastWrites=[{ event, ok:true, requestId, shipmentId: SHIPMENT }];
+  invoke(settled);
+  await tick(140);
+}
+
 // Helper to test customer payment path
 async function testCustomerPayment(rawInput, expectedParsed){
   triggers=[];
@@ -123,18 +132,8 @@ async function testCustomerPayment(rawInput, expectedParsed){
   assert.notEqual(payload.amount, 500000, "must NOT be normalized numeric 500000");
   // Ensure requestId exists
   assert.ok(payload.requestId && payload.requestId.startsWith("PAY-REQ-"));
-  // Close modal for next test — click outside or Hủy
-  const cancel=findClickable("Hủy","button");
-  if (cancel) { cancel.dispatchEvent(new window.MouseEvent("click",{bubbles:true,cancelable:true})); await tick(); }
-  else {
-    // fallback: press Esc? just re-invoke to reset
-    invoke(JOURNEY);
-    await tick(80);
-    await click("Lô Hàng","a",$("aside")[0]);
-    await click(SHIPMENT,"a",$("table.tbl")[0]);
-    await click("Tài chính / Công nợ","button",window.document.getElementById("workspace-tabs"));
-    await tick();
-  }
+  // The sheet stays open until the backend's correlated answer settles it.
+  await settle("payment_record", payload.requestId);
   triggers=[];
   ok(`customer receipt raw "${rawInput}" preserved, parsed would be ${expectedParsed}`);
 }
@@ -148,7 +147,7 @@ await testCustomerPayment("1,234.56", 1234.56);
 await testCustomerPayment("57.000.000", 57000000);
 await testCustomerPayment("1200000", 1200000);
 
-console.log("STEP 3 — customer receipt idempotency with raw preservation");
+console.log("STEP 3 — customer receipt idempotency: one click, one intent, double click absorbed");
 {
   triggers=[];
   await click("GHI NHẬN THANH TOÁN","button");
@@ -159,13 +158,11 @@ console.log("STEP 3 — customer receipt idempotency with raw preservation");
   saveBtn.dispatchEvent(new window.MouseEvent("click",{bubbles:true,cancelable:true}));
   await tick(150);
   const sent=eventsOf("payment_record");
-  assert.equal(sent.length,2, "double click must reach handler twice");
-  assert.equal(sent[0].payload.requestId, sent[1].payload.requestId, "double click replays same requestId");
+  assert.equal(sent.length,1, "double click must NOT double-post");
   assert.equal(sent[0].payload.amount, "500.000");
-  assert.equal(sent[1].payload.amount, "500.000");
-  ok(`double click replays ${sent[0].payload.requestId} with raw preserved`);
-  const cancel=findClickable("Hủy","button");
-  if (cancel) { cancel.dispatchEvent(new window.MouseEvent("click",{bubbles:true,cancelable:true})); await tick(); }
+  assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "pending is truthful while the outcome is in flight");
+  ok(`one intent ${sent[0].payload.requestId} with raw preserved; double click absorbed`);
+  await settle("payment_record", sent[0].payload.requestId);
   triggers=[];
 }
 
@@ -183,6 +180,7 @@ async function testPartnerPayable(rawInput){
   assert.equal(p.partnerId, PARTNER_ID);
   assert.equal(p.amount, rawInput.trim());
   assert.ok(p.requestId);
+  await settle("partner_payable_record", p.requestId);
   ok(`partner payable raw "${rawInput}" preserved`);
 }
 
@@ -208,6 +206,7 @@ async function testPartnerPayment(rawInput){
   assert.equal(p.amount, rawInput.trim());
   assert.equal(p.currency, "VND");
   assert.ok(p.requestId);
+  await settle("partner_payment_record", p.requestId);
   ok(`partner payment raw "${rawInput}" preserved`);
 }
 

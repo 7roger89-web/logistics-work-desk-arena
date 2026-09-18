@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, BellRing, Package, PlusCircle, Truck, Users, Handshake,
   Calculator, FileCheck2, FileText, Wallet, Scale, Building2, BarChart3,
@@ -86,11 +86,12 @@ export const inputCls = (state?: "ok" | "missing" | "invalid") =>
     (!state || state === "ok") && "border-slate-200 focus:border-[#1e5aa8]"
   );
 
-export function PrimaryBtn({ children, onClick, className, disabled }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean }) {
+export function PrimaryBtn({ children, onClick, className, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean; testId?: string }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      {...(testId ? { "data-testid": testId } : {})}
       className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] hover:bg-[#14365e] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-navy-900/20 disabled:opacity-50 disabled:cursor-not-allowed", className)}
     >
       {children}
@@ -98,17 +99,17 @@ export function PrimaryBtn({ children, onClick, className, disabled }: { childre
   );
 }
 
-export function SuccessBtn({ children, onClick, className, disabled }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean }) {
+export function SuccessBtn({ children, onClick, className, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean; testId?: string }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25 disabled:opacity-50 disabled:cursor-not-allowed", className)}>
+    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25 disabled:opacity-50 disabled:cursor-not-allowed", className)}>
       {children}
     </button>
   );
 }
 
-export function GhostBtn({ children, onClick, className, danger, disabled }: { children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean; disabled?: boolean }) {
+export function GhostBtn({ children, onClick, className, danger, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean; disabled?: boolean; testId?: string }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white disabled:opacity-50 disabled:cursor-not-allowed", danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", className)}>
+    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white disabled:opacity-50 disabled:cursor-not-allowed", danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", className)}>
       {children}
     </button>
   );
@@ -155,6 +156,112 @@ export function MissingBox({ what, where, actionLabel, onAction }: { what: strin
       <button onClick={onAction} className="btn-press touch-target inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[14.5px] font-bold px-4 min-h-[44px] whitespace-nowrap">
         <PenLine size={16} /> {actionLabel}
       </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — ONE accessible sheet/modal shell for
+// the critical write overlays (payment, payment correction, delivery
+// confirmation, quick add). Existing stack only: a small wrapper around the
+// markup every sheet already used, adding the deterministic semantics the
+// sheets were missing:
+//
+//   * role="dialog" + aria-modal + aria-labelledby (visible heading);
+//   * useful initial focus (first field/control, else the panel);
+//   * focus returns to the opener when the sheet unmounts;
+//   * Escape closes — EXCEPT while `pending` (an outcome in flight must not
+//     be dismissed by accident) ;
+//   * backdrop click closes on the same pending rule;
+//   * minimal focus trap so keyboard Tab stays inside the sheet.
+//
+// No UI framework, no portal, no animation library — the same fixed overlay
+// the donor shell already rendered, now with real dialog semantics.
+// ============================================================================
+export function SheetDialog({
+  id, labelledBy, onClose, pending, children, testId, width = 480,
+}: {
+  /** Stable DOM id for the overlay wrapper (tests + anchors). */
+  id?: string;
+  /** DOM id of the visible heading that names this dialog. */
+  labelledBy: string;
+  /** Close request. Ignored by the shell while `pending` is true. */
+  onClose: () => void;
+  /** True while a write outcome is in flight: Esc/backdrop must not dismiss. */
+  pending?: boolean;
+  children: React.ReactNode;
+  testId?: string;
+  width?: number;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Initial focus + focus return. Stored opener is whatever had focus before
+  // the sheet mounted (the button the operator clicked).
+  useEffect(() => {
+    const opener = window.document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const first = panel?.querySelector<HTMLElement>(
+      "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])"
+    );
+    (first ?? panel)?.focus();
+    return () => { opener?.focus?.(); };
+    // Mount/unmount only — the sheet content is static for its lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (pending) return; // in-flight outcome: never dismissed by accident
+      e.stopPropagation();
+      onClose();
+    };
+    window.document.addEventListener("keydown", onKey);
+    return () => window.document.removeEventListener("keydown", onKey);
+  }, [pending, onClose]);
+
+  // Minimal focus trap: keep Tab / Shift+Tab cycling inside the panel.
+  const trapTab = (e: React.KeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusables = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = window.document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || active === panel)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  return (
+    <div
+      {...(id ? { id } : {})}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      onKeyDown={trapTab}
+      {...(testId ? { "data-testid": testId } : {})}
+    >
+      <div className="absolute inset-0 bg-slate-900/55 anim-fade" aria-hidden="true" onClick={pending ? undefined : onClose} />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
+        className="relative bg-white w-full rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up outline-none"
+        style={{ maxWidth: width }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
