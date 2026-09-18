@@ -229,6 +229,7 @@ class TestGridFSAttachmentService:
     def test_post_write_audit_exception_preserves_metadata_and_gridfs_then_retry_dedupes(self):
         store = FakeStore()
         durable = {}
+        lookup_ids = []
 
         def save_then_audit_error(record):
             # The Mongo upsert is durable; only the following audit insert fails.
@@ -236,6 +237,7 @@ class TestGridFSAttachmentService:
             raise RuntimeError("audit insert failed")
 
         def load_durable(attachment_id):
+            lookup_ids.append(attachment_id)
             return durable if durable.get("id") == attachment_id else None
 
         with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
@@ -256,6 +258,7 @@ class TestGridFSAttachmentService:
         assert len(store.uploads) == 1
         assert store.deletes == []
         assert durable["id"].startswith("ATT-SHP-1-")
+        assert lookup_ids == [durable["id"]]
         assert durable["storage_file_id"] == store.uploads[0]["storage_file_id"]
         assert durable["storage_backend"] == "gridfs"
         assert durable["sha256"] == att.sha256_hex(PDF)
