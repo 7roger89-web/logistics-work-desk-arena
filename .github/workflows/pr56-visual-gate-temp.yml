@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      CANDIDATE_SHA: a3c956137bd6e2b47e3bec30ceb7eefdf568ed5f
+      CANDIDATE_SHA: 6714bb8912b05893af48e3148a1a55be9dc0eab4
       MONGO_URI: mongodb://mongomock.local/logistics_staging
       MONGO_DB_NAME: logistics_staging
       MONGO_ALLOWED_DB_NAMES: logistics_staging
@@ -74,6 +74,8 @@ jobs:
           npm run typecheck
           npm run build
           npm run scan
+          echo "DIST_REPRO_CHECK"
+          git diff --exit-code -- component/dist
           mkdir -p /tmp/pr56-built-dist
           cp -a dist/. /tmp/pr56-built-dist/
 
@@ -108,7 +110,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr56-visual-gate-r4-${{ env.CANDIDATE_SHA }}
+          name: pr56-visual-gate-final-${{ env.CANDIDATE_SHA }}
           path: |
             /tmp/pr56-visual
             /tmp/pr56-built-dist
