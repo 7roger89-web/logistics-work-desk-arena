@@ -230,11 +230,20 @@ console.log("STEP 4 — click Tổng Quan Công Việc");
 {
   await click("Tổng Quan Công Việc", "a", $("aside")[0]);
   const t = bodyText();
-  assert.ok(t.includes("Hôm nay tôi cần làm gì?"), "Home hero missing");
-  assert.ok(t.includes("VIỆC TIẾP THEO"), "next-up section missing");
-  assert.ok(t.includes("Chỉ số vận hành hôm nay"), "KPI section missing");
-  assert.ok(t.includes("Lô đang chạy"), "KPI cards missing");
-  ok("Home rendered after real click");
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — ONE priority area, ONE snapshot:
+  // the old duplicate "VIỆC TIẾP THEO"/"Chỉ số vận hành hôm nay" tile rows
+  // are replaced by a single "Ảnh vận hành hôm nay" snapshot.
+  assert.ok(
+    t.includes("Ưu tiên bây giờ:") || t.includes("Không có việc khẩn"),
+    "Home priority area missing"
+  );
+  assert.ok(t.includes("Quá hạn và sắp tới hạn"), "deadline list missing");
+  assert.ok(t.includes("Trạng thái các lô đang chạy"), "running lots missing");
+  assert.ok(t.includes("Ảnh vận hành hôm nay"), "operational snapshot missing");
+  assert.ok(t.includes("Tiền & hồ sơ cần chú ý"), "money/docs attention missing");
+  assert.ok(!t.includes("VIỆC TIẾP THEO"), "duplicated tile row must be gone");
+  assert.ok(!t.includes("Chỉ số vận hành hôm nay"), "duplicated KPI row must be gone");
+  ok("Home rendered after real click (single priority + single snapshot)");
 }
 
 // ---------------------------------------------------------------------------
@@ -399,9 +408,10 @@ console.log("STEP 10 — Quick Add");
   for (const a of ["Tạo lô hàng mới", "Tạo hợp đồng mới", "Tạo báo giá", "Ghi nhận thanh toán", "Tra cứu thuế / HS"]) {
     assert.ok(findClickable(a, "button"), `quick-add action missing: ${a}`);
   }
-  // close via the X (first svg button inside the sheet)
-  const sheet = $("div").find((d) => d.className.includes("sm:max-w-[520px]"));
-  const closeBtn = $("button", sheet).find((b) => b.querySelector("svg"));
+  // close via the X inside the sheet (stable id from SheetDialog)
+  const sheet = window.document.getElementById("quick-add-sheet");
+  assert.ok(sheet, "quick-add sheet element missing");
+  const closeBtn = $("button", sheet).find((b) => b.querySelector("svg") && (b.getAttribute("aria-label") || "").includes("Đóng"));
   assert.ok(closeBtn, "quick-add close button missing");
   closeBtn.click();
   await tick();

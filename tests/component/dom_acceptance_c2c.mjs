@@ -98,6 +98,19 @@ const byPlaceholder = (needle) => {
   return el;
 };
 
+const byTestId = (testId) => {
+  const el = window.document.querySelector(`[data-testid="${testId}"]`);
+  assert.ok(el, `[data-testid=${testId}] not found`);
+  return el;
+};
+
+async function clickTestId(testId) {
+  const el = byTestId(testId);
+  el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  return el;
+}
+
 const bodyText = () => text(window.document.body);
 let passed = 0;
 function ok(name) {
@@ -180,7 +193,7 @@ console.log("STEP 2 — summary tiles, rows, currency separation");
 // STEP 3 — record receipt: stable request identity + new intent distinct
 // ---------------------------------------------------------------------------
 
-console.log("STEP 3 — payment_record identity and idempotency from the worklist");
+console.log("STEP 3 — payment_record: authoritative outcome (LOGI_FRONTEND_WORKFLOW_OVERHAUL_01)");
 {
   triggers = [];
   await click("Thu tiền", "button");
@@ -189,35 +202,96 @@ console.log("STEP 3 — payment_record identity and idempotency from the worklis
 
   type(byPlaceholder("VD: 150000000"), "25000000");
   await tick();
-  const saveBtn = findClickable("LƯU KHOẢN THU", "button");
+  const saveBtn = window.document.querySelector(`button[data-testid="receivable-pay-submit"]`);
   assert.ok(saveBtn, "save button missing");
+  assert.equal(saveBtn.disabled, false, "submit enabled before sending");
 
+  // A forced synchronous double click must reach the writer ONCE: the in-flight
+  // ref absorbs the second click before React even re-renders.
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(150);
 
   const sent = eventsOf("payment_record");
-  assert.equal(sent.length, 2, `double click must reach the handler twice, got ${sent.length}`);
-  const ids = new Set(sent.map((e) => e.payload.requestId));
-  assert.equal(ids.size, 1, `one intent must replay ONE request id, got ${[...ids].join(", ")}`);
+  assert.equal(sent.length, 1, `one click = one payment intent dispatched, got ${sent.length}`);
   const first = sent[0].payload;
   assert.equal(first.amount, "25000000"); // raw preserved
   assert.match(first.requestId, /^PAY-REQ-/, "request identity must be namespaced");
-  ok(`double click replayed one request identity: ${first.requestId}`);
+  ok(`one intent dispatched with identity ${first.requestId}; double click absorbed`);
 
-  // A genuinely NEW intent must NOT be swallowed as a replay.
+  // TRANSPORT ack is NOT persistence: the sheet stays open, pending is named,
+  // submit is disabled, and no green success exists yet.
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "sheet stays open while the outcome is in flight");
+  const pendingLine = window.document.querySelector('[data-testid="receivable-pay-pending"]');
+  assert.ok(pendingLine && pendingLine.textContent.includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "pending state names waiting for the backend");
+  assert.ok(saveBtn.disabled, "submit disabled while pending");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green success before the correlated backend answer");
+
+  // An UNRELATED lastWrites entry (different requestId) must not fake success.
+  const unrelated = structuredClone(FIXTURE.journey);
+  unrelated.lastWrites = [{ event: "payment_record", ok: true, requestId: "PAY-REQ-NOT-MINE", shipmentId: first.shipmentId }];
+  invoke(unrelated); await tick(160);
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "unrelated lastWrites cannot close the sheet or fake success");
+  ok("unrelated lastWrites cannot fake success");
+
+  // Backend REFUSAL: sheet open, amount preserved, the writer's message inline.
+  const refused = structuredClone(FIXTURE.journey);
+  refused.lastWrites = [{ event: "payment_record", ok: false, requestId: first.requestId, shipmentId: first.shipmentId, error: "Request identity Đã được dùng cho financial action khác." }];
+  invoke(refused); await tick(160);
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "refusal keeps the sheet open");
+  const amountInput = byPlaceholder("VD: 150000000");
+  assert.equal(amountInput.value, "25000000", "the original amount survives a refusal");
+  const err = window.document.getElementById("receivable-pay-error");
+  assert.ok(err && text(err).includes("Request identity"), "actionable backend refusal shown inline");
+  assert.ok(!byTestId("receivable-pay-submit").disabled, "submit re-enabled so the operator can retry");
+  ok("refusal preserves the form and surfaces the backend's own error");
+
+  // The refused request stays historical: the retry is a NEW write attempt
+  // with a FRESH requestId (Control-Tower repair — stale-refusal safety).
   triggers = [];
-  await click("Thu tiền", "button");
-  type(byPlaceholder("VD: 150000000"), "25000000");
-  await tick();
-  await click("LƯU KHOẢN THU", "button");
-  await tick(150);
-  const second = eventsOf("payment_record");
-  assert.equal(second.length, 1, "a new intent must post exactly one event");
-  assert.equal(second[0].payload.amount, "25000000"); // raw preserved
-  assert.notEqual(second[0].payload.requestId, first.requestId,
-    "a second genuine receipt must mint a NEW request identity");
-  ok(`new intent minted a new request identity: ${second[0].payload.requestId}`);
+  const submit2 = window.document.querySelector(`button[data-testid="receivable-pay-submit"]`);
+  submit2.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(140);
+  const retried = eventsOf("payment_record");
+  assert.equal(retried.length, 1, "retry dispatches exactly one event");
+  const retryId = retried[0].payload.requestId;
+  assert.notEqual(retryId, first.requestId, "retry after refusal mints a NEW requestId (≠ refused X)");
+  assert.equal(retried[0].payload.amount, "25000000", "amount preserved into the retry intent");
+  // The CURRENT lastWrites still carries the OLD refusal (X). It must NOT
+  // instantly settle the retry (Y): the retry stays pending with no error.
+  assert.ok(window.document.querySelector('[data-testid="receivable-pay-pending"]'),
+    "stale refusal X cannot settle the retry — still pending");
+  assert.ok(!window.document.getElementById("receivable-pay-error"),
+    "stale refusal does not re-pop the inline error");
+  ok(`retry minted a NEW identity ${retryId}; old refusal X cannot settle it`);
+
+  // (C) correlated ok for the retry WITHOUT the finance readback: still pending.
+  const okNoReadback = structuredClone(FIXTURE.journey);
+  okNoReadback.lastWrites = [{ event: "payment_record", ok: true, requestId: retryId, shipmentId: first.shipmentId }];
+  invoke(okNoReadback); await tick(160);
+  assert.ok(window.document.getElementById("receivable-pay-sheet"), "ok without readback keeps the sheet open");
+  assert.ok(window.document.querySelector('[data-testid="receivable-pay-pending"]'), "ok without readback stays pending");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green without the authoritative readback");
+  ok("correlated ok WITHOUT finance readback = still pending, truthful");
+
+  // (D) success requires the SAME fresh view-model to already show the payment
+  // (finance.payments[].requestId) — patch the readback like the backend does.
+  const succeeded = structuredClone(FIXTURE.journey);
+  const lot = succeeded.shipments.find((x) => x.id === first.shipmentId);
+  lot.finance.payments = lot.finance.payments ?? [];
+  lot.finance.payments.push({
+    requestId: retryId,
+    date: "18/09/2026",
+    kind: "Thu tiền khách",
+    amount: 25000000,
+    ccy: lot.currency || "VND",
+    by: "staging.support",
+  });
+  succeeded.lastWrites = [{ event: "payment_record", ok: true, requestId: retryId, shipmentId: first.shipmentId }];
+  invoke(succeeded); await tick(160);
+  assert.ok(!window.document.getElementById("receivable-pay-sheet"), "ok + fresh readback closes the sheet");
+  assert.ok(bodyText().includes("Đã ghi nhận khoản thu"), "green success only AFTER ok AND readback");
+  ok("success = correlated ok AND finance.payments requestId readback");
 }
 
 // ---------------------------------------------------------------------------

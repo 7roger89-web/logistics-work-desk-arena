@@ -278,7 +278,7 @@ console.log("STEP 5 — finance_actual_save typed event (restored service entry)
 // STEP 6 — G + H: one receipt, stable request identity, new intent = new id
 // ---------------------------------------------------------------------------
 
-console.log("STEP 6 — payment_record identity and idempotency");
+console.log("STEP 6 — payment_record identity and authoritative outcome");
 {
   triggers = [];
   await click("GHI NHẬN THANH TOÁN", "button");
@@ -290,21 +290,50 @@ console.log("STEP 6 — payment_record identity and idempotency");
   const saveBtn = findClickable("LƯU KHOẢN THU", "button");
   assert.ok(saveBtn, "payment save button missing");
 
-  // Double click with no re-render in between: React has not unmounted the
-  // sheet, so the handler runs twice — it MUST replay the same request id.
+  // A forced synchronous double click reaches the writer ONCE: the in-flight
+  // guard absorbs the second click before React even re-renders.
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   saveBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(150);
 
   const sent = eventsOf("payment_record");
-  assert.equal(sent.length, 2, `expected the double click to reach the handler twice, got ${sent.length}`);
-  const ids = new Set(sent.map((e) => e.payload.requestId));
-  assert.equal(ids.size, 1, `one payment intent must replay ONE request id, got ${[...ids].join(", ")}`);
+  assert.equal(sent.length, 1, `one click = one intent (double click absorbed), got ${sent.length}`);
   const first = sent[0].payload;
   assert.equal(first.shipmentId, SHIPMENT);
   assert.equal(first.amount, "25000000"); // raw preserved (LOGI_FINANCIAL_AMOUNT_INPUT_INTEGRITY_01)
   assert.match(first.requestId, /^PAY-REQ-/, "request identity must be namespaced");
-  ok(`double click replayed one request identity: ${first.requestId}`);
+  assert.ok(bodyText().includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "pending is truthful while waiting");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green success before the correlated answer");
+  ok(`one intent ${first.requestId}; double click absorbed; waiting truthfully`);
+
+  // (C) correlated ok WITHOUT the finance readback stays pending — transport
+  // truth never impersonates persistence truth.
+  const okNoReadback = structuredClone(JOURNEY);
+  okNoReadback.lastWrites = [{ event: "payment_record", ok: true, requestId: first.requestId, shipmentId: SHIPMENT }];
+  invoke(okNoReadback); await tick(160);
+  assert.ok(window.document.getElementById("payment-record-sheet"), "ok without readback keeps the sheet open");
+  assert.ok(bodyText().includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "ok without readback stays pending");
+  assert.ok(!bodyText().includes("Đã ghi nhận khoản thu"), "no green without the authoritative readback");
+  ok("ok-without-readback stays pending — truthful, not a failure");
+
+  // (D) success requires ok AND the SAME fresh view-model already showing the
+  // payment (finance.payments[].requestId) — patch the readback like the backend.
+  const settled = structuredClone(JOURNEY);
+  const lot = settled.shipments.find((x) => x.id === SHIPMENT);
+  lot.finance.payments = lot.finance.payments ?? [];
+  lot.finance.payments.push({
+    requestId: first.requestId,
+    date: "18/09/2026",
+    kind: "Thu tiền khách",
+    amount: 25000000,
+    ccy: FIN.currency,
+    by: "staging.support",
+  });
+  settled.lastWrites = [{ event: "payment_record", ok: true, requestId: first.requestId, shipmentId: SHIPMENT }];
+  invoke(settled); await tick(160);
+  assert.ok(!window.document.getElementById("payment-record-sheet"), "ok + fresh readback closes the sheet");
+  assert.ok(bodyText().includes("Đã ghi nhận khoản thu"), "green success appears only after ok AND readback");
+  ok("success closes only on ok + authoritative finance readback");
 
   // A genuinely NEW receipt intent must NOT be swallowed as a replay.
   triggers = [];
@@ -318,6 +347,9 @@ console.log("STEP 6 — payment_record identity and idempotency");
   assert.equal(second[0].payload.amount, "25000000"); // raw preserved
   assert.notEqual(second[0].payload.requestId, first.requestId,
     "a second genuine receipt of the same amount must mint a NEW request identity");
+  const settled2 = structuredClone(JOURNEY);
+  settled2.lastWrites = [{ event: "payment_record", ok: true, requestId: second[0].payload.requestId, shipmentId: SHIPMENT }];
+  invoke(settled2); await tick(160);
   ok(`new intent minted a new request identity: ${second[0].payload.requestId}`);
 }
 

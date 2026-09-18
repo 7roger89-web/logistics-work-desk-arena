@@ -76,6 +76,23 @@ body {
 /* focus visible for accessibility */
 :focus-visible { outline: 3px solid #1e5aa8; outline-offset: 2px; border-radius: 6px; }
 
+/* LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 (P2) — tabular numerals: money/count
+   columns stop "dancing" as values change; materially useful in dense
+   operational tables and KPI tiles. */
+.tbl td { font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 (P2) — respect prefers-reduced-motion:
+   the work desk keeps its meaning without the entrance/pulse animation. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-slide-up, .anim-fade, .toast-in { animation: none; }
+  .pulse-dot { animation: none; }
+  .lift { transition: none; }
+  .lift:hover { transform: none; }
+  .btn-press:active { transform: none; }
+  * { scroll-behavior: auto !important; }
+}
+
 @media print {
   .no-print { display: none !important; }
 }

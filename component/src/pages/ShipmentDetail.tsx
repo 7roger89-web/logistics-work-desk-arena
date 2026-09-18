@@ -1,8 +1,8 @@
 import { contractPath } from "../lib/contractRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
-import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
+import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
@@ -19,6 +19,11 @@ const TABS = [
 ];
 
 const TAB_IDS = new Set(TABS.map((t) => t.id));
+
+/** One fresh request identity per write intent — never derived from content. */
+function mintRequestId(prefix: string): string {
+  return `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
 
 /**
  * The tab the backend's own `nextRoute` points at.
@@ -51,6 +56,9 @@ export default function ShipmentDetail() {
   const s = shipments.find((x) => x.id === id);
   const [showPay, setShowPay] = useState(false);
   const [showDeliver, setShowDeliver] = useState(false);
+  // P1.4 — metadata maintenance lives behind an explicit disclosure so the
+  // operational tab content sits closer to the next action.
+  const [headerEditOpen, setHeaderEditOpen] = useState(false);
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
   const [partnerAmt, setPartnerAmt] = useState("");
@@ -201,11 +209,43 @@ export default function ShipmentDetail() {
   // genuine receipt of the same amount and kind replay the first request and
   // never post. Idempotency is scoped to the request, not to the amount.
   const payRequestRef = useRef("");
+  // -------------------------------------------------------------------
+  // CUSTOMER PAYMENT — LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 (P0 payment trust).
+  //
+  // The old sheet closed and showed a green toast the moment the TRANSPORT
+  // accepted the event. TRANSPORT_SUCCESS != PERSISTENCE_SUCCESS, so the
+  // operator could believe money was recorded while the backend never
+  // confirmed it. This is now the SAME authoritative outcome pattern the
+  // codebase already proves in NewContract / CreateShipment /
+  // payment_correction:
+  //
+  //   one click → ONE payment intent (stable requestId, minted at sheet
+  //   open, re-minted only when the draft changes → a genuinely new intent)
+  //   → submit disabled + "ĐANG CHỜ BACKEND XÁC NHẬN…" → sheet stays open →
+  //   the fresh view-model's `lastWrites` is correlated by requestId:
+  //     ok    → sheet closes, amount clears, THEN green success;
+  //     refused → sheet stays open, amount preserved, inline backend error,
+  //               the same open intent replays the SAME requestId (the
+  //               writer's action registry absorbs replays; an edited amount
+  //               mints a NEW id and stays a distinct intent).
+  //
+  //   A missing/unrelated `lastWrites` entry can never fake success, and the
+  //   pending ref absorbs a synchronous double click before React even
+  //   re-renders.
+  // -------------------------------------------------------------------
+  const [payPending, setPayPending] = useState("");
+  const payPendingRef = useRef(""); // synchronous guard: two clicks in one tick
+  const [payError, setPayError] = useState("");
   const openPay = () => {
-    payRequestRef.current = `PAY-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    payRequestRef.current = mintRequestId("PAY");
+    payPendingRef.current = "";
+    setPayPending("");
+    setPayError("");
     setShowPay(true);
   };
+  const clearPayPending = () => { payPendingRef.current = ""; setPayPending(""); };
   const recordPay = () => {
+    if (payPendingRef.current) return; // outcome in flight: never double-send
     const raw = payAmt.trim();
     const parsed = parseAmountVN(raw);
     if (parsed == null || parsed <= 0) { toast("Chưa nhập số tiền", `Nhập số tiền ${ccy} rồi bấm Lưu — ví dụ 50.000.000.`, "red"); return; }
@@ -217,9 +257,47 @@ export default function ShipmentDetail() {
       note: payKind,
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    setShowPay(false); setPayAmt("");
-    toast("Đã gửi khoản thu " + fmtCcy(parsed, ccy), "Ghi qua save_direct_shipment_payment với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+    setPayError("");
+    payPendingRef.current = payRequestRef.current;
+    setPayPending(payRequestRef.current);
   };
+  useEffect(() => {
+    if (!payPending) return;
+    // Correlation is scoped to the PENDING request id: a stale refusal for an
+    // OLDER requestId in the same lastWrites array can never settle this retry.
+    const outcome = (vm?.lastWrites ?? []).find(
+      (w) => w.event === "payment_record" && (w.requestId as string | undefined) === payPending
+    );
+    if (!outcome) return; // still waiting for the authoritative backend answer
+    if (outcome.ok) {
+      // Success requires BOTH the correlated ok AND the authoritative finance
+      // readback: the SAME fresh view-model must already show the payment
+      // (finance.payments[].requestId). ok-without-readback stays pending —
+      // it may simply be a not-yet-refreshed readback, never a failure.
+      const fresh = (vm?.shipments ?? []).find((x) => x.id === s.id);
+      const readbackConfirmed = !!fresh?.finance?.payments?.some(
+        (p) => (p.requestId as string | undefined) === payPending
+      );
+      if (!readbackConfirmed) return; // truthful: still waiting for the fresh readback
+      setShowPay(false);
+      setPayAmt("");
+      setPayError("");
+      clearPayPending();
+      toast("Đã ghi nhận khoản thu " + s.id,
+        "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.",
+        "green");
+    } else {
+      // Authoritative refusal: the refused request stays historical evidence.
+      // The form keeps amount/kind and the NEXT retry is a NEW write attempt
+      // with a FRESH requestId — so the stale refusal (old id) in the current
+      // lastWrites can never reconsume and instantly "settle" the retry.
+      clearPayPending();
+      setPayError(outcome.error || "Backend từ chối khoản thu này.");
+      payRequestRef.current = mintRequestId("PAY");
+      toast("Chưa ghi nhận được", outcome.error || "Backend từ chối khoản thu.", "red");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vm?.lastWrites, payPending]);
 
   // -------------------------------------------------------------------
   // CUSTOMER PAYMENT CORRECTION — the real canonical reversal workflow.
@@ -254,15 +332,17 @@ export default function ShipmentDetail() {
   const [corrError, setCorrError] = useState("");
   const [corrPending, setCorrPending] = useState("");
   const corrRequestRef = useRef("");
+  const corrPendingRef = useRef(""); // synchronous double-click guard
   const openCorrection = (p: Payment) => {
-    corrRequestRef.current = `CORR-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    corrRequestRef.current = mintRequestId("CORR");
+    corrPendingRef.current = "";
     setCorrectionFor(p);
     setCorrReason(""); setCorrAmt(""); setCorrDate(""); setCorrNote("");
     setCorrError(""); setCorrPending("");
   };
-  const closeCorrection = () => { setCorrectionFor(null); setCorrPending(""); };
+  const closeCorrection = () => { setCorrectionFor(null); corrPendingRef.current = ""; setCorrPending(""); };
   const submitCorrection = () => {
-    if (!correctionFor || corrPending) return; // pending = in flight: never double-send
+    if (!correctionFor || corrPendingRef.current) return; // pending = in flight: never double-send
     const reason = corrReason.trim();
     if (!reason) {
       setCorrError("LÝ DO ĐIỀU CHỈNH là bắt buộc — backend từ chối correction không có lý do.");
@@ -288,6 +368,7 @@ export default function ShipmentDetail() {
     });
     if (!sent) { setCorrError("Component chưa kết nối backend — yêu cầu chưa được gửi đi."); return; }
     setCorrError("");
+    corrPendingRef.current = corrRequestRef.current;
     setCorrPending(corrRequestRef.current);
   };
   useEffect(() => {
@@ -303,25 +384,40 @@ export default function ShipmentDetail() {
         "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.",
         "green");
     } else {
+      corrPendingRef.current = "";
       setCorrPending("");
       setCorrError(outcome.error || "Backend từ chối bút toán điều chỉnh này.");
+      // Same retry contract: the refused correction stays historical; the next
+      // submit mints a FRESH correctionRequestId so the stale refusal (old id)
+      // in the current lastWrites can never instantly settle the retry.
+      corrRequestRef.current = mintRequestId("CORR");
       toast("Chưa điều chỉnh được", outcome.error || "Backend từ chối.", "red");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vm?.lastWrites, corrPending]);
 
-  // C2B — partner payable / payment to partner. SAME contract as receipts:
-  // one stable request identity per PAYABLE/PAYMENT INTENT, minted with the
-  // amount draft and held until the operator changes it, so a double click
-  // replays the SAME id and the canonical action registry absorbs it. A new
-  // genuine intent (new amount draft) mints a new id and stays distinct.
+  // C2B — partner payable / payment to partner. SAME contract as receipts
+  // (and the same authoritative-outcome pattern): one stable request identity
+  // per PAYABLE/PAYMENT INTENT, minted with the amount draft and re-minted
+  // when the draft changes, so a double click replays the SAME id and the
+  // canonical action registry absorbs it. The sheet-free buttons now wait for
+  // the backend's correlated `lastWrites` answer before any green success:
+  // a refused write stays visible as an inline error, never as success.
   const partnerOblRef = useRef("");
   const partnerPayRef = useRef("");
-  const newPartnerIntent = (prefix: string) =>
-    `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const [partnerPending, setPartnerPending] = useState<Record<string, string>>({});
+  const partnerPendingRef = useRef<Record<string, string>>({});
+  const [partnerError, setPartnerError] = useState<Record<string, string>>({});
+  const newPartnerIntent = (prefix: string) => mintRequestId(prefix);
   const mintPartnerObl = () => { partnerOblRef.current = newPartnerIntent("POBL"); };
   const mintPartnerPay = () => { partnerPayRef.current = newPartnerIntent("PPAY"); };
+  const setPartnerState = (key: "obl" | "pay", pending: string, error: string) => {
+    partnerPendingRef.current = { ...partnerPendingRef.current, [key]: pending };
+    setPartnerPending((p) => ({ ...p, [key]: pending }));
+    setPartnerError((p) => ({ ...p, [key]: error }));
+  };
   const recordPartnerPayable = () => {
+    if (partnerPendingRef.current.obl) return; // outcome in flight: never double-send
     const partner = s.finance.partner;
     if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red"); return; }
     const raw = partnerAmt.trim();
@@ -337,10 +433,10 @@ export default function ShipmentDetail() {
       note: "Phải trả chi phí đối tác theo thực tế lô",
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    setPartnerAmt("");
-    toast("Đã gửi phải trả đối tác " + fmtCcy(parsed, ccy), "Ghi qua canonical ledger (obligation) với request identity — gửi lại cùng intent sẽ không nhân đôi.", "green");
+    setPartnerState("obl", partnerOblRef.current, "");
   };
   const recordPartnerPayment = () => {
+    if (partnerPendingRef.current.pay) return; // outcome in flight: never double-send
     const partner = s.finance.partner;
     if (!partner?.partnerId) { toast("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red"); return; }
     const raw = partnerAmt.trim();
@@ -357,9 +453,61 @@ export default function ShipmentDetail() {
       note: "Chuyển khoản thanh toán đối tác",
     });
     if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
-    setPartnerAmt("");
-    toast("Đã gửi thanh toán đối tác " + fmtCcy(parsed, ccy), "Ghi qua canonical ledger (transaction + allocation) — backend sẽ đọc lại còn phải trả.", "green");
+    setPartnerState("pay", partnerPayRef.current, "");
   };
+  // Authoritative outcomes for BOTH partner writes, correlated by requestId —
+  // the backend echoes each request's id into `lastWrites` (success AND
+  // refusal), so transport truth never impersonates persistence truth.
+  useEffect(() => {
+    const writes = vm?.lastWrites ?? [];
+    if (writes.length === 0) return;
+    for (const key of ["obl", "pay"] as const) {
+      const pendingId = partnerPendingRef.current[key];
+      if (!pendingId) continue;
+      const event = key === "obl" ? "partner_payable_record" : "partner_payment_record";
+      const outcome = writes.find(
+        (w) => w.event === event && (w.requestId as string | undefined) === pendingId
+      );
+      if (!outcome) continue; // still waiting for the authoritative answer
+      if (outcome.ok) {
+        // Success proof is PER LEDGER, in the backend's own projection shape:
+        // • partner PAYABLE is an OBLIGATION, not a payment — the correlated
+        //   outcome already carries the canonical fresh obligation result
+        //   (position / obligationId / persisted from
+        //   _handle_partner_payable_record); no payments list is waited for.
+        // • partner PAYMENT success requires the canonical partner-ledger
+        //   readback: finance.partner.payments[].requestId (from
+        //   _partner_projection) — NEVER the customer receipts list
+        //   (finance.payments, shipment data["3.4"].payments), which is a
+        //   different ledger. ok-without-proof stays pending; it may simply
+        //   be a not-yet-refreshed readback, never a failure.
+        const canonicalProof =
+          key === "obl"
+            ? !!outcome.position
+            : !!((vm?.shipments ?? []).find((x) => x.id === ((outcome.shipmentId as string | undefined) || s.id))
+                ?.finance?.partner?.payments?.some(
+                  (p) => (p.requestId as string | undefined) === pendingId
+                ));
+        if (!canonicalProof) continue; // truthful: still waiting for the canonical proof
+        setPartnerState(key, "", "");
+        setPartnerAmt("");
+        toast(
+          key === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác",
+          "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.",
+          "green"
+        );
+      } else {
+        setPartnerState(key, "", outcome.error || "Backend từ chối bút toán này.");
+        // Same retry contract as the customer receipts: the refused request
+        // stays historical; the next submit is a NEW intent with a FRESH id,
+        // so the stale refusal (old id) can never reconsume the retry.
+        if (key === "obl") mintPartnerObl();
+        else mintPartnerPay();
+        toast("Chưa ghi nhận được", outcome.error || "Backend từ chối.", "red");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vm?.lastWrites]);
 
   // FINANCE ACTUAL — the service lines themselves are entered in the bounded
   // `FinanceActualEntry` section below (canonical catalog + full line fields +
@@ -537,20 +685,39 @@ export default function ShipmentDetail() {
         </div>
       </div>
 
-      {/* ============ LOT HEADER: NAME (customer half) + CREATION DATE ============ */}
+      {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
+          LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
+          to sit permanently between the header+tabs and the operational tab
+          content, pushing daily work below the fold. It is now an explicit
+          "Sửa thông tin lô" disclosure: the identity summary STAYS visible on
+          the main path, and every edit capability (customer change, creation
+          date, save semantics) is one click away — nothing removed. */}
       <section
         className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5"
         data-testid="shipment-header-edit"
       >
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2">
-            <PenLine size={18} className="text-[#1e5aa8]" /> Tên lô & ngày tạo
-          </h3>
-          <span className="text-[12.5px] font-semibold text-slate-500">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setHeaderEditOpen((v) => !v)}
+            aria-expanded={headerEditOpen}
+            data-testid="shipment-header-edit-toggle"
+            className={cx(
+              "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 px-3.5 min-h-[44px] text-[14px] font-bold",
+              headerEditOpen ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a]"
+            )}
+          >
+            <PenLine size={17} className={headerEditOpen ? "text-white" : "text-[#1e5aa8]"} /> Sửa thông tin lô
+            <ChevronDown size={16} className={cx("transition-transform", headerEditOpen && "rotate-180")} />
+          </button>
+          <span className="text-[12.5px] font-semibold text-slate-500 text-right">
             Tên lô = <b className="text-[#0f2a4a]">{s.id}</b> · {s.customer}
+            {!headerEditOpen && <span className="hidden md:inline"> · tạo {s.createdAt || "chưa biết"}</span>}
           </span>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1fr_300px] items-start">
+        {headerEditOpen && (
+        <>
+        <div className="grid gap-3 lg:grid-cols-[1fr_300px] items-start mt-3">
           <div className="space-y-2">
             <SearchPicker
               label="Khách hàng của lô"
@@ -604,6 +771,8 @@ export default function ShipmentDetail() {
           kết hợp đồng đang trỏ vào mã cũ. Ngày tạo là ngày bộ phận vận hành mở lô, không tự suy ra
           từ ETD/ETA.
         </p>
+        </>
+        )}
       </section>
 
       {s.missingDocs.length > 0 && tab !== "chung-tu" && (
@@ -981,11 +1150,15 @@ export default function ShipmentDetail() {
               <div className="mt-3 rounded-xl border border-slate-200 p-3">
                 <p className="text-[13px] font-extrabold text-[#0f2a4a] mb-2">Ghi nhận phải trả & thanh toán đối tác</p>
                 <Field label={`Số tiền (${ccy})`} hint="Ví dụ: 20.000.000 — để trống là UNKNOWN, không tự thành 0">
-                  <input value={partnerAmt} onChange={(e) => { setPartnerAmt(e.target.value); mintPartnerObl(); mintPartnerPay(); }} inputMode="numeric" placeholder="VD: 20000000" className={inputCls()} />
+                  <input value={partnerAmt} disabled={!!partnerPending.obl || !!partnerPending.pay} onChange={(e) => { setPartnerAmt(e.target.value); mintPartnerObl(); mintPartnerPay(); }} inputMode="numeric" placeholder="VD: 20000000" className={inputCls()} />
                 </Field>
+                {partnerPending.obl && <p role="status" data-testid="partner-payable-pending" className="mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13px] font-semibold text-blue-800">⏳ ĐANG CHỜ BACKEND XÁC NHẬN (phải trả)…</p>}
+                {partnerPending.pay && <p role="status" data-testid="partner-payment-pending" className="mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13px] font-semibold text-blue-800">⏳ ĐANG CHỜ BACKEND XÁC NHẬN (thanh toán)…</p>}
+                {partnerError.obl && <p role="alert" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{partnerError.obl}</p>}
+                {partnerError.pay && <p role="alert" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{partnerError.pay}</p>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5">
-                  <GhostBtn onClick={recordPartnerPayable} className="min-h-[48px]">📌 GHI NHẬN PHẢI TRẢ</GhostBtn>
-                  <PrimaryBtn onClick={recordPartnerPayment} className="min-h-[48px]">💸 TRẢ ĐỐI TÁC</PrimaryBtn>
+                  <GhostBtn onClick={recordPartnerPayable} disabled={!!partnerPending.obl} testId="partner-payable-submit" className="min-h-[48px]">{partnerPending.obl ? "⏳ ĐANG CHỜ…" : "📌 GHI NHẬN PHẢI TRẢ"}</GhostBtn>
+                  <PrimaryBtn onClick={recordPartnerPayment} disabled={!!partnerPending.pay} testId="partner-payment-submit" className="min-h-[48px]">{partnerPending.pay ? "⏳ ĐANG CHỜ…" : "💸 TRẢ ĐỐI TÁC"}</PrimaryBtn>
                 </div>
               </div>
 
@@ -1149,36 +1322,43 @@ export default function ShipmentDetail() {
 
       {/* MODAL: deliver */}
       {showDeliver && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => setShowDeliver(false)} />
-          <div className="relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
-            <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Xác nhận đã giao {s.id}?</h3>
+        <SheetDialog id="delivery-confirm-sheet" testId="delivery-confirm-sheet" labelledBy="delivery-sheet-title" width={480} onClose={() => setShowDeliver(false)}>
+            <h3 id="delivery-sheet-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Xác nhận đã giao {s.id}?</h3>
             <p className="text-[14.5px] text-slate-600 mt-1.5">Khách <b>{s.customer}</b> đã ký nhận đủ <b>{s.cargo.packs} kiện</b> tại <b>{s.importInfo.deliveryAddr}</b>? Sau xác nhận, lô chuyển sang “Đã giao” và mở được PXK.</p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
               <GhostBtn onClick={() => setShowDeliver(false)}>Chưa, để sau</GhostBtn>
               <SuccessBtn onClick={confirmDelivery}>✅ ĐÃ GIAO</SuccessBtn>
             </div>
-          </div>
-        </div>
+        </SheetDialog>
       )}
-      {/* MODAL: pay */}
+      {/* MODAL: pay — authoritative outcome: open while pending, close only on
+          the backend's correlated confirmation, refusal stays inline. */}
       {showPay && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={() => setShowPay(false)} />
-          <div className="relative bg-white w-full sm:max-w-[480px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
-            <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận thanh toán — {s.id}</h3>
+        <SheetDialog id="payment-record-sheet" testId="payment-record-sheet" labelledBy="payment-sheet-title" pending={!!payPending} width={480} onClose={() => setShowPay(false)}>
+            <h3 id="payment-sheet-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Ghi nhận thanh toán — {s.id}</h3>
             <p className="text-[13.5px] text-slate-500">Còn phải thu: <b className="text-red-700">{fmtCcy(s.finance.outstanding, ccy)}</b></p>
             <div className="grid gap-3 mt-3">
-              <Field label="Loại khoản"><select value={payKind} onChange={(e) => setPayKind(e.target.value)} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option><option>Trả đối tác</option></select></Field>
-              <Field label={`Số tiền (${ccy})`} required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} onChange={(e) => setPayAmt(e.target.value)} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
+              <Field label="Loại khoản"><select value={payKind} disabled={!!payPending} onChange={(e) => { setPayKind(e.target.value); payRequestRef.current = mintRequestId("PAY"); }} className={inputCls()}><option>Thu tiền khách</option><option>Thu tạm ứng</option><option>Thu nốt công nợ</option><option>Trả đối tác</option></select></Field>
+              <Field label={`Số tiền (${ccy})`} required error={!payAmt ? "Nhập số tiền — VD: 150000000" : undefined}><input value={payAmt} disabled={!!payPending} onChange={(e) => { setPayAmt(e.target.value); payRequestRef.current = mintRequestId("PAY"); }} inputMode="numeric" placeholder="VD: 150000000" className={inputCls(!payAmt ? "missing" : "ok")} /></Field>
             </div>
-            <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({ccy}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
+            {payPending ? (
+              <p role="status" data-testid="payment-record-pending" className="mt-2.5 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13.5px] font-semibold text-blue-800">
+                ⏳ ĐANG CHỜ BACKEND XÁC NHẬN… Không gửi lại và không đóng trang.
+              </p>
+            ) : (
+              <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({ccy}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
+            )}
+            {payError && (
+              <p role="alert" id="payment-record-error" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{payError}</p>
+            )}
+            <p className="text-[12.5px] text-slate-400 mt-2">Mã yêu cầu: <b className="font-mono">{payRequestRef.current}</b></p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
-              <GhostBtn onClick={() => setShowPay(false)}>Hủy</GhostBtn>
-              <SuccessBtn onClick={recordPay}>💾 LƯU KHOẢN THU</SuccessBtn>
+              <GhostBtn onClick={() => setShowPay(false)} disabled={!!payPending}>Hủy</GhostBtn>
+              <SuccessBtn onClick={recordPay} disabled={!!payPending} testId="payment-record-submit">
+                {payPending ? "⏳ ĐANG CHỜ BACKEND XÁC NHẬN…" : "💾 LƯU KHOẢN THU"}
+              </SuccessBtn>
             </div>
-          </div>
-        </div>
+        </SheetDialog>
       )}
       {/* ============ SHEET: PAYMENT CORRECTION (canonical reversal) ============
           Read-only original facts + REQUIRED reason + OPTIONAL evidence.
@@ -1187,10 +1367,8 @@ export default function ShipmentDetail() {
           outcome is in flight; the sheet closes ONLY on the authoritative
           backend success and stays open (fields frozen) on refusal. */}
       {correctionFor && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" id="payment-correction-sheet">
-          <div className="absolute inset-0 bg-slate-900/55 anim-fade" onClick={corrPending ? undefined : closeCorrection} />
-          <div className="relative bg-white w-full sm:max-w-[520px] rounded-t-3xl sm:rounded-3xl p-5 anim-slide-up">
-            <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">Điều chỉnh khoản thu — hoàn tác có kiểm toán</h3>
+        <SheetDialog id="payment-correction-sheet" testId="payment-correction-sheet" labelledBy="correction-sheet-title" pending={!!corrPending} width={520} onClose={closeCorrection}>
+            <h3 id="correction-sheet-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Điều chỉnh khoản thu — hoàn tác có kiểm toán</h3>
             <p className="text-[13px] text-slate-500 mt-0.5">
               Khoản thu gốc không bị sửa nội dung và không bị xóa: backend ghi một correction liên kết
               (financial_corrections + audit payment_reversed) rồi đánh dấu khoản thu “Đã hoàn tác”.
@@ -1251,8 +1429,7 @@ export default function ShipmentDetail() {
                 {corrPending ? "⏳ ĐANG GHI…" : "✅ XÁC NHẬN ĐIỀU CHỈNH / HOÀN TÁC"}
               </PrimaryBtn>
             </div>
-          </div>
-        </div>
+        </SheetDialog>
       )}
       {savedTick > 0 && <span className="hidden" />}
     </div>

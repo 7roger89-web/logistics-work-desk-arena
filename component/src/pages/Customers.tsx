@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
+import { useQueryParam } from "../lib/queryParam";
 import { Search, Plus, PenLine, Archive, Upload, Users, ArrowRight, CircleAlert } from "lucide-react";
 import {
   Field,
@@ -39,7 +40,10 @@ export default function Customers() {
   // view-model (`lastWrites`), matched by the requestId this page sent — never
   // from the transport (LOGI_UAT_REAL_USE_REPAIR_02).
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const [q, setQ] = useState("");
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — the search box is route-backed: the
+  // global search lands here with ?q=<entity> so the exact customer is already
+  // filtered/highlighted, and the operator's own search survives navigation.
+  const [q, setQ] = useQueryParam("q");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [archiving, setArchiving] = useState<Customer | null>(null);

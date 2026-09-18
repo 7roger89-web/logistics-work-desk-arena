@@ -4,11 +4,11 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
 import { NAV, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib/data";
 import type { Role } from "../lib/data";
-import { ICONS } from "./ui";
+import { ICONS, SheetDialog } from "./ui";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 
-function Logo() {
+function Logo({ sandbox }: { sandbox: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0">
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
@@ -16,7 +16,9 @@ function Logo() {
         <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
         <span className="block text-[11.5px] text-slate-500 font-medium">Phú Anh Logistics · Nội bộ</span>
       </span>
-      <span className="text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>
+      {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
+          production-like runtime does not carry prototype residue. */}
+      {sandbox && <span className="text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
     </Link>
   );
 }
@@ -53,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
             <Menu size={22} className="text-[#0f2a4a]" />
           </button>
-          <Logo />
+          <Logo sandbox={environment?.isSandbox === true} />
           {/* search desktop */}
           <div className="hidden md:flex flex-1 max-w-[560px] mx-auto relative">
             <div className="flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
@@ -85,13 +87,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 ))}
                 {results.cus.map((c) => (
-                  <button key={c.mst} onClick={() => goSearch(`/khach-hang`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — no customer detail
+                  // route exists, so the destination RECEIVES the entity:
+                  // /khach-hang opens with the exact customer already
+                  // filtered — never a generic list to search again.
+                  <button key={c.mst} onClick={() => goSearch(`/khach-hang?q=${encodeURIComponent(c.name || c.short || c.mst)}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-amber-100 grid place-items-center"><Truck size={17} className="text-amber-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{c.short} · MST {c.mst}</span><span className="block text-[12.5px] text-slate-500">Khách hàng</span></span>
                   </button>
                 ))}
                 {results.quo.map((q) => (
-                  <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  // Same for quotes: land with the exact quote filtered.
+                  <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia?q=${encodeURIComponent(q.id)}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center"><Calculator size={17} className="text-violet-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{q.id} · {q.customer}</span><span className="block text-[12.5px] text-slate-500">Báo giá — {q.status}</span></span>
                   </button>
@@ -105,24 +112,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setSearchOpen(!searchOpen)} className="md:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Tìm kiếm">
             <Search size={21} className="text-[#0f2a4a]" />
           </button>
-          {/* role switcher */}
-          <div className="relative hidden sm:block">
-            <button onClick={() => setRoleMenu((v) => !v)} className="flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]">
+          {/* role switcher — LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 (P1.5):
+              the ADMIN/SUPPORT/SALE switcher is a UI-only PREVIEW for the
+              sandbox. It never mutates canonical RBAC, so in a normal
+              (production-like) runtime it is not rendered at all — the header
+              shows only the actual logged-in role. Sandbox keeps the preview,
+              visibly labelled as display-only. core/auth.py is untouched. */}
+          {environment?.isSandbox ? (
+          <div className="relative hidden sm:block" data-testid="role-preview-switcher">
+            <button onClick={() => setRoleMenu((v) => !v)} aria-haspopup="menu" aria-expanded={roleMenu} className="flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]">
               <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
               <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[11.5px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
+              <span className="text-[10px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5">Xem trước</span>
             </button>
             {roleMenu && (
-              <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up">
-                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">Xem giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập</p>
+              <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up" role="menu" data-testid="role-preview-menu">
+                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">Xem trước giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập</p>
                 {(["ADMIN", "SUPPORT", "SALE"] as Role[]).map((r) => (
-                  <button key={r} onClick={() => { setRole(r); setRoleMenu(false); toast(`Đã chuyển sang vai trò ${ROLE_LABEL[r]}`, r === "ADMIN" ? "Xem được hợp đồng, tài chính & người dùng" : r === "SUPPORT" ? "Ưu tiên điều phối lô hàng & chứng từ" : "Ưu tiên khách hàng, báo giá & hợp đồng", "blue"); }} className={cx("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", role === r && "bg-blue-50")}>
+                  <button key={r} role="menuitem" onClick={() => { setRole(r); setRoleMenu(false); toast(`Đang XEM TRƯỚC giao diện ${ROLE_LABEL[r]}`, "Chỉ thay đổi hiển thị trong sandbox — quyền thật vẫn theo tài khoản đăng nhập.", "blue"); }} className={cx("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", role === r && "bg-blue-50")}>
                     <span><span className="block font-bold text-[14.5px]">{ROLE_LABEL[r]}</span><span className="block text-[12px] text-slate-500">{r}</span></span>
-                    {role === r && <span className="text-blue-700 font-bold text-[13px]">● Đang dùng</span>}
+                    {role === r && <span className="text-blue-700 font-bold text-[13px]">● Đang xem</span>}
                   </button>
                 ))}
               </div>
             )}
           </div>
+          ) : (
+          <div className="hidden sm:block" data-testid="actual-role-badge" title="Vai trò của tài khoản đăng nhập">
+            <div className="flex items-center gap-2 rounded-xl border-2 border-transparent pl-1.5 pr-2.5 py-1">
+              <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
+              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[11.5px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
+            </div>
+          </div>
+          )}
           {/* notif */}
           <button onClick={() => setNotifOpen(true)} className="relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Thông báo">
             <Bell size={21} className="text-[#0f2a4a]" />
@@ -199,12 +221,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <button onClick={() => setNavOpen(false)} className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button>
               </div>
               <div className="p-3">
-                <div className="flex gap-2 mb-3">
-                  {(["ADMIN", "SUPPORT", "SALE"] as Role[]).map((r) => (
-                    <button key={r} onClick={() => setRole(r)} className={cx("flex-1 touch-target rounded-xl border-2 text-[13px] font-bold py-2", role === r ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 text-slate-600")}>{r}</button>
-                  ))}
-                </div>
-                <p className="px-2 text-[12px] text-slate-500 mb-2">Đang dùng: <b>{userName}</b> · {ROLE_LABEL[role]}</p>
+                {/* P1.5 — role preview only exists in the sandbox; a normal
+                    runtime shows the actual logged-in role without any
+                    switcher. */}
+                {environment?.isSandbox && (
+                  <div className="flex gap-2 mb-3" data-testid="role-preview-mobile">
+                    {(["ADMIN", "SUPPORT", "SALE"] as Role[]).map((r) => (
+                      <button key={r} onClick={() => { setRole(r); toast(`Đang XEM TRƯỚC giao diện ${ROLE_LABEL[r]}`, "Chỉ thay đổi hiển thị trong sandbox.", "blue"); }} className={cx("flex-1 touch-target rounded-xl border-2 text-[13px] font-bold py-2", role === r ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 text-slate-600")}>{r}</button>
+                    ))}
+                  </div>
+                )}
+                <p className="px-2 text-[12px] text-slate-500 mb-2">Đang dùng: <b>{userName}</b> · {ROLE_LABEL[role]}{environment?.isSandbox ? " (xem trước giao diện)" : ""}</p>
                 {NAV.map((g) => (
                   <div key={g.group} className="mb-3">
                     <p className="px-2 mb-1 text-[11px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
@@ -288,11 +315,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ===== QUICK ADD SHEET ===== */}
       {quickAddOpen && (
-        <div className="no-print fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/50 anim-fade" onClick={() => setQuickAddOpen(false)} />
-          <div className="relative bg-white w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl p-5 pb-8 anim-slide-up" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}>
+        <SheetDialog id="quick-add-sheet" testId="quick-add-sheet" labelledBy="quick-add-title" width={520} onClose={() => setQuickAddOpen(false)}>
+          <div className="no-print">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
-            <div className="flex items-center justify-between mb-1"><p className="font-extrabold text-[18px] text-[#0f2a4a]">Thêm mới nhanh</p><button onClick={() => setQuickAddOpen(false)} className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
+            <div className="flex items-center justify-between mb-1"><p id="quick-add-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Thêm mới nhanh</p><button onClick={() => setQuickAddOpen(false)} aria-label="Đóng thêm mới nhanh" className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
             <p className="text-[13.5px] text-slate-500 mb-4">Chọn việc muốn làm — mỗi nút dẫn thẳng tới màn hình nhập liệu.</p>
             <div className="grid gap-2.5">
               {[
@@ -310,7 +336,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           </div>
-        </div>
+        </SheetDialog>
       )}
 
       {/* ===== TOASTS ===== */}

@@ -1,0 +1,78 @@
+{
+  "task": "LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 (repair round 2)",
+  "probe_id": "PAY-REQ-PROBE-2-2214FD32",
+  "generated_at": "2026-09-18T03:24:21+00:00",
+  "transport": "SANDBOX_STAGING",
+  "environment": {
+    "transport": "SANDBOX_STAGING",
+    "label": "Preview / Staging",
+    "isSandbox": true,
+    "database": "isolated in-process mongomock (logistics_staging); reset before AND after the probe; dropped with the process"
+  },
+  "user": {
+    "name": "Thu Hằng (Preview/Staging)",
+    "role": "SUPPORT",
+    "username": "staging.support",
+    "displayOnly": true
+  },
+  "isolation": "Fixture/staging seed ONLY (logi_staging_seed) — no production or pilot data touched; in-process mongomock dropped after the probe.",
+  "steps": {
+    "BEFORE": {
+      "shipmentId": "LO-0306",
+      "currency": "VND",
+      "payments_requestIds": [
+        "SEED-REQ-0306-1"
+      ],
+      "payments_reversed": [],
+      "receivable": 112860000.0,
+      "received": 60000000.0,
+      "outstanding": 52860000.0
+    },
+    "WRITE": {
+      "event": "payment_record",
+      "handler": "views.logi_view_model._handle_payment_record (RBAC -> save_direct_shipment_payment -> audit -> fresh readback)",
+      "requestId": "PAY-REQ-PROBE-2-2214FD32",
+      "amountRaw": "25000000",
+      "amount": 25000000,
+      "date": "2026-09-18",
+      "ok": true,
+      "message": "Đã ghi nhận khoản thu.",
+      "paymentId": "PAY-0C0EB758506A4A1BB940090ABC8373E7",
+      "persisted": {
+        "paymentId": "PAY-0C0EB758506A4A1BB940090ABC8373E7",
+        "amount": 25000000.0,
+        "derivedPaid": 85000000.0,
+        "derivedDebt": 27860000.0,
+        "version": 2
+      },
+      "handler_readback_payments_requestIds": [
+        "SEED-REQ-0306-1",
+        "PAY-REQ-PROBE-2-2214FD32"
+      ],
+      "audit_entries": 2,
+      "audit_first_action": "direct_payment_created"
+    },
+    "AFTER": {
+      "shipmentId": "LO-0306",
+      "payments_requestIds": [
+        "SEED-REQ-0306-1",
+        "PAY-REQ-PROBE-2-2214FD32"
+      ],
+      "contains_requestId": true,
+      "received": 85000000.0,
+      "outstanding": 27860000.0,
+      "received_delta": 25000000.0,
+      "outstanding_delta": 25000000.0
+    }
+  },
+  "PERSISTED_PAYMENT_VISIBLE_IN_FRESH_READBACK": "YES",
+  "HANDLER_READBACK_CONTAINS_REQUEST_ID": true,
+  "BALANCES_CONSISTENT": true,
+  "runtime_payment_outcome": {
+    "event": "payment_record",
+    "ok": true,
+    "requestIdEchoed": "PAY-REQ-PROBE-2-2214FD32",
+    "error": "Đã ghi nhận khoản thu."
+  },
+  "probe_kind": "REAL_SANDBOX_READBACK_PROBE (mongomock staging through the ONE canonical writer; BEFORE/WRITE/AFTER fresh readback)"
+}

@@ -212,35 +212,121 @@ assert.equal(oblPayload.partnerId, PARTNER_ID);
 assert.equal(oblPayload.amount, "57.000.000"); // raw preserved (LOGI_FINANCIAL_AMOUNT_INPUT_INTEGRITY_01)
 assert.equal(oblPayload.currency, "VND");
 assert.ok(oblPayload.requestId, "request identity present");
+// Authoritative outcome: the write is PENDING until the backend's correlated
+// lastWrites answer arrives — never green on transport ack.
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payable pending is truthful while waiting");
 ok(`partner_payable_record emitted for ${oblPayload.partnerId} · ${nf(oblPayload.amount)} ${oblPayload.currency}`);
 
-console.log("STEP 6 — payment intent identity: replay absorbed, new intent distinct");
+// (B) correlated ok WITHOUT the canonical obligation proof: _handle_partner_payable_record
+// always returns position/obligationId/persisted on success — without them the
+// sheet must NOT claim success (still pending, truthful).
+const oblOkNoProof = structuredClone(JOURNEY);
+oblOkNoProof.lastWrites = [{ event: "partner_payable_record", ok: true, requestId: oblPayload.requestId, shipmentId: SHIPMENT }];
+invoke(oblOkNoProof); await tick(160);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payable ok without canonical obligation proof stays pending");
+assert.ok(!text(window.document.body).includes("Đã ghi nhận phải trả đối tác"), "no green without the canonical obligation proof");
+ok("payable ok WITHOUT canonical obligation proof = still pending, truthful");
+
+// (C) canonical obligation result present (position — the handler's own fresh
+// shipment_partner_position readback, with obligationId/persisted) settles truthfully.
+const oblOk = structuredClone(JOURNEY);
+oblOk.lastWrites = [{
+  event: "partner_payable_record", ok: true, requestId: oblPayload.requestId, shipmentId: SHIPMENT,
+  obligationId: "OBL-C2B-FIXTURE-1",
+  persisted: { id: "OBL-C2B-FIXTURE-1", amount: 57000000, currency: "VND", purpose: "partner_cost_payable" },
+  position: { status: "OPEN", partners: [{ partner: { party_id: PARTNER_ID }, totals_by_currency: { VND: { payable: 57000000, paid: 0, remaining: 57000000 } } }] },
+}];
+invoke(oblOk); await tick(160);
+assert.ok(text(window.document.body).includes("Đã ghi nhận phải trả đối tác"), "green success only after ok AND the canonical obligation result");
+ok("payable success = correlated ok + canonical obligation position/obligationId");
+
+console.log("STEP 6 — payment intent identity: pending guard, refusal keeps the draft, new intent distinct");
 triggers = [];
 type(byPlaceholder("VD: 20000000"), "20.000.000");
 await tick();
 const payBtn = findClickable("TRẢ ĐỐI TÁC", "button");
 assert.ok(payBtn, "partner payment button missing");
-// Double click with no re-render in between: React has not cleared the
-// amount draft, so the handler runs twice — it MUST replay the same id.
+// A forced synchronous double click reaches the writer ONCE: the in-flight
+// guard absorbs the second click before React even re-renders.
 payBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 payBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 await tick(150);
 const pays = eventsOf("partner_payment_record");
-assert.equal(pays.length, 2, "double click must reach the handler twice");
-assert.equal(pays[0].payload.requestId, pays[1].payload.requestId, "double click replays ONE request identity");
+assert.equal(pays.length, 1, "double click must NOT double-post");
 assert.equal(pays[0].payload.amount, "20.000.000"); // raw preserved
 assert.equal(pays[0].payload.currency, "VND");
 assert.equal(pays[0].payload.partnerId, PARTNER_ID);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "payment pending is truthful");
+assert.ok(payBtn.disabled, "payment button disabled while the outcome is in flight");
+ok(`double click absorbed; one intent ${pays[0].payload.requestId} pending`);
 
-// A NEW amount draft mints a NEW intent — never swallowed as a replay.
-type(byPlaceholder("VD: 20000000"), "17.000.000");
+// Backend REFUSAL: the draft survives and the writer's message shows inline —
+// never a success.
+const payRefused = structuredClone(JOURNEY);
+payRefused.lastWrites = [{ event: "partner_payment_record", ok: false, requestId: pays[0].payload.requestId, shipmentId: SHIPMENT, error: "Request identity Đã được dùng cho financial action khác." }];
+invoke(payRefused); await tick(160);
+assert.ok(text(window.document.body).includes("Request identity"), "refusal message visible inline");
+assert.ok(!findClickable("TRẢ ĐỐI TÁC", "button").disabled, "button re-enabled for retry");
+ok("refusal keeps the form and shows the backend's own error");
+
+// The refused request stays historical: the retry is a NEW write attempt with
+// a FRESH requestId (Control-Tower repair). The stale refusal still sitting in
+// lastWrites (X) must NOT instantly settle the retry (Y).
+triggers = [];
 await click("TRẢ ĐỐI TÁC");
 await tick();
-const pays2 = eventsOf("partner_payment_record");
-assert.equal(pays2.length, 3);
-assert.notEqual(pays2[2].payload.requestId, pays[0].payload.requestId, "new intent = new request identity");
-assert.equal(pays2[2].payload.amount, "17.000.000"); // raw preserved
-ok(`double click replayed ${pays[0].payload.requestId}`);
-ok(`new intent minted ${pays2[2].payload.requestId}`);
+const paysRetry = eventsOf("partner_payment_record");
+assert.equal(paysRetry.length, 1, "one retry dispatch");
+const retryId = paysRetry[0].payload.requestId;
+assert.notEqual(retryId, pays[0].payload.requestId, "retry after refusal mints a NEW requestId (≠ refused X)");
+assert.equal(paysRetry[0].payload.amount, "20.000.000", "amount preserved into the retry intent");
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "stale refusal X cannot settle the retry — still pending");
+assert.ok(!window.document.getElementById("partner-pay-error"), "stale refusal does not re-pop the inline error");
+ok(`retry minted a NEW identity ${retryId}; old refusal X cannot settle it`);
+
+// (D) correlated ok for the retry WITHOUT finance.partner.payments matching
+// the requestId: still pending — transport truth never impersonates ledger truth.
+const okNoReadback = structuredClone(JOURNEY);
+okNoReadback.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: retryId, shipmentId: SHIPMENT }];
+invoke(okNoReadback); await tick(160);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "ok without partner readback stays pending");
+assert.ok(!text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "no green without the authoritative partner readback");
+ok("partner payment ok WITHOUT finance.partner.payments match = still pending");
+
+// (F) NEGATIVE guard for the exact round-2 defect: the CUSTOMER receipts list
+// (finance.payments) is a DIFFERENT ledger — even when it contains the partner
+// requestId it must NOT satisfy the partner readback.
+const wrongLedger = structuredClone(JOURNEY);
+const wrongLot = wrongLedger.shipments.find((x) => x.id === SHIPMENT);
+wrongLot.finance.payments = wrongLot.finance.payments ?? [];
+wrongLot.finance.payments.push({
+  requestId: retryId, date: "18/09/2026", kind: "Thu tiền khách", amount: 20000000, ccy: "VND", by: "staging.support",
+});
+wrongLedger.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: retryId, shipmentId: SHIPMENT }];
+invoke(wrongLedger); await tick(160);
+assert.ok(text(window.document.body).includes("ĐANG CHỜ BACKEND XÁC NHẬN"), "customer finance.payments does NOT satisfy the partner readback");
+assert.ok(!text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "no green from the wrong ledger");
+ok("customer finance.payments does NOT satisfy the partner readback (negative guard)");
+
+// (E) success = ok AND the SAME fresh view-model's canonical partner ledger
+// (finance.partner.payments[].requestId, from _partner_projection) showing it.
+const payOk = structuredClone(JOURNEY);
+const lot = payOk.shipments.find((x) => x.id === SHIPMENT);
+lot.finance.partner = lot.finance.partner ?? {};
+lot.finance.partner.payments = lot.finance.partner.payments ?? [];
+lot.finance.partner.payments.push({
+  id: "TX-C2B-FIXTURE-2",
+  requestId: retryId,
+  date: "18/09/2026",
+  kind: "payment",
+  amount: 20000000,
+  ccy: "VND",
+});
+payOk.lastWrites = [{ event: "partner_payment_record", ok: true, requestId: retryId, shipmentId: SHIPMENT }];
+invoke(payOk); await tick(160);
+assert.ok(text(window.document.body).includes("Đã ghi nhận thanh toán đối tác"), "green only AFTER ok AND the canonical partner readback");
+assert.ok(!findClickable("TRẢ ĐỐI TÁC", "button").disabled, "desk returns to idle after the settled outcome");
+ok(`success = ok + finance.partner.payments requestId readback for ${retryId}`);
+ok("payment success shows only on the correlated authoritative outcome");
 
 console.log(`\nC2B DOM ACCEPTANCE PASS — ${passed} checks`);

@@ -143,8 +143,16 @@ async function bootOnLot(state) {
 
 const bundlePath = path.join(ROOT, "component/dist/logi-shell.js");
 
+// Boot on a lot, then open the "Sửa thông tin lô" disclosure (steps 2+ edit
+// the metadata, which now lives behind it — P1.4).
+async function bootOnLotOpen(state) {
+  await bootOnLot(state);
+  await clickTestId("shipment-header-edit-toggle");
+  assert.equal(byTestId("shipment-header-edit-toggle").getAttribute("aria-expanded"), "true", "disclosure must open");
+}
+
 // ---------------------------------------------------------------------------
-console.log("STEP 1 — the lot header shows both facts as the backend stored them");
+console.log("STEP 1 — the lot header shows both facts; maintenance is a disclosure (P1.4)");
 {
   const mod = await import(bundlePath);
   assert.equal(typeof mod.default, "function");
@@ -153,8 +161,18 @@ console.log("STEP 1 — the lot header shows both facts as the backend stored th
 
   const card = byTestId("shipment-header-edit");
   assert.ok(card, "the lot-header edit card is missing");
+  // Collapsed by default: the identity summary stays on the main path, the
+  // edit controls live behind "Sửa thông tin lô" (aria-expanded reflects it).
+  const toggle = byTestId("shipment-header-edit-toggle");
+  assert.ok(text(toggle).includes("Sửa thông tin lô"), "disclosure toggle missing");
+  assert.equal(toggle.getAttribute("aria-expanded"), "false", "disclosure collapsed by default");
+  assert.ok(text(card).includes(`Tên lô = ${LOT}`), "the name line must stay visible while collapsed");
+  assert.ok(!dateInput(), "date field hidden while the disclosure is closed");
+
+  await clickTestId("shipment-header-edit-toggle");
+  assert.equal(byTestId("shipment-header-edit-toggle").getAttribute("aria-expanded"), "true", "disclosure opens");
   const cardText = text(card);
-  assert.ok(cardText.includes("Tên lô & ngày tạo"), "card heading missing");
+  assert.ok(cardText.includes("Sửa thông tin lô"), "card heading missing");
   assert.ok(cardText.includes(`Tên lô = ${LOT}`), "the name line must lead with the lot code");
   assert.ok(cardText.includes("An Phát JSC"), "the name line must carry the customer half");
   assert.equal(dateInput().value, "03/09/2026", "the stored creation date must be in the field");
@@ -197,7 +215,7 @@ console.log("STEP 2 — the date edit emits ONE shipment_field_save, sent ≠ sa
 // ---------------------------------------------------------------------------
 console.log("STEP 3 — a cleared date stays UNKNOWN (never today, never 0)");
 {
-  await bootOnLot(FIX.shipmentDateSaved);
+  await bootOnLotOpen(FIX.shipmentDateSaved);
   await type(dateInput(), "");
   const before = triggers.length;
   await click("LƯU NGÀY TẠO", "button");
@@ -218,7 +236,7 @@ console.log("STEP 3 — a cleared date stays UNKNOWN (never today, never 0)");
 // ---------------------------------------------------------------------------
 console.log("STEP 4 — nothing edited ⇒ nothing sent (no silent rewrite of the date)");
 {
-  await bootOnLot(FIX.shipmentBefore);
+  await bootOnLotOpen(FIX.shipmentBefore);
   const before = triggers.length;
   await click("LƯU NGÀY TẠO", "button");
   await tick(60);
@@ -232,7 +250,7 @@ console.log("STEP 4 — nothing edited ⇒ nothing sent (no silent rewrite of th
 // ---------------------------------------------------------------------------
 console.log("STEP 5 — the customer half of the name is re-chosen by search");
 {
-  await bootOnLot(FIX.shipmentBefore);
+  await bootOnLotOpen(FIX.shipmentBefore);
   await clickTestId("shipment-customer-picker-toggle");
   assert.ok(byTestId("shipment-customer-picker-panel"), "search panel did not open");
   await type(byTestId("shipment-customer-picker-search"), "Đức");
@@ -267,7 +285,7 @@ console.log("STEP 5 — the customer half of the name is re-chosen by search");
 // ---------------------------------------------------------------------------
 console.log("STEP 6 — saving with nothing picked dispatches nothing");
 {
-  await bootOnLot(FIX.shipmentCustomerSaved);
+  await bootOnLotOpen(FIX.shipmentCustomerSaved);
   // The picker shows the STORED customer; that is not a change.
   assert.equal(attr("shipment-customer-picker", "data-selected"), "CUST-MINHDUC");
   const before = triggers.length;
@@ -285,7 +303,7 @@ console.log("STEP 7 — a refused (RBAC) write never looks like a success");
   assert.equal(refusals.length, 2, "fixture must carry both refusals");
   assert.ok(refusals.every((w) => !w.ok && /RBAC/.test(w.error || "")), refusals.map((w) => w.error).join(" / "));
 
-  await bootOnLot(FIX.shipmentViewerRefused);
+  await bootOnLotOpen(FIX.shipmentViewerRefused);
   const card = text(byTestId("shipment-header-edit"));
   // The page renders EXACTLY the stored truth: the refused date never arrived,
   // the refused customer change never arrived, and the unknown date is blank.
