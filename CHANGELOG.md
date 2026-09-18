@@ -16,7 +16,12 @@
   directly (no `google-api-python-client`). Folders, upload, metadata, download
   and the ONE bounded compensating delete. No public links, no browser OAuth,
   no credential in the payload. Missing config fails closed as
-  `DRIVE_NOT_CONFIGURED`.
+  `DRIVE_NOT_CONFIGURED`. `SERVICE_ACCOUNT_STORAGE_MODE=SHARED_DRIVE_ONLY`:
+  the root folder must be a writable folder inside a Google Workspace Shared
+  Drive (service account needs write permission there); a normal My Drive
+  folder shared with the service account is unsupported, and without an
+  available Shared Drive `LIVE_DRIVE_VERIFICATION=BLOCKED`. OAuth-on-behalf-of-user
+  is a separate future decision, not part of this PR.
 - NEW `core/shipment_attachments.py`: 20 MB ceiling, extension + MIME +
   magic-byte validation, same-shipment SHA-256 duplicate guard, Pillow JPEG/PNG
   optimization kept ONLY when ≥5% smaller (PDF/DOCX/XLSX stay byte-identical),

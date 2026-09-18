@@ -190,7 +190,7 @@ export default function ShipmentAttachments({
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
         title="Tệp đính kèm lô hàng"
-        sub="Tệp thật của lô: bytes lưu trên Google Drive (thư mục do chủ sở hữu quản lý), hệ thống chỉ lưu metadata."
+        sub="Tệp thật của lô: bytes lưu trên Shared Drive của chủ sở hữu, hệ thống chỉ lưu metadata."
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp
@@ -333,7 +333,7 @@ export default function ShipmentAttachments({
 
       <p className="mt-3 text-[12.5px] text-slate-500">
         Trùng tệp trong cùng lô được nhận diện bằng SHA-256 của bản gốc: bản sao không tải lên Drive lần hai. Tệp giữ nguyên
-        quyền riêng tư trong thư mục Drive của chủ sở hữu — hệ thống không tạo liên kết công khai.
+        quyền riêng tư trong Shared Drive của chủ sở hữu — hệ thống không tạo liên kết công khai.
       </p>
     </section>
   );

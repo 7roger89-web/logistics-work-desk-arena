@@ -9,7 +9,13 @@ stays tiny:
 
 * auth = ONE Google **service account** whose JSON lives only in the
   deployment's own secrets/env (``GOOGLE_SERVICE_ACCOUNT_JSON``), uploading
-  into ONE Owner-controlled folder (``GOOGLE_DRIVE_ROOT_FOLDER_ID``);
+  into ONE Owner-controlled folder (``GOOGLE_DRIVE_ROOT_FOLDER_ID``).
+  SERVICE_ACCOUNT_STORAGE_MODE=SHARED_DRIVE_ONLY: service accounts have no
+  Drive storage quota and cannot own files, so that root folder MUST be a
+  writable folder INSIDE A GOOGLE WORKSPACE SHARED DRIVE (the service
+  account needs write permission on that Shared Drive/folder). A normal My
+  Drive folder shared with the service account is UNSUPPORTED here; without
+  an available Shared Drive, LIVE_DRIVE_VERIFICATION=BLOCKED;
 * transport = ``google-auth`` (``AuthorizedSession``) over the ``requests``
   dependency the app ALREADY ships, talking to the Drive REST v3 endpoints
   directly — the full ``google-api-python-client`` SDK is NOT installed;
@@ -91,7 +97,7 @@ def sanitize_drive_name(value: Any, *, fallback: str = "tep-dinh-kem", max_lengt
     Path separators and control characters are removed (never trusted), the
     reserved ``.`` / ``..`` values are refused, and the result is bounded in
     length. Unicode letters are preserved so a Vietnamese file name survives
-    intact inside the Owner's Drive.
+    intact inside the Owner's Shared Drive folder.
     """
     raw = str(value or "").strip()
     cleaned = _UNSAFE_NAME_CHARS.sub("-", raw)
@@ -131,7 +137,7 @@ class DriveSettings:
 
     @property
     def client_email(self) -> str:
-        """The service-account identity to share the folder with (not a secret)."""
+        """The service-account identity granted write on the Shared Drive (not a secret)."""
         return str((self.service_account or {}).get("client_email") or "")
 
     def describe(self) -> dict[str, Any]:

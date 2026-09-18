@@ -1296,7 +1296,7 @@ export default function ShipmentDetail() {
           </section>
           {/* LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of
               the lot. Metadata comes from the backend projection; the bytes stay
-              in the Owner-controlled Google Drive folder and are read through the
+              in the Owner-controlled Shared Drive folder and are read through the
               bounded attachment_download event, so no Drive id, folder id or
               credential ever reaches the DOM. */}
           <ShipmentAttachments
