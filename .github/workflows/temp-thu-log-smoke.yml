@@ -1,0 +1,130 @@
+name: TEMP thu-log production smoke
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install playwright pillow
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+
+      - name: Verify public thu-log runtime
+        shell: bash
+        run: |
+          mkdir -p /tmp/thu-log-smoke
+          cat > /tmp/smoke.py <<'PY'
+          import json, os, time
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+
+          URL="https://thu-log.streamlit.app"
+          OUT=Path("/tmp/thu-log-smoke")
+          results={}
+          errors=[]
+          console_errors=[]
+          github_links=[]
+
+          def rec(k, ok, d=""):
+              results[k]={"ok":bool(ok),"detail":str(d)}
+              print(f"{'PASS' if ok else 'FAIL'} {k}: {d}", flush=True)
+
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True,executable_path=os.environ["CHROME_PATH"],args=["--no-sandbox"])
+              page=browser.new_page(viewport={"width":1440,"height":900})
+              page.on("pageerror", lambda e: errors.append(str(e)))
+              page.on("console", lambda m: console_errors.append(m.text) if m.type=="error" else None)
+              page.goto(URL, wait_until="domcontentloaded", timeout=90000)
+              # Community Cloud may wake a sleeping app. Wait for the component shell.
+              try:
+                  page.wait_for_function("""() => {
+                    const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+                    return !!(h&&h.shadowRoot&&h.shadowRoot.querySelector('.logi-shell'));
+                  }""", timeout=120000)
+              except Exception:
+                  pass
+              page.wait_for_timeout(2500)
+              state=page.evaluate("""() => {
+                const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+                const r=h&&h.shadowRoot?h.shadowRoot:document;
+                const s=r.querySelector('.logi-shell');
+                const text=(s?s.textContent:document.body.textContent)||'';
+                const links=[...document.querySelectorAll('a')].map(a=>a.href).filter(Boolean);
+                if(h&&h.shadowRoot) links.push(...[...h.shadowRoot.querySelectorAll('a')].map(a=>a.href).filter(Boolean));
+                return {
+                  text,
+                  hasShell:!!s,
+                  title:document.title,
+                  url:location.href,
+                  githubLinks:[...new Set(links.filter(x=>x.includes('github.com')))],
+                  pageOverflow:Math.max(0,document.documentElement.scrollWidth-window.innerWidth)
+                };
+              }""")
+              github_links.extend(state["githubLinks"])
+              rec("runtime_reachable", state["hasShell"], state)
+              rec("new_home_marker", "Ảnh vận hành hôm nay" in state["text"] and ("Ưu tiên bây giờ:" in state["text"] or "Không có việc khẩn" in state["text"]), "PR56 Home hierarchy visible")
+              rec("old_home_duplicate_absent", "VIỆC TIẾP THEO" not in state["text"] and "Chỉ số vận hành hôm nay" not in state["text"], "old duplicated Home sections absent")
+              rec("production_role_preview_hidden", "XEM TRƯỚC" not in state["text"].upper(), "no sandbox preview role switcher on public runtime")
+              rec("desktop_no_overflow", state["pageOverflow"]<=2, state["pageOverflow"])
+              rec("no_page_errors", len(errors)==0, errors)
+              # mobile smoke
+              page.set_viewport_size({"width":390,"height":844})
+              page.reload(wait_until="domcontentloaded",timeout=90000)
+              try:
+                  page.wait_for_function("""() => {
+                    const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+                    return !!(h&&h.shadowRoot&&h.shadowRoot.querySelector('.logi-shell'));
+                  }""", timeout=60000)
+              except Exception:
+                  pass
+              page.wait_for_timeout(1800)
+              m=page.evaluate("""() => {
+                const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
+                const r=h&&h.shadowRoot?h.shadowRoot:document;
+                const s=r.querySelector('.logi-shell');
+                return {
+                  text:(s?s.textContent:document.body.textContent)||'',
+                  overflow:Math.max(0,document.documentElement.scrollWidth-window.innerWidth)
+                };
+              }""")
+              rec("mobile_home_new", "Ảnh vận hành hôm nay" in m["text"], "new Home visible at 390x844")
+              rec("mobile_no_overflow", m["overflow"]<=2, m["overflow"])
+              page.screenshot(path=str(OUT/"thu-log-mobile.png"),full_page=False)
+              page.set_viewport_size({"width":1440,"height":900})
+              page.reload(wait_until="domcontentloaded",timeout=90000)
+              page.wait_for_timeout(1800)
+              page.screenshot(path=str(OUT/"thu-log-desktop.png"),full_page=False)
+              browser.close()
+
+          overall=all(v["ok"] for v in results.values())
+          summary={"url":URL,"results":results,"github_links":github_links,"console_errors":console_errors,"overall":"PASS" if overall else "FAIL"}
+          (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
+          print("SMOKE_SUMMARY="+json.dumps(summary,ensure_ascii=False),flush=True)
+          raise SystemExit(0 if overall else 1)
+          PY
+          python /tmp/smoke.py
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: thu-log-production-smoke
+          path: /tmp/thu-log-smoke
+          retention-days: 1
