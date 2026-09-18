@@ -11932,7 +11932,7 @@ function Oo({ value: e, onChange: t, testId: n, stored: r }) {
 }
 //#endregion
 //#region src/components/Layout.tsx
-function ko() {
+function ko({ sandbox: e }) {
 	return /* @__PURE__ */ (0, R.jsxs)(L, {
 		to: "/",
 		className: "flex items-center gap-2.5 shrink-0",
@@ -11951,7 +11951,7 @@ function ko() {
 					children: "Phú Anh Logistics · Nội bộ"
 				})]
 			}),
-			/* @__PURE__ */ (0, R.jsx)("span", {
+			e && /* @__PURE__ */ (0, R.jsx)("span", {
 				className: "text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1",
 				children: "PROTOTYPE"
 			})
@@ -11987,7 +11987,7 @@ function Ao({ children: e }) {
 								className: "text-[#0f2a4a]"
 							})
 						}),
-						/* @__PURE__ */ (0, R.jsx)(ko, {}),
+						/* @__PURE__ */ (0, R.jsx)(ko, { sandbox: b?.isSandbox === !0 }),
 						/* @__PURE__ */ (0, R.jsxs)("div", {
 							className: "hidden md:flex flex-1 max-w-[560px] mx-auto relative",
 							children: [/* @__PURE__ */ (0, R.jsxs)("div", {
@@ -12564,23 +12564,25 @@ function Ao({ children: e }) {
 					]
 				})]
 			}),
-			f && /* @__PURE__ */ (0, R.jsxs)("div", {
-				className: "no-print fixed inset-0 z-50 flex items-end sm:items-center justify-center",
-				children: [/* @__PURE__ */ (0, R.jsx)("div", {
-					className: "absolute inset-0 bg-slate-900/50 anim-fade",
-					onClick: () => p(!1)
-				}), /* @__PURE__ */ (0, R.jsxs)("div", {
-					className: "relative bg-white w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl p-5 pb-8 anim-slide-up",
-					style: { paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" },
+			f && /* @__PURE__ */ (0, R.jsx)(To, {
+				id: "quick-add-sheet",
+				testId: "quick-add-sheet",
+				labelledBy: "quick-add-title",
+				width: 520,
+				onClose: () => p(!1),
+				children: /* @__PURE__ */ (0, R.jsxs)("div", {
+					className: "no-print",
 					children: [
 						/* @__PURE__ */ (0, R.jsx)("div", { className: "w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" }),
 						/* @__PURE__ */ (0, R.jsxs)("div", {
 							className: "flex items-center justify-between mb-1",
 							children: [/* @__PURE__ */ (0, R.jsx)("p", {
+								id: "quick-add-title",
 								className: "font-extrabold text-[18px] text-[#0f2a4a]",
 								children: "Thêm mới nhanh"
 							}), /* @__PURE__ */ (0, R.jsx)("button", {
 								onClick: () => p(!1),
+								"aria-label": "Đóng thêm mới nhanh",
 								className: "touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100",
 								children: /* @__PURE__ */ (0, R.jsx)(to, { size: 20 })
 							})]
@@ -12655,7 +12657,7 @@ function Ao({ children: e }) {
 							}, e.label))
 						})
 					]
-				})]
+				})
 			}),
 			/* @__PURE__ */ (0, R.jsx)("div", {
 				className: "no-print fixed z-[60] left-3 right-3 bottom-[84px] md:left-auto md:right-6 md:bottom-6 md:w-[380px] space-y-2",

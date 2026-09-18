@@ -4,11 +4,11 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
 import { NAV, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib/data";
 import type { Role } from "../lib/data";
-import { ICONS } from "./ui";
+import { ICONS, SheetDialog } from "./ui";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 
-function Logo() {
+function Logo({ sandbox }: { sandbox: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0">
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
@@ -16,7 +16,9 @@ function Logo() {
         <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
         <span className="block text-[11.5px] text-slate-500 font-medium">Phú Anh Logistics · Nội bộ</span>
       </span>
-      <span className="text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>
+      {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
+          production-like runtime does not carry prototype residue. */}
+      {sandbox && <span className="text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
     </Link>
   );
 }
@@ -53,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
             <Menu size={22} className="text-[#0f2a4a]" />
           </button>
-          <Logo />
+          <Logo sandbox={environment?.isSandbox === true} />
           {/* search desktop */}
           <div className="hidden md:flex flex-1 max-w-[560px] mx-auto relative">
             <div className="flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
@@ -313,11 +315,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ===== QUICK ADD SHEET ===== */}
       {quickAddOpen && (
-        <div className="no-print fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/50 anim-fade" onClick={() => setQuickAddOpen(false)} />
-          <div className="relative bg-white w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl p-5 pb-8 anim-slide-up" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}>
+        <SheetDialog id="quick-add-sheet" testId="quick-add-sheet" labelledBy="quick-add-title" width={520} onClose={() => setQuickAddOpen(false)}>
+          <div className="no-print">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
-            <div className="flex items-center justify-between mb-1"><p className="font-extrabold text-[18px] text-[#0f2a4a]">Thêm mới nhanh</p><button onClick={() => setQuickAddOpen(false)} className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
+            <div className="flex items-center justify-between mb-1"><p id="quick-add-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Thêm mới nhanh</p><button onClick={() => setQuickAddOpen(false)} aria-label="Đóng thêm mới nhanh" className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
             <p className="text-[13.5px] text-slate-500 mb-4">Chọn việc muốn làm — mỗi nút dẫn thẳng tới màn hình nhập liệu.</p>
             <div className="grid gap-2.5">
               {[
@@ -335,7 +336,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           </div>
-        </div>
+        </SheetDialog>
       )}
 
       {/* ===== TOASTS ===== */}
