@@ -12129,11 +12129,73 @@ function Ao({ children: e }) {
 								className: "text-[#0f2a4a]"
 							})
 						}),
-						/* @__PURE__ */ (0, R.jsxs)("div", {
+						b?.isSandbox ? /* @__PURE__ */ (0, R.jsxs)("div", {
 							className: "relative hidden sm:block",
+							"data-testid": "role-preview-switcher",
 							children: [/* @__PURE__ */ (0, R.jsxs)("button", {
 								onClick: () => D((e) => !e),
+								"aria-haspopup": "menu",
+								"aria-expanded": E,
 								className: "flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]",
+								children: [
+									/* @__PURE__ */ (0, R.jsx)("span", {
+										className: V("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", t === "ADMIN" ? "bg-violet-600" : t === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600"),
+										children: r.charAt(0)
+									}),
+									/* @__PURE__ */ (0, R.jsxs)("span", {
+										className: "text-left leading-tight",
+										children: [/* @__PURE__ */ (0, R.jsx)("span", {
+											className: "block text-[13px] font-bold text-[#0f2a4a]",
+											children: r
+										}), /* @__PURE__ */ (0, R.jsxs)("span", {
+											className: "block text-[11.5px] text-slate-500",
+											children: [
+												no[t],
+												" · ",
+												t
+											]
+										})]
+									}),
+									/* @__PURE__ */ (0, R.jsx)("span", {
+										className: "text-[10px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5",
+										children: "Xem trước"
+									})
+								]
+							}), E && /* @__PURE__ */ (0, R.jsxs)("div", {
+								className: "absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up",
+								role: "menu",
+								"data-testid": "role-preview-menu",
+								children: [/* @__PURE__ */ (0, R.jsx)("p", {
+									className: "px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400",
+									children: "Xem trước giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập"
+								}), [
+									"ADMIN",
+									"SUPPORT",
+									"SALE"
+								].map((e) => /* @__PURE__ */ (0, R.jsxs)("button", {
+									role: "menuitem",
+									onClick: () => {
+										n(e), D(!1), g(`Đang XEM TRƯỚC giao diện ${no[e]}`, "Chỉ thay đổi hiển thị trong sandbox — quyền thật vẫn theo tài khoản đăng nhập.", "blue");
+									},
+									className: V("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", t === e && "bg-blue-50"),
+									children: [/* @__PURE__ */ (0, R.jsxs)("span", { children: [/* @__PURE__ */ (0, R.jsx)("span", {
+										className: "block font-bold text-[14.5px]",
+										children: no[e]
+									}), /* @__PURE__ */ (0, R.jsx)("span", {
+										className: "block text-[12px] text-slate-500",
+										children: e
+									})] }), t === e && /* @__PURE__ */ (0, R.jsx)("span", {
+										className: "text-blue-700 font-bold text-[13px]",
+										children: "● Đang xem"
+									})]
+								}, e))]
+							})]
+						}) : /* @__PURE__ */ (0, R.jsx)("div", {
+							className: "hidden sm:block",
+							"data-testid": "actual-role-badge",
+							title: "Vai trò của tài khoản đăng nhập",
+							children: /* @__PURE__ */ (0, R.jsxs)("div", {
+								className: "flex items-center gap-2 rounded-xl border-2 border-transparent pl-1.5 pr-2.5 py-1",
 								children: [/* @__PURE__ */ (0, R.jsx)("span", {
 									className: V("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", t === "ADMIN" ? "bg-violet-600" : t === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600"),
 									children: r.charAt(0)
@@ -12151,32 +12213,7 @@ function Ao({ children: e }) {
 										]
 									})]
 								})]
-							}), E && /* @__PURE__ */ (0, R.jsxs)("div", {
-								className: "absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up",
-								children: [/* @__PURE__ */ (0, R.jsx)("p", {
-									className: "px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400",
-									children: "Xem giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập"
-								}), [
-									"ADMIN",
-									"SUPPORT",
-									"SALE"
-								].map((e) => /* @__PURE__ */ (0, R.jsxs)("button", {
-									onClick: () => {
-										n(e), D(!1), g(`Đã chuyển sang vai trò ${no[e]}`, e === "ADMIN" ? "Xem được hợp đồng, tài chính & người dùng" : e === "SUPPORT" ? "Ưu tiên điều phối lô hàng & chứng từ" : "Ưu tiên khách hàng, báo giá & hợp đồng", "blue");
-									},
-									className: V("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", t === e && "bg-blue-50"),
-									children: [/* @__PURE__ */ (0, R.jsxs)("span", { children: [/* @__PURE__ */ (0, R.jsx)("span", {
-										className: "block font-bold text-[14.5px]",
-										children: no[e]
-									}), /* @__PURE__ */ (0, R.jsx)("span", {
-										className: "block text-[12px] text-slate-500",
-										children: e
-									})] }), t === e && /* @__PURE__ */ (0, R.jsx)("span", {
-										className: "text-blue-700 font-bold text-[13px]",
-										children: "● Đang dùng"
-									})]
-								}, e))]
-							})]
+							})
 						}),
 						/* @__PURE__ */ (0, R.jsxs)("button", {
 							onClick: () => d(!0),
@@ -12348,14 +12385,17 @@ function Ao({ children: e }) {
 							}), /* @__PURE__ */ (0, R.jsxs)("div", {
 								className: "p-3",
 								children: [
-									/* @__PURE__ */ (0, R.jsx)("div", {
+									b?.isSandbox && /* @__PURE__ */ (0, R.jsx)("div", {
 										className: "flex gap-2 mb-3",
+										"data-testid": "role-preview-mobile",
 										children: [
 											"ADMIN",
 											"SUPPORT",
 											"SALE"
 										].map((e) => /* @__PURE__ */ (0, R.jsx)("button", {
-											onClick: () => n(e),
+											onClick: () => {
+												n(e), g(`Đang XEM TRƯỚC giao diện ${no[e]}`, "Chỉ thay đổi hiển thị trong sandbox.", "blue");
+											},
 											className: V("flex-1 touch-target rounded-xl border-2 text-[13px] font-bold py-2", t === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 text-slate-600"),
 											children: e
 										}, e))
@@ -12366,7 +12406,8 @@ function Ao({ children: e }) {
 											"Đang dùng: ",
 											/* @__PURE__ */ (0, R.jsx)("b", { children: r }),
 											" · ",
-											no[t]
+											no[t],
+											b?.isSandbox ? " (xem trước giao diện)" : ""
 										]
 									}),
 									ro.map((e) => /* @__PURE__ */ (0, R.jsxs)("div", {
