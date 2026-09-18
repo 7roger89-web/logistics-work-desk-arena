@@ -226,6 +226,55 @@ class TestGridFSAttachmentService:
         assert store.deletes == []
         save_retry.assert_not_called()
 
+    def test_post_write_audit_exception_preserves_metadata_and_gridfs_then_retry_dedupes(self):
+        store = FakeStore()
+        durable = {}
+
+        def save_then_audit_error(record):
+            # The Mongo upsert is durable; only the following audit insert fails.
+            durable.update(dict(record))
+            raise RuntimeError("audit insert failed")
+
+        def load_durable(attachment_id):
+            return durable if durable.get("id") == attachment_id else None
+
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
+             patch("core.database.save_shipment_attachment", side_effect=save_then_audit_error), \
+             patch("core.database.load_shipment_attachment", side_effect=load_durable):
+            first = att.upload_attachment(
+                shipment_id="SHP-1", category="customs", file_name="chung-tu.pdf",
+                mime="application/pdf", data=PDF, uploaded_by="operator",
+                storage_backend="gridfs", gridfs=store,
+            )
+
+        assert first["ok"] is False
+        assert first["code"] == att.CODE_METADATA_READBACK_UNPROVEN
+        assert first["metadata_committed"] is True
+        assert first["compensation_attempted"] is False
+        assert first["compensated"] is False
+        assert first["orphan_risk"] is False
+        assert len(store.uploads) == 1
+        assert store.deletes == []
+        assert durable["id"].startswith("ATT-SHP-1-")
+        assert durable["storage_file_id"] == store.uploads[0]["storage_file_id"]
+        assert durable["storage_backend"] == "gridfs"
+        assert durable["sha256"] == att.sha256_hex(PDF)
+        assert store.files[durable["storage_file_id"]] == PDF
+
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=durable), \
+             patch("core.database.save_shipment_attachment") as save_retry:
+            second = att.upload_attachment(
+                shipment_id="SHP-1", category="customs", file_name="chung-tu.pdf",
+                mime="application/pdf", data=PDF, uploaded_by="operator",
+                storage_backend="gridfs", gridfs=store,
+            )
+
+        assert second["ok"] is True
+        assert second["duplicate"] is True
+        assert len(store.uploads) == 1
+        assert store.deletes == []
+        save_retry.assert_not_called()
+
     def test_duplicate_has_zero_second_gridfs_write(self):
         store = FakeStore()
         existing = metadata_record()

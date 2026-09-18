@@ -506,7 +506,46 @@ def upload_attachment(
 
     try:
         metadata_saved = bool(save_shipment_attachment(record))
-    except Exception:  # noqa: BLE001 - an uncertain write is a write failure
+    except Exception:  # noqa: BLE001 - save may have committed before audit failed
+        # ``save_shipment_attachment`` writes the row before its audit insert.
+        # A raised audit exception therefore cannot be treated as proof that
+        # the metadata write was absent. Check the exact new row before any
+        # compensating delete; only an authoritative absence may be deleted.
+        try:
+            durable = load_shipment_attachment(record["id"])
+        except Exception:  # noqa: BLE001 - absence cannot be proven
+            return {
+                "ok": False,
+                "code": CODE_METADATA_READBACK_UNPROVEN,
+                "error": (
+                    "Bước ghi metadata không hoàn tất rõ ràng và chưa xác minh được hồ sơ tệp; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+                "metadata_committed": False,
+                "readback_proven": False,
+                "compensation_attempted": False,
+                "compensated": False,
+                "orphan_risk": False,
+            }
+        if durable is not None:
+            required_identity = ("id", "storage_file_id", "storage_backend", "sha256")
+            matches = all(str(durable.get(field) or "") == str(record.get(field) or "") for field in required_identity)
+            return {
+                "ok": False,
+                "code": CODE_METADATA_READBACK_UNPROVEN,
+                "error": (
+                    "Bước ghi metadata không hoàn tất rõ ràng nhưng đã thấy hồ sơ tệp tương ứng; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+                "metadata_committed": matches,
+                "readback_proven": False,
+                "compensation_attempted": False,
+                "compensated": False,
+                "orphan_risk": not matches,
+            }
+        # ``None`` is the authoritative lookup's proof that this exact row
+        # is absent. It is the only uncertain-write case allowed to enter the
+        # existing one-delete compensation path below.
         metadata_saved = False
 
     if metadata_saved:
