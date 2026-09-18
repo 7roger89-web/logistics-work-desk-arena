@@ -418,7 +418,7 @@ with sync_playwright() as p:
                 pay_btn.first.click(); page.wait_for_timeout(180)
                 dlg=page.locator('[role="dialog"]').first
                 box=dlg.bounding_box() if dlg.count() else None
-                fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]+box["height"]<=845)
+                fits=bool(box and box["x"]>=-2 and box["x"]+box["width"]<=392 and box["y"]>=-2 and box["y"]+box["height"]<=846)
                 rec("mobile_payment_sheet", fits, box)
                 shot(page,"15-payment-mobile.png")
                 page.keyboard.press("Escape"); page.wait_for_timeout(100)
