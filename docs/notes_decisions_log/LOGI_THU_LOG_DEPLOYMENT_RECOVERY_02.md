@@ -210,3 +210,35 @@ new evidence note; it must not be attributed to the deployment path.
 `PROVIDER_AUTH_SUBBLOCKER=YES` — `Reboot app` and the smoke both require the
 Owner's authenticated `share.streamlit.io` / browser session; Arena holds no
 provider credential and the app is not anonymously reachable.
+
+## 8. Continuation round — Owner credential offer vs. available mechanisms (2026-09-18)
+
+The Owner authorized use of credentials supplied "through Arena's supported
+secure authentication/credential mechanism". That route was checked before
+acting on it, and it does not exist for this task:
+
+| Requirement | Observed in this executor |
+|---|---|
+| Arena secure credential-entry surface | **none** — no vault, broker, mounted config or credential service (`~/.arena`, `/etc/arena`, `/opt/arena` absent; only `GH_TOKEN`/`GITHUB_TOKEN` env names; listening services are sshd/rpcbind only) |
+| Interactive surface available | chat text only — which this task forbids using for passwords, 2FA codes, recovery codes, tokens or secrets, and which must not be used for credentials in any case |
+| Provider programmatic auth (API/CLI) | **none exists** — Streamlit Community Cloud app management (Reboot, Settings, logs, Auto-deploy) is documented as **UI-only** at `share.streamlit.io` / the app's own "Manage app" panel; deployment is driven by GitHub pushes |
+| Network path to the provider | **blocked** — sandbox TLS egress to `*.streamlit.app` / `share.streamlit.io` fails (`curl` rc=35); only `api.github.com` is reachable |
+| Browser automation | **none** — no Chromium/Playwright binary or module |
+
+Consequence: a credential would not create an action surface here, and no
+credential was requested or accepted. The remaining actions are provider-session
+actions by construction — not code or evidence failures.
+
+### Optional read-only diagnostic (Owner's call, not required)
+
+Flipping app `thu-log` viewer access to *Anyone with the link* temporarily would
+let an anonymous fetch read the app's own attribution line ("Created by …"), which
+is the only independent owner attribution reachable without a session. It does
+**not** reveal repo/branch/main-file, does **not** substitute for B–F, and should
+be reverted afterwards. Not required for the deployment path; the app's own login
+boundary still protects data.
+
+**`FINAL_VERDICT=BLOCKED_DEPLOYMENT_AUTH`** — identity is Owner-attested, the
+integrated revision is already delivered through the repository's existing push
+hook, and every remaining step (Settings read, `Reboot app`, live UAT) requires an
+authenticated provider session in a real browser.
