@@ -394,19 +394,27 @@ with sync_playwright() as p:
         "mobile shipment cards preserve action distinction")
     shot(page,"13-shipments-mobile.png")
     if page.get_by_text("LO-0306", exact=True).count():
-        page.get_by_text("LO-0306", exact=True).first.click(); page.wait_for_timeout(500)
-        rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
-            "shipment detail usable on mobile")
-        shot(page,"14-detail-mobile.png")
-        if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
-            page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
-            if page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
-                page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); page.wait_for_timeout(180)
-                box=page.locator('[role="dialog"]').first.bounding_box()
-                fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]<844)
-                rec("mobile_payment_sheet", fits, box)
-                shot(page,"15-payment-mobile.png")
-                page.keyboard.press("Escape"); page.wait_for_timeout(100)
+        mobile_lo=None
+        for candidate in page.get_by_text("LO-0306", exact=True).all():
+            if candidate.is_visible():
+                mobile_lo=candidate
+                break
+        if mobile_lo is None:
+            rec("mobile_detail", False, "LO-0306 exists only in hidden desktop markup")
+        else:
+            mobile_lo.click(); page.wait_for_timeout(500)
+            rec("mobile_detail", "LO-0306" in root_text(page) and "Sửa thông tin lô" in root_text(page),
+                "shipment detail usable on mobile")
+            shot(page,"14-detail-mobile.png")
+            if page.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
+                page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); page.wait_for_timeout(320)
+                if page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
+                    page.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); page.wait_for_timeout(180)
+                    box=page.locator('[role="dialog"]').first.bounding_box()
+                    fits=bool(box and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]<844)
+                    rec("mobile_payment_sheet", fits, box)
+                    shot(page,"15-payment-mobile.png")
+                    page.keyboard.press("Escape"); page.wait_for_timeout(100)
     else:
         rec("mobile_detail", False, "LO-0306 not visible")
 
