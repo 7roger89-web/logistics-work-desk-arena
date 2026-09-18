@@ -106,13 +106,26 @@ ok(`Finance tab open for ${SHIPMENT}`);
 // Deliver the correlated backend success for an in-flight write, exactly as
 // the real backend does through lastWrites, so the desk returns to idle.
 async function settle(event, requestId){
-  // Success now requires ok AND the fresh finance readback: stitch the booked
-  // payment (requestId) into the read model exactly as the backend would.
+  // Success proof is PER LEDGER, in the backend's own projection shape:
+  // customer writes settle on the fresh finance.payments readback; a partner
+  // PAYABLE settles on the canonical obligation result the handler returns
+  // (position/obligationId); a partner PAYMENT settles on the canonical
+  // partner ledger readback (finance.partner.payments[].requestId).
   const settled=structuredClone(JOURNEY);
-  const lot=settled.shipments.find((x)=>x.id===SHIPMENT);
-  lot.finance.payments=lot.finance.payments ?? [];
-  lot.finance.payments.push({ requestId, date:"18/09/2026", kind:"Đối soát probe", amount: 1, ccy: lot.currency || "VND", by:"staging.support" });
-  settled.lastWrites=[{ event, ok:true, requestId, shipmentId: SHIPMENT }];
+  let extra={};
+  if(event==="partner_payable_record"){
+    extra={ obligationId:"OBL-PROBE", persisted:{ id:"OBL-PROBE" }, position:{ status:"OPEN" } };
+  } else if(event==="partner_payment_record"){
+    const lot=settled.shipments.find((x)=>x.id===SHIPMENT);
+    lot.finance.partner=lot.finance.partner ?? {};
+    lot.finance.partner.payments=lot.finance.partner.payments ?? [];
+    lot.finance.partner.payments.push({ requestId, date:"18/09/2026", kind:"payment", amount: 1, ccy: "VND" });
+  } else {
+    const lot=settled.shipments.find((x)=>x.id===SHIPMENT);
+    lot.finance.payments=lot.finance.payments ?? [];
+    lot.finance.payments.push({ requestId, date:"18/09/2026", kind:"Đối soát probe", amount: 1, ccy: lot.currency || "VND", by:"staging.support" });
+  }
+  settled.lastWrites=[{ event, ok:true, requestId, shipmentId: SHIPMENT, ...extra }];
   invoke(settled);
   await tick(140);
 }

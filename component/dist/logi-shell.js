@@ -15398,8 +15398,7 @@ function cs() {
 			let r = t === "obl" ? "partner_payable_record" : "partner_payment_record", i = e.find((e) => e.event === r && e.requestId === n);
 			if (i) {
 				if (i.ok) {
-					let e = i.shipmentId || p.id;
-					if (!(d?.shipments ?? []).find((t) => t.id === e)?.finance?.payments?.some((e) => e.requestId === n)) continue;
+					if (!(t === "obl" ? i.position : (d?.shipments ?? []).find((e) => e.id === (i.shipmentId || p.id))?.finance?.partner?.payments?.some((e) => e.requestId === n))) continue;
 					We(t, "", ""), O(""), o(t === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác", "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
 				} else We(t, "", i.error || "Backend từ chối bút toán này."), t === "obl" ? He() : Ue(), o("Chưa ghi nhận được", i.error || "Backend từ chối.", "red");
 			}

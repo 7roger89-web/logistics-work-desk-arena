@@ -11,10 +11,18 @@ Repair round 2 scope: two P0 payment-trust repairs + probe upgrade + removal of 
    a backend refusal keeps the form (amount/kind) and mints a NEW requestId for the
    next attempt; the refused request stays historical, so the stale refusal `X` in
    `lastWrites` can never instantly "settle" the retry `Y`.
-2. **Success requires an authoritative finance readback**: success = correlated
-   `lastWrites` ok **AND** the SAME fresh view-model already showing the payment
-   (`finance.payments[].requestId === pendingRequestId`). ok-without-readback stays
-   pending/truthful — never a failure, never green. Refusals surface verbatim inline.
+2. **Success requires an authoritative readback, PER LEDGER in the backend's own
+   projection shape**: success = correlated `lastWrites` ok **AND** the canonical
+   proof for that write — customer receipts: `finance.payments[].requestId ===
+   pendingRequestId`; partner payment: `finance.partner.payments[].requestId`
+   (`_partner_projection`, NOT the customer list); partner payable (an obligation,
+   not a payment): the canonical obligation result the handler already returns
+   (`position` / `obligationId` / `persisted`). ok-without-proof stays
+   pending/truthful — never a failure, never green. Refusals surface verbatim
+   inline. (Round 3: the round-2 partner gate wrongly used the customer
+   `finance.payments` list for both partner writers — corrected; c2b now proves
+   the negative guard: customer `finance.payments` NEVER satisfies a partner
+   readback.)
 
 ## Lanes and results
 
@@ -22,7 +30,7 @@ Repair round 2 scope: two P0 payment-trust repairs + probe upgrade + removal of 
 |---|---|---|
 | Payment-trust DOM acceptance (A–I contract, entry point A: shipment-detail sheet) | `node tests/component/dom_acceptance_payment_trust.mjs` | PASSED checks=11 — A no-lastWrites→pending; B unrelated lastWrites→pending; (A+I) one submit=one intent, double click absorbed; Escape/backdrop cannot dismiss in-flight; E refusal keeps form+inline error; F retry mints NEW id Y≠X; G stale refusal X cannot settle Y; C ok-without-readback stays pending; D ok+fresh readback→close+green (settles only Y); fresh intent per reopen |
 | Entry point B (Receivables sheet) same contract | `node tests/component/dom_acceptance_c2c.mjs` | 10 steps passed — double-click→1 intent; unrelated lastWrites cannot fake success; refusal preserves form; retry NEW id; stale X cannot settle; ok-without-readback pending; ok+readback closes |
-| Partner payment & payable writers | `node tests/component/dom_acceptance_c2b.mjs` | PASS — 12 checks incl. retry NEW id, stale-X cannot settle, ok-without-readback pending, ok+readback green |
+| Partner payment & payable writers | `node tests/component/dom_acceptance_c2b.mjs` | PASS — 14 checks: payable transport→pending; ok-without-canonical-obligation-proof→pending; canonical obligation result (position/obligationId) settles; payment ok without `finance.partner.payments` match→pending; customer `finance.payments` does NOT satisfy partner readback (negative guard); ok + `finance.partner.payments[].requestId`→green/idle; refusal→retry NEW id→stale-X cannot settle |
 | Customer sheet (c2a slice) | `node tests/component/dom_acceptance_c2a.mjs` | PASS — 11 checks incl. ok-without-readback pending, ok+readback closes |
 | Correction writer | `node tests/component/dom_acceptance_payment_correction.mjs` | PASSED checks=11 — refusal verbatim; retry NEW correctionRequestId; stale refusal cannot settle; fresh refusal settles only its own id |
 | Amount integrity (raw preservation, UNKNOWN≠0) | `node tests/component/dom_acceptance_amount_integrity.mjs` | PASS — 26 checks |

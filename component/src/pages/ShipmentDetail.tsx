@@ -470,17 +470,25 @@ export default function ShipmentDetail() {
       );
       if (!outcome) continue; // still waiting for the authoritative answer
       if (outcome.ok) {
-        // Same trust contract as the customer receipts: success requires BOTH
-        // the correlated ok AND the authoritative finance readback — the SAME
-        // fresh view-model must already show the payment
-        // (finance.payments[].requestId). ok-without-readback stays pending;
-        // it may simply be a not-yet-refreshed readback, never a failure.
-        const targetId = (outcome.shipmentId as string | undefined) || s.id;
-        const fresh = (vm?.shipments ?? []).find((x) => x.id === targetId);
-        const readbackConfirmed = !!fresh?.finance?.payments?.some(
-          (p) => (p.requestId as string | undefined) === pendingId
-        );
-        if (!readbackConfirmed) continue; // truthful: still waiting for the fresh readback
+        // Success proof is PER LEDGER, in the backend's own projection shape:
+        // • partner PAYABLE is an OBLIGATION, not a payment — the correlated
+        //   outcome already carries the canonical fresh obligation result
+        //   (position / obligationId / persisted from
+        //   _handle_partner_payable_record); no payments list is waited for.
+        // • partner PAYMENT success requires the canonical partner-ledger
+        //   readback: finance.partner.payments[].requestId (from
+        //   _partner_projection) — NEVER the customer receipts list
+        //   (finance.payments, shipment data["3.4"].payments), which is a
+        //   different ledger. ok-without-proof stays pending; it may simply
+        //   be a not-yet-refreshed readback, never a failure.
+        const canonicalProof =
+          key === "obl"
+            ? !!outcome.position
+            : !!((vm?.shipments ?? []).find((x) => x.id === ((outcome.shipmentId as string | undefined) || s.id))
+                ?.finance?.partner?.payments?.some(
+                  (p) => (p.requestId as string | undefined) === pendingId
+                ));
+        if (!canonicalProof) continue; // truthful: still waiting for the canonical proof
         setPartnerState(key, "", "");
         setPartnerAmt("");
         toast(
