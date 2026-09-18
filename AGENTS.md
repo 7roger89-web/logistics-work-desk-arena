@@ -114,12 +114,13 @@ After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but be
 
 Before substantive P2P-managed analysis, planning, prompt writing, implementation, review, testing, or release work:
 
-1. Prefer the active canonical law at `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md` when it is actually reachable.
-2. If canonical cross-repository access is unavailable, read `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` before substantive work.
-3. The project copy is a generated transport projection, never a new law authority. Do not edit it by hand.
-4. `TASK_BRANCH != LAW_AUTHORITY` and `TARGET_PROJECT != LAW_SOURCE` remain mandatory.
-5. Never claim the canonical repository was read when only the portable projection was read.
-6. If neither canonical nor portable law context is available, use the explicit P2P `SUPREME_LAW_CAPSULE`; otherwise stop at `LAW_CONTEXT_BLOCKED`.
+1. If the active canonical law at `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md` has already been successfully reached in this actor/session, read it; canonical wins.
+2. In a repo-scoped remote clone with a valid portable projection, read `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` directly; do not probe canonical solely to prove cross-repository unavailability.
+3. `TARGET_REPO_AUTH != CANONICAL_CROSS_REPO_REACHABILITY`. Authentication to the target repository is not evidence that the private canonical repository is reachable.
+4. The project copy is a generated transport projection, never a new law authority. Do not edit it by hand.
+5. `TASK_BRANCH != LAW_AUTHORITY` and `TARGET_PROJECT != LAW_SOURCE` remain mandatory.
+6. Never claim the canonical repository was read when only the portable projection was read.
+7. If neither canonical, installed, nor portable law context is available, use the explicit P2P `SUPREME_LAW_CAPSULE`; otherwise stop at `LAW_CONTEXT_BLOCKED`.
 
 ### Actor separation and self-law preflight
 
@@ -144,7 +145,8 @@ Every P2P-generated operational prompt handed to an executor must explicitly ser
 
 `P2P_LAW_PREFLIGHT`:
 - tell the executor to read repository-root `AGENTS.md` before substantive work;
-- establish the valid law source using canonical > installed > portable > inline capsule > blocked;
+- use canonical when it is already successfully reachable; otherwise follow installed > valid portable > inline capsule > blocked;
+- for a repo-scoped clone with valid portable law, do not make a cross-repo probe solely to trigger fallback;
 - report exactly one `P2P_LAW_SOURCE=<actual source>` and never claim a source was read when it was not.
 
 `OE_GATE`:
