@@ -234,15 +234,26 @@ with sync_playwright() as p:
         "role=dialog + aria-modal")
     focus=active_summary(page)
     rec("payment_focus_inside", active_in_dialog(page,"Ghi nhận thanh toán"), focus)
-    # Tab and Shift+Tab should remain in dialog.
+    # Tab and Shift+Tab should remain in dialog. Record the exact focus
+    # sequence so a failure is evidence, not a black-box boolean.
     tab_ok=True
+    tab_trace=[]
     for _ in range(8):
         page.keyboard.press("Tab")
-        tab_ok = tab_ok and active_in_dialog(page,"Ghi nhận thanh toán")
-    for _ in range(3):
-        page.keyboard.press("Shift+Tab")
-        tab_ok = tab_ok and active_in_dialog(page,"Ghi nhận thanh toán")
-    rec("payment_tab_trap", tab_ok, active_summary(page))
+        inside=active_in_dialog(page,"Ghi nhận thanh toán")
+        tab_trace.append({"key":"Tab","inside":inside,"active":active_summary(page)})
+        if not inside:
+            tab_ok=False
+            break
+    if tab_ok:
+        for _ in range(4):
+            page.keyboard.press("Shift+Tab")
+            inside=active_in_dialog(page,"Ghi nhận thanh toán")
+            tab_trace.append({"key":"Shift+Tab","inside":inside,"active":active_summary(page)})
+            if not inside:
+                tab_ok=False
+                break
+    rec("payment_tab_trap", tab_ok, tab_trace)
     shot(page,"08-payment-sheet-open.png")
 
     # Install a same-mutation pending/Escape probe. It fires synchronously when
@@ -316,6 +327,22 @@ with sync_playwright() as p:
     shot(page,"10-payment-after-outcome.png")
 
     # RECEIVABLES — same payment entry point, idle close returns focus.
+    # If a broken focus trap accidentally focused global search, its desktop
+    # backdrop may still be open. Close that overlay explicitly so this
+    # independent flow can continue and report the remaining gates.
+    try:
+        closed_search_overlay=shadow_eval(page, """(() => {
+          const o=[...root.querySelectorAll('div')].find(x =>
+            typeof x.className==='string' &&
+            x.className.includes('fixed inset-0 z-30 hidden md:block'));
+          if(o){ o.click(); return true; }
+          return false;
+        })()""")
+        if closed_search_overlay:
+            page.wait_for_timeout(120)
+            note("search_overlay_cleanup","closed overlay opened by escaped focus; independent flow continues")
+    except Exception as e:
+        minor_notes.append(f"search overlay cleanup failed: {e}")
     click_sidebar(page,"Thu tiền")
     page.wait_for_timeout(450)
     rtext=root_text(page)
