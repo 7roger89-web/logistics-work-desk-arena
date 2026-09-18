@@ -610,7 +610,11 @@ class TestProviderContract:
     def test_metadata_failure_compensates_with_exactly_one_delete(self, staging, seq):
         fake = FakeDrive()
         with patch("core.shipment_attachments.build_drive_client", CountingFactory(fake)), \
-             patch("core.database.save_shipment_attachment", return_value=False):
+             patch("core.database.save_shipment_attachment", return_value=False), \
+             patch(
+                 "core.database.probe_shipment_attachment_identity",
+                 return_value=(db.ATTACHMENT_PROBE_ABSENT_PROVEN, None),
+             ):
             outcome = _dispatch("shipment_attachment_upload",
                                 _upload_payload("anh.jpg", "image/jpeg", _noise_image_bytes(size=(300, 300))), seq)
         assert outcome["ok"] is False
@@ -623,6 +627,10 @@ class TestProviderContract:
         fake = FakeDrive(fail_delete=True)
         with patch("core.shipment_attachments.build_drive_client", CountingFactory(fake)), \
              patch("core.database.save_shipment_attachment", return_value=False), \
+             patch(
+                 "core.database.probe_shipment_attachment_identity",
+                 return_value=(db.ATTACHMENT_PROBE_ABSENT_PROVEN, None),
+             ), \
              caplog.at_level(logging.WARNING, logger="logistics_pro.attachments"):
             outcome = _dispatch("shipment_attachment_upload",
                                 _upload_payload("anh.jpg", "image/jpeg", _noise_image_bytes(size=(300, 300))), seq)

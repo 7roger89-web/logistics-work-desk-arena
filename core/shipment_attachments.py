@@ -227,7 +227,7 @@ def validate_upload(file_name: str, mime: str, declared_size: Any, data: bytes) 
     if (declared is not None and declared > MAX_UPLOAD_BYTES) or size > MAX_UPLOAD_BYTES:
         raise UploadRefused(
             CODE_SIZE,
-            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi Google Drive, chưa ghi dữ liệu.",
+            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi kho chứng từ, chưa lưu dữ liệu.",
         )
     if declared is not None and declared != size:
         # The browser's number is a convenience; the decoded bytes are the
@@ -391,7 +391,14 @@ def upload_attachment(
     configured backend.  They do not bypass validation, RBAC, dedupe, or the
     metadata boundary.
     """
-    from core.database import find_shipment_attachment_by_sha, load_shipment_attachment, save_shipment_attachment
+    from core.database import (
+        ATTACHMENT_PROBE_ABSENT_PROVEN,
+        ATTACHMENT_PROBE_FOUND_MATCHING,
+        find_shipment_attachment_by_sha,
+        load_shipment_attachment,
+        probe_shipment_attachment_identity,
+        save_shipment_attachment,
+    )
 
     sid = str(shipment_id or "").strip()
     if not sid:
@@ -504,21 +511,36 @@ def upload_attachment(
         "status": STATUS_AVAILABLE,
     }
 
+    metadata_probe_state: str | None = None
     try:
         metadata_saved = bool(save_shipment_attachment(record))
     except Exception:  # noqa: BLE001 - save may have committed before audit failed
         # ``save_shipment_attachment`` writes the row before its audit insert.
         # A raised audit exception therefore cannot be treated as proof that
-        # the metadata write was absent. Check the exact new row before any
-        # compensating delete; only an authoritative absence may be deleted.
-        try:
-            durable = load_shipment_attachment(record["id"])
-        except Exception:  # noqa: BLE001 - absence cannot be proven
+        # the metadata write was absent. The tri-state exact-id probe is the
+        # only gate allowed to authorize the existing compensation delete.
+        probe_state, durable = probe_shipment_attachment_identity(record)
+        metadata_probe_state = probe_state
+        if probe_state == ATTACHMENT_PROBE_FOUND_MATCHING:
             return {
                 "ok": False,
                 "code": CODE_METADATA_READBACK_UNPROVEN,
                 "error": (
-                    "Bước ghi metadata không hoàn tất rõ ràng và chưa xác minh được hồ sơ tệp; "
+                    "Bước ghi metadata không hoàn tất rõ ràng nhưng đã thấy hồ sơ tệp tương ứng; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+                "metadata_committed": True,
+                "readback_proven": False,
+                "compensation_attempted": False,
+                "compensated": False,
+                "orphan_risk": False,
+            }
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return {
+                "ok": False,
+                "code": CODE_METADATA_READBACK_UNPROVEN,
+                "error": (
+                    "Bước ghi metadata không hoàn tất rõ ràng và chưa chứng minh được hồ sơ tệp; "
                     "giữ nguyên metadata và nội dung tệp, không xoá bù."
                 ),
                 "metadata_committed": False,
@@ -527,24 +549,7 @@ def upload_attachment(
                 "compensated": False,
                 "orphan_risk": False,
             }
-        if durable is not None:
-            required_identity = ("id", "storage_file_id", "storage_backend", "sha256")
-            matches = all(str(durable.get(field) or "") == str(record.get(field) or "") for field in required_identity)
-            return {
-                "ok": False,
-                "code": CODE_METADATA_READBACK_UNPROVEN,
-                "error": (
-                    "Bước ghi metadata không hoàn tất rõ ràng nhưng đã thấy hồ sơ tệp tương ứng; "
-                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
-                ),
-                "metadata_committed": matches,
-                "readback_proven": False,
-                "compensation_attempted": False,
-                "compensated": False,
-                "orphan_risk": not matches,
-            }
-        # ``None`` is the authoritative lookup's proof that this exact row
-        # is absent. It is the only uncertain-write case allowed to enter the
+        # Only a successful exact-id lookup that returned no row may enter the
         # existing one-delete compensation path below.
         metadata_saved = False
 
@@ -573,9 +578,33 @@ def upload_attachment(
             "orphan_risk": False,
         }
 
-    # GridFS has no multi-document transaction. Only a genuine metadata write
-    # failure may trigger compensation, and it gets exactly ONE delete attempt
-    # for the exact identity created by this call.
+    # A false metadata result is not proof of absence either: the write helper
+    # may have failed after an upsert, or its state may be unavailable. Only a
+    # successful exact-id probe returning ABSENT_PROVEN may authorize cleanup.
+    if metadata_probe_state is None:
+        metadata_probe_state, durable = probe_shipment_attachment_identity(record)
+    if metadata_probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+        matching = metadata_probe_state == ATTACHMENT_PROBE_FOUND_MATCHING
+        return {
+            "ok": False,
+            "code": CODE_METADATA_READBACK_UNPROVEN,
+            "error": (
+                "Không xác minh được metadata nhưng đã thấy hồ sơ tệp tương ứng; "
+                "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                if matching else
+                "Không xác minh được metadata và cũng chưa chứng minh được hồ sơ tệp vắng mặt; "
+                "giữ nguyên nội dung tệp, không xoá bù."
+            ),
+            "metadata_committed": matching,
+            "readback_proven": False,
+            "compensation_attempted": False,
+            "compensated": False,
+            "orphan_risk": False,
+        }
+
+    # GridFS has no multi-document transaction. Compensation is now gated by
+    # authoritative absence and gets exactly ONE delete attempt for the exact
+    # identity created by this call.
     compensation_attempted = True
     deleted = False
     try:
@@ -772,7 +801,7 @@ def decode_upload_payload(payload: Mapping[str, Any]) -> tuple[bytes, int]:
     if len(encoded) > MAX_BASE64_CHARS:
         raise UploadRefused(
             CODE_SIZE,
-            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi Google Drive, chưa ghi dữ liệu.",
+            f"Tệp vượt giới hạn {_mb(MAX_UPLOAD_BYTES)} — chưa gọi kho chứng từ, chưa lưu dữ liệu.",
         )
     try:
         data = base64.b64decode(encoded, validate=True)

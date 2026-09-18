@@ -1927,6 +1927,11 @@ _ATTACHMENT_BINARY_KEYS = frozenset({"bytes", "data", "base64", "content", "blob
 _ATTACHMENT_REQUIRED_FIELDS = ("id", "shipment_id", "original_name", "sha256")
 _ATTACHMENT_IDENTITY_FIELDS = ("storage_file_id", "drive_file_id")
 
+ATTACHMENT_PROBE_FOUND_MATCHING = "FOUND_MATCHING"
+ATTACHMENT_PROBE_ABSENT_PROVEN = "ABSENT_PROVEN"
+ATTACHMENT_PROBE_UNPROVEN = "UNPROVEN"
+_ATTACHMENT_PROBE_FIELDS = ("id", "storage_file_id", "storage_backend", "sha256")
+
 
 def _attachment_metadata_is_clean(payload: Mapping[str, Any]) -> str:
     """Return the refusal reason when a payload carries binary, else ``""``."""
@@ -1987,6 +1992,35 @@ def save_shipment_attachment(document: Mapping[str, Any]) -> bool:
         return False
     _audit(db, "shipment_attachment", attachment_id, "create", before=None, after=payload)
     return True
+
+
+def probe_shipment_attachment_identity(document: Mapping[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """Tri-state exact-id probe for an attachment after an uncertain metadata write.
+
+    ``None`` from ``get_db`` is not an absent row. Only a successful query that
+    returns no row proves ``ABSENT_PROVEN``; a matching row is ``FOUND_MATCHING``
+    and every unavailable, failed, or identity-mismatched lookup is ``UNPROVEN``.
+    """
+    attachment_id = str(document.get("id") or "").strip()
+    if not attachment_id:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        db = get_db()
+    except Exception:  # noqa: BLE001 - database availability is unproven
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if db is None:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        row = db["shipment_attachments"].find_one(
+            {"id": attachment_id, "is_deleted": {"$ne": True}}, {"_id": 0}
+        )
+    except Exception:  # noqa: BLE001 - lookup proof is unavailable
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if row is None:
+        return ATTACHMENT_PROBE_ABSENT_PROVEN, None
+    if all(str(row.get(field) or "") == str(document.get(field) or "") for field in _ATTACHMENT_PROBE_FIELDS):
+        return ATTACHMENT_PROBE_FOUND_MATCHING, dict(row)
+    return ATTACHMENT_PROBE_UNPROVEN, dict(row)
 
 
 def load_shipment_attachments(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:

@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from core import database as db
 from core import shipment_attachments as att
 from core.gridfs_client import (
     GridFSAttachmentStore,
@@ -109,6 +110,44 @@ def metadata_record(*, file_id="507f1f77bcf86cd799439011", shipment_id="SHP-1"):
         "compression_note": "Giữ nguyên bản gốc.",
         "status": att.STATUS_AVAILABLE,
     }
+
+
+class _AttachmentCollection:
+    def __init__(self, row=None, error=None):
+        self.row = row
+        self.error = error
+
+    def find_one(self, *_args, **_kwargs):
+        if self.error:
+            raise self.error
+        return self.row
+
+
+class TestAttachmentIdentityProbe:
+    def test_probe_distinguishes_db_unavailable_absent_matching_and_unproven(self):
+        record = metadata_record(file_id="gridfs-file-1")
+        with patch("core.database.get_db", return_value=None):
+            assert db.probe_shipment_attachment_identity(record) == (db.ATTACHMENT_PROBE_UNPROVEN, None)
+
+        with patch("core.database.get_db", side_effect=RuntimeError("db unavailable")):
+            assert db.probe_shipment_attachment_identity(record) == (db.ATTACHMENT_PROBE_UNPROVEN, None)
+
+        with patch("core.database.get_db", return_value={"shipment_attachments": _AttachmentCollection()}):
+            assert db.probe_shipment_attachment_identity(record) == (db.ATTACHMENT_PROBE_ABSENT_PROVEN, None)
+
+        with patch(
+            "core.database.get_db",
+            return_value={"shipment_attachments": _AttachmentCollection(dict(record))},
+        ):
+            state, found = db.probe_shipment_attachment_identity(record)
+        assert state == db.ATTACHMENT_PROBE_FOUND_MATCHING
+        assert found["id"] == record["id"]
+
+        with patch(
+            "core.database.get_db",
+            return_value={"shipment_attachments": _AttachmentCollection(error=RuntimeError("db unavailable"))},
+        ):
+            assert db.probe_shipment_attachment_identity(record) == (db.ATTACHMENT_PROBE_UNPROVEN, None)
 
 
 class TestGridFSAdapter:
@@ -236,13 +275,13 @@ class TestGridFSAttachmentService:
             durable.update(dict(record))
             raise RuntimeError("audit insert failed")
 
-        def load_durable(attachment_id):
-            lookup_ids.append(attachment_id)
-            return durable if durable.get("id") == attachment_id else None
+        def probe_durable(record):
+            lookup_ids.append(record["id"])
+            return db.ATTACHMENT_PROBE_FOUND_MATCHING, durable
 
         with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
              patch("core.database.save_shipment_attachment", side_effect=save_then_audit_error), \
-             patch("core.database.load_shipment_attachment", side_effect=load_durable):
+             patch("core.database.probe_shipment_attachment_identity", side_effect=probe_durable):
             first = att.upload_attachment(
                 shipment_id="SHP-1", category="customs", file_name="chung-tu.pdf",
                 mime="application/pdf", data=PDF, uploaded_by="operator",
@@ -278,6 +317,44 @@ class TestGridFSAttachmentService:
         assert store.deletes == []
         save_retry.assert_not_called()
 
+    def test_uncertain_save_with_db_unavailable_is_unproven_without_delete(self):
+        store = FakeStore()
+
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
+             patch("core.database.save_shipment_attachment", side_effect=RuntimeError("audit insert failed")), \
+             patch("core.database.get_db", return_value=None):
+            result = att.upload_attachment(
+                shipment_id="SHP-1", category="other", file_name="a.pdf",
+                mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,
+            )
+
+        assert result["ok"] is False
+        assert result["code"] == att.CODE_METADATA_READBACK_UNPROVEN
+        assert result["compensation_attempted"] is False
+        assert result["compensated"] is False
+        assert result["orphan_risk"] is False
+        assert len(store.uploads) == 1
+        assert store.deletes == []
+        assert store.files[store.uploads[0]["storage_file_id"]] == PDF
+
+    def test_uncertain_save_with_authoritative_absence_compensates_once(self):
+        store = FakeStore()
+
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
+             patch("core.database.save_shipment_attachment", side_effect=RuntimeError("audit insert failed")), \
+             patch("core.database.get_db", return_value={"shipment_attachments": _AttachmentCollection()}):
+            result = att.upload_attachment(
+                shipment_id="SHP-1", category="other", file_name="a.pdf",
+                mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,
+            )
+
+        assert result["ok"] is False
+        assert result["code"] == att.CODE_METADATA_FAILED
+        assert result["compensation_attempted"] is True
+        assert result["compensated"] is True
+        assert len(store.deletes) == 1
+        assert store.deletes[0] == store.uploads[0]["storage_file_id"]
+
     def test_duplicate_has_zero_second_gridfs_write(self):
         store = FakeStore()
         existing = metadata_record()
@@ -311,7 +388,10 @@ class TestGridFSAttachmentService:
         store = FakeStore()
         with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
              patch("core.database.save_shipment_attachment", return_value=False), \
-             patch("core.database.load_shipment_attachment", return_value=None):
+             patch(
+                 "core.database.probe_shipment_attachment_identity",
+                 return_value=(db.ATTACHMENT_PROBE_ABSENT_PROVEN, None),
+             ):
             result = att.upload_attachment(
                 shipment_id="SHP-1", category="other", file_name="a.pdf",
                 mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,
@@ -352,7 +432,11 @@ class TestGridFSAttachmentService:
     def test_failed_compensation_reports_orphan_risk(self):
         store = FakeStore(fail_delete=True)
         with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
-             patch("core.database.save_shipment_attachment", return_value=False):
+             patch("core.database.save_shipment_attachment", return_value=False), \
+             patch(
+                 "core.database.probe_shipment_attachment_identity",
+                 return_value=(db.ATTACHMENT_PROBE_ABSENT_PROVEN, None),
+             ):
             result = att.upload_attachment(
                 shipment_id="SHP-1", category="other", file_name="a.pdf",
                 mime="application/pdf", data=PDF, storage_backend="gridfs", gridfs=store,

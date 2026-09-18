@@ -357,7 +357,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any]) -
         "shipmentIds": load_shipment_ids(),
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — attachment METADATA for
         # the whole render, read once and grouped (the same repair as the docgen
-        # read above). No bytes: the files themselves live in Google Drive.
+        # read above). No bytes: the files themselves live in the selected storage backend.
         "attachments": rd.attachments_by_shipment(),
         "attachmentDownload": _attachment_download_state(),
     }
@@ -621,7 +621,7 @@ PHASE_B_EVENTS = {
 }
 
 #: Session key holding the ONE attachment whose bytes were just read back from
-#: Google Drive for server-authoritative delivery to the browser.
+#: The selected storage backend for server-authoritative delivery to the browser.
 ATTACHMENT_DOWNLOAD_KEY = "logi_attachment_download"
 
 # LOGI_TARIFF_LOOKUP_01 — one bounded READ-ONLY query event for the
@@ -1424,7 +1424,7 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
     Order is deliberate and matches the external-side-effect rule:
     RBAC → shipment exists → bounded decode → validate → SHA-256 → duplicate
     guard → Drive upload → Mongo metadata. Unauthorized, oversized and
-    duplicate requests never reach Google Drive.
+    duplicate requests never reach the selected storage backend.
     """
     from core.auth import can_generate_documents
     from core.shipment_attachments import (
@@ -1470,7 +1470,7 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
             return _result(
                 "shipment_attachment_upload", sid, False,
                 f"Tệp vượt giới hạn {MAX_UPLOAD_BYTES // (1024 * 1024)} MB — "
-                "chưa gọi Google Drive, chưa ghi dữ liệu.",
+                "chưa gọi kho chứng từ, chưa lưu dữ liệu.",
                 gate=CODE_SIZE, requestId=request_id,
             )
 
