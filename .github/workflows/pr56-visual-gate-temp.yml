@@ -34,6 +34,12 @@ jobs:
           ref: ${{ env.CANDIDATE_SHA }}
           path: candidate
 
+      - name: Checkout temporary verifier harness
+        uses: actions/checkout@v4
+        with:
+          ref: preview/pr56-visual-gate-temp
+          path: harness
+
       - name: Verify candidate identity
         shell: bash
         run: |
@@ -57,6 +63,7 @@ jobs:
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
           echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+          echo "CHROME_PATH=$CHROME"
 
       - name: Start isolated Streamlit preview
         shell: bash
@@ -72,316 +79,15 @@ jobs:
             fi
             sleep 1
           done
+          echo "STREAMLIT_HEALTH=FAIL"
           cat /tmp/pr56-streamlit.log
           exit 1
 
-      - name: Real-browser UI UX verification round 2
+      - name: Real-browser UI UX verification
         shell: bash
         run: |
-          mkdir -p /tmp/pr56-visual
-          cat > /tmp/pr56_verify.py <<'PY'
-          import json, os, re, traceback
-          from pathlib import Path
-          from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-
-          BASE="http://127.0.0.1:9501"
-          OUT=Path("/tmp/pr56-visual")
-          OUT.mkdir(parents=True, exist_ok=True)
-          results={}
-          material=[]
-          minor=[]
-          page_errors=[]
-          console_errors=[]
-          bad_responses=[]
-
-          def rec(key, ok, detail=""):
-              results[key]={"ok":bool(ok),"detail":str(detail)}
-              print(f"{'PASS' if ok else 'FAIL'} {key}: {detail}")
-              if not ok:
-                  material.append(f"{key}: {detail}")
-
-          def note(key, detail):
-              results[key]={"ok":None,"detail":str(detail)}
-              print(f"NOTE {key}: {detail}")
-
-          def caught(key, fn):
-              try:
-                  fn()
-              except Exception as e:
-                  rec(key, False, f"{type(e).__name__}: {e}")
-                  traceback.print_exc()
-
-          def root_text(page):
-              return page.evaluate("""() => {
-                const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
-                const r=h&&h.shadowRoot?h.shadowRoot:document;
-                const s=r.querySelector('.logi-shell');
-                return (s?s.textContent:document.body.textContent)||'';
-              }""")
-
-          def shadow_eval(page, script):
-              return page.evaluate("""(body) => {
-                const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
-                const r=h&&h.shadowRoot?h.shadowRoot:document;
-                return Function('r', body)(r);
-              }""", script)
-
-          def wait_shell(page):
-              page.goto(BASE, wait_until="domcontentloaded", timeout=90000)
-              page.wait_for_function("""() => {
-                const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
-                return !!(h&&h.shadowRoot&&h.shadowRoot.querySelector('.logi-shell'));
-              }""", timeout=60000)
-              page.wait_for_timeout(900)
-
-          def shot(page,name,full=False):
-              page.screenshot(path=str(OUT/name), full_page=full)
-
-          def page_overflow(page):
-              return page.evaluate("""() => ({
-                page: document.documentElement.scrollWidth-window.innerWidth,
-                body: document.body.scrollWidth-window.innerWidth
-              })""")
-
-          def goto_home(page):
-              if page.get_by_text("Tổng Quan Công Việc", exact=True).count():
-                  page.get_by_text("Tổng Quan Công Việc", exact=True).first.click()
-                  page.wait_for_timeout(400)
-              else:
-                  wait_shell(page)
-
-          def goto_shipments(page):
-              if page.get_by_text("Lô Hàng", exact=True).count():
-                  page.get_by_text("Lô Hàng", exact=True).first.click()
-                  page.wait_for_timeout(450)
-                  return True
-              return False
-
-          with sync_playwright() as p:
-              browser=p.chromium.launch(headless=True, executable_path=os.environ["CHROME_PATH"], args=["--no-sandbox"])
-              ctx=browser.new_context(viewport={"width":1440,"height":900})
-              page=ctx.new_page()
-              page.on("pageerror", lambda e: page_errors.append(str(e)))
-              page.on("console", lambda m: console_errors.append(m.text) if m.type=="error" else None)
-              page.on("response", lambda r: bad_responses.append(f"{r.status} {r.url}") if r.status>=400 and "favicon" not in r.url else None)
-              wait_shell(page)
-
-              def home_flow():
-                  txt=root_text(page)
-                  rec("identity_render", "TRƯỜNG THÀNH" in txt and "Preview / Staging" in txt, "exact SHA candidate rendered with sandbox label")
-                  rec("home_priority", ("Ưu tiên bây giờ:" in txt or "Không có việc khẩn" in txt) and "Ảnh vận hành hôm nay" in txt, "single priority + snapshot")
-                  rec("home_no_duplicate", "VIỆC TIẾP THEO" not in txt and "Chỉ số vận hành hôm nay" not in txt, "old duplicate Home bands absent")
-                  ov=page_overflow(page)
-                  rec("desktop_no_page_overflow", max(ov.values())<=2, ov)
-                  shot(page,"01-home-desktop.png")
-              caught("home_flow_exception", home_flow)
-
-              def back_context_flow():
-                  goto_home(page); goto_shipments(page)
-                  q=page.locator('.logi-shell input[placeholder^="Nhập mã lô"]').first
-                  q.fill("LO-03")
-                  if page.get_by_role("button", name="Lọc", exact=True).count():
-                      page.get_by_role("button", name="Lọc", exact=True).first.click()
-                      page.wait_for_timeout(150)
-                  if page.get_by_role("button", name="Chờ thông quan", exact=True).count():
-                      page.get_by_role("button", name="Chờ thông quan", exact=True).first.click()
-                  page.wait_for_timeout(250)
-                  rec("shipments_filter_applied", q.input_value()=="LO-03", "q=LO-03")
-                  shot(page,"02-shipments-context-desktop.png")
-                  page.locator(".logi-shell table.tbl").get_by_text("LO-0306", exact=True).first.click()
-                  page.wait_for_timeout(500)
-                  rec("shipment_detail_open", "LO-0306" in root_text(page), "detail visible")
-                  rec("shipment_edit_disclosure", page.get_by_role("button", name=re.compile("Sửa thông tin lô")).count()>=1, "maintenance disclosure visible")
-                  page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click()
-                  page.wait_for_timeout(250)
-                  rec("finance_tab_selected", "Phải thu khách hàng" in root_text(page), "finance workspace visible")
-                  shot(page,"03-shipment-finance-before-back.png")
-                  page.get_by_role("button", name="Quay lại", exact=True).first.click()
-                  page.wait_for_timeout(350)
-                  still_detail = page.get_by_role("button", name="Quay lại", exact=True).count()>0 and "LO-0306" in root_text(page)
-                  list_input = page.locator('.logi-shell input[placeholder^="Nhập mã lô"]')
-                  restored = list_input.count()>0 and list_input.first.input_value()=="LO-03"
-                  rec("shipments_back_after_tab_switch", restored and not still_detail,
-                      f"restored={restored}, still_detail={still_detail}, body_has_list_input={list_input.count()>0}")
-                  shot(page,"04-after-back.png")
-              caught("back_context_flow_exception", back_context_flow)
-
-              def partner_flow():
-                  # Enter finance directly through list, independent of history test.
-                  goto_home(page); goto_shipments(page)
-                  page.locator(".logi-shell").get_by_text("LO-0306", exact=True).first.click()
-                  page.wait_for_timeout(450)
-                  page.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click()
-                  page.wait_for_timeout(250)
-                  txt=root_text(page)
-                  rec("partner_finance_labels", all(x in txt for x in ["Phải trả đối tác","Đã trả","Còn phải trả"]), "canonical partner labels visible")
-                  rec("partner_unknown_not_zero", "— tr VND" in txt, "UNKNOWN partner money shown as em dash, not manufactured zero")
-                  shot(page,"05-finance-partner-desktop.png")
-              caught("partner_flow_exception", partner_flow)
-
-              def focus_and_pending_flow():
-                  # Independent page/context: freeze network after the dialog is open,
-                  # so pending can be inspected without racing the backend rerun.
-                  c2=browser.new_context(viewport={"width":1440,"height":900})
-                  p2=c2.new_page(); wait_shell(p2)
-                  p2.get_by_text("Lô Hàng", exact=True).first.click(); p2.wait_for_timeout(350)
-                  p2.locator(".logi-shell").get_by_text("LO-0306", exact=True).first.click(); p2.wait_for_timeout(400)
-                  p2.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); p2.wait_for_timeout(250)
-                  p2.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); p2.wait_for_timeout(120)
-                  dlg=p2.locator('[role="dialog"]').filter(has_text=re.compile("Ghi nhận thanh toán")).first
-                  rec("payment_dialog_semantics", dlg.count()==1 and dlg.get_attribute("aria-modal")=="true", "role=dialog + aria-modal")
-                  focus_ok=dlg.evaluate("(d)=>{const r=d.getRootNode(); return d.contains(r.activeElement);}")
-                  rec("payment_focus_inside", focus_ok, "shadow-root activeElement is inside dialog")
-                  shot(p2,"06-payment-open-focus.png")
-                  amount=dlg.locator('input[placeholder^="VD: 150000000"]').first
-                  amount.fill("1000000")
-                  c2.set_offline(True)
-                  dlg.locator('[data-testid="payment-record-submit"]').first.click()
-                  p2.wait_for_timeout(120)
-                  pending=p2.locator('[data-testid="payment-record-pending"]')
-                  pending_seen=pending.count()>0 and "ĐANG CHỜ BACKEND XÁC NHẬN" in root_text(p2)
-                  rec("payment_pending_truthful", pending_seen, "backend intentionally unreachable; pending state rendered")
-                  if pending_seen:
-                      # Synchronous assertion before yielding back to the event loop.
-                      escaped=p2.evaluate("""() => {
-                        const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
-                        const r=h&&h.shadowRoot?h.shadowRoot:document;
-                        const before=!!r.querySelector('[data-testid="payment-record-pending"]');
-                        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-                        const after=!!r.querySelector('[data-testid="payment-record-pending"]');
-                        const dlg=!!r.querySelector('[role="dialog"]');
-                        return {before,after,dlg};
-                      }""")
-                      rec("payment_pending_escape_guard", escaped["before"] and escaped["after"] and escaped["dlg"], escaped)
-                      shot(p2,"07-payment-pending-offline.png")
-                  c2.close()
-              caught("focus_and_pending_flow_exception", focus_and_pending_flow)
-
-              def success_flow():
-                  # Fresh online page verifies authoritative success separately.
-                  c3=browser.new_context(viewport={"width":1440,"height":900})
-                  p3=c3.new_page(); wait_shell(p3)
-                  p3.get_by_text("Lô Hàng", exact=True).first.click(); p3.wait_for_timeout(350)
-                  p3.locator(".logi-shell").get_by_text("LO-0306", exact=True).first.click(); p3.wait_for_timeout(400)
-                  p3.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); p3.wait_for_timeout(250)
-                  p3.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); p3.wait_for_timeout(100)
-                  dlg=p3.locator('[role="dialog"]').filter(has_text=re.compile("Ghi nhận thanh toán")).first
-                  dlg.locator('input[placeholder^="VD: 150000000"]').first.fill("2000000")
-                  dlg.locator('[data-testid="payment-record-submit"]').first.click()
-                  try:
-                      p3.wait_for_function("""() => {
-                        const h=document.querySelector('[data-testid="stBidiComponentIsolated"]');
-                        const r=h&&h.shadowRoot?h.shadowRoot:document;
-                        return ((r.querySelector('.logi-shell')||document.body).textContent||'').includes('Đã ghi nhận khoản thu');
-                      }""", timeout=10000)
-                      rec("payment_authoritative_success", True, "online sandbox write settled with backend readback + green")
-                  except PlaywrightTimeout:
-                      rec("payment_authoritative_success", False, "did not settle in 10s")
-                  shot(p3,"08-payment-after-success.png")
-                  c3.close()
-              caught("success_flow_exception", success_flow)
-
-              def global_search_flow():
-                  goto_home(page)
-                  search=page.locator('.logi-shell input[placeholder^="Tìm mã lô"]').first
-                  search.click(); search.fill("An Phát"); page.wait_for_timeout(300)
-                  candidates=page.locator('button').filter(has_text="Khách hàng")
-                  if candidates.count():
-                      candidates.filter(has_text=re.compile("An Phát", re.I)).first.click(); page.wait_for_timeout(400)
-                      rec("global_customer_context", "Khách Hàng" in root_text(page) and "An Phát" in root_text(page), "customer arrives prefiltered/visible")
-                  else:
-                      rec("global_customer_context", False, "customer suggestion missing")
-                  # Find a quote id from quote desk, then search it from Home.
-                  if page.get_by_text("Kinh doanh · Báo giá", exact=True).count():
-                      page.get_by_text("Kinh doanh · Báo giá", exact=True).first.click(); page.wait_for_timeout(350)
-                      quote_id=shadow_eval(page, """const row=r.querySelector('table.tbl tbody tr'); if(!row)return ''; const m=(row.textContent||'').match(/[A-Z]{1,6}[-/][A-Z0-9/-]+/); return m?m[0]:'';""")
-                      goto_home(page)
-                      if quote_id:
-                          s=page.locator('.logi-shell input[placeholder^="Tìm mã lô"]').first
-                          s.click(); s.fill(quote_id); page.wait_for_timeout(300)
-                          qb=page.locator('button').filter(has_text="Báo giá").filter(has_text=quote_id)
-                          if qb.count():
-                              qb.first.click(); page.wait_for_timeout(400)
-                              rec("global_quote_context", quote_id in root_text(page), f"{quote_id} visible at destination")
-                          else:
-                              rec("global_quote_context", False, f"quote suggestion missing for {quote_id}")
-                      else:
-                          note("global_quote_context","no quote id discovered from rendered fixture")
-              caught("global_search_flow_exception", global_search_flow)
-
-              def quick_add_flow():
-                  goto_home(page)
-                  page.get_by_role("button", name="Thêm", exact=True).first.click(); page.wait_for_timeout(120)
-                  dlg=page.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh")
-                  rec("quick_add_dialog", dlg.count()==1, "real dialog")
-                  if dlg.count():
-                      dlg.first.press("Escape"); page.wait_for_timeout(120)
-                      rec("quick_add_escape", page.locator('[role="dialog"]').filter(has_text="Thêm mới nhanh").count()==0, "Escape closes idle quick-add")
-                  rec("sandbox_role_preview", "Xem trước" in root_text(page), "role preview visibly marked")
-              caught("quick_add_flow_exception", quick_add_flow)
-
-              def mobile_flow():
-                  c4=browser.new_context(viewport={"width":390,"height":844})
-                  p4=c4.new_page(); wait_shell(p4)
-                  txt=root_text(p4); ov=page_overflow(p4)
-                  rec("mobile_home", ("Ưu tiên bây giờ:" in txt or "Không có việc khẩn" in txt) and "Ảnh vận hành hôm nay" in txt, "Home at 390x844")
-                  rec("mobile_no_page_overflow", max(ov.values())<=2, ov)
-                  rec("mobile_bottom_nav", all(x in txt for x in ["Tổng quan","Lô hàng","Hợp đồng","Tài chính"]), "bottom nav present")
-                  shot(p4,"09-home-mobile.png")
-                  # click bottom-nav shipment link by exact visible text
-                  if p4.get_by_text("Lô hàng", exact=True).count():
-                      p4.get_by_text("Lô hàng", exact=True).last.click(); p4.wait_for_timeout(350)
-                      shot(p4,"10-shipments-mobile.png")
-                      if p4.get_by_text("LO-0306", exact=True).count():
-                          p4.get_by_text("LO-0306", exact=True).first.click(); p4.wait_for_timeout(400)
-                          shot(p4,"11-detail-mobile.png")
-                          if p4.get_by_role("button", name="Tài chính", exact=True).count():
-                              p4.get_by_role("button", name="Tài chính", exact=True).first.click(); p4.wait_for_timeout(220)
-                          elif p4.get_by_role("button", name="Tài chính / Công nợ", exact=True).count():
-                              p4.get_by_role("button", name="Tài chính / Công nợ", exact=True).first.click(); p4.wait_for_timeout(220)
-                          if p4.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).count():
-                              p4.get_by_role("button", name=re.compile("GHI NHẬN THANH TOÁN")).first.click(); p4.wait_for_timeout(120)
-                              dlg=p4.locator('[role="dialog"]').first
-                              box=dlg.bounding_box() if dlg.count() else None
-                              fits=bool(box) and box["x"]>=-1 and box["x"]+box["width"]<=391 and box["y"]>=-1 and box["y"]+box["height"]<=845
-                              rec("mobile_payment_sheet", fits, box)
-                              shot(p4,"12-payment-mobile.png")
-                          else:
-                              rec("mobile_payment_sheet", False, "payment action not found")
-                      else:
-                          rec("mobile_detail", False, "LO-0306 not visible")
-                  else:
-                      rec("mobile_shipments", False, "bottom-nav Lô hàng not found")
-                  c4.close()
-              caught("mobile_flow_exception", mobile_flow)
-
-              rec("no_uncaught_page_errors", len(page_errors)==0, page_errors)
-              # Ignore the deliberate offline WebSocket noise because it happens in a separate context.
-              essential=[x for x in bad_responses if "127.0.0.1:9501" in x and "_stcore" not in x]
-              rec("no_material_http_errors", len(essential)==0, essential[:20])
-              if console_errors:
-                  minor.append("console errors observed on main online context: "+str(console_errors[:10]))
-
-              browser.close()
-
-          summary={
-              "candidate_sha":os.environ.get("CANDIDATE_SHA"),
-              "desktop_viewport":"1440x900",
-              "mobile_viewport":"390x844",
-              "results":results,
-              "page_errors":page_errors,
-              "console_errors":console_errors,
-              "bad_responses":bad_responses,
-              "material_failures":material,
-              "minor_notes":minor,
-              "overall":"PASS" if not material else "FAIL"
-          }
-          (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
-          print("VISUAL_GATE_SUMMARY="+json.dumps(summary,ensure_ascii=False))
-          raise SystemExit(0 if not material else 1)
-          PY
           set +e
-          python /tmp/pr56_verify.py
+          python harness/tools/pr56_visual_gate_temp.py
           STATUS=$?
           cp /tmp/pr56-streamlit.log /tmp/pr56-visual/streamlit.log || true
           exit $STATUS
@@ -390,7 +96,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr56-visual-gate-r2-${{ env.CANDIDATE_SHA }}
+          name: pr56-visual-gate-r3-${{ env.CANDIDATE_SHA }}
           path: /tmp/pr56-visual
           if-no-files-found: error
           retention-days: 1
