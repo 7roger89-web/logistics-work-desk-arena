@@ -195,59 +195,83 @@ export function SheetDialog({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Initial focus + focus return. Stored opener is whatever had focus before
-  // the sheet mounted (the button the operator clicked).
+  // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 visual-gate repair:
+  // Components v2 renders inside an OPEN ShadowRoot. document.activeElement
+  // therefore resolves only to the component HOST, not the focused control
+  // inside the app. Capture/restore focus from the panel's own root so the
+  // opener is the actual button the operator used.
   useEffect(() => {
-    const opener = window.document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
-    const first = panel?.querySelector<HTMLElement>(
+    if (!panel) return undefined;
+    const root = panel.getRootNode() as Document | ShadowRoot;
+    const opener = root.activeElement as HTMLElement | null;
+    const first = panel.querySelector<HTMLElement>(
       "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])"
     );
-    (first ?? panel)?.focus();
-    return () => { opener?.focus?.(); };
-    // Mount/unmount only — the sheet content is static for its lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (first ?? panel).focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
   }, []);
 
+  // Native capture listener on the SAME DOM root as the dialog. React's
+  // wrapper-level onKeyDown was not sufficient at the final Tab boundary in
+  // the real Components-v2 Shadow DOM: focus could escape to the global
+  // search field. Capture before the browser's default focus move and keep
+  // both Tab directions inside the panel. Escape is handled here too so a
+  // pending financial write cannot be dismissed by an outer handler.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (pending) return; // in-flight outcome: never dismissed by accident
-      e.stopPropagation();
-      onClose();
-    };
-    window.document.addEventListener("keydown", onKey);
-    return () => window.document.removeEventListener("keydown", onKey);
-  }, [pending, onClose]);
-
-  // Minimal focus trap: keep Tab / Shift+Tab cycling inside the panel.
-  const trapTab = (e: React.KeyboardEvent) => {
-    if (e.key !== "Tab") return;
     const panel = panelRef.current;
-    if (!panel) return;
-    const focusables = Array.from(
+    if (!panel) return undefined;
+    const root = panel.getRootNode() as Document | ShadowRoot;
+
+    const focusables = () => Array.from(
       panel.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       )
     );
-    if (focusables.length === 0) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    const active = window.document.activeElement as HTMLElement | null;
-    if (e.shiftKey && (active === first || active === panel)) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+
+    const onKey = (raw: Event) => {
+      const e = raw as KeyboardEvent;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!pending) onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = root.activeElement as HTMLElement | null;
+      const outside = !active || !panel.contains(active);
+
+      if (e.shiftKey) {
+        if (active === first || outside) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || outside) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    root.addEventListener("keydown", onKey, true);
+    return () => root.removeEventListener("keydown", onKey, true);
+  }, [pending, onClose]);
 
   return (
     <div
       {...(id ? { id } : {})}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      onKeyDown={trapTab}
       {...(testId ? { "data-testid": testId } : {})}
     >
       <div className="absolute inset-0 bg-slate-900/55 anim-fade" aria-hidden="true" onClick={pending ? undefined : onClose} />
