@@ -117,6 +117,31 @@ async function setValue(el, value, tag = "HTMLSelectElement") {
 
 const optionValues = (select) => [...select.options].map((o) => o.value);
 
+/**
+ * Fill the real create form and return the `shipment_create` payload it sends.
+ * The form is never navigated by transport alone, so the trigger is the only
+ * evidence that matters here.
+ */
+async function submitCreate(code) {
+  const codeInput = $('input[placeholder="LO-0470"]')[0];
+  assert.ok(codeInput, "shipment code input missing");
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")
+    .set.call(codeInput, code);
+  codeInput.dispatchEvent(new window.Event("input", { bubbles: true }));
+  await tick();
+  const customerSelect = $("select").find((sel) =>
+    [...sel.options].some((o) => text(o).includes("An Phát")));
+  assert.ok(customerSelect, "customer select missing");
+  await setValue(customerSelect, customerSelect.options[[...customerSelect.options]
+    .findIndex((o) => text(o).includes("An Phát"))].value);
+  const before = triggers.length;
+  await click("TẠO LÔ HÀNG", "button");
+  await tick(60);
+  const created = triggers.slice(before).filter((tr) => tr.event === "shipment_create");
+  assert.equal(created.length, 1, "expected exactly one shipment_create trigger");
+  return created[0].value.payload;
+}
+
 const host = window.document.createElement("div");
 window.document.body.appendChild(host);
 const triggers = [];
@@ -353,15 +378,28 @@ console.log("STEP 7 — SEA FCL: equipment from the real units; obligation ≠ a
   ok("SEA FCL equipment read from existing units; CIF obligation kept apart from actual insurance");
 }
 
-console.log("STEP 8 — actual insurance NO is stated, and stale policy details are gone");
+console.log("STEP 8 — CIF + actual insurance NO is a CONFIRMED MISMATCH, never 'done'");
 {
   await bootOnLot(FIX.insuranceNo, SEA_LOT);
   const summary = text(byTestId("execution-profile-summary"));
+  // The PERSISTED truth is still reported verbatim (NO is useful evidence and
+  // is never silently rewritten into UNKNOWN)…
   assert.ok(summary.includes("Chứng từ bảo hiểm: Không có bảo hiểm"), `actual NO missing: ${summary}`);
+  // …AND the exception the Incoterm creates is a standing alert, not a
+  // routine gap: CIF obliges the seller to arrange cover.
+  assert.ok(summary.includes("Bảo hiểm: có yêu cầu nhưng thực tế ghi KHÔNG CÓ"),
+    `the CIF/NO mismatch line is missing: ${summary}`);
+  const exception = byTestId("execution-profile-mismatch");
+  assert.ok(exception, "the mismatch must be a visible exception box");
+  assert.ok(text(exception).includes("KHÔNG CÓ"), "the exception must name the mismatch");
+  const insuranceStage = byTestId("execution-profile-stage-INSURANCE_EVIDENCE");
+  assert.ok(insuranceStage, "the insurance stage must stay in the stage list");
+  assert.equal(insuranceStage.getAttribute("data-mismatch"), "true",
+    "the insurance stage must be flagged as a mismatch, not as an amber gap");
   await clickTestId("shipment-execution-profile-toggle");
   assert.equal(byTestId("profile-insurance-arranged-by"), null,
     "policy details must not be rendered once the actual status is NO");
-  ok("actual insurance persisted independently of the Incoterm obligation");
+  ok("actual insurance NO kept apart from the CIF obligation: persisted, and a confirmed mismatch");
 }
 
 // ---------------------------------------------------------------------------
@@ -442,7 +480,43 @@ console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
   await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
   assert.ok(byTestId("create-profile-missing"), "an engaged-but-incomplete profile must say what is missing");
   assert.ok(mainText().includes("Lô vẫn được tạo"), "creating a lot must not be blocked by an incomplete profile");
+  // A HALF-stated profile never travels: the lot is still created and the
+  // detail page asks for the rest. Nothing is invented — the stated term goes
+  // as itself, and no unfilled profile key is sent at all.
+  const half = await submitCreate("LO-0480");
+  assert.equal(half.transport.incoterm, "FCA", "the stated term must travel as itself");
+  assert.equal(half.transport.incotermVersion, undefined,
+    "a half-stated profile must not be sent as a profile block");
+  assert.equal(half.transport.namedPlace, undefined);
+  assert.equal(half.transport.loadModel, undefined);
   ok("create page filters Incoterms by mode + version and explains the gaps");
+}
+
+console.log("STEP 12b — create page: only a COMPLETE profile travels");
+{
+  invoke(FIX.before);
+  await tick(120);
+  await click("Tạo Lô Mới", "a", $("aside")[0]);
+  await tick(60);
+  const details = byTestId("create-profile").closest("details");
+  details.open = true;
+  await tick();
+  await setValue(byTestId("create-profile-mode"), "ROAD");
+  await setValue(byTestId("create-profile-incoterm-version"), "2020");
+  await setValue(byTestId("create-profile-incoterm"), "FCA");
+  await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
+  await setValue(byTestId("create-profile-load-model"), "LTL");
+  await clickTestId("create-profile-scope-IMPORT_CUSTOMS");
+  await clickTestId("create-profile-scope-confirmed");
+  await clickTestId("create-profile-insurance-NO");
+  assert.equal(byTestId("create-profile-missing"), null, "a complete profile must show no gap");
+  const full = await submitCreate("LO-0481");
+  assert.equal(full.transport.incoterm, "FCA");
+  assert.equal(full.transport.incotermVersion, "2020");
+  assert.equal(full.transport.namedPlace, "Pingxiang Warehouse");
+  assert.equal(full.transport.loadModel, "LTL");
+  assert.equal(full.transport.cargoInsurance.status, "NO");
+  ok("a complete profile is stated once, with the same fields the detail page owns");
 }
 
 // ---------------------------------------------------------------------------

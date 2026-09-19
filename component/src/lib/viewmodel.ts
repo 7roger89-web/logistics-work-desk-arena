@@ -443,6 +443,8 @@ export interface ExecutionProfileStage {
   done: boolean;
   /** What still has to be recorded for this stage ("" = nothing). */
   missing: string;
+  /** A CONFIRMED contradiction between two persisted truths (not an open gap). */
+  mismatch: boolean;
 }
 
 export interface ExecutionProfileInsurance {

@@ -140,10 +140,13 @@ export default function CreateShipment() {
         incoterm: profile.incoterm,
         pol: pol.trim(),
         pod: pod.trim(),
-        // The profile block is stated ONLY when the operator actually configured
-        // it: an untouched create stays as lightweight as it always was, and an
-        // engaged-but-incomplete profile is reported (never half-written).
-        ...(profileEngaged ? draftPayload(profile) : {}),
+        // The profile block is stated ONLY when the operator configured it
+        // COMPLETELY: an untouched create stays as lightweight as it always
+        // was, and an engaged-but-incomplete profile is deliberately NOT sent —
+        // the lot is created and the detail page asks for what is missing,
+        // exactly as the amber notice below the form promises. The backend
+        // enforces both halves (it refuses a CONFLICT and never half-writes).
+        ...(profileReadyToWrite ? draftPayload(profile) : {}),
       },
       // The backend echoes this id so the outcome in `lastWrites` can be
       // matched to THIS click — never to another request.

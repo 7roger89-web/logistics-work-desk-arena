@@ -630,6 +630,21 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
         </div>
       )}
 
+      {profile?.stages.some((stage) => stage.mismatch) && (
+        <div role="alert" data-testid="execution-profile-mismatch"
+             className="mt-3 rounded-xl border-2 border-red-300 bg-red-50 px-3.5 py-3">
+          <p className="font-extrabold text-[14px] text-red-900 flex items-center gap-2">
+            <CircleAlert size={17} /> BẢO HIỂM: CÓ YÊU CẦU NHƯNG THỰC TẾ GHI KHÔNG CÓ
+          </p>
+          {profile.stages.filter((stage) => stage.mismatch).map((stage) => (
+            <p key={stage.code} className="mt-1 text-[13.5px] text-red-900">{stage.missing}</p>
+          ))}
+          <p className="mt-1 text-[12.5px] text-red-800">
+            Giữ nguyên dữ liệu thực tế đã ghi — lô chỉ hoàn thành khi chứng từ bảo hiểm được xác nhận.
+          </p>
+        </div>
+      )}
+
       {!open && profile && profile.stages.length > 0 && (
         <div className="mt-3" data-testid="execution-profile-stages">
           <p className="text-[13px] font-extrabold text-[#0f2a4a]">
@@ -639,8 +654,10 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
             {profile.stages.map((stage) => (
               <li
                 key={stage.code}
+                data-testid={`execution-profile-stage-${stage.code}`}
+                data-mismatch={stage.mismatch ? "true" : "false"}
                 title={`${stage.reasonLabel}: ${stage.detail}`}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold ${stage.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold ${stage.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : stage.mismatch ? "border-red-300 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}
               >
                 {stage.done ? <BadgeCheck size={13} /> : <CircleAlert size={13} />}
                 {stage.label}

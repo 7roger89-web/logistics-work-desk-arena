@@ -132,27 +132,11 @@ def test_service_catalog_is_not_hardcoded_in_react():
 
     from core.config import GETFLY_SERVICES_LIST
 
-    candidates = [
+    sources = [
         path for path in COMPONENT_SRC.rglob("*")
         if path.suffix in {".ts", ".tsx"} and path.is_file()
     ]
-    assert candidates, "the component source tree must be inspectable"
-
-    # A file that declares itself GENERATED is a projection of a Python
-    # authority, not a second catalog — but only if the generator it names
-    # really exists in the repository (and the projection is drift-guarded by
-    # its own test). Anything else is still treated as hand-written React.
-    root = COMPONENT_SRC.parents[1]
-    sources = []
-    for path in candidates:
-        header = path.read_text(encoding="utf-8")[:400]
-        if "GENERATED FILE" not in header:
-            sources.append(path)
-            continue
-        generator = _re.search(r"python3 (scripts/[\w./-]+\.py)", header)
-        assert generator, f"{path.name} claims to be generated but names no generator"
-        assert (root / generator.group(1)).is_file(), \
-            f"{path.name} names a generator that does not exist: {generator.group(1)}"
+    assert sources, "the component source tree must be inspectable"
     raw = "\n".join(path.read_text(encoding="utf-8") for path in sources)
     # Strip block and line comments so a documented reference to the canonical
     # source is not mistaken for a copied list.
@@ -168,7 +152,24 @@ def test_service_catalog_is_not_hardcoded_in_react():
             assert value not in literals, f"catalog {field} '{value}' is hard-coded in React"
     assert "GETFLY_SERVICES_LIST" not in code
     # And the shipped TypeScript never carries a list of services at all.
-    assert not _re.search(r"\[\s*\{[^\]]{200,}?code[^\]]*\]", code), "React must not define its own catalog"
+    #
+    # The ONE exemption is named explicitly and is unrelated to Finance: the
+    # GENERATED execution-profile catalog (LOGI_SHIPMENT_EXECUTION_PROFILE_01)
+    # is a byte-for-byte projection of core.shipment_execution_profile's rule
+    # matrices, with its own drift guard in the focused test suite. It is NOT a
+    # "skip every generated file" rule — every generated file (this one
+    # included) still passes the FINANCE literal checks above/below, and a
+    # second generated file would be inspected here unless it is justified the
+    # same way, by name.
+    UNRELATED_GENERATED_CATALOG = "executionProfileCatalog.ts"
+    code_without_rule_catalogs = "\n".join(
+        text for path, text in
+        ((path, _re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=_re.S))
+         for path in sources)
+        if path.name != UNRELATED_GENERATED_CATALOG
+    )
+    assert not _re.search(r"\[\s*\{[^\]]{200,}?code[^\]]*\]",
+                          code_without_rule_catalogs), "React must not define its own catalog"
     # And the contract the component is allowed to rely on does exist.
     assert "financeServiceCatalog" in code
 

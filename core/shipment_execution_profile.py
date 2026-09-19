@@ -457,6 +457,20 @@ ACTUAL_INSURANCE_LABELS: dict[str, str] = {
     ACTUAL_INSURANCE_YES: "Đã có bảo hiểm",
 }
 
+#: A persisted ``NO`` is never silently rewritten into ``UNKNOWN``: when the
+#: profile required cover, it is a CONFIRMED MISMATCH and the only honest
+#: sentence is the exception itself. These are the two exact wordings the
+#: operator sees (Incoterm-driven vs Trường Thành-scope-driven).
+INSURANCE_MISMATCH_INCOTERM = (
+    "Bảo hiểm thực tế đang ghi KHÔNG CÓ, nhưng điều kiện giao hàng yêu cầu "
+    "người bán thu xếp bảo hiểm."
+)
+INSURANCE_MISMATCH_SCOPE = (
+    "Bảo hiểm thực tế đang ghi KHÔNG CÓ, nhưng phạm vi Trường Thành thực hiện "
+    "có thu xếp bảo hiểm hàng hóa."
+)
+INSURANCE_MISMATCH_LABEL = "Bảo hiểm: có yêu cầu nhưng thực tế ghi KHÔNG CÓ"
+
 
 def incoterm_insurance(code: str, version: str) -> dict[str, Any]:
     """The DERIVED, read-only seller insurance obligation of ONE Incoterm rule.
@@ -732,6 +746,39 @@ ISSUE_INVALID_LOAD_MODEL = "INVALID_LOAD_MODEL"
 ISSUE_MISSING_SERVICE_SCOPE = "MISSING_SERVICE_SCOPE"
 ISSUE_INSURANCE_EVIDENCE = "INSURANCE_EVIDENCE_MISSING"
 
+#: The issues that are CONFLICTS — an impossible or self-contradictory
+#: configuration the operator really did state (FOB + ROAD, DAT + 2020, an
+#: unrecognized term they typed, a load model from another mode). Everything
+#: else is a fact that simply has not been stated YET, which is a legitimate
+#: state for a NEW shipment ("bổ sung sau"): it makes the profile INCOMPLETE,
+#: and it must never refuse creating the lot.
+BLOCKING_WRITE_ISSUES: frozenset[str] = frozenset({
+    ISSUE_INVALID_COMBINATION,
+    ISSUE_VERSION_MISMATCH,
+    ISSUE_INVALID_LOAD_MODEL,
+})
+
+
+def blocking_issues(issues: Iterable[Mapping[str, Any]],
+                    facts: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+    """The subset of issues that block: they are conflicts, not open questions.
+
+    ``UNKNOWN_INCOTERM`` only blocks when the operator actually stated something
+    that could not be recognized — a BLANK contract term is the honest
+    "not stated yet" state and must never be turned into an invented code (nor
+    into ``CẤU HÌNH CẦN KIỂM TRA``, which is reserved for real conflicts).
+    """
+
+    facts = facts or {}
+    blocking = [dict(issue) for issue in issues if issue.get("code") in BLOCKING_WRITE_ISSUES]
+    if _text(facts.get("incotermRawInput")):
+        blocking.extend(dict(issue) for issue in issues if issue.get("code") == ISSUE_UNKNOWN_INCOTERM)
+    return blocking
+
+
+#: The write gate calls the same rule by its write-side name.
+blocking_write_issues = blocking_issues
+
 
 def validate_profile(facts: Mapping[str, Any], *, for_write: bool = False) -> list[dict[str, Any]]:
     """Every reason the profile is not a valid execution profile.
@@ -838,7 +885,7 @@ REASON_LABELS: dict[str, str] = {
 
 
 def _stage(code: str, label: str, reason: str, *, done: bool, detail: str = "",
-           prompt: str = "") -> dict[str, Any]:
+           prompt: str = "", mismatch: bool = False) -> dict[str, Any]:
     return {
         "code": code,
         "label": label,
@@ -848,6 +895,8 @@ def _stage(code: str, label: str, reason: str, *, done: bool, detail: str = "",
         "done": bool(done),
         #: What the operator still has to record for this stage ("" = nothing).
         "missing": "" if done else prompt,
+        #: A CONFIRMED contradiction between two persisted truths (not a gap).
+        "mismatch": bool(mismatch),
     }
 
 
@@ -1003,21 +1052,57 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
             detail="Lô đã có dữ liệu giao hàng.", prompt=""))
 
     # --- insurance: the Incoterm obligation is NOT evidence ---------------
+    #
+    # TWO truths, and they are compared rather than merged:
+    #   * the DERIVED obligation (CIF/CIP oblige the seller to arrange cover,
+    #     or Trường Thành's own confirmed scope includes arranging it);
+    #   * the PERSISTED actual state (UNKNOWN / NO / YES).
+    # `NO` is useful EVIDENCE, not a synonym for "nothing to do": when the
+    # profile required cover, an explicit NO is a CONFIRMED MISMATCH and the
+    # stage stays outstanding. `NO` only settles the question when neither the
+    # Incoterm nor the confirmed scope required insurance at all.
     obligation = _text(insurance.get("obligation"))
     status = _text(insurance.get("actualStatus"))
-    needs_evidence = bool(in_scope(SCOPE_CARGO_INSURANCE_ARRANGEMENT)) or bool(
-        obligation == INSURANCE_SELLER_REQUIRED)
+    obligation_required = obligation == INSURANCE_SELLER_REQUIRED
+    scope_required = in_scope(SCOPE_CARGO_INSURANCE_ARRANGEMENT)
+    needs_evidence = scope_required or obligation_required
     if needs_evidence:
-        reason = (REASON_SERVICE_SCOPE if in_scope(SCOPE_CARGO_INSURANCE_ARRANGEMENT)
-                  else REASON_INCOTERM_EXPECTATION)
+        reason = REASON_SERVICE_SCOPE if scope_required else REASON_INCOTERM_EXPECTATION
+        mismatch = status == ACTUAL_INSURANCE_NO
+        if status == ACTUAL_INSURANCE_YES:
+            done, prompt = True, ""
+        elif mismatch:
+            done = False
+            prompt = (INSURANCE_MISMATCH_SCOPE if scope_required else INSURANCE_MISMATCH_INCOTERM)
+        else:
+            done, prompt = False, "Kiểm tra chứng từ bảo hiểm."
+        if mismatch:
+            detail = ("Phạm vi Trường Thành gồm thu xếp bảo hiểm, nhưng hồ sơ đang ghi thực tế KHÔNG CÓ bảo hiểm."
+                      if scope_required
+                      else "Incoterm bắt buộc người bán thu xếp bảo hiểm, nhưng hồ sơ đang ghi thực tế KHÔNG CÓ bảo hiểm.")
+        else:
+            detail = ("Phạm vi Trường Thành gồm thu xếp bảo hiểm." if scope_required
+                      else "Incoterm bắt buộc người bán thu xếp bảo hiểm — cần kiểm tra chứng từ thực tế.")
         stages.append(_stage(
             "INSURANCE_EVIDENCE", "Chứng từ bảo hiểm hàng hóa", reason,
-            done=status in {ACTUAL_INSURANCE_YES, ACTUAL_INSURANCE_NO},
-            detail=("Phạm vi Trường Thành gồm thu xếp bảo hiểm." if reason == REASON_SERVICE_SCOPE
-                    else "Incoterm bắt buộc người bán thu xếp bảo hiểm — cần kiểm tra chứng từ thực tế."),
-            prompt="Kiểm tra chứng từ bảo hiểm." if status == "" or status == ACTUAL_INSURANCE_UNKNOWN else ""))
+            done=done, detail=detail, prompt=prompt, mismatch=mismatch))
 
     return stages
+
+
+def _conflicts_for_next_action(issues: Sequence[Mapping[str, Any]],
+                               profile: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Conflicts — the SAME rule the profile state is derived from.
+
+    A BLANK term is an open question (``PROFILE_INCOMPLETE``); a term the
+    operator stated that could not be recognized is a real configuration
+    problem, and the next action must agree with the state banner.
+    """
+
+    conflicts = [dict(issue) for issue in issues if issue.get("code") in BLOCKING_WRITE_ISSUES]
+    if _text(profile.get("incotermRawLabel")):
+        conflicts.extend(dict(issue) for issue in issues if issue.get("code") == ISSUE_UNKNOWN_INCOTERM)
+    return conflicts
 
 
 def derive_next_action(profile: Mapping[str, Any], stages: Sequence[Mapping[str, Any]],
@@ -1029,10 +1114,9 @@ def derive_next_action(profile: Mapping[str, Any], stages: Sequence[Mapping[str,
         return {"code": code, "label": label, "detail": detail, "reason": reason,
                 "reasonLabel": REASON_LABELS.get(reason, reason), "tone": tone}
 
-    hard = [issue for issue in issues if issue.get("code") in
-            {ISSUE_INVALID_COMBINATION, ISSUE_UNKNOWN_INCOTERM, ISSUE_VERSION_MISMATCH}]
-    if hard:
-        return action("Kiểm tra cấu hình lô", hard[0].get("message", ""),
+    conflicts = _conflicts_for_next_action(issues, profile)
+    if conflicts:
+        return action("Kiểm tra cấu hình lô", conflicts[0].get("message", ""),
                       reason=REASON_INCOTERM_EXPECTATION, code="CONFIG_CHECK", tone="red")
 
     incomplete = list(issues)
@@ -1040,19 +1124,21 @@ def derive_next_action(profile: Mapping[str, Any], stages: Sequence[Mapping[str,
         return action("Bổ sung hồ sơ thực hiện lô", incomplete[0].get("message", ""),
                       reason=REASON_PERSISTED_FACT_DEPENDENCY, code="PROFILE_INCOMPLETE")
 
-    insurance = profile.get("insurance") or {}
     insurance_gap = next(
         (stage for stage in stages
          if stage.get("code") == "INSURANCE_EVIDENCE" and stage.get("missing")), None)
 
     if facts.get("delivered"):
         # A delivered lot is finished — EXCEPT when the confirmed profile still
-        # owes evidence it was hired to obtain: an UNKNOWN insurance document is
-        # not the same statement as "nothing left to do".
+        # owes what it was configured to obtain: an UNKNOWN insurance document
+        # is NOT the honest end of the workflow, and an explicit "no insurance"
+        # under a CIF/CIP obligation (or under Trường Thành's own confirmed
+        # scope) is a CONFIRMED MISMATCH, never a finished lot.
         if insurance_gap is not None:
             return action(insurance_gap["missing"], insurance_gap.get("detail", ""),
                           reason=str(insurance_gap.get("reason")),
-                          code=str(insurance_gap.get("code")))
+                          code=str(insurance_gap.get("code")),
+                          tone="red" if insurance_gap.get("mismatch") else "amber")
         return action("Hoàn thành", "Lô đã được xác nhận giao hàng.",
                       reason=REASON_PERSISTED_FACT_DEPENDENCY, code="DONE", tone="green")
 
@@ -1065,7 +1151,8 @@ def derive_next_action(profile: Mapping[str, Any], stages: Sequence[Mapping[str,
                + [stage for stage in unmet if stage.get("reason") != REASON_LOAD_MODEL_REQUIREMENT])
     for stage in ordered:
         return action(stage["missing"], stage.get("detail", ""),
-                      reason=str(stage.get("reason")), code=str(stage.get("code")))
+                      reason=str(stage.get("reason")), code=str(stage.get("code")),
+                      tone="red" if stage.get("mismatch") else "amber")
 
     return action("Theo dõi lô theo hồ sơ đã xác nhận",
                   "Mọi bước thuộc phạm vi Trường Thành đã có dữ liệu.",
@@ -1157,9 +1244,7 @@ def build_execution_profile(shipment: Mapping[str, Any] | None, *,
         })
     profile["issues"] = issues
 
-    hard = [issue for issue in issues if issue.get("code") in
-            {ISSUE_INVALID_COMBINATION, ISSUE_UNKNOWN_INCOTERM, ISSUE_VERSION_MISMATCH}]
-    if hard:
+    if blocking_issues(issues, cfg):
         profile["state"] = STATE_CONFIG_CHECK
     elif issues:
         profile["state"] = STATE_INCOMPLETE
@@ -1224,6 +1309,11 @@ def summary_lines(profile: Mapping[str, Any]) -> list[str]:
     insurance = profile.get("insurance") or {}
     obligation = _text(insurance.get("obligation"))
     status_label = _text(insurance.get("actualStatusLabel"))
+    status = _text(insurance.get("actualStatus"))
+    scope_requires = SCOPE_CARGO_INSURANCE_ARRANGEMENT in (_text(item) for item in
+                                                           (profile.get("serviceScope") or []))
+    mismatch = status == ACTUAL_INSURANCE_NO and (
+        obligation == INSURANCE_SELLER_REQUIRED or scope_requires)
     if obligation == INSURANCE_SELLER_REQUIRED:
         clause = _text(insurance.get("clauseLabel"))
         lines.append("Bảo hiểm theo Incoterm: người bán phải thu xếp"
@@ -1231,6 +1321,8 @@ def summary_lines(profile: Mapping[str, Any]) -> list[str]:
         lines.append(f"Chứng từ bảo hiểm: {status_label}")
     else:
         lines.append(f"Bảo hiểm hàng hóa: {status_label}")
+    if mismatch:
+        lines.append(INSURANCE_MISMATCH_LABEL)
     return lines
 
 

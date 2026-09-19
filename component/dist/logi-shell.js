@@ -15588,6 +15588,25 @@ function ys({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 					})
 				]
 			}),
+			a?.stages.some((e) => e.mismatch) && /* @__PURE__ */ (0, R.jsxs)("div", {
+				role: "alert",
+				"data-testid": "execution-profile-mismatch",
+				className: "mt-3 rounded-xl border-2 border-red-300 bg-red-50 px-3.5 py-3",
+				children: [
+					/* @__PURE__ */ (0, R.jsxs)("p", {
+						className: "font-extrabold text-[14px] text-red-900 flex items-center gap-2",
+						children: [/* @__PURE__ */ (0, R.jsx)(B, { size: 17 }), " BẢO HIỂM: CÓ YÊU CẦU NHƯNG THỰC TẾ GHI KHÔNG CÓ"]
+					}),
+					a.stages.filter((e) => e.mismatch).map((e) => /* @__PURE__ */ (0, R.jsx)("p", {
+						className: "mt-1 text-[13.5px] text-red-900",
+						children: e.missing
+					}, e.code)),
+					/* @__PURE__ */ (0, R.jsx)("p", {
+						className: "mt-1 text-[12.5px] text-red-800",
+						children: "Giữ nguyên dữ liệu thực tế đã ghi — lô chỉ hoàn thành khi chứng từ bảo hiểm được xác nhận."
+					})
+				]
+			}),
 			!o && a && a.stages.length > 0 && /* @__PURE__ */ (0, R.jsxs)("div", {
 				className: "mt-3",
 				"data-testid": "execution-profile-stages",
@@ -15603,8 +15622,10 @@ function ys({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 				}), /* @__PURE__ */ (0, R.jsx)("ul", {
 					className: "mt-1.5 flex flex-wrap gap-1.5",
 					children: a.stages.map((e) => /* @__PURE__ */ (0, R.jsxs)("li", {
+						"data-testid": `execution-profile-stage-${e.code}`,
+						"data-mismatch": e.mismatch ? "true" : "false",
 						title: `${e.reasonLabel}: ${e.detail}`,
-						className: `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold ${e.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`,
+						className: `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold ${e.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : e.mismatch ? "border-red-300 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-900"}`,
 						children: [e.done ? /* @__PURE__ */ (0, R.jsx)(br, { size: 13 }) : /* @__PURE__ */ (0, R.jsx)(B, { size: 13 }), e.label]
 					}, e.code))
 				})]
@@ -18931,7 +18952,7 @@ function Ns() {
 												incoterm: h.incoterm,
 												pol: v.trim(),
 												pod: b.trim(),
-												...j ? ls(h) : {}
+												...N ? ls(h) : {}
 											},
 											requestId: n
 										}) ? (D(""), T({

@@ -2846,6 +2846,7 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.shipment_execution_profile import (
         INCOTERM_VERSIONS,
         STORED_MODE_BY_CANONICAL,
+        blocking_write_issues,
         canonical_mode,
         normalize_incoterm,
         normalize_service_scope,
@@ -2854,7 +2855,10 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
 
     profile_head: dict[str, Any] = {}
-    head_incoterm = rd.text(transport.get("incoterm")) or "EXW"
+    # A BLANK contract term stays blank. The create form deliberately allows
+    # "chưa chọn" (UNKNOWN), so validating or storing an invented ``EXW`` here
+    # would fabricate a fact the operator never stated.
+    head_incoterm = rd.text(transport.get("incoterm"))
     profile_keys = ("incotermVersion", "namedPlace", "loadModel", "serviceScope",
                     "serviceScopeConfirmed", "cargoInsurance")
     if any(key in transport or key in payload for key in profile_keys):
@@ -2880,9 +2884,16 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
             "cargoInsuranceCoverageNote": rd.text(insurance_payload.get("coverageNote")),
         }
         profile_issues = validate_profile(profile_facts_in, for_write=True)
-        if profile_issues:
-            return _res(False, profile_issues[0]["message"], issues=profile_issues)
-        profile_head = profile_document(profile_facts_in)
+        # A CONFLICT (FOB + ROAD, DAT + 2020, an unrecognized term the operator
+        # actually typed, a foreign load model) refuses the create. A fact that
+        # is merely not stated YET does not: the profile block is then simply
+        # not written, the lot is created, and the lot detail page asks for the
+        # missing facts — exactly what the create form promises the operator.
+        blocking = blocking_write_issues(profile_issues, profile_facts_in)
+        if blocking:
+            return _res(False, blocking[0]["message"], issues=profile_issues)
+        if not profile_issues:
+            profile_head = profile_document(profile_facts_in)
 
     doc: dict[str, Any] = {
         "id": sid,
@@ -2895,7 +2906,9 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         "data": {
             "0.0": {"st": "wait", "created_at": created_on,
                     "mode": selected_mode,
-                    "incoterm": rd.text(transport.get("incoterm")) or "EXW"},
+                    # UNKNOWN stays UNKNOWN: a blank Incoterm is persisted as
+                    # blank and never silently becomes EXW.
+                    "incoterm": rd.text(transport.get("incoterm"))},
             "1.2": transport_section,
             "2.4": {},
             "2.6": {k: _coerce(k, v) for k, v in (("arrival_date", transport.get("etd")),) if v},

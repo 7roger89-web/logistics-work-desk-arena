@@ -679,11 +679,14 @@ def test_cif_obligation_with_actual_unknown_asks_for_the_certificate():
     assert after["nextAction"]["code"] == "INSURANCE_EVIDENCE"
     assert after["nextAction"]["label"] == "Kiểm tra chứng từ bảo hiểm."
 
+    # …and an explicit "no insurance" under a CIF obligation is NOT the end of
+    # the workflow either: it is a CONFIRMED MISMATCH (section G2 below).
     stated_no = _doc_block(True)
     stated_no["data"]["0.0"]["execution_profile"]["cargo_insurance"] = {"status": "NO"}
-    finished = _profile_of(stated_no)
-    assert finished["nextAction"]["code"] == "DONE"
-    assert finished["nextAction"]["label"] == "Hoàn thành"
+    mismatch = _profile_of(stated_no)
+    assert mismatch["nextAction"]["code"] == "INSURANCE_EVIDENCE"
+    assert mismatch["nextAction"]["label"] == ep.INSURANCE_MISMATCH_INCOTERM
+    assert mismatch["nextAction"]["code"] != "DONE"
 
 
 def test_cif_never_sets_the_actual_insurance_by_itself(staging):
@@ -716,6 +719,119 @@ def test_policy_details_are_dropped_when_the_actual_status_is_not_yes(staging):
     assert _dispatch("shipment_profile_save", {"shipmentId": SEA_LOT, "namedPlace": "Hải Phòng"},
                      seq=3)["ok"]
     assert _stored_block(SEA_LOT)["cargo_insurance"]["status"] == "NO"
+
+
+# ===========================================================================
+# G2. Insurance — the CONFIRMED MISMATCH (CIF/CIP NO) and the settled NO
+# ===========================================================================
+
+def _insurance_doc(*, incoterm: str, version: str = "2020", status: str,
+                   scope: list[str] | None = None, delivered: bool = False,
+                   mode: str = "Sea", load_model: str = "LCL") -> dict:
+    """One shipment document with the SAME everything except the insurance."""
+
+    document = {"data": {
+        "0.0": {"mode": mode, "incoterm": incoterm, "execution_profile": {
+            "incoterm_version": version, "incoterm_named_place": "Hai Phong Port",
+            "load_model": load_model,
+            "service_scope": ["IMPORT_CUSTOMS"] if scope is None else scope,
+            "service_scope_confirmed": True, "cargo_insurance": {"status": status}}},
+        "2.4": {"tk_no": "105588421330", "customs_status": True}}}
+    if delivered:
+        document["data"]["2.7"] = {"is_delivered": True, "addr": "Bắc Ninh"}
+    return document
+
+
+def _insurance_stage(profile: dict) -> dict:
+    return next(stage for stage in profile["stages"] if stage["code"] == "INSURANCE_EVIDENCE")
+
+
+def test_cif_2020_with_unknown_asks_to_check_the_certificate():
+    profile = _profile_of(_insurance_doc(incoterm="CIF", status="UNKNOWN"))
+    stage = _insurance_stage(profile)
+    assert stage["done"] is False and stage["mismatch"] is False
+    assert stage["missing"] == "Kiểm tra chứng từ bảo hiểm."
+    assert profile["nextAction"]["code"] == "INSURANCE_EVIDENCE"
+    assert profile["nextAction"]["label"] == "Kiểm tra chứng từ bảo hiểm."
+
+
+def test_cif_2020_with_actual_no_is_a_confirmed_mismatch_not_done():
+    """NO is EVIDENCE, not completion: CIF required cover and the lot says none."""
+
+    profile = _profile_of(_insurance_doc(incoterm="CIF", status="NO"))
+    stage = _insurance_stage(profile)
+    assert stage["done"] is False, "an explicit NO must not satisfy the CIF obligation"
+    assert stage["mismatch"] is True
+    assert stage["missing"] == ep.INSURANCE_MISMATCH_INCOTERM
+    assert "KHÔNG CÓ" in stage["missing"]
+    # A clear exception, not a routine amber gap.
+    assert profile["nextAction"]["code"] == "INSURANCE_EVIDENCE"
+    assert profile["nextAction"]["label"] == ep.INSURANCE_MISMATCH_INCOTERM
+    assert profile["nextAction"]["tone"] == "red"
+    assert ep.INSURANCE_MISMATCH_LABEL in profile["summaryLines"]
+    # The persisted fact itself is never rewritten into UNKNOWN.
+    assert profile["insurance"]["actualStatus"] == "NO"
+    assert profile["insurance"]["actualStatusStated"] is True
+
+
+def test_cif_2020_with_actual_yes_satisfies_the_insurance_stage():
+    profile = _profile_of(_insurance_doc(incoterm="CIF", status="YES"))
+    stage = _insurance_stage(profile)
+    assert stage["done"] is True and stage["missing"] == "" and stage["mismatch"] is False
+    assert profile["nextAction"]["code"] != "INSURANCE_EVIDENCE"
+    assert ep.INSURANCE_MISMATCH_LABEL not in profile["summaryLines"]
+
+
+def test_cip_2020_with_actual_no_is_also_a_mismatch():
+    profile = _profile_of(_insurance_doc(incoterm="CIP", status="NO"))
+    stage = _insurance_stage(profile)
+    assert stage["mismatch"] is True and stage["done"] is False
+    assert profile["nextAction"]["label"] == ep.INSURANCE_MISMATCH_INCOTERM
+    assert profile["insurance"]["clause"] == ep.CLAUSE_A, "CIP 2020 keeps Clause A"
+
+
+def test_a_non_insurance_term_with_actual_no_is_a_settled_factual_state():
+    """FCA owes nothing: the operator's explicit NO is a complete answer."""
+
+    profile = _profile_of(_insurance_doc(incoterm="FCA", status="NO", mode="Truck",
+                                         load_model="LTL", scope=["IMPORT_CUSTOMS", "FINAL_DELIVERY"]))
+    assert profile["insurance"]["obligation"] == ep.INSURANCE_NOT_REQUIRED_BY_INCOTERM
+    assert [stage["code"] for stage in profile["stages"] if stage["code"] == "INSURANCE_EVIDENCE"] == []
+    assert profile["nextAction"]["code"] != "INSURANCE_EVIDENCE"
+    assert ep.INSURANCE_MISMATCH_LABEL not in profile["summaryLines"]
+    assert "Bảo hiểm hàng hóa: Không có bảo hiểm" in " ".join(profile["summaryLines"])
+
+
+def test_the_confirmed_insurance_scope_is_not_complete_while_the_lot_says_no():
+    """Trường Thành was hired to arrange cover — an explicit NO cannot finish it."""
+
+    scope = ["CARGO_INSURANCE_ARRANGEMENT", "IMPORT_CUSTOMS"]
+    profile = _profile_of(_insurance_doc(incoterm="FCA", status="NO", mode="Truck",
+                                         load_model="LTL", scope=scope))
+    stage = _insurance_stage(profile)
+    assert stage["reason"] == ep.REASON_SERVICE_SCOPE
+    assert stage["done"] is False and stage["mismatch"] is True
+    assert stage["missing"] == ep.INSURANCE_MISMATCH_SCOPE
+    assert profile["nextAction"]["code"] == "INSURANCE_EVIDENCE"
+    assert profile["nextAction"]["tone"] == "red"
+
+    # The same scope with YES really settles it.
+    done = _profile_of(_insurance_doc(incoterm="FCA", status="YES", mode="Truck",
+                                      load_model="LTL", scope=scope))
+    assert _insurance_stage(done)["done"] is True
+
+
+def test_a_delivered_cif_lot_with_actual_no_is_never_done():
+    profile = _profile_of(_insurance_doc(incoterm="CIF", status="NO", delivered=True))
+    assert profile["persisted"]["delivered"] is True
+    assert profile["nextAction"]["code"] != "DONE"
+    assert profile["nextAction"]["label"] == ep.INSURANCE_MISMATCH_INCOTERM
+    assert profile["nextAction"]["tone"] == "red"
+
+    # …while the same delivered lot with YES is finished.
+    finished = _profile_of(_insurance_doc(incoterm="CIF", status="YES", delivered=True))
+    assert finished["nextAction"]["code"] == "DONE"
+    assert finished["nextAction"]["label"] == "Hoàn thành"
 
 
 # ===========================================================================
@@ -1055,3 +1171,142 @@ def test_the_execution_profile_is_not_a_second_view_model_build(staging, monkeyp
     row = next(s for s in builds[0]["shipments"] if s["id"] == SEA_LOT)
     assert row["executionProfile"]["incoterm"] == "CIF"
     assert row["executionProfile"]["state"] == ep.STATE_READY
+
+
+# ===========================================================================
+# M. Create path — a blank Incoterm stays blank (never a fabricated EXW)
+# ===========================================================================
+
+def _create(sid: str, **transport) -> dict:
+    payload = {
+        "shipmentId": sid,
+        "customerId": "CUST-ANPHAT",
+        "customer": "An Phát JSC",
+        "contractId": "",
+        "currency": "VND",
+        "requestId": f"REQ-{sid}",
+        "transport": dict(transport),
+    }
+    return _dispatch("shipment_create", payload)
+
+
+def _created_head(sid: str) -> dict:
+    """The FRESH authoritative read of a just-created shipment."""
+
+    return dict((_doc(sid).get("data") or {}).get("0.0") or {})
+
+
+def test_create_without_a_contract_term_persists_a_blank_incoterm(staging):
+    """UNKNOWN stays UNKNOWN: no implicit EXW may be written to MongoDB."""
+
+    out = _create("LO-0491", mode="Truck", pol="Bằng Tường (Quảng Tây)")
+    assert out["ok"], out["error"]
+
+    head = _created_head("LO-0491")
+    assert head["incoterm"] == "", f"the blank term must stay blank, got {head['incoterm']!r}"
+    assert head["incoterm"] != "EXW", "EXW may never be fabricated at creation"
+    assert head["mode"] == "Truck", "the stated mode is untouched"
+    # …and the stored blank projects honestly as an unknown term.
+    profile = _profile("LO-0491")
+    assert profile["incoterm"] == "" and profile["incotermRawLabel"] == ""
+    assert profile["state"] == ep.STATE_INCOMPLETE
+
+
+def test_create_with_an_explicit_contract_term_persists_that_term(staging):
+    out = _create("LO-0492", mode="Truck", incoterm="EXW", pol="Bằng Tường (Quảng Tây)")
+    assert out["ok"], out["error"]
+    head = _created_head("LO-0492")
+    assert head["incoterm"] == "EXW", "a stated term is persisted verbatim"
+    assert _profile("LO-0492")["incoterm"] == "EXW"
+
+
+def test_create_with_a_complete_profile_writes_the_profile_block(staging):
+    out = _dispatch("shipment_create", {
+        "shipmentId": "LO-0493", "customerId": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "contractId": "", "currency": "VND", "requestId": "REQ-LO-0493",
+        "transport": {"mode": "Sea", "incoterm": "CIF", "incotermVersion": "2020",
+                      "namedPlace": "Hai Phong Port", "loadModel": "LCL",
+                      "serviceScope": ["IMPORT_CUSTOMS"], "serviceScopeConfirmed": True,
+                      "cargoInsurance": {"status": "YES", "insurerName": "PJICO",
+                                         "policyNo": "POL-0493"}},
+    })
+    assert out["ok"], out["error"]
+    head = _created_head("LO-0493")
+    assert head["incoterm"] == "CIF" and head["mode"] == "Sea"
+    assert head["execution_profile"]["incoterm_version"] == "2020"
+    assert head["execution_profile"]["incoterm_named_place"] == "Hai Phong Port"
+    assert head["execution_profile"]["cargo_insurance"]["status"] == "YES"
+    assert _profile("LO-0493")["state"] in {ep.STATE_READY, ep.STATE_INCOMPLETE}
+
+
+def test_create_with_a_half_stated_profile_still_creates_the_lot(staging):
+    """A fact not stated YET is not a conflict — the lot is still created.
+
+    The profile block is simply not written; nothing is guessed for the
+    operator (and the missing Incoterm never becomes EXW on the way through).
+    """
+
+    out = _dispatch("shipment_create", {
+        "shipmentId": "LO-0494", "customerId": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "contractId": "", "currency": "VND", "requestId": "REQ-LO-0494",
+        "transport": {"mode": "Sea", "incotermVersion": "2020", "loadModel": "LCL"},
+    })
+    assert out["ok"], out["error"]
+    head = _created_head("LO-0494")
+    assert head["incoterm"] == "", "the profile's own term field is never invented"
+    assert "execution_profile" not in head, "a half-stated profile is never half-written"
+    assert _profile("LO-0494")["state"] == ep.STATE_INCOMPLETE
+
+
+def test_create_refuses_a_structural_conflict_even_without_a_place(staging):
+    out = _dispatch("shipment_create", {
+        "shipmentId": "LO-0495", "customerId": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "contractId": "", "currency": "VND", "requestId": "REQ-LO-0495",
+        "transport": {"mode": "Truck", "incoterm": "FOB", "incotermVersion": "2020",
+                      "namedPlace": "Shenzhen", "loadModel": "LTL",
+                      "serviceScope": ["IMPORT_CUSTOMS"], "serviceScopeConfirmed": True,
+                      "cargoInsurance": {"status": "NO"}},
+    })
+    assert out["ok"] is False
+    assert any(i["code"] == ep.ISSUE_INVALID_COMBINATION for i in out["issues"])
+    assert vm.read_shipment("LO-0495") is None, "a refused create writes nothing"
+
+
+def test_the_create_path_keeps_no_implicit_incoterm_default():
+    """The guard for the exact defect: no ``or "EXW"`` may come back."""
+
+    source = (ROOT / "views" / "logi_view_model.py").read_text(encoding="utf-8")
+    handler = source[source.index("def _handle_shipment_create"):]
+    handler = handler[:handler.index("\ndef ", 10)]
+    assert 'or "EXW"' not in handler, "an implicit EXW default must never return to create"
+    assert 'transport.get("incoterm")' in handler
+    # The legacy warehouse repair keeps its own semantics (pinned elsewhere);
+    # what matters is that the CREATED document states the term explicitly, so
+    # the repair can never fill in a blank the operator really left blank.
+    assert '"incoterm": rd.text(transport.get("incoterm"))' in handler
+
+
+def test_the_state_banner_and_the_next_action_always_agree(staging):
+    """CONFIG_CHECK is a banner AND a next action — never one without the other."""
+
+    documents = {
+        # A conflict the operator really stated.
+        "fob_road": {"data": {"0.0": {"mode": "Truck", "incoterm": "FOB", "execution_profile": {
+            "incoterm_version": "2020", "incoterm_named_place": "Shenzhen"}}}},
+        # A term nobody can recognize.
+        "typo": {"data": {"0.0": {"mode": "Sea", "incoterm": "C1F", "execution_profile": {
+            "incoterm_version": "2020", "incoterm_named_place": "Hai Phong Port"}}}},
+        # Blank / legacy / partial — open questions, never conflicts.
+        "blank": {"data": {"0.0": {"mode": "Sea", "incoterm": ""}}},
+        "legacy": {"data": {"0.0": {"mode": "Truck", "incoterm": "DAP"}}},
+        "no_head": {"data": {"0.0": {}}},
+    }
+    for label, document in documents.items():
+        profile = _profile_of(document)
+        conflicted = profile["state"] == ep.STATE_CONFIG_CHECK
+        assert conflicted == (profile["nextAction"]["code"] == "CONFIG_CHECK"), label
+        if label in {"blank", "legacy", "no_head"}:
+            assert profile["state"] == ep.STATE_INCOMPLETE, label
+            assert profile["incotermRawLabel"] == "", label
+    # An unrecognized term is preserved verbatim as evidence — never rewritten.
+    assert _profile_of(documents["typo"])["incotermRawLabel"] == "C1F"
