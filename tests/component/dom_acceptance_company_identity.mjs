@@ -8,15 +8,19 @@
 //      Python view-model (`environment.displayName` ← core.config
 //      .DISPLAY_COMPANY_NAME): the header subtitle reads
 //      "Trường Thành Logistics · Nội bộ".
-//   2. Phú Anh Logistics is NOT rendered as the operating brand anywhere
-//      (the old hard-coded "Phú Anh Logistics · Nội bộ" brand is gone from
-//      the bundle AND from every rendered header).
-//   3. The legal/attribution footer surface is UNCHANGED: it still names the
-//      authority_companies legal entity (CÔNG TY TNHH GIAO NHẬN QUỐC TẾ
-//      TRƯỜNG THÀNH) and the authority_agents partner attribution
-//      (Đại lý: Phú Anh Logistics Việt Nam) — data-derived, not brand.
-//   4. Degradation is truthful: with no vm displayName the shell shows the
-//      unbranded "Nội bộ" instead of inventing or hard-coding any brand.
+//   2. The GLOBAL footer reads the SAME display authority
+//      ("Trường Thành Logistics · <internal/staging status>") — the Control
+//      Tower footer repair removed the hard-coded statutory legal_name AND the
+//      global "Đại lý: Phú Anh Logistics Việt Nam" attribution.
+//   3. Phú Anh Logistics is NOT rendered as the operating brand anywhere in
+//      the global shell (header, footer, or any chrome).
+//   4. Partner/agent identities are data, not brand: the vm still carries the
+//      AGT-PHUANH partner record (CÔNG TY TNHH PHÚ ANH LOGISTICS) and partner
+//      contexts may still render Phú Anh when explicitly identified as a
+//      partner/agent — authority_agents and its fixtures are untouched.
+//   5. Degradation is truthful: with no vm displayName the header shows the
+//      unbranded "Nội bộ" while the footer keeps the prescribed
+//      "Trường Thành Logistics" display-brand fallback.
 // ============================================================================
 
 import { readFileSync } from "node:fs";
@@ -99,26 +103,51 @@ console.log("STEP 2 — header identifies the business as Trường Thành Logis
   ok("header subtitle = Trường Thành Logistics · Nội bộ (vm-sourced)");
 }
 
-console.log("STEP 3 — the old Phú Anh operating brand is rendered nowhere");
+console.log("STEP 3 — Phú Anh is rendered nowhere in the global shell");
 {
   assert.ok(!bodyText().includes(OLD_BRAND), "old brand subtitle still rendered");
-  ok("no surface renders the old operating brand");
+  const footer = $("footer")[0];
+  assert.ok(footer, "footer missing");
+  assert.ok(!text(footer).includes("Phú Anh"), "global footer must not render Phú Anh");
+  ok("no global shell surface renders Phú Anh as the operating brand");
 }
 
-console.log("STEP 4 — legal/attribution footer UNCHANGED (authority-derived, not brand)");
+console.log("STEP 4 — global footer = display authority + internal/staging status");
 {
   const footer = $("footer")[0];
   assert.ok(footer, "footer missing");
   const ft = text(footer);
-  assert.ok(ft.includes("CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH"),
-    "footer must keep naming the authority_companies legal entity");
-  assert.ok(ft.includes("Đại lý: Phú Anh Logistics Việt Nam"),
-    "footer agent attribution (authority_agents partner record) must stay unchanged");
-  assert.ok(ft.includes("staging"), "sandbox environment disclosure missing");
-  ok("footer legal entity + agent attribution untouched");
+  // Same ONE display authority as the header (vm environment.displayName).
+  assert.ok(ft.startsWith("Trường Thành Logistics · "),
+    `footer must read "Trường Thành Logistics · <status>", got: ${ft.slice(0, 160)}`);
+  assert.ok(ft.includes("Bản nội bộ"), "existing internal/staging status text missing");
+  // The Control Tower repair: no hard-coded statutory legal_name and no global
+  // agent attribution in the ordinary footer.
+  assert.ok(!ft.includes("CÔNG TY TNHH GIAO NHẬN QUỐC TẾ"), "footer must not hard-code the statutory legal_name");
+  assert.ok(!ft.includes("Đại lý: Phú Anh"), "global footer must not carry the Phú Anh agent attribution");
+  ok("footer = Trường Thành Logistics · status (display authority only)");
 }
 
-console.log("STEP 5 — remount without vm displayName: truthful unbranded degradation");
+console.log("STEP 4b — Phú Anh partner data preserved (data, not brand)");
+{
+  // The agent master record remains untouched where it belongs: the staging
+  // authority_agents seed and the partner-context fixtures that represent it.
+  const seedSrc = readFileSync(path.join(ROOT, "views/logi_staging_seed.py"), "utf8");
+  assert.ok(seedSrc.includes("AGT-PHUANH"), "authority_agents seed lost the AGT-PHUANH record");
+  assert.ok(seedSrc.includes("CÔNG TY TNHH PHÚ ANH LOGISTICS"), "authority_agents seed lost the agent legal_name");
+  const partnerFixture = readFileSync(
+    path.join(ROOT, "tests/component/fixtures/view_model_partner_context.json"), "utf8"
+  );
+  assert.ok(partnerFixture.includes("AGT-PHUANH"), "partner-context fixture lost the AGT-PHUANH record");
+  assert.ok(partnerFixture.includes("CÔNG TY TNHH PHÚ ANH LOGISTICS"),
+    "partner-context fixture lost the agent legal_name");
+  // Source-level guard: the global Layout carries no Phú Anh string at all.
+  const layoutSrc = readFileSync(path.join(ROOT, "component/src/components/Layout.tsx"), "utf8");
+  assert.ok(!layoutSrc.includes("Phú Anh"), "global Layout.tsx still contains a Phú Anh string");
+  ok("agent record intact in authority_agents seed + partner fixtures; global Layout source has no Phú Anh");
+}
+
+console.log("STEP 5 — remount without vm displayName: truthful degradation");
 {
   const degraded = JSON.parse(JSON.stringify(VM));
   delete degraded.environment.displayName;
@@ -127,9 +156,13 @@ console.log("STEP 5 — remount without vm displayName: truthful unbranded degra
   const header = $("header")[0];
   const ht = text(header);
   assert.ok(ht.includes("Nội bộ"), "unbranded subtitle fallback missing");
-  assert.ok(!ht.includes("Trường Thành Logistics ·"), "bundle must not hard-code the brand as fallback");
+  assert.ok(!ht.includes("Trường Thành Logistics ·"), "bundle must not hard-code the brand as header fallback");
   assert.ok(!ht.includes("Phú Anh"), "degraded header must not invent a brand");
-  ok("no vm value → unbranded 'Nội bộ' (never an invented brand)");
+  // Footer keeps the Control-Tower-prescribed display-brand fallback.
+  const ft = text($("footer")[0]);
+  assert.ok(ft.startsWith("Trường Thành Logistics · "), "footer display-brand fallback missing");
+  assert.ok(!ft.includes("Phú Anh"), "degraded footer must not invent an agent attribution");
+  ok("header degrades unbranded; footer keeps the prescribed display-brand fallback");
 }
 
 console.log(`\nDOM ACCEPTANCE PASS — ${passed} checks`);

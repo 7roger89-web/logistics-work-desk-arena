@@ -7,7 +7,7 @@ company is **Trường Thành Logistics**; the company is **NOT** Phú Anh Logis
 
 | Identity kind | Authority | Consumed by |
 | --- | --- | --- |
-| **DISPLAY** (ordinary product surfaces) | `core.config.DISPLAY_COMPANY_NAME` — ONE bounded setting (env `DISPLAY_COMPANY_NAME` → secrets `[display].company_name` → default `Trường Thành Logistics`), delivered to the shell through the existing view-model `environment.displayName` channel | browser tab title (`views/web_app.py`), login card (`core/auth.py`), shell header subtitle (`component/src/components/Layout.tsx`) |
+| **DISPLAY** (ordinary product surfaces) | `core.config.DISPLAY_COMPANY_NAME` — ONE bounded setting (env `DISPLAY_COMPANY_NAME` → secrets `[display].company_name` → default `Trường Thành Logistics`), delivered to the shell through the existing view-model `environment.displayName` channel | browser tab title (`views/web_app.py`), login card (`core/auth.py`), shell header subtitle (`component/src/components/Layout.tsx`), global footer (same file) |
 | **LEGAL** (contracts / payments / PXK / GNT documents) | `authority_companies` master via `core.database.load_authority_companies()` — UNCHANGED | `views/contracts.py` (BÊN MUA picker), `views/docgen.py` + `core/docgen/generator.py` (HDNT/HDMB/PXK/PL party facts), `views/logi_view_model._company_party()` (payer company) |
 
 No legal fact (statutory name, tax code, address, representative, bank) was
@@ -24,7 +24,7 @@ degrades to a truthful unbranded `Nội bộ`.
 | `component/src/components/Layout.tsx` header subtitle (+ committed `component/dist` bundle) | `Phú Anh Logistics · Nội bộ` | DISPLAY_BRAND (wrong) | vm-sourced DISPLAY authority; bundle rebuilt |
 | `playwright/acceptance_phase_a.py` STEP 2 | asserted the old brand subtitle | evidence tooling encoding the wrong brand | updated to `Trường Thành Logistics · Nội bộ` |
 | `tests/component/dom_acceptance_phase_a.mjs` STEP 2 | asserted the old brand subtitle | evidence tooling encoding the wrong brand | updated + negative guard added |
-| `component/src/components/Layout.tsx` footer | `CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam` | LEGAL attribution — names the authority_companies legal entity first; agent clause mirrors the `authority_agents` partner master | UNCHANGED |
+| `component/src/components/Layout.tsx` footer (+ committed `component/dist` bundle) | ~~`CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam`~~ → `{displayName} · <internal/staging status>` | Was LEGAL attribution rendered globally; **Control Tower footer repair** (PHASE=CONTROL_TOWER_GLOBAL_FOOTER_REPAIR): the global footer now reads the DISPLAY authority + the existing internal/staging status. No hard-coded statutory legal_name, no global agent attribution. Agent identities render only inside partner/agent contexts from `authority_agents` data | REPAIRED |
 | `component/src/pages/PartnerPayables.tsx` search placeholder | `đối tác (Phú Anh)` — example of a *partner* query | SAMPLE_LABEL, data-consistent (AGT-PHUANH is a real agent record) | UNCHANGED |
 | `views/logi_seed.py` (9×) | contract `agent: "Đại lý: Phú Anh Logistics VN"`, shipment `declarant` | FIXTURE_ONLY — consumed solely by `tests/test_phase_a_component.py`; fixtures are hash-versioned | UNCHANGED |
 | `tests/component/fixtures/view_model_*.json` | `AGT-PHUANH` / `CÔNG TY TNHH PHÚ ANH LOGISTICS` as agent/partner records | FIXTURE_ONLY mirror of the legal agent master | UNCHANGED |
@@ -57,11 +57,14 @@ mutated here.
   the authority master verbatim and fails closed with no master (no invented
   identity); staging legal master keeps its statutory fields intact; Phú Anh
   exists only as the agent master record.
-- `tests/component/dom_acceptance_company_identity.mjs` (5 checks): REAL
+- `tests/component/dom_acceptance_company_identity.mjs` (6 checks): REAL
   bundle source has no hard-coded operating brand; header subtitle renders
-  `Trường Thành Logistics · Nội bộ` from the vm channel; old brand rendered
-  nowhere; legal/attribution footer unchanged; truthful unbranded degradation
-  without a vm value.
+  `Trường Thành Logistics · Nội bộ` from the vm channel; Phú Anh rendered
+  nowhere in the global shell (header/footer/chrome); global footer reads
+  `Trường Thành Logistics · <internal/staging status>` with no statutory
+  legal_name and no agent attribution; AGT-PHUANH partner data intact in the
+  authority_agents seed + partner fixtures; truthful degradation (unbranded
+  header fallback, prescribed display-brand footer fallback).
 - Updated lanes: `dom_acceptance_phase_a.mjs` (32 checks PASS),
   `playwright/acceptance_phase_a.py`; neighbors re-run PASS:
   `dom_acceptance_partner_context.mjs` (13), `dom_acceptance_home_hierarchy.mjs`

@@ -260,7 +260,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full">
           {children}
           <footer className="mt-10 text-center text-[12.5px] text-slate-400 pb-4">
-            CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · {environment?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"}
+            {/* LOGI_COMPANY_IDENTITY_TRUTH_01 (Control Tower footer repair) —
+                DISPLAY brand only from the view-model
+                (core.config.DISPLAY_COMPANY_NAME). The global footer carries no
+                hard-coded statutory legal_name and no hard-coded agent
+                attribution: partner/agent identities render only inside their
+                own partner/agent contexts, from authority_agents data. This
+                file must contain no partner-brand string at all (guarded by
+                dom_acceptance_company_identity.mjs). */}
+            {environment?.displayName || "Trường Thành Logistics"} · {environment?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"}
           </footer>
         </main>
       </div>

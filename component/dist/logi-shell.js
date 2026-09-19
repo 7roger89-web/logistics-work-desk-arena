@@ -12485,7 +12485,11 @@ function Po({ children: e }) {
 						className: "flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full",
 						children: [e, /* @__PURE__ */ (0, R.jsxs)("footer", {
 							className: "mt-10 text-center text-[12.5px] text-slate-400 pb-4",
-							children: ["CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · ", b?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"]
+							children: [
+								b?.displayName || "Trường Thành Logistics",
+								" · ",
+								b?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"
+							]
 						})]
 					})
 				]
