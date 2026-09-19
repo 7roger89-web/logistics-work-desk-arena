@@ -441,6 +441,7 @@ def contract_projection(
     companies: Mapping[str, Any],
     agents: Mapping[str, Any],
     all_contracts: Mapping[str, Any],
+    contract_index: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     from core.docgen import generator as gen
 
@@ -498,9 +499,7 @@ def contract_projection(
         pack = {"totals": None, "threshold_vnd": 50_000_000,
                 "applicable_documents": [], "cards": [], "hdnt_reuse": {}}
 
-    from core.database import load_shipments_for_contract
-
-    linked_ids = [str(x).upper() for x in load_shipments_for_contract(cid)]
+    linked_ids = [str(x).upper() for x in _linked_shipment_ids(cid, contract_index)]
     legacy = _text(c.get("shipment_id"))
     if legacy and legacy.upper() not in linked_ids:
         linked_ids.append(legacy.upper())
@@ -563,7 +562,58 @@ def contract_projection(
 # Assemble the C1 payload for the view-model `data` channel
 # ---------------------------------------------------------------------------
 
-def assemble_c1_payload(*, shipments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def _linked_shipment_ids(cid: str, contract_index: Mapping[str, Any] | None) -> list[str]:
+    """Shipment ids additively linked to contract ``cid``.
+
+    PERFORMANCE REPAIR (LOGI_INTERACTION_LATENCY_FINALIZE_02): the C1 payload
+    issued one ``contracts.find_one`` round-trip per projected contract (N+1)
+    although ``assemble_c1_payload`` had just read the whole non-deleted
+    contract set. When the caller hands over that render-local set
+    (``contract_index``: canonical upper-case ``id`` → contract document) the
+    same ``shipment_ids`` field is taken from it in memory — the same documents
+    the per-contract read would have returned, because every write path that
+    changes a contract (``save_contract_to_cloud``, ``link_contract_to_shipment``)
+    invalidates the contracts reader before the next render. A standalone
+    caller that passes no index keeps the original per-contract read.
+    """
+    if contract_index is None:
+        from core.database import load_shipments_for_contract
+
+        return load_shipments_for_contract(cid)
+    contract = contract_index.get(str(cid or "").strip().upper())
+    if not isinstance(contract, Mapping):
+        return []
+    return [str(x) for x in (contract.get("shipment_ids") or [])]
+
+
+def _contract_index(contracts: Mapping[str, Any]) -> dict[str, Any]:
+    """``load_contracts()`` result re-keyed by the stored ``id`` value, exactly.
+
+    The per-contract read this replaces is an exact match on the stored ``id``
+    (``find_one({"id": cid.upper()})``), so the key is the stored value as-is —
+    not normalised — and the lookup side upper-cases, precisely as before.
+    """
+    index: dict[str, Any] = {}
+    for contract in contracts.values():
+        if not isinstance(contract, Mapping) or contract.get("id") is None:
+            continue
+        key = str(contract.get("id"))
+        if key not in index:
+            index[key] = contract
+    return index
+
+
+def assemble_c1_payload(
+    *,
+    shipments: Mapping[str, Any] | None = None,
+    customers: Mapping[str, Any] | None = None,
+    quotes: Mapping[str, Any] | None = None,
+    contracts: Mapping[str, Any] | None = None,
+    agents: Mapping[str, Any] | None = None,
+    agreements: Mapping[str, Any] | None = None,
+    companies: Mapping[str, Any] | None = None,
+    docgen_documents: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Assemble the C1 reference payload.
 
     PERFORMANCE REPAIR: ``shipments`` lets the component build path hand over
@@ -572,6 +622,15 @@ def assemble_c1_payload(*, shipments: Mapping[str, Any] | None = None) -> dict[s
     the same full collection a second time for contract links. The data is the
     identical reader result, so nothing about the projection changes; a
     standalone caller that passes nothing keeps the original read.
+
+    LOGI_INTERACTION_LATENCY_FINALIZE_02 extends the same rule to the other
+    sources the ONE ``build_view_model`` render has already read for this very
+    request — ``customers``, ``quotes``, ``contracts``, ``agents``,
+    ``agreements``, ``companies`` and the raw ``docgen_documents`` map — so
+    the post-action render no longer pays a second round-trip per source (and
+    one more per contract, see ``_linked_shipment_ids``). Each parameter is
+    the identical reader result; nothing is cached across renders and a caller
+    that passes nothing keeps every original read.
     """
     from core.database import (
         load_agreements,
@@ -583,21 +642,24 @@ def assemble_c1_payload(*, shipments: Mapping[str, Any] | None = None) -> dict[s
         load_quotes,
     )
 
-    customers = load_customers() or {}
-    quotes = load_quotes() or {}
-    agreements = load_agreements() or {}
-    contracts = load_contracts() or {}
-    companies = load_authority_companies() or {}
-    agents = load_authority_agents() or {}
+    customers = (load_customers() if customers is None else customers) or {}
+    quotes = (load_quotes() if quotes is None else quotes) or {}
+    agreements = (load_agreements() if agreements is None else agreements) or {}
+    contracts = (load_contracts() if contracts is None else contracts) or {}
+    companies = (load_authority_companies() if companies is None else companies) or {}
+    agents = (load_authority_agents() if agents is None else agents) or {}
     if shipments is None:
         shipments = _load_shipments_for_links()
+    if docgen_documents is None:
+        docgen_documents = load_docgen_documents() or {}
 
     docs_by_scope: dict[str, dict[str, Any]] = {}
-    for doc in (load_docgen_documents() or {}).values():
+    for doc in docgen_documents.values():
         if not isinstance(doc, Mapping):
             continue
         scope = _text(doc.get("shipment_id"))
         docs_by_scope.setdefault(scope, {})[_text(doc.get("id"))] = doc
+    contract_index = _contract_index(contracts)
 
     return {
         "customers": [customer_projection(c) for c in customers.values() if isinstance(c, Mapping)],
@@ -611,6 +673,7 @@ def assemble_c1_payload(*, shipments: Mapping[str, Any] | None = None) -> dict[s
                 companies=companies,
                 agents=agents,
                 all_contracts=contracts,
+                contract_index=contract_index,
             )
             for c in contracts.values() if isinstance(c, Mapping)
         ],

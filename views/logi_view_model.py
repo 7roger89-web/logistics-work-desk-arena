@@ -25,11 +25,19 @@ import hashlib
 import io
 import json
 import math
+import threading
 import unicodedata
-from typing import Any, Mapping
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Mapping
 from uuid import uuid4
 
 import streamlit as st
+
+try:  # the script context is attached to the read workers (see _read_concurrently)
+    from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+except Exception:  # noqa: BLE001 - bare mode / older runtime: workers simply run without it
+    add_script_run_ctx = None  # type: ignore[assignment]
+    get_script_run_ctx = None  # type: ignore[assignment]
 
 from views import ceo_report as logi_ceo_report
 from views import handbook as logi_handbook
@@ -75,6 +83,47 @@ def read_shipment(shipment_id: str) -> dict[str, Any] | None:
     return repair_data({shipment_id: doc})[shipment_id]
 
 
+#: Upper bound on the reads one render issues at the same time (``1`` = the
+#: original one-after-another behaviour, the operational fallback).
+_READ_WORKERS = 8
+
+
+def _read_concurrently(reads: Mapping[str, Callable[[], Any]]) -> dict[str, Any]:
+    """Issue this render's INDEPENDENT canonical reads together, then join.
+
+    LOGI_INTERACTION_LATENCY_FINALIZE_02 — measured root cause of the
+    post-action slowness: the ONE ``build_view_model`` waited on its reads one
+    after another, so its cost was ``round-trips × network RTT`` (network
+    waiting, not CPU). The reads handed to this helper do not depend on each
+    other, so they are started together on a short-lived stdlib thread pool
+    and joined here before anything is projected.
+
+    What this is NOT: no cache, no skipped read, no background work, no
+    state. Every reader still runs on every render against the canonical
+    collections and keeps its own error handling; an exception is re-raised
+    from ``future.result()`` in the script thread exactly as the sequential
+    call would have raised it; the pool is torn down before this returns.
+    Streamlit's script context is attached to the workers so the readers
+    behave exactly as when called from the script thread (same cached-reader
+    semantics, same error mirror).
+    """
+    if len(reads) <= 1 or _READ_WORKERS <= 1:
+        return {key: read() for key, read in reads.items()}
+    ctx = get_script_run_ctx(suppress_warning=True) if get_script_run_ctx is not None else None
+
+    def _run(read: Callable[[], Any]) -> Any:
+        if ctx is not None and add_script_run_ctx is not None:
+            try:
+                add_script_run_ctx(threading.current_thread(), ctx)
+            except Exception:  # noqa: BLE001 - the reader still runs (bare-mode semantics) if attaching fails
+                pass
+        return read()
+
+    with ThreadPoolExecutor(max_workers=min(_READ_WORKERS, len(reads)), thread_name_prefix="logi-read") as pool:
+        futures = {key: pool.submit(_run, read) for key, read in reads.items()}
+        return {key: future.result() for key, future in futures.items()}
+
+
 def load_shipments() -> dict[str, Any]:
     """Fresh shipment read for the component, bypassing the 30s read cache.
 
@@ -91,11 +140,19 @@ def load_shipments() -> dict[str, Any]:
 def _load_references() -> dict[str, Any]:
     from core.database import load_contracts, load_customers, load_quotes, load_tasks
 
+    # Four independent reference reads, issued together (same readers, same
+    # results — see _read_concurrently).
+    loaded = _read_concurrently({
+        "customers": load_customers,
+        "contracts": load_contracts,
+        "quotes": load_quotes,
+        "tasks": load_tasks,
+    })
     return {
-        "customers": load_customers() or {},
-        "contracts": load_contracts() or {},
-        "quotes": load_quotes() or {},
-        "tasks": load_tasks() or [],
+        "customers": loaded["customers"] or {},
+        "contracts": loaded["contracts"] or {},
+        "quotes": loaded["quotes"] or {},
+        "tasks": loaded["tasks"] or [],
     }
 
 
@@ -336,30 +393,83 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any]) -
     * ``shipmentIds``     — the ids the two global finance worklists both need,
       read once instead of once each.
 
+    LOGI_INTERACTION_LATENCY_FINALIZE_02 adds, in the same ONE-read spirit:
+
+    * ``docgenDocumentsRaw`` — the raw docgen map behind ``docgenDocuments``,
+      shared with the C1 contract payload (which used to read it again);
+    * ``agreements`` / ``companies`` / ``knowledgeNotes`` / ``users`` — the
+      single-consumer reads of this render (C1 authority masters, handbook,
+      user access), unchanged readers handed to their unchanged consumers;
+
+    and issues all of these independent reads together instead of one after
+    another (``_read_concurrently``) — the measured post-action cost was the
+    number of sequential round-trips, not CPU.
+
     Nothing is stored on the session, the module or the process: the next
     Streamlit rerun calls this again and therefore sees the freshest data, so a
     write is visible on the very next render exactly as before.
     """
-    from core.database import load_authority_agents, load_shipment_ids
+    from core.database import (
+        load_agreements,
+        load_authority_agents,
+        load_authority_companies,
+        load_docgen_documents,
+        load_shipment_ids,
+    )
     from core.financial_ledger import load_ledger_snapshot
 
     shipment_ids = [str(sid) for sid in shipments.keys()]
-    try:
-        agents = load_authority_agents() or {}
-    except Exception:  # noqa: BLE001 - a missing master must not blank the desk
-        agents = {}
-    return {
-        "ledger": load_ledger_snapshot(),
-        "agents": agents,
-        "timelines": rd.timelines_projection(shipment_ids),
-        "docgenDocuments": rd.docgen_documents_by_shipment(),
-        "linkedContracts": rd.linked_contracts_index(references.get("contracts")),
-        "shipmentIds": load_shipment_ids(),
+
+    def _agents() -> dict[str, Any]:
+        try:
+            return load_authority_agents() or {}
+        except Exception:  # noqa: BLE001 - a missing master must not blank the desk
+            return {}
+
+    def _docgen() -> dict[str, Any]:
+        # LOGI_INTERACTION_LATENCY_FINALIZE_02 — the raw docgen map is read ONCE
+        # and shared by the per-shipment PXK grouping below and the C1 contract
+        # payload (which used to issue its own second read of the same collection).
+        try:
+            return load_docgen_documents() or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+            return {}
+
+    # These shared reads are independent of one another (the timelines read
+    # only needs the shipment ids already in hand), so they are issued
+    # together and joined — same readers, same rows (see _read_concurrently).
+    loaded = _read_concurrently({
+        "ledger": load_ledger_snapshot,
+        "agents": _agents,
+        "timelines": lambda: rd.timelines_projection(shipment_ids),
+        "docgenDocumentsRaw": _docgen,
+        "shipmentIds": load_shipment_ids,
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — attachment METADATA for
         # the whole render, read once and grouped (the same repair as the docgen
         # read above). No bytes: the files themselves live in the selected storage backend.
-        "attachments": rd.attachments_by_shipment(),
+        "attachments": rd.attachments_by_shipment,
+        # Single-consumer reads of the same render (C1 authority masters, the
+        # handbook notebook, the user-access list): unchanged readers, unchanged
+        # consumers — joined here so the render no longer waits on them one by one.
+        "agreements": lambda: load_agreements() or {},
+        "companies": lambda: load_authority_companies() or {},
+        "knowledgeNotes": _knowledge_notes,
+        "users": _users_reader,
+    })
+    return {
+        "ledger": loaded["ledger"],
+        "agents": loaded["agents"],
+        "timelines": loaded["timelines"],
+        "docgenDocumentsRaw": loaded["docgenDocumentsRaw"],
+        "docgenDocuments": rd.docgen_documents_by_shipment(loaded["docgenDocumentsRaw"]),
+        "linkedContracts": rd.linked_contracts_index(references.get("contracts")),
+        "shipmentIds": loaded["shipmentIds"],
+        "attachments": loaded["attachments"],
         "attachmentDownload": _attachment_download_state(),
+        "agreements": loaded["agreements"],
+        "companies": loaded["companies"],
+        "knowledgeNotes": loaded["knowledgeNotes"],
+        "users": loaded["users"],
     }
 
 
@@ -370,8 +480,11 @@ def build_view_model() -> dict:
     from core.shipment_dashboard import build_dashboard_summary
 
     transport = logi_sandbox.ensure_backend()
-    shipments = load_shipments()
-    references = _load_references()
+    # LOGI_INTERACTION_LATENCY_FINALIZE_02 — the shipment read and the reference
+    # reads are independent, so they are issued together (see _read_concurrently);
+    # the shared sources follow once the shipment ids are in hand.
+    loaded = _read_concurrently({"shipments": load_shipments, "references": _load_references})
+    shipments, references = loaded["shipments"], loaded["references"]
     views = _dashboard_views(shipments)
     sources = _read_sources(shipments, references)
 
@@ -403,7 +516,20 @@ def build_view_model() -> dict:
     user = current_user() or {}
     # The contract→shipment links read the SAME shipment map this render already
     # loaded, so C1 adds no second full shipments read.
-    c1 = logi_c1.assemble_c1_payload(shipments=shipments)
+    # LOGI_INTERACTION_LATENCY_FINALIZE_02: the same rule now covers the other
+    # sources this render already holds (customers / quotes / contracts /
+    # agents / raw docgen) — C1 no longer re-reads them, nor one contract per
+    # contract for its shipment links. Same reader results, zero caching.
+    c1 = logi_c1.assemble_c1_payload(
+        shipments=shipments,
+        customers=references["customers"],
+        quotes=references["quotes"],
+        contracts=references["contracts"],
+        agents=sources["agents"],
+        agreements=sources["agreements"],
+        companies=sources["companies"],
+        docgen_documents=sources["docgenDocumentsRaw"],
+    )
 
     # C2D is read ONCE per render and shared by both the global worklist and the
     # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
@@ -483,6 +609,7 @@ def build_view_model() -> dict:
             payables=payables,
             customers=references["customers"],
             shipments=shipments,
+            agents=sources["agents"],
         ),
         # LOGI_RECONCILIATION_DESK_01 — bounded READ-ONLY exposure of the
         # reconciliation capability that already exists: the allocation matching
@@ -505,7 +632,7 @@ def build_view_model() -> dict:
         # filters the delivered text client-side.
         "handbook": logi_handbook.handbook_projection(
             field_paths=FIELD_PATHS,
-            notes=_knowledge_notes(),
+            notes=sources["knowledgeNotes"],
         ),
         # LOGI_USER_ACCESS_WORKSPACE_01 — the /nguoi-dung workspace. A bounded
         # READ-ONLY slice over the auth/user/RBAC capability that already
@@ -515,7 +642,7 @@ def build_view_model() -> dict:
         # role/permission, no write path: user mutations stay with the
         # canonical core.database writers and none is exposed by this page.
         "userAccess": logi_user_access.user_access_projection(
-            users=_users_reader(),
+            users=sources["users"],
             current_user=user,
         ),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
@@ -1391,16 +1518,27 @@ def _projection_for(shipment: Mapping[str, Any]) -> dict[str, Any]:
         view = build_shipment_dashboard_view(shipment)
     except Exception:  # noqa: BLE001
         view = {}
-    return rd.shipment_projection(
-        shipment,
-        customers=load_customers() or {},
-        contracts=load_contracts() or {},
-        quotes=load_quotes() or {},
-        dashboard=view,
-        history=rd.timeline_projection(sid),
+    # LOGI_INTERACTION_LATENCY_FINALIZE_02 — the readback's five reference /
+    # history reads are independent of one another (the fresh shipment document
+    # itself was already read, sequentially, by the caller), so they are issued
+    # together: same readers, same rows, same projection call as before.
+    loaded = _read_concurrently({
+        "customers": load_customers,
+        "contracts": load_contracts,
+        "quotes": load_quotes,
+        "history": lambda: rd.timeline_projection(sid),
         # A fresh, shipment-scoped attachment read: the readback proves the
         # metadata write landed instead of echoing what the browser sent.
-        attachments={sid: _attachment_records(sid)} if sid else None,
+        "attachments": (lambda: _attachment_records(sid)) if sid else (lambda: None),
+    })
+    return rd.shipment_projection(
+        shipment,
+        customers=loaded["customers"] or {},
+        contracts=loaded["contracts"] or {},
+        quotes=loaded["quotes"] or {},
+        dashboard=view,
+        history=loaded["history"],
+        attachments={sid: loaded["attachments"]} if sid else None,
         attachment_download=_attachment_download_state(),
     )
 

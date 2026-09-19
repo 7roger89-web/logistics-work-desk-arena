@@ -1083,7 +1083,9 @@ def shipment_projection(
     }
 
 
-def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
+def docgen_documents_by_shipment(
+    documents: Mapping[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Canonical docgen metadata for ALL shipments, read ONCE and grouped.
 
     PERFORMANCE REPAIR: ``_pxk_document`` used to read ``docgen_documents``
@@ -1092,13 +1094,18 @@ def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
     exclusion, same ``id`` keying — a single time for the whole render and
     groups it by shipment in memory. Document identity and persistence are
     untouched; only repeated canonical reads are removed.
+
+    ``documents`` lets the caller hand over the raw ``load_docgen_documents()``
+    result it already read for this render (the view-model shares ONE read
+    between this grouping and the C1 contract payload); ``None`` keeps the read.
     """
     from core.database import load_docgen_documents
 
-    try:
-        documents = load_docgen_documents() or {}
-    except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
-        return {}
+    if documents is None:
+        try:
+            documents = load_docgen_documents() or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+            return {}
     grouped: dict[str, dict[str, Any]] = {}
     for record_id, doc in documents.items():
         if not isinstance(doc, Mapping):

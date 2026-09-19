@@ -484,6 +484,7 @@ def partner_context_view(
     payables: Mapping[str, Any] | None = None,
     customers: Any = None,
     shipments: Any = None,
+    agents: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The ONE-READ slice the view-model embeds (existing readers only).
 
@@ -495,16 +496,21 @@ def partner_context_view(
     ``customers`` / ``shipments`` follow the same rule: the component view-model
     passes its fresh uncached reads, while a standalone caller (the Streamlit
     entity workspace, tests) falls back to the session copies the app maintains.
+
+    ``agents`` (LOGI_INTERACTION_LATENCY_FINALIZE_02) is the ``authority_agents``
+    master the view-model already read for this same render; ``None`` keeps
+    the original read for standalone callers.
     """
     import streamlit as st
 
     from core.database import load_authority_agents
     from views import logi_real_data as rd
 
-    try:
-        agents = load_authority_agents() or {}
-    except Exception:  # noqa: BLE001 - a missing master must not blank the desk
-        agents = {}
+    if agents is None:
+        try:
+            agents = load_authority_agents() or {}
+        except Exception:  # noqa: BLE001 - a missing master must not blank the desk
+            agents = {}
     if payables is None:
         payables = rd.partner_payables_projection()
     return partner_context_projection(
