@@ -395,6 +395,19 @@ AUTH_REQUIRED = get_setting(
     default="false",
 ).lower() in {"1", "true", "yes", "on"}
 
+# DISPLAY_COMPANY_NAME — the operating/display brand shown on ordinary
+# product surfaces (browser tab title, login card, shell header subtitle).
+# This is DISPLAY identity ONLY: the formal legal company identity used by
+# contracts, payments and PXK/GNT document generation keeps deriving from
+# the authority_companies master (core.database.load_authority_companies).
+# Never substitute this brand string for a legal_name or any statutory fact.
+DISPLAY_COMPANY_NAME = get_setting(
+    "DISPLAY_COMPANY_NAME",
+    ("display", "company_name"),
+    "DISPLAY_COMPANY_NAME",
+    default="Trường Thành Logistics",
+)
+
 TARIFF_DB_PATH = Path(get_setting(
     "TARIFF_DB_PATH",
     ("paths", "tariff_db"),

@@ -366,6 +366,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any]) -
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
     from core.auth import current_user
+    from core.config import DISPLAY_COMPANY_NAME
     from core.shipment_dashboard import build_dashboard_summary
 
     transport = logi_sandbox.ensure_backend()
@@ -443,6 +444,10 @@ def build_view_model() -> dict:
             "label": "Preview / Staging" if transport == logi_sandbox.SANDBOX_TRANSPORT else "Production",
             "isSandbox": transport == logi_sandbox.SANDBOX_TRANSPORT,
             "database": "isolated staging (mongomock)" if transport == logi_sandbox.SANDBOX_TRANSPORT else "real MongoDB",
+            # DISPLAY brand only (core.config.DISPLAY_COMPANY_NAME) — ordinary
+            # surfaces identify the business with it; legal party facts keep
+            # deriving from the authority_companies master.
+            "displayName": DISPLAY_COMPANY_NAME,
         },
         "user": {
             "name": rd.text(user.get("full_name") or user.get("username")) or "Chưa đăng nhập",

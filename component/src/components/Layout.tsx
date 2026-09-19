@@ -8,13 +8,16 @@ import { ICONS, SheetDialog } from "./ui";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 
-function Logo({ sandbox }: { sandbox: boolean }) {
+function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0">
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
       <span className="leading-tight hidden sm:block">
         <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-        <span className="block text-[11.5px] text-slate-500 font-medium">Phú Anh Logistics · Nội bộ</span>
+        {/* DISPLAY brand from the view-model (core.config.DISPLAY_COMPANY_NAME).
+            No hard-coded brand string in the bundle: without the vm value the
+            subtitle stays a truthful unbranded "Nội bộ". */}
+        <span className="block text-[11.5px] text-slate-500 font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
       </span>
       {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
           production-like runtime does not carry prototype residue. */}
@@ -55,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
             <Menu size={22} className="text-[#0f2a4a]" />
           </button>
-          <Logo sandbox={environment?.isSandbox === true} />
+          <Logo sandbox={environment?.isSandbox === true} displayName={environment?.displayName} />
           {/* search desktop */}
           <div className="hidden md:flex flex-1 max-w-[560px] mx-auto relative">
             <div className="flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
