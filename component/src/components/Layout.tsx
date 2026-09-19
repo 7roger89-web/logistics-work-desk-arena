@@ -8,13 +8,16 @@ import { ICONS, SheetDialog } from "./ui";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 
-function Logo({ sandbox }: { sandbox: boolean }) {
+function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0">
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
       <span className="leading-tight hidden sm:block">
         <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-        <span className="block text-[11.5px] text-slate-500 font-medium">Phú Anh Logistics · Nội bộ</span>
+        {/* DISPLAY brand from the view-model (core.config.DISPLAY_COMPANY_NAME).
+            No hard-coded brand string in the bundle: without the vm value the
+            subtitle stays a truthful unbranded "Nội bộ". */}
+        <span className="block text-[11.5px] text-slate-500 font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
       </span>
       {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
           production-like runtime does not carry prototype residue. */}
@@ -55,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
             <Menu size={22} className="text-[#0f2a4a]" />
           </button>
-          <Logo sandbox={environment?.isSandbox === true} />
+          <Logo sandbox={environment?.isSandbox === true} displayName={environment?.displayName} />
           {/* search desktop */}
           <div className="hidden md:flex flex-1 max-w-[560px] mx-auto relative">
             <div className="flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
@@ -257,7 +260,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full">
           {children}
           <footer className="mt-10 text-center text-[12.5px] text-slate-400 pb-4">
-            CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · {environment?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"}
+            {/* LOGI_COMPANY_IDENTITY_TRUTH_01 (Control Tower footer repair) —
+                DISPLAY brand only from the view-model
+                (core.config.DISPLAY_COMPANY_NAME). The global footer carries no
+                hard-coded statutory legal_name and no hard-coded agent
+                attribution: partner/agent identities render only inside their
+                own partner/agent contexts, from authority_agents data. This
+                file must contain no partner-brand string at all (guarded by
+                dom_acceptance_company_identity.mjs). */}
+            {environment?.displayName || "Trường Thành Logistics"} · {environment?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"}
           </footer>
         </main>
       </div>

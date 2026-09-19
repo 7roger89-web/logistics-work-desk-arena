@@ -12,12 +12,15 @@ from __future__ import annotations
 import streamlit as st
 
 from core.auth import require_login
+from core.config import DISPLAY_COMPANY_NAME
 from views import logi_shell, logi_view_model
 
 
 def main() -> None:
     st.set_page_config(
-        page_title="Phú Anh Logistics · Nội bộ",
+        # Display brand only (core.config.DISPLAY_COMPANY_NAME) — the legal
+        # company identity for business documents stays authority_companies.
+        page_title=f"{DISPLAY_COMPANY_NAME} · Nội bộ",
         page_icon="🚚",
         layout="wide",
         initial_sidebar_state="collapsed",

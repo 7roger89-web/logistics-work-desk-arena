@@ -25,7 +25,7 @@ from typing import Any
 
 import streamlit as st
 
-from core.config import AUTH_REQUIRED
+from core.config import AUTH_REQUIRED, DISPLAY_COMPANY_NAME
 
 
 def hash_password(password: str, iterations: int = 390000) -> str:
@@ -319,7 +319,8 @@ _LOGIN_IDENTITY_HTML = (
     '<div class="lg05-identity">'
     '<div class="lg05-brand">LOGISTICS</div>'
     '<div class="lg05-h">Đăng nhập</div>'
-    '<div class="lg05-sub">Phú Anh Logistics · Nội bộ</div>'
+    # Display brand only (core.config.DISPLAY_COMPANY_NAME) — never a legal_name.
+    f'<div class="lg05-sub">{DISPLAY_COMPANY_NAME} · Nội bộ</div>'
     "</div>"
 )
 

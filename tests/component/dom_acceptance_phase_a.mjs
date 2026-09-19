@@ -175,9 +175,14 @@ console.log("STEP 2 — header parity");
   const header = $("header")[0];
   assert.ok(header, "header missing");
   const ht = text(header);
-  for (const s of ["TRƯỜNG THÀNH", "Phú Anh Logistics · Nội bộ", "PROTOTYPE"]) {
+  // DISPLAY_COMPANY_NAME truth (LOGI_COMPANY_IDENTITY_TRUTH_01): the operating
+  // brand arrives via the vm `environment.displayName` channel — never a
+  // hard-coded bundle constant.
+  assert.ok(VM.environment?.displayName, "fixture must carry environment.displayName");
+  for (const s of ["TRƯỜNG THÀNH", `${VM.environment.displayName} · Nội bộ`, "PROTOTYPE"]) {
     assert.ok(ht.includes(s), `header missing "${s}"`);
   }
+  assert.ok(!ht.includes("Phú Anh"), "header must not present Phú Anh as the operating brand");
   const search = $('input[placeholder^="Tìm mã lô"]', header);
   assert.ok(search, "global search input missing");
   const bell = $('button[aria-label="Thông báo"]', header);

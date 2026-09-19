@@ -826,6 +826,8 @@ export interface Environment {
   label: string;
   isSandbox: boolean;
   database: string;
+  /** DISPLAY brand from core.config.DISPLAY_COMPANY_NAME (vm `environment` channel). Display identity only — never a legal_name. */
+  displayName?: string;
 }
 
 // ----------------------------------------------------------------------------

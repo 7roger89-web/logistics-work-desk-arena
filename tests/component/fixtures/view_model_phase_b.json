@@ -4,7 +4,8 @@
     "transport": "SANDBOX_STAGING",
     "label": "Preview / Staging",
     "isSandbox": true,
-    "database": "isolated staging (mongomock)"
+    "database": "isolated staging (mongomock)",
+    "displayName": "Trường Thành Logistics"
   },
   "user": {
     "name": "Thu Hằng (Preview/Staging)",

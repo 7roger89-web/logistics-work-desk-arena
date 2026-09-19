@@ -11967,7 +11967,7 @@ function Mo({ value: e, onChange: t, testId: n, stored: r }) {
 }
 //#endregion
 //#region src/components/Layout.tsx
-function No({ sandbox: e }) {
+function No({ sandbox: e, displayName: t }) {
 	return /* @__PURE__ */ (0, R.jsxs)(L, {
 		to: "/",
 		className: "flex items-center gap-2.5 shrink-0",
@@ -11983,7 +11983,7 @@ function No({ sandbox: e }) {
 					children: "TRƯỜNG THÀNH"
 				}), /* @__PURE__ */ (0, R.jsx)("span", {
 					className: "block text-[11.5px] text-slate-500 font-medium",
-					children: "Phú Anh Logistics · Nội bộ"
+					children: t ? `${t} · Nội bộ` : "Nội bộ"
 				})]
 			}),
 			e && /* @__PURE__ */ (0, R.jsx)("span", {
@@ -12022,7 +12022,10 @@ function Po({ children: e }) {
 								className: "text-[#0f2a4a]"
 							})
 						}),
-						/* @__PURE__ */ (0, R.jsx)(No, { sandbox: b?.isSandbox === !0 }),
+						/* @__PURE__ */ (0, R.jsx)(No, {
+							sandbox: b?.isSandbox === !0,
+							displayName: b?.displayName
+						}),
 						/* @__PURE__ */ (0, R.jsxs)("div", {
 							className: "hidden md:flex flex-1 max-w-[560px] mx-auto relative",
 							children: [/* @__PURE__ */ (0, R.jsxs)("div", {
@@ -12482,7 +12485,11 @@ function Po({ children: e }) {
 						className: "flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full",
 						children: [e, /* @__PURE__ */ (0, R.jsxs)("footer", {
 							className: "mt-10 text-center text-[12.5px] text-slate-400 pb-4",
-							children: ["CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH · Đại lý: Phú Anh Logistics Việt Nam · ", b?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"]
+							children: [
+								b?.displayName || "Trường Thành Logistics",
+								" · ",
+								b?.isSandbox ? "Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật" : "Bản nội bộ — dữ liệu thật từ hệ thống Logistics, cập nhật liên tục"
+							]
 						})]
 					})
 				]

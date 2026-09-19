@@ -95,7 +95,7 @@ def main() -> None:
         page.screenshot(path=str(SHOTS / "01-home.png"))
 
         print("STEP 2 — header")
-        check(page, "subtitle", "Phú Anh Logistics · Nội bộ" in t)
+        check(page, "subtitle", "Trường Thành Logistics · Nội bộ" in t)
         check(page, "global search present",
               page.locator('.logi-shell input[placeholder^="Tìm mã lô"]').count() >= 1)
         check(page, "notification bell", page.locator('button[aria-label="Thông báo"]').count() >= 1)
