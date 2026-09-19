@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
+import ShipmentExecutionProfile, { ExecutionProfileSummary } from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
@@ -673,6 +674,12 @@ export default function ShipmentDetail() {
             <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
           </div>
         </div>
+        {/* LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the compact execution profile
+            summary sits at the TOP of the lot detail: the operator sees which
+            configuration the workflow below was derived from before reading it. */}
+        <div className="px-4 md:px-6">
+          <ExecutionProfileSummary profile={s.executionProfile} />
+        </div>
         <div className="px-4 md:px-6 pb-4 md:pb-5">
           <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); setSp(t ? { tab: t } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
         </div>
@@ -775,6 +782,18 @@ export default function ShipmentDetail() {
         </>
         )}
       </section>
+
+      {/* ============ HỒ SƠ THỰC HIỆN LÔ (Incoterms × mode × load × scope × insurance) ============
+          LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the profile is what decides which
+          operational stages exist at all, so it lives on the lot detail path (a
+          disclosure, like the lot-header maintenance above) and NOT on a
+          separate "advanced configuration" page. */}
+      <ShipmentExecutionProfile
+        shipment={s}
+        dispatch={dispatch}
+        toast={toast}
+        onOpenTransportTab={() => setSp({ tab: "van-tai" })}
+      />
 
       {s.missingDocs.length > 0 && tab !== "chung-tu" && (
         <div className="rounded-2xl bg-white border-2 border-red-200 p-4">

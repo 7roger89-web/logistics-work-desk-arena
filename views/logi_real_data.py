@@ -889,6 +889,7 @@ def shipment_projection(
     contracts = contracts or {}
     quotes = quotes or {}
 
+    from core.shipment_execution_profile import build_execution_profile
     from core.shipment_operations import (
         cargo_summary_for_read,
         compatibility_facts,
@@ -980,6 +981,18 @@ def shipment_projection(
         "rawStatus": text(shipment.get("status") or head.get("st")),
         "mode": text(operational.get("mode")) or text(head.get("mode")),
         "incoterm": text(head.get("incoterm")),
+        # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — ONE derived execution profile for
+        # this shipment (core.shipment_execution_profile). It is a PURE
+        # projection of the document that was already read for this row plus
+        # the transport legs already derived above: no extra reader, no extra
+        # query, no second business truth. It carries the Incoterms code +
+        # version + named place, the operator-confirmed Trường Thành service
+        # scope, the mode/load-model/equipment/truck facts (read from the
+        # EXISTING canonical fields), the derived Incoterm insurance obligation
+        # as distinct from the persisted actual insurance status, the relevant
+        # operational stages with their reason, and the next action those
+        # stages justify.
+        "executionProfile": build_execution_profile(shipment, legs=legs),
         "createdAt": _ddmmyyyy(head.get("created_at")),
         # Canonical repeatable operational model.  For a legacy document this
         # is a read-only fallback projection; it becomes canonical only when an

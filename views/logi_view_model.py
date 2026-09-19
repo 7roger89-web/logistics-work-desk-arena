@@ -792,6 +792,12 @@ PHASE_B_EVENTS = {
     # whitelist.  This one shipment-local event writes exactly the canonical
     # operational collections through the existing atomic writer.
     "shipment_transport_save",
+    # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — ONE bounded write for the shipment
+    # execution profile (Incoterms code/version/named place, Trường Thành
+    # service scope, load model, actual cargo insurance). It writes the
+    # EXISTING `data.0.0.mode` / `data.0.0.incoterm` paths plus ONE new block,
+    # through the existing atomic writer, with RBAC + audit + fresh readback.
+    "shipment_profile_save",
     "delivery_confirm",
     "finance_actual_save",
     "payment_record",
@@ -2002,6 +2008,198 @@ def _handle_shipment_transport_save(payload: Mapping[str, Any]) -> dict[str, Any
     )
 
 
+#: Operator-facing field names of the execution profile as they arrive from the
+#: component. Anything outside this set is ignored (never written) and reported
+#: back in ``rejected``, exactly like the scalar whitelist above.
+PROFILE_PAYLOAD_KEYS = (
+    "mode", "incoterm", "incotermVersion", "namedPlace", "loadModel",
+    "serviceScope", "serviceScopeConfirmed", "cargoInsurance",
+)
+
+
+def _handle_shipment_profile_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the ONE bounded write for the profile.
+
+    The execution profile is the shipment's operational contract: Incoterms code
+    + VERSION + named place, the operator-confirmed Trường Thành service scope,
+    the load model, and the ACTUAL cargo-insurance state. Exactly like every
+    other material write in this shell it is:
+
+        typed event → RBAC → validate → the EXISTING atomic shipment writer
+        → audit (written by that writer) → fresh authoritative read
+
+    Reuse, not duplication:
+
+    * ``data.0.0.mode`` and ``data.0.0.incoterm`` stay the canonical mode and
+      rule fields — this handler writes THOSE paths (canonical Incoterms code,
+      existing mode vocabulary), never a ``new_incoterm``/``mode_v2`` twin;
+    * only facts no existing field could carry are added, under ONE block
+      ``data.0.0.execution_profile``: the Incoterms VERSION, the named place,
+      the load model, the confirmed service scope, the raw contract wording
+      when it differs from the canonical code (evidence), and the actual
+      cargo-insurance state.
+
+    An impossible combination (FOB + ROAD, CIF + AIR, DAT @2020, DPU @2010,
+    DAF/DDU outside legacy 2000) is REFUSED with the explanation the UI shows;
+    an incomplete new configuration is refused too. Nothing is auto-corrected
+    and nothing is partially written.
+    """
+
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.logic import apply_financial_snapshot
+    from core.shipment_execution_profile import (
+        ACTUAL_INSURANCE_STATES,
+        INCOTERM_VERSIONS,
+        STORED_MODE_BY_CANONICAL,
+        canonical_mode,
+        normalize_incoterm,
+        normalize_service_scope,
+        profile_document,
+        profile_facts,
+        validate_profile,
+    )
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        # The click identity is echoed so the page can match THIS backend answer
+        # (including a refusal) to the save that produced it.
+        return _result("shipment_profile_save", sid, ok, error,
+                       requestId=request_id, **extra)
+
+    if not sid:
+        return _res(False, "Thiếu shipmentId.")
+    if not can_operate_business("shipment_edit"):
+        return _res(False, "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _res(False, f"Không tìm thấy lô {sid}.")
+
+    current = profile_facts(shipment)
+    rejected = [key for key in payload if key not in PROFILE_PAYLOAD_KEYS
+                and key not in {"shipmentId", "requestId"}]
+
+    # A partial submission only moves the facts it actually carries; a key the
+    # operator cleared travels as an explicit blank and clears that fact.
+    facts: dict[str, Any] = {
+        "storedMode": current["storedMode"],
+        "mode": current["mode"],
+        "incoterm": current["incoterm"],
+        "incotermRawInput": current["incotermRawInput"],
+        "incotermRawLabel": current["incotermRawLabel"],
+        "incotermVersion": current["incotermVersion"],
+        "incotermNamedPlace": current["incotermNamedPlace"],
+        "loadModel": current["loadModel"],
+        "serviceScope": list(current["serviceScope"]),
+        "serviceScopeConfirmed": current["serviceScopeConfirmed"],
+        "cargoInsuranceStatus": current["cargoInsuranceStatus"],
+        "cargoInsuranceArrangedBy": current["cargoInsuranceArrangedBy"],
+        "cargoInsuranceInsurer": current["cargoInsuranceInsurer"],
+        "cargoInsurancePolicyNo": current["cargoInsurancePolicyNo"],
+        "cargoInsuranceCoverageNote": current["cargoInsuranceCoverageNote"],
+    }
+
+    if "mode" in payload:
+        canonical = canonical_mode(payload.get("mode"))
+        facts["mode"] = canonical
+        # `data.0.0.mode` keeps the repository's EXISTING mode vocabulary; the
+        # canonical profile mode is the derivation/display vocabulary.
+        facts["storedMode"] = STORED_MODE_BY_CANONICAL.get(canonical, "")
+
+    if "incoterm" in payload:
+        normalized = normalize_incoterm(payload.get("incoterm"))
+        # The canonical code is stored; the raw contract wording survives as
+        # evidence. A place written inside the term ("FOB Shenzhen") is read as
+        # a SUGGESTION by the projection and is never persisted as the
+        # confirmed named place by this save; a term this app cannot recognize
+        # is refused, never guessed.
+        facts["incoterm"] = normalized["code"]
+        facts["incotermRawInput"] = rd.text(payload.get("incoterm"))
+        facts["incotermRawLabel"] = normalized["rawLabel"]
+
+    if "incotermVersion" in payload:
+        version = rd.text(payload.get("incotermVersion"))
+        facts["incotermVersion"] = version if version in INCOTERM_VERSIONS else ""
+    if "namedPlace" in payload:
+        facts["incotermNamedPlace"] = rd.text(payload.get("namedPlace"))
+    if "loadModel" in payload:
+        facts["loadModel"] = rd.text(payload.get("loadModel")).upper()
+    if "serviceScope" in payload:
+        facts["serviceScope"] = normalize_service_scope(payload.get("serviceScope"))
+    if "serviceScopeConfirmed" in payload:
+        facts["serviceScopeConfirmed"] = bool(payload.get("serviceScopeConfirmed"))
+    if "cargoInsurance" in payload:
+        insurance = payload.get("cargoInsurance")
+        insurance = insurance if isinstance(insurance, Mapping) else {}
+        status = rd.text(insurance.get("status")).upper()
+        facts["cargoInsuranceStatus"] = status if status in ACTUAL_INSURANCE_STATES else ""
+        facts["cargoInsuranceArrangedBy"] = rd.text(insurance.get("arrangedBy"))
+        facts["cargoInsuranceInsurer"] = rd.text(insurance.get("insurerName"))
+        facts["cargoInsurancePolicyNo"] = rd.text(insurance.get("policyNo"))
+        facts["cargoInsuranceCoverageNote"] = rd.text(insurance.get("coverageNote"))
+
+    issues = validate_profile(facts, for_write=True)
+    if "cargoInsurance" in payload and rd.text((payload.get("cargoInsurance") or {}).get("status")) \
+            and not facts["cargoInsuranceStatus"]:
+        issues.append({"code": "INVALID_INSURANCE_STATUS",
+                       "message": "Trạng thái bảo hiểm thực tế không hợp lệ."})
+    if issues:
+        return _res(False, issues[0]["message"], gate="PROFILE_REFUSED",
+                    issues=issues, rejected=rejected)
+
+    # Insurance evidence only exists behind an explicit YES: a NO/UNKNOWN never
+    # silently keeps the policy details of an earlier state.
+    if facts["cargoInsuranceStatus"] != "YES":
+        facts.update({"cargoInsuranceArrangedBy": "", "cargoInsuranceInsurer": "",
+                      "cargoInsurancePolicyNo": "", "cargoInsuranceCoverageNote": ""})
+
+    document = profile_document(facts)
+    head = shipment.setdefault("data", {}).setdefault("0.0", {})
+    previous_block = head.get("execution_profile") if isinstance(head.get("execution_profile"), Mapping) else {}
+    previous_code = rd.text(head.get("incoterm"))
+    previous_mode = rd.text(head.get("mode"))
+    stored_mode = rd.text(facts.get("storedMode"))
+
+    if (factual_equal(previous_block, document) and previous_code == facts["incoterm"]
+            and previous_mode == stored_mode):
+        # Nothing changed: report the stored truth instead of a no-op version
+        # bump that would look like a change in the audit trail.
+        return _res(True, "Không có thay đổi để lưu.", noop=True, rejected=rejected,
+                    persisted={"incoterm": previous_code, "mode": previous_mode,
+                               "executionProfile": dict(previous_block)})
+
+    head["mode"] = stored_mode
+    head["incoterm"] = facts["incoterm"]
+    head["execution_profile"] = document
+
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
+        return _res(False, get_last_db_error() or "Không lưu được hồ sơ thực hiện lô.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_head = ((fresh.get("data") or {}).get("0.0") or {})
+    return _res(True, readback=_projection_for(fresh),
+        rejected=rejected,
+        version=int(fresh.get("version") or 0),
+        persisted={
+            "mode": rd.text(fresh_head.get("mode")),
+            "incoterm": rd.text(fresh_head.get("incoterm")),
+            "executionProfile": dict(fresh_head.get("execution_profile") or {}),
+        },
+        audit=_audit_trail(sid),
+    )
+
+
+def factual_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    """Value equality for two persisted profile blocks (no key order, no types)."""
+
+    return json.loads(json.dumps(left, sort_keys=True, default=str)) == \
+        json.loads(json.dumps(right, sort_keys=True, default=str))
+
+
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
     """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""
     from core.auth import can_operate_business
@@ -2640,6 +2838,52 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         except ValueError as exc:
             return _res(False, str(exc))
 
+    # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the create form may state the profile
+    # the detail page will later refine (Incoterms version, named place, load
+    # model, Trường Thành service scope, actual cargo insurance). An impossible
+    # combination is refused HERE rather than stored and explained later, and
+    # nothing is written when the profile is invalid.
+    from core.shipment_execution_profile import (
+        INCOTERM_VERSIONS,
+        STORED_MODE_BY_CANONICAL,
+        canonical_mode,
+        normalize_incoterm,
+        normalize_service_scope,
+        profile_document,
+        validate_profile,
+    )
+
+    profile_head: dict[str, Any] = {}
+    head_incoterm = rd.text(transport.get("incoterm")) or "EXW"
+    profile_keys = ("incotermVersion", "namedPlace", "loadModel", "serviceScope",
+                    "serviceScopeConfirmed", "cargoInsurance")
+    if any(key in transport or key in payload for key in profile_keys):
+        insurance_payload = payload.get("cargoInsurance") or transport.get("cargoInsurance")
+        insurance_payload = insurance_payload if isinstance(insurance_payload, Mapping) else {}
+        insurance_status = rd.text(insurance_payload.get("status")).upper()
+        version = rd.text(payload.get("incotermVersion") or transport.get("incotermVersion"))
+        profile_facts_in = {
+            "mode": canonical_mode(selected_mode),
+            "storedMode": STORED_MODE_BY_CANONICAL.get(canonical_mode(selected_mode), ""),
+            "incoterm": normalize_incoterm(head_incoterm)["code"],
+            "incotermRawLabel": normalize_incoterm(head_incoterm)["rawLabel"],
+            "incotermVersion": version if version in INCOTERM_VERSIONS else "",
+            "incotermNamedPlace": rd.text(payload.get("namedPlace") or transport.get("namedPlace")),
+            "loadModel": rd.text(payload.get("loadModel") or transport.get("loadModel")).upper(),
+            "serviceScope": normalize_service_scope(payload.get("serviceScope") or transport.get("serviceScope")),
+            "serviceScopeConfirmed": bool(payload.get("serviceScopeConfirmed")
+                                          or transport.get("serviceScopeConfirmed")),
+            "cargoInsuranceStatus": insurance_status,
+            "cargoInsuranceArrangedBy": rd.text(insurance_payload.get("arrangedBy")),
+            "cargoInsuranceInsurer": rd.text(insurance_payload.get("insurerName")),
+            "cargoInsurancePolicyNo": rd.text(insurance_payload.get("policyNo")),
+            "cargoInsuranceCoverageNote": rd.text(insurance_payload.get("coverageNote")),
+        }
+        profile_issues = validate_profile(profile_facts_in, for_write=True)
+        if profile_issues:
+            return _res(False, profile_issues[0]["message"], issues=profile_issues)
+        profile_head = profile_document(profile_facts_in)
+
     doc: dict[str, Any] = {
         "id": sid,
         "shipment_id": sid,
@@ -2661,6 +2905,8 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
             "entrustment": {"active": False},
         },
     }
+    if profile_head:
+        doc["data"]["0.0"]["execution_profile"] = profile_head
     if rd.text(payload.get("contractId")):
         doc["contract_id"] = rd.text(payload.get("contractId")).upper()
 
@@ -3007,6 +3253,7 @@ _HANDLERS = {
     "shipment_field_save": _handle_field_save,
     "shipment_customer_save": _handle_shipment_customer_save,
     "shipment_transport_save": _handle_shipment_transport_save,
+    "shipment_profile_save": _handle_shipment_profile_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,
     "payment_record": _handle_payment_record,

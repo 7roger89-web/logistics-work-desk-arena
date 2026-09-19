@@ -2,6 +2,15 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CircleAlert, FileCheck2, Package, Sparkles } from "lucide-react";
 import { Field, PrimaryBtn, SectionTitle, inputCls } from "../components/ui";
+import {
+  ExecutionProfileFields,
+  combinationProblem,
+  draftFromProfile,
+  draftPayload,
+  missingProfileRequirements,
+  type ProfileDraft,
+} from "../components/ShipmentExecutionProfile";
+import { EXECUTION_PROFILE_CATALOG } from "../lib/executionProfileCatalog";
 import { useStore } from "../lib/store";
 import { cx, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -37,8 +46,14 @@ export default function CreateShipment() {
   const [code, setCode] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [contractId, setContractId] = useState("");
-  const [mode, setMode] = useState("");
-  const [incoterm, setIncoterm] = useState("DAP");
+  // LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the create form collects the SAME
+  // execution profile the lot detail page edits (mode, Incoterms version and a
+  // version/mode-filtered Incoterms term, named place, load model, Trường Thành
+  // service scope, actual cargo insurance). The raw hard-coded Incoterm list it
+  // replaced offered FOB/CIF on a road lot — exactly the combination this slice
+  // must not allow. `data.0.0.mode` keeps the repository's existing mode
+  // vocabulary; the draft holds the canonical profile mode and is mapped back.
+  const [profile, setProfile] = useState<ProfileDraft>(() => draftFromProfile(null));
   const [pol, setPol] = useState("");
   const [pod, setPod] = useState("");
 
@@ -54,6 +69,20 @@ export default function CreateShipment() {
   );
   const selectedQuote = quotes.find((q) => q.id === quoteId) ?? null;
 
+  // The existing `data.0.0.mode` vocabulary for the first transport leg.
+  const storedMode = EXECUTION_PROFILE_CATALOG.modes.find((m) => m.code === profile.mode)?.stored ?? "";
+  // A structurally impossible combination is the ONE profile condition that
+  // blocks creating the lot. An untouched or half-filled profile simply travels
+  // as "not stated yet" (the lot detail then asks for it).
+  const profileProblem = combinationProblem(profile);
+  const profileEngaged = Boolean(
+    profile.incotermVersion || profile.incoterm || profile.namedPlace.trim()
+    || profile.loadModel || profile.serviceScopeConfirmed || profile.serviceScope.length
+    || profile.insuranceStatus
+  );
+  const profileMissing = missingProfileRequirements(profile);
+  const profileReadyToWrite = profileEngaged && profileMissing.length === 0 && !profileProblem;
+
   // Prefill from the accepted quote: known values are carried over so the
   // operator is only asked for what is genuinely missing.
   const applyQuote = (id: string) => {
@@ -66,8 +95,11 @@ export default function CreateShipment() {
     const customer = customers.find((c) => c.id === quote.customerId)
       ?? customers.find((c) => c.name === quote.customer);
     if (customer) setCustomerId(customer.id);
-    setMode(["Truck", "Sea", "Air", "Rail"].includes(quote.transportMode) ? quote.transportMode : "");
-    setIncoterm(quote.incoterm || "DAP");
+    const stored = ["Truck", "Sea", "Air", "Rail"].includes(quote.transportMode) ? quote.transportMode : "";
+    const canonical = EXECUTION_PROFILE_CATALOG.modes.find((m) => m.stored === stored)?.code ?? "";
+    // Only what the accepted quote really states travels; a quote without a
+    // term leaves the Incoterms choice EMPTY (unknown) instead of inventing one.
+    setProfile((draft) => ({ ...draft, mode: canonical, incoterm: "" }));
     setPol(quote.origin || "");
     setPod(quote.destination || "");
     const matches = quote.customerId
@@ -91,7 +123,8 @@ export default function CreateShipment() {
     if (pending) return; // outcome in flight — a second click must not double-send
     if (!code.trim()) { toast("Thiếu mã lô", "Nhập mã lô (ví dụ LO-0470) rồi bấm Tạo lô hàng.", "red"); return; }
     if (!customerId.trim()) { toast("Thiếu khách hàng", "Chọn khách hàng — backend từ chối lô không có khách.", "red"); return; }
-    if (!mode && (pol.trim() || pod.trim())) { toast("Thiếu mode đầu tiên", "Chọn mode hoặc để trống cả nơi đi/đến để bổ sung sau.", "red"); return; }
+    if (!storedMode && (pol.trim() || pod.trim())) { toast("Thiếu phương thức vận chuyển", "Chọn phương thức vận chuyển hoặc để trống cả nơi đi/đến để bổ sung sau.", "red"); return; }
+    if (profileEngaged && profileProblem) { toast("Cấu hình cần kiểm tra", profileProblem, "red"); return; }
     const shipmentId = code.trim().toUpperCase();
     const requestId = `create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const sent = dispatch("shipment_create", {
@@ -102,7 +135,16 @@ export default function CreateShipment() {
       customer: customers.find((c) => c.id === customerId)?.name ?? "",
       contractId: contractId.trim(),
       currency: "VND",
-      transport: { mode, incoterm, pol: pol.trim(), pod: pod.trim() },
+      transport: {
+        mode: storedMode,
+        incoterm: profile.incoterm,
+        pol: pol.trim(),
+        pod: pod.trim(),
+        // The profile block is stated ONLY when the operator actually configured
+        // it: an untouched create stays as lightweight as it always was, and an
+        // engaged-but-incomplete profile is reported (never half-written).
+        ...(profileEngaged ? draftPayload(profile) : {}),
+      },
       // The backend echoes this id so the outcome in `lastWrites` can be
       // matched to THIS click — never to another request.
       requestId,
@@ -200,20 +242,38 @@ export default function CreateShipment() {
                   {contracts.map((c) => <option key={c.id} value={c.id}>{c.id} · {c.client || "chưa rõ khách"}{c.customerId ? ` · ${c.customerId}` : ""}</option>)}
                 </select>
               </Field>
-              <Field label="Mode đầu tiên (không bắt buộc) / Incoterm" hint="Chọn mode để tạo chặng đầu; xe/container bổ sung sau ở chi tiết lô.">
-                <div className="flex gap-2">
-                  <select value={mode} onChange={(e) => setMode(e.target.value)} className={inputCls()}>
-                    <option value="">-- Bổ sung sau --</option>
-                    {["Truck", "Sea", "Air", "Rail"].map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <select value={incoterm} onChange={(e) => setIncoterm(e.target.value)} className={inputCls()}>
-                    {["EXW", "FCA", "FOB", "CIF", "DAP", "DDP"].map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-              </Field>
               <Field label="Nơi đi cơ bản"><input value={pol} onChange={(e) => setPol(e.target.value)} placeholder="Bằng Tường (Quảng Tây)" className={inputCls()} /></Field>
               <Field label="Nơi đến cơ bản"><input value={pod} onChange={(e) => setPod(e.target.value)} placeholder="Hữu Nghị (Lạng Sơn)" className={inputCls()} /></Field>
             </div>
+
+            {/* ============ HỒ SƠ THỰC HIỆN LÔ (rút gọn, cùng bộ trường với trang lô) ============
+                The same Incoterms × mode × load-model × service-scope × insurance
+                flow the lot detail page owns — here it feeds the create writer.
+                Nothing is required to create a lot: an untouched profile simply
+                leaves those facts unknown, and the lot detail asks for them. */}
+            <details className="mt-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-3.5" data-testid="create-profile">
+              <summary className="cursor-pointer font-extrabold text-[15px] text-[#0f2a4a]">
+                Hồ sơ thực hiện lô (không bắt buộc khi tạo)
+              </summary>
+              <p className="text-[12.5px] text-slate-500 mt-1.5">
+                Điều kiện giao hàng + phương thức + loại hàng + phạm vi Trường Thành + bảo hiểm quyết định
+                các bước vận hành nào sẽ có. Chưa chắc thì để trống (-- Bổ sung sau --): lô vẫn tạo được,
+                và hồ sơ có thể bổ sung/đổi ở trang lô.
+              </p>
+              <div className="mt-3">
+                <ExecutionProfileFields draft={profile} onChange={setProfile} variant="create" idPrefix="create-profile" />
+              </div>
+              {profileEngaged && profileMissing.length > 0 && (
+                <p data-testid="create-profile-missing" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900">
+                  Hồ sơ lô còn thiếu: {profileMissing.join(", ")}. Lô vẫn được tạo; phần hồ sơ sẽ được bổ sung ở trang lô.
+                </p>
+              )}
+              {profileReadyToWrite && (
+                <p data-testid="create-profile-ready" className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[13px] font-semibold text-emerald-900">
+                  Hồ sơ lô đã đủ — sẽ được ghi cùng lô và đọc lại từ Logistics.
+                </p>
+              )}
+            </details>
 
             {/* The REAL backend refusal (duplicate id, RBAC, validation…) —
                 shown verbatim; the page stayed on the form on purpose. */}

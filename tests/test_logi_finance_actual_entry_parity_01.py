@@ -132,11 +132,27 @@ def test_service_catalog_is_not_hardcoded_in_react():
 
     from core.config import GETFLY_SERVICES_LIST
 
-    sources = [
+    candidates = [
         path for path in COMPONENT_SRC.rglob("*")
         if path.suffix in {".ts", ".tsx"} and path.is_file()
     ]
-    assert sources, "the component source tree must be inspectable"
+    assert candidates, "the component source tree must be inspectable"
+
+    # A file that declares itself GENERATED is a projection of a Python
+    # authority, not a second catalog — but only if the generator it names
+    # really exists in the repository (and the projection is drift-guarded by
+    # its own test). Anything else is still treated as hand-written React.
+    root = COMPONENT_SRC.parents[1]
+    sources = []
+    for path in candidates:
+        header = path.read_text(encoding="utf-8")[:400]
+        if "GENERATED FILE" not in header:
+            sources.append(path)
+            continue
+        generator = _re.search(r"python3 (scripts/[\w./-]+\.py)", header)
+        assert generator, f"{path.name} claims to be generated but names no generator"
+        assert (root / generator.group(1)).is_file(), \
+            f"{path.name} names a generator that does not exist: {generator.group(1)}"
     raw = "\n".join(path.read_text(encoding="utf-8") for path in sources)
     # Strip block and line comments so a documented reference to the canonical
     # source is not mistaken for a copied list.

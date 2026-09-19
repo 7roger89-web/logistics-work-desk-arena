@@ -25,6 +25,12 @@ export type LogiEventName =
   // contracts.shipment_ids, so exposing it would silently break links.
   | "shipment_customer_save"
   | "shipment_transport_save"
+  // LOGI_SHIPMENT_EXECUTION_PROFILE_01 — ONE bounded write for the shipment
+  // execution profile (Incoterms code + version + named place, Trường Thành
+  // service scope, load model, actual cargo insurance). It writes the EXISTING
+  // `mode` / `incoterm` shipment paths plus one profile block, through the
+  // existing atomic writer, with RBAC → audit → fresh readback.
+  | "shipment_profile_save"
   | "delivery_confirm"
   | "finance_actual_save"
   | "payment_record"
@@ -116,6 +122,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_field_save",
   "shipment_customer_save",
   "shipment_transport_save",
+  "shipment_profile_save",
   "delivery_confirm",
   "finance_actual_save",
   "payment_record",
