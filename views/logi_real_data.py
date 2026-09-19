@@ -18,6 +18,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Mapping
 
+from core.database import _UNSET_DB
+
 UNKNOWN = None
 UNKNOWN_LABEL = "—"
 
@@ -697,14 +699,22 @@ def timeline_rows(rows: Any) -> list[dict[str, Any]]:
     return out
 
 
-def timeline_projection(shipment_id: str, limit: int = 30) -> list[dict[str, Any]]:
-    """Timeline for ONE shipment (single read) — the standalone/fallback path."""
+def timeline_projection(shipment_id: str, limit: int = 30, *, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    """Timeline for ONE shipment (single read) — the standalone/fallback path.
+
+    ``db`` is the explicit database handle a STREAMLIT-FREE read worker was
+    handed (see ``views.logi_view_model._read_concurrently``).  The default is
+    the ``_UNSET_DB`` sentinel: a caller that omits ``db`` keeps the original
+    canonical resolution, while an EXPLICIT ``None`` means "the canonical
+    resolution already ran and there is no database" — it is passed straight
+    through, never re-resolved (a worker must stay Streamlit-free).
+    """
     from core.database import load_audit_logs
 
-    return timeline_rows(load_audit_logs("shipment", shipment_id, limit=limit))
+    return timeline_rows(load_audit_logs("shipment", shipment_id, limit=limit, db=db))
 
 
-def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[dict[str, Any]]]:
+def timelines_projection(shipment_ids: Any, limit: int = 30, *, db: Any = _UNSET_DB) -> dict[str, list[dict[str, Any]]]:
     """Timelines for MANY shipments in ONE bounded audit read.
 
     PERFORMANCE REPAIR: the component build path used to call
@@ -717,7 +727,7 @@ def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[d
     from core.database import load_audit_logs_bulk
 
     ids = [text(item) for item in (shipment_ids or [])]
-    grouped = load_audit_logs_bulk("shipment", [sid for sid in ids if sid], limit_per_entity=limit)
+    grouped = load_audit_logs_bulk("shipment", [sid for sid in ids if sid], limit_per_entity=limit, db=db)
     return {sid: timeline_rows(rows) for sid, rows in grouped.items()}
 
 
@@ -1083,7 +1093,9 @@ def shipment_projection(
     }
 
 
-def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
+def docgen_documents_by_shipment(
+    documents: Mapping[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Canonical docgen metadata for ALL shipments, read ONCE and grouped.
 
     PERFORMANCE REPAIR: ``_pxk_document`` used to read ``docgen_documents``
@@ -1092,13 +1104,18 @@ def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
     exclusion, same ``id`` keying — a single time for the whole render and
     groups it by shipment in memory. Document identity and persistence are
     untouched; only repeated canonical reads are removed.
+
+    ``documents`` lets the caller hand over the raw ``load_docgen_documents()``
+    result it already read for this render (the view-model shares ONE read
+    between this grouping and the C1 contract payload); ``None`` keeps the read.
     """
     from core.database import load_docgen_documents
 
-    try:
-        documents = load_docgen_documents() or {}
-    except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
-        return {}
+    if documents is None:
+        try:
+            documents = load_docgen_documents() or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+            return {}
     grouped: dict[str, dict[str, Any]] = {}
     for record_id, doc in documents.items():
         if not isinstance(doc, Mapping):
@@ -1110,7 +1127,7 @@ def docgen_documents_by_shipment() -> dict[str, dict[str, Any]]:
     return grouped
 
 
-def attachments_by_shipment() -> dict[str, list[dict[str, Any]]]:
+def attachments_by_shipment(*, db: Any = _UNSET_DB) -> dict[str, list[dict[str, Any]]]:
     """Attachment METADATA for ALL shipments, read ONCE and grouped.
 
     Same performance repair as ``docgen_documents_by_shipment``: the canonical
@@ -1121,7 +1138,7 @@ def attachments_by_shipment() -> dict[str, list[dict[str, Any]]]:
     from core.database import load_shipment_attachments
 
     try:
-        records = load_shipment_attachments() or {}
+        records = load_shipment_attachments(db=db) or {}
     except Exception:  # noqa: BLE001 - an attachment read failure must not blank the desk
         return {}
     grouped: dict[str, list[dict[str, Any]]] = {}

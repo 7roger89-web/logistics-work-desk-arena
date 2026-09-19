@@ -15,9 +15,11 @@ import hashlib
 import json
 import logging
 import re
+import threading
+from contextlib import contextmanager
 from functools import lru_cache
 from datetime import datetime
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Iterator, Mapping
 from uuid import uuid4
 
 import pymongo
@@ -51,9 +53,62 @@ def _sanitize_error(message: str) -> str:
     return re.sub(r"(mongodb(?:\+srv)?://)[^@\s]+@", r"\1***:***@", str(message))
 
 
+#: Sentinel for "no explicit database handle supplied".  ``None`` is a REAL
+#: value here (the canonical resolution found no database), and a STREAMLIT-FREE
+#: read worker must never trigger that resolution itself — it only uses the
+#: handle the script thread handed it.
+_UNSET_DB: Any = object()
+
+
+# --- STREAMLIT-FREE read workers (LOGI_INTERACTION_LATENCY_FINALIZE_02) ----
+# The bounded read workers of ``views.logi_view_model._read_concurrently`` run
+# on short-lived threads that carry NO Streamlit script context: they perform
+# MongoDB reads and pure Python normalisation only.  They must therefore never
+# publish error state, because that state is process-global (``_LAST_DB_ERROR``)
+# plus a session key (``st.session_state.last_db_error``) — publishing it from
+# a worker would race with the script thread and with sibling workers.
+# Instead the worker runs inside ``captured_db_errors()``: every
+# ``_set_last_error`` it triggers is collected per thread, and the script thread
+# replays the collected messages in a deterministic order.
+_ERROR_CAPTURE = threading.local()
+
+
+@contextmanager
+def captured_db_errors() -> Iterator[list[str]]:
+    """Defer this thread's ``_set_last_error`` publications into ``messages``.
+
+    The reader keeps its own semantics (it still reports what went wrong); only
+    the PUBLICATION is deferred, so nothing shared is mutated from the worker.
+    The script thread replays each message with :func:`replay_db_error`.
+    """
+    messages: list[str] = []
+    previous = getattr(_ERROR_CAPTURE, "messages", None)
+    _ERROR_CAPTURE.messages = messages
+    try:
+        yield messages
+    finally:
+        _ERROR_CAPTURE.messages = previous
+
+
+def db_errors_captured() -> bool:
+    """True when the calling thread defers error publications (a read worker)."""
+    return getattr(_ERROR_CAPTURE, "messages", None) is not None
+
+
+def replay_db_error(message: str) -> None:
+    """Publish ONE worker-captured error message from the script thread."""
+    _set_last_error(message)
+
+
 def _set_last_error(message: str) -> None:
     global _LAST_DB_ERROR
-    _LAST_DB_ERROR = _sanitize_error(message)
+    sanitized = _sanitize_error(message)
+    captured = getattr(_ERROR_CAPTURE, "messages", None)
+    if captured is not None:
+        # A STREAMLIT-FREE read worker: no global and no session state here.
+        captured.append(sanitized)
+        return
+    _LAST_DB_ERROR = sanitized
     if st is not None and is_streamlit_runtime():
         try:
             st.session_state.last_db_error = _LAST_DB_ERROR
@@ -376,8 +431,8 @@ def load_data(limit: int = 2000, include_archived: bool = False, include_deleted
     return _load_data_impl(limit, include_archived, include_deleted)
 
 
-def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False) -> dict[str, dict[str, Any]]:
-    db = get_db()
+def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return {}
     query: dict[str, Any] = {}
@@ -406,7 +461,9 @@ def load_archived_data(limit: int = 5000) -> dict[str, dict[str, Any]]:
         return {}
 
 
-def load_shipment_ids() -> list[str]:
+def load_shipment_ids(*, db: Any = _UNSET_DB) -> list[str]:
+    """(``db`` is the optional explicit handle a STREAMLIT-FREE read worker was
+    handed; standalone callers resolve the canonical connection as before.)"""
     """IDs of the non-deleted shipments, in one bounded read.
 
     PERFORMANCE REPAIR: this is the exact query the two global finance
@@ -419,7 +476,7 @@ def load_shipment_ids() -> list[str]:
     Read-only, projection ``{"_id": 0, "id": 1}`` — the rows are identical to
     the inline query it replaces.
     """
-    db = get_db()
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return []
     try:
@@ -996,8 +1053,8 @@ def generate_shipment_id(prefix: str = "SHP") -> str:
     return f"{prefix}-{today}-{int(counter['seq']):03d}"
 
 
-def _load_dict(collection: str, key: str = "id", query: Mapping[str, Any] | None = None) -> dict[str, dict[str, Any]]:
-    db = get_db()
+def _load_dict(collection: str, key: str = "id", query: Mapping[str, Any] | None = None, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return {}
     try:
@@ -1050,8 +1107,8 @@ def load_customers() -> dict[str, dict[str, Any]]:
     return _load_customers_impl()
 
 
-def _load_customers_impl() -> dict[str, dict[str, Any]]:
-    return _load_dict("customers", query={"is_deleted": {"$ne": True}})
+def _load_customers_impl(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    return _load_dict("customers", query={"is_deleted": {"$ne": True}}, db=db)
 
 
 def save_customer_to_cloud(document: dict[str, Any]) -> bool:
@@ -1085,8 +1142,8 @@ def delete_customer(cust_id: str, reason: str = "") -> bool:
     return False
 
 
-def _load_contracts_impl() -> dict[str, dict[str, Any]]:
-    raw = _load_dict("contracts", query={"is_deleted": {"$ne": True}})
+def _load_contracts_impl(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    raw = _load_dict("contracts", query={"is_deleted": {"$ne": True}}, db=db)
     return {str(value.get("ContractNo") or value.get("id")): value for value in raw.values()}
 
 
@@ -1338,8 +1395,8 @@ def save_contract_proxy_payment_atomic(
         return False
 
 
-def load_quotes() -> dict[str, dict[str, Any]]:
-    return _load_dict("quotes", query={"is_deleted": {"$ne": True}})
+def load_quotes(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    return _load_dict("quotes", query={"is_deleted": {"$ne": True}}, db=db)
 
 
 def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
@@ -1377,8 +1434,8 @@ def save_rate_card(document: dict[str, Any]) -> bool:
     return ok
 
 
-def load_tasks() -> list[dict[str, Any]]:
-    db = get_db()
+def load_tasks(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return []
     try:
@@ -1585,8 +1642,8 @@ def save_entrustment_book(
         return False
 
 
-def load_knowledge_base() -> list[dict[str, Any]]:
-    db = get_db()
+def load_knowledge_base(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return []
     return list(db.knowledge_base.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1))
@@ -1643,14 +1700,14 @@ def save_cbpg_workspace(unit: str, invoice_total: float, items: list[dict[str, A
     return ok
 
 
-def load_audit_logs(entity_type: str, entity_id: str, limit: int = 100) -> list[dict[str, Any]]:
-    db = get_db()
+def load_audit_logs(entity_type: str, entity_id: str, limit: int = 100, *, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return []
     return list(db.audit_logs.find({"entity_type": entity_type, "entity_id": entity_id}, {"_id": 0}).sort("created_at", -1).limit(limit))
 
 
-def load_audit_logs_bulk(entity_type: str, entity_ids: Iterable[str], limit_per_entity: int = 100) -> dict[str, list[dict[str, Any]]]:
+def load_audit_logs_bulk(entity_type: str, entity_ids: Iterable[str], limit_per_entity: int = 100, *, db: Any = _UNSET_DB) -> dict[str, list[dict[str, Any]]]:
     """Audit history for MANY entities in ONE bounded collection read.
 
     PERFORMANCE REPAIR: the component build path previously called
@@ -1666,7 +1723,7 @@ def load_audit_logs_bulk(entity_type: str, entity_ids: Iterable[str], limit_per_
     ids = [str(item).strip() for item in (entity_ids or []) if str(item or "").strip()]
     if not ids:
         return {}
-    db = get_db()
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return {}
     try:
@@ -1733,9 +1790,9 @@ def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
 # ---------- LG03 restore (4578d3f): user persistence API ----------
 # Da bi mat trong commit 0d6ce55 (LG02 mojibake hotfix). Phuc hoi co gioi han.
 
-def load_users() -> dict[str, dict[str, Any]]:
+def load_users(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Toan bo user documents (gom password_hash — chi core.auth dung de xac thuc)."""
-    db = get_db()
+    db = get_db() if db is _UNSET_DB else db
     if db is None:
         return {}
     return {
@@ -1826,9 +1883,9 @@ def delete_user(username: str, actor: str = "system") -> bool:
 
 # ---------- LG03 restore #2 (83a567c): agreements API ----------
 
-def load_agreements() -> dict[str, dict[str, Any]]:
+def load_agreements(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Load LOG-C13 commercial agreements (agreed commercial terms, not finance)."""
-    return _load_dict("agreements", query={"is_deleted": {"$ne": True}})
+    return _load_dict("agreements", query={"is_deleted": {"$ne": True}}, db=db)
 
 def save_agreements_to_cloud(agreements_dict: dict[str, dict[str, Any]]) -> bool:
     """Upsert commercial agreements. 0 canonical finance writes by contract."""
@@ -1861,9 +1918,9 @@ def save_agreements_to_cloud(agreements_dict: dict[str, dict[str, Any]]) -> bool
 # ----------------------------------------------------------------------------
 
 
-def load_authority_companies() -> dict[str, dict[str, Any]]:
+def load_authority_companies(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Load the approved legal Company master (buyer/owner entity)."""
-    return _load_dict("authority_companies", query={"is_deleted": {"$ne": True}})
+    return _load_dict("authority_companies", query={"is_deleted": {"$ne": True}}, db=db)
 
 
 def save_authority_company(document: Mapping[str, Any]) -> bool:
@@ -1887,9 +1944,9 @@ def save_authority_company(document: Mapping[str, Any]) -> bool:
     return True
 
 
-def load_authority_agents() -> dict[str, dict[str, Any]]:
+def load_authority_agents(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Load the approved legal Agent master (seller of goods to Trường Thành)."""
-    return _load_dict("authority_agents", query={"is_deleted": {"$ne": True}})
+    return _load_dict("authority_agents", query={"is_deleted": {"$ne": True}}, db=db)
 
 
 def save_authority_agent(document: Mapping[str, Any]) -> bool:
@@ -2023,12 +2080,12 @@ def probe_shipment_attachment_identity(document: Mapping[str, Any]) -> tuple[str
     return ATTACHMENT_PROBE_UNPROVEN, dict(row)
 
 
-def load_shipment_attachments(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:
+def load_shipment_attachments(shipment_id: str | None = None, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Load attachment metadata, optionally scoped to ONE shipment."""
     query: dict[str, Any] = {"is_deleted": {"$ne": True}}
     if shipment_id:
         query["shipment_id"] = str(shipment_id).strip()
-    return _load_dict("shipment_attachments", query=query)
+    return _load_dict("shipment_attachments", query=query, db=db)
 
 
 def load_shipment_attachment(attachment_id: str) -> dict[str, Any] | None:
@@ -2052,12 +2109,12 @@ def find_shipment_attachment_by_sha(shipment_id: str, sha256: str) -> dict[str, 
     )
 
 
-def load_docgen_documents(shipment_id: str | None = None) -> dict[str, dict[str, Any]]:
+def load_docgen_documents(shipment_id: str | None = None, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     """Load generated document metadata, optionally scoped to one shipment."""
     query: dict[str, Any] = {"is_deleted": {"$ne": True}}
     if shipment_id:
         query["shipment_id"] = str(shipment_id).strip()
-    return _load_dict("docgen_documents", query=query)
+    return _load_dict("docgen_documents", query=query, db=db)
 
 
 def load_docgen_document(document_id: str) -> dict[str, Any] | None:

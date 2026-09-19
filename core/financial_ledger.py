@@ -1305,7 +1305,7 @@ def project_partner_financial_position(
     }
 
 
-def load_ledger_snapshot(db: Any = None) -> dict[str, Any]:
+def load_ledger_snapshot(db: Any = database._UNSET_DB) -> dict[str, Any]:
     """Read the three canonical ledger collections ONCE for one render.
 
     PERFORMANCE REPAIR (no new source of truth, no cache layer): the projection
@@ -1323,7 +1323,7 @@ def load_ledger_snapshot(db: Any = None) -> dict[str, Any]:
     a process; the caller reads once per render and the next render reads
     again, so a fresh write is visible on the very next read exactly as before.
     """
-    db = db if db is not None else database.get_db()
+    db = database.get_db() if db is database._UNSET_DB else db
     if db is None:
         return {OBLIGATIONS: [], TRANSACTIONS: [], ALLOCATIONS: [], "available": False}
     try:
