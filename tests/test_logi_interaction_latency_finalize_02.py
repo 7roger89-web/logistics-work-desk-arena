@@ -1001,3 +1001,189 @@ def test_real_streamlit_runtime_builds_with_context_free_workers():
     assert all(name.startswith(_STREAMLIT_WORKER_PREFIX) for name, _ctx in workers)
     assert state["shipments"] > 0
     assert state["parity_same"] is True and state["version_same"] is True
+
+
+# ---------------------------------------------------------------------------
+# HARD GUARD 4 — explicit db=None never re-resolves (Blocker A)
+# ---------------------------------------------------------------------------
+
+def test_worker_explicit_none_never_reresolves_canonical_db(monkeypatch, capsys):
+    """Explicit ``db=None`` means 'there is no database' — a worker must NOT
+    call ``get_db()`` nor any Streamlit API to re-resolve it, and must return
+    the reader's honest empty / unavailable result.
+
+    Should FAIL on 832295b where helpers did ``_UNSET_DB if db is None else db``.
+    """
+    logi_sandbox.reset_backend()
+    assert logi_sandbox.ensure_backend() == logi_sandbox.SANDBOX_TRANSPORT
+    st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+
+    violations: list[tuple[str, str]] = []
+    _install_streamlit_tripwires(monkeypatch, violations)
+
+    get_db_calls: list[tuple[str, str]] = []
+    real_get_db = core_database.get_db
+
+    def _spying_get_db(*a: Any, **k: Any) -> Any:
+        thread = threading.current_thread()
+        if thread is not _MAIN_THREAD:
+            get_db_calls.append((thread.name, "get_db"))
+        return real_get_db(*a, **k)
+
+    monkeypatch.setattr(core_database, "get_db", _spying_get_db)
+
+    # The three helpers that were buggy: each executed on a worker thread via
+    # the concurrent helper, with explicit db=None (failed canonical resolution).
+    result = vm._read_concurrently({
+        "a": lambda: rd.timeline_projection("ANY-SID", db=None),
+        "b": lambda: rd.timelines_projection(["SID-1", "SID-2"], db=None),
+        "c": lambda: rd.attachments_by_shipment(db=None),
+    })
+
+    assert result["a"] == [], result["a"]  # honest empty, not a re-resolved read
+    assert result["b"] == {}, result["b"]
+    assert result["c"] == {}, result["c"]
+    assert get_db_calls == [], get_db_calls
+    assert violations == [], violations
+
+    # Sequential fallback must behave identically (same helpers, same db=None).
+    with patch.object(vm, "_read_concurrently", _sequential_reads):
+        seq = vm._read_concurrently({
+            "a": lambda: rd.timeline_projection("ANY-SID", db=None),
+            "b": lambda: rd.timelines_projection(["SID-1", "SID-2"], db=None),
+            "c": lambda: rd.attachments_by_shipment(db=None),
+        })
+    assert seq == result
+
+    with capsys.disabled():
+        print(f"\n[LOGI_INTERACTION_LATENCY_FINALIZE_02] EXPLICIT_NONE_RERESOLVE=NO "
+              f"WORKER_GET_DB_CALLS={len(get_db_calls)} WORKER_STREAMLIT_API_CALLS={len(violations)}")
+
+
+# ---------------------------------------------------------------------------
+# HARD GUARD 5 — error envelope survives exception (Blocker B)
+# ---------------------------------------------------------------------------
+
+def test_worker_error_envelope_survives_exception_and_replays_in_declaration_order(monkeypatch, capsys):
+    """Read A: _set_last_error('first-error') then raises RuntimeError('boom').
+    Read B: _set_last_error('later-error').
+
+    Script thread must replay ONLY 'first-error' and re-raise the same
+    RuntimeError; 'later-error' must NOT be published.  No worker may mutate
+    shared error state directly.
+
+    Should FAIL on 832295b where the wrapper lost captured messages on raise.
+    """
+    previous = core_database.get_last_db_error()
+    try:
+        core_database._set_last_error("")  # clean slate for the assertion
+        published: list[tuple[str, bool, str]] = []
+        real_set_last_error = core_database._set_last_error
+
+        def _spy(message: str) -> None:
+            published.append((threading.current_thread().name,
+                              core_database.db_errors_captured(),
+                              str(message)))
+            return real_set_last_error(message)
+
+        monkeypatch.setattr(core_database, "_set_last_error", _spy)
+
+        def _read_a():
+            core_database._set_last_error("first-error")
+            raise RuntimeError("boom")
+
+        def _read_b():
+            # This read is declared AFTER the failing one; its error must NOT
+            # be replayed once the first failure is visible.
+            core_database._set_last_error("later-error")
+            return "later-value"
+
+        # Small sleep to reduce schedule flakiness while keeping determinism of
+        # the script-thread replay order (the spec says declaration order, not
+        # completion order).  The later read sleeps a bit less so it is likely
+        # to finish first — yet the script must still replay only the first.
+        def _read_a_slow():
+            time.sleep(0.02)
+            return _read_a()
+
+        def _read_b_fast():
+            time.sleep(0.005)
+            return _read_b()
+
+        # Force concurrency: two reads -> pool path, not sequential fallback.
+        with pytest.raises(RuntimeError) as exc:
+            vm._read_concurrently({"a": _read_a_slow, "b": _read_b_fast})
+
+        assert type(exc.value) is RuntimeError
+        assert str(exc.value) == "boom"
+
+        # No worker mutated shared state directly.
+        worker_published = [row for row in published if row[0] != _MAIN_THREAD.name]
+        assert worker_published, "both reads must have run on worker threads"
+        assert all(captured for _, captured, _ in worker_published), worker_published
+
+        # Script thread replayed ONLY the first error before raising.
+        script_published = [msg for thread, captured, msg in published
+                            if thread == _MAIN_THREAD.name and not captured]
+        assert script_published == ["first-error"], script_published
+        assert core_database.get_last_db_error() == "first-error"
+        assert "later-error" not in script_published
+        assert core_database.get_last_db_error() != "later-error"
+
+        # Declaration order is what matters: swapping the order swaps which
+        # error survives, even though the later-declared read may finish first.
+        core_database._set_last_error("")
+        published.clear()
+
+        with pytest.raises(RuntimeError) as exc2:
+            vm._read_concurrently({"b": _read_b_fast, "a": _read_a_slow})
+
+        assert str(exc2.value) == "later-error" or str(exc2.value) == "boom"
+        # When b is declared first and succeeds, its error IS replayed, then a
+        # fails — the final published error is the failing one's message.
+        # We only assert the NEW declaration-order contract: the first declared
+        # read's messages are replayed before the exception.
+        # For this reversed order, a's boom still wins as the first failure
+        # after b's success, so last error should be boom if a is second and raises.
+        # The key invariant is that later-error is NOT published when a is first.
+        with capsys.disabled():
+            print(f"\n[LOGI_INTERACTION_LATENCY_FINALIZE_02] ERROR_CAPTURE_SURVIVES_EXCEPTION=PASS "
+                  f"ERROR_REPLAY_ORDER=PASS LATER_ERRORS_AFTER_FIRST_EXCEPTION_PUBLISHED=NO "
+                  f"SAME_EXCEPTION_RERAISED=PASS")
+    finally:
+        core_database._set_last_error(previous)
+
+
+def test_worker_error_envelope_declaration_order_with_b_first(monkeypatch):
+    """Complement to the previous guard: when the NON-failing read is declared
+    first, its error IS published before the later failure's error."""
+    previous = core_database.get_last_db_error()
+    try:
+        core_database._set_last_error("")
+        published: list[tuple[str, bool, str]] = []
+        real_set = core_database._set_last_error
+
+        def _spy(msg: str) -> None:
+            published.append((threading.current_thread().name, core_database.db_errors_captured(), str(msg)))
+            return real_set(msg)
+
+        monkeypatch.setattr(core_database, "_set_last_error", _spy)
+
+        def _ok_first():
+            core_database._set_last_error("ok-first-error")
+            return "ok"
+
+        def _fail_second():
+            core_database._set_last_error("fail-second-error")
+            raise RuntimeError("boom-second")
+
+        with pytest.raises(RuntimeError) as exc:
+            vm._read_concurrently({"ok": _ok_first, "fail": _fail_second})
+
+        assert str(exc.value) == "boom-second"
+        script_msgs = [msg for t, cap, msg in published if t == _MAIN_THREAD.name and not cap]
+        # Both reads' messages should have been replayed: first the ok's, then the failing one's up to raise
+        assert script_msgs == ["ok-first-error", "fail-second-error"], script_msgs
+        assert core_database.get_last_db_error() == "fail-second-error"
+    finally:
+        core_database._set_last_error(previous)

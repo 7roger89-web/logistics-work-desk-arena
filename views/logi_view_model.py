@@ -118,34 +118,42 @@ def _read_concurrently(reads: Mapping[str, Callable[[], Any]]) -> dict[str, Any]
     ``core.database.captured_db_errors()``, so a ``_set_last_error`` triggered
     by a reader is COLLECTED on that worker thread instead of being published to
     the shared ``_LAST_DB_ERROR`` / ``st.session_state.last_db_error`` state.
-    Once every worker is joined, the script thread replays the collected
-    messages in declaration order — the order the sequential build would have
-    published them in — and raises the first failing read's exception (also in
-    declaration order).  No worker can therefore race on shared error state.
+    The envelope survives exceptions — a read that set an error and then raised
+    still has its messages replayed in declaration order, and the first
+    sequentially-visible exception is re-raised with later reads' errors NOT
+    replayed, exactly as the sequential build would have exposed.
+    Once every worker is joined, the script thread replays in declaration order.
+    No worker can therefore race on shared error state.
     """
     if len(reads) <= 1 or _READ_WORKERS <= 1:
         return {key: read() for key, read in reads.items()}
     from core import database as core_database
 
-    def _run(read: Callable[[], Any]) -> tuple[Any, tuple[str, ...]]:
-        # STREAMLIT-FREE worker body: one canonical read, errors captured.
+    def _run(read: Callable[[], Any]) -> dict[str, Any]:
+        # STREAMLIT-FREE worker body: errors captured even when the read raises.
         with core_database.captured_db_errors() as captured:
-            value = read()
-        return value, tuple(captured)
+            try:
+                value = read()
+            except Exception as exc:  # noqa: BLE001 — must survive to replay its messages
+                return {"ok": False, "value": None, "error": exc, "messages": tuple(captured)}
+            else:
+                return {"ok": True, "value": value, "error": None, "messages": tuple(captured)}
 
-    outcomes: dict[str, tuple[Any, tuple[str, ...]]] = {}
+    # Joined in DECLARATION order after ALL workers finish — no worker is left
+    # behind and the first sequentially-visible failure is what the caller sees.
+    outcomes: dict[str, dict[str, Any]] = {}
     with ThreadPoolExecutor(max_workers=min(_READ_WORKERS, len(reads)), thread_name_prefix="logi-read") as pool:
         futures = {key: pool.submit(_run, read) for key, read in reads.items()}
-        # Join in DECLARATION order: the first failure raised here is the one
-        # the sequential build would have raised first.  The ``with`` block
-        # joins every remaining worker before the pool is torn down.
         for key, future in futures.items():
             outcomes[key] = future.result()
     values: dict[str, Any] = {}
-    for key, (value, messages) in outcomes.items():
-        for message in messages:  # script thread applies error semantics
+    for key in reads.keys():  # declaration order, not completion order
+        outcome = outcomes[key]
+        for message in outcome["messages"]:  # script thread applies error semantics
             core_database.replay_db_error(message)
-        values[key] = value
+        if not outcome["ok"]:
+            raise outcome["error"]  # type: ignore[misc]  # same exception the sequential build would have raised
+        values[key] = outcome["value"]
     return values
 
 
