@@ -36,6 +36,16 @@ THE REPAIR THIS GUARDS
    cache, no skipped read — the same readers run once each, only no longer one
    after another.  Output parity with the sequential build is asserted below.
 
+   The workers are STREAMLIT-FREE: the script thread resolves the database
+   handle and the session values first and hands them down as explicit
+   arguments, so a worker performs MongoDB reads and pure Python
+   normalisation only — no ``st.*``, no ``add_script_run_ctx`` /
+   ``get_script_run_ctx``, no write, no audit, no auth, no session mutation.
+   A worker's error reports are CAPTURED per thread and replayed by the script
+   thread in declaration order, so error state never races.  Three guards below
+   prove exactly that (``WORKER_STREAMLIT_API_CALLS=0``, deterministic error
+   semantics, writes/auth/audit stay on the script thread).
+
 PRIVACY
 -------
 Only elapsed milliseconds, operation counts and collection names are printed.
@@ -49,6 +59,7 @@ the DeepL provider is a mocked client — PAID_PROVIDER_CALLS_IN_TESTS=0.
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import sys
@@ -129,6 +140,8 @@ class _OpCounter:
         self._local = threading.local()
         self.main_phase = "UNSCOPED"
         self.by_phase: dict[str, Counter] = {}
+        #: ``"<phase>|<collection>.<op>"`` -> the thread names that issued it.
+        self.threads: dict[str, set[str]] = {}
         self._lock = threading.Lock()
 
     @property
@@ -143,8 +156,10 @@ class _OpCounter:
             self._local.phase = value
 
     def record(self, collection: str, op: str) -> None:
+        key = f"{collection}.{op}"
         with self._lock:
-            self.by_phase.setdefault(self.phase, Counter())[f"{collection}.{op}"] += 1
+            self.by_phase.setdefault(self.phase, Counter())[key] += 1
+            self.threads.setdefault(f"{self.phase}|{key}", set()).add(threading.current_thread().name)
         if RTT_MS > 0:
             time.sleep(RTT_MS / 1000.0)
 
@@ -700,3 +715,289 @@ def test_partner_context_and_docgen_grouping_accept_the_render_snapshot(dataset)
     raw = load_docgen_documents() or {}
     assert rd.docgen_documents_by_shipment(raw) == rd.docgen_documents_by_shipment()
     assert raw, "the fixture must carry docgen documents"
+
+
+# ---------------------------------------------------------------------------
+# HARD GUARD 1 — the bounded read workers are STREAMLIT-FREE
+# ---------------------------------------------------------------------------
+
+#: Operations that only read.  Anything else (insert/update/delete/replace) is
+#: a write, an audit row or a ledger mutation and must stay on the script thread.
+_DB_READ_OPS = frozenset({"find", "find_one", "count_documents", "estimated_document_count", "aggregate", "distinct"})
+_MAIN_THREAD = threading.main_thread()
+_STREAMLIT_WORKER_PREFIX = "logi-read"
+
+
+class _RecordingProxy:
+    """Delegating proxy that records every access made OFF the script thread."""
+
+    def __init__(self, inner: Any, label: str, violations: list[tuple[str, str]]) -> None:
+        object.__setattr__(self, "_inner", inner)
+        object.__setattr__(self, "_label", label)
+        object.__setattr__(self, "_violations", violations)
+
+    def _record(self, api: str) -> None:
+        thread = threading.current_thread()
+        if thread is not _MAIN_THREAD:
+            self._violations.append((api, thread.name))
+
+    def __getattr__(self, item: str) -> Any:
+        self._record(f"{self._label}.{item}")
+        return getattr(self._inner, item)
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        self._record(f"{self._label}.{key}=")
+        setattr(self._inner, key, value)
+
+    def __getitem__(self, key: Any) -> Any:
+        self._record(f"{self._label}[key]")
+        return self._inner[key]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        self._record(f"{self._label}[key]=")
+        self._inner[key] = value
+
+    def __delitem__(self, key: Any) -> None:
+        self._record(f"{self._label}.delitem")
+        del self._inner[key]
+
+    def __contains__(self, key: Any) -> bool:
+        self._record(f"{self._label} in")
+        return key in self._inner
+
+    def __iter__(self) -> Any:
+        self._record(f"{self._label} iter")
+        return iter(self._inner)
+
+    def __len__(self) -> int:
+        self._record(f"{self._label} len")
+        return len(self._inner)
+
+
+def _install_streamlit_tripwires(monkeypatch, violations: list[tuple[str, str]]) -> None:
+    """Record every Streamlit surface a NON-script thread reaches for.
+
+    Covers the six surfaces the control tower named (``st.session_state``,
+    ``st.cache_data``, ``st.cache_resource``, ``st.secrets``,
+    ``add_script_run_ctx``, ``get_script_run_ctx``) plus every plain
+    ``streamlit`` command (``st.error``, ``st.spinner``, ...), so a worker that
+    reaches for Streamlit at all is caught — not only the named six.  Every
+    surface still delegates, so the script thread keeps working unchanged.
+    """
+
+    def _recording_callable(label: str, inner: Callable[..., Any]) -> Callable[..., Any]:
+        def _wrapped(*args: Any, **kwargs: Any) -> Any:
+            thread = threading.current_thread()
+            if thread is not _MAIN_THREAD:
+                violations.append((label, thread.name))
+            return inner(*args, **kwargs)
+        return _wrapped
+
+    for name in ("session_state", "secrets"):
+        monkeypatch.setattr(st, name, _RecordingProxy(getattr(st, name), f"st.{name}", violations))
+    for name in ("cache_data", "cache_resource"):
+        monkeypatch.setattr(st, name, _recording_callable(f"st.{name}", getattr(st, name)))
+    # Every other plain-function Streamlit command (st.error, st.spinner, ...).
+    for name in dir(st):
+        if name.startswith("_") or name in ("session_state", "secrets", "cache_data", "cache_resource"):
+            continue
+        target = getattr(st, name, None)
+        if inspect.isfunction(target):
+            monkeypatch.setattr(st, name, _recording_callable(f"st.{name}", target))
+    # Script-run-context helpers: the Streamlit runtime, the runtime probe the
+    # readers use, and the (now removed) module-level names of the view-model.
+    from streamlit.runtime import scriptrunner
+
+    monkeypatch.setattr(scriptrunner, "add_script_run_ctx",
+                        _recording_callable("add_script_run_ctx", scriptrunner.add_script_run_ctx))
+    monkeypatch.setattr(scriptrunner, "get_script_run_ctx",
+                        _recording_callable("get_script_run_ctx", scriptrunner.get_script_run_ctx))
+    from core import config as core_config
+
+    if getattr(core_config, "get_script_run_ctx", None) is not None:
+        monkeypatch.setattr(core_config, "get_script_run_ctx",
+                            _recording_callable("config.get_script_run_ctx", core_config.get_script_run_ctx))
+    monkeypatch.setattr(vm, "add_script_run_ctx",
+                        _recording_callable("vm.add_script_run_ctx",
+                                            getattr(vm, "add_script_run_ctx", lambda *a, **k: None)),
+                        raising=False)
+    monkeypatch.setattr(vm, "get_script_run_ctx",
+                        _recording_callable("vm.get_script_run_ctx",
+                                            getattr(vm, "get_script_run_ctx", lambda *a, **k: None)),
+                        raising=False)
+
+
+def test_read_workers_never_touch_the_streamlit_api(dataset, monkeypatch, capsys):
+    """HARD GUARD — the read workers are STREAMLIT-FREE.
+
+    Fails if any worker thread (a) touches ``st.session_state``,
+    ``st.cache_data``, ``st.cache_resource``, ``st.secrets``, any Streamlit
+    command, or ``add_script_run_ctx`` / ``get_script_run_ctx``, or (b) issues
+    anything that is not a pure read (writes, audit rows, auth reads, the
+    authoritative fresh shipment read all stay on the script thread).
+    """
+    violations: list[tuple[str, str]] = []
+    _install_streamlit_tripwires(monkeypatch, violations)
+    sid = dataset["ids"][5]
+    result = _run_interaction(monkeypatch, _field_save_trigger(1, sid, "BK-NO-STREAMLIT"), seq=1)
+    assert result["handler_outcomes"][0]["ok"] is True
+
+    threads = {name for names in result["counter"].threads.values() for name in names}
+    workers = {name for name in threads if name != _MAIN_THREAD.name}
+    assert workers, "the guard must see the reads really issued on worker threads"
+    assert all(name.startswith(_STREAMLIT_WORKER_PREFIX) for name in workers), sorted(workers)
+    assert violations == [], violations
+
+    for key, names in sorted(result["counter"].threads.items()):
+        phase, op = key.split("|", 1)
+        op_name = op.rsplit(".", 1)[1]
+        if op_name not in _DB_READ_OPS or phase in (AUTH, WRITER):
+            assert names == {_MAIN_THREAD.name}, (key, sorted(names))
+    # The authoritative fresh shipment read (read_shipment) is on the script
+    # thread; only the readback's independent reference/history reads overlap.
+    assert result["counter"].threads[f"{READBACK}|shipments.find_one"] == {_MAIN_THREAD.name}
+    with capsys.disabled():
+        print(f"\n[LOGI_INTERACTION_LATENCY_FINALIZE_02] STREAMLIT-FREE workers: "
+              f"{len(workers)} worker threads {sorted(workers)}; "
+              f"WORKER_STREAMLIT_API_CALLS={len(violations)}; "
+              f"worker ops={sorted({k.split('|', 1)[1] for k, names in result['counter'].threads.items() if names - {_MAIN_THREAD.name}})}")
+
+
+def test_streamlit_free_workers_produce_the_identical_view_model(dataset, monkeypatch):
+    """The STREAMLIT-FREE worker path (explicit db handle, uncached reference
+    impls) yields exactly the model the sequential build produces."""
+    monkeypatch.setattr(core_auth, "AUTH_REQUIRED", True)
+    with_workers = vm.build_view_model()
+    with patch.object(vm, "_read_concurrently", _sequential_reads):
+        sequential = vm.build_view_model()
+    dump = lambda model: json.dumps(model, sort_keys=True, default=str)  # noqa: E731
+    assert dump(with_workers) == dump(sequential)
+    assert with_workers["version"] == sequential["version"]
+
+
+# ---------------------------------------------------------------------------
+# HARD GUARD 2 — worker error semantics stay deterministic
+# ---------------------------------------------------------------------------
+
+def test_worker_read_errors_are_replayed_on_the_script_thread(dataset, monkeypatch):
+    """A reader that fails inside a worker must not publish error state there.
+
+    The message is CAPTURED on the worker thread (nothing shared is mutated —
+    not ``_LAST_DB_ERROR``, not ``st.session_state.last_db_error``) and is
+    replayed by the script thread, which is the only publisher.
+    """
+    published: list[tuple[str, bool, str]] = []
+    real_set_last_error = core_database._set_last_error
+
+    def _spy(message: str) -> None:
+        published.append((threading.current_thread().name, core_database.db_errors_captured(), str(message)))
+        return real_set_last_error(message)
+
+    def _failing_quotes(*, db: Any = None) -> dict[str, Any]:
+        core_database._set_last_error("forced-read-failure")
+        return {}
+
+    monkeypatch.setattr(core_database, "_set_last_error", _spy)
+    monkeypatch.setattr(core_database, "load_quotes", _failing_quotes)
+    model = vm.build_view_model()
+    assert model["shipments"] is not None
+    assert core_database.get_last_db_error() == "forced-read-failure", published
+    worker_calls = [row for row in published if row[0] != _MAIN_THREAD.name]
+    assert worker_calls, "the failing read must have run on a worker thread"
+    assert all(captured for _thread, captured, _message in worker_calls), worker_calls
+    script_calls = [row for row in published if row[0] == _MAIN_THREAD.name]
+    assert script_calls and all(not captured for _t, captured, _m in script_calls), script_calls
+
+
+def test_captured_db_errors_defer_publication_and_replay_in_order():
+    """The primitive behind the guard: capture defers, replay publishes, and the
+    replay order is the order the sequential build would have produced."""
+    previous = core_database.get_last_db_error()
+    try:
+        with core_database.captured_db_errors() as captured:
+            assert core_database.db_errors_captured() is True
+            core_database._set_last_error("worker-one")
+            core_database._set_last_error("worker-two")
+            assert core_database.get_last_db_error() == previous  # nothing published
+        assert core_database.db_errors_captured() is False
+        assert captured == ["worker-one", "worker-two"]
+        for message in captured:
+            core_database.replay_db_error(message)
+        assert core_database.get_last_db_error() == "worker-two"
+    finally:
+        core_database._set_last_error(previous)
+
+
+# ---------------------------------------------------------------------------
+# HARD GUARD 3 — the same contract holds under a REAL Streamlit runtime
+# ---------------------------------------------------------------------------
+
+#: Executed by ``AppTest``, i.e. on a ScriptRunContext-owning thread, with the
+#: real ``st.cache_resource`` connection and the real session state available.
+_APPERTEST_SCRIPT = '''
+import json
+import threading
+from unittest.mock import patch
+
+import streamlit as st
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+from views import logi_sandbox
+from views import logi_view_model as vm
+
+logi_sandbox.ensure_backend()
+st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+
+worker_ctx = []
+real_concurrent = vm._read_concurrently
+
+
+def _spy(reads):
+    st.session_state.setdefault("submitter_has_ctx", []).append(
+        get_script_run_ctx(suppress_warning=True) is not None)
+
+    def _bind(read):
+        def _run():
+            worker_ctx.append((threading.current_thread().name,
+                               get_script_run_ctx(suppress_warning=True) is not None))
+            return read()
+        return _run
+    return real_concurrent({key: _bind(read) for key, read in reads.items()})
+
+
+dump = lambda model: json.dumps(model, sort_keys=True, default=str)
+
+with patch.object(vm, "_read_concurrently", _spy):
+    concurrent = vm.build_view_model()
+with patch.object(vm, "_read_concurrently", lambda reads: {k: r() for k, r in reads.items()}):
+    sequential = vm.build_view_model()
+
+st.session_state["parity_same"] = dump(concurrent) == dump(sequential)
+st.session_state["version_same"] = concurrent["version"] == sequential["version"]
+st.session_state["shipments"] = len(concurrent["shipments"])
+st.session_state["worker_ctx"] = worker_ctx
+'''
+
+
+def test_real_streamlit_runtime_builds_with_context_free_workers():
+    """Under a REAL Streamlit runtime the script thread owns the context (so
+    ``st.cache_resource`` / ``st.session_state`` are resolved there), the read
+    workers own NONE — and they still produce the identical view model.
+
+    This is the production-shape proof that the repair does not depend on
+    attaching Streamlit's private script-run context to custom threads.
+    """
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_string(_APPERTEST_SCRIPT, default_timeout=300).run()
+    assert not app.exception.values, app.exception.values
+    state = app.session_state
+    # The script thread resolves the Streamlit-owned resources ...
+    assert state["submitter_has_ctx"] and all(state["submitter_has_ctx"])
+    # ... and the workers carry no context at all, yet every read ran.
+    workers = state["worker_ctx"]
+    assert workers, "the build must really issue its reads on worker threads"
+    assert all(not has_ctx for _name, has_ctx in workers), workers
+    assert all(name.startswith(_STREAMLIT_WORKER_PREFIX) for name, _ctx in workers)
+    assert state["shipments"] > 0
+    assert state["parity_same"] is True and state["version_same"] is True

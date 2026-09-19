@@ -697,14 +697,20 @@ def timeline_rows(rows: Any) -> list[dict[str, Any]]:
     return out
 
 
-def timeline_projection(shipment_id: str, limit: int = 30) -> list[dict[str, Any]]:
-    """Timeline for ONE shipment (single read) — the standalone/fallback path."""
-    from core.database import load_audit_logs
+def timeline_projection(shipment_id: str, limit: int = 30, *, db: Any = None) -> list[dict[str, Any]]:
+    """Timeline for ONE shipment (single read) — the standalone/fallback path.
 
-    return timeline_rows(load_audit_logs("shipment", shipment_id, limit=limit))
+    ``db`` is the optional explicit database handle a STREAMLIT-FREE read worker
+    was handed (see ``views.logi_view_model._read_concurrently``); the default
+    keeps the canonical connection-resolution path for every standalone caller.
+    """
+    from core.database import _UNSET_DB, load_audit_logs
+
+    return timeline_rows(load_audit_logs("shipment", shipment_id, limit=limit,
+                                         db=_UNSET_DB if db is None else db))
 
 
-def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[dict[str, Any]]]:
+def timelines_projection(shipment_ids: Any, limit: int = 30, *, db: Any = None) -> dict[str, list[dict[str, Any]]]:
     """Timelines for MANY shipments in ONE bounded audit read.
 
     PERFORMANCE REPAIR: the component build path used to call
@@ -714,10 +720,11 @@ def timelines_projection(shipment_ids: Any, limit: int = 30) -> dict[str, list[d
     applies the same "newest first, at most ``limit`` entries" rule per
     shipment. No audit writer, schema or entry is changed.
     """
-    from core.database import load_audit_logs_bulk
+    from core.database import _UNSET_DB, load_audit_logs_bulk
 
     ids = [text(item) for item in (shipment_ids or [])]
-    grouped = load_audit_logs_bulk("shipment", [sid for sid in ids if sid], limit_per_entity=limit)
+    grouped = load_audit_logs_bulk("shipment", [sid for sid in ids if sid], limit_per_entity=limit,
+                                   db=_UNSET_DB if db is None else db)
     return {sid: timeline_rows(rows) for sid, rows in grouped.items()}
 
 
@@ -1117,7 +1124,7 @@ def docgen_documents_by_shipment(
     return grouped
 
 
-def attachments_by_shipment() -> dict[str, list[dict[str, Any]]]:
+def attachments_by_shipment(*, db: Any = None) -> dict[str, list[dict[str, Any]]]:
     """Attachment METADATA for ALL shipments, read ONCE and grouped.
 
     Same performance repair as ``docgen_documents_by_shipment``: the canonical
@@ -1125,10 +1132,10 @@ def attachments_by_shipment() -> dict[str, list[dict[str, Any]]]:
     instead of once per projected row. Google Drive holds the bytes; only the
     bounded metadata described in ``core.shipment_attachments`` is grouped here.
     """
-    from core.database import load_shipment_attachments
+    from core.database import _UNSET_DB, load_shipment_attachments
 
     try:
-        records = load_shipment_attachments() or {}
+        records = load_shipment_attachments(db=_UNSET_DB if db is None else db) or {}
     except Exception:  # noqa: BLE001 - an attachment read failure must not blank the desk
         return {}
     grouped: dict[str, list[dict[str, Any]]] = {}
