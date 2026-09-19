@@ -1,24 +1,27 @@
 // ============================================================================
-// LOGI_TRANSLATION_WORKSPACE_01 — /dich-thuat (Dịch thuật).
+// LOGI_TRANSLATION_LOGISTICS_DEMO_PARITY_01 — /dich-thuat (Dịch thuật).
 //
-// PARTIAL_BACKED workspace over the EXISTING canonical translation capability:
+// Demo-look parity with the logistics-demo Translation page (centered language
+// direction, LEFT source / RIGHT result workspace, full-width DỊCH NGAY, quick
+// business glossary) over the EXISTING canonical REAL translation capability:
 //   core/deepl_translation.py (DeepL V2 client) → views/translation.py
 //   → ONE bounded "translate_text" event → the ONE Python dispatcher
 //   → session readback → the bounded "translation" view-model field → here.
 //
-// No mock translation is ever rendered: the result area shows ONLY text the
-// provider actually returned, VERBATIM (line breaks, numbers, HS codes,
-// shipment IDs and invoice references are never reformatted or "tidied").
-// Language options come from the backend's own supported sets, and an
-// unconfigured deployment shows an honest "chưa được cấu hình" state instead of
-// a fake translation. Donor UI patterns only — no new design system, router,
-// store, API or worker.
+// The demo's fake/local dictionary engine is NOT imported: the BẢN DỊCH area
+// shows ONLY text the provider actually returned, VERBATIM (line breaks,
+// numbers, HS codes, shipment IDs and invoice references are never
+// reformatted). Language options come from the backend's own supported sets;
+// unconfigured / RBAC-denied / provider-error deployments show honest states
+// instead of a fake translation. Donor UI patterns only — no new design
+// system, router, store, API or worker.
 // ============================================================================
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   ArrowLeftRight,
+  BookOpenText,
   Check,
   Copy,
   Eraser,
@@ -27,7 +30,7 @@ import {
   Loader2,
   ShieldAlert,
 } from "lucide-react";
-import { GhostBtn, PrimaryBtn, SectionTitle, inputCls } from "../components/ui";
+import { PrimaryBtn } from "../components/ui";
 import { dispatchLogiEvent } from "../lib/dispatcher";
 import { UNKNOWN, cx } from "../lib/format";
 import {
@@ -50,50 +53,92 @@ function intentKey(text: string, sourceLang: string, targetLang: string): string
 }
 
 /**
- * LOGI_TRANSLATION_RUNTIME_UI_PARITY_01 — the useful logi-good quick chips.
- * A click fills the SOURCE text only (exactly like typing the phrase); it
- * NEVER dispatches a translation and NEVER fabricates a translated output —
- * the BẢN DỊCH area only ever shows what the real provider returned.
+ * Quick sample chips — Trường Thành logistics sentences. A click fills the
+ * SOURCE text only (exactly like typing the phrase); it NEVER dispatches a
+ * translation and NEVER fabricates a translated output.
  */
-const QUICK_PHRASES: ReadonlyArray<{ zh: string; hint: string }> = [
-  { zh: "装箱单", hint: "Phiếu đóng gói (Packing List)" },
-  { zh: "商业发票", hint: "Hóa đơn thương mại (Commercial Invoice)" },
-  { zh: "提单", hint: "Vận đơn (Bill of Lading)" },
-  { zh: "原产地证", hint: "Giấy chứng nhận xuất xứ (C/O)" },
+const QUICK_PHRASES_VI: ReadonlyArray<string> = [
+  "Vui lòng gửi hóa đơn và phiếu đóng gói trước khi xe lấy hàng.",
+  "Xe dự kiến tới nhà máy lúc 8 giờ sáng ngày mai.",
+  "Vui lòng gửi kích thước, số kiện và tổng trọng lượng hàng.",
+  "Vui lòng gửi thông tin lái xe và biển số xe.",
+  "Hàng sẽ làm thủ tục tại cửa khẩu.",
 ];
 
-function LanguageSelect({
-  label,
+/** Equivalent quick set when the source language is Chinese. Source-only too. */
+const QUICK_PHRASES_ZH: ReadonlyArray<string> = [
+  "请在车辆提货前发送发票和装箱单。",
+  "车辆预计明天早上8点到达工厂。",
+  "请发送货物的尺寸、件数和总重量。",
+  "请发送司机信息和车牌号。",
+  "货物将在口岸办理手续。",
+];
+
+/**
+ * TỪ ĐIỂN NGHIỆP VỤ NHANH — a REFERENCE glossary only. It never generates
+ * translations, never overrides DeepL, and never acts as a provider fallback.
+ */
+const QUICK_GLOSSARY: ReadonlyArray<{ vi: string; zh: string }> = [
+  { vi: "xin chào", zh: "你好" },
+  { vi: "hóa đơn", zh: "发票" },
+  { vi: "phiếu đóng gói", zh: "装箱单" },
+  { vi: "hợp đồng", zh: "合同" },
+  { vi: "thông quan", zh: "清关" },
+  { vi: "cửa khẩu", zh: "口岸" },
+  { vi: "lấy hàng", zh: "提货" },
+  { vi: "giao hàng", zh: "交货" },
+  { vi: "thanh toán", zh: "付款" },
+  { vi: "tạm ứng", zh: "预付款" },
+  { vi: "xe tải", zh: "卡车" },
+  { vi: "nhà máy", zh: "工厂" },
+  { vi: "cảm ơn", zh: "谢谢" },
+  { vi: "vui lòng gửi", zh: "请发送" },
+  { vi: "kiểm tra hàng", zh: "验货" },
+  { vi: "kích thước", zh: "尺寸" },
+  { vi: "số kiện", zh: "件数" },
+  { vi: "tổng trọng lượng", zh: "总重量" },
+  { vi: "biển số xe", zh: "车牌号" },
+  { vi: "lái xe", zh: "司机" },
+];
+
+/** Contextual source-panel caption, derived from the chosen source language. */
+function sourceCaption(sourceLang: string): string {
+  switch (sourceLang) {
+    case "VI":
+      return "Nhập tiếng Việt";
+    case "ZH":
+      return "Nhập tiếng Trung";
+    case "EN":
+      return "Nhập tiếng Anh";
+    default:
+      return "Văn bản gốc";
+  }
+}
+
+function DirectionSelect({
   value,
   options,
   onChange,
-  disabled,
+  ariaLabel,
 }: {
-  label: string;
   value: string;
   options: TranslationLanguage[];
   onChange: (code: string) => void;
-  disabled?: boolean;
+  ariaLabel: string;
 }) {
   return (
-    <label className="block flex-1 min-w-0">
-      <span className="block text-[14px] font-semibold text-slate-700 mb-1.5">
-        {label}
-      </span>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className={cx(inputCls(), "disabled:opacity-50")}
-        aria-label={label}
-      >
-        {options.map((option) => (
-          <option key={option.code} value={option.code}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
+      className="min-w-0 flex-1 sm:flex-none sm:w-[220px] rounded-xl border-2 border-slate-200 bg-white px-3 text-[15px] font-bold text-[#0f2a4a] min-h-[44px] py-2 focus:border-[#1e5aa8] outline-none"
+    >
+      {options.map((option) => (
+        <option key={option.code} value={option.code}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -127,6 +172,9 @@ export default function TranslationWorkspace() {
   const canTranslate =
     configured && allowed && text.trim().length > 0 && !oversize && !pending;
   const translated = result?.status === "translated" ? result.text ?? "" : "";
+  const failureMessage =
+    result && result.status !== "translated" ? result.error : null;
+  const quickPhrases = sourceLang === "ZH" ? QUICK_PHRASES_ZH : QUICK_PHRASES_VI;
 
   const submit = () => {
     if (!canTranslate) return;
@@ -164,23 +212,31 @@ export default function TranslationWorkspace() {
     }
   };
 
+  const fillSource = (phrase: string) => {
+    // Source-only: no dispatch, no fabricated output — exactly like typing.
+    setText(phrase);
+    setSubmitted(null);
+    setCopyState("idle");
+  };
+
   const sourceOptions = capability?.sourceLanguages ?? [];
   const targetOptions = capability?.targetLanguages ?? [];
-  const failureMessage =
-    result && result.status !== "translated" ? result.error : null;
 
   return (
     <div className="space-y-4 max-w-[1100px]">
-      {/* Workspace card --------------------------------------------------- */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-        <SectionTitle
-          icon={<Languages size={18} />}
-          title="Dịch thuật"
-          sub={`Dịch văn bản nghiệp vụ logistics qua ${
-            capability?.provider ?? "nhà cung cấp dịch"
-          } — nhập hoặc dán nội dung, chọn cặp ngôn ngữ rồi bấm Dịch.`}
-        />
+      {/* Page header (demo parity) ---------------------------------------- */}
+      <div>
+        <h1 className="text-[20px] md:text-[22px] font-extrabold text-[#0f2a4a] leading-tight">
+          Dịch thuật
+        </h1>
+        <p className="text-[13.5px] text-slate-500 mt-1">
+          Công cụ dịch nhanh các cụm từ nghiệp vụ thường dùng khi trao đổi với
+          nhà máy và đại lý Trung Quốc.
+        </p>
+      </div>
 
+      {/* Main workspace card ---------------------------------------------- */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         {/* Honest configuration state — an unconfigured deployment never
             pretends to translate. */}
         {capability && !configured && (
@@ -202,211 +258,263 @@ export default function TranslationWorkspace() {
           </div>
         )}
 
-        {/* Privacy boundary — the text really is sent to an external provider. */}
-        {capability?.externalProvider && (
-          <div className="mb-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3 flex items-start gap-2.5 text-[13px] text-slate-600">
-            <Info size={16} className="shrink-0 mt-0.5" />
-            <p>{capability.privacyNotice}</p>
-          </div>
-        )}
-
-        {/* Direction row: source ⇄ target (mobile stacks, no overflow) */}
-        <div className="flex flex-col md:flex-row md:items-end gap-2.5">
-          <LanguageSelect
-            label="Ngôn ngữ nguồn"
+        {/* Centered language direction: source ⇄ target ------------------- */}
+        <div
+          className="flex items-center justify-center gap-2 sm:gap-3"
+          data-testid="language-direction"
+        >
+          <DirectionSelect
+            ariaLabel="Ngôn ngữ nguồn"
             value={sourceLang}
             options={sourceOptions}
             onChange={setSourceLang}
           />
-          <div className="md:pb-1">
-            <button
-              type="button"
-              onClick={swap}
-              aria-label="Đổi chiều dịch"
-              title="Đổi chiều dịch"
-              className="btn-press touch-target w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14.5px] px-4 min-h-[48px] hover:bg-slate-50"
-            >
-              <ArrowLeftRight size={17} /> Đổi chiều
-            </button>
-          </div>
-          <LanguageSelect
-            label="Ngôn ngữ đích"
+          <button
+            type="button"
+            onClick={swap}
+            aria-label="Đổi chiều dịch"
+            title="Đổi chiều dịch"
+            className="btn-press shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-slate-100 text-[#0f2a4a] grid place-items-center hover:bg-slate-200"
+          >
+            <ArrowLeftRight size={18} />
+          </button>
+          <DirectionSelect
+            ariaLabel="Ngôn ngữ đích"
             value={targetLang}
             options={targetOptions}
             onChange={setTargetLang}
           />
         </div>
 
-        {/* Quick document-name chips (logi-good usability): click fills the
-            SOURCE text only — no provider call, no fabricated translation. */}
+        {/* Two-column workspace: LEFT source / RIGHT result ---------------- */}
         <div
-          className="mt-3 flex flex-wrap gap-2"
-          role="group"
-          aria-label="Cụm từ nhanh"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-4"
+          data-testid="translation-workspace"
         >
-          {QUICK_PHRASES.map((phrase) => (
-            <button
-              key={phrase.zh}
-              type="button"
-              onClick={() => {
-                setText(phrase.zh);
-                setSubmitted(null);
-                setCopyState("idle");
-              }}
-              title={phrase.hint}
-              aria-label={`${phrase.zh} — ${phrase.hint}`}
-              className="btn-press touch-target inline-flex items-center rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-[14.5px] font-semibold text-[#0f2a4a] min-h-[44px] hover:bg-slate-100 hover:border-slate-300"
-            >
-              {phrase.zh}
-            </button>
-          ))}
-        </div>
-
-        {/* Source text — 16px so mobile keyboards do not zoom the page. */}
-        <label className="block mt-3">
-          <span className="block text-[14px] font-semibold text-slate-700 mb-1.5">
-            Văn bản gốc
-          </span>
-          <textarea
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setSubmitted(null);
-            }}
-            placeholder="Dán nội dung cần dịch: email khách, mô tả hàng hóa, chứng từ…"
-            aria-label="Văn bản gốc"
-            className="w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 py-3 text-[16px] leading-relaxed min-h-[190px] focus:border-[#1e5aa8] outline-none resize-y"
-          />
-        </label>
-        <p
-          className={cx(
-            "mt-1 text-[13px]",
-            oversize ? "text-red-700 font-semibold" : "text-slate-500"
-          )}
-        >
-          Kích thước: {bytes.toLocaleString("vi-VN")} /{" "}
-          {maxBytes.toLocaleString("vi-VN")} bytes
-          {oversize && " — nội dung quá lớn cho một yêu cầu, hãy rút gọn."}
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
-          <PrimaryBtn onClick={submit} disabled={!canTranslate} className="flex-1">
-            {pending ? (
-              <>
-                <Loader2 size={17} className="animate-spin" /> Đang dịch…
-              </>
-            ) : (
-              <>
-                <Languages size={17} /> Dịch
-              </>
-            )}
-          </PrimaryBtn>
-          <GhostBtn onClick={clear} className="sm:w-auto">
-            <Eraser size={17} /> Xóa nội dung nhập
-          </GhostBtn>
-        </div>
-      </div>
-
-      {/* Loading state ---------------------------------------------------- */}
-      {pending && (
-        <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center">
-          <Loader2 size={24} className="mx-auto animate-spin text-[#1e5aa8]" />
-          <p className="text-[15px] font-semibold text-slate-500 mt-2">
-            Đang dịch qua {capability?.provider ?? "nhà cung cấp dịch"}…
-          </p>
-        </div>
-      )}
-
-      {/* Error / refusal state — the provider's own safe message. */}
-      {!pending && failureMessage && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-2.5">
-          <AlertTriangle size={18} className="shrink-0 mt-0.5 text-red-600" />
-          <div>
-            <p className="text-[15px] font-extrabold text-red-800">
-              {result?.status === "config_required"
-                ? "Translation service chưa được cấu hình"
-                : "Chưa dịch được nội dung này"}
-            </p>
-            <p className="text-[14px] text-red-700 mt-0.5">{failureMessage}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Result — ONLY a real provider answer, rendered verbatim. */}
-      {!pending && result?.status === "translated" && (
-        <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 className="text-[16px] font-extrabold text-[#0f2a4a]">
-              Bản dịch
-            </h3>
-            <div className="flex flex-wrap gap-2">
+          {/* LEFT — what the operator needs translated -------------------- */}
+          <div data-testid="source-panel" className="min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="text-[12.5px] font-extrabold uppercase tracking-wide text-slate-500">
+                {sourceCaption(sourceLang)}
+              </span>
               <button
                 type="button"
-                onClick={copyResult}
-                className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 text-[#0f2a4a] font-bold text-[14px] px-4 min-h-[44px] hover:bg-slate-50"
+                onClick={clear}
+                aria-label="Xóa nội dung nhập"
+                className="btn-press inline-flex items-center gap-1.5 rounded-lg px-2.5 min-h-[44px] text-[13.5px] font-bold text-slate-500 hover:bg-slate-100"
               >
-                {copyState === "done" ? (
-                  <>
-                    <Check size={16} className="text-emerald-600" /> Đã sao chép
-                  </>
-                ) : (
-                  <>
-                    <Copy size={16} /> Sao chép bản dịch
-                  </>
-                )}
+                <Eraser size={15} /> Xóa
               </button>
+            </div>
+            <textarea
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                setSubmitted(null);
+              }}
+              placeholder="Nhập văn bản cần dịch…"
+              aria-label="Văn bản gốc"
+              className="w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 py-3 text-[16px] leading-relaxed min-h-[170px] focus:border-[#1e5aa8] outline-none resize-y"
+            />
+            <p
+              className={cx(
+                "mt-1 text-[13px]",
+                oversize ? "text-red-700 font-semibold" : "text-slate-500"
+              )}
+            >
+              Kích thước: {bytes.toLocaleString("vi-VN")} /{" "}
+              {maxBytes.toLocaleString("vi-VN")} bytes
+              {oversize && " — nội dung quá lớn cho một yêu cầu, hãy rút gọn."}
+            </p>
+
+            {/* Quick sample chips — fill the SOURCE text only. */}
+            <div
+              className="mt-2.5 flex flex-wrap gap-2"
+              role="group"
+              aria-label="Cụm từ nhanh"
+            >
+              {quickPhrases.map((phrase) => (
+                <button
+                  key={phrase}
+                  type="button"
+                  onClick={() => fillSource(phrase)}
+                  title={phrase}
+                  aria-label={phrase}
+                  data-testid="quick-chip"
+                  className="btn-press inline-flex items-center rounded-xl border-2 border-slate-200 bg-slate-50 px-3 text-[13.5px] font-semibold text-[#0f2a4a] min-h-[44px] max-w-full hover:bg-slate-100 hover:border-slate-300"
+                >
+                  <span className="truncate">{phrase}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {copyState === "failed" && (
-            <p className="mb-2 text-[13px] text-amber-800 font-semibold">
-              Trình duyệt không cho phép sao chép tự động — hãy bôi đen bản dịch
-              rồi sao chép thủ công.
-            </p>
-          )}
+          {/* RIGHT — the translation (always in place) -------------------- */}
+          <div data-testid="result-panel" className="min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1.5 min-h-[44px]">
+              <span className="text-[12.5px] font-extrabold uppercase tracking-wide text-slate-500">
+                Bản dịch
+              </span>
+              {translated && (
+                <button
+                  type="button"
+                  onClick={copyResult}
+                  className="btn-press inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 min-h-[44px] text-[13.5px] font-bold text-[#0f2a4a] hover:bg-slate-50"
+                >
+                  {copyState === "done" ? (
+                    <>
+                      <Check size={15} className="text-emerald-600" /> Đã sao chép
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={15} /> Sao chép bản dịch
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
 
-          {/* readOnly textarea: keeps the provider's line breaks and lets the
-              text be selected/scrolled on a phone. Nothing is reformatted. */}
-          <textarea
-            readOnly
-            value={translated}
-            aria-label="Bản dịch"
-            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 py-3 text-[16px] leading-relaxed min-h-[190px] resize-y whitespace-pre-wrap"
-          />
-          <p className="text-[13px] text-slate-500 mt-2">
-            Ngôn ngữ nguồn phát hiện:{" "}
-            <b>{result.detectedSourceLanguage ?? UNKNOWN}</b> · Ký tự tính phí:{" "}
-            <b>
-              {result.billedCharacters === null
-                ? UNKNOWN
-                : result.billedCharacters.toLocaleString("vi-VN")}
-            </b>{" "}
-            · <b>{result.apiLabel ?? UNKNOWN}</b>
-          </p>
-          {request && (
-            <p className="text-[12.5px] text-slate-400 mt-1">
-              Yêu cầu: {request.sourceLang} → {request.targetLang} · bản dịch giữ
-              nguyên xuống dòng, số, mã HS và mã chứng từ như nhà cung cấp trả về.
-            </p>
-          )}
+            {copyState === "failed" && (
+              <p className="mb-2 text-[13px] text-amber-800 font-semibold">
+                Trình duyệt không cho phép sao chép tự động — hãy bôi đen bản dịch
+                rồi sao chép thủ công.
+              </p>
+            )}
+
+            {/* Pending: spinner stays INSIDE the result region. */}
+            {pending && (
+              <div
+                data-testid="result-pending"
+                className="w-full rounded-xl border-2 border-slate-200 bg-white min-h-[170px] grid place-items-center px-3.5 py-3"
+                role="status"
+                aria-label="Đang dịch"
+              >
+                <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-slate-500">
+                  <Loader2 size={20} className="animate-spin text-[#1e5aa8]" />
+                  Đang dịch…
+                </span>
+              </div>
+            )}
+
+            {/* Translated: ONLY a real provider answer, rendered verbatim. */}
+            {!pending && result?.status === "translated" && (
+              <div data-testid="result-translated">
+                {/* readOnly textarea: keeps the provider's line breaks and lets
+                    the text be selected/scrolled on a phone. Nothing is
+                    reformatted. */}
+                <textarea
+                  readOnly
+                  value={translated}
+                  aria-label="Bản dịch"
+                  className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 py-3 text-[16px] leading-relaxed min-h-[170px] resize-y whitespace-pre-wrap"
+                />
+                <p className="text-[13px] text-slate-500 mt-2">
+                  Ngôn ngữ nguồn phát hiện:{" "}
+                  <b>{result.detectedSourceLanguage ?? UNKNOWN}</b> · Ký tự tính phí:{" "}
+                  <b>
+                    {result.billedCharacters === null
+                      ? UNKNOWN
+                      : result.billedCharacters.toLocaleString("vi-VN")}
+                  </b>{" "}
+                  · <b>{result.apiLabel ?? UNKNOWN}</b>
+                </p>
+                {request && (
+                  <p className="text-[12.5px] text-slate-400 mt-1">
+                    Yêu cầu: {request.sourceLang} → {request.targetLang} · bản dịch giữ
+                    nguyên xuống dòng, số, mã HS và mã chứng từ như nhà cung cấp trả về.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Error / refusal — the provider's own safe message, in place. */}
+            {!pending && failureMessage && (
+              <div
+                data-testid="translation-error"
+                className="w-full rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-2.5 min-h-[170px]"
+              >
+                <AlertTriangle size={18} className="shrink-0 mt-0.5 text-red-600" />
+                <div>
+                  <p className="text-[15px] font-extrabold text-red-800">
+                    {result?.status === "config_required"
+                      ? "Translation service chưa được cấu hình"
+                      : "Chưa dịch được nội dung này"}
+                  </p>
+                  <p className="text-[14px] text-red-700 mt-0.5">{failureMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Idle — honest placeholder, never a fabricated translation. */}
+            {!pending && !result && (
+              <div
+                data-testid="result-placeholder"
+                className="w-full rounded-xl border-2 border-dashed border-slate-300 bg-white min-h-[170px] grid place-items-center px-3.5 py-3 text-[14.5px] text-slate-400"
+              >
+                — Bản dịch sẽ hiển thị tại đây —
+              </div>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Idle state — honest, never a fabricated translation. */}
-      {!pending && !result && (
-        <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
-          <span className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 grid place-items-center">
-            <Languages size={26} />
+        {/* ONE large full-width primary action ---------------------------- */}
+        <PrimaryBtn
+          onClick={submit}
+          disabled={!canTranslate}
+          className="w-full mt-4"
+          testId="translate-action"
+        >
+          {pending ? (
+            <>
+              <Loader2 size={18} className="animate-spin" /> ĐANG DỊCH…
+            </>
+          ) : (
+            <>
+              <Languages size={18} /> DỊCH NGAY
+            </>
+          )}
+        </PrimaryBtn>
+
+        {/* Privacy boundary — the text really is sent to an external provider. */}
+        {capability?.externalProvider && (
+          <div className="mt-3 flex items-start gap-2 text-[12.5px] text-slate-500">
+            <Info size={14} className="shrink-0 mt-0.5" />
+            <p>{capability.privacyNotice}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Quick business glossary — reference only -------------------------- */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-8 h-8 rounded-xl bg-[#0f2a4a] text-white grid place-items-center shrink-0">
+            <BookOpenText size={17} />
           </span>
-          <h3 className="text-[16px] font-extrabold text-[#0f2a4a] mt-3">
-            Chưa có bản dịch
-          </h3>
-          <p className="text-[14px] text-slate-500 mt-1">
-            Nhập văn bản, chọn cặp ngôn ngữ rồi bấm <b>Dịch</b>. Hệ thống không
-            hiển thị kết quả mẫu thay thế.
-          </p>
+          <h2 className="text-[15.5px] font-extrabold text-[#0f2a4a]">
+            Từ điển nghiệp vụ nhanh
+          </h2>
         </div>
-      )}
+        <div
+          className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+          data-testid="glossary"
+        >
+          {QUICK_GLOSSARY.map((entry) => (
+            <div
+              key={entry.vi}
+              data-testid="glossary-item"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 min-w-0"
+            >
+              <p className="text-[13.5px] font-bold text-[#0f2a4a] truncate">
+                {entry.vi}
+              </p>
+              <p className="text-[13.5px] text-slate-600 truncate">{entry.zh}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[12.5px] text-slate-400 mt-2.5">
+          Bảng tra cứu nhanh — bản dịch vẫn do {capability?.provider ?? "nhà cung cấp dịch"} trả về.
+        </p>
+      </div>
     </div>
   );
 }
