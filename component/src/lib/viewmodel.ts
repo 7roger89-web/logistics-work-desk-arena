@@ -414,6 +414,111 @@ export interface Tracking {
   milestones: TrackingMilestone[];
 }
 
+// ---------------------------------------------------------------------------
+// LOGI_SHIPMENT_EXECUTION_PROFILE_01 (issue #76)
+//
+// The derived execution profile of ONE shipment: Incoterms code + VERSION +
+// named place, the operator-confirmed Trường Thành service scope, the mode /
+// load model / equipment / truck facts, the DERIVED Incoterm insurance
+// obligation kept distinct from the PERSISTED actual insurance state, and the
+// operational stages those facts make relevant.
+//
+// Everything here is produced by core/shipment_execution_profile.py on the
+// backend. The browser never derives business truth of its own: it renders this
+// projection and applies the (generated) catalog for conditional form behaviour.
+// ---------------------------------------------------------------------------
+
+export interface ExecutionProfileIssue {
+  code: string;
+  message: string;
+}
+
+export interface ExecutionProfileStage {
+  code: string;
+  label: string;
+  /** INCOTERM_EXPECTATION | SERVICE_SCOPE | MODE_REQUIREMENT | LOAD_MODEL_REQUIREMENT | PERSISTED_FACT_DEPENDENCY */
+  reason: string;
+  reasonLabel: string;
+  detail: string;
+  done: boolean;
+  /** What still has to be recorded for this stage ("" = nothing). */
+  missing: string;
+  /** A CONFIRMED contradiction between two persisted truths (not an open gap). */
+  mismatch: boolean;
+}
+
+export interface ExecutionProfileInsurance {
+  /** SELLER_REQUIRED | NOT_REQUIRED_BY_INCOTERM | "" — DERIVED, read-only. */
+  obligation: string;
+  clause: string;
+  clauseLabel: string;
+  note: string;
+  /** UNKNOWN | NO | YES — PERSISTED, operator-confirmed. */
+  actualStatus: string;
+  actualStatusLabel: string;
+  actualStatusStated: boolean;
+  evidence: {
+    arrangedBy: string;
+    insurerName: string;
+    policyNo: string;
+    coverageNote: string;
+  };
+}
+
+export interface ExecutionProfileContainerUnit {
+  id: string;
+  number: string;
+  typeSize: string;
+  sealNo: string;
+  legMode: string;
+}
+
+export interface ExecutionProfileNextAction {
+  code: string;
+  label: string;
+  detail: string;
+  reason: string;
+  reasonLabel: string;
+  tone: string;
+}
+
+export interface ExecutionProfile {
+  mode: string;
+  storedMode: string;
+  modeLabel: string;
+  incoterm: string;
+  incotermVersion: string;
+  incotermVersionLabel: string;
+  incotermNamedPlace: string;
+  /** "CONFIRMED" (operator-stated) | "CONTRACT_LABEL" (read from the term) | "". */
+  incotermPlaceSource: string;
+  incotermRawLabel: string;
+  incotermAliasNote: string;
+  incotermRuleScope: string;
+  loadModel: string;
+  loadModelLabel: string;
+  serviceScope: string[];
+  serviceScopeLabels: string[];
+  serviceScopeSummary: string;
+  serviceScopeConfirmed: boolean;
+  insurance: ExecutionProfileInsurance;
+  truck: { pickupTruckType: string; unitTypes: string[]; known: boolean; preset: string; presetLabel: string };
+  equipment: {
+    units: ExecutionProfileContainerUnit[];
+    count: number;
+    presets: { code: string; count: number }[];
+    otherCount: number;
+    known: boolean;
+  };
+  issues: ExecutionProfileIssue[];
+  /** PROFILE_READY | PROFILE_INCOMPLETE | CONFIG_CHECK */
+  state: string;
+  stateLabel: string;
+  stages: ExecutionProfileStage[];
+  nextAction: ExecutionProfileNextAction;
+  summaryLines: string[];
+}
+
 export interface Shipment {
   id: string;
   customer: string;
@@ -441,6 +546,8 @@ export interface Shipment {
   mode?: string;
   incoterm?: string;
   createdAt?: string;
+  /** LOGI_SHIPMENT_EXECUTION_PROFILE_01 — derived profile (absent on legacy payloads). */
+  executionProfile?: ExecutionProfile;
   /** Ordered canonical legs, or a legacy read projection until explicitly saved. */
   transportLegs: TransportLeg[];
   transportLegsStructured: boolean;

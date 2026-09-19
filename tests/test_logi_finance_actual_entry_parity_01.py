@@ -152,7 +152,24 @@ def test_service_catalog_is_not_hardcoded_in_react():
             assert value not in literals, f"catalog {field} '{value}' is hard-coded in React"
     assert "GETFLY_SERVICES_LIST" not in code
     # And the shipped TypeScript never carries a list of services at all.
-    assert not _re.search(r"\[\s*\{[^\]]{200,}?code[^\]]*\]", code), "React must not define its own catalog"
+    #
+    # The ONE exemption is named explicitly and is unrelated to Finance: the
+    # GENERATED execution-profile catalog (LOGI_SHIPMENT_EXECUTION_PROFILE_01)
+    # is a byte-for-byte projection of core.shipment_execution_profile's rule
+    # matrices, with its own drift guard in the focused test suite. It is NOT a
+    # "skip every generated file" rule — every generated file (this one
+    # included) still passes the FINANCE literal checks above/below, and a
+    # second generated file would be inspected here unless it is justified the
+    # same way, by name.
+    UNRELATED_GENERATED_CATALOG = "executionProfileCatalog.ts"
+    code_without_rule_catalogs = "\n".join(
+        text for path, text in
+        ((path, _re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=_re.S))
+         for path in sources)
+        if path.name != UNRELATED_GENERATED_CATALOG
+    )
+    assert not _re.search(r"\[\s*\{[^\]]{200,}?code[^\]]*\]",
+                          code_without_rule_catalogs), "React must not define its own catalog"
     # And the contract the component is allowed to rely on does exist.
     assert "financeServiceCatalog" in code
 
