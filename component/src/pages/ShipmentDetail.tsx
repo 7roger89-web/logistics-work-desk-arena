@@ -684,11 +684,18 @@ export default function ShipmentDetail() {
 
   // `missingDocs` is already the not-ok subset of `docs`; counting both
   // double-counted the same facts (chip said 8 while the box listed 4).
-  // The document checklist emits real Logistics fact names; route each to the
-  // tab that actually owns that field (Phase B labels, not Phase A wording).
+  // LOGI_SCOPE_AWARE_MISSING_INFO_01 — the four operational facts
+  // (Số tờ khai nhập khẩu, Đã thông quan, Xe giao VN + tài xế, Xác nhận đã giao hàng)
+  // are NOT file attachments and must NOT route to chung-tu with "Tải file ... lên".
+  // Truthful routing:
+  // - Số tờ khai -> nhap#fld-tk
+  // - Xe giao VN + tài xế -> van-tai (existing transport editor)
+  // - Xác nhận đã giao hàng -> nhap + existing delivery-confirm flow
+  // - Đã thông quan -> nhap existing import surface
   const missingTarget = (m: string): string => {
-    if (/xe giao|xe TQ|biển số|packing|container|lấy hàng/i.test(m)) return "van-tai";
+    if (/xe giao/i.test(m)) return "van-tai";
     if (/tờ khai|thông quan|giao hàng/i.test(m)) return "nhap";
+    if (/xe TQ|biển số|packing|container|lấy hàng/i.test(m)) return "van-tai";
     if (/chứng từ|PXK|HDMB|PL$/i.test(m)) return "chung-tu";
     return "nhap";
   };
@@ -848,7 +855,52 @@ export default function ShipmentDetail() {
           <p className="font-extrabold text-[15px] text-red-800 flex items-center gap-2 mb-2.5"><CircleAlert size={18} /> Đang thiếu {s.missingDocs.length} thông tin — bấm để bổ sung ngay:</p>
           <div className="grid gap-2 md:grid-cols-2">
             {s.missingDocs.map((m) => (
-              <MissingBox key={m} what={m} actionLabel="Bổ sung ngay" onAction={() => { setSp({ tab: missingTarget(m) }); setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); }} />
+              <MissingBox
+                key={m}
+                what={m}
+                actionLabel="Bổ sung ngay"
+                onAction={() => {
+                  // LOGI_SCOPE_AWARE_MISSING_INFO_01 — truthful routing per fact
+                  if (/xe giao/i.test(m)) {
+                    // Xe giao VN + tài xế -> van-tai existing transport editor
+                    setSp({ tab: "van-tai" });
+                    setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+                  } else if (m.includes("tờ khai")) {
+                    // Số tờ khai -> nhap#fld-tk
+                    setSp({ tab: "nhap" });
+                    setTimeout(() => {
+                      const el = document.getElementById("fld-tk");
+                      if (el) {
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        (el as HTMLElement).focus({ preventScroll: true });
+                      } else {
+                        document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 150);
+                  } else if (/xác nhận.*giao/i.test(m) || m.toLowerCase().includes("đã giao")) {
+                    // Xác nhận đã giao hàng -> existing delivery-confirm flow
+                    setSp({ tab: "nhap" });
+                    setTimeout(() => {
+                      if (!s.importInfo.delivered) {
+                        setShowDeliver(true);
+                      } else {
+                        document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 150);
+                  } else if (/thông quan/i.test(m)) {
+                    // Đã thông quan -> nhap existing import surface, not fld-tk
+                    setSp({ tab: "nhap" });
+                    setTimeout(() => {
+                      const sec = document.getElementById("import-customs-section") || document.getElementById("missing-anchor");
+                      sec?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 150);
+                  } else {
+                    const targetTab = missingTarget(m);
+                    setSp({ tab: targetTab });
+                    setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+                  }
+                }}
+              />
             ))}
           </div>
         </div>
@@ -883,28 +935,63 @@ export default function ShipmentDetail() {
               <StateRow label="Ngày dự kiến / thực tế" value={<span>{s.exportInfo.eta || "—"} / {s.exportInfo.ata || "chưa có"}</span>} />
               <StateRow label="Trạng thái" value={<ToneBadge tone={s.exportInfo.state.includes("Đã") ? "green" : "amber"} size="sm">{s.exportInfo.state}</ToneBadge>} />
             </section>
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Checklist chứng từ xuất khẩu</h3>
-              <p className="text-[13px] text-slate-500 mb-3">Hiện trạng → thiếu gì → bấm để bổ sung. Không có cảnh báo cụt.</p>
-              <div className="space-y-2">
-                {s.docs.map((d) => (
-                  <div key={d.name} className={cx("flex items-center gap-3 rounded-xl border-2 p-3", d.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50")}>
-                    <span className={cx("w-8 h-8 rounded-full grid place-items-center font-extrabold shrink-0", d.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white")}>{d.ok ? "✓" : "!"}</span>
-                    <div className="flex-1 min-w-0"><p className="font-bold text-[14.5px]">{d.name} — {d.ok ? <span className="text-emerald-700">✅ Đủ</span> : <span className="text-amber-800">Thiếu</span>}</p>{d.note && <p className="text-[13px] text-slate-600">{d.note}</p>}</div>
-                    {!d.ok && <button onClick={() => { setSp({ tab: "chung-tu" }); toast("Mở tab Chứng từ", "Tải file " + d.name + " lên hoặc ghi chú lý do thiếu.", "blue"); }} className="btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13.5px] font-bold px-3 min-h-[44px]"><PenLine size={14} /> Bổ sung</button>}
-                  </div>
-                ))}
-              </div>
-            </section>
+
           </div>
         </div>
       )}
 
       {/* ============ TAB: IMPORT ============ */}
       {tab === "nhap" && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4" id="missing-anchor">
+        <div className="space-y-4" id="missing-anchor">
+          {/* LOGI_SCOPE_AWARE_MISSING_INFO_01 — scope-relevant checklist moved from lay-hang / Xuất khẩu (misleading heading) to the correct existing Nhập khẩu & Giao hàng surface. Only relevant rows per confirmed service scope. Truthful routing per fact. */}
+          {s.docs.length > 0 && (
+            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="import-delivery-checklist">
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Checklist nhập khẩu & giao hàng</h3>
+              <p className="text-[13px] text-slate-500 mb-3">Thông tin vận hành cần bổ sung theo phạm vi Trường Thành đã xác nhận.</p>
+              <div className="space-y-2">
+                {s.docs.map((d) => (
+                  <div key={d.name} className={cx("flex items-center gap-3 rounded-xl border-2 p-3", d.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50")}>
+                    <span className={cx("w-8 h-8 rounded-full grid place-items-center font-extrabold shrink-0", d.ok ? "bg-emerald-600 text-white" : "bg-amber-500 text-white")}>{d.ok ? "✓" : "!"}</span>
+                    <div className="flex-1 min-w-0"><p className="font-bold text-[14.5px]">{d.name} — {d.ok ? <span className="text-emerald-700">✅ Đủ</span> : <span className="text-amber-800">Thiếu</span>}</p>{d.note && <p className="text-[13px] text-slate-600">{d.note}</p>}</div>
+                    {!d.ok && (
+                      <button
+                        onClick={() => {
+                          // Truthful action routing per operational fact
+                          if (d.name.includes("tờ khai")) {
+                            // Số tờ khai -> nhap#fld-tk
+                            document.getElementById("fld-tk")?.focus();
+                            document.getElementById("fld-tk")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          } else if (/xe giao/i.test(d.name)) {
+                            // Xe giao VN + tài xế -> van-tai existing transport editor
+                            setSp({ tab: "van-tai" });
+                          } else if (/xác nhận.*giao/i.test(d.name) || d.name.toLowerCase().includes("đã giao")) {
+                            // Xác nhận đã giao hàng -> existing delivery-confirm flow
+                            if (!s.importInfo.delivered) {
+                              setShowDeliver(true);
+                            } else {
+                              document.getElementById("import-delivery-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }
+                          } else if (/thông quan/i.test(d.name)) {
+                            // Đã thông quan -> nhap existing import surface, not fld-tk
+                            const sec = document.getElementById("import-customs-section") || document.getElementById("missing-anchor");
+                            sec?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          } else {
+                            document.getElementById("missing-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }
+                        }}
+                        className="btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13.5px] font-bold px-3 min-h-[44px]"
+                      >
+                        <PenLine size={14} /> Bổ sung
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="space-y-4">
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
+            <section id="import-customs-section" className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a]">Tờ khai & thuế nhập khẩu — {s.importInfo.borderVN}</h3>
               {!val("tk", s.importInfo.declarationNo) && <MissingBox what="số tờ khai nhập khẩu" where="Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được" actionLabel="Nhập số TK" onAction={() => document.getElementById("fld-tk")?.focus()} />}
               <div className="grid sm:grid-cols-2 gap-3">
@@ -1066,7 +1153,7 @@ export default function ShipmentDetail() {
             </section>
           </div>
 
-          <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
+          <section id="import-delivery-section" className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><Truck size={19} className="text-[#1e5aa8]" /> Xe Việt Nam & giao hàng</h3>
             {(!s.importInfo.driverVN || !s.importInfo.plateVN) && !s.importInfo.delivered && <MissingBox what="chặng xe giao VN" where="Thêm một chặng Truck riêng; không dùng lại xe lấy hàng TQ" actionLabel="Mở chặng vận chuyển" onAction={() => setSp({ tab: "van-tai" })} />}
             <div className="grid sm:grid-cols-2 gap-3">
@@ -1091,6 +1178,7 @@ export default function ShipmentDetail() {
               <SuccessBtn onClick={() => setShowDeliver(true)} className="w-full text-[17px] min-h-[56px]">✅ XÁC NHẬN ĐÃ GIAO HÀNG</SuccessBtn>
             )}
           </section>
+          </div>
         </div>
       )}
 
