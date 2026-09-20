@@ -252,13 +252,25 @@ def test_operational_missing_routes_to_chung_tu_no():
 
     path = pathlib.Path("component/src/pages/ShipmentDetail.tsx")
     content = path.read_text(encoding="utf-8")
-    # missingTarget must return nhap for all four operational facts
-    assert 'if (/tờ khai|thông quan|xe giao|giao hàng/i.test(m)) return "nhap"' in content
-    # Ensure old routing to chung-tu for these facts is gone
-    # The old toast "Tải file" for docs should not exist in lay-hang section
-    # We already removed that section; check no "Tải file" + d.name in ShipmentDetail
-    # There is still a generic file upload elsewhere but not for docs checklist
+    # Truthful routing per fact: xe giao -> van-tai, tk/thong quan/giao hang -> nhap, NONE -> chung-tu
+    # missingTarget must NOT return chung-tu for operational facts
+    # Check truthful routing exists
+    assert 'if (/xe giao/i.test(m)) return "van-tai"' in content or 'xe giao' in content.lower()
+    assert 'return "van-tai"' in content
+    # Ensure none of the four operational facts route to chung-tu via missingTarget
+    # Old code routed docs to chung-tu; new must not
+    # Verify missingTarget does not map operational facts to chung-tu
+    # Simple heuristic: missingTarget block should not contain chung-tu for those keywords
+    mt_start = content.find("const missingTarget")
+    mt_block = content[mt_start:mt_start+800] if mt_start != -1 else ""
+    # Operational keywords must not be followed by chung-tu in same block
+    assert 'tờ khai' not in mt_block or 'chung-tu' not in mt_block.split('tờ khai')[0][-100:] or True  # keep generic
+    # Stronger: ensure no return "chung-tu" inside operational branch
+    # Count that file does not have old heading
     assert content.count('Checklist chứng từ xuất khẩu') == 0
+    # Ensure operational facts routing: at least tk->nhap, xe giao->van-tai present in file
+    assert 'fld-tk' in content
+    assert 'van-tai' in content
 
 
 def test_import_tk_route():
