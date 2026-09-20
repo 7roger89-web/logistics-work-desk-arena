@@ -182,8 +182,17 @@ def _arrived(value: Any) -> bool:
     return bool(parsed and parsed <= date.today())
 
 
-def document_checklist(shipment: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Document completeness derived from real shipment facts (no invention)."""
+def document_checklist(
+    shipment: Mapping[str, Any],
+    execution_profile: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Document completeness derived from real shipment facts (no invention).
+
+    LOGI_SCOPE_AWARE_MISSING_INFO_01 — the checklist becomes scope-aware ONLY
+    when the operator-confirmed execution profile is present and confirmed.
+    Otherwise legacy four-row behavior is preserved (UNKNOWN scope != not our
+    responsibility). No DB read, no second profile build, no new truth.
+    """
     from core.shipment_operations import compatibility_facts
 
     customs = _section(shipment, "2.4")
@@ -202,11 +211,64 @@ def document_checklist(shipment: Mapping[str, Any]) -> list[dict[str, Any]]:
         {"name": "Xác nhận đã giao hàng", "ok": bool(delivery.get("is_delivered")),
          "note": _ddmmyyyy(delivery.get("delivered_at")) or "Chưa xác nhận"},
     ]
-    return rows
+
+    # Scope-aware filtering: only when serviceScopeConfirmed == true.
+    # Do NOT infer scope from incoterm/mode/status — only operator-confirmed.
+    profile = execution_profile if isinstance(execution_profile, Mapping) else {}
+    if not profile:
+        return rows
+    if not bool(profile.get("serviceScopeConfirmed")):
+        return rows
+
+    # PROFILE_INCOMPLETE or legacy without serviceScope still falls back to
+    # legacy behavior: if scope list is absent, keep legacy.
+    scope_raw = profile.get("serviceScope")
+    if scope_raw is None:
+        return rows
+    # Normalize to upper strings for safety, but keep existing canonical codes.
+    scope_set = {str(item).strip().upper() for item in scope_raw if str(item).strip()}
+    if not scope_set:
+        # Confirmed but empty scope: no import/delivery relevance.
+        return []
+
+    # Derive relevant names ONLY from persisted service scope.
+    # IMPORT_CUSTOMS -> tk + customs_status
+    # DESTINATION_TRUCKING -> truck + delivered
+    # FINAL_DELIVERY -> delivered only (once)
+    # MAIN_CARRIAGE or other -> none of the four
+    relevant: set[str] = set()
+    if "IMPORT_CUSTOMS" in scope_set:
+        relevant.add("Số tờ khai nhập khẩu")
+        relevant.add("Đã thông quan")
+    if "DESTINATION_TRUCKING" in scope_set:
+        relevant.add("Xe giao VN + tài xế")
+        relevant.add("Xác nhận đã giao hàng")
+    if "FINAL_DELIVERY" in scope_set:
+        relevant.add("Xác nhận đã giao hàng")
+
+    if not relevant:
+        return []
+
+    # Filter preserving original order, unique rows only.
+    filtered: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        name = row.get("name") or ""
+        if name in relevant and name not in seen:
+            filtered.append(row)
+            seen.add(name)
+    return filtered
 
 
-def missing_docs(shipment: Mapping[str, Any]) -> list[str]:
-    return [row["name"] for row in document_checklist(shipment) if not row["ok"]]
+def missing_docs(
+    shipment: Mapping[str, Any],
+    execution_profile: Mapping[str, Any] | None = None,
+) -> list[str]:
+    return [
+        row["name"]
+        for row in document_checklist(shipment, execution_profile=execution_profile)
+        if not row["ok"]
+    ]
 
 
 # --------------------------------------------------------------------------
@@ -1047,17 +1109,20 @@ def shipment_projection(
 
     view = dashboard or {}
 
-    missing = missing_docs(shipment)
-
-    tab = "nhap" if status_label in {"Chờ thông quan", "Chờ giao"} else ("lay-hang" if status_label == "Chờ lấy hàng" else "lay-hang")
-
     # LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the execution profile is built
-    # ONCE per row and reused twice: as the ``executionProfile`` payload and
-    # as the profile side of the ONE composed primary action below. Zero
-    # additional reads, zero second derivations.
+    # ONCE per row and reused: as the ``executionProfile`` payload, as the
+    # profile side of the ONE composed primary action, and as the scope filter
+    # for the import/delivery checklist (LOGI_SCOPE_AWARE_MISSING_INFO_01).
+    # Zero additional reads, zero second derivations.
     from core.shipment_execution_profile import build_execution_profile as _build_execution_profile  # noqa: PLC0415
 
     execution_profile = _build_execution_profile(shipment, legs=legs)
+
+    # Scope-aware missing docs: reuse SAME execution_profile object.
+    # EXECUTION_PROFILE_BUILDS_PER_ROW=1, PRIMARY_CHECKLIST_DB_READS_ADDED=0.
+    missing = missing_docs(shipment, execution_profile=execution_profile)
+
+    tab = "nhap" if status_label in {"Chờ thông quan", "Chờ giao"} else ("lay-hang" if status_label == "Chờ lấy hàng" else "lay-hang")
     primary_action = compose_primary_action(
         shipment_id=sid,
         dashboard=view,
@@ -1106,7 +1171,7 @@ def shipment_projection(
         "updated": _ddmmyyyy(shipment.get("updated_at")) if not isinstance(shipment.get("updated_at"), datetime)
         else shipment["updated_at"].strftime("%d/%m/%Y %H:%M"),
         "missingDocs": missing,
-        "docs": document_checklist(shipment),
+        "docs": document_checklist(shipment, execution_profile=execution_profile),
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of the
         # lot: bounded metadata read back from the canonical
         # ``shipment_attachments`` collection. Bytes live in Google Drive; no
