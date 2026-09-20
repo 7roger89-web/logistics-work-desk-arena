@@ -10,11 +10,13 @@
 //      reports the backend's own state (PROFILE_INCOMPLETE for a legacy lot) —
 //      no invented Incoterms version, place, scope or insurance;
 //   2. the progressive flow appears in the Owner's order (mode → Incoterms
-//      version → Incoterms → named place → load model → equipment/truck →
-//      service scope → cargo insurance) with NO internal schema wording;
+//      → named place → load model → equipment/truck → service scope →
+//      cargo insurance) with NO internal schema wording; no visible version
+//      selector on normal new-profile flows (LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01);
 //   3. conditional selectors: a marine Incoterms rule is never offered for a
-//      non-marine mode, DAT is not offered in 2020, DPU is not offered in 2010,
-//      and DAF/DDU only exist in the explicit legacy 2000 mode;
+//      non-marine mode; the normal picker is Incoterms 2020-only (ANY_MODE
+//      EXW/FCA/CPT/CIP/DAP/DPU/DDP; SEA_ONLY FAS/FOB/CFR/CIF) with DAT/DAF/DDU
+//      not offered — they remain readable historically with a small note;
 //   4. an impossible pair stored on a historical lot renders CẤU HÌNH CẦN KIỂM
 //      TRA with the explanation and the save is refused locally;
 //   5. saving emits exactly ONE shipment_profile_save carrying canonical codes,
@@ -207,22 +209,29 @@ console.log("STEP 2 — the progressive flow, in order, with no schema wording")
   await clickTestId("shipment-execution-profile-toggle");
   const card = byTestId("shipment-execution-profile");
   const t = text(card);
+  // LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: 1–7 renumber; no version step.
   for (const step of [
     "1. Phương thức vận chuyển",
-    "2. Phiên bản Incoterms",
-    "3. Điều kiện giao hàng",
-    "4. Địa điểm / cảng / điểm giao",
-    "7. Phạm vi Trường Thành thực hiện",
-    "8. Bảo hiểm hàng hóa (thực tế)",
+    "2. Điều kiện giao hàng",
+    "3. Địa điểm / cảng / điểm giao",
+    "4. Loại hàng",
+    "6. Phạm vi Trường Thành thực hiện",
+    "7. Bảo hiểm hàng hóa (thực tế)",
   ]) {
     assert.ok(t.includes(step), `missing flow step: ${step}`);
   }
   assert.ok(
-    t.indexOf("1. Phương thức vận chuyển") < t.indexOf("2. Phiên bản Incoterms")
-    && t.indexOf("2. Phiên bản Incoterms") < t.indexOf("3. Điều kiện giao hàng")
-    && t.indexOf("3. Điều kiện giao hàng") < t.indexOf("4. Địa điểm / cảng / điểm giao"),
+    t.indexOf("1. Phương thức vận chuyển") < t.indexOf("2. Điều kiện giao hàng")
+    && t.indexOf("2. Điều kiện giao hàng") < t.indexOf("3. Địa điểm / cảng / điểm giao")
+    && t.indexOf("3. Địa điểm / cảng / điểm giao") < t.indexOf("4. Loại hàng"),
     "the flow must run in the Owner's order"
   );
+  // No visible version selector on normal new-profile editor.
+  assert.equal(byTestId("profile-incoterm-version"), null, "version selector must not be visible on normal editor");
+  assert.equal(byTestId("create-profile-incoterm-version"), null, "create version selector must not be visible");
+  // Ensure no Incoterms 2010 / 2000 legacy option is offered as a selectable year.
+  assert.ok(!t.includes("Incoterms 2010") || t.includes("Dữ liệu cũ"), "no selectable 2010 option should dominate");
+  assert.ok(!t.includes("Incoterms 2000") || t.includes("legacy"), "no selectable 2000 option should dominate");
   // No internal schema identifier may reach the operator.
   for (const leak of [
     "incoterm_version", "incoterm_named_place", "service_scope", "load_model",
@@ -234,23 +243,21 @@ console.log("STEP 2 — the progressive flow, in order, with no schema wording")
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 3 — conditional Incoterms selectors (version + mode)");
+console.log("STEP 3 — conditional Incoterms selectors (2020-only, mode-filtered)");
 {
-  const version = byTestId("profile-incoterm-version");
   const incoterm = byTestId("profile-incoterm");
-  assert.ok(version && incoterm, "version / Incoterms selectors missing");
+  assert.ok(incoterm, "Incoterms selector missing");
 
-  await setValue(version, "");
-  assert.equal(incoterm.disabled, true, "the rule list must wait for a version");
+  // No version selector: incoterm is always enabled (implicit 2020).
+  assert.equal(incoterm.disabled, false, "incoterm must be selectable without choosing a version");
 
-  await setValue(version, "2020");
   await setValue(byTestId("profile-mode"), "ROAD");
   let codes = optionValues(incoterm);
   for (const maritime of ["FAS", "FOB", "CFR", "CIF"]) {
     assert.ok(!codes.includes(maritime), `${maritime} must not be selectable for ROAD`);
   }
-  assert.ok(codes.includes("FCA") && codes.includes("DPU"), "any-mode 2020 rules must remain");
-  assert.ok(!codes.includes("DAT"), "DAT is not a 2020 rule");
+  assert.ok(codes.includes("FCA") && codes.includes("DPU") && codes.includes("CIP") && codes.includes("FCA"), "any-mode 2020 rules must remain");
+  assert.ok(!codes.includes("DAT") && !codes.includes("DAF") && !codes.includes("DDU"), "DAT/DAF/DDU must not be offered for new 2020 picker");
   assert.ok(text(byTestId("profile-hidden-terms")).includes("FOB"), "the omission must be explained");
 
   await setValue(byTestId("profile-mode"), "SEA");
@@ -258,17 +265,12 @@ console.log("STEP 3 — conditional Incoterms selectors (version + mode)");
   for (const maritime of ["FAS", "FOB", "CFR", "CIF"]) {
     assert.ok(codes.includes(maritime), `${maritime} must be offered for SEA`);
   }
+  assert.ok(codes.includes("EXW") && codes.includes("FCA") && codes.includes("CPT") && codes.includes("CIP") && codes.includes("DAP") && codes.includes("DPU") && codes.includes("DDP"), "SEA must still show any-mode set");
+  assert.ok(!codes.includes("DAT") && !codes.includes("DAF") && !codes.includes("DDU"), "legacy codes still hidden for new picker even on SEA");
 
-  await setValue(version, "2010");
-  codes = optionValues(incoterm);
-  assert.ok(codes.includes("DAT") && !codes.includes("DPU"), "2010 has DAT and no DPU");
-  assert.ok(!codes.includes("DAF") && !codes.includes("DDU"), "DAF/DDU are not 2010 rules");
-
-  await setValue(version, "2000_LEGACY");
-  codes = optionValues(incoterm);
-  assert.deepEqual(codes.filter((code) => code !== ""), ["DAF", "DDU"], "legacy offers only DAF/DDU");
-  assert.ok(mainText().includes("legacy Incoterms 2000"), "legacy mode must be explained honestly");
-  ok("marine rules filtered by mode; DAT/DPU/DAF/DDU bound to their real versions");
+  // Historical note: when existing draft is legacy/2010, small note appears but not as selector
+  // (the fixture legacy is DAP 2020-equivalent, so no historical note on this ROAD→SEA new draft)
+  ok("marine rules filtered by mode; 2020 picker hides DAT/DAF/DDU; hidden maritime explained");
 }
 
 console.log("STEP 4 — an impossible stored pair is explained, never silently fixed");
@@ -297,7 +299,6 @@ let sentRequestId = "";
   await bootOnLot(FIX.before, LEGACY_LOT);
   await clickTestId("shipment-execution-profile-toggle");
   await setValue(byTestId("profile-mode"), "SEA");
-  await setValue(byTestId("profile-incoterm-version"), "2020");
   await setValue(byTestId("profile-incoterm"), "CIF");
   await setValue(byTestId("profile-named-place"), "Hai Phong Port", "HTMLInputElement");
   await setValue(byTestId("profile-load-model"), "FCL");
@@ -354,7 +355,8 @@ console.log("STEP 7 — SEA FCL: equipment from the real units; obligation ≠ a
 {
   await bootOnLot(FIX.seaFclSaved, SEA_LOT);
   const summary = text(byTestId("execution-profile-summary"));
-  assert.ok(summary.includes("CIF · Incoterms 2020"), `profile line missing: ${summary}`);
+  // LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: ordinary new profile shows just CIF, no Incoterms 2020 waste
+  assert.ok(summary.includes("CIF") && !summary.includes("Incoterms 2020"), `profile line must be CIF without version waste: ${summary}`);
   assert.ok(summary.includes("Hai Phong Port"), "named place missing");
   assert.ok(summary.includes("Đường biển · FCL · 1 × 20GP, 1 × 40HC"), "multi-container equipment line missing");
   assert.ok(summary.includes("Phạm vi TT: HQ nhập → Giao hàng"), "service scope line missing");
@@ -434,7 +436,7 @@ console.log("STEP 10 — CNF/C&F becomes CFR while the contract wording survives
 {
   await bootOnLot(FIX.cfrAlias, SEA_LOT);
   const summary = text(byTestId("execution-profile-summary"));
-  assert.ok(summary.includes("CFR · Incoterms 2020"), `canonical CFR missing: ${summary}`);
+  assert.ok(summary.includes("CFR") && !summary.includes("Incoterms 2020"), `canonical CFR missing or version waste: ${summary}`);
   assert.ok(summary.includes("hợp đồng ghi: CNF"), "the raw contract wording must survive as evidence");
   assert.ok(!summary.includes("CNF ·"), "CNF must never be presented as the canonical rule");
   await clickTestId("shipment-execution-profile-toggle");
@@ -458,7 +460,7 @@ console.log("STEP 11 — RBAC: a viewer attempt changes nothing");
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
+console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list (2020-only)");
 {
   invoke(FIX.before);
   await tick(120);
@@ -471,11 +473,13 @@ console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
   assert.ok(details, "the profile flow must be a disclosure, not a gate on creating a lot");
   details.open = true;
   await tick();
+  // No version selector on create either
+  assert.equal(byTestId("create-profile-incoterm-version"), null, "create version selector must not exist");
   await setValue(byTestId("create-profile-mode"), "ROAD");
-  await setValue(byTestId("create-profile-incoterm-version"), "2020");
   const codes = optionValues(byTestId("create-profile-incoterm"));
   assert.ok(!codes.includes("FOB") && !codes.includes("CIF"), "the create form must not offer marine rules for road");
-  assert.ok(codes.includes("DAP") && codes.includes("CPT"), "any-mode rules must remain");
+  assert.ok(codes.includes("DAP") && codes.includes("CPT") && codes.includes("FCA"), "any-mode rules must remain");
+  assert.ok(!codes.includes("DAT") && !codes.includes("DAF") && !codes.includes("DDU"), "legacy codes not offered on create");
   await setValue(byTestId("create-profile-incoterm"), "FCA");
   await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
   assert.ok(byTestId("create-profile-missing"), "an engaged-but-incomplete profile must say what is missing");
@@ -489,10 +493,10 @@ console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
     "a half-stated profile must not be sent as a profile block");
   assert.equal(half.transport.namedPlace, undefined);
   assert.equal(half.transport.loadModel, undefined);
-  ok("create page filters Incoterms by mode + version and explains the gaps");
+  ok("create page filters Incoterms by mode (2020) and explains the gaps");
 }
 
-console.log("STEP 12b — create page: only a COMPLETE profile travels");
+console.log("STEP 12b — create page: only a COMPLETE profile travels (implicit 2020)");
 {
   invoke(FIX.before);
   await tick(120);
@@ -502,7 +506,6 @@ console.log("STEP 12b — create page: only a COMPLETE profile travels");
   details.open = true;
   await tick();
   await setValue(byTestId("create-profile-mode"), "ROAD");
-  await setValue(byTestId("create-profile-incoterm-version"), "2020");
   await setValue(byTestId("create-profile-incoterm"), "FCA");
   await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
   await setValue(byTestId("create-profile-load-model"), "LTL");

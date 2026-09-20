@@ -2141,6 +2141,18 @@ def _handle_shipment_profile_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         facts["cargoInsurancePolicyNo"] = rd.text(insurance.get("policyNo"))
         facts["cargoInsuranceCoverageNote"] = rd.text(insurance.get("coverageNote"))
 
+    # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: new profiles imply 2020.
+    # Blank incoterm stays blank — only version is implicit when a code is present.
+    # Preserve historical 2010 / legacy when editing unrelated fields.
+    if facts["incoterm"] and not facts["incotermVersion"]:
+        from core.shipment_execution_profile import VERSION_2020, codes_for_version
+
+        if facts["incoterm"] in codes_for_version(VERSION_2020):
+            # Only auto-assign when current stored version was blank (new profile)
+            # — a historical 2010/legacy already has a version and is preserved above.
+            if not current.get("incotermVersion"):
+                facts["incotermVersion"] = VERSION_2020
+
     issues = validate_profile(facts, for_write=True)
     if "cargoInsurance" in payload and rd.text((payload.get("cargoInsurance") or {}).get("status")) \
             and not facts["cargoInsuranceStatus"]:
@@ -2883,6 +2895,13 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
             "cargoInsurancePolicyNo": rd.text(insurance_payload.get("policyNo")),
             "cargoInsuranceCoverageNote": rd.text(insurance_payload.get("coverageNote")),
         }
+        # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: new create implies 2020.
+        # Blank incoterm stays blank — only infer when code present in 2020 set.
+        if profile_facts_in["incoterm"] and not profile_facts_in["incotermVersion"]:
+            from core.shipment_execution_profile import VERSION_2020 as _V2020, codes_for_version as _codes
+
+            if profile_facts_in["incoterm"] in _codes(_V2020):
+                profile_facts_in["incotermVersion"] = _V2020
         profile_issues = validate_profile(profile_facts_in, for_write=True)
         # A CONFLICT (FOB + ROAD, DAT + 2020, an unrecognized term the operator
         # actually typed, a foreign load model) refuses the create. A fact that

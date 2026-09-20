@@ -824,7 +824,13 @@ def validate_profile(facts: Mapping[str, Any], *, for_write: bool = False) -> li
             add(ISSUE_MISSING_VERSION,
                 f"{code} chỉ hợp lệ ở chế độ legacy Incoterms 2000 — cần ghi rõ phiên bản.")
         elif not version and for_write:
-            add(ISSUE_MISSING_VERSION, "Chưa chọn phiên bản Incoterms cho lô.")
+            # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: version is implicit 2020
+            # for new profiles. Only legacy / DAT-type codes still require an
+            # explicit version; current 2020 codes are auto-assigned.
+            if code in codes_for_version(VERSION_2020):
+                pass  # implicit 2020 — no missing-version error
+            else:
+                add(ISSUE_MISSING_VERSION, "Chưa chọn phiên bản Incoterms cho lô.")
 
         if mode:
             scope = rule_scope(version, code)
@@ -1263,8 +1269,9 @@ def build_execution_profile(shipment: Mapping[str, Any] | None, *,
 def summary_lines(profile: Mapping[str, Any]) -> list[str]:
     """The compact profile summary the detail header shows.
 
-    ``FCA 2020`` / ``Pingxiang Warehouse`` / ``ROAD · LTL`` /
-    ``Phạm vi TT: Cửa khẩu đi → Giao hàng`` / ``Bảo hiểm: Chưa xác nhận``.
+    LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: ordinary new profile (2020) shows
+    just ``FCA`` — no ``Incoterms 2020`` waste. Historical non-2020 shows a
+    small contextual version note (e.g. ``FCA · Incoterms 2010``).
     Unknown halves are simply absent — never rendered as an invented value.
     """
 
@@ -1273,7 +1280,12 @@ def summary_lines(profile: Mapping[str, Any]) -> list[str]:
     raw = _text(profile.get("incotermRawLabel"))
     version = _text(profile.get("incotermVersion"))
     if code:
-        incoterm_line = code if not version else f"{code} · {VERSION_LABELS.get(version, version)}"
+        # Version 2020 is the implicit current standard — do not waste space.
+        # Show version only for historical non-current records (2010 / legacy).
+        if version in (VERSION_2010, VERSION_LEGACY_2000):
+            incoterm_line = f"{code} · {VERSION_LABELS.get(version, version)}"
+        else:
+            incoterm_line = code
         if raw and raw.upper() != code:
             incoterm_line += f" (hợp đồng ghi: {raw})"
         lines.append(incoterm_line)

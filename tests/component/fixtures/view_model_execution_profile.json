@@ -13476,7 +13476,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CFR · Incoterms 2020 (hợp đồng ghi: CNF)",
+      "CFR (hợp đồng ghi: CNF)",
       "Shenzhen",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: Chặng chính → Giao hàng",
@@ -16784,7 +16784,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "CFR · Incoterms 2020 (hợp đồng ghi: CNF)",
+       "CFR (hợp đồng ghi: CNF)",
        "Shenzhen",
        "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
        "Phạm vi TT: Chặng chính → Giao hàng",
@@ -19281,7 +19281,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -22604,7 +22604,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "CIF · Incoterms 2020",
+       "CIF",
        "Hai Phong Port",
        "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
        "Phạm vi TT: HQ nhập → Giao hàng",
@@ -25111,7 +25111,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -28441,7 +28441,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "CIF · Incoterms 2020",
+       "CIF",
        "Hai Phong Port",
        "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
        "Phạm vi TT: HQ nhập → Giao hàng",
@@ -29542,7 +29542,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · LTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -31003,7 +31003,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -34284,7 +34284,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "FCA · Incoterms 2020",
+       "FCA",
        "Pingxiang Warehouse",
        "Đường bộ · LTL",
        "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -35292,7 +35292,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · FTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -36775,7 +36775,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -40056,7 +40056,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "FCA · Incoterms 2020",
+       "FCA",
        "Pingxiang Warehouse",
        "Đường bộ · FTL",
        "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -40558,7 +40558,7 @@
        "tone": "amber"
       },
       "summaryLines": [
-       "FCA · Incoterms 2020",
+       "FCA",
        "Pingxiang Warehouse",
        "Đường bộ · FTL",
        "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -41580,7 +41580,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · FTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -43069,7 +43069,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -47364,7 +47364,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · FTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -48853,7 +48853,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -52653,7 +52653,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · FTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -54142,7 +54142,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -57484,7 +57484,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CFR · Incoterms 2020 (hợp đồng ghi: CNF)",
+      "CFR (hợp đồng ghi: CNF)",
       "Shenzhen",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: Chặng chính → Giao hàng",
@@ -58100,7 +58100,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -58726,7 +58726,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "CIF · Incoterms 2020",
+      "CIF",
       "Hai Phong Port",
       "Đường biển · FCL · 1 × 20GP, 1 × 40HC",
       "Phạm vi TT: HQ nhập → Giao hàng",
@@ -59310,7 +59310,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · LTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
@@ -59801,7 +59801,7 @@
       "tone": "amber"
      },
      "summaryLines": [
-      "FCA · Incoterms 2020",
+      "FCA",
       "Pingxiang Warehouse",
       "Đường bộ · FTL",
       "Phạm vi TT: Cửa khẩu đi → Giao hàng",
