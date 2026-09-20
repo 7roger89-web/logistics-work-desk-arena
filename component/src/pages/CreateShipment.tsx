@@ -47,12 +47,15 @@ export default function CreateShipment() {
   const [customerId, setCustomerId] = useState("");
   const [contractId, setContractId] = useState("");
   // LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the create form collects the SAME
-  // execution profile the lot detail page edits (mode, Incoterms version and a
-  // version/mode-filtered Incoterms term, named place, load model, Trường Thành
-  // service scope, actual cargo insurance). The raw hard-coded Incoterm list it
-  // replaced offered FOB/CIF on a road lot — exactly the combination this slice
-  // must not allow. `data.0.0.mode` keeps the repository's existing mode
-  // vocabulary; the draft holds the canonical profile mode and is mapped back.
+  // execution profile the lot detail page edits (mode, a mode-filtered Incoterms
+  // term from the CURRENT rule set, named place, load model, Trường Thành
+  // service scope, actual cargo insurance). LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01:
+  // there is NO Incoterms-version selector here — a complete new profile
+  // persists its version internally; the operator only ever states the rule.
+  // The raw hard-coded Incoterm list the profile flow replaced offered FOB/CIF
+  // on a road lot — exactly the combination this slice must not allow.
+  // `data.0.0.mode` keeps the repository's existing mode vocabulary; the draft
+  // holds the canonical profile mode and is mapped back.
   const [profile, setProfile] = useState<ProfileDraft>(() => draftFromProfile(null));
   const [pol, setPol] = useState("");
   const [pod, setPod] = useState("");

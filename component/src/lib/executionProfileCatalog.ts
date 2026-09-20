@@ -24,6 +24,62 @@ export const EXECUTION_PROFILE_CATALOG = {
       "label": "Incoterms 2000 (legacy — DAF/DDU)"
     }
   ],
+  "currentVersion": "2020",
+  "newProfileCodes": {
+    "": [
+      "EXW",
+      "FCA",
+      "CPT",
+      "CIP",
+      "DAP",
+      "DPU",
+      "DDP",
+      "FAS",
+      "FOB",
+      "CFR",
+      "CIF"
+    ],
+    "ROAD": [
+      "EXW",
+      "FCA",
+      "CPT",
+      "CIP",
+      "DAP",
+      "DPU",
+      "DDP"
+    ],
+    "SEA": [
+      "EXW",
+      "FCA",
+      "CPT",
+      "CIP",
+      "DAP",
+      "DPU",
+      "DDP",
+      "FAS",
+      "FOB",
+      "CFR",
+      "CIF"
+    ],
+    "AIR": [
+      "EXW",
+      "FCA",
+      "CPT",
+      "CIP",
+      "DAP",
+      "DPU",
+      "DDP"
+    ],
+    "RAIL": [
+      "EXW",
+      "FCA",
+      "CPT",
+      "CIP",
+      "DAP",
+      "DPU",
+      "DDP"
+    ]
+  },
   "rules": {
     "2020": [
       {

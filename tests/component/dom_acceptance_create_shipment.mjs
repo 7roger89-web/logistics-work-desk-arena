@@ -190,9 +190,11 @@ let sentRequestId = "";
   assert.ok(payload.customerId, "canonical customerId must travel with the event");
   // LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the create form no longer carries a
   // hard-coded Incoterms list (it offered FOB/CIF on road lots). The term
-  // travels only when the operator actually chose one through the version- and
-  // mode-filtered profile flow; nothing is invented here. The lot is still
-  // created, and the lot detail reports the profile as PROFILE_INCOMPLETE.
+  // travels only when the operator actually chose one through the mode-filtered
+  // profile flow; LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 — no version key ever
+  // travels from the create page (a complete new profile gets 2020 internally
+  // from the backend). Nothing is invented here: an untouched profile sends no
+  // profile keys at all, the lot is created and the lot detail asks for more.
   assert.equal(payload.transport.incoterm, "");
   assert.equal(payload.transport.incotermVersion, undefined);
   assert.equal(payload.transport.serviceScope, undefined);

@@ -9,12 +9,18 @@
 //   1. the compact execution-profile summary is at the TOP of the lot detail and
 //      reports the backend's own state (PROFILE_INCOMPLETE for a legacy lot) —
 //      no invented Incoterms version, place, scope or insurance;
-//   2. the progressive flow appears in the Owner's order (mode → Incoterms
-//      version → Incoterms → named place → load model → equipment/truck →
-//      service scope → cargo insurance) with NO internal schema wording;
+//   2. the progressive flow appears in the Owner's order (LOGI_INCOTERMS_
+//      VERSION_UX_SIMPLIFY_01: mode → Incoterms → named place → load model →
+//      equipment/truck → service scope → cargo insurance) with NO "Phiên bản
+//      Incoterms" step and NO internal schema wording;
+//   2b. there is NO visible version selector anywhere in the normal editor or
+//      the create form — for a NEW profile the Incoterms list is the current
+//      set (DPU yes, DAT/DAF/DDU no) and the save payload states NO version
+//      key; the backend persists 2020 internally (fixture readback proves it);
 //   3. conditional selectors: a marine Incoterms rule is never offered for a
-//      non-marine mode, DAT is not offered in 2020, DPU is not offered in 2010,
-//      and DAF/DDU only exist in the explicit legacy 2000 mode;
+//      non-marine mode; a stored HISTORICAL version renders its own matrix as a
+//      small read-only note (DAT · 2010 / DDU · legacy 2000) — never a selector,
+//      never a rewrite;
 //   4. an impossible pair stored on a historical lot renders CẤU HÌNH CẦN KIỂM
 //      TRA with the explanation and the save is refused locally;
 //   5. saving emits exactly ONE shipment_profile_save carrying canonical codes,
@@ -26,8 +32,8 @@
 //      SEA+LCL / ROAD+LTL require neither a container number nor a truck length;
 //      ROAD+FTL shows the company operating presets and reuses the canonical
 //      pickup truck field;
-//   9. the create page runs the same flow and filters the Incoterms list by mode
-//      and version;
+//   9. the create page runs the same flow, filters the Incoterms list by mode,
+//      shows NO version selector and sends NO version key;
 //  10. phone width: no forced horizontal overflow, ≥44px touch targets,
 //      16px-equivalent input text, Vietnamese-only operator wording.
 //
@@ -209,20 +215,27 @@ console.log("STEP 2 — the progressive flow, in order, with no schema wording")
   const t = text(card);
   for (const step of [
     "1. Phương thức vận chuyển",
-    "2. Phiên bản Incoterms",
-    "3. Điều kiện giao hàng",
-    "4. Địa điểm / cảng / điểm giao",
-    "7. Phạm vi Trường Thành thực hiện",
-    "8. Bảo hiểm hàng hóa (thực tế)",
+    "2. Điều kiện giao hàng",
+    "3. Địa điểm / cảng / điểm giao",
+    "6. Phạm vi Trường Thành thực hiện",
+    "7. Bảo hiểm hàng hóa (thực tế)",
   ]) {
     assert.ok(t.includes(step), `missing flow step: ${step}`);
   }
   assert.ok(
-    t.indexOf("1. Phương thức vận chuyển") < t.indexOf("2. Phiên bản Incoterms")
-    && t.indexOf("2. Phiên bản Incoterms") < t.indexOf("3. Điều kiện giao hàng")
-    && t.indexOf("3. Điều kiện giao hàng") < t.indexOf("4. Địa điểm / cảng / điểm giao"),
+    t.indexOf("1. Phương thức vận chuyển") < t.indexOf("2. Điều kiện giao hàng")
+    && t.indexOf("2. Điều kiện giao hàng") < t.indexOf("3. Địa điểm / cảng / điểm giao"),
     "the flow must run in the Owner's order"
   );
+  // VERSION_SELECTOR_VISIBLE=NO — the year is an internal fact, not a step.
+  assert.ok(!t.includes("Phiên bản Incoterms"), "no version step may be rendered");
+  assert.equal(byTestId("profile-incoterm-version"), null,
+    "a version selector control must not exist");
+  for (const banned of ["Incoterms 2010", "Incoterms 2000"]) {
+    assert.ok(!t.includes(banned), `${banned} must not be offered as a choice for a new profile`);
+  }
+  assert.ok(!/Incoterms 2020/.test(t),
+    "the current version label must not clutter the new-profile editor");
   // No internal schema identifier may reach the operator.
   for (const leak of [
     "incoterm_version", "incoterm_named_place", "service_scope", "load_model",
@@ -230,45 +243,112 @@ console.log("STEP 2 — the progressive flow, in order, with no schema wording")
   ]) {
     assert.ok(!t.includes(leak), `internal schema wording leaked to the UI: ${leak}`);
   }
+  // A legacy lot without a stated version says so quietly — and ONLY as text.
+  const blankNote = byTestId("profile-version-blank-note");
+  assert.ok(blankNote && text(blankNote).includes("phiên bản Incoterms"),
+    "a historical blank version should be a small read-only note");
+  assert.equal(blankNote.tagName, "P", "the note must be plain text, not a control");
   ok("progressive flow in order, Vietnamese operator wording only");
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 3 — conditional Incoterms selectors (version + mode)");
+console.log("STEP 3 — the new-profile picker is the CURRENT set, filtered by mode only");
 {
-  const version = byTestId("profile-incoterm-version");
   const incoterm = byTestId("profile-incoterm");
-  assert.ok(version && incoterm, "version / Incoterms selectors missing");
+  assert.ok(incoterm, "the Incoterms selector is missing");
+  assert.equal(incoterm.disabled, false,
+    "the rule list waits for NOTHING — no version choice gates it any more");
 
-  await setValue(version, "");
-  assert.equal(incoterm.disabled, true, "the rule list must wait for a version");
-
-  await setValue(version, "2020");
   await setValue(byTestId("profile-mode"), "ROAD");
-  let codes = optionValues(incoterm);
+  let codes = optionValues(incoterm).filter((code) => code !== "");
   for (const maritime of ["FAS", "FOB", "CFR", "CIF"]) {
     assert.ok(!codes.includes(maritime), `${maritime} must not be selectable for ROAD`);
   }
-  assert.ok(codes.includes("FCA") && codes.includes("DPU"), "any-mode 2020 rules must remain");
-  assert.ok(!codes.includes("DAT"), "DAT is not a 2020 rule");
+  assert.ok(codes.includes("FCA") && codes.includes("DPU"), "the current any-mode rules must be offered");
+  for (const historical of ["DAT", "DAF", "DDU"]) {
+    assert.ok(!codes.includes(historical), `${historical} is history — not offered for new profiles`);
+  }
   assert.ok(text(byTestId("profile-hidden-terms")).includes("FOB"), "the omission must be explained");
 
+  await setValue(byTestId("profile-mode"), "AIR");
+  codes = optionValues(incoterm).filter((code) => code !== "");
+  for (const maritime of ["FAS", "FOB", "CFR", "CIF"]) {
+    assert.ok(!codes.includes(maritime), `${maritime} must not be selectable for AIR`);
+  }
+
   await setValue(byTestId("profile-mode"), "SEA");
-  codes = optionValues(incoterm);
+  codes = optionValues(incoterm).filter((code) => code !== "");
   for (const maritime of ["FAS", "FOB", "CFR", "CIF"]) {
     assert.ok(codes.includes(maritime), `${maritime} must be offered for SEA`);
   }
+  ok("mode filtering alone decides the list; DAT/DAF/DDU absent from the new-profile picker");
+}
 
-  await setValue(version, "2010");
-  codes = optionValues(incoterm);
-  assert.ok(codes.includes("DAT") && !codes.includes("DPU"), "2010 has DAT and no DPU");
-  assert.ok(!codes.includes("DAF") && !codes.includes("DDU"), "DAF/DDU are not 2010 rules");
+// ---------------------------------------------------------------------------
+console.log("STEP 3b — a NEW profile keeps NO version in the UI but 2020 in the data");
+{
+  const row = FIX.roadLtlSaved.shipments.find((s) => s.id === ROAD_LOT);
+  assert.equal(row.executionProfile.incoterm, "FCA");
+  assert.equal(row.executionProfile.incotermVersion, "2020",
+    "the backend persisted the current version for a payload that never stated one");
+  assert.ok(!row.executionProfile.summaryLines.some((line) => line.includes("Incoterms 2020")),
+    `summary must not waste space on the internal version: ${row.executionProfile.summaryLines}`);
+  await bootOnLot(FIX.roadLtlSaved, ROAD_LOT);
+  const summary = text(byTestId("execution-profile-summary"));
+  assert.ok(summary.includes("FCA · Pingxiang Warehouse") || (summary.includes("FCA") && summary.includes("Pingxiang Warehouse")),
+    `preferred summary line missing: ${summary}`);
+  assert.ok(summary.includes("Đường bộ · LTL"), "mode · load model line missing");
+  await clickTestId("shipment-execution-profile-toggle");
+  assert.equal(byTestId("profile-version-note"), null,
+    "a current-profile editor shows no version note — there is nothing to warn about");
+  ok("new profile: version invisible in the DOM, 2020 in the stored truth");
+}
 
-  await setValue(version, "2000_LEGACY");
-  codes = optionValues(incoterm);
-  assert.deepEqual(codes.filter((code) => code !== ""), ["DAF", "DDU"], "legacy offers only DAF/DDU");
-  assert.ok(mainText().includes("legacy Incoterms 2000"), "legacy mode must be explained honestly");
-  ok("marine rules filtered by mode; DAT/DPU/DAF/DDU bound to their real versions");
+// ---------------------------------------------------------------------------
+console.log("STEP 3c — historical 2010 / legacy profiles: read-only notes, never a rewrite");
+{
+  await bootOnLot(FIX.historical2010, FIX.historicalLot);
+  const summary = text(byTestId("execution-profile-summary"));
+  assert.ok(summary.includes("DAT · Incoterms 2010"), `the 2010 truth must be named honestly: ${summary}`);
+  await clickTestId("shipment-execution-profile-toggle");
+  assert.equal(byTestId("profile-incoterm-version"), null,
+    "the historical editor must NOT re-grow a version selector");
+  const note = byTestId("profile-version-note");
+  assert.ok(note && text(note).includes("Dữ liệu cũ · Incoterms 2010"), "read-only 2010 note missing");
+  const codes = optionValues(byTestId("profile-incoterm"));
+  assert.ok(codes.includes("DAT") && !codes.includes("DPU"),
+    "a 2010 lot lists its own rules — DAT readable, DPU never implied");
+  assert.equal(byTestId("profile-incoterm").value, "DAT", "stored truth must render, never vanish");
+
+  // The Owner's exact case: editing an UNRELATED field must not migrate the
+  // version. The payload round-trips "2010"; the fixture readback (written by
+  // the real backend, no version key in the original save) proves persistence.
+  await setValue(byTestId("profile-named-place"), "Cửa khẩu Hữu Nghị", "HTMLInputElement");
+  const before = triggers.length;
+  await clickTestId("shipment-execution-profile-save");
+  await tick(80);
+  const sends = triggers.slice(before).filter((tr) => tr.event === "shipment_profile_save");
+  assert.equal(sends.length, 1);
+  assert.equal(sends[0].value.payload.incotermVersion, "2010",
+    "the editor silently round-trips the stored version — the operator never touches it");
+  const edited = FIX.historicalEdited.shipments.find((s) => s.id === FIX.historicalLot);
+  assert.equal(edited.executionProfile.incotermVersion, "2010",
+    "an unrelated-field save must leave a 2010 profile at 2010 — no silent migration");
+  assert.equal(edited.executionProfile.incoterm, "DAT");
+  assert.equal(edited.executionProfile.incotermNamedPlace, "Cửa khẩu Hữu Nghị");
+
+  await bootOnLot(FIX.legacyDdu, FIX.legacyLot2000);
+  const dduSummary = text(byTestId("execution-profile-summary"));
+  assert.ok(dduSummary.includes("DDU · Incoterms 2000"), `legacy must stay readable: ${dduSummary}`);
+  await clickTestId("shipment-execution-profile-toggle");
+  const legacyNote = byTestId("profile-version-note");
+  assert.ok(legacyNote && text(legacyNote).includes("Điều kiện legacy · Incoterms 2000"),
+    "the legacy note must name the era without ever becoming a selector");
+  assert.deepEqual(optionValues(byTestId("profile-incoterm")).filter((code) => code !== ""), ["DAF", "DDU"],
+    "a legacy 2000 profile offers its own two rules — and the stored DDU renders");
+  const legacyRow = FIX.legacyDdu.shipments.find((s) => s.id === FIX.legacyLot2000);
+  assert.equal(legacyRow.executionProfile.incotermVersion, "2000_LEGACY", "viewing mutates nothing");
+  ok("historical 2010/legacy: readable, editable without migration, selector absent");
 }
 
 console.log("STEP 4 — an impossible stored pair is explained, never silently fixed");
@@ -297,7 +377,6 @@ let sentRequestId = "";
   await bootOnLot(FIX.before, LEGACY_LOT);
   await clickTestId("shipment-execution-profile-toggle");
   await setValue(byTestId("profile-mode"), "SEA");
-  await setValue(byTestId("profile-incoterm-version"), "2020");
   await setValue(byTestId("profile-incoterm"), "CIF");
   await setValue(byTestId("profile-named-place"), "Hai Phong Port", "HTMLInputElement");
   await setValue(byTestId("profile-load-model"), "FCL");
@@ -315,7 +394,11 @@ let sentRequestId = "";
   assert.equal(payload.shipmentId, LEGACY_LOT);
   assert.equal(payload.mode, "SEA");
   assert.equal(payload.incoterm, "CIF");
-  assert.equal(payload.incotermVersion, "2020");
+  // LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: a NEW profile states NO year —
+  // the backend persists the current version internally (STEP 2c proves the
+  // readback of exactly this payload shape carries incoterm_version "2020").
+  assert.equal(payload.incotermVersion, undefined,
+    "a new profile must not send an incotermVersion at all");
   assert.equal(payload.namedPlace, "Hai Phong Port");
   assert.equal(payload.loadModel, "FCL");
   assert.deepEqual(payload.serviceScope, ["IMPORT_CUSTOMS", "DESTINATION_TRUCKING"]);
@@ -354,7 +437,9 @@ console.log("STEP 7 — SEA FCL: equipment from the real units; obligation ≠ a
 {
   await bootOnLot(FIX.seaFclSaved, SEA_LOT);
   const summary = text(byTestId("execution-profile-summary"));
-  assert.ok(summary.includes("CIF · Incoterms 2020"), `profile line missing: ${summary}`);
+  assert.ok(/CIF(?! · Incoterms)/.test(summary), `profile line missing: ${summary}`);
+  assert.ok(!summary.includes("Incoterms 2020"),
+    `the ordinary new-profile summary must not repeat the internal 2020 version: ${summary}`);
   assert.ok(summary.includes("Hai Phong Port"), "named place missing");
   assert.ok(summary.includes("Đường biển · FCL · 1 × 20GP, 1 × 40HC"), "multi-container equipment line missing");
   assert.ok(summary.includes("Phạm vi TT: HQ nhập → Giao hàng"), "service scope line missing");
@@ -434,7 +519,8 @@ console.log("STEP 10 — CNF/C&F becomes CFR while the contract wording survives
 {
   await bootOnLot(FIX.cfrAlias, SEA_LOT);
   const summary = text(byTestId("execution-profile-summary"));
-  assert.ok(summary.includes("CFR · Incoterms 2020"), `canonical CFR missing: ${summary}`);
+  assert.ok(summary.includes("CFR"), `canonical CFR missing: ${summary}`);
+  assert.ok(!summary.includes("Incoterms 2020"), "no current-version clutter in the alias summary");
   assert.ok(summary.includes("hợp đồng ghi: CNF"), "the raw contract wording must survive as evidence");
   assert.ok(!summary.includes("CNF ·"), "CNF must never be presented as the canonical rule");
   await clickTestId("shipment-execution-profile-toggle");
@@ -471,11 +557,15 @@ console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
   assert.ok(details, "the profile flow must be a disclosure, not a gate on creating a lot");
   details.open = true;
   await tick();
+  assert.equal(byTestId("create-profile-incoterm-version"), null,
+    "the create page must not carry a version selector");
+  const createText = text(byTestId("create-profile").closest("details"));
+  assert.ok(!createText.includes("Phiên bản Incoterms"), "no version step on create");
   await setValue(byTestId("create-profile-mode"), "ROAD");
-  await setValue(byTestId("create-profile-incoterm-version"), "2020");
   const codes = optionValues(byTestId("create-profile-incoterm"));
   assert.ok(!codes.includes("FOB") && !codes.includes("CIF"), "the create form must not offer marine rules for road");
   assert.ok(codes.includes("DAP") && codes.includes("CPT"), "any-mode rules must remain");
+  assert.ok(codes.includes("DPU") && !codes.includes("DAT"), "the current set offers DPU, not the 2010 DAT");
   await setValue(byTestId("create-profile-incoterm"), "FCA");
   await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
   assert.ok(byTestId("create-profile-missing"), "an engaged-but-incomplete profile must say what is missing");
@@ -489,7 +579,7 @@ console.log("STEP 12 — create page: same flow, mode-filtered Incoterms list");
     "a half-stated profile must not be sent as a profile block");
   assert.equal(half.transport.namedPlace, undefined);
   assert.equal(half.transport.loadModel, undefined);
-  ok("create page filters Incoterms by mode + version and explains the gaps");
+  ok("create page filters Incoterms by mode alone and explains the gaps");
 }
 
 console.log("STEP 12b — create page: only a COMPLETE profile travels");
@@ -502,7 +592,6 @@ console.log("STEP 12b — create page: only a COMPLETE profile travels");
   details.open = true;
   await tick();
   await setValue(byTestId("create-profile-mode"), "ROAD");
-  await setValue(byTestId("create-profile-incoterm-version"), "2020");
   await setValue(byTestId("create-profile-incoterm"), "FCA");
   await setValue(byTestId("create-profile-named-place"), "Pingxiang Warehouse", "HTMLInputElement");
   await setValue(byTestId("create-profile-load-model"), "LTL");
@@ -512,7 +601,8 @@ console.log("STEP 12b — create page: only a COMPLETE profile travels");
   assert.equal(byTestId("create-profile-missing"), null, "a complete profile must show no gap");
   const full = await submitCreate("LO-0481");
   assert.equal(full.transport.incoterm, "FCA");
-  assert.equal(full.transport.incotermVersion, "2020");
+  assert.equal(full.transport.incotermVersion, undefined,
+    "create states the RULE only — the version is internal");
   assert.equal(full.transport.namedPlace, "Pingxiang Warehouse");
   assert.equal(full.transport.loadModel, "LTL");
   assert.equal(full.transport.cargoInsurance.status, "NO");

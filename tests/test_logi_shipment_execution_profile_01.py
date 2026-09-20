@@ -940,10 +940,21 @@ def test_a_legacy_document_opens_and_is_honestly_incomplete(staging):
 
 
 def test_unknown_stays_unknown_and_never_becomes_a_default(staging):
+    """A HALF-stated profile is still refused — but not for its version.
+
+    LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 removed the operator-facing version
+    requirement: this save fails because the profile ITSELF is incomplete
+    (no named place, load model, scope confirmation, insurance), and its
+    version must NOT be what blocks it any more.
+    """
+
     out = _dispatch("shipment_profile_save", {
         "shipmentId": SEA_LOT, "mode": "Sea", "incoterm": "CIF", "incotermVersion": "",
     })
-    assert out["ok"] is False, "a version-less new configuration must be refused"
+    assert out["ok"] is False, "an incomplete profile must still be refused"
+    assert all(i["code"] != ep.ISSUE_MISSING_VERSION for i in out["issues"]), \
+        "a missing version may no longer be a refusal reason — the UI cannot state one"
+    assert any(i["code"] == ep.ISSUE_MISSING_PLACE for i in out["issues"]), out["issues"]
     assert _stored_block(SEA_LOT) == {}
     assert _doc(SEA_LOT)["data"]["0.0"]["incoterm"] == "DAP", "nothing was silently upgraded"
 
@@ -1310,3 +1321,275 @@ def test_the_state_banner_and_the_next_action_always_agree(staging):
             assert profile["incotermRawLabel"] == "", label
     # An unrecognized term is preserved verbatim as evidence — never rewritten.
     assert _profile_of(documents["typo"])["incotermRawLabel"] == "C1F"
+
+
+# ===========================================================================
+# N. LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 (issue #78)
+#    The publication year is an INTERNAL domain fact: no selector in the
+#    normal UX, 2020 implicit for a NEW profile, history never migrated.
+# ===========================================================================
+
+def _without_version(payload: dict) -> dict:
+    """The exact payload the simplified UI sends: the version key is ABSENT."""
+
+    return {key: value for key, value in payload.items() if key != "incotermVersion"}
+
+
+def test_new_complete_profile_without_a_stated_version_persists_the_current_one(staging):
+    """EXW/FCA… selected + complete profile + NO version key → 2020, internally."""
+
+    out = _dispatch("shipment_profile_save", dict(
+        {"shipmentId": ROAD_LOT},
+        **_without_version(_valid_road_profile())))
+    assert out["ok"], out["error"]
+    block = _stored_block(ROAD_LOT)
+    assert block["incoterm_version"] == ep.CURRENT_INCOTERM_VERSION == "2020"
+    profile = _profile(ROAD_LOT)
+    assert profile["incoterm"] == "FCA" and profile["incotermVersion"] == "2020"
+
+
+@pytest.mark.parametrize("incoterm,clause", [
+    ("CIP", ep.CLAUSE_A),   # CIP 2020 semantics → Institute Cargo Clauses A minimum
+    ("CIF", ep.CLAUSE_C),   # CIF 2020 semantics → Institute Cargo Clauses C minimum
+])
+def test_new_cip_cif_profile_carries_current_insurance_semantics(staging, incoterm, clause):
+    out = _dispatch("shipment_profile_save", dict(
+        {"shipmentId": SEA_LOT},
+        **_without_version(_valid_sea_profile(incoterm=incoterm))))
+    assert out["ok"], out["error"]
+    assert _stored_block(SEA_LOT)["incoterm_version"] == "2020"
+    insurance = _profile(SEA_LOT)["insurance"]
+    assert insurance["obligation"] == ep.INSURANCE_SELLER_REQUIRED
+    assert insurance["clause"] == clause
+    assert insurance["versionSpecific"] is True
+
+
+def test_new_exw_profile_persists_exw_plus_the_internal_2020_version(staging):
+    """The Owner's create example: EXW + complete profile → EXW + version 2020."""
+
+    out = _create("LO-0496", **{
+        "mode": "Truck", "incoterm": "EXW", "pol": "Bằng Tường (Quảng Tây)",
+        "namedPlace": "Nhà máy Bằng Tường", "loadModel": "LTL",
+        "serviceScope": ["FINAL_DELIVERY"], "serviceScopeConfirmed": True,
+        "cargoInsurance": {"status": "NO"},
+    })
+    assert out["ok"], out["error"]
+    head = _created_head("LO-0496")
+    assert head["incoterm"] == "EXW"
+    assert head["execution_profile"]["incoterm_version"] == "2020"
+    # The ordinary summary does NOT waste a line on "Incoterms 2020".
+    assert "Incoterms 2020" not in " ".join(_profile("LO-0496")["summaryLines"])
+
+
+def test_create_with_a_blank_incoterm_writes_no_version_and_no_profile_block(staging):
+    """Blank Incoterm stays blank — no EXW and no implicit 2020 for a profile
+    the operator never configured."""
+
+    out = _create("LO-0497", **{"mode": "Truck", "pol": "Bằng Tường (Quảng Tây)",
+                                "namedPlace": "", "loadModel": "",
+                                "serviceScope": [], "serviceScopeConfirmed": False,
+                                "cargoInsurance": {"status": "UNKNOWN"}})
+    assert out["ok"], out["error"]
+    head = _created_head("LO-0497")
+    assert head["incoterm"] == ""
+    assert "execution_profile" not in head, "an unconfigured profile is never half-written"
+
+
+def test_new_profile_picker_offers_the_current_matrix_only():
+    """The normal picker shows the CURRENT set; DAT (2010) and DAF/DDU (2000)
+    are not offered for NEW profiles — but they stay readable as history."""
+
+    codes = ep.new_profile_codes()
+    assert codes == tuple(ep.codes_for_version(ep.CURRENT_INCOTERM_VERSION))
+    for rule in ("EXW", "FCA", "CPT", "CIP", "DAP", "DPU", "DDP"):
+        assert rule in codes, rule
+    for historical in ("DAT", "DAF", "DDU"):
+        assert historical not in codes, historical
+
+
+@pytest.mark.parametrize("mode,excluded", [
+    ("ROAD", ("FAS", "FOB", "CFR", "CIF")),
+    ("AIR", ("FAS", "FOB", "CFR", "CIF")),
+    ("RAIL", ("FAS", "FOB", "CFR", "CIF")),
+])
+def test_new_profile_picker_filters_the_maritime_rules_by_mode(mode, excluded):
+    codes = ep.new_profile_codes(mode)
+    for rule in excluded:
+        assert rule not in codes, f"{rule} must not be offered for {mode}"
+    assert "FCA" in codes and "DPU" in codes
+
+
+def test_new_profile_picker_keeps_the_maritime_rules_for_sea():
+    codes = ep.new_profile_codes("SEA")
+    for rule in ("FAS", "FOB", "CFR", "CIF"):
+        assert rule in codes, rule
+
+
+@pytest.mark.parametrize("incoterm,stored_version,stored_incoterm,payload_version,expected", [
+    # A fresh selection through the current picker → the implicit CURRENT version.
+    ("EXW", "", "", None, "2020"),
+    ("DPU", "", "", "", "2020"),
+    ("FCA", "", "DAT", None, "2020"),            # operator re-selected the rule
+    # Stored history is preserved on EVERY save — the payload cannot rewrite it.
+    ("DAT", "2010", "DAT", None, "2010"),
+    ("DAT", "2010", "DAT", "2020", "2010"),      # even a stray "2020" cannot migrate it
+    ("DDU", "2000_LEGACY", "DDU", None, "2000_LEGACY"),
+    ("FCA", "2020", "FCA", None, "2020"),
+    # A never-stated version may be filled by an explicit statement (API compat)…
+    ("DAT", "", "DAT", "2010", "2010"),
+    # …but a legacy code outside the CURRENT matrix is NEVER stamped 2020, and
+    # a historical blank version stays blank, and a blank Incoterm stays blank.
+    ("DAT", "", "DAT", "", ""),
+    ("DAF", "", "", None, ""),
+    ("", "", "", None, ""),
+    ("DAP", "", "DAP", None, ""),                # viewing/editing around ≠ re-selection
+])
+def test_the_one_version_resolution_rule(incoterm, stored_version, stored_incoterm,
+                                         payload_version, expected):
+    assert ep.resolve_write_version(
+        incoterm=incoterm, payload_version=payload_version,
+        stored_version=stored_version, stored_incoterm=stored_incoterm,
+    ) == expected
+
+
+def _historical_2010_lot() -> None:
+    """Simulate pre-simplification data: the old UI COULD state 2010 explicitly."""
+
+    out = _dispatch("shipment_profile_save", dict(
+        {"shipmentId": ROAD_LOT},
+        **_valid_road_profile(incoterm="DAT", incotermVersion="2010", loadModel="LTL")))
+    assert out["ok"], out["error"]
+
+
+def test_historical_2010_and_legacy_profiles_are_readable_and_never_rewritten(staging):
+    _historical_2010_lot()
+    before = _doc(ROAD_LOT)
+    profile = _profile(ROAD_LOT)
+    assert profile["incoterm"] == "DAT"
+    assert profile["incotermVersion"] == "2010"
+    assert profile["incotermVersionLabel"] == "Incoterms 2010"
+    assert profile["state"] == ep.STATE_READY
+    assert "DAT · Incoterms 2010" in profile["summaryLines"], "history must be named honestly"
+    # Viewing mutates nothing at all.
+    assert _doc(ROAD_LOT)["data"]["0.0"] == before["data"]["0.0"]
+    assert _doc(ROAD_LOT)["version"] == before["version"]
+    # CIP 2010 semantics stay 2010 — no back-ported Clause A (re-check via CIF/CIP doc).
+    legacy_doc = _insurance_doc(incoterm="CIP", version="2010", status="UNKNOWN")
+    assert _profile_of(legacy_doc)["insurance"]["clause"] == ep.CLAUSE_2010_MINIMUM
+
+
+def test_editing_an_unrelated_field_on_a_historical_profile_keeps_its_version(staging):
+    """The exact Owner ruling: editing another field must not 2020-migrate a
+    2010 / legacy profile — the save carries no version and stays history."""
+
+    _historical_2010_lot()
+    out = _dispatch("shipment_profile_save", {
+        "shipmentId": ROAD_LOT, "namedPlace": "Cửa khẩu Hữu Nghị",
+    }, seq=2)
+    assert out["ok"], out["error"]
+    block = _stored_block(ROAD_LOT)
+    assert block["incoterm_version"] == "2010"
+    assert block["incoterm_named_place"] == "Cửa khẩu Hữu Nghị"
+
+
+def test_historical_legacy_2000_profile_stays_legacy_after_an_edit(staging):
+    out = _dispatch("shipment_profile_save", dict(
+        {"shipmentId": SEA_LOT},
+        **_valid_sea_profile(incoterm="DDU", incotermVersion="2000_LEGACY", loadModel="LCL")))
+    assert out["ok"], out["error"]
+    profile = _profile(SEA_LOT)
+    assert profile["incotermVersion"] == "2000_LEGACY"
+    assert "DDU · Incoterms 2000 (legacy — DAF/DDU)" in profile["summaryLines"]
+    assert _dispatch("shipment_profile_save", {"shipmentId": SEA_LOT, "namedPlace": "Hòn La"},
+                     seq=2)["ok"]
+    assert _stored_block(SEA_LOT)["incoterm_version"] == "2000_LEGACY"
+
+
+def test_a_historical_blank_version_stays_blank_through_viewing_and_a_focused_edit(staging):
+    """LO-0306 seeds exactly this: DAP on a Truck lot, no version, no block."""
+
+    profile = _profile(LOT)
+    assert profile["incotermVersion"] == ""
+    assert _stored_block(LOT) == {}
+    # Configuring the profile NOW — without re-selecting the rule — must not
+    # stamp a version the document never carried either.
+    out = _dispatch("shipment_profile_save", {
+        "shipmentId": LOT, "mode": "Truck", "namedPlace": "Pingxiang Warehouse",
+        "loadModel": "LTL", "serviceScope": ["FINAL_DELIVERY"],
+        "serviceScopeConfirmed": True, "cargoInsurance": {"status": "UNKNOWN"},
+    })
+    assert out["ok"], out["issues"]
+    assert _stored_block(LOT)["incoterm_version"] == ""
+    assert _stored_block(LOT)["load_model"] == "LTL"
+    # …while a rule the operator DOES freshly pick carries the implicit current one.
+    out = _dispatch("shipment_profile_save", {"shipmentId": LOT, "incoterm": "DPU"}, seq=2)
+    assert out["ok"], out["issues"]
+    assert _stored_block(LOT)["incoterm_version"] == "2020"
+
+
+def test_the_version_never_becomes_a_user_facing_step_again():
+    """Source gate for the DOM contract: the component may not re-grow a
+    version selector (the real proof is the rebuilt-bundle DOM acceptance)."""
+
+    source = (ROOT / "component" / "src" / "components" / "ShipmentExecutionProfile.tsx")
+    text = source.read_text(encoding="utf-8")
+    # A rendered FIELD for the version may not come back, in any wording.
+    assert "Phiên bản Incoterms\"" not in text
+    assert 'label="2. Điều kiện giao hàng"' in text  # step 2 is the rule, not a year
+    assert "-incoterm-version" not in text
+    assert "changeVersion" not in text
+    assert 'label="1. Phương thức vận chuyển"' in text
+    assert 'label="2. Điều kiện giao hàng"' in text
+    assert 'label="3. Địa điểm / cảng / điểm giao"' in text
+    assert 'label="4. Loại hàng"' in text
+    assert "6. Phạm vi Trường Thành thực hiện" in text
+    assert "7. Bảo hiểm hàng hóa (thực tế)" in text
+    create = (ROOT / "component" / "src" / "pages" / "CreateShipment.tsx").read_text(encoding="utf-8")
+    assert "Phiên bản Incoterms" not in create
+
+
+def test_the_client_catalog_exposes_the_current_version_and_new_profile_lists():
+    options = ep.projection_options()
+    assert options["currentVersion"] == ep.CURRENT_INCOTERM_VERSION == "2020"
+    assert options["newProfileCodes"][""] == list(ep.codes_for_version("2020"))
+    assert "DAT" not in options["newProfileCodes"]["ROAD"]
+    assert "DPU" in options["newProfileCodes"]["ROAD"]
+    for maritime in ("FAS", "FOB", "CFR", "CIF"):
+        assert maritime not in options["newProfileCodes"]["ROAD"]
+        assert maritime not in options["newProfileCodes"]["AIR"]
+        assert maritime in options["newProfileCodes"]["SEA"]
+
+
+def test_cnf_normalization_survives_the_version_simplification(staging):
+    """CNF/C&F → canonical CFR, raw wording kept — WITHOUT any version choice."""
+
+    out = _dispatch("shipment_profile_save", dict(
+        {"shipmentId": SEA_LOT},
+        **_without_version(_valid_sea_profile(incoterm="CNF"))))
+    assert out["ok"], out["error"]
+    assert _doc(SEA_LOT)["data"]["0.0"]["incoterm"] == "CFR"
+    block = _stored_block(SEA_LOT)
+    assert block["incoterm_raw_label"] == "CNF"
+    assert block["incoterm_version"] == "2020"
+    profile = _profile(SEA_LOT)
+    assert profile["incotermAliasNote"].startswith("CNF là cách gọi trong hợp đồng")
+    assert not any("Incoterms 2020" in line for line in profile["summaryLines"])
+
+
+def test_the_cif_cip_insurance_mismatch_behavior_is_untouched(staging):
+    """PR77 exactly: UNKNOWN → kiểm tra chứng từ, NO → RED mismatch, YES → satisfied;
+    CIF/CIP + NO never DONE. Re-pinned here because this slice touched the
+    same validate/summary functions."""
+
+    for code in ("CIF", "CIP"):
+        doc = _insurance_doc(incoterm=code, version="2020", status="NO")
+        profile = _profile_of(doc)
+        stage = _insurance_stage(profile)
+        assert stage["mismatch"] is True and stage["done"] is False, code
+        assert profile["nextAction"]["tone"] == "red", code
+        delivered = _insurance_doc(incoterm=code, version="2020", status="NO", delivered=True)
+        assert _profile_of(delivered)["nextAction"]["code"] != "DONE", code
+        unknown = _insurance_doc(incoterm=code, version="2020", status="UNKNOWN")
+        assert _insurance_stage(_profile_of(unknown))["missing"] == "Kiểm tra chứng từ bảo hiểm."
+        satisfied = _insurance_doc(incoterm=code, version="2020", status="YES")
+        assert _insurance_stage(_profile_of(satisfied))["done"] is True

@@ -2050,13 +2050,13 @@ def _handle_shipment_profile_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.logic import apply_financial_snapshot
     from core.shipment_execution_profile import (
         ACTUAL_INSURANCE_STATES,
-        INCOTERM_VERSIONS,
         STORED_MODE_BY_CANONICAL,
         canonical_mode,
         normalize_incoterm,
         normalize_service_scope,
         profile_document,
         profile_facts,
+        resolve_write_version,
         validate_profile,
     )
 
@@ -2120,9 +2120,19 @@ def _handle_shipment_profile_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         facts["incotermRawInput"] = rd.text(payload.get("incoterm"))
         facts["incotermRawLabel"] = normalized["rawLabel"]
 
-    if "incotermVersion" in payload:
-        version = rd.text(payload.get("incotermVersion"))
-        facts["incotermVersion"] = version if version in INCOTERM_VERSIONS else ""
+    # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 — the normal editor shows NO
+    # version selector: the year is an internal domain fact, resolved here by
+    # the ONE rule. A version this document already carries is history and is
+    # preserved on every save (editing an unrelated field on a 2010 / legacy
+    # lot must never migrate it); an explicitly stated version only completes a
+    # never-stated profile; a code freshly selected in the current picker
+    # carries the implicit 2020; a blank Incoterm stays blank.
+    facts["incotermVersion"] = resolve_write_version(
+        incoterm=facts["incoterm"],
+        payload_version=payload.get("incotermVersion") if "incotermVersion" in payload else None,
+        stored_version=current["incotermVersion"],
+        stored_incoterm=current["incoterm"],
+    )
     if "namedPlace" in payload:
         facts["incotermNamedPlace"] = rd.text(payload.get("namedPlace"))
     if "loadModel" in payload:
@@ -2839,18 +2849,18 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
             return _res(False, str(exc))
 
     # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the create form may state the profile
-    # the detail page will later refine (Incoterms version, named place, load
-    # model, Trường Thành service scope, actual cargo insurance). An impossible
-    # combination is refused HERE rather than stored and explained later, and
-    # nothing is written when the profile is invalid.
+    # the detail page will later refine (Incoterms rule + internal version,
+    # named place, load model, Trường Thành service scope, actual cargo
+    # insurance). An impossible combination is refused HERE rather than stored
+    # and explained later, and nothing is written when the profile is invalid.
     from core.shipment_execution_profile import (
-        INCOTERM_VERSIONS,
         STORED_MODE_BY_CANONICAL,
         blocking_write_issues,
         canonical_mode,
         normalize_incoterm,
         normalize_service_scope,
         profile_document,
+        resolve_write_version,
         validate_profile,
     )
 
@@ -2859,19 +2869,27 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     # "chưa chọn" (UNKNOWN), so validating or storing an invented ``EXW`` here
     # would fabricate a fact the operator never stated.
     head_incoterm = rd.text(transport.get("incoterm"))
+    profile_code = normalize_incoterm(head_incoterm)["code"]
     profile_keys = ("incotermVersion", "namedPlace", "loadModel", "serviceScope",
                     "serviceScopeConfirmed", "cargoInsurance")
     if any(key in transport or key in payload for key in profile_keys):
         insurance_payload = payload.get("cargoInsurance") or transport.get("cargoInsurance")
         insurance_payload = insurance_payload if isinstance(insurance_payload, Mapping) else {}
         insurance_status = rd.text(insurance_payload.get("status")).upper()
-        version = rd.text(payload.get("incotermVersion") or transport.get("incotermVersion"))
+        # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: the create form shows no
+        # version selector — a freshly selected CURRENT-matrix rule on a NEW lot
+        # carries the implicit 2020 version (internal domain fact, resolved by
+        # the ONE shared rule), while a blank Incoterm stays blank and an
+        # explicitly stated version still lands for canonical-API callers.
         profile_facts_in = {
             "mode": canonical_mode(selected_mode),
             "storedMode": STORED_MODE_BY_CANONICAL.get(canonical_mode(selected_mode), ""),
-            "incoterm": normalize_incoterm(head_incoterm)["code"],
+            "incoterm": profile_code,
             "incotermRawLabel": normalize_incoterm(head_incoterm)["rawLabel"],
-            "incotermVersion": version if version in INCOTERM_VERSIONS else "",
+            "incotermVersion": resolve_write_version(
+                incoterm=profile_code,
+                payload_version=rd.text(payload.get("incotermVersion")
+                                         or transport.get("incotermVersion"))),
             "incotermNamedPlace": rd.text(payload.get("namedPlace") or transport.get("namedPlace")),
             "loadModel": rd.text(payload.get("loadModel") or transport.get("loadModel")).upper(),
             "serviceScope": normalize_service_scope(payload.get("serviceScope") or transport.get("serviceScope")),

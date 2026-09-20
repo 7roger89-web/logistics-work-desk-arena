@@ -44,6 +44,10 @@ Hard rules encoded below, each with its own test:
   such a combination is never mutated: it renders ``CONFIG_CHECK``;
 * DAT exists in 2010 only, DPU exists in 2020 only;
 * DAF/DDU are legacy Incoterms 2000-era terms, never offered as 2010/2020;
+* LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: the operator never picks a publication
+  year — a FRESH selection through the current picker is implicitly version
+  2020 (``resolve_write_version``), while a version a document ALREADY carries
+  (2010 / legacy 2000 / 2020) and a historical blank are preserved untouched;
 * CNF / C&F are user aliases of the canonical ICC rule CFR — normalized on the
   way in, with the ORIGINAL contract wording preserved as evidence;
 * a bare ``FOB`` without a named place is operationally incomplete — and a place
@@ -79,6 +83,14 @@ VERSION_LABELS: dict[str, str] = {
     VERSION_2010: "Incoterms 2010",
     VERSION_LEGACY_2000: "Incoterms 2000 (legacy — DAF/DDU)",
 }
+
+#: LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 — the CURRENT ICC publication. A NEW
+#: complete execution profile is written with this version INTERNALLY: the
+#: operator picks the Incoterm rule, never the publication year. The versions
+#: above stay first-class read semantics — a stored 2010 / legacy 2000 record
+#: is never silently re-stamped, and this is not a migration: it is the one
+#: implicit domain fact of a fresh profile.
+CURRENT_INCOTERM_VERSION = VERSION_2020
 
 #: Rule scope per ICC: maritime rules may only carry a sea / inland-waterway
 #: main carriage. Everything else is any-mode.
@@ -221,6 +233,52 @@ def versions_defining(code: str) -> tuple[str, ...]:
 
 def codes_for_version(version: str) -> tuple[str, ...]:
     return tuple(code for code, _ in INCOTERM_RULES.get(str(version), ()))
+
+
+def new_profile_codes(mode: str = "") -> tuple[str, ...]:
+    """The Incoterm list a NEW profile may offer — the CURRENT rule set only.
+
+    Mode filtering stays mandatory: the maritime rules (FAS/FOB/CFR/CIF) are
+    offered only for SEA / inland waterway. DAT (2010) and DAF/DDU (legacy
+    2000) are absent from the CURRENT matrix by construction, so the normal
+    picker cannot offer them without a second list to keep in sync.
+    """
+
+    codes = tuple(code for code, scope in INCOTERM_RULES[CURRENT_INCOTERM_VERSION]
+                  if not (mode and scope == SCOPE_SEA_ONLY and mode != MODE_SEA))
+    return codes
+
+
+def resolve_write_version(*, incoterm: Any = "", payload_version: Any = None,
+                          stored_version: Any = "", stored_incoterm: Any = "") -> str:
+    """The ONE authority for the ``incoterm_version`` a save persists.
+
+    LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01 turned the version from an operator
+    choice into an internal domain fact. The rule is deliberately small:
+
+    1. a version the DOCUMENT already carries is history — it is preserved on
+       every save, whatever the payload says (no silent 2010→2020 upgrade when
+       the operator edits an unrelated field, and no silent clear either);
+    2. an explicitly stated valid version only ever completes a profile whose
+       version was never stated (canonical-API compatibility);
+    3. a code the operator just SELECTED in the current picker gets the
+       implicit CURRENT version (2020) — but only when that code really exists
+       in the CURRENT matrix, so no legacy rule is ever stamped 2020;
+    4. everything else stays blank: a blank Incoterm (and a historical blank
+       version) remains blank — UNKNOWN is never defaulted.
+    """
+
+    stored = _text(stored_version)
+    if stored in INCOTERM_VERSIONS:
+        return stored
+    given = _text(payload_version)
+    if given in INCOTERM_VERSIONS:
+        return given
+    code = _text(incoterm).upper()
+    if code and code != _text(stored_incoterm).upper() \
+            and code in codes_for_version(CURRENT_INCOTERM_VERSION):
+        return CURRENT_INCOTERM_VERSION
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -805,7 +863,6 @@ def validate_profile(facts: Mapping[str, Any], *, for_write: bool = False) -> li
             f"Chưa nhận diện được điều kiện giao hàng “{raw}”." if raw
             else "Chưa có điều kiện giao hàng (Incoterm).")
     else:
-        defining = versions_defining(code)
         if version and code not in codes_for_version(version):
             if code == "DAT":
                 add(ISSUE_VERSION_MISMATCH,
@@ -820,11 +877,11 @@ def validate_profile(facts: Mapping[str, Any], *, for_write: bool = False) -> li
                 add(ISSUE_VERSION_MISMATCH,
                     f"{code} không thuộc {VERSION_LABELS.get(version, version)}. "
                     f"Bản này chỉ có: {', '.join(codes_for_version(version))}.")
-        elif not version and defining == (VERSION_LEGACY_2000,):
-            add(ISSUE_MISSING_VERSION,
-                f"{code} chỉ hợp lệ ở chế độ legacy Incoterms 2000 — cần ghi rõ phiên bản.")
-        elif not version and for_write:
-            add(ISSUE_MISSING_VERSION, "Chưa chọn phiên bản Incoterms cho lô.")
+        # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: the operator no longer chooses
+        # a publication year, so "no version stated" is not a write failure.
+        # The version a save persists is decided by ``resolve_write_version``
+        # (current set for a fresh selection, the stored truth for history);
+        # a historical record that never stated one keeps stating nothing.
 
         if mode:
             scope = rule_scope(version, code)
@@ -1228,14 +1285,6 @@ def build_execution_profile(shipment: Mapping[str, Any] | None, *,
         "issues": issues,
     }
 
-    if cfg["incoterm"] and not cfg["incotermVersion"]:
-        # A legacy document (or a contract that simply never stated a version)
-        # is incomplete, not wrong. It is never silently upgraded to 2020.
-        if not any(issue["code"] == ISSUE_INVALID_COMBINATION for issue in issues):
-            issues.append({
-                "code": ISSUE_MISSING_VERSION,
-                "message": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
-            })
     if cfg["incoterm"] and not cfg["incotermNamedPlace"] and not any(
             issue["code"] in {ISSUE_UNKNOWN_INCOTERM, ISSUE_VERSION_MISMATCH} for issue in issues):
         issues.append({
@@ -1273,7 +1322,13 @@ def summary_lines(profile: Mapping[str, Any]) -> list[str]:
     raw = _text(profile.get("incotermRawLabel"))
     version = _text(profile.get("incotermVersion"))
     if code:
-        incoterm_line = code if not version else f"{code} · {VERSION_LABELS.get(version, version)}"
+        # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: the CURRENT version is the
+        # silent internal default of a new profile — the ordinary summary does
+        # not spend a line on it. Only a HISTORICAL non-current version earns
+        # the contextual note, because there the year is a fact the operator
+        # must read (2010 DAT, legacy DDU), not a year they configure.
+        incoterm_line = code if version in {CURRENT_INCOTERM_VERSION, ""} \
+            else f"{code} · {VERSION_LABELS.get(version, version)}"
         if raw and raw.upper() != code:
             incoterm_line += f" (hợp đồng ghi: {raw})"
         lines.append(incoterm_line)
@@ -1338,6 +1393,13 @@ def projection_options() -> dict[str, Any]:
 
     return {
         "versions": [{"code": code, "label": VERSION_LABELS[code]} for code in INCOTERM_VERSIONS],
+        # The version a NEW profile silently carries (never a user choice), and
+        # the picker list a new profile sees, already mode-filtered — the
+        # client renders NO version selector and derives its rule list here.
+        "currentVersion": CURRENT_INCOTERM_VERSION,
+        "newProfileCodes": {
+            mode: list(new_profile_codes(mode)) for mode in ("",) + CANONICAL_MODES
+        },
         "rules": {
             version: [{"code": code, "scope": scope} for code, scope in rules]
             for version, rules in INCOTERM_RULES.items()
@@ -1365,13 +1427,18 @@ def projection_options() -> dict[str, Any]:
     }
 
 
-def write_issues(payload: Mapping[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+def write_issues(payload: Mapping[str, Any], *, stored_version: Any = "",
+                 stored_incoterm: Any = "") -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
     """Validate ONE operator profile submission. Returns ``(facts, issues, normalized)``.
 
-    Used by the bounded write handler: a NEW configuration must be complete and
-    structurally possible before anything is written, and impossible
+    Used by the bounded write handler: the facts a NEW configuration must state
+    (named place, mode, load model where the mode has a family, an explicit
+    service-scope confirmation — NOT a publication year, which the UI no longer
+    offers) are required before anything is written, and impossible
     combinations are REFUSED with the explanation the UI shows — never silently
-    corrected, never partially saved.
+    corrected, never partially saved. ``stored_version`` / ``stored_incoterm``
+    carry the CURRENT document's truth so the version rule
+    (``resolve_write_version``) can preserve history exactly as the handler does.
     """
 
     raw_incoterm = payload.get("incoterm")
@@ -1392,7 +1459,13 @@ def write_issues(payload: Mapping[str, Any]) -> tuple[dict[str, Any], list[dict[
         "incoterm": normalized["code"],
         "incotermRawInput": _text(raw_incoterm),
         "incotermRawLabel": normalized["rawLabel"],
-        "incotermVersion": version if version in INCOTERM_VERSIONS else "",
+        # The one version rule, shared with both write paths: stored history
+        # is preserved, an explicit valid version only fills a never-stated
+        # profile, a fresh current-matrix selection is implicitly 2020, and a
+        # blank Incoterm (or a historical blank version) stays blank.
+        "incotermVersion": resolve_write_version(
+            incoterm=normalized["code"], payload_version=version,
+            stored_version=stored_version, stored_incoterm=stored_incoterm),
         "incotermNamedPlace": _text(payload.get("namedPlace")),
         "loadModel": _text(payload.get("loadModel")).upper(),
         "serviceScope": normalize_service_scope(payload.get("serviceScope")),

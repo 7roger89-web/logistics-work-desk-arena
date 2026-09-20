@@ -19,10 +19,21 @@ States:
   ``cfrAlias``        ``shipment_profile_save`` with the contract wording
                       ``CNF``: the stored canonical code must be ``CFR`` while
                       the raw label survives as evidence.
-  ``seaFclSaved``     the CIF 2020 / Hai Phong Port / FCL profile (equipment read
-                      from the existing container units; CIF obligation present,
-                      actual insurance still UNKNOWN — the two facts stay
-                      distinct).
+  ``seaFclSaved``     the CIF / Hai Phong Port / FCL profile saved EXACTLY as the
+                      simplified UI sends it — with NO incotermVersion key
+                      (LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01): the readback must
+                      show the backend persisted ``incoterm_version=2020``
+                      internally while the summary stays uncluttered (equipment
+                      read from the existing container units; the CIF obligation
+                      is present and actual insurance is still UNKNOWN — the two
+                      facts stay distinct).
+  ``historical2010``  a fresh lot configured through the canonical writer with
+                      the historical DAT + 2010 truth (the payload an older UI
+                      could send). ``historicalEdited`` then saves an UNRELATED
+                      field with no version key: the stored 2010 must survive —
+                      no silent migration.
+  ``legacyDdu``       DDU + 2000_LEGACY on a clean lot: readable as legacy, and
+                      an unrelated-field save keeps the legacy version.
   ``insuranceNo``     a second save stating the ACTUAL insurance as "NO": every
                       stale policy detail is cleared.
   ``roadLtlSaved``    FCA 2020 / Pingxiang Warehouse / ROAD + LTL: no truck
@@ -120,10 +131,12 @@ def main() -> None:
     assert alias_out["ok"], alias_out["error"]
     cfr_alias = state("cfrAlias", [alias_out])
 
-    # --- the real CIF 2020 / FCL profile -------------------------------------
+    # --- the real CIF profile, sent as the SIMPLIFIED UI sends it (no version) -
+    # LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: the version the lot already carries
+    # is preserved; the operator never states a year.
     sea_out = dispatch("shipment_profile_save", {
         "shipmentId": SEA_LOT, "requestId": "REQ-PROFILE-SEA",
-        "mode": "Sea", "incoterm": "CIF", "incotermVersion": "2020",
+        "mode": "Sea", "incoterm": "CIF",
         "namedPlace": "Hai Phong Port", "loadModel": "FCL",
         "serviceScope": ["IMPORT_CUSTOMS", "DESTINATION_TRUCKING", "FINAL_DELIVERY"],
         "serviceScopeConfirmed": True,
@@ -144,10 +157,13 @@ def main() -> None:
     assert ins_out["ok"], ins_out["error"]
     insurance_no = state("insuranceNo", [ins_out])
 
-    # --- ROAD + LTL: no dedicated truck is required ---------------------------
+    # --- ROAD + LTL, a FRESH profile without any version key: the backend must
+    #     persist the CURRENT version internally (2020) — the readback below
+    #     carries it while the summary never wastes a line on it. -------------
+    #     Also: no dedicated truck is required for LTL. -----------------------
     ltl_out = dispatch("shipment_profile_save", {
         "shipmentId": ROAD_LOT, "requestId": "REQ-PROFILE-LTL",
-        "mode": "Truck", "incoterm": "FCA", "incotermVersion": "2020",
+        "mode": "Truck", "incoterm": "FCA",
         "namedPlace": "Pingxiang Warehouse", "loadModel": "LTL",
         "serviceScope": ["ORIGIN_TERMINAL_OR_BORDER", "CROSS_BORDER_COORDINATION",
                          "IMPORT_CUSTOMS", "FINAL_DELIVERY"],
@@ -177,7 +193,7 @@ def main() -> None:
                                         "user_id": "U-VIEWER"}
     refused = dispatch("shipment_profile_save", {
         "shipmentId": LEGACY_LOT, "requestId": "REQ-PROFILE-VIEWER",
-        "mode": "Sea", "incoterm": "CIF", "incotermVersion": "2020",
+        "mode": "Sea", "incoterm": "CIF",
         "namedPlace": "Hai Phong Port", "loadModel": "FCL", "serviceScopeConfirmed": True,
         "cargoInsurance": {"status": "YES"},
     })
@@ -194,6 +210,53 @@ def main() -> None:
     })
     assert not invalid["ok"], invalid
     invalid_refused = state("invalidRefused", [invalid])
+
+    # --- LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: real HISTORICAL truth, written
+    # the way the pre-simplification UI/API could write it (explicit 2010 /
+    # legacy version), then edited the way the SIMPLIFIED UI edits it (no
+    # version key). The stored version must survive both. ---------------------
+    HIST_DAT_LOT, HIST_DDU_LOT = "LO-0498", "LO-0499"
+    hist_create = dispatch("shipment_create", {
+        "shipmentId": HIST_DAT_LOT, "customerId": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "contractId": "", "currency": "VND", "requestId": "REQ-CREATE-DAT",
+        "transport": {"mode": "Truck"},
+    })
+    assert hist_create["ok"], hist_create["error"]
+    hist_create2 = dispatch("shipment_create", {
+        "shipmentId": HIST_DDU_LOT, "customerId": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "contractId": "", "currency": "VND", "requestId": "REQ-CREATE-DDU",
+        "transport": {"mode": "Truck"},
+    })
+    assert hist_create2["ok"], hist_create2["error"]
+    dat_out = dispatch("shipment_profile_save", {
+        "shipmentId": HIST_DAT_LOT, "requestId": "REQ-PROFILE-DAT2010",
+        "mode": "Truck", "incoterm": "DAT", "incotermVersion": "2010",
+        "namedPlace": "Bến xe Lạng Sơn", "loadModel": "LTL",
+        "serviceScope": ["IMPORT_CUSTOMS", "FINAL_DELIVERY"], "serviceScopeConfirmed": True,
+        "cargoInsurance": {"status": "UNKNOWN"},
+    })
+    assert dat_out["ok"], dat_out["error"]
+    historical_2010 = state("historical2010", [dat_out])
+    # An UNRELATED field edit through the simplified UI — the version key is
+    # absent and the stored 2010 must come back unchanged.
+    dat_edit = dispatch("shipment_profile_save", {
+        "shipmentId": HIST_DAT_LOT, "requestId": "REQ-PROFILE-DAT2010-EDIT",
+        "namedPlace": "Cửa khẩu Hữu Nghị",
+    })
+    assert dat_edit["ok"], dat_edit["error"]
+    persisted = (dat_edit.get("persisted") or {}).get("executionProfile") or {}
+    assert persisted.get("incoterm_version") == "2010", "history must not be migrated by an edit"
+    historical_edited = state("historicalEdited", [dat_edit])
+    ddu_out = dispatch("shipment_profile_save", {
+        "shipmentId": HIST_DDU_LOT, "requestId": "REQ-PROFILE-DDU2000",
+        "mode": "Truck", "incoterm": "DDU", "incotermVersion": "2000_LEGACY",
+        "namedPlace": "Cao Bằng", "loadModel": "LTL",
+        "serviceScope": ["FINAL_DELIVERY"], "serviceScopeConfirmed": True,
+        "cargoInsurance": {"status": "UNKNOWN"},
+    })
+    assert ddu_out["ok"], ddu_out["error"]
+    legacy_ddu = state("legacyDdu", [ddu_out])
+    st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
 
     st.session_state.pop(vm.LAST_WRITES_KEY, None)
 
@@ -215,10 +278,16 @@ def main() -> None:
         "configCheck": config_check,
         "viewerRefused": viewer_refused,
         "invalidRefused": invalid_refused,
+        "historicalLot": HIST_DAT_LOT,
+        "legacyLot2000": HIST_DDU_LOT,
+        "historical2010": historical_2010,
+        "historicalEdited": historical_edited,
+        "legacyDdu": legacy_ddu,
         "outcomes": {
             "cfrAlias": alias_out, "seaFclSaved": sea_out, "insuranceNo": ins_out,
             "roadLtlSaved": ltl_out, "roadFtlTruck": truck_out,
             "viewerRefused": refused, "invalidRefused": invalid,
+            "historical2010": dat_out, "historicalEdited": dat_edit, "legacyDdu": ddu_out,
         },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -242,6 +311,9 @@ def main() -> None:
         ("configCheck", config_check, LEGACY_LOT),
         ("viewerRefused", viewer_refused, LEGACY_LOT),
         ("invalidRefused", invalid_refused, SEA_LOT),
+        ("historical2010", historical_2010, HIST_DAT_LOT),
+        ("historicalEdited", historical_edited, HIST_DAT_LOT),
+        ("legacyDdu", legacy_ddu, HIST_DDU_LOT),
     ):
         report(name, model, sid)
     print(f"wrote {OUT.relative_to(ROOT)}")

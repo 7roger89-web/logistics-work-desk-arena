@@ -14758,6 +14758,62 @@ var ss = {
 			label: "Incoterms 2000 (legacy — DAF/DDU)"
 		}
 	],
+	currentVersion: "2020",
+	newProfileCodes: {
+		"": [
+			"EXW",
+			"FCA",
+			"CPT",
+			"CIP",
+			"DAP",
+			"DPU",
+			"DDP",
+			"FAS",
+			"FOB",
+			"CFR",
+			"CIF"
+		],
+		ROAD: [
+			"EXW",
+			"FCA",
+			"CPT",
+			"CIP",
+			"DAP",
+			"DPU",
+			"DDP"
+		],
+		SEA: [
+			"EXW",
+			"FCA",
+			"CPT",
+			"CIP",
+			"DAP",
+			"DPU",
+			"DDP",
+			"FAS",
+			"FOB",
+			"CFR",
+			"CIF"
+		],
+		AIR: [
+			"EXW",
+			"FCA",
+			"CPT",
+			"CIP",
+			"DAP",
+			"DPU",
+			"DDP"
+		],
+		RAIL: [
+			"EXW",
+			"FCA",
+			"CPT",
+			"CIP",
+			"DAP",
+			"DPU",
+			"DDP"
+		]
+	},
 	rules: {
 		2020: [
 			{
@@ -15065,7 +15121,7 @@ function ls(e) {
 	return {
 		mode: e.mode,
 		incoterm: e.incoterm,
-		incotermVersion: e.incotermVersion,
+		...e.incotermVersion ? { incotermVersion: e.incotermVersion } : {},
 		namedPlace: e.namedPlace.trim(),
 		loadModel: e.loadModel,
 		serviceScope: e.serviceScope,
@@ -15130,7 +15186,6 @@ function gs(e) {
 	let t = ss.loadModels[e.mode] ?? [];
 	return [
 		!e.mode && "phương thức vận chuyển",
-		!e.incotermVersion && "phiên bản Incoterms",
 		!e.incoterm && "điều kiện giao hàng",
 		!e.namedPlace.trim() && "địa điểm / cảng / điểm giao",
 		t.length > 0 && !e.loadModel && "loại hàng",
@@ -15142,21 +15197,14 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 	let s = (n) => t({
 		...e,
 		...n
-	}), c = ss.modes.find((t) => t.code === e.mode)?.label ?? "", l = fs(e.incotermVersion), u = l.filter((t) => !(t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA")).map((e) => e.code), d = l.filter((t) => t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA").map((e) => e.code), f = ss.loadModels[e.mode] ?? [], p = hs(e), m = (t) => {
-		let n = ps(t).includes((e.incoterm || "").toUpperCase());
-		s({
-			incotermVersion: t,
-			incoterm: n ? e.incoterm : "",
-			loadModel: e.loadModel
-		});
-	}, h = (t) => {
+	}), c = ss.modes.find((t) => t.code === e.mode)?.label ?? "", l = String(ss.currentVersion), u = e.incotermVersion || l, d = !!e.incotermVersion && e.incotermVersion !== l, f = fs(u), p = f.filter((t) => !(t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA")).map((e) => e.code), m = f.filter((t) => t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA").map((e) => e.code), h = e.incoterm && !p.includes(e.incoterm) ? [...p, e.incoterm] : p, g = ss.loadModels[e.mode] ?? [], _ = hs(e), v = (t) => {
 		let n = ss.loadModels[t] ?? [], r = !e.loadModel || n.some((t) => t.code === e.loadModel);
 		s({
 			mode: t,
 			loadModel: r ? e.loadModel : "",
 			incoterm: ms(e.incoterm, e.incotermVersion) && t !== "SEA" ? "" : e.incoterm
 		});
-	}, g = a ?? {
+	}, y = a ?? {
 		known: !1,
 		pickupTruckType: ""
 	};
@@ -15170,7 +15218,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 				children: /* @__PURE__ */ (0, R.jsxs)("select", {
 					"data-testid": `${o}-mode`,
 					value: e.mode,
-					onChange: (e) => h(e.target.value),
+					onChange: (e) => v(e.target.value),
 					className: X(e.mode ? "ok" : "missing"),
 					children: [/* @__PURE__ */ (0, R.jsx)("option", {
 						value: "",
@@ -15181,69 +15229,48 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}, e.code))]
 				})
 			}) }),
-			/* @__PURE__ */ (0, R.jsxs)("div", {
-				className: "grid grid-cols-1 sm:grid-cols-2 gap-3",
-				children: [/* @__PURE__ */ (0, R.jsx)(Y, {
-					label: "2. Phiên bản Incoterms",
+			/* @__PURE__ */ (0, R.jsxs)("div", { children: [
+				/* @__PURE__ */ (0, R.jsx)(Y, {
+					label: "2. Điều kiện giao hàng",
 					required: !0,
-					hint: "Luật ICC theo phiên bản. Lô cũ chưa ghi phiên bản vẫn mở được và sẽ được hỏi lại.",
-					children: /* @__PURE__ */ (0, R.jsxs)("select", {
-						"data-testid": `${o}-incoterm-version`,
-						value: e.incotermVersion,
-						onChange: (e) => m(e.target.value),
-						className: X(e.incotermVersion ? "ok" : "missing"),
-						children: [/* @__PURE__ */ (0, R.jsx)("option", {
-							value: "",
-							children: "— Chưa xác định —"
-						}), ss.versions.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
-							value: e.code,
-							children: e.label
-						}, e.code))]
-					})
-				}), /* @__PURE__ */ (0, R.jsx)(Y, {
-					label: "3. Điều kiện giao hàng",
-					required: !0,
-					hint: e.incotermVersion ? `Chỉ hiện các điều kiện hợp lệ cho ${c || "phương thức"}${e.incotermVersion ? ` · Incoterms ${e.incotermVersion.replace("2000_LEGACY", "2000")}` : ""}.` : "Chọn phiên bản Incoterms trước để lọc đúng danh sách.",
+					hint: e.mode ? `Chỉ hiện các điều kiện hợp lệ với ${c}. Hồ sơ mới dùng bộ điều kiện hiện hành; phiên bản Incoterms là dữ liệu nội bộ, không cần chọn.` : "Chọn phương thức vận chuyển trước — danh sách điều kiện lọc theo phương thức.",
 					children: /* @__PURE__ */ (0, R.jsxs)("select", {
 						"data-testid": `${o}-incoterm`,
 						value: e.incoterm,
 						onChange: (e) => s({ incoterm: e.target.value }),
-						disabled: !e.incotermVersion,
-						className: X(p && e.incoterm ? "invalid" : e.incoterm ? "ok" : "missing"),
+						className: X(_ && e.incoterm ? "invalid" : e.incoterm ? "ok" : "missing"),
 						children: [/* @__PURE__ */ (0, R.jsx)("option", {
 							value: "",
 							children: "— Chưa chọn —"
-						}), u.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
+						}), h.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
 							value: e,
 							children: e
 						}, e))]
 					})
-				})]
-			}),
-			d.length > 0 && /* @__PURE__ */ (0, R.jsxs)("p", {
-				className: "text-[12.5px] text-slate-500",
-				"data-testid": `${o}-hidden-terms`,
-				children: [
-					d.join(" / "),
-					" chỉ áp dụng cho đường biển / đường thủy nội địa nên không được chọn cho ",
-					c,
-					"."
-				]
-			}),
-			e.incotermVersion === "2010" && /* @__PURE__ */ (0, R.jsx)("p", {
-				className: "text-[12.5px] text-slate-500",
-				children: "Incoterms 2010 dùng DAT; DPU chỉ có từ bản 2020."
-			}),
-			e.incotermVersion === "2020" && /* @__PURE__ */ (0, R.jsx)("p", {
-				className: "text-[12.5px] text-slate-500",
-				children: "Incoterms 2020 dùng DPU; DAT chỉ có ở bản 2010."
-			}),
-			e.incotermVersion === "2000_LEGACY" && /* @__PURE__ */ (0, R.jsx)("p", {
-				className: "text-[12.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2",
-				children: "Chế độ legacy Incoterms 2000 chỉ dùng cho hợp đồng lịch sử có DAF/DDU — không áp dụng cho lô mới bình thường."
-			}),
+				}),
+				m.length > 0 && /* @__PURE__ */ (0, R.jsxs)("p", {
+					className: "text-[12.5px] text-slate-500 mt-1",
+					"data-testid": `${o}-hidden-terms`,
+					children: [
+						m.join(" / "),
+						" chỉ áp dụng cho đường biển / đường thủy nội địa nên không được chọn cho ",
+						c,
+						"."
+					]
+				}),
+				d && /* @__PURE__ */ (0, R.jsx)("p", {
+					className: "text-[12.5px] text-slate-500 mt-1",
+					"data-testid": `${o}-version-note`,
+					children: e.incotermVersion === "2000_LEGACY" ? "Điều kiện legacy · Incoterms 2000 — dữ liệu lịch sử, giữ nguyên; không dùng mặc định cho lô mới." : `Dữ liệu cũ · Incoterms ${e.incotermVersion} — danh sách điều kiện theo bản đã lưu (${e.incotermVersion === "2010" ? "có DAT, không có DPU" : "DAF / DDU"}); không cần chọn lại năm.`
+				}),
+				!e.incotermVersion && e.incoterm && /* @__PURE__ */ (0, R.jsx)("p", {
+					className: "text-[12.5px] text-slate-500 mt-1",
+					"data-testid": `${o}-version-blank-note`,
+					children: "Lô cũ chưa ghi nhận phiên bản Incoterms — dữ liệu được giữ nguyên khi xem và khi lưu."
+				})
+			] }),
 			/* @__PURE__ */ (0, R.jsx)(Y, {
-				label: "4. Địa điểm / cảng / điểm giao",
+				label: "3. Địa điểm / cảng / điểm giao",
 				required: !0,
 				hint: "Địa điểm gắn với điều kiện giao hàng (kho, bãi, cảng, cửa khẩu, điểm giao). Bỏ trống = chưa xác định, hệ thống không tự suy ra.",
 				children: /* @__PURE__ */ (0, R.jsx)("input", {
@@ -15254,8 +15281,8 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					className: X(e.namedPlace.trim() ? "ok" : "missing")
 				})
 			}),
-			e.mode && f.length > 0 && /* @__PURE__ */ (0, R.jsx)("div", { children: /* @__PURE__ */ (0, R.jsx)(Y, {
-				label: "5. Loại hàng",
+			e.mode && g.length > 0 && /* @__PURE__ */ (0, R.jsx)("div", { children: /* @__PURE__ */ (0, R.jsx)(Y, {
+				label: "4. Loại hàng",
 				required: !0,
 				hint: e.mode === "ROAD" ? "FTL = nguyên xe; LTL = hàng lẻ / ghép xe. Loại hàng tách biệt với loại xe." : e.mode === "SEA" ? "FCL = container dành riêng cho lô; LCL = hàng ghép chung container với hàng khác." : "Hàng nguyên / trực tiếp hay hàng lẻ ghép lô.",
 				children: /* @__PURE__ */ (0, R.jsxs)("select", {
@@ -15266,7 +15293,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					children: [/* @__PURE__ */ (0, R.jsx)("option", {
 						value: "",
 						children: "— Chưa chọn —"
-					}), f.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
+					}), g.map((e) => /* @__PURE__ */ (0, R.jsx)("option", {
 						value: e.code,
 						children: e.label
 					}, e.code))]
@@ -15278,7 +15305,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 				children: [
 					/* @__PURE__ */ (0, R.jsxs)("p", {
 						className: "font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2",
-						children: [/* @__PURE__ */ (0, R.jsx)(Xa, { size: 16 }), " 6. Loại xe (FTL)"]
+						children: [/* @__PURE__ */ (0, R.jsx)(Xa, { size: 16 }), " 5. Loại xe (FTL)"]
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "text-[12.5px] text-slate-500 mt-0.5",
@@ -15287,7 +15314,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					/* @__PURE__ */ (0, R.jsx)("div", {
 						className: "flex flex-wrap gap-2 mt-2.5",
 						children: ss.truckPresets.map((e) => {
-							let t = g.pickupTruckType.trim().toUpperCase() === e.code.toUpperCase();
+							let t = y.pickupTruckType.trim().toUpperCase() === e.code.toUpperCase();
 							return /* @__PURE__ */ (0, R.jsx)("span", {
 								className: `inline-flex items-center rounded-lg border-2 px-3 py-1.5 text-[13px] font-bold ${t ? "border-[#0f2a4a] bg-white text-[#0f2a4a]" : "border-slate-200 bg-white text-slate-500"}`,
 								children: e.label
@@ -15296,9 +15323,9 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "text-[12.5px] text-slate-500 mt-2",
-						children: g.known ? /* @__PURE__ */ (0, R.jsxs)(R.Fragment, { children: ["Đang ghi nhận: ", /* @__PURE__ */ (0, R.jsx)("b", {
+						children: y.known ? /* @__PURE__ */ (0, R.jsxs)(R.Fragment, { children: ["Đang ghi nhận: ", /* @__PURE__ */ (0, R.jsx)("b", {
 							className: "text-[#0f2a4a]",
-							children: g.pickupTruckType || "chưa có loại xe"
+							children: y.pickupTruckType || "chưa có loại xe"
 						})] }) : "Chưa có loại xe — bổ sung ở mục thông tin lấy hàng / chặng vận chuyển."
 					})
 				]
@@ -15309,7 +15336,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 				children: [
 					/* @__PURE__ */ (0, R.jsxs)("p", {
 						className: "font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2",
-						children: [/* @__PURE__ */ (0, R.jsx)(Pr, { size: 16 }), " 6. Thiết bị container (FCL)"]
+						children: [/* @__PURE__ */ (0, R.jsx)(Pr, { size: 16 }), " 5. Thiết bị container (FCL)"]
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "text-[12.5px] text-slate-500 mt-0.5",
@@ -15352,7 +15379,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 				children: [
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "font-bold text-[14px] text-[#0f2a4a]",
-						children: "7. Phạm vi Trường Thành thực hiện"
+						children: "6. Phạm vi Trường Thành thực hiện"
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "text-[12.5px] text-slate-500 mt-0.5",
@@ -15402,7 +15429,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 				children: [
 					/* @__PURE__ */ (0, R.jsxs)("p", {
 						className: "font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2",
-						children: [/* @__PURE__ */ (0, R.jsx)(Ma, { size: 16 }), " 8. Bảo hiểm hàng hóa (thực tế)"]
+						children: [/* @__PURE__ */ (0, R.jsx)(Ma, { size: 16 }), " 7. Bảo hiểm hàng hóa (thực tế)"]
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "text-[12.5px] text-slate-500 mt-0.5",
@@ -15476,7 +15503,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					})
 				]
 			}),
-			p && /* @__PURE__ */ (0, R.jsxs)("div", {
+			_ && /* @__PURE__ */ (0, R.jsxs)("div", {
 				role: "alert",
 				"data-testid": `${o}-invalid`,
 				className: "rounded-xl border-2 border-red-300 bg-red-50 px-3.5 py-3 text-[13.5px] text-red-900",
@@ -15487,7 +15514,7 @@ function _s({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "mt-1",
-						children: p
+						children: _
 					}),
 					/* @__PURE__ */ (0, R.jsx)("p", {
 						className: "mt-1 text-[12.5px]",
