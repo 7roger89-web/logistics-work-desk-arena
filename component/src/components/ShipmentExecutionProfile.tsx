@@ -65,10 +65,17 @@ export const EMPTY_DRAFT: ProfileDraft = {
 
 /** The draft as the backend expects it — canonical codes, never display text. */
 export function draftPayload(draft: ProfileDraft) {
+  // LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: operator never chooses a year.
+  // New execution profiles are implicitly 2020. A blank incoterm stays blank
+  // (no EXW default); when a 2020 code is present without version, send 2020.
+  const codeUpper = (draft.incoterm || "").toUpperCase();
+  const current2020Codes = new Set(codesForVersion("2020"));
+  const effectiveVersion =
+    draft.incotermVersion || (codeUpper && current2020Codes.has(codeUpper) ? "2020" : "");
   return {
     mode: draft.mode,
     incoterm: draft.incoterm,
-    incotermVersion: draft.incotermVersion,
+    incotermVersion: effectiveVersion,
     namedPlace: draft.namedPlace.trim(),
     loadModel: draft.loadModel,
     serviceScope: draft.serviceScope,
@@ -108,6 +115,10 @@ export function draftFromProfile(profile?: ExecutionProfile | null): ProfileDraf
 
 const VERSION_CODES: Set<string> = new Set(EXECUTION_PROFILE_CATALOG.versions.map((v) => String(v.code)));
 
+// LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: current catalog version is 2020.
+// Operators never choose a year; new picker is 2020-only.
+export const CURRENT_INCOTERMS_VERSION = "2020";
+
 export function rulesForVersion(version: string): { code: string; scope: string }[] {
   const rules = (EXECUTION_PROFILE_CATALOG.rules as Record<string, readonly { code: string; scope: string }[]>)[version];
   return rules ? rules.map((row) => ({ code: row.code, scope: row.scope })) : [];
@@ -118,9 +129,15 @@ export function codesForVersion(version: string): string[] {
 }
 
 export function isSeaOnly(code: string, version: string): boolean {
-  const rule = rulesForVersion(version).find((row) => row.code === code);
+  const effective = version || CURRENT_INCOTERMS_VERSION;
+  const rule = rulesForVersion(effective).find((row) => row.code === code);
   if (rule) return rule.scope === "SEA_ONLY";
   return ["FAS", "FOB", "CFR", "CIF"].includes(code);
+}
+
+/** Current 2020 picker codes (DAT/DAF/DDU excluded for new profiles). */
+export function currentIncotermCodes(): string[] {
+  return codesForVersion(CURRENT_INCOTERMS_VERSION);
 }
 
 /**
@@ -130,10 +147,16 @@ export function isSeaOnly(code: string, version: string): boolean {
  * A field the operator has not filled in yet is NOT a combination problem: that
  * is `missingProfileRequirements` below, and the two are deliberately separate
  * so a half-filled form never claims "CẤU HÌNH CẦN KIỂM TRA".
+ *
+ * LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: new profiles are implicitly 2020.
+ * Historical 2010 / legacy records remain readable and keep their own truth.
  */
 export function combinationProblem(draft: ProfileDraft): string {
   const code = (draft.incoterm || "").toUpperCase();
   if (!code) return "";
+  // Historical records keep their version truth for the pair check.
+  // New profiles (no version yet) are validated as 2020.
+  const effectiveVersion = draft.incotermVersion || CURRENT_INCOTERMS_VERSION;
   if (draft.incotermVersion) {
     if (!VERSION_CODES.has(draft.incotermVersion)) return "Phiên bản Incoterms chưa hợp lệ.";
     if (!codesForVersion(draft.incotermVersion).includes(code)) {
@@ -144,11 +167,20 @@ export function combinationProblem(draft: ProfileDraft): string {
       }
       return `${code} không thuộc phiên bản Incoterms đã chọn.`;
     }
+  } else {
+    // No version yet: validate against current 2020 set (DAT/DAF/DDU not offered).
+    if (!codesForVersion(CURRENT_INCOTERMS_VERSION).includes(code)) {
+      if (code === "DAT") return "DAT là điều kiện của Incoterms 2010 — bản 2020 dùng DPU.";
+      if (code === "DAF" || code === "DDU") {
+        return `${code} là điều kiện legacy của Incoterms 2000, không thuộc Incoterms 2010/2020.`;
+      }
+      return `${code} không thuộc Incoterms 2020.`;
+    }
   }
   // The maritime rules (FAS/FOB/CFR/CIF) are maritime in EVERY version, so a
   // stored FOB + đường bộ is a real conflict even when the document never
   // stated a version — exactly what the backend's read-side projection says.
-  if (draft.mode && isSeaOnly(code, draft.incotermVersion) && draft.mode !== "SEA") {
+  if (draft.mode && isSeaOnly(code, effectiveVersion) && draft.mode !== "SEA") {
     const modeLabel = EXECUTION_PROFILE_CATALOG.modes.find((m) => m.code === draft.mode)?.label ?? draft.mode;
     return `${code} chỉ áp dụng cho chặng chính đường biển / đường thủy nội địa, không dùng cho ${modeLabel}.`;
   }
@@ -163,12 +195,14 @@ export function combinationProblem(draft: ProfileDraft): string {
  * What the operator still has to state for the profile to be writable — the
  * same requirements the backend's write gate enforces, in Vietnamese operator
  * wording. Absent facts are reported as MISSING, never invented here.
+ *
+ * LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: version is NOT a missing requirement
+ * for new profiles (implicit 2020). Blank incoterm stays blank.
  */
 export function missingProfileRequirements(draft: ProfileDraft): string[] {
   const family = (EXECUTION_PROFILE_CATALOG.loadModels as Record<string, readonly { code: string }[]>)[draft.mode] ?? [];
   return [
     !draft.mode && "phương thức vận chuyển",
-    !draft.incotermVersion && "phiên bản Incoterms",
     !draft.incoterm && "điều kiện giao hàng",
     !draft.namedPlace.trim() && "địa điểm / cảng / điểm giao",
     family.length > 0 && !draft.loadModel && "loại hàng",
@@ -178,7 +212,8 @@ export function missingProfileRequirements(draft: ProfileDraft): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// The progressive flow (steps 1..8) — shared by Create and Detail
+// The progressive flow (steps 1..7) — shared by Create and Detail
+// LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: version step removed (implicit 2020), renumbered 1–7.
 // ---------------------------------------------------------------------------
 
 interface FieldsProps {
@@ -198,37 +233,38 @@ export function ExecutionProfileFields({
 }: FieldsProps) {
   const set = (patch: Partial<ProfileDraft>) => onChange({ ...draft, ...patch });
   const modeLabel = EXECUTION_PROFILE_CATALOG.modes.find((m) => m.code === draft.mode)?.label ?? "";
-  const versionRules = rulesForVersion(draft.incotermVersion);
-  const allowedCodes = versionRules
+  // LOGI_INCOTERMS_VERSION_UX_SIMPLIFY_01: normal picker is 2020-only.
+  // ANY_MODE (EXW FCA CPT CIP DAP DPU DDP) always offered; SEA_ONLY (FAS FOB CFR CIF)
+  // only when mode is SEA or not yet chosen (mode filtering mandatory).
+  const rules2020 = rulesForVersion(CURRENT_INCOTERMS_VERSION);
+  const baseAllowed2020 = rules2020
     .filter((rule) => !(rule.scope === "SEA_ONLY" && draft.mode && draft.mode !== "SEA"))
     .map((rule) => rule.code);
-  const hiddenCodes = versionRules
+  // Preserve historical code for display so legacy/DAT records remain readable
+  // even though they are not in the 2020 picker.
+  const historicalCode = (draft.incoterm || "").toUpperCase();
+  const historicalVersion = draft.incotermVersion;
+  const needsHistoricalSlot =
+    historicalCode &&
+    historicalVersion &&
+    historicalVersion !== CURRENT_INCOTERMS_VERSION &&
+    !baseAllowed2020.includes(historicalCode);
+  const allowedCodes = needsHistoricalSlot ? [...baseAllowed2020, historicalCode] : baseAllowed2020;
+  const hiddenCodes = rules2020
     .filter((rule) => rule.scope === "SEA_ONLY" && draft.mode && draft.mode !== "SEA")
     .map((rule) => rule.code);
   const loadFamily = (EXECUTION_PROFILE_CATALOG.loadModels as Record<string, readonly { code: string; label: string }[]>)[draft.mode] ?? [];
   const problem = combinationProblem(draft);
 
-  // Client-side guard rails for the version switcher: switching version may
-  // invalidate the chosen code (DAT/DPU). The operator is told, and the code is
-  // cleared rather than silently kept as an impossible pair.
-  const changeVersion = (version: string) => {
-    const stillValid = codesForVersion(version).includes((draft.incoterm || "").toUpperCase());
-    set({
-      incotermVersion: version,
-      incoterm: stillValid ? draft.incoterm : "",
-      // A load model whose family belongs to another mode cannot survive a mode change.
-      loadModel: draft.loadModel,
-    });
-  };
-
   const changeMode = (mode: string) => {
     const family = (EXECUTION_PROFILE_CATALOG.loadModels as Record<string, readonly { code: string }[]>)[mode] ?? [];
     const keepsLoad = !draft.loadModel || family.some((row) => row.code === draft.loadModel);
+    // Use current 2020 scope for sea-only guard; historical stays readable.
+    const effectiveVersionForCheck = draft.incotermVersion || CURRENT_INCOTERMS_VERSION;
     set({
       mode,
       loadModel: keepsLoad ? draft.loadModel : "",
-      // A maritime rule cannot stay selected for a non-maritime mode.
-      incoterm: isSeaOnly(draft.incoterm, draft.incotermVersion) && mode !== "SEA" ? "" : draft.incoterm,
+      incoterm: isSeaOnly(draft.incoterm, effectiveVersionForCheck) && mode !== "SEA" ? "" : draft.incoterm,
     });
   };
 
@@ -253,33 +289,21 @@ export function ExecutionProfileFields({
         </Field>
       </div>
 
-      {/* 2 + 3 — PHIÊN BẢN INCOTERMS rồi ĐIỀU KIỆN GIAO HÀNG (đã lọc) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="2. Phiên bản Incoterms" required hint="Luật ICC theo phiên bản. Lô cũ chưa ghi phiên bản vẫn mở được và sẽ được hỏi lại.">
-          <select
-            data-testid={`${idPrefix}-incoterm-version`}
-            value={draft.incotermVersion}
-            onChange={(e) => changeVersion(e.target.value)}
-            className={inputCls(draft.incotermVersion ? "ok" : "missing")}
-          >
-            <option value="">— Chưa xác định —</option>
-            {EXECUTION_PROFILE_CATALOG.versions.map((version) => (
-              <option key={version.code} value={version.code}>{version.label}</option>
-            ))}
-          </select>
-        </Field>
+      {/* 2 — ĐIỀU KIỆN GIAO HÀNG (Incoterms 2020, mode-filtered) */}
+      <div>
         <Field
-          label="3. Điều kiện giao hàng"
+          label="2. Điều kiện giao hàng"
           required
-          hint={draft.incotermVersion
-            ? `Chỉ hiện các điều kiện hợp lệ cho ${modeLabel || "phương thức"}${draft.incotermVersion ? ` · Incoterms ${draft.incotermVersion.replace("2000_LEGACY", "2000")}` : ""}.`
-            : "Chọn phiên bản Incoterms trước để lọc đúng danh sách."}
+          hint={draft.mode === "SEA"
+            ? "Incoterms 2020 — chặng biển hiện FAS/FOB/CFR/CIF; các phương thức đường bộ/đường không ẩn maritime."
+            : draft.mode
+              ? `Incoterms 2020 — chỉ hiện ${modeLabel} hợp lệ (FAS/FOB/CFR/CIF ẩn vì chỉ dùng cho đường biển).`
+              : "Incoterms 2020 — chọn phương thức trước để lọc danh sách chính xác."}
         >
           <select
             data-testid={`${idPrefix}-incoterm`}
             value={draft.incoterm}
             onChange={(e) => set({ incoterm: e.target.value })}
-            disabled={!draft.incotermVersion}
             className={inputCls(problem && draft.incoterm ? "invalid" : draft.incoterm ? "ok" : "missing")}
           >
             <option value="">— Chưa chọn —</option>
@@ -294,21 +318,18 @@ export function ExecutionProfileFields({
           {hiddenCodes.join(" / ")} chỉ áp dụng cho đường biển / đường thủy nội địa nên không được chọn cho {modeLabel}.
         </p>
       )}
-      {draft.incotermVersion === "2010" && (
-        <p className="text-[12.5px] text-slate-500">Incoterms 2010 dùng DAT; DPU chỉ có từ bản 2020.</p>
-      )}
-      {draft.incotermVersion === "2020" && (
-        <p className="text-[12.5px] text-slate-500">Incoterms 2020 dùng DPU; DAT chỉ có ở bản 2010.</p>
-      )}
-      {draft.incotermVersion === "2000_LEGACY" && (
-        <p className="text-[12.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Chế độ legacy Incoterms 2000 chỉ dùng cho hợp đồng lịch sử có DAF/DDU — không áp dụng cho lô mới bình thường.
+      {/* Small read-only historical note — not dominant, never a selector. */}
+      {(historicalVersion === "2010" || historicalVersion === "2000_LEGACY") && (
+        <p className="text-[11px] text-slate-400" data-testid={`${idPrefix}-historical-version-note`}>
+          {historicalVersion === "2010"
+            ? "Dữ liệu cũ · Incoterms 2010"
+            : `Điều kiện legacy · ${historicalCode || "—"} (Incoterms 2000)`}
         </p>
       )}
 
-      {/* 4 — ĐỊA ĐIỂM / CẢNG / ĐIỂM GIAO */}
+      {/* 3 — ĐỊA ĐIỂM / CẢNG / ĐIỂM GIAO */}
       <Field
-        label="4. Địa điểm / cảng / điểm giao"
+        label="3. Địa điểm / cảng / điểm giao"
         required
         hint="Địa điểm gắn với điều kiện giao hàng (kho, bãi, cảng, cửa khẩu, điểm giao). Bỏ trống = chưa xác định, hệ thống không tự suy ra."
       >
@@ -325,7 +346,7 @@ export function ExecutionProfileFields({
       {draft.mode && loadFamily.length > 0 && (
         <div>
           <Field
-            label="5. Loại hàng"
+            label="4. Loại hàng"
             required
             hint={draft.mode === "ROAD"
               ? "FTL = nguyên xe; LTL = hàng lẻ / ghép xe. Loại hàng tách biệt với loại xe."
@@ -351,7 +372,7 @@ export function ExecutionProfileFields({
       {/* 6 — THIẾT BỊ / XE: chỉ khi hồ sơ thật sự cần */}
       {draft.mode === "ROAD" && draft.loadModel === "FTL" && variant === "detail" && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5" data-testid={`${idPrefix}-truck`}>
-          <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><Truck size={16} /> 6. Loại xe (FTL)</p>
+          <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><Truck size={16} /> 5. Loại xe (FTL)</p>
           <p className="text-[12.5px] text-slate-500 mt-0.5">
             Đây là preset vận hành của Trường Thành, không phải quy định tải trọng: chiều dài xe không suy ra tấn/CBM/giá.
           </p>
@@ -378,7 +399,7 @@ export function ExecutionProfileFields({
 
       {draft.mode === "SEA" && draft.loadModel === "FCL" && variant === "detail" && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5" data-testid={`${idPrefix}-equipment`}>
-          <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><Boxes size={16} /> 6. Thiết bị container (FCL)</p>
+          <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><Boxes size={16} /> 5. Thiết bị container (FCL)</p>
           <p className="text-[12.5px] text-slate-500 mt-0.5">
             Một lô có thể dùng nhiều container; danh sách dưới đây đọc từ chính các container của lô
             (tab Vận chuyển &amp; Hàng hóa) — không có ô nhập trùng lặp.
@@ -417,7 +438,7 @@ export function ExecutionProfileFields({
 
       {/* 7 — PHẠM VI TRƯỜNG THÀNH THỰC HIỆN */}
       <div className="rounded-xl border-2 border-slate-200 p-3.5" data-testid={`${idPrefix}-scope`}>
-        <p className="font-bold text-[14px] text-[#0f2a4a]">7. Phạm vi Trường Thành thực hiện</p>
+        <p className="font-bold text-[14px] text-[#0f2a4a]">6. Phạm vi Trường Thành thực hiện</p>
         <p className="text-[12.5px] text-slate-500 mt-0.5">
           Incoterms chia trách nhiệm người bán / người mua. Nó KHÔNG nói Trường Thành đã được thuê làm gì —
           chỉ tích những đoạn Trường Thành thực sự làm cho lô này.
@@ -463,7 +484,7 @@ export function ExecutionProfileFields({
 
       {/* 8 — BẢO HIỂM HÀNG HÓA (thực tế, do người vận hành xác nhận) */}
       <div className="rounded-xl border-2 border-slate-200 p-3.5" data-testid={`${idPrefix}-insurance`}>
-        <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><ShieldCheck size={16} /> 8. Bảo hiểm hàng hóa (thực tế)</p>
+        <p className="font-bold text-[14px] text-[#0f2a4a] flex items-center gap-2"><ShieldCheck size={16} /> 7. Bảo hiểm hàng hóa (thực tế)</p>
         <p className="text-[12.5px] text-slate-500 mt-0.5">
           Đây là thực tế của lô, độc lập với nghĩa vụ theo Incoterms. “Chưa xác nhận” khác với “Không có bảo hiểm”.
         </p>
