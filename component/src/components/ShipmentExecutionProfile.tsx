@@ -297,7 +297,7 @@ export function ExecutionProfileFields({
           hint={draft.mode === "SEA"
             ? "Incoterms 2020 — chặng biển hiện FAS/FOB/CFR/CIF; các phương thức đường bộ/đường không ẩn maritime."
             : draft.mode
-              ? `Incoterms 2020 — chỉ hiện ${modeLabel}$ hợp lệ (FAS/FOB/CFR/CIF ẩn vì chỉ dùng cho đường biển).`
+              ? `Incoterms 2020 — chỉ hiện ${modeLabel} hợp lệ (FAS/FOB/CFR/CIF ẩn vì chỉ dùng cho đường biển).`
               : "Incoterms 2020 — chọn phương thức trước để lọc danh sách chính xác."}
         >
           <select
