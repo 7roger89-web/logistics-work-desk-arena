@@ -32,6 +32,10 @@
 //      and version;
 //  10. phone width: no forced horizontal overflow, ≥44px touch targets,
 //      16px-equivalent input text, Vietnamese-only operator wording.
+//  14. LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 (issue #82): the profile section
+//      carries the stable `shipment-execution-profile` anchor and renders NO
+//      second "Bước tiếp theo" line — the profile nextAction is composed into
+//      the page's ONE top banner.
 //
 // Run: node tests/component/dom_acceptance_execution_profile.mjs
 // ============================================================================
@@ -543,6 +547,29 @@ console.log("STEP 13 — phone width: no forced overflow, touch targets, 16px te
       `input text size must be readable on a phone: ${cls}`);
   }
   ok("no horizontal overflow, ≥44px controls, readable input text");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 14 — one primary action: section anchor, no second authority (issue #82)");
+{
+  await bootOnLot(FIX.before, LEGACY_LOT);
+  const section = byTestId("shipment-execution-profile");
+  assert.ok(section, "the execution-profile section is missing from the lot detail");
+  assert.equal(
+    section.getAttribute("id"),
+    "shipment-execution-profile",
+    "the section must carry the stable anchor the composed route scrolls to",
+  );
+  assert.equal(
+    byTestId("execution-profile-next-action"),
+    null,
+    "the profile nextAction is composed into the top banner — no second line may render",
+  );
+  assert.ok(
+    !bodyText().includes("Bước tiếp theo theo hồ sơ lô"),
+    "no contradictory second next-action authority may be visible",
+  );
+  ok("profile section anchored, single top next-action authority");
 }
 
 console.log(`\nDOM_ACCEPTANCE_EXECUTION_PROFILE=${passed} checks passed`);

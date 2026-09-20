@@ -850,6 +850,133 @@ def _gnt_projection(
 
 
 # --------------------------------------------------------------------------
+# Primary action — ONE actionable next step (LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01)
+# --------------------------------------------------------------------------
+#
+# The shipment detail used to carry TWO next-action authorities: the legacy
+# dashboard/readiness projection (shipment.nextAction) at the top and the
+# execution-profile projection (executionProfile.nextAction) lower on the page.
+# They could disagree. This helper COMPOSES one primary instruction from the
+# two existing in-memory projections and routes it to an EXISTING work surface.
+# It is a pure UI-projection function: no database read, no persistence, no new
+# route, no new writer. The execution profile object it consumes is the SAME
+# object ``shipment_projection`` serves as ``executionProfile`` (built ONCE).
+#
+# Precedence (bounded, issue #82):
+#   1. genuine dashboard CRITICAL risk wins;
+#   2. execution-profile RED blocker (CONFIG_CHECK / insurance mismatch) wins
+#      over dashboard WARNING/INFO;
+#   3. execution-profile actionable gap (PROFILE_INCOMPLETE / unmet stage) wins
+#      over dashboard WARNING/INFO;
+#   4. profile DONE/MONITOR falls back to the existing dashboard action;
+#   5. nothing actionable keeps the existing stable/no-alert behavior.
+
+#: Profile next-action code → the EXISTING tab that owns the fact.
+PRIMARY_ACTION_TAB_BY_PROFILE_CODE: dict[str, str] = {
+    "ORIGIN_PICKUP": "lay-hang",
+    "EXPORT_HANDLING": "lay-hang",
+    "ORIGIN_HANDOFF": "lay-hang",
+    "CROSS_BORDER": "lay-hang",
+    "MAIN_CARRIAGE": "van-tai",
+    "SEA_DOCUMENTS": "van-tai",
+    "AIR_DOCUMENTS": "van-tai",
+    "RAIL_CARRIAGE": "van-tai",
+    "SEA_EQUIPMENT": "van-tai",
+    "SEA_CONSOLIDATION": "van-tai",
+    "ROAD_TRUCK_PROFILE": "van-tai",
+    "ROAD_CONSOLIDATION": "van-tai",
+    "IMPORT_CUSTOMS": "nhap",
+    "DELIVERY": "nhap",
+}
+
+#: Profile codes handled on the EXISTING execution-profile section itself.
+PRIMARY_ACTION_PROFILE_SECTION_CODES = frozenset({
+    "PROFILE_INCOMPLETE",
+    "CONFIG_CHECK",
+    "INSURANCE_EVIDENCE",
+})
+
+#: DOM id of the existing execution-profile section (no new surface).
+PRIMARY_ACTION_PROFILE_ANCHOR = "shipment-execution-profile"
+
+#: Stable field anchors reused where they already exist. No generalized focus
+#: framework: a code without an entry opens the correct tab and scrolls the
+#: existing operational content into view, which is enough.
+PRIMARY_ACTION_FIELD_ANCHOR_BY_CODE: dict[str, str] = {
+    # Existing customs declaration input on the Nhập khẩu & Giao hàng tab.
+    "IMPORT_CUSTOMS": "fld-tk",
+}
+
+_STABLE_NO_ALERT = "Lô hàng ổn định — không có cảnh báo"
+
+
+def compose_primary_action(
+    *,
+    shipment_id: str,
+    dashboard: Mapping[str, Any] | None,
+    execution_profile: Mapping[str, Any] | None,
+    status_tab: str,
+) -> dict[str, str]:
+    """Compose ONE primary action from the two existing projections.
+
+    Returns ``{"text", "detail", "priority", "route"}``. Pure: it reads only
+    the dashboard view and the execution-profile object the caller already
+    holds in memory.
+    """
+
+    view = dashboard if isinstance(dashboard, Mapping) else {}
+    profile = execution_profile if isinstance(execution_profile, Mapping) else {}
+
+    next_action = view.get("next_action") if isinstance(view.get("next_action"), Mapping) else {}
+    top_alert = view.get("top_alert") if isinstance(view.get("top_alert"), Mapping) else {}
+    dashboard_severity = text(top_alert.get("severity"))
+    dashboard_label = text(next_action.get("label") or top_alert.get("label"))
+    dashboard_detail = text(next_action.get("detail") or top_alert.get("detail"))
+    has_dashboard = bool(dashboard_label)
+    dashboard_route = f"/lo-hang/{shipment_id}?tab={status_tab}"
+
+    profile_next = profile.get("nextAction") if isinstance(profile.get("nextAction"), Mapping) else {}
+    profile_code = text(profile_next.get("code"))
+    profile_label = text(profile_next.get("label"))
+    profile_detail = text(profile_next.get("detail"))
+    profile_tone = text(profile_next.get("tone"))
+    profile_actionable = bool(profile_code) and profile_code not in {"DONE", "MONITOR"} and bool(profile_label)
+
+    def _dashboard_priority() -> str:
+        if dashboard_severity == "critical":
+            return "Khan"
+        if dashboard_severity in {"warning", "info"}:
+            return "CanXuLy"
+        return "BinhThuong"
+
+    # 1. A genuine critical dashboard risk is never hidden by a profile gap.
+    if dashboard_severity == "critical" and has_dashboard:
+        return {"text": dashboard_label, "detail": dashboard_detail,
+                "priority": "Khan", "route": dashboard_route}
+
+    # 2+3. A profile red blocker or actionable gap wins over WARNING/INFO.
+    if profile_actionable:
+        priority = "Khan" if profile_tone == "red" else "CanXuLy"
+        if profile_code in PRIMARY_ACTION_PROFILE_SECTION_CODES:
+            return {"text": profile_label, "detail": profile_detail, "priority": priority,
+                    "route": f"{dashboard_route}#{PRIMARY_ACTION_PROFILE_ANCHOR}"}
+        tab = PRIMARY_ACTION_TAB_BY_PROFILE_CODE.get(profile_code, status_tab)
+        anchor = PRIMARY_ACTION_FIELD_ANCHOR_BY_CODE.get(profile_code)
+        route = f"/lo-hang/{shipment_id}?tab={tab}" + (f"#{anchor}" if anchor else "")
+        return {"text": profile_label, "detail": profile_detail,
+                "priority": priority, "route": route}
+
+    # 4. DONE/MONITOR preserves the existing dashboard action when one exists.
+    if has_dashboard:
+        return {"text": dashboard_label, "detail": dashboard_detail,
+                "priority": _dashboard_priority(), "route": dashboard_route}
+
+    # 5. Nothing actionable: keep the existing stable behavior, invent nothing.
+    return {"text": _STABLE_NO_ALERT, "detail": "",
+            "priority": "BinhThuong", "route": dashboard_route}
+
+
+# --------------------------------------------------------------------------
 # Shipment projection
 # --------------------------------------------------------------------------
 
@@ -889,7 +1016,6 @@ def shipment_projection(
     contracts = contracts or {}
     quotes = quotes or {}
 
-    from core.shipment_execution_profile import build_execution_profile
     from core.shipment_operations import (
         cargo_summary_for_read,
         compatibility_facts,
@@ -920,19 +1046,28 @@ def shipment_projection(
     status_label, status_tone = operational_stage(shipment)
 
     view = dashboard or {}
-    next_action = view.get("next_action") if isinstance(view.get("next_action"), Mapping) else {}
-    top_alert = view.get("top_alert") if isinstance(view.get("top_alert"), Mapping) else {}
-
-    next_text = text(next_action.get("label") or top_alert.get("label"))
-    if not next_text:
-        next_text = "Lô hàng ổn định — không có cảnh báo"
-    next_detail = text(next_action.get("detail") or top_alert.get("detail"))
 
     missing = missing_docs(shipment)
-    severity = text(top_alert.get("severity"))
-    priority = "Khan" if severity == "critical" else ("CanXuLy" if severity in {"warning", "info"} else "BinhThuong")
 
     tab = "nhap" if status_label in {"Chờ thông quan", "Chờ giao"} else ("lay-hang" if status_label == "Chờ lấy hàng" else "lay-hang")
+
+    # LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the execution profile is built
+    # ONCE per row and reused twice: as the ``executionProfile`` payload and
+    # as the profile side of the ONE composed primary action below. Zero
+    # additional reads, zero second derivations.
+    from core.shipment_execution_profile import build_execution_profile as _build_execution_profile  # noqa: PLC0415
+
+    execution_profile = _build_execution_profile(shipment, legs=legs)
+    primary_action = compose_primary_action(
+        shipment_id=sid,
+        dashboard=view,
+        execution_profile=execution_profile,
+        status_tab=tab,
+    )
+    next_text = primary_action["text"]
+    next_detail = primary_action["detail"]
+    priority = primary_action["priority"]
+    next_route = primary_action["route"]
 
     qty_pkg = text(transport.get("qty_pkg"))
     route_origin = text(operational.get("origin"))
@@ -967,7 +1102,7 @@ def shipment_projection(
         "nextAction": next_text,
         "nextActionDetail": next_detail,
         "nextLabel": "XỬ LÝ NGAY" if priority in {"Khan", "CanXuLy"} else "XEM LÔ",
-        "nextRoute": f"/lo-hang/{sid}?tab={tab}",
+        "nextRoute": next_route,
         "updated": _ddmmyyyy(shipment.get("updated_at")) if not isinstance(shipment.get("updated_at"), datetime)
         else shipment["updated_at"].strftime("%d/%m/%Y %H:%M"),
         "missingDocs": missing,
@@ -991,8 +1126,9 @@ def shipment_projection(
         # EXISTING canonical fields), the derived Incoterm insurance obligation
         # as distinct from the persisted actual insurance status, the relevant
         # operational stages with their reason, and the next action those
-        # stages justify.
-        "executionProfile": build_execution_profile(shipment, legs=legs),
+        # stages justify. Reuses the ONE object built above —
+        # EXECUTION_PROFILE_BUILDS_PER_ROW=1.
+        "executionProfile": execution_profile,
         "createdAt": _ddmmyyyy(head.get("created_at")),
         # Canonical repeatable operational model.  For a legacy document this
         # is a read-only fallback projection; it becomes canonical only when an

@@ -333,20 +333,12 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
 
     Every row routes to the real shipment and the correct tab. No mock rows.
     """
-    stage_tab = {
-        "Chờ thông quan": "nhap",
-        "Chờ giao": "nhap",
-        "Chờ lấy hàng": "lay-hang",
-        "Đang vận chuyển": "lay-hang",
-        "Đã giao": "chung-tu",
-    }
     out: list[dict[str, Any]] = []
 
     for row in rows:
         if row["priority"] == "BinhThuong" and not row["missingDocs"]:
             continue
         level = row["priority"]
-        tab = stage_tab.get(row["status"], "lay-hang")
         out.append({
             "id": f"OPS-{row['id']}",
             "level": level,
@@ -367,7 +359,10 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "dueNote": row["nextActionDetail"] or (", ".join(f"thiếu {m}" for m in row["missingDocs"][:3])),
             "status": row["status"],
             "statusTone": row["statusTone"],
-            "route": f"/lo-hang/{row['id']}?tab={tab}",
+            # LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the composed row.nextRoute
+            # (already status-tab aware). Recomputing from the status would
+            # diverge from the ONE primary action the detail banner shows.
+            "route": row["nextRoute"],
             "source": "core.shipment_dashboard (readiness/alerts)",
         })
 

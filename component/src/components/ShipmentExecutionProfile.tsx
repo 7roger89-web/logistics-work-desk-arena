@@ -616,8 +616,10 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
     toast("Đang lưu hồ sơ lô", "Backend kiểm tra cấu hình rồi ghi và đọc lại.", "blue");
   };
 
+  // LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the section `id` is the existing
+  // anchor the composed primary route scrolls to; no new surface.
   return (
-    <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-execution-profile">
+    <section id="shipment-execution-profile" className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 scroll-mt-24" data-testid="shipment-execution-profile">
       <SectionTitle
         icon={<PackageCheck size={19} />}
         title="Hồ sơ thực hiện lô"
@@ -688,12 +690,10 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
         </div>
       )}
 
-      {profile?.nextAction && (
-        <p className="mt-3 text-[13.5px] text-[#0f2a4a]" data-testid="execution-profile-next-action">
-          <b>Bước tiếp theo theo hồ sơ lô:</b> {profile.nextAction.label}
-          <span className="text-slate-500"> · {profile.nextAction.reasonLabel}</span>
-        </p>
-      )}
+      {/* LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the profile's nextAction is
+          composed into the page's ONE top banner (shipment.nextAction); a
+          second \"Bước tiếp theo\" line here was a contradictory second
+          authority. The stage chips above keep the full stage evidence. */}
 
       {open && (
         <div className="mt-4">
