@@ -194,7 +194,10 @@ def test_next_route_tabs_are_real_workdesk_tabs_and_include_hyphenated_ones(stag
     model = vm.build_view_model()
     tabs = set()
     for shipment in model["shipments"]:
-        match = re.search(r"[?&]tab=([^&]+)", shipment["nextRoute"])
+        # LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the composed route may carry
+        # a #anchor (fld-tk / shipment-execution-profile); it is not part of
+        # the tab and must not be captured as one.
+        match = re.search(r"[?&]tab=([^&#]+)", shipment["nextRoute"])
         if match:
             tabs.add(match.group(1))
 
@@ -208,7 +211,8 @@ def test_next_route_tabs_are_real_workdesk_tabs_and_include_hyphenated_ones(stag
 def test_ops_worklist_routes_also_carry_real_tabs(staging):
     model = vm.build_view_model()
     for task in model["tasks"]:
-        match = re.search(r"[?&]tab=([^&]+)", task["route"])
+        # LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — same #anchor rule as above.
+        match = re.search(r"[?&]tab=([^&#]+)", task["route"])
         if match:
             assert match.group(1) in WORKDESK_TABS, task["route"]
 

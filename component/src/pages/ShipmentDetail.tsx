@@ -42,8 +42,45 @@ function mintRequestId(prefix: string): string {
 export function nextRouteTab(nextRoute: string): string | null {
   const q = nextRoute.indexOf("?");
   if (q < 0) return null;
-  const tab = new URLSearchParams(nextRoute.slice(q + 1)).get("tab");
+  // LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — the composed primary route may
+  // carry a #anchor (fld-tk / shipment-execution-profile). It is not part of
+  // the query and must be stripped before parsing, or the tab is lost.
+  const query = nextRoute.slice(q + 1).split("#", 1)[0];
+  const tab = new URLSearchParams(query).get("tab");
   return tab && TAB_IDS.has(tab) ? tab : null;
+}
+
+/**
+ * The in-page anchor the backend's composed `nextRoute` points at, if any.
+ *
+ * LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — only the EXISTING anchors this page
+ * already renders are honoured: the customs declaration input (`fld-tk`) and
+ * the execution-profile section (`shipment-execution-profile`). Anything else
+ * is ignored (null) and the tab navigation alone applies.
+ */
+export function nextRouteAnchor(nextRoute: string): string | null {
+  const h = nextRoute.indexOf("#");
+  if (h < 0) return null;
+  const anchor = nextRoute.slice(h + 1).trim();
+  return anchor === "fld-tk" || anchor === "shipment-execution-profile" ? anchor : null;
+}
+
+/**
+ * LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — scroll (and focus, for the TK input)
+ * the existing element an anchor points at. No-op when it is absent.
+ */
+function revealAnchor(anchor: string | null) {
+  if (!anchor) {
+    document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+  const el = document.getElementById(anchor);
+  if (!el) {
+    document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+  el.scrollIntoView({ behavior: "smooth", block: anchor === "fld-tk" ? "center" : "start" });
+  if (anchor === "fld-tk" && el instanceof HTMLElement) el.focus({ preventScroll: true });
 }
 
 export default function ShipmentDetail() {
@@ -68,6 +105,17 @@ export default function ShipmentDetail() {
   const [savedTick, setSavedTick] = useState(0);
 
   useEffect(() => { setForm({}); setPartnerAmt(""); }, [id, tab]);
+  // LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — deep links from Home/Tasks carry
+  // the composed `nextRoute` (?tab=…#anchor). On mount the tab content is
+  // already rendered from the query, so honour the anchor once: scroll the
+  // existing section/field into view (plus focus for the TK input).
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (hash !== "fld-tk" && hash !== "shipment-execution-profile") return;
+    const t = setTimeout(() => revealAnchor(hash), 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const val = (k: string, fb: string) => form[k] ?? fb;
 
@@ -681,7 +729,7 @@ export default function ShipmentDetail() {
           <ExecutionProfileSummary profile={s.executionProfile} />
         </div>
         <div className="px-4 md:px-6 pb-4 md:pb-5">
-          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); setSp(t ? { tab: t } : {}); document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" }); } else nav(s.nextRoute); }} />
+          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); const anchor = nextRouteAnchor(s.nextRoute); setSp(t ? { tab: t } : {}); if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor); else setTimeout(() => revealAnchor(anchor), 150); } else nav(s.nextRoute); }} />
         </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
