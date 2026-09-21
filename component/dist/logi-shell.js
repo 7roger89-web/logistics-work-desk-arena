@@ -23141,24 +23141,24 @@ function yc() {
 					}),
 					/* @__PURE__ */ (0, z.jsx)("div", {
 						"data-testid": "glossary",
-						className: "mt-2 grid grid-cols-1 gap-1",
+						className: "mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2",
 						children: gc.map((e) => /* @__PURE__ */ (0, z.jsxs)("div", {
 							"data-testid": "glossary-item",
-							className: "flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-[13px]",
-							children: [/* @__PURE__ */ (0, z.jsxs)("span", {
-								className: "font-medium text-slate-800",
-								children: [
-									e.zh,
-									" ",
-									/* @__PURE__ */ (0, z.jsx)("span", {
-										className: "text-slate-400 font-normal",
-										children: e.pinyin
-									})
-								]
-							}), /* @__PURE__ */ (0, z.jsx)("span", {
-								className: "text-slate-500",
-								children: e.vi
-							})]
+							className: "rounded-lg bg-slate-50 px-2.5 py-2 min-w-0",
+							children: [
+								/* @__PURE__ */ (0, z.jsx)("p", {
+									className: "text-[13.5px] font-bold text-[#0f2a4a] truncate",
+									children: e.zh
+								}),
+								/* @__PURE__ */ (0, z.jsx)("p", {
+									className: "text-[11.5px] text-slate-400 truncate",
+									children: e.pinyin
+								}),
+								/* @__PURE__ */ (0, z.jsx)("p", {
+									className: "text-[12.5px] text-slate-600 truncate",
+									children: e.vi
+								})
+							]
 						}, e.zh))
 					}),
 					/* @__PURE__ */ (0, z.jsxs)("p", {

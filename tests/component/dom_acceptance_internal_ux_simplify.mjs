@@ -342,10 +342,13 @@ console.log("STEP 8 — translation donor parity (structure; provider untouched)
   for (const chip of chips) {
     assert.ok(chip.className.includes("rounded-full"), "chip is not the donor pill shape");
   }
+  const grid = $("div[data-testid='glossary']")[0];
+  assert.ok(grid && grid.className.includes("grid-cols-2"), "glossary is not the donor 2-col grid");
+  assert.ok(grid.className.includes("sm:grid-cols-3"), "glossary must widen to 3 columns on sm+");
   const items = $("[data-testid='glossary-item']");
   assert.equal(items.length, 15, `glossary must be the donor 15, got ${items.length}`);
   for (const item of items) {
-    assert.ok(item.className.includes("justify-between"), "glossary row is not the donor vi/zh shape");
+    assert.ok(item.className.includes("rounded-lg"), "glossary card is not the donor compact shape");
   }
   assert.ok(mainText().includes("Từ điển nghiệp vụ nhanh"), "glossary header missing");
   assert.ok(mainText().includes("DỊCH NGAY"), "DỊCH NGAY action missing");

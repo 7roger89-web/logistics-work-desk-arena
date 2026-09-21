@@ -480,24 +480,24 @@ export default function TranslationWorkspace() {
       </div>
 
       {/* Quick business glossary — reference only --------------------------
-          LOGI_INTERNAL_UX_SIMPLIFY_01 — donor shape (logistics-demo
-          Translation.tsx): plain header, vi/zh side-by-side rows. */}
+          LOGI_INTERNAL_UX_SIMPLIFY_01 (Control Tower final visual repair) —
+          donor structure from logistics-demo@main src/pages/Translation.tsx
+          (blob a8b22a3): compact 2-col / sm:3-col cards. Pinyin stays small
+          so the compact donor layout survives. */}
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <div className="text-[13px] font-bold text-[#0f2a4a] mb-2">
           Từ điển nghiệp vụ nhanh
         </div>
-        <div data-testid="glossary" className="mt-2 grid grid-cols-1 gap-1">
+        <div data-testid="glossary" className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
           {QUICK_GLOSSARY.map((g) => (
             <div
               key={g.zh}
               data-testid="glossary-item"
-              className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-[13px]"
+              className="rounded-lg bg-slate-50 px-2.5 py-2 min-w-0"
             >
-              <span className="font-medium text-slate-800">
-                {g.zh}{" "}
-                <span className="text-slate-400 font-normal">{g.pinyin}</span>
-              </span>
-              <span className="text-slate-500">{g.vi}</span>
+              <p className="text-[13.5px] font-bold text-[#0f2a4a] truncate">{g.zh}</p>
+              <p className="text-[11.5px] text-slate-400 truncate">{g.pinyin}</p>
+              <p className="text-[12.5px] text-slate-600 truncate">{g.vi}</p>
             </div>
           ))}
         </div>

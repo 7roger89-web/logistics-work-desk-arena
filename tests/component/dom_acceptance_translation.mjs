@@ -568,17 +568,19 @@ console.log("STEP 13 — quick glossary renders and NEVER translates");
 {
   const t = mainText();
   assert.ok(t.includes("Từ điển nghiệp vụ nhanh"), "glossary heading missing");
-  // LOGI_INTERNAL_UX_SIMPLIFY_01 — donor-shape vertical vi/zh list (15
-  // seeded pairs), replacing the old 20-item grid.
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 (Control Tower final visual repair) —
+  // donor structure (logistics-demo Translation.tsx): compact 2-col /
+  // sm:3-col cards, 15 seeded pairs.
   const grid = $('div[data-testid="glossary"]')[0];
-  assert.ok(grid, "glossary list missing");
-  assert.ok(grid.className.includes("grid-cols-1"), "glossary must be the donor vertical list");
+  assert.ok(grid, "glossary grid missing");
+  assert.ok(grid.className.includes("grid-cols-2"), "glossary must use 2 columns");
+  assert.ok(grid.className.includes("sm:grid-cols-3"), "glossary must widen to 3 columns on sm+");
   const items = $('div[data-testid="glossary-item"]');
   assert.equal(items.length, 15, `expected the donor 15 glossary items, got ${items.length}`);
   assert.ok(text(items[0]).includes("Xin chào") && text(items[0]).includes("你好"),
     "glossary item must pair Vietnamese with Chinese");
   for (const item of items) {
-    assert.ok(item.className.includes("justify-between"), "glossary row lost the donor vi/zh shape");
+    assert.ok(item.className.includes("rounded-lg"), "glossary card lost the donor compact shape");
   }
   assert.ok(
     items.some((el) => text(el).includes("Hóa đơn") && text(el).includes("发票")),
