@@ -13,7 +13,7 @@ solely to trigger fallback (`TARGET_REPO_AUTH != CANONICAL_CROSS_REPO_REACHABILI
 - Branch: `arena/01a0c399-logistics-work-desk-arena` (this session is pinned to one branch by the platform;
   that branch IS the one fresh branch for this task, off `main`)
 - BASE_SHA: `c088c0da424d25034b237f5a9cb78f1b66ee71cf` (= EXPECTED_MAIN, verified `git rev-parse HEAD` before work)
-- Issue: #90 · PR: (see packet)
+- Issue: #90 · PR: #91 (open, DO NOT MERGE)
 - TARGET_APP=thu-log · FORBIDDEN_APP=tienthanhlog (not read, not touched)
 
 ## OE gate
@@ -193,7 +193,7 @@ NEW_PERSISTED_FIELDS=0
 TYPECHECK=PASS
 BUILD=PASS (deterministic, source-dist in sync)
 SOURCE_DIST_SYNC=PASS
-PR=(opened, DO NOT MERGE)
+PR=#91 (open, DO NOT MERGE)
 DEPLOYED=NO
 NEXT_ACTION=RETURN_TO_CONTROL_TOWER
 ```
