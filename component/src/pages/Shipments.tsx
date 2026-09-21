@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQueryParam } from "../lib/queryParam";
 import { Search, ArrowRight, Eye, SlidersHorizontal } from "lucide-react";
 import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
+import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 import GetFlyImport from "../components/GetFlyImport";
@@ -40,21 +41,47 @@ export default function Shipments() {
             ))}
           </div>
         )}
-        <p className="text-[13.5px] text-slate-500 mt-2.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} lô</b>{q ? <> cho “{q}”</> : null} · Mỗi lô hiển thị: hiện trạng → việc tiếp theo → nút xử lý.</p>
+        {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the reading order
+            of a row is now the reading order of the page: identity → recognition
+            facts → the one next action → who last touched it → the action. */}
+        <p className="text-[13.5px] text-slate-500 mt-2.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} lô</b>{q ? <> cho “{q}”</> : null} · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.</p>
       </div>
 
+      {/* ============ DESKTOP: FIVE INFORMATION REGIONS, NOT SEVEN COLUMNS ============
+          LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the Owner's repro was
+          that this table read like a dense admin spreadsheet: one column per small
+          fact, and the facts Sale/Support actually scan for (Incoterm, transport
+          mode, load model, ETD, ETA) were not in it at all. The SAME information is
+          recomposed into five regions: (1) identity + status, (2) the recognition
+          facts (with a genuinely missing fact shown as an amber "—" chip — a DISPLAY
+          gap only, never a new missingDoc/task/status/alert), (3) the ONE existing
+          primary next action, (4) responsibility, (5) actions.
+          Nothing here re-reads or re-derives anything: `executionProfile` and
+          `transportLegs` are already on the row the backend projected once
+          (EXECUTION_PROFILE_BUILDS_PER_ROW=1, PRIMARY_LIST_DB_READS_ADDED=0). */}
       <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto"><table className="tbl w-full text-[14px] min-w-[1080px]">
-          <thead><tr><th>Mã lô</th><th>Khách hàng</th><th>Hợp đồng · Tuyến</th><th>Trạng thái</th><th>Việc tiếp theo</th><th>Sale · Support</th><th>Hành động</th></tr></thead>
+        <div className="overflow-x-auto"><table className="tbl w-full text-[14px] min-w-[1000px]">
+          <thead><tr><th>Lô · Khách hàng · Tuyến</th><th>Nhận dạng nhanh</th><th>Việc tiếp theo</th><th>Trách nhiệm</th><th>Hành động</th></tr></thead>
           <tbody>
             {list.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50">
-                <td><Link to={"/lo-hang/" + s.id} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link><span className="block text-[12px] text-slate-400">Cập nhật {s.updated}</span></td>
-                <td className="font-semibold max-w-[180px]">{s.customer}</td>
-                <td className="max-w-[220px]"><span className="block text-[13px] font-semibold text-slate-600">{s.contract}</span><span className="block text-[13px] text-slate-500">{s.route}</span></td>
-                <td><ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge></td>
+              <tr key={s.id} data-testid="shipment-row" data-shipment-id={s.id} className="hover:bg-slate-50 align-top">
+                {/* 1 — IDENTITY: what this lot is and where it stands. */}
+                <td className="max-w-[300px]">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Link to={"/lo-hang/" + s.id} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
+                    <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
+                  </div>
+                  <span className="block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]">{s.customer}</span>
+                  <span className="block text-[12.5px] text-slate-500 mt-0.5">{s.route}</span>
+                  <span className="block text-[12px] text-slate-400 mt-0.5">{s.contract} · cập nhật {s.updated}</span>
+                </td>
+                {/* 2 — QUICK FACTS (missing facts stay visible as amber "—"). */}
+                <td className="max-w-[320px]"><ShipmentQuickFacts shipment={s} dense /></td>
+                {/* 3 — the ONE primary action the backend composed (s.nextAction). */}
                 <td className="max-w-[240px]"><span className="block font-semibold text-[13.5px]">{s.nextAction}</span></td>
-                <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
+                {/* 4 — responsibility: `support` is `updated_by`, labelled truthfully. */}
+                <td className="text-[13px] whitespace-nowrap"><span className="block">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
+                {/* 5 — actions: the same XỬ LÝ route and the same 360° entry. */}
                 <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={"/lo-hang/" + s.id} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
               </tr>
             ))}
@@ -64,7 +91,7 @@ export default function Shipments() {
 
       <div className="md:hidden space-y-3">
         {list.map((s) => (
-          <div key={s.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
+          <div key={s.id} data-testid="shipment-mobile-card" data-shipment-id={s.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <StatusDot tone={s.statusTone} />
@@ -73,6 +100,10 @@ export default function Shipments() {
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{s.customer}</p>
               <p className="text-[13px] text-slate-500">{s.route}</p>
+              {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 — the recognition facts are
+                  on the card itself, wrapping inside the card width: no horizontal
+                  overflow, and no need to open the lot to read it. */}
+              <div className="mt-2.5"><ShipmentQuickFacts shipment={s} dense /></div>
               <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 p-3">
                 <p className="text-[11.5px] font-bold uppercase tracking-wide text-amber-700">Việc tiếp theo</p>
                 <p className="text-[14px] font-semibold text-slate-800 mt-0.5">{s.nextAction}</p>

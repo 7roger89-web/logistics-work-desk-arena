@@ -439,6 +439,12 @@ if (run(10)) {
   const lotLink = $("a").find((a) => text(a) === LINKED_SHIPMENT);
   lotLink.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(160);
+  // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (issue #86):
+  // the responsibility facts moved out of the primary visual path into ONE small
+  // secondary disclosure ("Thông tin thêm"). The SEMANTICS under test are
+  // unchanged — the disclosure is opened first, then the same truthful labels
+  // must be exactly what the operator reads.
+  await click("Thông tin thêm", "button");
   const t = mainText();
   assert.ok(!t.includes("Sale · Support"),
     "OLD BEHAVIOUR: updated_by was presented under a 'Support' responsibility label");
