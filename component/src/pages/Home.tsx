@@ -57,7 +57,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-2.5 mt-3.5">
               <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">XỬ LÝ NGAY <ArrowRight size={18} /></button>
               <button onClick={() => nav(`/lo-hang/${focus.id}`)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]">Mở {focus.id}</button>
-              <Link to="/viec-can-xu-ly" className="btn-press touch-target inline-flex items-center rounded-xl text-white/90 font-bold text-[14px] px-4 min-h-[48px] underline decoration-white/40 underline-offset-4">Xem cả danh sách việc</Link>
+              <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center rounded-xl text-white/90 font-bold text-[14px] px-4 min-h-[48px] underline decoration-white/40 underline-offset-4">Xem tất cả lô hàng</Link>
             </div>
           </>
         ) : (
@@ -75,7 +75,7 @@ export default function Home() {
         <section className="rounded-2xl bg-white border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="font-extrabold text-[16px] text-[#0f2a4a] flex items-center gap-2"><Clock size={18} className="text-red-600" /> Quá hạn và sắp tới hạn</h3>
-            <Link to="/viec-can-xu-ly" className="text-[13px] font-bold text-[#1e5aa8] inline-flex items-center gap-1">Tất cả <ArrowRight size={14} /></Link>
+            <Link to="/lo-hang" className="text-[13px] font-bold text-[#1e5aa8] inline-flex items-center gap-1">Tất cả lô <ArrowRight size={14} /></Link>
           </div>
           <div className="space-y-2">
             {dueSoon.length === 0 && <p className="text-[14px] text-slate-500 py-2">Không có việc tới hạn theo readiness hiện tại.</p>}
@@ -145,12 +145,12 @@ export default function Home() {
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-3.5 flex flex-col">
             <p className="text-[12.5px] font-semibold text-blue-800 flex items-center gap-1.5"><FolderX size={15} /> Hồ sơ thiếu thông tin · <span className="tnum font-extrabold">{home?.missingDocsTotal ?? 0}</span></p>
             <p className="text-[13px] text-blue-900 mt-1 flex-1">{summary?.missingInfo ?? 0} lô thiếu dữ liệu bắt buộc</p>
-            <Link to="/viec-can-xu-ly" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#0f2a4a] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ DANH SÁCH VIỆC</Link>
+            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#0f2a4a] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ DANH SÁCH LÔ</Link>
           </div>
           <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex flex-col">
             <p className="text-[12.5px] font-semibold text-red-800 flex items-center gap-1.5"><ListTodo size={15} /> Việc quá hạn / khẩn · <span className="tnum font-extrabold">{urgentTotal} việc</span></p>
             <p className="text-[13px] text-red-900 mt-1 flex-1">{summary?.deadlineSoon ?? 0} lô sắp tới hạn khách</p>
-            <Link to="/viec-can-xu-ly" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-red-600 text-white font-bold text-[14px] px-4 min-h-[44px]">XỬ LÝ VIỆC KHẨN</Link>
+            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-red-600 text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ LÔ HÀNG</Link>
           </div>
         </div>
       </section>

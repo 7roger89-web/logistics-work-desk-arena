@@ -252,7 +252,9 @@ console.log("STEP 7 — an article opens with provenance and an explicit way bac
   const back = $("[data-testid='handbook-back']")[0];
   assert.ok(back && text(back).includes("Về danh mục"), "back-to-list action missing");
   assert.ok(back.className.includes("touch-target"), "back action is not touch sized");
-  assert.equal($("a[href='/viec-can-xu-ly']", article).length, 1, "article lost its link to the owning desk");
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the tasks desk left the nav; the article
+  // links to the surviving work surface instead.
+  assert.equal($("a[href='/lo-hang']", article).length, 1, "article lost its link to the owning desk");
   await click("Về danh mục", "button");
   assert.ok(!$("[data-testid='handbook-article']")[0], "back did not return to the list");
   ok("article open/back behaves and shows only real provenance");

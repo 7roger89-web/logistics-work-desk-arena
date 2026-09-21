@@ -187,7 +187,8 @@ console.log("STEP 3 — page header + centered direction row + ROUND swap");
 {
   const t = mainText();
   assert.ok(!t.includes("Sắp có — chưa triển khai"), "route still renders the placeholder");
-  assert.ok(t.includes("Dịch thuật"), "page header missing");
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — donor-case header.
+  assert.ok(t.includes("Dịch Thuật"), "page header missing");
   assert.ok(
     t.includes("Công cụ dịch nhanh các cụm từ nghiệp vụ"),
     "demo-parity subtitle missing"
@@ -290,9 +291,16 @@ console.log("STEP 5 — quick chips fill the SOURCE text only");
   let chips = $('button[data-testid="quick-chip"]');
   assert.ok(chips.length >= 5, `expected >= 5 quick chips, got ${chips.length}`);
   assert.ok($('div[role="group"][aria-label="Cụm từ nhanh"]')[0], "chip group missing");
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — donor-shape pills show the first 24
+  // characters; the full phrase stays on title/aria-label.
+  const flagship = chips.find(
+    (c) => c.getAttribute("aria-label") === "Vui lòng gửi hóa đơn và phiếu đóng gói trước khi xe lấy hàng."
+  );
+  assert.ok(flagship, "flagship logistics chip missing");
+  assert.ok(flagship.className.includes("rounded-full"), "chip is not the donor pill shape");
   assert.ok(
-    chips.some((c) => text(c).includes("Vui lòng gửi hóa đơn và phiếu đóng gói")),
-    "flagship logistics chip missing"
+    text(flagship).startsWith("Vui lòng gửi hóa đơn") && text(flagship).endsWith("…"),
+    `chip is not donor-truncated: ${text(flagship)}`
   );
 
   const source = $('textarea[aria-label="Văn bản gốc"]')[0];
@@ -301,7 +309,9 @@ console.log("STEP 5 — quick chips fill the SOURCE text only");
   const resultValueBefore = resultBefore.value;
 
   const triggersBefore = triggers.length;
-  const firstValue = text(chips[0]);
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the pill shows the donor truncation;
+  // the FULL phrase (aria-label) is what fills the source.
+  const firstValue = chips[0].getAttribute("aria-label");
   await clickSelector('button[data-testid="quick-chip"]', window.document, 0);
   assert.equal(source.value, firstValue, "chip must fill the SOURCE text");
   assert.equal($('textarea[aria-label="Bản dịch"]')[0].value, resultValueBefore,
@@ -310,7 +320,7 @@ console.log("STEP 5 — quick chips fill the SOURCE text only");
     "chip click must NOT dispatch any event (no paid call)");
 
   // A second chip simply replaces the source text — still source-only.
-  const secondValue = text(chips[1]);
+  const secondValue = chips[1].getAttribute("aria-label");
   await clickSelector('button[data-testid="quick-chip"]', window.document, 1);
   assert.equal(source.value, secondValue, "second chip must replace the source text");
   assert.equal(triggers.length, triggersBefore, "second chip dispatched an event");
@@ -320,11 +330,11 @@ console.log("STEP 5 — quick chips fill the SOURCE text only");
   await selectOption($('select[aria-label="Ngôn ngữ nguồn"]')[0], "ZH");
   chips = $('button[data-testid="quick-chip"]');
   assert.ok(
-    chips.some((c) => text(c).includes("请在车辆提货前发送发票和装箱单")),
+    chips.some((c) => (c.getAttribute("aria-label") || "").includes("请在车辆提货前发送发票和装箱单")),
     "equivalent Chinese chip set missing for a ZH source"
   );
   await clickSelector('button[data-testid="quick-chip"]', window.document, 0);
-  assert.equal(source.value, text(chips[0]), "Chinese chip must fill the SOURCE text");
+  assert.equal(source.value, chips[0].getAttribute("aria-label"), "Chinese chip must fill the SOURCE text");
   assert.equal(triggers.length, triggersBefore, "Chinese chip dispatched an event");
   assert.equal($('textarea[aria-label="Bản dịch"]')[0].value, resultValueBefore,
     "Chinese chip must NOT change the translated output");
@@ -558,16 +568,20 @@ console.log("STEP 13 — quick glossary renders and NEVER translates");
 {
   const t = mainText();
   assert.ok(t.includes("Từ điển nghiệp vụ nhanh"), "glossary heading missing");
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — donor-shape vertical vi/zh list (15
+  // seeded pairs), replacing the old 20-item grid.
   const grid = $('div[data-testid="glossary"]')[0];
-  assert.ok(grid, "glossary grid missing");
-  assert.ok(grid.className.includes("grid-cols-2"), "glossary must use 2 columns");
-  assert.ok(grid.className.includes("sm:grid-cols-3"), "glossary must widen on sm+");
+  assert.ok(grid, "glossary list missing");
+  assert.ok(grid.className.includes("grid-cols-1"), "glossary must be the donor vertical list");
   const items = $('div[data-testid="glossary-item"]');
-  assert.equal(items.length, 20, `expected 20 glossary items, got ${items.length}`);
-  assert.ok(text(items[0]).includes("xin chào") && text(items[0]).includes("你好"),
+  assert.equal(items.length, 15, `expected the donor 15 glossary items, got ${items.length}`);
+  assert.ok(text(items[0]).includes("Xin chào") && text(items[0]).includes("你好"),
     "glossary item must pair Vietnamese with Chinese");
+  for (const item of items) {
+    assert.ok(item.className.includes("justify-between"), "glossary row lost the donor vi/zh shape");
+  }
   assert.ok(
-    items.some((el) => text(el).includes("biển số xe") && text(el).includes("车牌号")),
+    items.some((el) => text(el).includes("Hóa đơn") && text(el).includes("发票")),
     "logistics glossary coverage missing"
   );
 
@@ -583,7 +597,7 @@ console.log("STEP 13 — quick glossary renders and NEVER translates");
   assert.equal($('textarea[aria-label="Bản dịch"]')[0].value, resultBefore,
     "glossary click touched the translated output");
   assertNoSimulatedWording("glossary");
-  ok("20-item reference glossary renders; clicks are inert");
+  ok("donor 15-item reference glossary renders; clicks are inert");
 }
 
 // ---------------------------------------------------------------------------
@@ -606,7 +620,7 @@ console.log("STEP 15 — mobile: drawer routes here; targets; no overflow trap")
   assert.ok(drawerItem, "drawer item missing");
   assert.ok(!text(drawerItem).includes("Sắp có"), "drawer item still marked 'Sắp có'");
   await click("Dịch thuật", "a", drawer);
-  assert.ok(mainText().includes("Dịch thuật"), "drawer must open the translation workspace");
+  assert.ok(mainText().includes("Dịch Thuật"), "drawer must open the translation workspace");
 
   // Structural mobile behaviour: panels stack, text stays 16px, every primary
   // control keeps a >= 44px touch target, nothing forces horizontal width.
@@ -625,8 +639,8 @@ console.log("STEP 15 — mobile: drawer routes here; targets; no overflow trap")
   assert.ok($('button[data-testid="translate-action"]')[0].className.includes("min-h-[48px]"),
     "translate button below touch target");
   for (const chip of $('button[data-testid="quick-chip"]')) {
-    assert.ok(chip.className.includes("min-h-[44px]"), "chip below touch target");
-    assert.ok(chip.className.includes("max-w-full"), "chip must not force overflow");
+    assert.ok(chip.className.includes("min-h-[28px]"), "chip lost the donor compact pill shape");
+    assert.ok(chip.className.includes("max-w-[220px]"), "chip lost the donor truncation width");
   }
   for (const select of [$('select[aria-label="Ngôn ngữ nguồn"]')[0], $('select[aria-label="Ngôn ngữ đích"]')[0]]) {
     assert.ok(select.className.includes("min-w-0"), "direction select must shrink safely");

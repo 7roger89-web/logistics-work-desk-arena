@@ -10,7 +10,8 @@
 //   2. header renders (logo, subtitle, search, chip, bell, Thêm)
 //   3. sidebar renders (5 donor groups + all items)
 //   4. click Tổng Quan Công Việc → Home
-//   5. click Việc Cần Xử Lý → Tasks (+ filter)
+//   5. simplified nav: removed desks absent from sidebar/drawer; the
+//      notification entry lands on the surviving work surface (/lo-hang).
 //   6. click Lô Hàng → Shipments
 //   7. open LO-0306 → Shipment Detail
 //   8. click all five donor tabs
@@ -204,14 +205,14 @@ console.log("STEP 3 — sidebar parity");
   for (const g of ["VẬN HÀNH", "KINH DOANH & ĐỐI TÁC", "TÀI CHÍNH & ĐỐI SOÁT", "CÔNG CỤ", "QUẢN TRỊ"]) {
     assert.ok(at.includes(g), `sidebar group missing: ${g}`);
   }
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — removed desks are gone from the nav;
+  // "Báo giá" is now "Báo Giá".
   for (const it of [
     "Tổng Quan Công Việc",
-    "Việc Cần Xử Lý",
     "Lô Hàng",
     "Tạo Lô Mới",
-    "Theo Dõi Vận Chuyển",
     "Khách Hàng",
-    "Báo giá",
+    "Báo Giá",
     "Hợp đồng",
     "Thu tiền",
     "Đối soát",
@@ -224,7 +225,7 @@ console.log("STEP 3 — sidebar parity");
   ]) {
     assert.ok(at.includes(it), `sidebar item missing: ${it}`);
   }
-  ok("5 donor groups + 16 items present");
+  ok("5 groups + 14 items present (3 desks removed, quote renamed)");
 }
 
 // ---------------------------------------------------------------------------
@@ -252,33 +253,30 @@ console.log("STEP 4 — click Tổng Quan Công Việc");
 }
 
 // ---------------------------------------------------------------------------
-// STEP 5 — click Việc Cần Xử Lý → Tasks
+// STEP 5 — simplified nav (tasks desk removed from normal navigation)
 // ---------------------------------------------------------------------------
 
-console.log("STEP 5 — click Việc Cần Xử Lý");
+console.log("STEP 5 — simplified nav: no removed desks; notif lands on /lo-hang");
 {
-  await click("Việc Cần Xử Ly".replace(" Ly", " Lý"), "a", $("aside")[0]);
-  const t = bodyText();
-  assert.ok(t.includes("Việc Cần Xử Lý"), "Tasks heading missing");
-  const rows = $("table.tbl tbody tr");
-  // Real readiness/task evidence — the row count follows the fixture, not a
-  // hardcoded Phase A number.
-  assert.equal(rows.length, VM.tasks.length, `expected ${VM.tasks.length} task rows, got ${rows.length}`);
-  // filter interaction (donor UI): the counts are computed from the real rows
-  const countOf = (level) => VM.tasks.filter((t) => t.level === level).length;
-  const urgent = countOf("Khan");
-  assert.ok(urgent > 0, "expected at least one urgent task in the seed evidence");
-  await click(`Khẩn (${urgent})`, "button");
-  const rows2 = $("table.tbl tbody tr");
-  assert.equal(rows2.length, urgent, `expected ${urgent} urgent rows, got ${rows2.length}`);
-  await click(`Tất cả (${VM.tasks.length})`, "button");
-  assert.equal($("table.tbl tbody tr").length, VM.tasks.length, "filter reset failed");
-  ok(`Tasks rendered with ${VM.tasks.length} rows + working priority filter`);
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — sidebar carries no removed-desk link.
+  for (const href of ["/viec-can-xu-ly", "/theo-doi", "/thoa-thuan-ban-giao"]) {
+    assert.equal($(`aside a[href="${href}"]`).length, 0, `sidebar still links ${href}`);
+  }
+  // Mobile drawer agrees.
+  await clickSelector('button[aria-label="Mở menu"]');
+  const drawer = $("div.anim-slide-up").filter((el) => text(el).includes("Menu điều hành"))[0]
+    ?? $(".fixed.inset-0.z-50")[0];
+  assert.ok(drawer, "mobile drawer missing");
+  for (const href of ["/viec-can-xu-ly", "/theo-doi", "/thoa-thuan-ban-giao"]) {
+    assert.equal($(`a[href="${href}"]`, drawer).length, 0, `drawer still links ${href}`);
+  }
+  await click("Lô Hàng", "a", drawer);
+  // Notification drawer entry lands on the surviving work surface.
+  await clickSelector("header button[aria-label='Thông báo']");
+  await click("Mở Lô Hàng", "button");
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "notif entry must open Lô Hàng");
+  ok("sidebar + drawer drop the 3 desks; notif opens the surviving surface");
 }
-
-// ---------------------------------------------------------------------------
-// STEP 6 — click Lô Hàng → Shipments
-// ---------------------------------------------------------------------------
 
 console.log("STEP 6 — click Lô Hàng");
 {
@@ -616,32 +614,22 @@ console.log("STEP 14 — Create Shipment");
 // STEP 15 — Phase B: Tracking (real transport facts, no fabricated GPS)
 // ---------------------------------------------------------------------------
 
-console.log("STEP 15 — Tracking");
+console.log("STEP 15 — removed tracking desk: former entries land on /lo-hang");
 {
-  await click("Theo Dõi Vận Chuyển", "a", $("aside")[0]);
-  const t15 = bodyText();
-  assert.ok(t15.includes("Theo Dõi Vận Chuyển"), "tracking page missing");
-  assert.ok(t15.includes("Không mô phỏng vị trí GPS"), "no-GPS disclaimer missing");
-  assert.ok(t15.includes("LO-0299"), "tracking lot list missing LO-0299");
-  const lot = VM.shipments.find((x) => x.id === "LO-0299");
-  await click("LO-0299", "button");
-  const t15b = bodyText();
-  assert.ok(t15b.includes(lot.tracking.carrier), "carrier missing");
-  assert.ok(t15b.includes(lot.tracking.reference), "tracking reference missing");
-  assert.ok(t15b.includes("Mốc vận chuyển"), "milestones section missing");
-  for (const m of lot.tracking.milestones.slice(0, 2)) {
-    assert.ok(t15b.includes(m.title), `milestone missing: ${m.title}`);
-  }
-  ok(`Tracking renders real carrier/reference + ${lot.tracking.milestones.length} milestones`);
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the standalone tracking desk left the nav;
+  // operational value stays reachable through Lô Hàng / shipment detail.
+  await click("Tổng Quan Công Việc", "a", $("aside")[0]);
+  await click("Tất cả lô", "a");
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "home exception link must open Lô Hàng");
+  await click("Tổng Quan Công Việc", "a", $("aside")[0]);
+  await click("MỞ DANH SÁCH LÔ", "a");
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "home docs card must open Lô Hàng");
+  const dead = ["viec-can-xu-ly", "theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
+    $(`a[href*="${slug}"]`).map((a) => a.getAttribute("href"))
+  );
+  assert.equal(dead.length, 0, `visible links still route to removed desks: ${dead.join(", ")}`);
+  ok("former tracking/task entries open Lô Hàng; zero dead links");
 }
-
-// ---------------------------------------------------------------------------
-// STEP 16 — CLEAR_FIX: blank = UNKNOWN must survive the save (LOGI_GNT_
-// CANONICAL_FIELDS_01_CLEAR_FIX). Pins the UI half of the contract: the three
-// approved canonical fields are sent from the touched-state, NOT through
-// onlyFilled(), so an actively cleared field travels as "" while an untouched
-// one is omitted entirely.
-// ---------------------------------------------------------------------------
 
 console.log("STEP 16 — import tax clear semantics");
 {

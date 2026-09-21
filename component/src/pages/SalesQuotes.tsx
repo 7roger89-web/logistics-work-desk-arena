@@ -1,5 +1,5 @@
 // ============================================================================
-// Kinh doanh · Báo giá — Phase C1, donor Logi-good visual shell.
+// Báo Giá — Phase C1, donor Logi-good visual shell.
 //
 // Quotes are REAL LOG-C12 documents: created through core.quotations via the
 // ONE bounded dispatcher (quote_create / quote_edit / quote_transition), RBAC
@@ -14,6 +14,7 @@ import {
   Field,
   GhostBtn,
   PrimaryBtn,
+  SearchPicker,
   SectionTitle,
   SuccessBtn,
   ToneBadge,
@@ -52,6 +53,10 @@ interface LineForm {
   costUnit: string;
   sellUnit: string;
   taxPct: string;
+  /** LOGI_INTERNAL_UX_SIMPLIFY_01 — optional operator note, persisted on the
+      canonical service line (`note`) and read back on edit. Never part of
+      the price/tax/margin/FX arithmetic. */
+  note: string;
 }
 
 /**
@@ -82,7 +87,7 @@ interface QuoteForm {
   fx: FxForm;
 }
 
-const EMPTY_LINE: LineForm = { code: "", serviceName: "", unit: "Lần", qty: "1", currency: "VND", costUnit: "", sellUnit: "", taxPct: "8" };
+const EMPTY_LINE: LineForm = { code: "", serviceName: "", unit: "Lần", qty: "1", currency: "VND", costUnit: "", sellUnit: "", taxPct: "8", note: "" };
 
 const EMPTY_FORM: QuoteForm = {
   customerId: "",
@@ -121,6 +126,7 @@ function lineToForm(l: QuoteServiceLine): LineForm {
     costUnit: l.costUnit == null ? "" : String(l.costUnit),
     sellUnit: l.sellUnit == null ? "" : String(l.sellUnit),
     taxPct: l.taxPct == null ? "" : String(l.taxPct),
+    note: l.note ?? "",
   };
 }
 
@@ -154,6 +160,18 @@ export default function SalesQuotes() {
   // Currencies the lines currently being edited need a quote rate for.
   const neededFxCodes = FX_CODES.filter((code) =>
     form.lines.some((l) => (l.currency || "VND").trim().toUpperCase() === code));
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — searchable customer options (name / code /
+  // MST); the picked value still binds the exact customerId, never a copy.
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        id: c.id,
+        label: `${c.name} (${c.id})`,
+        sub: [c.taxCode || c.mst, c.phone].filter(Boolean).join(" · ") || c.id,
+      })),
+    [customers]
+  );
+  const pickedCustomer = customers.find((c) => c.id === form.customerId) ?? null;
 
   const set = (k: keyof Omit<QuoteForm, "lines">, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const setFx = (code: keyof FxForm, v: string) => setForm((f) => ({ ...f, fx: { ...f.fx, [code]: v } }));
@@ -197,6 +215,7 @@ export default function SalesQuotes() {
         costUnit: l.costUnit.trim() === "" ? "" : Number(l.costUnit),
         sellUnit: l.sellUnit.trim() === "" ? "" : Number(l.sellUnit),
         taxPct: l.taxPct.trim() === "" ? "" : Number(l.taxPct),
+        note: l.note.trim(),
       }));
 
   const submit = () => {
@@ -271,7 +290,7 @@ export default function SalesQuotes() {
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <SectionTitle
           icon={<Calculator size={18} />}
-          title="Kinh doanh · Báo giá"
+          title="Báo Giá"
           sub="Báo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/chi. Tìm theo mã · khách · tuyến."
           right={<button onClick={openCreate} className="btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]"><Plus size={18} /> Tạo báo giá</button>}
         />
@@ -370,12 +389,32 @@ export default function SalesQuotes() {
             <h3 className="font-extrabold text-[18px] text-[#0f2a4a]">{editing ? "Sửa báo giá " + editing.id : "Tạo báo giá mới"}</h3>
             <p className="text-[13.5px] text-slate-500">Dự toán chi phí & giá bán — đi qua backend LOG-C12 (tính toán + audit), không ghi sổ tài chính.</p>
             <div className="grid sm:grid-cols-2 gap-3 mt-4">
-              <Field label="Khách hàng" required>
-                <select value={form.customerId} disabled={!!editing} onChange={(e) => set("customerId", e.target.value)} className={inputCls(!form.customerId ? "missing" : "ok")}>
-                  <option value="">-- Chọn khách --</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
-                </select>
-              </Field>
+              {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — the create-quote customer
+                  control is the existing searchable SearchPicker (a native
+                  select only jumped by first letter). On edit the customer
+                  stays read-only: quote_edit has no customer-change writer. */}
+              {editing ? (
+                <Field label="Khách hàng">
+                  <input
+                    value={pickedCustomer ? `${pickedCustomer.name} (${pickedCustomer.id})` : form.customerId}
+                    disabled
+                    aria-label="Khách hàng của báo giá (không đổi khi sửa)"
+                    className={inputCls()}
+                  />
+                </Field>
+              ) : (
+                <SearchPicker
+                  label="Khách hàng"
+                  testId="quote-customer-picker"
+                  required
+                  options={customerOptions}
+                  selectedId={form.customerId}
+                  selectedLabel={pickedCustomer ? `${pickedCustomer.name} (${pickedCustomer.id})` : ""}
+                  placeholder="Gõ tên, mã khách hoặc MST để tìm…"
+                  emptyHint="Chưa có khách hàng nào — tạo mới ở mục Khách Hàng trước."
+                  onSelect={(id) => set("customerId", id)}
+                />
+              )}
               <Field label="Sale phụ trách"><input value={form.salesOwner} onChange={(e) => set("salesOwner", e.target.value)} className={inputCls()} /></Field>
               <Field label="Nơi lấy (origin)"><input value={form.origin} onChange={(e) => set("origin", e.target.value)} placeholder="VD: Bằng Tường (Quảng Tây)" className={inputCls()} /></Field>
               <Field label="Nơi giao (destination)"><input value={form.destination} onChange={(e) => set("destination", e.target.value)} placeholder="VD: KCN Quế Võ, Bắc Ninh" className={inputCls()} /></Field>
@@ -420,6 +459,7 @@ export default function SalesQuotes() {
                       <Field label="Thuế %"><input value={l.taxPct} onChange={(e) => setLine(i, "taxPct", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
                       <Field label="Tiền tệ"><select value={l.currency} onChange={(e) => setLine(i, "currency", e.target.value)} className={inputCls()}><option>VND</option><option>USD</option><option>CNY</option></select></Field>
                     </div>
+                    <Field label="Ghi chú"><input value={l.note} onChange={(e) => setLine(i, "note", e.target.value)} placeholder="Không bắt buộc — VD: giá đã gồm bốc xếp tại kho" aria-label={`Ghi chú dòng dịch vụ ${i + 1}`} className={cx(inputCls(), "mt-2")} /></Field>
                     {form.lines.length > 1 && (
                       <button onClick={() => removeLine(i)} className="mt-2 inline-flex items-center gap-1 text-[13px] font-bold text-red-600"><Trash2 size={14} /> Xóa dòng</button>
                     )}

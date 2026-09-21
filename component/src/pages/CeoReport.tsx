@@ -447,10 +447,10 @@ export default function CeoReport() {
             ))}
             {hiddenActionables > 0 ? (
               <Link
-                to="/viec-can-xu-ly"
+                to="/lo-hang"
                 className="flex min-h-[44px] min-w-0 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:border-[#1e5aa8]"
               >
-                Còn {fmtNum(hiddenActionables)} việc khác — mở desk việc cần xử lý
+                Còn {fmtNum(hiddenActionables)} việc khác — mở lô hàng
                 <ArrowRight size={16} className="text-[#1e5aa8]" />
               </Link>
             ) : null}

@@ -34,8 +34,9 @@ ACTIONABLE_TASK_LEVELS = frozenset({"Khan", "CanXuLy"})
 
 # Bounded presentation lists: the CEO page shows the FIRST N rows of sources
 # that already carry their own complete ordering (the task projection sorts
-# Khan → Cần xử lý → Bình thường, then lot id).  The full desk stays on the
-# page that owns the data (/viec-can-xu-ly).
+# Khan → Cần xử lý → Bình thường, then lot id).  The full list stays on the
+# surviving work surface (/lo-hang; LOGI_INTERNAL_UX_SIMPLIFY_01 removed the
+# standalone tasks desk from the normal navigation).
 ACTIONABLE_LIMIT = 5
 TOP_CUSTOMER_LIMIT = 5
 

@@ -205,6 +205,8 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
             "sellTotal": _num(line.get("sell_total")),
             "costVnd": _num(line.get("cost_vnd")),
             "sellVnd": _num(line.get("sell_vnd")),
+            # LOGI_INTERNAL_UX_SIMPLIFY_01 — optional operator note round trip.
+            "note": _text(line.get("note")),
         })
     fx = q.get("fx_snapshot") if isinstance(q.get("fx_snapshot"), Mapping) else {}
     fx_rates = {str(code).upper(): _num(rate)
@@ -993,6 +995,10 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
             "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
             "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
             "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support; cần đối chiếu agent nếu là phí Trung Quốc.",
+            # LOGI_INTERNAL_UX_SIMPLIFY_01 — optional free-form operator note.
+            # Carried verbatim on the canonical line; core.quotations never
+            # reads it for arithmetic (deep-copied through untouched).
+            "note": _text(line.get("note")),
         })
     if not service_lines:
         raise ValueError("Cần ít nhất một dòng dịch vụ báo giá.")
@@ -1090,6 +1096,9 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
                 "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
                 "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
                 "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support.",
+                # LOGI_INTERNAL_UX_SIMPLIFY_01 — same optional operator note
+                # as create; an edit replaces lines wholesale, note included.
+                "note": _text(line.get("note")),
             })
         if service_lines:
             quote["service_lines"] = service_lines

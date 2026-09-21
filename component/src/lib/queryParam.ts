@@ -1,7 +1,7 @@
 // ============================================================================
 // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — list context that survives navigation.
 //
-// The desks (Shipments / Tasks / Contracts / Receivables / Customers / Báo giá)
+// The desks (Shipments / Contracts / Receivables / Customers / Báo Giá, …)
 // held their query+filters in component useState, so the representative flow
 //   lọc danh sách → mở record → thao tác → Quay lại
 // threw the operator's context away and made them search from scratch.

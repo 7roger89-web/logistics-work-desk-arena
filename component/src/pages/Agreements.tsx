@@ -217,7 +217,7 @@ export default function Agreements() {
             <p className="text-[13.5px] text-slate-500">Chỉ báo giá ACCEPTED / sẵn sàng tạo lô mới dùng được.</p>
             {eligibleQuotes.length === 0 ? (
               <p className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-[14px] text-amber-900">
-                Chưa có báo giá ACCEPTED. Vào <Link to="/kinh-doanh-bao-gia" className="font-bold underline">Kinh doanh · Báo giá</Link> để chốt khách trước.
+                Chưa có báo giá ACCEPTED. Vào <Link to="/kinh-doanh-bao-gia" className="font-bold underline">Báo Giá</Link> để chốt khách trước.
               </p>
             ) : (
               <div className="grid gap-3 mt-4">

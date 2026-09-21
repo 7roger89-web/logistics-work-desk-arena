@@ -3108,8 +3108,8 @@
        },
        "links": [
         {
-         "label": "Mở Việc Cần Xử Lý",
-         "href": "/viec-can-xu-ly"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [
@@ -3219,8 +3219,8 @@
        },
        "links": [
         {
-         "label": "Mở Việc Cần Xử Lý",
-         "href": "/viec-can-xu-ly"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [
@@ -3482,7 +3482,7 @@
        },
        "links": [
         {
-         "label": "Mở Kinh doanh · Báo giá",
+         "label": "Mở Báo Giá",
          "href": "/kinh-doanh-bao-gia"
         }
        ],
@@ -3695,8 +3695,8 @@
        },
        "links": [
         {
-         "label": "Mở Theo Dõi",
-         "href": "/theo-doi"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [
@@ -7380,8 +7380,8 @@
        },
        "links": [
         {
-         "label": "Mở Việc Cần Xử Lý",
-         "href": "/viec-can-xu-ly"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [
@@ -7491,8 +7491,8 @@
        },
        "links": [
         {
-         "label": "Mở Việc Cần Xử Lý",
-         "href": "/viec-can-xu-ly"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [
@@ -7754,7 +7754,7 @@
        },
        "links": [
         {
-         "label": "Mở Kinh doanh · Báo giá",
+         "label": "Mở Báo Giá",
          "href": "/kinh-doanh-bao-gia"
         }
        ],
@@ -7967,8 +7967,8 @@
        },
        "links": [
         {
-         "label": "Mở Theo Dõi",
-         "href": "/theo-doi"
+         "label": "Mở Lô Hàng",
+         "href": "/lo-hang"
         }
        ],
        "tags": [

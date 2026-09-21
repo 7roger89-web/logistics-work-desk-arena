@@ -20,7 +20,7 @@ import {
   inputCls,
 } from "../components/ui";
 import { useStore } from "../lib/store";
-import { cx, fmtText } from "../lib/format";
+import { cx, fmtText, matchLoose } from "../lib/format";
 import { getViewModel, subscribeViewModel, type Customer } from "../lib/viewmodel";
 
 const EMPTY_FORM = {
@@ -55,14 +55,18 @@ export default function Customers() {
   const [pending, setPending] = useState<{ event: "customer_create" | "customer_edit"; id: string; requestId: string } | null>(null);
   const [backendError, setBackendError] = useState("");
 
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — real runtime fix: the match is
+  // diacritic-insensitive ("An Phat" finds "An Phát") and undefined-safe, so
+  // toneless typing and partial records filter the visible list correctly.
   const list = useMemo(
     () =>
       customers.filter(
         (c) =>
           !q ||
-          (c.id + c.name + c.short + c.mst + c.taxCode + c.phone + c.email)
-            .toLowerCase()
-            .includes(q.toLowerCase())
+          matchLoose(
+            [c.id, c.name, c.short, c.mst, c.taxCode, c.phone, c.email].join(" "),
+            q
+          )
       ),
     [customers, q]
   );
@@ -224,7 +228,7 @@ export default function Customers() {
         />
         <div className="flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
           <Search size={19} className="ml-3.5 text-slate-400 shrink-0" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập mã (CUST-ANPHAT), tên (An Phát), MST…" className="w-full bg-transparent px-3 py-3 text-[15px] outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập mã (CUST-ANPHAT), tên (An Phát), MST…" aria-label="Tìm khách hàng theo mã, tên, MST, SĐT, email" className="w-full bg-transparent px-3 py-3 text-[15px] outline-none" />
         </div>
         <p className="text-[13.5px] text-slate-500 mt-2.5">
           Tìm thấy <b className="text-[#0f2a4a]">{list.length} khách hàng</b>

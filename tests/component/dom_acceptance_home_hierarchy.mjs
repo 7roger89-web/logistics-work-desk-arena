@@ -128,7 +128,15 @@ console.log("STEP 4 — money & docs attention keeps every old data point once, 
   assert.ok(t.includes("Tiền & hồ sơ cần chú ý"), "money section present");
   assert.ok(t.includes("GHI NHẬN THANH TOÁN"), "receipt action present");
   assert.ok(t.includes("ĐỐI SOÁT NGAY"), "reconciliation action present");
-  assert.ok(t.includes("MỞ DANH SÁCH VIỆC"), "missing-docs action present");
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the missing-docs/urgent work card now
+  // routes into the surviving Lô Hàng desk (the tasks desk left the nav).
+  assert.ok(t.includes("MỞ LÔ HÀNG"), "urgent-work action present");
+  assert.ok(!t.includes("MỞ DANH SÁCH VIỆC"), "stale tasks-desk action lingers");
+  const urgentLink = $("a").find((a) => text(a).includes("MỞ LÔ HÀNG"));
+  assert.ok(urgentLink && urgentLink.getAttribute("href") === "/lo-hang",
+    "urgent-work action must route to /lo-hang");
+  assert.equal($('a[href*="viec-can-xu-ly"]').length, 0,
+    "no visible link may route to the removed tasks desk");
   assert.ok(t.includes("Việc quá hạn / khẩn"), "urgent work card present");
   const urgentTotal = (HOME.summary.critical ?? 0) + (HOME.urgentCount ?? 0);
   assert.ok(t.includes(`${urgentTotal} việc`), `urgent total ${urgentTotal} visible`);

@@ -182,7 +182,7 @@ def _workflow_section(field_paths: Mapping[str, Any]) -> dict[str, Any]:
                     "Không có trạng thái thứ năm: bộ lọc và kiểm tra của app chỉ nhận các mã ở bảng này.",
                 ],
                 tags=["trạng thái", "workflow"],
-                links=[{"label": "Mở Việc Cần Xử Lý", "href": "/viec-can-xu-ly"}],
+                links=[{"label": "Mở Lô Hàng", "href": "/lo-hang"}],
             ),
             _entry(
                 "nganh-du-lieu",
@@ -258,7 +258,7 @@ def _documents_section() -> dict[str, Any]:
                     "chưa có dữ liệu, không phải trạng thái của một lô cụ thể.",
                 ],
                 tags=["chứng từ", "checklist", "nhập khẩu"],
-                links=[{"label": "Mở Việc Cần Xử Lý", "href": "/viec-can-xu-ly"}],
+                links=[{"label": "Mở Lô Hàng", "href": "/lo-hang"}],
             ),
             _entry(
                 "chung-tu-sinh",
@@ -310,7 +310,7 @@ def _service_section() -> dict[str, Any]:
                     ],
                 ),
                 tags=["getfly", "báo giá", "mã phí"],
-                links=[{"label": "Mở Kinh doanh · Báo giá", "href": "/kinh-doanh-bao-gia"}],
+                links=[{"label": "Mở Báo Giá", "href": "/kinh-doanh-bao-gia"}],
             ),
             _entry(
                 "incoterm",
@@ -430,7 +430,7 @@ def _tools_section() -> dict[str, Any]:
                     [(carrier, url) for carrier, url in CARRIER_LINKS.items()],
                 ),
                 tags=["tracking", "hãng tàu"],
-                links=[{"label": "Mở Theo Dõi", "href": "/theo-doi"}],
+                links=[{"label": "Mở Lô Hàng", "href": "/lo-hang"}],
             ),
             _entry(
                 "phan-quyen",
