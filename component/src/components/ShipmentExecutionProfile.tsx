@@ -584,6 +584,23 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
 
   // A refusal (impossible combination, RBAC, …) arrives in the NEXT fresh
   // view-model, matched by the request identity this click sent.
+  //
+  // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the SAME correlation
+  // is now also the only thing that may collapse the editor:
+  //   PENDING (no correlated outcome yet) → editor stays OPEN;
+  //   backend REFUSAL (ok=false)           → editor stays OPEN so the operator
+  //                                          can repair the exact field the
+  //                                          backend named, on the data the
+  //                                          backend actually stored;
+  //   AUTHORITATIVE SUCCESS                → editor collapses, and the compact
+  //                                          persisted summary + stage chips
+  //                                          below stay visible as the evidence;
+  //   NOOP ("Không có thay đổi")           → collapses too — there is nothing to
+  //                                          repair, and the summary still shows
+  //                                          what is stored.
+  // `dispatch(...) === true` means the event was TRANSPORTED, never SAVED, so
+  // nothing here reacts to it: no optimistic collapse, no second save
+  // authority, no weakened truth semantics.
   useEffect(() => {
     if (!pending) return;
     const outcome = lastWrites.find((row) => row.requestId === pending && row.event === "shipment_profile_save");
@@ -594,9 +611,11 @@ export default function ShipmentExecutionProfile({ shipment, dispatch, toast, on
       return;
     }
     if (outcome.noop) {
+      setOpen(false);
       toast("Không có thay đổi", "Hồ sơ lô đang đúng như dữ liệu đã lưu.", "blue");
       return;
     }
+    setOpen(false);
     toast("Đã lưu hồ sơ lô", "Dữ liệu vừa lưu đã được đọc lại từ Logistics.", "green");
   }, [lastWrites, pending, toast]);
 

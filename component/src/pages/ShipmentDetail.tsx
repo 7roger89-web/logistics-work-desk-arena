@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
-import ShipmentExecutionProfile, { ExecutionProfileSummary } from "../components/ShipmentExecutionProfile";
+import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
+import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
@@ -717,6 +718,16 @@ export default function ShipmentDetail() {
             <span className="ml-auto text-[12.5px] text-slate-400 flex items-center gap-1"><Clock size={14} /> Cập nhật {s.updated}</span>
           </div>
           <p className="font-semibold text-[15.5px] mt-1">{s.customer} <span className="text-slate-400 font-normal">· MST {s.customerMST}</span></p>
+          {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the five facts
+              an operator uses to RECOGNIZE a lot (Incoterm · mode · load model ·
+              ETD · ETA) now sit at the very top of the header, above the identity
+              grid. They are read off the row this page already has
+              (`executionProfile` + `transportLegs`) — no new reader, no new
+              field, no second derived summary. An unknown fact renders as an
+              explicit "—" instead of disappearing. */}
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
+            <ShipmentQuickFacts shipment={s} />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Tuyến" value={s.route} />
             <StateRow label="Cửa khẩu" value={s.borderVN} />
@@ -729,12 +740,35 @@ export default function ShipmentDetail() {
             <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
           </div>
         </div>
-        {/* LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the compact execution profile
-            summary sits at the TOP of the lot detail: the operator sees which
-            configuration the workflow below was derived from before reading it. */}
-        <div className="px-4 md:px-6">
-          <ExecutionProfileSummary profile={s.executionProfile} />
-        </div>
+        {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the header used
+            to render the SAME verbose profile summary twice at equal weight (here
+            and inside the profile section), and the Owner's complaint was that
+            the page had no hierarchy. Recognition now belongs to the quick-facts
+            strip above; CONFIGURATION prose (summary lines, stage chips, editor)
+            belongs to the "Hồ sơ thực hiện lô" section below and is NOT deleted.
+            What stays at the top is only the compact STATE indicator, so a lot
+            that genuinely needs attention still says so before the operator
+            scrolls — including CONFIG_CHECK, which is never hidden. */}
+        {s.executionProfile && s.executionProfile.state !== "PROFILE_READY" && (
+          <div className="px-4 md:px-6">
+            <p
+              role="status"
+              data-testid="execution-profile-state-indicator"
+              data-state={s.executionProfile.state}
+              className={cx(
+                "flex items-start gap-2 rounded-xl border-2 px-3.5 py-2 text-[12.5px] font-bold",
+                s.executionProfile.state === "CONFIG_CHECK"
+                  ? "border-red-300 bg-red-50 text-red-900"
+                  : "border-amber-300 bg-amber-50 text-amber-900"
+              )}
+            >
+              <CircleAlert size={15} className="mt-0.5 shrink-0" />
+              <span>
+                HỒ SƠ THỰC HIỆN LÔ · {s.executionProfile.stateLabel} — mở “Hồ sơ thực hiện lô” bên dưới để sửa; cấu hình này quyết định các bước vận hành nào thực sự có.
+              </span>
+            </p>
+          </div>
+        )}
         <div className="px-4 md:px-6 pb-4 md:pb-5">
           <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); const anchor = nextRouteAnchor(s.nextRoute); setSp(t ? { tab: t } : {}); if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor); else setTimeout(() => revealAnchor(anchor), 150); } else nav(s.nextRoute); }} />
         </div>
