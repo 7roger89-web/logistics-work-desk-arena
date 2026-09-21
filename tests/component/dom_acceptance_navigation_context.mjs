@@ -4,7 +4,9 @@
 // Representative flows (real bundle, real MemoryRouter navigation):
 //   A. Shipments: search + status filter → open shipment → Quay lại
 //      → search input + status chip restored.
-//   B. Tasks: level filter → open task target → back → filter restored.
+//   B. (LOGI_INTERNAL_UX_SIMPLIFY_01) Removed tasks desk: former task entry
+//      points land on the surviving work surface (/lo-hang); no visible
+//      link still routes to /viec-can-xu-ly.
 //   C. Contracts: search → open contract → back → search restored.
 //   D. Receivables: search + outstanding filter → open shipment → back
 //      → both restored.
@@ -150,22 +152,28 @@ console.log("FLOW A — Shipments: search + status → open → back → context
   await tick();
 }
 
-console.log("FLOW B — Tasks: level filter → open target → back → filter restored");
+console.log("FLOW B — removed tasks desk: entry points land on /lo-hang");
 {
-  await goto("Việc Cần Xử Lý");
+  await goto("Tổng Quan Công Việc");
   await tick();
-  const urgentBtn = $("button").find((b) => text(b).startsWith("Khẩn ("));
-  const urgentLabel = text(urgentBtn);
-  await clickEl(urgentBtn);
+  await clickText("Tất cả lô", "a");
+  await tick(120);
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "home exception link must open Lô Hàng");
+  await goto("Tổng Quan Công Việc");
   await tick();
-  assert.ok(chipActive(urgentLabel), "Khẩn chip active");
-  await clickText("XỬ LÝ NGAY", "a", $("table.tbl")[0]);
+  await clickText("MỞ DANH SÁCH LÔ", "a");
   await tick(120);
-  assert.ok($("h1")[0], "task target opened");
-  await clickText("Quay lại", "button");
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "home docs card must open Lô Hàng");
+  await goto("Tổng Quan Công Việc");
+  await tick();
+  await clickText("MỞ LÔ HÀNG", "a");
   await tick(120);
-  assert.ok(chipActive(urgentLabel), "Khẩn chip restored after back");
-  ok("Tasks filter survives open → back");
+  assert.ok(bodyText().includes("Tìm theo mã lô"), "home urgent card must open Lô Hàng");
+  const dead = ["viec-can-xu-ly", "theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
+    $(`a[href*="${slug}"]`).map((a) => a.getAttribute("href"))
+  );
+  assert.equal(dead.length, 0, `visible links still route to removed desks: ${dead.join(", ")}`);
+  ok("former task entries land on the surviving work surface; zero dead links");
 }
 
 console.log("FLOW C — Contracts: search → open → back → search restored");
@@ -233,7 +241,8 @@ console.log("FLOW E — global search: customer/quote destination carries the ex
   quoteSearch.dispatchEvent(new window.Event("focusin", { bubbles: true }));
   typeInto(quoteSearch, FIXTURE.quotes[0].id);
   await tick(120);
-  const quoteBtn = $("button").find((b) => text(b).includes(FIXTURE.quotes[0].id) && text(b).includes("Báo giá"));
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the visible quote label is "Báo Giá".
+  const quoteBtn = $("button").find((b) => text(b).includes(FIXTURE.quotes[0].id) && text(b).includes("Báo Giá"));
   assert.ok(quoteBtn, "quote result appears in global search");
   await clickEl(quoteBtn);
   await tick(160);

@@ -37,14 +37,16 @@ export const NAV: {
   // yet: it renders the explicit deferred placeholder, never a faked page.
   items: { to: string; label: string; icon: string; soon?: boolean }[];
 }[] = [
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — Owner UAT simplification for the small
+  // Sale/Support team: "Việc Cần Xử Lý", "Theo Dõi Vận Chuyển" and
+  // "Thỏa thuận mua bán" left the normal navigation (their routes stay as
+  // compatibility redirects in App.tsx; no backend data was touched).
   {
     group: "VẬN HÀNH",
     items: [
       { to: "/", label: "Tổng Quan Công Việc", icon: "layout" },
-      { to: "/viec-can-xu-ly", label: "Việc Cần Xử Lý", icon: "alarm" },
       { to: "/lo-hang", label: "Lô Hàng", icon: "box" },
       { to: "/tao-lo-moi", label: "Tạo Lô Mới", icon: "plus" },
-      { to: "/theo-doi", label: "Theo Dõi Vận Chuyển", icon: "truck" },
     ],
   },
   {
@@ -54,8 +56,7 @@ export const NAV: {
       // LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — visible label renamed
       // to the agent master workspace; the route itself stays /ngu-canh-doi-tac.
       { to: "/ngu-canh-doi-tac", label: "Đại Lý Trường Thành", icon: "handshake" },
-      { to: "/kinh-doanh-bao-gia", label: "Kinh doanh · Báo giá", icon: "calc" },
-      { to: "/thoa-thuan-ban-giao", label: "Thỏa thuận mua bán", icon: "filecheck" },
+      { to: "/kinh-doanh-bao-gia", label: "Báo Giá", icon: "calc" },
       { to: "/hop-dong", label: "Hợp đồng", icon: "filetext" },
     ],
   },

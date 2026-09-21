@@ -21,7 +21,6 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   ArrowLeftRight,
-  BookOpenText,
   Check,
   Copy,
   Eraser,
@@ -78,27 +77,22 @@ const QUICK_PHRASES_ZH: ReadonlyArray<string> = [
  * TỪ ĐIỂN NGHIỆP VỤ NHANH — a REFERENCE glossary only. It never generates
  * translations, never overrides DeepL, and never acts as a provider fallback.
  */
-const QUICK_GLOSSARY: ReadonlyArray<{ vi: string; zh: string }> = [
-  { vi: "xin chào", zh: "你好" },
-  { vi: "hóa đơn", zh: "发票" },
-  { vi: "phiếu đóng gói", zh: "装箱单" },
-  { vi: "hợp đồng", zh: "合同" },
-  { vi: "thông quan", zh: "清关" },
-  { vi: "cửa khẩu", zh: "口岸" },
-  { vi: "lấy hàng", zh: "提货" },
-  { vi: "giao hàng", zh: "交货" },
-  { vi: "thanh toán", zh: "付款" },
-  { vi: "tạm ứng", zh: "预付款" },
-  { vi: "xe tải", zh: "卡车" },
-  { vi: "nhà máy", zh: "工厂" },
-  { vi: "cảm ơn", zh: "谢谢" },
-  { vi: "vui lòng gửi", zh: "请发送" },
-  { vi: "kiểm tra hàng", zh: "验货" },
-  { vi: "kích thước", zh: "尺寸" },
-  { vi: "số kiện", zh: "件数" },
-  { vi: "tổng trọng lượng", zh: "总重量" },
-  { vi: "biển số xe", zh: "车牌号" },
-  { vi: "lái xe", zh: "司机" },
+const QUICK_GLOSSARY: ReadonlyArray<{ zh: string; pinyin: string; vi: string }> = [
+  { zh: "你好", pinyin: "Nǐ hǎo", vi: "Xin chào, rất vui được hợp tác." },
+  { zh: "发票", pinyin: "Fāpiào", vi: "Hóa đơn thương mại." },
+  { zh: "装箱单", pinyin: "Zhuāngxiāng dān", vi: "Phiếu đóng gói chi tiết." },
+  { zh: "提货单", pinyin: "Tíhuò dān", vi: "Phiếu nhận hàng tại kho." },
+  { zh: "报关单", pinyin: "Bàoguān dān", vi: "Tờ khai hải quan." },
+  { zh: "合同", pinyin: "Hétong", vi: "Hợp đồng vận chuyển." },
+  { zh: "付款方式", pinyin: "Fùkuǎn fāngshì", vi: "Phương thức thanh toán." },
+  { zh: "预付款", pinyin: "Yùfùkuǎn", vi: "Khoản tạm ứng." },
+  { zh: "卡车", pinyin: "Kǎchē", vi: "Xe tải chở hàng." },
+  { zh: "司机", pinyin: "Sījī", vi: "Lái xe đường dài." },
+  { zh: "车牌号", pinyin: "Chēpái hào", vi: "Biển số xe container." },
+  { zh: "验货", pinyin: "Yànhuò", vi: "Kiểm tra hàng trước khi nhận." },
+  { zh: "口岸", pinyin: "Kǒu'àn", vi: "Cửa khẩu làm thủ tục." },
+  { zh: "交货", pinyin: "Jiāohuò", vi: "Giao hàng tại nhà máy." },
+  { zh: "谢谢", pinyin: "Xièxie", vi: "Cảm ơn, hẹn hợp tác lần sau." },
 ];
 
 /** Contextual source-panel caption, derived from the chosen source language. */
@@ -227,7 +221,7 @@ export default function TranslationWorkspace() {
       {/* Page header (demo parity) ---------------------------------------- */}
       <div>
         <h1 className="text-[20px] md:text-[22px] font-extrabold text-[#0f2a4a] leading-tight">
-          Dịch thuật
+          Dịch Thuật
         </h1>
         <p className="text-[13.5px] text-slate-500 mt-1">
           Công cụ dịch nhanh các cụm từ nghiệp vụ thường dùng khi trao đổi với
@@ -327,7 +321,8 @@ export default function TranslationWorkspace() {
               {oversize && " — nội dung quá lớn cho một yêu cầu, hãy rút gọn."}
             </p>
 
-            {/* Quick sample chips — fill the SOURCE text only. */}
+            {/* Quick sample chips — donor-shape pills (logistics-demo
+                Translation.tsx): small, truncated, SOURCE text only. */}
             <div
               className="mt-2.5 flex flex-wrap gap-2"
               role="group"
@@ -341,9 +336,9 @@ export default function TranslationWorkspace() {
                   title={phrase}
                   aria-label={phrase}
                   data-testid="quick-chip"
-                  className="btn-press inline-flex items-center rounded-xl border-2 border-slate-200 bg-slate-50 px-3 text-[13.5px] font-semibold text-[#0f2a4a] min-h-[44px] max-w-full hover:bg-slate-100 hover:border-slate-300"
+                  className="text-[12px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 min-h-[28px] max-w-[220px] truncate"
                 >
-                  <span className="truncate">{phrase}</span>
+                  {phrase.slice(0, 24)}…
                 </button>
               ))}
             </div>
@@ -351,27 +346,10 @@ export default function TranslationWorkspace() {
 
           {/* RIGHT — the translation (always in place) -------------------- */}
           <div data-testid="result-panel" className="min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-1.5 min-h-[44px]">
+            <div className="flex items-center mb-1.5 min-h-[44px]">
               <span className="text-[12.5px] font-extrabold uppercase tracking-wide text-slate-500">
                 Bản dịch
               </span>
-              {translated && (
-                <button
-                  type="button"
-                  onClick={copyResult}
-                  className="btn-press inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 min-h-[44px] text-[13.5px] font-bold text-[#0f2a4a] hover:bg-slate-50"
-                >
-                  {copyState === "done" ? (
-                    <>
-                      <Check size={15} className="text-emerald-600" /> Đã sao chép
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={15} /> Sao chép bản dịch
-                    </>
-                  )}
-                </button>
-              )}
             </div>
 
             {copyState === "failed" && (
@@ -408,6 +386,23 @@ export default function TranslationWorkspace() {
                   aria-label="Bản dịch"
                   className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 py-3 text-[16px] leading-relaxed min-h-[170px] resize-y whitespace-pre-wrap"
                 />
+                {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — donor-position copy
+                    action under the result; honest copied/failed states kept. */}
+                <button
+                  type="button"
+                  onClick={copyResult}
+                  className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-[#1e5aa8] hover:underline"
+                >
+                  {copyState === "done" ? (
+                    <>
+                      <Check size={13} className="text-emerald-600" /> Đã sao chép
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} /> Sao chép
+                    </>
+                  )}
+                </button>
                 <p className="text-[13px] text-slate-500 mt-2">
                   Ngôn ngữ nguồn phát hiện:{" "}
                   <b>{result.detectedSourceLanguage ?? UNKNOWN}</b> · Ký tự tính phí:{" "}
@@ -484,30 +479,25 @@ export default function TranslationWorkspace() {
         )}
       </div>
 
-      {/* Quick business glossary — reference only -------------------------- */}
+      {/* Quick business glossary — reference only --------------------------
+          LOGI_INTERNAL_UX_SIMPLIFY_01 (Control Tower final visual repair) —
+          donor structure from logistics-demo@main src/pages/Translation.tsx
+          (blob a8b22a3): compact 2-col / sm:3-col cards. Pinyin stays small
+          so the compact donor layout survives. */}
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="w-8 h-8 rounded-xl bg-[#0f2a4a] text-white grid place-items-center shrink-0">
-            <BookOpenText size={17} />
-          </span>
-          <h2 className="text-[15.5px] font-extrabold text-[#0f2a4a]">
-            Từ điển nghiệp vụ nhanh
-          </h2>
+        <div className="text-[13px] font-bold text-[#0f2a4a] mb-2">
+          Từ điển nghiệp vụ nhanh
         </div>
-        <div
-          className="grid grid-cols-2 sm:grid-cols-3 gap-2"
-          data-testid="glossary"
-        >
-          {QUICK_GLOSSARY.map((entry) => (
+        <div data-testid="glossary" className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {QUICK_GLOSSARY.map((g) => (
             <div
-              key={entry.vi}
+              key={g.zh}
               data-testid="glossary-item"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 min-w-0"
+              className="rounded-lg bg-slate-50 px-2.5 py-2 min-w-0"
             >
-              <p className="text-[13.5px] font-bold text-[#0f2a4a] truncate">
-                {entry.vi}
-              </p>
-              <p className="text-[13.5px] text-slate-600 truncate">{entry.zh}</p>
+              <p className="text-[13.5px] font-bold text-[#0f2a4a] truncate">{g.zh}</p>
+              <p className="text-[11.5px] text-slate-400 truncate">{g.pinyin}</p>
+              <p className="text-[12.5px] text-slate-600 truncate">{g.vi}</p>
             </div>
           ))}
         </div>

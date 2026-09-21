@@ -88,7 +88,6 @@ function ok(name) {
   console.log(`  ✓ ${name}`);
 }
 
-const OPEN_TASKS = VM.tasks.filter((t) => t.level === "Khan" || t.level === "CanXuLy").length;
 
 const host = window.document.createElement("div");
 window.document.body.appendChild(host);
@@ -148,10 +147,12 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   const aside = $("aside")[0];
   assert.ok(aside, "sidebar aside missing");
   const at = text(aside);
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — "Việc Cần Xử Lý", "Theo Dõi Vận Chuyển"
+  // and "Thỏa thuận mua bán" left the normal nav; "Báo giá" is "Báo Giá".
   for (const it of [
-    "Tổng Quan Công Việc", "Việc Cần Xử Lý", "Lô Hàng", "Tạo Lô Mới",
-    "Theo Dõi Vận Chuyển", "Khách Hàng", "Đại Lý Trường Thành", "Báo giá",
-    "Thỏa thuận mua bán", "Hợp đồng", "Thu tiền", "Đối soát",
+    "Tổng Quan Công Việc", "Lô Hàng", "Tạo Lô Mới",
+    "Khách Hàng", "Đại Lý Trường Thành", "Báo Giá",
+    "Hợp đồng", "Thu tiền", "Đối soát",
     "Công nợ đối tác", "Báo cáo CEO", "Tra cứu thuế / HS", "Sổ tay",
     "Dịch thuật", "Người dùng & Vai trò",
   ]) {
@@ -188,13 +189,12 @@ console.log("STEP 3 — sidebar: full nav + honest markers + real badge");
   const reconciliationRow = $('aside a[href="/tai-chinh/doi-soat"]')[0];
   assert.ok(reconciliationRow && !text(reconciliationRow).includes("Sắp có"),
     "reconciliation is REAL now — no deferred marker");
-  // The badge is the REAL open-work count from the task projection.
-  const tasksRow = $('aside a[href="/viec-can-xu-ly"]')[0];
-  assert.ok(tasksRow, "tasks nav link missing");
-  const badge = $("span.bg-red-500", tasksRow)[0];
-  assert.ok(badge, "open-task badge missing");
-  assert.equal(text(badge), String(OPEN_TASKS), `badge must be the real open count ${OPEN_TASKS}`);
-  ok(`16+ items, 1 honest marker, badge = real ${OPEN_TASKS} open tasks (no sample "6")`);
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the tasks desk (and its nav badge)
+  // left the normal nav; alerts still surface via the notification bell.
+  assert.equal($('aside a[href="/viec-can-xu-ly"]').length, 0, "removed tasks desk still in nav");
+  assert.equal($('aside a[href="/theo-doi"]').length, 0, "removed tracking desk still in nav");
+  assert.equal($('aside a[href="/thoa-thuan-ban-giao"]').length, 0, "removed agreements desk still in nav");
+  ok("15 items, 0 markers, 0 removed-desk links (simplified nav)");
 }
 
 // ---------------------------------------------------------------------------
@@ -214,13 +214,10 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
   const aside = $("aside")[0];
   const BACKED = [
     ["Tổng Quan Công Việc", "Hôm nay tôi cần làm gì?"],
-    ["Việc Cần Xử Lý", "Việc Cần Xử Lý"],
     ["Lô Hàng", "Tìm theo mã lô"],
     ["Tạo Lô Mới", "Tạo Lô Hàng Mới"],
-    ["Theo Dõi Vận Chuyển", "Không mô phỏng vị trí GPS"],
     ["Khách Hàng", "tạo, sửa, lưu trữ và import qua backend"],
-    ["Kinh doanh · Báo giá", "tách bạch với tài chính thực thu/chi"],
-    ["Thỏa thuận mua bán", "Thỏa thuận mua bán · Bàn giao"],
+    ["Báo Giá", "tách bạch với tài chính thực thu/chi"],
     ["Hợp đồng", "HDMB · HDNT · PL"],
     ["Thu tiền", "Thu tiền khách · Phải thu"],
     ["Công nợ đối tác", "Thanh toán đối tác · Phải trả"],
@@ -251,7 +248,7 @@ console.log("STEP 5 — every REAL_BACKED sidebar destination opens its real pag
     assert.ok(t.includes(marker), `backed page "${label}" missing marker "${marker}"`);
     assert.ok(!t.includes("chưa triển khai"), `backed page "${label}" unexpectedly shows placeholder`);
   }
-  ok("18 backed destinations all open REAL pages (0 placeholders)");
+  ok("15 backed destinations all open REAL pages (0 placeholders)");
 }
 
 // ---------------------------------------------------------------------------

@@ -133,6 +133,32 @@ export function fmtText(value: string | null | undefined): string {
 }
 
 /**
+ * LOGI_INTERNAL_UX_SIMPLIFY_01 — diacritic-insensitive search normalization.
+ *
+ * Vietnamese operators type with or without tones ("An Phat" / "An Phát",
+ * "giao hang" / "giao hàng"); a plain `.includes()` matches only the exact
+ * tone marks, so a toneless query silently returned zero rows and the search
+ * felt "not actually usable". Normalizing BOTH sides (lowercase + NFD strip +
+ * đ→d) makes either typing find the record. `null`/`undefined` fields fold to
+ * "" so a partial record never renders the literal string "undefined" into
+ * the haystack (previously searching "undefined" matched everything).
+ */
+export function normSearch(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d");
+}
+
+/** True when the normalized haystack contains the normalized needle. */
+export function matchLoose(haystack: string, needle: string): boolean {
+  const n = normSearch(needle).trim();
+  if (!n) return true;
+  return normSearch(haystack).includes(n);
+}
+
+/**
  * Download a real generated Office file delivered by the backend.
  * Phase B removed the prototype .txt document export: PXK/HDMB/PL come from
  * core.docgen as real OOXML, never as a placeholder text file.

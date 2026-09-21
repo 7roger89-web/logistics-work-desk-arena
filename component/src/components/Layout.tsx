@@ -6,7 +6,7 @@ import { NAV, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib
 import type { Role } from "../lib/data";
 import { ICONS, SheetDialog } from "./ui";
 import { useStore } from "../lib/store";
-import { cx } from "../lib/format";
+import { cx, matchLoose } from "../lib/format";
 
 function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string }) {
   return (
@@ -27,24 +27,24 @@ function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast, notifications, tasks, environment } = useStore();
+  const { role, setRole, userName, query, setQuery, searchOpen, setSearchOpen, navOpen, setNavOpen, notifOpen, setNotifOpen, quickAddOpen, setQuickAddOpen, toasts, dismissToast, toast, notifications, environment } = useStore();
   // Real alerts from the Logistics readiness projection (no fixed demo list).
   const notifs = notifications;
   const notifCount = notifs.length;
-  // Real open-work count from the task projection (Khẩn + Cần xử lý) — never
-  // the donor's hardcoded sample number.
-  const openTaskCount = tasks.filter((t) => t.level === "Khan" || t.level === "CanXuLy").length;
   const nav = useNavigate();
   const loc = useLocation();
   const [roleMenu, setRoleMenu] = useState(false);
 
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — the global match is diacritic-insensitive
+  // and undefined-safe (same helper as the customer desk), so toneless typing
+  // ("an phat") still lands on the record on desktop AND mobile.
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (q.length < 2) return null;
-    const lots = SHIPMENTS.filter((s) => (s.id + s.customer + (s as any).contract + s.route).toLowerCase().includes(q)).slice(0, 4);
-    const cts = CONTRACTS.filter((c) => (c.id + c.company + c.agent).toLowerCase().includes(q)).slice(0, 3);
-    const cus = CUSTOMERS.filter((c) => (c.name + c.mst).toLowerCase().includes(q)).slice(0, 3);
-    const quo = QUOTES.filter((x) => (x.id + x.customer).toLowerCase().includes(q)).slice(0, 2);
+    const lots = SHIPMENTS.filter((s) => matchLoose([s.id, s.customer, (s as any).contract, s.route].join(" "), q)).slice(0, 4);
+    const cts = CONTRACTS.filter((c) => matchLoose([c.id, c.company, c.agent].join(" "), q)).slice(0, 3);
+    const cus = CUSTOMERS.filter((c) => matchLoose([c.id, c.name, c.short, c.mst, c.taxCode].join(" "), q)).slice(0, 3);
+    const quo = QUOTES.filter((x) => matchLoose([x.id, x.quoteNo, x.customer].join(" "), q)).slice(0, 2);
     return { lots, cts, cus, quo };
   }, [query]);
 
@@ -103,7 +103,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   // Same for quotes: land with the exact quote filtered.
                   <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia?q=${encodeURIComponent(q.id)}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center"><Calculator size={17} className="text-violet-700" /></span>
-                    <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{q.id} · {q.customer}</span><span className="block text-[12.5px] text-slate-500">Báo giá — {q.status}</span></span>
+                    <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{q.id} · {q.customer}</span><span className="block text-[12.5px] text-slate-500">Báo Giá — {q.status}</span></span>
                   </button>
                 ))}
                 <button onClick={() => setSearchOpen(false)} className="w-full text-center py-2 text-[13px] text-slate-400 font-medium">Nhấn ra ngoài để đóng</button>
@@ -179,7 +179,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <span><span className="block font-bold text-[15px]">{c.id}</span><span className="block text-[13px] text-slate-500">{c.company} — {c.status}</span></span>
                   </button>
                 ))}
-                {(results.lots.length + results.cts.length === 0) && <p className="p-4 text-[14px] text-slate-500">Không tìm thấy. Thử lại theo mã lô, tên khách hàng hoặc số hợp đồng.</p>}
+                {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — mobile used to drop customer
+                    and quote hits, so a phone could never land on
+                    /khach-hang?q=... Same deep-link destinations as desktop. */}
+                {results.cus.map((c) => (
+                  <button key={c.mst} onClick={() => goSearch(`/khach-hang?q=${encodeURIComponent(c.name || c.short || c.mst)}`)} className="w-full text-left p-3.5 flex items-center gap-3">
+                    <Truck size={18} className="text-amber-700 shrink-0" />
+                    <span><span className="block font-bold text-[15px]">{c.short} · MST {c.mst}</span><span className="block text-[13px] text-slate-500">Khách hàng</span></span>
+                  </button>
+                ))}
+                {results.quo.map((q) => (
+                  <button key={q.id} onClick={() => goSearch(`/kinh-doanh-bao-gia?q=${encodeURIComponent(q.id)}`)} className="w-full text-left p-3.5 flex items-center gap-3">
+                    <Calculator size={18} className="text-violet-700 shrink-0" />
+                    <span><span className="block font-bold text-[15px]">{q.id} · {q.customer}</span><span className="block text-[13px] text-slate-500">Báo Giá — {q.status}</span></span>
+                  </button>
+                ))}
+                {(results.lots.length + results.cts.length + results.cus.length + results.quo.length === 0) && <p className="p-4 text-[14px] text-slate-500">Không tìm thấy. Thử lại theo mã lô, tên khách hàng hoặc số hợp đồng.</p>}
               </div>
             )}
           </div>
@@ -199,7 +214,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <NavLink key={it.to} to={it.to} className={({ isActive }) => cx("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", isActive || (it.to !== "/" && loc.pathname.startsWith(it.to)) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100")}>
                       <Icon size={19} className="shrink-0" />
                       <span className="flex-1">{it.label}</span>
-                      {it.to === "/viec-can-xu-ly" && openTaskCount > 0 && <span className="text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">{openTaskCount}</span>}
                       {it.soon && <span className="text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                     </NavLink>
                   );
@@ -244,7 +258,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       return (
                         <NavLink key={it.to} to={it.to} onClick={() => setNavOpen(false)} className={cx("flex items-center gap-3 px-3 py-3 rounded-xl text-[15px] font-medium mb-0.5", active ? "bg-[#0f2a4a] text-white" : "text-slate-700 hover:bg-slate-100")}>
                           <Icon size={20} className="shrink-0" />{it.label}
-                          {it.to === "/viec-can-xu-ly" && openTaskCount > 0 && <span className="ml-auto text-[11px] font-extrabold bg-red-500 text-white rounded-full min-w-[22px] h-[22px] grid place-items-center px-1">{openTaskCount}</span>}
                           {it.soon && <span className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                         </NavLink>
                       );
@@ -319,7 +332,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               ))}
             </div>
-            <div className="p-3 border-t"><button onClick={() => { setNotifOpen(false); nav("/viec-can-xu-ly"); }} className="w-full touch-target rounded-xl bg-[#0f2a4a] text-white font-bold py-3">Mở Việc Cần Xử Lý</button></div>
+            {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — the tasks desk left the normal nav;
+                alerts now open the surviving work surface (/lo-hang). */}
+            <div className="p-3 border-t"><button onClick={() => { setNotifOpen(false); nav("/lo-hang"); }} className="w-full touch-target rounded-xl bg-[#0f2a4a] text-white font-bold py-3">Mở Lô Hàng</button></div>
           </div>
         </div>
       )}

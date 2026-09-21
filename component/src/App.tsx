@@ -9,21 +9,18 @@
 // ============================================================================
 
 import { useSyncExternalStore } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { StoreProvider } from "./lib/store";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
-import Tasks from "./pages/Tasks";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
 import CreateShipment from "./pages/CreateShipment";
-import Tracking from "./pages/Tracking";
 import Receivables from "./pages/Receivables";
 import PartnerPayables from "./pages/PartnerPayables";
 import Customers from "./pages/Customers";
 import SalesQuotes from "./pages/SalesQuotes";
-import Agreements from "./pages/Agreements";
 import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
@@ -54,16 +51,21 @@ export default function App() {
         <Layout>{!vm ? <Loading /> : (
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/viec-can-xu-ly" element={<Tasks />} />
+            {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — compatibility redirects for the
+                modules that left the normal nav. Old/bookmarked links land on
+                a surviving surface instead of a dead page; the page components
+                (Tasks/Tracking/Agreements) stay in the repo, unmounted, with
+                their backend data untouched. */}
+            <Route path="/viec-can-xu-ly" element={<Navigate to="/lo-hang" replace />} />
             <Route path="/lo-hang" element={<Shipments />} />
             <Route path="/lo-hang/:id" element={<ShipmentDetail />} />
             <Route path="/tao-lo-moi" element={<CreateShipment />} />
-            <Route path="/theo-doi" element={<Tracking />} />
+            <Route path="/theo-doi" element={<Navigate to="/lo-hang" replace />} />
             <Route path="/khach-hang" element={<Customers />} />
             <Route path="/tai-chinh/thu-tien" element={<Receivables />} />
             <Route path="/tai-chinh/cong-no-doi-tac" element={<PartnerPayables />} />
             <Route path="/kinh-doanh-bao-gia" element={<SalesQuotes />} />
-            <Route path="/thoa-thuan-ban-giao" element={<Agreements />} />
+            <Route path="/thoa-thuan-ban-giao" element={<Navigate to="/kinh-doanh-bao-gia" replace />} />
             <Route path="/hop-dong" element={<Contracts />} />
             <Route path="/hop-dong/moi" element={<NewContract />} />
             <Route path="/hop-dong/:id" element={<ContractDetail />} />

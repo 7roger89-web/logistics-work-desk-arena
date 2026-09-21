@@ -605,6 +605,9 @@ export interface QuoteServiceLine {
   sellTotal: MaybeNum;
   costVnd: MaybeNum;
   sellVnd: MaybeNum;
+  /** LOGI_INTERNAL_UX_SIMPLIFY_01 — optional operator note, persisted on the
+      canonical service line; never part of the price arithmetic. */
+  note: string;
 }
 
 export interface Quote {

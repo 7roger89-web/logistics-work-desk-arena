@@ -7,7 +7,7 @@ import {
   CircleCheck, Clock, CircleAlert, Ban, FileDown, Eye, PenLine, Trash2,
   type LucideIcon,
 } from "lucide-react";
-import { cx } from "../lib/format";
+import { cx, matchLoose } from "../lib/format";
 
 export const ICONS: Record<string, LucideIcon> = {
   layout: LayoutDashboard,
@@ -338,9 +338,11 @@ export function SearchPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const needle = query.trim().toLowerCase();
+  const needle = query.trim();
+  // LOGI_INTERNAL_UX_SIMPLIFY_01 — diacritic-insensitive, undefined-safe
+  // matching (same helper as the desks), so "an phat" finds "An Phát".
   const matched = needle
-    ? options.filter((o) => (o.id + o.label + (o.sub ?? "")).toLowerCase().includes(needle))
+    ? options.filter((o) => matchLoose([o.id, o.label, o.sub].join(" "), needle))
     : options;
 
   const pick = (id: string) => {
