@@ -354,16 +354,300 @@ console.log("STEP 5 — D: the detail header leads with the five recognition fac
   ok("header quick facts = Incoterm · mode · load model · ETD → ETA, no doubled summary");
 }
 
-console.log("STEP 6 — a CONFIG_CHECK lot still announces itself in the header");
+console.log("STEP 6 — OWNER_RUNTIME_UAT §1: no duplicated profile warning in the top path");
 {
+  // The Owner's runtime screenshot: the header still carried a second big yellow
+  // band ("HỒ SƠ THỰC HIỆN LÔ · Hồ sơ lô còn thiếu…") repeating what the profile
+  // section below already states. It is gone for EVERY state, including
+  // CONFIG_CHECK — where the red evidence stays available inside the section.
+  const tabStrip = () => window.document.getElementById("workspace-tabs");
+  for (const [state, id, expectedState] of [
+    [FIX.before, LEGACY_LOT, "PROFILE_INCOMPLETE"],
+    [FIX.configCheck, LEGACY_LOT, "CONFIG_CHECK"],
+    [FIX.seaFclSaved, SEA_LOT, "PROFILE_READY"],
+  ]) {
+    await bootOnLot(state, id);
+    assert.equal(byTestId("execution-profile-state-indicator") === null, true,
+      `the header must not repeat the profile state for ${expectedState}`);
+    const summary = byTestId("execution-profile-summary");
+    assert.ok(summary, "the profile section must still own the configuration state");
+    assert.equal(summary.getAttribute("data-state"), expectedState,
+      "the section states exactly the backend profile state, unchanged");
+    // POSITION, not presence: the band may exist, but only where the tabs are
+    // already behind it — never again above them, where it met the operator.
+    assert.ok(tabStrip()?.compareDocumentPosition(summary) & 4,
+      `the profile band must sit BELOW the tabs, not in the primary path (${expectedState})`);
+  }
   await bootOnLot(FIX.configCheck, LEGACY_LOT);
-  const indicator = byTestId("execution-profile-state-indicator");
-  assert.ok(indicator, "the header must keep a compact profile-state indicator");
-  assert.equal(indicator.getAttribute("data-state"), "CONFIG_CHECK");
-  assert.ok(text(indicator).includes("CẤU HÌNH CẦN KIỂM TRA"), "the red state is not softened");
   assert.ok(byTestId("execution-profile-config-check"),
-    "the full CONFIG_CHECK explanation must remain in the profile section");
-  ok("no real red warning is hidden by the noise reduction");
+    "CONFIG_CHECK stays available where it belongs — the red banner in the profile section");
+  ok("configuration state is stated ONCE, by the section that can act on it");
+}
+
+// ===========================================================================
+// OWNER_RUNTIME_UAT_REPAIR — the five repairs the Owner asked for after the
+// runtime screenshot. §1 clutter, §2 compact primary action, §3 collapsed
+// missing info, §4 collapsed checklist, §5 advisory F/C/D export lock.
+// ===========================================================================
+
+console.log("STEP 14 — OWNER_RUNTIME_UAT §1: identity grid is off the primary path");
+{
+  await bootOnLot(FIX.seaFclSaved, SEA_LOT);
+  const main = $all("main")[0];
+  // Collapsed by default: none of the four secondary facts is rendered at all.
+  for (const label of ["Cửa khẩu", "Hợp đồng", "Sale phụ trách", "Cập nhật bởi"]) {
+    assert.equal(text(main).includes(label), false,
+      `"${label}" still occupies the primary visual path`);
+  }
+  // What the Operator still reads immediately: identity + the five quick facts +
+  // the route as one small line (issue #86 kept: ROUTE / key identity).
+  assert.ok(text(main).includes("LO-0307"), "lot id must stay in the primary path");
+  assert.ok(text(main).includes("Đức Long Co."), "customer must stay in the primary path");
+  assert.ok(text(main).includes("Shenzhen → Hải Phòng"), "the route line must stay visible");
+  assert.ok(byTestId("shipment-quick-facts"), "the quick facts must stay visible");
+  // …and the facts are ONE click away, from the real view-model values.
+  const toggle = byTestId("shipment-more-info-toggle");
+  assert.ok(toggle, "the secondary disclosure control is missing");
+  assert.equal(toggle.getAttribute("aria-expanded"), "false", "it must start collapsed");
+  assert.ok(!byTestId("shipment-more-info"), "its content must not be rendered while collapsed");
+  await clickTestId("shipment-more-info-toggle");
+  const more = text(byTestId("shipment-more-info"));
+  const row = rowOf(FIX.seaFclSaved, SEA_LOT);
+  for (const value of [row.borderVN, row.contract, row.sale, row.support]) {
+    assert.ok(more.includes(value), `the secondary disclosure lost the real value "${value}"`);
+  }
+  assert.ok(more.includes("Cập nhật bởi"), "truthful responsibility wording is preserved");
+  assert.ok(more.includes("Sale phụ trách"), "canonical owner label is preserved");
+  assert.ok(!more.includes("Hỗ trợ phụ trách") && !more.includes("Support phụ trách"),
+    "no invented assignment field may appear");
+  // One small line, not another card grid.
+  assert.equal($all('[data-testid="shipment-more-info"] section').length, 0,
+    "the secondary disclosure must not become another card grid");
+  ok("secondary facts behind one collapsed disclosure — nothing deleted, nothing re-derived");
+}
+
+console.log("STEP 15 — OWNER_RUNTIME_UAT §2: the primary action is compact, authority intact");
+{
+  await bootOnLot(FIX.seaFclSaved, SEA_LOT);
+  const row = rowOf(FIX.seaFclSaved, SEA_LOT);
+  const strip = byTestId("shipment-primary-action");
+  assert.ok(strip, "the compact primary-action row is missing");
+  assert.ok(text(strip).includes(row.nextAction), "s.nextAction must still be the stated action");
+  assert.ok(text(strip).includes(row.nextActionDetail), "the backend's own detail is kept");
+  const go = byTestId("shipment-primary-action-go");
+  assert.ok(go, "the action control is missing");
+  assert.ok(text(go).includes(row.nextLabel), "the backend's own label (XỬ LÝ NGAY / XEM LÔ) is kept");
+  // The giant card is really gone (its large icon tile + stacked layout).
+  assert.equal(strip.querySelectorAll("svg").length, 1,
+    "only the small arrow may be drawn — no banner icon tile, no second affordance");
+  assert.equal($all('[data-testid="shipment-primary-action"] p').length, 0,
+    "the row must stay one line of spans, not a card of paragraphs");
+  // It must be a single row of content: at most 4 inline parts.
+  assert.ok(strip.children.length <= 4, `the strip must stay compact, got ${strip.children.length} blocks`);
+  // Clicking follows s.nextRoute — here it selects the tab the route asks for.
+  await clickTestId("shipment-primary-action-go");
+  await tick(160);
+  const wanted = new URLSearchParams(row.nextRoute.split("?")[1] || "").get("tab");
+  const activeTab = $all("button", window.document.getElementById("workspace-tabs"))
+    .find((b) => (b.className || "").includes("bg-[#0f2a4a]"));
+  assert.ok(activeTab && text(activeTab).includes(
+    { nhap: "Nhập khẩu & Giao hàng", "lay-hang": "Xuất khẩu", "van-tai": "Vận chuyển & Hàng hóa", "tai-chinh": "Tài chính / Công nợ", "chung-tu": "Chứng từ & PXK", "lich-su": "Lịch sử" }[wanted] || "​"),
+    `the compact row must still follow s.nextRoute (${wanted})`);
+  ok("one compact row, one button, exactly the backend's composed action");
+}
+
+console.log("STEP 16 — OWNER_RUNTIME_UAT §3: missing info collapsed → expands the SAME rows");
+{
+  await bootOnLot(FIX.seaFclSaved, SEA_LOT);
+  const row = rowOf(FIX.seaFclSaved, SEA_LOT);
+  assert.ok(row.missingDocs.length > 0, "precondition: this lot really has gaps");
+  const toggle = byTestId("missing-info-toggle");
+  assert.ok(toggle, "the compact missing-info disclosure is missing");
+  assert.equal(text(toggle), `Thiếu ${row.missingDocs.length} thông tin`,
+    "the count stays the same s.missingDocs.length — no second counter");
+  assert.equal(toggle.getAttribute("aria-expanded"), "false", "it must start collapsed");
+  assert.equal(mainText().includes("Đang thiếu"), false,
+    "OLD BEHAVIOUR: the expanded block occupied the page");
+  for (const fact of row.missingDocs) {
+    assert.equal(mainText().includes(fact), false, `a collapsed disclosure must not list "${fact}"`);
+  }
+  await clickTestId("missing-info-toggle");
+  const expanded = text(byTestId("missing-info"));
+  for (const fact of row.missingDocs) {
+    assert.ok(expanded.includes(fact), `expanding must reveal the real fact "${fact}"`);
+  }
+  // Issue #84 routing must survive untouched: an operational fact never lands on
+  // the documents tab, and the tờ khai fact focuses the existing input.
+  const khai = row.missingDocs.find((m) => m.includes("tờ khai"));
+  const truck = row.missingDocs.find((m) => /xe giao/i.test(m));
+  const boxes = $all('[data-testid="missing-info"] [class*="border-dashed"]');
+  assert.equal(boxes.length, row.missingDocs.length, "every real gap keeps its row");
+  if (truck) {
+    const box = boxes.find((b) => text(b).includes(truck));
+    await click("Bổ sung ngay", "button", box);
+    await tick(160);
+    const active = $all("button", window.document.getElementById("workspace-tabs"))
+      .find((b) => (b.className || "").includes("bg-[#0f2a4a]"));
+    assert.ok(text(active).includes("Vận chuyển"), `OPERATIONAL_ACTIONS_TO_CHUNG_TU=0: "${truck}" must reach the transport editor`);
+    await clickTestId("missing-info-toggle");   // collapse again (toggle closes)
+    await clickTestId("missing-info-toggle");   // and re-open for the next probe
+  }
+  if (khai) {
+    const box = $all('[data-testid="missing-info"] [class*="border-dashed"]')
+      .find((b) => text(b).includes(khai));
+    await click("Bổ sung ngay", "button", box);
+    await tick(200);
+    assert.equal(window.document.activeElement?.id ?? "", "fld-tk",
+      `"${khai}" must land on the existing tờ khai input (nhap#fld-tk)`);
+  }
+  // The same disclosure state is stable across tab switches (no remount churn).
+  assert.ok(byTestId("missing-info"), "the disclosure keeps its rows after routing");
+  ok("collapsed by default, expands to the existing Issue #84 rows and routes");
+}
+
+console.log("STEP 17 — OWNER_RUNTIME_UAT §4: import/delivery checklist collapsed by default");
+{
+  await bootOnLot(FIX.seaFclSaved, SEA_LOT);
+  await click("Nhập khẩu & Giao hàng", "button", window.document.getElementById("workspace-tabs"));
+  await tick(120);
+  const row = rowOf(FIX.seaFclSaved, SEA_LOT);
+  const section = byTestId("import-delivery-checklist");
+  assert.ok(section, "the checklist section must still exist");
+  const toggle = byTestId("import-delivery-checklist-toggle");
+  assert.ok(toggle, "the checklist toggle is missing");
+  assert.equal(toggle.getAttribute("aria-expanded"), "false", "the checklist starts collapsed");
+  assert.ok(text(toggle).includes("Checklist nhập khẩu & giao hàng"), "the heading stays readable collapsed");
+  for (const doc of row.docs) {
+    assert.equal(text(section).includes(doc.name), false,
+      `collapsed checklist must not render "${doc.name}" rows`);
+  }
+  await clickTestId("import-delivery-checklist-toggle");
+  const expanded = text(section);
+  for (const doc of row.docs) {
+    assert.ok(expanded.includes(doc.name), `expanded checklist must show the EXISTING scoped row "${doc.name}"`);
+  }
+  // EXACT same rows the backend scoped: no new checklist engine, no re-filtering.
+  assert.equal($all('[data-testid="import-delivery-checklist"] button', section)
+    .filter((b) => text(b).includes("Bổ sung")).length, row.docs.filter((d) => !d.ok).length,
+    "one existing action per genuinely missing row — nothing added, nothing dropped");
+  // The real import surface below the checklist is untouched by the collapse.
+  assert.ok(mainText().includes("Tờ khai & thuế nhập khẩu"),
+    "the import workspace must stay reachable without expanding the checklist");
+  ok("checklist collapsed by default; expanded rows are the existing scoped rows");
+}
+
+console.log("STEP 18 — OWNER_RUNTIME_UAT §5: F/C/D lock the export tab, E-family does not");
+{
+  const exportTab = () => window.document.querySelector('[data-testid="export-tab"]');
+  const lockedFor = async (state, id) => {
+    await bootOnLot(state, id);
+    const tab = exportTab();
+    assert.ok(tab, "the export tab control is missing");
+    return tab.getAttribute("data-locked") === "true";
+  };
+  // F — ROAD + FCA (roadLtlSaved / LO-0308) once the origin/export scope is NOT
+  // confirmed: the Incoterm family alone governs.
+  const fProbe = clone(FIX.roadLtlSaved);
+  rowOf(fProbe, ROAD_LOT).executionProfile.serviceScopeConfirmed = false;
+  assert.equal(await lockedFor(fProbe, ROAD_LOT), true, "an F-rule must lock Xuất khẩu by default");
+  // C — SEA + CIF (seaFclSaved / LO-0307): confirmed but DESTINATION-only scope,
+  // so the lock stands — the escape hatch is deliberately narrow.
+  assert.equal(await lockedFor(FIX.seaFclSaved, SEA_LOT), true, "a C-rule must lock Xuất khẩu by default");
+  // D — DAP (before / LO-0306), plus the CONFIG_CHECK lot whose rule is FOB.
+  assert.equal(await lockedFor(FIX.before, LEGACY_LOT), true, "a D-rule must lock Xuất khẩu by default");
+  assert.equal(await lockedFor(FIX.configCheck, LEGACY_LOT), true, "FCA/FOB behave alike (letter family, not one code)");
+
+  // ESCAPE HATCH — an operator-CONFIRMED service scope containing an origin/export
+  // activity removes the lock, so a C/D lot whose export work is real is never
+  // trapped behind a misleading padlock.
+  // Real fixture, no synthesis: LO-0308 stores serviceScopeConfirmed=true with
+  // ORIGIN_TERMINAL_OR_BORDER — origin/export work IS our scope, so the operator
+  // is not trapped behind a misleading padlock (Owner safety clause).
+  assert.equal(await lockedFor(FIX.roadLtlSaved, ROAD_LOT), false,
+    "a confirmed origin/export scope must override the advisory lock");
+
+  // Clicking a locked tab: no silent open, clear explanation, obvious unlock.
+  const triggersBefore = triggers.length;
+  await bootOnLot(FIX.seaFclSaved, SEA_LOT);
+  await click("Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+  await tick(120);
+  assert.equal(mainText().includes("Nhà máy & xuất khẩu"), false,
+    "a locked tab must not open silently");
+  const notice = byTestId("export-lock-notice");
+  assert.ok(notice, "the lock must explain itself");
+  assert.ok(text(notice).includes("CIF"), "the explanation must name the Incoterms rule it keys off");
+  assert.ok(text(notice).includes("MỞ KHÓA XUẤT KHẨU"), "the manual unlock must be obvious");
+  await clickTestId("export-unlock");
+  await tick(120);
+  assert.ok(mainText().includes("Nhà máy & xuất khẩu"), "the unlock must reach the export workspace");
+  assert.equal(byTestId("export-lock-notice") === null, true, "the notice clears once unlocked");
+  assert.equal(exportTab().getAttribute("data-locked") ?? null, null, "the tab stays unlocked this session");
+  // ADVISORY ONLY: a lock, a notice and an unlock are pure UI — they dispatch
+  // nothing, so no service scope, stage, task, status or document is written.
+  assert.equal(triggers.length, triggersBefore,
+    "the advisory lock must not dispatch a single event (no persistence, no override field)");
+  ok("F/C/D locked by default, E/unknown never locked, confirmed scope overrides, manual unlock is UI-only");
+}
+
+console.log("STEP 19 — §5 deep link + no lock can hide the ONE primary action");
+{
+  // The composed primary route legitimately points at the export tab for a
+  // C-rule lot (profile actionable on the export side). A UI advisory must never
+  // trap the operator behind the backend's own instruction: arriving with
+  // ?tab=lay-hang shows the workspace, no padlock gate.
+  const deep = clone(FIX.seaFclSaved);
+  const row = rowOf(deep, SEA_LOT);
+  row.nextRoute = `/lo-hang/${SEA_LOT}?tab=lay-hang`;
+  row.nextAction = "Xử lý hàng xuất tại bãi đi";
+  invoke(deep);
+  await tick(120);
+  await click("Lô Hàng", "a", $all("aside")[0]);
+  await tick(60);
+  await click(SEA_LOT, "a", $all("main")[0]);
+  await tick(120);
+  await clickTestId("shipment-primary-action-go");
+  await tick(200);
+  assert.ok(mainText().includes("Nhà máy & xuất khẩu"),
+    "the ONE primary action must reach the tab it names, lock or no lock");
+  assert.equal(window.document.querySelector('[data-testid="export-tab"]')?.getAttribute("data-locked") ?? null, null,
+    "a workspace the operator is already inside must not be displayed as locked");
+  ok("PR83 primary-action authority outranks the advisory lock");
+}
+
+console.log("STEP 20 — the repairs are presentation: no data surface moved");
+{
+  const before = clone(FIX.seaFclSaved);
+  await bootOnLot(before, SEA_LOT);
+  const dispatchedBefore = triggers.length;
+  const row = rowOf(FIX.seaFclSaved, SEA_LOT);
+  const snapshot = JSON.stringify({
+    missingDocs: row.missingDocs, nextAction: row.nextAction, nextRoute: row.nextRoute,
+    status: row.status, serviceScope: row.executionProfile?.serviceScope ?? null,
+    serviceScopeConfirmed: row.executionProfile?.serviceScopeConfirmed ?? null,
+    incoterm: row.executionProfile?.incoterm ?? null, stages: row.executionProfile?.stages?.length ?? 0,
+    tasks: FIX.seaFclSaved.tasks.length, home: FIX.seaFclSaved.home,
+  });
+  // Every new affordance on this slice, exercised in one pass.
+  await clickTestId("shipment-more-info-toggle");
+  await clickTestId("missing-info-toggle");
+  await click("Nhập khẩu & Giao hàng", "button", window.document.getElementById("workspace-tabs"));
+  await clickTestId("import-delivery-checklist-toggle");
+  await click("Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));   // locked
+  await clickTestId("export-unlock");
+  await clickTestId("shipment-execution-profile-toggle");
+  await tick(160);
+  const after = JSON.stringify({
+    missingDocs: row.missingDocs, nextAction: row.nextAction, nextRoute: row.nextRoute,
+    status: row.status, serviceScope: row.executionProfile?.serviceScope ?? null,
+    serviceScopeConfirmed: row.executionProfile?.serviceScopeConfirmed ?? null,
+    incoterm: row.executionProfile?.incoterm ?? null, stages: row.executionProfile?.stages?.length ?? 0,
+    tasks: FIX.seaFclSaved.tasks.length, home: FIX.seaFclSaved.home,
+  });
+  assert.equal(after, snapshot, "the fixture view-model must be untouched by UI state");
+  // Delta, not a global count: earlier steps in this file do save on purpose.
+  assert.equal(triggers.length, dispatchedBefore,
+    "opening/collapsing/unlocking on this slice must dispatch NOTHING at all");
+  ok("serviceScope / missingDocs / nextAction / status / tasks / home unchanged by the repair");
 }
 
 // ---------------------------------------------------------------------------

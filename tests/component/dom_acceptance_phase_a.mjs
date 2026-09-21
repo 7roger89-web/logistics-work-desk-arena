@@ -310,11 +310,17 @@ console.log("STEP 7 — open LO-0306");
   const missing = lot.missingDocs.length;
   assert.ok(missing > 0, "expected LO-0306 to have genuinely missing facts");
   assert.ok(t.includes(`Thiếu ${missing} thông tin`), "missing-info chip missing");
-  assert.ok(t.includes(`Đang thiếu ${missing} thông tin`), "missing-docs box missing");
+  // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (issue #86):
+  // the "Đang thiếu N thông tin — bấm để bổ sung ngay" block no longer occupies
+  // the page by default. The COUNT is still visible (same s.missingDocs.length,
+  // no second counter) and expanding the disclosure shows the same rows.
+  assert.ok(!t.includes("Đang thiếu"), "OLD BEHAVIOUR: the missing-info block is expanded by default");
+  await click(`Thiếu ${missing} thông tin`, "button");
+  const tExpanded = bodyText();
   for (const fact of lot.missingDocs) {
-    assert.ok(t.includes(fact), `missing fact not listed: ${fact}`);
+    assert.ok(tExpanded.includes(fact), `missing fact not listed after expanding: ${fact}`);
   }
-  ok(`Shipment Detail LO-0306 rendered (status, ${missing} real missing facts)`);
+  ok(`Shipment Detail LO-0306 rendered (status, ${missing} real missing facts behind one disclosure)`);
 
   // "Bổ sung ngay" must route to the tab that really owns the fact. The Phase
   // A mapping keyed off label strings the real checklist never emits, so every
@@ -368,6 +374,31 @@ console.log("STEP 8 — Shipment Detail tabs");
   ok("tab 1: Vận chuyển & Hàng hóa (default)");
   for (const [label, marker] of Object.entries(tabs)) {
     if (label === "Vận chuyển & Hàng hóa") continue;
+    // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (§5).
+    // This lot is DAP — a D-family Incoterms rule — so "Xuất khẩu" is now LOCKED
+    // BY DEFAULT as an advisory. The capability is not removed: a locked tab must
+    // be visibly marked, must NOT open silently, must explain itself, and the
+    // manual unlock has to be immediately obvious. Only after unlocking may the
+    // export workspace be read. No data changes: this is a UI gate only.
+    if (label === "Xuất khẩu") {
+      const exportTab = tabRoot.querySelector('[data-testid="export-tab"]');
+      assert.ok(exportTab, "the Xuất khẩu tab control is missing");
+      assert.equal(exportTab.getAttribute("data-locked"), "true",
+        "a D-family lot must show the export tab locked by default");
+      await click("Xuất khẩu", "button", tabRoot);
+      assert.ok(!bodyText().includes(marker),
+        "OLD BEHAVIOUR: a locked export tab opened anyway");
+      const notice = window.document.querySelector('[data-testid="export-lock-notice"]');
+      assert.ok(notice, "the lock must explain itself instead of doing nothing");
+      assert.ok(text(notice).includes("MỞ KHÓA XUẤT KHẨU"),
+        "the manual unlock must be offered right next to the explanation");
+      await click("MỞ KHÓA XUẤT KHẨU", "button");
+      assert.ok(bodyText().includes(marker), "the unlock must actually reach the workspace");
+      assert.equal(window.document.querySelector('[data-testid="export-tab"]')?.getAttribute("data-locked") ?? null, null,
+        "after the manual unlock the tab stays unlocked for this session");
+      ok("tab: Xuất khẩu — advisory F/C/D lock, explained, manually unlockable");
+      continue;
+    }
     await click(label, "button", tabRoot);
     assert.ok(bodyText().includes(marker), `tab ${label} content missing`);
     ok(`tab: ${label}`);

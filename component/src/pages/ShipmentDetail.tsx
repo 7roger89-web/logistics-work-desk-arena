@@ -1,8 +1,8 @@
 import { contractPath } from "../lib/contractRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
-import { Field, GhostBtn, MissingBox, NextActionBanner, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
+import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
@@ -99,6 +99,23 @@ export default function ShipmentDetail() {
   // P1.4 — metadata maintenance lives behind an explicit disclosure so the
   // operational tab content sits closer to the next action.
   const [headerEditOpen, setHeaderEditOpen] = useState(false);
+  // ---------------------------------------------------------------------------
+  // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (#86)
+  //
+  // The Owner's runtime screenshot showed that the header still stacked FOUR
+  // equal-weight blocks between the quick facts and the tabs. These are local
+  // view flags only — the SAME information, one click away, no capability
+  // deleted, no data re-derived, no persisted state:
+  //   moreInfoOpen   → the secondary "Thông tin thêm" identity facts
+  //   missingOpen    → the existing missing-fact rows (Issue #84 semantics)
+  //   checklistOpen  → the existing scoped import/delivery checklist
+  //   exportUnlocked / exportLockNotice → the advisory Xuất khẩu lock (§5)
+  // ---------------------------------------------------------------------------
+  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  const [missingOpen, setMissingOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [exportUnlocked, setExportUnlocked] = useState(false);
+  const [exportLockNotice, setExportLockNotice] = useState(false);
   const [payAmt, setPayAmt] = useState("");
   const [payKind, setPayKind] = useState("Thu tiền khách");
   const [partnerAmt, setPartnerAmt] = useState("");
@@ -703,6 +720,72 @@ export default function ShipmentDetail() {
 
   const missingCount = s.missingDocs.length;
 
+  // ---------------------------------------------------------------------------
+  // OWNER ADVISORY LOCK — "Xuất khẩu" for an F / C / D Incoterms family.
+  //
+  // The Owner's rule (#86 runtime UAT): for the normal internal flow a lot
+  // sold under an F-, C- or D-rule does not need the export workspace, so the
+  // tab is LOCKED BY DEFAULT and clearly marked. This is a UI ADVISORY ONLY:
+  //   * it never touches serviceScope / serviceScopeConfirmed, missingDocs,
+  //     Tasks, status, execution-profile stages, the Incoterm value or any
+  //     persistence — there is no write and no new field anywhere here;
+  //   * the operator can always unlock manually for this session, because a
+  //     customer term or the actual handling can change unexpectedly;
+  //   * an operator-CONFIRMED service scope that really contains an origin /
+  //     export activity removes the lock entirely — the operator is never
+  //     trapped behind a misleading padlock;
+  //   * a deep link that already points at the tab (the ONE composed primary
+  //     action route, ?tab=lay-hang) is never blocked: the gate is only on the
+  //     tab control itself, so the primary action's authority is untouched;
+  //   * an unknown Incoterm is NOT treated as F/C/D — "we do not know" must not
+  //     become "we restrict you".
+  // ---------------------------------------------------------------------------
+  const EXPORT_ORIGIN_SCOPES = new Set([
+    "ORIGIN_PICKUP", "EXPORT_HANDLING", "EXPORT_CUSTOMS", "ORIGIN_TERMINAL_OR_BORDER",
+  ]);
+  const incotermForLock = (s.executionProfile?.incoterm || s.incoterm || "").trim().toUpperCase();
+  const exportScopeRequiresOrigin = Boolean(s.executionProfile?.serviceScopeConfirmed)
+    && (s.executionProfile?.serviceScope ?? []).some((code) => EXPORT_ORIGIN_SCOPES.has(code));
+  const exportLockedByDefault = /^[FCD]/.test(incotermForLock) && !exportScopeRequiresOrigin;
+  // A workspace the operator is ALREADY inside (deep link, or the ONE primary
+  // action that names it) is never shown as locked — that would be a lie.
+  const exportTabLocked = exportLockedByDefault && !exportUnlocked && tab !== "lay-hang";
+
+  /** Tab navigation, with the advisory lock in front of the export tab only. */
+  const openTab = (tabId: string) => {
+    if (tabId === "lay-hang" && exportTabLocked) {
+      setExportLockNotice(true);   // never open silently; explain + offer unlock
+      return;
+    }
+    setExportLockNotice(false);
+    setSp({ tab: tabId });
+  };
+
+  /** Manual unlock for THIS session only — nothing is persisted. */
+  const unlockExportTab = () => {
+    setExportUnlocked(true);
+    setExportLockNotice(false);
+    setSp({ tab: "lay-hang" });
+  };
+
+  /**
+   * The ONE primary action. PR83 stays authoritative: the text and the route are
+   * exactly `s.nextAction` / `s.nextRoute` — only the VISUAL WEIGHT changed
+   * (the giant banner became a compact one-row strip). The behaviour below is
+   * the previous banner handler, moved verbatim.
+   */
+  const runPrimaryAction = () => {
+    if (s.nextRoute.startsWith("/lo-hang")) {
+      const t = nextRouteTab(s.nextRoute);
+      const anchor = nextRouteAnchor(s.nextRoute);
+      setSp(t ? { tab: t } : {});
+      if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor);
+      else setTimeout(() => revealAnchor(anchor), 150);
+    } else {
+      nav(s.nextRoute);
+    }
+  };
+
   return (
     <div className="space-y-4 max-w-[1300px]">
       <button onClick={() => nav(-1)} className="touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]"><ArrowLeft size={17} /> Quay lại</button>
@@ -727,59 +810,130 @@ export default function ShipmentDetail() {
               explicit "—" instead of disappearing. */}
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
             <ShipmentQuickFacts shipment={s} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 mt-3">
-            <StateRow label="Tuyến" value={s.route} />
-            <StateRow label="Cửa khẩu" value={s.borderVN} />
-            {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
-            <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
-            {/* `support` is the backend's `updated_by` (who last wrote this
-                document), not an assigned handler — the repo has no canonical
-                shipment-assignment field. It is labelled truthfully. */}
-            <StateRow label="Sale phụ trách" value={<span>{s.sale}</span>} />
-            <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
-          </div>
-        </div>
-        {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the header used
-            to render the SAME verbose profile summary twice at equal weight (here
-            and inside the profile section), and the Owner's complaint was that
-            the page had no hierarchy. Recognition now belongs to the quick-facts
-            strip above; CONFIGURATION prose (summary lines, stage chips, editor)
-            belongs to the "Hồ sơ thực hiện lô" section below and is NOT deleted.
-            What stays at the top is only the compact STATE indicator, so a lot
-            that genuinely needs attention still says so before the operator
-            scrolls — including CONFIG_CHECK, which is never hidden. */}
-        {s.executionProfile && s.executionProfile.state !== "PROFILE_READY" && (
-          <div className="px-4 md:px-6">
-            <p
-              role="status"
-              data-testid="execution-profile-state-indicator"
-              data-state={s.executionProfile.state}
-              className={cx(
-                "flex items-start gap-2 rounded-xl border-2 px-3.5 py-2 text-[12.5px] font-bold",
-                s.executionProfile.state === "CONFIG_CHECK"
-                  ? "border-red-300 bg-red-50 text-red-900"
-                  : "border-amber-300 bg-amber-50 text-amber-900"
-              )}
-            >
-              <CircleAlert size={15} className="mt-0.5 shrink-0" />
-              <span>
-                HỒ SƠ THỰC HIỆN LÔ · {s.executionProfile.stateLabel} — mở “Hồ sơ thực hiện lô” bên dưới để sửa; cấu hình này quyết định các bước vận hành nào thực sự có.
-              </span>
+            {/* OWNER_RUNTIME_UAT_REPAIR — the route stays as ONE small line
+                because lot recognition genuinely needs it (issue #86 §5
+                "ROUTE / key identity"). Everything else that used to sit in a
+                five-cell grid no longer competes with the work below. */}
+            <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-slate-600 min-w-0">
+              <MapPin size={14} className="shrink-0 text-slate-400" />
+              <span className="truncate">{s.route}</span>
             </p>
           </div>
-        )}
+          {/* OWNER_RUNTIME_UAT_REPAIR — Cửa khẩu · Hợp đồng · Sale phụ trách ·
+              Cập nhật bởi are NOT deleted and NOT re-derived: they are the same
+              already-projected view-model fields, now behind ONE small secondary
+              disclosure that is collapsed by default. */}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setMoreInfoOpen((v) => !v)}
+              aria-expanded={moreInfoOpen}
+              data-testid="shipment-more-info-toggle"
+              className="btn-press touch-target inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600"
+            >
+              Thông tin thêm
+              <ChevronDown size={14} className={cx("transition-transform", moreInfoOpen && "rotate-180")} />
+            </button>
+            {moreInfoOpen && (
+              <div data-testid="shipment-more-info" className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-1">
+                {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
+                <StateRow label="Cửa khẩu" value={s.borderVN} />
+                <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
+                <StateRow label="Sale phụ trách" value={<span>{s.sale}</span>} />
+                {/* `support` is the backend's `updated_by` (who last wrote this
+                    document), not an assigned handler — the repo has no canonical
+                    shipment-assignment field. It is labelled truthfully. */}
+                <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
+              </div>
+            )}
+          </div>
+        </div>
+        {/* OWNER_RUNTIME_UAT_REPAIR — the duplicated "HỒ SƠ THỰC HIỆN LÔ ·
+            Hồ sơ lô còn thiếu…" yellow band is GONE from the top path: the
+            "Hồ sơ thực hiện lô" section below already owns that configuration
+            state (its state label, its summary lines, its stage chips) and a
+            real CONFIG_CHECK / insurance mismatch is still rendered there in
+            red. Two warnings for one fact was the clutter the Owner reported. */}
         <div className="px-4 md:px-6 pb-4 md:pb-5">
-          <NextActionBanner tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"} title={s.nextAction} desc={s.nextActionDetail} action={s.nextLabel} onAction={() => { if (s.nextRoute.startsWith("/lo-hang")) { const t = nextRouteTab(s.nextRoute); const anchor = nextRouteAnchor(s.nextRoute); setSp(t ? { tab: t } : {}); if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor); else setTimeout(() => revealAnchor(anchor), 150); } else nav(s.nextRoute); }} />
+          {/* OWNER_RUNTIME_UAT_REPAIR §2 — ONE primary action, compact row.
+              The AUTHORITY is untouched: the text is `s.nextAction`, the detail
+              is `s.nextActionDetail`, the label is `s.nextLabel` and the click
+              follows `s.nextRoute` exactly as the banner did (PR83 precedence:
+              dashboard critical > profile red/actionable > dashboard fallback).
+              Only the visual weight changed — a large gradient card is replaced
+              by a single row, so the work section sits above the fold. There is
+              deliberately no second next-action surface. */}
+          <div
+            data-testid="shipment-primary-action"
+            data-tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"}
+            className={cx(
+              "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2",
+              s.priority === "Khan" || s.statusTone === "red"
+                ? "border-red-200 bg-red-50/60"
+                : s.statusTone === "green"
+                  ? "border-emerald-200 bg-emerald-50/50"
+                  : "border-amber-200 bg-amber-50/50"
+            )}
+          >
+            <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Việc tiếp theo</span>
+            <span className="text-[14.5px] font-extrabold text-[#0f2a4a] min-w-0">{s.nextAction}</span>
+            {s.nextActionDetail && <span className="text-[12.5px] text-slate-500 min-w-0">{s.nextActionDetail}</span>}
+            <button
+              type="button"
+              onClick={runPrimaryAction}
+              data-testid="shipment-primary-action-go"
+              className="btn-press touch-target ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white text-[13.5px] font-bold px-3.5 min-h-[40px]"
+            >
+              {s.nextLabel || "XỬ LÝ"} <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setSp({ tab: t.id })} className={cx("touch-target shrink-0 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", tab === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : "border-slate-200 bg-white text-slate-600")}>
-              <span className="hidden md:inline">{t.label}</span><span className="md:hidden">{t.short}</span>
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const locked = t.id === "lay-hang" && exportTabLocked;
+            // The lock is announced by the padlock ICON + dashed muted styling,
+            // and `data-locked` keeps it machine-checkable. The tab's own label
+            // text is deliberately NOT rewritten: prefixing it would change the
+            // accessible name of an existing control for no gain.
+            return (
+              <button
+                key={t.id}
+                onClick={() => openTab(t.id)}
+                {...(locked ? { "data-locked": "true", "aria-disabled": true } : {})}
+                data-testid={t.id === "lay-hang" ? "export-tab" : undefined}
+                className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", tab === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : locked ? "border-dashed border-slate-300 bg-white text-slate-400" : "border-slate-200 bg-white text-slate-600")}
+              >
+                {locked && <Lock size={14} className="shrink-0" aria-hidden="true" />}
+                <span className="hidden md:inline">{t.label}</span><span className="md:hidden">{t.short}</span>
+              </button>
+            );
+          })}
         </div>
+        {/* OWNER_RUNTIME_UAT_REPAIR §5 — a locked export tab never opens
+            silently and never just disappears: clicking it says WHY in one
+            compact line and hands the operator the manual unlock. Session-only,
+            no persisted override, and it changes no data. */}
+        {exportLockNotice && (
+          <div
+            role="status"
+            data-testid="export-lock-notice"
+            className="mx-3 md:mx-6 mb-3 flex flex-wrap items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2"
+          >
+            <Lock size={15} className="shrink-0 text-slate-500" aria-hidden="true" />
+            <p className="text-[13px] font-semibold text-slate-700 min-w-0 flex-1">
+              Xuất khẩu đang được khóa theo điều kiện giao hàng {incotermForLock} — ở các điều kiện F/C/D, dòng chảy nội bộ thường không cần bàn làm việc xuất khẩu. Điều kiện khách hoặc cách xử lý thực tế thay đổi? Mở khóa tay để làm việc trực tiếp.
+            </p>
+            <button
+              type="button"
+              onClick={unlockExportTab}
+              data-testid="export-unlock"
+              className="btn-press touch-target shrink-0 inline-flex items-center gap-1.5 rounded-lg border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] text-[13px] font-bold px-3 min-h-[40px]"
+            >
+              MỞ KHÓA XUẤT KHẨU
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
@@ -884,10 +1038,27 @@ export default function ShipmentDetail() {
         onOpenTransportTab={() => setSp({ tab: "van-tai" })}
       />
 
-      {s.missingDocs.length > 0 && tab !== "chung-tu" && (
-        <div className="rounded-2xl bg-white border-2 border-red-200 p-4">
-          <p className="font-extrabold text-[15px] text-red-800 flex items-center gap-2 mb-2.5"><CircleAlert size={18} /> Đang thiếu {s.missingDocs.length} thông tin — bấm để bổ sung ngay:</p>
-          <div className="grid gap-2 md:grid-cols-2">
+      {/* OWNER_RUNTIME_UAT_REPAIR §3 — "Đang thiếu N thông tin" used to be a
+          full-width block of boxes permanently on the page. It is now ONE
+          compact disclosure, collapsed by default: the count is still visible
+          (the same `s.missingDocs.length` the header chip reports — no second
+          counter), and expanding reveals the EXISTING rows with their EXISTING
+          Issue #84 routing, untouched below. */}
+      {missingCount > 0 && tab !== "chung-tu" && (
+        <div className="rounded-2xl bg-white border-2 border-red-200 p-3 md:p-3.5" data-testid="missing-info">
+          <button
+            type="button"
+            onClick={() => setMissingOpen((v) => !v)}
+            aria-expanded={missingOpen}
+            data-testid="missing-info-toggle"
+            className="btn-press touch-target flex w-full items-center gap-2 text-left"
+          >
+            <CircleAlert size={16} className="shrink-0 text-red-600" />
+            <span className="font-extrabold text-[14px] text-red-800">Thiếu {missingCount} thông tin</span>
+            <ChevronDown size={16} className={cx("ml-auto shrink-0 text-red-700 transition-transform", missingOpen && "rotate-180")} />
+          </button>
+          {missingOpen && (
+          <div className="grid gap-2 mt-2.5 md:grid-cols-2">
             {s.missingDocs.map((m) => (
               <MissingBox
                 key={m}
@@ -937,6 +1108,7 @@ export default function ShipmentDetail() {
               />
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -979,9 +1151,28 @@ export default function ShipmentDetail() {
         <div className="space-y-4" id="missing-anchor">
           {/* LOGI_SCOPE_AWARE_MISSING_INFO_01 — scope-relevant checklist moved from lay-hang / Xuất khẩu (misleading heading) to the correct existing Nhập khẩu & Giao hàng surface. Only relevant rows per confirmed service scope. Truthful routing per fact. */}
           {s.docs.length > 0 && (
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="import-delivery-checklist">
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Checklist nhập khẩu & giao hàng</h3>
-              <p className="text-[13px] text-slate-500 mb-3">Thông tin vận hành cần bổ sung theo phạm vi Trường Thành đã xác nhận.</p>
+            /* OWNER_RUNTIME_UAT_REPAIR §4 — same section, same rows, same
+               truthful per-fact routing; only the DEFAULT state changed. The
+               count shown next to the toggle is `s.docs.filter(d => !d.ok)` —
+               the SAME scoped rows the section already renders (display only:
+               no new checklist engine, no new counter authority, no
+               missingDocs/serviceScope change). */
+            <section className="rounded-2xl bg-white border border-slate-200 p-3 md:p-3.5" data-testid="import-delivery-checklist" aria-label="Checklist nhập khẩu & giao hàng">
+              <button
+                type="button"
+                onClick={() => setChecklistOpen((v) => !v)}
+                aria-expanded={checklistOpen}
+                data-testid="import-delivery-checklist-toggle"
+                className="btn-press touch-target flex w-full items-center gap-2 text-left"
+              >
+                <span className="font-extrabold text-[15.5px] text-[#0f2a4a]">Checklist nhập khẩu &amp; giao hàng</span>
+                <span className={cx("text-[12.5px] font-bold", s.docs.some((d) => !d.ok) ? "text-amber-700" : "text-emerald-700")}>
+                  {s.docs.filter((d) => !d.ok).length}/{s.docs.length} cần bổ sung
+                </span>
+                <ChevronDown size={16} className={cx("ml-auto shrink-0 text-slate-400 transition-transform", checklistOpen && "rotate-180")} />
+              </button>
+              {checklistOpen && (<>
+              <p className="text-[13px] text-slate-500 mt-1 mb-3">Thông tin vận hành cần bổ sung theo phạm vi Trường Thành đã xác nhận.</p>
               <div className="space-y-2">
                 {s.docs.map((d) => (
                   <div key={d.name} className={cx("flex items-center gap-3 rounded-xl border-2 p-3", d.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50")}>
@@ -1021,6 +1212,7 @@ export default function ShipmentDetail() {
                   </div>
                 ))}
               </div>
+              </>)}
             </section>
           )}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
