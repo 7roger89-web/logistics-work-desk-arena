@@ -441,14 +441,28 @@ export default function SalesQuotes() {
               </div>
             )}
 
+            {/* LOGI_QUOTE_LINE_NOTE_CLARITY_01 — ONE CARD = ONE SERVICE LINE.
+                Every card carries its own visible identity ("Dòng dịch vụ N")
+                and its OWN "Ghi chú dòng này" field, rendered inside the same
+                card as that line's mã/tên/số lượng/giá vốn/giá bán/thuế/tiền tệ.
+                There is no quote-level shared note: the note travels to the
+                canonical `service_lines[i].note` of exactly this card. */}
             <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-extrabold text-[15px] text-[#0f2a4a]">Dòng dịch vụ</p>
-                <button onClick={addLine} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]"><Plus size={15} /> Thêm dòng</button>
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-extrabold text-[15px] text-[#0f2a4a]">Các dòng dịch vụ</p>
+                <button type="button" data-testid="quote-add-line" onClick={addLine} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]"><Plus size={15} /> Thêm dòng</button>
               </div>
-              <div className="space-y-2">
+              <p className="text-[13px] text-slate-500 mb-2.5">Mỗi dòng dịch vụ có ô ghi chú riêng của chính dòng đó — không có ghi chú dùng chung cho cả báo giá.</p>
+              <div className="space-y-2.5">
                 {form.lines.map((l, i) => (
-                  <div key={i} className="rounded-xl border border-slate-200 p-3 bg-slate-50/60">
+                  <fieldset key={i} data-testid={`quote-line-${i + 1}`} className="rounded-xl border-2 border-slate-200 bg-white p-3 focus-within:border-[#1e5aa8]">
+                    <legend className="sr-only">Dòng dịch vụ {i + 1}</legend>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p data-testid={`quote-line-${i + 1}-title`} className="inline-flex items-center gap-1.5 rounded-full bg-[#0f2a4a] text-white font-extrabold text-[13.5px] px-3 py-1">Dòng dịch vụ {i + 1}</p>
+                      {form.lines.length > 1 && (
+                        <button type="button" data-testid={`quote-line-${i + 1}-remove`} onClick={() => removeLine(i)} className="btn-press touch-target inline-flex items-center gap-1 text-[13px] font-bold text-red-600 min-h-[36px]"><Trash2 size={14} /> Xóa dòng</button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       <Field label="Mã dịch vụ"><input value={l.code} onChange={(e) => setLine(i, "code", e.target.value)} placeholder="DV-VC-TQ" className={inputCls()} /></Field>
                       <Field label="Tên dịch vụ"><input value={l.serviceName} onChange={(e) => setLine(i, "serviceName", e.target.value)} placeholder="Cước xe TQ" className={inputCls()} /></Field>
@@ -459,11 +473,18 @@ export default function SalesQuotes() {
                       <Field label="Thuế %"><input value={l.taxPct} onChange={(e) => setLine(i, "taxPct", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
                       <Field label="Tiền tệ"><select value={l.currency} onChange={(e) => setLine(i, "currency", e.target.value)} className={inputCls()}><option>VND</option><option>USD</option><option>CNY</option></select></Field>
                     </div>
-                    <Field label="Ghi chú"><input value={l.note} onChange={(e) => setLine(i, "note", e.target.value)} placeholder="Không bắt buộc — VD: giá đã gồm bốc xếp tại kho" aria-label={`Ghi chú dòng dịch vụ ${i + 1}`} className={cx(inputCls(), "mt-2")} /></Field>
-                    {form.lines.length > 1 && (
-                      <button onClick={() => removeLine(i)} className="mt-2 inline-flex items-center gap-1 text-[13px] font-bold text-red-600"><Trash2 size={14} /> Xóa dòng</button>
-                    )}
-                  </div>
+                    <div data-testid={`quote-line-${i + 1}-note-block`} className="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                      <Field label="Ghi chú dòng này" hint={`Chỉ áp dụng cho dòng dịch vụ ${i + 1}.`}>
+                        <input
+                          data-testid={`quote-line-${i + 1}-note`}
+                          value={l.note}
+                          onChange={(e) => setLine(i, "note", e.target.value)}
+                          placeholder="Không bắt buộc — VD: Giá đã gồm bốc xếp"
+                          className={inputCls()}
+                        />
+                      </Field>
+                    </div>
+                  </fieldset>
                 ))}
               </div>
             </div>

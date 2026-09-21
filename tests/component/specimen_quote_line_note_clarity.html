@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  LOGI_QUOTE_LINE_NOTE_CLARITY_01 — static runtime specimen (evidence tooling).
+
+  Mounts the REAL committed production bundle (component/dist/logi-shell.js +
+  logi-shell.css) with a real view-model fixture, so a human can open the actual
+  Báo Giá desk layout in a browser without running Streamlit/Mongo:
+
+    1. click "Báo Giá" in the sidebar;
+    2. press "Sửa" on quote Q-SPEC-2LINES;
+    3. both service lines show their own "Dòng dịch vụ N" identity and their own
+       "Ghi chú dòng này" INSIDE the same card as that line's mã/tên/số lượng/
+       giá vốn/giá bán/thuế/tiền tệ — line 1 note = A, line 2 note = B;
+    4. edit line 2's note and press "LƯU BÁO GIÁ": the payload panel at the top
+       shows the emitted event with per-serviceLine notes.
+
+  This file is NOT part of the shipped app and adds no runtime dependency: it is
+  a read-only evidence surface for the Owner/reviewer. Serve the repository root
+  over HTTP (for example `python3 -m http.server 8088`) and open
+  /tests/component/specimen_quote_line_note_clarity.html
+-->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Báo Giá — per-line note specimen (Issue #90)</title>
+    <link rel="stylesheet" href="../../component/dist/logi-shell.css" />
+    <style>
+      body { margin: 0; background: #eef2f7; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      .specimen-bar { position: sticky; top: 0; z-index: 100; background: #0f2a4a; color: #fff; padding: 10px 14px; font-size: 13px; }
+      .specimen-bar b { font-size: 13.5px; }
+      .specimen-bar code { background: rgba(255,255,255,.14); padding: 1px 5px; border-radius: 6px; }
+      .specimen-payload { background: #0b1f38; color: #d7e6f7; margin: 0; padding: 10px 14px; font-size: 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; }
+      #host { min-height: 70vh; background: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="specimen-bar">
+      <b>Specimen runtime — LOGI_QUOTE_LINE_NOTE_CLARITY_01 (Issue #90)</b><br />
+      Báo Giá → <code>Sửa</code> quote <code>Q-SPEC-2LINES</code>: mỗi dòng có
+      <code>Ghi chú dòng này</code> riêng nằm trong chính card của dòng đó
+      (dòng 1 = A, dòng 2 = B). Đổi ghi chú rồi bấm <code>LƯU BÁO GIÁ</code> để xem payload.
+    </div>
+    <pre class="specimen-payload" id="payload">payload: (chưa có event nào)</pre>
+    <div id="host"></div>
+    <script type="module">
+      const payloadEl = document.getElementById("payload");
+      const NOTE_A = "Giá đã gồm bốc xếp";
+      const NOTE_B = "Chưa gồm kiểm hóa";
+
+      const line = (code, name, note, cost, sell) => ({
+        code, serviceName: name, unit: "Lần", qty: 1, currency: "VND",
+        costUnit: cost, sellUnit: sell, taxPct: 8, note,
+      });
+
+      const SPECIMEN_QUOTE = {
+        id: "Q-SPEC-2LINES", quoteNo: "QT-SPEC-2LINES", customerId: "CUST-ANPHAT",
+        customer: "An Phát JSC", salesOwner: "Minh Tú", status: "DRAFT", statusLabel: "Nháp",
+        origin: "Bằng Tường", destination: "KCN Quế Võ", route: "Hữu Nghị", incoterm: "DAP",
+        transportMode: "Road", goodsDescription: "Linh kiện", expectedDeliveryDate: "2026-09-20",
+        currency: "VND", total: 31500000, sellingPriceTotalVnd: 31500000, estimatedCostVnd: 28500000,
+        estimatedMarginVnd: 3000000, isEstimate: true, ledgerPosted: false,
+        fxRatesToVnd: {}, fxSource: "", fxNeededFor: [],
+        serviceLines: [
+          line("DV-VC-TQ", "Cước xe TQ", NOTE_A, 26000000, 28500000),
+          line("DV-TQ", "Thông quan", NOTE_B, 2500000, 3000000),
+        ],
+        assumptions: [], statusHistory: [], version: 1, shipmentId: "",
+        allowedTransitions: ["READY_FOR_REVIEW"],
+      };
+
+      const [vm, cw] = await Promise.all([
+        fetch("./fixtures/view_model_phase_b.json").then((r) => r.json()),
+        fetch("./fixtures/view_model_contract_workflow.json").then((r) => r.json()),
+      ]);
+      void cw;
+      vm.quotes = [SPECIMEN_QUOTE];
+
+      const mod = await import("../../component/dist/logi-shell.js");
+      let last = null;
+      const emit = (event, value) => {
+        last = { event, value };
+        payloadEl.textContent =
+          `payload: ${event}\n` +
+          JSON.stringify(value?.payload ?? value, null, 2);
+        // eslint-disable-next-line no-console
+        console.log("[specimen trigger]", event, value);
+      };
+      window.__logiSpecimenLastTrigger = () => last;
+      mod.default({
+        name: "logi_shell",
+        data: vm,
+        parentElement: document.getElementById("host"),
+        setTriggerValue: emit,
+      });
+    </script>
+  </body>
+</html>
