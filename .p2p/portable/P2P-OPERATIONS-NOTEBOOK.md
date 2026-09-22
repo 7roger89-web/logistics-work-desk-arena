@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=77b7fde06da308f47359483d185247ca07e6bce4449ba62d5207a73a1ba2846c
+SOURCE_CONTENT_SHA256=ac65fb5855081611a8884a036d55d79b081d2721fdbafe2760ac527dbb9de7ba
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -1629,26 +1629,104 @@ Probe discipline:
    model identity.
 
 
-FAST_CANARY default return shape:
+FAST_CANARY executor return shape:
 
 ```text
-FAST_CANARY_V1
-CANARY_RESULT=GREEN | YELLOW | RED
-FACTS=<brief task-relevant facts observed through tools>
-CHECK=<one representative test/render/read-only verification + result>
-TOOL_HALLUCINATION=YES | NO
-UNNECESSARY_SCOPE=YES | NO
-NEXT=CONTINUE_REAL_TASK | LIMIT_TASK | REROLL_OR_SWITCH
+CANARY_EVIDENCE_PACKET_V1
+P2P_LAW_SOURCE=<actual source read>
+CURRENT_STATE=<pinned repo/task state>
+FACTS=<max 5 task-relevant observed facts>
+DECISIVE_CHECK=<one representative real check>
+CHECK_RESULT=<actual result/exit/status>
+ERRORS_ENCOUNTERED=<brief or NONE>
+RECOVERY_ACTIONS=<brief or NONE>
+DURABLE_MUTATION_CREATED=YES | NO
+MODEL_IDENTITY=UNKNOWN
 ```
 
-`ORANGE` remains available to the fuller three-probe classification when
-evidence is mixed across multiple probes. The FAST_CANARY one-probe path uses
-`GREEN|YELLOW|RED` so the Owner does not have to interpret a four-level score
-for a simple keep/limit/reroll decision.
+The tested executor MUST NOT assign itself GREEN/YELLOW/RED or KEEP/LIMIT/REROLL.
+That classification belongs to Control Tower or another independent verifier:
 
-If FAST_CANARY is `GREEN`, continue the already-authorized real task in the
-same session without asking the Owner again merely because the canary ended.
-Normal task scope, Owner Gates, and merge/deploy authority still apply.
+```text
+EXECUTOR_SELF_CLASSIFICATION=FORBIDDEN
+CANARY_CLASSIFIER=CONTROL_TOWER_OR_INDEPENDENT_VERIFIER
+CANARY_CLASSIFICATION=GREEN | YELLOW | RED | ORANGE
+SESSION_POLICY=KEEP_SESSION | LIMIT_SESSION | ADVISORY_OR_LOW_RISK_ONLY | REROLL_OR_SWITCH_EXECUTOR
+```
+
+If independent verification is unavailable, the result is `UNVERIFIED`, not
+implicitly GREEN.
+
+`ORANGE` remains available to the fuller multi-probe classification when
+evidence is mixed across multiple probes. FAST_CANARY normally needs only
+GREEN/YELLOW/RED after independent grading.
+
+#### OWNER_CONTINUATION_GATE_V1
+
+For a new Arena Agent session on medium/high-risk work, the first real-task
+slice is a bounded checkpoint, not automatic authority to continue the entire
+task:
+
+```text
+REAL_TASK
+  -> FIRST_SAFE_SLICE_CANARY
+  -> CANARY_EVIDENCE_PACKET_V1
+  -> CONTROL_TOWER_OR_INDEPENDENT_GRADE
+  -> OWNER_CONTINUATION_GATE
+  -> CONTINUE | LIMIT | REROLL
+```
+
+The tested Arena executor still does not grade itself. After returning the
+evidence packet it must end the turn and wait at the continuation checkpoint.
+
+Arena currently provides a native `keep working` continuation action after a
+completed task/turn. P2P should use that native action when the product surface
+offers it, but the executor must never claim it rendered a UI button that it
+cannot actually control.
+
+```text
+ARENA_NATIVE_CONTINUATION_UI=USE_WHEN_AVAILABLE
+MODEL_CANNOT_GUARANTEE_UI_BUTTON_RENDERING=YES
+FALLBACK_OWNER_REPLY="Tiếp tục công việc"
+```
+
+At the end of the canary turn, append only this neutral checkpoint metadata;
+it is not a self-grade:
+
+```text
+CONTINUATION_CHECKPOINT=READY
+OWNER_ACTION_REQUIRED=YES
+NATIVE_ACTION_HINT=KEEP_WORKING_IF_APPROVED
+FALLBACK_OWNER_REPLY=Tiếp tục công việc
+```
+
+After independent grading:
+
+```text
+GREEN  -> recommend CONTINUE_REAL_TASK in the SAME Arena chat
+YELLOW -> recommend CONTINUE_LIMITED only with the declared verification bound
+ORANGE -> do not recommend full continuation; advisory/low-risk only
+RED    -> recommend REROLL_OR_SWITCH, not Keep working
+UNVERIFIED -> no default continuation recommendation
+```
+
+The Owner's one-click/one-message continuation is a deliberate approval gate,
+not message-bus work. Once the Owner chooses Continue/Keep working after a GREEN
+classification, do not insert another canary or approval gate unless material
+risk/state changes.
+
+Git-history guard for shallow sandboxes:
+
+```text
+SHALLOW_CLONE_ANOMALY != REPOSITORY_HISTORY_FACT
+EMPTY_LOCAL_MERGE_BASE_ON_SHALLOW_CLONE != UNRELATED_HISTORIES
+```
+
+Before concluding that two refs have unrelated histories, first inspect
+`git rev-parse --is-shallow-repository`. If the clone is shallow, either
+deepen/unshallow enough for the relevant ancestry or cross-check against durable
+remote ancestry/compare evidence. An empty merge-base from incomplete local
+history is a tool-environment artifact, not a repository fact.
 
 Decision classes:
 
@@ -1724,6 +1802,36 @@ black-box interaction, use a bounded behavioral fingerprint instead:
    under materially similar settings when possible. Repeat only enough to
    estimate stability; sampling/system-prompt/tool-wrapper effects must remain
    explicit uncertainties.
+
+   Arena surface boundary:
+
+   ```text
+   AGENT_POOL != DIRECT_SELECTOR
+   AGENT_POOL != SIDE_BY_SIDE_SELECTOR
+   REFERENCE_HARNESS_MUST_MATCH_TARGET_HARNESS
+   ```
+
+   A model listed for Agent Mode is not guaranteed to be selectable in Direct
+   or Side-by-Side, because Arena can add or remove models from those selector
+   surfaces independently. References captured from Text/Direct/Side-by-Side
+   must not be treated as calibrated Agent references unless the exact variant
+   and materially equivalent system/tool harness are established.
+
+   For Arena specifically:
+
+   ```text
+   AGENT_POOL != DIRECT_SELECTOR
+   AGENT_POOL != SIDE_BY_SIDE_SELECTOR
+   REFERENCE_HARNESS_MUST_MATCH_TARGET_HARNESS
+   ```
+
+   A model appearing on the Agent leaderboard does not imply that the same
+   model/variant is selectable in Direct or Side-by-Side. Arena explicitly
+   allows models to be added/removed from those selector surfaces independently.
+   Therefore a Direct/Side-by-Side/Battle output must not be treated as a
+   calibrated reference for an Agent orchestrator unless the exact model
+   identity/variant AND materially equivalent harness/system/tool conditions are
+   established. Cross-surface resemblance is exploratory evidence only.
 5. Report a ranked candidate set or family-level estimate with confidence and
    an `UNKNOWN` option. Never upgrade behavioral resemblance into exact model
    identity without direct evidence.
@@ -1749,7 +1857,14 @@ and executor.
 ```text
 CONTROL_TOWER_OWNS_EXECUTOR_ROUTING=YES
 OWNER_IS_NOT_MESSAGE_BUS=YES
+ARENA_CANARY_OWNER_CONTINUATION_GATE=ALLOWED_ONCE
 ```
+
+The one explicit Arena continuation approval after a new-session FAST_CANARY is
+not message-bus work. It is an Owner risk gate: the executor pauses after the
+first real-task slice, Control Tower/independent evidence grading occurs, and
+the Owner chooses Continue/Keep working, bounded continuation, or reroll.
+After that decision, normal Control Tower autonomous completion resumes.
 
 Canonical Owner commands (matched by intent; the Owner does not have to
 remember exact capitalization or syntax):
