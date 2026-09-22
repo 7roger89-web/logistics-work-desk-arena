@@ -162,8 +162,14 @@ export default function SalesQuotes() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Quote | null>(null);
   const [form, setForm] = useState<QuoteForm>(EMPTY_FORM);
-  /** General notes the paste produced (shown as quote assumptions on review). */
-  const [assumptions, setAssumptions] = useState<string[]>([]);
+  /**
+   * CUSTOMER-FACING general notes ("Nếu có phát sinh về xử lý hàng hóa, sẽ báo
+   * ngay tại thời điểm phát sinh."). They are persisted on the canonical quote
+   * as `customer_notes`, round trip on reopen, and are the ONLY notes printed
+   * in the XLSX "Ghi chú" block — the quote's internal `assumptions` list stays
+   * internal.
+   */
+  const [customerNotes, setCustomerNotes] = useState<string[]>([]);
   /** LOGI_QUOTE_COST_WORKFLOW_UX_01 — the ONE in-flight quote export intent. */
   const [exporting, setExporting] = useState<{ id: string; requestId: string } | null>(null);
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -202,12 +208,14 @@ export default function SalesQuotes() {
   const removeLine = (i: number) => setForm((f) => ({ ...f, lines: f.lines.length > 1 ? f.lines.filter((_, idx) => idx !== i) : f.lines }));
 
   const openCreate = () => {
-    setAssumptions([]);
+    setCustomerNotes([]);
     setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], fx: { USD: "", CNY: "" }, salesOwner: "Minh Tú" });
     setCreating(true);
   };
   const openEdit = (x: Quote) => {
-    setAssumptions([]);
+    // Restore what the customer was shown: reopening a saved quote must not
+    // silently drop its general notes.
+    setCustomerNotes([...(x.customerNotes ?? [])]);
     setForm({
       customerId: x.customerId,
       salesOwner: x.salesOwner,
@@ -251,6 +259,31 @@ export default function SalesQuotes() {
       toast("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
       return;
     }
+    // UNKNOWN != ZERO. The backend refuses a line whose Giá vốn / Giá bán /
+    // Thuế % was never stated (an explicit 0 is fine); saying so here names the
+    // exact line instead of making the operator decode a server error.
+    const REQUIRED: Array<[keyof LineForm, string]> = [
+      ["costUnit", "Giá vốn (unit)"],
+      ["sellUnit", "Giá bán (unit)"],
+      ["taxPct", "Thuế %"],
+    ];
+    const gaps: string[] = [];
+    form.lines
+      .filter((l) => l.code.trim() || l.serviceName.trim())
+      .forEach((l, idx) => {
+        for (const [key, label] of REQUIRED) {
+          if (String(l[key] ?? "").trim() === "") gaps.push(`Dòng ${idx + 1}: ${label}`);
+        }
+      });
+    if (gaps.length > 0) {
+      toast("Còn ô chưa điền",
+        gaps.slice(0, 4).join(" · ")
+        + (gaps.length > 4 ? ` · +${gaps.length - 4} ô nữa` : "")
+        + " — ô trống nghĩa là CHƯA BIẾT, không phải 0. Nhập số thật (0 vẫn hợp lệ nếu đúng là 0).",
+        "red");
+      return;
+    }
+
     // Currencies the lines actually need a quote rate for.
     const neededFx = FX_CODES.filter((code) => serviceLines.some((l) => l.currency === code));
     const missingFx = neededFx.filter((code) => {
@@ -280,6 +313,7 @@ export default function SalesQuotes() {
         goods_description: form.goodsDescription.trim(),
         expected_delivery_date: form.expectedDeliveryDate.trim(),
         serviceLines,
+        customerNotes,
         fx,
       });
       toast("Đã gửi cập nhật " + editing.id, "Backend tính lại giá bán + audit.", "green");
@@ -295,6 +329,7 @@ export default function SalesQuotes() {
         goodsDescription: form.goodsDescription.trim(),
         expectedDeliveryDate: form.expectedDeliveryDate.trim(),
         serviceLines,
+        customerNotes,
         fx,
       });
       toast("Đã gửi tạo báo giá", "Backend tạo mã Q-… tự động, tính dự toán và audit.", "green");
@@ -337,7 +372,7 @@ export default function SalesQuotes() {
       destination: parsed.destination || f.destination,
       lines: lines.length ? lines : f.lines,
     }));
-    setAssumptions(parsed.assumptions);
+    setCustomerNotes((prev) => [...prev, ...parsed.assumptions.filter((a) => !prev.includes(a))]);
     toast(
       "Đã áp dụng bản dán",
       `${lines.length} dòng dịch vụ đã điền vào form — kiểm tra và sửa trước khi lưu.`,
@@ -602,13 +637,27 @@ export default function SalesQuotes() {
               />
             </div>
 
-            {assumptions.length > 0 && (
+            {customerNotes.length > 0 && (
               <div className="mt-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-3" data-testid="quote-assumptions">
-                <p className="font-extrabold text-[14px] text-[#0f2a4a]">Ghi chú chung của báo giá</p>
-                <p className="text-[12.5px] text-slate-500">Các câu không có giá — giữ làm điều kiện chung, không tạo dòng dịch vụ giá 0.</p>
-                <ul className="mt-1.5 space-y-0.5">
-                  {assumptions.map((a, i) => (
-                    <li key={i} className="text-[13px] text-slate-700">• {a}</li>
+                <p className="font-extrabold text-[14px] text-[#0f2a4a]">Ghi chú chung gửi khách</p>
+                <p className="text-[12.5px] text-slate-500">
+                  Các câu không có giá — giữ làm điều kiện chung, không tạo dòng dịch vụ giá 0.
+                  Được lưu cùng báo giá và in vào mục “Ghi chú” của file gửi khách.
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {customerNotes.map((a, i) => (
+                    <li key={i} className="flex items-start gap-2" data-testid={`quote-customer-note-${i + 1}`}>
+                      <span className="text-[13px] text-slate-700 flex-1">• {a}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerNotes((prev) => prev.filter((_, idx) => idx !== i))}
+                        data-testid={`quote-customer-note-${i + 1}-remove`}
+                        aria-label={`Bỏ ghi chú ${i + 1}`}
+                        className="btn-press shrink-0 rounded-lg border-2 border-slate-200 bg-white px-2 py-0.5 text-[12px] font-bold text-slate-500"
+                      >
+                        Bỏ
+                      </button>
+                    </li>
                   ))}
                 </ul>
               </div>

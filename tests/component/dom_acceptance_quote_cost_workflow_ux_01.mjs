@@ -69,6 +69,8 @@ const tick = (ms = 90) => new Promise((r) => setTimeout(r, ms));
 const $ = (sel, root = window.document) => [...root.querySelectorAll(sel)];
 const text = (el) => ((el && el.textContent) || "").replace(/\s+/g, " ").trim();
 const mainText = () => text($("main")[0] ?? window.document.body);
+// Toasts render outside <main>, so refusal messages are asserted on the body.
+const bodyText = () => text(window.document.body);
 const aside = () => $("aside")[0];
 const byTestId = (id) => $(`[data-testid="${id}"]`)[0] ?? null;
 
@@ -301,8 +303,116 @@ console.log("STEP 3 — A: nothing is written until ÁP DỤNG, then the lines a
 }
 
 // ---------------------------------------------------------------------------
+console.log("STEP 3b — REPAIR_01: the general note is a PERSISTED customer note");
+{
+  // It is shown as customer-facing text, not as an internal assumption.
+  const notes = byTestId("quote-assumptions");
+  assert.ok(notes, "the applied general note must be visible on the form");
+  assert.ok(text(notes).includes("Ghi chú chung gửi khách"),
+    "the block must say these notes go to the CUSTOMER");
+  assert.ok(text(notes).includes("phát sinh về xử lý hàng hóa"),
+    "the Owner's general sentence must be listed");
+  assert.ok(byTestId("quote-customer-note-1"), "each note must be individually addressable");
+  assert.ok(byTestId("quote-customer-note-1-remove"), "the operator must be able to drop a note");
+
+  // A quote needs a customer before anything else can be judged.
+  await clickTestId("quote-customer-picker-toggle");
+  const firstCustomer = $('[data-testid="quote-customer-picker-list"] button')[0];
+  assert.ok(firstCustomer, "the customer picker must offer the fixture customers");
+  firstCustomer.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(90);
+
+  // A freshly pasted quote states SELL prices only, so saving it as-is must be
+  // refused: an unfilled Giá vốn / Thuế is UNKNOWN, never a canonical 0.
+  const blocked = triggers.length;
+  await click("💾 TẠO BÁO GIÁ", "button");
+  assert.equal(triggers.slice(blocked).filter((t) => t.event === "quote_create").length, 0,
+    "a pasted quote with UNKNOWN cost/VAT must not be dispatched");
+  assert.ok(bodyText().includes("Còn ô chưa điền"),
+    "the operator must be told which line is still unanswered");
+
+  // The operator states the real numbers (0 is a legitimate answer)...
+  for (let i = 1; i <= 9; i += 1) {
+    await setValue(byTestId(`quote-line-${i}-cost`), "0");
+    await setValue(byTestId(`quote-line-${i}-tax`), "0");
+  }
+  // ...plus the quote-time FX rate the USD line requires (an existing rule:
+  // the app never invents a rate).
+  await setValue($('input[placeholder="VD: 25.500"]')[0], "25500");
+  // ...and only THEN does the quote save, carrying the notes with it. Before
+  // the repair they existed only in React state and vanished at the boundary.
+  const before = triggers.length;
+  await click("💾 TẠO BÁO GIÁ", "button");
+  const create = triggers.slice(before).find((t) => t.event === "quote_create");
+  assert.ok(create, "TẠO BÁO GIÁ must dispatch quote_create");
+  const payload = create.value.payload;
+  assert.ok(Array.isArray(payload.customerNotes), "customerNotes must travel with the quote");
+  assert.ok(payload.customerNotes.some((n) => n.includes("phát sinh về xử lý hàng hóa")),
+    "the pasted general sentence must be in the persisted payload");
+  assert.equal(payload.serviceLines[0].costUnit, 0, "an explicit 0 is a valid stated answer");
+  ok("pasted quote refuses UNKNOWN cost/VAT, then saves with its customer notes");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 3c — REPAIR_01: a saved quote reopens with its notes restored");
+{
+  const vm = JSON.parse(JSON.stringify(BASE));
+  const saved = JSON.parse(JSON.stringify(vm.quotes[0]));
+  saved.customerNotes = ["Nếu có phát sinh về xử lý hàng hóa, sẽ báo ngay tại thời điểm phát sinh."];
+  saved.serviceLines = [{
+    code: "DV-VC", serviceName: "Cước vận chuyển", unit: "Lần", qty: 1,
+    currency: "VND", costUnit: 100, sellUnit: 200, taxPct: 8, note: "",
+  }];
+  vm.quotes = [saved];
+  await mountWith(vm);
+  await click("Báo Giá", "a", aside());
+  await click("Sửa", "button");
+  const notes = byTestId("quote-assumptions");
+  assert.ok(notes, "reopening a saved quote must restore its customer notes");
+  assert.ok(text(notes).includes("phát sinh về xử lý hàng hóa"),
+    "the stored note must come back verbatim on reopen");
+  ok("customer notes round trip: stored on the quote, restored on reopen");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 3d — REPAIR_01: UNKNOWN cost/VAT is refused at Save, never zeroed");
+{
+  // Re-open the SAME saved quote from step 3c and blank one line's cost/VAT.
+  // The desk must REFUSE, naming the gap, instead of letting the backend
+  // persist a silent 0.
+  assert.ok(byTestId("quote-line-1-cost"), "the edit form must still be open");
+  const cost = byTestId("quote-line-1-cost");
+  const tax = byTestId("quote-line-1-tax");
+  await setValue(cost, "");
+  await setValue(tax, "");
+  const before = triggers.length;
+  await click("💾 LƯU BÁO GIÁ", "button");
+  assert.equal(triggers.slice(before).filter((t) => t.event === "quote_edit").length, 0,
+    "a quote with an UNKNOWN cost/VAT must not be dispatched at all");
+  const body = bodyText();
+  assert.ok(body.includes("Còn ô chưa điền"), "the refusal must be shown to the operator");
+  assert.ok(body.includes("CHƯA BIẾT") && body.includes("không phải 0"),
+    "the refusal must state the UNKNOWN != ZERO rule");
+  assert.ok(/Giá vốn|Thuế/.test(body), "the refusal must name the missing field");
+
+  // An explicit 0 is still a perfectly valid answer.
+  await setValue(cost, "0");
+  await setValue(tax, "0");
+  const before2 = triggers.length;
+  await click("💾 LƯU BÁO GIÁ", "button");
+  const edit = triggers.slice(before2).find((t) => t.event === "quote_edit");
+  assert.ok(edit, "an explicitly stated 0 must be accepted");
+  assert.equal(edit.value.payload.serviceLines[0].costUnit, 0);
+  assert.equal(edit.value.payload.serviceLines[0].taxPct, 0);
+  ok("blank cost/VAT refused with a named reason; an explicit 0 still saves");
+}
+
+// ---------------------------------------------------------------------------
 console.log("STEP 4 — B: the mini-calculator resolves real Owner arithmetic on blur");
 {
+  await mountWith(JSON.parse(JSON.stringify(BASE)));
+  await click("Báo Giá", "a", aside());
+  await click("Tạo báo giá", "button");
   const qty = byTestId("quote-line-1-qty");
   const sell = byTestId("quote-line-1-sell");
   const cost = byTestId("quote-line-1-cost");
@@ -374,6 +484,8 @@ console.log("STEP 6 — E: CHECK CHI PHÍ is an INNER tab of the SAME Báo Giá 
 // ---------------------------------------------------------------------------
 console.log("STEP 7 — E: the SAME parser prefills the search from a pasted inquiry");
 {
+  // Delta, not an absolute count: earlier steps save a quote ON PURPOSE.
+  const dispatchedBefore = triggers.length;
   await setValue(byTestId("cost-paste-input"),
     "EXW Guangdong - Hà Nội / 5 khối / 800 kg", "HTMLTextAreaElement");
   await clickTestId("cost-paste-parse");
@@ -384,7 +496,8 @@ console.log("STEP 7 — E: the SAME parser prefills the search from a pasted inq
   assert.equal(byTestId("cost-destination").value, "Hà Nội");
   assert.equal(byTestId("cost-cbm").value, "5");
   assert.equal(byTestId("cost-weight").value, "800");
-  assert.equal(triggers.length, 0, "an inquiry must NEVER be auto-saved");
+  assert.equal(triggers.length, dispatchedBefore,
+    "an inquiry must NEVER be auto-saved — Check chi phí dispatches nothing");
   ok("one shared parser prefills Incoterm/route/CBM/weight, saving nothing");
 }
 

@@ -22041,7 +22041,7 @@ function el() {
 			salesOwner: "Minh Tú"
 		}), h(!0);
 	}, ae = (e) => {
-		w([]), b({
+		w([...e.customerNotes ?? []]), b({
 			customerId: e.customerId,
 			salesOwner: e.salesOwner,
 			origin: e.origin,
@@ -22077,18 +22077,29 @@ function el() {
 			a("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
 			return;
 		}
-		let t = Jc.filter((t) => e.some((e) => e.currency === t)), n = t.filter((e) => {
+		let t = [
+			["costUnit", "Giá vốn (unit)"],
+			["sellUnit", "Giá bán (unit)"],
+			["taxPct", "Thuế %"]
+		], n = [];
+		if (y.lines.filter((e) => e.code.trim() || e.serviceName.trim()).forEach((e, r) => {
+			for (let [i, a] of t) String(e[i] ?? "").trim() === "" && n.push(`Dòng ${r + 1}: ${a}`);
+		}), n.length > 0) {
+			a("Còn ô chưa điền", n.slice(0, 4).join(" · ") + (n.length > 4 ? ` · +${n.length - 4} ô nữa` : "") + " — ô trống nghĩa là CHƯA BIẾT, không phải 0. Nhập số thật (0 vẫn hợp lệ nếu đúng là 0).", "red");
+			return;
+		}
+		let r = Jc.filter((t) => e.some((e) => e.currency === t)), o = r.filter((e) => {
 			let t = String(y.fx[e] ?? "").replace(/\s|\./g, "").replace(",", "."), n = Number(t);
 			return !(t.trim() !== "" && Number.isFinite(n) && n > 0);
 		});
-		if (n.length > 0) {
-			a("Thiếu tỷ giá báo giá", "Cần tỷ giá " + n.map((e) => e + " → VND").join(", ") + " cho các dòng ngoại tệ. Hệ thống không tự đặt tỷ giá.", "red");
+		if (o.length > 0) {
+			a("Thiếu tỷ giá báo giá", "Cần tỷ giá " + o.map((e) => e + " → VND").join(", ") + " cho các dòng ngoại tệ. Hệ thống không tự đặt tỷ giá.", "red");
 			return;
 		}
-		let r = {};
-		for (let e of t) {
+		let s = {};
+		for (let e of r) {
 			let t = String(y.fx[e]).replace(/\s|\./g, "").replace(",", ".");
-			r[e] = Number(t);
+			s[e] = Number(t);
 		}
 		g ? (i("quote_edit", {
 			id: g.id,
@@ -22100,7 +22111,8 @@ function el() {
 			goods_description: y.goodsDescription.trim(),
 			expected_delivery_date: y.expectedDeliveryDate.trim(),
 			serviceLines: e,
-			fx: r
+			customerNotes: x,
+			fx: s
 		}), a("Đã gửi cập nhật " + g.id, "Backend tính lại giá bán + audit.", "green")) : (i("quote_create", {
 			customerId: y.customerId,
 			salesOwner: y.salesOwner.trim(),
@@ -22112,7 +22124,8 @@ function el() {
 			goodsDescription: y.goodsDescription.trim(),
 			expectedDeliveryDate: y.expectedDeliveryDate.trim(),
 			serviceLines: e,
-			fx: r
+			customerNotes: x,
+			fx: s
 		}), a("Đã gửi tạo báo giá", "Backend tạo mã Q-… tự động, tính dự toán và audit.", "green")), h(!1), v(null);
 	}, ce = (e) => {
 		let t = e.lines.map((e) => {
@@ -22135,7 +22148,7 @@ function el() {
 			origin: e.origin || n.origin,
 			destination: e.destination || n.destination,
 			lines: t.length ? t : n.lines
-		})), w(e.assumptions), a("Đã áp dụng bản dán", `${t.length} dòng dịch vụ đã điền vào form — kiểm tra và sửa trước khi lưu.`, "green");
+		})), w((t) => [...t, ...e.assumptions.filter((e) => !t.includes(e))]), a("Đã áp dụng bản dán", `${t.length} dòng dịch vụ đã điền vào form — kiểm tra và sửa trước khi lưu.`, "green");
 	}, P = (e) => {
 		if (T) return;
 		let t = `quote-xlsx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -22585,17 +22598,28 @@ function el() {
 							children: [
 								/* @__PURE__ */ (0, R.jsx)("p", {
 									className: "font-extrabold text-[14px] text-[#0f2a4a]",
-									children: "Ghi chú chung của báo giá"
+									children: "Ghi chú chung gửi khách"
 								}),
 								/* @__PURE__ */ (0, R.jsx)("p", {
 									className: "text-[12.5px] text-slate-500",
-									children: "Các câu không có giá — giữ làm điều kiện chung, không tạo dòng dịch vụ giá 0."
+									children: "Các câu không có giá — giữ làm điều kiện chung, không tạo dòng dịch vụ giá 0. Được lưu cùng báo giá và in vào mục “Ghi chú” của file gửi khách."
 								}),
 								/* @__PURE__ */ (0, R.jsx)("ul", {
-									className: "mt-1.5 space-y-0.5",
+									className: "mt-1.5 space-y-1",
 									children: x.map((e, t) => /* @__PURE__ */ (0, R.jsxs)("li", {
-										className: "text-[13px] text-slate-700",
-										children: ["• ", e]
+										className: "flex items-start gap-2",
+										"data-testid": `quote-customer-note-${t + 1}`,
+										children: [/* @__PURE__ */ (0, R.jsxs)("span", {
+											className: "text-[13px] text-slate-700 flex-1",
+											children: ["• ", e]
+										}), /* @__PURE__ */ (0, R.jsx)("button", {
+											type: "button",
+											onClick: () => w((e) => e.filter((e, n) => n !== t)),
+											"data-testid": `quote-customer-note-${t + 1}-remove`,
+											"aria-label": `Bỏ ghi chú ${t + 1}`,
+											className: "btn-press shrink-0 rounded-lg border-2 border-slate-200 bg-white px-2 py-0.5 text-[12px] font-bold text-slate-500",
+											children: "Bỏ"
+										})]
 									}, t))
 								})
 							]

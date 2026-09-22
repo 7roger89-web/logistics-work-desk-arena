@@ -52,4 +52,3 @@ docs/goals/LOG-LG02/backups/
 # Python venv / node deps (machine-specific; component/dist is committed)
 .venv/
 component/node_modules/
-.venv-test/

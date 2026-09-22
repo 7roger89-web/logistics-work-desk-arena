@@ -321,7 +321,26 @@ def _line_field(line, *names, default=None):
     return default
 
 
-def generate_quote_excel(quote, *, company=None, logo_path=None):
+def _quote_display_date(quote):
+    """The quotation's OWN date, never silently "today".
+
+    Precedence: an explicit quote date → the canonical ``created_at`` the quote
+    was written with → today only when the document genuinely carries neither.
+    Re-exporting a June quote in September must not restamp it as September.
+    """
+    for key in ("date", "quote_date", "issued_date"):
+        value = str(quote.get(key) or "").strip()
+        if value:
+            return value
+    created = str(quote.get("created_at") or "").strip()
+    if created:
+        # Canonical timestamps are ISO ("2026-06-12T09:31:07+00:00"); the date
+        # part is what a quotation shows. Anything else travels verbatim.
+        return created.split("T")[0].strip() or created
+    return str(date.today())
+
+
+def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     """Customer quotation XLSX in the Owner's real template hierarchy.
 
     Rows 1-5   company header (Trường Thành authority) + BÁO GIÁ
@@ -347,6 +366,7 @@ def generate_quote_excel(quote, *, company=None, logo_path=None):
     """
     quote = dict(quote or {})
     company = dict(company or {})
+    customer = dict(customer or {})
     details = _quote_lines(quote)
 
     output = io.BytesIO()
@@ -359,13 +379,24 @@ def generate_quote_excel(quote, *, company=None, logo_path=None):
     label = Font(name="Arial", size=10, bold=True)
 
     # ---- rows 1-5: company authority header -------------------------------
+    # LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_01 — read the REAL field names the
+    # `authority_companies` master stores (legal_name / legal_address /
+    # legal_representative / representative_title / phone / email). The older
+    # `address` / `representative` guesses never matched, so a fully populated
+    # authority record still rendered blank. Legacy aliases stay as fallbacks;
+    # no duplicate company model is introduced.
     company_name = (company.get("legal_name") or company.get("name")
                     or "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH")
+    company_address = company.get("legal_address") or company.get("address") or ""
+    company_rep = company.get("legal_representative") or company.get("representative") or ""
+    company_rep_title = company.get("representative_title") or ""
+    company_phone = company.get("phone") or ""
+    company_email = company.get("email") or ""
     ws["A1"] = company_name
     ws["A1"].font = Font(name="Arial", size=13, bold=True, color="0F2C59")
-    ws["A2"] = company.get("address", "")
+    ws["A2"] = company_address
     ws["A2"].font = small
-    ws["A3"] = company.get("email", "")
+    ws["A3"] = company_email
     ws["A3"].font = small
     ws["A4"] = company.get("website", "")
     ws["A4"].font = small
@@ -384,17 +415,30 @@ def generate_quote_excel(quote, *, company=None, logo_path=None):
             pass
 
     # ---- rows 7-10: From / To block ---------------------------------------
+    # The "To" block is enriched from the EXISTING customer master (resolved by
+    # the quote's canonical customer_id by the caller). A field the master does
+    # not hold stays blank — nothing is fabricated and no customer is mutated.
+    customer_name = (quote.get("customer_name") or quote.get("customer")
+                     or customer.get("name") or quote.get("client", ""))
+    customer_contact = (quote.get("attn") or quote.get("customer_contact")
+                        or customer.get("contact_person") or "")
+    customer_email = quote.get("customer_email") or customer.get("email") or ""
+    customer_phone = quote.get("customer_phone") or customer.get("phone") or ""
+
+    sender = company.get("contact_name") or company_rep
+    if sender and company_rep_title:
+        sender = f"{sender} ({company_rep_title})"
     left = [
-        ("From", company.get("contact_name", company.get("representative", ""))),
-        ("Attn", quote.get("attn", quote.get("customer_contact", ""))),
-        ("Tel/Fax", company.get("phone", "")),
-        ("Mobile", company.get("mobile", company.get("phone", ""))),
+        ("From", sender),
+        ("Attn", customer_contact),
+        ("Tel/Fax", company_phone),
+        ("Mobile", company.get("mobile") or company_phone),
     ]
     right = [
-        ("To", quote.get("customer_name") or quote.get("customer") or quote.get("client", "")),
-        ("Email", quote.get("customer_email", "")),
-        ("Mobile", quote.get("customer_phone", "")),
-        ("Date", str(quote.get("date") or quote.get("created_at") or date.today())),
+        ("To", customer_name),
+        ("Email", customer_email),
+        ("Mobile", customer_phone),
+        ("Date", _quote_display_date(quote)),
     ]
     for idx, ((lk, lv), (rk, rv)) in enumerate(zip(left, right)):
         row = 7 + idx
@@ -503,10 +547,13 @@ def generate_quote_excel(quote, *, company=None, logo_path=None):
     row += 1
     ws.cell(row=row, column=1, value="Ghi chú:").font = FONT_BOLD
     row += 1
-    assumptions = [str(a) for a in (quote.get("assumptions") or []) if str(a).strip()]
-    if not assumptions:
-        assumptions = ["Báo giá là dự toán, chưa phải hóa đơn hoặc nghĩa vụ thanh toán."]
-    for note in assumptions:
+    # CUSTOMER-FACING notes only. `quote["assumptions"]` is an INTERNAL control
+    # list (agent price reconciliation, customs policy, …) and is deliberately
+    # NOT printed onto a document the customer receives.
+    notes = [str(n) for n in (quote.get("customer_notes") or []) if str(n).strip()]
+    if not notes:
+        notes = ["Báo giá là dự toán, chưa phải hóa đơn hoặc nghĩa vụ thanh toán."]
+    for note in notes:
         ws.cell(row=row, column=1, value="- " + note)
         row += 1
     ws.cell(row=row, column=1,
