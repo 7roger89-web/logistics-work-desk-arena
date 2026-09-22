@@ -147,20 +147,29 @@ def test_quote_never_invents_fx_and_discloses_the_operator_rate(staging, event_s
     LOGI_REAL_USE_READINESS_01 repair pin. ``_quote_payload`` used to bake
     ``USD 25500 / CNY 3500`` into every canonical ``fx_snapshot``, so the VND
     total shown on the desk (and carried into agreements/lots) was derived from
-    a constant nobody had entered. A foreign-currency line without a rate is now
-    refused in Vietnamese, the operator's rate drives the arithmetic, and the
-    projection discloses it next to the converted total.
+    a constant nobody had entered. The operator's rate drives the arithmetic and
+    the projection discloses it next to the converted total.
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 refined the no-rate case: a missing
+    rate is UNKNOWN, not an error. Nothing is converted without an entered rate
+    (NO FAKE FX still holds), but the quotation is perfectly truthful in its own
+    currency, so the DRAFT saves and the VND total is simply reported UNKNOWN.
     """
     import json
 
     cny_line = {"code": "DV-VC-TQ", "serviceName": "Cước xe TQ", "unit": "Lần", "qty": 1,
                 "currency": "CNY", "costUnit": 8000, "sellUnit": 8600, "taxPct": 0}
 
-    # (1) Fail closed: no rate ⇒ no quote (never a silently invented one).
+    # (1) No rate ⇒ the quote still saves, but NOTHING is converted and no rate
+    #     is invented. The VND total is UNKNOWN rather than fabricated.
     out = _dispatch(event_seq, "quote_create",
                     {"customerId": "CUST-ANPHAT", "serviceLines": [cny_line]})
-    assert out["ok"] is False
-    assert "tỷ giá" in out["error"].lower() and "CNY" in out["error"]
+    assert out["ok"], out
+    unconverted = logi_c1.read_quote(out["id"])
+    assert "CNY" not in unconverted["fx_snapshot"]["rates_to_vnd"]
+    assert unconverted["calculation"]["selling_price_total_vnd"] is None
+    assert unconverted["service_lines"][0]["sell_vnd"] is None
+    assert float(unconverted["service_lines"][0]["sell_total"]) == 8600.0
 
     # (2) The operator's rate is stored verbatim and drives the total.
     out = _dispatch(event_seq, "quote_create",

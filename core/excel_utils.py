@@ -474,11 +474,23 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         name = _line_field(item, "service_name", "name_full", "name", "label", default="")
         unit_price = safe_float(_line_field(item, "sell_unit", "price", "price_out", "amount", default=0))
         qty = safe_float(_line_field(item, "qty", default=1))
-        vat_pct = safe_float(_line_field(item, "tax_pct", "vat", "vat_line", default=0))
+        # UNKNOWN VAT is not 0% VAT. A quote line whose tax has not been
+        # confirmed must print "—", because a customer reading "0%" would read
+        # it as a commitment that no VAT applies. An explicit 0 still prints
+        # "0%", so the two states never look alike.
+        raw_vat = _line_field(item, "tax_pct", "vat", "vat_line", default=None)
+        vat_known = raw_vat is not None
+        vat_pct = safe_float(raw_vat) if vat_known else None
         currency = str(_line_field(item, "currency", "ccy", default="VND")).upper()
         pre_tax = unit_price * qty
-        with_tax = pre_tax * (1 + vat_pct / 100)
-        totals_by_currency[currency] = totals_by_currency.get(currency, 0.0) + with_tax
+        with_tax = pre_tax * (1 + vat_pct / 100) if vat_known else None
+        bucket = totals_by_currency.setdefault(currency, {"total": 0.0, "known": True})
+        if vat_known:
+            bucket["total"] += with_tax
+        else:
+            bucket["known"] = False
+            # the pre-tax amount is still a real fact of this currency
+            bucket["total"] += pre_tax
 
         note = str(item.get("note") or "")
         condition = str(item.get("condition") or "")
@@ -493,7 +505,9 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
 
         values = [
             index, name, unit_price, qty, pre_tax,
-            f"{vat_pct:g}%", with_tax, currency, " · ".join(contingent),
+            f"{vat_pct:g}%" if vat_known else "—",
+            with_tax if vat_known else "—",
+            currency, " · ".join(contingent),
         ]
         for col_idx, value in enumerate(values, 1):
             cell = ws.cell(row=row, column=col_idx, value=value)
@@ -511,8 +525,10 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     ws.cell(row=row, column=2, value="TỔNG CỘNG THEO TỪNG LOẠI TIỀN (không quy đổi gộp)").font = FONT_BOLD
     row += 1
     for currency in sorted(totals_by_currency):
-        ws.cell(row=row, column=2, value=f"Tổng {currency}").font = FONT_BOLD
-        total_cell = ws.cell(row=row, column=7, value=totals_by_currency[currency])
+        bucket = totals_by_currency[currency]
+        label_text = f"Tổng {currency}" if bucket["known"] else f"Tổng {currency} (chưa gồm VAT — còn dòng chưa xác định VAT)"
+        ws.cell(row=row, column=2, value=label_text).font = FONT_BOLD
+        total_cell = ws.cell(row=row, column=7, value=bucket["total"])
         total_cell.number_format = "#,##0"
         total_cell.font = FONT_BOLD
         ws.cell(row=row, column=8, value=currency).alignment = ALIGN_CENTER
@@ -530,7 +546,7 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         row += 1
         for code in used:
             ws.cell(row=row, column=2, value=f"{code} → VND = {rates[code]:,.0f}")
-            converted = ws.cell(row=row, column=7, value=totals_by_currency[code] * rates[code])
+            converted = ws.cell(row=row, column=7, value=totals_by_currency[code]["total"] * rates[code])
             converted.number_format = "#,##0"
             ws.cell(row=row, column=8, value="VND").alignment = ALIGN_CENTER
             row += 1

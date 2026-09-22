@@ -972,16 +972,11 @@ def _quote_fx_snapshot(payload: Mapping[str, Any], service_lines: list[dict[str,
             rate = _num(previous.get(code))
         if rate is not None and rate > 0:
             rates[code] = rate
-    needed = sorted({
-        _text(line.get("currency")).upper()
-        for line in service_lines if isinstance(line, Mapping)
-    } - {"", "VND"})
-    missing = [code for code in needed if _num(rates.get(code)) is None]
-    if missing:
-        raise ValueError(
-            "Thiếu tỷ giá báo giá " + ", ".join(f"{code} → VND" for code in missing)
-            + ". Nhập tỷ giá dùng cho báo giá này — hệ thống không tự đặt tỷ giá."
-        )
+    # REPAIR_02: a missing rate is UNKNOWN, not an error. NO FAKE FX still holds
+    # — nothing is converted without an operator-entered rate — but the quote is
+    # perfectly truthful in its own currency, so the Sale can save the DRAFT and
+    # add the rate later. calculate_quote leaves the VND figures UNKNOWN and
+    # says why, instead of refusing the save or inventing a rate.
     return normalize_fx_snapshot({
         "rates_to_vnd": rates,
         "source": "Tỷ giá SALE nhập khi báo giá; không phải tỷ giá giao dịch thực tế.",
@@ -1005,6 +1000,25 @@ def _quote_fx_snapshot(payload: Mapping[str, Any], service_lines: list[dict[str,
 # supplies the real value. An explicit 0 typed by the operator is still valid —
 # what is rejected is the ABSENCE of an answer, not the answer zero.
 # ---------------------------------------------------------------------------
+
+def _optional_line_number(line: Mapping[str, Any], key: str, index: int, label: str):
+    """Read an OPTIONAL numeric line field: blank stays UNKNOWN (``None``).
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — internal cost price and VAT are
+    frequently unknown while a quotation is being written from a customer
+    conversation. Blocking the save (REPAIR_01) forced the Sale to invent them,
+    which is the same lie as coercing them to 0. They now travel as ``None``,
+    and core.quotations.calculate_quote keeps every figure derived from them
+    UNKNOWN. A value that IS supplied is still validated as a real number.
+    """
+    raw = line.get(key)
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    value = _num(raw)
+    if value is None:
+        raise ValueError(f"Dòng dịch vụ {index}: {label} không phải là số hợp lệ.")
+    return value
+
 
 def _required_line_number(line: Mapping[str, Any], key: str, index: int, label: str) -> float:
     """Read a REQUIRED numeric line field, refusing a blank instead of zeroing it."""
@@ -1052,9 +1066,11 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
             "unit": _text(line.get("unit")) or "Lần",
             "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
             "currency": _text(line.get("currency")) or "VND",
-            "cost_unit": _required_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
+            # Giá bán is the number quoted to the customer: required.
+            # Giá vốn / Thuế are internal facts that may still be UNKNOWN.
+            "cost_unit": _optional_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
             "sell_unit": _required_line_number(line, "sellUnit", len(service_lines) + 1, "Giá bán (unit)"),
-            "tax_pct": _required_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
+            "tax_pct": _optional_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
             "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support; cần đối chiếu agent nếu là phí Trung Quốc.",
             # LOGI_INTERNAL_UX_SIMPLIFY_01 — optional free-form operator note.
             # Carried verbatim on the canonical line; core.quotations never
@@ -1164,9 +1180,9 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
                 "unit": _text(line.get("unit")) or "Lần",
                 "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
                 "currency": _text(line.get("currency")) or "VND",
-                "cost_unit": _required_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
+                "cost_unit": _optional_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
                 "sell_unit": _required_line_number(line, "sellUnit", len(service_lines) + 1, "Giá bán (unit)"),
-                "tax_pct": _required_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
+                "tax_pct": _optional_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
                 "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support.",
                 # LOGI_INTERNAL_UX_SIMPLIFY_01 — same optional operator note
                 # as create; an edit replaces lines wholesale, note included.

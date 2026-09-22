@@ -322,35 +322,26 @@ console.log("STEP 3b — REPAIR_01: the general note is a PERSISTED customer not
   firstCustomer.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(90);
 
-  // A freshly pasted quote states SELL prices only, so saving it as-is must be
-  // refused: an unfilled Giá vốn / Thuế is UNKNOWN, never a canonical 0.
-  const blocked = triggers.length;
-  await click("💾 TẠO BÁO GIÁ", "button");
-  assert.equal(triggers.slice(blocked).filter((t) => t.event === "quote_create").length, 0,
-    "a pasted quote with UNKNOWN cost/VAT must not be dispatched");
-  assert.ok(bodyText().includes("Còn ô chưa điền"),
-    "the operator must be told which line is still unanswered");
-
-  // The operator states the real numbers (0 is a legitimate answer)...
-  for (let i = 1; i <= 9; i += 1) {
-    await setValue(byTestId(`quote-line-${i}-cost`), "0");
-    await setValue(byTestId(`quote-line-${i}-tax`), "0");
-  }
-  // ...plus the quote-time FX rate the USD line requires (an existing rule:
-  // the app never invents a rate).
-  await setValue($('input[placeholder="VD: 25.500"]')[0], "25500");
-  // ...and only THEN does the quote save, carrying the notes with it. Before
-  // the repair they existed only in React state and vanished at the boundary.
+  // REPAIR_02: the pasted quote states SELL prices only — no cost, no VAT, no
+  // FX — and that is a complete, truthful DRAFT. It must SAVE as-is. Blocking
+  // it (REPAIR_01) only taught the operator to type a fake 0.
   const before = triggers.length;
   await click("💾 TẠO BÁO GIÁ", "button");
   const create = triggers.slice(before).find((t) => t.event === "quote_create");
-  assert.ok(create, "TẠO BÁO GIÁ must dispatch quote_create");
+  assert.ok(create, "an Owner paste with no cost/VAT/FX must still dispatch quote_create");
   const payload = create.value.payload;
   assert.ok(Array.isArray(payload.customerNotes), "customerNotes must travel with the quote");
   assert.ok(payload.customerNotes.some((n) => n.includes("phát sinh về xử lý hàng hóa")),
     "the pasted general sentence must be in the persisted payload");
-  assert.equal(payload.serviceLines[0].costUnit, 0, "an explicit 0 is a valid stated answer");
-  ok("pasted quote refuses UNKNOWN cost/VAT, then saves with its customer notes");
+  // UNKNOWN travels as UNKNOWN: the boundary never manufactures a 0.
+  assert.equal(String(payload.serviceLines[0].costUnit ?? ""), "",
+    "an unstated Giá vốn must leave the form as UNKNOWN, not 0");
+  assert.equal(String(payload.serviceLines[0].taxPct ?? ""), "",
+    "an unstated Thuế must leave the form as UNKNOWN, not 0");
+  // No FX rate was typed, so none is sent — the app never invents one.
+  assert.ok(!payload.fx || payload.fx.USD === undefined,
+    "a missing quote rate must not be fabricated");
+  ok("an Owner paste with no cost/VAT/FX saves, carrying UNKNOWN through as UNKNOWN");
 }
 
 // ---------------------------------------------------------------------------
@@ -375,11 +366,11 @@ console.log("STEP 3c — REPAIR_01: a saved quote reopens with its notes restore
 }
 
 // ---------------------------------------------------------------------------
-console.log("STEP 3d — REPAIR_01: UNKNOWN cost/VAT is refused at Save, never zeroed");
+console.log("STEP 3d — REPAIR_02: blanking cost/VAT still saves, as UNKNOWN not 0");
 {
-  // Re-open the SAME saved quote from step 3c and blank one line's cost/VAT.
-  // The desk must REFUSE, naming the gap, instead of letting the backend
-  // persist a silent 0.
+  // Re-open the SAME saved quote from step 3c and clear one line's cost/VAT.
+  // The edit must go through with those two facts marked UNKNOWN — and the
+  // desk must NOT quietly turn them into 0 on the way out.
   assert.ok(byTestId("quote-line-1-cost"), "the edit form must still be open");
   const cost = byTestId("quote-line-1-cost");
   const tax = byTestId("quote-line-1-tax");
@@ -387,24 +378,37 @@ console.log("STEP 3d — REPAIR_01: UNKNOWN cost/VAT is refused at Save, never z
   await setValue(tax, "");
   const before = triggers.length;
   await click("💾 LƯU BÁO GIÁ", "button");
-  assert.equal(triggers.slice(before).filter((t) => t.event === "quote_edit").length, 0,
-    "a quote with an UNKNOWN cost/VAT must not be dispatched at all");
-  const body = bodyText();
-  assert.ok(body.includes("Còn ô chưa điền"), "the refusal must be shown to the operator");
-  assert.ok(body.includes("CHƯA BIẾT") && body.includes("không phải 0"),
-    "the refusal must state the UNKNOWN != ZERO rule");
-  assert.ok(/Giá vốn|Thuế/.test(body), "the refusal must name the missing field");
+  const cleared = triggers.slice(before).find((t) => t.event === "quote_edit");
+  assert.ok(cleared, "clearing an internal cost/VAT must not block the save");
+  assert.equal(String(cleared.value.payload.serviceLines[0].costUnit ?? ""), "",
+    "a cleared Giá vốn travels as UNKNOWN");
+  assert.equal(String(cleared.value.payload.serviceLines[0].taxPct ?? ""), "",
+    "a cleared Thuế travels as UNKNOWN");
 
-  // An explicit 0 is still a perfectly valid answer.
-  await setValue(cost, "0");
-  await setValue(tax, "0");
+  // A successful save closes the form; reopen the same quote to continue.
+  await click("Sửa", "button");
+  await tick(60);
+
+  // Giá bán is the one number quoted to the customer, so it IS required.
+  await setValue(byTestId("quote-line-1-sell"), "");
+  const beforeSell = triggers.length;
+  await click("💾 LƯU BÁO GIÁ", "button");
+  assert.equal(triggers.slice(beforeSell).filter((t) => t.event === "quote_edit").length, 0,
+    "a line with no Giá bán must not be dispatched");
+  assert.ok(bodyText().includes("Thiếu giá bán"),
+    "the refusal must name the missing sell price");
+  await setValue(byTestId("quote-line-1-sell"), "200");
+
+  // An explicit 0 is still a perfectly valid, distinct answer.
+  await setValue(byTestId("quote-line-1-cost"), "0");
+  await setValue(byTestId("quote-line-1-tax"), "0");
   const before2 = triggers.length;
   await click("💾 LƯU BÁO GIÁ", "button");
   const edit = triggers.slice(before2).find((t) => t.event === "quote_edit");
   assert.ok(edit, "an explicitly stated 0 must be accepted");
   assert.equal(edit.value.payload.serviceLines[0].costUnit, 0);
   assert.equal(edit.value.payload.serviceLines[0].taxPct, 0);
-  ok("blank cost/VAT refused with a named reason; an explicit 0 still saves");
+  ok("blank cost/VAT saves as UNKNOWN; missing Giá bán is refused; explicit 0 persists as 0");
 }
 
 // ---------------------------------------------------------------------------

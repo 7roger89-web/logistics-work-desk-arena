@@ -14,9 +14,9 @@ A. The pasted general sentence ("Nếu có phát sinh về xử lý hàng hóa, 
    be printed on a customer document.
 
 B. UNKNOWN != ZERO. A line whose Giá vốn / VAT was never stated must NOT be
-   persisted as a canonical 0. The quotation engine is Decimal-typed and treats
-   every line number as present, so the bounded truthful behaviour is to FAIL
-   CLOSED at Save, naming the line. An explicit 0 remains perfectly valid.
+   persisted as a canonical 0 — it persists as None. (REPAIR_02 reversed this
+   file's original fail-closed enforcement: only Giá bán is required, because
+   blocking the save merely pushed the operator into typing a fake 0.)
 
 C. The XLSX must read the REAL authority field names (legal_name /
    legal_address / legal_representative / representative_title / phone /
@@ -163,37 +163,47 @@ def test_blank_and_duplicate_notes_are_normalised_not_stored_as_noise(staging, e
 
 # ---------------------------------------------------------------------------
 # BLOCKER B — UNKNOWN must never become a canonical ZERO
+#
+# SUPERSEDED IN PART by LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02: the invariant
+# "UNKNOWN != ZERO" stands, but the way it was enforced here (refuse the save)
+# was wrong for the workflow. Blocking the save made the Sale type a fake 0 to
+# get past the form, which produces the very lie the rule exists to prevent.
+# The canonical rule is now UNKNOWN != ZERO **and** UNKNOWN != SAVE BLOCKER:
+# a blank cost/VAT persists as None. Full coverage lives in
+# tests/test_logi_quote_cost_workflow_ux_01_repair_02.py.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize(
-    "field,label",
-    [("costUnit", "Giá vốn"), ("taxPct", "Thuế"), ("sellUnit", "Giá bán")],
-)
-def test_blank_line_number_is_refused_and_never_persisted_as_zero(
-    staging, event_seq, field, label
+@pytest.mark.parametrize("field", ["costUnit", "taxPct"])
+def test_blank_optional_line_number_persists_as_unknown_not_zero(
+    staging, event_seq, field
 ):
     """This is the exact shape the quick-paste form produces: sell only."""
     out = _dispatch(event_seq, "quote_create",
                     _create_payload([_line(**{field: ""})]))
-    assert not out["ok"], f"a blank {field} must be refused, not zeroed"
-    assert "Dòng dịch vụ 1" in out["error"]
-    assert label in out["error"]
-    # The refusal explains the invariant in the operator's own language.
-    assert "CHƯA BIẾT" in out["error"] and "không phải 0" in out["error"]
-    # Nothing was written.
+    assert out["ok"], out
+    stored = logi_c1.read_quote(out["id"])["service_lines"][0]
+    key = {"costUnit": "cost_unit", "taxPct": "tax_pct"}[field]
+    assert stored[key] is None, f"a blank {field} must stay UNKNOWN, never become 0"
+
+
+def test_blank_sell_price_is_still_refused(staging, event_seq):
+    """Giá bán is the number quoted to the customer — it cannot be UNKNOWN."""
+    out = _dispatch(event_seq, "quote_create", _create_payload([_line(sellUnit="")]))
+    assert not out["ok"]
+    assert "Dòng dịch vụ 1" in out["error"] and "Giá bán" in out["error"]
     assert out["id"] == ""
 
 
-def test_missing_key_entirely_is_also_refused(staging, event_seq):
+def test_missing_optional_key_entirely_is_also_unknown(staging, event_seq):
     line = _line()
     del line["costUnit"]
     out = _dispatch(event_seq, "quote_create", _create_payload([line]))
-    assert not out["ok"]
-    assert "Giá vốn" in out["error"]
+    assert out["ok"], out
+    assert logi_c1.read_quote(out["id"])["service_lines"][0]["cost_unit"] is None
 
 
 def test_an_explicit_zero_is_still_a_valid_answer(staging, event_seq):
-    """Refusing UNKNOWN must not make the honest answer 0 unusable."""
+    """UNKNOWN and ZERO are different answers; 0 must remain usable."""
     out = _dispatch(event_seq, "quote_create",
                     _create_payload([_line(costUnit=0, taxPct=0)]))
     assert out["ok"], out
@@ -202,16 +212,12 @@ def test_an_explicit_zero_is_still_a_valid_answer(staging, event_seq):
     assert float(line["tax_pct"]) == 0.0
 
 
-def test_quote_edit_refuses_a_blank_line_number_too(staging, event_seq):
+def test_quote_edit_also_keeps_a_blank_as_unknown(staging, event_seq):
     qid = _dispatch(event_seq, "quote_create", _create_payload([_line()]))["id"]
-    before = logi_c1.read_quote(qid)["service_lines"][0]["sell_unit"]
-
     out = _dispatch(event_seq, "quote_edit",
                     {"id": qid, "serviceLines": [_line(taxPct="")]})
-    assert not out["ok"], "an edit must not silently zero a blank VAT either"
-    assert "Thuế" in out["error"]
-    # The stored quote is untouched by the refused edit.
-    assert logi_c1.read_quote(qid)["service_lines"][0]["sell_unit"] == before
+    assert out["ok"], out
+    assert logi_c1.read_quote(qid)["service_lines"][0]["tax_pct"] is None
 
 
 # ---------------------------------------------------------------------------

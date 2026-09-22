@@ -22077,29 +22077,27 @@ function el() {
 			a("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
 			return;
 		}
-		let t = [
-			["costUnit", "Giá vốn (unit)"],
-			["sellUnit", "Giá bán (unit)"],
-			["taxPct", "Thuế %"]
-		], n = [];
-		if (y.lines.filter((e) => e.code.trim() || e.serviceName.trim()).forEach((e, r) => {
-			for (let [i, a] of t) String(e[i] ?? "").trim() === "" && n.push(`Dòng ${r + 1}: ${a}`);
-		}), n.length > 0) {
-			a("Còn ô chưa điền", n.slice(0, 4).join(" · ") + (n.length > 4 ? ` · +${n.length - 4} ô nữa` : "") + " — ô trống nghĩa là CHƯA BIẾT, không phải 0. Nhập số thật (0 vẫn hợp lệ nếu đúng là 0).", "red");
+		let t = [];
+		if (y.lines.filter((e) => e.code.trim() || e.serviceName.trim()).forEach((e, n) => {
+			String(e.sellUnit ?? "").trim() === "" && t.push(`Dòng ${n + 1}: Giá bán (unit)`);
+		}), t.length > 0) {
+			a("Thiếu giá bán", t.slice(0, 4).join(" · ") + (t.length > 4 ? ` · +${t.length - 4} dòng nữa` : "") + " — giá bán là con số báo cho khách nên bắt buộc. Giá vốn / thuế có thể để trống nếu chưa biết.", "red");
 			return;
 		}
-		let r = Jc.filter((t) => e.some((e) => e.currency === t)), o = r.filter((e) => {
-			let t = String(y.fx[e] ?? "").replace(/\s|\./g, "").replace(",", "."), n = Number(t);
-			return !(t.trim() !== "" && Number.isFinite(n) && n > 0);
-		});
+		let n = Jc.filter((t) => e.some((e) => e.currency === t)), r = {}, o = [];
+		for (let e of n) {
+			let t = String(y.fx[e] ?? "").replace(/\s|\./g, "").replace(",", ".");
+			if (t.trim() === "") continue;
+			let n = Number(t);
+			if (!Number.isFinite(n) || n <= 0) {
+				o.push(e);
+				continue;
+			}
+			r[e] = n;
+		}
 		if (o.length > 0) {
-			a("Thiếu tỷ giá báo giá", "Cần tỷ giá " + o.map((e) => e + " → VND").join(", ") + " cho các dòng ngoại tệ. Hệ thống không tự đặt tỷ giá.", "red");
+			a("Tỷ giá không hợp lệ", "Tỷ giá " + o.map((e) => e + " → VND").join(", ") + " phải là số lớn hơn 0. Để trống nếu chưa biết.", "red");
 			return;
-		}
-		let s = {};
-		for (let e of r) {
-			let t = String(y.fx[e]).replace(/\s|\./g, "").replace(",", ".");
-			s[e] = Number(t);
 		}
 		g ? (i("quote_edit", {
 			id: g.id,
@@ -22112,7 +22110,7 @@ function el() {
 			expected_delivery_date: y.expectedDeliveryDate.trim(),
 			serviceLines: e,
 			customerNotes: x,
-			fx: s
+			fx: r
 		}), a("Đã gửi cập nhật " + g.id, "Backend tính lại giá bán + audit.", "green")) : (i("quote_create", {
 			customerId: y.customerId,
 			salesOwner: y.salesOwner.trim(),
@@ -22125,7 +22123,7 @@ function el() {
 			expectedDeliveryDate: y.expectedDeliveryDate.trim(),
 			serviceLines: e,
 			customerNotes: x,
-			fx: s
+			fx: r
 		}), a("Đã gửi tạo báo giá", "Backend tạo mã Q-… tự động, tính dự toán và audit.", "green")), h(!1), v(null);
 	}, ce = (e) => {
 		let t = e.lines.map((e) => {
@@ -22559,24 +22557,23 @@ function el() {
 							children: [
 								/* @__PURE__ */ (0, R.jsx)("p", {
 									className: "font-extrabold text-[15px] text-amber-900",
-									children: "Tỷ giá báo giá — bắt buộc cho dòng ngoại tệ"
+									children: "Tỷ giá quy đổi VND (nếu muốn tính tổng VND)"
 								}),
 								/* @__PURE__ */ (0, R.jsx)("p", {
 									className: "text-[13px] text-amber-800 mt-0.5",
-									children: "Tổng VND của báo giá được quy đổi theo tỷ giá bạn nhập ở đây. Hệ thống không tự đặt tỷ giá và đây không phải tỷ giá giao dịch thực tế."
+									children: "Không bắt buộc. Để trống vẫn lưu được — báo giá giữ nguyên số tiền theo từng loại tiền, chỉ là chưa có tổng VND. Hệ thống không tự đặt tỷ giá và đây không phải tỷ giá giao dịch thực tế."
 								}),
 								/* @__PURE__ */ (0, R.jsx)("div", {
 									className: "grid grid-cols-2 gap-2.5 mt-2.5",
 									children: k.map((e) => /* @__PURE__ */ (0, R.jsx)(Y, {
-										label: `Tỷ giá ${e} → VND`,
-										required: !0,
+										label: `Tỷ giá ${e} → VND (nếu đã biết)`,
 										hint: "Số có dấu chấm phân cách hàng nghìn.",
 										children: /* @__PURE__ */ (0, R.jsx)("input", {
 											value: y.fx[e],
 											onChange: (t) => ne(e, t.target.value),
 											inputMode: "decimal",
 											placeholder: e === "USD" ? "VD: 25.500" : "VD: 3.650",
-											className: X(y.fx[e].trim() ? "ok" : "missing")
+											className: X(y.fx[e].trim() ? "ok" : void 0)
 										})
 									}, e))
 								})
@@ -22707,7 +22704,7 @@ function el() {
 														})
 													}),
 													/* @__PURE__ */ (0, R.jsx)(Y, {
-														label: "Giá vốn (unit)",
+														label: "Giá vốn (nếu đã biết)",
 														children: /* @__PURE__ */ (0, R.jsx)(Yo, {
 															value: e.costUnit,
 															onChange: (e) => re(t, "costUnit", e),
@@ -22717,6 +22714,7 @@ function el() {
 													}),
 													/* @__PURE__ */ (0, R.jsx)(Y, {
 														label: "Giá bán (unit)",
+														required: !0,
 														children: /* @__PURE__ */ (0, R.jsx)(Yo, {
 															value: e.sellUnit,
 															onChange: (e) => re(t, "sellUnit", e),
@@ -22725,7 +22723,7 @@ function el() {
 														})
 													}),
 													/* @__PURE__ */ (0, R.jsx)(Y, {
-														label: "Thuế %",
+														label: "Thuế % (nếu đã biết)",
 														children: /* @__PURE__ */ (0, R.jsx)(Yo, {
 															value: e.taxPct,
 															onChange: (e) => re(t, "taxPct", e),

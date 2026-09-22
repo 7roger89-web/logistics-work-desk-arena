@@ -183,8 +183,10 @@ console.log("STEP 1 — one line: one card, one visible identity, one note insid
   assert.ok(text(c1).includes("Dòng dịch vụ 1"), "card 1 has no visible line identity");
   assert.ok(text(c1).includes("Ghi chú dòng này"), "card 1 has no per-line note label");
   // Every canonical per-line field lives in the SAME card as that note.
+  // Labels carry a REPAIR_02 suffix on the two optional facts ("nếu đã biết"),
+  // so match the stable stem — this check is about co-location, not wording.
   for (const label of [
-    "Mã dịch vụ", "Tên dịch vụ", "Số lượng", "Giá vốn (unit)",
+    "Mã dịch vụ", "Tên dịch vụ", "Số lượng", "Giá vốn",
     "Giá bán (unit)", "Thuế %", "Tiền tệ",
   ]) {
     assert.ok(text(c1).includes(label), `"${label}" is not inside the note's own card`);

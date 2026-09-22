@@ -259,48 +259,45 @@ export default function SalesQuotes() {
       toast("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
       return;
     }
-    // UNKNOWN != ZERO. The backend refuses a line whose Giá vốn / Giá bán /
-    // Thuế % was never stated (an explicit 0 is fine); saying so here names the
-    // exact line instead of making the operator decode a server error.
-    const REQUIRED: Array<[keyof LineForm, string]> = [
-      ["costUnit", "Giá vốn (unit)"],
-      ["sellUnit", "Giá bán (unit)"],
-      ["taxPct", "Thuế %"],
-    ];
+    // UNKNOWN != ZERO, and UNKNOWN != SAVE BLOCKER.
+    // Only GIÁ BÁN is genuinely required: it is the number quoted to the
+    // customer. Giá vốn and Thuế % are internal facts the Sale often does not
+    // have while writing the quote — REPAIR_01 blocked the save on them, which
+    // just pushed the operator to type a fake 0. They now stay blank, are sent
+    // as UNKNOWN, and every total derived from them is reported as UNKNOWN.
     const gaps: string[] = [];
     form.lines
       .filter((l) => l.code.trim() || l.serviceName.trim())
       .forEach((l, idx) => {
-        for (const [key, label] of REQUIRED) {
-          if (String(l[key] ?? "").trim() === "") gaps.push(`Dòng ${idx + 1}: ${label}`);
-        }
+        if (String(l.sellUnit ?? "").trim() === "") gaps.push(`Dòng ${idx + 1}: Giá bán (unit)`);
       });
     if (gaps.length > 0) {
-      toast("Còn ô chưa điền",
+      toast("Thiếu giá bán",
         gaps.slice(0, 4).join(" · ")
-        + (gaps.length > 4 ? ` · +${gaps.length - 4} ô nữa` : "")
-        + " — ô trống nghĩa là CHƯA BIẾT, không phải 0. Nhập số thật (0 vẫn hợp lệ nếu đúng là 0).",
+        + (gaps.length > 4 ? ` · +${gaps.length - 4} dòng nữa` : "")
+        + " — giá bán là con số báo cho khách nên bắt buộc. Giá vốn / thuế có thể để trống nếu chưa biết.",
         "red");
       return;
     }
 
-    // Currencies the lines actually need a quote rate for.
+    // Quote-time FX is OPTIONAL context: without it the quote stays truthful in
+    // its own currency and simply has no VND grand total. The system never
+    // invents a rate, and never refuses the save for the lack of one.
     const neededFx = FX_CODES.filter((code) => serviceLines.some((l) => l.currency === code));
-    const missingFx = neededFx.filter((code) => {
-      const raw = String(form.fx[code] ?? "").replace(/\s|\./g, "").replace(",", ".");
-      const value = Number(raw);
-      return !(raw.trim() !== "" && Number.isFinite(value) && value > 0);
-    });
-    if (missingFx.length > 0) {
-      toast("Thiếu tỷ giá báo giá",
-        "Cần tỷ giá " + missingFx.map((c) => c + " → VND").join(", ")
-        + " cho các dòng ngoại tệ. Hệ thống không tự đặt tỷ giá.", "red");
-      return;
-    }
     const fx: Record<string, number> = {};
+    const badFx: string[] = [];
     for (const code of neededFx) {
-      const raw = String(form.fx[code]).replace(/\s|\./g, "").replace(",", ".");
-      fx[code] = Number(raw);
+      const raw = String(form.fx[code] ?? "").replace(/\s|\./g, "").replace(",", ".");
+      if (raw.trim() === "") continue; // chưa biết tỷ giá — bỏ qua, không quy đổi
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value <= 0) { badFx.push(code); continue; }
+      fx[code] = value;
+    }
+    if (badFx.length > 0) {
+      toast("Tỷ giá không hợp lệ",
+        "Tỷ giá " + badFx.map((c) => c + " → VND").join(", ")
+        + " phải là số lớn hơn 0. Để trống nếu chưa biết.", "red");
+      return;
     }
     if (editing) {
       dispatch("quote_edit", {
@@ -610,14 +607,14 @@ export default function SalesQuotes() {
 
             {neededFxCodes.length > 0 && (
               <div className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50/70 p-3.5">
-                <p className="font-extrabold text-[15px] text-amber-900">Tỷ giá báo giá — bắt buộc cho dòng ngoại tệ</p>
-                <p className="text-[13px] text-amber-800 mt-0.5">Tổng VND của báo giá được quy đổi theo tỷ giá bạn nhập ở đây. Hệ thống không tự đặt tỷ giá và đây không phải tỷ giá giao dịch thực tế.</p>
+                <p className="font-extrabold text-[15px] text-amber-900">Tỷ giá quy đổi VND (nếu muốn tính tổng VND)</p>
+                <p className="text-[13px] text-amber-800 mt-0.5">Không bắt buộc. Để trống vẫn lưu được — báo giá giữ nguyên số tiền theo từng loại tiền, chỉ là chưa có tổng VND. Hệ thống không tự đặt tỷ giá và đây không phải tỷ giá giao dịch thực tế.</p>
                 <div className="grid grid-cols-2 gap-2.5 mt-2.5">
                   {neededFxCodes.map((code) => (
-                    <Field key={code} label={`Tỷ giá ${code} → VND`} required hint="Số có dấu chấm phân cách hàng nghìn.">
+                    <Field key={code} label={`Tỷ giá ${code} → VND (nếu đã biết)`} hint="Số có dấu chấm phân cách hàng nghìn.">
                       <input value={form.fx[code]} onChange={(e) => setFx(code, e.target.value)} inputMode="decimal"
                         placeholder={code === "USD" ? "VD: 25.500" : "VD: 3.650"}
-                        className={inputCls(!form.fx[code].trim() ? "missing" : "ok")} />
+                        className={inputCls(form.fx[code].trim() ? "ok" : undefined)} />
                     </Field>
                   ))}
                 </div>
@@ -694,9 +691,9 @@ export default function SalesQuotes() {
                           evaluated SAFELY on Enter/blur; persistence always
                           receives a plain number. */}
                       <Field label="Số lượng"><CalcInput value={l.qty} onChange={(v) => setLine(i, "qty", v)} testId={`quote-line-${i + 1}-qty`} ariaLabel={`Số lượng dòng ${i + 1}`} /></Field>
-                      <Field label="Giá vốn (unit)"><CalcInput value={l.costUnit} onChange={(v) => setLine(i, "costUnit", v)} testId={`quote-line-${i + 1}-cost`} ariaLabel={`Giá vốn dòng ${i + 1}`} /></Field>
-                      <Field label="Giá bán (unit)"><CalcInput value={l.sellUnit} onChange={(v) => setLine(i, "sellUnit", v)} testId={`quote-line-${i + 1}-sell`} ariaLabel={`Giá bán dòng ${i + 1}`} /></Field>
-                      <Field label="Thuế %"><CalcInput value={l.taxPct} onChange={(v) => setLine(i, "taxPct", v)} testId={`quote-line-${i + 1}-tax`} ariaLabel={`Thuế phần trăm dòng ${i + 1}`} /></Field>
+                      <Field label="Giá vốn (nếu đã biết)"><CalcInput value={l.costUnit} onChange={(v) => setLine(i, "costUnit", v)} testId={`quote-line-${i + 1}-cost`} ariaLabel={`Giá vốn dòng ${i + 1}`} /></Field>
+                      <Field label="Giá bán (unit)" required><CalcInput value={l.sellUnit} onChange={(v) => setLine(i, "sellUnit", v)} testId={`quote-line-${i + 1}-sell`} ariaLabel={`Giá bán dòng ${i + 1}`} /></Field>
+                      <Field label="Thuế % (nếu đã biết)"><CalcInput value={l.taxPct} onChange={(v) => setLine(i, "taxPct", v)} testId={`quote-line-${i + 1}-tax`} ariaLabel={`Thuế phần trăm dòng ${i + 1}`} /></Field>
                       <Field label="Tiền tệ"><select value={l.currency} onChange={(e) => setLine(i, "currency", e.target.value)} className={inputCls()}><option>VND</option><option>USD</option><option>CNY</option></select></Field>
                     </div>
                     <div data-testid={`quote-line-${i + 1}-note-block`} className="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
