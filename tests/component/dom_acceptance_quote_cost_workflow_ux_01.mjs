@@ -163,7 +163,25 @@ function costFixtureVm() {
   other.transport = { ...other.transport, pol: "Ningbo", pod: "Hải Phòng" };
   other.cargo = { ...other.cargo, cbm: 40, weight: 18000 };
 
-  vm.shipments = [actual, quoteOnly, other];
+  // (4) REPAIR_03 — a quote-only lot whose estimate was never converted to VND.
+  //     The canonical projection now hands the ORIGINAL amount with its OWN
+  //     currency (950 USD), because no quote-time FX rate was ever entered.
+  //     Check chi phí must show "950 USD", never "950 VND".
+  const usdQuote = mk({ id: "LO-0253", customer: "Đại Việt Co.", createdAt: "18/06/2026" });
+  usdQuote.incoterm = "EXW";
+  usdQuote.mode = "Truck";
+  usdQuote.route = "Guangdong → Hà Nội";
+  usdQuote.transport = { ...usdQuote.transport, pol: "Guangdong", pod: "Hà Nội" };
+  usdQuote.cargo = { ...usdQuote.cargo, cbm: 5, weight: 850 };
+  usdQuote.finance = {
+    ...usdQuote.finance,
+    currency: "VND",            // the LOT is a VND lot…
+    actual: [],
+    // …but this unconverted quote line is genuinely USD and says so.
+    quote: [{ label: "Cước biển", amount: 950, qty: 1, vat: null, ccy: "USD", kind: "quote" }],
+  };
+
+  vm.shipments = [actual, quoteOnly, other, usdQuote];
   return vm;
 }
 
@@ -543,6 +561,28 @@ console.log("STEP 8 — E: TÌM DỮ LIỆU CŨ prefers THỰC TẾ and labels t
   assert.ok(text(fallback).includes("không phải chi phí đã phát sinh"),
     "an estimate must never be presented as a real cost");
   ok("actual-first ranking, honest estimate fallback, stated reason, split currencies");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 8b — REPAIR_03: an unconverted quote keeps its OWN currency");
+{
+  // The canonical projection sends 950 with ccy USD (no FX rate was entered).
+  // Check chi phí must render the currency that belongs to the amount — a
+  // "950 VND" here would understate the figure by roughly 24,000x.
+  const usd = $('[data-testid="cost-result"]')
+    .find((r) => r.getAttribute("data-shipment-id") === "LO-0253");
+  assert.ok(usd, "the USD quote-only lot must be offered as a comparable");
+  assert.equal(usd.getAttribute("data-source"), "QUOTE");
+
+  const totals = text($('[data-testid="cost-result-totals"]', usd)[0]);
+  assert.ok(/950/.test(totals), `the original amount must be shown, got: ${totals}`);
+  assert.ok(/USD/.test(totals), `the amount must be labelled USD, got: ${totals}`);
+  assert.ok(!/950\s*VND/.test(totals),
+    `an unconverted USD amount must never be labelled VND, got: ${totals}`);
+  // It is still clearly an estimate, not a real cost.
+  assert.ok(text(usd).includes("BÁO GIÁ / DỰ KIẾN"),
+    "the quote fallback must keep its estimate label");
+  ok("an unconverted 950 USD estimate renders as 950 USD, never 950 VND");
 }
 
 // ---------------------------------------------------------------------------
