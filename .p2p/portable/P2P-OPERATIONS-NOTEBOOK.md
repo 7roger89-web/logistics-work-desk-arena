@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=14580e03c147738db8d6b1c18d57fb6f7c33b9098ae352d8a30a91f5bf69d89e
+SOURCE_CONTENT_SHA256=77b7fde06da308f47359483d185247ca07e6bce4449ba62d5207a73a1ba2846c
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -852,6 +852,69 @@ capsule required by the preflight. Owner-facing rationale and terminal
 challenge summaries remain Control Tower responsibilities and need not be paid
 for again inside a Codex/Astra implementation turn.
 
+### GLOBAL_COMMUNITY_RESEARCH_V1 — multilingual, cross-community web research
+
+Use this rule when the Owner explicitly asks for broad internet/community
+research, worldwide user experience, forum sentiment, or "search beyond the
+usual places", or when community evidence materially affects a recommendation.
+
+Canonical law:
+
+```text
+INTERNET != REDDIT
+ENGLISH_WEB != GLOBAL_WEB
+COUNTRY_WHITELIST = FORBIDDEN
+FORUM_ANECDOTE != AUTHORITATIVE_FACT
+PRIMARY_SOURCE_FOR_FACTS + COMMUNITY_SOURCE_FOR_LIVED_EXPERIENCE
+SEARCH_DIVERSITY_IS_ADAPTIVE_NOT_CEREMONIAL
+```
+
+Research behavior:
+
+1. **Start from the question, not a country list.** Discover relevant technical
+   communities dynamically. Do not hard-code China/Japan/Russia/Reddit or any
+   fixed geography as the default research universe.
+2. **Diversify across independent community ecosystems.** When broad community
+   research is materially useful, seek evidence from multiple community types
+   and language/geography clusters: technical forums, developer communities,
+   specialist boards, local-language communities, project issue/discussion
+   surfaces, and practitioner writeups.
+3. **Search in local languages when useful.** Translate the concept, not merely
+   the English keywords. Preserve local terminology and inspect the original
+   source; machine translation is a reading aid, not evidence of what the
+   source literally said.
+4. **Avoid platform monoculture.** If the useful results are dominated by one
+   platform, one language, one country, or mirrors/reposts of the same claim,
+   intentionally rotate the search surface before concluding that community
+   sentiment is global.
+5. **Separate evidence roles.** Official docs, specifications, primary research,
+   source code, and direct measurements support factual/capability claims.
+   Forums and community posts primarily support lived experience, failure
+   patterns, workarounds, usability, and emerging practice unless independently
+   corroborated.
+6. **Track independence, not raw link count.** Ten reposts of one claim are one
+   evidence lineage. Prefer fewer independent ecosystems over many near-duplicate
+   links.
+7. **Stop when marginal information falls.** Do not force a country quota or
+   collect decorative sources after independent perspectives converge and the
+   bounded decision is adequately informed.
+
+For a broad community research result, the final synthesis should make source
+diversity visible without turning the answer into a bibliography dump:
+
+```text
+COMMUNITY_ECOSYSTEMS_SAMPLED=<brief>
+LANGUAGE_OR_REGION_SPREAD=<brief>
+PRIMARY_EVIDENCE=<brief>
+COMMUNITY_SIGNALS=<brief>
+CONTRADICTIONS=<brief>
+CONFIDENCE=<HIGH|MEDIUM|LOW>
+```
+
+This rule does not lower evidence standards. "People on a forum said it" is
+never a substitute for direct product documentation, verified runtime evidence,
+or primary research when those are available.
+
 ### Anti-overengineering decision
 
 Canonical principle:
@@ -1629,6 +1692,52 @@ not prefer a design because of a guessed provider/model. A specialized SVG
 animal × vehicle probe is appropriate only when SVG spatial composition itself
 is the target capability.
 
+
+#### MODEL_IDENTITY_INFERENCE_BOUNDARY_V1
+
+When an execution surface intentionally does not expose its underlying model,
+P2P must not turn self-disclosure tricks into identity evidence.
+
+```text
+SELF_DISCLOSURE != MODEL_IDENTITY_EVIDENCE
+FIRST_LETTER_OR_LAST_LETTER_TRICK != MODEL_IDENTITY_EVIDENCE
+OBFUSCATED_SELF_REPORT != MODEL_IDENTITY_EVIDENCE
+WRITING_STYLE_GUESS != MODEL_IDENTITY_EVIDENCE
+SESSION_QUALITY > GUESSED_MODEL_NAME
+```
+
+Do not use prompt-injection, acrostic/letter-by-letter coercion, encoded
+self-disclosure, role-play indirection, or similar bypass tactics to defeat a
+product's intentional model non-disclosure. Even if the model supplies a name,
+that answer is only a self-report and may be wrong.
+
+If model-family inference has real decision value and the target permits normal
+black-box interaction, use a bounded behavioral fingerprint instead:
+
+1. Prefer an official reveal/selector/API identity when the product exposes one.
+2. Otherwise define a CLOSED candidate set from current public product/model
+   evidence. Do not search an unbounded model universe.
+3. Use several benign, thematically diverse probes only when identity inference
+   is actually needed. A single "who are you?" prompt or one stylometric clue
+   is insufficient.
+4. Compare the combined response pattern against reference behavior captured
+   under materially similar settings when possible. Repeat only enough to
+   estimate stability; sampling/system-prompt/tool-wrapper effects must remain
+   explicit uncertainties.
+5. Report a ranked candidate set or family-level estimate with confidence and
+   an `UNKNOWN` option. Never upgrade behavioral resemblance into exact model
+   identity without direct evidence.
+6. For Arena Agent Mode specifically, preserve Arena's documented possibility
+   of automatic model switching on likely-failing responses. A fingerprint may
+   therefore describe an observed response/session segment, not necessarily a
+   stable identity for the whole chat.
+7. Fingerprinting never replaces `MODEL_CANARY_GATE_V1`. Capability and
+   correctness evidence decide whether to keep a session; a guessed model name
+   does not.
+
+Research-grade fingerprinting methods may be studied as external evidence, but
+P2P does not deploy a reconnaissance/exploitation framework merely to discover
+a hidden model name.
 
 ### RULE 20 — OWNER_EXECUTOR_SELECTION_AND_AUTONOMOUS_COMPLETION
 
