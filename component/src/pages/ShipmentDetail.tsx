@@ -1026,17 +1026,45 @@ export default function ShipmentDetail() {
         )}
       </section>
 
-      {/* ============ HỒ SƠ THỰC HIỆN LÔ (Incoterms × mode × load × scope × insurance) ============
-          LOGI_SHIPMENT_EXECUTION_PROFILE_01 — the profile is what decides which
-          operational stages exist at all, so it lives on the lot detail path (a
-          disclosure, like the lot-header maintenance above) and NOT on a
-          separate "advanced configuration" page. */}
-      <ShipmentExecutionProfile
-        shipment={s}
-        dispatch={dispatch}
-        toast={toast}
-        onOpenTransportTab={() => setSp({ tab: "van-tai" })}
-      />
+      {/* ============ HỒ SƠ THỰC HIỆN LÔ — COMPACT ENTRY ============
+          LOGI_QUOTE_COST_WORKFLOW_UX_01 — the FULL editor no longer occupies a
+          permanent top-level block before the working content. It now lives in
+          "Vận chuyển & Hàng hóa" (default collapsed). What stays on every tab
+          is ONE line: the persisted state + an explicit "Sửa hồ sơ thực hiện"
+          entry. Capability, data, shipment_profile_save, nextAction routing,
+          Incoterms and insurance-mismatch logic are all unchanged — only the
+          composition moved. A real CONFIG_CHECK / insurance mismatch still
+          surfaces here in the same red wording so it cannot be missed. */}
+      {tab !== "van-tai" && (
+        <div
+          data-testid="shipment-profile-compact"
+          data-state={s.executionProfile?.state ?? ""}
+          className={cx(
+            "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2",
+            s.executionProfile?.state === "CONFIG_CHECK"
+              ? "border-red-300 bg-red-50"
+              : s.executionProfile?.state === "PROFILE_INCOMPLETE"
+                ? "border-amber-200 bg-amber-50/60"
+                : "border-slate-200 bg-white"
+          )}
+        >
+          <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Hồ sơ thực hiện lô</span>
+          <span className="text-[13.5px] font-bold text-[#0f2a4a] min-w-0">
+            {s.executionProfile?.stateLabel || "Chưa có dữ liệu hồ sơ"}
+          </span>
+          <span className="text-[12.5px] text-slate-500 min-w-0 hidden sm:inline">
+            {(s.executionProfile?.summaryLines ?? []).slice(0, 1).join("")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSp({ tab: "van-tai" })}
+            data-testid="shipment-profile-compact-edit"
+            className="btn-press touch-target ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] text-[13px] font-bold px-3 min-h-[40px]"
+          >
+            Sửa hồ sơ thực hiện
+          </button>
+        </div>
+      )}
 
       {/* OWNER_RUNTIME_UAT_REPAIR §3 — "Đang thiếu N thông tin" used to be a
           full-width block of boxes permanently on the page. It is now ONE
@@ -1112,9 +1140,19 @@ export default function ShipmentDetail() {
         </div>
       )}
 
-      {/* ============ TAB: OPERATIONAL TRANSPORT + CARGO ============ */}
+      {/* ============ TAB: OPERATIONAL TRANSPORT + CARGO ============
+          The full execution-profile editor belongs here: it is the tab that owns
+          transport/cargo reality, and the profile decides which stages exist. */}
       {tab === "van-tai" && (
-        <ShipmentOperations shipment={s} dispatch={dispatch} toast={toast} />
+        <>
+          <ShipmentExecutionProfile
+            shipment={s}
+            dispatch={dispatch}
+            toast={toast}
+            onOpenTransportTab={() => setSp({ tab: "van-tai" })}
+          />
+          <ShipmentOperations shipment={s} dispatch={dispatch} toast={toast} />
+        </>
       )}
 
       {/* ============ TAB: PICKUP ============ */}
@@ -1411,15 +1449,21 @@ export default function ShipmentDetail() {
       {/* ============ TAB: FINANCE ============ */}
       {tab === "tai-chinh" && (
         <div className="space-y-4" id="missing-anchor">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <section className="rounded-2xl bg-white border-2 border-dashed border-violet-300 p-4 md:p-5">
-              <p className="text-[12px] font-extrabold uppercase tracking-wider text-violet-600 bg-violet-100 inline-block rounded-md px-2 py-0.5">Báo giá / Dự kiến — chưa phải số thực thu/chi</p>
-              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2">Chi phí dự kiến theo báo giá</h3>
-              {s.finance.quote.length === 0 && <p className="text-[14px] text-slate-500">Chưa gắn báo giá. <Link to="/kinh-doanh-bao-gia" className="font-bold text-[#1e5aa8]">Mở báo giá →</Link></p>}
-              {s.finance.quote.map((c) => (<StateRow key={c.label} label={c.label} value={<span className="font-bold text-[16px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[12px] font-bold text-violet-600">{c.ccy}</span></span>} />))}
-              <p className="text-[12.5px] text-slate-400 mt-2">Mỗi đồng tiền ghi rõ VND / USD / CNY — không gộp chung.</p>
-            </section>
-            <section className="rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5">
+          {/* 1 — DỊCH VỤ & CHI PHÍ THỰC TẾ: what Sale/Support really enter first. */}
+          <FinanceActualEntry
+            shipment={s}
+            services={financeServices}
+            ccy={ccy}
+            dispatch={dispatch}
+            toast={toast}
+            lastWrites={vm?.lastWrites}
+          />
+          {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — Owner working priority: the
+              ACTUAL service/cost entry comes FIRST, then the compact actual
+              summary, then receivable/payment/payable, and the quote estimate
+              last as a small, clearly-labelled reference. No amount, formula,
+              writer or RBAC changed — only the reading order and visual weight. */}
+          <section className="rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5">
               <p className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 inline-block rounded-md px-2 py-0.5">Thực tế — đã phát sinh, có chứng từ</p>
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2">Doanh thu &amp; chi phí thực tế ({ccy})</h3>
               {s.finance.actual.length === 0 && (
@@ -1445,19 +1489,9 @@ export default function ShipmentDetail() {
               </div>
               <p className="text-[12.5px] text-slate-400 mt-2">
                 Chi tiết từng dịch vụ (mã phí · SL · đơn vị · giá vốn · giá bán · VAT · ghi chú) và nút SỬA nằm ở mục
-                “DỊCH VỤ &amp; CHI PHÍ THỰC TẾ” bên dưới.
+                “DỊCH VỤ &amp; CHI PHÍ THỰC TẾ” phía trên.
               </p>
-            </section>
-          </div>
-          {/* One booked service line per row — the restored practical entry. */}
-          <FinanceActualEntry
-            shipment={s}
-            services={financeServices}
-            ccy={ccy}
-            dispatch={dispatch}
-            toast={toast}
-            lastWrites={vm?.lastWrites}
-          />
+          </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
@@ -1571,6 +1605,31 @@ export default function ShipmentDetail() {
               ))}
             </div>
           </section>
+
+          {/* 4 — QUOTE ESTIMATE: a small, subdued, collapsible REFERENCE at the
+              bottom. Still clearly labelled ESTIMATE, still per-currency, and
+              the numbers/derivations are byte-for-byte the ones the backend
+              already projected — only the visual weight and position changed. */}
+          <details className="rounded-xl border border-dashed border-violet-300 bg-violet-50/40 px-3.5 py-2.5" data-testid="quote-estimate-compact">
+            <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-md px-2 py-0.5">
+                Báo giá / Dự kiến — chưa phải số thực thu/chi
+              </span>
+              <span className="text-[12.5px] font-bold text-slate-600">Chi phí dự kiến theo báo giá</span>
+              <span className="text-[12.5px] text-slate-500">
+                {s.finance.quote.length > 0 ? `${s.finance.quote.length} dòng dự kiến` : "Chưa gắn báo giá"} · bấm để xem
+              </span>
+            </summary>
+            <div className="mt-2">
+              {s.finance.quote.length === 0 && (
+                <p className="text-[13px] text-slate-500">Chưa gắn báo giá. <Link to="/kinh-doanh-bao-gia" className="font-bold text-[#1e5aa8]">Mở báo giá →</Link></p>
+              )}
+              {s.finance.quote.map((c) => (
+                <StateRow key={c.label} label={c.label} value={<span className="font-bold text-[14px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[11.5px] font-bold text-violet-600">{c.ccy}</span></span>} />
+              ))}
+              <p className="text-[12px] text-slate-400 mt-1.5">Mỗi đồng tiền ghi rõ VND / USD / CNY — không gộp chung. Đây là ESTIMATE, không phải Finance Actual.</p>
+            </div>
+          </details>
         </div>
       )}
 

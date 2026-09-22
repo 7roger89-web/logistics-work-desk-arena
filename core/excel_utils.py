@@ -306,38 +306,219 @@ def _write_key_value_sheet(title, sections):
     return output
 
 
-def generate_quote_excel(quote):
-    quote = quote or {}
-    details = quote.get("details", quote.get("items", []))
+def _quote_lines(quote):
+    """Canonical service lines of a LOG-C12 quote, with the legacy shapes."""
+    lines = quote.get("service_lines")
+    if isinstance(lines, list) and lines:
+        return lines
+    return quote.get("details", quote.get("items", [])) or []
+
+
+def _line_field(line, *names, default=None):
+    for name in names:
+        if name in line and line.get(name) not in (None, ""):
+            return line.get(name)
+    return default
+
+
+def generate_quote_excel(quote, *, company=None, logo_path=None):
+    """Customer quotation XLSX in the Owner's real template hierarchy.
+
+    Rows 1-5   company header (Trường Thành authority) + BÁO GIÁ
+    Rows 7-10  From/Attn/Tel/Mobile  |  To/Email/Mobile/Date
+    Row 11     Subject
+    Rows 12-15 intro / goods / route / service statement
+    Row 17     table headers (STT · Chi tiết · Đơn giá · Số lượng · Thành tiền ·
+               VAT · thành tiền · Đơn vị tiền · Phát sinh (nếu có))
+    then       one row per service line, per-currency subtotals, FX disclosure,
+               Ghi chú / closing / signature.
+
+    Truth rules enforced here:
+      * every line keeps its OWN currency; different currencies are NEVER summed
+        into one number — there is one subtotal per currency code;
+      * a VND conversion is only shown when the quote itself stores a quote-time
+        FX rate, and that exact rate is disclosed;
+      * conditional / estimated wording travels in "Phát sinh (nếu có)" so an
+        optional charge is visible, not buried;
+      * an approximate amount stays visibly approximate;
+      * NO formulas are written at all, so the workbook cannot carry #REF!,
+        #DIV/0!, #VALUE! or #NAME? — every cell is a literal value;
+      * no Owner-local PC and no Office automation: pure openpyxl.
+    """
+    quote = dict(quote or {})
+    company = dict(company or {})
+    details = _quote_lines(quote)
+
     output = io.BytesIO()
     wb = Workbook()
     ws = wb.active
-    ws.title = "Quotation"
-    ws["A1"] = "LOGISTICS PRO - BÁO GIÁ"
-    ws["A1"].font = Font(size=16, bold=True, color="0F2C59")
-    ws["A3"] = f"Mã báo giá: {quote.get('id', quote.get('quote_no', ''))}"
-    ws["A4"] = f"Khách hàng: {quote.get('customer', quote.get('client', ''))}"
-    ws["A5"] = f"Ngày: {quote.get('date', date.today())}"
-    headers = ["STT", "Dịch vụ", "Đơn vị", "Số lượng", "Đơn giá", "VAT (%)", "Thành tiền", "Ghi chú"]
+    ws.title = "Bao gia"
+
+    title_font = Font(name="Arial", size=14, bold=True, color="0F2C59")
+    small = Font(name="Arial", size=9)
+    label = Font(name="Arial", size=10, bold=True)
+
+    # ---- rows 1-5: company authority header -------------------------------
+    company_name = (company.get("legal_name") or company.get("name")
+                    or "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH")
+    ws["A1"] = company_name
+    ws["A1"].font = Font(name="Arial", size=13, bold=True, color="0F2C59")
+    ws["A2"] = company.get("address", "")
+    ws["A2"].font = small
+    ws["A3"] = company.get("email", "")
+    ws["A3"].font = small
+    ws["A4"] = company.get("website", "")
+    ws["A4"].font = small
+    ws["A5"] = "BÁO GIÁ"
+    ws["A5"].font = title_font
+    ws["A5"].alignment = ALIGN_CENTER
+
+    if logo_path:
+        try:  # a missing/unsupported logo must never break the export
+            from openpyxl.drawing.image import Image as XLImage
+
+            image = XLImage(str(logo_path))
+            image.width, image.height = 120, 48
+            ws.add_image(image, "J1")
+        except Exception:  # noqa: BLE001
+            pass
+
+    # ---- rows 7-10: From / To block ---------------------------------------
+    left = [
+        ("From", company.get("contact_name", company.get("representative", ""))),
+        ("Attn", quote.get("attn", quote.get("customer_contact", ""))),
+        ("Tel/Fax", company.get("phone", "")),
+        ("Mobile", company.get("mobile", company.get("phone", ""))),
+    ]
+    right = [
+        ("To", quote.get("customer_name") or quote.get("customer") or quote.get("client", "")),
+        ("Email", quote.get("customer_email", "")),
+        ("Mobile", quote.get("customer_phone", "")),
+        ("Date", str(quote.get("date") or quote.get("created_at") or date.today())),
+    ]
+    for idx, ((lk, lv), (rk, rv)) in enumerate(zip(left, right)):
+        row = 7 + idx
+        ws.cell(row=row, column=1, value=lk).font = label
+        ws.cell(row=row, column=2, value=lv)
+        ws.cell(row=row, column=6, value=rk).font = label
+        ws.cell(row=row, column=7, value=rv)
+
+    # ---- row 11: subject; rows 12-15 the narrative ------------------------
+    origin = str(quote.get("origin") or "")
+    destination = str(quote.get("destination") or "")
+    route = str(quote.get("route") or "")
+    route_text = " - ".join([p for p in (origin, destination) if p]) or route
+    incoterm = str(quote.get("incoterm") or "")
+    ws["A11"] = "Subject: BÁO GIÁ DỊCH VỤ LOGISTICS" + (f" — {route_text}" if route_text else "")
+    ws["A11"].font = label
+    ws["A12"] = "Trân trọng cảm ơn Quý khách đã quan tâm dịch vụ của chúng tôi. Chúng tôi xin gửi báo giá như sau:"
+    ws["A13"] = "Mặt hàng: " + (str(quote.get("goods_description") or "") or "—")
+    ws["A14"] = "Tuyến: " + (route_text or "—") + (f" · Điều kiện giao hàng: {incoterm}" if incoterm else "")
+    ws["A15"] = "Dịch vụ: giao nhận / vận chuyển / thủ tục theo các khoản mục dưới đây."
+
+    # ---- row 17: table headers -------------------------------------------
+    headers = ["STT", "Chi tiết", "Đơn giá", "Số lượng", "Thành tiền", "VAT",
+               "thành tiền", "Đơn vị tiền", "Phát sinh (nếu có)"]
+    header_row = 17
     for idx, header in enumerate(headers, 1):
-        apply_header_style(ws.cell(row=7, column=idx, value=header))
-    total = 0.0
-    for row_idx, item in enumerate(details, 8):
-        qty = safe_float(item.get("qty", 1))
-        price = safe_float(item.get("price", item.get("price_out", 0)))
-        vat = safe_float(item.get("vat", item.get("vat_line", 0)))
-        amount = qty * price * (1 + vat / 100)
-        total += amount
-        values = [row_idx - 7, item.get("name", item.get("name_full", "")), item.get("unit", "Lần"), qty, price, vat, amount, item.get("note", "")]
+        apply_header_style(ws.cell(row=header_row, column=idx, value=header))
+
+    totals_by_currency = {}
+    row = header_row + 1
+    for index, item in enumerate(details, 1):
+        item = dict(item)
+        name = _line_field(item, "service_name", "name_full", "name", "label", default="")
+        unit_price = safe_float(_line_field(item, "sell_unit", "price", "price_out", "amount", default=0))
+        qty = safe_float(_line_field(item, "qty", default=1))
+        vat_pct = safe_float(_line_field(item, "tax_pct", "vat", "vat_line", default=0))
+        currency = str(_line_field(item, "currency", "ccy", default="VND")).upper()
+        pre_tax = unit_price * qty
+        with_tax = pre_tax * (1 + vat_pct / 100)
+        totals_by_currency[currency] = totals_by_currency.get(currency, 0.0) + with_tax
+
+        note = str(item.get("note") or "")
+        condition = str(item.get("condition") or "")
+        status = str(item.get("status") or "")
+        contingent = []
+        if condition == "IF_APPLICABLE" or "nếu có" in note.lower() or "phát sinh" in note.lower():
+            contingent.append("Có thể phát sinh (nếu có)")
+        if status == "ESTIMATE_REQUIRES_CONFIRMATION" or "khoảng" in note.lower() or "ước tính" in note.lower():
+            contingent.append("Ước tính — cần xác nhận, chưa phải chi phí chắc chắn")
+        if note:
+            contingent.append(note)
+
+        values = [
+            index, name, unit_price, qty, pre_tax,
+            f"{vat_pct:g}%", with_tax, currency, " · ".join(contingent),
+        ]
         for col_idx, value in enumerate(values, 1):
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell = ws.cell(row=row, column=col_idx, value=value)
             cell.border = BORDER_THIN
-            if col_idx in {5, 7}:
+            if col_idx in {3, 5, 7}:
                 cell.number_format = "#,##0"
-    total_row = 8 + len(details)
-    ws.cell(row=total_row, column=6, value="TỔNG").font = FONT_BOLD
-    ws.cell(row=total_row, column=7, value=total).number_format = "#,##0"
-    ws.cell(row=total_row, column=7).font = FONT_BOLD
+            if col_idx in {1, 6, 8}:
+                cell.alignment = ALIGN_CENTER
+            if col_idx == 9:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        row += 1
+
+    # ---- per-currency subtotals (NEVER one mixed-currency number) ---------
+    row += 1
+    ws.cell(row=row, column=2, value="TỔNG CỘNG THEO TỪNG LOẠI TIỀN (không quy đổi gộp)").font = FONT_BOLD
+    row += 1
+    for currency in sorted(totals_by_currency):
+        ws.cell(row=row, column=2, value=f"Tổng {currency}").font = FONT_BOLD
+        total_cell = ws.cell(row=row, column=7, value=totals_by_currency[currency])
+        total_cell.number_format = "#,##0"
+        total_cell.font = FONT_BOLD
+        ws.cell(row=row, column=8, value=currency).alignment = ALIGN_CENTER
+        row += 1
+
+    # ---- FX disclosure: only a rate the quote really stores ---------------
+    fx = quote.get("fx_snapshot") if isinstance(quote.get("fx_snapshot"), dict) else {}
+    rates = {str(code).upper(): safe_float(rate)
+             for code, rate in dict(fx.get("rates_to_vnd") or {}).items()}
+    used = [code for code in sorted(totals_by_currency)
+            if code != "VND" and rates.get(code)]
+    if used:
+        row += 1
+        ws.cell(row=row, column=2, value="Tỷ giá báo giá đã dùng để quy đổi VND:").font = FONT_BOLD
+        row += 1
+        for code in used:
+            ws.cell(row=row, column=2, value=f"{code} → VND = {rates[code]:,.0f}")
+            converted = ws.cell(row=row, column=7, value=totals_by_currency[code] * rates[code])
+            converted.number_format = "#,##0"
+            ws.cell(row=row, column=8, value="VND").alignment = ALIGN_CENTER
+            row += 1
+        ws.cell(row=row, column=2,
+                value=str(fx.get("source") or "Tỷ giá nhập khi báo giá; không phải tỷ giá giao dịch thực tế."))
+        row += 1
+    elif any(code != "VND" for code in totals_by_currency):
+        row += 1
+        ws.cell(row=row, column=2,
+                value="Báo giá có dòng ngoại tệ nhưng chưa có tỷ giá báo giá — không quy đổi VND.").font = FONT_BOLD
+        row += 1
+
+    # ---- Ghi chú / closing / signature ------------------------------------
+    row += 1
+    ws.cell(row=row, column=1, value="Ghi chú:").font = FONT_BOLD
+    row += 1
+    assumptions = [str(a) for a in (quote.get("assumptions") or []) if str(a).strip()]
+    if not assumptions:
+        assumptions = ["Báo giá là dự toán, chưa phải hóa đơn hoặc nghĩa vụ thanh toán."]
+    for note in assumptions:
+        ws.cell(row=row, column=1, value="- " + note)
+        row += 1
+    ws.cell(row=row, column=1,
+            value="- Các khoản ghi “Phát sinh (nếu có)” chỉ tính khi thực tế phát sinh.")
+    row += 1
+    ws.cell(row=row, column=1,
+            value="- Các khoản ghi “Ước tính” chưa phải chi phí chắc chắn, sẽ xác nhận lại trước khi thực hiện.")
+    row += 2
+    ws.cell(row=row, column=1, value="Rất mong được hợp tác cùng Quý khách.")
+    row += 2
+    ws.cell(row=row, column=6, value=company_name).font = FONT_BOLD
+
     auto_fit_columns(ws)
     wb.save(output)
     output.seek(0)

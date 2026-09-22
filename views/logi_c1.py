@@ -56,6 +56,13 @@ C1_EVENTS = {
     # RBAC → existing core.database.save_authority_agent → audit → fresh read.
     # No agents_v2 collection, no partner table, no new writer.
     "authority_agent_save",
+    # LOGI_QUOTE_COST_WORKFLOW_UX_01 — ONE bounded, READ-ONLY quote export.
+    # It mutates nothing: it re-reads the canonical quote, renders the customer
+    # quotation through the EXISTING core.excel_utils.generate_quote_excel and
+    # returns bounded base64 bytes on the same lastWrites channel every other
+    # download already uses. No second exporter, no API server, no Office
+    # automation, no Owner-local PC.
+    "quote_export_xlsx",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1797,6 +1804,63 @@ def _handle_authority_agent_save(payload: Mapping[str, Any]) -> dict[str, Any]:
                 audit=_audit("authority_agent", agent_id))
 
 
+def _handle_quote_export_xlsx(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """READ-ONLY: render the customer quotation XLSX for ONE existing quote.
+
+    Authority chain: RBAC (commercial_view) -> fresh canonical quote read ->
+    existing ``core.excel_utils.generate_quote_excel`` -> bounded base64 on the
+    normal outcome channel. Nothing is written, no ledger is touched and the
+    quote document itself is not modified.
+    """
+    import base64
+    from datetime import date as _date
+
+    from core.auth import can_operate_business
+    from core.database import load_authority_companies
+    from core.config import BASE_DIR
+    from core.excel_utils import generate_quote_excel
+
+    qid = _text(payload.get("id"))
+    request_id = _text(payload.get("requestId"))
+    if not qid:
+        return _result("quote_export_xlsx", "", False, "Thiếu mã báo giá.", requestId=request_id)
+    if not can_operate_business("commercial_view"):
+        return _result("quote_export_xlsx", qid, False,
+                       "RBAC: không có quyền xem báo giá.", requestId=request_id)
+    quote = read_quote(qid)
+    if quote is None:
+        return _result("quote_export_xlsx", qid, False,
+                       f"Không tìm thấy báo giá {qid}.", requestId=request_id)
+
+    # Company authority: the EXISTING legal master. Never a hard-coded brand,
+    # and never the sample customer from the Owner's reference workbook.
+    companies = load_authority_companies() or {}
+    company = next(iter(companies.values()), {}) if companies else {}
+
+    export_quote = dict(quote)
+    export_quote.setdefault("date", str(_date.today()))
+    logo = BASE_DIR / "logo.png" if (BASE_DIR / "logo.png").exists() else None
+    try:
+        buffer = generate_quote_excel(export_quote, company=company, logo_path=logo)
+    except Exception as exc:  # noqa: BLE001 - surface the real reason, write nothing
+        return _result("quote_export_xlsx", qid, False,
+                       f"Không tạo được file báo giá: {exc}", requestId=request_id)
+
+    data = buffer.getvalue()
+    file_name = f"BAOGIA_{_text(quote.get('quote_no')) or qid}.xlsx"
+    return _result(
+        "quote_export_xlsx", qid, True,
+        requestId=request_id,
+        document={
+            "fileName": file_name,
+            "mime": _MIME_XLSX,
+            "downloadAvailable": True,
+            "downloadBase64": base64.b64encode(data).decode("ascii"),
+            "byteSize": len(data),
+        },
+    )
+
+
 _HANDLERS = {
     "customer_create": _handle_customer_create,
     "customer_edit": _handle_customer_edit,
@@ -1816,6 +1880,7 @@ _HANDLERS = {
     "contract_docgen_issue": _handle_contract_docgen_issue,
     "contract_shipment_link": _handle_contract_shipment_link,
     "authority_agent_save": _handle_authority_agent_save,
+    "quote_export_xlsx": _handle_quote_export_xlsx,
 }
 
 

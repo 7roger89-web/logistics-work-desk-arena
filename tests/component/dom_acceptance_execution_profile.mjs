@@ -135,11 +135,26 @@ async function submitCreate(code) {
     .set.call(codeInput, code);
   codeInput.dispatchEvent(new window.Event("input", { bubbles: true }));
   await tick();
-  const customerSelect = $("select").find((sel) =>
-    [...sel.options].some((o) => text(o).includes("An Phát")));
-  assert.ok(customerSelect, "customer select missing");
-  await setValue(customerSelect, customerSelect.options[[...customerSelect.options]
-    .findIndex((o) => text(o).includes("An Phát"))].value);
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01 — the customer field is now the EXISTING
+  // SearchPicker (a long dropdown was unusable at real customer counts). The
+  // stored value is still the canonical customerId, so this step only changes
+  // HOW the same id is chosen: open the picker, type, click the match.
+  const picker = byTestId("create-customer-picker");
+  assert.ok(picker, "customer picker missing");
+  await clickTestId("create-customer-picker-toggle");
+  const search = byTestId("create-customer-picker-search");
+  assert.ok(search, "customer picker search box missing");
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")
+    .set.call(search, "an phat");
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  await tick(80);
+  const option = $('[data-testid="create-customer-picker-list"] button')
+    .find((b) => text(b).includes("An Phát"));
+  assert.ok(option, "typing \"an phat\" must find \"An Phát\"");
+  option.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(80);
+  assert.ok(byTestId("create-customer-picker").getAttribute("data-selected"),
+    "the picker must store a canonical customer id");
   const before = triggers.length;
   await click("TẠO LÔ HÀNG", "button");
   await tick(60);

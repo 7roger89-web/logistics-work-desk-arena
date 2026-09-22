@@ -61,6 +61,12 @@ export type LogiEventName =
   | "quote_create"
   | "quote_edit"
   | "quote_transition"
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01 — ONE bounded READ-ONLY export event: the
+  // server re-reads the canonical quote, renders the customer quotation XLSX
+  // with the EXISTING core.excel_utils.generate_quote_excel and returns the
+  // bytes on the SAME lastWrites channel PXK/GNT/attachment downloads use.
+  // No mutation, no second exporter, no API server.
+  | "quote_export_xlsx"
   | "agreement_create"
   | "agreement_edit"
   | "agreement_transition"
@@ -142,6 +148,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "quote_create",
   "quote_edit",
   "quote_transition",
+  "quote_export_xlsx",
   "agreement_create",
   "agreement_edit",
   "agreement_transition",

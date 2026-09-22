@@ -203,12 +203,13 @@ export default function ShipmentOperations({ shipment, dispatch, toast }: Props)
 
   return (
     <div className="space-y-4" id="missing-anchor">
-      {!shipment.transportLegsStructured && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-[13.5px] text-amber-950">
-          <p className="font-extrabold">Lô cũ · đang đọc dữ liệu tương thích</p>
-          <p className="mt-0.5">Các giá trị xe/container đơn hiện có được hiển thị thành các chặng riêng. Chỉ khi bấm “Lưu các chặng”, danh sách đang thấy mới trở thành dữ liệu structured; trường cũ vẫn được giữ nguyên.</p>
-        </div>
-      )}
+      {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — the user-facing "Lô cũ · đang đọc dữ
+          liệu tương thích" warning block was removed on Owner request.
+          REMOVE_BANNER != REMOVE_BACKWARD_COMPATIBILITY: the legacy READ
+          projection, the old single-vehicle fields, `transportLegsStructured`
+          and the explicit save-to-structured behaviour below are all unchanged
+          — a legacy lot still renders, and only the existing "Lưu các chặng"
+          path converts it. */}
 
       <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <div className="flex flex-wrap items-start gap-2 mb-4">

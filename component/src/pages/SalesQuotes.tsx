@@ -7,10 +7,11 @@
 // finance ledger — never presented as actual money.
 // ============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Plus, PenLine, ArrowRight, Calculator, Trash2 } from "lucide-react";
+import { Search, Plus, PenLine, ArrowRight, Calculator, Trash2, FileDown } from "lucide-react";
 import {
+  CalcInput,
   Field,
   GhostBtn,
   PrimaryBtn,
@@ -20,8 +21,12 @@ import {
   ToneBadge,
   inputCls,
 } from "../components/ui";
+import QuickQuotePaste from "../components/QuickQuotePaste";
+import CostCheck from "../components/CostCheck";
+import type { ParsedQuote } from "../lib/quoteTextParser";
 import { useStore } from "../lib/store";
-import { cx, fmtMoney, fmtText } from "../lib/format";
+import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import type { Quote, QuoteServiceLine } from "../lib/viewmodel";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -134,7 +139,7 @@ export default function SalesQuotes() {
   // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — the global search lands here with
   // ?q=<quote> so the exact quote is already filtered, no second search.
   const [sp] = useSearchParams();
-  const { quotes, customers, dispatch, toast } = useStore();
+  const { quotes, customers, shipments, dispatch, toast } = useStore();
   const [q, setQState] = useState(sp.get("q") ?? "");
   const setQ = (v: string) => {
     setQState(v);
@@ -143,9 +148,25 @@ export default function SalesQuotes() {
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [status, setStatus] = useState("ALL");
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01 — inner segmented view of the SAME Báo Giá
+  // workspace (no new sidebar group, no new route): BÁO GIÁ | CHECK CHI PHÍ.
+  const [workspace, setWorkspaceState] = useState<"bao-gia" | "check-chi-phi">(
+    sp.get("view") === "check-chi-phi" ? "check-chi-phi" : "bao-gia"
+  );
+  const setWorkspace = (v: "bao-gia" | "check-chi-phi") => {
+    setWorkspaceState(v);
+    const next = new URLSearchParams(window.location.search);
+    if (v === "check-chi-phi") next.set("view", v); else next.delete("view");
+    window.history.replaceState(null, "", `?${next.toString()}`);
+  };
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Quote | null>(null);
   const [form, setForm] = useState<QuoteForm>(EMPTY_FORM);
+  /** General notes the paste produced (shown as quote assumptions on review). */
+  const [assumptions, setAssumptions] = useState<string[]>([]);
+  /** LOGI_QUOTE_COST_WORKFLOW_UX_01 — the ONE in-flight quote export intent. */
+  const [exporting, setExporting] = useState<{ id: string; requestId: string } | null>(null);
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
 
   const list = useMemo(
     () =>
@@ -181,10 +202,12 @@ export default function SalesQuotes() {
   const removeLine = (i: number) => setForm((f) => ({ ...f, lines: f.lines.length > 1 ? f.lines.filter((_, idx) => idx !== i) : f.lines }));
 
   const openCreate = () => {
+    setAssumptions([]);
     setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], fx: { USD: "", CNY: "" }, salesOwner: "Minh Tú" });
     setCreating(true);
   };
   const openEdit = (x: Quote) => {
+    setAssumptions([]);
     setForm({
       customerId: x.customerId,
       salesOwner: x.salesOwner,
@@ -280,6 +303,90 @@ export default function SalesQuotes() {
     setEditing(null);
   };
 
+  /**
+   * LOGI_QUOTE_COST_WORKFLOW_UX_01 — APPLY the reviewed paste into the form.
+   *
+   * This runs ONLY from the explicit "ÁP DỤNG VÀO BÁO GIÁ" click. It fills the
+   * existing per-line cards (PR #91 ownership untouched: each parsed note goes
+   * to ITS OWN line's `note`). It invents nothing: qty stays 1, VAT/giá vốn
+   * stay EMPTY unless the operator types them, and no FX is assumed.
+   */
+  const applyParsedQuote = (parsed: ParsedQuote) => {
+    const lines: LineForm[] = parsed.lines.map((l) => {
+      const notes = [l.note].filter(Boolean);
+      if (l.condition === "IF_APPLICABLE" && !/nếu có|phát sinh/i.test(l.note)) {
+        notes.unshift("Có thể phát sinh (nếu có)");
+      }
+      return {
+        code: "",
+        serviceName: l.name,
+        unit: l.unit || "Lần",
+        qty: "1",
+        currency: l.currency || "VND",
+        // UNKNOWN != ZERO — the paste states a selling price only.
+        costUnit: "",
+        sellUnit: l.sell == null ? "" : String(l.sell),
+        taxPct: "",
+        note: notes.join(" · "),
+      };
+    });
+    setForm((f) => ({
+      ...f,
+      incoterm: parsed.incoterm || f.incoterm,
+      origin: parsed.origin || f.origin,
+      destination: parsed.destination || f.destination,
+      lines: lines.length ? lines : f.lines,
+    }));
+    setAssumptions(parsed.assumptions);
+    toast(
+      "Đã áp dụng bản dán",
+      `${lines.length} dòng dịch vụ đã điền vào form — kiểm tra và sửa trước khi lưu.`,
+      "green"
+    );
+  };
+
+  /**
+   * Ask the backend for the customer quotation XLSX of ONE quote.
+   *
+   * READ-ONLY: the server re-reads the canonical quote and renders it with the
+   * EXISTING core.excel_utils.generate_quote_excel. The browser only saves the
+   * bytes the backend returned — it builds no workbook of its own.
+   */
+  const exportQuote = (x: Quote) => {
+    if (exporting) return;
+    const requestId = `quote-xlsx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sent = dispatch("quote_export_xlsx", { id: x.id, requestId });
+    if (!sent) { toast("Không gửi được", "Component chưa kết nối backend.", "red"); return; }
+    setExporting({ id: x.id, requestId });
+    toast("Đang tạo file báo giá " + x.id, "Backend dựng file XLSX rồi trả về để tải.", "blue");
+  };
+
+  // The authoritative outcome arrives on the SAME lastWrites channel every
+  // other download uses; transport success alone is never treated as a file.
+  useEffect(() => {
+    if (!exporting || !vm) return;
+    const outcome = (vm.lastWrites ?? []).find(
+      (w) => w.event === "quote_export_xlsx" && w.requestId === exporting.requestId
+    );
+    if (!outcome) return;
+    setExporting(null);
+    if (!outcome.ok) {
+      toast("Không xuất được báo giá", String(outcome.error || "Backend từ chối."), "red");
+      return;
+    }
+    const doc = outcome.document as { fileName?: string; mime?: string; downloadBase64?: string } | undefined;
+    if (!doc?.downloadBase64) {
+      toast("Chưa có file", "Backend báo thành công nhưng không kèm dữ liệu file.", "red");
+      return;
+    }
+    downloadBinaryFile(
+      doc.fileName || `BAOGIA_${exporting.id}.xlsx`,
+      doc.downloadBase64,
+      doc.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    toast("Đã tải báo giá " + exporting.id, "File do backend dựng từ dữ liệu báo giá hiện tại.", "green");
+  }, [vm, exporting, toast]);
+
   const transition = (x: Quote, next: string) => {
     dispatch("quote_transition", { id: x.id, nextStatus: next });
     toast("Đã gửi chuyển trạng thái " + x.id, `→ ${STATUS_LABEL[next] ?? next}. Backend kiểm tra đúng luồng.`, "blue");
@@ -294,12 +401,37 @@ export default function SalesQuotes() {
           sub="Báo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/chi. Tìm theo mã · khách · tuyến."
           right={<button onClick={openCreate} className="btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]"><Plus size={18} /> Tạo báo giá</button>}
         />
+        {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — inner segmented view: the cost check
+            lives INSIDE the Báo Giá workspace, not in a new sidebar group. */}
+        <div className="flex gap-2 mb-3" role="tablist" aria-label="Khu làm việc báo giá" data-testid="quote-workspace-tabs">
+          {([
+            { id: "bao-gia", label: "BÁO GIÁ" },
+            { id: "check-chi-phi", label: "CHECK CHI PHÍ" },
+          ] as const).map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={workspace === t.id}
+              onClick={() => setWorkspace(t.id)}
+              data-testid={`quote-workspace-${t.id}`}
+              className={cx(
+                "touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-extrabold",
+                workspace === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {workspace === "bao-gia" && (
         <div className="flex gap-2">
           <div className="flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
             <Search size={19} className="ml-3.5 text-slate-400 shrink-0" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập mã (Q-…), khách (An Phát), tuyến…" className="w-full bg-transparent px-3 py-3 text-[15px] outline-none" />
           </div>
         </div>
+        )}
+        {workspace === "bao-gia" && (
         <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1">
           {statuses.map((s) => (
             <button key={s} onClick={() => setStatus(s)} className={cx("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", status === s ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}>
@@ -307,8 +439,19 @@ export default function SalesQuotes() {
             </button>
           ))}
         </div>
-        <p className="text-[13.5px] text-slate-500 mt-1.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} báo giá</b> · Trạng thái do backend quyết định theo luồng chốt khách.</p>
+        )}
+        {workspace === "bao-gia" && (
+          <p className="text-[13.5px] text-slate-500 mt-1.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} báo giá</b> · Trạng thái do backend quyết định theo luồng chốt khách.</p>
+        )}
+        {workspace === "check-chi-phi" && (
+          <p className="text-[13.5px] text-slate-500">Tra chi phí lô cũ từ chính dữ liệu đang có: ưu tiên chi phí <b>thực tế</b> đã ghi ở lô, chỉ dùng số báo giá khi lô chưa có dòng thực tế.</p>
+        )}
       </div>
+
+      {workspace === "check-chi-phi" && <CostCheck shipments={shipments} />}
+
+      {workspace === "bao-gia" && (
+      <>
 
       <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -336,6 +479,7 @@ export default function SalesQuotes() {
                         </button>
                       ))}
                       <button onClick={() => openEdit(x)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2.5 min-h-[40px]"><PenLine size={14} /> Sửa</button>
+                      <button onClick={() => exportQuote(x)} disabled={!!exporting} data-testid={`quote-export-${x.id}`} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2.5 min-h-[40px] disabled:opacity-50"><FileDown size={14} /> {exporting?.id === x.id ? "ĐANG TẠO…" : "Xuất XLSX"}</button>
                     </div>
                   </td>
                 </tr>
@@ -370,6 +514,7 @@ export default function SalesQuotes() {
                 <button key={t} onClick={() => transition(x, t)} className="btn-press touch-target rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]">{STATUS_LABEL[t] ?? t}</button>
               ))}
               <button onClick={() => openEdit(x)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><PenLine size={14} /> Sửa</button>
+              <button onClick={() => exportQuote(x)} disabled={!!exporting} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px] disabled:opacity-50"><FileDown size={14} /> {exporting?.id === x.id ? "ĐANG TẠO…" : "Xuất XLSX"}</button>
             </div>
           </div>
         ))}
@@ -380,6 +525,9 @@ export default function SalesQuotes() {
           </div>
         )}
       </div>
+
+      </>
+      )}
 
       {/* MODAL: create / edit */}
       {(creating || editing) && (
@@ -441,6 +589,31 @@ export default function SalesQuotes() {
               </div>
             )}
 
+            {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — DÁN BÁO GIÁ NHANH.
+                PASTE → PARSE → REVIEW → (operator may edit) → APPLY. Pasting
+                alone mutates nothing; only the apply click fills the cards. */}
+            <div className="mt-4">
+              <QuickQuotePaste
+                testId="quote-paste"
+                title="DÁN BÁO GIÁ NHANH"
+                hint="Dán báo giá bạn vừa gõ trong chat — hệ thống đọc thử tuyến / Incoterm / dòng dịch vụ / giá / đơn vị / ghi chú điều kiện, bạn xem lại rồi mới áp dụng."
+                applyLabel="ÁP DỤNG VÀO BÁO GIÁ"
+                onApply={applyParsedQuote}
+              />
+            </div>
+
+            {assumptions.length > 0 && (
+              <div className="mt-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-3" data-testid="quote-assumptions">
+                <p className="font-extrabold text-[14px] text-[#0f2a4a]">Ghi chú chung của báo giá</p>
+                <p className="text-[12.5px] text-slate-500">Các câu không có giá — giữ làm điều kiện chung, không tạo dòng dịch vụ giá 0.</p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {assumptions.map((a, i) => (
+                    <li key={i} className="text-[13px] text-slate-700">• {a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* LOGI_QUOTE_LINE_NOTE_CLARITY_01 — ONE CARD = ONE SERVICE LINE.
                 Every card carries its own visible identity ("Dòng dịch vụ N")
                 and its OWN "Ghi chú dòng này" field, rendered inside the same
@@ -467,10 +640,14 @@ export default function SalesQuotes() {
                       <Field label="Mã dịch vụ"><input value={l.code} onChange={(e) => setLine(i, "code", e.target.value)} placeholder="DV-VC-TQ" className={inputCls()} /></Field>
                       <Field label="Tên dịch vụ"><input value={l.serviceName} onChange={(e) => setLine(i, "serviceName", e.target.value)} placeholder="Cước xe TQ" className={inputCls()} /></Field>
                       <Field label="ĐVT"><input value={l.unit} onChange={(e) => setLine(i, "unit", e.target.value)} className={inputCls()} /></Field>
-                      <Field label="Số lượng"><input value={l.qty} onChange={(e) => setLine(i, "qty", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
-                      <Field label="Giá vốn (unit)"><input value={l.costUnit} onChange={(e) => setLine(i, "costUnit", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
-                      <Field label="Giá bán (unit)"><input value={l.sellUnit} onChange={(e) => setLine(i, "sellUnit", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
-                      <Field label="Thuế %"><input value={l.taxPct} onChange={(e) => setLine(i, "taxPct", e.target.value)} inputMode="numeric" className={inputCls()} /></Field>
+                      {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — these accept a small
+                          Excel-like expression (370*8, =SUM(370,80), 9.5tr*2)
+                          evaluated SAFELY on Enter/blur; persistence always
+                          receives a plain number. */}
+                      <Field label="Số lượng"><CalcInput value={l.qty} onChange={(v) => setLine(i, "qty", v)} testId={`quote-line-${i + 1}-qty`} ariaLabel={`Số lượng dòng ${i + 1}`} /></Field>
+                      <Field label="Giá vốn (unit)"><CalcInput value={l.costUnit} onChange={(v) => setLine(i, "costUnit", v)} testId={`quote-line-${i + 1}-cost`} ariaLabel={`Giá vốn dòng ${i + 1}`} /></Field>
+                      <Field label="Giá bán (unit)"><CalcInput value={l.sellUnit} onChange={(v) => setLine(i, "sellUnit", v)} testId={`quote-line-${i + 1}-sell`} ariaLabel={`Giá bán dòng ${i + 1}`} /></Field>
+                      <Field label="Thuế %"><CalcInput value={l.taxPct} onChange={(v) => setLine(i, "taxPct", v)} testId={`quote-line-${i + 1}-tax`} ariaLabel={`Thuế phần trăm dòng ${i + 1}`} /></Field>
                       <Field label="Tiền tệ"><select value={l.currency} onChange={(e) => setLine(i, "currency", e.target.value)} className={inputCls()}><option>VND</option><option>USD</option><option>CNY</option></select></Field>
                     </div>
                     <div data-testid={`quote-line-${i + 1}-note-block`} className="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">

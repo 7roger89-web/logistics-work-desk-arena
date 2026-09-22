@@ -6,7 +6,50 @@ import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
 import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
+import { createdTs } from "../lib/costHistory";
+import type { Shipment } from "../lib/viewmodel";
 import GetFlyImport from "../components/GetFlyImport";
+
+/**
+ * LOGI_QUOTE_COST_WORKFLOW_UX_01 — "đã hoàn tất & thanh toán" is DERIVED, never
+ * a stored flag and never a delete.
+ *
+ * A lot only counts as finished+paid when BOTH facts are KNOWN:
+ *   operational completion/delivery is known complete, AND
+ *   receivable/outstanding is known AND equals 0.
+ * An UNKNOWN outstanding (null) is NOT paid: it stays in "Đang làm".
+ */
+export function isSettled(s: Shipment): boolean {
+  const delivered = Boolean(s.importInfo?.delivered) || Boolean(s.importInfo?.actualDelivery);
+  const outstanding = s.finance?.outstanding;
+  if (outstanding == null || Number.isNaN(Number(outstanding))) return false; // UNKNOWN != paid
+  return delivered && Number(outstanding) === 0;
+}
+
+type PeriodId = "thang-nay" | "thang-truoc" | "nam-nay" | "khac" | "tat-ca";
+
+const PERIODS: Array<{ id: PeriodId; label: string }> = [
+  { id: "thang-nay", label: "Tháng này" },
+  { id: "thang-truoc", label: "Tháng trước" },
+  { id: "nam-nay", label: "Năm nay" },
+  { id: "khac", label: "Thời gian khác" },
+];
+
+/** Inclusive [from, to) bounds in ms for a named period, relative to `now`. */
+export function periodBounds(period: PeriodId, now: Date, from: string, to: string): [number, number] | null {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  if (period === "thang-nay") return [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1)];
+  if (period === "thang-truoc") return [Date.UTC(y, m - 1, 1), Date.UTC(y, m, 1)];
+  if (period === "nam-nay") return [Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1)];
+  if (period === "khac") {
+    const start = from ? Date.parse(`${from}T00:00:00Z`) : Number.NEGATIVE_INFINITY;
+    const end = to ? Date.parse(`${to}T00:00:00Z`) + 86_400_000 : Number.POSITIVE_INFINITY;
+    if (Number.isNaN(start) || Number.isNaN(end)) return null;
+    return [start, end];
+  }
+  return null; // "tất cả"
+}
 
 export default function Shipments() {
   const { shipments } = useStore();
@@ -19,7 +62,41 @@ export default function Shipments() {
   // Returning from a record with an active status filter re-opens the filter
   // panel, so the restored context is VISIBLE, not just applied silently.
   const [showFilter, setShowFilter] = useState(() => statusRaw !== "");
-  const list = useMemo(() => shipments.filter((s) => (status === "ALL" || s.status === status) && (!q || (s.id + s.customer + s.contract + s.route + s.sale + s.support).toLowerCase().includes(q.toLowerCase()))), [shipments, q, status]);
+
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01 — period + archive live in the SAME search
+  // params convention as q/status, so Back restores the exact list context.
+  // Defaults (no params): THÁNG NÀY + ĐANG LÀM. Nothing is deleted or migrated.
+  const [periodRaw, setPeriodRaw] = useQueryParam("period");
+  const period = (PERIODS.some((p) => p.id === periodRaw) || periodRaw === "tat-ca"
+    ? periodRaw : "thang-nay") as PeriodId;
+  const setPeriod = (v: PeriodId) => setPeriodRaw(v === "thang-nay" ? "" : v);
+  const [dateFrom, setDateFrom] = useQueryParam("from");
+  const [dateTo, setDateTo] = useQueryParam("to");
+  const [archiveRaw, setArchiveRaw] = useQueryParam("archive");
+  const archive = (["dang-lam", "hoan-tat", "tat-ca"].includes(archiveRaw) ? archiveRaw : "dang-lam") as
+    "dang-lam" | "hoan-tat" | "tat-ca";
+  const setArchive = (v: string) => setArchiveRaw(v === "dang-lam" ? "" : v);
+
+  const bounds = useMemo(
+    () => periodBounds(period, new Date(), dateFrom, dateTo),
+    [period, dateFrom, dateTo]
+  );
+
+  const list = useMemo(() => shipments.filter((s) => {
+    if (!(status === "ALL" || s.status === status)) return false;
+    if (q && !(s.id + s.customer + s.contract + s.route + s.sale + s.support).toLowerCase().includes(q.toLowerCase())) return false;
+    // Canonical shipment-created authority: `createdAt` (the same field the lot
+    // header edits through shipment_field_save). A lot without a known created
+    // date is never hidden by a period filter — UNKNOWN is not "outside".
+    if (bounds) {
+      const ts = createdTs(s.createdAt);
+      if (ts && !(ts >= bounds[0] && ts < bounds[1])) return false;
+    }
+    const settled = isSettled(s);
+    if (archive === "dang-lam" && settled) return false;
+    if (archive === "hoan-tat" && !settled) return false;
+    return true;
+  }), [shipments, q, status, bounds, archive]);
   const statuses = ["ALL", ...Array.from(new Set(shipments.map((s) => s.status)))];
 
   return (
@@ -34,6 +111,55 @@ export default function Shipments() {
           </div>
           <button onClick={() => setShowFilter((v) => !v)} className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", showFilter ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white")}><SlidersHorizontal size={18} /> <span className="hidden sm:inline">Lọc</span></button>
         </div>
+        {/* Period + archive: derived views only. No DB flag, no delete. */}
+        <div className="flex flex-wrap gap-2 mt-2.5" data-testid="shipment-period-controls">
+          {[...PERIODS, { id: "tat-ca" as PeriodId, label: "Tất cả thời gian" }].map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              aria-pressed={period === p.id}
+              data-testid={`shipment-period-${p.id}`}
+              className={cx("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap",
+                period === p.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {period === "khac" && (
+          <div className="flex flex-wrap items-end gap-2 mt-2" data-testid="shipment-period-custom">
+            <label className="text-[13px] font-semibold text-slate-600">
+              Từ ngày
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                data-testid="shipment-date-from"
+                className="block mt-1 rounded-xl border-2 border-slate-200 bg-white px-3 min-h-[44px] text-[14px]" />
+            </label>
+            <label className="text-[13px] font-semibold text-slate-600">
+              Đến ngày
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                data-testid="shipment-date-to"
+                className="block mt-1 rounded-xl border-2 border-slate-200 bg-white px-3 min-h-[44px] text-[14px]" />
+            </label>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Kho lưu" data-testid="shipment-archive-controls">
+          {[
+            { id: "dang-lam", label: "Đang làm" },
+            { id: "hoan-tat", label: "Đã hoàn tất & thanh toán" },
+            { id: "tat-ca", label: "Tất cả" },
+          ].map((a) => (
+            <button
+              key={a.id}
+              onClick={() => setArchive(a.id)}
+              aria-pressed={archive === a.id}
+              data-testid={`shipment-archive-${a.id}`}
+              className={cx("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap",
+                archive === a.id ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-600")}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
         {showFilter && (
           <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1">
             {statuses.map((s) => (
@@ -44,7 +170,7 @@ export default function Shipments() {
         {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the reading order
             of a row is now the reading order of the page: identity → recognition
             facts → the one next action → who last touched it → the action. */}
-        <p className="text-[13.5px] text-slate-500 mt-2.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} lô</b>{q ? <> cho “{q}”</> : null} · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.</p>
+        <p className="text-[13.5px] text-slate-500 mt-2.5" data-testid="shipment-list-summary">Tìm thấy <b className="text-[#0f2a4a]">{list.length} lô</b>{q ? <> cho “{q}”</> : null} · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.</p>
       </div>
 
       {/* ============ DESKTOP: FIVE INFORMATION REGIONS, NOT SEVEN COLUMNS ============
