@@ -21028,119 +21028,147 @@ function ec() {
 						}),
 						/* @__PURE__ */ (0, z.jsxs)("div", {
 							className: "mt-4",
-							children: [/* @__PURE__ */ (0, z.jsxs)("div", {
-								className: "flex items-center justify-between mb-2",
-								children: [/* @__PURE__ */ (0, z.jsx)("p", {
-									className: "font-extrabold text-[15px] text-[#0f2a4a]",
-									children: "Dòng dịch vụ"
-								}), /* @__PURE__ */ (0, z.jsxs)("button", {
-									onClick: T,
-									className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]",
-									children: [/* @__PURE__ */ (0, z.jsx)(pa, { size: 15 }), " Thêm dòng"]
-								})]
-							}), /* @__PURE__ */ (0, z.jsx)("div", {
-								className: "space-y-2",
-								children: m.lines.map((e, t) => /* @__PURE__ */ (0, z.jsxs)("div", {
-									className: "rounded-xl border border-slate-200 p-3 bg-slate-50/60",
-									children: [
-										/* @__PURE__ */ (0, z.jsxs)("div", {
-											className: "grid grid-cols-2 md:grid-cols-4 gap-2",
-											children: [
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Mã dịch vụ",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.code,
-														onChange: (e) => w(t, "code", e.target.value),
-														placeholder: "DV-VC-TQ",
-														className: X()
+							children: [
+								/* @__PURE__ */ (0, z.jsxs)("div", {
+									className: "flex items-center justify-between mb-1",
+									children: [/* @__PURE__ */ (0, z.jsx)("p", {
+										className: "font-extrabold text-[15px] text-[#0f2a4a]",
+										children: "Các dòng dịch vụ"
+									}), /* @__PURE__ */ (0, z.jsxs)("button", {
+										type: "button",
+										"data-testid": "quote-add-line",
+										onClick: T,
+										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]",
+										children: [/* @__PURE__ */ (0, z.jsx)(pa, { size: 15 }), " Thêm dòng"]
+									})]
+								}),
+								/* @__PURE__ */ (0, z.jsx)("p", {
+									className: "text-[13px] text-slate-500 mb-2.5",
+									children: "Mỗi dòng dịch vụ có ô ghi chú riêng của chính dòng đó — không có ghi chú dùng chung cho cả báo giá."
+								}),
+								/* @__PURE__ */ (0, z.jsx)("div", {
+									className: "space-y-2.5",
+									children: m.lines.map((e, t) => /* @__PURE__ */ (0, z.jsxs)("fieldset", {
+										"data-testid": `quote-line-${t + 1}`,
+										className: "rounded-xl border-2 border-slate-200 bg-white p-3 focus-within:border-[#1e5aa8]",
+										children: [
+											/* @__PURE__ */ (0, z.jsxs)("legend", {
+												className: "sr-only",
+												children: ["Dòng dịch vụ ", t + 1]
+											}),
+											/* @__PURE__ */ (0, z.jsxs)("div", {
+												className: "flex items-center justify-between gap-2 mb-2",
+												children: [/* @__PURE__ */ (0, z.jsxs)("p", {
+													"data-testid": `quote-line-${t + 1}-title`,
+													className: "inline-flex items-center gap-1.5 rounded-full bg-[#0f2a4a] text-white font-extrabold text-[13.5px] px-3 py-1",
+													children: ["Dòng dịch vụ ", t + 1]
+												}), m.lines.length > 1 && /* @__PURE__ */ (0, z.jsxs)("button", {
+													type: "button",
+													"data-testid": `quote-line-${t + 1}-remove`,
+													onClick: () => E(t),
+													className: "btn-press touch-target inline-flex items-center gap-1 text-[13px] font-bold text-red-600 min-h-[36px]",
+													children: [/* @__PURE__ */ (0, z.jsx)(Va, { size: 14 }), " Xóa dòng"]
+												})]
+											}),
+											/* @__PURE__ */ (0, z.jsxs)("div", {
+												className: "grid grid-cols-2 md:grid-cols-4 gap-2",
+												children: [
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Mã dịch vụ",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.code,
+															onChange: (e) => w(t, "code", e.target.value),
+															placeholder: "DV-VC-TQ",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Tên dịch vụ",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.serviceName,
+															onChange: (e) => w(t, "serviceName", e.target.value),
+															placeholder: "Cước xe TQ",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "ĐVT",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.unit,
+															onChange: (e) => w(t, "unit", e.target.value),
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Số lượng",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.qty,
+															onChange: (e) => w(t, "qty", e.target.value),
+															inputMode: "numeric",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Giá vốn (unit)",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.costUnit,
+															onChange: (e) => w(t, "costUnit", e.target.value),
+															inputMode: "numeric",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Giá bán (unit)",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.sellUnit,
+															onChange: (e) => w(t, "sellUnit", e.target.value),
+															inputMode: "numeric",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Thuế %",
+														children: /* @__PURE__ */ (0, z.jsx)("input", {
+															value: e.taxPct,
+															onChange: (e) => w(t, "taxPct", e.target.value),
+															inputMode: "numeric",
+															className: X()
+														})
+													}),
+													/* @__PURE__ */ (0, z.jsx)(Y, {
+														label: "Tiền tệ",
+														children: /* @__PURE__ */ (0, z.jsxs)("select", {
+															value: e.currency,
+															onChange: (e) => w(t, "currency", e.target.value),
+															className: X(),
+															children: [
+																/* @__PURE__ */ (0, z.jsx)("option", { children: "VND" }),
+																/* @__PURE__ */ (0, z.jsx)("option", { children: "USD" }),
+																/* @__PURE__ */ (0, z.jsx)("option", { children: "CNY" })
+															]
+														})
 													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Tên dịch vụ",
+												]
+											}),
+											/* @__PURE__ */ (0, z.jsx)("div", {
+												"data-testid": `quote-line-${t + 1}-note-block`,
+												className: "mt-2.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5",
+												children: /* @__PURE__ */ (0, z.jsx)(Y, {
+													label: "Ghi chú dòng này",
+													hint: `Chỉ áp dụng cho dòng dịch vụ ${t + 1}.`,
 													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.serviceName,
-														onChange: (e) => w(t, "serviceName", e.target.value),
-														placeholder: "Cước xe TQ",
+														"data-testid": `quote-line-${t + 1}-note`,
+														value: e.note,
+														onChange: (e) => w(t, "note", e.target.value),
+														placeholder: "Không bắt buộc — VD: Giá đã gồm bốc xếp",
 														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "ĐVT",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.unit,
-														onChange: (e) => w(t, "unit", e.target.value),
-														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Số lượng",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.qty,
-														onChange: (e) => w(t, "qty", e.target.value),
-														inputMode: "numeric",
-														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Giá vốn (unit)",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.costUnit,
-														onChange: (e) => w(t, "costUnit", e.target.value),
-														inputMode: "numeric",
-														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Giá bán (unit)",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.sellUnit,
-														onChange: (e) => w(t, "sellUnit", e.target.value),
-														inputMode: "numeric",
-														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Thuế %",
-													children: /* @__PURE__ */ (0, z.jsx)("input", {
-														value: e.taxPct,
-														onChange: (e) => w(t, "taxPct", e.target.value),
-														inputMode: "numeric",
-														className: X()
-													})
-												}),
-												/* @__PURE__ */ (0, z.jsx)(Y, {
-													label: "Tiền tệ",
-													children: /* @__PURE__ */ (0, z.jsxs)("select", {
-														value: e.currency,
-														onChange: (e) => w(t, "currency", e.target.value),
-														className: X(),
-														children: [
-															/* @__PURE__ */ (0, z.jsx)("option", { children: "VND" }),
-															/* @__PURE__ */ (0, z.jsx)("option", { children: "USD" }),
-															/* @__PURE__ */ (0, z.jsx)("option", { children: "CNY" })
-														]
 													})
 												})
-											]
-										}),
-										/* @__PURE__ */ (0, z.jsx)(Y, {
-											label: "Ghi chú",
-											children: /* @__PURE__ */ (0, z.jsx)("input", {
-												value: e.note,
-												onChange: (e) => w(t, "note", e.target.value),
-												placeholder: "Không bắt buộc — VD: giá đã gồm bốc xếp tại kho",
-												"aria-label": `Ghi chú dòng dịch vụ ${t + 1}`,
-												className: U(X(), "mt-2")
 											})
-										}),
-										m.lines.length > 1 && /* @__PURE__ */ (0, z.jsxs)("button", {
-											onClick: () => E(t),
-											className: "mt-2 inline-flex items-center gap-1 text-[13px] font-bold text-red-600",
-											children: [/* @__PURE__ */ (0, z.jsx)(Va, { size: 14 }), " Xóa dòng"]
-										})
-									]
-								}, t))
-							})]
+										]
+									}, t))
+								})
+							]
 						}),
 						/* @__PURE__ */ (0, z.jsxs)("div", {
 							className: "grid grid-cols-2 gap-2.5 mt-5",

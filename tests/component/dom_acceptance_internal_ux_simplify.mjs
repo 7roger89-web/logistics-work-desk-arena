@@ -251,7 +251,10 @@ console.log("STEP 4 — quote desk: Báo Giá title + searchable customer picker
 // ---------------------------------------------------------------------------
 console.log("STEP 5 — quote line Ghi chú travels in the payload; edit read-only customer");
 {
-  const noteInput = $('input[aria-label="Ghi chú dòng dịch vụ 1"]')[0];
+  // LOGI_QUOTE_LINE_NOTE_CLARITY_01 — the per-line note is now labelled
+  // "Ghi chú dòng này" (its wrapping <label> supplies the accessible name) and
+  // is hooked by a stable test id; the assertion itself is unchanged.
+  const noteInput = $('[data-testid="quote-line-1-note"]')[0];
   assert.ok(noteInput, "service-line Ghi chú input missing");
   await typeInput(noteInput, "giá đã gồm bốc xếp tại kho");
   // Minimal valid line so the payload is accepted shape-wise downstream.
@@ -310,7 +313,7 @@ console.log("STEP 6 — edit re-opens the persisted note; customer read-only");
   const roCustomer = $('input[aria-label="Khách hàng của báo giá (không đổi khi sửa)"]')[0];
   assert.ok(roCustomer && roCustomer.disabled, "edit customer is not read-only");
   assert.ok(roCustomer.value.includes("CUST-ANPHAT"), `read-only customer wrong: ${roCustomer.value}`);
-  const noteBack = $('input[aria-label="Ghi chú dòng dịch vụ 1"]')[0];
+  const noteBack = $('[data-testid="quote-line-1-note"]')[0];
   assert.ok(noteBack, "edit lost the Ghi chú input");
   assert.equal(noteBack.value, "ghi chú đã lưu", "edit did not re-open the persisted note");
   await click("Hủy", "button");
