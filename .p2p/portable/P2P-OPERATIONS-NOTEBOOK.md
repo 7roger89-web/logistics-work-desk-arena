@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=94990826e7f20fa96c6d58edad53d19d99cc8fa0f18a90bcb9b915e165a1391a
+SOURCE_CONTENT_SHA256=14580e03c147738db8d6b1c18d57fb6f7c33b9098ae352d8a30a91f5bf69d89e
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -304,21 +304,42 @@ the failure class is established.
    execution, verification, recovery, or context. When the required outcome is
    proven, stop instead of opening optional refactor, benchmark, framework,
    hardening, or future-phase work.
-6. **PROMPT_DESTINATION_AND_PLAN_STATE_ARE_EXPLICIT** — Every P2P-generated
+6. **PROMPT_TITLE_DESTINATION_AND_PLAN_STATE_ARE_EXPLICIT** — Every P2P-generated
    operational prompt handed to the beginner Owner for execution in another
    tool/chat must state the target project/workstream, destination/tool,
    `CHAT_MODE=NEW_CHAT` or `CHAT_MODE=SAME_CHAT`, the exact existing chat name
    when continuing (or a recognizable `CHAT_TITLE` when new), and the role where
-   applicable. The same prompt must include a compact fresh project-plan
-   checkpoint anchored to durable state: `PLAN_REFERENCE` (or
-   `NO_FORMAL_PLAN`), what is already completed, the current checkpoint,
-   blocker/Owner Gate if any, and the single next bounded step. Control Tower
-   refreshes this from the active project plan/task state before issuing the
-   prompt; chat memory may supplement but never override durable state. The
-   beginner must never infer where to paste a prompt or reconstruct project
-   progress from old chats. Do not invent a plan when none exists. This compact
-   handoff checkpoint is not continuous progress narration and does not override
+   applicable. For Arena, and for any destination where a new conversation title
+   is derived from the opening prompt text, `NEW_CHAT` prompts must follow
+   `ARENA_CHAT_TITLE_FIRST_LINE_V1`: the **first nonblank line** is one concise,
+   human-readable task title, normally `<PROJECT> — <bounded task/outcome>`.
+   Front-load the distinguishing words so the title remains useful when the UI
+   truncates it. That first line must not be routing boilerplate such as
+   `GỬI CHO:`, `DESTINATION=`, `TASK_ID=`, a code fence, or a generic `P2P`
+   prefix. Immediately after the title, serialize the normal routing metadata,
+   including `GỬI CHO: <destination>` (or the destination's equivalent),
+   `PROJECT=`, `CHAT_MODE=`, and for `NEW_CHAT`,
+   `CHAT_TITLE=<exact same human-readable title>`. For `SAME_CHAT`, the exact
+   existing `CHAT_TITLE` remains authoritative and must not be silently renamed.
+   The same prompt must include a compact fresh project-plan checkpoint anchored
+   to durable state: `PLAN_REFERENCE` (or `NO_FORMAL_PLAN`), what is already
+   completed, the current checkpoint, blocker/Owner Gate if any, and the single
+   next bounded step. Control Tower refreshes this from the active project
+   plan/task state before issuing the prompt; chat memory may supplement but
+   never override durable state. The beginner must never infer where to paste a
+   prompt, manually rename a newly created Arena chat merely to make the sidebar
+   intelligible, or reconstruct project progress from old chats. Do not invent a
+   plan when none exists. This compact handoff checkpoint is not continuous
+   progress narration and does not override
    `PROGRESS_REPORTING=EXCEPTIONS_ONLY`.
+
+   ```text
+   ARENA_CHAT_TITLE_FIRST_LINE_V1=YES
+   NEW_CHAT_FIRST_NONBLANK_LINE=<PROJECT> — <bounded task/outcome>
+   ROUTING_BOILERPLATE_FIRST_LINE=NO
+   NEW_CHAT_CHAT_TITLE_MUST_EQUAL_FIRST_LINE=YES
+   ```
+
 7. **ANALYTICAL_AUTONOMY_AND_DELEGATION_ALIGNMENT** — For non-trivial P2P
    reasoning, use analytical scepticism rather than agreement-seeking. Deconstruct
    the Owner goal, acceptance conditions, requirements, assumptions, evidence,
@@ -959,11 +980,26 @@ The beginner must never infer where a prompt should go.
 
 ### RULE 02 — CHAT_TITLE_REQUIRED
 
-Every new execution chat gets a recognizable title. Default shape:
+Every new execution chat gets a recognizable title. For Arena `NEW_CHAT`,
+the title must also be the first nonblank line of the prompt so the generated
+conversation is useful in the Arena sidebar without manual renaming.
+
+Default Arena shape:
 
 ```text
-PROJECT | PR-or-TASK | ROLE | SHORT-GOAL
+PROJECT — SHORT-GOAL
+
+GỬI CHO: ARENA AI
+PROJECT=PROJECT
+CHAT_MODE=NEW_CHAT
+CHAT_TITLE=PROJECT — SHORT-GOAL
 ```
+
+Front-load the distinguishing project/task words. Do not put `GỬI CHO:`,
+`DESTINATION=`, `TASK_ID=`, a code fence, or a generic `P2P` prefix on the
+first line. Other destinations may retain their verified naming convention
+when they expose an explicit title field or do not derive the title from the
+opening prompt.
 
 ### RULE 03 — SAME_CHAT_MUST_NAME_CHAT
 
@@ -1471,6 +1507,128 @@ OWNER_ACTION_NOW=
 This rule is an independent P2P operational abstraction. It does not import an
 external instruction architecture, mandatory per-turn metadata system,
 complexity scoring formula, autonomous baton loop, or monolithic prompt core.
+
+
+#### MODEL_CANARY_GATE_V1 — hidden/random executor session quality
+
+This gate is a bounded application of RULE 19. It measures whether the current
+execution session is trustworthy enough for the intended work. It is NOT a
+model-identification benchmark and must not create a new router, benchmark
+service, score database, or permanent harness.
+
+Canonical distinctions:
+
+```text
+SESSION_QUALITY != MODEL_IDENTITY
+MODEL_SELF_REPORT != MODEL_IDENTITY_EVIDENCE
+SELF_SCORE_IS_NOT_EVIDENCE
+FIXED_PELICAN_PROMPT != MODEL_RANKING
+CANARY_PASS != PERMANENT_EXECUTOR_CERTIFICATION
+```
+
+Use `MODEL_CANARY_GATE_V1` only when ALL are true:
+
+- the executor/model is hidden, random, newly sampled, or otherwise materially
+  uncertain for the current session;
+- the task is medium/high risk or materially expensive enough that a weak
+  session would cause meaningful rework; and
+- session quality has not already been established by representative evidence
+  under materially equivalent conditions.
+
+Skip the gate for low-risk/mechanical work, already-proven session conditions,
+or when the real bounded task itself is already the cheapest representative
+probe.
+
+Probe discipline:
+
+1. Default to FAST_CANARY: ONE task-representative probe only. Prefer the first
+   read-only or disposable slice of the real task itself over a synthetic
+   benchmark. The preferred pattern is:
+   `REAL_TASK_FIRST_SLICE = CANARY`.
+2. Escalate to a second or third tiny probe only when the first probe is
+   ambiguous, contradictory, materially incomplete, or the intended task is
+   high-risk enough that one probe is not representative. Never expand merely
+   to make the canary look thorough.
+3. For coding work, evidence should come from real tool use such as a disposable
+   scratch edit, focused test, diff inspection, or recovery from a genuine
+   command/tool error. Do not create durable commits/PRs merely for the canary.
+4. For visual/spatial work, an animal × vehicle SVG variant may be used as ONE
+   probe when that capability is relevant. Randomize the animal/vehicle pair;
+   the canonical "pelican riding a bicycle" prompt alone is saturated and must
+   never be treated as a general model ranking.
+5. Judge externally observable evidence: correctness, constraint adherence,
+   actual tool receipts, render/test result, self-verification, recovery, and
+   unnecessary scope expansion. The tested model must not grade itself.
+6. Do not infer an exact model name, provider, or reasoning level from writing
+   style, output quality, token use, or tool behavior. Arena may also switch the
+   underlying model to recover a failing session; the canary therefore
+   classifies the observed SESSION/HARNESS capability, not a stable hidden
+   model identity.
+
+
+FAST_CANARY default return shape:
+
+```text
+FAST_CANARY_V1
+CANARY_RESULT=GREEN | YELLOW | RED
+FACTS=<brief task-relevant facts observed through tools>
+CHECK=<one representative test/render/read-only verification + result>
+TOOL_HALLUCINATION=YES | NO
+UNNECESSARY_SCOPE=YES | NO
+NEXT=CONTINUE_REAL_TASK | LIMIT_TASK | REROLL_OR_SWITCH
+```
+
+`ORANGE` remains available to the fuller three-probe classification when
+evidence is mixed across multiple probes. The FAST_CANARY one-probe path uses
+`GREEN|YELLOW|RED` so the Owner does not have to interpret a four-level score
+for a simple keep/limit/reroll decision.
+
+If FAST_CANARY is `GREEN`, continue the already-authorized real task in the
+same session without asking the Owner again merely because the canary ended.
+Normal task scope, Owner Gates, and merge/deploy authority still apply.
+
+Decision classes:
+
+```text
+GREEN  = critical representative probes pass; claims are evidence-backed;
+         no material tool hallucination; verification/recovery is trustworthy
+YELLOW = core probe passes with a non-critical weakness; bounded execution is
+         allowed but requires independent verification
+ORANGE = mixed/fragile evidence; advisory or low-risk bounded work only
+RED    = wrong result/scope, fabricated verification, material tool
+         hallucination, or unrecovered/repeated failure; do not entrust the
+         intended medium/high-risk task to this session
+```
+
+Routing after classification:
+
+```text
+GREEN  -> KEEP_SESSION
+YELLOW -> LIMIT_SESSION + INDEPENDENT_VERIFY
+ORANGE -> ADVISORY_OR_LOW_RISK_ONLY
+RED    -> REROLL_OR_SWITCH_EXECUTOR
+```
+
+A RED result may justify ONE fresh-session reroll when the expected benefit is
+material and quota/cost permits. Do not create a slot-machine loop that keeps
+opening sessions until a desired hidden model is guessed. Further rerolls
+require new evidence that they are cheaper/safer than switching executor or
+reducing scope.
+
+DesignArena exception:
+
+```text
+DESIGNARENA_TOURNAMENT != ARENA_AGENT_SESSION_CANARY
+```
+
+For DesignArena's blind tournament, the real bounded design prompt is the
+selection test. Give every sampled model the same prompt and judge the rendered
+product/workflow against a fixed acceptance matrix. Do not run a separate
+pelican canary first, do not infer hidden model identity before voting, and do
+not prefer a design because of a guessed provider/model. A specialized SVG
+animal × vehicle probe is appropriate only when SVG spatial composition itself
+is the target capability.
+
 
 ### RULE 20 — OWNER_EXECUTOR_SELECTION_AND_AUTONOMOUS_COMPLETION
 
