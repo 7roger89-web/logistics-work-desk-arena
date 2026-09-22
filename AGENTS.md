@@ -145,6 +145,10 @@ Every actor (Control Tower, prompt writer, executor, reviewer, supervisor, tool 
 
 Every P2P-generated operational prompt handed to an executor must explicitly serialize both gates below; they must not be left implicit or assumed from chat memory:
 
+### Arena new-chat title-first UX
+
+For Arena `NEW_CHAT`, apply `ARENA_CHAT_TITLE_FIRST_LINE_V1`: the first nonblank prompt line is a concise human-readable title, normally `<PROJECT> — <bounded task/outcome>`, with distinguishing words front-loaded. Do not start with `GỬI CHO:`, `DESTINATION=`, `TASK_ID=`, a code fence, or a generic `P2P` prefix. Put routing metadata immediately after the title and set `CHAT_TITLE` to that exact first-line title. For `SAME_CHAT`, preserve the exact existing chat title.
+
 `P2P_LAW_PREFLIGHT`:
 - tell the executor to read repository-root `AGENTS.md` before substantive work;
 - use canonical when it is already successfully reachable; otherwise follow installed > valid portable > inline capsule > blocked;
