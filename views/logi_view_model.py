@@ -36,6 +36,9 @@ from views import ceo_report as logi_ceo_report
 from views import handbook as logi_handbook
 from views import logi_c1
 from views import logi_real_data as rd
+import time
+import threading
+
 from views import logi_sandbox
 from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
@@ -83,6 +86,32 @@ _READ_WORKERS = 8
 #: "No explicit handle supplied" — ``None`` is a real value (the canonical
 #: resolution found no database) and must not be re-resolved inside a worker.
 _UNSET_DB: Any = object()
+
+# LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — TTL cache for LIVE fx rates (5-15 min)
+FX_TTL_SECONDS = 600  # 10 minutes
+_FX_CACHE: dict[str, Any] = {"snapshot": None, "expires_at": 0.0}
+_FX_CACHE_LOCK = threading.Lock()
+
+
+def _clear_fx_cache_for_tests() -> None:
+    with _FX_CACHE_LOCK:
+        _FX_CACHE["snapshot"] = None
+        _FX_CACHE["expires_at"] = 0.0
+
+
+def _get_cached_fx_snapshot() -> dict[str, Any] | None:
+    with _FX_CACHE_LOCK:
+        snap = _FX_CACHE["snapshot"]
+        exp = _FX_CACHE["expires_at"]
+        if snap is not None and time.monotonic() < exp:
+            return copy.deepcopy(snap)
+    return None
+
+
+def _store_fx_snapshot(snapshot: dict[str, Any]) -> None:
+    with _FX_CACHE_LOCK:
+        _FX_CACHE["snapshot"] = copy.deepcopy(snapshot)
+        _FX_CACHE["expires_at"] = time.monotonic() + FX_TTL_SECONDS
 
 
 def _read_concurrently(reads: Mapping[str, Callable[[], Any]]) -> dict[str, Any]:
@@ -176,8 +205,8 @@ def _resolve_db(db: Any = _UNSET_DB) -> Any:
 # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded FX rates projection
 # ---------------------------------------------------------------------------
 
-def _intl_fx_rates_projection(*, db: Any = _UNSET_DB) -> dict[str, Any]:
-    """Build the LIVE fxRates slice for the comparator, fail-closed.
+def _intl_fx_rates_projection(*, db: Any = _UNSET_DB, force_refresh: bool = False) -> dict[str, Any]:
+    """Build the LIVE fxRates slice for the comparator, fail-closed + TTL cached.
 
     One bounded live probe per source (BOC / Agribank / BIDV) is enough
     evidence (see SKILL acceptance).  The helper never invents a rate: a
@@ -186,7 +215,16 @@ def _intl_fx_rates_projection(*, db: Any = _UNSET_DB) -> dict[str, Any]:
     when its official JSON source cannot be proven (TASK §7), even if an
     HTML table could be scraped.
     The projection is read-only; no money is moved.
+
+    TTL: 10 minutes (5-15 acceptable). First read fetches; repeats inside TTL
+    reuse snapshot; expired fetches again; force_refresh bypasses cache.
+    Thread-safe, no scheduler/daemon/Mongo, per-source failures remain RATE_UNAVAILABLE.
     """
+    # Fast path: serve TTL-cached snapshot without network
+    if not force_refresh:
+        cached = _get_cached_fx_snapshot()
+        if cached is not None:
+            return cached
     from decimal import Decimal
     try:
         from core.fx_sources import BOC_URL, AGRIBANK_URL, BIDV_URL, fetch_live_fx
@@ -234,7 +272,9 @@ def _intl_fx_rates_projection(*, db: Any = _UNSET_DB) -> dict[str, Any]:
         boc = {"status": "RATE_UNAVAILABLE", "source_url": BOC_URL}
         agri = {"status": "RATE_UNAVAILABLE", "source_url": AGRIBANK_URL}
         bidv = {"status": "RATE_UNAVAILABLE", "source_url": BIDV_URL, "bidv_rate_status": "UNAVAILABLE"}
-    return {"boc": boc, "agribank": agri, "bidv": bidv}
+    snapshot = {"boc": boc, "agribank": agri, "bidv": bidv}
+    _store_fx_snapshot(snapshot)
+    return copy.deepcopy(snapshot)
 
 
 def load_shipments(*, db: Any = _UNSET_DB) -> dict[str, Any]:

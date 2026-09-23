@@ -70,6 +70,21 @@ def _extract_pub_time_boc(html: str) -> str | None:
     return None
 
 
+def _is_valid_boc_pub_time(txt: str | None) -> bool:
+    if not txt or not isinstance(txt, str):
+        return False
+    # exact YYYY/MM/DD HH:MM:SS
+    return bool(re.match(r"^\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}$", txt.strip()))
+
+
+def _is_valid_agribank_pub_time(txt: str | None) -> bool:
+    if not txt or not isinstance(txt, str):
+        return False
+    # expected "HH:MM ngày DD/MM/YYYY" per official page
+    return bool(re.search(r"^\d{1,2}:\d{2}\s+ngày\s+\d{1,2}/\d{1,2}/\d{4}$", txt.strip()) or
+                re.search(r"\d{1,2}:\d{2}\s+ngày\s+\d{1,2}/\d{1,2}/\d{4}", txt))
+
+
 def parse_boc_html(html: str, source_url: str = BOC_URL, captured_at: str | None = None) -> dict[str, Any]:
     """Parse BOC page HTML. Offline parser, no network required.
 
@@ -200,6 +215,26 @@ def parse_boc_html(html: str, source_url: str = BOC_URL, captured_at: str | None
 
         usd_to_cny = buying / Decimal("100")
 
+        # E — timestamp fail-closed: missing/invalid BOC Pub Time => RATE_UNAVAILABLE
+        pub_valid = _is_valid_boc_pub_time(pub_txt)
+        if not pub_valid:
+            return {
+                "status": "RATE_UNAVAILABLE",
+                "reason": "BOC Pub Time missing/invalid — fail closed per issue #98",
+                "source_url": source_url,
+                "captured_at": captured_at,
+                "currency": "USD",
+                "buying_rate": buying,
+                "buying_rate_raw": buying_txt,
+                "cash_buying_rate": cash_buying,
+                "selling_rate": selling,
+                "cash_selling_rate": cash_selling,
+                "middle_rate": middle,
+                "pub_time": pub_txt,
+                "pub_time_raw": pub_txt,
+                "usd_to_cny": None,
+            }
+
         return {
             "status": "OK",
             "currency": "USD",
@@ -322,13 +357,19 @@ def parse_agribank_html(html: str, source_url: str = AGRIBANK_URL, captured_at: 
             "currency": "USD",
             "sell_raw": usd_sell,
         }
-    if pub_time is None:
-        # If timestamp invalid or missing, per fail-closed check should be RATE_UNAVAILABLE? But spec says if timestamp invalid => RATE_UNAVAILABLE.
-        # We will still return OK but mark pub_time missing? Better to require pub_time: if not found => RATE_UNAVAILABLE? Let's be lenient: keep OK but flag.
-        # For strict fail-closed we return UNAVAILABLE if timestamp not found.
-        # But Agribank page usually has timestamp. We'll treat missing as unavailable to be safe.
-        # However for unit tests, we should allow missing? For now return OK with pub_time None.
-        pass
+    if not _is_valid_agribank_pub_time(pub_time):
+        return {
+            "status": "RATE_UNAVAILABLE",
+            "reason": "Agribank pub time missing/invalid — fail closed per issue #98",
+            "source_url": source_url,
+            "captured_at": captured_at,
+            "currency": "USD",
+            "pub_time": pub_time,
+            "pub_time_raw": pub_time_raw,
+            "sell": sell_decimal,
+            "sell_raw": usd_sell,
+            "usd_sell_vnd": None,
+        }
 
     return {
         "status": "OK",

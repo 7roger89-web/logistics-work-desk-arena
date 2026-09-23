@@ -21439,24 +21439,80 @@ function lc(e, t, n = 5, r = .0015) {
 	};
 }
 function uc({ contract: e, fxRates: t }) {
-	let { dispatch: n, toast: r } = Jn(), [i, a] = (0, _.useState)("B"), o = t?.boc?.usd_to_cny ?? null, s = t?.agribank?.usd_sell_vnd ?? t?.agribank?.sell ?? null, c = t?.bidv?.usd_sell_vnd ?? t?.bidv?.sell ?? null, l = t?.boc?.status ?? "RATE_UNAVAILABLE", u = t?.agribank?.status ?? "RATE_UNAVAILABLE", d = t?.bidv?.status ?? "RATE_UNAVAILABLE", f = t?.bidv?.bidv_rate_status ?? d, [p, m] = (0, _.useState)(""), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)("3900"), [S, C] = (0, _.useState)("1500"), [w, T] = (0, _.useState)("CHINA"), [E, D] = (0, _.useState)("AGRIBANK"), [O, ee] = (0, _.useState)("10000"), [k, A] = (0, _.useState)(!1), [j, M] = (0, _.useState)("35"), [te, ne] = (0, _.useState)("150"), [N, P] = (0, _.useState)("10000"), [re, ie] = (0, _.useState)("2"), [ae, oe] = (0, _.useState)("5"), [se, F] = (0, _.useState)("0.15");
+	let { dispatch: n, toast: r } = Jn(), [i, a] = (0, _.useState)("B"), o = t?.boc?.usd_to_cny ?? null, s = t?.agribank?.usd_sell_vnd ?? t?.agribank?.sell ?? null, c = t?.bidv?.usd_sell_vnd ?? t?.bidv?.sell ?? null, l = t?.boc?.status ?? "RATE_UNAVAILABLE", u = t?.agribank?.status ?? "RATE_UNAVAILABLE", d = t?.bidv?.status ?? "RATE_UNAVAILABLE", f = t?.bidv?.bidv_rate_status ?? d, [p, m] = (0, _.useState)(""), [h, g] = (0, _.useState)("UNAVAILABLE"), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)("UNAVAILABLE"), [S, C] = (0, _.useState)(""), [w, T] = (0, _.useState)("UNAVAILABLE"), [E, D] = (0, _.useState)("3900"), [O, ee] = (0, _.useState)("1500"), [k, A] = (0, _.useState)("CHINA"), [j, M] = (0, _.useState)("AGRIBANK"), [te, ne] = (0, _.useState)("10000"), [N, P] = (0, _.useState)(!1), [re, ie] = (0, _.useState)("35"), [ae, oe] = (0, _.useState)("150"), [se, F] = (0, _.useState)("10000"), [I, ce] = (0, _.useState)("2"), [L, le] = (0, _.useState)("5"), [ue, de] = (0, _.useState)("0.15"), fe = (0, _.useRef)(!1), pe = (0, _.useRef)(!1), me = (0, _.useRef)(!1);
 	(0, _.useEffect)(() => {
-		p === "" && o != null && m(String(o));
-	}, [o]), (0, _.useEffect)(() => {
-		h === "" && s != null && g(String(s));
-	}, [s]), (0, _.useEffect)(() => {
-		v === "" && c != null && y(String(c));
-	}, [c]);
-	let I = (0, _.useMemo)(() => nc(p) ?? o ?? null, [p, o]), ce = (0, _.useMemo)(() => nc(h) ?? s ?? null, [h, s]), L = (0, _.useMemo)(() => nc(v) ?? c ?? null, [v, c]), le = (0, _.useMemo)(() => nc(b), [b]), ue = (0, _.useMemo)(() => nc(S), [S]), de = (0, _.useMemo)(() => nc(O), [O]), fe = (0, _.useMemo)(() => nc(j) ?? 35, [j]), pe = (0, _.useMemo)(() => nc(te) ?? 150, [te]), me = (0, _.useMemo)(() => nc(N) ?? 1e4, [N]), he = (0, _.useMemo)(() => {
+		if (o != null && !fe.current) {
+			let e = String(o);
+			h === "MANUAL" ? p === "" && (m(e), g(l === "OK" ? "LIVE" : "UNAVAILABLE")) : (m(e), g(l === "OK" ? "LIVE" : "UNAVAILABLE"));
+		} else o == null && h === "LIVE" && g("UNAVAILABLE");
+	}, [o, l]), (0, _.useEffect)(() => {
+		s != null && !pe.current ? b !== "MANUAL" && (y(String(s)), x(u === "OK" ? "LIVE" : "UNAVAILABLE")) : s == null && b === "LIVE" && x("UNAVAILABLE");
+	}, [s, u]), (0, _.useEffect)(() => {
+		c != null && !me.current ? w !== "MANUAL" && (C(String(c)), T(d === "OK" && f !== "UNAVAILABLE" ? "LIVE" : "UNAVAILABLE")) : c == null && w === "LIVE" && T("UNAVAILABLE");
+	}, [
+		c,
+		d,
+		f
+	]);
+	let he = (e) => {
+		if (e !== "") {
+			m(e), g("MANUAL"), fe.current = !0;
+			return;
+		}
+		o != null && l === "OK" ? (m(String(o)), g("LIVE"), fe.current = !1) : (m(""), g("UNAVAILABLE"), fe.current = !0);
+	}, ge = (e) => {
+		y(e), pe.current = !0, e === "" ? s != null && u === "OK" ? (x("LIVE"), pe.current = !1, y(String(s))) : x("UNAVAILABLE") : x("MANUAL");
+	}, _e = (e) => {
+		C(e), me.current = !0, e === "" ? c != null && d === "OK" && f !== "UNAVAILABLE" ? (T("LIVE"), me.current = !1, C(String(c))) : T("UNAVAILABLE") : T("MANUAL");
+	}, ve = () => {
+		o != null && (m(String(o)), g(l === "OK" ? "LIVE" : "UNAVAILABLE"), fe.current = !1);
+	}, ye = () => {
+		s != null && (y(String(s)), x(u === "OK" ? "LIVE" : "UNAVAILABLE"), pe.current = !1);
+	}, be = () => {
+		c != null && d === "OK" && f !== "UNAVAILABLE" && (C(String(c)), T("LIVE"), me.current = !1);
+	}, xe = (0, _.useMemo)(() => {
+		let e = nc(p);
+		return h === "MANUAL" && e != null || h === "LIVE" && e != null ? e : e ?? o ?? null;
+	}, [
+		p,
+		h,
+		o
+	]), Se = (0, _.useMemo)(() => {
+		let e = nc(v);
+		return b === "MANUAL" && e != null || b === "LIVE" && e != null ? e : e ?? s ?? null;
+	}, [
+		v,
+		b,
+		s
+	]), Ce = (0, _.useMemo)(() => {
+		let e = nc(S);
+		return w === "MANUAL" && e != null || w === "LIVE" && e != null || w === "UNAVAILABLE" ? e : e ?? c ?? null;
+	}, [
+		S,
+		w,
+		c
+	]), we = (0, _.useMemo)(() => nc(E), [E]), Te = (0, _.useMemo)(() => nc(O), [O]), Ee = (0, _.useMemo)(() => nc(te), [te]), De = (0, _.useMemo)(() => {
 		let e = nc(re);
-		return e == null ? .02 : e / 100;
-	}, [re]), ge = (0, _.useMemo)(() => nc(ae) ?? 5, [ae]), _e = (0, _.useMemo)(() => {
+		return e === null ? 35 : e;
+	}, [re]), Oe = (0, _.useMemo)(() => {
+		let e = nc(ae);
+		return e === null ? 150 : e;
+	}, [ae]), ke = (0, _.useMemo)(() => {
 		let e = nc(se);
+		return e === null ? 1e4 : e;
+	}, [se]), Ae = (0, _.useMemo)(() => {
+		let e = nc(I);
+		return e == null ? .02 : e / 100;
+	}, [I]), je = (0, _.useMemo)(() => {
+		let e = nc(L);
+		return e === null ? 5 : e;
+	}, [L]), Me = (0, _.useMemo)(() => {
+		let e = nc(ue);
 		return e == null ? .0015 : e / 100;
-	}, [se]), ve = (0, _.useMemo)(() => {
-		if (i !== "A" || ue == null || I == null) return null;
-		if (w === "CHINA") {
-			let e = sc(ue, I, pe, me, fe), t = E === "BIDV" ? L : ce, n = t == null ? null : lc(ue, t, ge, _e);
+	}, [ue]), Ne = (0, _.useMemo)(() => {
+		if (i !== "A" || Te == null || xe == null) return null;
+		if (k === "CHINA") {
+			let e = sc(Te, xe, Oe, ke, De), t = j === "BIDV" ? Ce : Se, n = t == null ? null : lc(Te, t, je, Me);
 			return {
 				kind: "CHINA",
 				...e,
@@ -21465,7 +21521,7 @@ function uc({ contract: e, fxRates: t }) {
 			};
 		}
 		{
-			let e = cc(ue, I, he, fe), t = E === "BIDV" ? L : ce, n = t == null ? null : lc(ue, t, ge, _e);
+			let e = cc(Te, xe, Ae, De), t = j === "BIDV" ? Ce : Se, n = t == null ? null : lc(Te, t, je, Me);
 			return {
 				kind: "HONG_KONG",
 				...e,
@@ -21475,37 +21531,37 @@ function uc({ contract: e, fxRates: t }) {
 		}
 	}, [
 		i,
-		ue,
-		I,
-		w,
-		pe,
-		me,
-		fe,
-		he,
-		ce,
-		L,
-		E,
-		ge,
-		_e
-	]), ye = (0, _.useMemo)(() => {
-		if (i !== "B" || de == null || le == null || I == null || ce == null) return null;
-		let e = de * le, t;
+		Te,
+		xe,
+		k,
+		Oe,
+		ke,
+		De,
+		Ae,
+		Se,
+		Ce,
+		j,
+		je,
+		Me
+	]), Pe = (0, _.useMemo)(() => {
+		if (i !== "B" || Ee == null || we == null || xe == null || Se == null) return null;
+		let e = Ee * we, t;
 		{
-			let e = pe, n = (de + e) / I + fe;
+			let e = Oe, n = (Ee + e) / xe + De;
 			for (let t = 0; t < 10; t++) {
-				let t = Math.ceil(n / me), r = t * pe;
+				let t = Math.ceil(n / ke), r = t * Oe;
 				if (r === e) {
-					let i = (de + r) / I + fe;
-					if (Math.ceil(i / me) === t) {
+					let i = (Ee + r) / xe + De;
+					if (Math.ceil(i / ke) === t) {
 						n = i, e = r;
 						break;
 					}
 				}
-				e = r, n = (de + e) / I + fe;
+				e = r, n = (Ee + e) / xe + De;
 			}
 			t = n;
 		}
-		let n = de / (I * (1 - he)) + fe, r = (t, n) => {
+		let n = Ee / (xe * (1 - Ae)) + De, r = (t, n) => {
 			if (n == null) return {
 				available: !1,
 				status: "RATE_UNAVAILABLE",
@@ -21513,7 +21569,7 @@ function uc({ contract: e, fxRates: t }) {
 				total: null,
 				delta: null
 			};
-			let r = lc(t, n, ge, _e);
+			let r = lc(t, n, je, Me);
 			return {
 				available: !0,
 				status: "OK",
@@ -21522,19 +21578,19 @@ function uc({ contract: e, fxRates: t }) {
 				delta: r.total - e,
 				breakdown: r
 			};
-		}, a = r(t, ce), o = L == null ? {
+		}, a = r(t, Se), o = Ce == null ? {
 			available: !1,
 			status: "RATE_UNAVAILABLE",
 			gross: t,
 			total: null,
 			delta: null
-		} : r(t, L), s = r(n, ce), c = L == null ? {
+		} : r(t, Ce), s = r(n, Se), c = Ce == null ? {
 			available: !1,
 			status: "RATE_UNAVAILABLE",
 			gross: n,
 			total: null,
 			delta: null
-		} : r(n, L), l = [
+		} : r(n, Ce), l = [
 			{
 				label: "USD→TQ via Agribank",
 				data: a
@@ -21570,58 +21626,84 @@ function uc({ contract: e, fxRates: t }) {
 			chinaBidv: o,
 			hkAgri: s,
 			hkBidv: c,
-			effTarget: de,
+			effTarget: Ee,
 			minTotal: d,
 			all: l
 		};
 	}, [
 		i,
-		de,
-		le,
-		I,
-		ce,
-		L,
-		pe,
-		me,
-		fe,
-		he,
-		ge,
-		_e
-	]), be = () => {
-		let a = `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, o = {
+		Ee,
+		we,
+		xe,
+		Se,
+		Ce,
+		Oe,
+		ke,
+		De,
+		Ae,
+		je,
+		Me
+	]), Fe = (e, t, n, r) => {
+		let i = (/* @__PURE__ */ new Date()).toISOString();
+		if (e === "LIVE" && r && typeof r == "object" && r.status === "OK") return r;
+		if (e === "UNAVAILABLE" && n == null) return {
+			status: "RATE_UNAVAILABLE",
+			source: "UNAVAILABLE",
+			source_url: r?.source_url ?? "manual",
+			captured_at: i,
+			reason: "source unavailable and no manual value"
+		};
+		let a = {
+			status: "MANUAL",
+			source: "MANUAL",
+			source_url: "manual",
+			value: t,
+			captured_at: i
+		};
+		return n != null && (a.value = t), r && typeof r == "object" && (a.live_reference = r), a;
+	}, Ie = () => {
+		let a = `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, o = xe == null ? p : String(xe), s = Se == null ? v : String(Se), c = Ce == null ? S : String(Ce), l = Fe(h, o, xe, t?.boc ?? null);
+		l.usd_to_cny = o;
+		let u = Fe(b, s, Se, t?.agribank ?? null);
+		u.usd_sell_vnd = s, u.sell = s;
+		let d = Fe(w, c, Ce, t?.bidv ?? null);
+		d.usd_sell_vnd = c, d.sell = c;
+		let f = {
 			contractId: e.id,
 			requestId: a,
 			mode: i,
-			usd_to_cny: p || (I == null ? "" : String(I)),
-			agribank_sell_vnd: h || (ce == null ? "" : String(ce)),
-			bidv_sell_vnd: v || (L == null ? "" : String(L)),
-			outside_cny_vnd: b,
-			recipient_bank_fee_usd: j,
-			china_fee_per_tranche_cny: te,
-			china_tranche_size_usd: N,
-			hk_fee_pct: String(he),
-			vn_swift_fee_usd: ae,
-			vn_pct_fee: String(_e),
-			fxBoc: t?.boc ?? {
-				status: l,
-				source_url: "manual"
-			},
-			fxAgribank: t?.agribank ?? {
-				status: u,
-				source_url: "manual"
-			},
-			fxBidv: t?.bidv ?? {
-				status: d,
-				source_url: "manual",
-				bidv_rate_status: f
-			}
+			usd_to_cny: o,
+			agribank_sell_vnd: s,
+			bidv_sell_vnd: S === "" ? "" : c,
+			outside_cny_vnd: E,
+			recipient_bank_fee_usd: re,
+			china_fee_per_tranche_cny: ae,
+			china_tranche_size_usd: se,
+			hk_fee_pct: String(Ae),
+			vn_swift_fee_usd: L,
+			vn_pct_fee: String(Me),
+			fxBoc: l,
+			fxAgribank: u,
+			fxBidv: d,
+			usdCnySourceKind: h,
+			agribankSourceKind: b,
+			bidvSourceKind: w
 		};
-		if (i === "A" ? (o.gross_usd = S, o.agent_route = w, o.vn_bank = E) : o.target_cny = O, !n("contract_intl_snapshot_save", o) && !n("contract_payment_snapshot_save", o)) {
+		if (i === "A" ? (f.gross_usd = O, f.agent_route = k, f.vn_bank = j) : f.target_cny = te, !n("contract_intl_snapshot_save", f) && !n("contract_payment_snapshot_save", f)) {
 			r("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
 		r("Đã gửi lưu snapshot", "Máy chủ sẽ tính lại bằng Decimal và lưu bất biến.", "blue");
-	}, xe = e.intlSnapshots ?? [];
+	}, Le = e.intlSnapshots ?? [], Re = (e, t) => e === "LIVE" && t === "OK" ? /* @__PURE__ */ (0, z.jsx)("span", {
+		className: "text-[11px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200",
+		children: "LIVE"
+	}) : e === "MANUAL" ? /* @__PURE__ */ (0, z.jsx)("span", {
+		className: "text-[11px] font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200",
+		children: "MANUAL"
+	}) : /* @__PURE__ */ (0, z.jsx)("span", {
+		className: "text-[11px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200",
+		children: "UNAVAILABLE"
+	});
 	return /* @__PURE__ */ (0, z.jsxs)("div", {
 		className: "space-y-4",
 		children: [
@@ -21659,13 +21741,21 @@ function uc({ contract: e, fxRates: t }) {
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 flex items-center gap-2",
-								children: [/* @__PURE__ */ (0, z.jsx)("span", {
-									className: `text-[11px] font-bold px-2 py-1 rounded-full ${l === "OK" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-800 border border-amber-200"}`,
-									children: l === "OK" ? "LIVE" : l
-								}), t?.boc?.pub_time && /* @__PURE__ */ (0, z.jsxs)("span", {
-									className: "text-[11px] text-slate-500",
-									children: ["Pub ", K(t.boc.pub_time)]
-								})]
+								children: [
+									Re(h, l),
+									t?.boc?.pub_time && /* @__PURE__ */ (0, z.jsxs)("span", {
+										className: "text-[11px] text-slate-500",
+										children: ["Pub ", K(t.boc.pub_time)]
+									}),
+									h === "LIVE" && /* @__PURE__ */ (0, z.jsx)("span", {
+										className: "text-[11px] text-emerald-700",
+										children: "● đang dùng LIVE"
+									}),
+									h === "MANUAL" && o != null && /* @__PURE__ */ (0, z.jsx)("span", {
+										className: "text-[11px] text-blue-700",
+										children: "● ghi đè MANUAL"
+									})
+								]
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 text-[13px]",
@@ -21689,31 +21779,46 @@ function uc({ contract: e, fxRates: t }) {
 									}),
 									/* @__PURE__ */ (0, z.jsxs)("div", {
 										className: "flex justify-between font-bold text-[#0f2a4a]",
-										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "USD→CNY (Buying/100)" }), /* @__PURE__ */ (0, z.jsx)("span", { children: I == null ? "—" : oc(I) })]
+										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "USD→CNY (Buying/100)" }), /* @__PURE__ */ (0, z.jsx)("span", { children: xe == null ? "—" : oc(xe) })]
 									})
 								]
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2",
 								children: [
-									/* @__PURE__ */ (0, z.jsx)("label", {
+									/* @__PURE__ */ (0, z.jsxs)("label", {
 										className: "text-[12px] font-bold text-slate-600",
-										children: "Tỷ giá USD→CNY (nhập tay khi cần)"
+										children: ["Tỷ giá USD→CNY ", h === "LIVE" ? "(LIVE)" : "(MANUAL khi sửa)"]
 									}),
-									/* @__PURE__ */ (0, z.jsx)("input", {
-										value: p,
-										onChange: (e) => m(e.target.value),
-										placeholder: o == null ? "6.68" : String(o),
-										inputMode: "decimal",
-										className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
+									/* @__PURE__ */ (0, z.jsxs)("div", {
+										className: "flex gap-2",
+										children: [/* @__PURE__ */ (0, z.jsx)("input", {
+											value: p,
+											onChange: (e) => he(e.target.value),
+											placeholder: o == null ? "6.68" : String(o),
+											inputMode: "decimal",
+											className: "mt-1 flex-1 rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
+										}), h === "MANUAL" && o != null && /* @__PURE__ */ (0, z.jsx)("button", {
+											onClick: ve,
+											className: "mt-1 px-3 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 text-[12px] font-bold min-h-[48px]",
+											children: "Dùng LIVE"
+										})]
 									}),
-									l !== "OK" && /* @__PURE__ */ (0, z.jsx)("p", {
+									l !== "OK" && /* @__PURE__ */ (0, z.jsxs)("p", {
 										className: "text-[11px] text-amber-700 mt-1",
-										children: "LIVE không có — đang dùng MANUAL. Nguồn sẽ được lưu trong snapshot."
+										children: [
+											"LIVE không có — đang dùng ",
+											h,
+											" . Nguồn sẽ được lưu trong snapshot."
+										]
 									}),
-									p !== "" && l === "OK" && /* @__PURE__ */ (0, z.jsx)("p", {
+									h === "MANUAL" && l === "OK" && /* @__PURE__ */ (0, z.jsx)("p", {
 										className: "text-[11px] text-blue-700 mt-1",
-										children: "Đang ghi đè LIVE bằng MANUAL — provenance sẽ ghi MANUAL."
+										children: "Đã chỉnh MANUAL — provenance sẽ ghi MANUAL + live_reference."
+									}),
+									h === "LIVE" && /* @__PURE__ */ (0, z.jsx)("p", {
+										className: "text-[11px] text-emerald-700 mt-1",
+										children: "Đang dùng LIVE seeded — provenance LIVE."
 									})
 								]
 							})
@@ -21732,13 +21837,21 @@ function uc({ contract: e, fxRates: t }) {
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 flex items-center gap-2",
-								children: [/* @__PURE__ */ (0, z.jsx)("span", {
-									className: `text-[11px] font-bold px-2 py-1 rounded-full ${u === "OK" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-800 border border-amber-200"}`,
-									children: u === "OK" ? "LIVE" : u
-								}), t?.agribank?.pub_time && /* @__PURE__ */ (0, z.jsx)("span", {
-									className: "text-[11px] text-slate-500",
-									children: K(t.agribank.pub_time)
-								})]
+								children: [
+									Re(b, u),
+									t?.agribank?.pub_time && /* @__PURE__ */ (0, z.jsx)("span", {
+										className: "text-[11px] text-slate-500",
+										children: K(t.agribank.pub_time)
+									}),
+									b === "LIVE" && /* @__PURE__ */ (0, z.jsx)("span", {
+										className: "text-[11px] text-emerald-700",
+										children: "● LIVE"
+									}),
+									b === "MANUAL" && /* @__PURE__ */ (0, z.jsx)("span", {
+										className: "text-[11px] text-blue-700",
+										children: "● MANUAL"
+									})
+								]
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 flex justify-between text-[13px]",
@@ -21747,21 +21860,35 @@ function uc({ contract: e, fxRates: t }) {
 									children: "Giá bán"
 								}), /* @__PURE__ */ (0, z.jsx)("span", {
 									className: "font-bold",
-									children: ce == null ? "—" : ac(ce)
+									children: Se == null ? "—" : ac(Se)
 								})]
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2",
-								children: [/* @__PURE__ */ (0, z.jsx)("label", {
-									className: "text-[12px] font-bold text-slate-600",
-									children: "USD bán VND (Agribank)"
-								}), /* @__PURE__ */ (0, z.jsx)("input", {
-									value: h,
-									onChange: (e) => g(e.target.value),
-									placeholder: s == null ? "26180" : String(s),
-									inputMode: "numeric",
-									className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
-								})]
+								children: [
+									/* @__PURE__ */ (0, z.jsxs)("label", {
+										className: "text-[12px] font-bold text-slate-600",
+										children: ["USD bán VND (Agribank) ", b === "LIVE" ? "(LIVE)" : ""]
+									}),
+									/* @__PURE__ */ (0, z.jsxs)("div", {
+										className: "flex gap-2",
+										children: [/* @__PURE__ */ (0, z.jsx)("input", {
+											value: v,
+											onChange: (e) => ge(e.target.value),
+											placeholder: s == null ? "26180" : String(s),
+											inputMode: "numeric",
+											className: "mt-1 flex-1 rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
+										}), b === "MANUAL" && s != null && /* @__PURE__ */ (0, z.jsx)("button", {
+											onClick: ye,
+											className: "mt-1 px-3 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 text-[12px] font-bold min-h-[48px]",
+											children: "Dùng LIVE"
+										})]
+									}),
+									b === "MANUAL" && /* @__PURE__ */ (0, z.jsx)("p", {
+										className: "text-[11px] text-blue-700 mt-1",
+										children: "MANUAL — sẽ lưu MANUAL + live_reference nếu có."
+									})
+								]
 							})
 						]
 					}),
@@ -21779,8 +21906,8 @@ function uc({ contract: e, fxRates: t }) {
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 flex items-center gap-2",
 								children: [/* @__PURE__ */ (0, z.jsx)("span", {
-									className: `text-[11px] font-bold px-2 py-1 rounded-full ${d === "OK" && f !== "UNAVAILABLE" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`,
-									children: f === "UNAVAILABLE" ? "UNAVAILABLE" : d
+									className: `text-[11px] font-bold px-2 py-1 rounded-full ${w === "LIVE" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : w === "MANUAL" ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-red-50 text-red-700 border border-red-200"}`,
+									children: w === "LIVE" ? "LIVE" : w === "MANUAL" ? "MANUAL" : "UNAVAILABLE"
 								}), t?.bidv?.pub_time && /* @__PURE__ */ (0, z.jsx)("span", {
 									className: "text-[11px] text-slate-500",
 									children: K(t.bidv.pub_time)
@@ -21788,7 +21915,7 @@ function uc({ contract: e, fxRates: t }) {
 							}),
 							f === "UNAVAILABLE" && /* @__PURE__ */ (0, z.jsx)("p", {
 								className: "text-[11px] text-red-700 mt-1",
-								children: "Không có nguồn JSON chính thức được chứng minh — hệ thống giữ MANUAL. Không dùng tỷ giá bên thứ ba."
+								children: "Không có nguồn JSON chính thức — LIVE UNAVAILABLE, hãy nhập MANUAL."
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-2 flex justify-between text-[13px]",
@@ -21797,7 +21924,7 @@ function uc({ contract: e, fxRates: t }) {
 									children: "Giá bán"
 								}), /* @__PURE__ */ (0, z.jsx)("span", {
 									className: "font-bold",
-									children: L == null ? "—" : ac(L)
+									children: Ce == null ? "—" : ac(Ce)
 								})]
 							}),
 							/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -21807,16 +21934,23 @@ function uc({ contract: e, fxRates: t }) {
 										className: "text-[12px] font-bold text-slate-600",
 										children: "USD bán VND (BIDV) — nhập tay"
 									}),
-									/* @__PURE__ */ (0, z.jsx)("input", {
-										value: v,
-										onChange: (e) => y(e.target.value),
-										placeholder: c == null ? "26180" : String(c),
-										inputMode: "numeric",
-										className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
+									/* @__PURE__ */ (0, z.jsxs)("div", {
+										className: "flex gap-2",
+										children: [/* @__PURE__ */ (0, z.jsx)("input", {
+											value: S,
+											onChange: (e) => _e(e.target.value),
+											placeholder: c == null ? "26180" : String(c),
+											inputMode: "numeric",
+											className: "mt-1 flex-1 rounded-xl border-2 border-slate-200 px-3 py-2.5 text-[15px] font-semibold focus:border-[#0f2a4a] focus:outline-none min-h-[48px]"
+										}), w === "MANUAL" && f !== "UNAVAILABLE" && c != null && /* @__PURE__ */ (0, z.jsx)("button", {
+											onClick: be,
+											className: "mt-1 px-3 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 text-[12px] font-bold min-h-[48px]",
+											children: "Dùng LIVE"
+										})]
 									}),
 									/* @__PURE__ */ (0, z.jsx)("p", {
 										className: "text-[11px] text-slate-500 mt-1",
-										children: "Để trống = RATE_UNAVAILABLE (kênh BIDV sẽ ẩn trong so sánh)."
+										children: w === "UNAVAILABLE" && !S ? "Chưa nhập MANUAL — kênh BIDV = RATE_UNAVAILABLE." : w === "MANUAL" ? "MANUAL truth — sẽ lưu MANUAL." : "Để trống = RATE_UNAVAILABLE."
 									})
 								]
 							})
@@ -21838,8 +21972,8 @@ function uc({ contract: e, fxRates: t }) {
 								className: "text-[13px] font-bold text-slate-700",
 								children: "Số USD gửi (gross)"
 							}), /* @__PURE__ */ (0, z.jsx)("input", {
-								value: S,
-								onChange: (e) => C(e.target.value),
+								value: O,
+								onChange: (e) => ee(e.target.value),
 								inputMode: "decimal",
 								className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-3 text-[16px] font-bold focus:border-[#0f2a4a] focus:outline-none min-h-[52px]",
 								placeholder: "1500"
@@ -21850,12 +21984,12 @@ function uc({ contract: e, fxRates: t }) {
 							}), /* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-1 flex gap-2",
 								children: [/* @__PURE__ */ (0, z.jsx)("button", {
-									onClick: () => T("CHINA"),
-									className: `flex-1 min-h-[52px] rounded-xl border-2 font-bold text-[14px] ${w === "CHINA" ? "bg-[#0f2a4a] text-white border-[#0f2a4a]" : "bg-white border-slate-200"}`,
+									onClick: () => A("CHINA"),
+									className: `flex-1 min-h-[52px] rounded-xl border-2 font-bold text-[14px] ${k === "CHINA" ? "bg-[#0f2a4a] text-white border-[#0f2a4a]" : "bg-white border-slate-200"}`,
 									children: "Trung Quốc"
 								}), /* @__PURE__ */ (0, z.jsx)("button", {
-									onClick: () => T("HONG_KONG"),
-									className: `flex-1 min-h-[52px] rounded-xl border-2 font-bold text-[14px] ${w === "HONG_KONG" ? "bg-[#0f2a4a] text-white border-[#0f2a4a]" : "bg-white border-slate-200"}`,
+									onClick: () => A("HONG_KONG"),
+									className: `flex-1 min-h-[52px] rounded-xl border-2 font-bold text-[14px] ${k === "HONG_KONG" ? "bg-[#0f2a4a] text-white border-[#0f2a4a]" : "bg-white border-slate-200"}`,
 									children: "Hong Kong"
 								})]
 							})] }),
@@ -21865,18 +21999,18 @@ function uc({ contract: e, fxRates: t }) {
 							}), /* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "mt-1 flex gap-2",
 								children: [/* @__PURE__ */ (0, z.jsx)("button", {
-									onClick: () => D("AGRIBANK"),
-									className: `flex-1 min-h-[48px] rounded-xl border-2 font-bold text-[13px] ${E === "AGRIBANK" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-slate-200"}`,
+									onClick: () => M("AGRIBANK"),
+									className: `flex-1 min-h-[48px] rounded-xl border-2 font-bold text-[13px] ${j === "AGRIBANK" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-slate-200"}`,
 									children: "Agribank"
 								}), /* @__PURE__ */ (0, z.jsx)("button", {
-									onClick: () => D("BIDV"),
-									className: `flex-1 min-h-[48px] rounded-xl border-2 font-bold text-[13px] ${E === "BIDV" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-slate-200"}`,
+									onClick: () => M("BIDV"),
+									className: `flex-1 min-h-[48px] rounded-xl border-2 font-bold text-[13px] ${j === "BIDV" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-slate-200"}`,
 									children: "BIDV"
 								})]
 							})] })
 						]
 					}),
-					ve ? /* @__PURE__ */ (0, z.jsxs)("div", {
+					Ne ? /* @__PURE__ */ (0, z.jsxs)("div", {
 						className: "rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2 text-[14px]",
 						children: [
 							/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -21886,24 +22020,24 @@ function uc({ contract: e, fxRates: t }) {
 									children: "Sau phí NH người nhận (35 USD)"
 								}), /* @__PURE__ */ (0, z.jsx)("span", {
 									className: "font-bold",
-									children: rc(ve.afterBank)
+									children: rc(Ne.afterBank)
 								})]
 							}),
-							ve.kind === "CHINA" ? /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [
+							Ne.kind === "CHINA" ? /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [
 								/* @__PURE__ */ (0, z.jsxs)("div", {
 									className: "flex justify-between",
 									children: [/* @__PURE__ */ (0, z.jsxs)("span", {
 										className: "text-slate-600",
 										children: [
 											"Phí đại lý TQ (",
-											ve.trancheCount,
+											Ne.trancheCount,
 											" tranche × ",
-											pe,
+											Oe,
 											" CNY)"
 										]
 									}), /* @__PURE__ */ (0, z.jsx)("span", {
 										className: "font-bold text-amber-700",
-										children: ic(ve.chinaFee)
+										children: ic(Ne.chinaFee)
 									})]
 								}),
 								/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -21911,11 +22045,11 @@ function uc({ contract: e, fxRates: t }) {
 									children: [/* @__PURE__ */ (0, z.jsx)("span", {
 										className: "text-slate-600",
 										children: "CNY trước phí"
-									}), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(ve.grossCny) })]
+									}), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(Ne.grossCny) })]
 								}),
 								/* @__PURE__ */ (0, z.jsxs)("div", {
 									className: "flex justify-between font-extrabold text-[#0f2a4a] text-[15px] border-t pt-2",
-									children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "CNY thực nhận" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(ve.net) })]
+									children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "CNY thực nhận" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(Ne.net) })]
 								})
 							] }) : /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [
 								/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -21925,7 +22059,7 @@ function uc({ contract: e, fxRates: t }) {
 										children: "Phí HK (2%)"
 									}), /* @__PURE__ */ (0, z.jsx)("span", {
 										className: "font-bold text-amber-700",
-										children: rc(ve.hkFee)
+										children: rc(Ne.hkFee)
 									})]
 								}),
 								/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -21933,14 +22067,14 @@ function uc({ contract: e, fxRates: t }) {
 									children: [/* @__PURE__ */ (0, z.jsx)("span", {
 										className: "text-slate-600",
 										children: "USD sau phí HK để quy đổi"
-									}), /* @__PURE__ */ (0, z.jsx)("span", { children: rc(ve.forConv) })]
+									}), /* @__PURE__ */ (0, z.jsx)("span", { children: rc(Ne.forConv) })]
 								}),
 								/* @__PURE__ */ (0, z.jsxs)("div", {
 									className: "flex justify-between font-extrabold text-[#0f2a4a] text-[15px] border-t pt-2",
-									children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "CNY thực nhận" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(ve.net) })]
+									children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "CNY thực nhận" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ic(Ne.net) })]
 								})
 							] }),
-							ve.vnCost && /* @__PURE__ */ (0, z.jsxs)("div", {
+							Ne.vnCost && /* @__PURE__ */ (0, z.jsxs)("div", {
 								className: "pt-2 border-t space-y-1",
 								children: [
 									/* @__PURE__ */ (0, z.jsx)("p", {
@@ -21949,23 +22083,19 @@ function uc({ contract: e, fxRates: t }) {
 									}),
 									/* @__PURE__ */ (0, z.jsxs)("div", {
 										className: "flex justify-between text-[13px]",
-										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Gốc VND" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(ve.vnCost.principal) })]
+										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Gốc VND" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(Ne.vnCost.principal) })]
 									}),
 									/* @__PURE__ */ (0, z.jsxs)("div", {
 										className: "flex justify-between text-[13px]",
-										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "SWIFT 5 USD" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(ve.vnCost.swift) })]
+										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "SWIFT 5 USD" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(Ne.vnCost.swift) })]
 									}),
 									/* @__PURE__ */ (0, z.jsxs)("div", {
 										className: "flex justify-between text-[13px]",
-										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Phí NH 0.15%" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(ve.vnCost.pctFee) })]
+										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Phí NH 0.15%" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(Ne.vnCost.pctFee) })]
 									}),
 									/* @__PURE__ */ (0, z.jsxs)("div", {
 										className: "flex justify-between font-extrabold",
-										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Tổng VND" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(ve.vnCost.total) })]
-									}),
-									/* @__PURE__ */ (0, z.jsx)("p", {
-										className: "text-[11px] text-slate-500",
-										children: "Chưa gồm VAT/phí khác — hiển thị đúng quy tắc được nhập."
+										children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "Tổng VND" }), /* @__PURE__ */ (0, z.jsx)("span", { children: ac(Ne.vnCost.total) })]
 									})
 								]
 							}),
@@ -21994,8 +22124,8 @@ function uc({ contract: e, fxRates: t }) {
 								children: "Mục tiêu CNY (target)"
 							}),
 							/* @__PURE__ */ (0, z.jsx)("input", {
-								value: O,
-								onChange: (e) => ee(e.target.value),
+								value: te,
+								onChange: (e) => ne(e.target.value),
 								inputMode: "numeric",
 								className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-3 text-[16px] font-bold focus:border-[#0f2a4a] focus:outline-none min-h-[52px]",
 								placeholder: "10000"
@@ -22010,8 +22140,8 @@ function uc({ contract: e, fxRates: t }) {
 								children: "Tỷ giá tệ ngoài (VND/CNY) — nhập tay"
 							}),
 							/* @__PURE__ */ (0, z.jsx)("input", {
-								value: b,
-								onChange: (e) => x(e.target.value),
+								value: E,
+								onChange: (e) => D(e.target.value),
 								inputMode: "numeric",
 								className: "mt-1 w-full rounded-xl border-2 border-slate-200 px-3 py-3 text-[16px] font-bold focus:border-[#0f2a4a] focus:outline-none min-h-[52px]",
 								placeholder: "3900"
@@ -22022,7 +22152,7 @@ function uc({ contract: e, fxRates: t }) {
 							})
 						] })]
 					}),
-					ye ? /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [
+					Pe ? /* @__PURE__ */ (0, z.jsxs)(z.Fragment, { children: [
 						/* @__PURE__ */ (0, z.jsx)("div", {
 							className: "overflow-x-auto -mx-1",
 							children: /* @__PURE__ */ (0, z.jsxs)("table", {
@@ -22052,13 +22182,13 @@ function uc({ contract: e, fxRates: t }) {
 										})
 									]
 								}) }), /* @__PURE__ */ (0, z.jsxs)("tbody", { children: [/* @__PURE__ */ (0, z.jsxs)("tr", {
-									className: ye.minTotal === ye.outsideTotal ? "bg-emerald-50 font-bold" : "",
+									className: Pe.minTotal === Pe.outsideTotal ? "bg-emerald-50 font-bold" : "",
 									children: [
 										/* @__PURE__ */ (0, z.jsxs)("td", {
 											className: "p-2.5 border",
 											children: [
 												"Tệ ngoài (",
-												oc(le, " ₫/CNY"),
+												oc(we, " ₫/CNY"),
 												")"
 											]
 										}),
@@ -22068,7 +22198,7 @@ function uc({ contract: e, fxRates: t }) {
 										}),
 										/* @__PURE__ */ (0, z.jsx)("td", {
 											className: "text-right p-2.5 border font-bold",
-											children: ac(ye.outsideTotal)
+											children: ac(Pe.outsideTotal)
 										}),
 										/* @__PURE__ */ (0, z.jsx)("td", {
 											className: "text-right p-2.5 border",
@@ -22076,28 +22206,28 @@ function uc({ contract: e, fxRates: t }) {
 										}),
 										/* @__PURE__ */ (0, z.jsx)("td", {
 											className: "text-center p-2.5 border",
-											children: ye.minTotal === ye.outsideTotal ? "★" : ""
+											children: Pe.minTotal === Pe.outsideTotal ? "★" : ""
 										})
 									]
 								}), [
 									{
 										label: "USD→TQ via Agribank",
-										d: ye.chinaAgri
+										d: Pe.chinaAgri
 									},
 									{
 										label: "USD→TQ via BIDV",
-										d: ye.chinaBidv
+										d: Pe.chinaBidv
 									},
 									{
 										label: "USD→HK via Agribank",
-										d: ye.hkAgri
+										d: Pe.hkAgri
 									},
 									{
 										label: "USD→HK via BIDV",
-										d: ye.hkBidv
+										d: Pe.hkBidv
 									}
 								].map((e) => {
-									let t = e.d, n = t.available && t.total != null && t.total === ye.minTotal;
+									let t = e.d, n = t.available && t.total != null && t.total === Pe.minTotal;
 									return /* @__PURE__ */ (0, z.jsxs)("tr", {
 										className: n ? "bg-emerald-50 font-bold" : "",
 										children: [
@@ -22131,25 +22261,17 @@ function uc({ contract: e, fxRates: t }) {
 						}),
 						/* @__PURE__ */ (0, z.jsxs)("div", {
 							className: "rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13px] leading-snug",
-							children: [
-								/* @__PURE__ */ (0, z.jsx)("p", {
-									className: "font-bold text-blue-900",
-									children: "Ghi chú công thức (lưu cùng snapshot):"
-								}),
-								/* @__PURE__ */ (0, z.jsxs)("ul", {
-									className: "list-disc pl-5 mt-1 space-y-0.5 text-blue-800",
-									children: [
-										/* @__PURE__ */ (0, z.jsx)("li", { children: "TQ: gross = (target + phí_tranche)/rate + 35 — phí 150 CNY / tranche 10k USD, làm tròn lên." }),
-										/* @__PURE__ */ (0, z.jsx)("li", { children: "HK: gross = target / (rate×0.98) + 35 — phí 2% trên USD sau 35." }),
-										/* @__PURE__ */ (0, z.jsx)("li", { children: "VN: tổng = principal + 5×sell + principal×0.15% — không tự thêm VAT." }),
-										/* @__PURE__ */ (0, z.jsx)("li", { children: "Hiển thị làm tròn 2 USD / nguyên VND; lưu tính bằng Decimal độ chính xác cao." })
-									]
-								}),
-								/* @__PURE__ */ (0, z.jsx)("p", {
-									className: "text-[11px] text-blue-700 mt-2",
-									children: "Bảng giữ đủ 5 kênh — dòng RATE_UNAVAILABLE vẫn hiển thị để không che giấu."
-								})
-							]
+							children: [/* @__PURE__ */ (0, z.jsx)("p", {
+								className: "font-bold text-blue-900",
+								children: "Ghi chú công thức (lưu cùng snapshot):"
+							}), /* @__PURE__ */ (0, z.jsxs)("ul", {
+								className: "list-disc pl-5 mt-1 space-y-0.5 text-blue-800",
+								children: [
+									/* @__PURE__ */ (0, z.jsx)("li", { children: "TQ: gross = (target + phí_tranche)/rate + 35 — phí 150 CNY / tranche 10k USD, làm tròn lên." }),
+									/* @__PURE__ */ (0, z.jsx)("li", { children: "HK: gross = target / (rate×0.98) + 35 — phí 2% trên USD sau 35." }),
+									/* @__PURE__ */ (0, z.jsx)("li", { children: "VN: tổng = principal + 5×sell + principal×0.15% — không tự thêm VAT." })
+								]
+							})]
 						}),
 						/* @__PURE__ */ (0, z.jsxs)("details", {
 							className: "rounded-xl bg-slate-50 border p-3",
@@ -22161,27 +22283,27 @@ function uc({ contract: e, fxRates: t }) {
 								children: [
 									/* @__PURE__ */ (0, z.jsxs)("div", { children: [
 										"China gross cần: ",
-										rc(ye.chinaGross),
+										rc(Pe.chinaGross),
 										" — tranche ",
-										Math.ceil(ye.chinaGross / me),
+										Math.ceil(Pe.chinaGross / ke),
 										" × ",
-										pe,
+										Oe,
 										" CNY = ",
-										ic(Math.ceil(ye.chinaGross / me) * pe)
+										ic(Math.ceil(Pe.chinaGross / ke) * Oe)
 									] }),
 									/* @__PURE__ */ (0, z.jsxs)("div", { children: [
 										"HK gross cần: ",
-										rc(ye.hkGross),
+										rc(Pe.hkGross),
 										" — phí HK ",
-										rc((ye.hkGross - 35) * he)
+										rc((Pe.hkGross - 35) * Ae)
 									] }),
 									/* @__PURE__ */ (0, z.jsxs)("div", { children: [
 										"Tệ ngoài: ",
-										ic(de),
+										ic(Ee),
 										" × ",
-										oc(le),
+										oc(we),
 										" = ",
-										ac(ye.outsideTotal)
+										ac(Pe.outsideTotal)
 									] })
 								]
 							})]
@@ -22195,42 +22317,18 @@ function uc({ contract: e, fxRates: t }) {
 			/* @__PURE__ */ (0, z.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 p-3",
 				children: [/* @__PURE__ */ (0, z.jsxs)("button", {
-					onClick: () => A((e) => !e),
+					onClick: () => P((e) => !e),
 					className: "w-full flex items-center justify-between min-h-[48px] font-bold text-[14px] text-[#0f2a4a]",
-					children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "⚙️ Quy tắc phí (cho xem/sửa — lưu cùng snapshot)" }), /* @__PURE__ */ (0, z.jsx)("span", {
+					children: [/* @__PURE__ */ (0, z.jsx)("span", { children: "⚙️ Quy tắc phí (cho xem/sửa — lưu cùng snapshot) — 0 là hợp lệ" }), /* @__PURE__ */ (0, z.jsx)("span", {
 						className: "text-[18px]",
-						children: k ? "−" : "+"
+						children: N ? "−" : "+"
 					})]
-				}), k && /* @__PURE__ */ (0, z.jsxs)("div", {
+				}), N && /* @__PURE__ */ (0, z.jsxs)("div", {
 					className: "grid sm:grid-cols-3 gap-3 mt-3",
 					children: [
 						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
 							className: "text-[12px] font-bold text-slate-600",
 							children: "Phí NH người nhận (USD)"
-						}), /* @__PURE__ */ (0, z.jsx)("input", {
-							value: j,
-							onChange: (e) => M(e.target.value),
-							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
-						})] }),
-						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
-							className: "text-[12px] font-bold text-slate-600",
-							children: "Phí TQ / tranche (CNY)"
-						}), /* @__PURE__ */ (0, z.jsx)("input", {
-							value: te,
-							onChange: (e) => ne(e.target.value),
-							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
-						})] }),
-						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
-							className: "text-[12px] font-bold text-slate-600",
-							children: "Cỡ tranche (USD)"
-						}), /* @__PURE__ */ (0, z.jsx)("input", {
-							value: N,
-							onChange: (e) => P(e.target.value),
-							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
-						})] }),
-						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
-							className: "text-[12px] font-bold text-slate-600",
-							children: "Phí HK (%)"
 						}), /* @__PURE__ */ (0, z.jsx)("input", {
 							value: re,
 							onChange: (e) => ie(e.target.value),
@@ -22238,7 +22336,7 @@ function uc({ contract: e, fxRates: t }) {
 						})] }),
 						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
 							className: "text-[12px] font-bold text-slate-600",
-							children: "SWIFT VN (USD)"
+							children: "Phí TQ / tranche (CNY)"
 						}), /* @__PURE__ */ (0, z.jsx)("input", {
 							value: ae,
 							onChange: (e) => oe(e.target.value),
@@ -22246,15 +22344,45 @@ function uc({ contract: e, fxRates: t }) {
 						})] }),
 						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
 							className: "text-[12px] font-bold text-slate-600",
-							children: "Phí NH VN (%)"
+							children: "Cỡ tranche (USD)"
 						}), /* @__PURE__ */ (0, z.jsx)("input", {
 							value: se,
 							onChange: (e) => F(e.target.value),
 							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
 						})] }),
-						/* @__PURE__ */ (0, z.jsx)("p", {
+						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
+							className: "text-[12px] font-bold text-slate-600",
+							children: "Phí HK (%)"
+						}), /* @__PURE__ */ (0, z.jsx)("input", {
+							value: I,
+							onChange: (e) => ce(e.target.value),
+							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
+						})] }),
+						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
+							className: "text-[12px] font-bold text-slate-600",
+							children: "SWIFT VN (USD)"
+						}), /* @__PURE__ */ (0, z.jsx)("input", {
+							value: L,
+							onChange: (e) => le(e.target.value),
+							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
+						})] }),
+						/* @__PURE__ */ (0, z.jsxs)("div", { children: [/* @__PURE__ */ (0, z.jsx)("label", {
+							className: "text-[12px] font-bold text-slate-600",
+							children: "Phí NH VN (%)"
+						}), /* @__PURE__ */ (0, z.jsx)("input", {
+							value: ue,
+							onChange: (e) => de(e.target.value),
+							className: "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[14px] min-h-[48px]"
+						})] }),
+						/* @__PURE__ */ (0, z.jsxs)("p", {
 							className: "sm:col-span-3 text-[11px] text-slate-500",
-							children: "Mặc định: 35 USD nhận, 150 CNY/tranche 10k, HK 2%, SWIFT 5 USD, VN 0.15%. Sửa ở đây sẽ được ghi provenance và dùng khi tính lại ở server."
+							children: [
+								"0 là giá trị hợp lệ (đã sửa falsy → null-aware). Sửa ở đây sẽ được ghi provenance và dùng khi tính lại ở server với validation ≥0, tranche ",
+								">",
+								"0, HK ",
+								"<",
+								"100%."
+							]
 						})
 					]
 				})]
@@ -22262,12 +22390,12 @@ function uc({ contract: e, fxRates: t }) {
 			/* @__PURE__ */ (0, z.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 p-3",
 				children: [/* @__PURE__ */ (0, z.jsx)("button", {
-					onClick: be,
+					onClick: Ie,
 					className: "w-full min-h-[56px] rounded-xl bg-[#0f2a4a] text-white font-extrabold text-[16px] shadow",
 					children: "💾 LƯU SNAPSHOT (bất biến)"
 				}), /* @__PURE__ */ (0, z.jsx)("p", {
 					className: "text-[11px] text-slate-500 mt-2 leading-snug",
-					children: "Lưu toàn bộ: inputs, tỷ giá, nguồn, thời gian publish/captured, quy tắc phí, công thức 1.0.0, outputs. Snapshot mới không ghi đè cái cũ — tỷ giá sau này đổi không làm thay lịch sử."
+					children: "Lưu toàn bộ: inputs, tỷ giá với provenance LIVE/MANUAL/UNAVAILABLE, quy tắc phí, công thức 1.0.0, outputs. Snapshot mới không ghi đè cái cũ."
 				})]
 			}),
 			/* @__PURE__ */ (0, z.jsxs)("div", {
@@ -22276,15 +22404,15 @@ function uc({ contract: e, fxRates: t }) {
 					className: "font-extrabold text-[15px] text-[#0f2a4a]",
 					children: [
 						"Lịch sử snapshot (bất biến) — ",
-						xe.length,
+						Le.length,
 						" bản"
 					]
-				}), xe.length === 0 ? /* @__PURE__ */ (0, z.jsx)("p", {
+				}), Le.length === 0 ? /* @__PURE__ */ (0, z.jsx)("p", {
 					className: "text-[13px] text-slate-500 mt-2",
 					children: "Chưa có snapshot nào cho hợp đồng này. Tính xong bấm “LƯU SNAPSHOT”."
 				}) : /* @__PURE__ */ (0, z.jsx)("div", {
 					className: "space-y-2 mt-3",
-					children: xe.map((e) => /* @__PURE__ */ (0, z.jsxs)("details", {
+					children: Le.map((e) => /* @__PURE__ */ (0, z.jsxs)("details", {
 						className: "rounded-xl border border-slate-200 p-3 bg-slate-50",
 						children: [/* @__PURE__ */ (0, z.jsxs)("summary", {
 							className: "font-bold text-[13px] cursor-pointer",
@@ -22343,15 +22471,7 @@ function uc({ contract: e, fxRates: t }) {
 										className: "bg-white border rounded-lg p-2 overflow-auto text-[11px] max-h-[320px]",
 										children: JSON.stringify(e.outputs, null, 2)
 									})
-								] }),
-								/* @__PURE__ */ (0, z.jsxs)("div", {
-									className: "text-[11px] text-slate-500",
-									children: [
-										"Lưu bởi ",
-										K(e.created_by),
-										" — bất biến, không sửa/xóa."
-									]
-								})
+								] })
 							]
 						})]
 					}, e.id))

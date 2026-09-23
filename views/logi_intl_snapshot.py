@@ -30,6 +30,85 @@ def _serialize_decimal(value: Any) -> str | None:
         return str(value)
 
 
+def _pick_first_decimal(*candidates) -> Decimal | None:
+    for c in candidates:
+        if c is not None:
+            return c
+    return None
+
+
+def _normalize_rate_provenance(
+    effective: Decimal | None,
+    prov: Mapping[str, Any],
+    candidate_keys: list[str],
+    label: str,
+    captured_at: str,
+) -> dict[str, Any]:
+    """Ensure provenance truth: effective value must match what prov claims is LIVE.
+    If mismatch, normalize to MANUAL with live_reference."""
+    base = dict(prov) if isinstance(prov, Mapping) else {}
+    status = str(base.get("status") or "").upper()
+    source = str(base.get("source") or base.get("source_url") or "").lower()
+    # Extract claim from prov (where numeric might live)
+    claim: Decimal | None = None
+    claim_key = None
+    for k in candidate_keys:
+        v = base.get(k)
+        if v is None or v == "":
+            continue
+        try:
+            txt = str(v).strip().replace(",", "").replace(" ", "")
+            if not txt:
+                continue
+            dec = Decimal(txt)
+            if dec.is_finite():
+                claim = dec
+                claim_key = k
+                break
+        except Exception:
+            continue
+    # MANUAL or UNAVAILABLE always truthful if effective matches or is None appropriately
+    if status == "MANUAL":
+        # Ensure manual provenance carries the effective value
+        if effective is not None and claim is None:
+            base["value"] = _serialize_decimal(effective)
+        elif effective is not None and claim is not None and abs(claim - effective) > Decimal("0.000001"):
+            base["value"] = _serialize_decimal(effective)
+            base["note"] = f"Manual value {effective} differs from prov {claim}; normalized to manual per truth"
+        base.setdefault("captured_at", captured_at)
+        return base
+    if status == "RATE_UNAVAILABLE":
+        return base
+    # LIVE / OK — must match effective
+    if effective is None and claim is None:
+        return base
+    if effective is None or claim is None:
+        # One missing while other present => mismatch => normalize to MANUAL
+        manual = {
+            "status": "MANUAL",
+            "source": "MANUAL",
+            "source_url": "manual",
+            "value": _serialize_decimal(effective) if effective is not None else None,
+            "captured_at": captured_at,
+            "live_reference": dict(base),
+            "reason": f"{label}: effective {effective} != provenance {claim} — normalized to MANUAL",
+        }
+        return manual
+    if abs(claim - effective) > Decimal("0.000001"):
+        # LIVE claim lies about effective rate — normalize
+        manual = {
+            "status": "MANUAL",
+            "source": "MANUAL",
+            "source_url": "manual",
+            "value": _serialize_decimal(effective),
+            "captured_at": captured_at,
+            "live_reference": dict(base),
+            "reason": f"{label}: LIVE provenance {claim} (key {claim_key}) != effective {effective} — truthful MANUAL",
+        }
+        return manual
+    return base
+
+
 def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping[str, Any]) -> dict[str, Any]:
     """Implement the typed event. `deps` supplies injected helpers to keep view pure."""
     # deps: read_contract, contract_projection, _result, _audit
@@ -119,24 +198,43 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
     bidv_sell = _dec("bidv_sell_vnd")
     outside_rate = _dec("outside_cny_vnd")
 
-    recipient_fee = _dec("recipient_bank_fee_usd") or _dec("recipientBankFeeUsd")
-    china_fee_per_tranche = _dec("china_fee_per_tranche_cny") or _dec("chinaFeePerTrancheCny")
-    china_tranche_size = _dec("china_tranche_size_usd") or _dec("chinaTrancheSizeUsd")
-    hk_pct = _dec("hk_fee_pct") or _dec("hkFeePct")
-    vn_swift = _dec("vn_swift_fee_usd") or _dec("vnSwiftFeeUsd")
-    vn_pct = _dec("vn_pct_fee") or _dec("vnPctFee")
+    recipient_fee = _pick_first_decimal(_dec("recipient_bank_fee_usd"), _dec("recipientBankFeeUsd"))
+    china_fee_per_tranche = _pick_first_decimal(_dec("china_fee_per_tranche_cny"), _dec("chinaFeePerTrancheCny"))
+    china_tranche_size = _pick_first_decimal(_dec("china_tranche_size_usd"), _dec("chinaTrancheSizeUsd"))
+    hk_pct = _pick_first_decimal(_dec("hk_fee_pct"), _dec("hkFeePct"))
+    vn_swift = _pick_first_decimal(_dec("vn_swift_fee_usd"), _dec("vnSwiftFeeUsd"))
+    vn_pct = _pick_first_decimal(_dec("vn_pct_fee"), _dec("vnPctFee"))
 
     fx_boc = payload.get("fxBoc") if isinstance(payload.get("fxBoc"), Mapping) else payload.get("fx_boc") if isinstance(payload.get("fx_boc"), Mapping) else {}
     fx_agri = payload.get("fxAgribank") if isinstance(payload.get("fxAgribank"), Mapping) else payload.get("fx_agribank") if isinstance(payload.get("fx_agribank"), Mapping) else {}
     fx_bidv = payload.get("fxBidv") if isinstance(payload.get("fxBidv"), Mapping) else payload.get("fx_bidv") if isinstance(payload.get("fx_bidv"), Mapping) else {}
 
-    # minimal provenance fallback
+    # minimal provenance fallback — truthful per-rate
+    # Allow explicit sourceKind from frontend: LIVE|MANUAL|UNAVAILABLE
+    def _coerce_kind(raw, default_live_valid: bool) -> str:
+        k = str(raw or "").strip().upper()
+        if k in ("LIVE", "MANUAL", "UNAVAILABLE", "RATE_UNAVAILABLE"):
+            return "UNAVAILABLE" if k == "RATE_UNAVAILABLE" else k
+        # Heuristic: if prov claims OK/LIVE treat as LIVE, else MANUAL
+        if isinstance(prov, Mapping) and str(prov.get("status") or "").upper() in ("OK", "LIVE"):
+            return "LIVE"
+        return "MANUAL" if default_live_valid else "UNAVAILABLE"
+
+    # If frontend sent explicit kinds, prefer them; else infer
+    boc_kind_raw = payload.get("usdCnySourceKind") or payload.get("usd_cny_source_kind") or payload.get("sourceKindBoc")
+    agri_kind_raw = payload.get("agribankSourceKind") or payload.get("agribank_source_kind")
+    bidv_kind_raw = payload.get("bidvSourceKind") or payload.get("bidv_source_kind")
     if not isinstance(fx_boc, Mapping) or not fx_boc:
-        fx_boc = {"source": "MANUAL", "status": "MANUAL", "source_url": "manual", "usd_to_cny": _serialize_decimal(usd_to_cny)}
+        fx_boc = {"source": "MANUAL", "status": "MANUAL" if usd_to_cny is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_to_cny": _serialize_decimal(usd_to_cny), "value": _serialize_decimal(usd_to_cny)}
     if not isinstance(fx_agri, Mapping) or not fx_agri:
-        fx_agri = {"source": "MANUAL", "status": "MANUAL" if agri_sell is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_sell_vnd": _serialize_decimal(agri_sell)}
+        fx_agri = {"source": "MANUAL", "status": "MANUAL" if agri_sell is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_sell_vnd": _serialize_decimal(agri_sell), "value": _serialize_decimal(agri_sell)}
     if not isinstance(fx_bidv, Mapping) or not fx_bidv:
-        fx_bidv = {"source": "MANUAL", "status": "MANUAL" if bidv_sell is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_sell_vnd": _serialize_decimal(bidv_sell)}
+        fx_bidv = {"source": "MANUAL", "status": "MANUAL" if bidv_sell is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_sell_vnd": _serialize_decimal(bidv_sell), "value": _serialize_decimal(bidv_sell)}
+    # Normalize truth: effective numeric must agree with provenance claim
+    _now_for_prov = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+    fx_boc = _normalize_rate_provenance(usd_to_cny, fx_boc, ["usd_to_cny", "value", "buying_rate", "usdToCny"], "USD_CNY", _now_for_prov)
+    fx_agri = _normalize_rate_provenance(agri_sell, fx_agri, ["usd_sell_vnd", "sell", "usdSellVnd", "value"], "AGRIBANK_USD_SELL", _now_for_prov)
+    fx_bidv = _normalize_rate_provenance(bidv_sell, fx_bidv, ["usd_sell_vnd", "sell", "usdSellVnd", "value"], "BIDV_USD_SELL", _now_for_prov)
 
     outputs: dict[str, Any] = {}
     inputs: dict[str, Any] = {}
@@ -156,12 +254,17 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
                 if agent_route == "HK":
                     agent_route = "HONG_KONG"
             if agent_route == "CHINA":
-                fwd = china_forward(gross, usd_to_cny, recipient_fee or Decimal("35"), china_fee_per_tranche or Decimal("150"), china_tranche_size or Decimal("10000"))
+                _rf = recipient_fee if recipient_fee is not None else Decimal("35")
+                _cf = china_fee_per_tranche if china_fee_per_tranche is not None else Decimal("150")
+                _cs = china_tranche_size if china_tranche_size is not None else Decimal("10000")
+                fwd = china_forward(gross, usd_to_cny, _rf, _cf, _cs)
                 bank_pick = _text(payload.get("vn_bank") or payload.get("bank") or "").strip().upper()
                 sell_for_vn = agri_sell if bank_pick in ("AGRIBANK", "AGRI") else bidv_sell if bank_pick == "BIDV" else agri_sell
                 vn_cost = None
                 if sell_for_vn is not None:
-                    vn_cost = vietnam_bank_cost(gross, sell_for_vn, vn_swift or Decimal("5"), vn_pct or Decimal("0.0015"))
+                    _vs = vn_swift if vn_swift is not None else Decimal("5")
+                    _vp = vn_pct if vn_pct is not None else Decimal("0.0015")
+                    vn_cost = vietnam_bank_cost(gross, sell_for_vn, _vs, _vp)
                 outputs = {
                     "mode": "A",
                     "agent_route": agent_route,
@@ -171,12 +274,16 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
                 }
                 inputs = {"gross_usd": _serialize_decimal(gross), "agent_route": agent_route}
             else:
-                fwd = hk_forward(gross, usd_to_cny, recipient_fee or Decimal("35"), hk_pct or Decimal("0.02"))
+                _hk = hk_pct if hk_pct is not None else Decimal("0.02")
+                _rf2 = recipient_fee if recipient_fee is not None else Decimal("35")
+                _vs2 = vn_swift if vn_swift is not None else Decimal("5")
+                _vp2 = vn_pct if vn_pct is not None else Decimal("0.0015")
+                fwd = hk_forward(gross, usd_to_cny, _rf2, _hk)
                 bank_pick = _text(payload.get("vn_bank") or payload.get("bank") or "").strip().upper()
                 sell_for_vn = agri_sell if bank_pick in ("AGRIBANK", "AGRI") else bidv_sell if bank_pick == "BIDV" else agri_sell
                 vn_cost = None
                 if sell_for_vn is not None:
-                    vn_cost = vietnam_bank_cost(gross, sell_for_vn, vn_swift or Decimal("5"), vn_pct or Decimal("0.0015"))
+                    vn_cost = vietnam_bank_cost(gross, sell_for_vn, _vs2, _vp2)
                 outputs = {
                     "mode": "A",
                     "agent_route": agent_route,
@@ -203,12 +310,12 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
                 usd_to_cny,
                 agri_sell,
                 bidv_sell,
-                recipient_fee or Decimal("35"),
-                china_fee_per_tranche or Decimal("150"),
-                china_tranche_size or Decimal("10000"),
-                hk_pct or Decimal("0.02"),
-                vn_swift or Decimal("5"),
-                vn_pct or Decimal("0.0015"),
+                recipient_fee if recipient_fee is not None else Decimal("35"),
+                china_fee_per_tranche if china_fee_per_tranche is not None else Decimal("150"),
+                china_tranche_size if china_tranche_size is not None else Decimal("10000"),
+                hk_pct if hk_pct is not None else Decimal("0.02"),
+                vn_swift if vn_swift is not None else Decimal("5"),
+                vn_pct if vn_pct is not None else Decimal("0.0015"),
             )
 
             def _ser(o: Any) -> Any:
@@ -253,12 +360,12 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
             "outside_cny_vnd": _serialize_decimal(outside_rate),
         },
         "fee_rules": {
-            "recipient_bank_fee_usd": _serialize_decimal(recipient_fee or Decimal("35")),
-            "china_fee_per_tranche_cny": _serialize_decimal(china_fee_per_tranche or Decimal("150")),
-            "china_tranche_size_usd": _serialize_decimal(china_tranche_size or Decimal("10000")),
-            "hk_fee_pct": _serialize_decimal(hk_pct or Decimal("0.02")),
-            "vn_swift_fee_usd": _serialize_decimal(vn_swift or Decimal("5")),
-            "vn_pct_fee": _serialize_decimal(vn_pct or Decimal("0.0015")),
+            "recipient_bank_fee_usd": _serialize_decimal(recipient_fee if recipient_fee is not None else Decimal("35")),
+            "china_fee_per_tranche_cny": _serialize_decimal(china_fee_per_tranche if china_fee_per_tranche is not None else Decimal("150")),
+            "china_tranche_size_usd": _serialize_decimal(china_tranche_size if china_tranche_size is not None else Decimal("10000")),
+            "hk_fee_pct": _serialize_decimal(hk_pct if hk_pct is not None else Decimal("0.02")),
+            "vn_swift_fee_usd": _serialize_decimal(vn_swift if vn_swift is not None else Decimal("5")),
+            "vn_pct_fee": _serialize_decimal(vn_pct if vn_pct is not None else Decimal("0.0015")),
         },
         "outputs": outputs,
         "is_deleted": False,

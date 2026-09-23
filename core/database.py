@@ -2356,8 +2356,11 @@ def load_contract_intl_snapshots_for_contract(contract_id: str, *, db: Any = _UN
 
 
 def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None = None) -> bool:
-    """Persist ONE immutable snapshot. Existing id cannot be rewritten.
+    """Persist ONE immutable snapshot — atomically append-only.
 
+    Uses insert_one with unique index uq_contract_intl_snapshot_id.
+    On DuplicateKey, allows only exact fingerprint equality (idempotent).
+    Never updates an existing snapshot. Audit only on genuine new insert.
     Requires contract_id, mode, and sales_write permission (same as contract_save).
     """
     from core.auth import can_edit_contract
@@ -2374,13 +2377,6 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
     if not snap_id or not contract_id:
         _set_last_error("Snapshot cần có id và contract_id.")
         return False
-    # Immutability: existing snapshot cannot be changed
-    old = db["contract_intl_payment_snapshots"].find_one({"id": snap_id}, {"_id": 0})
-    if old is not None:
-        if _financial_fingerprint(old) != _financial_fingerprint(dict(document)):
-            _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
-            return False
-        return True
     if not db.contracts.find_one({"id": contract_id}, {"_id": 0}):
         _set_last_error(f"Không tìm thấy hợp đồng {contract_id}.")
         return False
@@ -2394,7 +2390,27 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
     payload.setdefault("created_by_user_id", actor_ctx["user_id"])
     payload.setdefault("created_by_role", actor_ctx["role"])
     payload.setdefault("is_deleted", False)
-    if not _save_document("contract_intl_payment_snapshots", payload):
+    payload.pop("_id", None)
+    try:
+        db.contract_intl_payment_snapshots.insert_one(payload)
+    except DuplicateKeyError:
+        # Atomicity: the unique index uq_contract_intl_snapshot_id fired — check idempotency via fingerprint
+        try:
+            existing = db.contract_intl_payment_snapshots.find_one({"id": snap_id}, {"_id": 0})
+        except Exception:
+            existing = None
+        if existing is not None:
+            # Compare fingerprints of persisted vs attempted payload (ignoring _id/captured server fields if needed)
+            # We compare the core content: inputs/fx/fee_rules/outputs etc via canonical fingerprint
+            if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+                return True
+            # Also allow if existing equals original document fingerprint (covering minor server-added fields)
+            if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
+                return True
+        _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
+        return False
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
         return False
     _audit(db, "contract_intl_payment_snapshot", snap_id, "create", before=None, after=payload)
     return True

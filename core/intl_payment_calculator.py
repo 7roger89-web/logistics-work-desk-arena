@@ -52,6 +52,32 @@ def _to_decimal(value: Any) -> Decimal | None:
     return d
 
 
+def _use_default(dec: Decimal | None, default: Decimal) -> Decimal:
+    return dec if dec is not None else default
+
+
+def _validate_fee_rules(
+    recipient_fee: Decimal | None,
+    china_fee_per_tranche: Decimal | None,
+    tranche_size: Decimal | None,
+    hk_pct: Decimal | None,
+    vn_swift: Decimal | None,
+    vn_pct: Decimal | None,
+) -> None:
+    if recipient_fee is not None and recipient_fee < 0:
+        raise ValueError("recipient_bank_fee_usd must be >= 0")
+    if china_fee_per_tranche is not None and china_fee_per_tranche < 0:
+        raise ValueError("china_fee_per_tranche_cny must be >= 0")
+    if tranche_size is not None and tranche_size <= 0:
+        raise ValueError("china_tranche_size_usd must be > 0")
+    if hk_pct is not None and (hk_pct < 0 or hk_pct >= 1):
+        raise ValueError("hk_fee_pct must be in [0,1)")
+    if vn_swift is not None and vn_swift < 0:
+        raise ValueError("vn_swift_fee_usd must be >= 0")
+    if vn_pct is not None and vn_pct < 0:
+        raise ValueError("vn_pct_fee must be >= 0")
+
+
 def _quantize_display_usd(d: Decimal) -> str:
     return format(d.quantize(Decimal("0.00"), rounding=ROUND_HALF_UP), "f")
 
@@ -104,9 +130,10 @@ def china_forward(
     """
     gross_usd_d = _to_decimal(gross_usd)
     usd_to_cny_d = _to_decimal(usd_to_cny)
-    recipient_fee_d = _to_decimal(recipient_bank_fee_usd) or DEFAULT_RECIPIENT_BANK_FEE_USD
-    fee_per_tranche_d = _to_decimal(fee_per_tranche) or DEFAULT_CHINA_AGENT_FEE_PER_TRANCHE_CNY
-    tranche_size_d = _to_decimal(tranche_size) or DEFAULT_CHINA_TRANCHE_SIZE_USD
+    recipient_fee_d = _use_default(_to_decimal(recipient_bank_fee_usd), DEFAULT_RECIPIENT_BANK_FEE_USD)
+    fee_per_tranche_d = _use_default(_to_decimal(fee_per_tranche), DEFAULT_CHINA_AGENT_FEE_PER_TRANCHE_CNY)
+    tranche_size_d = _use_default(_to_decimal(tranche_size), DEFAULT_CHINA_TRANCHE_SIZE_USD)
+    _validate_fee_rules(recipient_fee_d, fee_per_tranche_d, tranche_size_d, None, None, None)
 
     if gross_usd_d is None or usd_to_cny_d is None:
         raise ValueError("gross_usd and usd_to_cny required")
@@ -114,10 +141,14 @@ def china_forward(
         raise ValueError("invalid amount/rate")
 
     usd_after_bank = gross_usd_d - recipient_fee_d
+    if usd_after_bank < 0:
+        raise ValueError("gross_usd must be > recipient_bank_fee_usd")
     gross_cny = usd_after_bank * usd_to_cny_d
     china_fee = china_agent_fee_cny(gross_usd_d, fee_per_tranche_d, tranche_size_d)
     net_cny = gross_cny - china_fee
-    # if usd_after_bank negative, net may be negative; caller decides
+    if net_cny < 0:
+        # convertible amount produced negative net — fail closed rather than return negative CNY
+        raise ValueError("net_cny_received would be negative — check gross and fees")
     return {
         "gross_usd": gross_usd_d,
         "recipient_bank_fee_usd": recipient_fee_d,
@@ -148,10 +179,9 @@ def hk_forward(
     """Mode A Hong Kong forward."""
     gross_usd_d = _to_decimal(gross_usd)
     usd_to_cny_d = _to_decimal(usd_to_cny)
-    recipient_fee_d = _to_decimal(recipient_bank_fee_usd) or DEFAULT_RECIPIENT_BANK_FEE_USD
-    hk_pct_d = _to_decimal(hk_agent_fee_pct)
-    if hk_pct_d is None:
-        hk_pct_d = DEFAULT_HK_AGENT_FEE_PCT
+    recipient_fee_d = _use_default(_to_decimal(recipient_bank_fee_usd), DEFAULT_RECIPIENT_BANK_FEE_USD)
+    hk_pct_d = _use_default(_to_decimal(hk_agent_fee_pct), DEFAULT_HK_AGENT_FEE_PCT)
+    _validate_fee_rules(recipient_fee_d, None, None, hk_pct_d, None, None)
 
     if gross_usd_d is None or usd_to_cny_d is None:
         raise ValueError("gross_usd and usd_to_cny required")
@@ -159,8 +189,12 @@ def hk_forward(
         raise ValueError("invalid amount/rate")
 
     usd_after_bank = gross_usd_d - recipient_fee_d
+    if usd_after_bank < 0:
+        raise ValueError("gross_usd must be > recipient_bank_fee_usd")
     hk_fee_usd = usd_after_bank * hk_pct_d
     usd_for_conversion = usd_after_bank - hk_fee_usd
+    if usd_for_conversion < 0:
+        raise ValueError("usd_for_conversion would be negative")
     net_cny = usd_for_conversion * usd_to_cny_d
 
     return {
@@ -200,9 +234,10 @@ def china_reverse(
     """
     target_d = _to_decimal(target_cny)
     usd_to_cny_d = _to_decimal(usd_to_cny)
-    recipient_fee_d = _to_decimal(recipient_bank_fee_usd) or DEFAULT_RECIPIENT_BANK_FEE_USD
-    fee_per_tranche_d = _to_decimal(fee_per_tranche) or DEFAULT_CHINA_AGENT_FEE_PER_TRANCHE_CNY
-    tranche_size_d = _to_decimal(tranche_size) or DEFAULT_CHINA_TRANCHE_SIZE_USD
+    recipient_fee_d = _use_default(_to_decimal(recipient_bank_fee_usd), DEFAULT_RECIPIENT_BANK_FEE_USD)
+    fee_per_tranche_d = _use_default(_to_decimal(fee_per_tranche), DEFAULT_CHINA_AGENT_FEE_PER_TRANCHE_CNY)
+    tranche_size_d = _use_default(_to_decimal(tranche_size), DEFAULT_CHINA_TRANCHE_SIZE_USD)
+    _validate_fee_rules(recipient_fee_d, fee_per_tranche_d, tranche_size_d, None, None, None)
 
     if target_d is None or usd_to_cny_d is None:
         raise ValueError("target_cny and usd_to_cny required")
@@ -294,17 +329,14 @@ def hk_reverse(
     """HK reverse: gross = target / (rate*(1-pct)) + fee_bank."""
     target_d = _to_decimal(target_cny)
     usd_to_cny_d = _to_decimal(usd_to_cny)
-    recipient_fee_d = _to_decimal(recipient_bank_fee_usd) or DEFAULT_RECIPIENT_BANK_FEE_USD
-    hk_pct_d = _to_decimal(hk_agent_fee_pct)
-    if hk_pct_d is None:
-        hk_pct_d = DEFAULT_HK_AGENT_FEE_PCT
+    recipient_fee_d = _use_default(_to_decimal(recipient_bank_fee_usd), DEFAULT_RECIPIENT_BANK_FEE_USD)
+    hk_pct_d = _use_default(_to_decimal(hk_agent_fee_pct), DEFAULT_HK_AGENT_FEE_PCT)
+    _validate_fee_rules(recipient_fee_d, None, None, hk_pct_d, None, None)
 
     if target_d is None or usd_to_cny_d is None:
         raise ValueError("target and rate required")
     if target_d < 0 or usd_to_cny_d <= 0:
         raise ValueError("invalid")
-    if hk_pct_d >= 1 or hk_pct_d < 0:
-        raise ValueError("pct in [0,1)")
 
     denom = usd_to_cny_d * (Decimal("1") - hk_pct_d)
     gross = target_d / denom + recipient_fee_d
@@ -347,10 +379,9 @@ def vietnam_bank_cost(
     """
     gross_d = _to_decimal(gross_usd)
     sell_d = _to_decimal(usd_sell_vnd)
-    swift_usd_d = _to_decimal(vn_swift_fee_usd) or DEFAULT_VN_SWIFT_FEE_USD
-    pct_d = _to_decimal(vn_pct_fee)
-    if pct_d is None:
-        pct_d = DEFAULT_VN_PCT_FEE
+    swift_usd_d = _use_default(_to_decimal(vn_swift_fee_usd), DEFAULT_VN_SWIFT_FEE_USD)
+    pct_d = _use_default(_to_decimal(vn_pct_fee), DEFAULT_VN_PCT_FEE)
+    _validate_fee_rules(None, None, None, None, swift_usd_d, pct_d)
 
     if gross_d is None or sell_d is None:
         raise ValueError("gross_usd and sell required")

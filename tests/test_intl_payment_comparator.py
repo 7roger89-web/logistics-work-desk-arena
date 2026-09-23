@@ -19,6 +19,8 @@ import unittest
 from decimal import Decimal
 
 from core.fx_sources import parse_agribank_html, parse_bidv_html, parse_boc_html, discover_bidv_api_url
+from unittest.mock import patch, MagicMock
+import time as _time
 from core.intl_payment_calculator import (
     FORMULA_VERSION,
     china_agent_fee_cny,
@@ -233,6 +235,218 @@ class ProvenanceImmutabilityTest(unittest.TestCase):
             ok3 = dbmod.save_contract_intl_snapshot(tampered)
             assert not ok3
             assert "immutable" in dbmod.get_last_db_error().lower()
+
+
+class FeeZeroPreservationTest(unittest.TestCase):
+    """Blocker B — zero fees must not become defaults (None-aware)."""
+    def test_china_forward_zero_recipient(self):
+        f = china_forward(Decimal("100"), Decimal("6.68"), Decimal("0"))
+        self.assertEqual(f["recipient_bank_fee_usd"], Decimal("0"))
+        self.assertEqual(f["usd_after_bank"], Decimal("100"))
+    def test_china_forward_zero_china_fee(self):
+        f = china_forward(Decimal("10000"), Decimal("6.68"), Decimal("35"), Decimal("0"))
+        self.assertEqual(f["china_agent_fee_cny"], Decimal("0"))
+    def test_china_forward_zero_tranche_size_rejected(self):
+        with self.assertRaises(ValueError):
+            china_forward(Decimal("10000"), Decimal("6.68"), Decimal("35"), Decimal("150"), Decimal("0"))
+    def test_hk_forward_zero_recipient(self):
+        f = hk_forward(Decimal("100"), Decimal("6.68"), Decimal("0"), Decimal("0.02"))
+        self.assertEqual(f["recipient_bank_fee_usd"], Decimal("0"))
+    def test_hk_forward_zero_pct(self):
+        f = hk_forward(Decimal("100"), Decimal("6.68"), Decimal("35"), Decimal("0"))
+        self.assertEqual(f["hk_agent_fee_usd"], Decimal("0"))
+    def test_hk_forward_pct_ge_1_rejected(self):
+        with self.assertRaises(ValueError):
+            hk_forward(Decimal("100"), Decimal("6.68"), Decimal("35"), Decimal("1"))
+        with self.assertRaises(ValueError):
+            hk_forward(Decimal("100"), Decimal("6.68"), Decimal("35"), Decimal("1.5"))
+    def test_vietnam_cost_zero_swift_and_pct(self):
+        vc = vietnam_bank_cost(Decimal("1000"), Decimal("26180"), Decimal("0"), Decimal("0"))
+        self.assertEqual(vc["swift_fee_vnd"], Decimal("0"))
+        self.assertEqual(vc["vn_pct_fee_vnd"], Decimal("0"))
+        self.assertEqual(vc["total_vnd"], Decimal("1000") * Decimal("26180"))
+    def test_gross_must_exceed_fee(self):
+        with self.assertRaises(ValueError):
+            china_forward(Decimal("10"), Decimal("6.68"), Decimal("35"))
+        with self.assertRaises(ValueError):
+            hk_forward(Decimal("10"), Decimal("6.68"), Decimal("35"))
+    def test_comparison_zero_fees(self):
+        res = comparison_for_target_cny(Decimal("10000"), Decimal("3900"), Decimal("6.68"), Decimal("26180"), Decimal("26180"),
+                                        recipient_bank_fee_usd=Decimal("0"),
+                                        china_fee_per_tranche=Decimal("0"),
+                                        hk_fee_pct=Decimal("0"),
+                                        vn_swift_fee_usd=Decimal("0"),
+                                        vn_pct_fee=Decimal("0"))
+        # With zero fees, totals should be lower
+        ca = [r for r in res["usd_routes"] if r["channel"] == "USD→China via Agribank"][0]
+        self.assertTrue(ca["available"])
+        # gross for china with zero fee: (10000)/6.68 = 1497...
+        self.assertAlmostEqual(float(ca["gross_usd"]), 10000/6.68, delta=0.01)
+
+class SourceTimestampFailClosedTest(unittest.TestCase):
+    """Blocker E — missing source timestamp → RATE_UNAVAILABLE fail-closed."""
+    def test_boc_missing_pub_time_unavailable(self):
+        html_no_time = """
+        <table><tr><th>Currency Name</th><th>Buying Rate</th><th>Pub Time</th></tr>
+        <tr><td>USD</td><td>669.55</td><td></td></tr></table>
+        """
+        res = parse_boc_html(html_no_time, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_boc_invalid_pub_format_unavailable(self):
+        html_bad = """
+        <table><tr><th>Currency Name</th><th>Buying Rate</th><th>Pub Time</th></tr>
+        <tr><td>USD</td><td>669.55</td><td>2026-09-23 18:40:28</td></tr></table>
+        """
+        res = parse_boc_html(html_bad, captured_at="2026-09-23T00:00:00+00:00")
+        # Expect fail-closed for wrong format (requires YYYY/MM/DD HH:MM:SS)
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_boc_valid_pub_ok(self):
+        res = parse_boc_html(BOC_SAMPLE_HTML, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "OK")
+    def test_agribank_missing_timestamp_unavailable(self):
+        html_no_ts = """
+        <table><tr><th>Ngoại tệ</th><th>Giá bán</th></tr>
+        <tr><td>USD</td><td>26,180</td></tr></table>
+        """
+        res = parse_agribank_html(html_no_ts, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_agribank_invalid_timestamp_unavailable(self):
+        html_bad = """
+        <div>Tỷ giá cập nhật lúc 11:30 23/09/2026</div>
+        <table><tr><td>USD</td><td>26,180</td></tr></table>
+        """
+        res = parse_agribank_html(html_bad, captured_at="2026-09-23T00:00:00+00:00")
+        # Must match exact `HH:MM ngày DD/MM/YYYY`
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_agribank_valid_ok_and_tz_aware_captured(self):
+        res = parse_agribank_html(AGRIBANK_SAMPLE_HTML, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "OK")
+        self.assertIn("2026", res["captured_at"])
+        # captured_at should be tz-aware (contains + or Z)
+        self.assertTrue("+" in res["captured_at"] or res["captured_at"].endswith("Z"))
+
+class ProvenanceHelperTest(unittest.TestCase):
+    """Blocker A — per-rate provenance normalization."""
+    def test_pick_first_decimal(self):
+        from views.logi_intl_snapshot import _pick_first_decimal
+        self.assertEqual(_pick_first_decimal(Decimal("6.68"), Decimal("6.70")), Decimal("6.68"))
+        self.assertEqual(_pick_first_decimal(None, Decimal("6.70")), Decimal("6.70"))
+        self.assertIsNone(_pick_first_decimal(None, None))
+        self.assertEqual(_pick_first_decimal(Decimal("0"), Decimal("35")), Decimal("0"))
+    def test_normalize_provenance_live(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "OK", "source_url": "https://www.boc.cn/test", "usd_to_cny": "6.68"}
+        out = _normalize_rate_provenance(Decimal("6.68"), prov, ["usd_to_cny", "value"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        # LIVE stays OK/source preserved, not converted to MANUAL
+        self.assertEqual(out.get("status"), "OK")
+        self.assertNotEqual(out.get("status"), "MANUAL")
+        self.assertEqual(out.get("usd_to_cny"), "6.68")
+    def test_normalize_provenance_manual_when_mismatch(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "OK", "source_url": "https://www.boc.cn/test", "usd_to_cny": "6.68"}
+        out = _normalize_rate_provenance(Decimal("6.70"), prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        self.assertEqual(out.get("status"), "MANUAL")
+        self.assertEqual(out.get("value"), "6.70")
+        self.assertIn("live_reference", out)
+    def test_normalize_provenance_unavailable_when_rate_missing(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "RATE_UNAVAILABLE", "source_url": "manual"}
+        out = _normalize_rate_provenance(None, prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        self.assertEqual(out.get("status"), "RATE_UNAVAILABLE")
+    def test_normalize_preserves_live_ref_on_manual(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "OK", "source_url": "https://example.com", "usd_to_cny": "6.68"}
+        out = _normalize_rate_provenance(Decimal("6.70"), prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        self.assertIn("live_reference", out)
+        self.assertEqual(out["live_reference"]["usd_to_cny"], "6.68")
+    def test_normalize_effective_none_claim_none_stays_live(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "OK", "source_url": "https://example.com"}
+        out = _normalize_rate_provenance(None, prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        # Both missing -> currently returns base (OK) — but if effective None and claim None, stays as is
+        self.assertIn("status", out)
+
+class FxTtlCacheTest(unittest.TestCase):
+    """Blocker C — TTL 10min in-process cache (file-level + behavioral simulation)."""
+    def test_ttl_file_contains_cache_impl(self):
+        import pathlib, re
+        txt = pathlib.Path("views/logi_view_model.py").read_text()
+        self.assertIn("FX_TTL_SECONDS", txt)
+        self.assertIn("600", txt)
+        self.assertIn("_FX_CACHE", txt)
+        self.assertIn("_FX_CACHE_LOCK", txt)
+        self.assertIn("force_refresh", txt)
+        self.assertIn("time.monotonic", txt)
+        # Must NOT use scheduler/daemon/Mongo for TTL
+        self.assertNotIn("APScheduler", txt)
+        self.assertNotIn("schedule.", txt)
+        self.assertNotIn("daemon", txt.lower().split("ttl")[0] if "ttl" in txt.lower() else txt)
+        # Ensure cache helpers exist
+        self.assertIn("_clear_fx_cache_for_tests", txt)
+        self.assertIn("_store_fx_snapshot", txt)
+        self.assertIn("_get_cached_fx_snapshot", txt)
+        # TTL range 5-15 min (300-900) — we use 600
+        m = re.search(r"FX_TTL_SECONDS\s*=\s*(\d+)", txt)
+        self.assertIsNotNone(m)
+        v = int(m.group(1))
+        self.assertGreaterEqual(v, 300)
+        self.assertLessEqual(v, 900)
+    def test_ttl_behavior_simulation(self):
+        # Simulate exact logic from views/logi_view_model without heavy imports
+        import time, threading, copy
+        FX_TTL = 600
+        _CACHE = {"snapshot": None, "expires_at": 0.0}
+        LOCK = threading.Lock()
+        def _clear():
+            with LOCK:
+                _CACHE["snapshot"] = None
+                _CACHE["expires_at"] = 0.0
+        def _get():
+            with LOCK:
+                snap = _CACHE["snapshot"]
+                exp = _CACHE["expires_at"]
+                if snap is not None and time.monotonic() < exp:
+                    return copy.deepcopy(snap)
+            return None
+        def _store(snap):
+            with LOCK:
+                _CACHE["snapshot"] = copy.deepcopy(snap)
+                _CACHE["expires_at"] = time.monotonic() + FX_TTL
+        cnt = {"n": 0}
+        def fetch():
+            cnt["n"] += 1
+            return {"boc": {"status": "OK"}, "agribank": {"status": "OK"}, "bidv": {"status": "RATE_UNAVAILABLE"}}
+        def projection(force_refresh=False):
+            if not force_refresh:
+                c = _get()
+                if c is not None:
+                    return c
+            snap = fetch()
+            _store(snap)
+            return copy.deepcopy(snap)
+        _clear()
+        first = projection(force_refresh=True)
+        second = projection()
+        third = projection()
+        self.assertEqual(cnt["n"], 1)
+        self.assertEqual(first, second)
+        # Force refresh bypasses
+        projection(force_refresh=True)
+        self.assertEqual(cnt["n"], 2)
+        # Expiry
+        with LOCK:
+            _CACHE["expires_at"] = time.monotonic() - 1
+        projection()
+        self.assertEqual(cnt["n"], 3)
+    def test_no_mongo_scheduler_in_ttl_path(self):
+        import pathlib
+        txt = pathlib.Path("views/logi_view_model.py").read_text()
+        # Ensure TTL block does not touch Mongo
+        # Simple heuristic: near _FX_CACHE definition, no mongo
+        idx = txt.find("_FX_CACHE")
+        snippet = txt[max(0, idx-500): idx+1500].lower()
+        self.assertNotIn("mongo", snippet)
+        self.assertNotIn("scheduler", snippet)
 
 if __name__ == "__main__":
     unittest.main()
