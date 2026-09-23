@@ -1,15 +1,12 @@
-"""LOGI_LOGIN_VISUAL_COMPACT_01 — focused regression for the compact hero login.
+"""LOGI_LOGIN_BACKGROUND_ROTATION_01 — focused regression for 10-image rotation.
 
-A. AUTH behavior of ``require_login()`` is unchanged by the visual layer:
-   valid credentials -> ``_authenticate`` -> session + rerun; invalid
-   credentials -> generic error, no session; the first-admin bootstrap is
-   still reachable when the user store is empty; an existing valid session
-   is still revalidated without rendering any login screen.
-B. VISUAL structure: one repo-owned asset exists locally (original SVG,
-   no rendered text, no external references); the login CSS inlines it as
-   a data URI; the card is compact (max-width 300px); a mobile media query
-   exists; and the hero CSS is injected ONLY while logged out, so an
-   authenticated run never carries it (no global restyle of the app).
+Covers:
+- 10 local WebP assets registered, exist, readable
+- selection returns one of 10, stable within login visit, not flickering on failed login
+- successful login preserves auth, next visit can rotate
+- bootstrap still uses visual layer
+- authenticated run emits no CSS
+- CSS contains only selected background, compact card, mobile rule, no CDN
 """
 from __future__ import annotations
 
@@ -21,11 +18,12 @@ from core import auth
 from core.users import build_user_document
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HERO_ASSET = REPO_ROOT / "assets" / "login_container_ship_hero.svg"
+HERO_SVG_FALLBACK = REPO_ROOT / "assets" / "login_container_ship_hero.svg"
+BG_DIR = REPO_ROOT / "assets" / "login" / "backgrounds"
 
 
 class _FakeSessionState(dict):
-    """dict that also supports the ``st.session_state.current_user`` attribute form."""
+    """dict that also supports the st.session_state.current_user attribute form."""
 
     def __getattr__(self, name):
         try:
@@ -68,101 +66,134 @@ def _rendered_htmls(mock_st: MagicMock) -> list[str]:
     return [c.args[0] for c in mock_st.markdown.call_args_list if c.args]
 
 
-# ----------------------------------------------------------------- B. asset
+# ----------------------------------------------------------------- assets: 10 WebP
+
+def test_ten_login_backgrounds_registered() -> None:
+    files = auth._login_background_files()
+    assert len(files) == 10, f"expected 10, got {len(files)}"
+    assert auth._LOGIN_BG_COUNT == 10
+    # exact naming 01..10 webp in backgrounds dir
+    expected = [BG_DIR / f"login-bg-{i:02d}.webp" for i in range(1, 11)]
+    assert files == expected
 
 
-def test_hero_asset_is_an_original_local_svg() -> None:
-    assert HERO_ASSET.is_file()
-    raw = HERO_ASSET.read_bytes()
-    assert len(raw) > 4096, "hero asset looks stub-sized"
-    text = raw.decode("utf-8")
-    assert text.lstrip().startswith("<svg")
-    assert "<text" not in text, "artwork must not contain rendered text"
-    # self-contained: no external fetches (the xmlns namespace literal is
-    # an XML identifier, not a network reference)
-    for external in ('href="http', "xlink:href", "url(http", "<image"):
-        assert external not in text, f"asset must not reference {external!r}"
+def test_every_registered_asset_exists_and_readable() -> None:
+    files = auth._login_background_files()
+    for p in files:
+        assert p.is_file(), f"missing {p}"
+        data = p.read_bytes()
+        assert len(data) > 20_000, f"{p.name} stub-sized {len(data)}"
+        # WebP magic: RIFF....WEBP or at least readable by pillow fallback check
+        assert data[:4] == b"RIFF", f"{p.name} not WebP RIFF"
+        assert b"WEBP" in data[:16], f"{p.name} missing WEBP header"
 
 
-def test_composition_keeps_worker_tiny_and_rope_connected() -> None:
-    """Static geometry proof of the visual concept: HUMAN TINY / SHIP MASSIVE.
-
-    No browser is available in this executor, so the composition's scale
-    contrast and the tow-line connection are asserted from the SVG geometry
-    itself (the exact coordinates the browser would rasterize).
-    """
-    import re
-    import xml.etree.ElementTree as ET
-
-    ns = "{http://www.w3.org/2000/svg}"
-    root = ET.parse(HERO_ASSET).getroot()
-
-    def pairs(d: str) -> list[tuple[float, float]]:
-        return [(float(a), float(b)) for a, b in re.findall(
-            r"(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)", d
-        )]
-
-    def bbox(points) -> tuple[float, float, float, float]:
-        xs = [p[0] for p in points]
-        ys = [p[1] for p in points]
-        return min(xs), min(ys), max(xs), max(ys)
-
-    hulls = [el for el in root.iter(f"{ns}path") if el.get("fill") == "url(#hull)"]
-    assert hulls, "ship hull path missing"
-    hx0, hy0, hx1, hy1 = bbox(pairs(hulls[0].get("d")))
-    ship_width = hx1 - hx0
-    assert ship_width > 700, "ship must dominate the frame"
-
-    figures = [el for el in root.iter(f"{ns}g") if el.get("stroke") == "#04070c"]
-    assert figures, "worker figure missing"
-    fig_xy = []
-    for el in figures[0].iter():
-        d = el.get("d")
-        if d:
-            fig_xy += pairs(d)
-        if el.tag == f"{ns}circle":
-            cx, cy, r = float(el.get("cx")), float(el.get("cy")), float(el.get("r"))
-            fig_xy += [(cx - r, cy - r), (cx + r, cy + r)]
-    fx0, fy0, fx1, fy1 = bbox(fig_xy)
-    fig_height = fy1 - fy0
-    assert fig_height < 60, "worker must be tiny in the composition"
-    assert fig_height < ship_width / 12, "worker must be absurdly smaller than the ship"
-    assert fx1 < hx0, "worker stands apart from (left of) the vessel"
-
-    ropes = [el for el in root.iter(f"{ns}path") if el.get("stroke") == "#c89a63"]
-    assert ropes, "tow line missing"
-    nums = pairs(ropes[0].get("d"))
-    start, end = nums[0], nums[-1]
-    center = ((fx0 + fx1) / 2, (fy0 + fy1) / 2)
-    assert ((start[0] - center[0]) ** 2 + (start[1] - center[1]) ** 2) ** 0.5 < 40, (
-        "tow line must start at the worker's hands"
-    )
-    assert hx0 - 20 <= end[0] <= hx1 and hy0 - 20 <= end[1] <= hy1, (
-        "tow line must reach into the ship's hull"
-    )
+def test_fallback_svg_still_exists_for_graceful_degradation() -> None:
+    # SVG may remain only as fallback, not as active background
+    assert HERO_SVG_FALLBACK.is_file()
+    raw = HERO_SVG_FALLBACK.read_bytes()
+    assert len(raw) > 4096
 
 
-def test_background_data_uri_inlines_the_local_asset() -> None:
-    uri = auth._login_background_uri()
-    assert uri.startswith("data:image/svg+xml;base64,")
-    payload = base64.b64decode(uri.split(",", 1)[1])
-    assert payload == HERO_ASSET.read_bytes()
+def test_selection_returns_one_of_ten() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        # fresh visit, no prev
+        idx = auth._current_login_bg_index()
+        assert 1 <= idx <= 10
+        # second call same visit returns same
+        idx2 = auth._current_login_bg_index()
+        assert idx2 == idx
+        # uri corresponds to that idx
+        uri = auth._login_background_uri()
+        assert uri.startswith("data:image/webp;base64,")
+        payload = base64.b64decode(uri.split(",", 1)[1])
+        expected = (BG_DIR / f"login-bg-{idx:02d}.webp").read_bytes()
+        assert payload == expected
 
 
-def test_login_css_is_compact_scoped_and_responsive() -> None:
-    css = auth._login_hero_css()
-    assert css.startswith("<style>")
-    assert "data:image/svg+xml;base64," in css
-    assert "max-width: 300px" in css, "card must stay compact (~300px)"
-    assert "@media (max-width: 768px)" in css, "mobile rule missing"
-    assert "min(300px, 88vw)" in css
-    assert "stAppViewContainer" in css, "background must be scoped to the viewport"
-    assert "stForm" in css, "card panel must target the real form wrapper"
-    for leak in ("pbkdf2", "Tài khoản hoặc mật khẩu"):
-        assert leak not in css
+def test_selected_background_stable_through_repeated_reruns() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        idx1 = auth._current_login_bg_index()
+        # simulate several reruns (typing, etc.)
+        for _ in range(5):
+            idx = auth._current_login_bg_index()
+            assert idx == idx1
+        # css also stable
+        css1 = auth._login_hero_css()
+        css2 = auth._login_hero_css()
+        assert css1 == css2
 
 
-# ------------------------------------------------------- A. auth behavior
+def test_failed_login_does_not_switch_background() -> None:
+    mock_st = _mock_st()
+    # first render: pick background
+    mock_st.text_input.side_effect = ["sale.one", "wrong-passphrase-1"]
+    mock_st.form_submit_button.return_value = False
+    with patch("core.database.load_users", return_value=_users_db()), \
+         patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
+        auth.require_login()
+        idx_before = mock_st.session_state.get(auth._LOGIN_BG_SESSION_KEY)
+
+    # now failed submit: should keep same idx, not rotate
+    mock_st.text_input.side_effect = ["sale.one", "wrong-passphrase-1"]
+    mock_st.form_submit_button.return_value = True
+    with patch("core.database.load_users", return_value=_users_db()), \
+         patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
+        auth.require_login()
+        idx_after_fail = mock_st.session_state.get(auth._LOGIN_BG_SESSION_KEY)
+        # failed login keeps per-visit key (does not clear to prev)
+        assert idx_after_fail == idx_before
+        assert mock_st.error.called
+        assert mock_st.error.call_args.args[0] == "Tài khoản hoặc mật khẩu không đúng."
+        assert "current_user" not in mock_st.session_state
+
+
+def test_successful_login_preserves_auth_and_clears_per_visit_key() -> None:
+    mock_st = _mock_st()
+    mock_st.text_input.side_effect = ["sale.one", "sale-passphrase-1"]
+    mock_st.form_submit_button.return_value = True
+    with patch("core.database.load_users", return_value=_users_db()), \
+         patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
+        # first pick idx
+        mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = 3
+        result = auth.require_login()
+    assert result is None
+    user = mock_st.session_state["current_user"]
+    assert user["username"] == "sale.one"
+    assert mock_st.rerun.called
+    # per-visit cleared, prev stored
+    assert auth._LOGIN_BG_SESSION_KEY not in mock_st.session_state
+    assert mock_st.session_state.get(auth._LOGIN_BG_PREV_KEY) == 3
+
+
+def test_next_login_after_logout_can_select_different_image() -> None:
+    # simulate previous visit was idx=5
+    mock_st = _mock_st()
+    mock_st.session_state[auth._LOGIN_BG_PREV_KEY] = 5
+    # mock random to be deterministic we just check it prefers different
+    with patch.object(auth, "st", mock_st):
+        # force choice to verify not stuck on 5 forever: call many times with same prev,
+        # it should never return 5 (since choices exclude prev)
+        picks = set()
+        for _ in range(20):
+            # clear per-visit to force new pick each iteration, but keep prev=5
+            mock_st.session_state.pop(auth._LOGIN_BG_SESSION_KEY, None)
+            # we temporarily reset prev to 5 each loop
+            mock_st.session_state[auth._LOGIN_BG_PREV_KEY] = 5
+            idx = auth._current_login_bg_index()
+            picks.add(idx)
+            assert idx != 5, "rotation should prefer different image from prev when 10 available"
+        # at least we exercised randomness: picks subset of 1..10 excluding 5
+        assert picks.issubset(set(range(1, 11)) - {5})
+        # logout also stores prev and clears
+        mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = 7
+        with patch.object(auth, "st", mock_st):
+            auth.logout()
+        assert mock_st.session_state.get(auth._LOGIN_BG_PREV_KEY) == 7
+        assert auth._LOGIN_BG_SESSION_KEY not in mock_st.session_state
+        assert "current_user" not in mock_st.session_state
 
 
 def test_login_screen_injects_hero_once_and_renders_the_form() -> None:
@@ -176,10 +207,9 @@ def test_login_screen_injects_hero_once_and_renders_the_form() -> None:
     htmls = _rendered_htmls(mock_st)
     heroes = [h for h in htmls if "stAppViewContainer" in h]
     assert len(heroes) == 1, "hero CSS must be injected exactly once"
-    assert "data:image/svg+xml;base64," in heroes[0]
-    assert all("lg04-login-container" not in h for h in htmls), (
-        "old plain-card markup must be gone"
-    )
+    assert "data:image/webp;base64," in heroes[0]
+    assert "stAppViewContainer" in heroes[0]
+    assert all("lg04-login-container" not in h for h in htmls)
     assert mock_st.form.call_args.args[0] == "login_form"
     keys = [c.kwargs.get("key") for c in mock_st.text_input.call_args_list]
     assert keys == ["login_username", "login_password"]
@@ -194,7 +224,7 @@ def test_valid_login_still_sets_session_and_reruns() -> None:
     with patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         result = auth.require_login()
-    assert result is None  # screen returns; the rerun continues the session
+    assert result is None
     user = mock_st.session_state["current_user"]
     assert user["username"] == "sale.one"
     assert user["role"] == "sale"
@@ -243,6 +273,70 @@ def test_authenticated_run_does_not_carry_login_css() -> None:
         result = auth.require_login()
     assert result is not None
     assert result["username"] == "sale.one"
-    # No login screen rendered -> no hero CSS injection on an authenticated run.
     assert mock_st.markdown.call_count == 0
     assert mock_st.form.call_count == 0
+
+
+def test_css_contains_only_selected_background_not_all_ten() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        # pick idx 2 deterministically
+        mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = 2
+        css = auth._login_hero_css()
+        assert css.startswith("<style>")
+        assert "data:image/webp;base64," in css
+        # count occurrences: should be exactly one data URI
+        assert css.count("data:image/webp;base64,") == 1
+        # ensure not embedding other assets: decode and compare to idx2
+        import re as _re
+        uris = _re.findall(r"data:image/webp;base64,[A-Za-z0-9+/=]+", css)
+        assert len(uris) == 1
+        payload = base64.b64decode(uris[0].split(",", 1)[1])
+        assert payload == (BG_DIR / "login-bg-02.webp").read_bytes()
+        # ensure other bg not in css (by not containing their payload tail)
+        # check compact and responsive
+        assert "max-width: 300px" in css
+        assert "@media (max-width: 768px)" in css
+        assert "min(300px, 88vw)" in css
+        assert "stAppViewContainer" in css
+        assert "stForm" in css
+        for leak in ("pbkdf2", "Tài khoản hoặc mật khẩu"):
+            assert leak not in css
+
+
+def test_css_has_background_cover_and_per_image_position() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        for idx in (1, 3, 7):
+            mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = idx
+            css = auth._login_hero_css()
+            assert "background-size: cover" in css
+            desktop, mobile = auth._LOGIN_BG_POSITIONS[idx]
+            assert f"background-position: {desktop};" in css
+            assert f"background-position: {mobile};" in css
+
+
+def test_no_external_cdn_dependency() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        css = auth._login_hero_css()
+        # no http, no external url — check outside base64 payload to avoid false positives
+        # strip data URIs before checking for cdn/external
+        import re as _re
+        css_without_data = _re.sub(r"data:image/[^;]+;base64,[A-Za-z0-9+/=]+", "", css)
+        lowered = css_without_data.lower()
+        for banned in ("http://", "https://", "cdn.", "cdn/", "url(http", "url('http", 'url("http'):
+            assert banned not in lowered, f"CSS must not contain {banned!r}"
+        # also ensure backgrounds dir is local
+        assert "assets/login/backgrounds" not in css  # CSS should be data-uri, not file path
+        # but the repo-owned files exist local
+        for p in auth._login_background_files():
+            assert "http" not in str(p)
+
+
+def test_mobile_responsive_rule_remains() -> None:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        css = auth._login_hero_css()
+        assert "@media (max-width: 768px)" in css
+        assert "88vw" in css or "90vw" in css

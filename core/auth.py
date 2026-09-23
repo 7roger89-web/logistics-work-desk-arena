@@ -20,6 +20,7 @@ import base64
 import hashlib
 import hmac
 import os
+import random
 from pathlib import Path
 from typing import Any
 
@@ -240,15 +241,44 @@ def current_actor() -> str:
 
 # ------------------------------------------------------------------ login UI
 
-# LOG-LG05 — cinematic compact login.
+# LOG-LG05 / LOGI_LOGIN_BACKGROUND_ROTATION_01 — cinematic compact login
+# with 10 rotating logistics backgrounds.
 #
-# Visual surface only: ONE repo-owned hero asset inlined as a data URI plus
-# scoped CSS, injected ONLY while the login / first-admin setup screen
-# renders. A logged-in rerun never emits these rules, so the authenticated
-# application is not restyled. No external image, CDN, asset server or
-# runtime dependency; the auth flow below is unchanged.
+# Visual surface only: 10 repo-owned WebP assets (assets/login/backgrounds/)
+# inlined as a single data URI plus scoped CSS, injected ONLY while the
+# login / first-admin setup screen renders. A logged-in rerun never emits
+# these rules, so the authenticated application is not restyled. No
+# external image, CDN, asset server, scheduler or runtime image dependency;
+# the auth flow below is unchanged. Rotation is per-login-visit via
+# tiny session-state keys; no persistent storage.
 
 _LOGIN_HERO_ASSET = Path(__file__).resolve().parents[1] / "assets" / "login_container_ship_hero.svg"
+_LOGIN_BG_DIR = Path(__file__).resolve().parents[1] / "assets" / "login" / "backgrounds"
+_LOGIN_BG_COUNT = 10
+_LOGIN_BG_SESSION_KEY = "_login_bg_index"
+_LOGIN_BG_PREV_KEY = "_login_bg_prev_index"
+
+# Per-image focal positions — tiny tuning so important subjects aren't
+# badly cropped or hidden behind the centered login card. Only added
+# because a single fixed position crops Road/Port/Air differently.
+_LOGIN_BG_POSITIONS: dict[int, tuple[str, str]] = {
+    1: ("50% 38%", "32% 40%"),  # container ship at sea
+    2: ("50% 35%", "30% 42%"),  # port cranes
+    3: ("50% 45%", "28% 45%"),  # highway trucks / border road
+    4: ("50% 42%", "35% 45%"),  # air cargo aircraft
+    5: ("50% 50%", "50% 50%"),  # warehouse interior
+    6: ("50% 48%", "28% 48%"),  # freight train
+    7: ("50% 42%", "50% 42%"),  # collage montage
+    8: ("50% 40%", "30% 42%"),  # customs border checkpoint
+    9: ("50% 36%", "32% 38%"),  # container yard at dusk
+    10: ("50% 50%", "50% 50%"),  # global network map
+}
+
+
+def _login_background_files() -> list[Path]:
+    """Ordered list of the 10 normal login background assets."""
+    return [_LOGIN_BG_DIR / f"login-bg-{i:02d}.webp" for i in range(1, _LOGIN_BG_COUNT + 1)]
+
 
 _LOGIN_HERO_CSS_TEMPLATE = """
 [data-testid="stHeader"] {
@@ -261,7 +291,7 @@ _LOGIN_HERO_CSS_TEMPLATE = """
   background-color: #071019;
   background-image: linear-gradient(180deg, rgba(4,10,16,0.30) 0%, rgba(4,10,16,0.02) 30%, rgba(4,10,16,0.16) 78%, rgba(3,8,13,0.40) 100%), url("__BG__");
   background-size: cover;
-  background-position: 50% 42%;
+  background-position: __POS_DESKTOP__;
   background-repeat: no-repeat;
 }
 /* Compact frosted card. The <form> element is the real DOM wrapper around
@@ -311,7 +341,7 @@ _LOGIN_HERO_CSS_TEMPLATE = """
 @media (max-width: 768px) {
   [data-testid="stForm"] { max-width: min(300px, 88vw); margin-top: 7vh; }
   [data-testid="stForm"]:has(.lg05-bootstrap) { max-width: min(340px, 90vw); }
-  [data-testid="stAppViewContainer"] { background-position: 28% 45%; }
+  [data-testid="stAppViewContainer"] { background-position: __POS_MOBILE__; }
 }
 """
 
@@ -333,18 +363,90 @@ _BOOTSTRAP_IDENTITY_HTML = (
 )
 
 
-def _login_background_uri() -> str:
-    """Data URI of the repo-owned login hero asset (self-contained, no CDN)."""
+def _choose_login_bg_index(prev: int | None) -> int:
+    """Pick one of the 10 backgrounds, preferring a different image from prev."""
+    choices = list(range(1, _LOGIN_BG_COUNT + 1))
+    if isinstance(prev, int) and prev in choices and len(choices) > 1:
+        choices = [c for c in choices if c != prev]
+    return random.choice(choices)
+
+
+def _current_login_bg_index() -> int:
+    """Stable per-login-visit selection stored in session_state.
+
+    - First call in a fresh login visit picks one of the 10 and stores it.
+    - Subsequent calls (reruns, typing, failed login, bootstrap) return the
+      same stored index so the background never flickers.
+    - Only cleared after a successful login or logout, so the next login
+      visit can choose a new image (preferably different from the previous).
+    """
+    try:
+        stored = st.session_state.get(_LOGIN_BG_SESSION_KEY)  # type: ignore[attr-defined]
+    except Exception:
+        stored = None
+    if isinstance(stored, int) and 1 <= stored <= _LOGIN_BG_COUNT:
+        candidate = _LOGIN_BG_DIR / f"login-bg-{stored:02d}.webp"
+        try:
+            if candidate.is_file():
+                return stored
+        except Exception:
+            pass
+    # need new selection
+    try:
+        prev = st.session_state.get(_LOGIN_BG_PREV_KEY)  # type: ignore[attr-defined]
+    except Exception:
+        prev = None
+    if not isinstance(prev, int) or not (1 <= prev <= _LOGIN_BG_COUNT):
+        prev = None
+    idx = _choose_login_bg_index(prev)
+    try:
+        st.session_state[_LOGIN_BG_SESSION_KEY] = idx  # type: ignore[index]
+    except Exception:
+        pass
+    return idx
+
+
+def _login_background_uri_for_index(idx: int) -> str:
+    """Data URI for a specific WebP background, fallback to SVG."""
+    try:
+        path = _LOGIN_BG_DIR / f"login-bg-{idx:02d}.webp"
+        data = path.read_bytes()
+        if data:
+            return "data:image/webp;base64," + base64.b64encode(data).decode("ascii")
+    except Exception:
+        pass
     try:
         data = _LOGIN_HERO_ASSET.read_bytes()
-    except OSError:
+        return "data:image/svg+xml;base64," + base64.b64encode(data).decode("ascii")
+    except Exception:
         return ""
-    return "data:image/svg+xml;base64," + base64.b64encode(data).decode("ascii")
+
+
+def _login_background_uri() -> str:
+    """Data URI of the currently selected login background (self-contained, no CDN).
+
+    Only the ONE selected image is inlined. The 10 assets are never all
+    injected at once, keeping the login payload small.
+    """
+    idx = _current_login_bg_index()
+    return _login_background_uri_for_index(idx)
 
 
 def _login_hero_css() -> str:
-    """Scoped CSS for the compact hero login screen (login state only)."""
-    css = _LOGIN_HERO_CSS_TEMPLATE.replace("__BG__", _login_background_uri())
+    """Scoped CSS for the compact hero login screen (login state only).
+
+    Uses per-image focal positions so road/port/air compositions stay
+    well-framed on both desktop and mobile. Only the currently selected
+    background is encoded into the CSS.
+    """
+    idx = _current_login_bg_index()
+    desktop_pos, mobile_pos = _LOGIN_BG_POSITIONS.get(idx, ("50% 42%", "28% 45%"))
+    uri = _login_background_uri_for_index(idx)
+    css = (
+        _LOGIN_HERO_CSS_TEMPLATE.replace("__BG__", uri)
+        .replace("__POS_DESKTOP__", desktop_pos)
+        .replace("__POS_MOBILE__", mobile_pos)
+    )
     return f"<style>{css}</style>"
 
 
@@ -419,6 +521,16 @@ def require_login() -> dict[str, str] | None:
         identity = _authenticate(username, password)
         if identity:
             st.session_state.current_user = identity
+            # Preserve rotation: next login visit can choose a new image,
+            # preferably different from this one. Clear the per-visit key
+            # and remember it as prev.
+            try:
+                cur_idx = st.session_state.get(_LOGIN_BG_SESSION_KEY)  # type: ignore[attr-defined]
+                if isinstance(cur_idx, int) and 1 <= cur_idx <= _LOGIN_BG_COUNT:
+                    st.session_state[_LOGIN_BG_PREV_KEY] = cur_idx  # type: ignore[index]
+                st.session_state.pop(_LOGIN_BG_SESSION_KEY, None)  # type: ignore[attr-defined]
+            except Exception:
+                pass
             st.rerun()
         else:
             st.error("Tài khoản hoặc mật khẩu không đúng.")
@@ -545,7 +657,19 @@ def _complete_bootstrap(
 
 def logout() -> None:
     for key in ("current_user",):
-        st.session_state.pop(key, None)
+        try:
+            st.session_state.pop(key, None)  # type: ignore[attr-defined]
+        except Exception:
+            pass
+    # Rotation for logout in same session: next login visit prefers a
+    # different image from the one just shown.
+    try:
+        cur_idx = st.session_state.get(_LOGIN_BG_SESSION_KEY)  # type: ignore[attr-defined]
+        if isinstance(cur_idx, int) and 1 <= cur_idx <= _LOGIN_BG_COUNT:
+            st.session_state[_LOGIN_BG_PREV_KEY] = cur_idx  # type: ignore[index]
+        st.session_state.pop(_LOGIN_BG_SESSION_KEY, None)  # type: ignore[attr-defined]
+    except Exception:
+        pass
     st.rerun()
 
 
