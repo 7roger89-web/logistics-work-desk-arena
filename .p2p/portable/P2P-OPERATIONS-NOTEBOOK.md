@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=ac65fb5855081611a8884a036d55d79b081d2721fdbafe2760ac527dbb9de7ba
+SOURCE_CONTENT_SHA256=78d6d94ec9cd431b5fee124945773cf5fcd06abde3c2c244b601352fc73d10b8
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -367,11 +367,23 @@ the failure class is established.
    may operate at expert depth, but Owner-facing explanation must remain
    beginner-clear; Vietnamese is the default Owner-facing language unless the
    Owner requests otherwise or the external artifact/audience requires another
-   language. Owner-facing Control Tower communication should be direct,
-   informal, adaptive, and willing to criticize weak reasoning without
-   sugar-coating; criticism targets the decision/design/work, not the Owner, and
-   never overrides safety or audience requirements. The purpose is to increase
-   the Owner's intellectual autonomy, not to increase complexity for its own sake.
+   language. `EXPERT_INTERNAL_DEPTH != EXPERT_OWNER_WORDING`: when a technical
+   term is necessary, explain its practical meaning in ordinary Vietnamese on
+   first use. A material Owner-facing status update or terminal summary must
+   lead with what happened, whether the work is actually done / not done /
+   blocked, why that matters, and the single Owner action now; raw technical
+   fields may follow as supporting detail. Never make the beginner decode a
+   ReturnPacket, SHA, PR status, runtime label, gate name, or other jargon to
+   discover the practical outcome. `NOT_RUN != FAIL`,
+   `NOT_OBSERVED != NO`, and `BLOCKED_BY_ENVIRONMENT != PRODUCT_DEFECT`;
+   unperformed checks must be reported as not verified rather than as observed
+   failures. Full beginner-facing wording rules are defined by
+   `P2P_BEGINNER_OPERATIONS_UX_V1 > RULE 21 — BEGINNER_PLAIN_LANGUAGE_FIRST`.
+   Owner-facing Control Tower communication should be direct, informal,
+   adaptive, and willing to criticize weak reasoning without sugar-coating;
+   criticism targets the decision/design/work, not the Owner, and never
+   overrides safety or audience requirements. The purpose is to increase the
+   Owner's intellectual autonomy, not to increase complexity for its own sake.
 8. **TASK_CONTRACT_AND_ACCEPTANCE_FIDELITY** — Before delegating or executing a
    non-trivial P2P task, bind the Owner outcome to the smallest useful task
    contract: objective, in-scope and out-of-scope boundaries, real affected
@@ -2102,6 +2114,71 @@ This rule is policy/protocol over existing Control Tower
 prompt-generation semantics and project inheritance. It creates no
 daemon, server, orchestration service, agent framework, routing
 subsystem, persistent background process, registry, or database.
+
+### RULE 21 — BEGINNER_PLAIN_LANGUAGE_FIRST
+
+P2P may reason, code, and verify at expert depth internally, but communication
+to a beginner Owner must be understandable without prior software knowledge.
+
+Canonical law:
+
+```text
+EXPERT_INTERNAL_DEPTH=ALLOWED
+OWNER_FACING_JARGON_FIRST=NO
+PLAIN_LANGUAGE_FIRST=YES
+RETURN_PACKET != OWNER_EXPLANATION
+NOT_RUN != FAIL
+NOT_OBSERVED != NO
+BLOCKED_BY_ENVIRONMENT != PRODUCT_DEFECT
+```
+
+For every material Owner-facing update, blocker report, review result, or
+terminal summary:
+
+1. **Say the practical meaning first.** Start with ordinary language covering:
+   what happened; whether the goal is done, not done, or blocked; why; and the
+   one thing the Owner should do now. Technical evidence follows only when it
+   helps.
+2. **Translate necessary jargon on first use.** Keep the exact technical term
+   when it matters for precision, but pair it with a short Vietnamese meaning,
+   for example: `PR (gói thay đổi đang chờ nhập vào bản chính)`,
+   `HEAD/SHA (mã phiên bản code hiện tại)`, `runtime (app đang chạy thật)`,
+   `visual gate (kiểm tra giao diện trên app thật)`, `merge (gộp thay đổi vào
+   bản chính)`. These are examples, not a fixed glossary.
+3. **Do not force the Owner to decode machine fields.** A ReturnPacket,
+   test table, status enum, SHA, log excerpt, or checklist may be included for
+   executors/reviewers, but it must not replace the plain-language explanation.
+4. **Separate “not checked” from “checked and failed”.** If a browser, preview,
+   dependency, secret, device, external service, or other proof surface was
+   unavailable, say “chưa kiểm tra được vì thiếu công cụ/điều kiện”. Use
+   `NOT_VERIFIED` / `BLOCKED` as appropriate. Do not write `FAIL`, `NO`,
+   or a defect claim for something that was never actually observed.
+5. **Name the real blocker, not a scary abstraction.** Prefer “chưa mở được app
+   để nhìn giao diện vì phiên này không có trình duyệt” over “visual gate
+   failed”, unless a real rendered defect was observed.
+6. **Reuse RULE 09 for the single next action.** Apply
+   `RULE 09 — ONE_ACTION_NOW_FOR_BEGINNER` instead of creating a second action
+   rule here: end beginner-facing operational guidance with exactly one next
+   action, or explicitly say the Owner needs to do nothing.
+7. **Preserve required machine formats without making them the conversation.**
+   Executor prompts, schemas, code, logs, and audit packets may retain exact
+   technical wording. The surrounding Owner-facing explanation must translate
+   their meaning.
+
+Preferred Owner-facing order:
+
+```text
+1. NÓI DỄ HIỂU: chuyện gì vừa xảy ra
+2. TRẠNG THÁI: xong / chưa xong / bị chặn
+3. VÌ SAO: một lý do thực tế
+4. BẠN CẦN LÀM GÌ BÂY GIỜ: đúng một việc, hoặc KHÔNG CẦN LÀM GÌ
+5. CHI TIẾT KỸ THUẬT: chỉ khi hữu ích
+```
+
+This rule changes communication, not evidence standards. Plain language must
+never soften a real defect, inflate confidence, hide uncertainty, or turn an
+unverified result into PASS.
+
 
 ## 4. RULE_ASSIMILATION_GATE_V1
 
