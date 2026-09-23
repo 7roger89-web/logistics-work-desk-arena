@@ -289,21 +289,21 @@ _LOGIN_HERO_CSS_TEMPLATE = """
 }
 [data-testid="stAppViewContainer"] {
   background-color: #071019;
-  background-image: linear-gradient(180deg, rgba(4,10,16,0.30) 0%, rgba(4,10,16,0.02) 30%, rgba(4,10,16,0.16) 78%, rgba(3,8,13,0.40) 100%), url("__BG__");
+  background-image: url("__BG__");
   background-size: cover;
   background-position: __POS_DESKTOP__;
   background-repeat: no-repeat;
 }
-/* Compact frosted card. The <form> element is the real DOM wrapper around
-   the Streamlit widgets, so the panel style actually encloses them. */
+/* Compact transparent login surface. The <form> element is the real DOM
+   wrapper around the Streamlit widgets; artwork stays visible behind it. */
 [data-testid="stForm"] {
   max-width: 300px;
-  background: rgba(8, 17, 26, 0.58);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(151, 197, 216, 0.16);
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: none;
   border-radius: 14px;
-  box-shadow: 0 22px 55px rgba(2, 6, 10, 0.55);
+  box-shadow: none;
   padding: 20px 18px 16px;
   margin-top: 11vh;
 }
@@ -314,17 +314,41 @@ _LOGIN_HERO_CSS_TEMPLATE = """
   margin-bottom: 6px;
 }
 .lg05-identity { margin: 0 0 12px; }
-.lg05-identity .lg05-brand { font-size: .66rem; letter-spacing: .22em; color: #6fd3e0; font-weight: 600; }
-.lg05-identity .lg05-h { font-size: 1.3rem; font-weight: 700; color: #f2f7fa; margin-top: 3px; }
-.lg05-identity .lg05-sub { font-size: .72rem; color: #93a9ba; margin-top: 3px; }
+.lg05-identity .lg05-brand { font-size: .66rem; letter-spacing: .22em; color: #6fd3e0; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85), 0 0 14px rgba(0,0,0,0.55); }
+.lg05-identity .lg05-h { font-size: 1.3rem; font-weight: 700; color: #f2f7fa; margin-top: 3px; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 12px rgba(0,0,0,0.60); }
+.lg05-identity .lg05-sub { font-size: .72rem; color: #dce8ef; margin-top: 3px; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 10px rgba(0,0,0,0.60); }
 [data-testid="stForm"] [data-testid="stTextInput"] { margin-top: 0; margin-bottom: 4px; }
-[data-testid="stForm"] label { font-size: .78rem !important; color: #9db4c4 !important; }
+[data-testid="stForm"] label { font-size: .78rem !important; color: #f2f7fa !important; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 10px rgba(0,0,0,0.60); }
+/* Streamlit's own text-input shell paints the theme's light
+   secondaryBackgroundColor. Under this transparent login CSS that shell used
+   to surface as an OPAQUE grey plate over the artwork (and the light typed
+   ink on it measured ~2.2:1 contrast). Only this inner shell is neutralised —
+   the panel itself stays fully transparent. */
+[data-testid="stForm"] [data-testid="stTextInputRootElement"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
 [data-testid="stForm"] input {
-  background: rgba(255, 255, 255, 0.07) !important;
+  background: rgba(5, 12, 18, 0.62) !important;
   color: #eef5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
   border-radius: 8px !important;
 }
-[data-testid="stForm"] input::placeholder { color: #6d8494; }
+/* Local focus cue: the shell border that used to show focus is gone, so the
+   focused field gets its own ring instead of a page-level overlay. */
+[data-testid="stForm"] input:focus {
+  background: rgba(5, 12, 18, 0.80) !important;
+  border-color: rgba(140, 220, 236, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(140, 220, 236, 0.28) !important;
+}
+[data-testid="stForm"] input::placeholder { color: #aab8c5; }
+/* The reveal-password icon and the "Press Enter to submit form" hint live
+   INSIDE the field and inherit the theme's dark foreground ink, which the
+   dark transparent field would swallow. */
+[data-testid="stForm"] [data-testid="stTextInputRootElement"] span {
+  color: #dbe7ef !important;
+}
 [data-testid="stForm"] [data-testid="stFormSubmitButton"] {
   width: 100%;
   background-color: #2e93a8;
@@ -517,9 +541,9 @@ def require_login() -> dict[str, str] | None:
         _render_bootstrap_setup()
         return None
 
-    # LOG-LG05 Final UX: compact card (~300px) over the hero. The <form>
-    # element is the real DOM wrapper around the widgets, so the frosted
-    # panel style actually encloses them. Auth flow is unchanged: same
+    # LOG-LG05 Final UX: compact transparent controls (~300px) over the hero.
+    # The <form> element stays visually transparent so the Owner artwork remains
+    # primary. Auth flow is unchanged: same
     # keys, _authenticate(), session + rerun on success, generic error on
     # failure.
     with st.form("login_form"):
