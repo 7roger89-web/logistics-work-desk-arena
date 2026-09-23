@@ -388,12 +388,23 @@ TELEGRAM_CHAT_ID = get_setting(
     ("telegram", "chat_id"),
     "TELEGRAM_CHAT_ID",
 )
-AUTH_REQUIRED = get_setting(
-    "AUTH_REQUIRED",
-    ("auth", "required"),
-    "AUTH_REQUIRED",
-    default="false",
-).lower() in {"1", "true", "yes", "on"}
+def _load_auth_required() -> bool:
+    """Fail closed: missing auth configuration still requires login.
+
+    Local/dev single-user mode remains available only when explicitly selected
+    with AUTH_REQUIRED=false or [auth].required=false.
+    """
+    return _parse_bool(
+        get_setting(
+            "AUTH_REQUIRED",
+            ("auth", "required"),
+            "AUTH_REQUIRED",
+            default="true",
+        )
+    )
+
+
+AUTH_REQUIRED = _load_auth_required()
 
 # DISPLAY_COMPANY_NAME — the operating/display brand shown on ordinary
 # product surfaces (browser tab title, login card, shell header subtitle).
