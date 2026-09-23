@@ -340,3 +340,41 @@ def test_mobile_responsive_rule_remains() -> None:
         css = auth._login_hero_css()
         assert "@media (max-width: 768px)" in css
         assert "88vw" in css or "90vw" in css
+
+def test_duplicate_visual_pair_09_10_never_consecutive() -> None:
+    """Visual-equivalence: 09 and 10 are byte-identical Owner visuals.
+
+    The selector must exclude BOTH 9 and 10 when prev is either 9 or 10,
+    so 09->10 and 10->09 never occur as a visual change. For all other
+    prev values only that single index is excluded. Result stays in 1..10
+    and same-login stability is unchanged.
+    """
+    # direct selector
+    for prev in (9, 10):
+        for _ in range(30):
+            nxt = auth._choose_login_bg_index(prev)
+            assert 1 <= nxt <= 10, f"out of range {nxt}"
+            assert nxt not in (9, 10), f"prev={prev} must not pick 9 or 10, got {nxt}"
+    # normal prev still excludes only itself
+    for prev in (1, 3, 5, 7):
+        for _ in range(20):
+            nxt = auth._choose_login_bg_index(prev)
+            assert 1 <= nxt <= 10
+            assert nxt != prev, f"prev={prev} picked itself {nxt}"
+            # but 9/10 remain pickable for normal prev
+    # via session mechanism
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        mock_st.session_state[auth._LOGIN_BG_PREV_KEY] = 9
+        mock_st.session_state.pop(auth._LOGIN_BG_SESSION_KEY, None)
+        idx = auth._current_login_bg_index()
+        assert idx not in (9, 10), f"prev 9 via session picked {idx}"
+        mock_st.session_state[auth._LOGIN_BG_PREV_KEY] = 10
+        mock_st.session_state.pop(auth._LOGIN_BG_SESSION_KEY, None)
+        idx = auth._current_login_bg_index()
+        assert idx not in (9, 10), f"prev 10 via session picked {idx}"
+        # stability: same visit keeps same idx even when prev was 9/10
+        mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = 8
+        assert auth._current_login_bg_index() == 8
+        assert auth._current_login_bg_index() == 8
+

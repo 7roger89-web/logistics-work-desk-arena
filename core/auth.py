@@ -364,10 +364,20 @@ _BOOTSTRAP_IDENTITY_HTML = (
 
 
 def _choose_login_bg_index(prev: int | None) -> int:
-    """Pick one of the 10 backgrounds, preferring a different image from prev."""
+    """Pick one of the 10 backgrounds, preferring a different visual from prev.
+
+    Owner source 09 and 10 are byte-identical visuals, so a transition
+    09->10 or 10->09 would not be a new background. When prev is 9 or 10,
+    both indices are excluded from the next candidate set. For all other
+    prev values only that single index is excluded. This is the smallest
+    explicit equivalence rule — no image hashing or service.
+    """
     choices = list(range(1, _LOGIN_BG_COUNT + 1))
     if isinstance(prev, int) and prev in choices and len(choices) > 1:
-        choices = [c for c in choices if c != prev]
+        if prev in (9, 10):
+            choices = [c for c in choices if c not in (9, 10)]
+        else:
+            choices = [c for c in choices if c != prev]
     return random.choice(choices)
 
 
