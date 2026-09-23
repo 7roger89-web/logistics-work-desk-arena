@@ -644,6 +644,11 @@ export interface Quote {
   fxNeededFor?: string[];
   serviceLines: QuoteServiceLine[];
   assumptions: string[];
+  /** LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_01 — customer-facing general notes,
+      persisted on the canonical quote as `customer_notes`. These are the ONLY
+      notes printed in the customer XLSX "Ghi chú" block; the `assumptions`
+      list above stays INTERNAL and is never shown to the customer. */
+  customerNotes?: string[];
   statusHistory: Array<Record<string, unknown>>;
   version?: number;
   shipmentId?: string;

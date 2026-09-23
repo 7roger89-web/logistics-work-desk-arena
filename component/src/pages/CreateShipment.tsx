@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CircleAlert, FileCheck2, Package, Sparkles } from "lucide-react";
-import { Field, PrimaryBtn, SectionTitle, inputCls } from "../components/ui";
+import { Field, PrimaryBtn, SearchPicker, SectionTitle, inputCls } from "../components/ui";
 import {
   ExecutionProfileFields,
   combinationProblem,
@@ -232,12 +232,26 @@ export default function CreateShipment() {
               <Field label="Mã lô (bắt buộc)" required>
                 <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="LO-0470" className={inputCls(code.trim() ? "ok" : "missing")} />
               </Field>
-              <Field label="Khách hàng (bắt buộc)" required>
-                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputCls(customerId ? "ok" : "missing")}>
-                  <option value="">-- Chọn khách hàng --</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.mst ? ` · MST ${c.mst}` : ""} · {c.id}</option>)}
-                </select>
-              </Field>
+              {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — the EXISTING SearchPicker
+                  (the same control Báo Giá already uses): type part of a name,
+                  code or MST, accent-insensitively ("An Phat" finds "An Phát").
+                  The selection still binds the exact canonical customerId. */}
+              <SearchPicker
+                label="Khách hàng (bắt buộc)"
+                testId="create-customer-picker"
+                required
+                options={customers.map((c) => ({
+                  id: c.id,
+                  label: c.name || c.id,
+                  sub: [c.mst || c.taxCode ? `MST ${c.mst || c.taxCode}` : "", c.phone, c.email, c.id]
+                    .filter(Boolean).join(" · "),
+                }))}
+                selectedId={customerId}
+                selectedLabel={customers.find((c) => c.id === customerId)?.name || ""}
+                placeholder="Gõ tên, mã khách hoặc MST để tìm…"
+                emptyHint="Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước."
+                onSelect={(id) => setCustomerId(id)}
+              />
               <Field label="Hợp đồng liên kết" hint="PXK/chứng từ của lô lấy nguồn từ hợp đồng này; sau khi tạo lô thì không đổi được ở màn lô.">
                 <select value={contractId} onChange={(e) => setContractId(e.target.value)} className={inputCls()}>
                   <option value="">-- Chưa liên kết --</option>

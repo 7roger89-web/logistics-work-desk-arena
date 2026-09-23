@@ -260,6 +260,17 @@ console.log("STEP 5 — quote line Ghi chú travels in the payload; edit read-on
   // Minimal valid line so the payload is accepted shape-wise downstream.
   const codeInput = $('input[placeholder="DV-VC-TQ"]')[0];
   await typeInput(codeInput, "DV-VC-TQ");
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_01 — UNKNOWN != ZERO: a line whose
+  // Giá vốn / Giá bán / Thuế was never stated is now REFUSED at Save instead of
+  // being persisted as a silent canonical 0. This step is about the per-line
+  // NOTE, so the numbers are stated explicitly (0 is a legitimate answer).
+  for (const [testId, value] of [
+    ["quote-line-1-cost", "0"], ["quote-line-1-sell", "1000"], ["quote-line-1-tax", "0"],
+  ]) {
+    const field = $(`[data-testid="${testId}"]`)[0];
+    assert.ok(field, `${testId} missing`);
+    await typeInput(field, value);
+  }
   const before = triggers.length;
   await click("💾 TẠO BÁO GIÁ", "button");
   const ev = triggers.slice(before).find((t) => t.event === "quote_create");

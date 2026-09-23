@@ -579,23 +579,31 @@ console.log("STEP 14 — Create Shipment");
   const code = $('input[placeholder="LO-0470"]')[0];
   assert.ok(code, "shipment code input missing");
   type(code, "LO-0470");
-  const selects = $("select");
-  assert.ok(selects.length >= 2, "customer/contract selects missing");
+  // The customer field is now the SearchPicker (LOGI_QUOTE_COST_WORKFLOW_UX_01),
+  // so the contract select is located by its OWN options rather than by index.
+  const contractSelect = $("select").find((sel) =>
+    [...sel.options].some((o) => text(o).startsWith("HDMB-")));
+  assert.ok(contractSelect, "contract select missing");
 
   // The prefill resolves the contract through the quote's canonical customerId,
   // so the lot is born linked to the contract that PXK later needs as a source.
   const expectedContract = VM.contracts.find((c) => c.customerId === quote.customerId);
   assert.ok(expectedContract, "fixture has no contract for the accepted quote's customer");
-  assert.equal(selects[1].value, expectedContract.id, "accepted quote must prefill the customer's contract");
+  assert.equal(contractSelect.value, expectedContract.id, "accepted quote must prefill the customer's contract");
 
   // Contract options must be distinguishable by CUSTOMER: `company` is the same
   // seller legal entity on every contract, so it cannot identify a row.
-  assert.ok(selects[1].textContent.includes(expectedContract.client),
+  assert.ok(contractSelect.textContent.includes(expectedContract.client),
     "contract option must name the customer, not only the shared seller entity");
 
-  selects[0].value = VM.customers[0].id;
-  selects[0].dispatchEvent(new window.Event("change", { bubbles: true }));
-  await tick();
+  // Re-pick the customer through the SearchPicker (still one canonical id).
+  $('[data-testid="create-customer-picker-toggle"]')[0]
+    .dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(80);
+  const picked = $(`[data-testid="create-customer-picker-option-${VM.customers[0].id}"]`)[0];
+  assert.ok(picked, "the first fixture customer must be offered by the picker");
+  picked.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(80);
 
   await click("TẠO LÔ HÀNG", "button");
   await tick();

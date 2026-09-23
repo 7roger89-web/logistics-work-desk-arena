@@ -634,6 +634,10 @@ console.log("STEP 20 — the repairs are presentation: no data surface moved");
   await clickTestId("import-delivery-checklist-toggle");
   await click("Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));   // locked
   await clickTestId("export-unlock");
+  // LOGI_QUOTE_COST_WORKFLOW_UX_01 — the full execution-profile editor now
+  // lives in "Vận chuyển & Hàng hóa" (other tabs carry a one-line summary), so
+  // the disclosure is exercised from its own tab. Same component, same toggle.
+  await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
   await clickTestId("shipment-execution-profile-toggle");
   await tick(160);
   const after = JSON.stringify({

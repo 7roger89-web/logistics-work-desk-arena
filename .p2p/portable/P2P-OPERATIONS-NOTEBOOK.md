@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=78d6d94ec9cd431b5fee124945773cf5fcd06abde3c2c244b601352fc73d10b8
+SOURCE_CONTENT_SHA256=4e7239101063ac43e26a0fc784d48dc212eea640bdbc583395bc2d930c78876d
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -1859,6 +1859,118 @@ Research-grade fingerprinting methods may be studied as external evidence, but
 P2P does not deploy a reconnaissance/exploitation framework merely to discover
 a hidden model name.
 
+
+#### DOMAIN_CAPABILITY_ADMISSION_V1 — admitting a capability into real influence
+
+This subsection is a bounded application of RULE 19. RULE 19 answers "does
+this capability actually work here?"; this subsection answers the next
+question: "even if it runs, and even if it worked somewhere else, may it take
+real influence here?" It is an admission/promotion discipline only. It creates
+no second framework, router, registry, benchmark service, daemon, or top-level
+numbered rule, and it restates none of the cross-domain SOURCE ROLE /
+CONSUMPTION selection semantics already carried by Issue #222 — reuse those
+for source selection and apply this subsection to the admission decision.
+
+Canonical distinctions:
+
+```text
+CROSS_DOMAIN_SUCCESS != TARGET_DOMAIN_PROOF
+NEW_COMPLEX_CAPABILITY => CHEAP_CREDIBLE_BASELINE_FIRST
+EVALUATION_SET => FREEZE_BEFORE_RESULT_WHEN_RESULT_CAN_BIAS_THE_TEST
+PROMOTION_CRITERIA => PREDECLARE_BEFORE_FINAL_RESULT
+CAN_RUN != WORKS_FOR_TARGET_TASK != MATERIALLY_BETTER_THAN_CURRENT_PATH != WORTH_COMPLEXITY != READY_FOR_PRODUCT_CONTROL
+UNPROVEN_MODEL_OR_PROVIDER => OBSERVE_BEFORE_CONTROL_WHEN_CONTROL_HAS_MATERIAL_RISK
+ROUTING_OR_CLASSIFICATION_SIGNAL != DOMAIN_TRUTH_AUTHORITY
+ABSTAIN_OR_UNKNOWN => VALID_OUTCOME_WHEN_EVIDENCE_IS_INSUFFICIENT
+TRUTHFUL_UNKNOWN > UNSUPPORTED_CONFIDENT_GUESS
+```
+
+Admission order:
+
+1. **Name the target-domain claim.** State what the capability must prove for
+   THIS domain, language, task type, and input distribution. An upstream
+   benchmark, another project's success, or a stronger-looking number is
+   context, never proof (`CROSS_DOMAIN_SUCCESS != TARGET_DOMAIN_PROOF`).
+2. **Stand up the cheapest credible baseline first** when the candidate is
+   materially more complex than the current path. A baseline is the simplest
+   meaningful comparison already at hand: the existing
+   implementation/provider/ranking, deterministic rules, a no-op/control, or
+   manual policy. Do not manufacture one ceremonially
+   (`NEW_COMPLEX_CAPABILITY => CHEAP_CREDIBLE_BASELINE_FIRST`).
+3. **Freeze the evaluation set before the result is known** whenever the
+   result could shape the test — for example when the same person/process
+   chooses both the rows and the winner
+   (`EVALUATION_SET => FREEZE_BEFORE_RESULT_WHEN_RESULT_CAN_BIAS_THE_TEST`).
+4. **Predeclare the promotion criteria** — threshold, what counts as
+   materially better, what blocks, and who grades — before the final result is
+   produced, and freeze them with the evaluation set
+   (`PROMOTION_CRITERIA => PREDECLARE_BEFORE_FINAL_RESULT`).
+5. **Measure under materially relevant target conditions**, reusing RULE 19's
+   smallest representative probe. If the real bounded task is the cheapest
+   representative test, use it. If a tiny probe answers the question, stop
+   there; no mandatory broad benchmark ceremony.
+6. **Observe before control** when the model, provider, or artifact is
+   unproven and granting control carries material risk: run shadow/suggest-only
+   and keep the deterministic path authoritative
+   (`UNPROVEN_MODEL_OR_PROVIDER => OBSERVE_BEFORE_CONTROL_WHEN_CONTROL_HAS_MATERIAL_RISK`).
+7. **Admit, reject, or abstain on the recorded evidence.** Escalating through
+   `CAN_RUN`, `WORKS_FOR_TARGET_TASK`, `MATERIALLY_BETTER_THAN_CURRENT_PATH`,
+   `WORTH_COMPLEXITY`, and `READY_FOR_PRODUCT_CONTROL` requires a separate
+   yes at each step; none of them implies the next.
+8. **Stop when the question is answered.** Record the decision, the baseline,
+   and the criteria so a later reader can re-check it without rerunning
+   everything.
+
+Promotion accounting. Before a capability is granted real influence, weigh the
+measured benefit against the current path and against complexity, latency,
+dependency/artifact/runtime management, maintenance burden, failure modes, and
+reversibility cost. `WORTH_COMPLEXITY` is a distinct gate: a real but small
+improvement does not justify a heavy, hard-to-reverse dependency
+(`CAN_RUN != ... != READY_FOR_PRODUCT_CONTROL`).
+
+Authority boundary. A probabilistic router, classifier, recommender, or
+embedding score may observe and suggest workflow. It never becomes domain
+truth authority:
+
+```text
+ROUTER_CLASSIFIES_PAYMENT_QUERY != PAYMENT_IS_SETTLED
+ROUTER_CLASSIFIES_LEGAL_HISTORY != LAW_IS_CURRENT
+ROUTER_CLASSIFIES_BAZI_DUNG_THAN != DUNG_THAN_IS_X
+ROUTER_CLASSIFIES_GENEALOGY_RELATION_QUERY != PERSON_A_IS_PARENT_OF_PERSON_B
+```
+
+Routing or classification confidence is a workflow signal, never a domain
+fact.
+
+Unknown is a valid outcome. When evidence is insufficient, record
+`ABSTAIN`/`UNKNOWN` and keep the current path rather than upgrading a guess
+(`ABSTAIN_OR_UNKNOWN => VALID_OUTCOME_WHEN_EVIDENCE_IS_INSUFFICIENT`,
+`TRUTHFUL_UNKNOWN > UNSUPPORTED_CONFIDENT_GUESS`).
+
+Proportionality and revalidation:
+
+- Do not require a broad benchmark for every tool, library, or model. Match
+  the probe to the risk of being wrong; the cheapest representative probe that
+  answers the question is the correct one.
+- Revalidate only when material conditions change: domain, language, task
+  type, input distribution, model/artifact/version, authority level, or
+  runtime environment. Do not re-test materially equivalent proven conditions.
+- A rejected or abstained candidate stays recorded as evidence. It is not a
+  permanent ban, and it is not silently retried under a new name.
+
+Beginner-facing explanation at a material capability admission decision must
+say, in plain language:
+
+```text
+WHAT_NEW_THING_IS_BEING_CONSIDERED=
+WHAT_IT_MUST_PROVE_HERE=
+WHAT_SIMPLE_CURRENT_PATH_IT_MUST_BEAT=
+WHAT_COUNTED_AS_PASS_FAIL_UNSURE=
+WHAT_IT_COSTS_AND_HOW_EASILY_IT_CAN_BE_UNDONE=
+DECISION=ADMIT | OBSERVE_ONLY | REJECT | UNSURE_KEEP_CURRENT_PATH
+OWNER_ACTION_NOW=
+```
+
 ### RULE 20 — OWNER_EXECUTOR_SELECTION_AND_AUTONOMOUS_COMPLETION
 
 The beginner Owner selects an executor with one natural command. The project
@@ -2322,6 +2434,18 @@ machine-readable ledger below is the durable record.
         "governance/development-control.json (session-context-is-not-authority invariant)",
         "tests/test_p2p_context_hygiene.py"
       ]
+    },
+    {
+      "id": "BACKLOG_J",
+      "item": "DOMAIN_CAPABILITY_ADMISSION_V1",
+      "status": "VERIFIED",
+      "evidence": [
+        "Issue #245 P2P_DOMAIN_CAPABILITY_ADMISSION_01 (bounded goal, required invariants, OE gate)",
+        "docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md (RULE 19 — REALITY_FIRST_CAPABILITY_PROBE, subsection DOMAIN_CAPABILITY_ADMISSION_V1)",
+        "governance/research-adoption-ledger.json (RA-EXT-102 selected/rejected ideas)",
+        "tests/test_p2p_domain_capability_admission_01.py",
+        "tests/test_p2p_operations_notebook.py (ledger entry BACKLOG_J truthfulness check)"
+      ]
     }
   ]
 }
@@ -2329,6 +2453,11 @@ machine-readable ledger below is the durable record.
 
 `BACKLOG_I` stays `PENDING` until Control Tower independently verifies the
 exact PR head/tree for Issue #42 under RULE_ASSIMILATION_GATE_V1.
+
+`BACKLOG_J` (`DOMAIN_CAPABILITY_ADMISSION_V1`) is `VERIFIED`. Control Tower
+independently verified PR #246 at exact Writer head
+`d14b5e89d14f84dc70d4eb53fda978e4f7b2060a` (PR comment `5793604664`) under
+RULE_ASSIMILATION_GATE_V1 before this status flip.
 
 ## 5. ASSIMILATION_BACKLOG — previously promised items
 
@@ -2372,6 +2501,15 @@ section 4.3.
   `task_state.py` / `context.py` / `orchestration_policy.py`, focused tests
   in `tests/test_p2p_context_hygiene.py`. Flips to `VERIFIED` only after
   Control Tower verifies the exact PR head/tree.
+- **J. Domain capability admission (`DOMAIN_CAPABILITY_ADMISSION_V1`)** —
+  `VERIFIED`. Issue #245 / PR #246: the bounded subsection under RULE 19 above
+  (target-domain proof, cheap credible baseline, frozen evaluation set,
+  predeclared promotion criteria, observe-before-control, routing-vs-domain
+  authority, valid abstention, complexity/value gate), the RA-EXT-102
+  research-adoption record, and focused tests in
+  `tests/test_p2p_domain_capability_admission_01.py`. Control Tower independently
+  verified exact Writer head `d14b5e89d14f84dc70d4eb53fda978e4f7b2060a`
+  in PR comment `5793604664` before this status flip.
 
 ## 6. Discovery and operator paths
 
