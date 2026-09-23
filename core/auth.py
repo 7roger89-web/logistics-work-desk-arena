@@ -314,7 +314,7 @@ _LOGIN_HERO_CSS_TEMPLATE = """
   margin-bottom: 6px;
 }
 .lg05-identity { margin: 0 0 12px; }
-.lg05-identity .lg05-brand { font-size: .66rem; letter-spacing: .22em; color: #6fd3e0; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 10px rgba(0,0,0,0.60); }
+.lg05-identity .lg05-brand { font-size: .66rem; letter-spacing: .22em; color: #6fd3e0; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85), 0 0 14px rgba(0,0,0,0.55); }
 .lg05-identity .lg05-h { font-size: 1.3rem; font-weight: 700; color: #f2f7fa; margin-top: 3px; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 12px rgba(0,0,0,0.60); }
 .lg05-identity .lg05-sub { font-size: .72rem; color: #dce8ef; margin-top: 3px; text-shadow: 0 1px 3px rgba(0,0,0,0.90), 0 0 10px rgba(0,0,0,0.60); }
 [data-testid="stForm"] [data-testid="stTextInput"] { margin-top: 0; margin-bottom: 4px; }
