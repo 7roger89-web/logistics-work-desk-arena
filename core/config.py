@@ -394,12 +394,14 @@ def _load_auth_required() -> bool:
     Local/dev single-user mode remains available only when explicitly selected
     with AUTH_REQUIRED=false or [auth].required=false.
     """
-    return get_setting(
-        "AUTH_REQUIRED",
-        ("auth", "required"),
-        "AUTH_REQUIRED",
-        default="true",
-    ).strip().lower() in {"1", "true", "yes", "on"}
+    return _parse_bool(
+        get_setting(
+            "AUTH_REQUIRED",
+            ("auth", "required"),
+            "AUTH_REQUIRED",
+            default="true",
+        )
+    )
 
 
 AUTH_REQUIRED = _load_auth_required()
