@@ -36,6 +36,9 @@ from views import ceo_report as logi_ceo_report
 from views import handbook as logi_handbook
 from views import logi_c1
 from views import logi_real_data as rd
+import time
+import threading
+
 from views import logi_sandbox
 from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
@@ -83,6 +86,32 @@ _READ_WORKERS = 8
 #: "No explicit handle supplied" — ``None`` is a real value (the canonical
 #: resolution found no database) and must not be re-resolved inside a worker.
 _UNSET_DB: Any = object()
+
+# LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — TTL cache for LIVE fx rates (5-15 min)
+FX_TTL_SECONDS = 600  # 10 minutes
+_FX_CACHE: dict[str, Any] = {"snapshot": None, "expires_at": 0.0}
+_FX_CACHE_LOCK = threading.Lock()
+
+
+def _clear_fx_cache_for_tests() -> None:
+    with _FX_CACHE_LOCK:
+        _FX_CACHE["snapshot"] = None
+        _FX_CACHE["expires_at"] = 0.0
+
+
+def _get_cached_fx_snapshot() -> dict[str, Any] | None:
+    with _FX_CACHE_LOCK:
+        snap = _FX_CACHE["snapshot"]
+        exp = _FX_CACHE["expires_at"]
+        if snap is not None and time.monotonic() < exp:
+            return copy.deepcopy(snap)
+    return None
+
+
+def _store_fx_snapshot(snapshot: dict[str, Any]) -> None:
+    with _FX_CACHE_LOCK:
+        _FX_CACHE["snapshot"] = copy.deepcopy(snapshot)
+        _FX_CACHE["expires_at"] = time.monotonic() + FX_TTL_SECONDS
 
 
 def _read_concurrently(reads: Mapping[str, Callable[[], Any]]) -> dict[str, Any]:
@@ -170,6 +199,82 @@ def _resolve_db(db: Any = _UNSET_DB) -> Any:
     from core.database import get_db
 
     return get_db() if db is _UNSET_DB else db
+
+
+# ---------------------------------------------------------------------------
+# LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded FX rates projection
+# ---------------------------------------------------------------------------
+
+def _intl_fx_rates_projection(*, db: Any = _UNSET_DB, force_refresh: bool = False) -> dict[str, Any]:
+    """Build the LIVE fxRates slice for the comparator, fail-closed + TTL cached.
+
+    One bounded live probe per source (BOC / Agribank / BIDV) is enough
+    evidence (see SKILL acceptance).  The helper never invents a rate: a
+    source that cannot be parsed live returns RATE_UNAVAILABLE and the UI
+    keeps manual entry visibly marked MANUAL.  BIDV is marked UNAVAILABLE
+    when its official JSON source cannot be proven (TASK §7), even if an
+    HTML table could be scraped.
+    The projection is read-only; no money is moved.
+
+    TTL: 10 minutes (5-15 acceptable). First read fetches; repeats inside TTL
+    reuse snapshot; expired fetches again; force_refresh bypasses cache.
+    Thread-safe, no scheduler/daemon/Mongo, per-source failures remain RATE_UNAVAILABLE.
+    """
+    # Fast path: serve TTL-cached snapshot without network
+    if not force_refresh:
+        cached = _get_cached_fx_snapshot()
+        if cached is not None:
+            return cached
+    from decimal import Decimal
+    try:
+        from core.fx_sources import BOC_URL, AGRIBANK_URL, BIDV_URL, fetch_live_fx
+    except Exception:
+        return {
+            "boc": {"status": "RATE_UNAVAILABLE", "reason": "import_error"},
+            "agribank": {"status": "RATE_UNAVAILABLE"},
+            "bidv": {"status": "RATE_UNAVAILABLE", "bidv_rate_status": "UNAVAILABLE"},
+        }
+    # The three live fetches are independent — a failure of one must not hide
+    # artefacts of another.  fetch_live_fx already isolates per-source errors,
+    # but we keep a broad guard so a single import / network defect cannot
+    # blank the whole desk.
+    try:
+        live = fetch_live_fx("all", timeout=4)
+    except Exception as exc:  # noqa: BLE001
+        live = {
+            "boc": {"status": "RATE_UNAVAILABLE", "reason": f"fetch_error: {exc}", "source_url": BOC_URL},
+            "agribank": {"status": "RATE_UNAVAILABLE", "reason": f"fetch_error: {exc}", "source_url": AGRIBANK_URL},
+            "bidv": {"status": "RATE_UNAVAILABLE", "reason": f"fetch_error: {exc}", "source_url": BIDV_URL, "bidv_rate_status": "UNAVAILABLE"},
+        }
+    def _norm(entry: Any, default_url: str) -> dict[str, Any]:
+        if not isinstance(entry, dict):
+            return {"status": "RATE_UNAVAILABLE", "source_url": default_url}
+        out = dict(entry)
+        # Decimal → float for JSON, keep raw string as provenance
+        for k in ("buying_rate", "cash_buying_rate", "selling_rate", "cash_selling_rate", "middle_rate", "usd_to_cny", "sell", "usd_sell_vnd", "buy_cash", "buy_transfer"):
+            v = out.get(k)
+            if isinstance(v, Decimal):
+                out[k] = float(v)
+                out[f"{k}_str"] = format(v, "f")
+        # Ensure required keys for UI
+        out.setdefault("source_url", default_url)
+        if "status" not in out:
+            out["status"] = "OK" if out.get("usd_to_cny") is not None or out.get("usd_sell_vnd") is not None or out.get("sell") is not None else "RATE_UNAVAILABLE"
+        # BIDV truthful UNAVAILABLE marker
+        if default_url == BIDV_URL:
+            out.setdefault("bidv_rate_status", "UNAVAILABLE" if out.get("status") == "RATE_UNAVAILABLE" else "OK")
+        return out
+    try:
+        boc = _norm(live.get("boc"), BOC_URL)
+        agri = _norm(live.get("agribank"), AGRIBANK_URL)
+        bidv = _norm(live.get("bidv"), BIDV_URL)
+    except Exception:
+        boc = {"status": "RATE_UNAVAILABLE", "source_url": BOC_URL}
+        agri = {"status": "RATE_UNAVAILABLE", "source_url": AGRIBANK_URL}
+        bidv = {"status": "RATE_UNAVAILABLE", "source_url": BIDV_URL, "bidv_rate_status": "UNAVAILABLE"}
+    snapshot = {"boc": boc, "agribank": agri, "bidv": bidv}
+    _store_fx_snapshot(snapshot)
+    return copy.deepcopy(snapshot)
 
 
 def load_shipments(*, db: Any = _UNSET_DB) -> dict[str, Any]:
@@ -511,6 +616,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "companies": lambda: load_authority_companies(db=db) or {},
         "knowledgeNotes": lambda: _knowledge_notes(db=db),
         "users": lambda: _users_reader(db=db),
+        "intlFxRates": lambda: _intl_fx_rates_projection(db=db),
     })
     return {
         "ledger": loaded["ledger"],
@@ -526,6 +632,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "companies": loaded["companies"],
         "knowledgeNotes": loaded["knowledgeNotes"],
         "users": loaded["users"],
+        "intlFxRates": loaded["intlFxRates"],
     }
 
 
@@ -735,6 +842,11 @@ def build_view_model() -> dict:
         # path: picking an entry only pre-fills ``code`` / ``name`` / ``unit`` on
         # the service line that ``finance_actual_save`` books in data.3.4.
         "financeServiceCatalog": rd.finance_service_catalog(),
+        # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice (BOC /
+        # Agribank / BIDV) with provenance.  Fail-closed: RATE_UNAVAILABLE
+        # keeps manual entry marked MANUAL; BIDV stays UNAVAILABLE when its
+        # official JSON source cannot be proven, even if an HTML scrape exists.
+        "intlFxRates": sources["intlFxRates"],
         # LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — the only XLSX preview exposed to
         # React. The normalized rows remain in ephemeral session state; this is
         # a projection only and contains no uploaded bytes.

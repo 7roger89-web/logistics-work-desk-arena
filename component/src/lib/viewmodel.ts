@@ -812,6 +812,9 @@ export interface Contract {
   identity: ContractIdentity;
   linkedShipments: LinkedShipment[];
   documents: ContractDocument[];
+  /** LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — immutable payment snapshots, newest first (max 20). */
+  intlSnapshots?: IntlSnapshot[];
+  intlSnapshotCount?: number;
   source?: string;
 }
 
@@ -1545,6 +1548,99 @@ export interface UserAccessWorkspace {
 }
 
 // ----------------------------------------------------------------------------
+// LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded intl payment slice
+// ----------------------------------------------------------------------------
+
+export interface FxBoc {
+  status: string;
+  currency?: string;
+  buying_rate?: number | null;
+  cash_buying_rate?: number | null;
+  selling_rate?: number | null;
+  cash_selling_rate?: number | null;
+  middle_rate?: number | null;
+  buying_rate_raw?: string;
+  pub_time?: string | null;
+  source_url?: string;
+  captured_at?: string;
+  usd_to_cny?: number | null;
+  usd_to_cny_str?: string | null;
+  reason?: string;
+  source?: string;
+  note?: string;
+}
+
+export interface FxAgribank {
+  status: string;
+  currency?: string;
+  buy_cash?: number | null;
+  buy_transfer?: number | null;
+  sell?: number | null;
+  usd_sell_vnd?: number | null;
+  usd_sell_vnd_str?: string;
+  pub_time?: string | null;
+  source_url?: string;
+  captured_at?: string;
+  reason?: string;
+  source?: string;
+}
+
+export interface FxBidv {
+  status: string;
+  bidv_rate_status?: string;
+  currency?: string;
+  sell?: number | null;
+  usd_sell_vnd?: number | null;
+  usd_sell_vnd_str?: string;
+  pub_time?: string | null;
+  source_url?: string;
+  captured_at?: string;
+  reason?: string;
+  html_sell?: string;
+  source?: string;
+  note?: string;
+}
+
+export interface IntlFxRates {
+  boc: FxBoc;
+  agribank: FxAgribank;
+  bidv: FxBidv;
+}
+
+export interface IntlSnapshotFeeRules {
+  recipient_bank_fee_usd: string;
+  china_fee_per_tranche_cny: string;
+  china_tranche_size_usd: string;
+  hk_fee_pct: string;
+  vn_swift_fee_usd: string;
+  vn_pct_fee: string;
+}
+
+export interface IntlSnapshotFx {
+  boc: Record<string, unknown>;
+  agribank: Record<string, unknown>;
+  bidv: Record<string, unknown>;
+  usd_to_cny: string | null;
+  agribank_sell_vnd: string | null;
+  bidv_sell_vnd: string | null;
+  outside_cny_vnd: string | null;
+}
+
+export interface IntlSnapshot {
+  id: string;
+  contract_id: string;
+  mode: string;
+  created_at: string;
+  formula_version: string;
+  inputs: Record<string, unknown>;
+  fx: IntlSnapshotFx & Record<string, unknown>;
+  fee_rules: IntlSnapshotFeeRules;
+  outputs: Record<string, unknown>;
+  created_by?: string;
+  is_deleted?: boolean;
+}
+
+// ----------------------------------------------------------------------------
 // LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — authoritative write outcomes.
 //
 // The bounded Python dispatcher stores the result of every business event it
@@ -1668,6 +1764,8 @@ export interface ViewModel {
    * its own extension list or size limit.
    */
   attachmentPolicy?: AttachmentPolicy;
+  /** LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice, fail-closed. */
+  intlFxRates?: IntlFxRates;
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
@@ -1688,6 +1786,9 @@ export function applyViewModel(next: ViewModel): void {
   // tab renders an honest empty state instead of crashing on a missing field.
   for (const shipment of next.shipments ?? []) {
     if (!Array.isArray(shipment.attachments)) shipment.attachments = [];
+  }
+  for (const contract of next.contracts ?? []) {
+    if (!Array.isArray((contract as unknown as Record<string, unknown>).intlSnapshots)) (contract as unknown as Record<string, unknown>).intlSnapshots = [];
   }
   const prev = current;
   current = next;

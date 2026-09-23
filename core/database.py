@@ -306,6 +306,9 @@ def ensure_indexes() -> bool:
         (db.shipment_attachments, "id", {"unique": True, "name": "uq_shipment_attachment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.shipment_attachments, [("shipment_id", 1), ("sha256", 1)], {"unique": True, "name": "uq_shipment_attachment_sha", "partialFilterExpression": {"sha256": {"$type": "string"}}}),
         (db.shipment_attachments, [("shipment_id", 1), ("uploaded_at", -1)], {"name": "ix_shipment_attachment_worklist"}),
+        # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded snapshot ledger per contract
+        (db.contract_intl_payment_snapshots, "id", {"unique": True, "name": "uq_contract_intl_snapshot_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.contract_intl_payment_snapshots, [("contract_id", 1), ("created_at", -1)], {"name": "ix_contract_intl_snapshot_contract"}),
     ]
     all_ok = True
     errors: list[str] = []
@@ -2324,4 +2327,90 @@ def link_superseded_docgen_document(old_document_id: str, new_document_id: str) 
         after={"superseded_by_document_id": new_document_id},
     )
     
+    return True
+
+# ----------------------------------------------------------------------------
+# LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded intl payment snapshot ledger
+#
+# Each snapshot is ONE immutable calculation record bound to a contract:
+# mode, amounts, fee rules, FX rates + provenance, formula version, outputs,
+# timestamps, actor.  A later live-rate refresh creates a NEW snapshot; it
+# never overwrites existing ones.  The collection is append-only; the generic
+# writer's immutability guard below ensures a snapshot id cannot be rewritten.
+# ----------------------------------------------------------------------------
+
+def load_contract_intl_snapshots(contract_id: str | None = None, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    """Load intl payment snapshots, optionally scoped to one contract."""
+    query: dict[str, Any] = {"is_deleted": {"$ne": True}}
+    if contract_id:
+        query["contract_id"] = str(contract_id).strip().upper()
+    return _load_dict("contract_intl_payment_snapshots", query=query, db=db)
+
+
+def load_contract_intl_snapshots_for_contract(contract_id: str, *, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    """Return snapshots for one contract, newest first."""
+    snapshots = load_contract_intl_snapshots(contract_id, db=db)
+    rows = list(snapshots.values())
+    rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return rows
+
+
+def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None = None) -> bool:
+    """Persist ONE immutable snapshot — atomically append-only.
+
+    Uses insert_one with unique index uq_contract_intl_snapshot_id.
+    On DuplicateKey, allows only exact fingerprint equality (idempotent).
+    Never updates an existing snapshot. Audit only on genuine new insert.
+    Requires contract_id, mode, and sales_write permission (same as contract_save).
+    """
+    from core.auth import can_edit_contract
+
+    if not can_edit_contract():
+        _set_last_error("Bạn không có quyền lưu snapshot thanh toán quốc tế (sales_write).")
+        return False
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return False
+    snap_id = str(document.get("id") or "").strip()
+    contract_id = str(document.get("contract_id") or "").strip().upper()
+    if not snap_id or not contract_id:
+        _set_last_error("Snapshot cần có id và contract_id.")
+        return False
+    if not db.contracts.find_one({"id": contract_id}, {"_id": 0}):
+        _set_last_error(f"Không tìm thấy hợp đồng {contract_id}.")
+        return False
+    payload = copy.deepcopy(dict(document))
+    payload["id"] = snap_id
+    payload["contract_id"] = contract_id
+    if "created_at" not in payload or not payload["created_at"]:
+        payload["created_at"] = utc_now()
+    actor_ctx = _actor_context(actor)
+    payload.setdefault("created_by", actor_ctx["username"])
+    payload.setdefault("created_by_user_id", actor_ctx["user_id"])
+    payload.setdefault("created_by_role", actor_ctx["role"])
+    payload.setdefault("is_deleted", False)
+    payload.pop("_id", None)
+    try:
+        db.contract_intl_payment_snapshots.insert_one(payload)
+    except DuplicateKeyError:
+        # Atomicity: the unique index uq_contract_intl_snapshot_id fired — check idempotency via fingerprint
+        try:
+            existing = db.contract_intl_payment_snapshots.find_one({"id": snap_id}, {"_id": 0})
+        except Exception:
+            existing = None
+        if existing is not None:
+            # Compare fingerprints of persisted vs attempted payload (ignoring _id/captured server fields if needed)
+            # We compare the core content: inputs/fx/fee_rules/outputs etc via canonical fingerprint
+            if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+                return True
+            # Also allow if existing equals original document fingerprint (covering minor server-added fields)
+            if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
+                return True
+        _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
+        return False
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
+    _audit(db, "contract_intl_payment_snapshot", snap_id, "create", before=None, after=payload)
     return True
