@@ -352,22 +352,53 @@ def test_transparent_glass_form_is_near_transparent_no_dark_veil() -> None:
             assert "background: rgba(8, 17, 26, 0.58)" not in css
             assert "blur(16px)" not in css
             assert "linear-gradient" not in css
-            assert "background: transparent;" in css
-            assert "-webkit-backdrop-filter: none;" in css
-            assert "backdrop-filter: none;" in css
-            assert "box-shadow: none;" in css
-            assert "0 22px 55px" not in css
-            assert "rgba(151, 197, 216, 0.16)" not in css
-            assert 'background-image: url("data:image/webp;base64,' in css
-            assert "background-size: cover;" in css
-            desktop, mobile = auth._LOGIN_BG_POSITIONS[idx]
-            assert f"background-position: {desktop};" in css
-            assert f"background-position: {mobile};" in css
-            assert "rgba(5, 12, 18, 0.32)" in css
-            assert "rgba(255, 255, 255, 0.18)" in css
-            assert "text-shadow:" in css
-            assert css.count("data:image/webp;base64,") == 1
-            assert "88vw" in css
+        assert "background: transparent;" in css
+        assert "-webkit-backdrop-filter: none;" in css
+        assert "backdrop-filter: none;" in css
+        assert "box-shadow: none;" in css
+        assert "0 22px 55px" not in css
+        assert "rgba(151, 197, 216, 0.16)" not in css
+        assert 'background-image: url("data:image/webp;base64,' in css
+        assert "background-size: cover;" in css
+        desktop, mobile = auth._LOGIN_BG_POSITIONS[idx]
+        assert f"background-position: {desktop};" in css
+        assert f"background-position: {mobile};" in css
+        assert "rgba(5, 12, 18, 0.62)" in css
+        assert "rgba(255, 255, 255, 0.22)" in css
+        assert "text-shadow:" in css
+        assert css.count("data:image/webp;base64,") == 1
+        assert "88vw" in css
+
+
+def test_text_input_shell_stays_transparent_so_artwork_shows_through() -> None:
+    """Regression guard for LOGI_LOGIN_TRANSPARENT_GLASS_01_VERIFY.
+
+    Streamlit's text-input shell (``stTextInputRootElement``) paints the theme's
+    light ``secondaryBackgroundColor``. With only the ``<input>`` tinted, that
+    shell showed through as an OPAQUE grey plate over the Owner artwork and the
+    light typed ink on it measured ~2.2:1. The shell must be neutralised and the
+    focus cue must be local to the field, not a page-level veil.
+    """
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        for idx in (1, 2, 3, 4, 5):
+            mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = idx
+            css = auth._login_hero_css()
+            assert '[data-testid="stForm"] [data-testid="stTextInputRootElement"] {' in css
+            shell = css.split('[data-testid="stForm"] [data-testid="stTextInputRootElement"] {')[1].split("}")[0]
+            assert "background: transparent !important;" in shell
+            assert "border: none !important;" in shell
+            assert "box-shadow: none !important;" in shell
+            # typed ink is lighter than the field tint it sits on
+            assert "color: #eef5f9 !important;" in css
+            # focus is a local cue on the field, not a full-screen overlay
+            assert "[data-testid=\"stForm\"] input:focus" in css
+            # nothing that darkens the whole artwork is reintroduced
+            assert "linear-gradient" not in css
+            assert "backdrop-filter: blur" not in css
+            assert "stAppViewContainer\"], [data-testid" not in css
+            # reveal icon + keyboard hint inside the field stay visible on the tint
+            assert '[data-testid="stTextInputRootElement"] span' in css
 
 
 def test_duplicate_visual_pair_09_10_never_consecutive() -> None:
