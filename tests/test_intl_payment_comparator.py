@@ -270,6 +270,18 @@ class FeeZeroPreservationTest(unittest.TestCase):
             china_forward(Decimal("10"), Decimal("6.68"), Decimal("35"))
         with self.assertRaises(ValueError):
             hk_forward(Decimal("10"), Decimal("6.68"), Decimal("35"))
+    def test_gross_equals_recipient_fee_rejected_china(self):
+        with self.assertRaises(ValueError):
+            china_forward(Decimal("35"), Decimal("6.68"), Decimal("35"))
+        # gross > fee allowed (use zero China fee to avoid net negative masking)
+        f = china_forward(Decimal("35.01"), Decimal("6.68"), Decimal("35"), Decimal("0"))
+        self.assertEqual(f["recipient_bank_fee_usd"], Decimal("35"))
+        self.assertGreater(f["net_cny_received"], Decimal("0"))
+    def test_gross_equals_recipient_fee_rejected_hk(self):
+        with self.assertRaises(ValueError):
+            hk_forward(Decimal("35"), Decimal("6.68"), Decimal("35"))
+        f = hk_forward(Decimal("35.01"), Decimal("6.68"), Decimal("35"), Decimal("0"))
+        self.assertEqual(f["recipient_bank_fee_usd"], Decimal("35"))
     def test_comparison_zero_fees(self):
         res = comparison_for_target_cny(Decimal("10000"), Decimal("3900"), Decimal("6.68"), Decimal("26180"), Decimal("26180"),
                                         recipient_bank_fee_usd=Decimal("0"),
@@ -318,6 +330,21 @@ class SourceTimestampFailClosedTest(unittest.TestCase):
         res = parse_agribank_html(html_bad, captured_at="2026-09-23T00:00:00+00:00")
         # Must match exact `HH:MM ngày DD/MM/YYYY`
         self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_boc_impossible_timestamp_unavailable(self):
+        html_imp = """
+        <table><tr><th>Currency Name</th><th>Buying Rate</th><th>Pub Time</th></tr>
+        <tr><td>USD</td><td>669.55</td><td>2026/99/99 99:99:99</td></tr></table>
+        """
+        res = parse_boc_html(html_imp, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
+    def test_agribank_impossible_timestamp_unavailable(self):
+        html_imp = """
+        <div>Tỷ giá được cập nhật lúc 99:99 ngày 99/99/2026</div>
+        <table><tr><th>Ngoại tệ</th><th>Giá bán</th></tr>
+        <tr><td>USD</td><td>26,180</td></tr></table>
+        """
+        res = parse_agribank_html(html_imp, captured_at="2026-09-23T00:00:00+00:00")
+        self.assertEqual(res["status"], "RATE_UNAVAILABLE")
     def test_agribank_valid_ok_and_tz_aware_captured(self):
         res = parse_agribank_html(AGRIBANK_SAMPLE_HTML, captured_at="2026-09-23T00:00:00+00:00")
         self.assertEqual(res["status"], "OK")
@@ -365,6 +392,19 @@ class ProvenanceHelperTest(unittest.TestCase):
         out = _normalize_rate_provenance(None, prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
         # Both missing -> currently returns base (OK) — but if effective None and claim None, stays as is
         self.assertIn("status", out)
+    def test_unavailable_with_numeric_normalizes_to_manual(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "RATE_UNAVAILABLE", "source_url": "manual", "reason": "unavailable"}
+        out = _normalize_rate_provenance(Decimal("6.68"), prov, ["usd_to_cny", "value"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        self.assertEqual(out.get("status"), "MANUAL")
+        self.assertEqual(out.get("value"), "6.68")
+        self.assertIn("live_reference", out)
+        self.assertEqual(out["live_reference"]["status"], "RATE_UNAVAILABLE")
+    def test_unavailable_with_none_stays_unavailable(self):
+        from views.logi_intl_snapshot import _normalize_rate_provenance
+        prov = {"status": "RATE_UNAVAILABLE", "source_url": "manual"}
+        out = _normalize_rate_provenance(None, prov, ["usd_to_cny"], "USD_CNY", "2026-09-23T00:00:00+00:00")
+        self.assertEqual(out.get("status"), "RATE_UNAVAILABLE")
 
 class FxTtlCacheTest(unittest.TestCase):
     """Blocker C — TTL 10min in-process cache (file-level + behavioral simulation)."""

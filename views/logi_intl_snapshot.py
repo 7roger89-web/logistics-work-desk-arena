@@ -78,7 +78,18 @@ def _normalize_rate_provenance(
         base.setdefault("captured_at", captured_at)
         return base
     if status == "RATE_UNAVAILABLE":
-        return base
+        if effective is None:
+            return base
+        # Effective numeric present but provenance says unavailable — normalize to truthful MANUAL
+        return {
+            "status": "MANUAL",
+            "source": "MANUAL",
+            "source_url": "manual",
+            "value": _serialize_decimal(effective),
+            "captured_at": captured_at,
+            "live_reference": dict(base),
+            "reason": f"{label}: persisted RATE_UNAVAILABLE but calculation used numeric {effective} — normalized to truthful MANUAL",
+        }
     # LIVE / OK — must match effective
     if effective is None and claim is None:
         return base
@@ -209,21 +220,7 @@ def handle_contract_intl_snapshot_save(payload: Mapping[str, Any], deps: Mapping
     fx_agri = payload.get("fxAgribank") if isinstance(payload.get("fxAgribank"), Mapping) else payload.get("fx_agribank") if isinstance(payload.get("fx_agribank"), Mapping) else {}
     fx_bidv = payload.get("fxBidv") if isinstance(payload.get("fxBidv"), Mapping) else payload.get("fx_bidv") if isinstance(payload.get("fx_bidv"), Mapping) else {}
 
-    # minimal provenance fallback — truthful per-rate
-    # Allow explicit sourceKind from frontend: LIVE|MANUAL|UNAVAILABLE
-    def _coerce_kind(raw, default_live_valid: bool) -> str:
-        k = str(raw or "").strip().upper()
-        if k in ("LIVE", "MANUAL", "UNAVAILABLE", "RATE_UNAVAILABLE"):
-            return "UNAVAILABLE" if k == "RATE_UNAVAILABLE" else k
-        # Heuristic: if prov claims OK/LIVE treat as LIVE, else MANUAL
-        if isinstance(prov, Mapping) and str(prov.get("status") or "").upper() in ("OK", "LIVE"):
-            return "LIVE"
-        return "MANUAL" if default_live_valid else "UNAVAILABLE"
-
-    # If frontend sent explicit kinds, prefer them; else infer
-    boc_kind_raw = payload.get("usdCnySourceKind") or payload.get("usd_cny_source_kind") or payload.get("sourceKindBoc")
-    agri_kind_raw = payload.get("agribankSourceKind") or payload.get("agribank_source_kind")
-    bidv_kind_raw = payload.get("bidvSourceKind") or payload.get("bidv_source_kind")
+    # minimal provenance fallback — truthful per-rate (dead helper removed; sourceKind wiring via _normalize_rate_provenance)
     if not isinstance(fx_boc, Mapping) or not fx_boc:
         fx_boc = {"source": "MANUAL", "status": "MANUAL" if usd_to_cny is not None else "RATE_UNAVAILABLE", "source_url": "manual", "usd_to_cny": _serialize_decimal(usd_to_cny), "value": _serialize_decimal(usd_to_cny)}
     if not isinstance(fx_agri, Mapping) or not fx_agri:

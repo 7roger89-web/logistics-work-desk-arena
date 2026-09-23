@@ -141,7 +141,7 @@ def china_forward(
         raise ValueError("invalid amount/rate")
 
     usd_after_bank = gross_usd_d - recipient_fee_d
-    if usd_after_bank < 0:
+    if usd_after_bank <= 0:
         raise ValueError("gross_usd must be > recipient_bank_fee_usd")
     gross_cny = usd_after_bank * usd_to_cny_d
     china_fee = china_agent_fee_cny(gross_usd_d, fee_per_tranche_d, tranche_size_d)
@@ -189,7 +189,7 @@ def hk_forward(
         raise ValueError("invalid amount/rate")
 
     usd_after_bank = gross_usd_d - recipient_fee_d
-    if usd_after_bank < 0:
+    if usd_after_bank <= 0:
         raise ValueError("gross_usd must be > recipient_bank_fee_usd")
     hk_fee_usd = usd_after_bank * hk_pct_d
     usd_for_conversion = usd_after_bank - hk_fee_usd

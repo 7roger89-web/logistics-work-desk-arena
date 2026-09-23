@@ -73,16 +73,27 @@ def _extract_pub_time_boc(html: str) -> str | None:
 def _is_valid_boc_pub_time(txt: str | None) -> bool:
     if not txt or not isinstance(txt, str):
         return False
-    # exact YYYY/MM/DD HH:MM:SS
-    return bool(re.match(r"^\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}$", txt.strip()))
+    t = txt.strip()
+    if not re.match(r"^\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}$", t):
+        return False
+    try:
+        datetime.strptime(t, "%Y/%m/%d %H:%M:%S")
+        return True
+    except Exception:
+        return False
 
 
 def _is_valid_agribank_pub_time(txt: str | None) -> bool:
     if not txt or not isinstance(txt, str):
         return False
-    # expected "HH:MM ngày DD/MM/YYYY" per official page
-    return bool(re.search(r"^\d{1,2}:\d{2}\s+ngày\s+\d{1,2}/\d{1,2}/\d{4}$", txt.strip()) or
-                re.search(r"\d{1,2}:\d{2}\s+ngày\s+\d{1,2}/\d{1,2}/\d{4}", txt))
+    t = txt.strip()
+    if not re.match(r"^\d{1,2}:\d{2}\s+ngày\s+\d{1,2}/\d{1,2}/\d{4}$", t):
+        return False
+    try:
+        datetime.strptime(t, "%H:%M ngày %d/%m/%Y")
+        return True
+    except Exception:
+        return False
 
 
 def parse_boc_html(html: str, source_url: str = BOC_URL, captured_at: str | None = None) -> dict[str, Any]:
