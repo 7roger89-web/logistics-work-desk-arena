@@ -56,6 +56,16 @@ C1_EVENTS = {
     # RBAC → existing core.database.save_authority_agent → audit → fresh read.
     # No agents_v2 collection, no partner table, no new writer.
     "authority_agent_save",
+    # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded immutable snapshot for
+    # the international payment comparator (Hợp đồng → Thanh toán quốc tế).
+    # One typed event carries the full calculator inputs + FX provenance + fee
+    # rules; the server re-derives the arithmetic with Decimal, persists the
+    # snapshot via the canonical writer, and returns the fresh readback. A
+    # later live-rate refresh creates a NEW snapshot; it never overwrites existing
+    # ones. Also exposed as the shorter alias `contract_payment_snapshot_save`
+    # for older clients.
+    "contract_intl_snapshot_save",
+    "contract_payment_snapshot_save",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -444,6 +454,7 @@ def contract_projection(
     agents: Mapping[str, Any],
     all_contracts: Mapping[str, Any],
     contract_index: Mapping[str, Any] | None = None,
+    intl_snapshots_by_contract: Mapping[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     from core.docgen import generator as gen
 
@@ -522,6 +533,12 @@ def contract_projection(
     documents = [document_projection(d, stored) for d in docs.values() if isinstance(d, Mapping)]
     documents.sort(key=lambda d: (d["documentType"], d["revision"]))
 
+    # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — readback of immutable payment snapshots
+    _intl_snaps = []
+    if intl_snapshots_by_contract is not None:
+        _intl_snaps = list(intl_snapshots_by_contract.get(cid.upper(), []) or [])
+        _intl_snaps = _intl_snaps[:20]
+
     status = _text(c.get("status")) or "active"
     return {
         "id": cid,
@@ -556,6 +573,8 @@ def contract_projection(
         "identity": identity,
         "linkedShipments": linked_shipments,
         "documents": documents,
+        "intlSnapshots": _intl_snaps,
+        "intlSnapshotCount": len(_intl_snaps),
         "source": "core.database.load_contracts + core.docgen.build_document_pack",
     }
 
@@ -615,6 +634,7 @@ def assemble_c1_payload(
     agreements: Mapping[str, Any] | None = None,
     companies: Mapping[str, Any] | None = None,
     docgen_documents: Mapping[str, Any] | None = None,
+    intl_snapshots_by_contract: Mapping[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Assemble the C1 reference payload.
 
@@ -655,6 +675,25 @@ def assemble_c1_payload(
     if docgen_documents is None:
         docgen_documents = load_docgen_documents() or {}
 
+    # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bulk load immutable snapshots once per render
+    if intl_snapshots_by_contract is None:
+        try:
+            from core.database import load_contract_intl_snapshots
+            _all_snaps = load_contract_intl_snapshots() or {}
+            _grouped: dict[str, list[dict[str, Any]]] = {}
+            for snap in _all_snaps.values():
+                if not isinstance(snap, Mapping):
+                    continue
+                cid_key = str(snap.get("contract_id") or "").strip().upper()
+                if not cid_key:
+                    continue
+                _grouped.setdefault(cid_key, []).append(dict(snap))
+            for lst in _grouped.values():
+                lst.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+            intl_snapshots_by_contract = _grouped
+        except Exception:
+            intl_snapshots_by_contract = {}
+
     docs_by_scope: dict[str, dict[str, Any]] = {}
     for doc in docgen_documents.values():
         if not isinstance(doc, Mapping):
@@ -676,6 +715,7 @@ def assemble_c1_payload(
                 agents=agents,
                 all_contracts=contracts,
                 contract_index=contract_index,
+                intl_snapshots_by_contract=intl_snapshots_by_contract,
             )
             for c in contracts.values() if isinstance(c, Mapping)
         ],
@@ -1816,6 +1856,8 @@ _HANDLERS = {
     "contract_docgen_issue": _handle_contract_docgen_issue,
     "contract_shipment_link": _handle_contract_shipment_link,
     "authority_agent_save": _handle_authority_agent_save,
+    "contract_intl_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
+    "contract_payment_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
 }
 
 

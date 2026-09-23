@@ -34,6 +34,7 @@ import {
   type Environment,
   type FinanceServiceCatalogEntry,
   type Home,
+  type IntlFxRates,
   type NotebookHandbook,
   type Notif,
   type PartnerPayablesViewModel,
@@ -81,6 +82,7 @@ interface StoreShape {
   environment: Environment | null;
   receivables: ReceivablesViewModel;
   payables: PartnerPayablesViewModel;
+  intlFxRates: IntlFxRates | null;
   /** LOGI_CEO_REPORT_01 — server-derived, read-only management summary. */
   ceoReport: CeoReport | null;
   /** LOGI_NOTEBOOK_WORKSPACE_01 — read-only /so-tay handbook slice. */
@@ -158,6 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => vm?.payables ?? { rows: [], totals: {} },
     [vm]
   );
+  const intlFxRates = useMemo(() => vm?.intlFxRates ?? null, [vm]);
   const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
   const handbook = useMemo(() => vm?.handbook ?? null, [vm]);
   const financeServices = useMemo(() => vm?.financeServiceCatalog ?? [], [vm]);
@@ -237,6 +240,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       environment,
       receivables,
       payables,
+      intlFxRates,
       ceoReport,
       handbook,
       financeServices,
@@ -267,6 +271,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       environment,
       receivables,
       payables,
+      intlFxRates,
       ceoReport,
       handbook,
       financeServices,

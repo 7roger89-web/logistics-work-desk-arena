@@ -114,7 +114,10 @@ export type LogiEventName =
   // Drive server-side so no Drive id, folder id or token ever reaches the
   // browser. There is deliberately NO delete event.
   | "shipment_attachment_upload"
-  | "attachment_download";
+  | "attachment_download"
+  // LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — immutable payment snapshot
+  | "contract_intl_snapshot_save"
+  | "contract_payment_snapshot_save";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -162,6 +165,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "user_password_reset",
   "shipment_attachment_upload",
   "attachment_download",
+  "contract_intl_snapshot_save",
+  "contract_payment_snapshot_save",
 ]);
 
 type Transport = (event: string, value: unknown) => void;
