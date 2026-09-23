@@ -97,6 +97,31 @@ async function type(input, value) {
   await tick();
 }
 
+/**
+ * LOGI_QUOTE_COST_WORKFLOW_UX_01 — the customer field is now the EXISTING
+ * SearchPicker instead of a single long <select>. The stored value is still the
+ * canonical customerId, so only the ACT changes: open, type, click the match.
+ */
+async function pickCustomer(nameFragment) {
+  const picker = $('[data-testid="create-customer-picker"]')[0];
+  assert.ok(picker, "customer picker missing");
+  $('[data-testid="create-customer-picker-toggle"]')[0]
+    .dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(80);
+  const search = $('[data-testid="create-customer-picker-search"]')[0];
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")
+    .set.call(search, nameFragment);
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  await tick(80);
+  const option = $('[data-testid="create-customer-picker-list"] button')
+    .find((b) => text(b).includes(nameFragment));
+  assert.ok(option, `customer "${nameFragment}" not found in the picker`);
+  option.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(80);
+  assert.ok($('[data-testid="create-customer-picker"]')[0].getAttribute("data-selected"),
+    "the picker must bind a canonical customer id");
+}
+
 async function selectOption(select, optionTextIncludes) {
   const option = [...select.options].find((o) => text(o).includes(optionTextIncludes));
   assert.ok(option, `select option containing "${optionTextIncludes}" not found`);
@@ -172,11 +197,7 @@ let sentRequestId = "";
   const code = $('input[placeholder="LO-0470"]')[0];
   assert.ok(code, "shipment code input missing");
   await type(code, SHIPMENT);
-  // The customer select is the one whose options carry the real customers.
-  const customerSelect = $("select").find((s) =>
-    [...s.options].some((o) => text(o).includes(CUSTOMER)));
-  assert.ok(customerSelect, "customer select missing");
-  await selectOption(customerSelect, CUSTOMER);
+  await pickCustomer(CUSTOMER);
 
   const before = triggers.length;
   await click("TẠO LÔ HÀNG", "button");
@@ -268,9 +289,7 @@ console.log("STEP 5 — REGRESSION: pre-existing duplicate + unrelated version c
 
   const code = $('input[placeholder="LO-0470"]')[0];
   await type(code, SHIPMENT);
-  const customerSelect = $("select").find((s) =>
-    [...s.options].some((o) => text(o).includes(CUSTOMER)));
-  await selectOption(customerSelect, CUSTOMER);
+  await pickCustomer(CUSTOMER);
 
   const before = triggers.length;
   await click("TẠO LÔ HÀNG", "button");

@@ -275,17 +275,58 @@ def missing_docs(
 # Finance projection — QUOTE ESTIMATE stays separate from FINANCE ACTUAL
 # --------------------------------------------------------------------------
 
+def _quote_estimate_line(line: Mapping[str, Any]) -> dict[str, Any]:
+    """One canonical LOG-C12 service line, projected with a TRUTHFUL currency.
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_03 — this used to read
+
+        amount = sell_vnd if sell_vnd is not None else sell_total
+        ccy    = "VND"                      # always
+
+    which was safe only while every line was guaranteed convertible. REPAIR_02
+    made "no quote-time FX rate" a normal, savable state, so ``sell_vnd`` is now
+    legitimately None on a foreign-currency line — and the fallback then
+    published the ORIGINAL amount under a VND label: 950 USD rendered as
+    "950 VND", understating the figure by roughly 24,000x on the Check chi phí
+    screen.
+
+    The label must always describe the amount actually being shown:
+      * converted (sell_vnd known) → that VND figure, labelled VND;
+      * not converted              → the original amount, labelled with the
+                                     line's OWN currency.
+    Nothing is converted here and no rate is invented; this is projection only.
+    """
+    sell_vnd = line.get("sell_vnd")
+    if sell_vnd is not None:
+        amount, ccy = num(sell_vnd), "VND"
+    else:
+        amount, ccy = num(line.get("sell_total")), text(line.get("currency")) or "VND"
+    return {
+        "label": text(line.get("service_name")) or text(line.get("code")) or "Dòng báo giá",
+        "amount": amount,
+        "ccy": ccy,
+        "qty": num(line.get("qty")),
+        "vat": num(line.get("tax_pct")),
+        "kind": "quote",
+    }
+
+
 def _quote_lines(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Quote estimate lines from the linked accepted quote (separate object)."""
-    customer_id = text(shipment.get("customer_id"))
-    contract_id = text(shipment.get("contract_id"))
-    for quote in quotes.values():
-        if not isinstance(quote, Mapping):
-            continue
-        if contract_id and text(quote.get("id")) == contract_id:
-            pass
-        elif text(quote.get("customer_id")) != customer_id:
-            continue
+    """Quote estimate lines from the linked quote (a separate object).
+
+    REPAIR_03 — identity precedence. ``build_shipment_draft`` already stamps
+    ``shipment.quote_id``, but this projection used to scan the quote store by
+    contract/customer, so a customer with several quotes could have ANY of them
+    projected onto the lot. The lot's own link is authoritative when present:
+    the exact quote, or nothing — never a same-customer substitute, because a
+    plausible wrong estimate is worse than a visible absence.
+
+    Legacy shipments carry no ``quote_id``; for those the original
+    contract/customer fallback is preserved unchanged. No migration, no rewrite
+    of historical shipments.
+    """
+    def _project(quote: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+        # Legacy quote shape: pre-priced ``lines`` that state their own currency.
         lines = quote.get("lines")
         if isinstance(lines, list):
             return [
@@ -301,16 +342,34 @@ def _quote_lines(shipment: Mapping[str, Any], quotes: Mapping[str, Any]) -> list
         # Canonical LOG-C12 quote shape: service_lines carry the estimate.
         service_lines = quote.get("service_lines")
         if isinstance(service_lines, list):
-            return [
-                {
-                    "label": text(line.get("service_name")) or text(line.get("code")) or "Dòng báo giá",
-                    "amount": num(line.get("sell_vnd") if line.get("sell_vnd") is not None else line.get("sell_total")),
-                    "ccy": "VND",
-                    "kind": "quote",
-                }
-                for line in service_lines
-                if isinstance(line, Mapping)
-            ]
+            return [_quote_estimate_line(line) for line in service_lines
+                    if isinstance(line, Mapping)]
+        return None
+
+    # (1) The lot's OWN link wins, exactly.
+    quote_id = text(shipment.get("quote_id"))
+    if quote_id:
+        linked = quotes.get(quote_id)
+        if not isinstance(linked, Mapping):
+            linked = next((q for q in quotes.values()
+                           if isinstance(q, Mapping) and text(q.get("id")) == quote_id), None)
+        if not isinstance(linked, Mapping):
+            return []  # the link names a quote we cannot read — show nothing, guess nothing
+        return _project(linked) or []
+
+    # (2) Legacy shipments only: the original contract/customer fallback.
+    customer_id = text(shipment.get("customer_id"))
+    contract_id = text(shipment.get("contract_id"))
+    for quote in quotes.values():
+        if not isinstance(quote, Mapping):
+            continue
+        if contract_id and text(quote.get("id")) == contract_id:
+            pass
+        elif text(quote.get("customer_id")) != customer_id:
+            continue
+        projected = _project(quote)
+        if projected is not None:
+            return projected
     return []
 
 

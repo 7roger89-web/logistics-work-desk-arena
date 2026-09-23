@@ -56,6 +56,13 @@ C1_EVENTS = {
     # RBAC → existing core.database.save_authority_agent → audit → fresh read.
     # No agents_v2 collection, no partner table, no new writer.
     "authority_agent_save",
+    # LOGI_QUOTE_COST_WORKFLOW_UX_01 — ONE bounded, READ-ONLY quote export.
+    # It mutates nothing: it re-reads the canonical quote, renders the customer
+    # quotation through the EXISTING core.excel_utils.generate_quote_excel and
+    # returns bounded base64 bytes on the same lastWrites channel every other
+    # download already uses. No second exporter, no API server, no Office
+    # automation, no Owner-local PC.
+    "quote_export_xlsx",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -241,6 +248,9 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
         "fxNeededFor": [code for code in line_currencies if code != "VND"],
         "serviceLines": lines_out,
         "assumptions": list(q.get("assumptions") or []),
+        # Customer-facing notes round trip so reopening a quote restores exactly
+        # what the customer was (or will be) shown.
+        "customerNotes": [_text(n) for n in (q.get("customer_notes") or []) if _text(n)],
         "statusHistory": list(q.get("status_history") or []),
         "version": int(q.get("version") or 0),
         "shipmentId": _text(q.get("shipment_id")),
@@ -962,20 +972,85 @@ def _quote_fx_snapshot(payload: Mapping[str, Any], service_lines: list[dict[str,
             rate = _num(previous.get(code))
         if rate is not None and rate > 0:
             rates[code] = rate
-    needed = sorted({
-        _text(line.get("currency")).upper()
-        for line in service_lines if isinstance(line, Mapping)
-    } - {"", "VND"})
-    missing = [code for code in needed if _num(rates.get(code)) is None]
-    if missing:
-        raise ValueError(
-            "Thiếu tỷ giá báo giá " + ", ".join(f"{code} → VND" for code in missing)
-            + ". Nhập tỷ giá dùng cho báo giá này — hệ thống không tự đặt tỷ giá."
-        )
+    # REPAIR_02: a missing rate is UNKNOWN, not an error. NO FAKE FX still holds
+    # — nothing is converted without an operator-entered rate — but the quote is
+    # perfectly truthful in its own currency, so the Sale can save the DRAFT and
+    # add the rate later. calculate_quote leaves the VND figures UNKNOWN and
+    # says why, instead of refusing the save or inventing a rate.
     return normalize_fx_snapshot({
         "rates_to_vnd": rates,
         "source": "Tỷ giá SALE nhập khi báo giá; không phải tỷ giá giao dịch thực tế.",
     })
+
+
+# ---------------------------------------------------------------------------
+# LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_01 — UNKNOWN != ZERO on the quote line.
+#
+# The previous shape was `_num(x) if _num(x) is not None else 0`. That turned a
+# field the operator never filled into a CANONICAL ZERO: the desk said "chưa
+# biết" and the database said "0đ / 0% VAT". A quote built from a pasted
+# customer message states a selling price and nothing else, so this silently
+# manufactured a 100% margin and a 0% VAT commitment.
+#
+# The quotation engine (core.quotations.calculate_quote) is Decimal-typed and
+# treats every line number as present, so preserving UNKNOWN through it would
+# be a broad rewrite of the pricing authority, its projection and the contract
+# handoff. The bounded, truthful alternative is to FAIL CLOSED at Save: a line
+# whose Giá vốn or VAT was never stated is refused by name, and the operator
+# supplies the real value. An explicit 0 typed by the operator is still valid —
+# what is rejected is the ABSENCE of an answer, not the answer zero.
+# ---------------------------------------------------------------------------
+
+def _optional_line_number(line: Mapping[str, Any], key: str, index: int, label: str):
+    """Read an OPTIONAL numeric line field: blank stays UNKNOWN (``None``).
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — internal cost price and VAT are
+    frequently unknown while a quotation is being written from a customer
+    conversation. Blocking the save (REPAIR_01) forced the Sale to invent them,
+    which is the same lie as coercing them to 0. They now travel as ``None``,
+    and core.quotations.calculate_quote keeps every figure derived from them
+    UNKNOWN. A value that IS supplied is still validated as a real number.
+    """
+    raw = line.get(key)
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    value = _num(raw)
+    if value is None:
+        raise ValueError(f"Dòng dịch vụ {index}: {label} không phải là số hợp lệ.")
+    return value
+
+
+def _required_line_number(line: Mapping[str, Any], key: str, index: int, label: str) -> float:
+    """Read a REQUIRED numeric line field, refusing a blank instead of zeroing it."""
+    raw = line.get(key)
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        raise ValueError(
+            f"Dòng dịch vụ {index}: chưa điền {label}. "
+            "Ô trống nghĩa là CHƯA BIẾT, không phải 0 — nhập số thật (có thể là 0 nếu đúng là 0)."
+        )
+    value = _num(raw)
+    if value is None:
+        raise ValueError(f"Dòng dịch vụ {index}: {label} không phải là số hợp lệ.")
+    return value
+
+
+def _customer_notes(payload: Mapping[str, Any]) -> list[str]:
+    """Customer-facing general notes typed/pasted on the quote form.
+
+    Deliberately SEPARATE from ``quote['assumptions']``: that list carries
+    INTERNAL control statements (estimate disclaimer, agent price
+    reconciliation, customs policy) which must never be printed onto a document
+    the customer receives. This field is the only text the export prints.
+    """
+    raw = payload.get("customerNotes")
+    if not isinstance(raw, list):
+        return []
+    notes: list[str] = []
+    for item in raw:
+        note = _text(item).strip()
+        if note and note not in notes:
+            notes.append(note)
+    return notes
 
 
 def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -991,9 +1066,11 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
             "unit": _text(line.get("unit")) or "Lần",
             "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
             "currency": _text(line.get("currency")) or "VND",
-            "cost_unit": _num(line.get("costUnit")) if _num(line.get("costUnit")) is not None else 0,
-            "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
-            "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
+            # Giá bán is the number quoted to the customer: required.
+            # Giá vốn / Thuế are internal facts that may still be UNKNOWN.
+            "cost_unit": _optional_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
+            "sell_unit": _required_line_number(line, "sellUnit", len(service_lines) + 1, "Giá bán (unit)"),
+            "tax_pct": _optional_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
             "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support; cần đối chiếu agent nếu là phí Trung Quốc.",
             # LOGI_INTERNAL_UX_SIMPLIFY_01 — optional free-form operator note.
             # Carried verbatim on the canonical line; core.quotations never
@@ -1024,11 +1101,17 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
                                 "receiving_bank_fee_usd": 0, "agent_conversion_fee_usd": 0,
                                 "rmb_conversion_fee_cny": 0},
         "include_remittance_in_cost": False,
+        # INTERNAL control statements. These stay inside the app and are NEVER
+        # printed onto the customer's quotation.
         "assumptions": [
             "Đây là estimate/quotation, chưa phải nghĩa vụ thanh toán.",
             "Giá agent/đối tác phải được đối chiếu với nguồn báo giá thực tế.",
             "Không tự động hóa khai báo hải quan sai lệch.",
         ],
+        # CUSTOMER-FACING general notes (e.g. the pasted sentence "Nếu có phát
+        # sinh về xử lý hàng hóa, sẽ báo ngay tại thời điểm phát sinh."). This
+        # is the ONLY note list the XLSX "Ghi chú" block prints.
+        "customer_notes": _customer_notes(payload),
     }
     # Normalise calculation immediately (raises ValueError on bad lines).
     return calculate_quote(quote)
@@ -1081,9 +1164,14 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
                 "goods_description", "expected_delivery_date"):
         if key in payload:
             quote[key] = _text(payload.get(key))
+    # Customer-facing notes: only replaced when this edit actually carries them,
+    # so an edit that does not touch the notes can never silently erase them.
+    if "customerNotes" in payload:
+        quote["customer_notes"] = _customer_notes(payload)
     if isinstance(payload.get("serviceLines"), list):
         service_lines: list[dict[str, Any]] = []
-        for line in payload.get("serviceLines"):
+        try:
+          for line in payload.get("serviceLines"):
             if not isinstance(line, Mapping):
                 continue
             service_lines.append({
@@ -1092,14 +1180,16 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
                 "unit": _text(line.get("unit")) or "Lần",
                 "qty": _num(line.get("qty")) if _num(line.get("qty")) is not None else 1,
                 "currency": _text(line.get("currency")) or "VND",
-                "cost_unit": _num(line.get("costUnit")) if _num(line.get("costUnit")) is not None else 0,
-                "sell_unit": _num(line.get("sellUnit")) if _num(line.get("sellUnit")) is not None else 0,
-                "tax_pct": _num(line.get("taxPct")) if _num(line.get("taxPct")) is not None else 0,
+                "cost_unit": _optional_line_number(line, "costUnit", len(service_lines) + 1, "Giá vốn (unit)"),
+                "sell_unit": _required_line_number(line, "sellUnit", len(service_lines) + 1, "Giá bán (unit)"),
+                "tax_pct": _optional_line_number(line, "taxPct", len(service_lines) + 1, "Thuế %"),
                 "cost_source": _text(line.get("costSource")) or "Nhập bởi SALE/Support.",
                 # LOGI_INTERNAL_UX_SIMPLIFY_01 — same optional operator note
                 # as create; an edit replaces lines wholesale, note included.
                 "note": _text(line.get("note")),
             })
+        except ValueError as exc:
+            return _result("quote_edit", qid, False, str(exc))
         if service_lines:
             quote["service_lines"] = service_lines
     if isinstance(payload.get("fx"), Mapping) or isinstance(payload.get("serviceLines"), list):
@@ -1797,6 +1887,69 @@ def _handle_authority_agent_save(payload: Mapping[str, Any]) -> dict[str, Any]:
                 audit=_audit("authority_agent", agent_id))
 
 
+def _handle_quote_export_xlsx(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """READ-ONLY: render the customer quotation XLSX for ONE existing quote.
+
+    Authority chain: RBAC (commercial_view) -> fresh canonical quote read ->
+    existing ``core.excel_utils.generate_quote_excel`` -> bounded base64 on the
+    normal outcome channel. Nothing is written, no ledger is touched and the
+    quote document itself is not modified.
+    """
+    import base64
+
+    from core.auth import can_operate_business
+    from core.database import load_authority_companies
+    from core.config import BASE_DIR
+    from core.excel_utils import generate_quote_excel
+
+    qid = _text(payload.get("id"))
+    request_id = _text(payload.get("requestId"))
+    if not qid:
+        return _result("quote_export_xlsx", "", False, "Thiếu mã báo giá.", requestId=request_id)
+    if not can_operate_business("commercial_view"):
+        return _result("quote_export_xlsx", qid, False,
+                       "RBAC: không có quyền xem báo giá.", requestId=request_id)
+    quote = read_quote(qid)
+    if quote is None:
+        return _result("quote_export_xlsx", qid, False,
+                       f"Không tìm thấy báo giá {qid}.", requestId=request_id)
+
+    # Company authority: the EXISTING legal master. Never a hard-coded brand,
+    # and never the sample customer from the Owner's reference workbook.
+    companies = load_authority_companies() or {}
+    company = next(iter(companies.values()), {}) if companies else {}
+
+    # Contact enrichment from the EXISTING customer master, resolved by the
+    # quote's canonical customer_id. Read-only: the customer is never mutated,
+    # and a customer the master does not hold simply contributes nothing.
+    customer = read_customer(_text(quote.get("customer_id"))) or {}
+
+    # The quotation's own date authority lives in core.excel_utils
+    # (_quote_display_date): explicit quote date → canonical created_at → today.
+    # Nothing is stamped here, so re-exporting an old quote keeps its own date.
+    logo = BASE_DIR / "logo.png" if (BASE_DIR / "logo.png").exists() else None
+    try:
+        buffer = generate_quote_excel(dict(quote), company=company,
+                                      customer=customer, logo_path=logo)
+    except Exception as exc:  # noqa: BLE001 - surface the real reason, write nothing
+        return _result("quote_export_xlsx", qid, False,
+                       f"Không tạo được file báo giá: {exc}", requestId=request_id)
+
+    data = buffer.getvalue()
+    file_name = f"BAOGIA_{_text(quote.get('quote_no')) or qid}.xlsx"
+    return _result(
+        "quote_export_xlsx", qid, True,
+        requestId=request_id,
+        document={
+            "fileName": file_name,
+            "mime": _MIME_XLSX,
+            "downloadAvailable": True,
+            "downloadBase64": base64.b64encode(data).decode("ascii"),
+            "byteSize": len(data),
+        },
+    )
+
+
 _HANDLERS = {
     "customer_create": _handle_customer_create,
     "customer_edit": _handle_customer_edit,
@@ -1816,6 +1969,7 @@ _HANDLERS = {
     "contract_docgen_issue": _handle_contract_docgen_issue,
     "contract_shipment_link": _handle_contract_shipment_link,
     "authority_agent_save": _handle_authority_agent_save,
+    "quote_export_xlsx": _handle_quote_export_xlsx,
 }
 
 

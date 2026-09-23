@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cx, matchLoose } from "../lib/format";
+import { evaluateAmountExpression, looksLikeExpression } from "../lib/miniCalc";
 
 export const ICONS: Record<string, LucideIcon> = {
   layout: LayoutDashboard,
@@ -481,6 +482,83 @@ export function PlChoice({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * LOGI_QUOTE_COST_WORKFLOW_UX_01 — a money input that also accepts a small,
+ * Excel-like expression: `370*8`, `=370*8`, `(370+80)*2`, `9.5tr*2`, `250k*4`,
+ * `=SUM(370,80,50)`, `=ROUND(1234.56,0)`.
+ *
+ * On Enter or blur the expression is evaluated by the SAFE allowlist parser
+ * (`lib/miniCalc`) and the field is replaced by the plain number, so
+ * persistence always receives a normal number — never an expression. An
+ * invalid expression keeps the typed text and shows a compact validation
+ * message (text + icon, not colour alone).
+ */
+export function CalcInput({
+  value, onChange, testId, placeholder, ariaLabel, className, inputMode = "numeric",
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  testId?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+  className?: string;
+  /** Kept as the field's existing `numeric` hint by default so the canonical
+      per-line field layout (and its acceptance oracle) is unchanged. */
+  inputMode?: "numeric" | "decimal" | "text";
+}) {
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState<number | null>(null);
+
+  const evaluate = () => {
+    const raw = String(value ?? "");
+    if (!looksLikeExpression(raw)) { setError(""); setPreview(null); return; }
+    const result = evaluateAmountExpression(raw);
+    if (!result.ok) { setError(result.error); setPreview(null); return; }
+    setError("");
+    setPreview(null);
+    onChange(result.value == null ? "" : String(result.value));
+  };
+
+  const onType = (next: string) => {
+    onChange(next);
+    if (!looksLikeExpression(next)) { setError(""); setPreview(null); return; }
+    const result = evaluateAmountExpression(next);
+    setError("");
+    setPreview(result.ok ? result.value : null);
+  };
+
+  const errorId = testId ? `${testId}-error` : undefined;
+  return (
+    <div>
+      <input
+        value={value}
+        onChange={(e) => onType(e.target.value)}
+        onBlur={evaluate}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); evaluate(); } }}
+        inputMode={inputMode}
+        aria-label={ariaLabel}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        {...(testId ? { "data-testid": testId } : {})}
+        placeholder={placeholder}
+        className={cx(inputCls(error ? "invalid" : undefined), className)}
+      />
+      {error && (
+        <span id={errorId} role="alert" {...(testId ? { "data-testid": errorId } : {})}
+              className="block text-[12.5px] font-semibold text-red-700 mt-1">
+          ⚠ {error}
+        </span>
+      )}
+      {!error && preview != null && (
+        <span {...(testId ? { "data-testid": `${testId}-preview` } : {})}
+              className="block text-[12.5px] font-semibold text-[#1e5aa8] mt-1">
+          = {preview.toLocaleString("vi-VN")} (Enter để chốt)
+        </span>
+      )}
     </div>
   );
 }

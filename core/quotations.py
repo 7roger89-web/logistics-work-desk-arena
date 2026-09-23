@@ -31,6 +31,35 @@ def _decimal(value: Any, default: str = "0") -> Decimal:
         return Decimal(default)
 
 
+def _optional_decimal(value: Any) -> Decimal | None:
+    """A quote-line fact that may legitimately be UNKNOWN.
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — ``_decimal()`` maps a blank to
+    Decimal("0"), which is correct for the many callers whose fields are always
+    present but WRONG for the three optional quotation facts (internal cost
+    price, VAT, quote-time FX). A Sale pasting a customer message states SELL
+    prices only; coercing the rest to zero manufactures a 100% margin and a 0%
+    VAT commitment, and refusing the save forces the operator to invent numbers.
+
+    ``None`` here means "chưa biết" and travels as ``None`` all the way out.
+    An explicitly typed ``0`` is a real zero and is NOT treated as unknown.
+    ``_decimal()`` itself is deliberately left unchanged.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    try:
+        return Decimal(str(value).replace(",", "").strip())
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _money_or_none(value: Decimal | None, currency: str = "VND") -> float | None:
+    """``_money`` that keeps UNKNOWN as UNKNOWN instead of rounding it to 0."""
+    return None if value is None else _money(value, currency)
+
+
 def _money(value: Decimal, currency: str = "VND") -> float:
     quantum = Decimal("1") if currency.upper() == "VND" else Decimal("0.01")
     return float(value.quantize(quantum, rounding=ROUND_HALF_UP))
@@ -66,6 +95,24 @@ def convert_to_vnd(amount: Any, currency: str, fx_snapshot: Mapping[str, Any]) -
     return _decimal(amount) * _decimal(rates[code])
 
 
+def has_rate(currency: str, fx_snapshot: Mapping[str, Any]) -> bool:
+    """True when the quote really stores a rate for this currency.
+
+    The app never invents an FX rate, so a quote whose lines are in a currency
+    with no stored rate simply has UNKNOWN VND figures — it is still a perfectly
+    valid quotation in its own currency.
+    """
+    return str(currency or "VND").upper() in dict(fx_snapshot.get("rates_to_vnd") or {})
+
+
+def _convert_or_none(amount: Decimal | None, currency: str,
+                     fx_snapshot: Mapping[str, Any]) -> Decimal | None:
+    """VND value of an amount, or None when the amount or the rate is UNKNOWN."""
+    if amount is None or not has_rate(currency, fx_snapshot):
+        return None
+    return convert_to_vnd(amount, currency, fx_snapshot)
+
+
 def calculate_remittance_estimate(remittance: Mapping[str, Any] | None, fx_snapshot: Mapping[str, Any]) -> dict[str, Any]:
     data = dict(remittance or {})
     amount = _decimal(data.get("remitted_amount_usd"))
@@ -91,6 +138,22 @@ def calculate_remittance_estimate(remittance: Mapping[str, Any] | None, fx_snaps
 
 
 def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
+    """Price a quotation, keeping UNKNOWN facts UNKNOWN.
+
+    LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — a DRAFT quotation is savable from
+    what the customer conversation actually states: service name, quantity,
+    SELL price and currency. Three facts may legitimately be unknown:
+
+      * ``cost_unit`` — the internal buy price, often not known when quoting;
+      * ``tax_pct``   — VAT, frequently confirmed later;
+      * the quote-time FX rate for a non-VND line.
+
+    None of them is ever coerced to zero, and none of them blocks the save. An
+    unknown input yields an unknown OUTPUT (``None``), and any aggregate that
+    would have to consume it is ``None`` too — so a margin is never computed as
+    though an unknown cost were 0, and a VND grand total never appears without
+    the rate it would need. An explicitly typed ``0`` stays a real zero.
+    """
     result = deepcopy(dict(quote))
     fx = normalize_fx_snapshot(result.get("fx_snapshot"))
     result["fx_snapshot"] = fx
@@ -98,24 +161,83 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     total_cost_vnd = Decimal("0")
     total_sell_vnd = Decimal("0")
     total_tax_vnd = Decimal("0")
+    # An aggregate stops being a number the moment one contributing fact is
+    # unknown; it is then reported as UNKNOWN rather than as a smaller number.
+    cost_vnd_known = True
+    sell_vnd_known = True
+    tax_vnd_known = True
     for index, raw_line in enumerate(result.get("service_lines") or [], start=1):
         line = deepcopy(dict(raw_line))
         qty = _decimal(line.get("qty"), "1")
         currency = str(line.get("currency") or "VND").upper()
-        cost_unit = _decimal(line.get("cost_unit"))
-        sell_unit = _decimal(line.get("sell_unit"))
-        tax_pct = _decimal(line.get("tax_pct"))
-        if qty <= 0 or cost_unit < 0 or sell_unit < 0 or tax_pct < 0 or tax_pct > 100:
-            raise ValueError(f"Dòng dịch vụ {index}: số lượng/giá/thuế không hợp lệ.")
-        cost = cost_unit * qty; sell = sell_unit * qty; tax = sell * tax_pct / Decimal("100")
-        cost_vnd = convert_to_vnd(cost, currency, fx); sell_vnd = convert_to_vnd(sell, currency, fx); tax_vnd = convert_to_vnd(tax, currency, fx)
+        # REQUIRED: the customer-facing amount and how many of them.
+        sell_unit = _optional_decimal(line.get("sell_unit"))
+        if sell_unit is None:
+            raise ValueError(
+                f"Dòng dịch vụ {index}: chưa có giá bán. "
+                "Giá bán là con số báo cho khách nên bắt buộc phải có."
+            )
+        # OPTIONAL: may be unknown without making the quotation untruthful.
+        cost_unit = _optional_decimal(line.get("cost_unit"))
+        tax_pct = _optional_decimal(line.get("tax_pct"))
+        if qty <= 0 or sell_unit < 0:
+            raise ValueError(f"Dòng dịch vụ {index}: số lượng/giá bán không hợp lệ.")
+        if cost_unit is not None and cost_unit < 0:
+            raise ValueError(f"Dòng dịch vụ {index}: giá vốn không hợp lệ.")
+        if tax_pct is not None and (tax_pct < 0 or tax_pct > 100):
+            raise ValueError(f"Dòng dịch vụ {index}: thuế phải trong khoảng 0–100%.")
+
+        sell = sell_unit * qty
+        cost = None if cost_unit is None else cost_unit * qty
+        tax = None if tax_pct is None else sell * tax_pct / Decimal("100")
+
+        # VND figures need BOTH the amount and a stored rate for this currency.
+        sell_vnd = _convert_or_none(sell, currency, fx)
+        cost_vnd = _convert_or_none(cost, currency, fx)
+        tax_vnd = _convert_or_none(tax, currency, fx)
+
+        unknown_bits = []
+        if cost_unit is None:
+            unknown_bits.append("chưa biết giá vốn")
+        if tax_pct is None:
+            unknown_bits.append("chưa biết thuế")
+        if not has_rate(currency, fx):
+            unknown_bits.append(f"chưa có tỷ giá {currency} → VND")
+        basis = (f"{line.get('service_name') or line.get('code') or 'Dịch vụ'}: "
+                 f"{qty} × {sell_unit} {currency}")
+        if cost_unit is not None:
+            basis += f"; chi phí {cost_unit} {currency}"
+        if tax_pct is not None:
+            basis += f"; thuế {tax_pct}%"
+        if unknown_bits:
+            basis += " (" + ", ".join(unknown_bits) + ")"
+
         line.update({
             "line_no": index, "currency": currency, "qty": _money(qty, currency),
-            "cost_total": _money(cost, currency), "sell_total": _money(sell, currency), "tax_total": _money(tax, currency),
-            "cost_vnd": _money(cost_vnd, "VND"), "sell_vnd": _money(sell_vnd, "VND"), "tax_vnd": _money(tax_vnd, "VND"),
-            "calculation_basis": f"{line.get('service_name') or line.get('code') or 'Dịch vụ'}: {qty} × {sell_unit} {currency}; chi phí {cost_unit} {currency}; thuế {tax_pct}%",
+            "cost_unit": _money_or_none(cost_unit, currency),
+            "sell_unit": _money(sell_unit, currency),
+            "tax_pct": _money_or_none(tax_pct, currency),
+            "cost_total": _money_or_none(cost, currency),
+            "sell_total": _money(sell, currency),
+            "tax_total": _money_or_none(tax, currency),
+            "cost_vnd": _money_or_none(cost_vnd, "VND"),
+            "sell_vnd": _money_or_none(sell_vnd, "VND"),
+            "tax_vnd": _money_or_none(tax_vnd, "VND"),
+            "calculation_basis": basis,
         })
-        line_results.append(line); total_cost_vnd += cost_vnd; total_sell_vnd += sell_vnd; total_tax_vnd += tax_vnd
+        line_results.append(line)
+        if sell_vnd is None:
+            sell_vnd_known = False
+        else:
+            total_sell_vnd += sell_vnd
+        if cost_vnd is None:
+            cost_vnd_known = False
+        else:
+            total_cost_vnd += cost_vnd
+        if tax_vnd is None:
+            tax_vnd_known = False
+        else:
+            total_tax_vnd += tax_vnd
 
     fees: dict[str, Any] = {}
     entrusted = dict(result.get("entrusted_import") or {})
@@ -153,12 +275,62 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     if result.get("include_remittance_in_cost"):
         total_cost_vnd += _decimal(remittance["estimated_total_vnd"])
     fees["remittance"] = remittance
-    margin_vnd = total_sell_vnd - total_cost_vnd
+
+    # Per-currency subtotals: the quotation is still fully useful in its own
+    # currencies even when no FX rate exists, so these are ALWAYS known.
+    per_currency: dict[str, dict[str, Any]] = {}
+    for line in line_results:
+        code = str(line.get("currency") or "VND").upper()
+        bucket = per_currency.setdefault(
+            code, {"sell_total": Decimal("0"), "tax_known": True, "tax_total": Decimal("0")})
+        bucket["sell_total"] += _decimal(line.get("sell_total"))
+        if line.get("tax_total") is None:
+            bucket["tax_known"] = False
+        else:
+            bucket["tax_total"] += _decimal(line.get("tax_total"))
+    totals_by_currency = [
+        {
+            "currency": code,
+            "sell_total": _money(data["sell_total"], code),
+            "tax_total": _money(data["tax_total"], code) if data["tax_known"] else None,
+            "sell_total_with_tax": (_money(data["sell_total"] + data["tax_total"], code)
+                                    if data["tax_known"] else None),
+        }
+        for code, data in sorted(per_currency.items())
+    ]
+
+    # A VND aggregate exists only when every contributing figure is known.
+    sell_total_vnd = total_sell_vnd if sell_vnd_known else None
+    cost_total_vnd = total_cost_vnd if cost_vnd_known else None
+    tax_total_vnd = total_tax_vnd if tax_vnd_known else None
+    grand_total_vnd = (sell_total_vnd + tax_total_vnd
+                       if sell_total_vnd is not None and tax_total_vnd is not None else None)
+    margin_vnd = (sell_total_vnd - cost_total_vnd
+                  if sell_total_vnd is not None and cost_total_vnd is not None else None)
+    margin_pct = (margin_vnd / sell_total_vnd * Decimal("100")
+                  if margin_vnd is not None and sell_total_vnd else None)
+
+    unknown_reasons: list[str] = []
+    if not sell_vnd_known:
+        unknown_reasons.append("Chưa quy đổi được tổng VND: thiếu tỷ giá báo giá cho dòng ngoại tệ.")
+    if not cost_vnd_known:
+        unknown_reasons.append("Chưa biết tổng chi phí: có dòng chưa nhập giá vốn (hoặc thiếu tỷ giá).")
+    if not tax_vnd_known:
+        unknown_reasons.append("Chưa biết tổng thuế: có dòng chưa nhập VAT (hoặc thiếu tỷ giá).")
+
     result["service_lines"] = line_results; result["fees"] = fees
     result["calculation"] = {
-        "base_currency": "VND", "estimated_cost_vnd": _money(total_cost_vnd), "selling_price_before_tax_vnd": _money(total_sell_vnd),
-        "estimated_output_tax_vnd": _money(total_tax_vnd), "selling_price_total_vnd": _money(total_sell_vnd + total_tax_vnd),
-        "estimated_margin_vnd": _money(margin_vnd), "estimated_margin_pct": _money((margin_vnd / total_sell_vnd * Decimal("100")) if total_sell_vnd else Decimal("0"), "USD"),
+        "base_currency": "VND",
+        "estimated_cost_vnd": _money_or_none(cost_total_vnd),
+        "selling_price_before_tax_vnd": _money_or_none(sell_total_vnd),
+        "estimated_output_tax_vnd": _money_or_none(tax_total_vnd),
+        "selling_price_total_vnd": _money_or_none(grand_total_vnd),
+        "estimated_margin_vnd": _money_or_none(margin_vnd),
+        "estimated_margin_pct": _money_or_none(margin_pct, "USD"),
+        # Original-currency truth, always available.
+        "totals_by_currency": totals_by_currency,
+        # Why a VND figure above is UNKNOWN — never a silent blank.
+        "unknown_reasons": unknown_reasons,
         "calculated_at": _now(), "not_finance_ledger": True,
     }
     return result
@@ -186,10 +358,22 @@ def transition_quote(quote: Mapping[str, Any], next_status: str, actor: str = "s
 
 
 def build_shipment_draft(quote: Mapping[str, Any], shipment_id: str) -> dict[str, Any]:
+    # LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — the `, 0` fallbacks here used to
+    # resurrect a quote's UNKNOWN cost/VAT as a confident zero on the new lot's
+    # commercial estimate. A fact the quotation never knew must arrive at the
+    # shipment as UNKNOWN (None) so the desk shows a gap, not a fabricated 0đ.
+    # Finance Actual is a separate surface and is not touched by this.
+    # The ORIGINAL currency amount is carried alongside, so a line whose VND
+    # value is unknown for lack of FX is not silently emptied either.
     details = [{
         "name_full": line.get("service_name") or line.get("code") or "Dịch vụ báo giá", "display_name": line.get("service_name") or line.get("code") or "Dịch vụ báo giá",
-        "code": line.get("code", ""), "qty": line.get("qty", 1), "price": line.get("sell_vnd", 0), "cost": line.get("cost_vnd", 0),
-        "vat": line.get("tax_pct", 0), "vat_line": line.get("tax_pct", 0), "currency": "VND", "quote_estimate": True,
+        "code": line.get("code", ""), "qty": line.get("qty", 1),
+        "price": line.get("sell_vnd"), "cost": line.get("cost_vnd"),
+        "vat": line.get("tax_pct"), "vat_line": line.get("tax_pct"),
+        "currency": "VND", "quote_estimate": True,
+        "quote_currency": str(line.get("currency") or "VND").upper(),
+        "quote_sell_total": line.get("sell_total"),
+        "quote_cost_total": line.get("cost_total"),
         "source_reference": line.get("cost_source") or line.get("source_reference") or "Theo báo giá đã chấp nhận",
     } for line in quote.get("service_lines") or []]
     lots = deepcopy(quote.get("factory_lots") or [])
