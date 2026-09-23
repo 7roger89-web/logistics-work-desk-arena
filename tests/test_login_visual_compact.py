@@ -341,6 +341,35 @@ def test_mobile_responsive_rule_remains() -> None:
         assert "@media (max-width: 768px)" in css
         assert "88vw" in css or "90vw" in css
 
+
+def test_transparent_glass_form_is_near_transparent_no_dark_veil() -> None:
+    """Owner artwork stays primary; readability is handled locally by controls."""
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        for idx in (1, 2, 3, 4):
+            mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = idx
+            css = auth._login_hero_css()
+            assert "background: rgba(8, 17, 26, 0.58)" not in css
+            assert "blur(16px)" not in css
+            assert "linear-gradient" not in css
+            assert "background: transparent;" in css
+            assert "-webkit-backdrop-filter: none;" in css
+            assert "backdrop-filter: none;" in css
+            assert "box-shadow: none;" in css
+            assert "0 22px 55px" not in css
+            assert "rgba(151, 197, 216, 0.16)" not in css
+            assert 'background-image: url("data:image/webp;base64,' in css
+            assert "background-size: cover;" in css
+            desktop, mobile = auth._LOGIN_BG_POSITIONS[idx]
+            assert f"background-position: {desktop};" in css
+            assert f"background-position: {mobile};" in css
+            assert "rgba(5, 12, 18, 0.32)" in css
+            assert "rgba(255, 255, 255, 0.18)" in css
+            assert "text-shadow:" in css
+            assert css.count("data:image/webp;base64,") == 1
+            assert "88vw" in css
+
+
 def test_duplicate_visual_pair_09_10_never_consecutive() -> None:
     """Visual-equivalence: 09 and 10 are byte-identical Owner visuals.
 
