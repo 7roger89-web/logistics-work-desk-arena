@@ -1,5 +1,25 @@
 # Changelog
 
+## LOGI_LOGIN_RESPONSIVE_BACKGROUND_FIT_01
+
+### Login artwork fits portrait / tall viewports (no more cropped background)
+
+- One geometry-based rule added to the login CSS:
+  `@media (orientation: portrait)` switches
+  `[data-testid="stAppViewContainer"]` from `background-size: cover` to
+  `contain` (with `no-repeat`, `background-position: center 85%` and the
+  existing neutral `#071019`), so the whole 16:9 artwork stays visible and
+  undistorted on phone portrait, tablet portrait, and a phone in
+  "Desktop site" mode (whose CSS width stays above the 768px breakpoint, so
+  the old width-only rule never matched it).
+- Orientation/aspect geometry only — no device names, no user-agent sniffing,
+  no JS, no responsive framework, no new artwork assets.
+- Landscape / laptop / desktop keep `cover` (unchanged).
+- One portrait-specific login-card offset (`margin-top: 6vh`) keeps the
+  transparent card clear of the artwork band; the card stays transparent and
+  no dark veil, blur or gradient is reintroduced.
+- Rotation, authentication flow, database and secrets are untouched.
+
 ## LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01
 
 ### GridFS attachment runtime (Issue #66)
