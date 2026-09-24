@@ -292,6 +292,37 @@ def test_cost_rate_snapshot_is_insert_only_and_idempotent(monkeypatch):
     assert stored["rows"][0]["amount"] == 750.0
 
 
+def test_rate_lifecycle_status_changes_metadata_not_facts(monkeypatch):
+    client = mongomock.MongoClient()
+    database = client["cost_test"]
+    database.rate_cards.create_index("id", unique=True)
+
+    monkeypatch.setattr(dbmod, "get_db", lambda: database)
+    monkeypatch.setattr(dbmod, "_require_business_permission", lambda *args, **kwargs: True)
+    monkeypatch.setattr(dbmod, "_audit", lambda *args, **kwargs: None)
+    monkeypatch.setattr(dbmod, "_actor", lambda: "tester")
+
+    original = {
+        "id": "RATE-LIFECYCLE-1",
+        "record_type": "SUPPLIER_RATE_SNAPSHOT",
+        "status": "ACTIVE",
+        "received_at": "2026-09-24T08:00:00Z",
+        "supplier": "COSCO",
+        "raw_text": "O/F USD 1425/40HQ",
+        "rows": [{"amount": 1425.0, "currency": "USD", "equipment": "40HQ"}],
+    }
+    assert dbmod.save_cost_rate_snapshot(original)
+    before = database.rate_cards.find_one({"id": original["id"]}, {"_id": 0})
+
+    assert dbmod.set_cost_rate_snapshot_status(original["id"], "SUPERSEDED")
+    after = database.rate_cards.find_one({"id": original["id"]}, {"_id": 0})
+    assert after["status"] == "SUPERSEDED"
+    assert after["raw_text"] == before["raw_text"]
+    assert after["rows"] == before["rows"]
+    assert after["_fingerprint"] == before["_fingerprint"]
+    assert dbmod.set_cost_rate_snapshot_status(original["id"], "SUPERSEDED")
+
+
 def test_catalog_rejects_ambiguous_alias_and_invalid_merge(monkeypatch):
     client = mongomock.MongoClient()
     database = client["cost_test"]
