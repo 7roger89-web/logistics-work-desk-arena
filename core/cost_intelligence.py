@@ -516,6 +516,25 @@ def normalize_catalog_entry(payload: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def json_safe(value: Any) -> Any:
+    """Normalise stored documents into JSON-serialisable view-model data.
+
+    Mongo/audit stamps (``created_at`` / ``updated_at`` /
+    ``status_updated_at``) are ``datetime`` objects. The Streamlit component
+    transports its args as JSON: one raw ``datetime`` inside the Cost
+    Intelligence slice silently breaks arg delivery for every NEW browser
+    session (the app then waits on "Đang tải dữ liệu vận hành…" forever).
+    Convert at this boundary so operator saves can never poison the shell.
+    """
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Mapping):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    return value
+
+
 def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dict[str, Any]:
     parsed = payload.get("parsed") if isinstance(payload.get("parsed"), Mapping) else payload
     raw_text = str(parsed.get("rawText") or "").strip()

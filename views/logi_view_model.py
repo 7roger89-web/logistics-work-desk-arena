@@ -646,6 +646,7 @@ def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
     from core.auth import current_user
     from core.config import DISPLAY_COMPANY_NAME
+    from core.cost_intelligence import json_safe as _cost_json_safe
     from core.shipment_dashboard import build_dashboard_summary
 
     transport = logi_sandbox.ensure_backend()
@@ -850,9 +851,18 @@ def build_view_model() -> dict:
         "financeServiceCatalog": rd.finance_service_catalog(sources["costCatalog"]),
         # LOGI_COST_INTELLIGENCE_01 — one bounded read model for the rate inbox,
         # dynamic master data, and supplier-rate history. No provider/network call.
+        # json_safe: saved master-data/rate documents carry Mongo audit stamps
+        # as datetime objects; a raw datetime silently breaks Streamlit arg
+        # delivery for every NEW session (real-browser UAT verified defect).
         "costIntelligence": {
-            "catalog": list(sources["costCatalog"].values()),
-            "rates": sources["costRates"],
+            "catalog": [
+                _cost_json_safe(entry)
+                for entry in sources["costCatalog"].values()
+            ],
+            "rates": [
+                _cost_json_safe(snapshot)
+                for snapshot in sources["costRates"]
+            ],
         },
         # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice (BOC /
         # Agribank / BIDV) with provenance.  Fail-closed: RATE_UNAVAILABLE

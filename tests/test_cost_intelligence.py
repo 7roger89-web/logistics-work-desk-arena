@@ -402,3 +402,77 @@ def test_master_code_can_change_without_changing_stable_identity(monkeypatch):
     assert docs[0]["id"] == "CAT-SVC-1"
     assert docs[0]["code"] == "OCEAN-FCL"
     assert "O/F" in docs[0]["aliases"]
+
+
+def test_saved_cost_documents_project_json_safe(monkeypatch):
+    """REAL-BROWSER UAT regression (LOGI_COST_INTELLIGENCE_REAL_BROWSER_UAT_01).
+
+    Saving master data / changing rate lifecycle stamps Mongo audit datetimes.
+    Those documents flow into the component `data` channel; one raw datetime
+    silently breaks Streamlit arg delivery and every NEW session hangs on
+    "Đang tải dữ liệu vận hành…". The view-model boundary must normalise them.
+    """
+    import json as _json
+    from datetime import datetime as _dt
+
+    client = mongomock.MongoClient()
+    database = client["cost_test"]
+    database.cost_catalog.create_index("id", unique=True)
+    database.rate_cards.create_index("id", unique=True)
+
+    monkeypatch.setattr(dbmod, "get_db", lambda: database)
+    monkeypatch.setattr(dbmod, "_require_business_permission", lambda *args, **kwargs: True)
+    monkeypatch.setattr(dbmod, "_audit", lambda *args, **kwargs: None)
+
+    # catalog entry as the "Ghi nhớ alias" chip saves it (audit stamps datetimes)
+    assert dbmod.save_cost_catalog_entry({
+        "id": "PLACE-HPH",
+        "kind": "PLACE",
+        "code": "VNHPH",
+        "name": "Hải Phòng",
+        "aliases": ["HPH"],
+    })
+    catalog_docs = list(dbmod.load_cost_catalog().values())
+    assert catalog_docs, "catalog save must persist"
+    assert any(
+        isinstance(doc.get(field), _dt)
+        for doc in catalog_docs
+        for field in ("created_at", "updated_at")
+    ), "precondition: the writer stamps datetimes (the defect trigger)"
+
+    # rate snapshot + lifecycle status change also stamps a datetime
+    snapshot = {
+        "id": "RATE-JSONSAFE-1",
+        "record_type": "SUPPLIER_RATE_SNAPSHOT",
+        "status": "ACTIVE",
+        "received_at": "2026-09-24T08:00:00Z",
+        "supplier": "OOCL",
+        "raw_text": "USD 750/20GP",
+        "rows": [{"amount": 750.0, "currency": "USD", "equipment": "20GP"}],
+    }
+    assert dbmod.save_cost_rate_snapshot(snapshot)
+    assert dbmod.set_cost_rate_snapshot_status("RATE-JSONSAFE-1", "SUPERSEDED")
+    rate_docs = list(dbmod.load_cost_rate_snapshots().values()) if isinstance(
+        dbmod.load_cost_rate_snapshots(), dict
+    ) else dbmod.load_cost_rate_snapshots()
+    assert rate_docs, "rate snapshot must persist"
+    assert any(
+        isinstance(doc.get(field), _dt)
+        for doc in rate_docs
+        for field in ("status_updated_at", "created_at", "updated_at")
+    ), "precondition: lifecycle stamps datetimes on rate docs"
+
+    # the view-model boundary (json_safe) must make BOTH slices JSON-serialisable
+    from core.cost_intelligence import json_safe
+
+    projected = {
+        "catalog": [json_safe(doc) for doc in catalog_docs],
+        "rates": [json_safe(doc) for doc in rate_docs],
+    }
+    encoded = _json.dumps(projected, ensure_ascii=False)  # must never raise
+    assert "Hải Phòng" in encoded, "operator data survives normalisation"
+    assert not any(
+        isinstance(value, _dt)
+        for doc in projected["catalog"] + projected["rates"]
+        for value in doc.values()
+    ), "no raw datetime may travel into component args"
