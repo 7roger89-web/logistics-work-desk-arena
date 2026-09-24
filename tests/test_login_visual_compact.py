@@ -438,3 +438,118 @@ def test_duplicate_visual_pair_09_10_never_consecutive() -> None:
         assert auth._current_login_bg_index() == 8
         assert auth._current_login_bg_index() == 8
 
+
+# --------------------------------------------------------------- responsive fit
+# LOGI_LOGIN_RESPONSIVE_BACKGROUND_FIT_01 — the login artwork must stay visible
+# on portrait / tall viewports (phone portrait, tablet portrait, and a phone in
+# "Desktop site" mode whose CSS width stays above 768px), while desktop and
+# landscape keep the full-screen cover treatment. Solved by viewport geometry
+# (orientation), never by device names or user-agent sniffing.
+
+PORTRAIT_QUERY = "(orientation: portrait)"
+WIDTH_QUERY = "(max-width: 768px)"
+
+
+def _media_block(css: str, query: str) -> str:
+    """Body of the first ``@media <query> { ... }`` block (brace matched)."""
+    marker = f"@media {query}"
+    start = css.find(marker)
+    assert start != -1, f"missing media query {query!r}"
+    open_brace = css.index("{", start)
+    depth = 0
+    for i in range(open_brace, len(css)):
+        if css[i] == "{":
+            depth += 1
+        elif css[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return css[open_brace + 1 : i]
+    raise AssertionError(f"unbalanced braces after {query!r}")
+
+
+def _css_for(idx: int = 1) -> str:
+    mock_st = _mock_st()
+    with patch.object(auth, "st", mock_st):
+        mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = idx
+        return auth._login_hero_css()
+
+
+def test_wide_default_keeps_cover_and_per_image_focal_position() -> None:
+    """Desktop / landscape (the unqualified rule) is unchanged: cover + focal."""
+    css = _css_for(1)
+    head = css.split("@media")[0]  # everything outside media queries
+    assert "background-size: cover;" in head
+    assert "background-repeat: no-repeat;" in head
+    desktop, _mobile = auth._LOGIN_BG_POSITIONS[1]
+    assert f"background-position: {desktop};" in head
+    # per-image focal positions survive for every artwork
+    for idx in (1, 3, 4, 7):
+        css_i = _css_for(idx)
+        desktop_i, mobile_i = auth._LOGIN_BG_POSITIONS[idx]
+        assert f"background-position: {desktop_i};" in css_i
+        assert f"background-position: {mobile_i};" in css_i
+
+
+def test_portrait_viewport_fits_whole_artwork_with_contain() -> None:
+    """Portrait/tall: show the entire artwork, undistorted, no crop."""
+    block = _media_block(_css_for(1), PORTRAIT_QUERY)
+    assert '[data-testid="stAppViewContainer"]' in block
+    assert "background-size: contain;" in block
+    assert "background-repeat: no-repeat;" in block
+    assert "background-position: center 85%;" in block
+    assert "cover" not in block, "portrait must not fall back to cropping"
+
+
+def test_portrait_fit_does_not_depend_only_on_max_width_breakpoint() -> None:
+    """Regression: portrait behaviour is owned by geometry, not by width alone.
+
+    A phone in "Desktop site" mode reports a CSS width well above 768px, so the
+    old ``max-width: 768px`` rule never matched it and the artwork stayed
+    cropped. The orientation rule must exist and must win the cascade.
+    """
+    css = _css_for(1)
+    assert f"@media {PORTRAIT_QUERY}" in css
+    width_block = _media_block(css, WIDTH_QUERY)
+    assert "background-size: contain" not in width_block, (
+        "the width breakpoint must not be the only owner of portrait fit"
+    )
+    # later in source order => wins for equal specificity
+    assert css.index(f"@media {PORTRAIT_QUERY}") > css.index(f"@media {WIDTH_QUERY}")
+    # and the width breakpoint still exists for small-screen form sizing
+    assert "88vw" in width_block
+
+
+def test_no_artwork_stretch_dimensions_anywhere() -> None:
+    """No rule may distort the artwork (no two-axis 100% / stretch sizing)."""
+    import re as _re
+
+    css = _css_for(1)
+    blocks = _re.findall(r"\[data-testid=\"stAppViewContainer\"\]\s*\{([^}]*)\}", css)
+    assert len(blocks) >= 2, "expected a base rule plus at least one responsive rule"
+    for block in blocks:
+        declarations = " ".join(block.split())
+        assert "100% 100%" not in declarations, "two-axis stretch would distort"
+        for decl in declarations.split(";"):
+            if "background-size" in decl:
+                value = decl.split(":", 1)[1].strip()
+                assert value in ("cover", "contain"), f"unexpected background-size {value!r}"
+    # the login background is drawn by background-image only: no <img>/<div>
+    # is stretched to the viewport, so the artwork keeps its own aspect ratio
+    assert "<img" not in css
+    assert "object-fit: fill" not in css
+
+
+def test_portrait_keeps_transparent_card_and_no_dark_veil() -> None:
+    """Portrait fit must not reintroduce a veil, blur or gradient."""
+    block = _media_block(_css_for(2), PORTRAIT_QUERY)
+    assert "linear-gradient" not in block
+    assert "blur(" not in block
+    assert "backdrop-filter" not in block
+    assert "rgba(" not in block, "no dark scrim over the artwork in portrait"
+    # one simple portrait-specific form offset only; card stays transparent
+    assert "margin-top: 6vh;" in block
+    css = _css_for(2)
+    assert "background: transparent;" in css
+    assert "-webkit-backdrop-filter: none;" in css
+    assert "backdrop-filter: none;" in css
+    assert "box-shadow: none;" in css
