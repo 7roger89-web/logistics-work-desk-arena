@@ -249,6 +249,7 @@ def parse_cost_rate_text(
             validity_raw = vm.group(1)
         etd_m = re.search(r"(?i)ETD\s*[:：]?\s*([0-9./-]+)", line)
         etd_iso, etd_inferred = _iso_date(etd_m.group(1), year_hint=year_hint) if etd_m else ("", False)
+        valid_until, valid_year_inferred = _iso_date(validity_raw, year_hint=year_hint) if validity_raw else ("", False)
         prices = _money_matches(line)
         if not prices:
             continue
@@ -278,6 +279,8 @@ def parse_cost_rate_text(
                 "etd": etd_iso,
                 "etdYearInferred": etd_inferred,
                 "validityRaw": validity_raw,
+                "validUntil": valid_until,
+                "validUntilYearInferred": valid_year_inferred,
                 "rawLine": raw_line,
                 "rawPrice": price.get("rawPrice", ""),
                 "confidence": confidence,
