@@ -18,6 +18,7 @@ import asyncio
 import json
 import os
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -71,6 +72,17 @@ _PATTERNS = {
         r"thiết\s*bị\s*phát\s*sóng",
         r"viễn\s*thông",
         r"ict",
+    ),
+}
+
+_DEFAULT_TITLE_ALIASES = {
+    "HS": ("Tra mã HS",),
+    "CHEMICAL": ("Hóa chất", "Hoá chất"),
+    "BKHCN": ("Bộ khoa học công nghệ", "BKHCN"),
+    "BTTTT": (
+        "Bộ Thông Tin truyền thông",
+        "Bộ Thông tin và Truyền thông",
+        "BTTTT",
     ),
 }
 
@@ -129,6 +141,78 @@ def _load_notebook_map(raw: str | None = None) -> dict[str, str]:
     return result
 
 
+def _normalize_title(value: str) -> str:
+    text = unicodedata.normalize("NFD", str(value or "").casefold())
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _load_title_aliases() -> dict[str, tuple[str, ...]]:
+    aliases = {key: tuple(values) for key, values in _DEFAULT_TITLE_ALIASES.items()}
+    raw = os.environ.get("NOTEBOOKLM_NOTEBOOK_TITLES_JSON", "").strip()
+    if not raw:
+        return aliases
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise NotebookLMConfigError(
+            "NOTEBOOKLM_NOTEBOOK_TITLES_JSON không phải JSON hợp lệ."
+        ) from exc
+    if not isinstance(parsed, dict):
+        raise NotebookLMConfigError(
+            "NOTEBOOKLM_NOTEBOOK_TITLES_JSON phải là object domain -> title/array."
+        )
+    for key, value in parsed.items():
+        domain = str(key).upper().strip()
+        if domain not in SUPPORTED_DOMAINS:
+            continue
+        values = value if isinstance(value, list) else [value]
+        cleaned = tuple(str(item).strip() for item in values if str(item).strip())
+        if cleaned:
+            aliases[domain] = cleaned
+    return aliases
+
+
+async def _resolve_notebooks(client: Any, domains: tuple[str, ...]) -> list[tuple[str, str]]:
+    id_map = _load_notebook_map()
+    resolved: dict[str, str] = {
+        domain: id_map[domain] for domain in domains if domain in id_map
+    }
+    unresolved = [domain for domain in domains if domain not in resolved]
+    if not unresolved:
+        return [(domain, resolved[domain]) for domain in domains]
+
+    notebooks = await client.notebooks.list()
+    aliases = _load_title_aliases()
+    by_title: dict[str, list[Any]] = {}
+    for notebook in notebooks:
+        key = _normalize_title(getattr(notebook, "title", ""))
+        if key:
+            by_title.setdefault(key, []).append(notebook)
+
+    for domain in unresolved:
+        matches: list[Any] = []
+        for alias in aliases.get(domain, ()):
+            matches.extend(by_title.get(_normalize_title(alias), []))
+        unique = {
+            str(getattr(item, "id", "")): item
+            for item in matches
+            if str(getattr(item, "id", "")).strip()
+        }
+        if len(unique) == 1:
+            resolved[domain] = next(iter(unique))
+        elif len(unique) > 1:
+            raise NotebookLMConfigError(
+                f"Có nhiều notebook trùng tên cho domain {domain}; hãy cấu hình ID."
+            )
+        else:
+            raise NotebookLMConfigError(
+                f"Không tìm thấy notebook cho domain {domain}; hãy kiểm tra quyền chia sẻ/tên."
+            )
+
+    return [(domain, resolved[domain]) for domain in domains]
+
+
 def route_question(text: str) -> RoutedQuestion:
     value = " ".join((text or "").strip().split())
     if not value:
@@ -176,18 +260,6 @@ async def _ask_notebooks_async(routed: RoutedQuestion) -> list[NotebookAnswer]:
             "Chưa cấu hình NOTEBOOKLM_AUTH_JSON hoặc NOTEBOOKLM_HOME."
         )
 
-    notebook_map = _load_notebook_map()
-    configured = [
-        (domain, notebook_map[domain])
-        for domain in routed.domains
-        if domain in notebook_map
-    ]
-    if not configured:
-        missing = ", ".join(routed.domains) or "không xác định"
-        raise NotebookLMConfigError(
-            f"Chưa cấu hình notebook cho domain: {missing}."
-        )
-
     try:
         from notebooklm import NotebookLMClient
     except ImportError as exc:
@@ -197,6 +269,7 @@ async def _ask_notebooks_async(routed: RoutedQuestion) -> list[NotebookAnswer]:
 
     try:
         async with NotebookLMClient.from_storage() as client:
+            configured = await _resolve_notebooks(client, routed.domains)
 
             async def one(domain: str, notebook_id: str) -> NotebookAnswer:
                 result = await client.chat.ask(notebook_id, routed.question)
