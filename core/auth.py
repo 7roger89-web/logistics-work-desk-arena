@@ -367,6 +367,23 @@ _LOGIN_HERO_CSS_TEMPLATE = """
   [data-testid="stForm"]:has(.lg05-bootstrap) { max-width: min(340px, 90vw); }
   [data-testid="stAppViewContainer"] { background-position: __POS_MOBILE__; }
 }
+/* Portrait / tall viewports — phone portrait, tablet portrait, and a phone in
+   "Desktop site" mode (its CSS width can stay above 768px, so the width
+   breakpoint above never matches it). Geometry, not device names.
+   A 16:9 artwork cannot simultaneously fill a tall screen, stay uncropped and
+   stay undistorted, so portrait prefers the WHOLE artwork: contain (no
+   distortion) on the existing neutral login colour. Landscape/desktop keeps
+   cover, where the crop is small and the artwork fills the display. */
+@media (orientation: portrait) {
+  [data-testid="stAppViewContainer"] {
+    background-size: contain;
+    /* Nudged below the vertical middle so the transparent login card reads
+       against the neutral colour instead of sitting on the artwork band. */
+    background-position: center 85%;
+    background-repeat: no-repeat;
+  }
+  [data-testid="stForm"] { margin-top: 6vh; }
+}
 """
 
 _LOGIN_IDENTITY_HTML = (
