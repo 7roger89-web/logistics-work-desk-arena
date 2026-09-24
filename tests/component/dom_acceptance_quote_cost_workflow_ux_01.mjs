@@ -604,6 +604,34 @@ console.log("STEP 8b — REPAIR_03: an unconverted quote keeps its OWN currency"
 }
 
 // ---------------------------------------------------------------------------
+console.log("STEP 8c — Cost Intelligence: DÙNG LÀM GIÁ VỐN opens a draft, never auto-saves");
+{
+  const actual = $('[data-testid="cost-result"]')
+    .find((r) => r.getAttribute("data-shipment-id") === "LO-0250");
+  assert.ok(actual, "actual comparable must still be visible");
+  const before = triggers.length;
+  const use = [...actual.querySelectorAll("button")].find((b) => text(b).includes("DÙNG LÀM GIÁ VỐN"));
+  assert.ok(use, "DÙNG LÀM GIÁ VỐN action missing");
+  use.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(120);
+
+  assert.ok(byTestId("quote-line-1-cost"), "choosing a reference must open the quote draft");
+  assert.equal(
+    byTestId("quote-line-1-cost").value.replace(/[^\d]/g, ""),
+    "19000000",
+    "the booked ACTUAL cost must prefill Giá vốn"
+  );
+  assert.equal(byTestId("quote-line-1-sell").value, "",
+    "Giá bán must stay blank for Sale to decide");
+  assert.equal(
+    triggers.slice(before).filter((t) => t.event === "quote_create" || t.event === "quote_edit").length,
+    0,
+    "using a reference must not auto-save the quotation"
+  );
+  ok("chosen ACTUAL reference seeds Giá vốn, leaves Giá bán blank, writes nothing");
+}
+
+// ---------------------------------------------------------------------------
 console.log("STEP 9 — D: the list opens on Tháng này + Đang làm; UNKNOWN never archives");
 {
   const now = new Date();
