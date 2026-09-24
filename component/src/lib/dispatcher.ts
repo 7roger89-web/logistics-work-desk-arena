@@ -85,6 +85,9 @@ export type LogiEventName =
   // Python performs ONE call through the EXISTING canonical DeepL client and
   // returns the readback in the next fresh view-model.
   | "translate_text"
+  // LOGI_GEMINI_OCR_01 — ONE bounded image-to-Markdown intent. Image bytes
+  // exist only in this trigger and are never persisted by the backend.
+  | "ocr_image"
   // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded READ-ONLY selection event for
   // /ngu-canh-doi-tac. It mutates nothing: Python records only WHICH existing
   // entity was picked and re-derives the whole context from the authoritative
@@ -168,6 +171,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "contract_shipment_link",
   "tariff_lookup",
   "translate_text",
+  "ocr_image",
   "partner_context_select",
   "authority_agent_save",
   "reconciliation_filter",
