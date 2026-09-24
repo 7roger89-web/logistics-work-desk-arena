@@ -156,6 +156,60 @@ def test_cost_rate_snapshot_is_insert_only_and_idempotent(monkeypatch):
     assert stored["rows"][0]["amount"] == 750.0
 
 
+def test_catalog_rejects_ambiguous_alias_and_invalid_merge(monkeypatch):
+    client = mongomock.MongoClient()
+    database = client["cost_test"]
+    database.cost_catalog.create_index("id", unique=True)
+
+    monkeypatch.setattr(dbmod, "get_db", lambda: database)
+    monkeypatch.setattr(dbmod, "_require_business_permission", lambda *args, **kwargs: True)
+    monkeypatch.setattr(dbmod, "_audit", lambda *args, **kwargs: None)
+
+    assert dbmod.save_cost_catalog_entry({
+        "id": "PLACE-HPH",
+        "kind": "PLACE",
+        "code": "VNHPH",
+        "name": "Hải Phòng",
+        "aliases": ["HPH"],
+    })
+
+    assert not dbmod.save_cost_catalog_entry({
+        "id": "PLACE-OTHER",
+        "kind": "PLACE",
+        "code": "VNXXX",
+        "name": "Điểm khác",
+        "aliases": ["HPH"],
+    })
+    assert "PLACE-HPH" in dbmod.get_last_db_error()
+
+    assert not dbmod.save_cost_catalog_entry({
+        "id": "PLACE-SELF",
+        "kind": "PLACE",
+        "code": "SELF",
+        "name": "Self",
+        "mergedInto": "PLACE-SELF",
+        "active": False,
+    })
+    assert "chính nó" in dbmod.get_last_db_error()
+
+    assert dbmod.save_cost_catalog_entry({
+        "id": "SERVICE-1",
+        "kind": "SERVICE",
+        "code": "OF",
+        "name": "Ocean Freight",
+        "aliases": [],
+    })
+    assert not dbmod.save_cost_catalog_entry({
+        "id": "PLACE-MERGE",
+        "kind": "PLACE",
+        "code": "MERGE",
+        "name": "Merge test",
+        "active": False,
+        "mergedInto": "SERVICE-1",
+    })
+    assert "cùng loại" in dbmod.get_last_db_error()
+
+
 def test_master_code_can_change_without_changing_stable_identity(monkeypatch):
     client = mongomock.MongoClient()
     database = client["cost_test"]
