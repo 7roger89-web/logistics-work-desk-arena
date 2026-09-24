@@ -96,6 +96,8 @@ def create_bot(token: str) -> telebot.TeleBot:
 
     @bot.message_handler(commands=["start", "help"])
     def show_help(message):
+        if getattr(getattr(message, "chat", None), "type", None) != "private":
+            return
         if not _authorized(message):
             return
         bot.reply_to(message, HELP_TEXT, disable_web_page_preview=True)
@@ -131,7 +133,9 @@ def create_bot(token: str) -> telebot.TeleBot:
                 "Bot không tự suy đoán thay cho nguồn pháp lý."
             )
         except Exception as exc:
-            print(f"VNLAW bot unexpected error: {type(exc).__name__}: {exc}")
+            # Do not log the staff question, service URL, headers or other
+            # request detail on an unexpected failure.
+            print(f"VNLAW bot unexpected error: {type(exc).__name__}")
             answer = "⚠️ Có lỗi nội bộ khi tra cứu VNLAW. Vui lòng thử lại sau."
         bot.reply_to(message, answer, disable_web_page_preview=True)
 
