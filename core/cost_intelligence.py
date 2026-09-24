@@ -86,7 +86,10 @@ def _alias_maps(catalog: Mapping[str, Any] | Iterable[Mapping[str, Any]] | None)
         kind = _clean(entry.get("kind")).upper()
         if kind not in maps:
             continue
-        names = [entry.get("code"), entry.get("name"), *(entry.get("aliases") or [])]
+        names = [
+            entry.get("code"), entry.get("name"), *(entry.get("aliases") or []),
+            *((entry.get("legacy_codes") or entry.get("legacyCodes") or []) if kind == "SERVICE" else []),
+        ]
         for name in names:
             folded = _fold(name)
             if folded:
@@ -176,7 +179,7 @@ def _route_from_line(line: str, place_aliases: Mapping[str, dict[str, Any]]) -> 
 
 def _charge_label(line: str) -> str:
     m = re.search(
-        r"(?i)(?:(?:USD|CNY|RMB|VND|\$)\s*/?\s*)?\d+(?:\.\d+)?\s*\$?\s*/\s*(?:20GP|40GP|40HQ|40HC|20['’]|40['’]|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)",
+        r"(?i)(?:(?:USD|CNY|RMB|VND|\$)\s*/?\s*)?\d[\d,]*(?:\.\d+)?\s*\$?\s*/\s*[A-Z0-9/'’]+",
         line,
     )
     prefix = line[: m.start()] if m else line
@@ -184,41 +187,82 @@ def _charge_label(line: str) -> str:
     return prefix or "RATE"
 
 
-def _money_matches(line: str) -> list[dict[str, Any]]:
+def _unit_identity(
+    raw_unit: str,
+    equipment_aliases: Mapping[str, dict[str, Any]],
+    unit_aliases: Mapping[str, dict[str, Any]],
+) -> tuple[str, str, str]:
+    """Return (unit, equipment, equipment_state); empty tuple values = unknown token."""
+    raw = raw_unit.upper().replace("’", "'")
+    folded = _fold(raw)
+
+    equipment_hit = equipment_aliases.get(folded)
+    if equipment_hit:
+        equipment = _clean(equipment_hit.get("code") or equipment_hit.get("name")).upper()
+        return "CONT", equipment, "CONFIRMED"
+
+    unit_hit = unit_aliases.get(folded)
+    if unit_hit:
+        unit = _clean(unit_hit.get("code") or unit_hit.get("name")).upper()
+        return unit, "", "UNKNOWN"
+
+    equipment = _EQUIPMENT_ALIASES.get(raw, "")
+    if equipment:
+        return "CONT", equipment, "NEEDS_REVIEW" if equipment == "40" else "CONFIRMED"
+
+    unit = _UNIT_ALIASES.get(raw, "")
+    if unit:
+        return unit, "", "UNKNOWN"
+    return "", "", "UNKNOWN"
+
+
+def _money_matches(
+    line: str,
+    *,
+    equipment_aliases: Mapping[str, dict[str, Any]] | None = None,
+    unit_aliases: Mapping[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     normalized = line.replace("’", "'").replace("：", ":")
+    equipment_aliases = equipment_aliases or {}
+    unit_aliases = unit_aliases or {}
+    token = r"[A-Z0-9/'-]{1,24}"
+    amount = r"\d[\d,]*(?:\.\d+)?"
     patterns = [
-        re.compile(r"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I),
-        re.compile(r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<currency>\$)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I),
+        re.compile(rf"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>{amount})\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I),
+        re.compile(rf"(?P<amount>{amount})\s*(?P<currency>\$)\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I),
     ]
     found: list[tuple[int, int, dict[str, Any]]] = []
     for pattern in patterns:
         for m in pattern.finditer(normalized):
+            raw_unit = m.group("unit")
+            unit, equipment, equipment_state = _unit_identity(raw_unit, equipment_aliases, unit_aliases)
+            if not unit and not equipment:
+                continue
             currency = m.groupdict().get("currency") or ""
-            raw_unit = (m.groupdict().get("unit") or "").upper()
             currency = "USD" if currency == "$" else ("CNY" if currency.upper() == "RMB" else currency.upper())
-            equipment = _EQUIPMENT_ALIASES.get(raw_unit, "")
-            unit = _UNIT_ALIASES.get(raw_unit, "CONT" if equipment else raw_unit)
             found.append((m.start(), m.end(), {
-                "amount": float(Decimal(m.group("amount"))),
+                "amount": float(Decimal(m.group("amount").replace(",", ""))),
                 "currency": currency or "USD",
                 "unit": unit,
                 "equipment": equipment,
-                "equipmentState": "NEEDS_REVIEW" if equipment == "40" else ("CONFIRMED" if equipment else "UNKNOWN"),
+                "equipmentState": equipment_state,
                 "rawPrice": m.group(0),
             }))
     occupied = [(a, b) for a, b, _ in found]
     inherited_currency = next((x[2]["currency"] for x in sorted(found) if x[2].get("currency")), "")
-    implicit = re.compile(r"(?<![\d.])(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I)
+    implicit = re.compile(rf"(?<![\d.])(?P<amount>{amount})\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I)
     for m in implicit.finditer(normalized):
         if any(not (m.end() <= a or m.start() >= b) for a, b in occupied):
             continue
-        raw_unit = m.group("unit").upper()
+        unit, equipment, equipment_state = _unit_identity(m.group("unit"), equipment_aliases, unit_aliases)
+        if not unit and not equipment:
+            continue
         found.append((m.start(), m.end(), {
-            "amount": float(Decimal(m.group("amount"))),
+            "amount": float(Decimal(m.group("amount").replace(",", ""))),
             "currency": inherited_currency or "USD",
-            "unit": _UNIT_ALIASES.get(raw_unit, raw_unit),
-            "equipment": "",
-            "equipmentState": "UNKNOWN",
+            "unit": unit,
+            "equipment": equipment,
+            "equipmentState": equipment_state,
             "rawPrice": m.group(0),
             "currencyState": "INFERRED_FROM_LINE" if inherited_currency else "NEEDS_REVIEW",
         }))
@@ -243,10 +287,15 @@ def parse_cost_rate_text(
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []
     validity_raw = ""
+    source_date = ""
 
     for raw_line in text.splitlines():
         line = _clean(raw_line)
         if not line:
+            continue
+        standalone_date, _ = _iso_date(line, year_hint=year_hint)
+        if standalone_date and re.fullmatch(r"(?:\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{4}-\d{2}-\d{2})", line):
+            source_date = standalone_date
             continue
         if re.fullmatch(r"[-_]{3,}", line):
             current_carrier = None
@@ -283,7 +332,11 @@ def parse_cost_rate_text(
         etd_m = re.search(r"(?i)ETD\s*[:：]?\s*([0-9./-]+)", line)
         etd_iso, etd_inferred = _iso_date(etd_m.group(1), year_hint=year_hint) if etd_m else ("", False)
         valid_until, valid_year_inferred = _iso_date(validity_raw, year_hint=year_hint) if validity_raw else ("", False)
-        prices = _money_matches(line)
+        prices = _money_matches(
+            line,
+            equipment_aliases=aliases["EQUIPMENT"],
+            unit_aliases=aliases["UNIT"],
+        )
         if not prices:
             # Only a carrier mentioned on a NON-PRICE line becomes context.
             # Examples: a standalone "OOCL" heading or vessel/header line.
@@ -294,6 +347,10 @@ def parse_cost_rate_text(
             continue
         line_carrier = carriers[0] if carriers else current_carrier
         raw_label = _charge_label(line)
+        if prices and any(price.get("equipment") for price in prices):
+            carrier_labels = {_fold(x.get("name")) for x in carriers if x.get("name")}
+            if raw_label == "RATE" or _fold(raw_label) in carrier_labels:
+                raw_label = "O/F"
         service = _canonical_service(raw_label, aliases["SERVICE"])
         label = service["name"] or raw_label
         upper = _fold(raw_label)
@@ -343,6 +400,7 @@ def parse_cost_rate_text(
     return {
         "parserVersion": PARSER_VERSION,
         "rawText": text,
+        "sourceDate": source_date,
         "rows": rows,
         "warnings": warnings,
         "summary": {
@@ -360,6 +418,7 @@ def catalog_lookup_keys(entry: Mapping[str, Any]) -> set[str]:
         entry.get("name"),
         entry.get("unlocode"),
         *(entry.get("aliases") or []),
+        *(entry.get("legacy_codes") or entry.get("legacyCodes") or []),
     ]
     return {key for key in (_fold(value) for value in values) if key}
 
@@ -416,6 +475,18 @@ def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dic
     rows = parsed.get("rows") if isinstance(parsed.get("rows"), list) else []
     if not raw_text or not rows:
         raise ValueError("Snapshot cần raw text và ít nhất một dòng đã review.")
+    unresolved = [
+        row for row in rows
+        if isinstance(row, Mapping) and (
+            row.get("confidence") == "NEEDS_REVIEW"
+            or (isinstance(row.get("carrier"), Mapping) and row["carrier"].get("state") == "NEEDS_REVIEW")
+            or (isinstance(row.get("origin"), Mapping) and row["origin"].get("state") == "NEEDS_REVIEW")
+            or (isinstance(row.get("destination"), Mapping) and row["destination"].get("state") == "NEEDS_REVIEW")
+            or row.get("equipmentState") == "NEEDS_REVIEW"
+        )
+    ]
+    if unresolved:
+        raise ValueError(f"Còn {len(unresolved)} dòng cần xác nhận trước khi lưu giá vốn.")
     identifier = _clean(payload.get("id")) or f"RATE-{uuid4().hex[:12].upper()}"
     received_at = _clean(payload.get("receivedAt")) or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     status = _clean(payload.get("status") or "ACTIVE").upper()
