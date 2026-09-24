@@ -282,6 +282,10 @@ def ensure_indexes() -> bool:
         (db.contract_transactions, [("contract_id", 1), ("transaction_type", 1), ("date", -1)], {"name": "ix_contract_transaction"}),
         (db.proxy_payments, "id", {"unique": True, "name": "uq_proxy_payment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.rate_cards, "id", {"unique": True, "name": "uq_rate_card_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        # LOGI_COST_INTELLIGENCE_01 — immutable supplier-rate snapshots reuse rate_cards.
+        (db.rate_cards, [("record_type", 1), ("received_at", -1)], {"name": "ix_rate_card_type_received"}),
+        (db.cost_catalog, "id", {"unique": True, "name": "uq_cost_catalog_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.cost_catalog, [("kind", 1), ("active", 1), ("name", 1)], {"name": "ix_cost_catalog_kind_active"}),
         (db.entrustments, "id", {"unique": True, "name": "uq_entrustment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.knowledge_base, "id", {"unique": True, "name": "uq_kb_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.audit_logs, [("entity_type", 1), ("entity_id", 1), ("created_at", -1)], {"name": "ix_audit_entity"}),
@@ -1419,11 +1423,100 @@ def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
     return True
 
 
-def load_rate_cards() -> dict[str, dict[str, Any]]:
-    return _load_dict("rate_cards", query={"is_deleted": {"$ne": True}})
+def load_rate_cards(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    return _load_dict("rate_cards", query={"is_deleted": {"$ne": True}}, db=db)
+
+
+def load_cost_rate_snapshots(*, db: Any = _UNSET_DB, limit: int = 1000) -> list[dict[str, Any]]:
+    """Immutable supplier/agent/carrier cost snapshots, newest first."""
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return []
+    try:
+        return list(
+            db.rate_cards.find(
+                {"record_type": "SUPPLIER_RATE_SNAPSHOT", "is_deleted": {"$ne": True}},
+                {"_id": 0},
+            ).sort("received_at", -1).limit(int(limit))
+        )
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return []
+
+
+def load_cost_catalog(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+    """Operator-maintained Cost Intelligence master data."""
+    return _load_dict("cost_catalog", query={"is_deleted": {"$ne": True}}, db=db)
+
+
+def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
+    if not _require_business_permission("tariff", "Bạn không có quyền cập nhật danh mục giá vốn."):
+        return False
+    from core.cost_intelligence import normalize_catalog_entry
+
+    try:
+        payload = normalize_catalog_entry(document)
+    except ValueError as exc:
+        _set_last_error(str(exc))
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    identifier = str(payload["id"])
+    old = db.cost_catalog.find_one({"id": identifier}, {"_id": 0})
+    if not _save_document("cost_catalog", payload):
+        return False
+    _audit(db, "cost_catalog", identifier, "create" if old is None else "update", before=old, after=payload)
+    return True
+
+
+def _cost_rate_fingerprint(document: Mapping[str, Any]) -> str:
+    stable = copy.deepcopy(dict(document))
+    for key in ("id", "_fingerprint", "created_at", "updated_at"):
+        stable.pop(key, None)
+    return _financial_fingerprint(stable)
+
+
+def save_cost_rate_snapshot(document: Mapping[str, Any]) -> bool:
+    """Append one immutable Cost Intelligence snapshot into rate_cards."""
+    if not _require_business_permission("tariff", "Bạn không có quyền lưu giá vốn đầu vào."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    payload = copy.deepcopy(dict(document))
+    identifier = str(payload.get("id") or "").strip()
+    if not identifier or payload.get("record_type") != "SUPPLIER_RATE_SNAPSHOT":
+        _set_last_error("Snapshot giá vốn thiếu id hoặc sai loại dữ liệu.")
+        return False
+    fingerprint = _cost_rate_fingerprint(payload)
+    payload["_fingerprint"] = fingerprint
+    existing = db.rate_cards.find_one({"id": identifier}, {"_id": 0})
+    if existing is not None:
+        if str(existing.get("_fingerprint") or _cost_rate_fingerprint(existing)) == fingerprint:
+            _set_last_error("")
+            return True
+        _set_last_error("Snapshot giá vốn đã tồn tại và không được ghi đè.")
+        return False
+    try:
+        db.rate_cards.insert_one(payload)
+        _audit(db, "cost_rate_snapshot", identifier, "create", before=None, after=payload)
+        _set_last_error("")
+        return True
+    except DuplicateKeyError:
+        existing = db.rate_cards.find_one({"id": identifier}, {"_id": 0})
+        if existing is not None and str(existing.get("_fingerprint") or _cost_rate_fingerprint(existing)) == fingerprint:
+            _set_last_error("")
+            return True
+        _set_last_error("Snapshot giá vốn bị trùng id với nội dung khác.")
+        return False
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
 
 
 def save_rate_card(document: dict[str, Any]) -> bool:
+    """Legacy mutable rate-card writer; Cost Intelligence snapshots never use it."""
     if not _require_business_permission("tariff", "Bạn không có quyền cập nhật báo giá khung."):
         return False
     db = get_db()
