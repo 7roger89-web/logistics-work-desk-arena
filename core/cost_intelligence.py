@@ -136,6 +136,30 @@ def _carrier_hits(line: str, aliases: Mapping[str, dict[str, Any]]) -> list[dict
     return out
 
 
+def _canonical_service(raw: str, aliases: Mapping[str, dict[str, Any]]) -> dict[str, str]:
+    folded = _fold(raw)
+    if not folded:
+        return {"raw": "", "id": "", "name": ""}
+    hit = aliases.get(folded)
+    if hit is None:
+        # Prefer the longest matching alias to avoid a short code stealing a
+        # more specific phrase. This is deterministic and catalog-driven.
+        candidates = [
+            (alias, entry)
+            for alias, entry in aliases.items()
+            if alias and re.search(rf"(?:^|\s){re.escape(alias)}(?:$|\s)", folded)
+        ]
+        if candidates:
+            _, hit = max(candidates, key=lambda item: len(item[0]))
+    if hit is None:
+        return {"raw": _clean(raw), "id": "", "name": _clean(raw)}
+    return {
+        "raw": _clean(raw),
+        "id": _clean(hit.get("id")),
+        "name": _clean(hit.get("name") or hit.get("code")) or _clean(raw),
+    }
+
+
 def _route_from_line(line: str, place_aliases: Mapping[str, dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]] | None:
     if re.search(r"(?:USD|CNY|RMB|\$|\d\s*/\s*(?:20|40|SET|BL|RT|CONT))", line, re.I):
         return None
@@ -256,8 +280,10 @@ def parse_cost_rate_text(
         prices = _money_matches(line)
         if not prices:
             continue
-        label = _charge_label(line)
-        upper = _fold(label)
+        raw_label = _charge_label(line)
+        service = _canonical_service(raw_label, aliases["SERVICE"])
+        label = service["name"] or raw_label
+        upper = _fold(raw_label)
         semantic = "CREDIT" if "REFUND" in upper or "REBATE" in upper else "CHARGE"
         plus_tax = bool(re.search(r"(?i)\+\s*TAX|PLUS\s+TAX", line))
         for price in prices:
@@ -269,7 +295,8 @@ def parse_cost_rate_text(
                 "kind": semantic,
                 "status": "AVAILABLE",
                 "chargeLabel": label,
-                "chargeId": "",
+                "chargeRaw": raw_label,
+                "chargeId": service["id"],
                 "carrier": current_carrier or {"id": "", "name": "", "state": "UNKNOWN"},
                 "origin": origin,
                 "destination": destination,
