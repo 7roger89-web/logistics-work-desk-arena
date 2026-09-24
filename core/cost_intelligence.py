@@ -345,6 +345,17 @@ def parse_cost_rate_text(
     }
 
 
+def catalog_lookup_keys(entry: Mapping[str, Any]) -> set[str]:
+    """Canonical lookup keys used by both parser aliases and writer validation."""
+    values = [
+        entry.get("code"),
+        entry.get("name"),
+        entry.get("unlocode"),
+        *(entry.get("aliases") or []),
+    ]
+    return {key for key in (_fold(value) for value in values) if key}
+
+
 def normalize_catalog_entry(payload: Mapping[str, Any]) -> dict[str, Any]:
     kind = _clean(payload.get("kind")).upper()
     if kind not in CATALOG_KINDS:
