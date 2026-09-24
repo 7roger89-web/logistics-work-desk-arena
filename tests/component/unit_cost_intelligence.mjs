@@ -26,6 +26,8 @@ const row = (origin, equipment, amount) => ({
   confidence: "CONFIRMED",
 });
 
+const historicalRow = { ...row("Shenzhen", "20GP", 555), sourceDate: "2024-12-28" };
+
 const rates = [
   {
     id: "RATE-OLD",
@@ -70,6 +72,17 @@ const rates = [
     raw_text: "expired",
     parser_version: "1",
     rows: [{ ...row("Shenzhen", "20GP", 650), validUntil: "2026-09-21" }],
+  },
+  {
+    id: "RATE-HISTORICAL-SECTION",
+    record_type: "SUPPLIER_RATE_SNAPSHOT",
+    status: "ACTIVE",
+    received_at: "2026-09-24T00:00:00Z",
+    supplier: "historical import",
+    source_channel: "PASTE",
+    raw_text: "historical section",
+    parser_version: "1",
+    rows: [historicalRow],
   },
   {
     id: "RATE-WRONG-EQ",
@@ -122,13 +135,16 @@ const zone = equipmentResults.find((x) => x.referenceId.startsWith("RATE-ZONE:")
 const old = equipmentResults.find((x) => x.referenceId.startsWith("RATE-OLD:"));
 const expired = equipmentResults.find((x) => x.referenceId.startsWith("RATE-EXPIRED:"));
 const wrong = equipmentResults.find((x) => x.referenceId.startsWith("RATE-WRONG-EQ:"));
+const historical = equipmentResults.find((x) => x.referenceId.startsWith("RATE-HISTORICAL-SECTION:"));
 
-assert.ok(exact && zone && old && expired);
+assert.ok(exact && zone && old && expired && historical);
 assert.equal(wrong, undefined, "40HQ must never be returned for a 20GP request");
 assert.ok(exact.score > zone.score, "exact Shenzhen should outrank same-zone Nansha");
 assert.ok(zone.reasons.some((x) => x.includes("cùng vùng logistics")));
 assert.ok(zone.differences.some((x) => x.includes("Nansha")));
 assert.ok(exact.score > old.score, "recent rate should outrank stale otherwise-similar rate");
+assert.ok(historical.ageDays > 365, "section source date must control historical age, not recent ingestion time");
+assert.ok(exact.score > historical.score, "fresh exact rate must outrank a recently imported but historically old section");
 assert.equal(expired.expired, true, "past validity must be labelled expired");
 assert.ok(expired.differences.some((x) => x.includes("hết hiệu lực")));
 
