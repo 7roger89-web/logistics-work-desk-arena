@@ -61,6 +61,17 @@ const rates = [
     rows: [row("Shenzhen", "20GP", 750)],
   },
   {
+    id: "RATE-EXPIRED",
+    record_type: "SUPPLIER_RATE_SNAPSHOT",
+    status: "ACTIVE",
+    received_at: "2026-09-20T00:00:00Z",
+    supplier: "expired agent",
+    source_channel: "PASTE",
+    raw_text: "expired",
+    parser_version: "1",
+    rows: [{ ...row("Shenzhen", "20GP", 650), validUntil: "2026-09-21" }],
+  },
+  {
     id: "RATE-WRONG-EQ",
     record_type: "SUPPLIER_RATE_SNAPSHOT",
     status: "ACTIVE",
@@ -88,7 +99,7 @@ const shipment = (id, actual, createdAt) => ({
     : { actual: [], quote: [{ label: "Ocean Freight", qty: 1, amount: 760, ccy: "USD" }] },
 });
 
-const criteria = {
+const equipmentCriteria = {
   incoterm: "EXW",
   origin: "Shenzhen",
   destination: "Hải Phòng",
@@ -104,28 +115,49 @@ const criteria = {
   targetDate: "2026-09-24",
 };
 
-const results = findComparableCosts(
-  [shipment("ACTUAL-1", true, "2026-09-23"), shipment("QUOTE-1", false, "2026-09-23")],
-  criteria,
-  rates,
-  catalog
-);
+const equipmentResults = findComparableCosts([], equipmentCriteria, rates, catalog);
 
-assert.equal(results[0].source, "ACTUAL", "real booked cost should win when relevance is comparable");
-const exact = results.find((x) => x.referenceId.startsWith("RATE-EXACT:"));
-const zone = results.find((x) => x.referenceId.startsWith("RATE-ZONE:"));
-const old = results.find((x) => x.referenceId.startsWith("RATE-OLD:"));
-const wrong = results.find((x) => x.referenceId.startsWith("RATE-WRONG-EQ:"));
+const exact = equipmentResults.find((x) => x.referenceId.startsWith("RATE-EXACT:"));
+const zone = equipmentResults.find((x) => x.referenceId.startsWith("RATE-ZONE:"));
+const old = equipmentResults.find((x) => x.referenceId.startsWith("RATE-OLD:"));
+const expired = equipmentResults.find((x) => x.referenceId.startsWith("RATE-EXPIRED:"));
+const wrong = equipmentResults.find((x) => x.referenceId.startsWith("RATE-WRONG-EQ:"));
 
-assert.ok(exact && zone && old);
+assert.ok(exact && zone && old && expired);
 assert.equal(wrong, undefined, "40HQ must never be returned for a 20GP request");
 assert.ok(exact.score > zone.score, "exact Shenzhen should outrank same-zone Nansha");
 assert.ok(zone.reasons.some((x) => x.includes("cùng vùng logistics")));
 assert.ok(zone.differences.some((x) => x.includes("Nansha")));
 assert.ok(exact.score > old.score, "recent rate should outrank stale otherwise-similar rate");
+assert.equal(expired.expired, true, "past validity must be labelled expired");
+assert.ok(expired.differences.some((x) => x.includes("hết hiệu lực")));
 
-const order = results.map((x) => x.source);
-assert.ok(order.indexOf("INPUT_RATE") < order.lastIndexOf("QUOTE"), "input rate should outrank quote estimate when relevance is comparable");
+const trustCriteria = {
+  incoterm: "",
+  origin: "Shenzhen",
+  destination: "Hải Phòng",
+  pol: "Shenzhen",
+  pod: "Hải Phòng",
+  factory: "",
+  delivery: "",
+  loadModel: "",
+  equipment: "",
+  cbm: null,
+  weightKg: null,
+  mode: "Sea",
+  targetDate: "2026-09-24",
+};
+const trustResults = findComparableCosts(
+  [shipment("ACTUAL-1", true, "2026-09-23"), shipment("QUOTE-1", false, "2026-09-23")],
+  trustCriteria,
+  [rates.find((x) => x.id === "RATE-EXACT")],
+  catalog
+);
+assert.deepEqual(
+  trustResults.slice(0, 3).map((x) => x.source),
+  ["ACTUAL", "INPUT_RATE", "QUOTE"],
+  "when relevance is comparable, trust order must be ACTUAL > INPUT_RATE > QUOTE"
+);
 
 const mixedShipment = {
   ...shipment("MIXED", true, "2026-09-23"),
@@ -137,7 +169,7 @@ const mixedShipment = {
     quote: [],
   },
 };
-const mixed = findComparableCosts([mixedShipment], criteria, [], catalog)[0];
+const mixed = findComparableCosts([mixedShipment], trustCriteria, [], catalog)[0];
 assert.deepEqual(
   mixed.totalsByCurrency.map((x) => x.ccy).sort(),
   ["USD", "VND"],
