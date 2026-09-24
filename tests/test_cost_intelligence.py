@@ -225,6 +225,24 @@ def test_learned_place_alias_is_reused_without_guessing():
     assert row["destination"]["id"] == "P-HPH"
 
 
+def test_single_standalone_source_date_autofills_but_mixed_dates_do_not():
+    single = parse_cost_rate_text(
+        "NINGBO - HPH\nUSD 750/20GP\n28/12/2024",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    assert single["sourceDate"] == "2024-12-28"
+    assert single["rows"][0]["sourceDate"] == "2024-12-28"
+
+    mixed = parse_cost_rate_text(
+        "NINGBO - HPH\nUSD 750/20GP\n28/12/2024\n---\nNINGBO - HPH\nUSD 800/20GP\n01/01/2025",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    assert mixed["sourceDate"] == ""
+    assert {row["sourceDate"] for row in mixed["rows"]} == {"2024-12-28", "2025-01-01"}
+
+
 def test_rate_snapshot_preserves_raw_multiline_evidence():
     parsed = parse_cost_rate_text(
         "NINGBO - HPH\nUSD 750/20GP",
