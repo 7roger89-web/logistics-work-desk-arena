@@ -190,6 +190,8 @@ export interface CostRateLine {
   validityRaw?: string;
   validUntil?: string;
   validUntilYearInferred?: boolean;
+  /** Explicit standalone date attached to this --- section in the raw inbox. */
+  sourceDate?: string;
   rawLine: string;
   rawPrice?: string;
   confidence: "CONFIRMED" | "NEEDS_REVIEW" | string;
