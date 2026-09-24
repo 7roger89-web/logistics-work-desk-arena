@@ -127,6 +127,7 @@ export type LogiEventName =
   // LOGI_COST_INTELLIGENCE_01 — bounded rate inbox + dynamic catalog.
   | "cost_rate_parse"
   | "cost_rate_save"
+  | "cost_rate_status_set"
   | "cost_catalog_save";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
@@ -180,6 +181,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "contract_payment_snapshot_save",
   "cost_rate_parse",
   "cost_rate_save",
+  "cost_rate_status_set",
   "cost_catalog_save",
 ]);
 
