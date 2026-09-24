@@ -40,6 +40,15 @@ type CatalogForm = {
   mergedInto: string;
 };
 
+const CATALOG_KIND_LABEL: Record<string, string> = {
+  SERVICE: "Dịch vụ / loại phí",
+  CARRIER: "Hãng tàu / nhà vận chuyển",
+  PLACE: "Địa điểm / cảng",
+  ZONE: "Vùng logistics",
+  UNIT: "Đơn vị tính",
+  EQUIPMENT: "Container / thiết bị",
+};
+
 const EMPTY_CATALOG: CatalogForm = {
   id: "",
   kind: "SERVICE",
@@ -345,7 +354,7 @@ function CatalogEditor() {
           <Field label="Loại">
             <select className={inputCls()} value={form.kind} onChange={(e) => setForm((x) => ({ ...x, kind: e.target.value }))}>
               {["SERVICE", "CARRIER", "PLACE", "ZONE", "UNIT", "EQUIPMENT"].map((x) => (
-                <option key={x} value={x}>{x}</option>
+                <option key={x} value={x}>{CATALOG_KIND_LABEL[x] || x}</option>
               ))}
             </select>
           </Field>
@@ -390,13 +399,22 @@ function CatalogEditor() {
             <input type="checkbox" checked={form.active} onChange={(e) => setForm((x) => ({ ...x, active: e.target.checked }))} />
             Đang dùng
           </label>
-          <Field label="Gộp vào ID khác" hint="Để trống nếu không gộp. Lịch sử cũ vẫn giữ ID gốc.">
-            <input
+          <Field label="Gộp vào danh mục khác" hint="Chỉ chọn khi hai mục thực ra là một. Lịch sử cũ vẫn giữ dấu vết gốc.">
+            <select
               className={inputCls()}
               value={form.mergedInto}
               onChange={(e) => setForm((x) => ({ ...x, mergedInto: e.target.value }))}
-              placeholder="CAT-..."
-            />
+            >
+              <option value="">-- Không gộp --</option>
+              {costIntelligence.catalog
+                .filter((entry) => entry.kind === form.kind && entry.id !== form.id && entry.active !== false)
+                .sort((a, b) => (a.name + a.code).localeCompare(b.name + b.code, "vi"))
+                .map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {(entry.code ? entry.code + " · " : "") + entry.name}
+                  </option>
+                ))}
+            </select>
           </Field>
           <PrimaryBtn onClick={save} disabled={!!pending}>
             <Save size={16} /> {pending ? "ĐANG LƯU…" : form.id ? "LƯU THAY ĐỔI" : "THÊM DANH MỤC"}
@@ -413,7 +431,7 @@ function CatalogEditor() {
                 onClick={() => edit(entry)}
                 className="touch-target rounded-xl border border-slate-200 p-3 text-left hover:bg-slate-50"
               >
-                <span className="font-extrabold text-[13.5px] text-[#0f2a4a]">{entry.kind} · {entry.code || "—"}</span>
+                <span className="font-extrabold text-[13.5px] text-[#0f2a4a]">{CATALOG_KIND_LABEL[entry.kind] || entry.kind} · {entry.code || "—"}</span>
                 <span className="block text-[13px] text-slate-600">{entry.name}</span>
                 {entry.aliases?.length > 0 && <span className="block text-[11.5px] text-slate-400">Alias: {entry.aliases.join(", ")}</span>}
               </button>
