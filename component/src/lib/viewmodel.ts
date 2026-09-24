@@ -198,6 +198,8 @@ export interface CostRateLine {
 export interface ParsedCostRate {
   parserVersion: string;
   rawText: string;
+  /** Standalone date found in the pasted source, e.g. 28/12/2024. */
+  sourceDate?: string;
   rows: CostRateLine[];
   warnings: string[];
   summary: { rowCount: number; needsReview: number; noSpace: number };
