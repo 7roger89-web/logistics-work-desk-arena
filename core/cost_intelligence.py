@@ -195,7 +195,7 @@ def _money_matches(line: str) -> list[dict[str, Any]]:
         for m in pattern.finditer(normalized):
             currency = m.groupdict().get("currency") or ""
             raw_unit = (m.groupdict().get("unit") or "").upper()
-            currency = "USD" if currency == "$" else currency.upper()
+            currency = "USD" if currency == "$" else ("CNY" if currency.upper() == "RMB" else currency.upper())
             equipment = _EQUIPMENT_ALIASES.get(raw_unit, "")
             unit = _UNIT_ALIASES.get(raw_unit, "CONT" if equipment else raw_unit)
             found.append((m.start(), m.end(), {
@@ -260,15 +260,20 @@ def parse_cost_rate_text(
         if carriers:
             current_carrier = carriers[0]
         if "没仓位" in line:
+            carrier = current_carrier or {
+                "id": "",
+                "name": _clean(line.replace("没仓位", "")),
+                "state": "NEEDS_REVIEW",
+            }
             rows.append({
                 "id": f"line-{len(rows)+1}",
                 "kind": "AVAILABILITY",
                 "status": "NO_SPACE",
-                "carrier": current_carrier or {"id": "", "name": _clean(line.replace("没仓位", "")), "state": "NEEDS_REVIEW"},
+                "carrier": carrier,
                 "origin": origin,
                 "destination": destination,
                 "rawLine": raw_line,
-                "confidence": "CONFIRMED",
+                "confidence": "NEEDS_REVIEW" if carrier.get("state") == "NEEDS_REVIEW" else "CONFIRMED",
             })
             continue
         vm = re.search(r"有效期到\s*([0-9./-]+)", line)
@@ -321,6 +326,7 @@ def parse_cost_rate_text(
         1
         for row in rows
         if row.get("confidence") == "NEEDS_REVIEW"
+        or row.get("carrier", {}).get("state") == "NEEDS_REVIEW"
         or row.get("origin", {}).get("state") == "NEEDS_REVIEW"
         or row.get("destination", {}).get("state") == "NEEDS_REVIEW"
     )
