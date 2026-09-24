@@ -547,7 +547,7 @@ export default function CostIntelligencePanel() {
       return;
     }
     const id = requestId("RATE-PARSE");
-    if (!dispatch("cost_rate_parse", { text: raw, requestId: id })) {
+    if (!dispatch("cost_rate_parse", { text: raw, receivedOn: receivedOn || undefined, requestId: id })) {
       toast("Không gửi được", "Component chưa kết nối backend.", "red");
       return;
     }
