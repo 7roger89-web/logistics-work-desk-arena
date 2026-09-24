@@ -270,6 +270,42 @@ def _money_matches(
     return [x[2] for x in found]
 
 
+def _section_source_dates(lines: list[str], *, year_hint: int) -> dict[int, str]:
+    """Map each raw line index to the explicit standalone date in its --- section.
+
+    A pasted inbox may contain several historical messages from different dates.
+    The date belongs to that bounded section, never to the entire paste.
+    """
+    out: dict[int, str] = {}
+    section: list[int] = []
+
+    def flush() -> None:
+        if not section:
+            return
+        dates: list[str] = []
+        for idx in section:
+            raw = _clean(lines[idx])
+            if not re.fullmatch(r"(?:\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{4}-\d{2}-\d{2})", raw):
+                continue
+            parsed, _ = _iso_date(raw, year_hint=year_hint)
+            if parsed:
+                dates.append(parsed)
+        # Multiple explicit dates in one section are ambiguous; do not guess.
+        source_date = dates[0] if len(set(dates)) == 1 else ""
+        if source_date:
+            for idx in section:
+                out[idx] = source_date
+        section.clear()
+
+    for idx, raw in enumerate(lines):
+        if re.fullmatch(r"[-_]{3,}", _clean(raw)):
+            flush()
+            continue
+        section.append(idx)
+    flush()
+    return out
+
+
 def parse_cost_rate_text(
     raw_text: str,
     *,
@@ -281,25 +317,25 @@ def parse_cost_rate_text(
         raise ValueError("Chưa có nội dung giá đầu vào để phân tích.")
     aliases = _alias_maps(catalog)
     year_hint = (received_on or date.today()).year
+    raw_lines = text.splitlines()
+    section_dates = _section_source_dates(raw_lines, year_hint=year_hint)
     origin = {"raw": "", "id": "", "name": "", "zoneIds": [], "state": "UNKNOWN"}
     destination = dict(origin)
     current_carrier: dict[str, Any] | None = None
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []
-    validity_raw = ""
-    source_date = ""
+    validity_context = ""
 
-    for raw_line in text.splitlines():
+    for line_index, raw_line in enumerate(raw_lines):
         line = _clean(raw_line)
         if not line:
             continue
         standalone_date, _ = _iso_date(line, year_hint=year_hint)
         if standalone_date and re.fullmatch(r"(?:\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{4}-\d{2}-\d{2})", line):
-            source_date = standalone_date
             continue
         if re.fullmatch(r"[-_]{3,}", line):
             current_carrier = None
-            validity_raw = ""
+            validity_context = ""
             continue
         route = _route_from_line(line, aliases["PLACE"])
         if route:
@@ -327,17 +363,17 @@ def parse_cost_rate_text(
             })
             continue
         vm = re.search(r"有效期到\s*([0-9./-]+)", line)
-        if vm:
-            validity_raw = vm.group(1)
+        line_validity_raw = vm.group(1) if vm else ""
         etd_m = re.search(r"(?i)ETD\s*[:：]?\s*([0-9./-]+)", line)
         etd_iso, etd_inferred = _iso_date(etd_m.group(1), year_hint=year_hint) if etd_m else ("", False)
-        valid_until, valid_year_inferred = _iso_date(validity_raw, year_hint=year_hint) if validity_raw else ("", False)
         prices = _money_matches(
             line,
             equipment_aliases=aliases["EQUIPMENT"],
             unit_aliases=aliases["UNIT"],
         )
         if not prices:
+            if line_validity_raw:
+                validity_context = line_validity_raw
             # Only a carrier mentioned on a NON-PRICE line becomes context.
             # Examples: a standalone "OOCL" heading or vessel/header line.
             # A priced line such as "... MSK" applies MSK to that row only and
@@ -356,6 +392,12 @@ def parse_cost_rate_text(
         upper = _fold(raw_label)
         semantic = "CREDIT" if "REFUND" in upper or "REBATE" in upper else "CHARGE"
         plus_tax = bool(re.search(r"(?i)\+\s*TAX|PLUS\s+TAX", line))
+        effective_validity_raw = line_validity_raw or validity_context
+        valid_until, valid_year_inferred = (
+            _iso_date(effective_validity_raw, year_hint=year_hint)
+            if effective_validity_raw else ("", False)
+        )
+        section_source_date = section_dates.get(line_index, "")
         for price in prices:
             confidence = "CONFIRMED"
             if price.get("equipmentState") == "NEEDS_REVIEW" or price.get("currencyState") == "NEEDS_REVIEW":
@@ -378,9 +420,10 @@ def parse_cost_rate_text(
                 "taxQualifier": "PLUS_TAX" if plus_tax else "UNKNOWN",
                 "etd": etd_iso,
                 "etdYearInferred": etd_inferred,
-                "validityRaw": validity_raw,
+                "validityRaw": effective_validity_raw,
                 "validUntil": valid_until,
                 "validUntilYearInferred": valid_year_inferred,
+                "sourceDate": section_source_date,
                 "rawLine": raw_line,
                 "rawPrice": price.get("rawPrice", ""),
                 "confidence": confidence,
@@ -400,7 +443,6 @@ def parse_cost_rate_text(
     return {
         "parserVersion": PARSER_VERSION,
         "rawText": text,
-        "sourceDate": source_date,
         "rows": rows,
         "warnings": warnings,
         "summary": {
@@ -488,10 +530,8 @@ def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dic
     if unresolved:
         raise ValueError(f"Còn {len(unresolved)} dòng cần xác nhận trước khi lưu giá vốn.")
     identifier = _clean(payload.get("id")) or f"RATE-{uuid4().hex[:12].upper()}"
-    source_date = _clean(parsed.get("sourceDate"))
     received_at = (
         _clean(payload.get("receivedAt"))
-        or (f"{source_date}T00:00:00Z" if source_date else "")
         or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     )
     status = _clean(payload.get("status") or "ACTIVE").upper()
