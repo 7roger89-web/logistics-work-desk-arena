@@ -529,7 +529,8 @@ def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dic
     ]
     if unresolved:
         raise ValueError(f"Còn {len(unresolved)} dòng cần xác nhận trước khi lưu giá vốn.")
-    identifier = _clean(payload.get("id")) or f"RATE-{uuid4().hex[:12].upper()}"
+    request_id = _clean(payload.get("requestId") or payload.get("request_id"))
+    identifier = _clean(payload.get("id")) or request_id or f"RATE-{uuid4().hex[:12].upper()}"
     received_at = (
         _clean(payload.get("receivedAt"))
         or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -549,5 +550,6 @@ def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dic
         "rows": rows,
         "warnings": list(parsed.get("warnings") or []),
         "created_by": actor,
+        "request_id": request_id,
         "is_deleted": False,
     }
