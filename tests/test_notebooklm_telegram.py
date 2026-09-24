@@ -82,10 +82,21 @@ class _FakeSources:
         return [_FakeSource()]
 
 
+class _FakeNotebook:
+    id = "hs-id"
+    title = "Tra mã HS"
+
+
+class _FakeNotebooks:
+    async def list(self):
+        return [_FakeNotebook()]
+
+
 class _FakeClient:
     def __init__(self):
         self.chat = _FakeChat()
         self.sources = _FakeSources()
+        self.notebooks = _FakeNotebooks()
 
     async def __aenter__(self):
         return self
@@ -118,6 +129,22 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Câu trả lời có căn cứ", text)
         self.assertIn("Thông tư thử nghiệm", text)
         self.assertIn("Đoạn nguồn liên quan", text)
+
+    def test_title_resolution_works_without_notebook_ids(self):
+        fake_module = types.ModuleType("notebooklm")
+        fake_module.NotebookLMClient = _FakeNotebookLMClient
+        with patch.dict(
+            os.environ,
+            {
+                "NOTEBOOKLM_AUTH_JSON": '{"cookies":[]}',
+                "NOTEBOOKLM_NOTEBOOKS_JSON": '{}',
+            },
+            clear=False,
+        ), patch.dict(sys.modules, {"notebooklm": fake_module}):
+            text = answer_notebook_question("/hs mã HS của mặt hàng này")
+
+        self.assertIn("Tra mã HS", text)
+        self.assertIn("Thông tư thử nghiệm", text)
 
     def test_missing_auth_fails_closed(self):
         with patch.dict(os.environ, {}, clear=False):
