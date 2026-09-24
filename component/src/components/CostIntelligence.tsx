@@ -453,6 +453,7 @@ export default function CostIntelligencePanel() {
   const [parsePending, setParsePending] = useState<string | null>(null);
   const [savePending, setSavePending] = useState<string | null>(null);
   const [aliasPending, setAliasPending] = useState<string | null>(null);
+  const [statusPending, setStatusPending] = useState<string | null>(null);
 
   useEffect(() => {
     if (!parsePending) return;
@@ -510,6 +511,29 @@ export default function CostIntelligencePanel() {
       toast("Chưa ghi nhớ được alias", outcome.error || "Backend từ chối.", "red");
     }
   }, [vm, aliasPending, toast]);
+
+  useEffect(() => {
+    if (!statusPending) return;
+    const outcome = (vm?.lastWrites ?? []).find(
+      (x) => x.event === "cost_rate_status_set" && x.requestId === statusPending
+    );
+    if (!outcome) return;
+    setStatusPending(null);
+    if (outcome.ok) {
+      toast("Đã cập nhật trạng thái giá", "Nội dung giá gốc không bị thay đổi.", "green");
+    } else {
+      toast("Không đổi được trạng thái", outcome.error || "Backend từ chối.", "red");
+    }
+  }, [vm, statusPending, toast]);
+
+  const setRateStatus = (snapshotId: string, status: string) => {
+    const id = requestId("RATE-STATUS");
+    if (!dispatch("cost_rate_status_set", { id: snapshotId, status, requestId: id })) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    setStatusPending(id);
+  };
 
   const rememberPlace = (rawName: string, canonicalName: string) => {
     const canonical = costIntelligence.catalog.find(
@@ -702,6 +726,25 @@ export default function CostIntelligencePanel() {
                   <span className="ml-2 text-[12.5px] font-bold text-slate-500">· {rate.rows?.length || 0} dòng</span>
                 </summary>
                 <div className="border-t border-slate-200 p-3">
+                  <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[220px_1fr] sm:items-end">
+                    <Field label="Trạng thái giá" hint="Chỉ đổi vòng đời; số tiền và nội dung gốc không bị sửa.">
+                      <select
+                        data-testid={"cost-rate-status-" + rate.id}
+                        className={inputCls()}
+                        value={rate.status || "ACTIVE"}
+                        disabled={!!statusPending}
+                        onChange={(e) => setRateStatus(rate.id, e.target.value)}
+                      >
+                        <option value="ACTIVE">Đang dùng</option>
+                        <option value="SUPERSEDED">Đã có giá mới</option>
+                        <option value="EXPIRED">Hết hạn</option>
+                        <option value="WITHDRAWN">Rút lại / không dùng</option>
+                      </select>
+                    </Field>
+                    <p className="text-[12px] text-slate-500">
+                      ID: {rate.id} · Parser: {rate.parser_version}
+                    </p>
+                  </div>
                   <pre className="whitespace-pre-wrap break-words text-[11.5px] text-slate-500">{rate.raw_text}</pre>
                 </div>
               </details>
