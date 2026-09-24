@@ -58,7 +58,7 @@ const EMPTY_CATALOG: CatalogForm = {
 
 const splitList = (value: string) =>
   value
-    .replaceAll("\n", ",")
+    .replace(/\n/g, ",")
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
