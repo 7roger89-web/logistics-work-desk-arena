@@ -23,7 +23,9 @@ import {
 } from "../components/ui";
 import QuickQuotePaste from "../components/QuickQuotePaste";
 import CostCheck from "../components/CostCheck";
+import CostIntelligencePanel from "../components/CostIntelligence";
 import type { ParsedQuote } from "../lib/quoteTextParser";
+import type { CostMatch } from "../lib/costHistory";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -150,13 +152,16 @@ export default function SalesQuotes() {
   const [status, setStatus] = useState("ALL");
   // LOGI_QUOTE_COST_WORKFLOW_UX_01 — inner segmented view of the SAME Báo Giá
   // workspace (no new sidebar group, no new route): BÁO GIÁ | CHECK CHI PHÍ.
-  const [workspace, setWorkspaceState] = useState<"bao-gia" | "check-chi-phi">(
-    sp.get("view") === "check-chi-phi" ? "check-chi-phi" : "bao-gia"
+  const initialWorkspace = sp.get("view");
+  const [workspace, setWorkspaceState] = useState<"bao-gia" | "check-chi-phi" | "kho-gia-von">(
+    initialWorkspace === "check-chi-phi" || initialWorkspace === "kho-gia-von"
+      ? initialWorkspace
+      : "bao-gia"
   );
-  const setWorkspace = (v: "bao-gia" | "check-chi-phi") => {
+  const setWorkspace = (v: "bao-gia" | "check-chi-phi" | "kho-gia-von") => {
     setWorkspaceState(v);
     const next = new URLSearchParams(window.location.search);
-    if (v === "check-chi-phi") next.set("view", v); else next.delete("view");
+    if (v === "bao-gia") next.delete("view"); else next.set("view", v);
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [creating, setCreating] = useState(false);
@@ -212,6 +217,51 @@ export default function SalesQuotes() {
     setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], fx: { USD: "", CNY: "" }, salesOwner: "Minh Tú" });
     setCreating(true);
   };
+  const useCostReference = (match: CostMatch) => {
+    const usable = match.lines.filter((line) => line.price != null);
+    const lines: LineForm[] = usable.length
+      ? usable.map((line) => ({
+          code: "",
+          serviceName: line.label,
+          unit: line.unit || "Lần",
+          qty: line.qty == null ? "1" : String(line.qty),
+          currency: line.ccy || "VND",
+          // Negative input-rate credits/refunds are evidence, not a normal quote
+          // cost field. Keep them visible in the note and ask the operator to
+          // decide how to apply them instead of writing an invalid negative cost.
+          costUnit: line.price != null && line.price >= 0 ? String(line.price) : "",
+          sellUnit: "",
+          taxPct: "",
+          note:
+            (line.price != null && line.price < 0
+              ? "Credit/refund tham chiếu " + String(line.price) + " " + line.ccy + ". "
+              : "") +
+            "Nguồn giá vốn: " + match.sourceLabel + " · " + match.referenceId,
+        }))
+      : [{ ...EMPTY_LINE }];
+
+    setCustomerNotes([]);
+    setForm({
+      ...EMPTY_FORM,
+      salesOwner: "Minh Tú",
+      origin: match.origin || "",
+      destination: match.destination || "",
+      route: [match.origin, match.destination].filter(Boolean).join(" → "),
+      incoterm: match.incoterm || "",
+      transportMode: match.mode || "Sea",
+      lines,
+      fx: { USD: "", CNY: "" },
+    });
+    setEditing(null);
+    setWorkspace("bao-gia");
+    setCreating(true);
+    toast(
+      "Đã nạp giá vốn tham chiếu",
+      "Các dòng chi phí đã vào bản nháp; Giá bán vẫn để trống để Sale quyết định trước khi lưu.",
+      "green"
+    );
+  };
+
   const openEdit = (x: Quote) => {
     // Restore what the customer was shown: reopening a saved quote must not
     // silently drop its general notes.
@@ -439,6 +489,7 @@ export default function SalesQuotes() {
           {([
             { id: "bao-gia", label: "BÁO GIÁ" },
             { id: "check-chi-phi", label: "CHECK CHI PHÍ" },
+            { id: "kho-gia-von", label: "KHO GIÁ VỐN" },
           ] as const).map((t) => (
             <button
               key={t.id}
@@ -476,11 +527,15 @@ export default function SalesQuotes() {
           <p className="text-[13.5px] text-slate-500 mt-1.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} báo giá</b> · Trạng thái do backend quyết định theo luồng chốt khách.</p>
         )}
         {workspace === "check-chi-phi" && (
-          <p className="text-[13.5px] text-slate-500">Tra chi phí lô cũ từ chính dữ liệu đang có: ưu tiên chi phí <b>thực tế</b> đã ghi ở lô, chỉ dùng số báo giá khi lô chưa có dòng thực tế.</p>
+          <p className="text-[13.5px] text-slate-500">Tra chi phí tương đồng từ dữ liệu Trường Thành: ưu tiên <b>thực tế đã chạy</b>, sau đó giá đầu vào supplier/carrier, rồi mới tới báo giá dự kiến.</p>
+        )}
+        {workspace === "kho-gia-von" && (
+          <p className="text-[13.5px] text-slate-500">Nuôi bộ nhớ giá vốn: dán bảng giá mới, sửa chỗ chưa chắc, lưu lịch sử và tự quản mã/alias ngay trong app.</p>
         )}
       </div>
 
-      {workspace === "check-chi-phi" && <CostCheck shipments={shipments} />}
+      {workspace === "check-chi-phi" && <CostCheck shipments={shipments} onUseMatch={useCostReference} />}
+      {workspace === "kho-gia-von" && <CostIntelligencePanel />}
 
       {workspace === "bao-gia" && (
       <>

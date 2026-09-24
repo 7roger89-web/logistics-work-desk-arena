@@ -123,7 +123,12 @@ export type LogiEventName =
   | "attachment_download"
   // LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — immutable payment snapshot
   | "contract_intl_snapshot_save"
-  | "contract_payment_snapshot_save";
+  | "contract_payment_snapshot_save"
+  // LOGI_COST_INTELLIGENCE_01 — bounded rate inbox + dynamic catalog.
+  | "cost_rate_parse"
+  | "cost_rate_save"
+  | "cost_rate_status_set"
+  | "cost_catalog_save";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -174,6 +179,10 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "attachment_download",
   "contract_intl_snapshot_save",
   "contract_payment_snapshot_save",
+  "cost_rate_parse",
+  "cost_rate_save",
+  "cost_rate_status_set",
+  "cost_catalog_save",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

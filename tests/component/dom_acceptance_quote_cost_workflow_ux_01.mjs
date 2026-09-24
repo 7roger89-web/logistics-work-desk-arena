@@ -491,7 +491,7 @@ console.log("STEP 6 — E: CHECK CHI PHÍ is an INNER tab of the SAME Báo Giá 
   await click("Báo Giá", "a", aside());
   const tabs = byTestId("quote-workspace-tabs");
   assert.ok(tabs, "the inner workspace segmented control must exist");
-  assert.ok(text(tabs).includes("BÁO GIÁ") && text(tabs).includes("CHECK CHI PHÍ"));
+  assert.ok(text(tabs).includes("BÁO GIÁ") && text(tabs).includes("CHECK CHI PHÍ") && text(tabs).includes("KHO GIÁ VỐN"));
   // No new sidebar group was introduced for it.
   assert.ok(!text(aside()).toUpperCase().includes("CHECK CHI PHÍ"),
     "Check chi phí must NOT become a new sidebar group");
@@ -500,7 +500,25 @@ console.log("STEP 6 — E: CHECK CHI PHÍ is an INNER tab of the SAME Báo Giá 
   assert.ok(byTestId("cost-check"), "the Check chi phí workspace must render");
   assert.ok(window.location.search.includes("view=check-chi-phi"),
     "the inner view must be preserved in the URL");
-  ok("inner tab beside BÁO GIÁ, kept in the URL, no new sidebar group");
+
+  await clickTestId("quote-workspace-kho-gia-von");
+  assert.ok(byTestId("cost-intelligence"), "Kho giá vốn must render in the same Báo Giá workspace");
+  assert.ok(byTestId("cost-rate-raw"), "the raw-rate paste box must be visible");
+  assert.ok(byTestId("cost-master-data"), "the dynamic master-data editor must be present");
+  assert.ok(window.location.search.includes("view=kho-gia-von"),
+    "Kho giá vốn inner view must be preserved in the URL");
+
+  const beforeParse = triggers.length;
+  await setValue(byTestId("cost-rate-raw"), "NINGBO - HPH\nUSD 750/20GP", "HTMLTextAreaElement");
+  await clickTestId("cost-rate-parse");
+  const parseEvent = triggers.slice(beforeParse).find((t) => t.event === "cost_rate_parse");
+  assert.ok(parseEvent, "PHÂN TÍCH must dispatch the bounded cost_rate_parse event");
+  assert.equal(parseEvent.value.payload.text, "NINGBO - HPH\nUSD 750/20GP");
+  assert.equal(triggers.slice(beforeParse).filter((t) => t.event === "cost_rate_save").length, 0,
+    "parse must never auto-save a rate snapshot");
+
+  await clickTestId("quote-workspace-check-chi-phi");
+  ok("three inner tabs, Kho giá vốn parse event, no auto-save, URL-preserved");
 }
 
 // ---------------------------------------------------------------------------
@@ -514,8 +532,8 @@ console.log("STEP 7 — E: the SAME parser prefills the search from a pasted inq
   assert.ok(byTestId("cost-paste-preview"), "the same review step must appear here");
   await clickTestId("cost-paste-apply");
   assert.equal(byTestId("cost-incoterm").value, "EXW");
-  assert.equal(byTestId("cost-origin").value, "Guangdong");
-  assert.equal(byTestId("cost-destination").value, "Hà Nội");
+  assert.equal(byTestId("cost-pol").value, "Guangdong");
+  assert.equal(byTestId("cost-pod").value, "Hà Nội");
   assert.equal(byTestId("cost-cbm").value, "5");
   assert.equal(byTestId("cost-weight").value, "800");
   assert.equal(triggers.length, dispatchedBefore,
@@ -583,6 +601,34 @@ console.log("STEP 8b — REPAIR_03: an unconverted quote keeps its OWN currency"
   assert.ok(text(usd).includes("BÁO GIÁ / DỰ KIẾN"),
     "the quote fallback must keep its estimate label");
   ok("an unconverted 950 USD estimate renders as 950 USD, never 950 VND");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 8c — Cost Intelligence: DÙNG LÀM GIÁ VỐN opens a draft, never auto-saves");
+{
+  const actual = $('[data-testid="cost-result"]')
+    .find((r) => r.getAttribute("data-shipment-id") === "LO-0250");
+  assert.ok(actual, "actual comparable must still be visible");
+  const before = triggers.length;
+  const use = [...actual.querySelectorAll("button")].find((b) => text(b).includes("DÙNG LÀM GIÁ VỐN"));
+  assert.ok(use, "DÙNG LÀM GIÁ VỐN action missing");
+  use.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(120);
+
+  assert.ok(byTestId("quote-line-1-cost"), "choosing a reference must open the quote draft");
+  assert.equal(
+    byTestId("quote-line-1-cost").value.replace(/[^\d]/g, ""),
+    "19000000",
+    "the booked ACTUAL cost must prefill Giá vốn"
+  );
+  assert.equal(byTestId("quote-line-1-sell").value, "",
+    "Giá bán must stay blank for Sale to decide");
+  assert.equal(
+    triggers.slice(before).filter((t) => t.event === "quote_create" || t.event === "quote_edit").length,
+    0,
+    "using a reference must not auto-save the quotation"
+  );
+  ok("chosen ACTUAL reference seeds Giá vốn, leaves Giá bán blank, writes nothing");
 }
 
 // ---------------------------------------------------------------------------

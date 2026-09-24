@@ -130,10 +130,99 @@ export interface FinanceActualLine extends MoneyLine {
  * operator then books.
  */
 export interface FinanceServiceCatalogEntry {
+  id?: string;
   code: string;
   name: string;
   unit: string;
   group: string;
+  source?: "LEGACY_CONFIG" | "COST_CATALOG" | string;
+}
+
+export interface CostCatalogEntry {
+  id: string;
+  kind: "SERVICE" | "CARRIER" | "PLACE" | "ZONE" | "UNIT" | "EQUIPMENT" | string;
+  code: string;
+  name: string;
+  aliases: string[];
+  active: boolean;
+  merged_into?: string;
+  country?: string;
+  unlocode?: string;
+  lat?: number | null;
+  lon?: number | null;
+  zone_ids?: string[];
+  unit?: string;
+  group?: string;
+  legacy_codes?: string[];
+}
+
+export interface CostRatePlace {
+  raw: string;
+  id: string;
+  name: string;
+  zoneIds: string[];
+  state: "CONFIRMED" | "NEEDS_REVIEW" | "UNKNOWN" | string;
+}
+
+export interface CostRateCarrier {
+  id: string;
+  name: string;
+  state: "CONFIRMED" | "NEEDS_REVIEW" | "UNKNOWN" | string;
+}
+
+export interface CostRateLine {
+  id: string;
+  kind: "CHARGE" | "CREDIT" | "AVAILABILITY" | string;
+  status: "AVAILABLE" | "NO_SPACE" | string;
+  chargeLabel?: string;
+  chargeId?: string;
+  carrier: CostRateCarrier;
+  origin: CostRatePlace;
+  destination: CostRatePlace;
+  amount?: number | null;
+  currency?: string;
+  unit?: string;
+  equipment?: string;
+  equipmentState?: string;
+  taxQualifier?: string;
+  etd?: string;
+  etdYearInferred?: boolean;
+  validityRaw?: string;
+  validUntil?: string;
+  validUntilYearInferred?: boolean;
+  /** Explicit standalone date attached to this --- section in the raw inbox. */
+  sourceDate?: string;
+  rawLine: string;
+  rawPrice?: string;
+  confidence: "CONFIRMED" | "NEEDS_REVIEW" | string;
+}
+
+export interface ParsedCostRate {
+  parserVersion: string;
+  rawText: string;
+  /** Standalone date found in the pasted source, e.g. 28/12/2024. */
+  sourceDate?: string;
+  rows: CostRateLine[];
+  warnings: string[];
+  summary: { rowCount: number; needsReview: number; noSpace: number };
+}
+
+export interface CostRateSnapshot {
+  id: string;
+  record_type: "SUPPLIER_RATE_SNAPSHOT" | string;
+  status: string;
+  received_at: string;
+  supplier: string;
+  source_channel: string;
+  raw_text: string;
+  parser_version: string;
+  rows: CostRateLine[];
+  warnings?: string[];
+}
+
+export interface CostIntelligence {
+  catalog: CostCatalogEntry[];
+  rates: CostRateSnapshot[];
 }
 
 export interface Payment {
@@ -1756,6 +1845,8 @@ export interface ViewModel {
    * the page renders as an honest empty picker, never a hard-coded list.
    */
   financeServiceCatalog?: FinanceServiceCatalogEntry[];
+  /** LOGI_COST_INTELLIGENCE_01 — dynamic master data + immutable input-rate history. */
+  costIntelligence?: CostIntelligence;
   /** LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — ephemeral server-authoritative XLSX preview. */
   getfly?: GetFlyPreview;
   /**
