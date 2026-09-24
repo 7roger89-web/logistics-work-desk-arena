@@ -188,6 +188,8 @@ export interface CostRateLine {
   etd?: string;
   etdYearInferred?: boolean;
   validityRaw?: string;
+  validUntil?: string;
+  validUntilYearInferred?: boolean;
   rawLine: string;
   rawPrice?: string;
   confidence: "CONFIRMED" | "NEEDS_REVIEW" | string;
