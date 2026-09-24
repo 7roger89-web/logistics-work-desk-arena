@@ -123,6 +123,16 @@ function RowEditor({
               {row.equipment ? ` / ${row.equipment}` : row.unit ? ` / ${row.unit}` : ""}
             </span>
           )}
+          {row.approximate && (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              ≈ GIÁ GẦN ĐÚNG (KHOẢNG) — XÁC NHẬN LẠI
+            </span>
+          )}
+          {row.conditionalAmounts && row.conditionalAmounts.length > 0 && (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              Phụ phí có điều kiện: {row.conditionalAmounts.join(" · ")}
+            </span>
+          )}
           {row.carrier?.name && (
             <span className="text-[12.5px] text-slate-500">{row.carrier.name}</span>
           )}
@@ -140,6 +150,9 @@ function RowEditor({
           </button>
         </div>
         <p className="mt-1 text-[11.5px] text-slate-400 break-words">{row.rawLine}</p>
+        {row.reviewNote && (
+          <p className="mt-1 text-[11.5px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
+        )}
       </div>
     );
   }
@@ -254,6 +267,9 @@ function RowEditor({
           </GhostBtn>
         )}
       </div>
+      {row.reviewNote && (
+        <p className="mt-2 text-[11.5px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
+      )}
       <div className="mt-2 flex items-center justify-between gap-2">
         <p className="text-[11.5px] text-slate-500 break-words">
           Gốc: {row.rawLine}

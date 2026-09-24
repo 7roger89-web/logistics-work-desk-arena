@@ -194,6 +194,12 @@ export interface CostRateLine {
   sourceDate?: string;
   rawLine: string;
   rawPrice?: string;
+  /** Truthful parser note for human review (approximate / conditional). */
+  reviewNote?: string;
+  /** Explicit approximate qualifier (KHOẢNG / ~) in the source line. */
+  approximate?: boolean;
+  /** Conditional secondary amounts on the line (e.g. "+80 usd/cont") — NOT a main rate. */
+  conditionalAmounts?: string[];
   confidence: "CONFIRMED" | "NEEDS_REVIEW" | string;
 }
 
