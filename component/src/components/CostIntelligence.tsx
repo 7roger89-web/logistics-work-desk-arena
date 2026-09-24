@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Archive, CheckCircle2, Database, Pencil, Plus, Save, Search, TriangleAlert } from "lucide-react";
+import { Archive, CheckCircle2, Database, Pencil, Save, Search, TriangleAlert } from "lucide-react";
 import { Field, GhostBtn, PrimaryBtn, SectionTitle, inputCls } from "./ui";
 import { useStore } from "../lib/store";
 import { fmtMoney } from "../lib/format";
@@ -58,7 +58,8 @@ const EMPTY_CATALOG: CatalogForm = {
 
 const splitList = (value: string) =>
   value
-    .split(/[,\\n]/)
+    .replaceAll("\n", ",")
+    .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
 
