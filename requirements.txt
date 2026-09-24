@@ -15,6 +15,8 @@ docxtpl>=0.19,<1
 num2words>=0.5,<1
 pydantic>=2.0,<3
 pyTelegramBotAPI>=4.0,<5
+# Unofficial Gemini Notebook / NotebookLM connector. Pin exact version because it uses undocumented Google APIs.
+notebooklm-py==0.8.2
 tomli>=2.0,<3; python_version < "3.11"
 
 # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — Google Drive byte store for
