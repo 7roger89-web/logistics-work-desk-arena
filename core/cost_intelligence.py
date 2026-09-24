@@ -440,9 +440,14 @@ def parse_cost_rate_text(
     )
     if unresolved:
         warnings.append(f"Có {unresolved} dòng cần người dùng xác nhận địa điểm/thiết bị trước khi dùng làm giá vốn.")
+    unique_source_dates = sorted({value for value in section_dates.values() if value})
     return {
         "parserVersion": PARSER_VERSION,
         "rawText": text,
+        # Only auto-fill the overall source date when the pasted inbox has one
+        # unambiguous standalone date. Mixed historical sections keep their own
+        # row.sourceDate and leave this blank for the operator.
+        "sourceDate": unique_source_dates[0] if len(unique_source_dates) == 1 else "",
         "rows": rows,
         "warnings": warnings,
         "summary": {
