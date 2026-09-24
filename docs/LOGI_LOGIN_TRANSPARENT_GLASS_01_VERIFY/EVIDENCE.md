@@ -102,7 +102,7 @@ fraction 0.90 (16:9 art in a 16:10 viewport), no veil, panel `rgba(0,0,0,0)`:
 | Artwork | pose | input contrast | button contrast | panel Δ vs artwork-only |
 |---|---|---|---|---|
 | `login-bg-02` (sea/port) | `50% 35%` | 10.96 / 11.47 | 8.72 | 0 |
-| `login-bg-04` (air cargo) | `50% 42%` | 15.49 / 7.91 | 8.72 | 0 |
+| `login-bg-04` (collage) | `50% 42%` | 15.49 / 7.91 | 8.72 | 0 |
 
 Phone 390×844 (`max-width: 768px` + focal mobile position), artwork visible
 fraction **0.2601** (75 % of the artwork is off-screen because `cover` fills a
@@ -124,6 +124,14 @@ fraction **0.2601** (75 % of the artwork is off-screen because `cover` fills a
 
 - **Material defects at the verified head: none.** The transparent-login contract
   holds on desktop and on phone, on real rendered pixels.
+- **Artwork subject index (verified, see the PR #102 evidence
+  `evidence/artwork_index.jpg`):** 01 = road/border gate + container truck,
+  02 = sea/port, 03 = air cargo, **04/05/06/08 = collage montages**, 07 = air cargo,
+  09/10 = air cargo (byte-identical to each other). The inline comments for 4, 5 and 7
+  in `_LOGIN_BG_POSITIONS` (`air cargo`, `warehouse`, `collage montage`) describe them
+  the other way round; that is a pre-existing PR #100 comment inaccuracy with no
+  behavioural effect, and it was **not** changed here because this task must not
+  rewrite the implementation.
 - **Carry-over limitation (already known, not repaired here):** on a phone
   **portrait** viewport PR #101 still uses `cover`, so only ~26 % of each artwork is
   visible (heavy left/right crop). PR #101's own commit `55d7fcd` contained a

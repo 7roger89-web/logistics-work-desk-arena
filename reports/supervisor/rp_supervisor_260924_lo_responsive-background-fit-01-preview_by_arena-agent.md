@@ -84,7 +84,13 @@ Not run:
   reach it. Reachable, not clipped.
 - **Desktop-site mode**: the fix is owned by `orientation: portrait`, not by the 768-px width
   breakpoint, so this mode now shows the whole artwork too.
-- `login-bg-05` is a warehouse interior, not a collage; the collage backgrounds are 06/07/08.
+- Artwork subject index, verified and pictured in `evidence/artwork_index.jpg`:
+  **01** road/border + container truck, **02** sea/port, **03** air cargo,
+  **04 / 05 / 06 / 08** collage montages, **07** air cargo, **09 / 10** air cargo
+  (byte-identical pair). The Owner's four required subjects are therefore
+  `?bg=1`, `?bg=2`, `?bg=3`, `?bg=4`. The inline `_LOGIN_BG_POSITIONS` comments for
+  indices 4, 5 and 7 are inaccurate in the repository (pre-existing); no behavioural
+  effect, and deliberately not edited by this verification task.
 - `login-bg-09` and `login-bg-10` remain byte-identical Owner artwork; the rotation rule that never
   shows them consecutively is unchanged.
 

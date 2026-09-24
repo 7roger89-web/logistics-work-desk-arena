@@ -108,6 +108,7 @@ Desktop and landscape are numerically unchanged; portrait is the only behaviour 
 - [`evidence/contact_sheet_phone_landscape_844x390.jpg`](evidence/contact_sheet_phone_landscape_844x390.jpg) — 7 artworks
 - [`evidence/contact_sheet_desktop_1440x900.jpg`](evidence/contact_sheet_desktop_1440x900.jpg) — 8 artworks
 - [`evidence/rotate_sequence.jpg`](evidence/rotate_sequence.jpg) — portrait → landscape → portrait → landscape → portrait
+- [`evidence/artwork_index.jpg`](evidence/artwork_index.jpg) — every artwork beside its real `?bg=N` value
 - [`evidence/measurements.md`](evidence/measurements.md) · [`evidence/measurements.json`](evidence/measurements.json)
 
 ## 5. Owner real-device checklist (preview)
@@ -179,10 +180,15 @@ pixels.
   colour. The `center 85%` position puts the band under the form so the transparent
   panel reads against the neutral colour; `margin-top: 6vh` moves the form up
   accordingly.
-- **`login-bg-05` is not a collage.** The Owner's "collage" background is drawn from
-  the 4-panel artworks numbered 06, 07 and 08 (see the PR #101 contact sheets);
-  artwork 05 is a warehouse interior. No code depends on this — only the artwork
-  expectations of the reviewer — but it is worth correcting the written checklist.
+- **Artwork subject index (verified** — see
+  [`evidence/artwork_index.jpg`](evidence/artwork_index.jpg) for every artwork beside
+  its real `?bg=N` value): **01** road/border gate + container truck · **02** sea/port ·
+  **03** air cargo · **04 / 05 / 06 / 08** collage montages · **07** air cargo ·
+  **09 / 10** air cargo (byte-identical pair). So the Owner's four required subjects map
+  to `?bg=1` (road/border), `?bg=2` (sea/port), `?bg=3` (air cargo), `?bg=4` (collage).
+  The inline comments for indices 4, 5 and 7 in `_LOGIN_BG_POSITIONS` are inaccurate in
+  the repository (pre-existing, PR #100); there is no behavioural effect and the code was
+  deliberately **not** edited by this verification task.
 - **`login-bg-09` and `login-bg-10` are byte-identical** (verified by Git blob and by
   pixel difference = 0). That is Owner-supplied art, unchanged by PR #101 or #102.
 
