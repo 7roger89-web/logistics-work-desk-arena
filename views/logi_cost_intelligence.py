@@ -1,7 +1,7 @@
 """Bounded Cost Intelligence event handlers for the existing C1 dispatcher."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Mapping
 
 
@@ -15,8 +15,18 @@ def handle_cost_rate_parse(payload: Mapping[str, Any], deps: Mapping[str, Any]) 
 
     request_id = _text(payload.get("requestId"))
     raw = _text(payload.get("text"))
+    received_raw = _text(payload.get("receivedOn"))
+    received_on = date.today()
+    if received_raw:
+        try:
+            received_on = datetime.strptime(received_raw, "%Y-%m-%d").date()
+        except ValueError:
+            return deps["_result"](
+                "cost_rate_parse", "", False,
+                "Ngày nhận bảng giá không hợp lệ.", requestId=request_id,
+            )
     try:
-        parsed = parse_cost_rate_text(raw, catalog=load_cost_catalog(), received_on=date.today())
+        parsed = parse_cost_rate_text(raw, catalog=load_cost_catalog(), received_on=received_on)
     except ValueError as exc:
         return deps["_result"]("cost_rate_parse", "", False, str(exc), requestId=request_id)
     return deps["_result"](
