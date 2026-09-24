@@ -33,6 +33,7 @@ export interface CostCriteria {
   pol?: string;
   pod?: string;
   delivery?: string;
+  loadModel?: string;
   equipment?: string;
   targetDate?: string;
 }
@@ -333,26 +334,30 @@ function shipmentMatch(
   };
 }
 
-function inputRateGroups(snapshot: CostRateSnapshot): Array<{
+interface InputRateGroup {
   key: string;
   carrier: string;
   origin: string;
   destination: string;
   originZones: string[];
   destinationZones: string[];
+  loadModel: string;
   equipment: string;
   validUntil: string;
   rows: CostRateLine[];
-}> {
-  const groups = new Map<string, ReturnType<typeof inputRateGroups>[number]>();
+}
+
+function inputRateGroups(snapshot: CostRateSnapshot): InputRateGroup[] {
+  const groups = new Map<string, InputRateGroup>();
   for (const row of snapshot.rows || []) {
     if (row.status !== "AVAILABLE" || row.amount == null) continue;
     const carrier = row.carrier?.name || "";
     const origin = row.origin?.name || row.origin?.raw || "";
     const destination = row.destination?.name || row.destination?.raw || "";
     const equipment = (row.equipment || "").toUpperCase();
-    const validUntil = (row as CostRateLine & { validUntil?: string }).validUntil || "";
-    const key = [carrier, origin, destination, equipment, validUntil].join("|");
+    const loadModel = equipment ? "FCL" : ["CBM", "RT"].includes((row.unit || "").toUpperCase()) ? "LCL" : "";
+    const validUntil = row.validUntil || "";
+    const key = [carrier, origin, destination, loadModel, equipment, validUntil].join("|");
     const existing = groups.get(key);
     if (existing) {
       existing.rows.push(row);
@@ -364,6 +369,7 @@ function inputRateGroups(snapshot: CostRateSnapshot): Array<{
         destination,
         originZones: row.origin?.zoneIds || [],
         destinationZones: row.destination?.zoneIds || [],
+        loadModel,
         equipment,
         validUntil,
         rows: [row],
@@ -382,6 +388,7 @@ function inputRateMatches(
   const wantPol = (criteria.pol || criteria.origin || "").trim();
   const wantPod = (criteria.pod || criteria.destination || "").trim();
   const wantEquipment = (criteria.equipment || "").trim().toUpperCase();
+  const wantLoadModel = (criteria.loadModel || "").trim().toUpperCase();
   const wantMode = (criteria.mode || "").trim();
   const out: CostMatch[] = [];
 
@@ -396,6 +403,16 @@ function inputRateMatches(
       if (wantMode) {
         score += 8;
         reasons.push("phương thức biển");
+      }
+
+      if (wantLoadModel) {
+        if (group.loadModel && group.loadModel !== wantLoadModel) continue;
+        if (group.loadModel === wantLoadModel) {
+          score += 16;
+          reasons.push(wantLoadModel === "FCL" ? "đúng FCL" : "đúng LCL");
+        } else {
+          differences.push("giá đầu vào chưa ghi rõ FCL/LCL");
+        }
       }
 
       if (wantEquipment) {
@@ -511,6 +528,7 @@ export function findComparableCosts(
     criteria.cbm,
     criteria.weightKg,
     criteria.mode,
+    criteria.loadModel,
     criteria.equipment,
   ].filter((v) => v !== "" && v != null).length;
   if (supplied === 0) return [];
