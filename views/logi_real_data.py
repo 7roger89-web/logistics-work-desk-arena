@@ -456,32 +456,63 @@ def _partner_projection(
     return result
 
 
-def finance_service_catalog() -> list[dict[str, Any]]:
-    """The ONE canonical service catalog, projected read-only for the component.
+def finance_service_catalog(cost_catalog: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Service picker: legacy defaults plus operator-maintained catalog overlays.
 
-    ``core.config.GETFLY_SERVICES_LIST`` is the same list the legacy Streamlit
-    shipment screen (``views/shipment.py``), ``views/quotations.py`` and the
-    GetFly Excel writers already use. This is a presentation projection of that
-    existing constant — no second catalog, no copy in the frontend, no new
-    collection, and nothing here is writable: the actual service line written
-    by ``finance_actual_save`` carries the ``code``/``name``/``unit`` the
-    operator picked.
-
-    A deployment whose catalog is empty yields ``[]`` (an honest empty state),
-    never a fabricated list.
+    Stable catalog ids are authority. Dynamic SERVICE entries can add a new code
+    or replace a legacy code via legacy_codes without editing core/config.py.
     """
     from core.config import GETFLY_SERVICES_LIST
 
-    return [
+    legacy = [
         {
+            "id": f"LEGACY:{text(item.get('code'))}",
             "code": text(item.get("code")),
             "name": text(item.get("name")),
             "unit": text(item.get("unit")) or "Lần",
             "group": text(item.get("group")),
+            "source": "LEGACY_CONFIG",
         }
         for item in GETFLY_SERVICES_LIST
         if isinstance(item, Mapping) and text(item.get("code"))
     ]
+    dynamic = [
+        entry for entry in (cost_catalog or {}).values()
+        if isinstance(entry, Mapping)
+        and text(entry.get("kind")).upper() == "SERVICE"
+        and entry.get("active", True) is not False
+    ]
+    if not dynamic:
+        return legacy
+
+    hidden_legacy = {
+        str(code).upper()
+        for entry in dynamic
+        for code in (entry.get("legacy_codes") or entry.get("legacyCodes") or [])
+        if str(code).strip()
+    }
+    by_id: dict[str, dict[str, Any]] = {
+        row["id"]: row for row in legacy if row["code"].upper() not in hidden_legacy
+    }
+    for entry in dynamic:
+        identifier = text(entry.get("id"))
+        code = text(entry.get("code")).upper()
+        if not identifier or not code:
+            continue
+        # Same visible code replaces the legacy presentation while preserving a
+        # stable dynamic id for all new writes.
+        for key, row in list(by_id.items()):
+            if row.get("code", "").upper() == code:
+                by_id.pop(key, None)
+        by_id[identifier] = {
+            "id": identifier,
+            "code": code,
+            "name": text(entry.get("name")) or code,
+            "unit": text(entry.get("unit")) or "Lần",
+            "group": text(entry.get("group")) or "DỊCH VỤ XNK",
+            "source": "COST_CATALOG",
+        }
+    return sorted(by_id.values(), key=lambda row: (row.get("group", ""), row.get("name", ""), row.get("code", "")))
 
 
 def finance_projection(
