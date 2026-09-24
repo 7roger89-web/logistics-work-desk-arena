@@ -81,6 +81,38 @@ def test_owner_rate_fixture_preserves_no_space_credit_tax_and_multi_equipment():
     assert ocean["etd"] == "2026-09-21"
 
 
+def test_mixed_historical_sections_keep_their_own_source_dates_and_validity():
+    parsed = parse_cost_rate_text(
+        """NINGBO - HPH
+O/F:USD1425/40HQ ETD:21/09/2026 COSCO
+---
+SHENZHEN - HPH
+REFUND 21$/RT
+28/12/2024
+""",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    ocean = next(row for row in parsed["rows"] if row.get("amount") == 1425.0)
+    refund = next(row for row in parsed["rows"] if row.get("kind") == "CREDIT")
+    assert ocean.get("sourceDate") == ""
+    assert refund.get("sourceDate") == "2024-12-28"
+
+    # A line-specific validity must not leak into a later carrier rate.
+    validity = parse_cost_rate_text(
+        """NINGBO - HPH
+COSCO USD 1300/40HQ 有效期到9.30
+MSK USD 1200/40HQ
+""",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    cosco = next(row for row in validity["rows"] if row.get("amount") == 1300.0)
+    msk = next(row for row in validity["rows"] if row.get("amount") == 1200.0)
+    assert cosco.get("validUntil") == "2026-09-30"
+    assert msk.get("validUntil") == ""
+
+
 def test_rmb_is_canonical_cny_and_unknown_no_space_requires_review():
     rmb = parse_cost_rate_text(
         "电放费 RMB500/SET",
