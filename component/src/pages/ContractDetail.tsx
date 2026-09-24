@@ -22,7 +22,6 @@ import {
 } from "../components/ui";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText, fmtVND, isUnknown } from "../lib/format";
-import IntlPaymentComparator from "../components/IntlPaymentComparator";
 import type { Contract, GoodsLine } from "../lib/viewmodel";
 
 const TABS = [
@@ -30,7 +29,6 @@ const TABS = [
   { id: "hang-hoa", label: "Hàng hóa hợp đồng", short: "Hàng hóa" },
   { id: "chung-tu", label: "Chứng từ HDNT/PL/HDMB", short: "Chứng từ" },
   { id: "lo-lien-ket", label: "Lô liên kết", short: "Lô liên kết" },
-  { id: "thanh-toan-quoc-te", label: "Thanh toán quốc tế", short: "TTQT" },
 ];
 
 const DOC_STATE_TONE: Record<string, "green" | "amber" | "red" | "blue" | "gray"> = {
@@ -80,7 +78,7 @@ export default function ContractDetail() {
   catch { id = undefined; }
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "tong-quan";
-  const { contracts, authority, shipments, customers, intlFxRates, dispatch, toast } = useStore();
+  const { contracts, authority, shipments, customers, dispatch, toast } = useStore();
   const nav = useNavigate();
   const c = contracts.find((x) => x.id === id);
 
@@ -479,11 +477,6 @@ export default function ContractDetail() {
             )}
           </section>
         </div>
-      )}
-
-      {/* ============ TAB: INTL PAYMENT COMPARATOR ============ */}
-      {tab === "thanh-toan-quoc-te" && (
-        <IntlPaymentComparator contract={c} fxRates={intlFxRates} />
       )}
 
       {/* ============ TAB: LINKED SHIPMENTS ============ */}
