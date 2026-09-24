@@ -257,10 +257,11 @@ def parse_cost_rate_text(
             origin, destination = route
             continue
         carriers = _carrier_hits(line, aliases["CARRIER"])
-        if carriers:
-            current_carrier = carriers[0]
         if "没仓位" in line:
-            carrier = current_carrier or {
+            # A carrier named on THIS line is authoritative for the no-space
+            # fact. Do not turn that into sticky context for later charge lines.
+            carrier = carriers[0] if carriers else current_carrier
+            carrier = carrier or {
                 "id": "",
                 "name": _clean(line.replace("没仓位", "")),
                 "state": "NEEDS_REVIEW",
@@ -284,7 +285,14 @@ def parse_cost_rate_text(
         valid_until, valid_year_inferred = _iso_date(validity_raw, year_hint=year_hint) if validity_raw else ("", False)
         prices = _money_matches(line)
         if not prices:
+            # Only a carrier mentioned on a NON-PRICE line becomes context.
+            # Examples: a standalone "OOCL" heading or vessel/header line.
+            # A priced line such as "... MSK" applies MSK to that row only and
+            # must not leak into following LOCAL/DOC/THC rows.
+            if carriers:
+                current_carrier = carriers[0]
             continue
+        line_carrier = carriers[0] if carriers else current_carrier
         raw_label = _charge_label(line)
         service = _canonical_service(raw_label, aliases["SERVICE"])
         label = service["name"] or raw_label
@@ -302,7 +310,7 @@ def parse_cost_rate_text(
                 "chargeLabel": label,
                 "chargeRaw": raw_label,
                 "chargeId": service["id"],
-                "carrier": current_carrier or {"id": "", "name": "", "state": "UNKNOWN"},
+                "carrier": line_carrier or {"id": "", "name": "", "state": "UNKNOWN"},
                 "origin": origin,
                 "destination": destination,
                 "amount": price["amount"],
