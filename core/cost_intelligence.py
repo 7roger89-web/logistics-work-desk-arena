@@ -1,0 +1,369 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+import re
+from typing import Any, Iterable, Mapping
+from uuid import uuid4
+
+PARSER_VERSION = "cost-rate-parser/1"
+RATE_RECORD_TYPE = "SUPPLIER_RATE_SNAPSHOT"
+CATALOG_KINDS = frozenset({"SERVICE", "CARRIER", "PLACE", "ZONE", "UNIT", "EQUIPMENT"})
+RATE_STATUSES = frozenset({"ACTIVE", "SUPERSEDED", "EXPIRED", "WITHDRAWN"})
+
+_KNOWN_CARRIERS = (
+    "MAERSK", "MSK", "MSC", "COSCO", "OOCL", "MCC", "SITC", "SNL", "CMA CGM",
+    "EVERGREEN", "ONE", "HAPAG-LLOYD", "WAN HAI",
+)
+_PLACE_ALIASES = {
+    "HPH": "HAI PHONG",
+    "HAIPHONG": "HAI PHONG",
+    "HAI PHONG": "HAI PHONG",
+    "NINGBO": "NINGBO",
+    "SHENZHEN": "SHENZHEN",
+    "NANSHA": "NANSHA",
+}
+_EQUIPMENT_ALIASES = {
+    "20GP": "20GP", "20'": "20GP", "20’": "20GP", "20FT": "20GP",
+    "40GP": "40GP", "40'": "40", "40’": "40", "40FT": "40",
+    "40HQ": "40HQ", "40HC": "40HQ",
+}
+_UNIT_ALIASES = {
+    "SET": "SET", "BL": "BL", "B/L": "BL", "BILL": "BILL", "RT": "RT",
+    "CONT": "CONT", "CONTAINER": "CONT", "CBM": "CBM", "M3": "CBM",
+}
+
+
+def _clean(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip())
+
+
+def _fold(value: Any) -> str:
+    text = _clean(value).upper().replace("Đ", "D")
+    return re.sub(r"[^A-Z0-9\u4e00-\u9fff]+", " ", text).strip()
+
+
+def _decimal(value: Any) -> Decimal | None:
+    try:
+        raw = str(value or "").replace(",", "").strip()
+        return Decimal(raw) if raw else None
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _iso_date(value: str, *, year_hint: int | None = None) -> tuple[str, bool]:
+    raw = _clean(value)
+    if not raw:
+        return "", False
+    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%m.%d.%Y"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat(), False
+        except ValueError:
+            pass
+    for fmt in ("%d/%m", "%d-%m", "%m.%d"):
+        try:
+            parsed = datetime.strptime(raw, fmt).date()
+            year = year_hint or date.today().year
+            return parsed.replace(year=year).isoformat(), True
+        except ValueError:
+            pass
+    return "", False
+
+
+def _catalog_entries(catalog: Mapping[str, Any] | Iterable[Mapping[str, Any]] | None) -> list[dict[str, Any]]:
+    if catalog is None:
+        return []
+    values = catalog.values() if isinstance(catalog, Mapping) else catalog
+    return [dict(x) for x in values if isinstance(x, Mapping) and x.get("active", True) is not False]
+
+
+def _alias_maps(catalog: Mapping[str, Any] | Iterable[Mapping[str, Any]] | None) -> dict[str, dict[str, dict[str, Any]]]:
+    maps = {kind: {} for kind in CATALOG_KINDS}
+    for entry in _catalog_entries(catalog):
+        kind = _clean(entry.get("kind")).upper()
+        if kind not in maps:
+            continue
+        names = [entry.get("code"), entry.get("name"), *(entry.get("aliases") or [])]
+        for name in names:
+            folded = _fold(name)
+            if folded:
+                maps[kind][folded] = entry
+    return maps
+
+
+def _canonical_place(raw: str, aliases: Mapping[str, dict[str, Any]]) -> dict[str, Any]:
+    folded = _fold(raw)
+    hit = aliases.get(folded)
+    if hit:
+        return {
+            "raw": _clean(raw),
+            "id": _clean(hit.get("id")),
+            "name": _clean(hit.get("name") or hit.get("code")),
+            "zoneIds": list(hit.get("zone_ids") or hit.get("zoneIds") or []),
+            "state": "CONFIRMED",
+        }
+    fallback = _PLACE_ALIASES.get(folded)
+    return {
+        "raw": _clean(raw),
+        "id": "",
+        "name": fallback or _clean(raw),
+        "zoneIds": [],
+        "state": "CONFIRMED" if fallback else "NEEDS_REVIEW",
+    }
+
+
+def _carrier_hits(line: str, aliases: Mapping[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    folded = _fold(line)
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for alias, entry in aliases.items():
+        if alias and re.search(rf"(?:^|\s){re.escape(alias)}(?:$|\s)", folded):
+            key = _clean(entry.get("id") or entry.get("code") or entry.get("name"))
+            if key not in seen:
+                seen.add(key)
+                out.append({
+                    "id": _clean(entry.get("id")),
+                    "name": _clean(entry.get("name") or entry.get("code")),
+                    "state": "CONFIRMED",
+                })
+    for carrier in _KNOWN_CARRIERS:
+        if re.search(rf"(?:^|\s){re.escape(_fold(carrier))}(?:$|\s)", folded) and carrier not in seen:
+            seen.add(carrier)
+            out.append({"id": "", "name": carrier, "state": "CONFIRMED"})
+    return out
+
+
+def _route_from_line(line: str, place_aliases: Mapping[str, dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    if re.search(r"(?:USD|CNY|RMB|\$|\d\s*/\s*(?:20|40|SET|BL|RT|CONT))", line, re.I):
+        return None
+    cleaned = re.sub(r"(?i)^\s*(?:CƯỚC\s+BIỂN|CUOC\s+BIEN|ROUTE)\s*[:：]?\s*", "", line).strip()
+    m = re.search(r"^\s*([^–—-]{2,40}?)\s*[–—-]\s*([^–—-]{2,40}?)\s*$", cleaned)
+    if not m:
+        return None
+    left, right = _clean(m.group(1)), _clean(m.group(2))
+    right = re.sub(r"\s+\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?\s*$", "", right).strip()
+    if len(left) > 36 or len(right) > 36:
+        return None
+    return _canonical_place(left, place_aliases), _canonical_place(right, place_aliases)
+
+
+def _charge_label(line: str) -> str:
+    m = re.search(
+        r"(?i)(?:(?:USD|CNY|RMB|VND|\$)\s*/?\s*)?\d+(?:\.\d+)?\s*\$?\s*/\s*(?:20GP|40GP|40HQ|40HC|20['’]|40['’]|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)",
+        line,
+    )
+    prefix = line[: m.start()] if m else line
+    prefix = re.sub(r"[:：;\s]+$", "", prefix).strip()
+    return prefix or "RATE"
+
+
+def _money_matches(line: str) -> list[dict[str, Any]]:
+    normalized = line.replace("’", "'").replace("：", ":")
+    patterns = [
+        re.compile(r"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I),
+        re.compile(r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<currency>\$)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I),
+    ]
+    found: list[tuple[int, int, dict[str, Any]]] = []
+    for pattern in patterns:
+        for m in pattern.finditer(normalized):
+            currency = m.groupdict().get("currency") or ""
+            raw_unit = (m.groupdict().get("unit") or "").upper()
+            currency = "USD" if currency == "$" else currency.upper()
+            equipment = _EQUIPMENT_ALIASES.get(raw_unit, "")
+            unit = _UNIT_ALIASES.get(raw_unit, "CONT" if equipment else raw_unit)
+            found.append((m.start(), m.end(), {
+                "amount": float(Decimal(m.group("amount"))),
+                "currency": currency or "USD",
+                "unit": unit,
+                "equipment": equipment,
+                "equipmentState": "NEEDS_REVIEW" if equipment == "40" else ("CONFIRMED" if equipment else "UNKNOWN"),
+                "rawPrice": m.group(0),
+            }))
+    occupied = [(a, b) for a, b, _ in found]
+    inherited_currency = next((x[2]["currency"] for x in sorted(found) if x[2].get("currency")), "")
+    implicit = re.compile(r"(?<![\d.])(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I)
+    for m in implicit.finditer(normalized):
+        if any(not (m.end() <= a or m.start() >= b) for a, b in occupied):
+            continue
+        raw_unit = m.group("unit").upper()
+        found.append((m.start(), m.end(), {
+            "amount": float(Decimal(m.group("amount"))),
+            "currency": inherited_currency or "USD",
+            "unit": _UNIT_ALIASES.get(raw_unit, raw_unit),
+            "equipment": "",
+            "equipmentState": "UNKNOWN",
+            "rawPrice": m.group(0),
+            "currencyState": "INFERRED_FROM_LINE" if inherited_currency else "NEEDS_REVIEW",
+        }))
+    found.sort(key=lambda x: x[0])
+    return [x[2] for x in found]
+
+
+def parse_cost_rate_text(
+    raw_text: str,
+    *,
+    catalog: Mapping[str, Any] | Iterable[Mapping[str, Any]] | None = None,
+    received_on: date | None = None,
+) -> dict[str, Any]:
+    text = str(raw_text or "").strip()
+    if not text:
+        raise ValueError("Chưa có nội dung giá đầu vào để phân tích.")
+    aliases = _alias_maps(catalog)
+    year_hint = (received_on or date.today()).year
+    origin = {"raw": "", "id": "", "name": "", "zoneIds": [], "state": "UNKNOWN"}
+    destination = dict(origin)
+    current_carrier: dict[str, Any] | None = None
+    rows: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    validity_raw = ""
+
+    for raw_line in text.splitlines():
+        line = _clean(raw_line)
+        if not line:
+            continue
+        if re.fullmatch(r"[-_]{3,}", line):
+            current_carrier = None
+            continue
+        route = _route_from_line(line, aliases["PLACE"])
+        if route:
+            origin, destination = route
+            continue
+        carriers = _carrier_hits(line, aliases["CARRIER"])
+        if carriers:
+            current_carrier = carriers[0]
+        if "没仓位" in line:
+            rows.append({
+                "id": f"line-{len(rows)+1}",
+                "kind": "AVAILABILITY",
+                "status": "NO_SPACE",
+                "carrier": current_carrier or {"id": "", "name": _clean(line.replace("没仓位", "")), "state": "NEEDS_REVIEW"},
+                "origin": origin,
+                "destination": destination,
+                "rawLine": raw_line,
+                "confidence": "CONFIRMED",
+            })
+            continue
+        vm = re.search(r"有效期到\s*([0-9./-]+)", line)
+        if vm:
+            validity_raw = vm.group(1)
+        etd_m = re.search(r"(?i)ETD\s*[:：]?\s*([0-9./-]+)", line)
+        etd_iso, etd_inferred = _iso_date(etd_m.group(1), year_hint=year_hint) if etd_m else ("", False)
+        prices = _money_matches(line)
+        if not prices:
+            continue
+        label = _charge_label(line)
+        upper = _fold(label)
+        semantic = "CREDIT" if "REFUND" in upper or "REBATE" in upper else "CHARGE"
+        plus_tax = bool(re.search(r"(?i)\+\s*TAX|PLUS\s+TAX", line))
+        for price in prices:
+            confidence = "CONFIRMED"
+            if price.get("equipmentState") == "NEEDS_REVIEW" or price.get("currencyState") == "NEEDS_REVIEW":
+                confidence = "NEEDS_REVIEW"
+            rows.append({
+                "id": f"line-{len(rows)+1}",
+                "kind": semantic,
+                "status": "AVAILABLE",
+                "chargeLabel": label,
+                "chargeId": "",
+                "carrier": current_carrier or {"id": "", "name": "", "state": "UNKNOWN"},
+                "origin": origin,
+                "destination": destination,
+                "amount": price["amount"],
+                "currency": price["currency"],
+                "unit": price["unit"],
+                "equipment": price.get("equipment", ""),
+                "equipmentState": price.get("equipmentState", "UNKNOWN"),
+                "taxQualifier": "PLUS_TAX" if plus_tax else "UNKNOWN",
+                "etd": etd_iso,
+                "etdYearInferred": etd_inferred,
+                "validityRaw": validity_raw,
+                "rawLine": raw_line,
+                "rawPrice": price.get("rawPrice", ""),
+                "confidence": confidence,
+            })
+    if not rows:
+        raise ValueError("Chưa bóc được dòng giá nào. Giữ nguyên nội dung và nhập/sửa thủ công thay vì đoán số.")
+    unresolved = sum(
+        1
+        for row in rows
+        if row.get("confidence") == "NEEDS_REVIEW"
+        or row.get("origin", {}).get("state") == "NEEDS_REVIEW"
+        or row.get("destination", {}).get("state") == "NEEDS_REVIEW"
+    )
+    if unresolved:
+        warnings.append(f"Có {unresolved} dòng cần người dùng xác nhận địa điểm/thiết bị trước khi dùng làm giá vốn.")
+    return {
+        "parserVersion": PARSER_VERSION,
+        "rawText": text,
+        "rows": rows,
+        "warnings": warnings,
+        "summary": {
+            "rowCount": len(rows),
+            "needsReview": unresolved,
+            "noSpace": sum(1 for row in rows if row.get("status") == "NO_SPACE"),
+        },
+    }
+
+
+def normalize_catalog_entry(payload: Mapping[str, Any]) -> dict[str, Any]:
+    kind = _clean(payload.get("kind")).upper()
+    if kind not in CATALOG_KINDS:
+        raise ValueError("Loại danh mục không được hỗ trợ.")
+    identifier = _clean(payload.get("id")) or f"CAT-{uuid4().hex[:12].upper()}"
+    name = _clean(payload.get("name"))
+    code = _clean(payload.get("code")).upper()
+    if not name and not code:
+        raise ValueError("Danh mục cần tên hoặc mã.")
+    aliases: list[str] = []
+    seen: set[str] = set()
+    for value in payload.get("aliases") or []:
+        clean = _clean(value)
+        folded = _fold(clean)
+        if clean and folded not in seen:
+            seen.add(folded)
+            aliases.append(clean)
+    out = {
+        "id": identifier,
+        "kind": kind,
+        "code": code,
+        "name": name or code,
+        "aliases": aliases,
+        "active": payload.get("active", True) is not False,
+        "merged_into": _clean(payload.get("mergedInto") or payload.get("merged_into")),
+    }
+    if kind == "PLACE":
+        out.update({
+            "country": _clean(payload.get("country")).upper(),
+            "unlocode": _clean(payload.get("unlocode")).upper(),
+            "lat": payload.get("lat"),
+            "lon": payload.get("lon"),
+            "zone_ids": [str(x) for x in (payload.get("zoneIds") or payload.get("zone_ids") or []) if str(x).strip()],
+        })
+    return out
+
+
+def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dict[str, Any]:
+    parsed = payload.get("parsed") if isinstance(payload.get("parsed"), Mapping) else payload
+    raw_text = _clean(parsed.get("rawText"))
+    rows = parsed.get("rows") if isinstance(parsed.get("rows"), list) else []
+    if not raw_text or not rows:
+        raise ValueError("Snapshot cần raw text và ít nhất một dòng đã review.")
+    identifier = _clean(payload.get("id")) or f"RATE-{uuid4().hex[:12].upper()}"
+    received_at = _clean(payload.get("receivedAt")) or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    status = _clean(payload.get("status") or "ACTIVE").upper()
+    if status not in RATE_STATUSES:
+        raise ValueError("Trạng thái rate snapshot không hợp lệ.")
+    return {
+        "id": identifier,
+        "record_type": RATE_RECORD_TYPE,
+        "status": status,
+        "received_at": received_at,
+        "supplier": _clean(payload.get("supplier")),
+        "source_channel": _clean(payload.get("sourceChannel") or "PASTE"),
+        "raw_text": raw_text,
+        "parser_version": _clean(parsed.get("parserVersion")) or PARSER_VERSION,
+        "rows": rows,
+        "warnings": list(parsed.get("warnings") or []),
+        "created_by": actor,
+        "is_deleted": False,
+    }
