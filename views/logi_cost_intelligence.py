@@ -62,6 +62,41 @@ def handle_cost_rate_save(payload: Mapping[str, Any], deps: Mapping[str, Any]) -
     )
 
 
+def handle_cost_rate_status_set(payload: Mapping[str, Any], deps: Mapping[str, Any]) -> dict[str, Any]:
+    from core.database import (
+        get_last_db_error,
+        load_cost_rate_snapshots,
+        set_cost_rate_snapshot_status,
+    )
+
+    request_id = _text(payload.get("requestId"))
+    snapshot_id = _text(payload.get("id"))
+    status = _text(payload.get("status")).upper()
+    if not set_cost_rate_snapshot_status(snapshot_id, status):
+        return deps["_result"](
+            "cost_rate_status_set", snapshot_id, False,
+            get_last_db_error() or "Không đổi được trạng thái giá vốn.",
+            requestId=request_id,
+        )
+    fresh = next(
+        (row for row in load_cost_rate_snapshots(limit=2000) if _text(row.get("id")) == snapshot_id),
+        None,
+    )
+    if fresh is None:
+        return deps["_result"](
+            "cost_rate_status_set", snapshot_id, False,
+            "Writer báo thành công nhưng đọc lại không thấy snapshot giá vốn.",
+            requestId=request_id,
+        )
+    return deps["_result"](
+        "cost_rate_status_set", snapshot_id, True,
+        requestId=request_id,
+        readback=fresh,
+        persisted={"id": snapshot_id, "status": _text(fresh.get("status"))},
+        audit=deps["_audit"]("cost_rate_snapshot", snapshot_id),
+    )
+
+
 def handle_cost_catalog_save(payload: Mapping[str, Any], deps: Mapping[str, Any]) -> dict[str, Any]:
     from core.cost_intelligence import normalize_catalog_entry
     from core.database import get_last_db_error, load_cost_catalog, save_cost_catalog_entry
