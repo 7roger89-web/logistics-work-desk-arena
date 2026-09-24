@@ -344,6 +344,7 @@ interface InputRateGroup {
   loadModel: string;
   equipment: string;
   validUntil: string;
+  sourceDate: string;
   rows: CostRateLine[];
 }
 
@@ -357,7 +358,8 @@ function inputRateGroups(snapshot: CostRateSnapshot): InputRateGroup[] {
     const equipment = (row.equipment || "").toUpperCase();
     const loadModel = equipment ? "FCL" : ["CBM", "RT"].includes((row.unit || "").toUpperCase()) ? "LCL" : "";
     const validUntil = row.validUntil || "";
-    const key = [carrier, origin, destination, loadModel, equipment, validUntil].join("|");
+    const sourceDate = row.sourceDate || "";
+    const key = [carrier, origin, destination, loadModel, equipment, validUntil, sourceDate].join("|");
     const existing = groups.get(key);
     if (existing) {
       existing.rows.push(row);
@@ -372,6 +374,7 @@ function inputRateGroups(snapshot: CostRateSnapshot): InputRateGroup[] {
         loadModel,
         equipment,
         validUntil,
+        sourceDate,
         rows: [row],
       });
     }
@@ -437,7 +440,8 @@ function inputRateMatches(
       // a mismatch; disclose it instead of inventing EXW/FOB.
       if (criteria.incoterm) differences.push("giá carrier không ghi Incoterm");
 
-      const days = ageDays(snapshot.received_at, target);
+      const referenceDate = group.sourceDate || snapshot.received_at;
+      const days = ageDays(referenceDate, target);
       const recent = recencyBonus(days);
       score += recent.score;
       if (recent.reason) reasons.push(recent.reason);
@@ -480,8 +484,8 @@ function inputRateMatches(
         shipmentId: "",
         customer: "",
         supplier: snapshot.supplier || group.carrier,
-        createdAt: snapshot.received_at,
-        period: periodOf(snapshot.received_at),
+        createdAt: referenceDate,
+        period: periodOf(referenceDate),
         source: "INPUT_RATE",
         sourceLabel: "GIÁ ĐẦU VÀO",
         incoterm: "",
