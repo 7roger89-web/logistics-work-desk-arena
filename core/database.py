@@ -1452,7 +1452,7 @@ def load_cost_catalog(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
 def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
     if not _require_business_permission("tariff", "Bạn không có quyền cập nhật danh mục giá vốn."):
         return False
-    from core.cost_intelligence import normalize_catalog_entry
+    from core.cost_intelligence import catalog_lookup_keys, normalize_catalog_entry
 
     try:
         payload = normalize_catalog_entry(document)
@@ -1464,6 +1464,45 @@ def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
         return False
     identifier = str(payload["id"])
     old = db.cost_catalog.find_one({"id": identifier}, {"_id": 0})
+
+    merged_into = str(payload.get("merged_into") or "").strip()
+    if merged_into:
+        if merged_into == identifier:
+            _set_last_error("Không thể gộp một danh mục vào chính nó.")
+            return False
+        target = db.cost_catalog.find_one(
+            {"id": merged_into, "is_deleted": {"$ne": True}},
+            {"_id": 0},
+        )
+        if target is None:
+            _set_last_error("Danh mục đích để gộp không tồn tại.")
+            return False
+        if str(target.get("kind") or "").upper() != str(payload.get("kind") or "").upper():
+            _set_last_error("Chỉ được gộp các danh mục cùng loại.")
+            return False
+
+    # Active lookup keys must be unambiguous inside one kind. Otherwise the
+    # parser's alias map would depend on database iteration order.
+    if payload.get("active", True) is not False:
+        incoming = catalog_lookup_keys(payload)
+        for other in db.cost_catalog.find(
+            {
+                "id": {"$ne": identifier},
+                "kind": payload.get("kind"),
+                "active": {"$ne": False},
+                "is_deleted": {"$ne": True},
+            },
+            {"_id": 0},
+        ):
+            overlap = incoming & catalog_lookup_keys(other)
+            if overlap:
+                conflict = sorted(overlap)[0]
+                _set_last_error(
+                    f"Alias/mã '{conflict}' đang thuộc danh mục {other.get('id')}; "
+                    "hãy sửa alias hoặc gộp bản ghi cũ trước."
+                )
+                return False
+
     if not _save_document("cost_catalog", payload):
         return False
     _audit(db, "cost_catalog", identifier, "create" if old is None else "update", before=old, after=payload)
