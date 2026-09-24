@@ -187,9 +187,11 @@ function RowEditor({
                 value={row.amount == null ? "" : String(row.amount)}
                 onChange={(e) => {
                   const v = e.target.value.trim();
+                  const amount = v === "" ? null : Number(v);
+                  const valid = amount == null || Number.isFinite(amount);
                   patch({
-                    amount: v === "" ? null : Number(v),
-                    confidence: v === "" ? "NEEDS_REVIEW" : "CONFIRMED",
+                    amount: valid ? amount : null,
+                    confidence: v === "" || !valid ? "NEEDS_REVIEW" : "CONFIRMED",
                   });
                 }}
               />
@@ -428,6 +430,7 @@ export default function CostIntelligencePanel() {
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const [raw, setRaw] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [receivedOn, setReceivedOn] = useState("");
   const [parsed, setParsed] = useState<ParsedCostRate | null>(null);
   const [parsePending, setParsePending] = useState<string | null>(null);
   const [savePending, setSavePending] = useState<string | null>(null);
@@ -450,6 +453,7 @@ export default function CostIntelligencePanel() {
       return;
     }
     setParsed(result);
+    if (result.sourceDate) setReceivedOn(result.sourceDate);
     toast(
       "Đã bóc dữ liệu giá",
       `${result.summary.rowCount} dòng · ${result.summary.needsReview} dòng cần xem lại.`,
@@ -469,6 +473,7 @@ export default function CostIntelligencePanel() {
       setRaw("");
       setParsed(null);
       setSupplier("");
+      setReceivedOn("");
     } else {
       toast("Không lưu được giá", outcome.error || "Backend từ chối.", "red");
     }
@@ -564,6 +569,7 @@ export default function CostIntelligencePanel() {
         parsed,
         supplier: supplier.trim(),
         sourceChannel: "PASTE",
+        receivedAt: receivedOn ? receivedOn + "T00:00:00Z" : undefined,
         requestId: id,
       })
     ) {
@@ -604,6 +610,15 @@ export default function CostIntelligencePanel() {
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
                 placeholder="VD: agent A / OOCL sales"
+              />
+            </Field>
+            <Field label="Ngày nhận / ngày bảng giá" hint="Nếu paste có một ngày riêng như 28/12/2024, app sẽ điền giúp.">
+              <input
+                type="date"
+                data-testid="cost-rate-received-on"
+                className={inputCls()}
+                value={receivedOn}
+                onChange={(e) => setReceivedOn(e.target.value)}
               />
             </Field>
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-[12.5px] text-blue-900">
