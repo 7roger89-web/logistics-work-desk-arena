@@ -23,9 +23,9 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 _FORCE_LABELS = {
-    "in_force": "đang có hiệu lực trong phạm vi VNLAW đã xác minh",
-    "suspended": "đang tạm ngưng trong phạm vi VNLAW đã xác minh",
-    "repealed": "đã hết hiệu lực trong phạm vi VNLAW đã xác minh",
+    "in_force": "có hiệu lực tại thời điểm tra cứu trong phạm vi VNLAW đã xác minh",
+    "suspended": "tạm ngưng tại thời điểm tra cứu trong phạm vi VNLAW đã xác minh",
+    "repealed": "đã hết hiệu lực tại thời điểm tra cứu trong phạm vi VNLAW đã xác minh",
     "absent": "chưa tồn tại tại thời điểm tra cứu trong phạm vi đã xác minh",
 }
 
@@ -142,7 +142,7 @@ def query_vnlaw(
     if not isinstance(payload, dict):
         raise VNLAWServiceError("VNLAW trả về dữ liệu không hợp lệ.")
     for key in ("legal_hits", "technical_hits", "guidance_hits"):
-        if not isinstance(payload.get(key, []), list):
+        if not isinstance(payload.get(key), list):
             raise VNLAWServiceError(f"VNLAW thiếu nhóm dữ liệu hợp lệ: {key}.")
     return payload
 
@@ -198,7 +198,7 @@ def format_vnlaw_result(
             force_label = _FORCE_LABELS.get(force, force)
             validity = (
                 f"{chunk.get('valid_from') or '?'} → "
-                f"{chunk.get('valid_to') or 'hiện tại/không ghi'}"
+                f"{chunk.get('valid_to') or 'chưa có mốc kết thúc trong dữ liệu'}"
             )
             section = [
                 "",
