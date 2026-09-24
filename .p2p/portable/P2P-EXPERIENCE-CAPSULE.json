@@ -1,0 +1,103 @@
+{
+  "acceptance_authority": false,
+  "authority": "NON_AUTHORITATIVE_VERIFIED_EXPERIENCE",
+  "canonical_source": "7roger89-web/P2P-upgrade-github-1@main:.p2p/system/p2p_capabilities/shared_experience_catalog.json",
+  "current_state_wins": true,
+  "generated": true,
+  "law_and_task_contract_win": true,
+  "package_version": "8.4.7-C-codex.74",
+  "permission_effect": "NONE",
+  "records": [
+    {
+      "acceptance_authority": false,
+      "authority": "NON_AUTHORITATIVE_VERIFIED_EXPERIENCE",
+      "correction": "Assimilate mandatory per-actor self-read receipts, handoff freshness receipts, portable experience transport capsules, and start-time experience lookup into both Supreme Law and repo-scoped project entrypoints.",
+      "domain": "",
+      "evidence": [
+        {
+          "kind": "STATIC_AUDIT",
+          "ref": "issue:247:audit:10-of-10-managed-repos-lacked-actor-receipt-and-experience-runtime",
+          "role": "EVIDENCE",
+          "verdict": "PROVEN"
+        }
+      ],
+      "failure_class": "DISTRIBUTION_WITHOUT_ACTOR_CONSUMPTION",
+      "inputs": [
+        "task contract",
+        "canonical or portable law",
+        "shared or local experience catalog"
+      ],
+      "kind": "PROCEDURAL",
+      "lesson": "A law, capability, or learned experience is not operationally complete for a target workflow merely because canonical code or documentation exists. The actual executing actor path must be able to discover it, consume it, and provide bounded, source-bound evidence of consumption before substantive work.",
+      "outcome": "CORRECTED",
+      "outputs": [
+        "LAW_CHECK receipt",
+        "EXPERIENCE_CHECK receipt",
+        "LEARNING_RECONCILIATION receipt"
+      ],
+      "permission_effect": "NONE",
+      "procedure": [
+        "Establish actor-own source-bound law receipt before substantive execution.",
+        "Perform bounded ACTIVE experience lookup against local runtime or portable experience capsule.",
+        "At task close, record learning reconciliation decision (NONE or CANDIDATE with proof)."
+      ],
+      "record_id": "shared-exp-b2611df4c9393f0017f07dcb",
+      "scope": "CROSS_PROJECT",
+      "scope_evidence": [
+        {
+          "project": "huyen-hoc-lab",
+          "ref": "audit:issue:247:repo-scoped-actor-missing-receipt-and-experience",
+          "verdict": "PROVEN"
+        },
+        {
+          "project": "logistics-work-desk-arena",
+          "ref": "audit:issue:247:repo-scoped-actor-missing-receipt-and-experience",
+          "verdict": "PROVEN"
+        }
+      ],
+      "skill_candidate_eligible": true,
+      "source_experience_id": "exp-f6a37d770e24656dc9bef34a",
+      "source_project": "7roger89-web/P2P-upgrade-github-1",
+      "source_projects_proven": [
+        "7roger89-web/P2P-upgrade-github-1",
+        "huyen-hoc-lab",
+        "logistics-work-desk-arena"
+      ],
+      "source_revision": "dd434107e0995dbe6f900f600a49a9f32969764e",
+      "source_task_id": "ISSUE-247-LAW-CONSUMPTION-EXPERIENCE-CLOSURE",
+      "state": "ACTIVE",
+      "trigger_tokens": [
+        "distribution",
+        "consumption",
+        "experience",
+        "portable",
+        "receipt",
+        "preflight",
+        "actor",
+        "law"
+      ],
+      "verification_evidence": [
+        {
+          "kind": "DETERMINISTIC_TEST",
+          "ref": "tests/test_p2p_portable_law_projection.py:test_actor_law_receipt_and_experience_capsule",
+          "role": "BEHAVIOR_PROOF",
+          "verdict": "PROVEN"
+        },
+        {
+          "kind": "REGRESSION_TEST",
+          "ref": "tests/test_p2p_self_law_propagation_and_fast_sync.py:test_batch_check_detects_current_stale",
+          "role": "REGRESSION_PROOF",
+          "verdict": "PROVEN"
+        },
+        {
+          "kind": "ADVERSARIAL_CHALLENGE",
+          "ref": "tests/test_p2p_experience_evolution.py:test_repo_scoped_portable_experience_retrieval_without_system_runtime",
+          "role": "CHALLENGE_PROOF",
+          "verdict": "PROVEN"
+        }
+      ]
+    }
+  ],
+  "schema": "p2p-portable-experience-capsule/1",
+  "source_content_sha256": "208c3ba4c9aa4c0f30e95ea0b1f889f6669ab4472ac4f5bf2de1855d9a83b163"
+}
