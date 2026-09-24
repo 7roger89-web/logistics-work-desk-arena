@@ -3580,6 +3580,7 @@ def consume_translation_triggers(session: dict, result: Any) -> list[dict[str, A
             "sourceLang": source_lang,
             "targetLang": target_lang,
             "fingerprint": fingerprint,
+            "clientRequestId": client_request_id,
         }
         translated = logi_translation.run_translation(
             text, source_lang=source_lang, target_lang=target_lang
@@ -3620,6 +3621,7 @@ def consume_ocr_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
         encoded = str(data.get("dataBase64") or "")
         mime_type = str(data.get("mimeType") or "").strip().lower()
         filename = str(data.get("filename") or "image").strip()[:180]
+        client_request_id = str(data.get("requestId") or "").strip()[:120]
         try:
             image_bytes = base64.b64decode(encoded, validate=True)
         except Exception:
