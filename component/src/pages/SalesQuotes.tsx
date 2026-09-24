@@ -7,7 +7,7 @@
 // finance ledger — never presented as actual money.
 // ============================================================================
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Plus, PenLine, ArrowRight, Calculator, Trash2, FileDown } from "lucide-react";
 import {
@@ -96,6 +96,13 @@ interface QuoteForm {
 
 const EMPTY_LINE: LineForm = { code: "", serviceName: "", unit: "Lần", qty: "1", currency: "VND", costUnit: "", sellUnit: "", taxPct: "8", note: "" };
 
+/** Card identity the operator reads. Service wording is the quote identity;
+ *  an internal code is never shown here. */
+function lineTitle(index: number, serviceName: string): string {
+  const name = serviceName.trim();
+  return name ? `Dòng ${index + 1} · ${name}` : `Dòng ${index + 1}`;
+}
+
 const EMPTY_FORM: QuoteForm = {
   customerId: "",
   salesOwner: "",
@@ -175,6 +182,7 @@ export default function SalesQuotes() {
    * internal.
    */
   const [customerNotes, setCustomerNotes] = useState<string[]>([]);
+  const lineSectionRef = useRef<HTMLDivElement | null>(null);
   /** LOGI_QUOTE_COST_WORKFLOW_UX_01 — the ONE in-flight quote export intent. */
   const [exporting, setExporting] = useState<{ id: string; requestId: string } | null>(null);
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -304,6 +312,18 @@ export default function SalesQuotes() {
       toast("Chưa chọn khách hàng", "Chọn khách hàng trước khi tạo báo giá.", "red");
       return;
     }
+    const unnamed = form.lines
+      .map((l, idx) => ({ l, idx }))
+      .filter(({ l }) => !l.code.trim() && !l.serviceName.trim()
+        && (l.sellUnit.trim() || l.costUnit.trim() || l.note.trim()))
+      .map(({ idx }) => `Dòng ${idx + 1}: Dịch vụ`);
+    if (unnamed.length > 0) {
+      toast("Thiếu tên dịch vụ",
+        unnamed.slice(0, 4).join(" · ")
+        + " — ghi đúng tên dịch vụ khách đang hỏi. Không chọn mã nội bộ.",
+        "red");
+      return;
+    }
     const serviceLines = buildServiceLines();
     if (serviceLines.length === 0) {
       toast("Thiếu dòng dịch vụ", "Cần ít nhất một dòng dịch vụ báo giá.", "red");
@@ -425,6 +445,13 @@ export default function SalesQuotes() {
       `${lines.length} dòng dịch vụ đã điền vào form — kiểm tra và sửa trước khi lưu.`,
       "green"
     );
+    // The modal is taller than the viewport. Land on the line list so the
+    // operator sees the count and the named cards instead of the fields above.
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        lineSectionRef.current?.scrollIntoView({ block: "start" });
+      });
+    }
   };
 
   /**
@@ -506,6 +533,9 @@ export default function SalesQuotes() {
             </button>
           ))}
         </div>
+        {workspace === "bao-gia" && (
+          <button type="button" onClick={openCreate} className="btn-press touch-target sm:hidden mb-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[15px] min-h-[48px]"><Plus size={18} /> Tạo báo giá</button>
+        )}
         {workspace === "bao-gia" && (
         <div className="flex gap-2">
           <div className="flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
@@ -715,31 +745,46 @@ export default function SalesQuotes() {
               </div>
             )}
 
-            {/* LOGI_QUOTE_LINE_NOTE_CLARITY_01 — ONE CARD = ONE SERVICE LINE.
-                Every card carries its own visible identity ("Dòng dịch vụ N")
-                and its OWN "Ghi chú dòng này" field, rendered inside the same
-                card as that line's mã/tên/số lượng/giá vốn/giá bán/thuế/tiền tệ.
-                There is no quote-level shared note: the note travels to the
-                canonical `service_lines[i].note` of exactly this card. */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-1">
-                <p className="font-extrabold text-[15px] text-[#0f2a4a]">Các dòng dịch vụ</p>
-                <button type="button" data-testid="quote-add-line" onClick={addLine} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]"><Plus size={15} /> Thêm dòng</button>
+            {/* LOGI_QUICK_QUOTE_LINE_INTEGRITY_AND_SERVICE_NAME_01
+                ONE CARD = ONE SERVICE LINE. The service wording is the identity.
+                An internal service code is kept in form state for historical
+                quotes and is never a visible quotation field. */}
+            <div className="mt-4" ref={lineSectionRef} data-testid="quote-line-section">
+              <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-white">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p data-testid="quote-line-count" className="font-extrabold text-[15px] text-[#0f2a4a]">Các dòng dịch vụ · {form.lines.length} dòng</p>
+                  <button type="button" data-testid="quote-add-line" onClick={addLine} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[40px]"><Plus size={15} /> Thêm dòng</button>
+                </div>
+                <p className="text-[13px] text-slate-500">Mỗi dòng dịch vụ có ô ghi chú riêng của chính dòng đó — không có ghi chú dùng chung cho cả báo giá.</p>
+                {form.lines.length > 3 && (
+                  <p data-testid="quote-line-scroll-hint" className="text-[12.5px] font-semibold text-[#1e5aa8] mt-1">
+                    Khung bên dưới cuộn được — đủ {form.lines.length} dòng, kéo để xem dòng 4–{form.lines.length}.
+                  </p>
+                )}
               </div>
-              <p className="text-[13px] text-slate-500 mb-2.5">Mỗi dòng dịch vụ có ô ghi chú riêng của chính dòng đó — không có ghi chú dùng chung cho cả báo giá.</p>
-              <div className="space-y-2.5">
+              <div data-testid="quote-lines" className="space-y-2.5 max-h-[min(52vh,520px)] overflow-y-auto overscroll-contain rounded-xl border-2 border-slate-200 p-2">
                 {form.lines.map((l, i) => (
                   <fieldset key={i} data-testid={`quote-line-${i + 1}`} className="rounded-xl border-2 border-slate-200 bg-white p-3 focus-within:border-[#1e5aa8]">
-                    <legend className="sr-only">Dòng dịch vụ {i + 1}</legend>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <p data-testid={`quote-line-${i + 1}-title`} className="inline-flex items-center gap-1.5 rounded-full bg-[#0f2a4a] text-white font-extrabold text-[13.5px] px-3 py-1">Dòng dịch vụ {i + 1}</p>
+                    <legend className="sr-only">{lineTitle(i, l.serviceName)}</legend>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p data-testid={`quote-line-${i + 1}-title`} className="rounded-xl bg-[#0f2a4a] text-white font-extrabold text-[13.5px] leading-snug px-3 py-1">{lineTitle(i, l.serviceName)}</p>
                       {form.lines.length > 1 && (
-                        <button type="button" data-testid={`quote-line-${i + 1}-remove`} onClick={() => removeLine(i)} className="btn-press touch-target inline-flex items-center gap-1 text-[13px] font-bold text-red-600 min-h-[36px]"><Trash2 size={14} /> Xóa dòng</button>
+                        <button type="button" data-testid={`quote-line-${i + 1}-remove`} onClick={() => removeLine(i)} className="btn-press touch-target inline-flex items-center gap-1 text-[13px] font-bold text-red-600 min-h-[36px] shrink-0"><Trash2 size={14} /> Xóa dòng</button>
                       )}
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <Field label="Mã dịch vụ"><input value={l.code} onChange={(e) => setLine(i, "code", e.target.value)} placeholder="DV-VC-TQ" className={inputCls()} /></Field>
-                      <Field label="Tên dịch vụ"><input value={l.serviceName} onChange={(e) => setLine(i, "serviceName", e.target.value)} placeholder="Cước xe TQ" className={inputCls()} /></Field>
+                      <div className="col-span-2 md:col-span-4">
+                        <Field label="Dịch vụ">
+                          <input
+                            data-testid={`quote-line-${i + 1}-service`}
+                            value={l.serviceName}
+                            onChange={(e) => setLine(i, "serviceName", e.target.value)}
+                            placeholder="VD: Cước biển"
+                            aria-label={`Dịch vụ dòng ${i + 1}`}
+                            className={inputCls()}
+                          />
+                        </Field>
+                      </div>
                       <Field label="ĐVT"><input value={l.unit} onChange={(e) => setLine(i, "unit", e.target.value)} className={inputCls()} /></Field>
                       {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — these accept a small
                           Excel-like expression (370*8, =SUM(370,80), 9.5tr*2)

@@ -676,6 +676,87 @@ console.log("STEP 9 — D: the list opens on Tháng này + Đang làm; UNKNOWN n
   ok("default Tháng này + Đang làm, UNKNOWN never archives, URL-preserved, non-destructive");
 }
 
+// ---------------------------------------------------------------------------
+console.log("STEP 10 — exact Owner fixture: 9 named lines, no service-code UX");
+{
+  const EXACT = [
+    "FOB NINGBO - Hải Phòng:",
+    "Cước biển: 950 usd/ cont 20' - cước tại thời điểm này (nếu vượt 20 tấn + 80 usd/cont)",
+    "---",
+    "VN:",
+    "- Phụ phí hãng tàu: 9.5 triệu/cont 20'",
+    "- nâng cont, hạ vỏ: 2.6 triệu/cont 20'",
+    "- Hạ tầng: 250k/cont 20'",
+    "- thủ tục hải quan: 2 triệu/cont",
+    "- vận tải về Sơn Tây, Hà Nội: 6 tr/cont 20' (hàng về cảng lach huyện + 500k/cont) - theo giá cước xăng dầu tại thời điểm này",
+    "- kiểm hóa mở cont (nếu có): 4 triệu/cont - đối với hàng không phát hiện nghi vấn",
+    "- Kiểm hóa soi chiếu (nếu có): 2 triệu/cont - đối với hàng không phát hiện nghi vấn",
+    "- Nếu có phát sinh về xử lý hàng hóa, sẽ báo ngay tại thời điểm phát sinh.",
+    "- công bố hợp quy hàng thuộc Bộ Công An: KHOẢNG 10 triệu (chưa làm bao giờ nên chưa nắm rõ chi phí)",
+  ].join("\n");
+  const EXPECTED = [
+    "Cước biển",
+    "Phụ phí hãng tàu",
+    "Nâng cont, hạ vỏ",
+    "Hạ tầng",
+    "Thủ tục hải quan",
+    "Vận tải về Sơn Tây, Hà Nội",
+    "Kiểm hóa mở cont",
+    "Kiểm hóa soi chiếu",
+    "Công bố hợp quy hàng thuộc Bộ Công An",
+  ];
+
+  await mountWith(JSON.parse(JSON.stringify(BASE)));
+  await click("Báo Giá", "a", aside());
+  await click("Tạo báo giá", "button");
+  await setValue(byTestId("quote-paste-input"), EXACT, "HTMLTextAreaElement");
+  await clickTestId("quote-paste-parse");
+  const preview = byTestId("quote-paste-preview");
+  const previewLines = $('[data-testid^="quote-paste-line-"]', preview)
+    .filter((el) => /-line-\d+$/.test(el.getAttribute("data-testid")));
+  assert.equal(previewLines.length, 9, "PREVIEW_LINE_COUNT must be 9");
+  assert.ok(text(preview).includes("9 dòng dịch vụ đọc được"));
+
+  await clickTestId("quote-paste-apply");
+  const cards = $("[data-testid]").map((e) => e.getAttribute("data-testid"))
+    .filter((id) => /^quote-line-\d+$/.test(id));
+  assert.equal(cards.length, 9, "APPLIED_CARD_COUNT must be 9");
+  assert.equal(text(byTestId("quote-line-count")), "Các dòng dịch vụ · 9 dòng");
+  assert.ok(byTestId("quote-lines"), "the 9 cards must live in one scrollable line list");
+  assert.ok(byTestId("quote-line-scroll-hint"), "a 9-line list must say the operator can scroll to the rest");
+
+  const names = EXPECTED.map((_, i) => byTestId(`quote-line-${i + 1}-service`).value);
+  assert.deepEqual(names, EXPECTED, `service names drifted: ${names.join(" | ")}`);
+  for (const [i, name] of EXPECTED.entries()) {
+    assert.equal(text(byTestId(`quote-line-${i + 1}-title`)), `Dòng ${i + 1} · ${name}`);
+  }
+  const formText = text(byTestId("quote-line-section"));
+  assert.ok(!formText.includes("Mã dịch vụ"), "visible quotation service-code input must not exist");
+  assert.ok(!formText.includes("Dịch vụ khác"), "no service name may become Dịch vụ khác");
+  assert.equal($('input[placeholder="DV-VC-TQ"]').length, 0, "service-code placeholder must be gone");
+
+  const note = byTestId("quote-assumptions");
+  assert.ok(note && text(note).includes("Nếu có phát sinh về xử lý hàng hóa"),
+    "the general sentence must stay a customer note");
+  assert.ok(!names.some((n) => /xử lý hàng hóa/i.test(n)), "the general note became a fake service line");
+
+  await clickTestId("quote-customer-picker-toggle");
+  const firstCustomer = $('[data-testid="quote-customer-picker-list"] button')[0];
+  firstCustomer.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(90);
+  const before = triggers.length;
+  await click("💾 TẠO BÁO GIÁ", "button");
+  const create = triggers.slice(before).find((t) => t.event === "quote_create");
+  assert.ok(create, "exact fixture must dispatch quote_create");
+  const lines = create.value.payload.serviceLines;
+  assert.equal(lines.length, 9, "CREATE_PAYLOAD_SERVICE_LINES must be 9");
+  assert.deepEqual(lines.map((l) => l.serviceName), EXPECTED);
+  assert.ok(lines.every((l) => l.code === ""), "new pasted lines persist a blank code, not a guessed catalog code");
+  assert.ok(!lines.some((l) => /Dịch vụ khác/i.test(l.serviceName)));
+  assert.ok(create.value.payload.customerNotes.some((n) => n.includes("Nếu có phát sinh về xử lý hàng hóa")));
+  ok("exact Owner fixture: preview 9, applied 9, named cards, blank codes, note stays a note");
+}
+
 console.log(`\nDOM_ACCEPTANCE_QUOTE_COST_WORKFLOW_UX_01=${passed} checks passed`);
 if (cleanup) cleanup();
 process.exit(0);

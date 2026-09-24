@@ -40,6 +40,17 @@ assert.equal(p.destination, "Hải Phòng");
 ok("INCOTERM=FOB · ORIGIN=NINGBO · DESTINATION=Hải Phòng");
 
 assert.equal(p.lines.length, 9, `expected 9 service lines, got ${p.lines.length}`);
+assert.deepEqual(p.lines.map((l) => l.name), [
+  "Cước biển",
+  "Phụ phí hãng tàu",
+  "Nâng cont, hạ vỏ",
+  "Hạ tầng",
+  "Thủ tục hải quan",
+  "Vận tải về Sơn Tây, Hà Nội",
+  "Kiểm hóa mở cont",
+  "Kiểm hóa soi chiếu",
+  "Công bố hợp quy hàng thuộc Bộ Công An",
+]);
 ok("9 service lines extracted (the unpriced sentence is NOT one of them)");
 
 const byName = (needle) => p.lines.find((l) => l.name.toLowerCase().includes(needle.toLowerCase()));
