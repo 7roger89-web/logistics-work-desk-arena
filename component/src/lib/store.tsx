@@ -30,6 +30,7 @@ import {
   type AuthorityParty,
   type CeoReport,
   type Contract,
+  type CostIntelligence,
   type Customer,
   type Environment,
   type FinanceServiceCatalogEntry,
@@ -93,6 +94,8 @@ interface StoreShape {
    * Actual picker reads it from here; React never keeps its own copy.
    */
   financeServices: FinanceServiceCatalogEntry[];
+  /** LOGI_COST_INTELLIGENCE_01 — dynamic catalog + immutable supplier-rate history. */
+  costIntelligence: CostIntelligence;
   unknownLabel: string;
   /**
    * Send ONE typed event to the single Python dispatcher. Persistence is
@@ -164,6 +167,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
   const handbook = useMemo(() => vm?.handbook ?? null, [vm]);
   const financeServices = useMemo(() => vm?.financeServiceCatalog ?? [], [vm]);
+  const costIntelligence = useMemo(
+    () => vm?.costIntelligence ?? { catalog: [], rates: [] },
+    [vm]
+  );
 
   const dispatch = useCallback(
     (event: LogiEventName, payload: unknown) => dispatchLogiEvent(event, payload),
@@ -244,6 +251,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ceoReport,
       handbook,
       financeServices,
+      costIntelligence,
       unknownLabel: unknownLabel(),
       dispatch,
       updateShipment,
@@ -275,6 +283,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ceoReport,
       handbook,
       financeServices,
+      costIntelligence,
       dispatch,
       updateShipment,
     ]
