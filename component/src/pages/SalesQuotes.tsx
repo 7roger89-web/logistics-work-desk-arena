@@ -23,6 +23,7 @@ import {
 } from "../components/ui";
 import QuickQuotePaste from "../components/QuickQuotePaste";
 import CostCheck from "../components/CostCheck";
+import CostIntelligencePanel from "../components/CostIntelligence";
 import type { ParsedQuote } from "../lib/quoteTextParser";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
@@ -150,13 +151,16 @@ export default function SalesQuotes() {
   const [status, setStatus] = useState("ALL");
   // LOGI_QUOTE_COST_WORKFLOW_UX_01 — inner segmented view of the SAME Báo Giá
   // workspace (no new sidebar group, no new route): BÁO GIÁ | CHECK CHI PHÍ.
-  const [workspace, setWorkspaceState] = useState<"bao-gia" | "check-chi-phi">(
-    sp.get("view") === "check-chi-phi" ? "check-chi-phi" : "bao-gia"
+  const initialWorkspace = sp.get("view");
+  const [workspace, setWorkspaceState] = useState<"bao-gia" | "check-chi-phi" | "kho-gia-von">(
+    initialWorkspace === "check-chi-phi" || initialWorkspace === "kho-gia-von"
+      ? initialWorkspace
+      : "bao-gia"
   );
-  const setWorkspace = (v: "bao-gia" | "check-chi-phi") => {
+  const setWorkspace = (v: "bao-gia" | "check-chi-phi" | "kho-gia-von") => {
     setWorkspaceState(v);
     const next = new URLSearchParams(window.location.search);
-    if (v === "check-chi-phi") next.set("view", v); else next.delete("view");
+    if (v === "bao-gia") next.delete("view"); else next.set("view", v);
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [creating, setCreating] = useState(false);
@@ -439,6 +443,7 @@ export default function SalesQuotes() {
           {([
             { id: "bao-gia", label: "BÁO GIÁ" },
             { id: "check-chi-phi", label: "CHECK CHI PHÍ" },
+            { id: "kho-gia-von", label: "KHO GIÁ VỐN" },
           ] as const).map((t) => (
             <button
               key={t.id}
@@ -476,11 +481,15 @@ export default function SalesQuotes() {
           <p className="text-[13.5px] text-slate-500 mt-1.5">Tìm thấy <b className="text-[#0f2a4a]">{list.length} báo giá</b> · Trạng thái do backend quyết định theo luồng chốt khách.</p>
         )}
         {workspace === "check-chi-phi" && (
-          <p className="text-[13.5px] text-slate-500">Tra chi phí lô cũ từ chính dữ liệu đang có: ưu tiên chi phí <b>thực tế</b> đã ghi ở lô, chỉ dùng số báo giá khi lô chưa có dòng thực tế.</p>
+          <p className="text-[13.5px] text-slate-500">Tra chi phí tương đồng từ dữ liệu Trường Thành: ưu tiên <b>thực tế đã chạy</b>, sau đó giá đầu vào supplier/carrier, rồi mới tới báo giá dự kiến.</p>
+        )}
+        {workspace === "kho-gia-von" && (
+          <p className="text-[13.5px] text-slate-500">Nuôi bộ nhớ giá vốn: dán bảng giá mới, sửa chỗ chưa chắc, lưu lịch sử và tự quản mã/alias ngay trong app.</p>
         )}
       </div>
 
       {workspace === "check-chi-phi" && <CostCheck shipments={shipments} />}
+      {workspace === "kho-gia-von" && <CostIntelligencePanel />}
 
       {workspace === "bao-gia" && (
       <>
