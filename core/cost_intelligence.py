@@ -7,7 +7,7 @@ import unicodedata
 from typing import Any, Iterable, Mapping
 from uuid import uuid4
 
-PARSER_VERSION = "cost-rate-parser/1"
+PARSER_VERSION = "cost-rate-parser/2"
 RATE_RECORD_TYPE = "SUPPLIER_RATE_SNAPSHOT"
 CATALOG_KINDS = frozenset({"SERVICE", "CARRIER", "PLACE", "ZONE", "UNIT", "EQUIPMENT"})
 RATE_STATUSES = frozenset({"ACTIVE", "SUPERSEDED", "EXPIRED", "WITHDRAWN"})
@@ -33,6 +33,9 @@ _UNIT_ALIASES = {
     "SET": "SET", "BL": "BL", "B/L": "BL", "BILL": "BILL", "RT": "RT",
     "CONT": "CONT", "CONTAINER": "CONT", "CBM": "CBM", "M3": "CBM",
 }
+# Vietnamese multiplier words are inherently VND-denominated in this domain:
+# "9.5 triệu" => 9 500 000 VND, "250k" => 250 000 VND, "6 tr" => 6 000 000 VND.
+_VIET_MONEY_MULTIPLIERS = {"TRIEU": 1_000_000, "TR": 1_000_000, "K": 1_000}
 
 
 def _clean(value: Any) -> str:
@@ -164,9 +167,19 @@ def _canonical_service(raw: str, aliases: Mapping[str, dict[str, Any]]) -> dict[
 
 
 def _route_from_line(line: str, place_aliases: Mapping[str, dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]] | None:
-    if re.search(r"(?:USD|CNY|RMB|\$|\d\s*/\s*(?:20|40|SET|BL|RT|CONT))", line, re.I):
+    # A line that carries a money expression is a charge line, never a route —
+    # including the Vietnamese real-world forms ("950 usd/ cont 20'",
+    # "9.5 triệu/cont", "250k/cont", "6 tr/cont").
+    if re.search(
+        r"(?:USD|CNY|RMB|\$|\d\s*/\s*(?:20|40|SET|BL|RT|CONT)|\d[\d,]*(?:\.\d+)?\s*(?:USD|CNY|RMB|VND|TRIỆU|TR|K)\b)",
+        line,
+        re.I,
+    ):
         return None
     cleaned = re.sub(r"(?i)^\s*(?:CƯỚC\s+BIỂN|CUOC\s+BIEN|ROUTE)\s*[:：]?\s*", "", line).strip()
+    # A leading trade term names the Incoterm, not the place: "FOB NINGBO -
+    # Hải Phòng" originates at NINGBO.
+    cleaned = re.sub(r"(?i)^\s*(?:FOB|CIF|CFR|FCA|DAP|DPU)\s+", "", cleaned).strip()
     m = re.search(r"^\s*([^–—-]{2,40}?)\s*[–—-]\s*([^–—-]{2,40}?)\s*$", cleaned)
     if not m:
         return None
@@ -177,12 +190,26 @@ def _route_from_line(line: str, place_aliases: Mapping[str, dict[str, Any]]) -> 
     return _canonical_place(left, place_aliases), _canonical_place(right, place_aliases)
 
 
-def _charge_label(line: str) -> str:
-    m = re.search(
-        r"(?i)(?:(?:USD|CNY|RMB|VND|\$)\s*/?\s*)?\d[\d,]*(?:\.\d+)?\s*\$?\s*/\s*[A-Z0-9/'’]+",
-        line,
-    )
-    prefix = line[: m.start()] if m else line
+def _charge_label(line: str, amount_start: int | None = None) -> str:
+    if amount_start is None:
+        m = re.search(
+            r"(?i)(?:(?:USD|CNY|RMB|VND|\$)\s*/?\s*)?\d[\d,]*(?:\.\d+)?\s*\$?\s*/\s*[A-Z0-9/'’]+",
+            line,
+        )
+        prefix = line[: m.start()] if m else line
+    else:
+        # Cut right before the first money expression on the line.
+        prefix = line[:amount_start]
+    prefix = re.sub(r"[:：;\s]+$", "", prefix).strip()
+    # A leading list bullet is formatting, not part of the service name.
+    prefix = re.sub(r"^[\s\-–—*•·]+", "", prefix)
+    # A trailing currency word or approximate qualifier belongs to the price,
+    # not to the service label ("... Bộ Công An: KHOẢNG 10 triệu" -> "... An").
+    prefix = re.sub(
+        r"(?i)\s*(?:khoảng|approximately|roughly|~|usd|cny|rmb|vnd|\$)\s*$",
+        "",
+        prefix,
+    ).strip()
     prefix = re.sub(r"[:：;\s]+$", "", prefix).strip()
     return prefix or "RATE"
 
@@ -195,6 +222,22 @@ def _unit_identity(
     """Return (unit, equipment, equipment_state); empty tuple values = unknown token."""
     raw = raw_unit.upper().replace("’", "'")
     folded = _fold(raw)
+
+    # Vietnamese container phrase: "cont 20'", "container 40'", "cont 20",
+    # "cont 40". 40 stays ambiguous (GP/HQ) exactly like the built-in "40'".
+    phrase = re.fullmatch(r"(?:CONTAINER|CONT)\s+(\d{1,2})(?:\s*')?", raw)
+    if phrase:
+        unit_hit = unit_aliases.get("CONT")
+        unit = _clean(unit_hit.get("code") or unit_hit.get("name")).upper() if unit_hit else "CONT"
+        size_token = f"{phrase.group(1)}'"
+        equipment_hit = equipment_aliases.get(_fold(size_token))
+        if equipment_hit:
+            equipment = _clean(equipment_hit.get("code") or equipment_hit.get("name")).upper()
+            return unit, equipment, "CONFIRMED"
+        equipment = _EQUIPMENT_ALIASES.get(size_token, "")
+        if equipment:
+            return unit, equipment, "NEEDS_REVIEW" if equipment == "40" else "CONFIRMED"
+        return unit, "", "UNKNOWN"
 
     equipment_hit = equipment_aliases.get(folded)
     if equipment_hit:
@@ -216,6 +259,40 @@ def _unit_identity(
     return "", "", "UNKNOWN"
 
 
+def _vi_money_multiplier(mult: str) -> int:
+    """Folded Vietnamese multiplier word -> factor; 0 = not a multiplier."""
+    return _VIET_MONEY_MULTIPLIERS.get(_fold(mult), 0)
+
+
+def _paren_depth(text: str, index: int) -> int:
+    return text.count("(", 0, index) - text.count(")", 0, index)
+
+
+def _surcharge_sign(normalized: str, start: int) -> str:
+    """Return the surcharge sign sitting right before a money expression.
+
+    ``+`` always marks a conditional add-on ("... + 80 usd/cont").  A ``-``
+    does so only when it is mid-line; a dash at the very start of the line is
+    a list bullet ("- Hạ tầng: 250k/cont"), not a sign.
+    """
+    i = start - 1
+    while i >= 0 and normalized[i] in " \t":
+        i -= 1
+    if i < 0:
+        return ""
+    sign = normalized[i]
+    if sign == "+":
+        return sign
+    if sign in "-−":
+        return sign if normalized[:i].strip() else ""
+    return ""
+
+
+def _has_approx_qualifier(normalized: str, amount_start: int) -> bool:
+    window = normalized[max(0, amount_start - 24):amount_start]
+    return bool(re.search(r"(?:khoảng|~|approximately|roughly)\s*$", window, re.I))
+
+
 def _money_matches(
     line: str,
     *,
@@ -226,31 +303,70 @@ def _money_matches(
     equipment_aliases = equipment_aliases or {}
     unit_aliases = unit_aliases or {}
     token = r"[A-Z0-9/'-]{1,24}"
+    # "cont 20'" / "container 40'" phrases try first; single-token fallback.
+    unit = rf"(?:CONTAINER|CONT)\s+\d{{1,2}}\s*'?|{token}"
     amount = r"\d[\d,]*(?:\.\d+)?"
+    currency_words = r"USD|CNY|RMB|VND"
+    vi_mult = r"(?:TRIỆU|TR|K)\b"
     patterns = [
-        re.compile(rf"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>{amount})\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I),
-        re.compile(rf"(?P<amount>{amount})\s*(?P<currency>\$)\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I),
+        # Currency before amount (existing): "USD 750/20GP", "$130/20GP".
+        re.compile(rf"(?P<currency>{currency_words}|\$)\s*/?\s*(?P<amount>{amount})\s*/\s*(?P<unit>{unit})(?![A-Z0-9])", re.I),
+        # Amount before dollar (existing): "130$/20GP".
+        re.compile(rf"(?P<amount>{amount})\s*(?P<currency>\$)\s*/\s*(?P<unit>{unit})(?![A-Z0-9])", re.I),
+        # Amount before currency word (Vietnamese real typing):
+        # "950 usd/ cont 20'", "950 USD / cont 20'".
+        re.compile(rf"(?P<amount>{amount})\s*(?P<currency>{currency_words})\s*/\s*(?P<unit>{unit})(?![A-Z0-9])", re.I),
+        # Vietnamese multiplier amounts (VND convention): "9.5 triệu/cont 20'",
+        # "250k/cont 20'", "6 tr/cont"; the unit is optional so a bare
+        # "KHOẢNG 10 triệu" still parses (unit stays unknown, review required).
+        re.compile(rf"(?P<amount>{amount})\s*(?P<mult>{vi_mult})(?:\s*/\s*(?P<unit>{unit}))?", re.I),
     ]
     found: list[tuple[int, int, dict[str, Any]]] = []
+
+    def overlaps(span: tuple[int, int]) -> bool:
+        return any(not (span[1] <= a or span[0] >= b) for a, b, _ in found)
+
     for pattern in patterns:
         for m in pattern.finditer(normalized):
-            raw_unit = m.group("unit")
-            unit, equipment, equipment_state = _unit_identity(raw_unit, equipment_aliases, unit_aliases)
-            if not unit and not equipment:
+            if overlaps((m.start(), m.end())):
                 continue
-            currency = m.groupdict().get("currency") or ""
-            currency = "USD" if currency == "$" else ("CNY" if currency.upper() == "RMB" else currency.upper())
+            raw_unit = m.group("unit") or ""
+            if raw_unit:
+                unit_value, equipment, equipment_state = _unit_identity(raw_unit, equipment_aliases, unit_aliases)
+                if not unit_value and not equipment:
+                    continue
+            else:
+                unit_value, equipment, equipment_state = "", "", "UNKNOWN"
+            groups = m.groupdict()
+            mult = (groups.get("mult") or "").strip()
+            raw_currency = groups.get("currency") or ""
+            try:
+                base = Decimal(m.group("amount").replace(",", ""))
+            except InvalidOperation:
+                continue
+            if mult:
+                factor = _vi_money_multiplier(mult)
+                if not factor:
+                    continue
+                value = base * factor
+                currency = raw_currency.upper() or "VND"
+            else:
+                value = base
+                currency = "USD" if raw_currency == "$" else ("CNY" if raw_currency.upper() in ("RMB", "CNY") else raw_currency.upper())
             found.append((m.start(), m.end(), {
-                "amount": float(Decimal(m.group("amount").replace(",", ""))),
+                "amount": float(value),
                 "currency": currency or "USD",
-                "unit": unit,
+                "unit": unit_value,
                 "equipment": equipment,
                 "equipmentState": equipment_state,
                 "rawPrice": m.group(0),
+                "start": m.start(),
+                "amountStart": m.start("amount"),
+                "approximate": _has_approx_qualifier(normalized, m.start("amount")),
             }))
     occupied = [(a, b) for a, b, _ in found]
     inherited_currency = next((x[2]["currency"] for x in sorted(found) if x[2].get("currency")), "")
-    implicit = re.compile(rf"(?<![\d.])(?P<amount>{amount})\s*/\s*(?P<unit>{token})(?![A-Z0-9])", re.I)
+    implicit = re.compile(rf"(?<![\d.])(?P<amount>{amount})\s*/\s*(?P<unit>{unit})(?![A-Z0-9])", re.I)
     for m in implicit.finditer(normalized):
         if any(not (m.end() <= a or m.start() >= b) for a, b in occupied):
             continue
@@ -265,8 +381,21 @@ def _money_matches(
             "equipmentState": equipment_state,
             "rawPrice": m.group(0),
             "currencyState": "INFERRED_FROM_LINE" if inherited_currency else "NEEDS_REVIEW",
+            "start": m.start(),
+            "amountStart": m.start("amount"),
+            "approximate": _has_approx_qualifier(normalized, m.start("amount")),
         }))
     found.sort(key=lambda x: x[0])
+    # A money expression is a CONDITIONAL surcharge (never a main rate) when
+    # it is signed as an add-on, or when it sits inside a parenthesised
+    # qualifier while another, unparenthesised expression anchors the line.
+    outside = [entry for _, _, entry in found if _paren_depth(normalized, entry["start"]) <= 0]
+    for _, _, entry in found:
+        sign = _surcharge_sign(normalized, entry["start"])
+        entry["conditional"] = bool(sign) or (
+            _paren_depth(normalized, entry["start"]) > 0 and bool(outside)
+        )
+        entry["sign"] = sign
     return [x[2] for x in found]
 
 
@@ -325,6 +454,7 @@ def parse_cost_rate_text(
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []
     validity_context = ""
+    conditional_lines = 0
 
     for line_index, raw_line in enumerate(raw_lines):
         line = _clean(raw_line)
@@ -382,8 +512,20 @@ def parse_cost_rate_text(
                 current_carrier = carriers[0]
             continue
         line_carrier = carriers[0] if carriers else current_carrier
-        raw_label = _charge_label(line)
-        if prices and any(price.get("equipment") for price in prices):
+        raw_label = _charge_label(line, prices[0]["amountStart"])
+        primary_prices = [price for price in prices if not price.get("conditional")]
+        conditional_prices = [price for price in prices if price.get("conditional")]
+        if not primary_prices:
+            # Every money expression is a conditional add-on: keep the raw
+            # text, never guess a main rate from a qualifier.
+            continue
+        conditional_raws = [
+            f"{price['sign']}{price['rawPrice']}" if price.get("sign") else price["rawPrice"]
+            for price in conditional_prices
+        ]
+        if conditional_prices:
+            conditional_lines += 1
+        if primary_prices and any(price.get("equipment") for price in primary_prices):
             carrier_labels = {_fold(x.get("name")) for x in carriers if x.get("name")}
             if raw_label == "RATE" or _fold(raw_label) in carrier_labels:
                 raw_label = "O/F"
@@ -398,10 +540,23 @@ def parse_cost_rate_text(
             if effective_validity_raw else ("", False)
         )
         section_source_date = section_dates.get(line_index, "")
-        for price in prices:
+        for price in primary_prices:
             confidence = "CONFIRMED"
             if price.get("equipmentState") == "NEEDS_REVIEW" or price.get("currencyState") == "NEEDS_REVIEW":
                 confidence = "NEEDS_REVIEW"
+            notes: list[str] = []
+            if price.get("approximate"):
+                confidence = "NEEDS_REVIEW"
+                notes.append(
+                    "Giá mang tính ước lượng (KHOẢNG/~) trong tin gốc — chưa phải giá chốt; "
+                    "xác nhận lại trước khi dùng làm giá vốn."
+                )
+            if conditional_raws:
+                confidence = "NEEDS_REVIEW"
+                notes.append(
+                    f"Có phụ phí có điều kiện trong dòng: {'; '.join(conditional_raws)} — "
+                    "chưa tách được thành cấu trúc; kiểm tra trước khi dùng làm giá vốn."
+                )
             rows.append({
                 "id": f"line-{len(rows)+1}",
                 "kind": semantic,
@@ -426,6 +581,9 @@ def parse_cost_rate_text(
                 "sourceDate": section_source_date,
                 "rawLine": raw_line,
                 "rawPrice": price.get("rawPrice", ""),
+                "approximate": bool(price.get("approximate")),
+                "conditionalAmounts": list(conditional_raws),
+                "reviewNote": " ".join(notes),
                 "confidence": confidence,
             })
     if not rows:
@@ -440,6 +598,11 @@ def parse_cost_rate_text(
     )
     if unresolved:
         warnings.append(f"Có {unresolved} dòng cần người dùng xác nhận địa điểm/thiết bị trước khi dùng làm giá vốn.")
+    if conditional_lines:
+        warnings.append(
+            f"{conditional_lines} dòng chứa phụ phí có điều kiện (dấu + hoặc trong ngoặc) chưa tách được "
+            "thành cấu trúc — xác nhận thủ công trước khi lưu."
+        )
     unique_source_dates = sorted({value for value in section_dates.values() if value})
     return {
         "parserVersion": PARSER_VERSION,

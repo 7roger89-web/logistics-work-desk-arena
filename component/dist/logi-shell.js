@@ -22449,6 +22449,10 @@ function ll({ row: e, onChange: t, onRememberPlace: n }) {
 					]
 				})]
 			}),
+			e.reviewNote && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "mt-2 text-[11.5px] font-semibold text-amber-700 break-words",
+				children: e.reviewNote
+			}),
 			/* @__PURE__ */ (0, B.jsxs)("div", {
 				className: "mt-2 flex items-center justify-between gap-2",
 				children: [/* @__PURE__ */ (0, B.jsxs)("p", {
@@ -22464,53 +22468,68 @@ function ll({ row: e, onChange: t, onRememberPlace: n }) {
 	}) : /* @__PURE__ */ (0, B.jsxs)("div", {
 		"data-testid": "cost-rate-row",
 		className: "rounded-xl border border-slate-200 bg-white px-3 py-2.5",
-		children: [/* @__PURE__ */ (0, B.jsxs)("div", {
-			className: "flex flex-wrap items-center gap-2",
-			children: [
-				cl(e) ? /* @__PURE__ */ (0, B.jsx)(Ja, {
-					size: 16,
-					className: "text-amber-600"
-				}) : /* @__PURE__ */ (0, B.jsx)(qr, {
-					size: 16,
-					className: "text-emerald-600"
-				}),
-				/* @__PURE__ */ (0, B.jsx)("span", {
-					className: "font-bold text-[13.5px] text-slate-800",
-					children: e.status === "NO_SPACE" ? `${e.carrier?.name || "Carrier"} · KHÔNG CÓ CHỖ` : e.chargeLabel || "Dòng giá"
-				}),
-				e.amount != null && /* @__PURE__ */ (0, B.jsxs)("span", {
-					className: "font-extrabold text-[13.5px] text-[#0f2a4a]",
-					children: [
-						e.kind === "CREDIT" ? "Hoàn/giảm " : "",
-						G(e.amount),
-						" ",
-						e.currency,
-						e.equipment ? ` / ${e.equipment}` : e.unit ? ` / ${e.unit}` : ""
-					]
-				}),
-				e.carrier?.name && /* @__PURE__ */ (0, B.jsx)("span", {
-					className: "text-[12.5px] text-slate-500",
-					children: e.carrier.name
-				}),
-				(e.origin?.name || e.destination?.name) && /* @__PURE__ */ (0, B.jsxs)("span", {
-					className: "text-[12.5px] text-slate-500",
-					children: [
-						e.origin?.name || "—",
-						" → ",
-						e.destination?.name || "—"
-					]
-				}),
-				/* @__PURE__ */ (0, B.jsxs)("button", {
-					type: "button",
-					onClick: () => i(!0),
-					className: "ml-auto inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[12.5px] font-bold text-slate-600",
-					children: [/* @__PURE__ */ (0, B.jsx)(ca, { size: 13 }), " Sửa"]
-				})
-			]
-		}), /* @__PURE__ */ (0, B.jsx)("p", {
-			className: "mt-1 text-[11.5px] text-slate-400 break-words",
-			children: e.rawLine
-		})]
+		children: [
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "flex flex-wrap items-center gap-2",
+				children: [
+					cl(e) ? /* @__PURE__ */ (0, B.jsx)(Ja, {
+						size: 16,
+						className: "text-amber-600"
+					}) : /* @__PURE__ */ (0, B.jsx)(qr, {
+						size: 16,
+						className: "text-emerald-600"
+					}),
+					/* @__PURE__ */ (0, B.jsx)("span", {
+						className: "font-bold text-[13.5px] text-slate-800",
+						children: e.status === "NO_SPACE" ? `${e.carrier?.name || "Carrier"} · KHÔNG CÓ CHỖ` : e.chargeLabel || "Dòng giá"
+					}),
+					e.amount != null && /* @__PURE__ */ (0, B.jsxs)("span", {
+						className: "font-extrabold text-[13.5px] text-[#0f2a4a]",
+						children: [
+							e.kind === "CREDIT" ? "Hoàn/giảm " : "",
+							G(e.amount),
+							" ",
+							e.currency,
+							e.equipment ? ` / ${e.equipment}` : e.unit ? ` / ${e.unit}` : ""
+						]
+					}),
+					e.approximate && /* @__PURE__ */ (0, B.jsx)("span", {
+						className: "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800",
+						children: "≈ GIÁ GẦN ĐÚNG (KHOẢNG) — XÁC NHẬN LẠI"
+					}),
+					e.conditionalAmounts && e.conditionalAmounts.length > 0 && /* @__PURE__ */ (0, B.jsxs)("span", {
+						className: "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800",
+						children: ["Phụ phí có điều kiện: ", e.conditionalAmounts.join(" · ")]
+					}),
+					e.carrier?.name && /* @__PURE__ */ (0, B.jsx)("span", {
+						className: "text-[12.5px] text-slate-500",
+						children: e.carrier.name
+					}),
+					(e.origin?.name || e.destination?.name) && /* @__PURE__ */ (0, B.jsxs)("span", {
+						className: "text-[12.5px] text-slate-500",
+						children: [
+							e.origin?.name || "—",
+							" → ",
+							e.destination?.name || "—"
+						]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("button", {
+						type: "button",
+						onClick: () => i(!0),
+						className: "ml-auto inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[12.5px] font-bold text-slate-600",
+						children: [/* @__PURE__ */ (0, B.jsx)(ca, { size: 13 }), " Sửa"]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, B.jsx)("p", {
+				className: "mt-1 text-[11.5px] text-slate-400 break-words",
+				children: e.rawLine
+			}),
+			e.reviewNote && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "mt-1 text-[11.5px] font-semibold text-amber-700 break-words",
+				children: e.reviewNote
+			})
+		]
 	});
 }
 function ul() {
