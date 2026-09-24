@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -21,6 +21,7 @@ DEFAULT_TIMEOUT_SECONDS = 15
 MAX_TELEGRAM_MESSAGE = 3900
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+_VIETNAM_TIMEZONE = timezone(timedelta(hours=7))
 
 _FORCE_LABELS = {
     "in_force": "có hiệu lực tại thời điểm tra cứu trong phạm vi VNLAW đã xác minh",
@@ -78,7 +79,8 @@ def parse_question(text: str, *, today: date | None = None) -> tuple[str, str]:
         else:
             raise ValueError("Lệnh không hỗ trợ. Dùng /law <câu hỏi>.")
 
-    as_of = (today or date.today()).isoformat()
+    vietnam_today = datetime.now(_VIETNAM_TIMEZONE).date()
+    as_of = (today or vietnam_today).isoformat()
     first, sep, rest = value.partition(" ")
     if _DATE_RE.fullmatch(first):
         try:
