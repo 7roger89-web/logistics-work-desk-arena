@@ -81,6 +81,25 @@ def test_owner_rate_fixture_preserves_no_space_credit_tax_and_multi_equipment():
     assert ocean["etd"] == "2026-09-21"
 
 
+def test_rmb_is_canonical_cny_and_unknown_no_space_requires_review():
+    rmb = parse_cost_rate_text(
+        "电放费 RMB500/SET",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    assert rmb["rows"][0]["amount"] == 500.0
+    assert rmb["rows"][0]["currency"] == "CNY"
+
+    unknown = parse_cost_rate_text(
+        "ABC LINE 没仓位",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    assert unknown["rows"][0]["status"] == "NO_SPACE"
+    assert unknown["rows"][0]["confidence"] == "NEEDS_REVIEW"
+    assert unknown["summary"]["needsReview"] == 1
+
+
 def test_learned_place_alias_is_reused_without_guessing():
     parsed = parse_cost_rate_text(
         "HANGSHA - HPH\nUSD 900/20GP",
