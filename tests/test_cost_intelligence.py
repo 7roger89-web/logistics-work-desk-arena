@@ -100,6 +100,19 @@ def test_rmb_is_canonical_cny_and_unknown_no_space_requires_review():
     assert unknown["summary"]["needsReview"] == 1
 
 
+def test_priced_line_carrier_does_not_leak_into_following_local_charges():
+    parsed = parse_cost_rate_text(
+        "NINGBO - HPH\nO/F:USD1425/40HQ ETD:21/09/2026 COSCO\nUSD1200/40HQ ETD:27/09 MSK\nLOCAL:285$/40’\nDOC:75$/SET",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    rows = parsed["rows"]
+    assert rows[0]["carrier"]["name"] == "COSCO"
+    assert rows[1]["carrier"]["name"] == "MSK"
+    assert rows[2]["carrier"]["name"] == ""
+    assert rows[3]["carrier"]["name"] == ""
+
+
 def test_learned_place_alias_is_reused_without_guessing():
     parsed = parse_cost_rate_text(
         "HANGSHA - HPH\nUSD 900/20GP",
