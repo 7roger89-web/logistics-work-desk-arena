@@ -3,6 +3,7 @@ import { Archive, CheckCircle2, Database, Pencil, Plus, Save, Search, TriangleAl
 import { Field, GhostBtn, PrimaryBtn, SectionTitle, inputCls } from "./ui";
 import { useStore } from "../lib/store";
 import { fmtMoney } from "../lib/format";
+import { loose } from "../lib/costHistory";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import type {
   CostCatalogEntry,
@@ -55,8 +56,7 @@ const EMPTY_CATALOG: CatalogForm = {
 
 const splitList = (value: string) =>
   value
-    .split(/[,
-]/)
+    .split(/[,\\n]/)
     .map((x) => x.trim())
     .filter(Boolean);
 
@@ -69,9 +69,11 @@ const needsReview = (row: CostRateLine) =>
 function RowEditor({
   row,
   onChange,
+  onRememberPlace,
 }: {
   row: CostRateLine;
   onChange: (next: CostRateLine) => void;
+  onRememberPlace: (raw: string, canonical: string) => void;
 }) {
   const [editing, setEditing] = useState(needsReview(row));
   const patch = (next: Partial<CostRateLine>) => onChange({ ...row, ...next });
@@ -217,6 +219,24 @@ function RowEditor({
               />
             </Field>
           </>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {row.origin?.raw && row.origin?.name && loose(row.origin.raw) !== loose(row.origin.name) && (
+          <GhostBtn
+            onClick={() => onRememberPlace(row.origin.raw, row.origin.name)}
+            className="min-h-[36px] px-3 text-[12px]"
+          >
+            Ghi nhớ “{row.origin.raw}” = {row.origin.name}
+          </GhostBtn>
+        )}
+        {row.destination?.raw && row.destination?.name && loose(row.destination.raw) !== loose(row.destination.name) && (
+          <GhostBtn
+            onClick={() => onRememberPlace(row.destination.raw, row.destination.name)}
+            className="min-h-[36px] px-3 text-[12px]"
+          >
+            Ghi nhớ “{row.destination.raw}” = {row.destination.name}
+          </GhostBtn>
         )}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
@@ -397,6 +417,7 @@ export default function CostIntelligencePanel() {
   const [parsed, setParsed] = useState<ParsedCostRate | null>(null);
   const [parsePending, setParsePending] = useState<string | null>(null);
   const [savePending, setSavePending] = useState<string | null>(null);
+  const [aliasPending, setAliasPending] = useState<string | null>(null);
 
   useEffect(() => {
     if (!parsePending) return;
@@ -438,6 +459,50 @@ export default function CostIntelligencePanel() {
       toast("Không lưu được giá", outcome.error || "Backend từ chối.", "red");
     }
   }, [vm, savePending, toast]);
+
+  useEffect(() => {
+    if (!aliasPending) return;
+    const outcome = (vm?.lastWrites ?? []).find(
+      (x) => x.event === "cost_catalog_save" && x.requestId === aliasPending
+    );
+    if (!outcome) return;
+    setAliasPending(null);
+    if (outcome.ok) {
+      toast("Đã ghi nhớ cách gọi", "Lần sau parser sẽ dùng alias này từ danh mục chung.", "green");
+    } else {
+      toast("Chưa ghi nhớ được alias", outcome.error || "Backend từ chối.", "red");
+    }
+  }, [vm, aliasPending, toast]);
+
+  const rememberPlace = (rawName: string, canonicalName: string) => {
+    const canonical = costIntelligence.catalog.find(
+      (entry) =>
+        entry.kind === "PLACE" &&
+        entry.active !== false &&
+        [entry.name, entry.code, ...(entry.aliases || [])].some(
+          (value) => loose(value) === loose(canonicalName)
+        )
+    );
+    const aliases = Array.from(new Set([...(canonical?.aliases || []), rawName]));
+    const id = requestId("ALIAS");
+    const sent = dispatch("cost_catalog_save", {
+      id: canonical?.id || undefined,
+      kind: "PLACE",
+      code: canonical?.code || "",
+      name: canonical?.name || canonicalName,
+      aliases,
+      active: true,
+      country: canonical?.country || "",
+      unlocode: canonical?.unlocode || "",
+      zoneIds: canonical?.zone_ids || [],
+      requestId: id,
+    });
+    if (!sent) {
+      toast("Không gửi được alias", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    setAliasPending(id);
+  };
 
   const parse = () => {
     if (!raw.trim()) {
@@ -561,7 +626,7 @@ export default function CostIntelligencePanel() {
           ))}
           <div className="mt-3 space-y-2">
             {parsed.rows.map((row, i) => (
-              <RowEditor key={row.id + i} row={row} onChange={(next) => updateRow(i, next)} />
+              <RowEditor key={row.id + i} row={row} onChange={(next) => updateRow(i, next)} onRememberPlace={rememberPlace} />
             ))}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
