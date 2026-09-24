@@ -1169,6 +1169,7 @@ export interface OcrRequest {
   mimeType: string;
   sizeBytes: number;
   fingerprint: string;
+  clientRequestId: string;
 }
 
 export interface OcrResult {
