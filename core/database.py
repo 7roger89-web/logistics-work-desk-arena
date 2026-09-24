@@ -1464,9 +1464,15 @@ def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
         return False
     identifier = str(payload["id"])
     old = db.cost_catalog.find_one({"id": identifier}, {"_id": 0})
+    if old is not None and str(old.get("kind") or "").upper() != str(payload.get("kind") or "").upper():
+        _set_last_error("ID danh mục đã tồn tại và không được đổi loại dữ liệu.")
+        return False
 
     merged_into = str(payload.get("merged_into") or "").strip()
     if merged_into:
+        if payload.get("active", True) is not False:
+            _set_last_error("Muốn gộp danh mục, hãy ngừng dùng bản ghi nguồn trước.")
+            return False
         if merged_into == identifier:
             _set_last_error("Không thể gộp một danh mục vào chính nó.")
             return False
