@@ -34,6 +34,7 @@ import streamlit as st
 
 from views import ceo_report as logi_ceo_report
 from views import handbook as logi_handbook
+from views import gemini_ocr as logi_gemini_ocr
 from views import logi_c1
 from views import logi_real_data as rd
 import time
@@ -842,6 +843,12 @@ def build_view_model() -> dict:
             request=st.session_state.get(TRANSLATION_REQUEST_KEY),
             result=st.session_state.get(TRANSLATION_RESULT_KEY),
         ),
+        # LOGI_GEMINI_OCR_01 — external-provider image OCR. The readback carries
+        # metadata + Markdown only; raw image bytes never enter the view-model.
+        "ocr": logi_gemini_ocr.ocr_view(
+            request=st.session_state.get(OCR_REQUEST_KEY),
+            result=st.session_state.get(OCR_RESULT_KEY),
+        ),
         # LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — the ONE canonical service catalog
         # (``core.config.GETFLY_SERVICES_LIST``) projected read-only so the
         # Finance Actual editor can offer the real service picker instead of a
@@ -973,6 +980,12 @@ TARIFF_EVENTS = {"tariff_lookup"}
 # DeepL client and stores the readback for the next fresh view-model.
 TRANSLATION_EVENTS = {"translate_text"}
 
+# LOGI_GEMINI_OCR_01 — ONE bounded external-provider event for /ocr-anh.
+# It performs no business/database mutation: image bytes are decoded in memory,
+# sent once to Gemini, then discarded; only request metadata + Markdown result
+# remain in this Streamlit session for readback.
+OCR_EVENTS = {"ocr_image"}
+
 # LOGI_PARTNER_CONTEXT_WORKSPACE_01 — one bounded READ-ONLY selection event for
 # the /ngu-canh-doi-tac workspace. Exactly like tariff_lookup it mutates nothing:
 # the handler only records WHICH existing entity the Owner picked, and the next
@@ -996,8 +1009,9 @@ RECONCILIATION_EVENTS = {"reconciliation_filter"}
 USER_MANAGEMENT_EVENTS = logi_user_management.USER_MANAGEMENT_EVENTS
 
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
-              | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
-              | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS)
+              | TARIFF_EVENTS | TRANSLATION_EVENTS | OCR_EVENTS
+              | PARTNER_CONTEXT_EVENTS | RECONCILIATION_EVENTS
+              | USER_MANAGEMENT_EVENTS)
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
@@ -1005,6 +1019,10 @@ TARIFF_QUERY_KEY = "logi_tariff_query"
 #: Session readback of the last /dich-thuat request and of its result.
 TRANSLATION_REQUEST_KEY = "logi_translation_request"
 TRANSLATION_RESULT_KEY = "logi_translation_result"
+
+#: Session-only OCR metadata/result. Raw image bytes/base64 are NEVER stored.
+OCR_REQUEST_KEY = "logi_ocr_request"
+OCR_RESULT_KEY = "logi_ocr_result"
 
 #: Session readback of the /ngu-canh-doi-tac selection (a partner key only — the
 #: context itself is always re-derived from the authoritative readers below).
@@ -3576,6 +3594,75 @@ def consume_translation_triggers(session: dict, result: Any) -> list[dict[str, A
     return outcomes
 
 
+
+def consume_ocr_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """Bounded Gemini OCR dispatcher: ONE image intent -> at most ONE provider call.
+
+    The browser transports base64 only for the current trigger. This function
+    decodes and validates the bytes, computes a server-side fingerprint, calls
+    the OCR adapter, and stores ONLY metadata + the Markdown result in session.
+    No image bytes/base64 are persisted in session, database, GridFS or files.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(OCR_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int) or seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        if not isinstance(data, dict):
+            outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
+            continue
+
+        encoded = str(data.get("dataBase64") or "")
+        mime_type = str(data.get("mimeType") or "").strip().lower()
+        filename = str(data.get("filename") or "image").strip()[:180]
+        try:
+            image_bytes = base64.b64decode(encoded, validate=True)
+        except Exception:
+            outcomes.append(_result(event_name, "", False, "Dữ liệu ảnh không hợp lệ."))
+            continue
+
+        fingerprint = hashlib.sha256(
+            mime_type.encode("utf-8") + b"\0" + image_bytes
+        ).hexdigest()[:32]
+
+        previous = st.session_state.get(OCR_REQUEST_KEY)
+        previous_result = st.session_state.get(OCR_RESULT_KEY)
+        if (isinstance(previous, dict)
+                and previous.get("fingerprint") == fingerprint
+                and isinstance(previous_result, dict)
+                and previous_result.get("status") == logi_gemini_ocr.gemini_ocr.STATUS_EXTRACTED):
+            outcomes.append(_result(
+                event_name, "", True, "",
+                readback={"fingerprint": fingerprint, "duplicate": True},
+                notice="Ảnh giống hệt lần OCR trước — dùng lại kết quả hiện có.",
+            ))
+            continue
+
+        # Store metadata BEFORE provider call so failure still identifies the
+        # exact image intent; never store raw bytes/base64.
+        st.session_state[OCR_REQUEST_KEY] = {
+            "filename": filename,
+            "mimeType": mime_type,
+            "sizeBytes": len(image_bytes),
+            "fingerprint": fingerprint,
+        }
+        extracted = logi_gemini_ocr.run_ocr(image_bytes, mime_type=mime_type)
+        st.session_state[OCR_RESULT_KEY] = extracted
+        ok = extracted.get("status") == logi_gemini_ocr.gemini_ocr.STATUS_EXTRACTED
+        outcomes.append(_result(
+            event_name, "", ok, str(extracted.get("error") or ""),
+            readback={
+                "fingerprint": fingerprint,
+                "status": extracted.get("status"),
+            },
+        ))
+    return outcomes
+
 def consume_partner_context_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
     """The ONE bounded READ-ONLY partner-selection dispatcher.
 
@@ -3722,6 +3809,15 @@ def dispatch(
                                     translation_session["seq"])
     outcomes.extend(translation_outcomes)
 
+    # LOGI_GEMINI_OCR_01 — one external-provider OCR call per fresh image
+    # intent. No database/business write; rerun only delivers the Markdown
+    # readback to the component.
+    ocr_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    ocr_outcomes = consume_ocr_triggers(ocr_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    ocr_session["seq"])
+    outcomes.extend(ocr_outcomes)
+
     # LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded read-only selection path. It
     # writes nothing; this rerun only delivers the projected context for the
     # partner that was just selected (UNKNOWN states included).
@@ -3768,6 +3864,7 @@ def dispatch(
         or any(outcome.get("event") == "tariff_lookup" and outcome.get("ok")
                for outcome in tariff_outcomes)
         or bool(translation_outcomes)
+        or bool(ocr_outcomes)
         or any(outcome.get("ok") for outcome in partner_outcomes)
         or any(outcome.get("ok") for outcome in reconciliation_outcomes)
     )
