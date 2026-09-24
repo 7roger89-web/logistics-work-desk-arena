@@ -571,6 +571,8 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         load_agreements,
         load_authority_agents,
         load_authority_companies,
+        load_cost_catalog,
+        load_cost_rate_snapshots,
         load_docgen_documents,
         load_shipment_ids,
     )
@@ -616,6 +618,8 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "companies": lambda: load_authority_companies(db=db) or {},
         "knowledgeNotes": lambda: _knowledge_notes(db=db),
         "users": lambda: _users_reader(db=db),
+        "costCatalog": lambda: load_cost_catalog(db=db) or {},
+        "costRates": lambda: load_cost_rate_snapshots(db=db, limit=1000),
         "intlFxRates": lambda: _intl_fx_rates_projection(db=db),
     })
     return {
@@ -632,6 +636,8 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "companies": loaded["companies"],
         "knowledgeNotes": loaded["knowledgeNotes"],
         "users": loaded["users"],
+        "costCatalog": loaded["costCatalog"],
+        "costRates": loaded["costRates"],
         "intlFxRates": loaded["intlFxRates"],
     }
 
@@ -841,7 +847,13 @@ def build_view_model() -> dict:
         # free-text box. No second catalog, no copy in the frontend, no write
         # path: picking an entry only pre-fills ``code`` / ``name`` / ``unit`` on
         # the service line that ``finance_actual_save`` books in data.3.4.
-        "financeServiceCatalog": rd.finance_service_catalog(),
+        "financeServiceCatalog": rd.finance_service_catalog(sources["costCatalog"]),
+        # LOGI_COST_INTELLIGENCE_01 — one bounded read model for the rate inbox,
+        # dynamic master data, and supplier-rate history. No provider/network call.
+        "costIntelligence": {
+            "catalog": list(sources["costCatalog"].values()),
+            "rates": sources["costRates"],
+        },
         # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice (BOC /
         # Agribank / BIDV) with provenance.  Fail-closed: RATE_UNAVAILABLE
         # keeps manual entry marked MANUAL; BIDV stays UNAVAILABLE when its
