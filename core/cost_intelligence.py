@@ -223,6 +223,7 @@ def parse_cost_rate_text(
             continue
         if re.fullmatch(r"[-_]{3,}", line):
             current_carrier = None
+            validity_raw = ""
             continue
         route = _route_from_line(line, aliases["PLACE"])
         if route:
@@ -331,6 +332,15 @@ def normalize_catalog_entry(payload: Mapping[str, Any]) -> dict[str, Any]:
         "active": payload.get("active", True) is not False,
         "merged_into": _clean(payload.get("mergedInto") or payload.get("merged_into")),
     }
+    if kind == "SERVICE":
+        out.update({
+            "unit": _clean(payload.get("unit")) or "Lần",
+            "group": _clean(payload.get("group")) or "DỊCH VỤ XNK",
+            "legacy_codes": [
+                _clean(x).upper() for x in (payload.get("legacyCodes") or payload.get("legacy_codes") or [])
+                if _clean(x)
+            ],
+        })
     if kind == "PLACE":
         out.update({
             "country": _clean(payload.get("country")).upper(),
@@ -344,7 +354,7 @@ def normalize_catalog_entry(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dict[str, Any]:
     parsed = payload.get("parsed") if isinstance(payload.get("parsed"), Mapping) else payload
-    raw_text = _clean(parsed.get("rawText"))
+    raw_text = str(parsed.get("rawText") or "").strip()
     rows = parsed.get("rows") if isinstance(parsed.get("rows"), list) else []
     if not raw_text or not rows:
         raise ValueError("Snapshot cần raw text và ít nhất một dòng đã review.")
