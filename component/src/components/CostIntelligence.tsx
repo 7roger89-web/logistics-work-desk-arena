@@ -65,6 +65,7 @@ const splitList = (value: string) =>
 
 const needsReview = (row: CostRateLine) =>
   row.confidence === "NEEDS_REVIEW" ||
+  row.carrier?.state === "NEEDS_REVIEW" ||
   row.equipmentState === "NEEDS_REVIEW" ||
   row.origin?.state === "NEEDS_REVIEW" ||
   row.destination?.state === "NEEDS_REVIEW";
