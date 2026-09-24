@@ -1517,7 +1517,14 @@ def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
 
 def _cost_rate_fingerprint(document: Mapping[str, Any]) -> str:
     stable = copy.deepcopy(dict(document))
-    for key in ("id", "_fingerprint", "created_at", "updated_at"):
+    # Request/actor/timestamp metadata may differ on a transport replay while
+    # the business evidence is identical. They must not turn an idempotent
+    # retry into an immutable-content conflict.
+    for key in (
+        "id", "_fingerprint", "created_at", "updated_at",
+        "received_at", "created_by", "request_id",
+        "status", "status_updated_at", "status_updated_by",
+    ):
         stable.pop(key, None)
     return _financial_fingerprint(stable)
 
@@ -1558,6 +1565,50 @@ def save_cost_rate_snapshot(document: Mapping[str, Any]) -> bool:
     except PyMongoError as exc:
         _set_last_error(str(exc))
         return False
+
+
+def set_cost_rate_snapshot_status(snapshot_id: str, status: str) -> bool:
+    """Change lifecycle metadata only; immutable rate facts stay untouched."""
+    if not _require_business_permission("tariff", "Bạn không có quyền đổi trạng thái giá vốn."):
+        return False
+    db = get_db()
+    if db is None:
+        return False
+    identifier = str(snapshot_id or "").strip()
+    next_status = str(status or "").strip().upper()
+    if not identifier or next_status not in {"ACTIVE", "SUPERSEDED", "EXPIRED", "WITHDRAWN"}:
+        _set_last_error("Trạng thái giá vốn không hợp lệ.")
+        return False
+    before = db.rate_cards.find_one(
+        {"id": identifier, "record_type": "SUPPLIER_RATE_SNAPSHOT"},
+        {"_id": 0},
+    )
+    if before is None:
+        _set_last_error("Không tìm thấy snapshot giá vốn.")
+        return False
+    if str(before.get("status") or "ACTIVE").upper() == next_status:
+        _set_last_error("")
+        return True
+    actor = _actor()
+    try:
+        result = db.rate_cards.update_one(
+            {"id": identifier, "record_type": "SUPPLIER_RATE_SNAPSHOT"},
+            {"$set": {
+                "status": next_status,
+                "status_updated_at": utc_now(),
+                "status_updated_by": actor,
+            }},
+        )
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
+    if not result.modified_count:
+        _set_last_error("Không cập nhật được trạng thái giá vốn.")
+        return False
+    after = db.rate_cards.find_one({"id": identifier}, {"_id": 0})
+    _audit(db, "cost_rate_snapshot", identifier, "status_update", before=before, after=after)
+    _set_last_error("")
+    return True
 
 
 def save_rate_card(document: dict[str, Any]) -> bool:
