@@ -26,6 +26,7 @@ import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
+import OcrWorkspace from "./pages/OcrWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
@@ -76,6 +77,7 @@ export default function App() {
                 workspace over the EXISTING DeepL capability (no longer a
                 placeholder; honest "chưa được cấu hình" when no key exists). */}
             <Route path="/dich-thuat" element={<TranslationWorkspace />} />
+            <Route path="/ocr-anh" element={<OcrWorkspace />} />
             {/* LOGI_PARTNER_CONTEXT_WORKSPACE_01 — real read-only partner-context
                 workspace over the EXISTING entity-context projection, the
                 authority_agents legal master and the canonical C2D payable rows
