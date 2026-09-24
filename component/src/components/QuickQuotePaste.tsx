@@ -50,6 +50,13 @@ export default function QuickQuotePaste({
     }
     setError("");
     setParsed(result);
+    // The review sits under the textarea inside a tall modal. Bring the
+    // line count into view so a 9-line paste is not hidden below the fold.
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-testid="${testId}-preview"]`)?.scrollIntoView({ block: "start" });
+      });
+    }
   };
 
   const clear = () => { setParsed(null); setError(""); setText(""); };

@@ -5,9 +5,10 @@
 // runtime and proves the Owner's exact contract on the Báo Giá desk:
 //
 //   1. ONE CARD = ONE SERVICE LINE. With one line there is exactly one card,
-//      visibly titled "Dòng dịch vụ 1", and exactly ONE note field labelled
-//      "Ghi chú dòng này" living INSIDE that card — with mã dịch vụ / tên dịch
-//      vụ / số lượng / giá vốn / giá bán / thuế / tiền tệ.
+//      visibly titled "Dòng 1", and exactly ONE note field labelled
+//      "Ghi chú dòng này" living INSIDE that card — with dịch vụ / số lượng /
+//      giá vốn / giá bán / thuế / tiền tệ. The quotation card does not show
+//      "Mã dịch vụ". A stored historical code still travels in the payload.
 //   2. "Thêm dòng" creates a separate card whose note is independently blank
 //      (line_count === note_count, no quote-level shared note).
 //   3. LINE 1 NOTE=A + LINE 2 NOTE=B -> quote_create payload keeps A on
@@ -165,7 +166,6 @@ async function mountWith(vm) {
 }
 const noteIn = (n) => byTestId(`quote-line-${n}-note`);
 const card = (n) => byTestId(`quote-line-${n}`);
-const fieldIn = (n, placeholder) => card(n).querySelector(`input[placeholder="${placeholder}"]`);
 
 // ---------------------------------------------------------------------------
 console.log("STEP 1 — one line: one card, one visible identity, one note inside it");
@@ -180,13 +180,15 @@ console.log("STEP 1 — one line: one card, one visible identity, one note insid
 
   const c1 = card(1);
   assert.ok(c1, "service-line card 1 missing");
-  assert.ok(text(c1).includes("Dòng dịch vụ 1"), "card 1 has no visible line identity");
+  assert.ok(text(c1).includes("Dòng 1"), "card 1 has no visible line identity");
+  assert.equal(text(byTestId("quote-line-count")), "Các dòng dịch vụ · 1 dòng");
+  assert.ok(!text(c1).includes("Mã dịch vụ"), "quotation cards must not show Mã dịch vụ");
   assert.ok(text(c1).includes("Ghi chú dòng này"), "card 1 has no per-line note label");
   // Every canonical per-line field lives in the SAME card as that note.
   // Labels carry a REPAIR_02 suffix on the two optional facts ("nếu đã biết"),
   // so match the stable stem — this check is about co-location, not wording.
   for (const label of [
-    "Mã dịch vụ", "Tên dịch vụ", "Số lượng", "Giá vốn",
+    "Dịch vụ", "Số lượng", "Giá vốn",
     "Giá bán (unit)", "Thuế %", "Tiền tệ",
   ]) {
     assert.ok(text(c1).includes(label), `"${label}" is not inside the note's own card`);
@@ -209,7 +211,8 @@ console.log("STEP 2 — 'Thêm dòng' creates a separate line with its own blank
   await clickSelector('[data-testid="quote-add-line"]');
   assert.equal(cardCount(), 2, "adding a line did not create a second card");
   assert.equal(noteCount(), 2, "line_count != note_count after adding a line");
-  assert.ok(text(card(2)).includes("Dòng dịch vụ 2"), "card 2 has no visible line identity");
+  assert.ok(text(card(2)).includes("Dòng 2"), "card 2 has no visible line identity");
+  assert.equal(text(byTestId("quote-line-count")), "Các dòng dịch vụ · 2 dòng");
   assert.ok(text(card(2)).includes("Ghi chú dòng này"), "card 2 has no per-line note label");
   assert.ok(card(2).contains(noteIn(2)), "note 2 is not inside card 2");
   assert.notEqual(noteIn(1), noteIn(2), "both lines share one note input");
@@ -225,10 +228,8 @@ console.log("STEP 3 — LINE 1 NOTE=A + LINE 2 NOTE=B travels on the right line"
   await typeInput(byTestId("quote-customer-picker-search"), "an phat");
   await clickSelector('[data-testid="quote-customer-picker-option-CUST-ANPHAT"]');
 
-  await typeInput(fieldIn(1, "DV-VC-TQ"), "DV-VC-TQ");
-  await typeInput(fieldIn(1, "Cước xe TQ"), "Cước xe TQ");
-  await typeInput(fieldIn(2, "DV-VC-TQ"), "DV-TQ");
-  await typeInput(fieldIn(2, "Cước xe TQ"), "Thông quan");
+  await typeInput(byTestId("quote-line-1-service"), "Cước xe TQ");
+  await typeInput(byTestId("quote-line-2-service"), "Thông quan");
   // Numeric fields in card order: [Số lượng, Giá vốn (unit), Giá bán (unit), Thuế %].
   const numeric = (n) => [...card(n).querySelectorAll('input[inputmode="numeric"]')];
   assert.equal(numeric(1).length, 4, "unexpected numeric field layout in line 1");
@@ -247,8 +248,10 @@ console.log("STEP 3 — LINE 1 NOTE=A + LINE 2 NOTE=B travels on the right line"
   assert.equal(payload.serviceLines.length, 2, "payload lost a service line");
   assert.deepEqual(payload.serviceLines.map((l) => l.note), [NOTE_A, NOTE_B],
     "notes are not attached to their own serviceLines indexes");
-  assert.deepEqual(payload.serviceLines.map((l) => l.code), ["DV-VC-TQ", "DV-TQ"],
+  assert.deepEqual(payload.serviceLines.map((l) => l.serviceName), ["Cước xe TQ", "Thông quan"],
     "notes are misaligned with the service lines they belong to");
+  assert.deepEqual(payload.serviceLines.map((l) => l.code), ["", ""],
+    "a new manual line must not invent a service code");
   assert.deepEqual(payload.serviceLines.map((l) => l.costUnit), [26000000, 2500000]);
   assert.deepEqual(payload.serviceLines.map((l) => l.sellUnit), [28500000, 3000000]);
   assert.deepEqual(payload.serviceLines.map((l) => l.taxPct), [8, 8]);
@@ -269,10 +272,11 @@ console.log("STEP 4 — fresh readback restores each note to its own line");
   await click("Sửa", "button");
 
   assert.equal(cardCount(), 2, "saved two-line quote did not reopen two cards");
-  assert.ok(text(card(1)).includes("Dòng dịch vụ 1"));
-  assert.ok(text(card(2)).includes("Dòng dịch vụ 2"));
-  assert.equal(fieldIn(1, "DV-VC-TQ").value, "DV-VC-TQ");
-  assert.equal(fieldIn(2, "DV-VC-TQ").value, "DV-TQ");
+  assert.equal(text(byTestId("quote-line-1-title")), "Dòng 1 · Cước xe TQ");
+  assert.equal(text(byTestId("quote-line-2-title")), "Dòng 2 · Thông quan");
+  assert.equal(byTestId("quote-line-1-service").value, "Cước xe TQ");
+  assert.equal(byTestId("quote-line-2-service").value, "Thông quan");
+  assert.equal($('input[placeholder="DV-VC-TQ"]').length, 0, "historical code must not be a visible input");
   assert.equal(noteIn(1).value, NOTE_A, "line 1 did not read back its own note");
   assert.equal(noteIn(2).value, NOTE_B, "line 2 did not read back its own note");
   assert.ok(card(1).contains(noteIn(1)) && card(2).contains(noteIn(2)),
@@ -287,7 +291,7 @@ console.log("STEP 5 — edit line 2 only: line 1 keeps A in DOM + payload + read
 {
   await typeInput(noteIn(2), NOTE_B2);
   assert.equal(noteIn(1).value, NOTE_A, "typing in line 2 changed line 1's note");
-  assert.equal(fieldIn(1, "DV-VC-TQ").value, "DV-VC-TQ", "typing a note moved line 1's data");
+  assert.equal(byTestId("quote-line-1-service").value, "Cước xe TQ", "typing a note moved line 1's data");
 
   const before = triggers.length;
   await click("💾 LƯU BÁO GIÁ", "button");
@@ -318,9 +322,9 @@ console.log("STEP 6 — removing line 1 removes only that line and its own note"
   assert.equal(cardCount(), 1, "removing line 1 did not leave exactly one card");
   assert.equal(noteCount(), 1, "line_count != note_count after removing a line");
   const survivor = card(1);
-  assert.equal(fieldIn(1, "DV-VC-TQ").value, "DV-TQ", "the wrong line survived");
+  assert.equal(byTestId("quote-line-1-service").value, "Thông quan", "the wrong line survived");
   assert.equal(noteIn(1).value, NOTE_B2, "the surviving line lost its own note");
-  assert.ok(text(survivor).includes("Dòng dịch vụ 1"), "surviving card lost its identity");
+  assert.equal(text(byTestId("quote-line-1-title")), "Dòng 1 · Thông quan", "surviving card lost its identity");
   assert.ok(!mainText().includes(NOTE_A), "the deleted line's note is still on screen");
 
   const before = triggers.length;
@@ -352,7 +356,7 @@ console.log("STEP 7 — per-line ownership is structurally visible (mobile + des
     const c = card(n);
     const badge = c.querySelector(`[data-testid="quote-line-${n}-title"]`);
     assert.ok(badge, `line ${n} identity badge missing`);
-    assert.equal(text(badge), `Dòng dịch vụ ${n}`);
+    assert.equal(text(badge), `Dòng ${n} · ${n === 1 ? "Cước xe TQ" : "Thông quan"}`);
     assert.ok(!badge.className.includes("sr-only"), `line ${n} identity is not visible`);
     // Visible order inside the card: identity badge -> fields -> this line's note.
     const order = [...c.querySelectorAll("[data-testid]")].map((el) => el.getAttribute("data-testid"));
@@ -367,7 +371,7 @@ console.log("STEP 7 — per-line ownership is structurally visible (mobile + des
     assert.ok(c.className.includes("border-2"), `line ${n} card boundary is not explicit`);
     // Fieldset/legend keeps the group name programmatic for screen readers.
     const legend = c.querySelector("legend");
-    assert.ok(legend && text(legend) === `Dòng dịch vụ ${n}`, `line ${n} legend missing`);
+    assert.ok(legend && text(legend) === `Dòng ${n} · ${n === 1 ? "Cước xe TQ" : "Thông quan"}`, `line ${n} legend missing`);
   }
   ok("badge + field grid + note block are all inside each card (mobile & desktop markup)");
 }
