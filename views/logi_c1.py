@@ -73,6 +73,10 @@ C1_EVENTS = {
     # download already uses. No second exporter, no API server, no Office
     # automation, no Owner-local PC.
     "quote_export_xlsx",
+    # LOGI_COST_INTELLIGENCE_01 — parse is read-only; the other two are bounded writes.
+    "cost_rate_parse",
+    "cost_rate_save",
+    "cost_catalog_save",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -2012,6 +2016,9 @@ _HANDLERS = {
     "contract_intl_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
     "contract_payment_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
     "quote_export_xlsx": _handle_quote_export_xlsx,
+    "cost_rate_parse": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_parse"]).handle_cost_rate_parse(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
+    "cost_rate_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_save"]).handle_cost_rate_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
+    "cost_catalog_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_catalog_save"]).handle_cost_catalog_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
 }
 
 
