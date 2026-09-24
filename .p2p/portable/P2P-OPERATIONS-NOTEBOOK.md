@@ -2,7 +2,8 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=4e7239101063ac43e26a0fc784d48dc212eea640bdbc583395bc2d930c78876d
+SOURCE_CONTENT_SHA256=e7538a08dac4191300f9838d930c71e7ad001ab3c0fa14c1742ca799df864ffb
+PORTABLE_EXPERIENCE_CONTENT_SHA256=9b10fafe780e47bc82da89d6893d1a88a32c06031dfd7cfb63effc89926cce82
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -115,6 +116,10 @@ EXECUTOR_BEFORE_IMPLEMENTATION => READ_P2P_SUPREME_OPERATING_LAW_V1
 REVIEWER_OR_SUPERVISOR_BEFORE_REVIEW => READ_P2P_SUPREME_OPERATING_LAW_V1
 MODEL_SWITCH_OR_SESSION_RESET => READ_P2P_SUPREME_OPERATING_LAW_V1_AGAIN
 NO_SUBSTANTIVE_WORK_BEFORE_VALID_LAW_CONTEXT = YES
+ACTOR_OWN_LAW_READ_RECEIPT_MANDATORY = YES
+PARENT_SELF_LAW_PREFLIGHT != EXECUTOR_LAW_PREFLIGHT
+CONTROL_TOWER_SELF_LAW_RECEIPT != EXECUTOR_LAW_RECEIPT
+WRITER_RECEIPT != SUPERVISOR_RECEIPT
 ```
 
 This preflight applies to every P2P-managed project and every P2P-managed
@@ -124,6 +129,34 @@ reasoning, planning, prompt construction, implementation, review, testing, or
 release work, the actor must first establish a valid Supreme Law context.
 This requirement concerns the operating law used to make decisions; it does
 not require disclosure, storage, or narration of private chain-of-thought.
+
+Every actor (Control Tower, prompt writer, executor, reviewer, supervisor, tool
+session) must establish and visibly expose its OWN Supreme Law read receipt before
+its first substantive work unit or operational response:
+
+```text
+LAW_CHECK=PASS | SOURCE=<actual source> | SOURCE_SHA256=<canonical source content sha256>
+```
+or:
+```text
+LAW_CHECK=BLOCKED | REASON=<reason>
+```
+
+Rules for the actor self-read receipt:
+- Only an actually performed read counts. Inferring, guessing, copying, or
+  assuming a read from chat memory is forbidden.
+- `PARENT_SELF_LAW_PREFLIGHT != EXECUTOR_LAW_PREFLIGHT`.
+  `CONTROL_TOWER_SELF_LAW_RECEIPT != EXECUTOR_LAW_RECEIPT`.
+  `WRITER_RECEIPT != SUPERVISOR_RECEIPT`.
+  One actor cannot copy or inherit another actor's receipt.
+- Law source precedence remains strict: reachable canonical > installed
+  projection > fresh portable projection > inline capsule.
+- A portable projection receipt (`LOCAL_PORTABLE`) can yield `LAW_CHECK=PASS` only
+  when bound to the recorded `SOURCE_CONTENT_SHA256` matching the canonical
+  notebook content SHA-256. A stale portable copy cannot produce `PASS`.
+- `LAW_CHECK=BLOCKED` requires immediate cessation of substantive work.
+- The receipt is verifiable preflight evidence only; it grants no execution
+  authority, permission widening, or acceptance waiver.
 
 A valid law context is, in precedence order: the reachable active canonical
 notebook; an up-to-date installed projection of that notebook; an up-to-date
@@ -194,10 +227,88 @@ serialize a fresh compact `SUPREME_LAW_CAPSULE` for that handoff. The
 repo-scoped executor must then report `P2P_LAW_SOURCE=INLINE_CAPSULE`; it must
 not treat a known-stale portable file as current law.
 
+Before delegating substantive work to a remote executor, the parent Control
+Tower or prompt writer must make target-law freshness visible with a compact
+receipt:
+
+```text
+TARGET_LAW_FRESHNESS=CURRENT | REFRESHED | INLINE | BLOCKED
+CANONICAL_LAW_SHA256=<canonical content sha256>
+TARGET_LAW_SHA256=<target projection content sha256>
+```
+
+Interpretation:
+- `CURRENT` — target repository portable projection matches active canonical source SHA-256.
+- `REFRESHED` — stale or missing target projection was refreshed to match canonical and verified before handoff.
+- `INLINE` — safe target refresh unavailable; fresh inline `SUPREME_LAW_CAPSULE` supplied for executor preflight.
+- `BLOCKED` — no valid law context route is available; delegation is blocked.
+
 This is a handoff-time freshness gate, not a background synchronization
 service. Do not add a daemon, watcher, polling loop, repository registry,
 GitHub Action, PAT/secret, or second control plane solely to keep projections
 fresh.
+
+### Bounded ACTIVE experience preflight invariant
+
+```text
+NON_TRIVIAL_TASK_START => BOUNDED_ACTIVE_EXPERIENCE_LOOKUP
+EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE | NO_MATCH | UNAVAILABLE
+```
+
+For every non-trivial P2P-managed task, execution order is mandatory:
+
+```text
+LAW/TASK PREFLIGHT -> BOUNDED EXPERIENCE LOOKUP -> SUBSTANTIVE EXECUTION
+```
+
+Before substantive execution, every executing actor must perform a bounded lookup
+of promoted ACTIVE experience and emit an observable receipt:
+
+```text
+EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE | IDS=<experience_id,...>
+```
+or:
+```text
+EXPERIENCE_CHECK=NO_MATCH
+```
+or:
+```text
+EXPERIENCE_CHECK=UNAVAILABLE
+```
+
+Retrieval paths:
+- Installed-runtime path: run `python .p2p/system/p2p_capabilities/experience_evolution.py --root . retrieve --task-text "<task>"`.
+- Remote repo-scoped path: read `.p2p/portable/P2P-EXPERIENCE-CAPSULE.json` directly and match trigger tokens against promoted ACTIVE records.
+- Control Tower path: use `activation_summary` and bounded prompt context injection.
+
+Invariants:
+- Maximum returned active experiences remains small (default <= 3).
+- Experience is `NON_AUTHORITATIVE_VERIFIED_EXPERIENCE`: it is advisory context only.
+- Current Supreme Law, active task contract, fresh repository/project truth, and current provider/tool evidence always outrank prior experience.
+- Experience cannot widen permissions, change acceptance authority, or silently rewrite Supreme Law or skills.
+
+### Task-end learning reconciliation invariant
+
+```text
+TASK_RECONCILIATION => LEARNING_RECONCILIATION
+ROUTINE_SUCCESS => LEARNING_RECONCILIATION=NONE
+REPEATED_OR_MATERIAL_FAILURE | CLEARLY_REUSABLE_CORRECTION => LEARNING_RECONCILIATION=CANDIDATE
+```
+
+At task completion and reconciliation, the actor and Control Tower must close
+the learning loop:
+- `ROUTINE_SUCCESS` => emit `LEARNING_RECONCILIATION=NONE`. Do not manufacture
+  memory or candidates from routine success.
+- `REPEATED_OR_MATERIAL_FAILURE` or `CLEARLY_REUSABLE_CORRECTION` => emit
+  `LEARNING_RECONCILIATION=CANDIDATE` (or the appropriate lifecycle state). Terminal
+  task closure is invalid unless either:
+  1. an experience candidate is created with concrete evidence and trigger conditions; or
+  2. an explicit, evidence-based reason is recorded why no reusable lesson exists.
+- Memory must never be created from model self-report, chat summaries, or private
+  thoughts alone.
+- Preserved lifecycle: `CANDIDATE -> VERIFIED -> ACTIVE -> SUPERSEDED | QUARANTINED`.
+- Multi-project scope classification: `PROJECT_ONLY | DOMAIN | CROSS_PROJECT`.
+- No executor self-promotion into Supreme Law, shared authority, capability, or skill.
 
 ### GitHub connector preflight and failure classification
 

@@ -76,6 +76,9 @@ export const NAV: {
       { to: "/so-tay", label: "Sổ tay", icon: "book" },
       { to: "/dich-thuat", label: "Dịch thuật", icon: "lang" },
       { to: "/ocr-anh", label: "OCR ảnh → Markdown", icon: "scan" },
+      // LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — standalone calculator (moved
+      // out of the contract detail tabs; no contract coupling, no writes).
+      { to: "/thanh-toan-quoc-te", label: "Thanh toán quốc tế", icon: "banknote" },
     ],
   },
   {

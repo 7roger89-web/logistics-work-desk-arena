@@ -32,6 +32,7 @@ import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import Notebook from "./pages/Notebook";
 import UserAccess from "./pages/UserAccess";
+import IntlPaymentTool from "./pages/IntlPaymentTool";
 import NotFound from "./pages/NotFound";
 
 function Loading() {
@@ -95,6 +96,10 @@ export default function App() {
                 existing knowledge_base reader (no longer a placeholder; no CMS,
                 no authoring event, no search backend). */}
             <Route path="/so-tay" element={<Notebook />} />
+            {/* LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — stateless international
+                payment calculator (CÔNG CỤ). No contract, no write event, no
+                persistence; it left the contract detail tabs. */}
+            <Route path="/thanh-toan-quoc-te" element={<IntlPaymentTool />} />
             {/* LOGI_USER_ACCESS_WORKSPACE_01 — real READ-ONLY user & access
                 workspace over the EXISTING auth/user/RBAC capability (the user
                 store's canonical public view, the single ROLE_PERMISSIONS

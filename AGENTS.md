@@ -133,6 +133,10 @@ Every actor (Control Tower, prompt writer, executor, reviewer, supervisor, tool 
 - `CONTROL_TOWER_SELF_LAW_RECEIPT=PASS` (when serialized by Control Tower) proves only the parent Control Tower's own preflight; it never proves executor preflight and never substitutes for `P2P_LAW_PREFLIGHT`
 - No actor may fake, infer, or copy another actor's receipt/source. Only an actually performed read counts
 - If no valid law source can be established for the current actor, stop at `LAW_CONTEXT_BLOCKED`
+- Every actor must visibly emit its own self-read receipt before first substantive work:
+  `LAW_CHECK=PASS | SOURCE=<actual source> | SOURCE_SHA256=<canonical source content sha256>`
+  or: `LAW_CHECK=BLOCKED | REASON=<reason>`
+- A portable PASS must bind to the recorded `SOURCE_CONTENT_SHA256` from `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`. A stale portable copy cannot produce PASS
 
 ### Remote repo-scoped handoff freshness
 
@@ -140,6 +144,31 @@ Every actor (Control Tower, prompt writer, executor, reviewer, supervisor, tool 
 - If this projection is stale or missing and an authorized repository write path is available, refresh the generated portable notebook and managed AGENTS block before handoff.
 - If refresh cannot be performed safely, mark the portable projection stale/missing and hand off a fresh SUPREME_LAW_CAPSULE; the executor must not rely on a known-stale portable copy.
 - An authenticated GitHub connector may perform the repository refresh without a local clone; do not add a daemon, registry, GitHub Action, PAT, or new secret solely for projection freshness.
+- Parent delegation surfaces target-law freshness receipt before delegation:
+  `TARGET_LAW_FRESHNESS=CURRENT | REFRESHED | INLINE | BLOCKED`
+  `CANONICAL_LAW_SHA256=<sha256>`
+  `TARGET_LAW_SHA256=<sha256>`
+
+### Experience preflight and auto-reuse contract
+
+For every non-trivial P2P-managed task, after valid law/task-state preflight and before substantive execution:
+
+1. Perform bounded ACTIVE experience lookup:
+   - When installed runtime is present: run `python .p2p/system/p2p_capabilities/experience_evolution.py --root . retrieve --task-text "<task>"`
+   - In a repo-scoped remote clone without installed runtime: read `.p2p/portable/P2P-EXPERIENCE-CAPSULE.json` directly and match task triggers against promoted ACTIVE records
+2. Emit observable preflight receipt before substantive execution:
+   `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE | IDS=<id,...>`
+   or: `EXPERIENCE_CHECK=NO_MATCH`
+   or: `EXPERIENCE_CHECK=UNAVAILABLE`
+3. Invariants: max results <= 3; experience is NONAUTHORITATIVE context; current law, active task contract, and fresh project truth always outrank prior experience; experience cannot widen permissions or change acceptance authority.
+
+### Task-end learning reconciliation contract
+
+At task reconciliation, distinguish routine progress from reusable corrections:
+
+- `ROUTINE_SUCCESS` => emit `LEARNING_RECONCILIATION=NONE`; do not manufacture memory.
+- `REPEATED_OR_MATERIAL_FAILURE` / `CLEARLY_REUSABLE_CORRECTION` => emit `LEARNING_RECONCILIATION=CANDIDATE` with evidence and trigger conditions, or provide an explicit evidence-based reason why no reusable lesson exists.
+- Lifecycle: `CANDIDATE -> VERIFIED -> ACTIVE -> SUPERSEDED | QUARANTINED`. No executor self-promotion into Supreme Law, shared authority, capability, or skill.
 
 ### Mandatory prompt serialization contract
 
@@ -153,7 +182,10 @@ For Arena `NEW_CHAT`, apply `ARENA_CHAT_TITLE_FIRST_LINE_V1`: the first nonblank
 - tell the executor to read repository-root `AGENTS.md` before substantive work;
 - use canonical when it is already successfully reachable; otherwise follow installed > valid portable > inline capsule > blocked;
 - for a repo-scoped clone with valid portable law, do not make a cross-repo probe solely to trigger fallback;
-- report exactly one `P2P_LAW_SOURCE=<actual source>` and never claim a source was read when it was not.
+- report exactly one `P2P_LAW_SOURCE=<actual source>` and never claim a source was read when it was not;
+- emit actor-own `LAW_CHECK=PASS | SOURCE=<actual source> | SOURCE_SHA256=<canonical hash>` or `LAW_CHECK=BLOCKED`;
+- for non-trivial tasks, perform bounded experience check and emit `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE|NO_MATCH|UNAVAILABLE`;
+- at task reconciliation, emit `LEARNING_RECONCILIATION=NONE|CANDIDATE`.
 
 `OE_GATE`:
 - ask exactly `Không bị over engineering chứ?`;
