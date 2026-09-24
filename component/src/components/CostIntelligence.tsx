@@ -608,7 +608,7 @@ export default function CostIntelligencePanel() {
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-[12.5px] text-blue-900">
               App giữ nguyên nội dung gốc. Không có giá ≠ giá 0. “没仓位” được lưu là <b>không có chỗ</b>, không biến thành cước 0 USD.
             </div>
-            <PrimaryBtn onClick={parse} disabled={!!parsePending} className="w-full">
+            <PrimaryBtn onClick={parse} disabled={!!parsePending} className="w-full" testId="cost-rate-parse">
               <Search size={17} /> {parsePending ? "ĐANG PHÂN TÍCH…" : "PHÂN TÍCH"}
             </PrimaryBtn>
           </div>
@@ -643,7 +643,7 @@ export default function CostIntelligencePanel() {
             ))}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <PrimaryBtn onClick={save} disabled={!!savePending || parsed.summary.needsReview > 0}>
+            <PrimaryBtn onClick={save} disabled={!!savePending || parsed.summary.needsReview > 0} testId="cost-rate-save">
               <Save size={17} /> {savePending ? "ĐANG LƯU…" : "LƯU VÀO KHO GIÁ VỐN"}
             </PrimaryBtn>
             <GhostBtn onClick={() => setParsed(null)}>Phân tích lại</GhostBtn>
