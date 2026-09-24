@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import re
+import unicodedata
 from typing import Any, Iterable, Mapping
 from uuid import uuid4
 
@@ -39,7 +40,9 @@ def _clean(value: Any) -> str:
 
 
 def _fold(value: Any) -> str:
-    text = _clean(value).upper().replace("Đ", "D")
+    text = unicodedata.normalize("NFD", _clean(value))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = text.upper().replace("Đ", "D")
     return re.sub(r"[^A-Z0-9\u4e00-\u9fff]+", " ", text).strip()
 
 
@@ -160,8 +163,8 @@ def _charge_label(line: str) -> str:
 def _money_matches(line: str) -> list[dict[str, Any]]:
     normalized = line.replace("’", "'").replace("：", ":")
     patterns = [
-        re.compile(r"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I),
-        re.compile(r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<currency>\$)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I),
+        re.compile(r"(?P<currency>USD|CNY|RMB|VND|\$)\s*/?\s*(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I),
+        re.compile(r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<currency>\$)\s*/\s*(?P<unit>20GP|40GP|40HQ|40HC|20'|40'|SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I),
     ]
     found: list[tuple[int, int, dict[str, Any]]] = []
     for pattern in patterns:
@@ -181,7 +184,7 @@ def _money_matches(line: str) -> list[dict[str, Any]]:
             }))
     occupied = [(a, b) for a, b, _ in found]
     inherited_currency = next((x[2]["currency"] for x in sorted(found) if x[2].get("currency")), "")
-    implicit = re.compile(r"(?<![\d.])(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)\b", re.I)
+    implicit = re.compile(r"(?<![\d.])(?P<amount>\d+(?:\.\d+)?)\s*/\s*(?P<unit>SET|B/?L|BILL|RT|CONT(?:AINER)?|CBM|M3)(?![A-Z0-9])", re.I)
     for m in implicit.finditer(normalized):
         if any(not (m.end() <= a or m.start() >= b) for a, b in occupied):
             continue
