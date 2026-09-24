@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+from datetime import date
+
+import mongomock
+
+from core.cost_intelligence import (
+    parse_cost_rate_text,
+    prepare_rate_snapshot,
+)
+from core import database as dbmod
+
+
+OWNER_RATE_SAMPLE = """NINGBO - HPH
+COSCO USD 1300/40HQ 有效期到9.30
+SNL 没仓位
+---
+THC $130/20GP $205/40HQ
+REFUND 21$/RT
+BUY EXPORT:100$/SET + TAX
+O/F: USD1425/40HQ ETD 21/09/2026 COSCO
+"""
+
+
+def _catalog():
+    return {
+        "P-HPH": {
+            "id": "P-HPH", "kind": "PLACE", "code": "VNHPH", "name": "Hải Phòng",
+            "aliases": ["HPH", "HAIPHONG"], "zone_ids": ["ZONE-HPH"], "active": True,
+        },
+        "P-NAN": {
+            "id": "P-NAN", "kind": "PLACE", "code": "CNNAN", "name": "Nansha",
+            "aliases": ["HANGSHA"], "zone_ids": ["ZONE-PRD"], "active": True,
+        },
+        "P-NGB": {
+            "id": "P-NGB", "kind": "PLACE", "code": "CNNGB", "name": "Ningbo",
+            "aliases": ["NINGBO"], "zone_ids": ["ZONE-NGB"], "active": True,
+        },
+        "C-COSCO": {
+            "id": "C-COSCO", "kind": "CARRIER", "code": "COSCO", "name": "COSCO",
+            "aliases": ["COSCO SHIPPING"], "active": True,
+        },
+        "S-OF": {
+            "id": "S-OF", "kind": "SERVICE", "code": "OF", "name": "Ocean Freight",
+            "aliases": ["O/F"], "active": True,
+        },
+    }
+
+
+def test_owner_rate_fixture_preserves_no_space_credit_tax_and_multi_equipment():
+    parsed = parse_cost_rate_text(
+        OWNER_RATE_SAMPLE,
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    rows = parsed["rows"]
+
+    no_space = next(row for row in rows if row["status"] == "NO_SPACE")
+    assert no_space["carrier"]["name"] == "SNL"
+    assert "amount" not in no_space, "NO_SPACE must never become a zero-price line"
+
+    thc = [row for row in rows if row.get("chargeLabel") == "THC"]
+    assert {(row["amount"], row["equipment"]) for row in thc} == {(130.0, "20GP"), (205.0, "40HQ")}
+
+    refund = next(row for row in rows if row["kind"] == "CREDIT")
+    assert refund["amount"] == 21.0
+    assert refund["currency"] == "USD"
+    assert refund["unit"] == "RT"
+
+    buy = next(row for row in rows if row.get("chargeLabel") == "BUY EXPORT")
+    assert buy["amount"] == 100.0
+    assert buy["taxQualifier"] == "PLUS_TAX"
+
+    cosco = next(row for row in rows if row.get("amount") == 1300.0)
+    assert cosco["validUntil"] == "2026-09-30"
+    assert cosco["destination"]["id"] == "P-HPH"
+
+    ocean = next(row for row in rows if row.get("amount") == 1425.0)
+    assert ocean["chargeId"] == "S-OF"
+    assert ocean["chargeLabel"] == "Ocean Freight"
+    assert ocean["etd"] == "2026-09-21"
+
+
+def test_learned_place_alias_is_reused_without_guessing():
+    parsed = parse_cost_rate_text(
+        "HANGSHA - HPH\nUSD 900/20GP",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    row = parsed["rows"][0]
+    assert row["origin"]["id"] == "P-NAN"
+    assert row["origin"]["name"] == "Nansha"
+    assert row["origin"]["state"] == "CONFIRMED"
+    assert row["destination"]["id"] == "P-HPH"
+
+
+def test_rate_snapshot_preserves_raw_multiline_evidence():
+    parsed = parse_cost_rate_text(
+        "NINGBO - HPH\nUSD 750/20GP",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    snapshot = prepare_rate_snapshot(
+        {"parsed": parsed, "supplier": "OOCL", "receivedAt": "2026-09-24T08:00:00Z"},
+        actor="sale.test",
+    )
+    assert snapshot["raw_text"] == "NINGBO - HPH\nUSD 750/20GP"
+    assert snapshot["record_type"] == "SUPPLIER_RATE_SNAPSHOT"
+    assert snapshot["created_by"] == "sale.test"
+
+
+def test_cost_rate_snapshot_is_insert_only_and_idempotent(monkeypatch):
+    client = mongomock.MongoClient()
+    database = client["cost_test"]
+    database.rate_cards.create_index("id", unique=True)
+
+    monkeypatch.setattr(dbmod, "get_db", lambda: database)
+    monkeypatch.setattr(dbmod, "_require_business_permission", lambda *args, **kwargs: True)
+    monkeypatch.setattr(dbmod, "_audit", lambda *args, **kwargs: None)
+
+    base = {
+        "id": "RATE-IMMUTABLE-1",
+        "record_type": "SUPPLIER_RATE_SNAPSHOT",
+        "status": "ACTIVE",
+        "received_at": "2026-09-24T08:00:00Z",
+        "supplier": "OOCL",
+        "raw_text": "USD 750/20GP",
+        "rows": [{"amount": 750.0, "currency": "USD", "equipment": "20GP"}],
+    }
+    assert dbmod.save_cost_rate_snapshot(base)
+    assert dbmod.save_cost_rate_snapshot(base), "exact replay should be idempotent"
+    assert database.rate_cards.count_documents({"id": base["id"]}) == 1
+
+    changed = {**base, "rows": [{"amount": 999.0, "currency": "USD", "equipment": "20GP"}]}
+    assert not dbmod.save_cost_rate_snapshot(changed), "same id with changed facts must not overwrite history"
+    stored = database.rate_cards.find_one({"id": base["id"]})
+    assert stored["rows"][0]["amount"] == 750.0
+
+
+def test_master_code_can_change_without_changing_stable_identity(monkeypatch):
+    client = mongomock.MongoClient()
+    database = client["cost_test"]
+    database.cost_catalog.create_index("id", unique=True)
+
+    monkeypatch.setattr(dbmod, "get_db", lambda: database)
+    monkeypatch.setattr(dbmod, "_require_business_permission", lambda *args, **kwargs: True)
+    monkeypatch.setattr(dbmod, "_audit", lambda *args, **kwargs: None)
+
+    first = {
+        "id": "CAT-SVC-1", "kind": "SERVICE", "code": "OF20",
+        "name": "Cước biển", "aliases": ["O/F"], "unit": "CONT",
+    }
+    renamed = {
+        **first, "code": "OCEAN-FCL", "name": "Ocean Freight",
+        "aliases": ["O/F", "CƯỚC BIỂN"],
+    }
+    assert dbmod.save_cost_catalog_entry(first)
+    assert dbmod.save_cost_catalog_entry(renamed)
+
+    docs = list(database.cost_catalog.find({}, {"_id": 0}))
+    assert len(docs) == 1
+    assert docs[0]["id"] == "CAT-SVC-1"
+    assert docs[0]["code"] == "OCEAN-FCL"
+    assert "O/F" in docs[0]["aliases"]
