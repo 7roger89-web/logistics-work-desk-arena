@@ -25,6 +25,7 @@ import QuickQuotePaste from "../components/QuickQuotePaste";
 import CostCheck from "../components/CostCheck";
 import CostIntelligencePanel from "../components/CostIntelligence";
 import type { ParsedQuote } from "../lib/quoteTextParser";
+import type { CostMatch } from "../lib/costHistory";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -216,6 +217,51 @@ export default function SalesQuotes() {
     setForm({ ...EMPTY_FORM, lines: [{ ...EMPTY_LINE }], fx: { USD: "", CNY: "" }, salesOwner: "Minh Tú" });
     setCreating(true);
   };
+  const useCostReference = (match: CostMatch) => {
+    const usable = match.lines.filter((line) => line.price != null);
+    const lines: LineForm[] = usable.length
+      ? usable.map((line) => ({
+          code: "",
+          serviceName: line.label,
+          unit: line.unit || "Lần",
+          qty: line.qty == null ? "1" : String(line.qty),
+          currency: line.ccy || "VND",
+          // Negative input-rate credits/refunds are evidence, not a normal quote
+          // cost field. Keep them visible in the note and ask the operator to
+          // decide how to apply them instead of writing an invalid negative cost.
+          costUnit: line.price != null && line.price >= 0 ? String(line.price) : "",
+          sellUnit: "",
+          taxPct: "",
+          note:
+            (line.price != null && line.price < 0
+              ? "Credit/refund tham chiếu " + String(line.price) + " " + line.ccy + ". "
+              : "") +
+            "Nguồn giá vốn: " + match.sourceLabel + " · " + match.referenceId,
+        }))
+      : [{ ...EMPTY_LINE }];
+
+    setCustomerNotes([]);
+    setForm({
+      ...EMPTY_FORM,
+      salesOwner: "Minh Tú",
+      origin: match.origin || "",
+      destination: match.destination || "",
+      route: [match.origin, match.destination].filter(Boolean).join(" → "),
+      incoterm: match.incoterm || "",
+      transportMode: match.mode || "Sea",
+      lines,
+      fx: { USD: "", CNY: "" },
+    });
+    setEditing(null);
+    setWorkspace("bao-gia");
+    setCreating(true);
+    toast(
+      "Đã nạp giá vốn tham chiếu",
+      "Các dòng chi phí đã vào bản nháp; Giá bán vẫn để trống để Sale quyết định trước khi lưu.",
+      "green"
+    );
+  };
+
   const openEdit = (x: Quote) => {
     // Restore what the customer was shown: reopening a saved quote must not
     // silently drop its general notes.
@@ -488,7 +534,7 @@ export default function SalesQuotes() {
         )}
       </div>
 
-      {workspace === "check-chi-phi" && <CostCheck shipments={shipments} />}
+      {workspace === "check-chi-phi" && <CostCheck shipments={shipments} onUseMatch={useCostReference} />}
       {workspace === "kho-gia-von" && <CostIntelligencePanel />}
 
       {workspace === "bao-gia" && (
