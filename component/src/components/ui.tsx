@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, BellRing, Package, PlusCircle, Truck, Users, Handshake,
   Calculator, FileCheck2, FileText, Wallet, Scale, Building2, BarChart3,
-  Search, BookOpen, Languages, ShieldCheck, Menu, X, Bell, CheckCircle2,
+  Search, BookOpen, Languages, ScanText, ShieldCheck, Menu, X, Bell, CheckCircle2,
   AlertTriangle, OctagonAlert, Info, ChevronRight, ChevronDown, ArrowRight,
   CircleCheck, Clock, CircleAlert, Ban, FileDown, Eye, PenLine, Trash2,
   type LucideIcon,
@@ -28,6 +28,7 @@ export const ICONS: Record<string, LucideIcon> = {
   search: Search,
   book: BookOpen,
   lang: Languages,
+  scan: ScanText,
   shield: ShieldCheck,
 };
 
