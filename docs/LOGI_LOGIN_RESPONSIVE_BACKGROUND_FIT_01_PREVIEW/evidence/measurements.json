@@ -1,0 +1,1458 @@
+{
+  "task": "LOGI_LOGIN_RESPONSIVE_BACKGROUND_FIT_01_PREVIEW",
+  "groups": {
+    "desktop_1440x900": {
+      "01": {
+        "artwork": "login-bg-01.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 38%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.88,
+        "reference_vs_rendered_block_delta_p90": 3.89,
+        "estimated_dark_veil_alpha_median": 0.0028,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          56.9,
+          49.6,
+          45.0
+        ],
+        "contrast": {
+          "input[0] type=text": 13.86,
+          "input[1] type=password": 8.55,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "03": {
+        "artwork": "login-bg-03.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 45%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.88,
+        "reference_vs_rendered_block_delta_p90": 4.0,
+        "estimated_dark_veil_alpha_median": 0.0034,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          60.4,
+          56.6,
+          49.4
+        ],
+        "contrast": {
+          "input[0] type=text": 10.23,
+          "input[1] type=password": 10.77,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "04": {
+        "artwork": "login-bg-04.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 42%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 1.48,
+        "reference_vs_rendered_block_delta_p90": 6.34,
+        "estimated_dark_veil_alpha_median": 0.0038,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          81.1,
+          66.6,
+          57.4
+        ],
+        "contrast": {
+          "input[0] type=text": 15.49,
+          "input[1] type=password": 7.91,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "05": {
+        "artwork": "login-bg-05.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 50%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 1.64,
+        "reference_vs_rendered_block_delta_p90": 6.3,
+        "estimated_dark_veil_alpha_median": 0.0039,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          76.2,
+          70.4,
+          65.9
+        ],
+        "contrast": {
+          "input[0] type=text": 15.38,
+          "input[1] type=password": 9.86,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "08": {
+        "artwork": "login-bg-08.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 40%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 1.5,
+        "reference_vs_rendered_block_delta_p90": 6.28,
+        "estimated_dark_veil_alpha_median": 0.0045,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          81.4,
+          66.0,
+          70.7
+        ],
+        "contrast": {
+          "input[0] type=text": 15.65,
+          "input[1] type=password": 15.99,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "02": {
+        "artwork": "login-bg-02.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 35%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.59,
+        "reference_vs_rendered_block_delta_p90": 2.88,
+        "estimated_dark_veil_alpha_median": 0.0026,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          59.6,
+          52.4,
+          47.5
+        ],
+        "contrast": {
+          "input[0] type=text": 10.96,
+          "input[1] type=password": 11.47,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "07": {
+        "artwork": "login-bg-07.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 42%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.91,
+        "reference_vs_rendered_block_delta_p90": 5.16,
+        "estimated_dark_veil_alpha_median": 0.0029,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          57.0,
+          61.0,
+          71.9
+        ],
+        "contrast": {
+          "input[0] type=text": 10.78,
+          "input[1] type=password": 9.74,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "10": {
+        "artwork": "login-bg-10.webp",
+        "viewport_css": [
+          1440,
+          900
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1440x900",
+        "root_background_size": "cover",
+        "root_background_position": "50% 50%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.9005,
+        "full_width_visible_no_left_right_crop": false,
+        "rendered_rect_css": {
+          "x": -79.6,
+          "y": 0.0,
+          "w": 1599.1,
+          "h": 900.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.88,
+        "reference_vs_rendered_block_delta_p90": 4.92,
+        "estimated_dark_veil_alpha_median": 0.0028,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 4800,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          63.0,
+          61.8,
+          68.2
+        ],
+        "contrast": {
+          "input[0] type=text": 13.34,
+          "input[1] type=password": 12.6,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      }
+    },
+    "mobile_390x844_portrait": {
+      "01": {
+        "artwork": "login-bg-01.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.47,
+        "reference_vs_rendered_block_delta_p90": 0.73,
+        "estimated_dark_veil_alpha_median": 0.0023,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.4,
+          24.7,
+          24.4
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "05": {
+        "artwork": "login-bg-05.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.53,
+        "reference_vs_rendered_block_delta_p90": 1.0,
+        "estimated_dark_veil_alpha_median": 0.0028,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.4,
+          24.9,
+          24.7
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "02": {
+        "artwork": "login-bg-02.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.44,
+        "reference_vs_rendered_block_delta_p90": 0.69,
+        "estimated_dark_veil_alpha_median": 0.0022,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.1,
+          24.8,
+          24.7
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "07": {
+        "artwork": "login-bg-07.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.47,
+        "reference_vs_rendered_block_delta_p90": 0.8,
+        "estimated_dark_veil_alpha_median": 0.0022,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.5,
+          25.0,
+          25.0
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "10": {
+        "artwork": "login-bg-10.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.48,
+        "reference_vs_rendered_block_delta_p90": 0.88,
+        "estimated_dark_veil_alpha_median": 0.0021,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.3,
+          24.8,
+          24.9
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "04": {
+        "artwork": "login-bg-04.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.5,
+        "reference_vs_rendered_block_delta_p90": 0.92,
+        "estimated_dark_veil_alpha_median": 0.0024,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.7,
+          25.0,
+          24.9
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "08": {
+        "artwork": "login-bg-08.webp",
+        "viewport_css": [
+          390,
+          844
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "780x1688",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 530.8,
+          "w": 390.0,
+          "h": 219.5
+        },
+        "reference_vs_rendered_block_delta_median": 0.53,
+        "reference_vs_rendered_block_delta_p90": 1.05,
+        "estimated_dark_veil_alpha_median": 0.0024,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.5,
+          24.7,
+          24.3
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      }
+    },
+    "mobile_844x390_landscape": {
+      "01": {
+        "artwork": "login-bg-01.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 38%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -32.3,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.77,
+        "reference_vs_rendered_block_delta_p90": 2.48,
+        "estimated_dark_veil_alpha_median": 0.0027,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          56.1,
+          48.2,
+          42.3
+        ],
+        "contrast": {
+          "input[0] type=text": 12.81,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": false
+      },
+      "05": {
+        "artwork": "login-bg-05.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 50%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -42.5,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 2.56,
+        "reference_vs_rendered_block_delta_p90": 7.73,
+        "estimated_dark_veil_alpha_median": 0.0092,
+        "estimated_dark_veil_alpha_p90": 0.05,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          77.8,
+          72.7,
+          67.8
+        ],
+        "contrast": {
+          "input[0] type=text": 15.23,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": true
+      },
+      "02": {
+        "artwork": "login-bg-02.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 35%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -29.8,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.66,
+        "reference_vs_rendered_block_delta_p90": 2.78,
+        "estimated_dark_veil_alpha_median": 0.0026,
+        "estimated_dark_veil_alpha_p90": 0.01,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          62.3,
+          46.5,
+          40.0
+        ],
+        "contrast": {
+          "input[0] type=text": 12.6,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": false
+      },
+      "07": {
+        "artwork": "login-bg-07.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 42%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -35.7,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 1.22,
+        "reference_vs_rendered_block_delta_p90": 4.55,
+        "estimated_dark_veil_alpha_median": 0.0032,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          64.0,
+          61.3,
+          66.7
+        ],
+        "contrast": {
+          "input[0] type=text": 11.52,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": false
+      },
+      "10": {
+        "artwork": "login-bg-10.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 50%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -42.5,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 2.02,
+        "reference_vs_rendered_block_delta_p90": 7.64,
+        "estimated_dark_veil_alpha_median": 0.0051,
+        "estimated_dark_veil_alpha_p90": 0.03,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          75.6,
+          65.9,
+          60.2
+        ],
+        "contrast": {
+          "input[0] type=text": 8.68,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": true
+      },
+      "04": {
+        "artwork": "login-bg-04.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 42%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -35.7,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 1.73,
+        "reference_vs_rendered_block_delta_p90": 5.16,
+        "estimated_dark_veil_alpha_median": 0.0052,
+        "estimated_dark_veil_alpha_p90": 0.02,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          77.1,
+          61.6,
+          53.6
+        ],
+        "contrast": {
+          "input[0] type=text": 12.21,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": true
+      },
+      "08": {
+        "artwork": "login-bg-08.webp",
+        "viewport_css": [
+          844,
+          390
+        ],
+        "orientation_portrait": false,
+        "device_pixels": "1688x780",
+        "root_background_size": "cover",
+        "root_background_position": "50% 40%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 0.821,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": -34.0,
+          "w": 844.0,
+          "h": 475.0
+        },
+        "reference_vs_rendered_block_delta_median": 0.53,
+        "reference_vs_rendered_block_delta_p90": 0.92,
+        "estimated_dark_veil_alpha_median": 0.0024,
+        "estimated_dark_veil_alpha_p90": 0.0,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 11722,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          75.9,
+          66.3,
+          74.8
+        ],
+        "contrast": {
+          "input[0] type=text": 13.22,
+          "input[1] type=password": 18.31,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": false,
+        "login_button_fully_visible_without_scroll": false,
+        "ui_screenshot_contains_form": true
+      }
+    },
+    "mobile_980x1743_desktopsite": {
+      "01": {
+        "artwork": "login-bg-01.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 1.81,
+        "reference_vs_rendered_block_delta_p90": 7.89,
+        "estimated_dark_veil_alpha_median": 0.0062,
+        "estimated_dark_veil_alpha_p90": 0.03,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "05": {
+        "artwork": "login-bg-05.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 4.53,
+        "reference_vs_rendered_block_delta_p90": 14.55,
+        "estimated_dark_veil_alpha_median": 0.0135,
+        "estimated_dark_veil_alpha_p90": 0.05,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "02": {
+        "artwork": "login-bg-02.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 1.59,
+        "reference_vs_rendered_block_delta_p90": 9.56,
+        "estimated_dark_veil_alpha_median": 0.0057,
+        "estimated_dark_veil_alpha_p90": 0.03,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "07": {
+        "artwork": "login-bg-07.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 3.02,
+        "reference_vs_rendered_block_delta_p90": 12.98,
+        "estimated_dark_veil_alpha_median": 0.0078,
+        "estimated_dark_veil_alpha_p90": 0.04,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "10": {
+        "artwork": "login-bg-10.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 2.86,
+        "reference_vs_rendered_block_delta_p90": 13.69,
+        "estimated_dark_veil_alpha_median": 0.0069,
+        "estimated_dark_veil_alpha_p90": 0.04,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "04": {
+        "artwork": "login-bg-04.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 4.62,
+        "reference_vs_rendered_block_delta_p90": 14.7,
+        "estimated_dark_veil_alpha_median": 0.0104,
+        "estimated_dark_veil_alpha_p90": 0.05,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      },
+      "08": {
+        "artwork": "login-bg-08.webp",
+        "viewport_css": [
+          980,
+          1743
+        ],
+        "orientation_portrait": true,
+        "device_pixels": "1960x3486",
+        "root_background_size": "contain",
+        "root_background_position": "50% 85%",
+        "root_has_gradient_overlay": false,
+        "root_background_image_is_artwork_only": true,
+        "artwork_visible_fraction": 1.0,
+        "full_width_visible_no_left_right_crop": true,
+        "rendered_rect_css": {
+          "x": 0.0,
+          "y": 1012.7,
+          "w": 980.0,
+          "h": 551.5
+        },
+        "reference_vs_rendered_block_delta_median": 4.77,
+        "reference_vs_rendered_block_delta_p90": 16.41,
+        "estimated_dark_veil_alpha_median": 0.0129,
+        "estimated_dark_veil_alpha_p90": 0.06,
+        "panel_background_color": "rgba(0, 0, 0, 0)",
+        "panel_backdrop_filter": "none",
+        "panel_box_shadow": "none",
+        "panel_outline": "0px none rgb(23, 32, 51)",
+        "panel_max_width": "300px",
+        "empty_pixels_sampled_inside_panel": 18831,
+        "panel_transparency_max_channel_delta_vs_artwork_only": 0,
+        "artwork_structure_behind_panel_std_rgb": [
+          24.0,
+          24.3,
+          23.8
+        ],
+        "contrast": {
+          "input[0] type=text": 17.68,
+          "input[1] type=password": 17.68,
+          "login_button": 8.72
+        },
+        "horizontal_overflow": false,
+        "form_fully_visible_without_scroll": true,
+        "login_button_fully_visible_without_scroll": true,
+        "ui_screenshot_contains_form": true
+      }
+    }
+  },
+  "rotate_sequence": {
+    "1_portrait_start": {
+      "viewport_css": [
+        390,
+        844
+      ],
+      "orientation_portrait": true,
+      "background_size": "contain",
+      "background_position": "50% 85%",
+      "artwork": "login-bg-01.webp",
+      "artwork_visible_fraction": 1.0,
+      "panel_background": "rgba(0, 0, 0, 0)",
+      "panel_transparency_max_channel_delta": 0,
+      "horizontal_overflow": false,
+      "contrast": {
+        "input[0] type=text": 17.68,
+        "input[1] type=password": 17.68,
+        "login_button": 8.72
+      }
+    },
+    "2_landscape": {
+      "viewport_css": [
+        844,
+        390
+      ],
+      "orientation_portrait": false,
+      "background_size": "cover",
+      "background_position": "50% 38%",
+      "artwork": "login-bg-01.webp",
+      "artwork_visible_fraction": 1.0,
+      "panel_background": "rgba(0, 0, 0, 0)",
+      "panel_transparency_max_channel_delta": 0,
+      "horizontal_overflow": false,
+      "contrast": {
+        "input[0] type=text": 12.81,
+        "input[1] type=password": 18.31,
+        "login_button": 8.72
+      }
+    },
+    "3_portrait_rotated_back": {
+      "viewport_css": [
+        390,
+        844
+      ],
+      "orientation_portrait": true,
+      "background_size": "contain",
+      "background_position": "50% 85%",
+      "artwork": "login-bg-01.webp",
+      "artwork_visible_fraction": 1.0,
+      "panel_background": "rgba(0, 0, 0, 0)",
+      "panel_transparency_max_channel_delta": 0,
+      "horizontal_overflow": false,
+      "contrast": {
+        "input[0] type=text": 17.68,
+        "input[1] type=password": 17.68,
+        "login_button": 8.72
+      }
+    },
+    "4_landscape_again": {
+      "viewport_css": [
+        844,
+        390
+      ],
+      "orientation_portrait": false,
+      "background_size": "cover",
+      "background_position": "50% 38%",
+      "artwork": "login-bg-01.webp",
+      "artwork_visible_fraction": 1.0,
+      "panel_background": "rgba(0, 0, 0, 0)",
+      "panel_transparency_max_channel_delta": 0,
+      "horizontal_overflow": false,
+      "contrast": {
+        "input[0] type=text": 12.81,
+        "input[1] type=password": 18.31,
+        "login_button": 8.72
+      }
+    },
+    "5_portrait_final": {
+      "viewport_css": [
+        390,
+        844
+      ],
+      "orientation_portrait": true,
+      "background_size": "contain",
+      "background_position": "50% 85%",
+      "artwork": "login-bg-01.webp",
+      "artwork_visible_fraction": 1.0,
+      "panel_background": "rgba(0, 0, 0, 0)",
+      "panel_transparency_max_channel_delta": 0,
+      "horizontal_overflow": false,
+      "contrast": {
+        "input[0] type=text": 17.68,
+        "input[1] type=password": 17.68,
+        "login_button": 8.72
+      }
+    }
+  },
+  "rotate_artwork": "login-bg-01.webp",
+  "asset_shas": {
+    "login-bg-01.webp": "d8742b9386a0a189f53268e0fe445342ec3fb5e1da908ad9b560664147372bf5",
+    "login-bg-02.webp": "dbb2d86535aecbe072dacade95b489aec7c3d8107504fd68bb834e1830ac40ee",
+    "login-bg-03.webp": "43cac6b20621540252d749dc3163097ec5c648bd617c199c308fcc14bb2cb8c4",
+    "login-bg-04.webp": "830218a39a077a4639cd9fe20e69573ad3ebfb724fabf6dad2a20a85b0380a60",
+    "login-bg-05.webp": "d5f2208863564790b6a0f3aec494b2a97b7c53e7435c565852cbe6c8ba118708",
+    "login-bg-06.webp": "96dfe2d45e0bed047016dd1095f17fed3fff044a2428fbc6b256738d4c5d8259",
+    "login-bg-07.webp": "21f3a83b3e458a06ed0826a5b685c694fd007b14b1da6740a80c24d864e42369",
+    "login-bg-08.webp": "5b27623d397f40fd8ce17c9ad85e5f5db5cac27e813ea1ba46c02a0de404da44",
+    "login-bg-09.webp": "bc53e1edb4bc97fa371e8fa514f9163171bd35725f61891275456d3968b52749",
+    "login-bg-10.webp": "bc53e1edb4bc97fa371e8fa514f9163171bd35725f61891275456d3968b52749"
+  },
+  "captured_at_note": "real Chromium 153 + real Streamlit app at exact PR #102 head b9f8f93"
+}
