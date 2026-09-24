@@ -36,7 +36,7 @@ const numberOrNull = (text: string): number | null => {
   return Number.isFinite(value) ? value : null;
 };
 
-export default function CostCheck({ shipments }: { shipments: Shipment[] }) {
+export default function CostCheck({ shipments, onUseMatch }: { shipments: Shipment[]; onUseMatch?: (match: CostMatch) => void }) {
   const { costIntelligence } = useStore();
   const [form, setForm] = useState<Form>(EMPTY);
   const [criteria, setCriteria] = useState<CostCriteria | null>(null);
@@ -155,7 +155,7 @@ export default function CostCheck({ shipments }: { shipments: Shipment[] }) {
             Top <b className="text-[#0f2a4a]">{results.length}</b> tham chiếu gần nhất · ưu tiên THỰC TẾ → GIÁ ĐẦU VÀO → BÁO GIÁ khi độ phù hợp tương đương.
           </p>
           {results.length === 0 && <div className="rounded-2xl bg-white border border-slate-200 p-6 text-center"><p className="font-bold text-[15.5px]">Chưa có dữ liệu đủ gần để tham khảo</p><p className="text-[13.5px] text-slate-500 mt-1">Thử bớt tiêu chí. Hệ thống không tự bịa giá khi không có nguồn phù hợp.</p></div>}
-          {results.map((match) => <CostResultCard key={match.referenceId} match={match} selected={selectedReference === match.referenceId} onSelect={() => setSelectedReference(match.referenceId)} />)}
+          {results.map((match) => <CostResultCard key={match.referenceId} match={match} selected={selectedReference === match.referenceId} onSelect={() => { setSelectedReference(match.referenceId); onUseMatch?.(match); }} />)}
           {selectedReference && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] font-semibold text-emerald-900">Đã chọn một tham chiếu làm giá vốn. App chưa tự sửa báo giá hay cộng ghép nguồn khác.</p>}
         </section>
       )}
