@@ -51,7 +51,7 @@ export default function OcrWorkspace() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<SelectedImage | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [pendingMeta, setPendingMeta] = useState<{ name: string; size: number } | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
   const [dragging, setDragging] = useState(false);
 
@@ -63,8 +63,8 @@ export default function OcrWorkspace() {
   );
 
   const pending =
-    pendingMeta !== null &&
-    !(request?.filename === pendingMeta.name && request?.sizeBytes === pendingMeta.size);
+    pendingRequestId !== null &&
+    request?.clientRequestId !== pendingRequestId;
 
   useEffect(() => {
     return () => {
@@ -73,14 +73,23 @@ export default function OcrWorkspace() {
   }, [selected?.previewUrl]);
 
   useEffect(() => {
-    if (
-      pendingMeta &&
-      request?.filename === pendingMeta.name &&
-      request?.sizeBytes === pendingMeta.size
-    ) {
-      setPendingMeta(null);
+    if (pendingRequestId && request?.clientRequestId === pendingRequestId) {
+      setPendingRequestId(null);
     }
-  }, [request?.filename, request?.sizeBytes, pendingMeta]);
+  }, [request?.clientRequestId, pendingRequestId]);
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      const item = Array.from(event.clipboardData?.items ?? []).find((it) =>
+        it.type.startsWith("image/")
+      );
+      if (!item) return;
+      event.preventDefault();
+      void chooseFile(item.getAsFile());
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  });
 
   const chooseFile = async (file: File | null) => {
     setSelectionError(null);
@@ -117,16 +126,21 @@ export default function OcrWorkspace() {
       return null;
     });
     setSelectionError(null);
-    setPendingMeta(null);
+    setPendingRequestId(null);
     setCopyState("idle");
     if (fileInput.current) fileInput.current.value = "";
   };
 
   const submit = () => {
     if (!selected || !configured || pending) return;
-    setPendingMeta({ name: selected.file.name, size: selected.file.size });
+    const requestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setPendingRequestId(requestId);
     setCopyState("idle");
     dispatchLogiEvent("ocr_image", {
+      requestId,
       filename: selected.file.name,
       mimeType: selected.file.type,
       dataBase64: selected.dataBase64,
@@ -144,22 +158,11 @@ export default function OcrWorkspace() {
     }
   };
 
-  const onPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    const item = Array.from(event.clipboardData.items).find((it) => it.type.startsWith("image/"));
-    if (!item) return;
-    event.preventDefault();
-    void chooseFile(item.getAsFile());
-  };
-
   const extracted = result?.status === "extracted" ? result.text ?? "" : "";
   const providerError = result && result.status !== "extracted" ? result.error : null;
 
   return (
-    <div
-      className="space-y-4 max-w-[1200px]"
-      onPaste={onPaste}
-      data-testid="ocr-workspace"
-    >
+    <div className="space-y-4 max-w-[1200px]" data-testid="ocr-workspace">
       <div>
         <h1 className="text-[20px] md:text-[22px] font-extrabold text-[#0f2a4a] leading-tight">
           OCR Ảnh → Markdown
