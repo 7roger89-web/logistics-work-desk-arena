@@ -278,6 +278,12 @@ def test_cost_rate_snapshot_is_insert_only_and_idempotent(monkeypatch):
     }
     assert dbmod.save_cost_rate_snapshot(base)
     assert dbmod.save_cost_rate_snapshot(base), "exact replay should be idempotent"
+
+    metadata_replay = dict(base)
+    metadata_replay["received_at"] = "2026-09-24T08:00:09Z"
+    metadata_replay["created_by"] = "tester"
+    metadata_replay["request_id"] = "REQ-1"
+    assert dbmod.save_cost_rate_snapshot(metadata_replay)
     assert database.rate_cards.count_documents({"id": base["id"]}) == 1
 
     changed = {**base, "rows": [{"amount": 999.0, "currency": "USD", "equipment": "20GP"}]}
