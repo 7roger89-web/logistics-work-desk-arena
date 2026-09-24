@@ -536,8 +536,10 @@ def prepare_rate_snapshot(payload: Mapping[str, Any], *, actor: str = "") -> dic
         raise ValueError(f"Còn {len(unresolved)} dòng cần xác nhận trước khi lưu giá vốn.")
     request_id = _clean(payload.get("requestId") or payload.get("request_id"))
     identifier = _clean(payload.get("id")) or request_id or f"RATE-{uuid4().hex[:12].upper()}"
+    source_date = _clean(parsed.get("sourceDate"))
     received_at = (
         _clean(payload.get("receivedAt"))
+        or (f"{source_date}T00:00:00Z" if source_date else "")
         or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     )
     status = _clean(payload.get("status") or "ACTIVE").upper()
