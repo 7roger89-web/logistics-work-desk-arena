@@ -37,6 +37,7 @@ type CatalogForm = {
   country: string;
   unlocode: string;
   zoneIds: string;
+  mergedInto: string;
 };
 
 const EMPTY_CATALOG: CatalogForm = {
@@ -52,6 +53,7 @@ const EMPTY_CATALOG: CatalogForm = {
   country: "",
   unlocode: "",
   zoneIds: "",
+  mergedInto: "",
 };
 
 const splitList = (value: string) =>
@@ -286,6 +288,7 @@ function CatalogEditor() {
       country: entry.country || "",
       unlocode: entry.unlocode || "",
       zoneIds: (entry.zone_ids || []).join(", "),
+      mergedInto: entry.merged_into || "",
     });
 
   const save = () => {
@@ -307,6 +310,7 @@ function CatalogEditor() {
       country: form.country.trim(),
       unlocode: form.unlocode.trim(),
       zoneIds: splitList(form.zoneIds),
+      mergedInto: form.mergedInto.trim(),
       requestId: id,
     });
     if (!sent) {
@@ -382,6 +386,14 @@ function CatalogEditor() {
             <input type="checkbox" checked={form.active} onChange={(e) => setForm((x) => ({ ...x, active: e.target.checked }))} />
             Đang dùng
           </label>
+          <Field label="Gộp vào ID khác" hint="Để trống nếu không gộp. Lịch sử cũ vẫn giữ ID gốc.">
+            <input
+              className={inputCls()}
+              value={form.mergedInto}
+              onChange={(e) => setForm((x) => ({ ...x, mergedInto: e.target.value }))}
+              placeholder="CAT-..."
+            />
+          </Field>
           <PrimaryBtn onClick={save} disabled={!!pending}>
             <Save size={16} /> {pending ? "ĐANG LƯU…" : form.id ? "LƯU THAY ĐỔI" : "THÊM DANH MỤC"}
           </PrimaryBtn>
