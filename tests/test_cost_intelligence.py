@@ -113,6 +113,73 @@ def test_priced_line_carrier_does_not_leak_into_following_local_charges():
     assert rows[3]["carrier"]["name"] == ""
 
 
+def test_dynamic_equipment_unit_and_legacy_service_aliases_are_operational():
+    catalog = {
+        **_catalog(),
+        "EQ-45": {
+            "id": "EQ-45", "kind": "EQUIPMENT", "code": "45HQ", "name": "45HQ",
+            "aliases": ["45HC"], "active": True,
+        },
+        "UNIT-WM": {
+            "id": "UNIT-WM", "kind": "UNIT", "code": "WM", "name": "W/M",
+            "aliases": ["WM"], "active": True,
+        },
+        "S-NEW": {
+            "id": "S-NEW", "kind": "SERVICE", "code": "OCEAN-FCL",
+            "name": "Ocean Freight", "aliases": [], "legacy_codes": ["OF20"], "active": True,
+        },
+    }
+
+    equipment = parse_cost_rate_text(
+        "NINGBO - HPH\nOF20 USD 1,250/45HC",
+        catalog=catalog,
+        received_on=date(2026, 9, 24),
+    )["rows"][0]
+    assert equipment["chargeId"] == "S-NEW"
+    assert equipment["chargeLabel"] == "Ocean Freight"
+    assert equipment["equipment"] == "45HQ"
+    assert equipment["amount"] == 1250.0
+
+    unit = parse_cost_rate_text(
+        "CFS USD 12/WM",
+        catalog=catalog,
+        received_on=date(2026, 9, 24),
+    )["rows"][0]
+    assert unit["unit"] == "WM"
+    assert unit["amount"] == 12.0
+
+
+def test_standalone_source_date_is_preserved_and_used_by_snapshot_fallback():
+    parsed = parse_cost_rate_text(
+        "SHENZHEN - HPH\nCFS:10$/RT\n28/12/2024",
+        catalog=_catalog(),
+        received_on=date(2026, 9, 24),
+    )
+    assert parsed["sourceDate"] == "2024-12-28"
+
+    snapshot = prepare_rate_snapshot(
+        {"parsed": parsed, "supplier": "historical agent"},
+        actor="sale.test",
+    )
+    assert snapshot["received_at"] == "2024-12-28T00:00:00Z"
+
+
+def test_backend_refuses_snapshot_with_unresolved_review_rows():
+    parsed = parse_cost_rate_text(
+        "HANGSHA - HPH\nUSD 900/40'",
+        catalog={key: value for key, value in _catalog().items() if key != "P-NAN"},
+        received_on=date(2026, 9, 24),
+    )
+    assert parsed["summary"]["needsReview"] > 0
+
+    try:
+        prepare_rate_snapshot({"parsed": parsed}, actor="sale.test")
+    except ValueError as exc:
+        assert "cần xác nhận" in str(exc)
+    else:
+        raise AssertionError("backend accepted unresolved rate rows")
+
+
 def test_learned_place_alias_is_reused_without_guessing():
     parsed = parse_cost_rate_text(
         "HANGSHA - HPH\nUSD 900/20GP",
