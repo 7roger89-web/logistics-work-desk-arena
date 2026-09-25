@@ -1895,14 +1895,18 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
                        "RBAC: không có quyền sales_write để tải chứng từ lên lô hàng.",
                        gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
 
-    shipment, identity_gate = _read_shipment_resolution(sid)
-    if identity_gate == SHIPMENT_IDENTITY_AMBIGUOUS:
-        return _result(
-            "shipment_attachment_upload", sid, False,
-            f"Mã lô {sid} bị trùng định danh dữ liệu cũ; chưa lưu tệp để tránh gắn nhầm lô.",
-            gate=SHIPMENT_IDENTITY_AMBIGUOUS, requestId=request_id,
-        )
+    # Preserve the long-standing read_shipment seam used by the dispatcher
+    # contract/tests and by callers that override the fresh-read boundary.
+    # Only unresolved identities need the richer ambiguity classification.
+    shipment = read_shipment(sid)
     if shipment is None:
+        _unresolved, identity_gate = _read_shipment_resolution(sid)
+        if identity_gate == SHIPMENT_IDENTITY_AMBIGUOUS:
+            return _result(
+                "shipment_attachment_upload", sid, False,
+                f"Mã lô {sid} bị trùng định danh dữ liệu cũ; chưa lưu tệp để tránh gắn nhầm lô.",
+                gate=SHIPMENT_IDENTITY_AMBIGUOUS, requestId=request_id,
+            )
         return _result("shipment_attachment_upload", sid, False, f"Không tìm thấy lô {sid}.",
                        gate=SHIPMENT_IDENTITY_NOT_FOUND, requestId=request_id)
 
