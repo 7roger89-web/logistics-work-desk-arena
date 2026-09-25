@@ -61,22 +61,62 @@ LAST_WRITES_KEY = "logi_last_writes"
 # Read side
 # ---------------------------------------------------------------------------
 
+def legacy_numeric_candidate(shipment_id: Any) -> int | None:
+    """Return the equivalent legacy numeric BSON id if shipment_id is a canonical decimal integer.
+
+    Returns None for ambiguous text such as leading zeros ('00123'), explicit
+    signs ('+123', '-123'), floats ('123.0'), whitespace (' 123 '), non-digits,
+    or out-of-range integers.
+    """
+    if not isinstance(shipment_id, str):
+        return None
+    if not (shipment_id.isascii() and shipment_id.isdigit()):
+        return None
+    try:
+        val = int(shipment_id)
+    except (ValueError, OverflowError):
+        return None
+    if str(val) != shipment_id:
+        return None
+    if not (0 <= val <= 0x7FFFFFFFFFFFFFFF):
+        return None
+    return val
+
+
 def read_shipment(shipment_id: str) -> dict[str, Any] | None:
     """Fresh read of ONE shipment straight from the database.
 
     Deliberately bypasses the Streamlit read cache so a post-write readback is
     the database's own answer, then runs the canonical ``repair_data``
     normalisation the rest of the app uses.
+
+    Identity semantics:
+      1. Exact stored string identity wins first.
+      2. If exact lookup misses and the requested string is a canonical
+         decimal integer, allows one bounded fallback query for equivalent
+         legacy numeric BSON identity.
+      3. Ambiguous formats ('00123', '+123', '123.0', ' 123 ') never coerce.
     """
     from core.database import get_db, repair_data
 
     db = get_db()
     if db is None:
         return None
+
+    # 1. Exact string identity wins first.
     doc = db.shipments.find_one({"id": shipment_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+
+    # 2. Only if exact lookup misses: bounded fallback for legacy numeric BSON identity.
+    if not doc:
+        candidate = legacy_numeric_candidate(shipment_id)
+        if candidate is not None:
+            doc = db.shipments.find_one({"id": candidate, "is_deleted": {"$ne": True}}, {"_id": 0})
+
     if not doc:
         return None
-    return repair_data({shipment_id: doc})[shipment_id]
+
+    key = str(shipment_id) if shipment_id is not None else ""
+    return repair_data({key: doc})[key]
 
 
 #: Upper bound on the reads one render issues at the same time (``1`` = the
