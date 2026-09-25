@@ -134,9 +134,11 @@ class CountingFactory:
     def __init__(self, client: FakeDrive | None) -> None:
         self.client = client
         self.calls = 0
+        self.kwargs: list[dict[str, Any]] = []
 
     def __call__(self, *args: Any, **kwargs: Any) -> FakeDrive | None:
         self.calls += 1
+        self.kwargs.append(dict(kwargs))
         return self.client
 
 
@@ -301,6 +303,65 @@ class TestDriveSettings:
         assert "secret" not in described and "PRIVATE KEY" not in described
         client = dc.build_drive_client(settings)
         assert isinstance(client, GoogleDriveClient)
+
+
+    def test_user_oauth_settings_are_explicit_and_describe_hides_secret_values(self):
+        env = {
+            dc.ROOT_FOLDER_ENV: "root",
+            dc.OAUTH_CLIENT_ID_ENV: "client-id.example",
+            dc.OAUTH_CLIENT_SECRET_ENV: "client-secret-value",
+            dc.OAUTH_REFRESH_TOKEN_ENV: "refresh-token-value",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = dc.load_drive_settings(dc.AUTH_MODE_USER_OAUTH)
+        assert settings.configured is True
+        assert settings.auth_mode == dc.AUTH_MODE_USER_OAUTH
+        assert settings.root_folder_id == "root"
+        assert settings.service_account is None
+        described = json.dumps(settings.describe(), ensure_ascii=False)
+        assert described
+        assert "client-secret-value" not in described
+        assert "refresh-token-value" not in described
+        assert "client-id.example" not in described
+        assert dc.build_drive_client(settings, auth_mode=dc.AUTH_MODE_USER_OAUTH) is not None
+
+    def test_user_oauth_missing_fields_fail_closed_without_service_account_fallback(self):
+        env = {
+            dc.ROOT_FOLDER_ENV: "root",
+            dc.OAUTH_CLIENT_ID_ENV: "client-id.example",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = dc.load_drive_settings(dc.AUTH_MODE_USER_OAUTH)
+        assert settings.configured is False
+        assert dc.OAUTH_CLIENT_SECRET_ENV in settings.missing
+        assert dc.OAUTH_REFRESH_TOKEN_ENV in settings.missing
+        assert dc.SERVICE_ACCOUNT_ENV not in settings.missing
+        assert dc.build_drive_client(settings, auth_mode=dc.AUTH_MODE_USER_OAUTH) is None
+
+    def test_user_oauth_authorized_session_uses_refresh_credentials_only(self):
+        settings = DriveSettings(
+            root_folder_id="root",
+            auth_mode=dc.AUTH_MODE_USER_OAUTH,
+            oauth_client_id="client-id.example",
+            oauth_client_secret="client-secret-value",
+            oauth_refresh_token="refresh-token-value",
+        )
+        fake_credentials = object()
+        fake_session = object()
+        with patch("google.oauth2.credentials.Credentials", return_value=fake_credentials) as credentials_cls, \
+             patch("google.auth.transport.requests.AuthorizedSession", return_value=fake_session) as session_cls:
+            client = GoogleDriveClient(settings)
+            assert client._authorized_session() is fake_session
+
+        credentials_cls.assert_called_once_with(
+            token=None,
+            refresh_token="refresh-token-value",
+            token_uri=dc.OAUTH_TOKEN_URI,
+            client_id="client-id.example",
+            client_secret="client-secret-value",
+            scopes=dc.DRIVE_SCOPES,
+        )
+        session_cls.assert_called_once_with(fake_credentials)
 
     def test_name_sanitizer_refuses_traversal_and_keeps_vietnamese_names(self):
         assert dc.is_unsafe_drive_name("../../etc/passwd") is True
@@ -497,6 +558,75 @@ class TestUploadValidation:
 # ===========================================================================
 # 4. Provider contract — folder, bytes, persistence, dedupe, failures
 # ===========================================================================
+
+
+class TestOAuthDriveProviderContract:
+    def test_oauth_backend_upload_and_download_use_user_auth_mode(self, staging, seq, monkeypatch):
+        monkeypatch.setenv("ATTACHMENT_STORAGE_BACKEND", "drive_oauth")
+        fake = FakeDrive()
+        factory = CountingFactory(fake)
+
+        with patch("core.shipment_attachments.build_drive_client", factory):
+            uploaded = _dispatch(
+                "shipment_attachment_upload",
+                _upload_payload("oauth.pdf", "application/pdf", _pdf_bytes(), request_id="oauth-up"),
+                seq,
+            )
+
+        assert uploaded["ok"] is True, uploaded.get("error")
+        assert factory.calls == 1
+        assert factory.kwargs == [{"auth_mode": dc.AUTH_MODE_USER_OAUTH}]
+        rows = _stored()
+        assert len(rows) == 1
+        record = next(iter(rows.values()))
+        assert record["storage_backend"] == "drive_oauth"
+        attachment_id = uploaded["persisted"]["attachmentId"]
+
+        factory.kwargs.clear()
+        with patch("core.shipment_attachments.build_drive_client", factory):
+            downloaded = _dispatch(
+                "attachment_download",
+                {
+                    "shipmentId": SHIPMENT_ID,
+                    "attachmentId": attachment_id,
+                    "requestId": "oauth-dl",
+                },
+                seq,
+            )
+
+        assert downloaded["ok"] is True, downloaded.get("error")
+        assert factory.kwargs == [{"auth_mode": dc.AUTH_MODE_USER_OAUTH}]
+        assert fake.downloads == ["drive-file-1"]
+
+    def test_oauth_backend_metadata_failure_compensates_exact_drive_file(self, staging, monkeypatch):
+        monkeypatch.setenv("ATTACHMENT_STORAGE_BACKEND", "drive_oauth")
+        fake = FakeDrive()
+        shipment = vm.read_shipment(SHIPMENT_ID)
+        assert shipment is not None
+
+        with patch("core.database.find_shipment_attachment_by_sha", return_value=None), \
+             patch("core.database.save_shipment_attachment", return_value=False), \
+             patch(
+                 "core.database.probe_shipment_attachment_identity",
+                 return_value=(db.ATTACHMENT_PROBE_ABSENT_PROVEN, None),
+             ):
+            result = att.upload_attachment(
+                shipment_id=SHIPMENT_ID,
+                category="other",
+                file_name="oauth.pdf",
+                mime="application/pdf",
+                data=_pdf_bytes(),
+                uploaded_by="operator",
+                shipment_context=shipment,
+                storage_backend="drive_oauth",
+                drive=fake,
+            )
+
+        assert result["ok"] is False
+        assert result["code"] == att.CODE_METADATA_FAILED
+        assert result["compensation_attempted"] is True
+        assert result["compensated"] is True
+        assert fake.deletes == ["drive-file-1"]
 
 
 class TestProviderContract:
