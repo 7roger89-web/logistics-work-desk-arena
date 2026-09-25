@@ -83,6 +83,77 @@ def legacy_numeric_candidate(shipment_id: Any) -> int | None:
     return val
 
 
+SHIPMENT_IDENTITY_AMBIGUOUS = "AMBIGUOUS_SHIPMENT_IDENTITY"
+SHIPMENT_IDENTITY_NOT_FOUND = "SHIPMENT_NOT_FOUND"
+
+
+def _read_shipment_resolution(shipment_id: Any) -> tuple[dict[str, Any] | None, str]:
+    """Resolve one shipment using the SAME text identity the UI projects.
+
+    Exact stored identity remains the fast path. On a miss, one bounded
+    identity-field probe covers both the earlier numeric-BSON compatibility
+    case and other legacy representations while detecting collisions, compare
+    them with ``rd.text(id or shipment_id)`` (the UI's projection rule), and
+    re-read the single matching document by immutable Mongo ``_id``.
+
+    The normalized probe is fail-closed: zero matches means not found and more
+    than one match means ambiguous identity. It never rewrites stored IDs.
+    """
+    from core.database import get_db, repair_data
+
+    db = get_db()
+    if db is None:
+        return None, SHIPMENT_IDENTITY_NOT_FOUND
+
+    # 1. Exact stored identity always wins.
+    doc = db.shipments.find_one(
+        {"id": shipment_id, "is_deleted": {"$ne": True}},
+        {"_id": 0},
+    )
+    if doc:
+        key = rd.text(shipment_id)
+        return repair_data({key: doc})[key], "EXACT"
+
+    # 2. The browser always sends rd.text(...), so do not broaden malformed
+    # caller input here. This keeps whitespace/sign/float-like request strings
+    # fail-closed while allowing legacy STORED representations that the UI
+    # already normalizes for display.
+    if not isinstance(shipment_id, str) or not shipment_id or rd.text(shipment_id) != shipment_id:
+        return None, SHIPMENT_IDENTITY_NOT_FOUND
+
+    # One bounded projected-identity probe covers BOTH the earlier numeric-BSON
+    # compatibility case and other legacy storage representations (for example
+    # surrounding whitespace) while still detecting collisions before we pick
+    # a document. Exact string identity already returned above.
+    matches: list[Any] = []
+    cursor = db.shipments.find(
+        {"is_deleted": {"$ne": True}},
+        {"_id": 1, "id": 1, "shipment_id": 1},
+    )
+    for identity in cursor:
+        if rd.text(identity.get("id") or identity.get("shipment_id")) != shipment_id:
+            continue
+        mongo_id = identity.get("_id")
+        if mongo_id is None:
+            continue
+        matches.append(mongo_id)
+        if len(matches) > 1:
+            return None, SHIPMENT_IDENTITY_AMBIGUOUS
+
+    if len(matches) != 1:
+        return None, SHIPMENT_IDENTITY_NOT_FOUND
+
+    doc = db.shipments.find_one(
+        {"_id": matches[0], "is_deleted": {"$ne": True}},
+        {"_id": 0},
+    )
+    if not doc:
+        return None, SHIPMENT_IDENTITY_NOT_FOUND
+
+    key = shipment_id
+    return repair_data({key: doc})[key], "PROJECTED_IDENTITY"
+
+
 def read_shipment(shipment_id: str) -> dict[str, Any] | None:
     """Fresh read of ONE shipment straight from the database.
 
@@ -91,32 +162,14 @@ def read_shipment(shipment_id: str) -> dict[str, Any] | None:
     normalisation the rest of the app uses.
 
     Identity semantics:
-      1. Exact stored string identity wins first.
-      2. If exact lookup misses and the requested string is a canonical
-         decimal integer, allows one bounded fallback query for equivalent
-         legacy numeric BSON identity.
-      3. Ambiguous formats ('00123', '+123', '123.0', ' 123 ') never coerce.
+      1. Exact stored identity wins first.
+      2. On exact miss, a single document whose identity projects to the same
+         UI text may resolve by immutable Mongo ``_id``; this includes the
+         legacy numeric-BSON compatibility case.
+      3. Ambiguous/malformed identity never guesses.
     """
-    from core.database import get_db, repair_data
-
-    db = get_db()
-    if db is None:
-        return None
-
-    # 1. Exact string identity wins first.
-    doc = db.shipments.find_one({"id": shipment_id, "is_deleted": {"$ne": True}}, {"_id": 0})
-
-    # 2. Only if exact lookup misses: bounded fallback for legacy numeric BSON identity.
-    if not doc:
-        candidate = legacy_numeric_candidate(shipment_id)
-        if candidate is not None:
-            doc = db.shipments.find_one({"id": candidate, "is_deleted": {"$ne": True}}, {"_id": 0})
-
-    if not doc:
-        return None
-
-    key = str(shipment_id) if shipment_id is not None else ""
-    return repair_data({key: doc})[key]
+    shipment, _gate = _read_shipment_resolution(shipment_id)
+    return shipment
 
 
 #: Upper bound on the reads one render issues at the same time (``1`` = the
@@ -1842,9 +1895,20 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
                        "RBAC: không có quyền sales_write để tải chứng từ lên lô hàng.",
                        gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
 
-    if read_shipment(sid) is None:
+    # Preserve the long-standing read_shipment seam used by the dispatcher
+    # contract/tests and by callers that override the fresh-read boundary.
+    # Only unresolved identities need the richer ambiguity classification.
+    shipment = read_shipment(sid)
+    if shipment is None:
+        _unresolved, identity_gate = _read_shipment_resolution(sid)
+        if identity_gate == SHIPMENT_IDENTITY_AMBIGUOUS:
+            return _result(
+                "shipment_attachment_upload", sid, False,
+                f"Mã lô {sid} bị trùng định danh dữ liệu cũ; chưa lưu tệp để tránh gắn nhầm lô.",
+                gate=SHIPMENT_IDENTITY_AMBIGUOUS, requestId=request_id,
+            )
         return _result("shipment_attachment_upload", sid, False, f"Không tìm thấy lô {sid}.",
-                       gate="SHIPMENT_NOT_FOUND", requestId=request_id)
+                       gate=SHIPMENT_IDENTITY_NOT_FOUND, requestId=request_id)
 
     # The browser's declared size is checked FIRST (cheapest refusal), then the
     # base64 body is bounded before decoding, then the SERVICE re-checks the
