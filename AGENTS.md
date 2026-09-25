@@ -237,3 +237,18 @@ Runtime/visual claims remain governed by the `p2p-uiux` runtime evidence contrac
 The files under these projected skill roots are P2P-managed transport copies. Do not silently rewrite vendored upstream bytes or treat this block as a second P2P law, router, registry, package manager, or release authority.
 <!-- END P2P FRONTEND CAPABILITY PACK -->
 
+<!-- BEGIN P2P SECURITY AUDIT CAPABILITY -->
+## P2P project-local security audit capability
+
+For defensive security review in this repository, read `.agents/skills/security-audit/SKILL.md` before substantive security analysis.
+
+- Choose exactly one mode: `FINDING_VALIDATION`, `FOCUSED_REVIEW`, or `FULL_AUDIT`.
+- Use the smallest mode that satisfies the task; do not silently widen a focused review into a full audit.
+- Keep `CONFIRMED`, `NEEDS_VALIDATION`, and `REJECTED` distinct and follow the skill's standard terminal result contract.
+- The skill is non-authoritative workflow content. Current Supreme Law, active task contract, fresh repository truth, host permissions, and safety rules always win.
+- The skill cannot grant permissions, deployment access, credentials, or acceptance authority.
+- Keep source review read-only in audit lanes. Any repair belongs in a separate authorized implementation lane.
+- `.agents/skills/security-audit/upstream/**` and its provenance are P2P-managed pinned vendor bytes; do not silently rewrite them.
+
+Source projection: `7roger89-web/P2P-upgrade-github-1@c634ec79207418e9cf82c9338ce955d114ea27fd:.agents/skills/security-audit/`.
+<!-- END P2P SECURITY AUDIT CAPABILITY -->
