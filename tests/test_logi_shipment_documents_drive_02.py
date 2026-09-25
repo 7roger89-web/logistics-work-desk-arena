@@ -598,6 +598,21 @@ class TestOAuthDriveProviderContract:
         assert factory.kwargs == [{"auth_mode": dc.AUTH_MODE_USER_OAUTH}]
         assert fake.downloads == ["drive-file-1"]
 
+    def test_database_writer_accepts_drive_oauth_without_mocking_persistence(self, staging):
+        record = {
+            "id": "ATT-OAUTH-PERSIST-1",
+            "shipment_id": SHIPMENT_ID,
+            "original_name": "oauth-persist.pdf",
+            "sha256": "a" * 64,
+            "storage_backend": "drive_oauth",
+            "storage_file_id": "drive-file-oauth-persist-1",
+        }
+        assert db.save_shipment_attachment(record) is True
+        stored = db.load_shipment_attachment(record["id"])
+        assert stored is not None
+        assert stored["storage_backend"] == "drive_oauth"
+        assert stored["storage_file_id"] == "drive-file-oauth-persist-1"
+
     def test_oauth_backend_metadata_failure_compensates_exact_drive_file(self, staging, monkeypatch):
         monkeypatch.setenv("ATTACHMENT_STORAGE_BACKEND", "drive_oauth")
         fake = FakeDrive()
