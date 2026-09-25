@@ -1197,7 +1197,7 @@ class TestOwnerDriveHierarchy:
         first_payload["createdAt"] = "2039-12-31"
 
         second_payload = _upload_payload(
-            "hop-dong.docx", dc.MIME_DOCX if hasattr(dc, "MIME_DOCX") else att.MIME_DOCX,
+            "hop-dong.docx", att.MIME_DOCX,
             _docx_bytes(), shipment_id=sid, request_id="hier-2", category="contract",
         )
 
