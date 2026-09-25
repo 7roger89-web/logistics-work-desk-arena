@@ -1,0 +1,11 @@
+[PAGE 1]
+SYNTHETIC — NOT A REAL SHIPMENT
+PACKING LIST
+
+Invoice reference: EX-INV-2026-0042
+Date: 03/04/2026
+Packages: 120 CARTONS
+Gross weight: 12500.00 KG
+Net weight: 11,800.00 KG
+CBM: 25.600 CBM
+Container: TTXU 582140-8
