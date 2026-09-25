@@ -7,15 +7,12 @@ Google Drive owns attachment BYTES; Mongo owns bounded METADATA only. This
 module is the ONE bounded Drive adapter for that slice and it deliberately
 stays tiny:
 
-* auth = ONE Google **service account** whose JSON lives only in the
-  deployment's own secrets/env (``GOOGLE_SERVICE_ACCOUNT_JSON``), uploading
-  into ONE Owner-controlled folder (``GOOGLE_DRIVE_ROOT_FOLDER_ID``).
-  SERVICE_ACCOUNT_STORAGE_MODE=SHARED_DRIVE_ONLY: service accounts have no
-  Drive storage quota and cannot own files, so that root folder MUST be a
-  writable folder INSIDE A GOOGLE WORKSPACE SHARED DRIVE (the service
-  account needs write permission on that Shared Drive/folder). A normal My
-  Drive folder shared with the service account is UNSUPPORTED here; without
-  an available Shared Drive, LIVE_DRIVE_VERIFICATION=BLOCKED;
+* auth = one explicitly selected credential mode. ``drive_shared`` keeps the
+  original service-account JSON and writable Workspace Shared Drive contract.
+  ``drive_oauth`` uses an Owner-authorized OAuth refresh token plus client
+  credentials to write to the Owner's My Drive. Both modes use the same
+  ``GOOGLE_DRIVE_ROOT_FOLDER_ID`` boundary, and neither silently falls back
+  to the other;
 * transport = ``google-auth`` (``AuthorizedSession``) over the ``requests``
   dependency the app ALREADY ships, talking to the Drive REST v3 endpoints
   directly — the full ``google-api-python-client`` SDK is NOT installed;
@@ -248,9 +245,9 @@ def _multipart_body(metadata: Mapping[str, Any], data: bytes, mime: str) -> tupl
 class GoogleDriveClient:
     """Minimal Drive REST client: folders, upload, metadata, download, delete.
 
-    A caller may inject an already-authorized session (used by the focused
-    request-shaping test); production always builds the service-account
-    session lazily on first use, so importing this module without Drive
+    A caller may inject an already-authorized session (used by focused tests).
+    Production builds exactly the credential mode selected by the storage
+    backend lazily on first use, so importing this module without Drive
     configured is harmless.
     """
 
