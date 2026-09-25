@@ -294,8 +294,13 @@ class GuardTests(unittest.TestCase):
                 if observation.status is ObservationStatus.FOUND:
                     self.assertNotEqual(observation.raw_value, "")
                 self.assertIsNot(observation.normalized_value, 0)
+            if fact.status == FactStatus.MISSING:
+                self.assertEqual(fact.observed_values, ())
             if fact.status in (FactStatus.MISSING, FactStatus.UNKNOWN):
-                self.assertEqual(fact.observed_values, () or fact.observed_values)
+                for value in fact.observed_values:
+                    self.assertNotEqual(value, "")
+                    self.assertNotEqual(value, 0)
+                    self.assertIsNotNone(value)
         missing = self.facts["bl_number"]
         self.assertEqual(missing.observed_values, ())
         self.assertIsNone(missing.observations[0].normalized_value)
