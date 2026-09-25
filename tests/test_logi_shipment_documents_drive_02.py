@@ -306,13 +306,13 @@ class TestDriveSettings:
 
 
     def test_user_oauth_settings_are_explicit_and_describe_hides_secret_values(self):
-        env = {
+        values = {
             dc.ROOT_FOLDER_ENV: "root",
             dc.OAUTH_CLIENT_ID_ENV: "client-id.example",
             dc.OAUTH_CLIENT_SECRET_ENV: "client-secret-value",
             dc.OAUTH_REFRESH_TOKEN_ENV: "refresh-token-value",
         }
-        with patch.dict(os.environ, env, clear=True):
+        with patch.object(dc, "get_setting", side_effect=lambda env, *paths, default="": values.get(env, default)):
             settings = dc.load_drive_settings(dc.AUTH_MODE_USER_OAUTH)
         assert settings.configured is True
         assert settings.auth_mode == dc.AUTH_MODE_USER_OAUTH
@@ -326,11 +326,11 @@ class TestDriveSettings:
         assert dc.build_drive_client(settings, auth_mode=dc.AUTH_MODE_USER_OAUTH) is not None
 
     def test_user_oauth_missing_fields_fail_closed_without_service_account_fallback(self):
-        env = {
+        values = {
             dc.ROOT_FOLDER_ENV: "root",
             dc.OAUTH_CLIENT_ID_ENV: "client-id.example",
         }
-        with patch.dict(os.environ, env, clear=True):
+        with patch.object(dc, "get_setting", side_effect=lambda env, *paths, default="": values.get(env, default)):
             settings = dc.load_drive_settings(dc.AUTH_MODE_USER_OAUTH)
         assert settings.configured is False
         assert dc.OAUTH_CLIENT_SECRET_ENV in settings.missing
