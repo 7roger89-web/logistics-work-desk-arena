@@ -1,0 +1,180 @@
+{
+  "schema": "p2p-vendor-skill-provenance/1",
+  "capability_id": "security.audit",
+  "projection_name": "security-audit",
+  "integrated_at": "2026-09-20",
+  "upstream_repository": "https://github.com/cloudflare/security-audit-skill",
+  "upstream_commit": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
+  "upstream_tree": "8cd03bb3941496e441d6248aaae2429a35b93cc3",
+  "upstream_commit_verification": {
+    "verified": false,
+    "reason": "unsigned"
+  },
+  "upstream_version": "UNSPECIFIED_AT_PIN",
+  "license": {
+    "kind": "MIT",
+    "file": "LICENSE"
+  },
+  "integration_mode": "PROVIDER_NEUTRAL_WRAPPER_OVER_PINNED_UPSTREAM",
+  "projection_entrypoint_sha256": "feff9d033a4d93a5ce5037493e967c838a560aa345f5aec715dc36093acb4a38",
+  "upstream_subset_sha256": "c102d192cc47ba10605dee6dad184410a347c472e460e3c5273af9b77bb898fb",
+  "source_files": [
+    {
+      "upstream_path": "skills/security-audit/SKILL.md",
+      "snapshot_path": "upstream/SKILL.md",
+      "git_blob_sha": "92178dad304d3f63e37582a297026a7874e12c62",
+      "sha256": "5e3e96a1e438d8f35fef0a1e38f02d4f00e2bdf910401b7dfe00e6779c6dac85",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/RECONNAISSANCE.md",
+      "snapshot_path": "upstream/RECONNAISSANCE.md",
+      "git_blob_sha": "1a170a93ab76b93dc5ac268a5b690beb423a8aa9",
+      "sha256": "02ca887aca84de8ae137f1891bd2f0a54f28d3fa6da92a27f54734382b3381a2",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/HUNTING.md",
+      "snapshot_path": "upstream/HUNTING.md",
+      "git_blob_sha": "377d4dcfbe88a049379448cd7892717185401597",
+      "sha256": "71c121decea1322c47c718f6e110f1a892980bb4266bd7ac55ef043a213ade09",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/ATTACK-CLASSES.md",
+      "snapshot_path": "upstream/ATTACK-CLASSES.md",
+      "git_blob_sha": "18a2beb4dbb554fb52b0a0293b8bd9108207f8fa",
+      "sha256": "3ee4f00c6e8c9dcf6dd02dd5ac2a4ceb322e2085f3e9fbe79cf0c6330bc7ef83",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/MEMORY-SAFETY-AND-BINARY.md",
+      "snapshot_path": "upstream/MEMORY-SAFETY-AND-BINARY.md",
+      "git_blob_sha": "86ff4920752661fc4a31a35ca4f962ace5dd5f48",
+      "sha256": "7c8b0dccfb35315cca2455509674d49632b2fe37e1f3aac16c1a496a7e9924a7",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/AI-AND-LLM.md",
+      "snapshot_path": "upstream/AI-AND-LLM.md",
+      "git_blob_sha": "02ba9039eca4cec811fefc77bce0d7349b379aae",
+      "sha256": "7335a95c43554eadefcf03ece639291bb0e038c398a179299e3887ffe06bd2ef",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/WEB-PROTOCOL-AND-AUTH.md",
+      "snapshot_path": "upstream/WEB-PROTOCOL-AND-AUTH.md",
+      "git_blob_sha": "1a099fa575cf52a61e9a627f91b61015120fa517",
+      "sha256": "4f3066dffa23c5635859187be9b96c32f2aff29a688186b91ff0c63e47d62b5c",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/CLIENT-SIDE.md",
+      "snapshot_path": "upstream/CLIENT-SIDE.md",
+      "git_blob_sha": "8ba673e9e7e3d02f5518aa0219bcbeec7957531b",
+      "sha256": "613f6b98f86083e045525c5b60154ffdab122bac35f1e05eb17488e6e453370c",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/SUPPLY-CHAIN-AND-RELEASE.md",
+      "snapshot_path": "upstream/SUPPLY-CHAIN-AND-RELEASE.md",
+      "git_blob_sha": "bf96aed0803bc07471483ab129dea86759c3e305",
+      "sha256": "f372e919940e335468ba1ae09f99026c3986a345f7fe26f8068f132e199f52a5",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/CLOUD-AND-DEPLOYMENT.md",
+      "snapshot_path": "upstream/CLOUD-AND-DEPLOYMENT.md",
+      "git_blob_sha": "5569f76c7740744aa3f60aaa89eaefe275f2e6c9",
+      "sha256": "3c80f3088be22345e07b057c056d6ed99fe2b0304f794398964f7ccd5a496ca3",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/PROTOCOLS-RPC-AND-MESSAGING.md",
+      "snapshot_path": "upstream/PROTOCOLS-RPC-AND-MESSAGING.md",
+      "git_blob_sha": "b04ab88f852224838fdc9683d9fcccd858b0778a",
+      "sha256": "8b73816fa5b3697c9c40977f0c836b40f01d6e81929ff2720fe83ce089e9a619",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/RESOURCE-EXHAUSTION-AND-AVAILABILITY.md",
+      "snapshot_path": "upstream/RESOURCE-EXHAUSTION-AND-AVAILABILITY.md",
+      "git_blob_sha": "6cbbd1e2cfa482068c8279c2f7da9db43d3f54b8",
+      "sha256": "4326fab5c92a0b4c420a70196254040105cd794026562130b59bf1a6db3e4baa",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/DATA-ISOLATION-AND-LIFECYCLE.md",
+      "snapshot_path": "upstream/DATA-ISOLATION-AND-LIFECYCLE.md",
+      "git_blob_sha": "0cba1fa463b62c9b0caba710a201e29c1eecd0ec",
+      "sha256": "307dcb3e24d292715c4a041190e7bb135646a37eb6187619ae01d000a634a4ad",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+      "snapshot_path": "upstream/DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+      "git_blob_sha": "d6230098651bff6348d3868c11f566bfb1306e7f",
+      "sha256": "58eae8ee0ca6a46611c501ec5a3ab47fdff88dd7db0d8d74789bbf8bb19d8cb2",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/VALIDATION-AND-REPORTING.md",
+      "snapshot_path": "upstream/VALIDATION-AND-REPORTING.md",
+      "git_blob_sha": "5e200d7387e665e53e0e4190fa4a5814c334c507",
+      "sha256": "b892470cb89bb31f33403e050d4bdfbe2cdaef940ade1496fa65e32b2e129449",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/report-schema.json",
+      "snapshot_path": "upstream/report-schema.json",
+      "git_blob_sha": "55815a3687a45fff63d8ebf20068611bd6ad6d9a",
+      "sha256": "6575c9de4a62255699ea052ebf9a49ebfb373a32891bcd89af6f55cc84b35519",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/validate-findings.cjs",
+      "snapshot_path": "upstream/validate-findings.cjs",
+      "git_blob_sha": "2843feceddb7e30bf10d6e4f7bbe6640e4c57799",
+      "sha256": "e85f232e36bfac0f866f244da50376692d6b45c690beadcb00608b0e6c8b5283",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "skills/security-audit/validate-coverage-ledger.cjs",
+      "snapshot_path": "upstream/validate-coverage-ledger.cjs",
+      "git_blob_sha": "0ef58657bef18b26a92321df6c8e3d31bc8e6659",
+      "sha256": "2eb280bd2e33c002916f86db9b29f9edfedb6454e5db973c766290465b868ac8",
+      "status": "VENDORED_EXACT"
+    },
+    {
+      "upstream_path": "LICENSE",
+      "snapshot_path": "LICENSE",
+      "git_blob_sha": "6dbc9ecb3a5b9080e95b962869e8c7ab16cfdc20",
+      "sha256": "e598e694aa506650c7192d5ea3be0e50aca0d356ea00551c53429f0b01eb6391",
+      "status": "VENDORED_EXACT"
+    }
+  ],
+  "excluded_upstream_paths": [
+    {
+      "path": "README.md",
+      "reason": "Informational install instructions are not runtime authority; P2P ships the pinned project-local skill."
+    },
+    {
+      "path": "skills/security-audit/validate-findings.test.cjs",
+      "reason": "Upstream self-test fixture is not required in the installed runtime snapshot."
+    },
+    {
+      "path": "skills/security-audit/validate-coverage-ledger.test.cjs",
+      "reason": "Upstream self-test fixture is not required in the installed runtime snapshot."
+    }
+  ],
+  "safety_projection": [
+    "P2P Supreme Law and host permissions override vendor workflow content",
+    "no live or production probing",
+    "no external network for target-controlled execution",
+    "no dependency installation",
+    "OS-enforced sandbox required before executing target-controlled code",
+    "missing execution controls => needs_validation"
+  ],
+  "update_policy": "Fresh-review a new upstream commit and create a new pinned snapshot; never float main or run an installer at runtime.",
+  "upstream_subset_sha256_method": "SHA256 of lexicographically sorted '<snapshot_path>\\n<canonical_sha256>' records joined by '\\n'; canonical_sha256 uses vendor_skill canonical text normalization (CRLF/CR to LF, binary unchanged)."
+}
