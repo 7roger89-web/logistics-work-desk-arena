@@ -66,6 +66,11 @@ _DOCUMENT_ALIASES: dict[str, DocumentType] = {
     "SDS_MSDS": DocumentType.SDS_MSDS,
     "UNKNOWN": DocumentType.UNKNOWN_DOCUMENT,
     "UNKNOWN_DOCUMENT": DocumentType.UNKNOWN_DOCUMENT,
+    # Bounded trade-document canary extension (TT-DOC-CANARY-01).
+    # COMMERCIAL_INVOICE maps onto the existing INVOICE contract on purpose;
+    # PACKING_LIST already exists in the enum.
+    "COMMERCIAL_INVOICE": DocumentType.INVOICE,
+    "BILL_OF_LADING": DocumentType.BILL_OF_LADING,
 }
 
 _BLOCKED_EXTENSIONS = {
