@@ -93,7 +93,7 @@ function generatedClipboardName(mime: ClipboardImageMime): string {
 function isSensibleClipboardImageName(name: string, mime: ClipboardImageMime): boolean {
   const trimmed = String(name || "").trim();
   if (!trimmed || trimmed.length > 180) return false;
-  if (/[\/\u0000-\u001f\u007f]/.test(trimmed)) return false;
+  if (/[\\/\u0000-\u001f\u007f]/.test(trimmed)) return false;
   const lower = trimmed.toLowerCase();
   if (mime === "image/png") return lower.endsWith(".png");
   return lower.endsWith(".jpg") || lower.endsWith(".jpeg");

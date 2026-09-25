@@ -285,6 +285,16 @@ assert.equal(unsupportedPaste.defaultPrevented, false, "unsupported clipboard MI
 assert.equal(selectedAttachmentFileName(section), "", "unsupported paste must not select a file");
 assert.equal(uploadEvents().length, uploadCountBeforePaste, "unsupported paste must not upload");
 
+const pathLikeClipboardName = "C:\\tmp\\anh.png";
+const pathLikeImage = new window.File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10])], pathLikeClipboardName, { type: "image/png" });
+const pathLikePaste = await pasteClipboard(pasteZone, { files: [pathLikeImage] });
+assert.equal(pathLikePaste.defaultPrevented, true, "path-like image paste is handled by the attachment surface");
+const safePathReplacement = selectedAttachmentFileName(section);
+assert.match(safePathReplacement, /^anh-dan-\d{8}-\d{6}\.png$/, "a clipboard filename containing backslashes must be replaced by a safe generated name");
+assert.ok(!safePathReplacement.includes("/") && !safePathReplacement.includes("\\"), "generated clipboard filename must contain no path separator");
+assert.notEqual(safePathReplacement, pathLikeClipboardName, "path-like clipboard filename must not be preserved");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "path-like image paste must still not auto-upload");
+
 const tooLarge = new window.File([new Uint8Array(VM.attachmentPolicy.maxUploadBytes + 1)], "qua-lon.png", { type: "image/png" });
 const oversizePaste = await pasteClipboard(pasteZone, { files: [tooLarge] });
 assert.equal(oversizePaste.defaultPrevented, true, "oversize image paste is handled locally");

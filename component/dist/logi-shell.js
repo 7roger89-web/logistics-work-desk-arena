@@ -16952,7 +16952,7 @@ function Tc(e) {
 }
 function Ec(e, t) {
 	let n = String(e || "").trim();
-	if (!n || n.length > 180 || /[\/\u0000-\u001f\u007f]/.test(n)) return !1;
+	if (!n || n.length > 180 || /[\\/\u0000-\u001f\u007f]/.test(n)) return !1;
 	let r = n.toLowerCase();
 	return t === "image/png" ? r.endsWith(".png") : r.endsWith(".jpg") || r.endsWith(".jpeg");
 }
