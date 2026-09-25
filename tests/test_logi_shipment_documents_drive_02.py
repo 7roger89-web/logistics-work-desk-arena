@@ -537,16 +537,7 @@ class TestProviderContract:
         assert uploaded["mime"] == "image/jpeg"
         assert len(uploaded["data"]) < len(original)
         assert uploaded["data"] != original
-        assert uploaded["parentId"] == fake._folder_cache[
-            (fake._folder_cache[
-                (fake._folder_cache[
-                    (fake._folder_cache[
-                        ("ROOT-FOLDER-FAKE", logistics_name)
-                    ], customer_name)
-                ], year_name)
-            ], month_name),
-            shipment_name,
-        ]
+        assert uploaded["parentId"] == parent
 
         # Metadata: new rows use the backend-neutral identity.
         rows = _stored()
