@@ -26,6 +26,8 @@ from uuid import uuid4
 
 from core.config import get_attachment_storage_backend
 from core.drive_client import (
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_USER_OAUTH,
     DriveError,
     build_drive_client,
     is_unsafe_drive_name,
@@ -55,7 +57,9 @@ IMAGE_MATERIAL_REDUCTION = 0.95
 
 STORAGE_BACKEND_GRIDFS = "gridfs"
 STORAGE_BACKEND_DRIVE_SHARED = "drive_shared"
-SUPPORTED_STORAGE_BACKENDS = frozenset({STORAGE_BACKEND_GRIDFS, STORAGE_BACKEND_DRIVE_SHARED})
+STORAGE_BACKEND_DRIVE_OAUTH = "drive_oauth"
+DRIVE_STORAGE_BACKENDS = frozenset({STORAGE_BACKEND_DRIVE_SHARED, STORAGE_BACKEND_DRIVE_OAUTH})
+SUPPORTED_STORAGE_BACKENDS = frozenset({STORAGE_BACKEND_GRIDFS, *DRIVE_STORAGE_BACKENDS})
 
 # GridFS bucket is deliberately fixed: it is an implementation detail, not a
 # user/provider setting. Expected collections are
@@ -339,10 +343,14 @@ def _resolve_gridfs_store(gridfs: Any = None) -> Any:
     return build_gridfs_client()
 
 
-def _resolve_drive_client(drive: Any = None) -> Any:
+def _drive_auth_mode(backend: str) -> str:
+    return AUTH_MODE_USER_OAUTH if backend == STORAGE_BACKEND_DRIVE_OAUTH else AUTH_MODE_SERVICE_ACCOUNT
+
+
+def _resolve_drive_client(backend: str, drive: Any = None) -> Any:
     if drive is not None:
         return drive
-    return build_drive_client()
+    return build_drive_client(auth_mode=_drive_auth_mode(backend))
 
 
 def _shipment_folder_name(shipment_id: str) -> str:
@@ -397,15 +405,17 @@ def drive_folder_hierarchy(shipment_id: str, shipment_context: Mapping[str, Any]
 
 
 def storage_label(backend: str | None = None) -> str:
-    """Operator-neutral storage wording, with Drive wording only when selected."""
+    """Operator-neutral storage wording, with the configured Drive mode explicit."""
     selected = str(backend or resolve_storage_backend()).strip().lower()
-    return "Shared Drive" if selected == STORAGE_BACKEND_DRIVE_SHARED else "Kho chứng từ"
+    if selected == STORAGE_BACKEND_DRIVE_SHARED:
+        return "Shared Drive"
+    if selected == STORAGE_BACKEND_DRIVE_OAUTH:
+        return "Google Drive"
+    return "Kho chứng từ"
 
 
 def _storage_error_label(backend: str) -> str:
-    # PR65's optional drive_shared path retains its established wording; the
-    # default GridFS path is deliberately provider-neutral for operators.
-    return "Google Drive" if backend == STORAGE_BACKEND_DRIVE_SHARED else "Kho chứng từ"
+    return "Google Drive" if backend in DRIVE_STORAGE_BACKENDS else "Kho chứng từ"
 
 
 def storage_is_configured(backend: str | None = None) -> bool:
@@ -416,8 +426,8 @@ def storage_is_configured(backend: str | None = None) -> bool:
             return get_db() is not None
         except Exception:  # noqa: BLE001 - policy must fail closed
             return False
-    if selected == STORAGE_BACKEND_DRIVE_SHARED:
-        return bool(load_drive_settings().configured)
+    if selected in DRIVE_STORAGE_BACKENDS:
+        return bool(load_drive_settings(_drive_auth_mode(selected)).configured)
     return False
 
 
@@ -435,7 +445,7 @@ def upload_attachment(
     gridfs: Any = None,
     storage_backend: str | None = None,
 ) -> dict[str, Any]:
-    """Run the bounded upload order for GridFS or explicit ``drive_shared``.
+    """Run the bounded upload order for GridFS or one explicit Drive backend.
 
     ``drive`` and ``gridfs`` are test seams only; production chooses the
     configured backend.  They do not bypass validation, RBAC, dedupe, or the
