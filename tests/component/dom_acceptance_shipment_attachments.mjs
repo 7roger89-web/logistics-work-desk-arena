@@ -12,6 +12,8 @@
  *      honest size text, uploader, upload date) — never client-side truth;
  *   3. the file selector accepts exactly the server-declared policy and the
  *      category selector offers the server's real categories;
+ *   3b. scoped paste of a JPEG/PNG selects a pending file, never auto-uploads,
+ *      ignores text/outside paste, and reuses the exact upload event;
  *   4. choosing a file and pressing upload emits EXACTLY ONE
  *      `shipment_attachment_upload` event, with the bounded payload the
  *      dispatcher validates, and a visible pending state;
@@ -139,6 +141,45 @@ window.document.body.appendChild(host);
 const triggers = [];
 const mountRef = { current: null };
 
+const uploadEvents = () => triggers.filter((t) => t.event === "shipment_attachment_upload");
+
+function clipboardItem(file, type = file.type) {
+  return { kind: "file", type, getAsFile: () => file };
+}
+
+async function pasteClipboard(target, { files = [], items = null, text = "" } = {}) {
+  const event = new window.Event("paste", { bubbles: true, cancelable: true });
+  const clipboardData = {
+    files,
+    items: items ?? files.map((file) => clipboardItem(file)),
+    types: text ? ["text/plain"] : files.length ? ["Files"] : [],
+    getData: (format) => (format === "text/plain" ? text : ""),
+  };
+  Object.defineProperty(event, "clipboardData", { value: clipboardData, configurable: true });
+  target.dispatchEvent(event);
+  await tick();
+  return event;
+}
+
+function selectedAttachmentFileName(root = window.document) {
+  const selected = $("[data-testid='attachment-selected-file']", root)[0];
+  return selected ? text(selected).replace(/^Đã chọn:\s*/, "") : "";
+}
+
+function clearSelectedFile() {
+  const input = window.document.getElementById("fld-attach-file");
+  if (!input) return;
+  Object.defineProperty(input, "files", { value: [], configurable: true });
+  input.dispatchEvent(new window.Event("change", { bubbles: true }));
+}
+
+function invokeUploadOutcome(requestId, { ok = true, gate = "UPLOADED", message = "" } = {}) {
+  const next = clone(VM);
+  next.version = `attachments-outcome-${requestId}`;
+  next.lastWrites = [{ event: "shipment_attachment_upload", shipmentId: "LO-0306", ok, error: "", message, requestId, gate }];
+  invoke(next);
+}
+
 function invoke(data) {
   return mountRef.current({
     name: "logi_shell",
@@ -215,11 +256,94 @@ assert.ok(text(categorySelect).includes("Hải quan"), "server categories not of
 assert.ok(text(section).includes(`tối đa ${VM.attachmentPolicy.maxUploadLabel}`), "the server byte ceiling is not shown");
 ok("file selector accept-list and category selector mirror the server policy");
 
+console.log("STEP 3b — clipboard paste is scoped to the attachment paste zone");
+const pasteZone = $("[data-testid='attachment-paste-zone']", section)[0];
+assert.ok(pasteZone, "explicit attachment paste zone missing");
+assert.equal(pasteZone.getAttribute("tabindex"), "0", "paste zone must be keyboard focusable");
+const uploadCountBeforePaste = uploadEvents().length;
+assert.equal(selectedAttachmentFileName(section), "", "no file should be selected before paste");
+
+const textOnlyPaste = await pasteClipboard(pasteZone, { text: "ghi chú clipboard bình thường" });
+assert.equal(textOnlyPaste.defaultPrevented, false, "text-only paste must not be intercepted");
+assert.equal(selectedAttachmentFileName(section), "", "text-only paste must not select a file");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "text-only paste must not upload");
+
+const outsideInput = window.document.createElement("textarea");
+outsideInput.setAttribute("data-testid", "outside-paste-target");
+window.document.body.appendChild(outsideInput);
+outsideInput.focus();
+const outsideImage = new window.File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "ngoai-vung.png", { type: "image/png" });
+const outsidePaste = await pasteClipboard(outsideInput, { files: [outsideImage] });
+assert.equal(outsidePaste.defaultPrevented, false, "paste outside the attachment surface must not be hijacked");
+assert.equal(selectedAttachmentFileName(section), "", "outside paste must not select a shipment attachment");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "outside paste must not upload");
+outsideInput.remove();
+
+const unsupportedImage = new window.File([new Uint8Array([71, 73, 70, 56])], "anh.gif", { type: "image/gif" });
+const unsupportedPaste = await pasteClipboard(pasteZone, { files: [unsupportedImage] });
+assert.equal(unsupportedPaste.defaultPrevented, false, "unsupported clipboard MIME must not be turned into a fake attachment");
+assert.equal(selectedAttachmentFileName(section), "", "unsupported paste must not select a file");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "unsupported paste must not upload");
+
+const pathLikeClipboardName = "C:\\tmp\\anh.png";
+const pathLikeImage = new window.File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10])], pathLikeClipboardName, { type: "image/png" });
+const pathLikePaste = await pasteClipboard(pasteZone, { files: [pathLikeImage] });
+assert.equal(pathLikePaste.defaultPrevented, true, "path-like image paste is handled by the attachment surface");
+const safePathReplacement = selectedAttachmentFileName(section);
+assert.match(safePathReplacement, /^anh-dan-\d{8}-\d{6}\.png$/, "a clipboard filename containing backslashes must be replaced by a safe generated name");
+assert.ok(!safePathReplacement.includes("/") && !safePathReplacement.includes("\\"), "generated clipboard filename must contain no path separator");
+assert.notEqual(safePathReplacement, pathLikeClipboardName, "path-like clipboard filename must not be preserved");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "path-like image paste must still not auto-upload");
+
+const tooLarge = new window.File([new Uint8Array(VM.attachmentPolicy.maxUploadBytes + 1)], "qua-lon.png", { type: "image/png" });
+const oversizePaste = await pasteClipboard(pasteZone, { files: [tooLarge] });
+assert.equal(oversizePaste.defaultPrevented, true, "oversize image paste is handled locally");
+assert.equal(selectedAttachmentFileName(section), "", "oversize paste must not select a pending file");
+assert.ok(text(section).includes(`Tệp vượt giới hạn ${VM.attachmentPolicy.maxUploadLabel}`), "oversize paste must show the existing local ceiling error");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "oversize paste must not upload");
+
+const pastedBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 1, 2, 3, 4, 5]);
+const pastedImage = new window.File([pastedBytes], "", { type: "image/png" });
+pasteZone.focus();
+assert.equal(window.document.activeElement, pasteZone, "paste zone should receive intentional focus");
+const categoryBeforePaste = categorySelect.value;
+const imagePaste = await pasteClipboard(pasteZone, { files: [pastedImage] });
+assert.equal(imagePaste.defaultPrevented, true, "valid image paste should be consumed by the attachment surface");
+const pastedName = selectedAttachmentFileName(section);
+assert.match(pastedName, /^anh-dan-\d{8}-\d{6}\.png$/, "a nameless clipboard PNG gets a safe readable filename");
+assert.equal(categorySelect.value, categoryBeforePaste, "pasting must not change the selected category");
+assert.equal(uploadEvents().length, uploadCountBeforePaste, "image paste alone must not auto-upload");
+assert.ok(text(section).includes(pastedName), "the pasted image filename/state must be visible before upload");
+
+const pasteUploadButton = $("[data-testid='attachment-upload']", section)[0];
+assert.equal(pasteUploadButton.disabled, false, "upload enables after a pasted image is selected");
+pasteUploadButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+await tick(120);
+assert.equal(uploadEvents().length, uploadCountBeforePaste + 1, "one button press after paste emits exactly ONE upload event");
+const pastePayload = uploadEvents().at(-1).value.payload;
+assert.equal(pastePayload.shipmentId, "LO-0306");
+assert.equal(pastePayload.category, categoryBeforePaste);
+assert.equal(pastePayload.fileName, pastedName);
+assert.equal(pastePayload.mime, "image/png");
+assert.equal(pastePayload.size, pastedBytes.length, "payload size must be the original clipboard byte size");
+assert.equal(Buffer.from(pastePayload.base64, "base64").length, pastedBytes.length, "base64 payload must carry the pasted bytes");
+assert.equal(typeof pastePayload.requestId, "string");
+assert.ok(pastePayload.requestId.length > 0, "requestId missing from pasted upload payload");
+assert.ok(mainText().includes("ĐANG LƯU VÀO KHO CHỨNG TỪ"), "pasted upload must use the existing pending state");
+invokeUploadOutcome(pastePayload.requestId);
+await tick(120);
+clearSelectedFile();
+await tick();
+ok("scoped clipboard image paste selects pending file, avoids auto-upload, then reuses the exact upload event");
+
 console.log("STEP 4 — choosing a file and pressing upload emits EXACTLY ONE event");
 const fileBytes = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52, 10]); // "%PDF-1.4\n"
 const chosen = new window.File([fileBytes], "To khai moi.pdf", { type: "application/pdf" });
-Object.defineProperty(fileInput, "files", { value: [chosen], configurable: true });
-fileInput.dispatchEvent(new window.Event("change", { bubbles: true }));
+const pickerInput = window.document.getElementById("fld-attach-file");
+assert.ok(pickerInput, "file picker missing before the existing picker flow");
+const uploadCountBeforePicker = uploadEvents().length;
+Object.defineProperty(pickerInput, "files", { value: [chosen], configurable: true });
+pickerInput.dispatchEvent(new window.Event("change", { bubbles: true }));
 await tick();
 
 const uploadBtn = $("[data-testid='attachment-upload']")[0];
@@ -228,9 +352,9 @@ assert.equal(uploadBtn.disabled, false, "upload must enable once a file is chose
 uploadBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 await tick(120);
 
-const uploadEvents = triggers.filter((t) => t.event === "shipment_attachment_upload");
-assert.equal(uploadEvents.length, 1, "exactly ONE shipment_attachment_upload event");
-const payload = uploadEvents[0].value.payload;
+const pickerUploadEvents = uploadEvents();
+assert.equal(pickerUploadEvents.length, uploadCountBeforePicker + 1, "existing file-picker flow emits exactly ONE shipment_attachment_upload event");
+const payload = pickerUploadEvents.at(-1).value.payload;
 assert.equal(payload.shipmentId, "LO-0306");
 assert.equal(payload.fileName, "To khai moi.pdf");
 assert.equal(payload.mime, "application/pdf");
@@ -466,6 +590,9 @@ for (const button of downloadButtons) {
 }
 const uploadButton = $("[data-testid='attachment-upload']")[0];
 assert.ok(uploadButton.className.includes("min-h-[48px]"), "upload is not thumb-sized");
+const mobilePasteZone = $("[data-testid='attachment-paste-zone']", mobileSection)[0];
+assert.ok(mobilePasteZone.className.includes("min-w-0"), "paste zone must not force mobile overflow");
+assert.ok(text(mobilePasteZone).includes("Ctrl+V/Cmd+V"), "paste affordance must remain visible on mobile");
 ok("no forced horizontal overflow; thumb-sized controls; wrapping rows");
 
 console.log(`\nSHIPMENT_ATTACHMENT_DOM_ACCEPTANCE=PASSED checks=${checks}`);

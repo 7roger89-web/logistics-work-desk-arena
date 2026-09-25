@@ -20,7 +20,7 @@
 // bytes server-side, and only the attachment just requested carries them.
 // ============================================================================
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ClipboardEvent } from "react";
 import { CloudUpload, Download, FileCheck2, LoaderCircle, Paperclip } from "lucide-react";
 import { SectionTitle, ToneBadge, inputCls } from "./ui";
 import { useStore } from "../lib/store";
@@ -47,6 +47,63 @@ const FALLBACK_POLICY: AttachmentPolicy = {
   storageConfigured: false,
   storageLabel: "Kho chứng từ",
 };
+
+type ClipboardImageMime = "image/jpeg" | "image/png";
+
+type ClipboardImage = {
+  file: File;
+  mime: ClipboardImageMime;
+};
+
+const CLIPBOARD_IMAGE_MIMES = new Set<ClipboardImageMime>(["image/jpeg", "image/png"]);
+
+function normalizeClipboardImageMime(value: string): ClipboardImageMime | null {
+  const mime = String(value || "").toLowerCase();
+  return CLIPBOARD_IMAGE_MIMES.has(mime as ClipboardImageMime) ? (mime as ClipboardImageMime) : null;
+}
+
+function findClipboardImage(data: DataTransfer): ClipboardImage | null {
+  for (const item of Array.from(data.items || [])) {
+    if (item.kind !== "file") continue;
+    const mime = normalizeClipboardImageMime(item.type);
+    if (!mime) continue;
+    const file = item.getAsFile();
+    if (file) return { file, mime };
+  }
+  for (const file of Array.from(data.files || [])) {
+    const mime = normalizeClipboardImageMime(file.type);
+    if (mime) return { file, mime };
+  }
+  return null;
+}
+
+function clipboardExtension(mime: ClipboardImageMime): "jpg" | "png" {
+  return mime === "image/jpeg" ? "jpg" : "png";
+}
+
+function timestampForClipboardName(date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+function generatedClipboardName(mime: ClipboardImageMime): string {
+  return `anh-dan-${timestampForClipboardName()}.${clipboardExtension(mime)}`;
+}
+
+function isSensibleClipboardImageName(name: string, mime: ClipboardImageMime): boolean {
+  const trimmed = String(name || "").trim();
+  if (!trimmed || trimmed.length > 180) return false;
+  if (/[\\/\u0000-\u001f\u007f]/.test(trimmed)) return false;
+  const lower = trimmed.toLowerCase();
+  if (mime === "image/png") return lower.endsWith(".png");
+  return lower.endsWith(".jpg") || lower.endsWith(".jpeg");
+}
+
+function prepareClipboardFile({ file, mime }: ClipboardImage): File {
+  const fileName = isSensibleClipboardImageName(file.name, mime) ? file.name.trim() : generatedClipboardName(mime);
+  if (file.name === fileName && file.type === mime) return file;
+  return new File([file], fileName, { type: mime, lastModified: file.lastModified || Date.now() });
+}
 
 export default function ShipmentAttachments({
   shipmentId,
@@ -123,6 +180,27 @@ export default function ShipmentAttachments({
   }, [attachments, toast]);
 
   const accept = effective.accept || undefined;
+
+  const handleClipboardPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    const clipboardImage = findClipboardImage(event.clipboardData);
+    if (!clipboardImage) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setOutcomeText("");
+
+    const pastedFile = prepareClipboardFile(clipboardImage);
+    if (effective.maxUploadBytes > 0 && pastedFile.size > effective.maxUploadBytes) {
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setLocalError(`Tệp vượt giới hạn ${effective.maxUploadLabel}. Chưa gửi lên máy chủ.`);
+      return;
+    }
+
+    setFile(pastedFile);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setLocalError("");
+  };
 
   const startUpload = () => {
     setLocalError("");
@@ -240,6 +318,23 @@ export default function ShipmentAttachments({
               )}
             />
           </label>
+          <div
+            tabIndex={0}
+            role="group"
+            aria-label="Dán ảnh JPEG hoặc PNG từ clipboard vào tệp đính kèm"
+            data-testid="attachment-paste-zone"
+            onClick={(event) => event.currentTarget.focus()}
+            onPaste={handleClipboardPaste}
+            className={cx(
+              "sm:col-span-2 min-w-0 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-600 outline-none",
+              "focus:border-[#1e5aa8] focus:bg-white focus:ring-2 focus:ring-[#1e5aa8]/20"
+            )}
+          >
+            <p className="font-bold text-[#0f2a4a]">Dán ảnh vào tệp đính kèm</p>
+            <p className="mt-0.5 break-words">
+              Bấm vào khung này rồi nhấn Ctrl+V/Cmd+V với ảnh JPEG/PNG. Hệ thống chỉ chọn tệp, không tự tải lên.
+            </p>
+          </div>
         </div>
       ) : (
         <p className="text-[13.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5" data-testid="attachment-readonly">
@@ -262,7 +357,11 @@ export default function ShipmentAttachments({
             {pendingUpload ? <LoaderCircle size={17} className="animate-spin" /> : <CloudUpload size={17} />}
             {pendingUpload ? `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…` : `LƯU VÀO ${storageLabel.toUpperCase()}`}
           </button>
-          {file && <span className="text-[13px] text-slate-600 min-w-0 break-words">{file.name}</span>}
+          {file && (
+            <span data-testid="attachment-selected-file" className="text-[13px] text-slate-600 min-w-0 break-words">
+              Đã chọn: {file.name}
+            </span>
+          )}
           {!storageConfigured && (
             <span className="text-[13px] text-amber-800" data-testid="attachment-storage-state">
               {storageLabel} chưa sẵn sàng trên máy chủ — hệ thống sẽ từ chối trung thực.
