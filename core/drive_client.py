@@ -57,6 +57,12 @@ DRIVE_TIMEOUT_SECONDS = 60
 #: secrets keys — see ``core.config.get_setting`` / ``get_raw_setting``).
 ROOT_FOLDER_ENV = "GOOGLE_DRIVE_ROOT_FOLDER_ID"
 SERVICE_ACCOUNT_ENV = "GOOGLE_SERVICE_ACCOUNT_JSON"
+OAUTH_CLIENT_ID_ENV = "GOOGLE_DRIVE_OAUTH_CLIENT_ID"
+OAUTH_CLIENT_SECRET_ENV = "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET"
+OAUTH_REFRESH_TOKEN_ENV = "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN"
+OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
+AUTH_MODE_SERVICE_ACCOUNT = "service_account"
+AUTH_MODE_USER_OAUTH = "user_oauth"
 SERVICE_ACCOUNT_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
     (SERVICE_ACCOUNT_ENV,),
     ("google_drive", "service_account_json"),
@@ -65,6 +71,18 @@ SERVICE_ACCOUNT_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
 ROOT_FOLDER_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
     (ROOT_FOLDER_ENV,),
     ("google_drive", "root_folder_id"),
+)
+OAUTH_CLIENT_ID_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_CLIENT_ID_ENV,),
+    ("google_drive", "oauth_client_id"),
+)
+OAUTH_CLIENT_SECRET_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_CLIENT_SECRET_ENV,),
+    ("google_drive", "oauth_client_secret"),
+)
+OAUTH_REFRESH_TOKEN_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_REFRESH_TOKEN_ENV,),
+    ("google_drive", "oauth_refresh_token"),
 )
 
 _REQUIRED_SERVICE_ACCOUNT_KEYS = ("client_email", "private_key", "token_uri")
@@ -117,19 +135,34 @@ def sanitize_drive_name(value: Any, *, fallback: str = "tep-dinh-kem", max_lengt
 
 @dataclass(frozen=True)
 class DriveSettings:
-    """Deployment settings for the ONE Drive folder (never the credentials)."""
+    """Deployment settings for one Drive root; secret values never leave server-side config."""
 
     root_folder_id: str = ""
     service_account: Mapping[str, Any] | None = None
+    auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT
+    oauth_client_id: str = ""
+    oauth_client_secret: str = ""
+    oauth_refresh_token: str = ""
 
     @property
     def configured(self) -> bool:
-        return bool(self.root_folder_id and self.service_account)
+        if not self.root_folder_id:
+            return False
+        if self.auth_mode == AUTH_MODE_USER_OAUTH:
+            return bool(self.oauth_client_id and self.oauth_client_secret and self.oauth_refresh_token)
+        return bool(self.service_account)
 
     @property
     def missing(self) -> list[str]:
         missing: list[str] = []
-        if not self.service_account:
+        if self.auth_mode == AUTH_MODE_USER_OAUTH:
+            if not self.oauth_client_id:
+                missing.append(OAUTH_CLIENT_ID_ENV)
+            if not self.oauth_client_secret:
+                missing.append(OAUTH_CLIENT_SECRET_ENV)
+            if not self.oauth_refresh_token:
+                missing.append(OAUTH_REFRESH_TOKEN_ENV)
+        elif not self.service_account:
             missing.append(SERVICE_ACCOUNT_ENV)
         if not self.root_folder_id:
             missing.append(ROOT_FOLDER_ENV)
@@ -137,7 +170,7 @@ class DriveSettings:
 
     @property
     def client_email(self) -> str:
-        """The service-account identity granted write on the Shared Drive (not a secret)."""
+        """Service-account identity for Shared Drive mode; blank for user OAuth."""
         return str((self.service_account or {}).get("client_email") or "")
 
     def describe(self) -> dict[str, Any]:
@@ -145,6 +178,7 @@ class DriveSettings:
         return {
             "configured": self.configured,
             "missing": self.missing,
+            "authMode": self.auth_mode,
             "clientEmail": self.client_email,
             "rootFolderConfigured": bool(self.root_folder_id),
         }
@@ -173,11 +207,24 @@ def _parse_service_account(raw: Any) -> Mapping[str, Any] | None:
     return info
 
 
-def load_drive_settings() -> DriveSettings:
-    """Read the ONE folder id + the ONE service account from env/secrets."""
+def load_drive_settings(auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT) -> DriveSettings:
+    """Read one Drive root and only the credential family selected by the backend."""
     root = str(get_setting(ROOT_FOLDER_ENV, *ROOT_FOLDER_SECRET_PATHS) or "").strip()
+    mode = str(auth_mode or AUTH_MODE_SERVICE_ACCOUNT).strip().lower()
+    if mode == AUTH_MODE_USER_OAUTH:
+        return DriveSettings(
+            root_folder_id=root,
+            auth_mode=AUTH_MODE_USER_OAUTH,
+            oauth_client_id=str(get_setting(OAUTH_CLIENT_ID_ENV, *OAUTH_CLIENT_ID_SECRET_PATHS) or "").strip(),
+            oauth_client_secret=str(get_setting(OAUTH_CLIENT_SECRET_ENV, *OAUTH_CLIENT_SECRET_SECRET_PATHS) or "").strip(),
+            oauth_refresh_token=str(get_setting(OAUTH_REFRESH_TOKEN_ENV, *OAUTH_REFRESH_TOKEN_SECRET_PATHS) or "").strip(),
+        )
     raw_account = get_raw_setting(SERVICE_ACCOUNT_ENV, *SERVICE_ACCOUNT_SECRET_PATHS)
-    return DriveSettings(root_folder_id=root, service_account=_parse_service_account(raw_account))
+    return DriveSettings(
+        root_folder_id=root,
+        service_account=_parse_service_account(raw_account),
+        auth_mode=AUTH_MODE_SERVICE_ACCOUNT,
+    )
 
 
 def _escape_query_value(value: str) -> str:
