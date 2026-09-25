@@ -500,7 +500,7 @@ class TestUploadValidation:
 
 
 class TestProviderContract:
-    def test_upload_creates_three_folder_levels_once_and_persists_metadata(self, staging, seq):
+    def test_upload_creates_logistics_customer_period_shipment_hierarchy_and_persists_metadata(self, staging, seq):
         fake = FakeDrive()
         factory = CountingFactory(fake)
         original = _noise_image_bytes(size=(2600, 1800))
@@ -514,13 +514,21 @@ class TestProviderContract:
         assert outcome["gate"] == "UPLOADED"
         assert factory.calls == 1
 
-        # ONE resolution attempt per distinct folder level, each created once.
-        assert fake.creations == [
-            ("ROOT-FOLDER-FAKE", "shipments"),
-            (fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID),
-            (fake._folder_cache[(fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID)], "attachments"),
-        ]
-        assert len(fake.resolutions) == 3
+        # Exact Drive hierarchy comes from authoritative shipment context:
+        # Logistics / Customer / YYYY / MM / Shipment. No redundant attachments level.
+        shipment = vm.read_shipment(SHIPMENT_ID)
+        assert shipment is not None
+        logistics_name, customer_name, year_name, month_name, shipment_name = att.drive_folder_hierarchy(
+            SHIPMENT_ID, shipment
+        )
+        expected = []
+        parent = "ROOT-FOLDER-FAKE"
+        for name in (logistics_name, customer_name, year_name, month_name, shipment_name):
+            expected.append((parent, name))
+            parent = fake._folder_cache[(parent, name)]
+        assert fake.creations == expected
+        assert len(fake.resolutions) == 5
+        assert all(name not in {"shipments", "attachments"} for _parent, name in fake.creations)
 
         # The upload received the POST-PROCESSING bytes, not the original.
         assert len(fake.uploads) == 1
@@ -530,8 +538,15 @@ class TestProviderContract:
         assert len(uploaded["data"]) < len(original)
         assert uploaded["data"] != original
         assert uploaded["parentId"] == fake._folder_cache[
-            (fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID)
-        ] or uploaded["parentId"].startswith("folder-")
+            (fake._folder_cache[
+                (fake._folder_cache[
+                    (fake._folder_cache[
+                        ("ROOT-FOLDER-FAKE", logistics_name)
+                    ], customer_name)
+                ], year_name)
+            ], month_name),
+            shipment_name,
+        ]
 
         # Metadata: new rows use the backend-neutral identity.
         rows = _stored()
@@ -1082,3 +1097,133 @@ class TestUiProjection:
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+# ===========================================================================
+# 11. Owner Drive hierarchy — Logistics / Customer / YYYY / MM / Shipment
+# ===========================================================================
+
+
+class TestOwnerDriveHierarchy:
+    @staticmethod
+    def _shipment(
+        sid: str,
+        *,
+        customer_id: str = "CUST-001",
+        customer: str = "CÔNG TY ABC",
+        created_at: str = "2026-09-15",
+    ) -> dict[str, Any]:
+        return {
+            "id": sid,
+            "shipment_id": sid,
+            "customer_id": customer_id,
+            "customer": customer,
+            "is_deleted": False,
+            "version": 1,
+            "data": {"0.0": {"created_at": created_at}},
+        }
+
+    def test_folder_names_use_authoritative_customer_and_shipment_period(self):
+        shipment = self._shipment("LO-001")
+        assert att.drive_folder_hierarchy("LO-001", shipment) == (
+            "Logistics",
+            "CUST-001 - CÔNG TY ABC",
+            "2026",
+            "09",
+            "LO-001",
+        )
+
+        # Missing customer id keeps the real customer name; no fake id is minted.
+        shipment = self._shipment("LO-002", customer_id="", customer="Khách hàng Việt")
+        assert att.drive_folder_hierarchy("LO-002", shipment)[1] == "Khách hàng Việt"
+
+        # Missing/invalid canonical shipment date never silently becomes today.
+        shipment = self._shipment("LO-003", created_at="")
+        assert att.drive_folder_hierarchy("LO-003", shipment)[2:4] == (
+            att.DRIVE_UNKNOWN_YEAR_FOLDER,
+            att.DRIVE_UNKNOWN_MONTH_FOLDER,
+        )
+        shipment = self._shipment("LO-004", created_at="not-a-date")
+        assert att.drive_folder_hierarchy("LO-004", shipment)[2:4] == (
+            att.DRIVE_UNKNOWN_YEAR_FOLDER,
+            att.DRIVE_UNKNOWN_MONTH_FOLDER,
+        )
+
+    def test_customer_year_month_and_shipment_are_distinct_hierarchy_axes(self):
+        base = self._shipment("LO-A")
+        different_customer = self._shipment("LO-A", customer_id="CUST-002", customer="CÔNG TY XYZ")
+        different_year = self._shipment("LO-A", created_at="2025-09-15")
+        different_month = self._shipment("LO-A", created_at="2026-10-15")
+        different_shipment = self._shipment("LO-B")
+
+        base_path = att.drive_folder_hierarchy("LO-A", base)
+        assert att.drive_folder_hierarchy("LO-A", different_customer)[1] != base_path[1]
+        assert att.drive_folder_hierarchy("LO-A", different_year)[2] != base_path[2]
+        assert att.drive_folder_hierarchy("LO-A", different_month)[3] != base_path[3]
+        assert att.drive_folder_hierarchy("LO-B", different_shipment)[4] != base_path[4]
+
+    def test_unsafe_folder_names_use_existing_sanitizer(self):
+        shipment = self._shipment(
+            "LO/2026\\09",
+            customer_id="KH/01",
+            customer="CÔNG TY\\ABC",
+        )
+        hierarchy = att.drive_folder_hierarchy("LO/2026\\09", shipment)
+        assert hierarchy[0] == "Logistics"
+        assert "/" not in hierarchy[1] and "\\" not in hierarchy[1]
+        assert "/" not in hierarchy[4] and "\\" not in hierarchy[4]
+
+    def test_dispatcher_uses_server_shipment_context_and_reuses_same_shipment_folder(
+        self, staging, seq
+    ):
+        sid = "LO-HIER-001"
+        authoritative = self._shipment(
+            sid,
+            customer_id="CUST-777",
+            customer="CÔNG TY SERVER",
+            created_at="2024-02-20",
+        )
+        db.get_db().shipments.insert_one(authoritative)
+
+        fake = FakeDrive()
+        factory = CountingFactory(fake)
+        first_payload = _upload_payload(
+            "to-khai.pdf", "application/pdf", _pdf_bytes(),
+            shipment_id=sid, request_id="hier-1",
+        )
+        # Browser-supplied customer/date lies must have zero authority.
+        first_payload["customer"] = "CÔNG TY GIẢ"
+        first_payload["customerId"] = "FAKE-999"
+        first_payload["createdAt"] = "2039-12-31"
+
+        second_payload = _upload_payload(
+            "hop-dong.docx", att.MIME_DOCX,
+            _docx_bytes(), shipment_id=sid, request_id="hier-2", category="contract",
+        )
+
+        with patch("core.shipment_attachments.build_drive_client", factory):
+            first = _dispatch("shipment_attachment_upload", first_payload, seq)
+            creations_after_first = list(fake.creations)
+            second = _dispatch("shipment_attachment_upload", second_payload, seq)
+
+        assert first["ok"] is True, first.get("error")
+        assert second["ok"] is True, second.get("error")
+        assert len(fake.uploads) == 2
+        assert fake.creations == creations_after_first, "same shipment must reuse all parent folders"
+
+        expected_names = (
+            "Logistics",
+            "CUST-777 - CÔNG TY SERVER",
+            "2024",
+            "02",
+            sid,
+        )
+        parent = "ROOT-FOLDER-FAKE"
+        expected_creations = []
+        for name in expected_names:
+            expected_creations.append((parent, name))
+            parent = fake._folder_cache[(parent, name)]
+
+        assert fake.creations == expected_creations
+        assert all(row["parentId"] == parent for row in fake.uploads)
+        assert all(name not in {"shipments", "attachments"} for _p, name in fake.creations)
