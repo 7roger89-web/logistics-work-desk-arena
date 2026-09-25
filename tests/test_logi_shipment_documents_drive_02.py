@@ -500,7 +500,7 @@ class TestUploadValidation:
 
 
 class TestProviderContract:
-    def test_upload_creates_three_folder_levels_once_and_persists_metadata(self, staging, seq):
+    def test_upload_creates_logistics_customer_period_shipment_hierarchy_and_persists_metadata(self, staging, seq):
         fake = FakeDrive()
         factory = CountingFactory(fake)
         original = _noise_image_bytes(size=(2600, 1800))
@@ -514,13 +514,21 @@ class TestProviderContract:
         assert outcome["gate"] == "UPLOADED"
         assert factory.calls == 1
 
-        # ONE resolution attempt per distinct folder level, each created once.
-        assert fake.creations == [
-            ("ROOT-FOLDER-FAKE", "shipments"),
-            (fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID),
-            (fake._folder_cache[(fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID)], "attachments"),
-        ]
-        assert len(fake.resolutions) == 3
+        # Exact Drive hierarchy comes from authoritative shipment context:
+        # Logistics / Customer / YYYY / MM / Shipment. No redundant attachments level.
+        shipment = vm.read_shipment(SHIPMENT_ID)
+        assert shipment is not None
+        logistics_name, customer_name, year_name, month_name, shipment_name = att.drive_folder_hierarchy(
+            SHIPMENT_ID, shipment
+        )
+        expected = []
+        parent = "ROOT-FOLDER-FAKE"
+        for name in (logistics_name, customer_name, year_name, month_name, shipment_name):
+            expected.append((parent, name))
+            parent = fake._folder_cache[(parent, name)]
+        assert fake.creations == expected
+        assert len(fake.resolutions) == 5
+        assert all(name not in {"shipments", "attachments"} for _parent, name in fake.creations)
 
         # The upload received the POST-PROCESSING bytes, not the original.
         assert len(fake.uploads) == 1
@@ -530,8 +538,15 @@ class TestProviderContract:
         assert len(uploaded["data"]) < len(original)
         assert uploaded["data"] != original
         assert uploaded["parentId"] == fake._folder_cache[
-            (fake._folder_cache[("ROOT-FOLDER-FAKE", "shipments")], SHIPMENT_ID)
-        ] or uploaded["parentId"].startswith("folder-")
+            (fake._folder_cache[
+                (fake._folder_cache[
+                    (fake._folder_cache[
+                        ("ROOT-FOLDER-FAKE", logistics_name)
+                    ], customer_name)
+                ], year_name)
+            ], month_name),
+            shipment_name,
+        ]
 
         # Metadata: new rows use the backend-neutral identity.
         rows = _stored()
