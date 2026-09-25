@@ -1,0 +1,66 @@
+name: LOGI Gemini OCR temporary acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/gemini_ocr.py"
+      - "views/gemini_ocr.py"
+      - "views/logi_view_model.py"
+      - "component/src/**"
+      - "tests/test_gemini_ocr.py"
+      - ".github/workflows/logi-gemini-ocr-temp.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run focused Gemini OCR contracts
+        run: python -m pytest -q tests/test_gemini_ocr.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: component/package-lock.json
+
+      - name: Install component dependencies
+        working-directory: component
+        run: npm ci
+
+      - name: Typecheck component
+        working-directory: component
+        run: npm run typecheck
+
+      - name: Build component bundle
+        working-directory: component
+        run: npm run build
+
+      - name: Scan browser bundle
+        working-directory: component
+        run: npm run scan
+
+      - name: Commit built dist and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add component/dist/logi-shell.js component/dist/logi-shell.css
+          git rm .github/workflows/logi-gemini-ocr-temp.yml
+          git commit -m "build(ocr): commit verified shell bundle [ocr-dist]"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}

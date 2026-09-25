@@ -1185,6 +1185,44 @@ export interface TranslationWorkspace {
   result: TranslationResult | null;
 }
 
+
+// ----------------------------------------------------------------------------
+// LOGI_GEMINI_OCR_01 — one transient image -> Markdown extraction workspace.
+// Raw image bytes/base64 never appear in the read-side view-model.
+// ----------------------------------------------------------------------------
+export interface OcrCapability {
+  provider: string;
+  model: string;
+  configured: boolean;
+  externalProvider: boolean;
+  privacyNotice: string;
+  configNotice: string | null;
+  maxImageBytes: number;
+  acceptedMimeTypes: string[];
+}
+
+export interface OcrRequest {
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  fingerprint: string;
+  clientRequestId: string;
+}
+
+export interface OcrResult {
+  status: string;
+  text: string | null;
+  error: string | null;
+  provider: string;
+  model: string;
+}
+
+export interface OcrWorkspaceSlice {
+  capability: OcrCapability;
+  request: OcrRequest | null;
+  result: OcrResult | null;
+}
+
 // ----------------------------------------------------------------------------
 // LOGI_PARTNER_CONTEXT_WORKSPACE_01 — bounded read-only partner-context slice,
 // served by views/partner_context.py over the EXISTING authoritative readers:
@@ -1865,6 +1903,8 @@ export interface ViewModel {
   tariff?: TariffLookup;
   /** LOGI_TRANSLATION_WORKSPACE_01 — bounded DeepL translation slice. */
   translation?: TranslationWorkspace;
+  /** LOGI_GEMINI_OCR_01 — transient Gemini image-to-Markdown slice. */
+  ocr?: OcrWorkspaceSlice;
   /** LOGI_PARTNER_CONTEXT_WORKSPACE_01 — read-only partner-context slice. */
   partnerContext?: PartnerContextSlice;
   /** LOGI_RECONCILIATION_DESK_01 — read-only đối soát slice. */
