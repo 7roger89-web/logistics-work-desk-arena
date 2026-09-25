@@ -78,6 +78,9 @@ C1_EVENTS = {
     "cost_rate_save",
     "cost_rate_status_set",
     "cost_catalog_save",
+    # LOGI_FREIGHTOS_MARKET_BENCHMARK_CANARY_01 — read-only public marketplace
+    # estimate. Never persists as SUPPLIER_RATE_SNAPSHOT.
+    "cost_market_benchmark_fetch",
 }
 
 _MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -2021,6 +2024,7 @@ _HANDLERS = {
     "cost_rate_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_save"]).handle_cost_rate_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_rate_status_set": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_status_set"]).handle_cost_rate_status_set(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_catalog_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_catalog_save"]).handle_cost_catalog_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
+    "cost_market_benchmark_fetch": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_market_benchmark_fetch"]).handle_cost_market_benchmark_fetch(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
 }
 
 

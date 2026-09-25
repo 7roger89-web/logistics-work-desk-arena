@@ -128,7 +128,9 @@ export type LogiEventName =
   | "cost_rate_parse"
   | "cost_rate_save"
   | "cost_rate_status_set"
-  | "cost_catalog_save";
+  | "cost_catalog_save"
+  // LOGI_FREIGHTOS_MARKET_BENCHMARK_CANARY_01 — read-only marketplace estimate.
+  | "cost_market_benchmark_fetch";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -183,6 +185,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "cost_rate_save",
   "cost_rate_status_set",
   "cost_catalog_save",
+  "cost_market_benchmark_fetch",
 ]);
 
 type Transport = (event: string, value: unknown) => void;
