@@ -136,3 +136,31 @@ def test_duplicate_projected_identity_fails_closed_before_storage(staging, seq, 
     assert outcome["gate"] == vm.SHIPMENT_IDENTITY_AMBIGUOUS
     assert factory.calls == 0
     assert len(fake.uploads) == 0
+
+
+def test_numeric_and_trimmed_string_collision_is_ambiguous(staging, seq, monkeypatch):
+    monkeypatch.setenv("ATTACHMENT_STORAGE_BACKEND", "drive_shared")
+    database = db.get_db()
+    database.shipments.insert_one({
+        "id": 108313713320,
+        "customer": "Legacy Numeric",
+        "is_deleted": False,
+        "version": 1,
+        "data": {},
+    })
+    database.shipments.insert_one({
+        "id": SID + " ",
+        "customer": "Legacy String",
+        "is_deleted": False,
+        "version": 1,
+        "data": {},
+    })
+    fake = FakeDrive()
+    factory = CountingFactory(fake)
+    with patch("core.shipment_attachments.build_drive_client", factory):
+        outcome = dispatch(seq)
+
+    assert outcome["ok"] is False
+    assert outcome["gate"] == vm.SHIPMENT_IDENTITY_AMBIGUOUS
+    assert factory.calls == 0
+    assert len(fake.uploads) == 0
