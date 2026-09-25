@@ -510,9 +510,9 @@ def upload_attachment(
                 metadata={"shipment_id": sid, "category": resolved_category},
             )
         else:
-            client = _resolve_drive_client(drive)
+            client = _resolve_drive_client(backend, drive)
             if client is None:
-                settings = load_drive_settings()
+                settings = load_drive_settings(_drive_auth_mode(backend))
                 return {
                     "ok": False,
                     "code": CODE_DRIVE_UNCONFIGURED,
@@ -754,9 +754,9 @@ def fetch_attachment_bytes(
                 }
             data = client.download_file(file_id)
         else:
-            client = _resolve_drive_client(drive)
+            client = _resolve_drive_client(backend, drive)
             if client is None:
-                settings = load_drive_settings()
+                settings = load_drive_settings(_drive_auth_mode(backend))
                 return {
                     "ok": False,
                     "code": CODE_DRIVE_UNCONFIGURED,
