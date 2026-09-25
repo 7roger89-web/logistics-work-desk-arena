@@ -62,8 +62,10 @@ SUPPORTED_STORAGE_BACKENDS = frozenset({STORAGE_BACKEND_GRIDFS, STORAGE_BACKEND_
 # ``shipment_attachment_files.files`` and ``shipment_attachment_files.chunks``.
 SHIPMENT_ATTACHMENT_GRIDFS_BUCKET = GRIDFS_BUCKET
 
-DRIVE_SHIPMENTS_FOLDER = "shipments"
-DRIVE_ATTACHMENTS_FOLDER = "attachments"
+DRIVE_LOGISTICS_FOLDER = "Logistics"
+DRIVE_UNKNOWN_CUSTOMER_FOLDER = "Khách hàng chưa xác định"
+DRIVE_UNKNOWN_YEAR_FOLDER = "Chưa rõ năm"
+DRIVE_UNKNOWN_MONTH_FOLDER = "Chưa rõ tháng"
 
 CATEGORIES: tuple[dict[str, str], ...] = (
     {"id": "customs", "label": "Hải quan"},
@@ -347,6 +349,53 @@ def _shipment_folder_name(shipment_id: str) -> str:
     return sanitize_drive_name(shipment_id, fallback="lo-hang")
 
 
+def _shipment_header_date(shipment_context: Mapping[str, Any] | None) -> str:
+    """Return the canonical shipment header date or blank when unavailable."""
+    if not isinstance(shipment_context, Mapping):
+        return ""
+    data = shipment_context.get("data")
+    if not isinstance(data, Mapping):
+        return ""
+    head = data.get("0.0")
+    if not isinstance(head, Mapping):
+        return ""
+    return str(head.get("created_at") or "").strip()
+
+
+def _drive_customer_folder(shipment_context: Mapping[str, Any] | None) -> str:
+    """Stable human-readable customer folder from authoritative shipment data."""
+    if not isinstance(shipment_context, Mapping):
+        return DRIVE_UNKNOWN_CUSTOMER_FOLDER
+    customer_id = str(shipment_context.get("customer_id") or "").strip()
+    customer_name = str(shipment_context.get("customer") or shipment_context.get("client") or "").strip()
+    raw = f"{customer_id} - {customer_name}" if customer_id and customer_name else customer_name or DRIVE_UNKNOWN_CUSTOMER_FOLDER
+    return sanitize_drive_name(raw, fallback=DRIVE_UNKNOWN_CUSTOMER_FOLDER)
+
+
+def _drive_period_folders(shipment_context: Mapping[str, Any] | None) -> tuple[str, str]:
+    """Return YYYY/MM from shipment created_at; never substitute upload date."""
+    raw = _shipment_header_date(shipment_context)
+    if len(raw) >= 10:
+        try:
+            parsed = datetime.strptime(raw[:10], "%Y-%m-%d")
+            return parsed.strftime("%Y"), parsed.strftime("%m")
+        except ValueError:
+            pass
+    return DRIVE_UNKNOWN_YEAR_FOLDER, DRIVE_UNKNOWN_MONTH_FOLDER
+
+
+def drive_folder_hierarchy(shipment_id: str, shipment_context: Mapping[str, Any] | None) -> tuple[str, str, str, str, str]:
+    """Names for Logistics / Customer / YYYY / MM / Shipment."""
+    year, month = _drive_period_folders(shipment_context)
+    return (
+        DRIVE_LOGISTICS_FOLDER,
+        _drive_customer_folder(shipment_context),
+        year,
+        month,
+        _shipment_folder_name(shipment_id),
+    )
+
+
 def storage_label(backend: str | None = None) -> str:
     """Operator-neutral storage wording, with Drive wording only when selected."""
     selected = str(backend or resolve_storage_backend()).strip().lower()
@@ -381,6 +430,7 @@ def upload_attachment(
     data: bytes,
     uploaded_by: str = "",
     declared_size: Any = None,
+    shipment_context: Mapping[str, Any] | None = None,
     drive: Any = None,
     gridfs: Any = None,
     storage_backend: str | None = None,
@@ -463,14 +513,19 @@ def upload_attachment(
                     ),
                 }
             root_id = str(client.settings.root_folder_id or "")
-            shipments_folder = client.ensure_folder(DRIVE_SHIPMENTS_FOLDER, root_id)
-            shipment_folder = client.ensure_folder(_shipment_folder_name(sid), shipments_folder)
-            attachments_folder = client.ensure_folder(DRIVE_ATTACHMENTS_FOLDER, shipment_folder)
+            logistics_name, customer_name, year_name, month_name, shipment_name = drive_folder_hierarchy(
+                sid, shipment_context
+            )
+            logistics_folder = client.ensure_folder(logistics_name, root_id)
+            customer_folder = client.ensure_folder(customer_name, logistics_folder)
+            year_folder = client.ensure_folder(year_name, customer_folder)
+            month_folder = client.ensure_folder(month_name, year_folder)
+            shipment_folder = client.ensure_folder(shipment_name, month_folder)
             uploaded = client.upload_file(
                 name=safe_name,
                 mime=prepared.mime,
                 data=prepared.data,
-                parent_id=attachments_folder,
+                parent_id=shipment_folder,
                 description=f"{sid} · {category_label(resolved_category)}",
             )
             uploaded = {
