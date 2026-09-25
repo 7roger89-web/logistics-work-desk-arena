@@ -90,9 +90,9 @@ SHIPMENT_IDENTITY_NOT_FOUND = "SHIPMENT_NOT_FOUND"
 def _read_shipment_resolution(shipment_id: Any) -> tuple[dict[str, Any] | None, str]:
     """Resolve one shipment using the SAME text identity the UI projects.
 
-    Fast paths preserve existing semantics: exact stored identity first, then
-    the bounded legacy-numeric compatibility introduced for Issue #117.
-    Only when both miss do we inspect active shipment identity fields, compare
+    Exact stored identity remains the fast path. On a miss, one bounded
+    identity-field probe covers both the earlier numeric-BSON compatibility
+    case and other legacy representations while detecting collisions, compare
     them with ``rd.text(id or shipment_id)`` (the UI's projection rule), and
     re-read the single matching document by immutable Mongo ``_id``.
 
@@ -114,24 +114,17 @@ def _read_shipment_resolution(shipment_id: Any) -> tuple[dict[str, Any] | None, 
         key = rd.text(shipment_id)
         return repair_data({key: doc})[key], "EXACT"
 
-    # 2. Preserve the narrow numeric-BSON compatibility path.
-    candidate = legacy_numeric_candidate(shipment_id)
-    if candidate is not None:
-        doc = db.shipments.find_one(
-            {"id": candidate, "is_deleted": {"$ne": True}},
-            {"_id": 0},
-        )
-        if doc:
-            key = rd.text(shipment_id)
-            return repair_data({key: doc})[key], "LEGACY_NUMERIC"
-
-    # 3. The browser always sends rd.text(...), so do not broaden malformed
+    # 2. The browser always sends rd.text(...), so do not broaden malformed
     # caller input here. This keeps whitespace/sign/float-like request strings
     # fail-closed while allowing legacy STORED representations that the UI
     # already normalizes for display.
     if not isinstance(shipment_id, str) or not shipment_id or rd.text(shipment_id) != shipment_id:
         return None, SHIPMENT_IDENTITY_NOT_FOUND
 
+    # One bounded projected-identity probe covers BOTH the earlier numeric-BSON
+    # compatibility case and other legacy storage representations (for example
+    # surrounding whitespace) while still detecting collisions before we pick
+    # a document. Exact string identity already returned above.
     matches: list[Any] = []
     cursor = db.shipments.find(
         {"is_deleted": {"$ne": True}},
@@ -170,10 +163,10 @@ def read_shipment(shipment_id: str) -> dict[str, Any] | None:
 
     Identity semantics:
       1. Exact stored identity wins first.
-      2. Canonical decimal text may resolve equivalent legacy numeric BSON.
-      3. If both miss, a single document whose identity projects to the same
-         UI text may resolve by immutable Mongo ``_id``.
-      4. Ambiguous/malformed identity never guesses.
+      2. On exact miss, a single document whose identity projects to the same
+         UI text may resolve by immutable Mongo ``_id``; this includes the
+         legacy numeric-BSON compatibility case.
+      3. Ambiguous/malformed identity never guesses.
     """
     shipment, _gate = _read_shipment_resolution(shipment_id)
     return shipment
