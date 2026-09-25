@@ -1943,6 +1943,7 @@ def _handle_shipment_attachment_upload(payload: Mapping[str, Any]) -> dict[str, 
         data=data,
         declared_size=declared_size if declared_size is not None else size,
         uploaded_by=_actor(),
+        shipment_context=shipment,
     )
 
     if not outcome.get("ok"):
