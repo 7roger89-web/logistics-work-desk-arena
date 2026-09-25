@@ -176,6 +176,8 @@ export interface CostRateLine {
   status: "AVAILABLE" | "NO_SPACE" | string;
   chargeLabel?: string;
   chargeId?: string;
+  /** Parser-preserved raw service token (e.g. O/F) before catalog display name. */
+  chargeRaw?: string;
   carrier: CostRateCarrier;
   origin: CostRatePlace;
   destination: CostRatePlace;

@@ -30,6 +30,26 @@ if (Array.isArray(CW.success?.quotes) && CW.success.quotes.length > 0) {
 }
 
 const ROW_KEY = "RATE-NGB-HPH:line-1";
+const OF_RAW_KEY = "RATE-NGB-HPH:line-of-raw";
+const PICKUP_KEY = "RATE-NGB-HPH:line-pickup";
+const BAF20_KEY = "RATE-NGB-HPH:line-baf-20";
+const BAF40_KEY = "RATE-NGB-HPH:line-baf-40";
+const THC_KEY = "RATE-NGB-HPH:line-thc";
+
+function containerRow(over) {
+  return {
+    kind: "CHARGE",
+    status: "AVAILABLE",
+    carrier: { id: "C-COSCO", name: "COSCO", state: "CONFIRMED" },
+    origin: { raw: "NINGBO", id: "P-NGB", name: "Ningbo", zoneIds: [], state: "CONFIRMED" },
+    destination: { raw: "HPH", id: "P-HPH", name: "Hải Phòng", zoneIds: [], state: "CONFIRMED" },
+    currency: "USD",
+    equipment: "40HQ",
+    equipmentState: "CONFIRMED",
+    confidence: "CONFIRMED",
+    ...over,
+  };
+}
 
 function fixtureVm() {
   const vm = JSON.parse(JSON.stringify(BASE));
@@ -52,40 +72,55 @@ function fixtureVm() {
         received_at: "2026-09-24T08:00:00Z",
         supplier: "COSCO",
         source_channel: "PASTE",
-        raw_text: "O/F: USD1425/40HQ ETD 21/09/2026 COSCO",
+        raw_text: "O/F: USD1425/40HQ COSCO\\nPICK UP 245$/40’\\nFEEDER BAF $50/20GP $100/40HQ\\nTHC $205/40HQ",
         parser_version: "cost-rate-parser/2",
         rows: [
-          {
+          containerRow({
             id: "line-1",
-            kind: "CHARGE",
-            status: "AVAILABLE",
             chargeLabel: "Ocean Freight",
             chargeId: "S-OF",
-            carrier: { id: "C-COSCO", name: "COSCO", state: "CONFIRMED" },
-            origin: { raw: "NINGBO", id: "P-NGB", name: "Ningbo", zoneIds: [], state: "CONFIRMED" },
-            destination: { raw: "HPH", id: "P-HPH", name: "Hải Phòng", zoneIds: [], state: "CONFIRMED" },
+            chargeRaw: "O/F",
             amount: 1425,
-            currency: "USD",
-            equipment: "40HQ",
-            equipmentState: "CONFIRMED",
             rawLine: "O/F: USD1425/40HQ ETD 21/09/2026 COSCO",
-            confidence: "CONFIRMED",
-          },
-          {
-            id: "line-thc",
-            kind: "CHARGE",
-            status: "AVAILABLE",
-            chargeLabel: "THC",
-            carrier: { id: "", name: "", state: "UNKNOWN" },
-            origin: { raw: "NINGBO", id: "P-NGB", name: "Ningbo", zoneIds: [], state: "CONFIRMED" },
-            destination: { raw: "HPH", id: "P-HPH", name: "Hải Phòng", zoneIds: [], state: "CONFIRMED" },
-            amount: 205,
-            currency: "USD",
+          }),
+          containerRow({
+            id: "line-of-raw",
+            chargeLabel: "O/F",
+            chargeRaw: "O/F",
+            amount: 1300,
+            rawLine: "COSCO USD 1300/40HQ",
+          }),
+          containerRow({
+            id: "line-pickup",
+            chargeLabel: "PICK UP",
+            chargeRaw: "PICK UP",
+            amount: 245,
+            equipment: "40",
+            rawLine: "PICK UP 245$/40’",
+          }),
+          containerRow({
+            id: "line-baf-20",
+            chargeLabel: "FEEDER BAF",
+            chargeRaw: "FEEDER BAF",
+            amount: 50,
+            equipment: "20GP",
+            rawLine: "FEEDER BAF $50/20GP $100/40HQ",
+          }),
+          containerRow({
+            id: "line-baf-40",
+            chargeLabel: "FEEDER BAF",
+            chargeRaw: "FEEDER BAF",
+            amount: 100,
             equipment: "40HQ",
-            equipmentState: "CONFIRMED",
+            rawLine: "FEEDER BAF $50/20GP $100/40HQ",
+          }),
+          containerRow({
+            id: "line-thc",
+            chargeLabel: "THC",
+            chargeRaw: "THC",
+            amount: 205,
             rawLine: "THC $205/40HQ",
-            confidence: "CONFIRMED",
-          },
+          }),
         ],
       },
     ],
@@ -171,18 +206,19 @@ console.log("STEP 1 — Kho giá vốn shows internal row, no market card, no fe
   await tick();
   assert.ok(byTestId("cost-internal-row-" + ROW_KEY), "confirmed ocean row must render as Giá vốn nội bộ");
   assert.ok(text(byTestId("cost-internal-row-" + ROW_KEY)).includes("Giá vốn nội bộ"));
+  assert.ok(byTestId("cost-market-fetch-" + ROW_KEY), "O/F Ocean Freight row must get So với thị trường");
+  assert.ok(byTestId("cost-market-fetch-" + OF_RAW_KEY), "parser-normalized O/F row must stay eligible");
   assert.equal(byTestId("cost-market-benchmark-" + ROW_KEY), null, "no market card before click");
   assert.equal(
     triggers.filter((t) => t.event === "cost_market_benchmark_fetch").length,
     0,
     "page load must never fetch Freightos"
   );
-  assert.equal(
-    byTestId("cost-market-fetch-" + "RATE-NGB-HPH:line-thc"),
-    null,
-    "THC must not get a market-benchmark action"
-  );
-  ok("internal row visible, no auto-fetch, THC excluded");
+  assert.equal(byTestId("cost-market-fetch-" + PICKUP_KEY), null, "PICK UP must not get a market-benchmark action");
+  assert.equal(byTestId("cost-market-fetch-" + BAF20_KEY), null, "FEEDER BAF 20GP must not get a market-benchmark action");
+  assert.equal(byTestId("cost-market-fetch-" + BAF40_KEY), null, "FEEDER BAF 40HQ must not get a market-benchmark action");
+  assert.equal(byTestId("cost-market-fetch-" + THC_KEY), null, "THC must not get a market-benchmark action");
+  ok("O/F eligible; PICK UP / FEEDER BAF / THC excluded; no auto-fetch");
 }
 
 console.log("STEP 2 — So với thị trường dispatches the read-only event");

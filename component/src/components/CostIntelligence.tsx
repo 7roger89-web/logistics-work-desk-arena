@@ -112,13 +112,23 @@ const mapLoadType = (equipment?: string) => {
   return "";
 };
 
+const isOceanFreightIdentity = (row: CostRateLine) => {
+  // Positive Ocean Freight / O/F identity only. Container equipment is never enough.
+  const fields = [row.chargeLabel, row.chargeId, row.chargeRaw];
+  return fields.some((field) => {
+    const token = loose(field);
+    if (!token) return false;
+    if (token === "of" || token === "o f" || token === "s of") return true;
+    if (token === "ocean freight" || token.endsWith(" ocean freight")) return true;
+    if (token === "cuoc bien" || token.endsWith(" cuoc bien")) return true;
+    return /(?:^| )of$/.test(token);
+  });
+};
+
 const isOceanFreightRow = (row: CostRateLine) => {
   if (row.status === "NO_SPACE" || row.kind === "AVAILABILITY") return false;
   if (needsReview(row) || row.amount == null || !row.equipment) return false;
-  const label = `${row.chargeLabel || ""} ${row.chargeId || ""}`.toUpperCase();
-  if (/THC|LOCAL|DOC|REFUND|TELEX|HANDLING|DEMURRAGE/.test(label)) return false;
-  if (/O\/F|OCEAN|CƯỚC BIỂN|CUOC BIEN|\bOF\b/.test(label)) return true;
-  return Boolean(mapLoadType(row.equipment));
+  return isOceanFreightIdentity(row);
 };
 
 function RowEditor({
