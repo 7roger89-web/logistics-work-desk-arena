@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Archive, CheckCircle2, Database, Pencil, Save, Search, TriangleAlert } from "lucide-react";
+import { Archive, CheckCircle2, Database, ExternalLink, Pencil, Save, Search, TriangleAlert } from "lucide-react";
 import { Field, GhostBtn, PrimaryBtn, SectionTitle, inputCls } from "./ui";
 import { useStore } from "../lib/store";
 import { fmtMoney } from "../lib/format";
@@ -7,7 +7,9 @@ import { loose } from "../lib/costHistory";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import type {
   CostCatalogEntry,
+  CostMarketBenchmark,
   CostRateLine,
+  CostRatePlace,
   ParsedCostRate,
 } from "../lib/viewmodel";
 
@@ -78,6 +80,56 @@ const needsReview = (row: CostRateLine) =>
   row.equipmentState === "NEEDS_REVIEW" ||
   row.origin?.state === "NEEDS_REVIEW" ||
   row.destination?.state === "NEEDS_REVIEW";
+
+const fiveLetterUnlocode = (value?: string) => {
+  const raw = (value || "").toUpperCase().replace(/[^A-Z]/g, "");
+  return raw.length === 5 ? raw : "";
+};
+
+const placeUnlocode = (place: CostRatePlace | undefined, catalog: CostCatalogEntry[]) => {
+  if (!place) return "";
+  const hit = catalog.find((entry) => {
+    if (entry.kind !== "PLACE" || entry.active === false) return false;
+    if (place.id && entry.id === place.id) return true;
+    const names = [entry.code, entry.name, entry.unlocode, ...(entry.aliases || [])].filter(Boolean);
+    return names.some(
+      (name) => loose(String(name)) === loose(place.name) || loose(String(name)) === loose(place.raw)
+    );
+  });
+  return (
+    fiveLetterUnlocode(hit?.unlocode) ||
+    fiveLetterUnlocode(hit?.code) ||
+    fiveLetterUnlocode(place.name) ||
+    fiveLetterUnlocode(place.raw)
+  );
+};
+
+const mapLoadType = (equipment?: string) => {
+  const folded = (equipment || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (folded === "20GP" || folded === "20" || folded === "20FT") return "container20";
+  if (folded === "40HQ" || folded === "40HC") return "container40HC";
+  if (folded === "40GP" || folded === "40" || folded === "40FT") return "container40";
+  return "";
+};
+
+const isOceanFreightIdentity = (row: CostRateLine) => {
+  // Positive Ocean Freight / O/F identity only. Container equipment is never enough.
+  const fields = [row.chargeLabel, row.chargeId, row.chargeRaw];
+  return fields.some((field) => {
+    const token = loose(field);
+    if (!token) return false;
+    if (token === "of" || token === "o f" || token === "s of") return true;
+    if (token === "ocean freight" || token.endsWith(" ocean freight")) return true;
+    if (token === "cuoc bien" || token.endsWith(" cuoc bien")) return true;
+    return /(?:^| )of$/.test(token);
+  });
+};
+
+const isOceanFreightRow = (row: CostRateLine) => {
+  if (row.status === "NO_SPACE" || row.kind === "AVAILABILITY") return false;
+  if (needsReview(row) || row.amount == null || !row.equipment) return false;
+  return isOceanFreightIdentity(row);
+};
 
 function RowEditor({
   row,
@@ -470,6 +522,9 @@ export default function CostIntelligencePanel() {
   const [savePending, setSavePending] = useState<string | null>(null);
   const [aliasPending, setAliasPending] = useState<string | null>(null);
   const [statusPending, setStatusPending] = useState<string | null>(null);
+  const [marketPending, setMarketPending] = useState<string | null>(null);
+  const [marketKey, setMarketKey] = useState<string | null>(null);
+  const [marketByKey, setMarketByKey] = useState<Record<string, CostMarketBenchmark>>({});
 
   useEffect(() => {
     if (!parsePending) return;
@@ -542,6 +597,30 @@ export default function CostIntelligencePanel() {
     }
   }, [vm, statusPending, toast]);
 
+  useEffect(() => {
+    if (!marketPending) return;
+    const outcome = (vm?.lastWrites ?? []).find(
+      (x) => x.event === "cost_market_benchmark_fetch" && x.requestId === marketPending
+    );
+    if (!outcome) return;
+    setMarketPending(null);
+    const benchmark = outcome.benchmark as CostMarketBenchmark | undefined;
+    if (!outcome.ok || !benchmark) {
+      toast("Không lấy được tham khảo thị trường", outcome.error || "Backend từ chối.", "amber");
+      return;
+    }
+    if (marketKey) {
+      setMarketByKey((prev) => ({ ...prev, [marketKey]: benchmark }));
+    }
+    if (benchmark.status === "AVAILABLE") {
+      toast("Đã lấy tham khảo thị trường", "Kết quả Freightos tách biệt với giá vốn nội bộ.", "green");
+    } else if (benchmark.status === "NO_COVERAGE") {
+      toast("Chưa có giá thị trường", benchmark.message || "Freightos chưa có báo giá cho tuyến này.", "amber");
+    } else {
+      toast("Không lấy được tham khảo thị trường", benchmark.message || "Kho giá vốn vẫn dùng bình thường.", "amber");
+    }
+  }, [vm, marketPending, marketKey, toast]);
+
   const setRateStatus = (snapshotId: string, status: string) => {
     const id = requestId("RATE-STATUS");
     if (!dispatch("cost_rate_status_set", { id: snapshotId, status, requestId: id })) {
@@ -579,6 +658,34 @@ export default function CostIntelligencePanel() {
       return;
     }
     setAliasPending(id);
+  };
+
+  const fetchMarket = (snapshotId: string, row: CostRateLine) => {
+    const originUnlocode = placeUnlocode(row.origin, costIntelligence.catalog);
+    const destinationUnlocode = placeUnlocode(row.destination, costIntelligence.catalog);
+    const loadType = mapLoadType(row.equipment);
+    if (!originUnlocode || !destinationUnlocode || !loadType) {
+      toast("Chưa đủ dữ liệu tuyến", "Cần UN/LOCODE gốc/đích và loại container đã xác nhận.", "amber");
+      return;
+    }
+    const id = requestId("RATE-MARKET");
+    const key = `${snapshotId}:${row.id}`;
+    const sent = dispatch("cost_market_benchmark_fetch", {
+      snapshotId,
+      rowId: row.id,
+      originUnlocode,
+      destinationUnlocode,
+      equipment: row.equipment,
+      internalAmount: row.amount,
+      internalCurrency: row.currency,
+      requestId: id,
+    });
+    if (!sent) {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+      return;
+    }
+    setMarketKey(key);
+    setMarketPending(id);
   };
 
   const parse = () => {
@@ -761,6 +868,87 @@ export default function CostIntelligencePanel() {
                       ID: {rate.id} · Parser: {rate.parser_version}
                     </p>
                   </div>
+                  {(rate.rows || []).filter((row) => isOceanFreightRow(row) && mapLoadType(row.equipment) && placeUnlocode(row.origin, costIntelligence.catalog) && placeUnlocode(row.destination, costIntelligence.catalog)).map((row) => {
+                    const key = `${rate.id}:${row.id}`;
+                    const market = marketByKey[key];
+                    const originCode = placeUnlocode(row.origin, costIntelligence.catalog);
+                    const destCode = placeUnlocode(row.destination, costIntelligence.catalog);
+                    return (
+                      <div
+                        key={key}
+                        data-testid={"cost-internal-row-" + key}
+                        className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+                      >
+                        <p className="text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500">
+                          Giá vốn nội bộ
+                        </p>
+                        <p className="mt-1 break-words font-bold text-[13.5px] text-[#0f2a4a]">
+                          {row.origin?.name || originCode} → {row.destination?.name || destCode}
+                          {row.equipment ? ` · ${row.equipment}` : ""}
+                          {row.carrier?.name ? ` · ${row.carrier.name}` : ""}
+                          {row.amount != null ? ` · ${fmtMoney(row.amount)} ${row.currency || ""}` : ""}
+                        </p>
+                        <GhostBtn
+                          testId={"cost-market-fetch-" + key}
+                          className="mt-2 min-h-[44px] px-3 text-[13px]"
+                          disabled={!!marketPending}
+                          onClick={() => fetchMarket(rate.id, row)}
+                        >
+                          {marketPending && marketKey === key ? "ĐANG LẤY THỊ TRƯỜNG…" : "So với thị trường"}
+                        </GhostBtn>
+                        {market && (
+                          <div
+                            data-testid={"cost-market-benchmark-" + key}
+                            className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-50 p-3"
+                          >
+                            <p className="break-words font-extrabold text-[14px] text-sky-950">
+                              Tham khảo thị trường · Freightos
+                            </p>
+                            <p className="mt-1 break-words text-[12.5px] text-sky-900">
+                              {market.origin} → {market.destination} · {market.loadType}
+                              {market.mode ? ` · ${market.mode}` : ""}
+                            </p>
+                            {market.status === "AVAILABLE" && (market.minAmount != null || market.maxAmount != null) ? (
+                              <p className="mt-1 break-words font-extrabold text-[15px] text-sky-950">
+                                {market.currency || "USD"} {fmtMoney(market.minAmount)} – {fmtMoney(market.maxAmount)}
+                              </p>
+                            ) : (
+                              <p className="mt-1 break-words text-[13px] font-semibold text-amber-800">
+                                {market.message || "Freightos chưa có báo giá công khai cho tuyến/thiết bị này."}
+                              </p>
+                            )}
+                            {market.transitMin != null && market.transitMax != null && (
+                              <p className="mt-1 break-words text-[12.5px] text-sky-900">
+                                Transit {market.transitMin}–{market.transitMax} {market.transitUnit || "days"}
+                              </p>
+                            )}
+                            <p className="mt-1 break-words text-[12px] text-sky-800">Lấy lúc {market.fetchedAt}</p>
+                            {market.comparison && (
+                              <p className="mt-1 break-words text-[12.5px] text-sky-900">
+                                Nội bộ {fmtMoney(market.comparison.internalAmount)} {market.comparison.internalCurrency}
+                                {market.comparison.difference != null
+                                  ? ` · lệch ${fmtMoney(market.comparison.difference)} ${market.comparison.internalCurrency}`
+                                  : ""}{" "}
+                                ({market.comparison.label})
+                              </p>
+                            )}
+                            <a
+                              data-testid={"cost-market-attribution-" + key}
+                              href={market.providerUrl || "https://ship.freightos.com"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-flex min-h-[44px] items-center gap-1 break-words text-[12.5px] font-bold text-sky-800 underline"
+                            >
+                              <ExternalLink size={13} /> Nguồn: Freightos marketplace
+                            </a>
+                            <p className="mt-2 break-words text-[11.5px] font-semibold text-slate-600">
+                              Không phải giá buy cùng hãng / cùng phụ phí với snapshot nội bộ.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <pre className="whitespace-pre-wrap break-words text-[11.5px] text-slate-500">{rate.raw_text}</pre>
                 </div>
               </details>

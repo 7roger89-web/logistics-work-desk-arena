@@ -122,3 +122,50 @@ def handle_cost_catalog_save(payload: Mapping[str, Any], deps: Mapping[str, Any]
         readback=dict(fresh), persisted={"id": _text(normalized.get("id")), "kind": _text(normalized.get("kind"))},
         audit=deps["_audit"]("cost_catalog", _text(normalized.get("id"))),
     )
+
+
+def handle_cost_market_benchmark_fetch(payload: Mapping[str, Any], deps: Mapping[str, Any]) -> dict[str, Any]:
+    """Read-only Freightos marketplace estimate. Never writes a supplier snapshot."""
+    from core.cost_intelligence import json_safe
+    from core.freightos_marketplace import (
+        compare_internal,
+        fetch_public_estimate,
+        is_unlocode,
+        map_load_type,
+    )
+
+    request_id = _text(payload.get("requestId"))
+    origin = _text(payload.get("originUnlocode") or payload.get("origin")).upper()
+    destination = _text(payload.get("destinationUnlocode") or payload.get("destination")).upper()
+    equipment = _text(payload.get("equipment")).upper()
+    load_type = map_load_type(equipment)
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return deps["_result"](
+            "cost_market_benchmark_fetch", _text(payload.get("snapshotId")), ok, error,
+            requestId=request_id, **extra,
+        )
+
+    if not is_unlocode(origin) or not is_unlocode(destination):
+        return _res(False, "Thiếu UN/LOCODE gốc/đích đã xác nhận.")
+    if not load_type:
+        return _res(False, "Loại container chưa map được sang Freightos.")
+
+    benchmark = fetch_public_estimate(
+        origin=origin,
+        destination=destination,
+        equipment=equipment,
+        load_type=load_type,
+        request_fn=deps.get("request_fn"),
+    )
+    comparison = compare_internal(
+        benchmark,
+        amount=payload.get("internalAmount"),
+        currency=payload.get("internalCurrency"),
+        load_type=load_type,
+    )
+    if comparison:
+        benchmark["comparison"] = comparison
+    # Fail-soft: AVAILABLE / NO_COVERAGE / PROVIDER_ERROR all return ok=True so
+    # a provider outage cannot block Kho giá vốn.
+    return _res(True, benchmark=json_safe(benchmark))

@@ -176,6 +176,8 @@ export interface CostRateLine {
   status: "AVAILABLE" | "NO_SPACE" | string;
   chargeLabel?: string;
   chargeId?: string;
+  /** Parser-preserved raw service token (e.g. O/F) before catalog display name. */
+  chargeRaw?: string;
   carrier: CostRateCarrier;
   origin: CostRatePlace;
   destination: CostRatePlace;
@@ -229,6 +231,35 @@ export interface CostRateSnapshot {
 export interface CostIntelligence {
   catalog: CostCatalogEntry[];
   rates: CostRateSnapshot[];
+}
+
+/** Read-only Freightos marketplace estimate. Never a SUPPLIER_RATE_SNAPSHOT. */
+export interface CostMarketBenchmark {
+  provider: "FREIGHTOS_PUBLIC" | string;
+  providerUrl: string;
+  attribution: string;
+  fetchedAt: string;
+  origin: string;
+  destination: string;
+  equipment: string;
+  loadType: string;
+  currency?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  transitMin?: number;
+  transitMax?: number;
+  transitUnit?: string;
+  numQuotes?: number;
+  mode?: string;
+  status: "AVAILABLE" | "NO_COVERAGE" | "PROVIDER_ERROR" | string;
+  message?: string;
+  comparison?: {
+    internalAmount: number;
+    internalCurrency: string;
+    midpoint?: number;
+    difference?: number;
+    label: string;
+  };
 }
 
 export interface Payment {
