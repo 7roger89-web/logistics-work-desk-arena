@@ -267,19 +267,41 @@ class GoogleDriveClient:
     def _authorized_session(self) -> Any:
         if self._session is not None:
             return self._session
-        if not self._settings.service_account:
-            raise DriveError(f"Chưa cấu hình {SERVICE_ACCOUNT_ENV}.")
         try:
             from google.auth.transport.requests import AuthorizedSession
-            from google.oauth2 import service_account
         except ImportError as exc:  # pragma: no cover - dependency is declared
             raise DriveError("google-auth chưa được cài trên máy chủ.") from exc
-        try:
-            credentials = service_account.Credentials.from_service_account_info(
-                dict(self._settings.service_account), scopes=DRIVE_SCOPES
-            )
-        except (ValueError, KeyError, TypeError) as exc:
-            raise DriveError("Google service account JSON không hợp lệ.") from exc
+
+        if self._settings.auth_mode == AUTH_MODE_USER_OAUTH:
+            if not self._settings.configured:
+                raise DriveError(
+                    "Chưa cấu hình OAuth Google Drive người dùng: "
+                    + ", ".join(self._settings.missing)
+                    + "."
+                )
+            try:
+                from google.oauth2.credentials import Credentials
+                credentials = Credentials(
+                    token=None,
+                    refresh_token=self._settings.oauth_refresh_token,
+                    token_uri=OAUTH_TOKEN_URI,
+                    client_id=self._settings.oauth_client_id,
+                    client_secret=self._settings.oauth_client_secret,
+                    scopes=DRIVE_SCOPES,
+                )
+            except (ValueError, TypeError) as exc:
+                raise DriveError("OAuth Google Drive không hợp lệ.") from exc
+        else:
+            if not self._settings.service_account:
+                raise DriveError(f"Chưa cấu hình {SERVICE_ACCOUNT_ENV}.")
+            try:
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_info(
+                    dict(self._settings.service_account), scopes=DRIVE_SCOPES
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                raise DriveError("Google service account JSON không hợp lệ.") from exc
+
         self._session = AuthorizedSession(credentials)
         return self._session
 
@@ -424,9 +446,14 @@ class GoogleDriveClient:
             return False
 
 
-def build_drive_client(settings: DriveSettings | None = None, *, session: Any = None) -> GoogleDriveClient | None:
-    """Return a client, or ``None`` when the deployment is not configured yet."""
-    resolved = settings if settings is not None else load_drive_settings()
+def build_drive_client(
+    settings: DriveSettings | None = None,
+    *,
+    session: Any = None,
+    auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT,
+) -> GoogleDriveClient | None:
+    """Return a client for the explicitly selected auth mode, or None when unconfigured."""
+    resolved = settings if settings is not None else load_drive_settings(auth_mode)
     if not resolved.configured:
         return None
     return GoogleDriveClient(resolved, session=session)
@@ -436,6 +463,11 @@ __all__ = [
     "DRIVE_FOLDER_MIME",
     "ROOT_FOLDER_ENV",
     "SERVICE_ACCOUNT_ENV",
+    "OAUTH_CLIENT_ID_ENV",
+    "OAUTH_CLIENT_SECRET_ENV",
+    "OAUTH_REFRESH_TOKEN_ENV",
+    "AUTH_MODE_SERVICE_ACCOUNT",
+    "AUTH_MODE_USER_OAUTH",
     "DriveError",
     "DriveSettings",
     "GoogleDriveClient",
