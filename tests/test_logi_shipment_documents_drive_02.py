@@ -558,6 +558,52 @@ class TestProviderContract:
         assert projected["originalSize"] == len(original)
         assert projected["storedSize"] == len(uploaded["data"])
         assert " MB" in projected["sizeLabel"] or " KB" in projected["sizeLabel"]
+
+    def test_upload_legacy_numeric_shipment_id_resolves_and_persists_metadata(self, staging, seq):
+        """LOGI_ATTACHMENT_LEGACY_NUMERIC_SHIPMENT_ID_01 (Issue #117).
+
+        Seeds numeric Mongo ID 108313713320, uploads via string UI ID '108313713320',
+        proving read_shipment resolves the legacy document without SHIPMENT_NOT_FOUND,
+        storage is reached exactly once, and metadata + readback are keyed to '108313713320'.
+        """
+        legacy_numeric_id = 108313713320
+        legacy_string_id = "108313713320"
+        database = db.get_db()
+        database.shipments.insert_one({
+            "id": legacy_numeric_id,
+            "customer": "Legacy Customer",
+            "is_deleted": False,
+            "version": 1,
+            "data": {},
+        })
+
+        fake = FakeDrive()
+        factory = CountingFactory(fake)
+        original = _noise_image_bytes(size=(100, 100))
+        with patch("core.shipment_attachments.build_drive_client", factory):
+            outcome = _dispatch("shipment_attachment_upload",
+                                _upload_payload("anh.jpg", "image/jpeg", original,
+                                                category="customs",
+                                                shipment_id=legacy_string_id),
+                                seq)
+
+        assert outcome["gate"] != "SHIPMENT_NOT_FOUND"
+        assert outcome["ok"] is True, outcome.get("error")
+        assert outcome["gate"] == "UPLOADED"
+        assert factory.calls == 1
+        assert len(fake.uploads) == 1
+
+        rows = _stored(legacy_string_id)
+        assert len(rows) == 1
+        record = next(iter(rows.values()))
+        assert record["shipment_id"] == legacy_string_id
+
+        # Readback exposes attachment on the legacy shipment
+        readback = outcome.get("readback") or {}
+        assert readback.get("id") == legacy_string_id
+        names = [row["name"] for row in readback.get("attachments", [])]
+        assert names == ["anh.jpg"]
+        projected = readback.get("attachments", [])[0]
         assert projected["downloadAvailable"] is False
 
     def test_no_binary_or_base64_is_ever_persisted(self, staging, seq):
