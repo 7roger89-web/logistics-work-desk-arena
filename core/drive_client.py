@@ -7,15 +7,12 @@ Google Drive owns attachment BYTES; Mongo owns bounded METADATA only. This
 module is the ONE bounded Drive adapter for that slice and it deliberately
 stays tiny:
 
-* auth = ONE Google **service account** whose JSON lives only in the
-  deployment's own secrets/env (``GOOGLE_SERVICE_ACCOUNT_JSON``), uploading
-  into ONE Owner-controlled folder (``GOOGLE_DRIVE_ROOT_FOLDER_ID``).
-  SERVICE_ACCOUNT_STORAGE_MODE=SHARED_DRIVE_ONLY: service accounts have no
-  Drive storage quota and cannot own files, so that root folder MUST be a
-  writable folder INSIDE A GOOGLE WORKSPACE SHARED DRIVE (the service
-  account needs write permission on that Shared Drive/folder). A normal My
-  Drive folder shared with the service account is UNSUPPORTED here; without
-  an available Shared Drive, LIVE_DRIVE_VERIFICATION=BLOCKED;
+* auth = one explicitly selected credential mode. ``drive_shared`` keeps the
+  original service-account JSON and writable Workspace Shared Drive contract.
+  ``drive_oauth`` uses an Owner-authorized OAuth refresh token plus client
+  credentials to write to the Owner's My Drive. Both modes use the same
+  ``GOOGLE_DRIVE_ROOT_FOLDER_ID`` boundary, and neither silently falls back
+  to the other;
 * transport = ``google-auth`` (``AuthorizedSession``) over the ``requests``
   dependency the app ALREADY ships, talking to the Drive REST v3 endpoints
   directly — the full ``google-api-python-client`` SDK is NOT installed;
@@ -57,6 +54,12 @@ DRIVE_TIMEOUT_SECONDS = 60
 #: secrets keys — see ``core.config.get_setting`` / ``get_raw_setting``).
 ROOT_FOLDER_ENV = "GOOGLE_DRIVE_ROOT_FOLDER_ID"
 SERVICE_ACCOUNT_ENV = "GOOGLE_SERVICE_ACCOUNT_JSON"
+OAUTH_CLIENT_ID_ENV = "GOOGLE_DRIVE_OAUTH_CLIENT_ID"
+OAUTH_CLIENT_SECRET_ENV = "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET"
+OAUTH_REFRESH_TOKEN_ENV = "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN"
+OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
+AUTH_MODE_SERVICE_ACCOUNT = "service_account"
+AUTH_MODE_USER_OAUTH = "user_oauth"
 SERVICE_ACCOUNT_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
     (SERVICE_ACCOUNT_ENV,),
     ("google_drive", "service_account_json"),
@@ -65,6 +68,18 @@ SERVICE_ACCOUNT_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
 ROOT_FOLDER_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
     (ROOT_FOLDER_ENV,),
     ("google_drive", "root_folder_id"),
+)
+OAUTH_CLIENT_ID_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_CLIENT_ID_ENV,),
+    ("google_drive", "oauth_client_id"),
+)
+OAUTH_CLIENT_SECRET_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_CLIENT_SECRET_ENV,),
+    ("google_drive", "oauth_client_secret"),
+)
+OAUTH_REFRESH_TOKEN_SECRET_PATHS: tuple[tuple[str, ...], ...] = (
+    (OAUTH_REFRESH_TOKEN_ENV,),
+    ("google_drive", "oauth_refresh_token"),
 )
 
 _REQUIRED_SERVICE_ACCOUNT_KEYS = ("client_email", "private_key", "token_uri")
@@ -117,19 +132,34 @@ def sanitize_drive_name(value: Any, *, fallback: str = "tep-dinh-kem", max_lengt
 
 @dataclass(frozen=True)
 class DriveSettings:
-    """Deployment settings for the ONE Drive folder (never the credentials)."""
+    """Deployment settings for one Drive root; secret values never leave server-side config."""
 
     root_folder_id: str = ""
     service_account: Mapping[str, Any] | None = None
+    auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT
+    oauth_client_id: str = ""
+    oauth_client_secret: str = ""
+    oauth_refresh_token: str = ""
 
     @property
     def configured(self) -> bool:
-        return bool(self.root_folder_id and self.service_account)
+        if not self.root_folder_id:
+            return False
+        if self.auth_mode == AUTH_MODE_USER_OAUTH:
+            return bool(self.oauth_client_id and self.oauth_client_secret and self.oauth_refresh_token)
+        return bool(self.service_account)
 
     @property
     def missing(self) -> list[str]:
         missing: list[str] = []
-        if not self.service_account:
+        if self.auth_mode == AUTH_MODE_USER_OAUTH:
+            if not self.oauth_client_id:
+                missing.append(OAUTH_CLIENT_ID_ENV)
+            if not self.oauth_client_secret:
+                missing.append(OAUTH_CLIENT_SECRET_ENV)
+            if not self.oauth_refresh_token:
+                missing.append(OAUTH_REFRESH_TOKEN_ENV)
+        elif not self.service_account:
             missing.append(SERVICE_ACCOUNT_ENV)
         if not self.root_folder_id:
             missing.append(ROOT_FOLDER_ENV)
@@ -137,7 +167,7 @@ class DriveSettings:
 
     @property
     def client_email(self) -> str:
-        """The service-account identity granted write on the Shared Drive (not a secret)."""
+        """Service-account identity for Shared Drive mode; blank for user OAuth."""
         return str((self.service_account or {}).get("client_email") or "")
 
     def describe(self) -> dict[str, Any]:
@@ -145,6 +175,7 @@ class DriveSettings:
         return {
             "configured": self.configured,
             "missing": self.missing,
+            "authMode": self.auth_mode,
             "clientEmail": self.client_email,
             "rootFolderConfigured": bool(self.root_folder_id),
         }
@@ -173,11 +204,24 @@ def _parse_service_account(raw: Any) -> Mapping[str, Any] | None:
     return info
 
 
-def load_drive_settings() -> DriveSettings:
-    """Read the ONE folder id + the ONE service account from env/secrets."""
+def load_drive_settings(auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT) -> DriveSettings:
+    """Read one Drive root and only the credential family selected by the backend."""
     root = str(get_setting(ROOT_FOLDER_ENV, *ROOT_FOLDER_SECRET_PATHS) or "").strip()
+    mode = str(auth_mode or AUTH_MODE_SERVICE_ACCOUNT).strip().lower()
+    if mode == AUTH_MODE_USER_OAUTH:
+        return DriveSettings(
+            root_folder_id=root,
+            auth_mode=AUTH_MODE_USER_OAUTH,
+            oauth_client_id=str(get_setting(OAUTH_CLIENT_ID_ENV, *OAUTH_CLIENT_ID_SECRET_PATHS) or "").strip(),
+            oauth_client_secret=str(get_setting(OAUTH_CLIENT_SECRET_ENV, *OAUTH_CLIENT_SECRET_SECRET_PATHS) or "").strip(),
+            oauth_refresh_token=str(get_setting(OAUTH_REFRESH_TOKEN_ENV, *OAUTH_REFRESH_TOKEN_SECRET_PATHS) or "").strip(),
+        )
     raw_account = get_raw_setting(SERVICE_ACCOUNT_ENV, *SERVICE_ACCOUNT_SECRET_PATHS)
-    return DriveSettings(root_folder_id=root, service_account=_parse_service_account(raw_account))
+    return DriveSettings(
+        root_folder_id=root,
+        service_account=_parse_service_account(raw_account),
+        auth_mode=AUTH_MODE_SERVICE_ACCOUNT,
+    )
 
 
 def _escape_query_value(value: str) -> str:
@@ -201,9 +245,9 @@ def _multipart_body(metadata: Mapping[str, Any], data: bytes, mime: str) -> tupl
 class GoogleDriveClient:
     """Minimal Drive REST client: folders, upload, metadata, download, delete.
 
-    A caller may inject an already-authorized session (used by the focused
-    request-shaping test); production always builds the service-account
-    session lazily on first use, so importing this module without Drive
+    A caller may inject an already-authorized session (used by focused tests).
+    Production builds exactly the credential mode selected by the storage
+    backend lazily on first use, so importing this module without Drive
     configured is harmless.
     """
 
@@ -220,19 +264,41 @@ class GoogleDriveClient:
     def _authorized_session(self) -> Any:
         if self._session is not None:
             return self._session
-        if not self._settings.service_account:
-            raise DriveError(f"Chưa cấu hình {SERVICE_ACCOUNT_ENV}.")
         try:
             from google.auth.transport.requests import AuthorizedSession
-            from google.oauth2 import service_account
         except ImportError as exc:  # pragma: no cover - dependency is declared
             raise DriveError("google-auth chưa được cài trên máy chủ.") from exc
-        try:
-            credentials = service_account.Credentials.from_service_account_info(
-                dict(self._settings.service_account), scopes=DRIVE_SCOPES
-            )
-        except (ValueError, KeyError, TypeError) as exc:
-            raise DriveError("Google service account JSON không hợp lệ.") from exc
+
+        if self._settings.auth_mode == AUTH_MODE_USER_OAUTH:
+            if not self._settings.configured:
+                raise DriveError(
+                    "Chưa cấu hình OAuth Google Drive người dùng: "
+                    + ", ".join(self._settings.missing)
+                    + "."
+                )
+            try:
+                from google.oauth2.credentials import Credentials
+                credentials = Credentials(
+                    token=None,
+                    refresh_token=self._settings.oauth_refresh_token,
+                    token_uri=OAUTH_TOKEN_URI,
+                    client_id=self._settings.oauth_client_id,
+                    client_secret=self._settings.oauth_client_secret,
+                    scopes=DRIVE_SCOPES,
+                )
+            except (ValueError, TypeError) as exc:
+                raise DriveError("OAuth Google Drive không hợp lệ.") from exc
+        else:
+            if not self._settings.service_account:
+                raise DriveError(f"Chưa cấu hình {SERVICE_ACCOUNT_ENV}.")
+            try:
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_info(
+                    dict(self._settings.service_account), scopes=DRIVE_SCOPES
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                raise DriveError("Google service account JSON không hợp lệ.") from exc
+
         self._session = AuthorizedSession(credentials)
         return self._session
 
@@ -377,9 +443,14 @@ class GoogleDriveClient:
             return False
 
 
-def build_drive_client(settings: DriveSettings | None = None, *, session: Any = None) -> GoogleDriveClient | None:
-    """Return a client, or ``None`` when the deployment is not configured yet."""
-    resolved = settings if settings is not None else load_drive_settings()
+def build_drive_client(
+    settings: DriveSettings | None = None,
+    *,
+    session: Any = None,
+    auth_mode: str = AUTH_MODE_SERVICE_ACCOUNT,
+) -> GoogleDriveClient | None:
+    """Return a client for the explicitly selected auth mode, or None when unconfigured."""
+    resolved = settings if settings is not None else load_drive_settings(auth_mode)
     if not resolved.configured:
         return None
     return GoogleDriveClient(resolved, session=session)
@@ -389,6 +460,11 @@ __all__ = [
     "DRIVE_FOLDER_MIME",
     "ROOT_FOLDER_ENV",
     "SERVICE_ACCOUNT_ENV",
+    "OAUTH_CLIENT_ID_ENV",
+    "OAUTH_CLIENT_SECRET_ENV",
+    "OAUTH_REFRESH_TOKEN_ENV",
+    "AUTH_MODE_SERVICE_ACCOUNT",
+    "AUTH_MODE_USER_OAUTH",
     "DriveError",
     "DriveSettings",
     "GoogleDriveClient",
