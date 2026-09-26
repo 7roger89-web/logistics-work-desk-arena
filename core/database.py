@@ -31,7 +31,13 @@ from bson import ObjectId
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
-from core.config import GETFLY_SERVICES_LIST, MONGO_DB_NAME, MONGO_URI, is_streamlit_runtime
+from core.config import (
+    ATTACHMENT_STORAGE_BACKENDS,
+    GETFLY_SERVICES_LIST,
+    MONGO_DB_NAME,
+    MONGO_URI,
+    is_streamlit_runtime,
+)
 from core.logic import apply_financial_snapshot, calculate_from_shipment
 from core.utils import safe_float, to_decimal, utc_now
 from core.validators import validate_shipment
@@ -2215,7 +2221,7 @@ def save_shipment_attachment(document: Mapping[str, Any]) -> bool:
         _set_last_error("Tệp đính kèm thiếu storage_file_id (hoặc identity Drive legacy).")
         return False
     storage_backend = str(payload.get("storage_backend") or "").strip().lower()
-    if storage_backend and storage_backend not in {"gridfs", "drive_shared"}:
+    if storage_backend and storage_backend not in ATTACHMENT_STORAGE_BACKENDS:
         _set_last_error("Tệp đính kèm có storage_backend không được hỗ trợ.")
         return False
     # New rows are backend-neutral. Legacy rows may omit the selector and carry
