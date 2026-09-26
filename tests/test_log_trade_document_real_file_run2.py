@@ -10,15 +10,20 @@ import ast
 import hashlib
 import io
 import json
+import tracemalloc
 import unittest
 import zipfile
+import zlib
 from pathlib import Path
+from unittest import mock
 
 from openpyxl import Workbook
 from pypdf import PdfWriter
 
 from core.document_extraction import DocumentSecurityError
 from core.located_text_reader import (
+    MAX_XLSX_CELLS,
+    MAX_XLSX_INFLATED_BYTES,
     TEXT_NOT_AVAILABLE_NO_OCR,
     XLSX_FORMULA_UNSUPPORTED,
     TextReaderLimits,
@@ -83,6 +88,77 @@ def _mutate_xlsx_inline_text(data: bytes, old: str, new: str) -> bytes:
             out_info.external_attr = info.external_attr
             zout.writestr(out_info, payload)
     return target.getvalue()
+
+
+def _rewrite_xlsx_member(data: bytes, member: str, transform) -> bytes:
+    """Deterministically rewrite one member of a real XLSX zip."""
+
+    source = io.BytesIO(data)
+    target = io.BytesIO()
+    seen = False
+    with zipfile.ZipFile(source, "r") as zin, zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in zin.infolist():
+            payload = zin.read(info.filename)
+            if info.filename == member:
+                seen = True
+                payload = transform(payload.decode("utf-8")).encode("utf-8")
+            out_info = zipfile.ZipInfo(info.filename, info.date_time)
+            out_info.compress_type = zipfile.ZIP_DEFLATED
+            out_info.external_attr = info.external_attr
+            zout.writestr(out_info, payload)
+    if not seen:
+        raise AssertionError(f"member not found: {member}")
+    return target.getvalue()
+
+
+def _patch_declared_uncompressed_size(data: bytes, sizes: dict[str, int]) -> bytes:
+    """Rewrite declared uncompressed sizes in the ZIP *central directory* only.
+
+    The local member data is untouched, so the resulting bytes stay tiny while
+    the container still declares a huge expansion -- exactly the amplification
+    case the pre-parse budget must refuse.
+    """
+
+    patched = bytearray(data)
+    remaining = dict(sizes)
+    index = 0
+    while remaining:
+        index = patched.find(b"PK\x01\x02", index)
+        if index < 0:
+            raise AssertionError(f"central directory entry not found: {sorted(remaining)}")
+        name_length = int.from_bytes(patched[index + 28 : index + 30], "little")
+        name = bytes(patched[index + 46 : index + 46 + name_length]).decode("utf-8")
+        if name in remaining:
+            patched[index + 24 : index + 28] = remaining.pop(name).to_bytes(4, "little")
+        index += 4
+    return bytes(patched)
+
+
+def _pdf_with_flate_stream(inflated_bytes: int) -> bytes:
+    """Build a tiny valid PDF whose single content stream inflates very large."""
+
+    body = b"BT /F1 10 Tf 50 760 Td (SYNTHETIC \x97 NOT A REAL SHIPMENT) Tj ET\n"
+    body += b" " * max(0, inflated_bytes - len(body))
+    compressed = zlib.compress(body, 9)
+    objects = {
+        1: b"<< /Type /Catalog /Pages 2 0 R >>",
+        2: b"<< /Type /Pages /Kids [5 0 R] /Count 1 >>",
+        3: b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        4: b"<< /Length %d /Filter /FlateDecode >>\nstream\n" % len(compressed) + compressed + b"\nendstream",
+        5: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+           b"/Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>",
+    }
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = {}
+    for number in sorted(objects):
+        offsets[number] = len(out)
+        out += b"%d 0 obj\n" % number + objects[number] + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n" % (max(objects) + 1) + b"0000000000 65535 f \n"
+    for number in sorted(objects):
+        out += b"%010d 00000 n \n" % offsets[number]
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (max(objects) + 1, xref)
+    return bytes(out)
 
 
 def _blank_pdf_bytes(page_count: int = 1, *, encrypted: bool = False) -> bytes:
@@ -265,6 +341,118 @@ class Run2AdversarialTests(unittest.TestCase):
         source = CORE_READER_PATH.read_text(encoding="utf-8").lower()
         for forbidden in ("gemini", "aidock", "tesseract", "paddleocr"):
             self.assertNotIn(forbidden, source)
+
+
+class Run2BoundEnforcementTests(unittest.TestCase):
+    """Prove the amplification bounds act *before* the expensive operation."""
+
+    def test_pdf_stream_bound_blocks_expansion_before_the_stream_is_materialised(self) -> None:
+        inflated_bytes = 64 * 1024 * 1024
+        payload = _pdf_with_flate_stream(inflated_bytes)
+        self.assertLess(len(payload), 200_000, "amplification payload must stay tiny")
+
+        tracemalloc.start()
+        try:
+            with self.assertRaises(DocumentSecurityError) as raised:
+                read_document_text(payload, "amplified.pdf")
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+
+        self.assertIn("bounded limit", str(raised.exception))
+        self.assertLess(
+            peak,
+            inflated_bytes // 8,
+            f"the {inflated_bytes // 1024 // 1024} MiB expansion was materialised (peak={peak})",
+        )
+
+    def test_pdf_stream_bound_still_reads_a_stream_inside_the_bound(self) -> None:
+        payload = _pdf_with_flate_stream(1024)
+        document = read_document_text(payload, "small.pdf")
+        self.assertEqual(document.unsupported_state, None)
+        self.assertEqual(document.pages, (1,))
+        self.assertIn("SYNTHETIC", document.text)
+
+    def test_xlsx_declared_expansion_is_refused_before_openpyxl_runs(self) -> None:
+        original = _fixture_bytes(INVOICE_XLSX)
+        amplified = _patch_declared_uncompressed_size(
+            original, {"xl/worksheets/sheet1.xml": 200 * 1024 * 1024}
+        )
+        self.assertLess(len(amplified), 10_000, "amplification payload must stay tiny")
+        self.assertGreater(200 * 1024 * 1024, MAX_XLSX_INFLATED_BYTES)
+
+        with mock.patch("openpyxl.load_workbook", side_effect=AssertionError("openpyxl must not run")) as loader:
+            with self.assertRaises(DocumentSecurityError) as raised:
+                read_document_text(amplified, INVOICE_XLSX)
+        loader.assert_not_called()
+        self.assertIn("bounded limit", str(raised.exception))
+
+        # the same workbook with its real declared sizes still reads
+        self.assertTrue(read_document_text(original, INVOICE_XLSX).fragments)
+
+    def test_xlsx_total_declared_expansion_is_refused(self) -> None:
+        original = _fixture_bytes(INVOICE_XLSX)
+        per_member = MAX_XLSX_INFLATED_BYTES // 2 + 1
+        amplified = _patch_declared_uncompressed_size(
+            original,
+            {"xl/styles.xml": per_member, "xl/worksheets/sheet1.xml": per_member},
+        )
+        self.assertTrue(all(size < MAX_XLSX_INFLATED_BYTES for size in (per_member, per_member)),
+                        "each member alone must stay inside the budget")
+        with self.assertRaises(DocumentSecurityError) as raised:
+            read_document_text(amplified, INVOICE_XLSX)
+        self.assertIn("bounded limit", str(raised.exception))
+
+    def test_xlsx_text_bound_rejects_an_over_long_workbook(self) -> None:
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "long_text"
+        row_count = 4000
+        for row in range(1, row_count + 1):
+            worksheet.cell(row=row, column=1, value="SYNTHETIC — NOT A REAL SHIPMENT " + "x" * 200)
+        output = io.BytesIO()
+        workbook.save(output)
+        payload = output.getvalue()
+
+        text_budget = 1000
+        with self.assertRaises(DocumentSecurityError) as raised:
+            read_document_text(payload, "long_text.xlsx", limits=TextReaderLimits(max_text_chars=text_budget))
+        self.assertIn("xlsx text exceeds", str(raised.exception))
+        # the workbook is far below the cell bound, so the text bound is what
+        # rejected it
+        self.assertLess(row_count, MAX_XLSX_CELLS)
+
+    def test_r2_p2_provenance_follows_the_actual_workbook_not_a_hardcoded_expectation(self) -> None:
+        def relocate(xml: str) -> str:
+            source_row = (
+                '<row r="10"><c r="A10" t="inlineStr"><is><t>Gross weight: 12,500 KGS</t></is></c></row>'
+            )
+            replacement_row = (
+                '<row r="10"><c r="A10" t="inlineStr"><is><t>Net weight: 11,800 KGS</t></is></c></row>'
+            )
+            moved_row = (
+                '<row r="15"><c r="A15" t="inlineStr"><is><t>Gross weight: 12,500 KGS</t></is></c></row>'
+            )
+            self.assertIn(source_row, xml)
+            xml = xml.replace(source_row, replacement_row, 1)
+            return xml.replace("</sheetData>", moved_row + "</sheetData>", 1)
+
+        relocated_bytes = _rewrite_xlsx_member(
+            _fixture_bytes(INVOICE_XLSX), "xl/worksheets/sheet1.xml", relocate
+        )
+        self.assertNotEqual(relocated_bytes, _fixture_bytes(INVOICE_XLSX))
+
+        result = _run({INVOICE_XLSX: relocated_bytes})
+        fact = _facts_by_key(result)["gross_weight"]
+        observation = {
+            item.document_label: item for item in fact.observations
+        }[INVOICE_XLSX]
+
+        # A10 is the frozen expectation used by the golden provenance test; the
+        # parser must report the cell the value is actually in.
+        self.assertEqual(observation.source_provenance["cell_coordinate"], "A15")
+        self.assertEqual(observation.source_provenance["sheet_name"], "commercial_invoice")
+        self.assertEqual(fact.status, FactStatus.SAME)
 
 
 if __name__ == "__main__":  # pragma: no cover

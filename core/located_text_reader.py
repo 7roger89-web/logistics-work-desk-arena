@@ -36,6 +36,12 @@ XLSX_FORMULA_UNSUPPORTED = "XLSX_FORMULA_UNSUPPORTED"
 
 MAX_XLSX_CELLS = 50_000
 MAX_PDF_CONTENT_STREAM_BYTES = 2 * 1024 * 1024
+# OOXML declares the uncompressed size of every member in the ZIP central
+# directory, so an over-large container can be refused *before* any member is
+# decompressed.  The budget is derived from the existing accepted file size:
+# a worksheet may legitimately expand to a few times its compressed size, so
+# four times the largest file this reader accepts is the ceiling.
+MAX_XLSX_INFLATED_BYTES = 4 * MAX_PAYLOAD_BYTES
 
 
 class LocatedTextFileType(str, Enum):
@@ -52,6 +58,7 @@ class TextReaderLimits:
     max_pdf_pages: int = MAX_PAGE_COUNT
     max_pdf_content_stream_bytes: int = MAX_PDF_CONTENT_STREAM_BYTES
     max_xlsx_cells: int = MAX_XLSX_CELLS
+    max_xlsx_inflated_bytes: int = MAX_XLSX_INFLATED_BYTES
 
 
 @dataclass(frozen=True)
@@ -165,10 +172,28 @@ def _cell_value_to_text(value: Any) -> str:
     return str(value)
 
 
-def _contains_vba_project(data: bytes) -> bool:
+def _inspect_zip_container(data: bytes, limits: TextReaderLimits) -> bool:
+    """Inspect the ZIP central directory and return True when a VBA project is
+    present.
+
+    Runs *before* ``openpyxl.load_workbook`` and reads only declared member
+    sizes, so a container whose declared expansion exceeds the bounded budget
+    is refused without decompressing anything.
+    """
+
     try:
         with zipfile.ZipFile(BytesIO(data)) as archive:
-            return any(name.lower().endswith("vbaproject.bin") for name in archive.namelist())
+            inflated = 0
+            vba = False
+            for info in archive.infolist():
+                if info.filename.lower().endswith("vbaproject.bin"):
+                    vba = True
+                if info.file_size > limits.max_xlsx_inflated_bytes:
+                    raise DocumentSecurityError("xlsx declared expansion exceeds the bounded limit")
+                inflated += info.file_size
+                if inflated > limits.max_xlsx_inflated_bytes:
+                    raise DocumentSecurityError("xlsx declared expansion exceeds the bounded limit")
+            return vba
     except zipfile.BadZipFile as exc:
         raise DocumentSecurityError("xlsx container is corrupt or unreadable") from exc
 
@@ -179,7 +204,7 @@ def _read_xlsx_text(data: bytes, filename: str, limits: TextReaderLimits) -> Loc
         raise DocumentSecurityError("macro-enabled XLSM is rejected for this canary")
     if extension != ".xlsx":
         raise DocumentSecurityError("xlsx reader only accepts .xlsx files")
-    if _contains_vba_project(data):
+    if _inspect_zip_container(data, limits):
         raise DocumentSecurityError("workbook macro project content is rejected")
 
     try:
@@ -199,6 +224,7 @@ def _read_xlsx_text(data: bytes, filename: str, limits: TextReaderLimits) -> Loc
     line_locations: dict[int, dict[str, Any]] = {}
     visible_sheets: list[str] = []
     cell_count = 0
+    text_chars = 0
     formula_seen = False
     marker_seen_by_sheet: dict[str, bool] = {}
 
@@ -225,6 +251,9 @@ def _read_xlsx_text(data: bytes, filename: str, limits: TextReaderLimits) -> Loc
                     warnings.append(f"{XLSX_FORMULA_UNSUPPORTED}:{worksheet.title}!{cell.coordinate}")
                 if "SYNTHETIC — NOT A REAL SHIPMENT" in text:
                     marker_seen_by_sheet[worksheet.title] = True
+                text_chars += len(text)
+                if text_chars > limits.max_text_chars:
+                    raise DocumentSecurityError("xlsx text exceeds the bounded size limit")
                 line_number = len(lines) + 1
                 lines.append(text)
                 line_locations[line_number] = {
@@ -282,56 +311,76 @@ def _read_pdf_text(data: bytes, filename: str, limits: TextReaderLimits) -> Loca
         raise DocumentSecurityError("pdf reader only accepts .pdf files")
 
     try:
-        from pypdf import PdfReader
+        from pypdf import PdfReader, apply_configuration
+        from pypdf.errors import LimitReachedError
     except ImportError as exc:  # pragma: no cover - dependency guard
-        raise DocumentSecurityError("pypdf is required for pdf text reading") from exc
+        raise DocumentSecurityError("pypdf>=6.19 is required for pdf text reading") from exc
 
     reader_version = _reader_version("pypdf")
-    try:
-        reader = PdfReader(BytesIO(data), strict=True)
-    except Exception as exc:
-        raise DocumentSecurityError("pdf container is corrupt or unreadable") from exc
+    bound = limits.max_pdf_content_stream_bytes
 
-    if reader.is_encrypted:
-        raise DocumentSecurityError("encrypted pdf is rejected for this canary")
-    page_count = len(reader.pages)
-    if page_count > limits.max_pdf_pages:
-        raise DocumentSecurityError("pdf page count exceeds the bounded limit")
-
-    fragments: list[LocatedTextFragment] = []
-    warnings: list[str] = []
-    lines: list[str] = []
-    line_locations: dict[int, dict[str, Any]] = {}
-    pages: list[int] = []
-
-    for index, page in enumerate(reader.pages, start=1):
-        pages.append(index)
+    # pypdf decodes stream filters lazily; applying this reader's own bound to
+    # pypdf's decompression/output limits makes an over-bound stream fail
+    # *while* it is being decoded rather than after it has already been
+    # materialised in memory.
+    with apply_configuration(
+        maximum_declared_stream_length=bound,
+        zlib_maximum_output_length=bound,
+        lzw_maximum_output_length=bound,
+        run_length_maximum_output_length=bound,
+        array_based_stream_maximum_output_length=bound,
+    ):
         try:
-            stream_size = _pdf_content_stream_size(page)
+            reader = PdfReader(BytesIO(data), strict=True)
+        except LimitReachedError as exc:
+            raise DocumentSecurityError("pdf content stream exceeds the bounded limit") from exc
         except Exception as exc:
-            raise DocumentSecurityError("pdf content stream is unreadable") from exc
-        if stream_size > limits.max_pdf_content_stream_bytes:
-            raise DocumentSecurityError("pdf content stream exceeds the bounded limit")
-        lines.append(f"[PAGE {index}]")
-        try:
-            extracted = page.extract_text() or ""
-        except Exception as exc:
-            raise DocumentSecurityError("pdf text extraction failed") from exc
-        page_lines = [line.strip() for line in extracted.splitlines() if line.strip()]
-        if not page_lines:
-            warnings.append(f"PAGE_TEXT_NOT_AVAILABLE_NO_OCR:{index}")
-            continue
-        for page_line in page_lines:
-            line_number = len(lines) + 1
-            lines.append(page_line)
-            line_locations[line_number] = {
-                "file_type": LocatedTextFileType.PDF.value,
-                "page_number": index,
-                "reader_method": "pypdf.PdfReader.page.extract_text",
-                "reader_version": reader_version,
-                "state": "OK",
-            }
-            fragments.append(LocatedTextFragment(text=page_line, page_number=index))
+            raise DocumentSecurityError("pdf container is corrupt or unreadable") from exc
+
+        if reader.is_encrypted:
+            raise DocumentSecurityError("encrypted pdf is rejected for this canary")
+        page_count = len(reader.pages)
+        if page_count > limits.max_pdf_pages:
+            raise DocumentSecurityError("pdf page count exceeds the bounded limit")
+
+        fragments: list[LocatedTextFragment] = []
+        warnings: list[str] = []
+        lines: list[str] = []
+        line_locations: dict[int, dict[str, Any]] = {}
+        pages: list[int] = []
+
+        for index, page in enumerate(reader.pages, start=1):
+            pages.append(index)
+            try:
+                stream_size = _pdf_content_stream_size(page)
+            except LimitReachedError as exc:
+                raise DocumentSecurityError("pdf content stream exceeds the bounded limit") from exc
+            except Exception as exc:
+                raise DocumentSecurityError("pdf content stream is unreadable") from exc
+            if stream_size > limits.max_pdf_content_stream_bytes:
+                raise DocumentSecurityError("pdf content stream exceeds the bounded limit")
+            lines.append(f"[PAGE {index}]")
+            try:
+                extracted = page.extract_text() or ""
+            except LimitReachedError as exc:
+                raise DocumentSecurityError("pdf content stream exceeds the bounded limit") from exc
+            except Exception as exc:
+                raise DocumentSecurityError("pdf text extraction failed") from exc
+            page_lines = [line.strip() for line in extracted.splitlines() if line.strip()]
+            if not page_lines:
+                warnings.append(f"PAGE_TEXT_NOT_AVAILABLE_NO_OCR:{index}")
+                continue
+            for page_line in page_lines:
+                line_number = len(lines) + 1
+                lines.append(page_line)
+                line_locations[line_number] = {
+                    "file_type": LocatedTextFileType.PDF.value,
+                    "page_number": index,
+                    "reader_method": "pypdf.PdfReader.page.extract_text",
+                    "reader_version": reader_version,
+                    "state": "OK",
+                }
+                fragments.append(LocatedTextFragment(text=page_line, page_number=index))
 
     text = "\n".join(lines)
     if len(text) > limits.max_text_chars:
@@ -385,6 +434,7 @@ __all__ = [
     "LocatedTextFileType",
     "LocatedTextFragment",
     "MAX_PDF_CONTENT_STREAM_BYTES",
+    "MAX_XLSX_INFLATED_BYTES",
     "MAX_XLSX_CELLS",
     "TEXT_NOT_AVAILABLE_NO_OCR",
     "TextReaderLimits",
