@@ -198,15 +198,15 @@ MONGO_DB_NAME = get_setting(
 
 # LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — the bounded attachment selector.
 # GridFS is the deployable default because it uses the MongoDB Atlas/PyMongo
-# infrastructure already owned by the application. ``drive_shared`` remains an
-# explicit, optional legacy path; it never silently becomes a fallback.
+# infrastructure already owned by the application. ``drive_shared`` and
+# ``drive_oauth`` are explicit optional paths; neither silently becomes a fallback.
 ATTACHMENT_STORAGE_BACKEND = get_setting(
     "ATTACHMENT_STORAGE_BACKEND",
     ("attachments", "storage_backend"),
     "ATTACHMENT_STORAGE_BACKEND",
     default="gridfs",
 ).strip().lower() or "gridfs"
-ATTACHMENT_STORAGE_BACKENDS = frozenset({"gridfs", "drive_shared"})
+ATTACHMENT_STORAGE_BACKENDS = frozenset({"gridfs", "drive_shared", "drive_oauth"})
 
 
 def get_attachment_storage_backend() -> str:
