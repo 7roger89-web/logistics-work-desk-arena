@@ -8,6 +8,7 @@ pandas>=2.2,<3
 openpyxl>=3.1,<4
 python-calamine>=0.2,<1
 xlrd>=2.0,<3
+pypdf>=6.19,<7
 plotly>=5.24,<7
 requests>=2.32,<3
 google-genai>=1.0,<2

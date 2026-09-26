@@ -505,13 +505,14 @@ class TradeObservation:
     document_type: DocumentType
     status: ObservationStatus
     raw_value: str | None
-    source_location: tuple[int, int] | None  # (page, global line) only when genuinely known
+    source_location: tuple[int | None, int] | None  # (page_or_None, global line) when genuinely known
     normalized_value: Any
     normalized_key: str | None
     unit: str | None
     reason: str
     extraction_method: str
     normalization: str
+    source_provenance: Mapping[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -522,6 +523,7 @@ class TradeObservation:
             "status": self.status.value,
             "raw_value": self.raw_value,
             "source_location": list(self.source_location) if self.source_location else None,
+            "source_provenance": dict(self.source_provenance) if self.source_provenance else None,
             "normalized_value": _json_safe(self.normalized_value),
             "normalized_key": self.normalized_key,
             "unit": self.unit,
@@ -609,7 +611,7 @@ def _json_safe(value: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _locate(lines: Sequence[tuple[int | None, int, str]], raw_value: str) -> tuple[int, int] | None:
+def _locate(lines: Sequence[tuple[int | None, int, str]], raw_value: str) -> tuple[int | None, int] | None:
     """Real source location only when the exact raw value occurs on exactly
     one line of the document text; otherwise honestly unknown."""
 
@@ -617,6 +619,47 @@ def _locate(lines: Sequence[tuple[int | None, int, str]], raw_value: str) -> tup
     if len(occurrences) == 1:
         return occurrences[0]
     return None
+
+
+def _artifact_source_sha256(artifact: DocumentArtifact) -> str:
+    """Raw real-file SHA-256 when supplied by the Run 2 text layer;
+    otherwise the original Run 1 text-content SHA-256."""
+
+    source_sha256 = artifact.metadata.get("source_sha256") if artifact.metadata else None
+    if isinstance(source_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", source_sha256):
+        return source_sha256
+    return artifact.content_sha256
+
+
+def _artifact_reader_method(artifact: DocumentArtifact, extraction_method: str) -> str:
+    reader_method = artifact.metadata.get("reader_method") if artifact.metadata else None
+    if isinstance(reader_method, str) and reader_method:
+        return f"{reader_method} -> {extraction_method}"
+    return extraction_method
+
+
+def _source_provenance_for(
+    artifact: DocumentArtifact,
+    source_location: tuple[int | None, int] | None,
+) -> Mapping[str, Any] | None:
+    """Return page or sheet/cell provenance from the located-text seam.
+
+    Run 1 artifacts have no metadata and keep the legacy ``source_location``
+    tuple.  Run 2 real-file artifacts carry a line->location map generated
+    while reading the XLSX/PDF bytes.
+    """
+
+    if source_location is None:
+        return None
+    page, line_number = source_location
+    line_locations = artifact.metadata.get("line_locations") if artifact.metadata else None
+    if isinstance(line_locations, Mapping):
+        location = line_locations.get(line_number) or line_locations.get(str(line_number))
+        if isinstance(location, Mapping):
+            return dict(location)
+    if page is not None:
+        return {"file_type": "text", "page_number": page, "line_number": line_number}
+    return {"file_type": "text", "line_number": line_number}
 
 
 def _decide_status(observations: Sequence[TradeObservation]) -> tuple[FactStatus, str]:
@@ -660,8 +703,8 @@ def _observations_for_field(
     base = {
         "field_key": spec.field_key,
         "document_label": artifact.filename,
-        "content_sha256": artifact.content_sha256,
-        "extraction_method": extraction.extraction.method,
+        "content_sha256": _artifact_source_sha256(artifact),
+        "extraction_method": _artifact_reader_method(artifact, extraction.extraction.method),
         "normalization": spec.normalization,
     }
     values = extraction.extraction.fields.get(spec.field_key)
@@ -704,12 +747,14 @@ def _observations_for_field(
             )
             continue
         normalized = spec.normalizer(raw_value)
+        source_location = _locate(lines, raw_value)
         observations.append(
             TradeObservation(
                 document_type=document_type,
                 status=ObservationStatus.FOUND,
                 raw_value=raw_value,
-                source_location=_locate(lines, raw_value),
+                source_location=source_location,
+                source_provenance=_source_provenance_for(artifact, source_location),
                 normalized_value=normalized.value,
                 normalized_key=normalized.key,
                 unit=normalized.unit,
@@ -758,7 +803,7 @@ def run_trade_document_crosscheck(
         summaries.append(
             CrossCheckDocument(
                 document_label=artifact.filename,
-                content_sha256=artifact.content_sha256,
+                content_sha256=_artifact_source_sha256(artifact),
                 document_type=document_type,
                 classification_method=classification_method,
                 extraction_status=extraction.status.value,

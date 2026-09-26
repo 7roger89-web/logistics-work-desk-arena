@@ -279,12 +279,19 @@ class ExtractionResult:
                 "document_type": self.artifact.document_type.value if self.artifact.document_type else None,
                 "source_url": self.artifact.source_url,
                 "page_count": self.artifact.page_count,
-                "content_sha256": self.artifact.content_sha256,
+                "content_sha256": _artifact_content_sha256(self.artifact),
             },
             "extraction": self.extraction.to_dict(),
             "status": self.status.value,
             "review_reasons": list(self.review_reasons),
         }
+
+
+def _artifact_content_sha256(artifact: DocumentArtifact) -> str:
+    source_sha256 = artifact.metadata.get("source_sha256") if artifact.metadata else None
+    if isinstance(source_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", source_sha256):
+        return source_sha256
+    return artifact.content_sha256
 
 
 def _canonical_field(label: str) -> str | None:
@@ -389,8 +396,13 @@ def extract_document(
         "source": artifact.source_url or f"artifact:{artifact.filename}",
         "pages": {key: list(value) for key, value in pages.items()},
         "method": method,
-        "content_sha256": artifact.content_sha256,
+        "content_sha256": _artifact_content_sha256(artifact),
     }
+    if artifact.metadata:
+        for key in ("source_file_type", "reader_method", "reader_version", "unsupported_state"):
+            value = artifact.metadata.get(key)
+            if value:
+                provenance[key] = value
     extraction = StructuredExtraction(
         document_type=document_type,
         fields=fields,
