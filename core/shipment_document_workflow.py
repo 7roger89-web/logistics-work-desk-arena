@@ -460,11 +460,17 @@ def build_document_workflow(
     ))
 
     pxk_flow = pxk_flow_gate(flow)
-    if pxk_flow["gate"] == "PXK_NOT_APPLICABLE":
+    has_pxk = bool(_mapping(pxk.get("document")) or pxk.get("done"))
+    if pxk_flow["gate"] == "PXK_NOT_APPLICABLE" and has_pxk:
+        pxk_state, pxk_reason = (
+            STATE_BLOCKED,
+            "Lô đã có Phiếu xuất kho từ mô hình trước. Giữ nguyên chứng từ lịch sử để kiểm toán; mô hình hiện tại không cho phát hành PXK mới.",
+        )
+    elif pxk_flow["gate"] == "PXK_NOT_APPLICABLE":
         pxk_state, pxk_reason = STATE_NOT_APPLICABLE, pxk_flow["reason"]
     elif not pxk_flow["allowed"]:
         pxk_state, pxk_reason = STATE_BLOCKED, pxk_flow["reason"]
-    elif _mapping(pxk.get("document")) or pxk.get("done"):
+    elif has_pxk:
         pxk_state, pxk_reason = STATE_COMPLETE, "Phiếu xuất kho của lô đã được tạo."
     elif not delivered:
         pxk_state, pxk_reason = STATE_BLOCKED, "Chỉ xét Phiếu xuất kho sau khi đã giao hàng."
