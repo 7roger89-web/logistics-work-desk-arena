@@ -1235,6 +1235,7 @@ def shipment_projection(
     # collection and no duplicate finance/document truth.
     from core.shipment_document_workflow import (  # noqa: PLC0415
         build_document_workflow,
+        match_sub_purchase_contract,
         project_commercial_flow,
     )
 
@@ -1263,6 +1264,13 @@ def shipment_projection(
             )
         )
     )
+    candidate_contracts: dict[str, Any] = {}
+    if linked_contracts is not None:
+        candidate_contracts.update(linked_contracts.get(sid.upper()) or {})
+    if contract_id and isinstance(contracts.get(contract_id), Mapping):
+        candidate_contracts.setdefault(contract_id, contracts[contract_id])
+    sub_purchase_contract = match_sub_purchase_contract(commercial_flow, candidate_contracts)
+
     document_workflow = build_document_workflow(
         flow=commercial_flow,
         quote_linked=quote_linked,
@@ -1270,6 +1278,7 @@ def shipment_projection(
         delivered=bool(delivery.get("is_delivered")),
         pxk=pxk_view,
         finance=finance_view,
+        sub_purchase_contract=sub_purchase_contract,
     )
 
     return {
