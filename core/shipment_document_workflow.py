@@ -296,6 +296,43 @@ def pxk_flow_gate(flow: Mapping[str, Any]) -> dict[str, Any]:
     return {"allowed": True, "gate": "READY", "reason": ""}
 
 
+def gnt_flow_gate(flow: Mapping[str, Any], taxpayer_tax_code: Any) -> dict[str, Any]:
+    """Protect GNT generation with the confirmed legal-importer identity.
+
+    The tax code is the stable comparison key.  Names can contain punctuation
+    and abbreviations, so they remain display evidence and are never used as a
+    fuzzy legal-identity matcher.
+    """
+    mode = _text(flow.get("mode")).upper()
+    confirmed = bool(flow.get("confirmed")) and mode in FLOW_MODES
+    if not confirmed:
+        return {
+            "allowed": False,
+            "gate": "COMMERCIAL_FLOW_REQUIRED",
+            "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Giấy nộp thuế.",
+        }
+
+    importer_tax_code = _text(flow.get("legalImporterTaxCode"))
+    if not importer_tax_code:
+        return {
+            "allowed": False,
+            "gate": "LEGAL_IMPORTER_TAX_CODE_REQUIRED",
+            "reason": "Pháp nhân đứng nhập khẩu chưa có mã số thuế trong hồ sơ master.",
+        }
+
+    actual_tax_code = _text(taxpayer_tax_code)
+    if actual_tax_code and actual_tax_code != importer_tax_code:
+        return {
+            "allowed": False,
+            "gate": "GNT_TAXPAYER_MISMATCH",
+            "reason": (
+                "MST người nộp thuế trên GNT không khớp pháp nhân đứng nhập khẩu "
+                f"đã xác nhận ({actual_tax_code} ≠ {importer_tax_code})."
+            ),
+        }
+    return {"allowed": True, "gate": "READY", "reason": ""}
+
+
 def build_document_workflow(
     *,
     flow: Mapping[str, Any],
@@ -379,7 +416,10 @@ def build_document_workflow(
         target_tab="tai-chinh",
     ))
 
-    if gnt.get("done") or _mapping(gnt.get("document")):
+    gnt_gate = gnt_flow_gate(flow, gnt.get("taxCode"))
+    if not gnt_gate["allowed"]:
+        gnt_state, gnt_reason = STATE_MISSING, gnt_gate["reason"]
+    elif gnt.get("done") or _mapping(gnt.get("document")):
         gnt_state, gnt_reason = STATE_COMPLETE, "Giấy nộp thuế đã được tạo cho lô."
     elif gnt.get("noPayable"):
         gnt_state, gnt_reason = STATE_NOT_APPLICABLE, "Thuế nhập khẩu và VAT nhập khẩu đều đã biết bằng 0."
