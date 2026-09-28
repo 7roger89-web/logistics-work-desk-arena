@@ -1845,7 +1845,7 @@ export default function ShipmentDetail() {
               <div>
                 <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Vòng đời hồ sơ lô hàng</h3>
                 <p className="text-[13px] text-slate-500">
-                  Báo giá → hợp đồng → tiền/thuế → giao hàng → kho → quyết toán. Bước nào không áp dụng sẽ tự biến mất khỏi tiến độ.
+                  Báo giá → hợp đồng → tiền/thuế → giao hàng → kho → quyết toán. Bước không áp dụng vẫn hiện để giải thích, nhưng không tính vào mẫu số tiến độ.
                 </p>
               </div>
               {s.documentWorkflow && (
@@ -1948,6 +1948,13 @@ export default function ShipmentDetail() {
                 <b>Không áp dụng.</b> Khách hàng tự đứng tên nhập khẩu nên workflow không yêu cầu Phiếu xuất kho của Trường Thành cho lô này.
               </p>
             </section>
+          ) : !s.commercialFlow?.confirmed ? (
+            <section className="rounded-2xl bg-amber-50 border-2 border-amber-200 p-4 md:p-5">
+              <h3 className="font-extrabold text-[16.5px] text-amber-900 mb-1">Phiếu xuất kho (PXK) — đang khóa</h3>
+              <p className="text-[13.5px] text-amber-800">
+                Xác nhận <b>Hình thức nhập khẩu</b> ở đầu tab trước. Backend cũng từ chối tạo PXK cho tới khi mô hình được xác nhận.
+              </p>
+            </section>
           ) : (
           <section className="rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Phiếu xuất kho (PXK) — theo từng lô</h3>
@@ -2041,7 +2048,7 @@ export default function ShipmentDetail() {
       {/* sticky mobile primary */}
       <div className="xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2">
         {tab === "nhap" && !s.importInfo.delivered && <button onClick={() => setShowDeliver(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">✅ XÁC NHẬN ĐÃ GIAO</button>}
-        {tab === "chung-tu" && s.commercialFlow?.mode !== "CUSTOMER_SELF" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
+        {tab === "chung-tu" && s.commercialFlow?.confirmed && s.commercialFlow?.mode !== "CUSTOMER_SELF" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
         {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
       </div>
 
@@ -2049,7 +2056,11 @@ export default function ShipmentDetail() {
       {showDeliver && (
         <SheetDialog id="delivery-confirm-sheet" testId="delivery-confirm-sheet" labelledBy="delivery-sheet-title" width={480} onClose={() => setShowDeliver(false)}>
             <h3 id="delivery-sheet-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Xác nhận đã giao {s.id}?</h3>
-            <p className="text-[14.5px] text-slate-600 mt-1.5">Khách <b>{s.customer}</b> đã ký nhận đủ <b>{s.cargo.packs} kiện</b> tại <b>{s.importInfo.deliveryAddr}</b>? Sau xác nhận, lô chuyển sang “Đã giao” và mở được PXK.</p>
+            <p className="text-[14.5px] text-slate-600 mt-1.5">
+              Khách <b>{s.customer}</b> đã ký nhận đủ <b>{s.cargo.packs} kiện</b> tại <b>{s.importInfo.deliveryAddr}</b>?
+              Sau xác nhận, lô chuyển sang “Đã giao”
+              {s.commercialFlow?.mode === "CUSTOMER_SELF" ? "." : "; bước PXK sẽ được xét theo workflow đã xác nhận."}
+            </p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
               <GhostBtn onClick={() => setShowDeliver(false)}>Chưa, để sau</GhostBtn>
               <SuccessBtn onClick={confirmDelivery}>✅ ĐÃ GIAO</SuccessBtn>
