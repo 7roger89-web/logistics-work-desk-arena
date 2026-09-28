@@ -354,6 +354,17 @@ def _make_pxk_ready_shipment(event_seq) -> str:
                  "cost": 108000000, "vat": 8},
     })
     assert line["ok"], line["error"]
+    # PR140 precondition: confirm the entrusted import model through the
+    # existing commercial-flow writer so the PXK applicability gate opens;
+    # the downstream delivery/docgen gates under test stay exactly as before.
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid,
+        "requestId": f"REQ-FLOW-{sid}",
+        "mode": "TT_ENTRUSTED_DIRECT",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
     return sid
 
 
@@ -479,6 +490,21 @@ def test_pxk_operator_identity_generates_persisted_office_file(staging, event_se
 
 def test_pxk_requires_linked_source_contract(staging, event_seq):
     """PXK needs an explicitly linked HDMB/PL source — no invented legal data."""
+    # PR140 precondition: while the import model is unconfirmed the server
+    # refuses PXK outright — challenge that gate first.
+    blocked = _dispatch(event_seq, "pxk_generate", {"shipmentId": "LO-0295"})
+    assert blocked["ok"] is False
+    assert blocked["gate"] == "COMMERCIAL_FLOW_REQUIRED"
+
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": "LO-0295",
+        "requestId": "REQ-FLOW-0295",
+        "mode": "TT_ENTRUSTED_DIRECT",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
+
     out = _dispatch(event_seq, "pxk_generate", {"shipmentId": "LO-0295"})
     assert out["ok"] is False
     assert out["delivered"] is True
