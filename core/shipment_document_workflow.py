@@ -273,6 +273,29 @@ def _step(
     }
 
 
+def pxk_flow_gate(flow: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the commercial-flow gate that applies before PXK docgen.
+
+    This is shared by the read-side workflow and the server write handler so
+    UI applicability and backend authorization cannot drift apart.
+    """
+    mode = _text(flow.get("mode")).upper()
+    confirmed = bool(flow.get("confirmed")) and mode in FLOW_MODES
+    if not confirmed:
+        return {
+            "allowed": False,
+            "gate": "COMMERCIAL_FLOW_REQUIRED",
+            "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Phiếu xuất kho.",
+        }
+    if mode == FLOW_CUSTOMER_SELF:
+        return {
+            "allowed": False,
+            "gate": "PXK_NOT_APPLICABLE",
+            "reason": "Khách hàng tự đứng tên nhập khẩu; Phiếu xuất kho của Trường Thành không áp dụng cho luồng này.",
+        }
+    return {"allowed": True, "gate": "READY", "reason": ""}
+
+
 def build_document_workflow(
     *,
     flow: Mapping[str, Any],
@@ -396,11 +419,11 @@ def build_document_workflow(
         action_label="Mở giao hàng",
     ))
 
-    if mode == FLOW_CUSTOMER_SELF:
-        pxk_state, pxk_reason = (
-            STATE_NOT_APPLICABLE,
-            "Khách hàng tự đứng tên nhập khẩu; Phiếu xuất kho của Trường Thành không áp dụng cho luồng này.",
-        )
+    pxk_flow = pxk_flow_gate(flow)
+    if pxk_flow["gate"] == "PXK_NOT_APPLICABLE":
+        pxk_state, pxk_reason = STATE_NOT_APPLICABLE, pxk_flow["reason"]
+    elif not pxk_flow["allowed"]:
+        pxk_state, pxk_reason = STATE_BLOCKED, pxk_flow["reason"]
     elif _mapping(pxk.get("document")) or pxk.get("done"):
         pxk_state, pxk_reason = STATE_COMPLETE, "Phiếu xuất kho của lô đã được tạo."
     elif not delivered:
