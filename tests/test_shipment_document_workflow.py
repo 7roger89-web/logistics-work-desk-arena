@@ -161,7 +161,7 @@ def test_sub_entrust_requires_purchase_contract_and_can_make_pxk_ready():
     assert purchase_match["status"] == "LINKED"
     assert purchase["state"] == STATE_READY
     assert "01/2026" in purchase["reason"]
-    assert purchase["targetRoute"] == "/hop-dong"
+    assert purchase["targetRoute"] == "/hop-dong/C-PA"
     assert pxk["state"] == STATE_READY
 
 
