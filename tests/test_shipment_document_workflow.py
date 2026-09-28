@@ -112,7 +112,8 @@ def test_project_flow_resolves_sub_agent_as_legal_importer():
             "PA": {
                 "agent_id": "PA",
                 "legal_name": "Công ty Phú Anh",
-                "tax_code": "0101234567",
+                # Agent authority masters spell MST ``legal_code``.
+                "legal_code": "0101234567",
             }
         },
     )
@@ -259,7 +260,10 @@ def test_sub_purchase_contract_match_is_fail_closed_on_multiple_matches():
     assert "2 hợp đồng" in purchase["reason"]
 
 
-def test_project_flow_reads_authority_legal_code_for_direct_company():
+def test_project_flow_reads_authority_company_mst_field_for_direct_company():
+    # Company authority masters carry MST in ``tax_or_legal_code`` (the field
+    # every company form/writer/docgen rule uses in this repo) — NOT
+    # ``legal_code``.  A representative master row must resolve the importer.
     projected = project_commercial_flow(
         _shipment(
             flow={
@@ -272,7 +276,7 @@ def test_project_flow_reads_authority_legal_code_for_direct_company():
             "TTL": {
                 "company_id": "TTL",
                 "legal_name": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
-                "legal_code": "0109988776",
+                "tax_or_legal_code": "0109988776",
             }
         },
     )

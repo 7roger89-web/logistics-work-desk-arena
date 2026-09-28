@@ -237,8 +237,15 @@ def project_commercial_flow(
         or importer.get("name")
         or importer.get("company_name")
     )
+    # Repo truth: each master spells MST differently — the COMPANY authority
+    # master stores it as ``tax_or_legal_code`` (views/contracts.py,
+    # views/docgen.py, views/logi_c1.py, core/docgen/rules.py, staging seed),
+    # the AGENT master as ``legal_code``, customers as ``tax_code``.  Read the
+    # real field of the resolved importer instead of assuming one shared key,
+    # or TT_ENTRUSTED_DIRECT would never resolve an MST from live master data.
     importer_tax_code = _text(
         importer.get("legal_code")
+        or importer.get("tax_or_legal_code")
         or importer.get("tax_code")
         or importer.get("mst")
     )
