@@ -3786,6 +3786,28 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
             gate="NO_PAYABLE_AMOUNT",
         )
 
+    commercial_flow = project_commercial_flow(
+        shipment,
+        customers=customers,
+        companies=load_authority_companies() or {},
+        agents=load_authority_agents() or {},
+    )
+    taxpayer_gate = gnt_flow_gate(
+        commercial_flow,
+        gnt_data.get("taxpayer_tax_code"),
+    )
+    if not taxpayer_gate["allowed"]:
+        return _result(
+            "gnt_generate",
+            sid,
+            False,
+            taxpayer_gate["reason"],
+            gate=taxpayer_gate["gate"],
+            legalImporterId=commercial_flow.get("legalImporterId"),
+            legalImporterName=commercial_flow.get("legalImporterName"),
+            legalImporterTaxCode=commercial_flow.get("legalImporterTaxCode"),
+        )
+
     # Taxpayer MST check: must not be empty or guessed
     if not gnt_data.get("taxpayer_tax_code"):
         if "Mã số thuế (MST)" not in missing:
