@@ -3555,6 +3555,23 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     if shipment is None:
         return _result("pxk_generate", sid, False, f"Không tìm thấy lô {sid}.")
 
+    # LOGI_SHIPMENT_DOCUMENT_WORKFLOW_01 — commercial/import applicability is
+    # a SERVER gate, not merely a hidden button.  The same pure gate drives the
+    # read-side workflow, so direct event calls cannot bypass the Owner-confirmed
+    # business model.
+    from core.shipment_document_workflow import pxk_flow_gate, stored_flow
+
+    commercial_gate = pxk_flow_gate(stored_flow(shipment))
+    if not commercial_gate["allowed"]:
+        return _result(
+            "pxk_generate",
+            sid,
+            False,
+            commercial_gate["reason"],
+            gate=commercial_gate["gate"],
+            delivered=bool((_get_path(shipment, ("data", "2.7")) or {}).get("is_delivered")),
+        )
+
     delivery = _get_path(shipment, ("data", "2.7")) or {}
     delivered = bool(delivery.get("is_delivered"))
     missing_delivery = docgen_rules.delivery_facts_missing(delivery)
