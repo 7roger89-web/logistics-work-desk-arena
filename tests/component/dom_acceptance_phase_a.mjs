@@ -362,7 +362,7 @@ console.log("STEP 8 — Shipment Detail tabs");
     "Xuất khẩu": "Nhà máy & xuất khẩu",
     "Nhập khẩu & Giao hàng": "Tờ khai & thuế nhập khẩu",
     "Tài chính / Công nợ": "Phải thu khách hàng (VND)",
-    "Chứng từ & PXK": "Phiếu xuất kho (PXK) — theo từng lô",
+    "Quy trình & Chứng từ": "Phiếu xuất kho (PXK)",
     "Lịch sử": "Dòng thời gian — LO-0306",
   };
   const tabRoot = window.document.getElementById("workspace-tabs");
