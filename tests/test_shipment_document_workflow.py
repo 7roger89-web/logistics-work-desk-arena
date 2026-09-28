@@ -279,3 +279,18 @@ def test_project_flow_reads_authority_legal_code_for_direct_company():
     assert projected["ready"] is True
     assert projected["legalImporterKind"] == "COMPANY"
     assert projected["legalImporterTaxCode"] == "0109988776"
+
+
+def test_customer_contract_does_not_masquerade_as_agent_company_docgen():
+    workflow = build_document_workflow(
+        flow={"mode": FLOW_CUSTOMER_SELF, "confirmed": True},
+        quote_linked=True,
+        gnt={"ready": False, "missing": ["Mã số thuế"]},
+        delivered=False,
+        pxk={},
+        finance={},
+    )
+    customer_contract = _step(workflow, "customer_contract")
+    assert customer_contract["state"] == STATE_PENDING_DOCUMENT
+    assert customer_contract["targetRoute"] == ""
+    assert "không dùng nhầm docgen" in customer_contract["reason"].lower()
