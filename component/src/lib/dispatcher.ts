@@ -121,6 +121,16 @@ export type LogiEventName =
   // browser. There is deliberately NO delete event.
   | "shipment_attachment_upload"
   | "attachment_download"
+  // LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — ONE bounded READ-ONLY event
+  // for the shipment "Chứng từ / Tệp đính kèm" review surface. The payload
+  // carries ONLY bounded identifiers ({ shipmentId, attachmentIds, requestId }):
+  // never file bytes, never base64, never a storage/GridFS/Drive id, never a raw
+  // SHA, never a credential. The server reads the selected files itself through
+  // the EXISTING core.shipment_attachments.fetch_attachment_bytes after proving
+  // ownership, runs the Run 2 reader + Run 1 cross-check, and keeps ONE
+  // ephemeral session result. It is NOT a Phase-B business mutation: nothing is
+  // written to the shipment, to shipment_attachments or to an audit log.
+  | "shipment_document_review"
   // LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — immutable payment snapshot
   | "contract_intl_snapshot_save"
   | "contract_payment_snapshot_save"
@@ -179,6 +189,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "user_password_reset",
   "shipment_attachment_upload",
   "attachment_download",
+  "shipment_document_review",
   "contract_intl_snapshot_save",
   "contract_payment_snapshot_save",
   "cost_rate_parse",

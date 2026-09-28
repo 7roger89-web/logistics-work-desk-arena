@@ -1,5 +1,116 @@
 # Changelog
 
+## LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01
+
+### Reconciled against current main — My Drive OAuth backend (PR #133)
+
+- Rebased the Run 3 work onto `main` at `185e6ee`, which merged PR #133's
+  **My Drive OAuth** attachment backend. Current main offers three storage
+  backends (`gridfs`, `drive_shared`, `drive_oauth`); Run 3 now proves itself
+  against all of them rather than against the pre-PR133 reader.
+- The one material overlap was `core/shipment_attachments.py`. Main's change
+  added `STORAGE_BACKEND_DRIVE_OAUTH`, `DRIVE_STORAGE_BACKENDS`,
+  `_drive_auth_mode()`, the auth-mode-aware `build_drive_client(...)` /
+  `load_drive_settings(...)` calls and the drive_oauth branches inside
+  `fetch_attachment_bytes(...)`. Run 3's change was confined to
+  `project_attachment()` (`reviewSelectable` / `reviewNote`). The two touch
+  disjoint functions, so **both lanes are preserved verbatim** — no drive_oauth
+  line was reverted and no review field was lost.
+- **The storage reader was NOT forked.** The review still reaches bytes only
+  through `core.shipment_attachments.fetch_attachment_bytes(...)`, which now
+  selects the user-OAuth credential family for `drive_oauth` by itself. There
+  is no `fetch_review_attachment_bytes`, no second Drive or OAuth reader and no
+  second attachment abstraction.
+- Added `TestReconcileDriveOAuth` (9 tests) as the current-main integration
+  proof on test seams only — no real Google credential and no Drive integration
+  framework. The real `_drive_auth_mode` → `load_drive_settings` →
+  `build_drive_client` chain executes; only the HTTP client class and the
+  settings source are stubbed. It explicitly covers all three storage backends (`gridfs`, `drive_shared`,
+  `drive_oauth`) through the one reader, and proves: dashboard RBAC still applies on the
+  OAuth backend; ownership is proven before any byte read; the drive_oauth byte
+  path is reusable by the review (`auth_mode=user_oauth`, 3 reads, full canary
+  19 facts unchanged); zero writes and zero Drive deletes; no OAuth client id,
+  client secret, refresh token, Drive file id or raw SHA-256 reaches the
+  browser; and no provider/OCR fallback is reached from that path.
+- Regression at the reconciled HEAD: Run 3 backend 49 passed; targeted 11-file
+  set 208 passed (includes PR #133's own Drive suite, untouched); Run 3 DOM
+  `PASSED checks=17`; attachments DOM `PASSED checks=13`; TypeScript typecheck
+  clean; Vite build clean; executable-reference scan 0. Full suite 1541 passed
+  / 24 failed against a current-main baseline of 1492 passed / 24 failed — the
+  delta is exactly the 49 new tests and the failure lists are byte-identical.
+
+### Read-only trade-document review on existing shipment attachments (Issue #132)
+
+- Connects the two capabilities already on `main` to the EXISTING shipment
+  **Chứng từ / Tệp đính kèm** surface: the operator selects existing PDF/XLSX
+  attachments and presses **KIỂM TRA CHỨNG TỪ** to get an honest read-only
+  review. No re-upload, no local download+upload loop, no business-field write,
+  no automatic winner, no OCR/provider fallback.
+- Reuses every authoritative seam instead of rebuilding one:
+  `core.shipment_attachments.fetch_attachment_bytes` (server-side byte read
+  with shipment ownership proven first), `core.located_text_reader.
+  read_document_text` (Run 2 located text), `LocatedTextDocument.
+  to_document_artifact`, and `core.trade_document_crosscheck.
+  run_trade_document_crosscheck` (Run 1, 19 canonical facts, unchanged).
+- ONE typed READ-ONLY event, `shipment_document_review`, deliberately NOT in
+  `PHASE_B_EVENTS`. The browser payload carries only
+  `{ shipmentId, attachmentIds, requestId }` — never bytes, base64, storage /
+  GridFS / Drive ids, a raw SHA or a credential. Read RBAC is the existing
+  `can_operate_business("dashboard")` boundary, so a role that may see the lot
+  may inspect its documents without `sales_write`.
+- Server order is enforced so every request-level refusal costs
+  `STORAGE_BYTE_READS=0`: shape → RBAC → fresh shipment existence → 1..6 unique
+  ids → canonical metadata → per-attachment ownership proof → supported
+  extension → per-file + aggregate byte budgets → only then sequential byte
+  reads → Run 2 → Run 1 → bounded projection.
+- Bounds: `MAX_REVIEW_FILES = 6`, `MAX_REVIEW_TOTAL_BYTES = 30 MB`, plus the
+  unchanged Run 2 `TextReaderLimits.max_file_bytes` (10 MB) per file. Documents
+  are read SEQUENTIALLY; Run 2 limits and the attachment upload limit are
+  untouched.
+- Five honest document states — `READABLE`, `NEEDS_OCR_NOT_RUN`,
+  `UNSUPPORTED_FORMAT`, `TOO_LARGE_FOR_REVIEW`, `READ_FAILED`. Unreadable files
+  stay visible with their state, contribute ZERO fabricated trade facts, and a
+  corrupt file never fails the whole request (per-document containment after the
+  security/identity preflight). JPG/JPEG/PNG show
+  *"Cần OCR — bước này chưa chạy OCR"*; DOC/DOCX/XLS show *"Chưa hỗ trợ kiểm
+  tra tự động ở bước này"* — never implying the file is damaged.
+- Partial-review honesty: 1 readable document is reviewed as incomplete, 2
+  compare only the available evidence, 3+ use the existing Run 1 independence
+  rules, and duplicate copies of ONE document type never become independent
+  confirmation. ZERO readable documents returns document states only, with no
+  fabricated cross-check.
+- Vietnamese operator surface: count chips (Lệch / Chưa xác định / Thiếu / Chỉ
+  một nguồn / Khớp), then **CẦN XEM** (CONFLICT → UNKNOWN → MISSING), then
+  **THAM KHẢO** (SINGLE_SOURCE), then **ĐÃ KHỚP** (SAME), with Vietnamese labels
+  for all 19 canonical field keys (canonical keys kept in code). A CONFLICT
+  shows EVERY source side with page OR sheet/cell provenance and states
+  *"Chưa chọn giá trị đúng — cần người kiểm tra."* No score, percentage or
+  quality metric is invented.
+- Session-only result in ONE bounded Streamlit slot
+  (`SHIPMENT_DOCUMENT_REVIEW_KEY`). A new review replaces the previous one;
+  nothing is persisted to shipments, `shipment_attachments`, audit, GridFS,
+  Drive or any review collection. The stored review carries its own
+  `shipmentId`, so a review belonging to another lot can never project into the
+  current one. `requestId` correlation means only the matching outcome settles
+  the pending UI, and the pending button blocks a double submit.
+- Privacy projection: no PDF/XLSX bytes, no base64, no storage/GridFS/Drive id,
+  no raw SHA-256, no full extracted text, and never the whole
+  `LocatedTextDocument` — only bounded per-fact evidence, document states and
+  status counts. The UI always states
+  *"Kết quả chỉ để kiểm tra — chưa ghi vào hồ sơ lô hàng."*
+- Hard read-only acceptance proven by test: `DB_WRITES=0`, `AUDIT_WRITES=0`,
+  `ATTACHMENT_WRITES=0`, `SHIPMENT_WRITES=0`, `NETWORK_PROVIDER_CALLS=0`,
+  `OCR_CALLS=0`; storage byte reads only for selected, ownership-proven files.
+- Synthetic end-to-end canary over the real Run 2 fixtures
+  (`commercial_invoice.xlsx`, `packing_list.xlsx`, `bill_of_lading.pdf`)
+  uploaded as real attachments onto the app's own GridFS store:
+  metadata → server-side byte read → Run 2 → Run 1 → Run 3 projection → React
+  UI, giving `TOTAL FACTS=19` with `SAME=7 CONFLICT=1 MISSING=2 UNKNOWN=1
+  SINGLE_SOURCE=8` and 3/3 classification.
+- Regression preserved: attachment upload, attachment download, GridFS /
+  `drive_shared` ownership checks, Run 1, Run 2, the shipment view-model and the
+  existing document tab. No delete event, no new storage.
+
 ## LOGI_LOGIN_RESPONSIVE_BACKGROUND_FIT_01
 
 ### Login artwork fits portrait / tall viewports (no more cropped background)
