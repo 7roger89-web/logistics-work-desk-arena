@@ -1142,6 +1142,7 @@ def shipment_projection(
     history: list[dict[str, Any]] | None = None,
     ledger: Mapping[str, Any] | None = None,
     agents: Mapping[str, Any] | None = None,
+    companies: Mapping[str, Any] | None = None,
     docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     attachments: Mapping[str, list[dict[str, Any]]] | None = None,
@@ -1167,6 +1168,7 @@ def shipment_projection(
     customers = customers or {}
     contracts = contracts or {}
     quotes = quotes or {}
+    companies = companies or {}
 
     from core.shipment_operations import (
         cargo_summary_for_read,
@@ -1228,6 +1230,48 @@ def shipment_projection(
     route_origin = text(operational.get("origin"))
     route_destination = text(operational.get("destination"))
 
+    # LOGI_SHIPMENT_DOCUMENT_WORKFLOW_01 — one pure conditional worklist over
+    # the facts this projection already has.  No extra DB read, no workflow
+    # collection and no duplicate finance/document truth.
+    from core.shipment_document_workflow import (  # noqa: PLC0415
+        build_document_workflow,
+        project_commercial_flow,
+    )
+
+    gnt_view = _gnt_projection(shipment, customs, customer_doc, sid)
+    finance_view = finance_projection(shipment, quotes, ledger=ledger, agents=agents)
+    pxk_view = pxk_projection(
+        shipment,
+        contracts,
+        docgen_documents=docgen_documents,
+        linked_contracts=linked_contracts,
+    )
+    commercial_flow = project_commercial_flow(
+        shipment,
+        customers=customers,
+        companies=companies,
+        agents=agents,
+    )
+    quote_id = text(shipment.get("quote_id"))
+    quote_linked = bool(
+        quote_id
+        and (
+            isinstance(quotes.get(quote_id), Mapping)
+            or any(
+                isinstance(row, Mapping) and text(row.get("id")) == quote_id
+                for row in quotes.values()
+            )
+        )
+    )
+    document_workflow = build_document_workflow(
+        flow=commercial_flow,
+        quote_linked=quote_linked,
+        gnt=gnt_view,
+        delivered=bool(delivery.get("is_delivered")),
+        pxk=pxk_view,
+        finance=finance_view,
+    )
+
     return {
         "id": sid,
         "customer": customer_name,
@@ -1262,6 +1306,8 @@ def shipment_projection(
         else shipment["updated_at"].strftime("%d/%m/%Y %H:%M"),
         "missingDocs": missing,
         "docs": document_checklist(shipment, execution_profile=execution_profile),
+        "commercialFlow": commercial_flow,
+        "documentWorkflow": document_workflow,
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of the
         # lot: bounded metadata read back from the canonical
         # ``shipment_attachments`` collection. Bytes live in Google Drive; no
@@ -1352,7 +1398,7 @@ def shipment_projection(
             "inspection": text(customs.get("phan_luong")),
             "customsStatus": bool(customs.get("customs_status")),
             "license": "",
-            "gnt": _gnt_projection(shipment, customs, customer_doc, sid),
+            "gnt": gnt_view,
             "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")) or _ddmmyyyy(operational.get("eta")),
             "freeTime": num(arrival.get("free_time")),
             "truckVN": text(delivery_unit.get("type_size")),
@@ -1369,14 +1415,9 @@ def shipment_projection(
             if delivery.get("is_delivered") else "",
         },
         # --- TAB 3 ---
-        "finance": finance_projection(shipment, quotes, ledger=ledger, agents=agents),
+        "finance": finance_view,
         # --- TAB 4 ---
-        "pxk": pxk_projection(
-            shipment,
-            contracts,
-            docgen_documents=docgen_documents,
-            linked_contracts=linked_contracts,
-        ),
+        "pxk": pxk_view,
         # --- TAB 5 ---
         "timeline": list(history or []),
         # Dashboard/readiness evidence (canonical projection, read-only).
