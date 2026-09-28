@@ -410,9 +410,11 @@ def build_document_workflow(
     if mode == FLOW_TT_ENTRUSTED_SUB:
         steps.append(_step(
             "sub_entrust_contract",
-            "Hợp đồng mua bán Trường Thành ↔ đơn vị đứng nhập khẩu hộ",
+            "Hồ sơ mua bán Trường Thành ↔ đơn vị đứng nhập khẩu hộ",
             STATE_PENDING_DOCUMENT,
-            "Bắt buộc cho mô hình ủy thác tiếp; không áp dụng quy tắc ngưỡng 50 triệu của bộ HDNT/PL/HDMB hiện tại.",
+            "Bắt buộc cho mô hình ủy thác tiếp. Repo đã có docgen Agent bán hàng → Trường Thành (HDNT/PL/HDMB); phải dùng đúng bộ rule hiện hữu, không tự bẻ ngưỡng 50 triệu.",
+            target_route="/hop-dong",
+            action_label="Mở hợp đồng mua vào",
         ))
     else:
         steps.append(_step(
