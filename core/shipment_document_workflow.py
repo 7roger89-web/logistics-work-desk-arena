@@ -347,6 +347,44 @@ def gnt_flow_gate(flow: Mapping[str, Any], taxpayer_tax_code: Any) -> dict[str, 
     return {"allowed": True, "gate": "READY", "reason": ""}
 
 
+def match_sub_purchase_contract(
+    flow: Mapping[str, Any],
+    contracts: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Match the linked TT↔sub-agent purchase contract without guessing.
+
+    Exactly one contract whose company_id + agent_id match the confirmed flow
+    is usable.  Zero stays missing; multiple matches stay ambiguous.
+    """
+    mode = _text(flow.get("mode")).upper()
+    if mode != FLOW_TT_ENTRUSTED_SUB or not bool(flow.get("confirmed")):
+        return {"status": "NOT_APPLICABLE", "id": "", "contractNo": "", "matches": []}
+
+    company_id = _text(flow.get("companyId") or flow.get("company_id")).upper()
+    agent_id = _text(flow.get("subAgentId") or flow.get("sub_agent_id")).upper()
+    matches: list[dict[str, str]] = []
+    for row in (contracts or {}).values():
+        if not isinstance(row, Mapping):
+            continue
+        if _text(row.get("company_id")).upper() != company_id:
+            continue
+        if _text(row.get("agent_id")).upper() != agent_id:
+            continue
+        identifier = _text(row.get("id") or row.get("contract_no")).upper()
+        if not identifier:
+            continue
+        matches.append({
+            "id": identifier,
+            "contractNo": _text(row.get("contract_no")) or identifier,
+        })
+
+    if len(matches) == 1:
+        return {"status": "LINKED", **matches[0], "matches": matches}
+    if len(matches) > 1:
+        return {"status": "AMBIGUOUS", "id": "", "contractNo": "", "matches": matches}
+    return {"status": "MISSING", "id": "", "contractNo": "", "matches": []}
+
+
 def build_document_workflow(
     *,
     flow: Mapping[str, Any],
@@ -355,6 +393,7 @@ def build_document_workflow(
     delivered: bool,
     pxk: Mapping[str, Any] | None,
     finance: Mapping[str, Any] | None,
+    sub_purchase_contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the shipment's conditional document/work lifecycle.
 
@@ -408,11 +447,30 @@ def build_document_workflow(
     ))
 
     if mode == FLOW_TT_ENTRUSTED_SUB:
+        purchase = _mapping(sub_purchase_contract)
+        purchase_status = _text(purchase.get("status")).upper()
+        if purchase_status == "LINKED":
+            purchase_state = STATE_READY
+            purchase_reason = (
+                f"Đã liên kết {purchase.get('contractNo') or purchase.get('id')} đúng Trường Thành ↔ "
+                "đơn vị nhập khẩu hộ. Mở workdesk hợp đồng để kiểm tra/sinh chứng từ bằng docgen hiện hữu."
+            )
+        elif purchase_status == "AMBIGUOUS":
+            purchase_state = STATE_BLOCKED
+            purchase_reason = (
+                f"Có {len(purchase.get('matches') or [])} hợp đồng cùng khớp hai bên; cần chọn/liên kết đúng một hợp đồng, hệ thống không tự đoán."
+            )
+        else:
+            purchase_state = STATE_PENDING_DOCUMENT
+            purchase_reason = (
+                "Chưa có hợp đồng liên kết khớp đúng Trường Thành ↔ đơn vị nhập khẩu hộ. "
+                "Repo đã có docgen Agent bán hàng → Trường Thành (HDNT/PL/HDMB); phải dùng đúng bộ rule hiện hữu."
+            )
         steps.append(_step(
             "sub_entrust_contract",
             "Hồ sơ mua bán Trường Thành ↔ đơn vị đứng nhập khẩu hộ",
-            STATE_PENDING_DOCUMENT,
-            "Bắt buộc cho mô hình ủy thác tiếp. Repo đã có docgen Agent bán hàng → Trường Thành (HDNT/PL/HDMB); phải dùng đúng bộ rule hiện hữu, không tự bẻ ngưỡng 50 triệu.",
+            purchase_state,
+            purchase_reason,
             target_route="/hop-dong",
             action_label="Mở hợp đồng mua vào",
         ))
