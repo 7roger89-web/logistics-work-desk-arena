@@ -447,7 +447,10 @@ def build_document_workflow(
         "customer_contract",
         customer_contract_label,
         STATE_PENDING_DOCUMENT,
-        "Đã xác định đúng loại hợp đồng; trình tạo/phát hành chứng từ sẽ được nối vào docgen.",
+        (
+            "Đã xác định đúng loại hợp đồng theo mô hình lô. Repo hiện chưa có template/generator "
+            "riêng cho hợp đồng với khách hàng; không dùng nhầm docgen Công ty ↔ Đại lý (HDNT/PL/HDMB)."
+        ),
     ))
 
     if mode == FLOW_TT_ENTRUSTED_SUB:
