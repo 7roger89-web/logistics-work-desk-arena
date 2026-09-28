@@ -164,6 +164,20 @@ def validate_flow_write(
             "sub_agent_id": "",
         }, []
 
+    companies = companies or {}
+    if not company_id:
+        candidates = [
+            row for row in companies.values()
+            if isinstance(row, Mapping)
+            and _text(row.get("company_id") or row.get("id"))
+        ]
+        if len(candidates) == 1:
+            company_id = _text(candidates[0].get("company_id") or candidates[0].get("id")).upper()
+
+    company = _entity_by_id(companies, company_id, "company_id", "id")
+    if company is None:
+        errors.append("Chưa chọn pháp nhân Trường Thành ký với đơn vị nhập khẩu hộ.")
+
     agent = _entity_by_id(agents, sub_agent_id, "agent_id", "id")
     if agent is None:
         errors.append("Chọn đơn vị đứng nhập khẩu hộ (ví dụ Phú Anh) từ danh mục đối tác.")
@@ -172,7 +186,7 @@ def validate_flow_write(
     return {
         "mode": mode,
         "confirmed": True,
-        "company_id": "",
+        "company_id": company_id,
         "sub_agent_id": sub_agent_id,
     }, []
 
