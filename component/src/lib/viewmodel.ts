@@ -745,6 +745,59 @@ export interface ExecutionProfile {
   summaryLines: string[];
 }
 
+export type CommercialFlowMode =
+  | ""
+  | "CUSTOMER_SELF"
+  | "TT_ENTRUSTED_DIRECT"
+  | "TT_ENTRUSTED_SUB";
+
+export interface CommercialFlow {
+  mode: CommercialFlowMode | string;
+  modeLabel: string;
+  confirmed: boolean;
+  companyId: string;
+  subAgentId: string;
+  subAgentName: string;
+  legalImporterKind: string;
+  legalImporterId: string;
+  legalImporterName: string;
+  legalImporterTaxCode: string;
+  missing: string[];
+  ready: boolean;
+}
+
+export type DocumentWorkflowState =
+  | "COMPLETE"
+  | "READY"
+  | "MISSING_INFO"
+  | "PENDING_DOCUMENT"
+  | "CONDITIONAL"
+  | "NOT_APPLICABLE"
+  | "BLOCKED"
+  | string;
+
+export interface DocumentWorkflowStep {
+  id: string;
+  label: string;
+  state: DocumentWorkflowState;
+  stateLabel: string;
+  reason: string;
+  targetTab: string;
+  targetRoute: string;
+  actionLabel: string;
+}
+
+export interface DocumentWorkflow {
+  steps: DocumentWorkflowStep[];
+  summary: {
+    complete: number;
+    total: number;
+    ready: number;
+    attention: number;
+    notApplicable: number;
+  };
+}
+
 export interface Shipment {
   id: string;
   customer: string;
@@ -765,6 +818,10 @@ export interface Shipment {
   updated: string;
   missingDocs: string[];
   docs: ShipmentDoc[];
+  /** Operator-confirmed import/entrustment model; absent only on older payloads. */
+  commercialFlow?: CommercialFlow;
+  /** Conditional shipment lifecycle derived from existing document/finance facts. */
+  documentWorkflow?: DocumentWorkflow;
   /** Real attachments of the lot (metadata only; bytes live server-side). */
   attachments: ShipmentAttachment[];
   version?: number;
