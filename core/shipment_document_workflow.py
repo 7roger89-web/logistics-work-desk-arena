@@ -475,7 +475,11 @@ def build_document_workflow(
             "Hồ sơ mua bán Trường Thành ↔ đơn vị đứng nhập khẩu hộ",
             purchase_state,
             purchase_reason,
-            target_route="/hop-dong",
+            target_route=(
+                f"/hop-dong/{purchase.get('id')}"
+                if purchase_status == "LINKED" and purchase.get("id")
+                else "/hop-dong"
+            ),
             action_label="Mở hợp đồng mua vào",
         ))
     else:
