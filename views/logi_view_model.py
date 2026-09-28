@@ -773,6 +773,7 @@ def build_view_model() -> dict:
             # below share: one ledger read, one docgen read, one agents read.
             ledger=sources["ledger"],
             agents=sources["agents"],
+            companies=sources["companies"],
             docgen_documents=sources["docgenDocuments"],
             linked_contracts=sources["linkedContracts"],
             attachments=sources["attachments"],
@@ -1027,6 +1028,10 @@ PHASE_B_EVENTS = {
     # EXISTING `data.0.0.mode` / `data.0.0.incoterm` paths plus ONE new block,
     # through the existing atomic writer, with RBAC + audit + fresh readback.
     "shipment_profile_save",
+    # LOGI_SHIPMENT_DOCUMENT_WORKFLOW_01 — ONE bounded write for the
+    # operator-confirmed commercial/import model. Same atomic shipment writer,
+    # same shipment_edit RBAC, same audit/readback; no workflow collection.
+    "shipment_commercial_flow_save",
     "delivery_confirm",
     "finance_actual_save",
     "payment_record",
@@ -1832,7 +1837,13 @@ def _attachment_download_state() -> dict[str, Any]:
 
 def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict[str, Any]:
     """Project one canonical shipment for the post-write readback payload."""
-    from core.database import _load_contracts_impl, _load_customers_impl, load_quotes
+    from core.database import (
+        _load_contracts_impl,
+        _load_customers_impl,
+        load_authority_agents,
+        load_authority_companies,
+        load_quotes,
+    )
     from core.shipment_dashboard import build_shipment_dashboard_view
 
     sid = rd.text(shipment.get("id"))
@@ -1852,6 +1863,8 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         "customers": lambda: _load_customers_impl(db=db),
         "contracts": lambda: _load_contracts_impl(db=db),
         "quotes": lambda: load_quotes(db=db),
+        "agents": lambda: load_authority_agents(db=db),
+        "companies": lambda: load_authority_companies(db=db),
         "history": lambda: rd.timeline_projection(sid, db=db),
         # A fresh, shipment-scoped attachment read: the readback proves the
         # metadata write landed instead of echoing what the browser sent.
@@ -1864,6 +1877,8 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         quotes=loaded["quotes"] or {},
         dashboard=view,
         history=loaded["history"],
+        agents=loaded["agents"] or {},
+        companies=loaded["companies"] or {},
         attachments={sid: loaded["attachments"]} if sid else None,
         attachment_download=_attachment_download_state(),
     )
@@ -2669,6 +2684,102 @@ def factual_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
 
     return json.loads(json.dumps(left, sort_keys=True, default=str)) == \
         json.loads(json.dumps(right, sort_keys=True, default=str))
+
+
+def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist the shipment's operator-confirmed import/entrustment model.
+
+    The write owns exactly one block: ``data.0.0.commercial_flow``.
+    It never generates a contract, GNT, PXK or payment request by itself; those
+    remain separate capabilities whose readiness is re-derived by
+    core.shipment_document_workflow on the next fresh read.
+    """
+
+    from core.auth import can_operate_business
+    from core.database import (
+        get_last_db_error,
+        load_authority_agents,
+        load_authority_companies,
+        save_shipment_atomic,
+    )
+    from core.logic import apply_financial_snapshot
+    from core.shipment_document_workflow import validate_flow_write
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result(
+            "shipment_commercial_flow_save",
+            sid,
+            ok,
+            error,
+            requestId=request_id,
+            **extra,
+        )
+
+    if not sid or not request_id:
+        return _res(False, "Thiếu shipmentId hoặc requestId.")
+    if not can_operate_business("shipment_edit"):
+        return _res(False, "RBAC: không có quyền shipment_edit.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _res(False, f"Không tìm thấy lô {sid}.")
+
+    companies = load_authority_companies() or {}
+    agents = load_authority_agents() or {}
+    document, errors = validate_flow_write(
+        shipment=shipment,
+        mode=payload.get("mode"),
+        companies=companies,
+        agents=agents,
+        company_id=payload.get("companyId"),
+        sub_agent_id=payload.get("subAgentId"),
+    )
+    rejected = [
+        key for key in payload
+        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId"}
+    ]
+    if errors or document is None:
+        return _res(
+            False,
+            errors[0] if errors else "Hình thức nhập khẩu không hợp lệ.",
+            gate="COMMERCIAL_FLOW_REFUSED",
+            issues=errors,
+            rejected=rejected,
+        )
+
+    head = shipment.setdefault("data", {}).setdefault("0.0", {})
+    previous = head.get("commercial_flow") if isinstance(head.get("commercial_flow"), Mapping) else {}
+    if factual_equal(previous, document):
+        return _res(
+            True,
+            "Không có thay đổi để lưu.",
+            noop=True,
+            rejected=rejected,
+            persisted={"commercialFlow": dict(previous)},
+        )
+
+    head["commercial_flow"] = document
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(
+        shipment,
+        expected_version=shipment.get("version"),
+        actor=_actor(),
+    ):
+        return _res(False, get_last_db_error() or "Không lưu được hình thức nhập khẩu.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_head = ((fresh.get("data") or {}).get("0.0") or {})
+    return _res(
+        True,
+        readback=_projection_for(fresh),
+        rejected=rejected,
+        version=int(fresh.get("version") or 0),
+        persisted={"commercialFlow": dict(fresh_head.get("commercial_flow") or {})},
+        audit=_audit_trail(sid),
+    )
 
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -3745,6 +3856,7 @@ _HANDLERS = {
     "shipment_customer_save": _handle_shipment_customer_save,
     "shipment_transport_save": _handle_shipment_transport_save,
     "shipment_profile_save": _handle_shipment_profile_save,
+    "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,
     "payment_record": _handle_payment_record,
