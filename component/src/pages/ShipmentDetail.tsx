@@ -212,8 +212,12 @@ export default function ShipmentDetail() {
     }
     const companyId =
       flowCompanyDraft || (authorityCompanies.length === 1 ? authorityCompanies[0].id : "");
-    if (flowModeDraft === "TT_ENTRUSTED_DIRECT" && !companyId) {
-      setFlowError("Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu.");
+    if ((flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && !companyId) {
+      setFlowError(
+        flowModeDraft === "TT_ENTRUSTED_SUB"
+          ? "Chọn pháp nhân Trường Thành sẽ ký với đơn vị nhập khẩu hộ."
+          : "Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu."
+      );
       return;
     }
     const requestId = mintRequestId("FLOW");
@@ -1796,9 +1800,12 @@ export default function ShipmentDetail() {
               </div>
             )}
 
-            {flowModeDraft === "TT_ENTRUSTED_DIRECT" && authorityCompanies.length > 1 && (
+            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
               <div className="mt-3 max-w-[560px]">
-                <Field label="Pháp nhân Trường Thành đứng nhập khẩu" required={!flowCompanyDraft}>
+                <Field
+                  label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
+                  required={!flowCompanyDraft}
+                >
                   <select
                     value={flowCompanyDraft}
                     disabled={!!flowPending}
@@ -1829,9 +1836,9 @@ export default function ShipmentDetail() {
               </div>
             )}
 
-            {flowModeDraft === "TT_ENTRUSTED_DIRECT" && authorityCompanies.length === 1 && (
+            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
               <p className="mt-2 text-[12.5px] text-slate-500">
-                Pháp nhân: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
+                Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
               </p>
             )}
             {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
