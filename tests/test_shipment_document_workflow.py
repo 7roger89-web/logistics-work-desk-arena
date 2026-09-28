@@ -7,6 +7,8 @@ from core.shipment_document_workflow import (
     STATE_PENDING_DOCUMENT,
     STATE_READY,
     build_document_workflow,
+    gnt_flow_gate,
+    pxk_flow_gate,
     project_commercial_flow,
     validate_flow_write,
 )
@@ -158,3 +160,40 @@ def test_unconfirmed_flow_blocks_conditional_document_set():
     )
     assert _step(workflow, "customer_contract")["state"] == STATE_BLOCKED
     assert _step(workflow, "tax_payment")["state"] == STATE_BLOCKED
+
+
+def test_shared_pxk_gate_blocks_unknown_and_customer_self():
+    unknown = pxk_flow_gate({"mode": "", "confirmed": False})
+    assert unknown["allowed"] is False
+    assert unknown["gate"] == "COMMERCIAL_FLOW_REQUIRED"
+
+    customer_self = pxk_flow_gate({"mode": FLOW_CUSTOMER_SELF, "confirmed": True})
+    assert customer_self["allowed"] is False
+    assert customer_self["gate"] == "PXK_NOT_APPLICABLE"
+
+    entrusted = pxk_flow_gate({"mode": FLOW_TT_ENTRUSTED_DIRECT, "confirmed": True})
+    assert entrusted["allowed"] is True
+
+
+def test_gnt_gate_requires_confirmed_importer_tax_identity_and_rejects_mismatch():
+    unknown = gnt_flow_gate({"mode": "", "confirmed": False}, "0101")
+    assert unknown["gate"] == "COMMERCIAL_FLOW_REQUIRED"
+
+    missing_master_tax = gnt_flow_gate(
+        {"mode": FLOW_TT_ENTRUSTED_SUB, "confirmed": True, "legalImporterTaxCode": ""},
+        "0101",
+    )
+    assert missing_master_tax["gate"] == "LEGAL_IMPORTER_TAX_CODE_REQUIRED"
+
+    mismatch = gnt_flow_gate(
+        {"mode": FLOW_TT_ENTRUSTED_SUB, "confirmed": True, "legalImporterTaxCode": "0101"},
+        "0202",
+    )
+    assert mismatch["allowed"] is False
+    assert mismatch["gate"] == "GNT_TAXPAYER_MISMATCH"
+
+    match = gnt_flow_gate(
+        {"mode": FLOW_TT_ENTRUSTED_SUB, "confirmed": True, "legalImporterTaxCode": "0101"},
+        "0101",
+    )
+    assert match["allowed"] is True
