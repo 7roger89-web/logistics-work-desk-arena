@@ -17,7 +17,7 @@ const TABS = [
   { id: "lay-hang", label: "Xuất khẩu", short: "Xuất khẩu" },
   { id: "nhap", label: "Nhập khẩu & Giao hàng", short: "Nhập & Giao" },
   { id: "tai-chinh", label: "Tài chính / Công nợ", short: "Tài chính" },
-  { id: "chung-tu", label: "Chứng từ & PXK", short: "Chứng từ" },
+  { id: "chung-tu", label: "Quy trình & Chứng từ", short: "Quy trình" },
   { id: "lich-su", label: "Lịch sử", short: "Lịch sử" },
 ];
 
@@ -26,6 +26,15 @@ const TAB_IDS = new Set(TABS.map((t) => t.id));
 /** One fresh request identity per write intent — never derived from content. */
 function mintRequestId(prefix: string): string {
   return `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function workflowStateClass(state: string): string {
+  if (state === "COMPLETE") return "bg-emerald-50 border-emerald-200 text-emerald-800";
+  if (state === "READY") return "bg-blue-50 border-blue-200 text-blue-800";
+  if (state === "NOT_APPLICABLE") return "bg-slate-50 border-slate-200 text-slate-500";
+  if (state === "CONDITIONAL") return "bg-violet-50 border-violet-200 text-violet-800";
+  if (state === "BLOCKED") return "bg-red-50 border-red-200 text-red-800";
+  return "bg-amber-50 border-amber-200 text-amber-900";
 }
 
 /**
@@ -122,7 +131,48 @@ export default function ShipmentDetail() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [savedTick, setSavedTick] = useState(0);
 
+  // LOGI_SHIPMENT_DOCUMENT_WORKFLOW_01 — local draft only; persistence is the
+  // typed backend event below and success is shown only after correlated
+  // lastWrites confirmation.
+  const [flowModeDraft, setFlowModeDraft] = useState("");
+  const [flowAgentDraft, setFlowAgentDraft] = useState("");
+  const [flowCompanyDraft, setFlowCompanyDraft] = useState("");
+  const [flowPending, setFlowPending] = useState("");
+  const [flowError, setFlowError] = useState("");
+
   useEffect(() => { setForm({}); setPartnerAmt(""); }, [id, tab]);
+
+  useEffect(() => {
+    const flow = s?.commercialFlow;
+    setFlowModeDraft(String(flow?.mode || ""));
+    setFlowAgentDraft(flow?.subAgentId || "");
+    const companies = vm?.authority?.companies ?? [];
+    setFlowCompanyDraft(flow?.companyId || (companies.length === 1 ? companies[0].id : ""));
+    setFlowError("");
+  }, [
+    id,
+    s?.commercialFlow?.mode,
+    s?.commercialFlow?.subAgentId,
+    s?.commercialFlow?.companyId,
+    vm?.authority?.companies?.length,
+  ]);
+
+  useEffect(() => {
+    if (!flowPending) return;
+    const outcome = vm?.lastWrites?.find(
+      (row) => row.event === "shipment_commercial_flow_save" && row.requestId === flowPending
+    );
+    if (!outcome) return;
+    setFlowPending("");
+    if (outcome.ok) {
+      setFlowError("");
+      toast("Đã xác nhận hình thức nhập khẩu", "Workflow chứng từ đã được tính lại từ dữ liệu thật của lô.", "green");
+    } else {
+      const message = String(outcome.error || "Backend từ chối hình thức nhập khẩu này.");
+      setFlowError(message);
+      toast("Chưa lưu được hình thức nhập khẩu", message, "red");
+    }
+  }, [vm?.lastWrites, flowPending, toast]);
   // LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — deep links from Home/Tasks carry
   // the composed `nextRoute` (?tab=…#anchor). On mount the tab content is
   // already rendered from the query, so honour the anchor once: scroll the
@@ -138,6 +188,10 @@ export default function ShipmentDetail() {
   const val = (k: string, fb: string) => form[k] ?? fb;
 
   const linkedContract = useMemo(() => contracts.find((c) => c.id === s?.contract), [contracts, s]);
+  const authorityAgents = vm?.authority?.agents ?? [];
+  const authorityCompanies = vm?.authority?.companies ?? [];
+  const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
+  const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
@@ -146,6 +200,37 @@ export default function ShipmentDetail() {
   // labelled with this code and amounts of different currencies are never
   // summed. The "VND" fallback mirrors core.logic's own default.
   const ccy = s.finance.currency || "VND";
+
+  const saveCommercialFlow = () => {
+    if (!flowModeDraft) {
+      setFlowError("Chọn một hình thức nhập khẩu trước khi lưu.");
+      return;
+    }
+    if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowAgentDraft) {
+      setFlowError("Chọn đơn vị đứng nhập khẩu hộ từ danh mục đối tác.");
+      return;
+    }
+    const companyId =
+      flowCompanyDraft || (authorityCompanies.length === 1 ? authorityCompanies[0].id : "");
+    if (flowModeDraft === "TT_ENTRUSTED_DIRECT" && !companyId) {
+      setFlowError("Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu.");
+      return;
+    }
+    const requestId = mintRequestId("FLOW");
+    setFlowError("");
+    setFlowPending(requestId);
+    const sent = dispatch("shipment_commercial_flow_save", {
+      shipmentId: s.id,
+      requestId,
+      mode: flowModeDraft,
+      companyId,
+      subAgentId: flowModeDraft === "TT_ENTRUSTED_SUB" ? flowAgentDraft : "",
+    });
+    if (!sent) {
+      setFlowPending("");
+      setFlowError("Component chưa kết nối backend.");
+    }
+  };
 
   // -----------------------------------------------------------------------
   // Phase B write contract: every save is ONE typed event → the single Python
@@ -1636,8 +1721,188 @@ export default function ShipmentDetail() {
       {/* ============ TAB: DOCS ============ */}
       {tab === "chung-tu" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <section
+            className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
+            data-testid="shipment-commercial-flow"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
+                <p className="text-[13px] text-slate-500 mt-0.5">
+                  Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán.
+                </p>
+              </div>
+              {s.commercialFlow?.confirmed && (
+                <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
+                  ✓ ĐÃ XÁC NHẬN
+                </span>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-2.5 mt-4">
+              {[
+                ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
+                ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
+                ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
+              ].map(([mode, title, desc]) => (
+                <label
+                  key={mode}
+                  className={cx(
+                    "cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5",
+                    flowModeDraft === mode ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="commercial-flow"
+                    value={mode}
+                    checked={flowModeDraft === mode}
+                    disabled={!!flowPending}
+                    onChange={() => {
+                      setFlowModeDraft(mode);
+                      setFlowError("");
+                      if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
+                    }}
+                    className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
+                  />
+                  <span>
+                    <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">{title}</span>
+                    <span className="block text-[12.5px] text-slate-500 mt-1">{desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {flowModeDraft === "TT_ENTRUSTED_SUB" && (
+              <div className="mt-3 grid md:grid-cols-2 gap-3">
+                <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
+                  <select
+                    value={flowAgentDraft}
+                    disabled={!!flowPending}
+                    onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
+                    className={inputCls(!flowAgentDraft ? "missing" : "ok")}
+                  >
+                    <option value="">— Chọn đối tác —</option>
+                    {authorityAgents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
+                    ))}
+                  </select>
+                </Field>
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                  <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
+                  <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
+                  <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
+                </div>
+              </div>
+            )}
+
+            {flowModeDraft === "TT_ENTRUSTED_DIRECT" && authorityCompanies.length > 1 && (
+              <div className="mt-3 max-w-[560px]">
+                <Field label="Pháp nhân Trường Thành đứng nhập khẩu" required={!flowCompanyDraft}>
+                  <select
+                    value={flowCompanyDraft}
+                    disabled={!!flowPending}
+                    onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
+                    className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
+                  >
+                    <option value="">— Chọn pháp nhân —</option>
+                    {authorityCompanies.map((company) => (
+                      <option key={company.id} value={company.id}>{company.legalName || company.id}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            )}
+
+            {s.commercialFlow?.confirmed && (
+              <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+                <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
+                <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
+                  {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
+                </p>
+                <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
+                {(s.commercialFlow.missing ?? []).length > 0 && (
+                  <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
+                    Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {flowModeDraft === "TT_ENTRUSTED_DIRECT" && authorityCompanies.length === 1 && (
+              <p className="mt-2 text-[12.5px] text-slate-500">
+                Pháp nhân: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
+              </p>
+            )}
+            {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
+            <PrimaryBtn onClick={saveCommercialFlow} disabled={!!flowPending} className="mt-3 min-w-[220px]">
+              {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
+            </PrimaryBtn>
+          </section>
+
+          <section className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-document-workflow">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Vòng đời hồ sơ lô hàng</h3>
+                <p className="text-[13px] text-slate-500">
+                  Báo giá → hợp đồng → tiền/thuế → giao hàng → kho → quyết toán. Bước nào không áp dụng sẽ tự biến mất khỏi tiến độ.
+                </p>
+              </div>
+              {s.documentWorkflow && (
+                <div className="flex flex-wrap gap-1.5 text-[12px] font-extrabold">
+                  <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1">
+                    {s.documentWorkflow.summary.complete}/{s.documentWorkflow.summary.total} hoàn tất
+                  </span>
+                  <span className="rounded-full bg-blue-50 border border-blue-200 text-blue-800 px-2.5 py-1">
+                    {s.documentWorkflow.summary.ready} sẵn sàng
+                  </span>
+                  <span className="rounded-full bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1">
+                    {s.documentWorkflow.summary.attention} cần xử lý
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {(s.documentWorkflow?.steps ?? []).map((step, index) => (
+                <div key={step.id} className="rounded-xl border border-slate-200 p-3 flex flex-col md:flex-row md:items-center gap-2.5">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <span className="w-8 h-8 rounded-full bg-[#0f2a4a] text-white grid place-items-center font-extrabold text-[13px] shrink-0">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-extrabold text-[14.5px] text-[#0f2a4a]">{step.label}</p>
+                        <span className={cx("rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold", workflowStateClass(step.state))}>
+                          {step.stateLabel}
+                        </span>
+                      </div>
+                      <p className="text-[12.8px] text-slate-500 mt-0.5">{step.reason}</p>
+                    </div>
+                  </div>
+                  {step.targetRoute && step.actionLabel ? (
+                    <Link to={step.targetRoute} className="btn-press touch-target shrink-0 inline-flex items-center justify-center rounded-lg border-2 border-slate-200 px-3 min-h-[44px] text-[13px] font-bold">
+                      {step.actionLabel}
+                    </Link>
+                  ) : step.targetTab && step.actionLabel ? (
+                    <button
+                      type="button"
+                      onClick={() => setSp({ tab: step.targetTab })}
+                      className="btn-press touch-target shrink-0 rounded-lg border-2 border-slate-200 px-3 min-h-[44px] text-[13px] font-bold"
+                    >
+                      {step.actionLabel}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {!s.documentWorkflow && (
+                <p className="text-[13.5px] text-slate-500">Workflow chưa có trong payload hiện tại.</p>
+              )}
+            </div>
+          </section>
+
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3"><FileText size={19} className="text-[#1e5aa8]" /> Hợp đồng liên kết</h3>
+            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2 mb-3"><FileText size={19} className="text-[#1e5aa8]" /> Hợp đồng / docgen liên kết hiện có</h3>
             {linkedContract ? (
               <div className="rounded-xl border-2 border-slate-200 p-4">
                 <div className="flex flex-wrap items-center gap-2"><span className="font-extrabold text-[17px] text-[#0f2a4a]">{linkedContract.id}</span><ToneBadge tone={linkedContract.statusTone} size="sm">{linkedContract.status}</ToneBadge></div>
@@ -1676,6 +1941,14 @@ export default function ShipmentDetail() {
             </div>
           </section>
 
+          {s.commercialFlow?.mode === "CUSTOMER_SELF" ? (
+            <section className="rounded-2xl bg-slate-50 border-2 border-slate-200 p-4 md:p-5">
+              <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Phiếu xuất kho (PXK)</h3>
+              <p className="text-[13.5px] text-slate-600">
+                <b>Không áp dụng.</b> Khách hàng tự đứng tên nhập khẩu nên workflow không yêu cầu Phiếu xuất kho của Trường Thành cho lô này.
+              </p>
+            </section>
+          ) : (
           <section className="rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Phiếu xuất kho (PXK) — theo từng lô</h3>
             <p className="text-[13px] text-slate-500 mb-3">PXK gắn với lô đã giao, nguồn từ {s.pxk.source || s.contract}. Mỗi lô 1 PXK riêng.</p>
@@ -1734,6 +2007,7 @@ export default function ShipmentDetail() {
               <SuccessBtn onClick={exportPXK} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 XUẤT PHIẾU XUẤT KHO</SuccessBtn>
             )}
           </section>
+          )}
           {/* LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of
               the lot. Metadata comes from the backend projection; the bytes stay
               in the server-side attachment store and are read through the
@@ -1767,7 +2041,7 @@ export default function ShipmentDetail() {
       {/* sticky mobile primary */}
       <div className="xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2">
         {tab === "nhap" && !s.importInfo.delivered && <button onClick={() => setShowDeliver(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">✅ XÁC NHẬN ĐÃ GIAO</button>}
-        {tab === "chung-tu" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
+        {tab === "chung-tu" && s.commercialFlow?.mode !== "CUSTOMER_SELF" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
         {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
       </div>
 
