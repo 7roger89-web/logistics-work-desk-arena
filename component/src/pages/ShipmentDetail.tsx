@@ -1942,11 +1942,30 @@ export default function ShipmentDetail() {
           </section>
 
           {s.commercialFlow?.mode === "CUSTOMER_SELF" ? (
-            <section className="rounded-2xl bg-slate-50 border-2 border-slate-200 p-4 md:p-5">
+            <section className={cx(
+              "rounded-2xl border-2 p-4 md:p-5",
+              s.pxk.done ? "bg-amber-50 border-amber-300" : "bg-slate-50 border-slate-200"
+            )}>
               <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Phiếu xuất kho (PXK)</h3>
-              <p className="text-[13.5px] text-slate-600">
-                <b>Không áp dụng.</b> Khách hàng tự đứng tên nhập khẩu nên workflow không yêu cầu Phiếu xuất kho của Trường Thành cho lô này.
-              </p>
+              {s.pxk.done ? (
+                <>
+                  <p className="text-[13.5px] text-amber-900">
+                    <b>Có PXK lịch sử từ mô hình trước.</b> Hệ thống giữ nguyên để kiểm toán nhưng không cho sinh bản PXK mới khi khách hàng tự đứng tên nhập khẩu.
+                  </p>
+                  <p className="text-[12.8px] text-amber-800 mt-1">
+                    {s.pxk.document?.fileName || s.pxk.number || "PXK"} · bản R{s.pxk.document?.revision ?? 1} · {s.pxk.document?.status || "GENERATED"}
+                  </p>
+                  {s.pxk.document?.downloadAvailable && (
+                    <button onClick={downloadPxk} className="btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-amber-500 text-amber-900 font-bold px-4 min-h-[46px]">
+                      <Download size={16} /> TẢI BẢN LỊCH SỬ
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-[13.5px] text-slate-600">
+                  <b>Không áp dụng.</b> Khách hàng tự đứng tên nhập khẩu nên workflow không yêu cầu Phiếu xuất kho của Trường Thành cho lô này.
+                </p>
+              )}
             </section>
           ) : !s.commercialFlow?.confirmed ? (
             <section className="rounded-2xl bg-amber-50 border-2 border-amber-200 p-4 md:p-5">
@@ -1954,6 +1973,11 @@ export default function ShipmentDetail() {
               <p className="text-[13.5px] text-amber-800">
                 Xác nhận <b>Hình thức nhập khẩu</b> ở đầu tab trước. Backend cũng từ chối tạo PXK cho tới khi mô hình được xác nhận.
               </p>
+              {s.pxk.done && (
+                <p className="text-[12.8px] font-semibold text-amber-900 mt-2">
+                  PXK lịch sử {s.pxk.document?.fileName || s.pxk.number || ""} vẫn được giữ; xác nhận mô hình để hệ thống đánh giá tính phù hợp, không xóa lịch sử.
+                </p>
+              )}
             </section>
           ) : (
           <section className="rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5">
