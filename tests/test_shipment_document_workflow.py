@@ -43,6 +43,7 @@ def test_sub_entrust_requires_real_agent_master():
     document, errors = validate_flow_write(
         shipment=_shipment(),
         mode=FLOW_TT_ENTRUSTED_SUB,
+        companies={"TTL": {"company_id": "TTL"}},
         agents={},
         sub_agent_id="PA",
     )
@@ -52,6 +53,7 @@ def test_sub_entrust_requires_real_agent_master():
     document, errors = validate_flow_write(
         shipment=_shipment(),
         mode=FLOW_TT_ENTRUSTED_SUB,
+        companies={"TTL": {"company_id": "TTL"}},
         agents={
             "PA": {
                 "agent_id": "PA",
@@ -65,7 +67,7 @@ def test_sub_entrust_requires_real_agent_master():
     assert document == {
         "mode": FLOW_TT_ENTRUSTED_SUB,
         "confirmed": True,
-        "company_id": "",
+        "company_id": "TTL",
         "sub_agent_id": "PA",
     }
 
