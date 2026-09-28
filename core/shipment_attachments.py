@@ -793,11 +793,18 @@ def project_attachment(record: Mapping[str, Any], *, download: Mapping[str, Any]
     credential. The operator sees the file, its category, its
     honest sizes and who uploaded it.
     """
+    # Deferred import: core.shipment_document_review reuses extension_of from
+    # this module, so the Run 3 wording is imported here rather than duplicated
+    # in the browser. The backend stays the single source of that wording.
+    from core.shipment_document_review import REVIEW_EXTENSIONS, unsupported_reason
+
     attachment_id = str(record.get("id") or "")
     original_size = int(record.get("original_size") or 0)
     stored_size = int(record.get("stored_size") or 0)
     optimized = str(record.get("compression_mode") or "") == COMPRESSION_OPTIMIZED
     ready = bool(download) and str(download.get("attachmentId") or "") == attachment_id
+    extension = extension_of(str(record.get("original_name") or record.get("stored_name") or ""))
+    review_selectable = extension in REVIEW_EXTENSIONS
     return {
         "id": attachment_id,
         "name": str(record.get("original_name") or record.get("stored_name") or ""),
@@ -816,6 +823,12 @@ def project_attachment(record: Mapping[str, Any], *, download: Mapping[str, Any]
         "downloadAvailable": ready,
         "downloadBase64": str(download.get("base64") or "") if ready else "",
         "downloadSeq": int(download.get("seq") or 0) if ready else 0,
+        # LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — whether the read-only
+        # document review may select this file, plus the honest reason when it
+        # may not. A non-selectable file stays VISIBLE; the wording never
+        # implies the file is damaged.
+        "reviewSelectable": review_selectable,
+        "reviewNote": "" if review_selectable else unsupported_reason(extension),
     }
 
 

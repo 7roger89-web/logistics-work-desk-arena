@@ -973,6 +973,13 @@ def build_view_model() -> dict:
         # at all (server RBAC — the form hides itself when the backend says no,
         # but the dispatcher refuses independently either way).
         "attachmentPolicy": _attachment_policy(),
+        # LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral
+        # read-only review the operator last ran on a shipment's existing
+        # attachments. It is projection only: no bytes, no base64, no full
+        # extracted text, no storage/GridFS/Drive id, no raw SHA-256, and no
+        # persistence — a new review replaces it and it carries its own
+        # shipmentId so it can never be shown against another lot.
+        "shipmentDocumentReview": _shipment_document_review_projection(),
         # LOGI_REAL_USE_CREATE_SHIPMENT_AGENT_MASTER_01 — the authoritative
         # outcome(s) of the business event(s) the bounded dispatcher handled on
         # the previous run. The UI must never treat "event transported" as
@@ -1053,6 +1060,15 @@ PHASE_B_EVENTS = {
 #: The selected storage backend for server-authoritative delivery to the browser.
 ATTACHMENT_DOWNLOAD_KEY = "logi_attachment_download"
 
+# LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — ONE bounded READ-ONLY event for
+# the shipment "Chứng từ / Tệp đính kèm" review surface. It is deliberately NOT
+# in PHASE_B_EVENTS: it writes no shipment field, no attachment row and no audit
+# entry. The handler only reads bytes the operator selected (through the
+# EXISTING core.shipment_attachments.fetch_attachment_bytes), runs the Run 2
+# reader and the Run 1 cross-check, and keeps ONE ephemeral bounded result in
+# session state for the next fresh view-model.
+DOCUMENT_REVIEW_EVENTS = {"shipment_document_review"}
+
 # LOGI_TARIFF_LOOKUP_01 — one bounded READ-ONLY query event for the
 # /tra-cuu-thue workspace. It performs no business mutation: the handler only
 # records the query for the next fresh read in build_view_model(). The
@@ -1090,7 +1106,16 @@ USER_MANAGEMENT_EVENTS = logi_user_management.USER_MANAGEMENT_EVENTS
 
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
-              | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS)
+              | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
+              | DOCUMENT_REVIEW_EVENTS)
+
+#: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
+#: holding the last read-only shipment document review. It is presentation/read
+#: state only: nothing is persisted to shipments, shipment_attachments, audit,
+#: GridFS, Drive or any review collection, and a new review REPLACES the
+#: previous one. The stored value carries its own ``shipmentId`` so a review
+#: belonging to another lot can never project into the current one.
+SHIPMENT_DOCUMENT_REVIEW_KEY = "logi_shipment_document_review"
 
 #: Session key holding the current tariff lookup query (read-only surface).
 TARIFF_QUERY_KEY = "logi_tariff_query"
@@ -2057,6 +2082,206 @@ def _handle_attachment_download(payload: Mapping[str, Any]) -> dict[str, Any]:
         },
         **_attachment_result_extras(sid),
     )
+
+
+def _shipment_document_review_state() -> dict[str, Any]:
+    """The ONE ephemeral read-only review kept for this session.
+
+    Holds no bytes, no base64, no storage id and no full document text — only
+    the bounded projection ``core.shipment_document_review`` produced, plus the
+    ``requestId``/``shipmentId`` that let the UI correlate the result with the
+    exact request that produced it.
+    """
+    state = st.session_state.get(SHIPMENT_DOCUMENT_REVIEW_KEY)
+    return dict(state) if isinstance(state, Mapping) else {}
+
+
+def _handle_shipment_document_review(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — ONE read-only review.
+
+    Server order is the contract and every refusal before the byte read costs
+    ZERO storage reads:
+
+      1. request shape (bounded identifiers only — never bytes/base64/storage
+         ids/raw SHA/credentials);
+      2. RBAC ``can_operate_business("dashboard")`` — the SAME read boundary the
+         existing attachment download uses, so a role that may see the lot may
+         inspect its documents without needing sales_write;
+      3. fresh shipment existence / identity;
+      4. 1..6 unique attachment ids;
+      5. canonical metadata for every selected attachment (ONE scoped read);
+      6. proof that every attachment belongs to THIS shipment;
+      7. supported extension preflight;
+      8. per-file + aggregate review-byte budget from metadata;
+      9. only now read bytes, sequentially, through the EXISTING
+         ``core.shipment_attachments.fetch_attachment_bytes``;
+     10-13. Run 2 reader → Run 1 cross-check → bounded ephemeral projection.
+
+    It writes nothing: no shipment field, no attachment row, no audit entry.
+    """
+    from core.auth import can_operate_business
+    from core.database import load_shipment_attachment, load_shipment_attachments
+    from core.shipment_document_review import (
+        CODE_ATTACHMENT_NOT_FOUND,
+        CODE_INVALID_REQUEST,
+        CODE_SHIPMENT_MISMATCH,
+        MAX_REVIEW_FILES,
+        run_shipment_document_review,
+    )
+
+    request_id = rd.text(payload.get("requestId"))
+    sid = rd.text(payload.get("shipmentId"))
+    raw_ids = payload.get("attachmentIds")
+
+    # --- 1. request shape ----------------------------------------------------
+    if not sid or not request_id:
+        return _result("shipment_document_review", sid, False,
+                       "Thiếu shipmentId hoặc requestId.",
+                       gate=CODE_INVALID_REQUEST, requestId=request_id)
+    if not isinstance(raw_ids, (list, tuple)):
+        return _result("shipment_document_review", sid, False,
+                       "Danh sách tệp đính kèm không hợp lệ.",
+                       gate=CODE_INVALID_REQUEST, requestId=request_id)
+    attachment_ids = [rd.text(item) for item in raw_ids]
+    if any(not item for item in attachment_ids):
+        return _result("shipment_document_review", sid, False,
+                       "Mã tệp đính kèm không hợp lệ.",
+                       gate=CODE_INVALID_REQUEST, requestId=request_id)
+    if len(attachment_ids) > MAX_REVIEW_FILES:
+        # Cheapest possible refusal: counted before any metadata or byte read.
+        return _result(
+            "shipment_document_review", sid, False,
+            f"Chỉ kiểm tra tối đa {MAX_REVIEW_FILES} tệp một lần — đã chọn {len(attachment_ids)} tệp.",
+            gate="SELECTION_LIMIT_EXCEEDED", requestId=request_id,
+        )
+
+    # --- 2. dashboard read RBAC ---------------------------------------------
+    if not can_operate_business("dashboard"):
+        return _result("shipment_document_review", sid, False,
+                       "RBAC: không có quyền đọc chứng từ của lô hàng.",
+                       gate="BLOCKED_PERMISSION_DENIED", requestId=request_id)
+
+    # --- 3. fresh shipment existence / identity ------------------------------
+    shipment = read_shipment(sid)
+    if shipment is None:
+        _unresolved, identity_gate = _read_shipment_resolution(sid)
+        if identity_gate == SHIPMENT_IDENTITY_AMBIGUOUS:
+            return _result(
+                "shipment_document_review", sid, False,
+                f"Mã lô {sid} bị trùng định danh dữ liệu cũ; chưa kiểm tra chứng từ.",
+                gate=SHIPMENT_IDENTITY_AMBIGUOUS, requestId=request_id,
+            )
+        return _result("shipment_document_review", sid, False, f"Không tìm thấy lô {sid}.",
+                       gate=SHIPMENT_IDENTITY_NOT_FOUND, requestId=request_id)
+
+    # --- 5. canonical metadata: ONE shipment-scoped read --------------------
+    try:
+        rows = load_shipment_attachments(sid) or {}
+    except Exception:  # noqa: BLE001 - a metadata read failure refuses honestly
+        rows = {}
+    metadata_rows = {rd.text(key): dict(row) for key, row in rows.items()
+                     if isinstance(row, Mapping)}
+    for attachment_id in attachment_ids:
+        if attachment_id in metadata_rows:
+            continue
+        # Not in THIS shipment's rows: one extra lookup classifies the honest
+        # reason (unknown file vs. a file owned by another lot) instead of
+        # guessing. Still metadata only — still zero storage byte reads.
+        stored = load_shipment_attachment(attachment_id)
+        if stored is None:
+            return _result("shipment_document_review", sid, False,
+                           "Không tìm thấy tệp đính kèm này trong lô hàng.",
+                           gate=CODE_ATTACHMENT_NOT_FOUND, requestId=request_id,
+                           attachmentId=attachment_id)
+        return _result("shipment_document_review", sid, False,
+                       "Tệp đính kèm không thuộc lô hàng này.",
+                       gate=CODE_SHIPMENT_MISMATCH, requestId=request_id,
+                       attachmentId=attachment_id)
+
+    # --- 4, 6, 7, 8, 9-13: the ONE orchestration seam ------------------------
+    review = run_shipment_document_review(
+        sid, attachment_ids, metadata_rows=metadata_rows,
+    )
+    refusal = review.get("refusal") if isinstance(review.get("refusal"), Mapping) else None
+
+    if refusal is not None:
+        return _result(
+            "shipment_document_review", sid, False,
+            rd.text(refusal.get("message")) or "Chưa kiểm tra được chứng từ.",
+            gate=rd.text(refusal.get("code")) or "REVIEW_REFUSED",
+            requestId=request_id,
+            attachmentId=rd.text(refusal.get("attachmentId")),
+            review={key: value for key, value in review.items() if key != "refusal"},
+        )
+
+    # SESSION ONLY: one bounded slot, replaced by the next review. Nothing is
+    # persisted to shipments, shipment_attachments, audit, GridFS or Drive.
+    previous = _shipment_document_review_state()
+    st.session_state[SHIPMENT_DOCUMENT_REVIEW_KEY] = {
+        "requestId": request_id,
+        "shipmentId": sid,
+        "seq": int(previous.get("seq") or 0) + 1,
+        "review": dict(review),
+    }
+    return _result(
+        "shipment_document_review", sid, True,
+        "Kết quả chỉ để kiểm tra — chưa ghi vào hồ sơ lô hàng.",
+        gate="REVIEWED", requestId=request_id,
+        review={key: value for key, value in review.items() if key != "refusal"},
+    )
+
+
+def consume_document_review_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY shipment document review dispatcher.
+
+    Mirrors ``consume_tariff_triggers`` exactly: the same replay protection (a
+    one-shot ``seq``) and NO business mutation. The outcome — refusal or bounded
+    review — is delivered through the ordinary ``lastWrites`` readback so the
+    pending UI settles only on the matching ``requestId``.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(DOCUMENT_REVIEW_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload")
+        if not isinstance(data, dict):
+            outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
+            continue
+        try:
+            outcomes.append(_handle_shipment_document_review(data))
+        except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
+            outcomes.append(_result(
+                event_name, rd.text(data.get("shipmentId")), False,
+                f"{type(exc).__name__}: {exc}",
+                gate="REVIEW_FAILED", requestId=rd.text(data.get("requestId")),
+            ))
+    return outcomes
+
+
+def _shipment_document_review_projection() -> dict[str, Any] | None:
+    """The bounded review result for the view-model (``None`` when there is none).
+
+    The stored review carries its own shipment id; the UI additionally refuses
+    to render a review whose ``shipmentId`` differs from the open lot, so a
+    stale cross-shipment result can never be projected onto another shipment.
+    """
+    state = _shipment_document_review_state()
+    review = state.get("review")
+    if not isinstance(review, Mapping):
+        return None
+    return {
+        "requestId": rd.text(state.get("requestId")),
+        "shipmentId": rd.text(state.get("shipmentId")),
+        "seq": int(state.get("seq") or 0),
+        **{key: value for key, value in review.items() if key != "refusal"},
+    }
 
 
 def _audit_trail(shipment_id: str, limit: int = 5) -> list[dict[str, Any]]:
@@ -3845,6 +4070,17 @@ def dispatch(
                                     reconciliation_session["seq"])
     outcomes.extend(reconciliation_outcomes)
 
+    # LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — bounded READ-ONLY document
+    # review path. It performs no business mutation (no shipment field, no
+    # attachment row, no audit entry): the storage reads it does are only for
+    # attachments the operator selected and that were proven to belong to this
+    # shipment. This rerun only delivers the bounded ephemeral review result.
+    review_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    review_outcomes = consume_document_review_triggers(review_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    review_session["seq"])
+    outcomes.extend(review_outcomes)
+
     # LOGI_USER_MANAGEMENT_01 — Admin-only account-management writes for
     # /nguoi-dung. Shares the same seq counter so a replayed trigger can never
     # double-write; every outcome (success or Admin/lockout/duplicate refusal)
@@ -3875,6 +4111,9 @@ def dispatch(
         or bool(translation_outcomes)
         or any(outcome.get("ok") for outcome in partner_outcomes)
         or any(outcome.get("ok") for outcome in reconciliation_outcomes)
+        # A read-only review outcome (bounded review OR honest refusal) also
+        # needs ONE rerun so the settled requestId + result reach the component.
+        or bool(review_outcomes)
     )
     if needs_rerun and allow_rerun:
         st.rerun()

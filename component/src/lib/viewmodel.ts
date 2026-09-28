@@ -65,6 +65,14 @@ export interface ShipmentAttachment {
   downloadBase64?: string | null;
   /** Increments on every backend download read, so the UI saves each new one. */
   downloadSeq?: number | null;
+  /**
+   * LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — whether the read-only
+   * document review may select this file (PDF/XLSX). The server decides; the
+   * browser never derives it. A false value still renders the row.
+   */
+  reviewSelectable?: boolean;
+  /** Honest Vietnamese reason a file is not selectable; "" when it is. */
+  reviewNote?: string;
 }
 
 export interface AttachmentCategory {
@@ -85,6 +93,98 @@ export interface AttachmentPolicy {
   storageLabel?: string;
   /** Legacy PR65 fixture compatibility; not used for operator wording. */
   driveConfigured?: boolean;
+}
+
+/**
+ * LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — ONE bounded, read-only review
+ * of existing shipment attachments. Every shape below is projection only:
+ * no PDF/XLSX bytes, no base64, no full extracted text, no storage/GridFS/Drive
+ * id, no raw SHA-256, and no persistence. The result lives in Streamlit session
+ * state and carries its own shipmentId so a review belonging to another lot can
+ * never be rendered against the open one.
+ */
+export type DocumentReviewState =
+  | "READABLE"
+  | "NEEDS_OCR_NOT_RUN"
+  | "UNSUPPORTED_FORMAT"
+  | "TOO_LARGE_FOR_REVIEW"
+  | "READ_FAILED";
+
+export type DocumentReviewFactStatus =
+  | "CONFLICT"
+  | "UNKNOWN"
+  | "MISSING"
+  | "SINGLE_SOURCE"
+  | "SAME";
+
+/** One source side of a fact. A CONFLICT keeps ALL of its sides. */
+export interface DocumentReviewSide {
+  attachmentId: string;
+  /** Operator-visible filename — never a storage id. */
+  fileName: string;
+  documentLabel: string;
+  documentType: string;
+  documentTypeLabel: string;
+  observationStatus: string;
+  rawValue: string;
+  normalizedValue: string;
+  unit: string;
+  /** Bounded provenance: "Trang 2" OR "Sheet X · ô A5". */
+  location: string;
+  reason: string;
+}
+
+/** One of the 19 canonical facts, in Vietnamese operator wording. */
+export interface DocumentReviewFact {
+  fieldKey: string;
+  label: string;
+  status: DocumentReviewFactStatus;
+  statusLabel: string;
+  reason: string;
+  /** Always "NONE": the engine never picks a winner. */
+  operatorDecision: string;
+  /** Set for CONFLICT: "Chưa chọn giá trị đúng — cần người kiểm tra." */
+  operatorNote: string;
+  sides: DocumentReviewSide[];
+}
+
+export interface DocumentReviewDocument {
+  attachmentId: string;
+  fileName: string;
+  state: DocumentReviewState;
+  stateLabel: string;
+  reason: string;
+  documentType: string;
+  documentTypeLabel: string;
+  readerMethod: string;
+  sizeBytes: number;
+  warning: string;
+}
+
+export interface DocumentReviewStatusCounts {
+  CONFLICT: number;
+  UNKNOWN: number;
+  MISSING: number;
+  SINGLE_SOURCE: number;
+  SAME: number;
+}
+
+export interface ShipmentDocumentReview {
+  /** Correlates the displayed result with the request that produced it. */
+  requestId: string;
+  shipmentId: string;
+  seq: number;
+  reviewedAt: string;
+  selectedCount: number;
+  readableCount: number;
+  statusCounts: DocumentReviewStatusCounts;
+  documents: DocumentReviewDocument[];
+  facts: DocumentReviewFact[];
+  /** True only when all three canonical document types were readable. */
+  crossConfirmationComplete: boolean;
+  partialNote: string;
+  /** Always false — the review is never written into the shipment record. */
+  savedToShipment: boolean;
 }
 
 export interface MoneyLine {
@@ -1892,6 +1992,12 @@ export interface ViewModel {
    * its own extension list or size limit.
    */
   attachmentPolicy?: AttachmentPolicy;
+  /**
+   * LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral read-only
+   * review of existing shipment attachments, or null. Session-only: it is
+   * replaced by the next review and is never persisted to the shipment.
+   */
+  shipmentDocumentReview?: ShipmentDocumentReview | null;
   /** LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice, fail-closed. */
   intlFxRates?: IntlFxRates;
   /** Authoritative outcomes of the last handled business events (see above). */
