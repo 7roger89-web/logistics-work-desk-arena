@@ -147,7 +147,8 @@ def test_sub_entrust_requires_purchase_contract_and_can_make_pxk_ready():
     purchase = _step(workflow, "sub_entrust_contract")
     pxk = _step(workflow, "warehouse_issue")
     assert purchase["state"] == STATE_PENDING_DOCUMENT
-    assert "50 triệu" in purchase["reason"]
+    assert "docgen" in purchase["reason"]
+    assert purchase["targetRoute"] == "/hop-dong"
     assert pxk["state"] == STATE_READY
 
 
