@@ -8,6 +8,7 @@ from core.shipment_document_workflow import (
     STATE_READY,
     build_document_workflow,
     gnt_flow_gate,
+    match_sub_purchase_contract,
     pxk_flow_gate,
     project_commercial_flow,
     validate_flow_write,
@@ -136,18 +137,30 @@ def test_customer_self_makes_truong_thanh_pxk_not_applicable():
 
 
 def test_sub_entrust_requires_purchase_contract_and_can_make_pxk_ready():
+    flow = {
+        "mode": FLOW_TT_ENTRUSTED_SUB,
+        "confirmed": True,
+        "companyId": "TTL",
+        "subAgentId": "PA",
+    }
+    purchase_match = match_sub_purchase_contract(
+        flow,
+        {"C-PA": {"id": "C-PA", "contract_no": "01/2026", "company_id": "TTL", "agent_id": "PA"}},
+    )
     workflow = build_document_workflow(
-        flow={"mode": FLOW_TT_ENTRUSTED_SUB, "confirmed": True},
+        flow=flow,
         quote_linked=True,
         gnt={"ready": True},
         delivered=True,
         pxk={"gateOpen": True},
         finance={"outstanding": 100},
+        sub_purchase_contract=purchase_match,
     )
     purchase = _step(workflow, "sub_entrust_contract")
     pxk = _step(workflow, "warehouse_issue")
-    assert purchase["state"] == STATE_PENDING_DOCUMENT
-    assert "docgen" in purchase["reason"]
+    assert purchase_match["status"] == "LINKED"
+    assert purchase["state"] == STATE_READY
+    assert "01/2026" in purchase["reason"]
     assert purchase["targetRoute"] == "/hop-dong"
     assert pxk["state"] == STATE_READY
 
@@ -214,3 +227,33 @@ def test_customer_self_with_historical_pxk_keeps_conflict_visible():
     pxk = _step(workflow, "warehouse_issue")
     assert pxk["state"] == STATE_BLOCKED
     assert "lịch sử" in pxk["reason"].lower()
+
+
+def test_sub_purchase_contract_match_is_fail_closed_on_multiple_matches():
+    flow = {
+        "mode": FLOW_TT_ENTRUSTED_SUB,
+        "confirmed": True,
+        "companyId": "TTL",
+        "subAgentId": "PA",
+    }
+    matched = match_sub_purchase_contract(
+        flow,
+        {
+            "C1": {"id": "C1", "company_id": "TTL", "agent_id": "PA"},
+            "C2": {"id": "C2", "company_id": "TTL", "agent_id": "PA"},
+            "OTHER": {"id": "OTHER", "company_id": "TTL", "agent_id": "OTHER"},
+        },
+    )
+    assert matched["status"] == "AMBIGUOUS"
+    workflow = build_document_workflow(
+        flow=flow,
+        quote_linked=True,
+        gnt={"ready": True},
+        delivered=False,
+        pxk={},
+        finance={},
+        sub_purchase_contract=matched,
+    )
+    purchase = _step(workflow, "sub_entrust_contract")
+    assert purchase["state"] == STATE_BLOCKED
+    assert "2 hợp đồng" in purchase["reason"]
