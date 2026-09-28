@@ -237,7 +237,11 @@ def project_commercial_flow(
         or importer.get("name")
         or importer.get("company_name")
     )
-    importer_tax_code = _text(importer.get("tax_code") or importer.get("mst"))
+    importer_tax_code = _text(
+        importer.get("legal_code")
+        or importer.get("tax_code")
+        or importer.get("mst")
+    )
     if flow["confirmed"] and not importer_name:
         missing.append("Thiếu tên pháp lý của đơn vị đứng nhập khẩu.")
     if flow["confirmed"] and not importer_tax_code:
