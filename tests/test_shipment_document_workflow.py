@@ -59,7 +59,7 @@ def test_sub_entrust_requires_real_agent_master():
             "PA": {
                 "agent_id": "PA",
                 "legal_name": "Công ty Phú Anh",
-                "tax_code": "0101234567",
+                "legal_code": "0101234567",
             }
         },
         sub_agent_id="PA",
@@ -257,3 +257,25 @@ def test_sub_purchase_contract_match_is_fail_closed_on_multiple_matches():
     purchase = _step(workflow, "sub_entrust_contract")
     assert purchase["state"] == STATE_BLOCKED
     assert "2 hợp đồng" in purchase["reason"]
+
+
+def test_project_flow_reads_authority_legal_code_for_direct_company():
+    projected = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_DIRECT,
+                "confirmed": True,
+                "company_id": "TTL",
+            }
+        ),
+        companies={
+            "TTL": {
+                "company_id": "TTL",
+                "legal_name": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+                "legal_code": "0109988776",
+            }
+        },
+    )
+    assert projected["ready"] is True
+    assert projected["legalImporterKind"] == "COMPANY"
+    assert projected["legalImporterTaxCode"] == "0109988776"
