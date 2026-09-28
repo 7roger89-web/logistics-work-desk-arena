@@ -3745,8 +3745,9 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     import streamlit as st
 
     from core.auth import can_generate_documents
-    from core.database import load_customers
+    from core.database import load_authority_agents, load_authority_companies, load_customers
     from core.gnt_builder import build_gnt_workbook, check_gnt_prerequisites
+    from core.shipment_document_workflow import gnt_flow_gate, project_commercial_flow
 
     sid = rd.text(payload.get("shipmentId"))
     if not sid:
