@@ -197,3 +197,17 @@ def test_gnt_gate_requires_confirmed_importer_tax_identity_and_rejects_mismatch(
         "0101",
     )
     assert match["allowed"] is True
+
+
+def test_customer_self_with_historical_pxk_keeps_conflict_visible():
+    workflow = build_document_workflow(
+        flow={"mode": FLOW_CUSTOMER_SELF, "confirmed": True},
+        quote_linked=True,
+        gnt={"ready": True, "taxCode": "0101"},
+        delivered=True,
+        pxk={"done": True, "document": {"fileName": "PXK-old.xlsx"}},
+        finance={"outstanding": 0},
+    )
+    pxk = _step(workflow, "warehouse_issue")
+    assert pxk["state"] == STATE_BLOCKED
+    assert "lịch sử" in pxk["reason"].lower()
