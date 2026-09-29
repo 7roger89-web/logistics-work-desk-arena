@@ -3428,6 +3428,196 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _res(True, readback=minimal, persisted=dict(minimal), audit=_audit_trail(sid))
 
 
+_DOCGEN_IMMUTABLE_FIELDS = (
+    "document_id",
+    "document_type",
+    "shipment_id",
+    "contract_id",
+    "parent_contract_id",
+    "counterparty_id",
+    "template_hash",
+    "generation_revision",
+    "revision",
+    "source_snapshot",
+    "source_reference",
+    "output_file_name",
+    "output_hash",
+    "supersedes_document_id",
+)
+
+
+def _docgen_immutable_match(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
+    """Compare only the fields the canonical docgen writer freezes."""
+    return all(existing.get(field) == candidate.get(field) for field in _DOCGEN_IMMUTABLE_FIELDS)
+
+
+def _persist_generated_docgen_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist one immutable revision and prove its fresh readback."""
+    from core.database import get_last_db_error, load_docgen_document, save_docgen_document
+
+    candidate = dict(metadata)
+    record_id = rd.text(candidate.get("id"))
+    if not record_id:
+        return {"ok": False, "error": "Thiếu id metadata chứng từ.", "collision": False}
+
+    try:
+        existing = load_docgen_document(record_id)
+    except Exception as exc:  # noqa: BLE001 - pre-write proof must be explicit
+        return {"ok": False, "error": f"Không đọc được metadata chứng từ trước khi ghi: {exc}", "collision": False}
+    if existing is not None:
+        if _docgen_immutable_match(existing, candidate):
+            return {"ok": True, "already_present": True, "record": existing}
+        return {
+            "ok": False,
+            "error": f"Xung đột revision chứng từ {record_id}; metadata bất biến không khớp.",
+            "collision": True,
+            "record": existing,
+        }
+
+    try:
+        saved = bool(save_docgen_document(candidate))
+    except Exception as exc:  # noqa: BLE001 - writer may commit before audit failure
+        saved = False
+        write_error = str(exc)
+    else:
+        write_error = ""
+
+    try:
+        after = load_docgen_document(record_id)
+    except Exception as exc:  # noqa: BLE001 - fresh proof is unavailable
+        after = None
+        readback_error = str(exc)
+    else:
+        readback_error = ""
+
+    if not saved:
+        if after is not None:
+            if _docgen_immutable_match(after, candidate) and write_error:
+                return {
+                    "ok": False,
+                    "error": f"Metadata đã có nhưng bước ghi/audit chưa hoàn tất rõ ràng: {write_error}",
+                    "collision": False,
+                    "metadata_committed": True,
+                    "record": after,
+                }
+            return {
+                "ok": False,
+                "error": f"Xung đột revision chứng từ {record_id}; không ghi đè metadata đã tồn tại.",
+                "collision": True,
+                "record": after,
+            }
+        return {
+            "ok": False,
+            "error": write_error or get_last_db_error() or "Không lưu được metadata chứng từ.",
+            "collision": False,
+        }
+    if after is None:
+        return {
+            "ok": False,
+            "error": "Đã ghi metadata chứng từ nhưng chưa chứng minh được readback mới"
+            + (f": {readback_error}" if readback_error else "."),
+            "collision": False,
+            "metadata_committed": True,
+        }
+    if not _docgen_immutable_match(after, candidate):
+        return {
+            "ok": False,
+            "error": f"Xung đột revision chứng từ {record_id}; readback không khớp.",
+            "collision": True,
+            "record": after,
+        }
+    return {"ok": True, "record": after}
+
+
+def _next_gnt_revision(shipment_id: str) -> dict[str, Any]:
+    """Read the next GNT revision from durable docgen metadata only."""
+    from core.database import load_docgen_documents
+
+    logical_id = f"GNT::{shipment_id}"
+    try:
+        documents = load_docgen_documents(shipment_id) or {}
+    except Exception as exc:  # noqa: BLE001 - revision authority must fail closed
+        return {"ok": False, "error": f"Không đọc được revision GNT: {exc}", "document_id": logical_id}
+
+    revisions: list[int] = []
+    for document in documents.values():
+        if not isinstance(document, Mapping):
+            continue
+        if rd.text(document.get("document_type")).upper() != "GNT":
+            continue
+        if rd.text(document.get("document_id")) != logical_id:
+            continue
+        generation_raw = document.get("generation_revision")
+        revision_raw = document.get("revision")
+        if generation_raw is None and revision_raw is None:
+            return {
+                "ok": False,
+                "error": f"Metadata GNT {document.get('id') or logical_id} thiếu revision; không đoán tiếp.",
+                "document_id": logical_id,
+            }
+        try:
+            generation = int(generation_raw if generation_raw is not None else revision_raw)
+            revision = int(revision_raw if revision_raw is not None else generation_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": f"Metadata GNT {document.get('id') or logical_id} có revision không hợp lệ.",
+                "document_id": logical_id,
+            }
+        if generation < 1 or revision < 1 or generation != revision:
+            return {
+                "ok": False,
+                "error": f"Metadata GNT {document.get('id') or logical_id} có revision không nhất quán.",
+                "document_id": logical_id,
+            }
+        revisions.append(generation)
+
+    return {
+        "ok": True,
+        "document_id": logical_id,
+        "revision": max(revisions) + 1 if revisions else 1,
+    }
+
+
+def _generated_attachment_failure(
+    event: str,
+    shipment_id: str,
+    outcome: Mapping[str, Any],
+    *,
+    attachment_persisted: bool = False,
+    partial_durable: bool = False,
+    **extra: Any,
+) -> dict[str, Any]:
+    """Return one honest generated-file failure without hiding service state."""
+    code = rd.text(outcome.get("code")) or "ATTACHMENT_PERSISTENCE_FAILED"
+    return _result(
+        event,
+        shipment_id,
+        False,
+        rd.text(outcome.get("error")) or "Không lưu được tệp sinh ra vào kho chứng từ.",
+        gate=code,
+        attachmentPersisted=attachment_persisted,
+        partialDurable=partial_durable,
+        duplicate=bool(outcome.get("duplicate")),
+        metadataCommitted=bool(outcome.get("metadata_committed")),
+        readbackProven=bool(outcome.get("readback_proven")),
+        orphanRisk=bool(outcome.get("orphan_risk")),
+        compensationAttempted=bool(outcome.get("compensation_attempted", False)),
+        compensated=bool(outcome.get("compensated", False)),
+        **extra,
+        **_attachment_result_extras(shipment_id),
+    )
+
+
+def _project_generated_attachment(outcome: Mapping[str, Any]) -> dict[str, Any]:
+    record = outcome.get("record")
+    if not isinstance(record, Mapping) or not rd.text(record.get("id")):
+        return {}
+    from core.shipment_attachments import project_attachment
+
+    return project_attachment(record)
+
+
 def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     """PXK through the real docgen rules/service — never a prototype TXT."""
     from core.auth import can_generate_documents
@@ -3575,38 +3765,75 @@ def _handle_pxk_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     raw = generated.get("bytes") or b""
     is_office = raw[:2] == b"PK"  # OOXML container
 
-    # Persist the generated document through the canonical metadata writer and
-    # keep the file on the SAME session download store the contract documents
-    # already use, so "đã sinh PXK" is a durable, downloadable fact and not
-    # only a toast that leaves nothing behind.
-    from core.database import get_last_db_error, save_docgen_document
-
     metadata = dict(generated.get("metadata") or {})
     record_id = (rd.text(metadata.get("id"))
                  or f"{generated.get('document_id')}::R{generated.get('revision')}")
     metadata["id"] = record_id
-    if not save_docgen_document(metadata):
-        return _result("pxk_generate", sid, False,
-                       get_last_db_error() or "Không lưu được metadata PXK.",
-                       gate=gate_state, delivered=True,
-                       service="core.docgen.generator.generate_document", failClosed=True)
-    logi_c1.store_output(sid, record_id, {
-        "file_name": generated.get("output_file_name"), "mime": logi_c1._MIME_XLSX,
-        "bytes": raw, "document_type": PXK, "revision": generated.get("revision"),
-    })
+
+    from core.shipment_attachments import upload_attachment
+
+    attachment_outcome = upload_attachment(
+        shipment_id=sid,
+        category="other",
+        file_name=rd.text(generated.get("output_file_name")) or f"PXK_{sid}.xlsx",
+        mime=logi_c1._MIME_XLSX,
+        data=raw,
+        uploaded_by=_actor(),
+        declared_size=len(raw),
+        shipment_context=shipment,
+    )
+    attachment_record = attachment_outcome.get("record") or {}
+    if not attachment_outcome.get("ok"):
+        return _generated_attachment_failure(
+            "pxk_generate", sid, attachment_outcome,
+            service="core.docgen.generator.generate_document", delivered=True,
+        )
+    if not isinstance(attachment_record, Mapping) or not rd.text(attachment_record.get("id")):
+        return _generated_attachment_failure(
+            "pxk_generate", sid,
+            {"code": "ATTACHMENT_READBACK_UNPROVEN", "error": "Kho chứng từ báo thành công nhưng thiếu hồ sơ tệp canonical."},
+            service="core.docgen.generator.generate_document", delivered=True,
+        )
+    attachment_view = _project_generated_attachment(attachment_outcome)
+
+    metadata_outcome = _persist_generated_docgen_metadata(metadata)
+    if not metadata_outcome.get("ok"):
+        return _result(
+            "pxk_generate", sid, False, rd.text(metadata_outcome.get("error")) or "Không lưu được metadata PXK.",
+            gate="PXK_REVISION_COLLISION" if metadata_outcome.get("collision") else "PXK_METADATA_FAILED",
+            delivered=True, service="core.docgen.generator.generate_document",
+            failClosed=True, attachmentPersisted=True, partialDurable=True,
+            attachment=attachment_view, metadataCommitted=bool(metadata_outcome.get("metadata_committed")),
+            duplicate=bool(attachment_outcome.get("duplicate")),
+            **_attachment_result_extras(sid),
+        )
+
+    session_cache_error = ""
+    try:
+        logi_c1.store_output(sid, record_id, {
+            "file_name": generated.get("output_file_name"), "mime": logi_c1._MIME_XLSX,
+            "bytes": raw, "document_type": PXK, "revision": generated.get("revision"),
+        })
+    except Exception as exc:  # noqa: BLE001 - durable state already proved
+        session_cache_error = str(exc)
 
     return _result("pxk_generate", sid, True, "Đã sinh PXK bằng dịch vụ docgen thật.",
                    gate=gate_state, delivered=True,
                    service="core.docgen.generator.generate_document",
                    persisted={"documentId": rd.text(generated.get("document_id")),
                               "recordId": record_id,
+                              "attachmentId": rd.text(attachment_record.get("id")),
                               "fileName": rd.text(generated.get("output_file_name")),
                               "status": rd.text(generated.get("status")),
                               "revision": generated.get("revision"),
                               "outputHash": rd.text(generated.get("output_hash")),
                               "pxkNo": pxk_no, "pxkDate": pxk_date,
                               "bytes": len(raw),
-                              "isOfficeFile": is_office},
+                              "isOfficeFile": is_office,
+                              "attachmentDuplicate": bool(attachment_outcome.get("duplicate")),
+                              "sessionCachePersisted": not bool(session_cache_error)},
+                   attachment=attachment_view,
+                   sessionCacheError=session_cache_error,
                    readback=_projection_for(read_shipment(sid) or {}),
                    audit=_audit_trail(sid))
 
@@ -3672,6 +3899,17 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
             missing=missing,
         )
 
+    revision_state = _next_gnt_revision(sid)
+    if not revision_state.get("ok"):
+        return _result(
+            "gnt_generate", sid, False,
+            rd.text(revision_state.get("error")) or "Không xác định được revision GNT bền vững.",
+            gate="GNT_REVISION_READ_FAILED", failClosed=True,
+        )
+    logical_document_id = rd.text(revision_state.get("document_id"))
+    rev = int(revision_state["revision"])
+    record_id = f"{logical_document_id}::R{rev}"
+
     try:
         raw_bytes = build_gnt_workbook(gnt_data)
     except Exception as exc:
@@ -3688,10 +3926,7 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     file_name = f"GNT_{sid}_{tk_no}.xlsx" if tk_no else f"GNT_{sid}.xlsx"
 
     from views import logi_c1
-
-    existing_gnts = [k for k in logi_c1.stored_outputs(sid) if k.startswith(f"GNT::{sid}")]
-    rev = len(existing_gnts) + 1
-    record_id = f"GNT::{sid}::R{rev}"
+    from core.shipment_attachments import upload_attachment
 
     actor_name = ""
     if hasattr(st, "session_state") and "current_user" in st.session_state:
@@ -3701,20 +3936,90 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
             or ""
         )
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    logi_c1.store_output(
-        sid,
-        record_id,
-        {
-            "file_name": file_name,
-            "mime": logi_c1._MIME_XLSX,
-            "bytes": raw_bytes,
-            "document_type": "GNT",
-            "revision": rev,
-            "generated_at": now_iso,
-            "generated_by": actor_name,
-        },
+    attachment_outcome = upload_attachment(
+        shipment_id=sid,
+        category="customs",
+        file_name=file_name,
+        mime=logi_c1._MIME_XLSX,
+        data=raw_bytes,
+        uploaded_by=_actor(),
+        declared_size=len(raw_bytes),
+        shipment_context=shipment,
     )
+    attachment_record = attachment_outcome.get("record") or {}
+    if not attachment_outcome.get("ok"):
+        return _generated_attachment_failure(
+            "gnt_generate", sid, attachment_outcome,
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    if not isinstance(attachment_record, Mapping) or not rd.text(attachment_record.get("id")):
+        return _generated_attachment_failure(
+            "gnt_generate", sid,
+            {"code": "ATTACHMENT_READBACK_UNPROVEN", "error": "Kho chứng từ báo thành công nhưng thiếu hồ sơ tệp canonical."},
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    attachment_view = _project_generated_attachment(attachment_outcome)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    gnt_metadata = {
+        "id": record_id,
+        "document_id": logical_document_id,
+        "document_type": "GNT",
+        "shipment_id": sid,
+        "contract_id": "",
+        "parent_contract_id": None,
+        "counterparty_id": "",
+        "template_hash": "",
+        "generation_revision": rev,
+        "revision": rev,
+        "status": "GENERATED",
+        "generated_at": now_iso,
+        "generated_by": actor_name or _actor(),
+        "source_snapshot": {
+            key: gnt_data.get(key)
+            for key in (
+                "tk_no", "tk_date", "taxpayer_name", "taxpayer_tax_code",
+                "taxpayer_address", "import_duty_amount", "import_vat_amount",
+            )
+        },
+        "source_reference": f"GNT:{sid}",
+        "output_file_name": file_name,
+        "output_hash": hashlib.sha256(raw_bytes).hexdigest(),
+        "supersedes_document_id": None,
+        "superseded_by_document_id": None,
+    }
+    metadata_outcome = _persist_generated_docgen_metadata(gnt_metadata)
+    if not metadata_outcome.get("ok"):
+        return _result(
+            "gnt_generate", sid, False,
+            rd.text(metadata_outcome.get("error")) or "Không lưu được metadata GNT.",
+            gate="GNT_REVISION_COLLISION" if metadata_outcome.get("collision") else "GNT_METADATA_FAILED",
+            failClosed=True, attachmentPersisted=True, partialDurable=True,
+            documentId=logical_document_id, recordId=record_id, revision=rev,
+            attachment=attachment_view, metadataCommitted=bool(metadata_outcome.get("metadata_committed")),
+            duplicate=bool(attachment_outcome.get("duplicate")),
+            **_attachment_result_extras(sid),
+        )
+
+    session_cache_error = ""
+    try:
+        logi_c1.store_output(
+            sid,
+            record_id,
+            {
+                "file_name": file_name,
+                "mime": logi_c1._MIME_XLSX,
+                "bytes": raw_bytes,
+                "document_type": "GNT",
+                "revision": rev,
+                "generated_at": now_iso,
+                "generated_by": actor_name,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 - durable state already proved
+        session_cache_error = str(exc)
 
     return _result(
         "gnt_generate",
@@ -3723,7 +4028,9 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
         "Đã tạo Giấy Nộp Thuế (GNT) thành công.",
         gate="READY",
         persisted={
+            "documentId": logical_document_id,
             "recordId": record_id,
+            "attachmentId": rd.text(attachment_record.get("id")),
             "fileName": file_name,
             "revision": rev,
             "bytes": len(raw_bytes),
@@ -3734,7 +4041,11 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
             "vat": gnt_data.get("import_vat_amount"),
             "taxpayer": gnt_data.get("taxpayer_name"),
             "taxCode": gnt_data.get("taxpayer_tax_code"),
+            "attachmentDuplicate": bool(attachment_outcome.get("duplicate")),
+            "sessionCachePersisted": not bool(session_cache_error),
         },
+        attachment=attachment_view,
+        sessionCacheError=session_cache_error,
         readback=_projection_for(read_shipment(sid) or {}),
         audit=_audit_trail(sid),
     )

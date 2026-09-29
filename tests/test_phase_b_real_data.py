@@ -476,6 +476,23 @@ def test_pxk_operator_identity_generates_persisted_office_file(staging, event_se
     assert raw[:2] == b"PK", "the downloadable payload must be a real OOXML container"
     assert zipfile.ZipFile(io.BytesIO(raw)).namelist()
 
+    from core.database import load_docgen_document, load_shipment_attachment
+    from core.shipment_attachments import fetch_attachment_bytes
+    import streamlit as st
+    from views import logi_c1
+
+    attachment_id = out["persisted"]["attachmentId"]
+    attachment = load_shipment_attachment(attachment_id)
+    assert attachment["shipment_id"] == sid
+    assert attachment["category"] == "other"
+    assert load_docgen_document(out["persisted"]["recordId"])["document_type"] == "PXK"
+
+    # Clearing the session cache does not remove the normal durable attachment.
+    st.session_state[logi_c1._outputs_key(sid)] = {}
+    fetched = fetch_attachment_bytes({"id": attachment_id}, shipment_id=sid)
+    assert fetched["ok"] is True
+    assert fetched["data"] == raw
+
 
 def test_pxk_requires_linked_source_contract(staging, event_seq):
     """PXK needs an explicitly linked HDMB/PL source — no invented legal data."""
