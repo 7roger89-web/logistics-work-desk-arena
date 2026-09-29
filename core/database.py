@@ -1988,21 +1988,27 @@ def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
 def has_any_users(*, db: Any = _UNSET_DB) -> bool:
     """Return whether the canonical user store has any live account.
 
-    The unauthenticated login shell only needs this bootstrap decision; loading
-    every user document (including password hashes) is unnecessary work on
-    every login render.  Keep the same fail-closed database resolution and use
-    one bounded existence probe instead.
+    Preserve the existing bootstrap decision exactly: ``load_users()`` counted
+    a document when ``doc.get("username")`` was truthy and
+    ``not doc.get("is_deleted")``.  Apply that same Python predicate over a
+    tiny two-field projection so the login shell never loads password hashes
+    or full user documents merely to decide first-admin bootstrap.
+
+    The cursor is lazy and stops at the first matching row. Malformed or legacy
+    values therefore keep the same truthiness behaviour as the prior path
+    instead of inventing a stricter Mongo predicate.
     """
     db = get_db() if db is _UNSET_DB else db
     if db is None:
         return False
-    return db.users.find_one(
-        {
-            "username": {"$type": "string", "$ne": ""},
-            "is_deleted": {"$ne": True},
-        },
-        {"_id": 1},
-    ) is not None
+    rows = db.users.find(
+        {},
+        {"_id": 0, "username": 1, "is_deleted": 1},
+    )
+    return any(
+        bool(doc.get("username")) and not bool(doc.get("is_deleted"))
+        for doc in rows
+    )
 
 
 # ---------- LG03 restore (4578d3f): user persistence API ----------
