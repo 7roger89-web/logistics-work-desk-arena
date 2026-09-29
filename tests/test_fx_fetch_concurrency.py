@@ -67,6 +67,45 @@ class FxFetchConcurrencyTest(unittest.TestCase):
         self.assertEqual(result["agribank"]["status"], "RATE_UNAVAILABLE")
         self.assertEqual(result["bidv"]["status"], "RATE_UNAVAILABLE")
 
+    def test_concurrent_fetch_preserves_source_semantics(self):
+        boc_html = b"""<table>
+        <tr><th>Currency Name</th><th>Buying Rate</th><th>Cash Buying Rate</th><th>Selling Rate</th><th>Cash Selling Rate</th><th>Middle Rate</th><th>Pub Time</th></tr>
+        <tr><td>USD</td><td>669.55</td><td>669.55</td><td>672.45</td><td>672.45</td><td>674.68</td><td>2026/09/23 18:40:28</td></tr>
+        </table>"""
+        agri_html = """<div>Tỷ giá được cập nhật lúc 11:30 ngày 23/09/2026</div>
+        <table><tr><th>Ngoại tệ</th><th>Mua tiền mặt</th><th>Mua chuyển khoản</th><th>Giá bán</th></tr>
+        <tr><td>USD</td><td>25,770.00</td><td>25,800.00</td><td>26,180.00</td></tr></table>""".encode("utf-8")
+        bidv_html = b"<html><body>BIDV static page without a proven API URL</body></html>"
+
+        class Response(_Response):
+            def __init__(self, body):
+                self.body = body
+
+            def read(self):
+                return self.body
+
+        def fake_urlopen(request, timeout):
+            self.assertEqual(timeout, 4)
+            url = request.full_url
+            if "boc.cn" in url:
+                return Response(boc_html)
+            if "agribank.com.vn" in url:
+                return Response(agri_html)
+            if "bidv.com.vn" in url:
+                return Response(bidv_html)
+            self.fail(f"unexpected URL: {url}")
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            result = fetch_live_fx("all", timeout=4)
+
+        self.assertEqual(list(result), ["boc", "agribank", "bidv"])
+        self.assertEqual(result["boc"]["status"], "OK")
+        self.assertEqual(str(result["boc"]["usd_to_cny"]), "6.6955")
+        self.assertEqual(result["agribank"]["status"], "OK")
+        self.assertEqual(str(result["agribank"]["usd_sell_vnd"]), "26180.00")
+        self.assertEqual(result["bidv"]["status"], "RATE_UNAVAILABLE")
+        self.assertEqual(result["bidv"]["bidv_rate_status"], "UNAVAILABLE")
+
 
 if __name__ == "__main__":
     unittest.main()
