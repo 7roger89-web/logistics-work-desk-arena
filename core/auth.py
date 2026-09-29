@@ -544,8 +544,8 @@ def require_login() -> dict[str, str] | None:
 
     user_count = 0
     try:
-        from core.database import load_users  # noqa: PLC0415
-        user_count = len(load_users())
+        from core.database import has_any_users  # noqa: PLC0415
+        user_count = 1 if has_any_users() else 0
     except Exception:  # noqa: BLE001
         pass
 

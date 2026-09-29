@@ -13,7 +13,6 @@ import streamlit as st
 
 from core.auth import require_login
 from core.config import DISPLAY_COMPANY_NAME
-from views import logi_shell, logi_view_model
 
 
 def main() -> None:
@@ -33,6 +32,12 @@ def main() -> None:
     user = require_login()
     if user is None:
         return
+
+    # Authenticated-only imports stay OUT of the login critical path.  The
+    # login screen does not need the large Logistics view-model graph or the
+    # component bundle, so importing them before require_login() only adds
+    # cold-session work without changing any authentication semantics.
+    from views import logi_shell, logi_view_model
 
     # Real Logistics view-model. With no MONGO_URI configured the app runs on
     # an isolated staging transport; a real URI always takes precedence.
