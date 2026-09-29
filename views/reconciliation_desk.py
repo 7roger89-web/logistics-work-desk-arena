@@ -57,6 +57,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
+from views.logi_route import shipment_path
+
 #: Existing React route for one shipment (donor route, unchanged).
 SHIPMENT_ROUTE_PREFIX = "/lo-hang/"
 
@@ -285,7 +287,7 @@ def reconciliation_projection(
                     "transactionIds": [],
                     "sourceRecordIds": _ids(row.get("source_record_ids")),
                     "reviewReason": _review_reason(row),
-                    "openHref": f"{SHIPMENT_ROUTE_PREFIX}{sid}",
+                    "openHref": shipment_path(sid),
                     "canOpen": True if known is None else sid in known,
                 }
             )
@@ -345,7 +347,7 @@ def reconciliation_projection(
                     "transactionIds": [transaction_id],
                     "sourceRecordIds": _ids(row.get("source_record_ids")),
                     "reviewReason": _review_reason(row),
-                    "openHref": f"{SHIPMENT_ROUTE_PREFIX}{sid}",
+                    "openHref": shipment_path(sid),
                     "canOpen": True if known is None else sid in known,
                 }
             )

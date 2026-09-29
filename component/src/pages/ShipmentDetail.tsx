@@ -1,6 +1,7 @@
 import { contractPath } from "../lib/contractRoute";
+import { shipmentIdFromPath } from "../lib/shipmentRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
@@ -85,7 +86,16 @@ function revealAnchor(anchor: string | null) {
 }
 
 export default function ShipmentDetail() {
-  const { id } = useParams();
+  // LOGI_SHIPMENT_SLASH_ROUTE_REPAIR_01 (Issue #138) — the identity comes from
+  // the RAW location segment decoded exactly ONCE, not from the router param:
+  // the params API collapses a literal uppercase "%2F" inside an identity into
+  // "/" (verified against this bundle), so a correctly encoded link such as
+  // /lo-hang/A%252FB would otherwise open the wrong lot. The router's param
+  // stays the fallback for any location that is not this route. The adjacent
+  // contract detail has used this same bounded mechanism since Issue #59.
+  const { id: paramId } = useParams();
+  const { pathname } = useLocation();
+  const id = shipmentIdFromPath(pathname, paramId);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
   const { shipments, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();

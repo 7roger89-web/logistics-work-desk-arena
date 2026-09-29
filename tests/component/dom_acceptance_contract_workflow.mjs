@@ -223,14 +223,35 @@ for (const mobile of [false, true]) {
 }
 ok('desktop and mobile contract search reach exact slash ID');
 
-// Fault injection only: an existing shipment link gets a malformed target.
-// This challenges the actual App wildcard in the unmodified production bundle.
+// Fault injection only: one existing shipment carries a slash-shaped identity
+// AND the stale backend-composed route an older payload would have sent for it.
+//
+// LOGI_SHIPMENT_SLASH_ROUTE_REPAIR_01 (Issue #138): the app-built link must now
+// be ONE encoded segment and must open the real lot (this very step used to be
+// the only in-app path that reached the App wildcard, because `/lo-hang/<id>`
+// was concatenated raw). The wildcard behaviour it originally guarded is still
+// challenged here through the ONE genuinely reachable malformed target that
+// remains: a backend-composed route string (`nextRoute`) that the UI passes
+// through verbatim — exactly the stale-route shape the shell must survive.
 const broken = structuredClone(FIX.initial);
 broken.shipments[0].id = 'BROKEN/ROUTE';
+broken.shipments[0].nextRoute = '/lo-hang/BROKEN/ROUTE?tab=van-tai'; // pre-fix backend shape
 invoke(broken); await tick(120);
 await click('Lô Hàng', 'a', $('aside')[0]);
-await click('BROKEN/ROUTE', 'a', $('main')[0]);
-assert.ok(byTestId('not-found'));
+const slashLink = $('main a').find(a => text(a) === 'BROKEN/ROUTE');
+assert.ok(slashLink, 'slash shipment link present in the list');
+assert.equal(slashLink.getAttribute('href'), '/lo-hang/BROKEN%2FROUTE', 'one encoded segment');
+slashLink.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+await tick(140);
+assert.ok(!byTestId('not-found'), 'a slash identity must NOT fall to the App wildcard');
+assert.equal(text($('main h1')[0]), 'BROKEN/ROUTE', 'the exact identity resolves on the real lot page');
+ok('slash shipment identity → one encoded segment → real ShipmentDetail (never wildcard)');
+
+const stale = structuredClone(broken);
+invoke(stale); await tick(120);
+await click('Lô Hàng', 'a', $('aside')[0]);
+await click('XỬ LÝ', 'a');
+assert.ok(byTestId('not-found'), 'a stale backend-composed multi-segment route still hits the wildcard');
 assert.ok(!mainText().includes('Sắp có'));
 for (const target of ['/', '/hop-dong', '/lo-hang']) {
   assert.ok($('[data-testid="not-found"] a').some(a => a.getAttribute('href') === target));

@@ -22,6 +22,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Building2, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
 import { Field, GhostBtn, SectionTitle, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
+import { shipmentPath } from "../lib/shipmentRoute";
 import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
 import type { PartnerPayableRow } from "../lib/viewmodel";
 
@@ -181,7 +182,7 @@ export default function PartnerPayables() {
             <tbody>
               {list.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
-                  <td><Link to={"/lo-hang/" + r.shipmentId + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.shipmentId}</Link></td>
+                  <td><Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.shipmentId}</Link></td>
                   <td className="font-semibold max-w-[220px]">
                     <span className="inline-flex items-center gap-1.5"><Building2 size={15} className="text-[#1e5aa8] shrink-0" /> {fmtText(r.partnerName)}</span>
                     <span className="block text-[12px] text-slate-400 font-normal">{r.partnerId}</span>
@@ -193,7 +194,7 @@ export default function PartnerPayables() {
                   <td><ToneBadge tone={toneFor(r.status)} size="sm">{r.status}</ToneBadge></td>
                   <td>
                     <div className="flex gap-1.5">
-                      <Link to={"/lo-hang/" + r.shipmentId + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
+                      <Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
                       {(r.remaining ?? 0) > 0 && (
                         <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]"><Wallet size={15} /> Trả đối tác</button>
                       )}
@@ -225,7 +226,7 @@ export default function PartnerPayables() {
               </div>
             </div>
             <div className="grid grid-cols-2 border-t">
-              <Link to={"/lo-hang/" + r.shipmentId + "?tab=tai-chinh"} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> MỞ LÔ</Link>
+              <Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> MỞ LÔ</Link>
               {(r.remaining ?? 0) > 0
                 ? <button onClick={() => openPay(r)} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]"><Wallet size={17} /> TRẢ ĐỐI TÁC</button>
                 : <span className="flex items-center justify-center font-bold text-[15px] text-slate-300 min-h-[52px]">Đã trả đủ</span>}

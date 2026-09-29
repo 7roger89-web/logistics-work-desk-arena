@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Truck, FileCheck2, PackageCheck, FileWarning, ArrowRight, Clock, CircleAlert, Wallet, Scale, FolderX, ListTodo } from "lucide-react";
 import { ToneBadge, SectionTitle, StatusDot } from "../components/ui";
 import { useStore } from "../lib/store";
+import { shipmentPath } from "../lib/shipmentRoute";
 import { cx, fmtMillions, fmtText } from "../lib/format";
 
 // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — Home is ONE work desk, not three
@@ -56,7 +57,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
               <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">XỬ LÝ NGAY <ArrowRight size={18} /></button>
-              <button onClick={() => nav(`/lo-hang/${focus.id}`)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]">Mở {focus.id}</button>
+              <button onClick={() => nav(shipmentPath(focus.id))} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]">Mở {focus.id}</button>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center rounded-xl text-white/90 font-bold text-[14px] px-4 min-h-[48px] underline decoration-white/40 underline-offset-4">Xem tất cả lô hàng</Link>
             </div>
           </>

@@ -43,6 +43,8 @@ from typing import Any, Mapping
 
 from core.entity_context import build_entity_context, list_context_entities
 
+from views.logi_route import shipment_path
+
 #: Existing React route for one shipment (donor route, unchanged).
 SHIPMENT_ROUTE_PREFIX = "/lo-hang/"
 
@@ -396,7 +398,7 @@ def partner_context_projection(
             finance_row["currency"] for finance_row in finance
             if _key(finance_row["shipmentId"]) == _key(sid) and finance_row["currency"]
         })
-        row["openHref"] = SHIPMENT_ROUTE_PREFIX + sid
+        row["openHref"] = shipment_path(sid)
         row["canOpen"] = sid.casefold() in shipment_keys
         if row["canOpen"] is False:
             row["source"] = (
