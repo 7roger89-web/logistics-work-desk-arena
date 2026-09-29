@@ -3428,105 +3428,22 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _res(True, readback=minimal, persisted=dict(minimal), audit=_audit_trail(sid))
 
 
-_DOCGEN_IMMUTABLE_FIELDS = (
-    "document_id",
-    "document_type",
-    "shipment_id",
-    "contract_id",
-    "parent_contract_id",
-    "counterparty_id",
-    "template_hash",
-    "generation_revision",
-    "revision",
-    "source_snapshot",
-    "source_reference",
-    "output_file_name",
-    "output_hash",
-    "supersedes_document_id",
-)
-
-
-def _docgen_immutable_match(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
-    """Compare only the fields the canonical docgen writer freezes."""
-    return all(existing.get(field) == candidate.get(field) for field in _DOCGEN_IMMUTABLE_FIELDS)
-
-
 def _persist_generated_docgen_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
-    """Persist one immutable revision and prove its fresh readback."""
-    from core.database import get_last_db_error, load_docgen_document, save_docgen_document
+    """Delegate immutable revision authority to the canonical database seam."""
+    from core.database import create_or_observe_docgen_revision
 
-    candidate = dict(metadata)
-    record_id = rd.text(candidate.get("id"))
-    if not record_id:
-        return {"ok": False, "error": "Thiếu id metadata chứng từ.", "collision": False}
-
-    try:
-        existing = load_docgen_document(record_id)
-    except Exception as exc:  # noqa: BLE001 - pre-write proof must be explicit
-        return {"ok": False, "error": f"Không đọc được metadata chứng từ trước khi ghi: {exc}", "collision": False}
-    if existing is not None:
-        if _docgen_immutable_match(existing, candidate):
-            return {"ok": True, "already_present": True, "record": existing}
-        return {
-            "ok": False,
-            "error": f"Xung đột revision chứng từ {record_id}; metadata bất biến không khớp.",
-            "collision": True,
-            "record": existing,
-        }
-
-    try:
-        saved = bool(save_docgen_document(candidate))
-    except Exception as exc:  # noqa: BLE001 - writer may commit before audit failure
-        saved = False
-        write_error = str(exc)
-    else:
-        write_error = ""
-
-    try:
-        after = load_docgen_document(record_id)
-    except Exception as exc:  # noqa: BLE001 - fresh proof is unavailable
-        after = None
-        readback_error = str(exc)
-    else:
-        readback_error = ""
-
-    if not saved:
-        if after is not None:
-            if _docgen_immutable_match(after, candidate) and write_error:
-                return {
-                    "ok": False,
-                    "error": f"Metadata đã có nhưng bước ghi/audit chưa hoàn tất rõ ràng: {write_error}",
-                    "collision": False,
-                    "metadata_committed": True,
-                    "record": after,
-                }
-            return {
-                "ok": False,
-                "error": f"Xung đột revision chứng từ {record_id}; không ghi đè metadata đã tồn tại.",
-                "collision": True,
-                "record": after,
-            }
-        return {
-            "ok": False,
-            "error": write_error or get_last_db_error() or "Không lưu được metadata chứng từ.",
-            "collision": False,
-        }
-    if after is None:
-        return {
-            "ok": False,
-            "error": "Đã ghi metadata chứng từ nhưng chưa chứng minh được readback mới"
-            + (f": {readback_error}" if readback_error else "."),
-            "collision": False,
-            "metadata_committed": True,
-        }
-    if not _docgen_immutable_match(after, candidate):
-        return {
-            "ok": False,
-            "error": f"Xung đột revision chứng từ {record_id}; readback không khớp.",
-            "collision": True,
-            "record": after,
-        }
-    return {"ok": True, "record": after}
+    outcome = create_or_observe_docgen_revision(metadata)
+    status = rd.text(outcome.get("status"))
+    return {
+        "ok": bool(outcome.get("ok")),
+        "already_present": status == "ALREADY_MATCHING",
+        "collision": status == "COLLISION",
+        "metadata_committed": bool(outcome.get("metadata_committed"))
+        or status in {"CREATED", "ALREADY_MATCHING"},
+        "error": rd.text(outcome.get("error")),
+        "record": outcome.get("record"),
+        "status": status,
+    }
 
 
 def _next_gnt_revision(shipment_id: str) -> dict[str, Any]:

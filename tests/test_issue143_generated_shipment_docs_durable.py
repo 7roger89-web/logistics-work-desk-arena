@@ -6,9 +6,13 @@ not require production Mongo, Google Drive, OAuth, or secrets.
 
 from __future__ import annotations
 
+import copy
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock
 
 import pytest
+from pymongo.errors import DuplicateKeyError
 
 from views import logi_c1
 from views import logi_view_model as vm
@@ -30,6 +34,76 @@ GNT_DATA = {
     "taxpayer_tax_code": "0101430143",
     "taxpayer_address": "Hà Nội",
 }
+
+
+class FakeDocgenCollection:
+    def __init__(self, rows=None, insert_barrier=None):
+        self.rows = [copy.deepcopy(row) for row in (rows or [])]
+        self.lock = threading.Lock()
+        self.insert_barrier = insert_barrier
+
+    def find_one(self, query, projection=None):
+        with self.lock:
+            for row in self.rows:
+                if all(row.get(key) == value for key, value in query.items()):
+                    result = copy.deepcopy(row)
+                    if projection and projection.get("_id") == 0:
+                        result.pop("_id", None)
+                    return result
+        return None
+
+    def insert_one(self, document):
+        if self.insert_barrier is not None:
+            self.insert_barrier.wait(timeout=5)
+        with self.lock:
+            if any(row.get("_id") == document.get("_id") for row in self.rows):
+                raise DuplicateKeyError("duplicate _id")
+            self.rows.append(copy.deepcopy(document))
+        return type("InsertResult", (), {"inserted_id": document.get("_id")})()
+
+
+class FakeDatabase:
+    def __init__(self, collection):
+        self.collection = collection
+
+    def __getitem__(self, name):
+        assert name == "docgen_documents"
+        return self.collection
+
+
+def _gnt_metadata(*, output_hash="hash-1", revision=1):
+    logical = "GNT::SHP-143"
+    return {
+        "id": f"{logical}::R{revision}",
+        "document_id": logical,
+        "document_type": "GNT",
+        "shipment_id": "SHP-143",
+        "contract_id": "",
+        "parent_contract_id": None,
+        "counterparty_id": "",
+        "template_hash": "",
+        "generation_revision": revision,
+        "revision": revision,
+        "status": "GENERATED",
+        "source_snapshot": {"tk_no": "TK-143"},
+        "source_reference": "GNT:SHP-143",
+        "output_file_name": "GNT_SHP-143_TK-143.xlsx",
+        "output_hash": output_hash,
+        "supersedes_document_id": None,
+        "superseded_by_document_id": None,
+    }
+
+
+def _install_fake_docgen_db(monkeypatch, collection):
+    database = FakeDatabase(collection)
+    monkeypatch.setattr("core.database.get_db", lambda: database)
+    monkeypatch.setattr("core.database._actor_context", lambda: {
+        "username": "writer-143",
+        "user_id": "USER-143",
+        "role": "admin",
+    })
+    monkeypatch.setattr("core.database._audit", lambda *args, **kwargs: None)
+    return database
 
 
 @pytest.fixture()
@@ -167,25 +241,118 @@ def test_metadata_failure_preserves_proven_attachment_and_skips_cache(ready_gnt,
     store.assert_not_called()
 
 
-def test_docgen_revision_collision_fails_before_overwrite(monkeypatch):
-    existing = {
-        "id": "GNT::SHP-143::R1",
-        "document_id": "GNT::SHP-143",
-        "document_type": "GNT",
-        "shipment_id": "SHP-143",
-        "revision": 1,
-        "generation_revision": 1,
-        "output_file_name": "GNT_SHP-143_TK-143.xlsx",
-        "output_hash": "old-hash",
-    }
-    candidate = dict(existing)
-    candidate["output_hash"] = "new-hash"
-    save = Mock()
-    monkeypatch.setattr("core.database.load_docgen_document", lambda record_id: existing)
-    monkeypatch.setattr("core.database.save_docgen_document", save)
+def test_atomic_create_returns_created_and_fresh_read_matches(monkeypatch):
+    from core import database as db
 
-    result = vm._persist_generated_docgen_metadata(candidate)
+    collection = FakeDocgenCollection()
+    _install_fake_docgen_db(monkeypatch, collection)
+    candidate = _gnt_metadata()
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["ok"] is True
+    assert result["status"] == db.DOCGEN_REVISION_CREATED
+    stored = collection.find_one({"_id": candidate["id"]})
+    assert stored["id"] == candidate["id"]
+    assert stored["output_hash"] == candidate["output_hash"]
+
+
+def test_atomic_same_identity_same_content_is_already_matching(monkeypatch):
+    from core import database as db
+
+    candidate = _gnt_metadata()
+    collection = FakeDocgenCollection([dict(candidate, _id="ordinary-object-id")])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["ok"] is True
+    assert result["status"] == db.DOCGEN_REVISION_ALREADY_MATCHING
+    assert len(collection.rows) == 1
+    assert collection.rows[0]["_id"] == "ordinary-object-id"
+
+
+def test_atomic_same_identity_different_content_is_collision(monkeypatch):
+    from core import database as db
+
+    winner = _gnt_metadata(output_hash="winner")
+    collection = FakeDocgenCollection([dict(winner, _id="ordinary-object-id")])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(_gnt_metadata(output_hash="loser"))
 
     assert result["ok"] is False
-    assert result["collision"] is True
-    save.assert_not_called()
+    assert result["status"] == db.DOCGEN_REVISION_COLLISION
+    assert len(collection.rows) == 1
+    assert collection.rows[0]["output_hash"] == "winner"
+
+
+def test_atomic_absent_same_revision_race_settles_without_pre_read_authority(monkeypatch):
+    from core import database as db
+
+    barrier = threading.Barrier(2)
+    collection = FakeDocgenCollection(insert_barrier=barrier)
+    _install_fake_docgen_db(monkeypatch, collection)
+    candidate = _gnt_metadata()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(db.create_or_observe_docgen_revision, [candidate, dict(candidate)]))
+
+    assert sorted(result["status"] for result in results) == [
+        db.DOCGEN_REVISION_ALREADY_MATCHING,
+        db.DOCGEN_REVISION_CREATED,
+    ]
+    assert len(collection.rows) == 1
+
+
+def test_atomic_absent_same_revision_different_content_has_one_winner(monkeypatch):
+    from core import database as db
+
+    barrier = threading.Barrier(2)
+    collection = FakeDocgenCollection(insert_barrier=barrier)
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(
+            db.create_or_observe_docgen_revision,
+            [_gnt_metadata(output_hash="left"), _gnt_metadata(output_hash="right")],
+        ))
+
+    statuses = sorted(result["status"] for result in results)
+    assert statuses == [db.DOCGEN_REVISION_COLLISION, db.DOCGEN_REVISION_CREATED]
+    assert len(collection.rows) == 1
+
+
+def test_historical_object_id_record_is_detected_without_duplicate(monkeypatch):
+    from core import database as db
+
+    candidate = _gnt_metadata()
+    collection = FakeDocgenCollection([dict(candidate, _id="507f1f77bcf86cd799439011")])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["status"] == db.DOCGEN_REVISION_ALREADY_MATCHING
+    assert len(collection.rows) == 1
+    assert collection.rows[0]["_id"] == "507f1f77bcf86cd799439011"
+
+
+def test_gnt_handler_collision_preserves_attachment_and_skips_session_cache(ready_gnt, monkeypatch):
+    upload = Mock(return_value=_attachment_outcome())
+    persist = Mock(return_value={
+        "ok": False,
+        "collision": True,
+        "error": "revision collision",
+        "metadata_committed": False,
+    })
+    store = Mock()
+    monkeypatch.setattr("core.shipment_attachments.upload_attachment", upload)
+    monkeypatch.setattr(vm, "_persist_generated_docgen_metadata", persist)
+    monkeypatch.setattr(vm.logi_c1, "store_output", store)
+
+    result = vm._handle_gnt_generate({"shipmentId": "SHP-143"})
+
+    assert result["ok"] is False
+    assert result["attachmentPersisted"] is True
+    assert result["partialDurable"] is True
+    store.assert_not_called()
