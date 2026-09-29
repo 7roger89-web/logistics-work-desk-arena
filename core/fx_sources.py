@@ -563,52 +563,58 @@ def fetch_live_fx(source: str = "all", timeout: int = 5) -> dict[str, Any]:
 
     This uses urllib with minimal deps. In sandbox without outbound network,
     it will return UNAVAILABLE rather than inventing values.
+
+    Independent sources are fetched concurrently and joined before returning.
+    This is request-scoped only: no daemon, scheduler, background refresh or
+    persisted cache. One slow bank must not make the caller pay the sum of the
+    other banks' timeouts.
     """
+    from concurrent.futures import ThreadPoolExecutor
     import urllib.request
     import urllib.error
 
-    results: dict[str, Any] = {}
-    sources = []
     if source == "all":
         sources = ["boc", "agribank", "bidv"]
     else:
         sources = [source]
 
-    for src in sources:
+    def _fetch_one(src: str) -> dict[str, Any]:
         url = {"boc": BOC_URL, "agribank": AGRIBANK_URL, "bidv": BIDV_URL}[src]
         parser = {"boc": parse_boc_html, "agribank": parse_agribank_html, "bidv": parse_bidv_html}[src]
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                # Try to detect charset
                 charset = resp.headers.get_content_charset() or "utf-8"
                 data = resp.read().decode(charset, errors="ignore")
-                # For BIDV, also try to discover API
+
                 if src == "bidv":
                     api_url = discover_bidv_api_url(data)
                     if api_url:
                         try:
-                            api_req = urllib.request.Request(api_url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+                            api_req = urllib.request.Request(
+                                api_url,
+                                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+                            )
                             with urllib.request.urlopen(api_req, timeout=timeout) as api_resp:
-                                api_data = api_resp.read().decode(api_resp.headers.get_content_charset() or "utf-8", errors="ignore")
-                                # Attempt to parse JSON
+                                api_data = api_resp.read().decode(
+                                    api_resp.headers.get_content_charset() or "utf-8",
+                                    errors="ignore",
+                                )
                                 import json
 
                                 try:
-                                    j = json.loads(api_data)
-                                    # Look for USD sell in json
-                                    # Generic search: find dict containing USD and Sell
-                                    # This is best-effort; if fails, fallback to HTML parse
-                                    # For now, mark as unavailable if JSON structure unknown
-                                    # But we can attempt to find numbers
-                                    text_j = json.dumps(j)
-                                    m = re.search(r'"(?:USD|usd)[^"]*".*?"(?:sell|ban|Sell)[^"]*"\s*:\s*"?([0-9,.\"]+)"?', text_j, flags=re.IGNORECASE)
-                                    if m:
-                                        # Use json-derived value
-                                        sell_txt = m.group(1).replace('"', "").replace(",", "")
+                                    payload = json.loads(api_data)
+                                    text_payload = json.dumps(payload)
+                                    match = re.search(
+                                        r'"(?:USD|usd)[^"]*".*?"(?:sell|ban|Sell)[^"]*"\s*:\s*"?([0-9,.\"]+)"?',
+                                        text_payload,
+                                        flags=re.IGNORECASE,
+                                    )
+                                    if match:
+                                        sell_txt = match.group(1).replace('"', "").replace(",", "")
                                         sell_dec = _parse_decimal(sell_txt)
                                         if sell_dec:
-                                            results[src] = {
+                                            return {
                                                 "status": "OK",
                                                 "currency": "USD",
                                                 "usd_sell_vnd": sell_dec,
@@ -619,18 +625,13 @@ def fetch_live_fx(source: str = "all", timeout: int = 5) -> dict[str, Any]:
                                                 "pub_time": None,
                                                 "source": "BIDV-API",
                                             }
-                                            continue
                                 except Exception:
                                     pass
                         except Exception:
                             pass
-                    # No proven API => spec requires UNAVAILABLE
-                    # We will still parse HTML but mark as UNPROVEN? For strict fail-closed, return UNAVAILABLE
-                    # To be truthful, we return UNAVAILABLE with HTML parsed as evidence but not official
+
                     html_parsed = parser(data, source_url=url)
-                    # If HTML parse succeeded, we keep it but flag status as UNAVAILABLE? Spec says BIDV_RATE_STATUS=UNAVAILABLE and keep manual entry
-                    # So we return UNAVAILABLE regardless, but keep parsed value for debugging
-                    results[src] = {
+                    return {
                         "status": "RATE_UNAVAILABLE",
                         "reason": "official BIDV dynamic API not proven; HTML fallback not accepted as official",
                         "source_url": url,
@@ -640,11 +641,10 @@ def fetch_live_fx(source: str = "all", timeout: int = 5) -> dict[str, Any]:
                         "html_sell_vnd": html_parsed.get("usd_sell_vnd"),
                         "bidv_rate_status": "UNAVAILABLE",
                     }
-                    continue
-                parsed = parser(data, source_url=url)
-                results[src] = parsed
+
+                return parser(data, source_url=url)
         except Exception as exc:
-            results[src] = {
+            result = {
                 "status": "RATE_UNAVAILABLE",
                 "reason": f"fetch_error: {type(exc).__name__}: {exc}",
                 "source_url": url,
@@ -652,6 +652,19 @@ def fetch_live_fx(source: str = "all", timeout: int = 5) -> dict[str, Any]:
                 "currency": "USD",
             }
             if src == "bidv":
-                results[src]["bidv_rate_status"] = "UNAVAILABLE"
+                result["bidv_rate_status"] = "UNAVAILABLE"
+            return result
 
+    if len(sources) <= 1:
+        return {src: _fetch_one(src) for src in sources}
+
+    results: dict[str, Any] = {}
+    with ThreadPoolExecutor(
+        max_workers=len(sources),
+        thread_name_prefix="logi-fx",
+    ) as pool:
+        futures = {src: pool.submit(_fetch_one, src) for src in sources}
+        for src in sources:
+            results[src] = futures[src].result()
     return results
+
