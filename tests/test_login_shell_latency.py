@@ -15,43 +15,62 @@ from core.database import has_any_users
 
 
 class _UsersCollection:
-    def __init__(self, result):
-        self.result = result
+    def __init__(self, rows):
+        self.rows = list(rows)
         self.calls = []
 
-    def find_one(self, query, projection):
+    def find(self, query, projection):
         self.calls.append((query, projection))
-        return self.result
+        return iter(self.rows)
 
 
 class _Db:
-    def __init__(self, result):
-        self.users = _UsersCollection(result)
+    def __init__(self, rows):
+        self.users = _UsersCollection(rows)
 
 
 class LoginShellLatencyTest(unittest.TestCase):
-    def test_user_existence_probe_is_one_bounded_identity_query(self):
-        db = _Db({"_id": "present"})
+    def test_user_existence_probe_uses_only_bootstrap_fields(self):
+        db = _Db([{"username": "admin", "is_deleted": False}])
 
         self.assertTrue(has_any_users(db=db))
         self.assertEqual(
             db.users.calls,
             [
                 (
-                    {
-                        "username": {"$type": "string", "$ne": ""},
-                        "is_deleted": {"$ne": True},
-                    },
-                    {"_id": 1},
+                    {},
+                    {"_id": 0, "username": 1, "is_deleted": 1},
                 )
             ],
         )
 
     def test_user_existence_probe_false_when_no_live_user(self):
-        db = _Db(None)
+        db = _Db([])
 
         self.assertFalse(has_any_users(db=db))
         self.assertEqual(len(db.users.calls), 1)
+
+    def test_user_existence_probe_preserves_load_users_truthiness_semantics(self):
+        # load_users() historically counted any truthy username value and
+        # excluded any truthy is_deleted marker. Keep that decision exactly,
+        # including malformed/legacy values, while projecting only two fields.
+        db = _Db(
+            [
+                {"username": "", "is_deleted": False},
+                {"username": 123, "is_deleted": "legacy-deleted"},
+                {"username": 456, "is_deleted": False},
+            ]
+        )
+
+        self.assertTrue(has_any_users(db=db))
+
+        deleted_only = _Db(
+            [
+                {"username": "admin", "is_deleted": True},
+                {"username": 123, "is_deleted": "yes"},
+            ]
+        )
+        self.assertFalse(has_any_users(db=deleted_only))
 
     def test_require_login_does_not_load_full_user_documents_for_bootstrap_check(self):
         from core.auth import require_login
