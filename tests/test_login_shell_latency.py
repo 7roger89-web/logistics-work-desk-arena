@@ -38,7 +38,10 @@ class LoginShellLatencyTest(unittest.TestCase):
             db.users.calls,
             [
                 (
-                    {"is_deleted": {"$ne": True}},
+                    {
+                        "username": {"$type": "string", "$ne": ""},
+                        "is_deleted": {"$ne": True},
+                    },
                     {"_id": 1},
                 )
             ],
