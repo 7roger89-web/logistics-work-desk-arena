@@ -1985,6 +1985,23 @@ def delete_proxy_payment(payment_id: str, reason: str = "") -> bool:
     return False
 
 
+def has_any_users(*, db: Any = _UNSET_DB) -> bool:
+    """Return whether the canonical user store has any live account.
+
+    The unauthenticated login shell only needs this bootstrap decision; loading
+    every user document (including password hashes) is unnecessary work on
+    every login render.  Keep the same fail-closed database resolution and use
+    one bounded existence probe instead.
+    """
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return False
+    return db.users.find_one(
+        {"is_deleted": {"$ne": True}},
+        {"_id": 1},
+    ) is not None
+
+
 # ---------- LG03 restore (4578d3f): user persistence API ----------
 # Da bi mat trong commit 0d6ce55 (LG02 mojibake hotfix). Phuc hoi co gioi han.
 
