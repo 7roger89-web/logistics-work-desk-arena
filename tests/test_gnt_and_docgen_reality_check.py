@@ -463,14 +463,27 @@ def test_gnt_generate_end_to_end_flow(staging, event_seq):
     assert gnt_res["persisted"]["duty"] == 5000000.0
     assert gnt_res["persisted"]["vat"] == 800000.0
 
-    # Verify logi_c1 session-scoped storage (not in MongoDB)
+    # Same-session convenience remains available, but the durable attachment
+    # and docgen revision are now the authorities across session loss.
     outputs = logi_c1.stored_outputs(sid)
     record_id = gnt_res["persisted"]["recordId"]
     assert record_id in outputs
     assert outputs[record_id]["document_type"] == "GNT"
-    assert outputs[record_id]["bytes"][:2] == b"PK"
+    generated_bytes = outputs[record_id]["bytes"]
+    assert generated_bytes[:2] == b"PK"
 
-    # Readback projection verification
+    from core.database import load_docgen_document, load_shipment_attachment, load_shipment_attachments
+    from core.shipment_attachments import fetch_attachment_bytes
+
+    attachment_id = gnt_res["persisted"]["attachmentId"]
+    attachment = load_shipment_attachment(attachment_id)
+    assert attachment is not None
+    assert attachment["shipment_id"] == sid
+    assert attachment["category"] == "customs"
+    assert load_docgen_document(record_id)["document_type"] == "GNT"
+    assert attachment_id in load_shipment_attachments(sid)
+
+    # Readback projection verification remains available in the same session.
     shipment_read = vm.read_shipment(sid)
     gnt_proj = rd._gnt_projection(shipment_read, shipment_read.get("data", {}).get("2.4", {}), {}, sid)
     assert gnt_proj["done"] is True
@@ -483,6 +496,53 @@ def test_gnt_generate_end_to_end_flow(staging, event_seq):
     assert raw_decoded[:2] == b"PK"
     wb = openpyxl.load_workbook(io.BytesIO(raw_decoded))
     assert "GIẤY NỘP THUẾ" in wb.sheetnames
+
+    # A fresh session loses the cache, but the normal shipment attachment reader
+    # still returns the exact generated XLSX bytes.
+    import streamlit as st
+    st.session_state[logi_c1._outputs_key(sid)] = {}
+    fetched = fetch_attachment_bytes({"id": attachment_id}, shipment_id=sid)
+    assert fetched["ok"] is True
+    assert fetched["data"] == generated_bytes
+
+
+def test_gnt_revision_comes_from_durable_docgen_metadata_after_session_clear(staging, event_seq):
+    """GNT revision numbering must not reset when the Streamlit cache is cleared."""
+    import streamlit as st
+
+    sid = "LO-0307"
+    _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": sid,
+        "fields": {
+            "gnt_taxpayer_name": "Đức Long Co.",
+            "gnt_taxpayer_tax_code": "0312987654",
+            "gnt_taxpayer_address": "Lô 5, KCN Quế Võ, Bắc Ninh",
+            "tk_no": "105588421330",
+            "tk_date": "15/08/2026",
+            "import_duty_amount": "5000000",
+            "import_vat_amount": "800000",
+        },
+    })
+    first = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
+    assert first["ok"], first
+    assert first["persisted"]["revision"] == 1
+
+    st.session_state[logi_c1._outputs_key(sid)] = {}
+    second = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
+    assert second["ok"], second
+    assert second["persisted"]["revision"] == 2
+    assert second["persisted"]["attachmentDuplicate"] is True
+
+    from core.database import load_docgen_documents, load_shipment_attachments
+    docs = load_docgen_documents(sid)
+    revisions = sorted(
+        int(row.get("revision") or row.get("generation_revision"))
+        for row in docs.values()
+        if row.get("document_type") == "GNT"
+    )
+    assert revisions == [1, 2]
+    # The second generation reused the same SHA and did not create another file.
+    assert len(load_shipment_attachments(sid)) == 1
 
 
 def test_gnt_generate_fails_closed_when_facts_are_missing(staging, event_seq):

@@ -2467,6 +2467,167 @@ def save_docgen_document(document: Mapping[str, Any]) -> bool:
     return True
 
 
+DOCGEN_REVISION_CREATED = "CREATED"
+DOCGEN_REVISION_ALREADY_MATCHING = "ALREADY_MATCHING"
+DOCGEN_REVISION_COLLISION = "COLLISION"
+DOCGEN_REVISION_WRITE_UNPROVEN = "WRITE_UNPROVEN"
+DOCGEN_REVISION_FAILED = "FAILED"
+
+
+def _docgen_immutable_match(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
+    return all(existing.get(field) == candidate.get(field) for field in _DOCGEN_IMMUTABLE_FIELDS)
+
+
+def _docgen_revision_match(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
+    """Match only an equivalent creation intent, including lifecycle status."""
+    return (
+        str(existing.get("id") or "") == str(candidate.get("id") or "")
+        and _docgen_immutable_match(existing, candidate)
+        and str(existing.get("status") or "").strip().upper()
+        == str(candidate.get("status") or "").strip().upper()
+    )
+
+
+def _find_docgen_revision_identity(db: Any, record_id: str) -> tuple[dict[str, Any] | None, str]:
+    """Find by public id first, then by deterministic _id for a new row."""
+    try:
+        row = db["docgen_documents"].find_one({"id": record_id}, {"_id": 0})
+        if row is not None:
+            return dict(row), ""
+        row = db["docgen_documents"].find_one({"_id": record_id}, {"_id": 0})
+        return (dict(row), "") if row is not None else (None, "")
+    except PyMongoError as exc:
+        return None, _sanitize_error(str(exc))
+
+
+def create_or_observe_docgen_revision(document: Mapping[str, Any]) -> dict[str, Any]:
+    """Atomically create or observe one immutable revision identity.
+
+    New rows use ``_id == id`` so Mongo's inherent unique ``_id`` constraint
+    settles the absent-to-same-revision race without a lock or retry loop.
+    Historical rows with an ObjectId ``_id`` remain readable through their
+    public ``id`` and are observed before any create is attempted.
+    """
+    db = get_db()
+    if db is None:
+        return {"ok": False, "status": DOCGEN_REVISION_FAILED, "error": "Không có kết nối cơ sở dữ liệu."}
+
+    candidate = copy.deepcopy(dict(document))
+    document_id = str(candidate.get("document_id") or "").strip()
+    record_id = str(candidate.get("id") or document_id).strip()
+    if not document_id or not record_id:
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_FAILED,
+            "error": "Chứng từ cần có document_id và id.",
+        }
+    candidate["document_id"] = document_id
+    candidate["id"] = record_id
+
+    existing, lookup_error = _find_docgen_revision_identity(db, record_id)
+    if lookup_error:
+        return {"ok": False, "status": DOCGEN_REVISION_WRITE_UNPROVEN, "error": lookup_error}
+    if existing is not None:
+        if _docgen_revision_match(existing, candidate):
+            return {"ok": True, "status": DOCGEN_REVISION_ALREADY_MATCHING, "record": existing}
+        existing_status = str(existing.get("status") or "").strip().upper()
+        candidate_status = str(candidate.get("status") or "").strip().upper()
+        reason = (
+            f"trạng thái {existing_status} không tương thích với {candidate_status}"
+            if existing_status != candidate_status
+            else "metadata bất biến không khớp"
+        )
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_COLLISION,
+            "collision": True,
+            "error": f"Xung đột revision chứng từ {record_id}; {reason}.",
+            "record": existing,
+        }
+
+    actor_context = _actor_context()
+    candidate.pop("_id", None)
+    candidate["updated_at"] = utc_now()
+    candidate["updated_by"] = actor_context["username"]
+    candidate["updated_by_user_id"] = actor_context["user_id"]
+    candidate["updated_by_role"] = actor_context["role"]
+    candidate.setdefault("created_at", utc_now())
+    candidate.setdefault("created_by", actor_context["username"])
+    candidate.setdefault("created_by_user_id", actor_context["user_id"])
+    candidate.setdefault("created_by_role", actor_context["role"])
+    candidate["_id"] = record_id
+
+    try:
+        db["docgen_documents"].insert_one(candidate)
+    except DuplicateKeyError:
+        observed, observe_error = _find_docgen_revision_identity(db, record_id)
+        if observe_error:
+            return {"ok": False, "status": DOCGEN_REVISION_WRITE_UNPROVEN, "error": observe_error}
+        if observed is not None and _docgen_revision_match(observed, candidate):
+            return {"ok": True, "status": DOCGEN_REVISION_ALREADY_MATCHING, "record": observed}
+        if observed is not None:
+            existing_status = str(observed.get("status") or "").strip().upper()
+            candidate_status = str(candidate.get("status") or "").strip().upper()
+            reason = (
+                f"trạng thái {existing_status} không tương thích với {candidate_status}"
+                if existing_status != candidate_status
+                else "metadata bất biến không khớp"
+            )
+            return {
+                "ok": False,
+                "status": DOCGEN_REVISION_COLLISION,
+                "collision": True,
+                "error": f"Xung đột revision chứng từ {record_id}; {reason}; không ghi đè metadata đã tồn tại.",
+                "record": observed,
+            }
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_WRITE_UNPROVEN,
+            "error": f"Không xác minh được identity revision {record_id} sau duplicate key.",
+        }
+    except PyMongoError as exc:
+        error = _sanitize_error(str(exc))
+        _set_last_error(error)
+        return {"ok": False, "status": DOCGEN_REVISION_FAILED, "error": error}
+
+    try:
+        _audit(db, "docgen_document", record_id, "create", before=None, after=candidate)
+    except Exception as exc:  # noqa: BLE001 - insert may already be durable
+        observed, observe_error = _find_docgen_revision_identity(db, record_id)
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_WRITE_UNPROVEN,
+            "metadata_committed": observed is not None,
+            "error": observe_error or f"Revision đã tạo nhưng audit/readback chưa hoàn tất rõ ràng: {exc}",
+            "record": observed,
+        }
+
+    observed, observe_error = _find_docgen_revision_identity(db, record_id)
+    if observe_error:
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_WRITE_UNPROVEN,
+            "metadata_committed": True,
+            "error": observe_error,
+        }
+    if observed is None:
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_WRITE_UNPROVEN,
+            "metadata_committed": True,
+            "error": f"Đã tạo revision {record_id} nhưng chưa chứng minh được readback.",
+        }
+    if not _docgen_revision_match(observed, candidate):
+        return {
+            "ok": False,
+            "status": DOCGEN_REVISION_COLLISION,
+            "collision": True,
+            "error": f"Xung đột revision chứng từ {record_id}; readback không khớp.",
+            "record": observed,
+        }
+    return {"ok": True, "status": DOCGEN_REVISION_CREATED, "record": observed}
+
+
 def link_superseded_docgen_document(old_document_id: str, new_document_id: str) -> bool:
     """Link an ISSUED document as superseded by a new document.
     
