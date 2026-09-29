@@ -321,6 +321,60 @@ def test_atomic_absent_same_revision_different_content_has_one_winner(monkeypatc
     statuses = sorted(result["status"] for result in results)
     assert statuses == [db.DOCGEN_REVISION_COLLISION, db.DOCGEN_REVISION_CREATED]
     assert len(collection.rows) == 1
+    stored = collection.rows[0]
+    stored_hash = stored["output_hash"]
+    assert stored_hash in {"left", "right"}
+    created = next(result for result in results if result["status"] == db.DOCGEN_REVISION_CREATED)
+    collision = next(result for result in results if result["status"] == db.DOCGEN_REVISION_COLLISION)
+    assert created["record"]["output_hash"] == stored_hash
+    assert collision["record"]["output_hash"] == stored_hash
+
+
+def test_issued_revision_rejects_generated_observation_without_rewrite(monkeypatch):
+    from core import database as db
+
+    candidate = _gnt_metadata()
+    existing = dict(candidate, _id="ordinary-object-id", status="ISSUED")
+    collection = FakeDocgenCollection([existing])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["ok"] is False
+    assert result["status"] == db.DOCGEN_REVISION_COLLISION
+    assert result["collision"] is True
+    assert "ISSUED" in result["error"]
+    assert "GENERATED" in result["error"]
+    assert len(collection.rows) == 1
+    assert collection.rows[0]["status"] == "ISSUED"
+    assert collection.rows[0]["output_hash"] == candidate["output_hash"]
+
+
+def test_generated_revision_matches_generated_observation(monkeypatch):
+    from core import database as db
+
+    candidate = _gnt_metadata()
+    collection = FakeDocgenCollection([dict(candidate, _id="ordinary-object-id")])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["ok"] is True
+    assert result["status"] == db.DOCGEN_REVISION_ALREADY_MATCHING
+
+
+def test_issued_revision_matches_issued_observation(monkeypatch):
+    from core import database as db
+
+    candidate = dict(_gnt_metadata(), status="ISSUED")
+    collection = FakeDocgenCollection([dict(candidate, _id="ordinary-object-id")])
+    _install_fake_docgen_db(monkeypatch, collection)
+
+    result = db.create_or_observe_docgen_revision(candidate)
+
+    assert result["ok"] is True
+    assert result["status"] == db.DOCGEN_REVISION_ALREADY_MATCHING
+    assert collection.rows[0]["status"] == "ISSUED"
 
 
 def test_historical_object_id_record_is_detected_without_duplicate(monkeypatch):

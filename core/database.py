@@ -2479,7 +2479,13 @@ def _docgen_immutable_match(existing: Mapping[str, Any], candidate: Mapping[str,
 
 
 def _docgen_revision_match(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
-    return str(existing.get("id") or "") == str(candidate.get("id") or "") and _docgen_immutable_match(existing, candidate)
+    """Match only an equivalent creation intent, including lifecycle status."""
+    return (
+        str(existing.get("id") or "") == str(candidate.get("id") or "")
+        and _docgen_immutable_match(existing, candidate)
+        and str(existing.get("status") or "").strip().upper()
+        == str(candidate.get("status") or "").strip().upper()
+    )
 
 
 def _find_docgen_revision_identity(db: Any, record_id: str) -> tuple[dict[str, Any] | None, str]:
@@ -2524,11 +2530,18 @@ def create_or_observe_docgen_revision(document: Mapping[str, Any]) -> dict[str, 
     if existing is not None:
         if _docgen_revision_match(existing, candidate):
             return {"ok": True, "status": DOCGEN_REVISION_ALREADY_MATCHING, "record": existing}
+        existing_status = str(existing.get("status") or "").strip().upper()
+        candidate_status = str(candidate.get("status") or "").strip().upper()
+        reason = (
+            f"trạng thái {existing_status} không tương thích với {candidate_status}"
+            if existing_status != candidate_status
+            else "metadata bất biến không khớp"
+        )
         return {
             "ok": False,
             "status": DOCGEN_REVISION_COLLISION,
             "collision": True,
-            "error": f"Xung đột revision chứng từ {record_id}; metadata bất biến không khớp.",
+            "error": f"Xung đột revision chứng từ {record_id}; {reason}.",
             "record": existing,
         }
 
@@ -2553,11 +2566,18 @@ def create_or_observe_docgen_revision(document: Mapping[str, Any]) -> dict[str, 
         if observed is not None and _docgen_revision_match(observed, candidate):
             return {"ok": True, "status": DOCGEN_REVISION_ALREADY_MATCHING, "record": observed}
         if observed is not None:
+            existing_status = str(observed.get("status") or "").strip().upper()
+            candidate_status = str(candidate.get("status") or "").strip().upper()
+            reason = (
+                f"trạng thái {existing_status} không tương thích với {candidate_status}"
+                if existing_status != candidate_status
+                else "metadata bất biến không khớp"
+            )
             return {
                 "ok": False,
                 "status": DOCGEN_REVISION_COLLISION,
                 "collision": True,
-                "error": f"Xung đột revision chứng từ {record_id}; không ghi đè metadata đã tồn tại.",
+                "error": f"Xung đột revision chứng từ {record_id}; {reason}; không ghi đè metadata đã tồn tại.",
                 "record": observed,
             }
         return {
