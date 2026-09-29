@@ -1997,7 +1997,10 @@ def has_any_users(*, db: Any = _UNSET_DB) -> bool:
     if db is None:
         return False
     return db.users.find_one(
-        {"is_deleted": {"$ne": True}},
+        {
+            "username": {"$type": "string", "$ne": ""},
+            "is_deleted": {"$ne": True},
+        },
         {"_id": 1},
     ) is not None
 
