@@ -30,6 +30,7 @@ import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import Notebook from "./pages/Notebook";
+import NotebookLMEmbed from "./pages/NotebookLMEmbed";
 import UserAccess from "./pages/UserAccess";
 import IntlPaymentTool from "./pages/IntlPaymentTool";
 import NotFound from "./pages/NotFound";
@@ -94,6 +95,7 @@ export default function App() {
                 existing knowledge_base reader (no longer a placeholder; no CMS,
                 no authoring event, no search backend). */}
             <Route path="/so-tay" element={<Notebook />} />
+            <Route path="/notebooklm" element={<NotebookLMEmbed />} />
             {/* LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — stateless international
                 payment calculator (CÔNG CỤ). No contract, no write event, no
                 persistence; it left the contract detail tabs. */}
