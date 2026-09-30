@@ -31052,6 +31052,43 @@ function Pd() {
 	});
 }
 //#endregion
+//#region src/pages/NotebookLMEmbed.bundle-repair.tsx
+var NbLmUrl_20260930 = "https://notebook.google.com/notebook/f5c90bb9-9244-4027-a9ae-84f6ab023a09/preview";
+function NbLmLauncher_20260930() {
+	let e = mt(), t = e.pathname.startsWith("/notebooklm");
+	return /* @__PURE__ */ (0, B.jsxs)(Mn, {
+		to: "/notebooklm",
+		style: { position: "fixed", right: 16, bottom: 96, zIndex: 30 },
+		className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-extrabold shadow-lg " + (t ? "bg-[#0f2a4a] text-white" : "border border-slate-200 bg-white text-[#0f2a4a] hover:bg-slate-50"),
+		"aria-label": "Mở NotebookLM",
+		"data-testid": "notebooklm-launcher",
+		children: [/* @__PURE__ */ (0, B.jsx)(jr, { size: 19 }), "NotebookLM"]
+	});
+}
+function NbLmEmbed_20260930() {
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: "flex flex-col gap-3",
+		style: { minHeight: "calc(100vh - 112px)" },
+		"data-testid": "notebooklm-embed",
+		children: [
+			/* @__PURE__ */ (0, B.jsxs)("div", { children: [
+				/* @__PURE__ */ (0, B.jsx)("h1", { className: "text-[20px] font-extrabold text-[#0f2a4a] md:text-[22px]", children: "NotebookLM" }),
+				/* @__PURE__ */ (0, B.jsx)("p", { className: "mt-0.5 text-[13px] text-slate-500", children: "Dùng trực tiếp tài khoản Google đang đăng nhập trên trình duyệt này." })
+			] }),
+			/* @__PURE__ */ (0, B.jsx)("div", {
+				className: "flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
+				style: { minHeight: 720 },
+				children: /* @__PURE__ */ (0, B.jsx)("iframe", {
+					src: NbLmUrl_20260930,
+					title: "NotebookLM Logistics",
+					referrerPolicy: "strict-origin-when-cross-origin",
+					style: { display: "block", width: "100%", height: "calc(100vh - 180px)", minHeight: 720, border: 0 }
+				})
+			})
+		]
+	});
+}
+//#endregion
 //#region src/App.tsx
 function Fd() {
 	return /* @__PURE__ */ (0, B.jsx)("div", {
@@ -31064,7 +31101,7 @@ function Fd() {
 }
 function Id() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
-	return /* @__PURE__ */ (0, B.jsx)(Kn, { children: /* @__PURE__ */ (0, B.jsx)(Vt, { children: /* @__PURE__ */ (0, B.jsx)(rs, { children: e ? /* @__PURE__ */ (0, B.jsxs)(Gt, { children: [
+	return /* @__PURE__ */ (0, B.jsx)(Kn, { children: /* @__PURE__ */ (0, B.jsx)(Vt, { children: /* @__PURE__ */ (0, B.jsxs)(rs, { children: [/* @__PURE__ */ (0, B.jsx)(NbLmLauncher_20260930, {}), e ? /* @__PURE__ */ (0, B.jsxs)(Gt, { children: [
 		/* @__PURE__ */ (0, B.jsx)(Ut, {
 			path: "/",
 			element: /* @__PURE__ */ (0, B.jsx)(os, {})
@@ -31155,6 +31192,10 @@ function Id() {
 			element: /* @__PURE__ */ (0, B.jsx)(Ku, {})
 		}),
 		/* @__PURE__ */ (0, B.jsx)(Ut, {
+			path: "/notebooklm",
+			element: /* @__PURE__ */ (0, B.jsx)(NbLmEmbed_20260930, {})
+		}),
+		/* @__PURE__ */ (0, B.jsx)(Ut, {
 			path: "/thanh-toan-quoc-te",
 			element: /* @__PURE__ */ (0, B.jsx)(Nd, {})
 		}),
@@ -31166,7 +31207,7 @@ function Id() {
 			path: "*",
 			element: /* @__PURE__ */ (0, B.jsx)(Pd, {})
 		})
-	] }) : /* @__PURE__ */ (0, B.jsx)(Fd, {}) }) }) });
+	] }) : /* @__PURE__ */ (0, B.jsx)(Fd, {})] }) }) });
 }
 //#endregion
 //#region src/component-entry.tsx
