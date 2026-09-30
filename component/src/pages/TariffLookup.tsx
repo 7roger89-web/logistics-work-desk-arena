@@ -1,231 +1,231 @@
-// ============================================================================
-// LOGI_TARIFF_LOOKUP_01 — /tra-cuu-thue (Tra cứu HS & Thuế).
-//
-// REAL_BACKED read-only workspace over the EXISTING canonical reader
-// (core.utils.fast_search_tariff → governed TARIFF_DB_PATH reference data).
-// No mock data, no fabricated rates: every field the internal reference
-// schema does not carry renders as an explicit "—" (UNKNOWN != ZERO), and
-// the provenance banner states plainly that this is not an official
-// customs ruling. Donor UI patterns only (search card + responsive
-// table/cards) — no new design system, router, store or API.
-// ============================================================================
+// BIỂU THUẾ — fast indexed lookup over the governed SQLite tariff database.
+// Runtime never loads the XLSX. HS code lookup uses the SQLite B-tree index;
+// Vietnamese product/policy text uses FTS5. Only bounded matching rows reach UI.
 
 import { useState, useSyncExternalStore } from "react";
-import { Search, AlertTriangle, Info, Database } from "lucide-react";
-import { SectionTitle, inputCls } from "../components/ui";
+import { AlertTriangle, Database, Info, Search } from "lucide-react";
+import { SectionTitle } from "../components/ui";
 import { dispatchLogiEvent } from "../lib/dispatcher";
-import { cx, UNKNOWN } from "../lib/format";
+import { UNKNOWN } from "../lib/format";
 import {
   getViewModel,
   subscribeViewModel,
   type TariffRow,
 } from "../lib/viewmodel";
 
-function orUnknown(value: string | null | undefined): string {
+function val(value: string | null | undefined): string {
   return value ? value : UNKNOWN;
 }
 
-function ExtraFields({ row, stacked }: { row: TariffRow; stacked?: boolean }) {
-  if (!row.fields.length) return <span className="text-slate-400">{UNKNOWN}</span>;
+function Rate({ label, value }: { label: string; value: string | null }) {
   return (
-    <span className={cx("text-[13.5px] text-slate-700", stacked && "block")}>
-      {row.fields.map((f) => (
-        <span key={f.label} className={cx(!stacked && "mr-3 whitespace-nowrap")}>
-          <span className="font-semibold text-slate-500">{f.label}:</span>{" "}
-          <span className="font-bold">{orUnknown(f.value)}</span>
-        </span>
-      ))}
+    <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[12px]">
+      <span className="font-semibold text-slate-500">{label}</span>
+      <span className="font-extrabold text-[#0f2a4a]">{val(value)}</span>
     </span>
+  );
+}
+
+function MoreRates({ row }: { row: TariffRow }) {
+  if (!row.fields.length) return null;
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-[12.5px] font-bold text-[#1e5aa8]">
+        Thuế FTA / XK / sắc thuế khác ({row.fields.length})
+      </summary>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {row.fields.map((field) => (
+          <Rate key={field.label} label={field.label} value={field.value} />
+        ))}
+      </div>
+    </details>
   );
 }
 
 export default function TariffLookup() {
   useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const vm = getViewModel();
-  const tariff = vm?.tariff ?? null;
+  const tariff = getViewModel()?.tariff ?? null;
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
 
   const pending = submitted.length > 0 && submitted !== (tariff?.query ?? "");
   const rows = tariff?.rows ?? [];
-  // The delivered slice is the last AUTHORITATIVE read for tariff.query — it
-  // stays visible across navigation; `pending` covers only the in-flight gap
-  // between submit and the fresh readback.
   const showResults = Boolean(tariff?.searched) && !pending;
 
   const submit = () => {
     const q = query.trim();
-    if (q.length < 2) return; // the canonical reader requires >= 2 chars
+    if (q.length < 2) return;
     setSubmitted(q);
     dispatchLogiEvent("tariff_lookup", { query: q });
   };
 
   const source = tariff?.source;
-  const provenance = tariff?.provenance;
 
   return (
-    <div className="space-y-4 max-w-[1300px]">
-      {/* Search card — exact / partial HS code or product keyword. All three
-          inputs are genuinely supported by the existing LIKE-based reader. */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
+    <div className="max-w-[1400px] space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
         <SectionTitle
           icon={<Search size={18} />}
-          title="Tra cứu HS & Thuế"
-          sub="Tra cứu mã HS và mô tả hàng hóa tại cơ sở dữ liệu tham chiếu nội bộ — nhập mã HS (chính xác hoặc một phần) hoặc tên hàng."
+          title="BIỂU THUẾ"
+          sub="Tra cứu Biểu thuế XNK 2026 theo mã HS hoặc tên hàng. Hệ thống chỉ query các dòng khớp từ SQLite có chỉ mục, không tải toàn bộ Excel lên màn hình."
         />
+
         <form
-          className="flex flex-col md:flex-row gap-2.5"
-          onSubmit={(e) => {
-            e.preventDefault();
+          className="flex flex-col gap-2.5 md:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
             submit();
           }}
         >
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ví dụ: 9401, 9403.20 hoặc ghế gỗ…"
-            className="flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] font-mono placeholder:font-sans focus:border-[#1e5aa8] outline-none"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Ví dụ: 01012900, 0101, 9403.20 hoặc ghế gỗ…"
+            className="min-h-[48px] flex-1 rounded-xl border-2 border-slate-200 px-4 font-mono text-[15px] outline-none placeholder:font-sans focus:border-[#1e5aa8]"
             aria-label="Mã HS hoặc tên hàng"
+            autoComplete="off"
           />
           <button
             type="submit"
             disabled={query.trim().length < 2}
-            className="btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-5 min-h-[48px] disabled:opacity-40 disabled:pointer-events-none"
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-5 text-[14.5px] font-bold text-white disabled:pointer-events-none disabled:opacity-40"
           >
             <Search size={17} /> Tra cứu
           </button>
         </form>
 
-        {/* Honest data-source status — what the backend actually knows. */}
         {source && (
           <div
-            className={cx(
-              "mt-3 rounded-xl border p-3 flex items-start gap-2.5 text-[13px]",
-              source.configured && source.rows
-                ? "border-slate-200 bg-slate-50 text-slate-600"
-                : "border-amber-200 bg-amber-50 text-amber-900"
-            )}
+            className={
+              "mt-3 flex items-start gap-2.5 rounded-xl border p-3 text-[13px] " +
+              (source.configured && source.rows
+                ? "border-emerald-200 bg-emerald-50/50 text-slate-700"
+                : "border-amber-200 bg-amber-50 text-amber-900")
+            }
           >
-            <Database size={16} className="shrink-0 mt-0.5" />
-            <div>
-              {source.configured && source.rows ? (
+            <Database size={16} className="mt-0.5 shrink-0" />
+            {source.configured && source.rows ? (
+              <div>
                 <p>
-                  Nguồn nội bộ: <b>tariff_table</b> · {source.rows.toLocaleString("vi-VN")} dòng ·{" "}
-                  <span className="font-mono text-[12px] break-all">{source.path}</span>
+                  <b>{source.sourceFile || "SQLite tariff_table"}</b>
+                  {source.year ? ` · năm ${source.year}` : ""}
+                  {" · "}
+                  {source.rows.toLocaleString("vi-VN")} dòng có mã HS.
                 </p>
-              ) : (
-                <p className="font-semibold">{source.note}</p>
-              )}
-              {tariff?.truncated && (
-                <p className="mt-1 font-semibold">
-                  Kết quả bị giới hạn {tariff.limit} dòng — hãy nhập mã HS cụ thể hơn.
-                </p>
-              )}
-            </div>
+                {source.searchMode && (
+                  <p className="mt-0.5 text-[12px] text-slate-500">
+                    {source.searchMode}
+                  </p>
+                )}
+                {tariff?.truncated && (
+                  <p className="mt-1 font-semibold">
+                    Đang giới hạn {tariff.limit} kết quả — nhập mã/từ khóa cụ thể hơn.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="font-semibold">{source.note}</p>
+            )}
           </div>
         )}
 
-        {/* Provenance banner — preserved from the backend, never invented.
-            This is NOT an official customs ruling. */}
-        {provenance && (
-          <div className="mt-2.5 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-3 flex items-start gap-2.5 text-[13px] text-amber-900">
-            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-            <p>{provenance.note}</p>
+        {tariff?.provenance && (
+          <div className="mt-2.5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-[12.5px] text-amber-900">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <p>{tariff.provenance.note}</p>
           </div>
         )}
       </div>
 
-      {/* Pending state */}
       {pending && (
-        <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center">
-          <p className="text-[15px] font-semibold text-slate-500">Đang tra cứu “{submitted}”…</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+          <p className="text-[15px] font-semibold text-slate-500">
+            Đang tra “{submitted}”…
+          </p>
         </div>
       )}
 
-      {/* Idle state — obvious, honest, no fake rows */}
       {!pending && !showResults && (
         <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
-          <span className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 grid place-items-center">
-            <Search size={26} />
-          </span>
-          <h3 className="text-[16px] font-extrabold text-[#0f2a4a] mt-3">Bảng kết quả đang trống</h3>
-          <p className="text-[14px] text-slate-500 mt-1">
-            Nhập mã HS hoặc tên hàng phía trên rồi bấm <b>Tra cứu</b>.
+          <Search size={26} className="mx-auto text-slate-400" />
+          <h3 className="mt-3 text-[16px] font-extrabold text-[#0f2a4a]">
+            Nhập mã HS hoặc tên hàng để tra
+          </h3>
+          <p className="mt-1 text-[13.5px] text-slate-500">
+            Mã 8 số tra trực tiếp bằng index; mã ngắn tra theo prefix; tên hàng tra bằng FTS.
           </p>
         </div>
       )}
 
-      {/* No-match state */}
       {showResults && tariff && rows.length === 0 && (
-        <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center">
-          <span className="mx-auto w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 grid place-items-center">
-            <Info size={26} />
-          </span>
-          <h3 className="text-[16px] font-extrabold text-[#0f2a4a] mt-3">Không tìm thấy kết quả</h3>
-          <p className="text-[14px] text-slate-500 mt-1">{tariff.reason}</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+          <Info size={26} className="mx-auto text-amber-700" />
+          <h3 className="mt-3 text-[16px] font-extrabold text-[#0f2a4a]">
+            Không tìm thấy kết quả
+          </h3>
+          <p className="mt-1 text-[14px] text-slate-500">{tariff.reason}</p>
         </div>
       )}
 
-      {/* Results */}
       {showResults && tariff && rows.length > 0 && (
-        <div className="space-y-4">
-          <p className="text-[13.5px] font-semibold text-slate-500 px-1">
-            Tìm thấy {tariff.count.toLocaleString("vi-VN")} dòng khớp “{tariff.query}” — mã HS và mô tả
-            theo dữ liệu tham chiếu nội bộ.
+        <div className="space-y-3">
+          <p className="px-1 text-[13.5px] font-semibold text-slate-500">
+            {tariff.count.toLocaleString("vi-VN")} dòng khớp “{tariff.query}”
           </p>
 
-          {/* Desktop table */}
-          <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="tbl w-full text-[14.5px]">
-                <thead>
-                  <tr>
-                    <th className="w-[150px]">Mã HS</th>
-                    <th>Mô tả tiếng Việt</th>
-                    <th>Mô tả tiếng Anh</th>
-                    <th>Thông tin khác (nguyên văn)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={(row.hsCode ?? "?") + i} className="hover:bg-slate-50">
-                      <td className="font-mono font-extrabold text-[15px] text-[#0f2a4a] whitespace-nowrap">
-                        {orUnknown(row.hsCode)}
-                      </td>
-                      <td className="font-semibold">{orUnknown(row.descriptionVi)}</td>
-                      <td className="text-slate-600">{orUnknown(row.descriptionEn)}</td>
-                      <td><ExtraFields row={row} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {rows.map((row, i) => (
-              <div key={(row.hsCode ?? "?") + i} className="rounded-2xl bg-white border border-slate-200 p-4">
-                <p className="font-mono font-extrabold text-[17px] text-[#0f2a4a] break-all">
-                  {orUnknown(row.hsCode)}
-                </p>
-                <p className="text-[15px] font-semibold text-slate-800 mt-1.5">
-                  {orUnknown(row.descriptionVi)}
-                </p>
-                <p className="text-[13px] text-slate-500 mt-0.5">{orUnknown(row.descriptionEn)}</p>
-                {row.fields.length > 0 && (
-                  <div className="mt-2.5 rounded-xl bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">
-                      Thông tin khác (nguyên văn)
-                    </p>
-                    <div className="mt-1">
-                      <ExtraFields row={row} stacked />
-                    </div>
+          {rows.map((row, index) => (
+            <article
+              key={(row.hsCode ?? "?") + "-" + index}
+              className="rounded-2xl border border-slate-200 bg-white p-4"
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[18px] font-black text-[#0f2a4a]">
+                      {val(row.hsCode)}
+                    </span>
+                    {row.unit && (
+                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11.5px] font-bold text-slate-600">
+                        ĐVT: {row.unit}
+                      </span>
+                    )}
                   </div>
-                )}
+                  <p className="mt-1 text-[15px] font-semibold text-slate-800">
+                    {val(row.descriptionVi)}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  <Rate label="NK TT" value={row.importNormal} />
+                  <Rate label="NK ưu đãi" value={row.importPreferential} />
+                  <Rate label="VAT" value={row.vat} />
+                </div>
               </div>
-            ))}
-          </div>
+
+              {(row.policy || row.vatReduction) && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {row.policy && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-[12.5px] text-slate-700">
+                      <p className="mb-1 font-extrabold text-[#0f2a4a]">
+                        Chính sách mặt hàng
+                      </p>
+                      <p>{row.policy}</p>
+                    </div>
+                  )}
+                  {row.vatReduction && (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-[12.5px] text-slate-700">
+                      <p className="mb-1 font-extrabold text-amber-900">
+                        Giảm VAT
+                      </p>
+                      <p>{row.vatReduction}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <MoreRates row={row} />
+            </article>
+          ))}
         </div>
       )}
     </div>
