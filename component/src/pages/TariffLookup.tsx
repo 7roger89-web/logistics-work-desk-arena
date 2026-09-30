@@ -1,9 +1,16 @@
-// BIỂU THUẾ — fast indexed lookup over the governed SQLite tariff database.
-// Runtime never loads the XLSX. HS code lookup uses the SQLite B-tree index;
-// Vietnamese product/policy text uses FTS5. Only bounded matching rows reach UI.
+// BIỂU THUẾ — fast indexed lookup over an Admin-managed SQLite asset.
+// Runtime never loads the XLSX. ADMIN upload builds SQLite once server-side;
+// code lookup uses a B-tree index and product/policy text uses FTS5.
 
-import { useState, useSyncExternalStore } from "react";
-import { AlertTriangle, Database, Info, Search } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  AlertTriangle,
+  CloudUpload,
+  Database,
+  Info,
+  LoaderCircle,
+  Search,
+} from "lucide-react";
 import { SectionTitle } from "../components/ui";
 import { dispatchLogiEvent } from "../lib/dispatcher";
 import { UNKNOWN } from "../lib/format";
@@ -13,8 +20,17 @@ import {
   type TariffRow,
 } from "../lib/viewmodel";
 
+const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+
 function val(value: string | null | undefined): string {
   return value ? value : UNKNOWN;
+}
+
+function requestId(): string {
+  return `TARIFF-${Date.now().toString(36).toUpperCase()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)
+    .toUpperCase()}`;
 }
 
 function Rate({ label, value }: { label: string; value: string | null }) {
@@ -43,23 +59,102 @@ function MoreRates({ row }: { row: TariffRow }) {
 }
 
 export default function TariffLookup() {
-  useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const tariff = getViewModel()?.tariff ?? null;
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
+  const tariff = vm?.tariff ?? null;
+  const source = tariff?.source;
+
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [pendingUpload, setPendingUpload] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [uploadMessage, setUploadMessage] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const pending = submitted.length > 0 && submitted !== (tariff?.query ?? "");
   const rows = tariff?.rows ?? [];
   const showResults = Boolean(tariff?.searched) && !pending;
 
+  useEffect(() => {
+    if (!pendingUpload) return;
+    const outcome = vm?.lastWrites?.find(
+      (item) =>
+        item.event === "tariff_source_upload" &&
+        item.requestId === pendingUpload,
+    );
+    if (!outcome) return;
+    setPendingUpload("");
+    if (outcome.ok) {
+      const readback = outcome.readback as
+        | { sourceFile?: string; rows?: number; year?: string }
+        | undefined;
+      setUploadError("");
+      setUploadMessage(
+        `Đã cập nhật ${readback?.sourceFile || "BIỂU THUẾ"} · ${(
+          readback?.rows ?? 0
+        ).toLocaleString("vi-VN")} dòng mã HS${readback?.year ? ` · ${readback.year}` : ""}.`,
+      );
+      setSourceFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+    } else {
+      setUploadMessage("");
+      setUploadError(outcome.error || "Không cập nhật được BIỂU THUẾ.");
+    }
+  }, [pendingUpload, vm?.lastWrites]);
+
   const submit = () => {
     const q = query.trim();
-    if (q.length < 2) return;
+    if (q.length < 2 || !source?.configured) return;
     setSubmitted(q);
     dispatchLogiEvent("tariff_lookup", { query: q });
   };
 
-  const source = tariff?.source;
+  const upload = () => {
+    setUploadError("");
+    setUploadMessage("");
+    if (!sourceFile) {
+      setUploadError("Chưa chọn file BIỂU THUẾ .xlsx.");
+      return;
+    }
+    if (!sourceFile.name.toLowerCase().endsWith(".xlsx")) {
+      setUploadError("Chỉ nhận file .xlsx.");
+      return;
+    }
+    if (sourceFile.size <= 0 || sourceFile.size > MAX_SOURCE_BYTES) {
+      setUploadError("File phải lớn hơn 0 và không vượt 12 MB.");
+      return;
+    }
+
+    const id = requestId();
+    setPendingUpload(id);
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setPendingUpload("");
+      setUploadError("Không đọc được file trên trình duyệt.");
+    };
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      const comma = dataUrl.indexOf(",");
+      const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+      if (!base64) {
+        setPendingUpload("");
+        setUploadError("File không có dữ liệu.");
+        return;
+      }
+      const sent = dispatchLogiEvent("tariff_source_upload", {
+        fileName: sourceFile.name,
+        mime: sourceFile.type,
+        size: sourceFile.size,
+        base64,
+        requestId: id,
+      });
+      if (!sent) {
+        setPendingUpload("");
+        setUploadError("Component chưa kết nối backend.");
+      }
+    };
+    reader.readAsDataURL(sourceFile);
+  };
 
   return (
     <div className="max-w-[1400px] space-y-4">
@@ -67,8 +162,60 @@ export default function TariffLookup() {
         <SectionTitle
           icon={<Search size={18} />}
           title="BIỂU THUẾ"
-          sub="Tra cứu Biểu thuế XNK 2026 theo mã HS hoặc tên hàng. Hệ thống chỉ query các dòng khớp từ SQLite có chỉ mục, không tải toàn bộ Excel lên màn hình."
+          sub="Gõ mã HS hoặc tên hàng; app chỉ query các dòng khớp từ SQLite có chỉ mục, không tải cả Excel lên màn hình."
         />
+
+        {source?.canManage && (
+          <details className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60">
+            <summary className="cursor-pointer px-3.5 py-3 text-[13px] font-extrabold text-[#0f2a4a]">
+              Quản trị nguồn BIỂU THUẾ
+            </summary>
+            <div className="border-t border-slate-200 p-3.5">
+              <p className="text-[12.5px] text-slate-600">
+                ADMIN chọn file .xlsx mới. Backend build SQLite + index + FTS,
+                nén và lưu bền trong Mongo. Những lần tra cứu sau không đọc Excel.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(event) => {
+                    setSourceFile(event.target.files?.[0] ?? null);
+                    setUploadError("");
+                    setUploadMessage("");
+                  }}
+                  className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[13px]"
+                  data-testid="tariff-source-file"
+                />
+                <button
+                  type="button"
+                  onClick={upload}
+                  disabled={!sourceFile || Boolean(pendingUpload)}
+                  className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-4 text-[13px] font-extrabold text-white disabled:opacity-40"
+                  data-testid="tariff-source-upload"
+                >
+                  {pendingUpload ? (
+                    <LoaderCircle size={16} className="animate-spin" />
+                  ) : (
+                    <CloudUpload size={16} />
+                  )}
+                  {pendingUpload ? "ĐANG BUILD DB…" : "CẬP NHẬT FILE"}
+                </button>
+              </div>
+              {uploadError && (
+                <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12.5px] font-semibold text-red-700">
+                  {uploadError}
+                </p>
+              )}
+              {uploadMessage && (
+                <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] font-semibold text-emerald-800">
+                  {uploadMessage}
+                </p>
+              )}
+            </div>
+          </details>
+        )}
 
         <form
           className="flex flex-col gap-2.5 md:flex-row"
@@ -87,7 +234,7 @@ export default function TariffLookup() {
           />
           <button
             type="submit"
-            disabled={query.trim().length < 2}
+            disabled={query.trim().length < 2 || !source?.configured}
             className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-5 text-[14.5px] font-bold text-white disabled:pointer-events-none disabled:opacity-40"
           >
             <Search size={17} /> Tra cứu
@@ -149,10 +296,16 @@ export default function TariffLookup() {
         <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center">
           <Search size={26} className="mx-auto text-slate-400" />
           <h3 className="mt-3 text-[16px] font-extrabold text-[#0f2a4a]">
-            Nhập mã HS hoặc tên hàng để tra
+            {source?.configured
+              ? "Nhập mã HS hoặc tên hàng để tra"
+              : "Chưa có dữ liệu BIỂU THUẾ"}
           </h3>
           <p className="mt-1 text-[13.5px] text-slate-500">
-            Mã 8 số tra trực tiếp bằng index; mã ngắn tra theo prefix; tên hàng tra bằng FTS.
+            {source?.configured
+              ? "Mã 8 số tra bằng index; mã ngắn tra prefix; tên hàng tra bằng FTS."
+              : source?.canManage
+                ? "Mở Quản trị nguồn BIỂU THUẾ phía trên và tải file .xlsx."
+                : "Liên hệ ADMIN để nạp file BIỂU THUẾ."}
           </p>
         </div>
       )}
