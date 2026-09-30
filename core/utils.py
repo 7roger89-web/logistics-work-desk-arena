@@ -261,23 +261,28 @@ def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
 
             if code_like:
                 if len(normalized_code) == 8:
+                    # New assets store compact 8 digits; legacy governed DBs
+                    # may still store dotted codes (9403.20.10). Both exact
+                    # representations stay indexable.
                     sql = f'''
                         SELECT * FROM tariff_table
-                        WHERE "Mã HS" = ?
+                        WHERE "Mã HS" IN (?, ?)
                         ORDER BY {row_order}
                         LIMIT ?
                     '''
                     return pd.read_sql_query(
-                        sql, conn, params=(normalized_code, bounded_limit)
+                        sql,
+                        conn,
+                        params=(normalized_code, raw, bounded_limit),
                     )
 
                 # GLOB with a constant prefix is optimized by SQLite into a
                 # range scan over idx_tariff_hs; exact heading goes first.
                 sql = f'''
                     SELECT * FROM tariff_table
-                    WHERE "Mã HS" GLOB ?
+                    WHERE "Mã HS" GLOB ? OR "Mã HS" GLOB ?
                     ORDER BY
-                        CASE WHEN "Mã HS" = ? THEN 0 ELSE 1 END,
+                        CASE WHEN "Mã HS" IN (?, ?) THEN 0 ELSE 1 END,
                         length("Mã HS"),
                         "Mã HS",
                         {row_order}
@@ -288,7 +293,9 @@ def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
                     conn,
                     params=(
                         normalized_code + "*",
+                        raw + "*",
                         normalized_code,
+                        raw,
                         bounded_limit,
                     ),
                 )
