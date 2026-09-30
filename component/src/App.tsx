@@ -13,7 +13,6 @@ import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { StoreProvider } from "./lib/store";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
-import NotebookLMLauncher from "./components/NotebookLMLauncher";
 import Home from "./pages/Home";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
@@ -26,6 +25,7 @@ import Contracts from "./pages/Contracts";
 import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
+import PolicyLookup from "./pages/PolicyLookup";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
@@ -50,7 +50,7 @@ export default function App() {
   return (
     <StoreProvider>
       <MemoryRouter>
-        <Layout><NotebookLMLauncher />{!vm ? <Loading /> : (
+        <Layout>{!vm ? <Loading /> : (
           <Routes>
             <Route path="/" element={<Home />} />
             {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — compatibility redirects for the
@@ -74,6 +74,7 @@ export default function App() {
             {/* LOGI_TARIFF_LOOKUP_01 — real read-only HS/tariff lookup over
                 the existing canonical reader (no longer a placeholder). */}
             <Route path="/tra-cuu-thue" element={<TariffLookup />} />
+            <Route path="/tra-cuu-chinh-sach" element={<PolicyLookup />} />
             {/* LOGI_TRANSLATION_WORKSPACE_01 — real bounded translation
                 workspace over the EXISTING DeepL capability (no longer a
                 placeholder; honest "chưa được cấu hình" when no key exists). */}
