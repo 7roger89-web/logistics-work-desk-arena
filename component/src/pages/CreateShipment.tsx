@@ -11,6 +11,7 @@ import {
   type ProfileDraft,
 } from "../components/ShipmentExecutionProfile";
 import { EXECUTION_PROFILE_CATALOG } from "../lib/executionProfileCatalog";
+import { shipmentPath } from "../lib/shipmentRoute";
 import { useStore } from "../lib/store";
 import { cx, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -184,7 +185,7 @@ export default function CreateShipment() {
         setPending(null);
         toast("Đã tạo lô " + pending.shipmentId,
           "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green");
-        nav(`/lo-hang/${pending.shipmentId}?tab=van-tai`);
+        nav(shipmentPath(pending.shipmentId) + "?tab=van-tai");
       } else {
         setPending(null);
         setBackendError("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.");

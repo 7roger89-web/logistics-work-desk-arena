@@ -1,4 +1,5 @@
 import { contractPath } from "../lib/contractRoute";
+import { shipmentPath } from "../lib/shipmentRoute";
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
@@ -78,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <p className="p-4 text-[14.5px] text-slate-500">Không tìm thấy “{query}”. Thử lại theo <b>mã lô</b>, <b>tên khách hàng</b> hoặc <b>số hợp đồng</b> đang có trong hệ thống.</p>
                 )}
                 {results.lots.map((s) => (
-                  <button key={s.id} onClick={() => goSearch(`/lo-hang/${s.id}`)} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
+                  <button key={s.id} onClick={() => goSearch(shipmentPath(s.id))} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3">
                     <span className="w-9 h-9 rounded-lg bg-blue-100 grid place-items-center"><Package size={17} className="text-blue-700" /></span>
                     <span><span className="block font-bold text-[14.5px] text-[#0f2a4a]">{s.id} · {s.customer}</span><span className="block text-[12.5px] text-slate-500">Lô hàng — {s.status}</span></span>
                   </button>
@@ -168,7 +169,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {results && (
               <div className="mt-2 bg-white rounded-2xl border shadow-xl divide-y max-h-[50vh] overflow-auto">
                 {results.lots.map((s) => (
-                  <button key={s.id} onClick={() => goSearch(`/lo-hang/${s.id}`)} className="w-full text-left p-3.5 flex items-center gap-3">
+                  <button key={s.id} onClick={() => goSearch(shipmentPath(s.id))} className="w-full text-left p-3.5 flex items-center gap-3">
                     <Package size={18} className="text-blue-700 shrink-0" />
                     <span><span className="block font-bold text-[15px]">{s.id} · {s.customer}</span><span className="block text-[13px] text-slate-500">{s.status} — {s.nextAction}</span></span>
                   </button>

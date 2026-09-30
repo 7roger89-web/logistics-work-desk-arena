@@ -22,6 +22,7 @@ import base64
 from typing import Any, Mapping
 
 from views import logi_real_data as rd
+from views import logi_route
 from views import logi_sandbox
 
 # ---------------------------------------------------------------------------
@@ -543,7 +544,7 @@ def contract_projection(
             "id": _text(ship.get("id")),
             "customer": _text(ship.get("customer") or ship.get("client")),
             "status": _text(ship.get("status")),
-            "to": f"/lo-hang/{_text(ship.get('id'))}",
+            "to": logi_route.shipment_path(_text(ship.get("id"))),
         })
 
     stored = stored_outputs(cid)

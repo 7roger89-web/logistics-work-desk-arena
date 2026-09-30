@@ -21,6 +21,7 @@ import { useStore } from "../lib/store";
 import { useQueryParam, useQueryFlag } from "../lib/queryParam";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { cx, fmtCcy, fmtText, isUnknown, parseAmountVN } from "../lib/format";
+import { shipmentPath } from "../lib/shipmentRoute";
 import type { ReceivableRow } from "../lib/viewmodel";
 
 export default function Receivables() {
@@ -250,7 +251,7 @@ export default function Receivables() {
             <tbody>
               {list.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
-                  <td><Link to={"/lo-hang/" + r.id + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.id}</Link></td>
+                  <td><Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.id}</Link></td>
                   <td className="font-semibold max-w-[180px]">{fmtText(r.customer)}</td>
                   <td className="font-semibold">{fmtCcy(r.receivable, r.currency)}</td>
                   <td className="text-emerald-700 font-semibold">{fmtCcy(r.received, r.currency)}</td>
@@ -260,7 +261,7 @@ export default function Receivables() {
                   <td><ToneBadge tone={r.statusTone} size="sm">{fmtText(r.status)}</ToneBadge></td>
                   <td>
                     <div className="flex gap-1.5">
-                      <Link to={"/lo-hang/" + r.id + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
+                      <Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
                       {(r.outstanding ?? 0) > 0 && (
                         <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white text-[13px] font-bold px-3 min-h-[44px]"><Wallet size={15} /> Thu tiền</button>
                       )}
@@ -293,7 +294,7 @@ export default function Receivables() {
               <p className="text-[12.5px] text-slate-400 mt-2">Sale {fmtText(r.sale)} · cập nhật bởi {fmtText(r.support)}</p>
             </div>
             <div className="grid grid-cols-2 border-t">
-              <Link to={"/lo-hang/" + r.id + "?tab=tai-chinh"} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> MỞ LÔ</Link>
+              <Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> MỞ LÔ</Link>
               {(r.outstanding ?? 0) > 0
                 ? <button onClick={() => openPay(r)} className="touch-target flex items-center justify-center gap-1.5 bg-emerald-600 text-white font-extrabold text-[15px] min-h-[52px]"><Wallet size={17} /> THU TIỀN</button>
                 : <span className="flex items-center justify-center font-bold text-[15px] text-slate-300 min-h-[52px]">Đã thu đủ</span>}

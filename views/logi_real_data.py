@@ -20,6 +20,8 @@ from typing import Any, Mapping
 
 from core.database import _UNSET_DB
 
+from views.logi_route import shipment_path
+
 UNKNOWN = None
 UNKNOWN_LABEL = "—"
 
@@ -1085,7 +1087,7 @@ def compose_primary_action(
     dashboard_label = text(next_action.get("label") or top_alert.get("label"))
     dashboard_detail = text(next_action.get("detail") or top_alert.get("detail"))
     has_dashboard = bool(dashboard_label)
-    dashboard_route = f"/lo-hang/{shipment_id}?tab={status_tab}"
+    dashboard_route = f"{shipment_path(shipment_id)}?tab={status_tab}"
 
     profile_next = profile.get("nextAction") if isinstance(profile.get("nextAction"), Mapping) else {}
     profile_code = text(profile_next.get("code"))
@@ -1114,7 +1116,7 @@ def compose_primary_action(
                     "route": f"{dashboard_route}#{PRIMARY_ACTION_PROFILE_ANCHOR}"}
         tab = PRIMARY_ACTION_TAB_BY_PROFILE_CODE.get(profile_code, status_tab)
         anchor = PRIMARY_ACTION_FIELD_ANCHOR_BY_CODE.get(profile_code)
-        route = f"/lo-hang/{shipment_id}?tab={tab}" + (f"#{anchor}" if anchor else "")
+        route = f"{shipment_path(shipment_id)}?tab={tab}" + (f"#{anchor}" if anchor else "")
         return {"text": profile_label, "detail": profile_detail,
                 "priority": priority, "route": route}
 

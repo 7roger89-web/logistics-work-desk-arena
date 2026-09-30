@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { shipmentPath } from "../lib/shipmentRoute";
 import { useQueryParam } from "../lib/queryParam";
 import { Search, ArrowRight, Eye, SlidersHorizontal } from "lucide-react";
 import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
@@ -194,7 +195,7 @@ export default function Shipments() {
                 {/* 1 — IDENTITY: what this lot is and where it stands. */}
                 <td className="max-w-[300px]">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <Link to={"/lo-hang/" + s.id} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
+                    <Link to={shipmentPath(s.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
                     <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
                   </div>
                   <span className="block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]">{s.customer}</span>
@@ -208,7 +209,7 @@ export default function Shipments() {
                 {/* 4 — responsibility: `support` is `updated_by`, labelled truthfully. */}
                 <td className="text-[13px] whitespace-nowrap"><span className="block">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
                 {/* 5 — actions: the same XỬ LÝ route and the same 360° entry. */}
-                <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={"/lo-hang/" + s.id} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
+                <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
               </tr>
             ))}
           </tbody>
@@ -238,7 +239,7 @@ export default function Shipments() {
             </div>
             <div className="grid grid-cols-2 border-t">
               <Link to={s.nextRoute} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">XỬ LÝ <ArrowRight size={17} /></Link>
-              <Link to={"/lo-hang/" + s.id} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> XEM 360°</Link>
+              <Link to={shipmentPath(s.id)} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> XEM 360°</Link>
             </div>
           </div>
         ))}

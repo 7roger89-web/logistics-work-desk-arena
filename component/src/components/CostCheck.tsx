@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, History, Search } from "lucide-react";
 import { Field, PrimaryBtn, inputCls } from "./ui";
+import { shipmentPath } from "../lib/shipmentRoute";
 import QuickQuotePaste from "./QuickQuotePaste";
 import { cx, fmtMoney } from "../lib/format";
 import { findComparableCosts, type CostCriteria, type CostMatch } from "../lib/costHistory";
@@ -196,7 +197,7 @@ function CostResultCard({ match, selected, onSelect }: { match: CostMatch; selec
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={onSelect} className={cx("btn-press touch-target inline-flex items-center rounded-xl px-3.5 min-h-[44px] text-[13.5px] font-bold", selected ? "bg-emerald-700 text-white" : "border-2 border-emerald-700 bg-white text-emerald-800")}>{selected ? "ĐÃ CHỌN LÀM THAM CHIẾU" : "DÙNG LÀM GIÁ VỐN"}</button>
-        {match.shipmentId && <Link to={"/lo-hang/" + match.shipmentId + "?tab=tai-chinh"} data-testid="cost-result-open" className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] font-bold text-[13.5px] px-3.5 min-h-[44px]">XEM LÔ GỐC <ArrowRight size={15} /></Link>}
+        {match.shipmentId && <Link to={shipmentPath(match.shipmentId) + "?tab=tai-chinh"} data-testid="cost-result-open" className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] font-bold text-[13.5px] px-3.5 min-h-[44px]">XEM LÔ GỐC <ArrowRight size={15} /></Link>}
       </div>
     </article>
   );

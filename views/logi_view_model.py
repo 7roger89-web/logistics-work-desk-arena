@@ -36,6 +36,7 @@ from views import ceo_report as logi_ceo_report
 from views import handbook as logi_handbook
 from views import logi_c1
 from views import logi_real_data as rd
+from views import logi_route
 import time
 import threading
 
@@ -471,7 +472,7 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
             "label": label,
             "value": len(matches),
             "sub": ", ".join(m["id"] for m in matches[:4]) or rd.UNKNOWN_LABEL,
-            "to": f"/lo-hang/{matches[0]['id']}" if matches else "/lo-hang",
+            "to": logi_route.shipment_path(matches[0]["id"]) if matches else "/lo-hang",
         }
 
     delivered = _stage_rows("Đã giao")
@@ -501,7 +502,7 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
         "runningCount": len(running),
         "runningSummary": [
             {"id": r["id"], "customer": r["customer"], "status": r["status"],
-             "nextAction": r["nextAction"], "to": f"/lo-hang/{r['id']}"}
+             "nextAction": r["nextAction"], "to": logi_route.shipment_path(r["id"])}
             for r in running[:6]
         ],
         "outstandingTotal": outstanding_total,
@@ -582,7 +583,7 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "dueNote": "Đã hoàn thành" if done else "Việc được giao",
             "status": "Đã xong" if done else "Chưa làm",
             "statusTone": "green" if done else "amber",
-            "route": f"/lo-hang/{sid}?tab=lay-hang" if sid else "/lo-hang",
+            "route": (logi_route.shipment_path(sid) + "?tab=lay-hang") if sid else "/lo-hang",
             "source": "core.database.load_tasks",
         })
 

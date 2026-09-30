@@ -40,6 +40,7 @@ import { Field, SectionTitle, ToneBadge, inputCls } from "../components/ui";
 import { dispatchLogiEvent } from "../lib/dispatcher";
 import { cx, fmtCcy, fmtText, isUnknown, UNKNOWN } from "../lib/format";
 import { useStore } from "../lib/store";
+import { shipmentPath } from "../lib/shipmentRoute";
 import {
   getViewModel,
   subscribeViewModel,
@@ -642,7 +643,7 @@ export default function PartnerContext() {
                   <div key={r.id ?? `${r.shipmentId}-${r.currency}-${i}`} className="rounded-2xl border-2 border-slate-100 bg-slate-50/60 p-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       {r.shipmentId && openable.has(r.shipmentId.toLowerCase()) ? (
-                        <Link to={`/lo-hang/${r.shipmentId}?tab=tai-chinh`} className="font-extrabold text-[15.5px] text-[#1e5aa8] hover:underline break-all">{r.shipmentId}</Link>
+                        <Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="font-extrabold text-[15.5px] text-[#1e5aa8] hover:underline break-all">{r.shipmentId}</Link>
                       ) : (
                         <span className="font-extrabold text-[15.5px] text-[#0f2a4a] break-all">{fmtText(r.shipmentId)}</span>
                       )}
