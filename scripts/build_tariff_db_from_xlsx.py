@@ -8,7 +8,10 @@ text lookup uses FTS5. The source workbook hash is embedded in tariff_meta.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
+import json
 import lzma
 import sqlite3
 from pathlib import Path
@@ -198,20 +201,62 @@ def main() -> None:
         help="Output SQLite database.",
     )
     parser.add_argument(
-        "--xz",
+        "--bundle",
         type=Path,
         default=None,
-        help="Optional XZ-compressed database for repository bundling.",
+        help="Optional XZ-compressed normalized CSV for repository bundling.",
+    )
+    parser.add_argument(
+        "--meta",
+        type=Path,
+        default=None,
+        help="Optional JSON metadata sidecar for the bundled data.",
     )
     args = parser.parse_args()
 
     count = build(args.source, args.database)
     print(f"Built {count:,} indexed tariff rows: {args.database}")
 
-    if args.xz is not None:
-        args.xz.parent.mkdir(parents=True, exist_ok=True)
-        args.xz.write_bytes(lzma.compress(args.database.read_bytes(), preset=9))
-        print(f"Compressed bundle: {args.xz}")
+    if args.bundle is not None:
+        args.bundle.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(args.database) as conn:
+            columns = [
+                row[1]
+                for row in conn.execute("PRAGMA table_info(tariff_table)")
+                if row[1] != "id"
+            ]
+            text = io.StringIO(newline="")
+            writer = csv.writer(text, lineterminator="\n")
+            writer.writerow(columns)
+            select = ",".join(f'"{column}"' for column in columns)
+            for row in conn.execute(f"SELECT {select} FROM tariff_table"):
+                writer.writerow(["" if value is None else value for value in row])
+        args.bundle.write_bytes(
+            lzma.compress(text.getvalue().encode("utf-8"), preset=9)
+        )
+        print(f"Compressed normalized bundle: {args.bundle}")
+
+    if args.meta is not None:
+        args.meta.parent.mkdir(parents=True, exist_ok=True)
+        meta = {
+            "source_filename": args.source.name,
+            "source_sha256": hashlib.sha256(args.source.read_bytes()).hexdigest(),
+            "source_sheet": "BT2026",
+            "year": "2026",
+            "indexed_rows": count,
+            "schema_version": 2,
+            "search": "B-tree exact/prefix HS + FTS5 Vietnamese",
+            "bundle_sha256": (
+                hashlib.sha256(args.bundle.read_bytes()).hexdigest()
+                if args.bundle is not None and args.bundle.exists()
+                else None
+            ),
+        }
+        args.meta.write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"Metadata: {args.meta}")
 
 
 if __name__ == "__main__":
