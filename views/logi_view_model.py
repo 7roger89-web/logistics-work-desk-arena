@@ -1056,6 +1056,8 @@ PHASE_B_EVENTS = {
     # choices. Both handlers remain in this ONE dispatcher.
     "getfly_preview",
     "getfly_import",
+    # Admin replaces the tariff XLSX; backend builds/stores indexed SQLite.
+    "tariff_source_upload",
     # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
     # for the shipment "Chứng từ" tab. ``shipment_attachment_upload`` carries the
     # ONE chosen file (bounded base64, same transport precedent as the GetFly
@@ -4126,6 +4128,107 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+
+def _handle_tariff_source_upload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Admin-only XLSX -> indexed SQLite -> compressed durable Mongo asset."""
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_tariff_asset
+    from core.tariff_asset import MAX_SOURCE_BYTES, build_tariff_asset
+    from core import utils as core_utils
+
+    event_name = "tariff_source_upload"
+    request_id = str(payload.get("requestId") or "").strip()
+    file_name = str(payload.get("fileName") or "").strip()
+    encoded = str(payload.get("base64") or "").strip()
+    try:
+        declared_size = int(payload.get("size") or 0)
+    except (TypeError, ValueError):
+        declared_size = 0
+
+    if not can_operate_business("*"):
+        return _result(
+            event_name, "", False,
+            "RBAC: chỉ Admin mới được cập nhật BIỂU THUẾ.",
+            requestId=request_id,
+        )
+    if not request_id:
+        return _result(
+            event_name, "", False, "Thiếu requestId.",
+            requestId=request_id,
+        )
+    if not file_name.lower().endswith(".xlsx"):
+        return _result(
+            event_name, "", False, "Chỉ nhận file BIỂU THUẾ .xlsx.",
+            requestId=request_id,
+        )
+    if declared_size <= 0 or declared_size > MAX_SOURCE_BYTES:
+        return _result(
+            event_name, "", False,
+            "File BIỂU THUẾ phải lớn hơn 0 và không vượt 12 MB.",
+            requestId=request_id,
+        )
+    if not encoded:
+        return _result(
+            event_name, "", False, "File BIỂU THUẾ không có dữ liệu.",
+            requestId=request_id,
+        )
+
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError) as exc:
+        return _result(
+            event_name, "", False, f"Base64 không hợp lệ: {exc}",
+            requestId=request_id,
+        )
+    if len(raw) != declared_size:
+        return _result(
+            event_name, "", False,
+            "Kích thước file nhận được không khớp dữ liệu trình duyệt.",
+            requestId=request_id,
+        )
+
+    try:
+        built = build_tariff_asset(raw, source_filename=file_name)
+    except Exception as exc:  # noqa: BLE001 - workbook validation is user input
+        return _result(
+            event_name, "", False,
+            f"Không build được BIỂU THUẾ: {type(exc).__name__}: {exc}",
+            requestId=request_id,
+        )
+
+    ok = save_tariff_asset(
+        built["payload_lzma"],
+        db_sha256=str(built["db_sha256"]),
+        metadata=built["metadata"],
+    )
+    if not ok:
+        return _result(
+            event_name, "", False,
+            get_last_db_error() or "Không lưu được BIỂU THUẾ.",
+            requestId=request_id,
+        )
+
+    # The same process may have resolved an older temporary DB before this
+    # upload. Clear only the path cache; the next fresh read materializes the
+    # newly persisted checksum-scoped asset.
+    core_utils.invalidate_tariff_db_cache()
+    metadata = dict(built["metadata"])
+    return _result(
+        event_name,
+        "",
+        True,
+        readback={
+            "sourceFile": metadata.get("source_filename"),
+            "year": metadata.get("year"),
+            "rows": metadata.get("indexed_rows"),
+            "dbSha256": metadata.get("db_sha256"),
+            "dbBytes": metadata.get("db_bytes"),
+            "compressedBytes": metadata.get("compressed_bytes"),
+        },
+        requestId=request_id,
+    )
+
+
 _HANDLERS = {
     "shipment_field_save": _handle_field_save,
     "shipment_customer_save": _handle_shipment_customer_save,
@@ -4143,6 +4246,7 @@ _HANDLERS = {
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
     "getfly_import": _handle_getfly_import,
+    "tariff_source_upload": _handle_tariff_source_upload,
     # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
     # (upload + server-authoritative download). Same dispatcher, same seq replay
     # guard.

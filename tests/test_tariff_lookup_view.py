@@ -5,7 +5,7 @@ view-model/dispatcher wiring over the EXISTING canonical reader
 (``core.utils.fast_search_tariff``) with a local governed-schema fixture
 database. Business-truth invariants:
 
-- exact / partial / keyword lookup behave as the existing reader does
+- exact / prefix HS lookup stays indexed; keyword lookup remains bounded
 - no-result and no-database states fail HONEST (never fabricated rows)
 - UNKNOWN != ZERO: absent fields stay ``None``, never ``0`` / ``"0%"``
 - values pass through verbatim (no float re-formatting or percent edits)
@@ -65,7 +65,9 @@ def tariff_db(tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "TARIFF_DB_PATH", path)
     import core.utils
     monkeypatch.setattr(core.utils, "TARIFF_DB_PATH", path)
-    return path
+    core.utils.resolve_tariff_db_path.cache_clear()
+    yield path
+    core.utils.resolve_tariff_db_path.cache_clear()
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +116,7 @@ def test_short_query_is_not_searched(tariff_db):
 def test_missing_database_fails_honest(tariff_db, monkeypatch):
     import core.utils
     monkeypatch.setattr(core.utils, "TARIFF_DB_PATH", tariff_db.parent / "absent.db")
+    core.utils.resolve_tariff_db_path.cache_clear()
     result = tl.tariff_lookup_view("9401")
     assert result["searched"] is True
     assert result["count"] == 0
@@ -132,6 +135,7 @@ def test_empty_database_fails_honest(tariff_db, tmp_path, monkeypatch):
                      ' "Mô tả tiếng Việt" TEXT, "Mô tả tiếng Anh" TEXT)')
     import core.utils
     monkeypatch.setattr(core.utils, "TARIFF_DB_PATH", empty)
+    core.utils.resolve_tariff_db_path.cache_clear()
     result = tl.tariff_lookup_view("9401")
     assert result["searched"] is True
     assert result["count"] == 0
@@ -147,8 +151,13 @@ def test_empty_database_fails_honest(tariff_db, tmp_path, monkeypatch):
 def test_unknown_fields_are_none_never_zero(tariff_db):
     result = tl.tariff_lookup_view("9401")
     row = result["rows"][0]
-    # The canonical schema carries no duty/VAT/source/effective-date columns.
-    assert "importDuty" not in row and "vat" not in row
+    # The richer view shape exposes known tariff fields explicitly, but a
+    # legacy 3-column DB still reports them as UNKNOWN (None), never zero.
+    assert row["importNormal"] is None
+    assert row["importPreferential"] is None
+    assert row["vat"] is None
+    assert row["policy"] is None
+    assert row["vatReduction"] is None
     assert all(field["label"] not in {"Thuế NK", "VAT"} for field in row["fields"])
     assert result["provenance"]["source"] is None
     assert result["provenance"]["effectiveDate"] is None
@@ -159,6 +168,7 @@ def test_values_pass_through_verbatim(tariff_db, tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "TARIFF_DB_PATH", rich)
     import core.utils
     monkeypatch.setattr(core.utils, "TARIFF_DB_PATH", rich)
+    core.utils.resolve_tariff_db_path.cache_clear()
     result = tl.tariff_lookup_view("9403")
     row = result["rows"][0]
     extra = {field["label"]: field["value"] for field in row["fields"]}
@@ -173,9 +183,10 @@ def test_null_rate_stays_unknown_not_zero(tariff_db, tmp_path, monkeypatch):
     monkeypatch.setattr(tl, "TARIFF_DB_PATH", rich)
     import core.utils
     monkeypatch.setattr(core.utils, "TARIFF_DB_PATH", rich)
+    core.utils.resolve_tariff_db_path.cache_clear()
     row = tl.tariff_lookup_view("9401")["rows"][0]
     extra = {field["label"]: field["value"] for field in row["fields"]}
-    assert extra["Thuế NK"] is None  # UNKNOWN != ZERO
+    assert "Thuế NK" not in extra  # empty extra fields are omitted, never zero
 
 
 def test_provenance_never_claims_official_authority(tariff_db):
