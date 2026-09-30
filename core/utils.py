@@ -233,12 +233,14 @@ def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
             if "Mã HS" not in columns:
                 return pd.DataFrame()
 
+            row_order = '"_source_row"' if "_source_row" in columns else "rowid"
+
             if code_like:
                 if len(normalized_code) == 8:
-                    sql = '''
+                    sql = f'''
                         SELECT * FROM tariff_table
                         WHERE "Mã HS" = ?
-                        ORDER BY coalesce("_source_row", id)
+                        ORDER BY {row_order}
                         LIMIT ?
                     '''
                     return pd.read_sql_query(
@@ -247,14 +249,14 @@ def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
 
                 # GLOB with a constant prefix is optimized by SQLite into a
                 # range scan over idx_tariff_hs; exact heading goes first.
-                sql = '''
+                sql = f'''
                     SELECT * FROM tariff_table
                     WHERE "Mã HS" GLOB ?
                     ORDER BY
                         CASE WHEN "Mã HS" = ? THEN 0 ELSE 1 END,
                         length("Mã HS"),
                         "Mã HS",
-                        coalesce("_source_row", id)
+                        {row_order}
                     LIMIT ?
                 '''
                 return pd.read_sql_query(
