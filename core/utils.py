@@ -1,10 +1,8 @@
 """Tiện ích dùng chung, không chứa nghiệp vụ riêng của giao diện."""
 from __future__ import annotations
 
-import csv
 import hashlib
 import html
-import io
 import json
 import logging
 import lzma
