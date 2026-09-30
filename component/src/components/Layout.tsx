@@ -353,7 +353,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 { label: "Tạo hợp đồng mới", desc: "HDMB / HDNT + phụ lục", to: "/hop-dong/moi", icon: FileText, bg: "bg-emerald-50 text-emerald-700" },
                 { label: "Tạo báo giá", desc: "Dự toán chi phí & giá bán", to: "/kinh-doanh-bao-gia", icon: Calculator, bg: "bg-violet-50 text-violet-700" },
                 { label: "Ghi nhận thanh toán", desc: "Thu tiền khách / trả đối tác", to: "/tai-chinh/thu-tien", icon: Wallet, bg: "bg-amber-50 text-amber-700" },
-                { label: "Tra cứu thuế / HS", desc: "Mã HS & mô tả hàng hóa", to: "/tra-cuu-thue", icon: Truck, bg: "bg-slate-100 text-slate-700" },
+                { label: "BIỂU THUẾ", desc: "Mã HS, thuế suất & chính sách", to: "/tra-cuu-thue", icon: Truck, bg: "bg-slate-100 text-slate-700" },
               ].map((a) => (
                 <button key={a.label} onClick={() => { setQuickAddOpen(false); nav(a.to); }} className="touch-target flex items-center gap-3 rounded-2xl border-2 border-slate-100 hover:border-[#1e5aa8] p-3.5 text-left lift bg-white">
                   <span className={cx("w-11 h-11 rounded-xl grid place-items-center shrink-0", a.bg)}><a.icon size={21} /></span>
