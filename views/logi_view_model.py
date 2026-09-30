@@ -47,6 +47,7 @@ from views import tariff_lookup as logi_tariff
 from views import translation as logi_translation
 from views import user_access as logi_user_access
 from views import user_management as logi_user_management
+from views import notebooklm_registry as logi_notebooklm
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -918,6 +919,10 @@ def build_view_model() -> dict:
             users=sources["users"],
             current_user=user,
         ),
+        # Admin-managed shared NotebookLM registry. The read uses the same
+        # resolved DB handle as this render; non-Admin sessions receive the same
+        # list but canManage=False.
+        "notebookLM": logi_notebooklm.registry_projection(db=db),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
@@ -1109,11 +1114,12 @@ RECONCILIATION_EVENTS = {"reconciliation_filter"}
 # handler re-checks the Admin RBAC boundary itself; this set only decides
 # which typed events the shell forwards to Python at all.
 USER_MANAGEMENT_EVENTS = logi_user_management.USER_MANAGEMENT_EVENTS
+NOTEBOOKLM_EVENTS = logi_notebooklm.NOTEBOOKLM_EVENTS
 
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
-              | DOCUMENT_REVIEW_EVENTS)
+              | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -4474,6 +4480,19 @@ def dispatch(
                                     user_management_session["seq"])
     outcomes.extend(user_management_outcomes)
     write_outcomes.extend(user_management_outcomes)
+
+    # Shared NotebookLM registry — one Admin-only bounded write. The saved
+    # app_setting is read back into the next fresh view-model for every role.
+    notebooklm_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    notebooklm_outcomes = logi_notebooklm.consume_notebooklm_triggers(
+        notebooklm_session, result
+    )
+    st.session_state[SEQ_KEY] = max(
+        st.session_state.get(SEQ_KEY, 0),
+        notebooklm_session["seq"],
+    )
+    outcomes.extend(notebooklm_outcomes)
+    write_outcomes.extend(notebooklm_outcomes)
 
     # Store the outcomes BEFORE any rerun so the fresh view-model built on the
     # rerun embeds them (``_last_writes_readback``) — the rerun restarts the

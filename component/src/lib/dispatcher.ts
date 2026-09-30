@@ -117,6 +117,7 @@ export type LogiEventName =
   | "user_role_set"
   | "user_active_set"
   | "user_password_reset"
+  | "notebooklm_registry_save"
   // LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
   // for the shipment "Chứng từ" tab. The upload event carries the ONE chosen
   // file as bounded base64 (the same transport the GetFly preview already uses)
@@ -193,6 +194,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "user_role_set",
   "user_active_set",
   "user_password_reset",
+  "notebooklm_registry_save",
   "shipment_attachment_upload",
   "attachment_download",
   "shipment_document_review",
