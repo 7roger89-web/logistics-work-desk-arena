@@ -7,7 +7,7 @@
  * against a fixture generated from the real staging view-model (see
  * scripts/gen_shipment_attachments_fixture.py):
  *
- *   1. shipment detail → "Chứng từ & PXK" tab exposes the attachment section;
+ *   1. shipment detail → "Quy trình & Chứng từ" tab exposes the attachment section;
  *   2. the list renders the BACKEND's authoritative metadata (name, category,
  *      honest size text, uploader, upload date) — never client-side truth;
  *   3. the file selector accepts exactly the server-declared policy and the
@@ -208,7 +208,7 @@ await click("Lô Hàng", "a", $("aside")[0]);
 await click("LO-0306", "a", $("table.tbl")[0]);
 const tabs = window.document.getElementById("workspace-tabs");
 assert.ok(tabs, "workspace tabs must exist");
-await click("Chứng từ & PXK", "button", tabs);
+await click("Quy trình & Chứng từ", "button", tabs);
 assert.ok(mainText().includes("Tệp đính kèm lô hàng"), "attachment section title missing");
 assert.ok(!mainText().includes("Google Drive"), "gridfs mode must use provider-neutral wording");
 assert.ok(

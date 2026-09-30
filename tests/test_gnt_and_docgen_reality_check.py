@@ -456,6 +456,24 @@ def test_gnt_generate_end_to_end_flow(staging, event_seq):
     })
     assert save_res["ok"], save_res["error"]
 
+    # PR140 precondition — GNT generation is gated on the operator-confirmed
+    # import model. Challenge the server gate BEFORE the model is confirmed…
+    blocked = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
+    assert blocked["ok"] is False
+    assert blocked["gate"] == "COMMERCIAL_FLOW_REQUIRED"
+
+    # …then confirm the model through the existing commercial-flow writer.
+    # This lot imports under the customer's own name; the customer master MST
+    # (0312987654) equals the explicit GNT taxpayer below, so the gate passes.
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid,
+        "requestId": "REQ-FLOW-0307",
+        "mode": "CUSTOMER_SELF",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
+
     gnt_res = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
     assert gnt_res["ok"] is True, gnt_res.get("error")
     assert gnt_res["gate"] == "READY"
@@ -523,6 +541,15 @@ def test_gnt_revision_comes_from_durable_docgen_metadata_after_session_clear(sta
             "import_vat_amount": "800000",
         },
     })
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid,
+        "requestId": "REQ-FLOW-REVISION-0307",
+        "mode": "CUSTOMER_SELF",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
+
     first = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
     assert first["ok"], first
     assert first["persisted"]["revision"] == 1
@@ -553,6 +580,17 @@ def test_gnt_generate_fails_closed_when_facts_are_missing(staging, event_seq):
         "shipmentId": sid,
         "fields": {"tk_no": "105579900211", "tk_date": "03/08/2026"},
     })
+
+    # PR140 precondition: confirm the import model first (customer imports
+    # under its own name), so the failure under test is the missing GNT facts.
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid,
+        "requestId": "REQ-FLOW-0306",
+        "mode": "CUSTOMER_SELF",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
 
     gnt_res = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
     assert gnt_res["ok"] is False
@@ -869,12 +907,14 @@ def test_adversarial_mutation_1701_fails():
 
 def test_adversarial_customer_auto_promotion_fails(staging, event_seq):
     """Negative check: customer presence must NEVER auto-promote to GNT taxpayer authority."""
-    # Create a fresh lot with customer facts but NO explicit customs taxpayer
+    # Create a fresh lot with customer facts but NO explicit customs taxpayer.
+    # The customer is a REAL master record with a known MST on purpose: even a
+    # fully known customer must never auto-promote to GNT taxpayer authority.
     sid = "LO-ADVERSARIAL-CUST"
     _dispatch(event_seq, "shipment_create", {
         "shipmentId": sid,
-        "customerId": "CUS-SAMPLE",
-        "customer": "CÔNG TY KHÁCH HÀNG MẪU",
+        "customerId": "CUST-DUCLONG",
+        "customer": "Đức Long Co.",
         "contractId": "CT-NONE",
     })
     _dispatch(event_seq, "shipment_field_save", {
@@ -886,6 +926,16 @@ def test_adversarial_customer_auto_promotion_fails(staging, event_seq):
             "import_vat_amount": "800000",
         },
     })
+
+    # PR140 precondition: confirm the import model through the existing writer.
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid,
+        "requestId": "REQ-FLOW-ADV",
+        "mode": "CUSTOMER_SELF",
+        "companyId": "",
+        "subAgentId": "",
+    })
+    assert flow["ok"], flow["error"]
 
     # GNT generation MUST fail closed because legal taxpayer is not explicitly known
     gnt_res = _dispatch(event_seq, "gnt_generate", {"shipmentId": sid})
