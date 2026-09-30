@@ -13,6 +13,7 @@ import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { StoreProvider } from "./lib/store";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
+import NotebookLMLauncher from "./components/NotebookLMLauncher";
 import Home from "./pages/Home";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
@@ -30,6 +31,7 @@ import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import Notebook from "./pages/Notebook";
+import NotebookLMEmbed from "./pages/NotebookLMEmbed";
 import UserAccess from "./pages/UserAccess";
 import IntlPaymentTool from "./pages/IntlPaymentTool";
 import NotFound from "./pages/NotFound";
@@ -49,7 +51,7 @@ export default function App() {
   return (
     <StoreProvider>
       <MemoryRouter>
-        <Layout>{!vm ? <Loading /> : (
+        <Layout><NotebookLMLauncher />{!vm ? <Loading /> : (
           <Routes>
             <Route path="/" element={<Home />} />
             {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — compatibility redirects for the
@@ -94,6 +96,7 @@ export default function App() {
                 existing knowledge_base reader (no longer a placeholder; no CMS,
                 no authoring event, no search backend). */}
             <Route path="/so-tay" element={<Notebook />} />
+            <Route path="/notebooklm" element={<NotebookLMEmbed />} />
             {/* LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — stateless international
                 payment calculator (CÔNG CỤ). No contract, no write event, no
                 persistence; it left the contract detail tabs. */}
