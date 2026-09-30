@@ -13,6 +13,7 @@ import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { StoreProvider } from "./lib/store";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
+import NotebookLMLauncher from "./components/NotebookLMLauncher";
 import Home from "./pages/Home";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
@@ -50,7 +51,7 @@ export default function App() {
   return (
     <StoreProvider>
       <MemoryRouter>
-        <Layout>{!vm ? <Loading /> : (
+        <Layout><NotebookLMLauncher />{!vm ? <Loading /> : (
           <Routes>
             <Route path="/" element={<Home />} />
             {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — compatibility redirects for the
