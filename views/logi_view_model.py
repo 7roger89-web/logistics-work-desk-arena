@@ -1051,7 +1051,9 @@ PHASE_B_EVENTS = {
     # choices. Both handlers remain in this ONE dispatcher.
     "getfly_preview",
     "getfly_import",
-    # Admin replaces the tariff XLSX; backend builds/stores indexed SQLite.\n    "tariff_source_upload",\n    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
+    # Admin replaces the tariff XLSX; backend builds/stores indexed SQLite.
+    "tariff_source_upload",
+    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
     # for the shipment "Chứng từ" tab. ``shipment_attachment_upload`` carries the
     # ONE chosen file (bounded base64, same transport precedent as the GetFly
     # preview above) and the server owns permission, size/MIME validation,
@@ -4092,7 +4094,8 @@ _HANDLERS = {
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
     "getfly_import": _handle_getfly_import,
-    "tariff_source_upload": _handle_tariff_source_upload,\n    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
+    "tariff_source_upload": _handle_tariff_source_upload,
+    # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — the bounded attachment pair
     # (upload + server-authoritative download). Same dispatcher, same seq replay
     # guard.
     "shipment_attachment_upload": _handle_shipment_attachment_upload,
