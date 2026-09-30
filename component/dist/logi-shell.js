@@ -31052,37 +31052,70 @@ function Pd() {
 	});
 }
 //#endregion
-//#region src/components/NotebookLMLauncher.popup-repair.tsx
-var NbLmUrl_20260930 = "https://notebook.google.com/notebook/f5c90bb9-9244-4027-a9ae-84f6ab023a09/preview";
+//#region src/components/NotebookLMLauncher.library-repair.tsx
+var NbLmBooks_20260930 = [
+	["Notebook hiện tại", "https://notebook.google.com/notebook/f5c90bb9-9244-4027-a9ae-84f6ab023a09/preview"],
+	["Bộ Thông Tin Truyền Thông", "https://notebook.google.com/notebook/242b2eed-2a6d-4bb8-a0b2-c347d79e1047/preview"],
+	["Bộ Y Tế", "https://notebook.google.com/notebook/5a5d2a90-9881-49fc-9c65-e820b9497088/preview"],
+	["Hóa Chất", "https://notebook.google.com/notebook/50716c0b-7da6-4984-9f05-be0b19be4b95/preview"],
+	["Bộ KHCN", "https://notebook.google.com/notebook/6afaf293-e6d1-42f4-beaa-208f2d417f92/preview"]
+];
+function NbLmOpen_20260930(e) {
+	let t = window.screen.availWidth || window.innerWidth,
+		n = window.screen.availHeight || window.innerHeight,
+		r = Math.min(t, Math.max(960, Math.floor(t * .82))),
+		i = Math.min(n, Math.max(720, Math.floor(n * .86))),
+		a = Math.max(0, Math.floor((t - r) / 2)),
+		o = Math.max(0, Math.floor((n - i) / 2)),
+		s = window.open(e, "logistics-notebooklm", [
+			"popup=yes",
+			`width=${r}`,
+			`height=${i}`,
+			`left=${a}`,
+			`top=${o}`,
+			"resizable=yes",
+			"scrollbars=yes"
+		].join(","));
+	s?.focus();
+}
 function NbLmLauncher_20260930() {
-	let e = () => {
-		let e = window.screen.availWidth || window.innerWidth,
-			t = window.screen.availHeight || window.innerHeight,
-			n = Math.min(e, Math.max(960, Math.floor(e * .82))),
-			r = Math.min(t, Math.max(720, Math.floor(t * .86))),
-			i = Math.max(0, Math.floor((e - n) / 2)),
-			a = Math.max(0, Math.floor((t - r) / 2)),
-			o = window.open(NbLmUrl_20260930, "logistics-notebooklm", [
-				"popup=yes",
-				`width=${n}`,
-				`height=${r}`,
-				`left=${i}`,
-				`top=${a}`,
-				"resizable=yes",
-				"scrollbars=yes"
-			].join(","));
-		o?.focus();
-	};
-	return /* @__PURE__ */ (0, B.jsxs)("button", {
-		type: "button",
-		onClick: e,
-		style: { position: "fixed", right: 16, bottom: 96, zIndex: 30 },
-		className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-extrabold text-[#0f2a4a] shadow-lg hover:bg-slate-50",
-		"aria-label": "Mở NotebookLM trong cửa sổ riêng",
-		title: "Mở NotebookLM",
-		"data-testid": "notebooklm-launcher",
-		children: [/* @__PURE__ */ (0, B.jsx)(jr, { size: 19 }), "NotebookLM"]
-	});
+	let [e, t] = (0, _.useState)(!1);
+	return /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [
+		e && /* @__PURE__ */ (0, B.jsxs)("div", {
+			className: "no-print rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl",
+			style: { position: "fixed", right: 16, bottom: 152, zIndex: 31, width: "min(360px, calc(100vw - 32px))" },
+			"data-testid": "notebooklm-menu",
+			children: [
+				/* @__PURE__ */ (0, B.jsxs)("div", { className: "px-3 pb-2 pt-1", children: [
+					/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[13px] font-extrabold text-[#0f2a4a]", children: "NotebookLM" }),
+					/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[12px] text-slate-500", children: "Chọn bộ tài liệu cần mở" })
+				] }),
+				/* @__PURE__ */ (0, B.jsx)("div", {
+					className: "space-y-1",
+					children: NbLmBooks_20260930.map((n) => /* @__PURE__ */ (0, B.jsxs)("button", {
+						type: "button",
+						onClick: () => { NbLmOpen_20260930(n[1]); t(!1); },
+						className: "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-bold text-slate-700 hover:bg-slate-50",
+						children: [
+							/* @__PURE__ */ (0, B.jsx)(jr, { size: 17, className: "shrink-0 text-[#1e5aa8]" }),
+							/* @__PURE__ */ (0, B.jsx)("span", { children: n[0] })
+						]
+					}, n[1]))
+				})
+			]
+		}),
+		/* @__PURE__ */ (0, B.jsxs)("button", {
+			type: "button",
+			onClick: () => t((e) => !e),
+			style: { position: "fixed", right: 16, bottom: 96, zIndex: 30 },
+			className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-extrabold text-[#0f2a4a] shadow-lg hover:bg-slate-50",
+			"aria-label": "Chọn NotebookLM",
+			"aria-expanded": e,
+			title: "Chọn NotebookLM",
+			"data-testid": "notebooklm-launcher",
+			children: [/* @__PURE__ */ (0, B.jsx)(jr, { size: 19 }), "NotebookLM"]
+		})
+	] });
 }
 //#endregion
 //#region src/App.tsx
