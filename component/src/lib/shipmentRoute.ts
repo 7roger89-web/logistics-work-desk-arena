@@ -13,10 +13,12 @@
  * (`lib/contractRoute.ts`): encode the IDENTITY, never the composed URL, so a
  * query string or `#anchor` is appended AFTER the encoded segment by the caller.
  *
- * The router's own resolution already exposes the original identity to
- * `useParams().id` (a single decode per segment; `%2F` is re-escaped before
- * matching and normalised back to `/` for the param value), so ShipmentDetail
- * keeps using the param directly and must NOT decode it a second time.
+ * React Router's param normalisation preserves ordinary encoded identities but
+ * collapses a literal uppercase `%2F` inside an identity to `/`. ShipmentDetail
+ * therefore resolves the raw pathname segment through `shipmentIdFromPath()`,
+ * decoding that segment exactly ONCE; `useParams().id` is fallback only. A
+ * second decode would corrupt literal percent-encoded text such as `%20`,
+ * `%25` or `%2F`.
  */
 export function shipmentPath(id: string): string {
   return "/lo-hang/" + encodeURIComponent(id);
