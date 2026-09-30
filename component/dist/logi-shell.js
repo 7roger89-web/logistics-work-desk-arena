@@ -8063,7 +8063,7 @@ function T() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch".split(".")), D = null, O = 0;
+var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch.notebooklm_registry_save".split(".")), D = null, O = 0;
 function k(e) {
 	D = e;
 }
@@ -31052,14 +31052,7 @@ function Pd() {
 	});
 }
 //#endregion
-//#region src/components/NotebookLMLauncher.library-repair.tsx
-var NbLmBooks_20260930 = [
-	["Notebook hiện tại", "https://notebook.google.com/notebook/f5c90bb9-9244-4027-a9ae-84f6ab023a09/preview"],
-	["Bộ Thông Tin Truyền Thông", "https://notebook.google.com/notebook/242b2eed-2a6d-4bb8-a0b2-c347d79e1047/preview"],
-	["Bộ Y Tế", "https://notebook.google.com/notebook/5a5d2a90-9881-49fc-9c65-e820b9497088/preview"],
-	["Hóa Chất", "https://notebook.google.com/notebook/50716c0b-7da6-4984-9f05-be0b19be4b95/preview"],
-	["Bộ KHCN", "https://notebook.google.com/notebook/6afaf293-e6d1-42f4-beaa-208f2d417f92/preview"]
-];
+//#region src/components/NotebookLMLauncher.admin-registry-repair.tsx
 function NbLmOpen_20260930(e) {
 	let t = window.screen.availWidth || window.innerWidth,
 		n = window.screen.availHeight || window.innerHeight,
@@ -31078,39 +31071,156 @@ function NbLmOpen_20260930(e) {
 		].join(","));
 	s?.focus();
 }
+function NbLmRequestId_20260930() {
+	return `NOTEBOOKLM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
 function NbLmLauncher_20260930() {
-	let [e, t] = (0, _.useState)(!1);
+	let e = (0, _.useSyncExternalStore)(C, S, S),
+		t = e?.notebookLM,
+		n = t?.items ?? [],
+		r = t?.canManage === !0,
+		[i, a] = (0, _.useState)(!1),
+		[o, s] = (0, _.useState)(!1),
+		[c, l] = (0, _.useState)([]),
+		[u, d] = (0, _.useState)(null),
+		[f, p] = (0, _.useState)("");
+	(0, _.useEffect)(() => {
+		o || l(n.map((e) => ({ ...e })));
+	}, [o, t?.items]);
+	(0, _.useEffect)(() => {
+		if (!u) return;
+		let t = e?.lastWrites?.find((e) => e.event === "notebooklm_registry_save" && e.requestId === u);
+		t && (d(null), t.ok ? (s(!1), p("")) : p(t.error || "Backend từ chối lưu danh sách NotebookLM."));
+	}, [u, e?.lastWrites]);
+	let m = () => {
+		l(n.map((e) => ({ ...e }))), p(""), s(!0);
+	}, h = () => {
+		if (u) return;
+		if (c.length === 0) {
+			p("Phải giữ ít nhất một NotebookLM.");
+			return;
+		}
+		if (c.some((e) => !String(e.label || "").trim() || !String(e.url || "").trim())) {
+			p("Mỗi NotebookLM phải có đủ tên và URL.");
+			return;
+		}
+		let e = NbLmRequestId_20260930(), t = A("notebooklm_registry_save", {
+			items: c.map((e) => ({ label: String(e.label || "").trim(), url: String(e.url || "").trim() })),
+			requestId: e
+		});
+		t ? (p(""), d(e)) : p("Component chưa kết nối backend — chưa lưu được.");
+	};
 	return /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [
-		e && /* @__PURE__ */ (0, B.jsxs)("div", {
+		i && /* @__PURE__ */ (0, B.jsxs)("div", {
 			className: "no-print rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl",
-			style: { position: "fixed", right: 16, bottom: 152, zIndex: 31, width: "min(360px, calc(100vw - 32px))" },
+			style: {
+				position: "fixed",
+				right: 16,
+				bottom: 152,
+				zIndex: 31,
+				width: o ? "min(620px, calc(100vw - 32px))" : "min(380px, calc(100vw - 32px))",
+				maxHeight: "70vh",
+				overflowY: "auto"
+			},
 			"data-testid": "notebooklm-menu",
 			children: [
-				/* @__PURE__ */ (0, B.jsxs)("div", { className: "px-3 pb-2 pt-1", children: [
-					/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[13px] font-extrabold text-[#0f2a4a]", children: "NotebookLM" }),
-					/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[12px] text-slate-500", children: "Chọn bộ tài liệu cần mở" })
-				] }),
-				/* @__PURE__ */ (0, B.jsx)("div", {
+				/* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "flex items-center justify-between gap-2 px-3 pb-2 pt-1",
+					children: [
+						/* @__PURE__ */ (0, B.jsxs)("div", { children: [
+							/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[13px] font-extrabold text-[#0f2a4a]", children: "NotebookLM" }),
+							/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[12px] text-slate-500", children: o ? "Quản lý danh sách dùng chung" : "Chọn bộ tài liệu cần mở" })
+						] }),
+						r && !o && /* @__PURE__ */ (0, B.jsx)("button", {
+							type: "button",
+							onClick: m,
+							className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] font-bold text-[#0f2a4a]",
+							"data-testid": "notebooklm-manage",
+							children: "Quản lý"
+						})
+					]
+				}),
+				o ? /* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "space-y-2 px-1 pb-1",
+					children: [
+						...c.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "rounded-xl border border-slate-200 p-2.5",
+							children: [
+								/* @__PURE__ */ (0, B.jsx)("input", {
+									value: e.label,
+									onChange: (e) => l((n) => n.map((n, r) => r === t ? { ...n, label: e.target.value } : n)),
+									placeholder: "Tên notebook",
+									className: "mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px]"
+								}),
+								/* @__PURE__ */ (0, B.jsx)("input", {
+									value: e.url,
+									onChange: (e) => l((n) => n.map((n, r) => r === t ? { ...n, url: e.target.value } : n)),
+									placeholder: "https://notebook.google.com/notebook/.../preview",
+									className: "w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[12px]"
+								}),
+								/* @__PURE__ */ (0, B.jsx)("button", {
+									type: "button",
+									onClick: () => l((e) => e.filter((e, n) => n !== t)),
+									className: "mt-2 rounded-lg border border-red-200 px-2.5 py-1.5 text-[12px] font-bold text-red-700",
+									children: "Xóa"
+								})
+							]
+						}, `${t}-${e.url}`)),
+						/* @__PURE__ */ (0, B.jsx)("button", {
+							type: "button",
+							onClick: () => l((e) => e.length >= (t?.maxItems ?? 30) ? e : [...e, { label: "", url: "" }]),
+							className: "rounded-lg border border-slate-200 px-3 py-2 text-[12.5px] font-bold text-[#0f2a4a]",
+							children: "+ Thêm NotebookLM"
+						}),
+						f && /* @__PURE__ */ (0, B.jsx)("p", {
+							className: "rounded-lg bg-red-50 px-3 py-2 text-[12.5px] font-semibold text-red-700",
+							children: f
+						}),
+						/* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "flex justify-end gap-2 pt-1",
+							children: [
+								/* @__PURE__ */ (0, B.jsx)("button", {
+									type: "button",
+									onClick: () => { s(!1); p(""); },
+									disabled: !!u,
+									className: "rounded-lg border border-slate-200 px-3 py-2 text-[12.5px] font-bold text-slate-700",
+									children: "Hủy"
+								}),
+								/* @__PURE__ */ (0, B.jsx)("button", {
+									type: "button",
+									onClick: h,
+									disabled: !!u,
+									className: "rounded-lg bg-[#0f2a4a] px-3 py-2 text-[12.5px] font-bold text-white",
+									"data-testid": "notebooklm-save",
+									children: u ? "ĐANG LƯU…" : "LƯU DANH SÁCH"
+								})
+							]
+						})
+					]
+				}) : /* @__PURE__ */ (0, B.jsx)("div", {
 					className: "space-y-1",
-					children: NbLmBooks_20260930.map((n) => /* @__PURE__ */ (0, B.jsxs)("button", {
+					children: n.length === 0 ? /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "px-3 py-3 text-[13px] text-slate-500",
+						children: "Đang tải danh sách NotebookLM…"
+					}) : n.map((e) => /* @__PURE__ */ (0, B.jsxs)("button", {
 						type: "button",
-						onClick: () => { NbLmOpen_20260930(n[1]); t(!1); },
-						className: "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-bold text-slate-700 hover:bg-slate-50",
+						onClick: () => { NbLmOpen_20260930(e.url); a(!1); },
+						className: "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-bold text-slate-700",
 						children: [
 							/* @__PURE__ */ (0, B.jsx)(jr, { size: 17, className: "shrink-0 text-[#1e5aa8]" }),
-							/* @__PURE__ */ (0, B.jsx)("span", { children: n[0] })
+							/* @__PURE__ */ (0, B.jsx)("span", { children: e.label })
 						]
-					}, n[1]))
+					}, e.url))
 				})
 			]
 		}),
 		/* @__PURE__ */ (0, B.jsxs)("button", {
 			type: "button",
-			onClick: () => t((e) => !e),
+			onClick: () => { a((e) => !e); i && s(!1); },
 			style: { position: "fixed", right: 16, bottom: 96, zIndex: 30 },
-			className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-extrabold text-[#0f2a4a] shadow-lg hover:bg-slate-50",
+			className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-extrabold text-[#0f2a4a] shadow-lg",
 			"aria-label": "Chọn NotebookLM",
-			"aria-expanded": e,
+			"aria-expanded": i,
 			title: "Chọn NotebookLM",
 			"data-testid": "notebooklm-launcher",
 			children: [/* @__PURE__ */ (0, B.jsx)(jr, { size: 19 }), "NotebookLM"]

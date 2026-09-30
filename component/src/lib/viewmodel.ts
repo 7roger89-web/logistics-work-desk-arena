@@ -1944,6 +1944,18 @@ export interface GetFlyPreview {
   error?: string;
 }
 
+export interface NotebookLMItem {
+  label: string;
+  url: string;
+}
+
+export interface NotebookLMRegistry {
+  items: NotebookLMItem[];
+  canManage: boolean;
+  source: string;
+  maxItems: number;
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -1975,6 +1987,8 @@ export interface ViewModel {
   handbook?: NotebookHandbook;
   /** LOGI_USER_ACCESS_WORKSPACE_01 — bounded read-only /nguoi-dung slice. */
   userAccess?: UserAccessWorkspace;
+  /** Shared NotebookLM list; Admin may manage it through one bounded write. */
+  notebookLM?: NotebookLMRegistry;
   /**
    * LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — read-only service catalog slice
    * (``core.config.GETFLY_SERVICES_LIST`` projected by the backend) used by the
