@@ -31081,6 +31081,7 @@ function NbLmEmbed_20260930() {
 				children: /* @__PURE__ */ (0, B.jsx)("iframe", {
 					src: NbLmUrl_20260930,
 					title: "NotebookLM Logistics",
+					allow: "identity-credentials-get; clipboard-read; clipboard-write; microphone",
 					referrerPolicy: "strict-origin-when-cross-origin",
 					style: { display: "block", width: "100%", height: "calc(100vh - 180px)", minHeight: 720, border: 0 }
 				})
