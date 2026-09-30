@@ -1,0 +1,11 @@
+{
+  "source_filename": "BIEU THUE XNK 2026.xlsx",
+  "source_sha256": "c1b0739ebcb510d02729f82a3513b419d8fa8fa9d1c340d5d9e9cfbd05f05986",
+  "source_sheet": "BT2026",
+  "source_rows": 19899,
+  "indexed_rows": 15119,
+  "year": "2026",
+  "schema_version": 2,
+  "search": "B-tree exact/prefix HS + FTS5 Vietnamese",
+  "bundle_sha256": "cbdc90978394232ebb3c43ecb46149cbfc762c50a0d289e91e32d7d6c3925efe"
+}
