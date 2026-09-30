@@ -1209,6 +1209,7 @@ export interface TariffSource {
   sourceSha256?: string | null;
   year?: string | null;
   searchMode?: string | null;
+  canManage?: boolean;
 }
 
 export interface TariffProvenance {
