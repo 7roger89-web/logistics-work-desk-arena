@@ -33,7 +33,7 @@ from core import utils as core_utils
 from core.utils import fast_search_tariff
 
 #: Configured path remains supported; the canonical reader may transparently
-#: fall back to the repository-bundled compressed 2026 database.
+#: fall back to the Admin-managed compressed SQLite asset.
 TARIFF_DB_PATH = core_utils.TARIFF_DB_PATH
 
 #: The canonical reader ignores keywords shorter than this (same rule client-side).
@@ -64,6 +64,9 @@ def _clean(value: Any) -> str | None:
 
 def tariff_source_status() -> dict[str, Any]:
     """Honest status + embedded provenance of the governed reference DB."""
+    from core.auth import can_operate_business
+
+    can_manage = bool(can_operate_business("*"))
     db_path = core_utils.resolve_tariff_db_path()
     path = str(db_path)
     if not db_path.exists():
@@ -72,13 +75,14 @@ def tariff_source_status() -> dict[str, Any]:
             "path": path,
             "rows": None,
             "note": (
-                "Chưa nạp dữ liệu BIỂU THUẾ. Hãy cấu hình TARIFF_DB_PATH hoặc "
-                "đưa bundle tariff_2026.db.xz vào data/."
+                "Chưa nạp dữ liệu BIỂU THUẾ. Admin có thể tải file .xlsx "
+                "ngay trên công cụ này."
             ),
             "sourceFile": None,
             "sourceSha256": None,
             "year": None,
             "searchMode": None,
+            "canManage": can_manage,
         }
 
     rows: int | None = None
@@ -111,6 +115,7 @@ def tariff_source_status() -> dict[str, Any]:
         "sourceSha256": meta.get("source_sha256"),
         "year": meta.get("year"),
         "searchMode": meta.get("search"),
+        "canManage": can_manage,
     }
 
 
