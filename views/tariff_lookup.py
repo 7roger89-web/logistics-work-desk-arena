@@ -32,7 +32,8 @@ import pandas as pd
 from core import utils as core_utils
 from core.utils import fast_search_tariff
 
-#: Same governed path the canonical reader reads — one source of truth.
+#: Configured path remains supported; the canonical reader may transparently
+#: fall back to the repository-bundled compressed 2026 database.
 TARIFF_DB_PATH = core_utils.TARIFF_DB_PATH
 
 #: The canonical reader ignores keywords shorter than this (same rule client-side).
@@ -42,10 +43,9 @@ MIN_QUERY_LENGTH = 2
 MAX_ROWS = 200
 
 _PROVENANCE_NOTE = (
-    "Nguồn nội bộ: cơ sở dữ liệu tham chiếu nội bộ (tariff_table) hiện không "
-    "có metadata nguồn / ngày hiệu lực, nên tính chính danh chưa được thiết lập. "
-    "Kết quả chỉ mang tính tra cứu tham khảo, KHÔNG phải quyết định phân loại "
-    "chính thức của hải quan; vui lòng đối chiếu biểu thuế nhập khẩu có hiệu lực."
+    "Nguồn tra cứu được build từ file BIỂU THUẾ do Admin cung cấp và lưu thành "
+    "SQLite có chỉ mục để tra nhanh. Kết quả dùng cho tra cứu nội bộ; KHÔNG thay "
+    "thế quyết định phân loại chính thức hoặc văn bản pháp luật gốc."
 )
 
 
@@ -63,8 +63,8 @@ def _clean(value: Any) -> str | None:
 
 
 def tariff_source_status() -> dict[str, Any]:
-    """Honest status of the governed reference database (never raises)."""
-    db_path = core_utils.TARIFF_DB_PATH
+    """Honest status + embedded provenance of the governed reference DB."""
+    db_path = core_utils.resolve_tariff_db_path()
     path = str(db_path)
     if not db_path.exists():
         return {
@@ -72,25 +72,45 @@ def tariff_source_status() -> dict[str, Any]:
             "path": path,
             "rows": None,
             "note": (
-                "Chưa nạp dữ liệu biểu thuế tham chiếu (TARIFF_DB_PATH). "
-                "Kết nối dữ liệu đã được tổ chức phê duyệt qua quy trình quản "
-                "trị dữ liệu; kho mã này không chứa dữ liệu mẫu thay thế."
+                "Chưa nạp dữ liệu BIỂU THUẾ. Hãy cấu hình TARIFF_DB_PATH hoặc "
+                "đưa bundle tariff_2026.db.xz vào data/."
             ),
+            "sourceFile": None,
+            "sourceSha256": None,
+            "year": None,
+            "searchMode": None,
         }
+
     rows: int | None = None
+    meta: dict[str, str] = {}
     try:
-        with sqlite3.connect(path) as conn:
-            rows = int(conn.execute("SELECT COUNT(*) FROM tariff_table").fetchone()[0])
+        with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
+            rows = int(
+                conn.execute("SELECT COUNT(*) FROM tariff_table").fetchone()[0]
+            )
+            try:
+                meta = {
+                    str(key): str(value)
+                    for key, value in conn.execute(
+                        "SELECT key, value FROM tariff_meta"
+                    ).fetchall()
+                }
+            except sqlite3.Error:
+                meta = {}
     except (sqlite3.Error, TypeError, ValueError):
         rows = None
+
     return {
         "configured": True,
         "path": path,
         "rows": rows,
         "note": None if rows else (
-            "Cơ sở dữ liệu tham chiếu đã kết nối nhưng đang trống "
-            "(chưa nạp dữ liệu biểu thuế đã được phê duyệt)."
+            "Cơ sở dữ liệu BIỂU THUẾ đã kết nối nhưng đang trống."
         ),
+        "sourceFile": meta.get("source_filename"),
+        "sourceSha256": meta.get("source_sha256"),
+        "year": meta.get("year"),
+        "searchMode": meta.get("search"),
     }
 
 
@@ -113,8 +133,8 @@ def tariff_lookup_view(query: object, limit: int = 100) -> dict[str, Any]:
         "source": source,
         # Provenance is what the backend actually knows: nothing authoritative.
         "provenance": {
-            "source": None,
-            "effectiveDate": None,
+            "source": source.get("sourceFile"),
+            "effectiveDate": source.get("year"),
             "authoritative": False,
             "note": _PROVENANCE_NOTE,
         },
@@ -146,17 +166,40 @@ def tariff_lookup_view(query: object, limit: int = 100) -> dict[str, Any]:
 
 
 def _row_projection(record: dict[str, Any]) -> dict[str, Any]:
-    canonical = {"Mã HS": "hsCode", "Mô tả tiếng Việt": "descriptionVi",
-                 "Mô tả tiếng Anh": "descriptionEn"}
-    row: dict[str, Any] = {"hsCode": None, "descriptionVi": None,
-                           "descriptionEn": None, "fields": []}
+    canonical = {
+        "Mã HS": "hsCode",
+        "Mô tả tiếng Việt": "descriptionVi",
+        "Mô tả tiếng Anh": "descriptionEn",
+        "Đơn vị tính": "unit",
+        "NK TT": "importNormal",
+        "NK ưu đãi": "importPreferential",
+        "VAT": "vat",
+        "Chính sách mặt hàng": "policy",
+        "Giảm VAT": "vatReduction",
+    }
+    row: dict[str, Any] = {
+        "hsCode": None,
+        "descriptionVi": None,
+        "descriptionEn": None,
+        "unit": None,
+        "importNormal": None,
+        "importPreferential": None,
+        "vat": None,
+        "policy": None,
+        "vatReduction": None,
+        "fields": [],
+    }
     for column, value in record.items():
+        name = str(column)
+        if name in {"id", "_source_row", "V"}:
+            continue
         text = _clean(value)
-        key = canonical.get(str(column))
+        key = canonical.get(name)
         if key:
             row[key] = text
-        else:
-            # Unknown extra columns of a richer deployment DB pass through
-            # verbatim, uninterpreted — no invented rate semantics.
-            row["fields"].append({"label": str(column), "value": text})
+        elif text is not None:
+            # Only NON-EMPTY agreement/rate columns are delivered; a 40-column
+            # source row never becomes a 40-field payload full of empty values.
+            row["fields"].append({"label": name, "value": text})
     return row
+
