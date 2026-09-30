@@ -15,6 +15,7 @@ export default function NotebookLMEmbed() {
           src={NOTEBOOK_URL}
           title="NotebookLM Logistics"
           className="h-full min-h-[720px] w-full border-0"
+          allow="identity-credentials-get; clipboard-read; clipboard-write; microphone"
           referrerPolicy="strict-origin-when-cross-origin"
         />
       </div>
