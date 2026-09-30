@@ -8063,7 +8063,7 @@ function T() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch.notebooklm_registry_save".split(".")), D = null, O = 0;
+var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch.notebooklm_registry_save.tariff_source_upload".split(".")), D = null, O = 0;
 function k(e) {
 	D = e;
 }
@@ -11668,8 +11668,13 @@ var mo = V(po), ho = {
 		items: [
 			{
 				to: "/tra-cuu-thue",
-				label: "Tra cứu thuế / HS",
+				label: "BIỂU THUẾ",
 				icon: "search"
+			},
+			{
+				to: "/tra-cuu-chinh-sach",
+				label: "Tra cứu chính sách",
+				icon: "book"
 			},
 			{
 				to: "/so-tay",
@@ -13191,8 +13196,8 @@ function rs({ children: e }) {
 									bg: "bg-amber-50 text-amber-700"
 								},
 								{
-									label: "Tra cứu thuế / HS",
-									desc: "Mã HS & mô tả hàng hóa",
+									label: "BIỂU THUẾ",
+									desc: "Mã HS, thuế suất & chính sách",
 									to: "/tra-cuu-thue",
 									icon: eo,
 									bg: "bg-slate-100 text-slate-700"
@@ -26067,38 +26072,83 @@ function Ql() {
 	});
 }
 //#endregion
-//#region src/pages/TariffLookup.tsx
-function $l(e) {
-	return e || "—";
+//#region src/pages/TariffLookup.bundle-repair.tsx
+function TariffVal_20260930(e) {
+	return e ? e : "—";
 }
-function eu({ row: e, stacked: t }) {
-	return e.fields.length ? /* @__PURE__ */ (0, B.jsx)("span", {
-		className: W("text-[13.5px] text-slate-700", t && "block"),
-		children: e.fields.map((e) => /* @__PURE__ */ (0, B.jsxs)("span", {
-			className: W(!t && "mr-3 whitespace-nowrap"),
-			children: [
-				/* @__PURE__ */ (0, B.jsxs)("span", {
-					className: "font-semibold text-slate-500",
-					children: [e.label, ":"]
-				}),
-				" ",
-				/* @__PURE__ */ (0, B.jsx)("span", {
-					className: "font-bold",
-					children: $l(e.value)
-				})
-			]
-		}, e.label))
-	}) : /* @__PURE__ */ (0, B.jsx)("span", {
-		className: "text-slate-400",
-		children: "—"
+function TariffRate_20260930({ label: e, value: t }) {
+	return /* @__PURE__ */ (0, B.jsxs)("span", {
+		className: "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[12px]",
+		children: [
+			/* @__PURE__ */ (0, B.jsx)("span", { className: "font-semibold text-slate-500", children: e }),
+			/* @__PURE__ */ (0, B.jsx)("span", { className: "font-extrabold text-[#0f2a4a]", children: TariffVal_20260930(t) })
+		]
 	});
 }
+function TariffReq_20260930() {
+	return "TARIFF-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 function tu() {
-	(0, _.useSyncExternalStore)(C, S, S);
-	let e = S()?.tariff ?? null, [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)(""), a = r.length > 0 && r !== (e?.query ?? ""), o = e?.rows ?? [], s = !!e?.searched && !a, c = () => {
-		let e = t.trim();
-		e.length < 2 || (i(e), A("tariff_lookup", { query: e }));
-	}, l = e?.source, u = e?.provenance;
+	let e = (0, _.useSyncExternalStore)(C, S, S),
+		t = e?.tariff ?? null,
+		n = t?.source,
+		[r, i] = (0, _.useState)(""),
+		[a, o] = (0, _.useState)(""),
+		[s, l] = (0, _.useState)(null),
+		[u, d] = (0, _.useState)(""),
+		[f, p] = (0, _.useState)(""),
+		[m, h] = (0, _.useState)("");
+	let g = a.length > 0 && a !== (t?.query ?? ""),
+		v = t?.rows ?? [],
+		y = !!t?.searched && !g;
+	(0, _.useEffect)(() => {
+		if (!u) return;
+		let t = e?.lastWrites?.find((e) => e.event === "tariff_source_upload" && e.requestId === u);
+		if (!t) return;
+		d("");
+		if (t.ok) {
+			let e = t.readback || {};
+			p(""), h("Đã cập nhật " + (e.sourceFile || "BIỂU THUẾ") + " · " + Number(e.rows || 0).toLocaleString("vi-VN") + " dòng mã HS."), l(null);
+		} else h(""), p(t.error || "Không cập nhật được BIỂU THUẾ.");
+	}, [u, e?.lastWrites]);
+	let b = () => {
+		let e = r.trim();
+		e.length < 2 || !n?.configured || (o(e), A("tariff_lookup", { query: e }));
+	}, x = () => {
+		p(""), h("");
+		if (!s) {
+			p("Chưa chọn file BIỂU THUẾ .xlsx.");
+			return;
+		}
+		if (!String(s.name || "").toLowerCase().endsWith(".xlsx")) {
+			p("Chỉ nhận file .xlsx.");
+			return;
+		}
+		if (s.size <= 0 || s.size > 12582912) {
+			p("File phải lớn hơn 0 và không vượt 12 MB.");
+			return;
+		}
+		let e = TariffReq_20260930();
+		d(e);
+		let t = new FileReader();
+		t.onerror = () => { d(""), p("Không đọc được file trên trình duyệt."); };
+		t.onload = () => {
+			let n = typeof t.result == "string" ? t.result : "",
+				r = n.indexOf(","),
+				i = r >= 0 ? n.slice(r + 1) : n;
+			if (!i) {
+				d(""), p("File không có dữ liệu.");
+				return;
+			}
+			A("tariff_source_upload", {
+				fileName: s.name,
+				mime: s.type,
+				size: s.size,
+				base64: i,
+				requestId: e
+			}) || (d(""), p("Component chưa kết nối backend."));
+		}, t.readAsDataURL(s);
+	};
 	return /* @__PURE__ */ (0, B.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
@@ -26107,194 +26157,123 @@ function tu() {
 				children: [
 					/* @__PURE__ */ (0, B.jsx)(J, {
 						icon: /* @__PURE__ */ (0, B.jsx)(Ma, { size: 18 }),
-						title: "Tra cứu HS & Thuế",
-						sub: "Tra cứu mã HS và mô tả hàng hóa tại cơ sở dữ liệu tham chiếu nội bộ — nhập mã HS (chính xác hoặc một phần) hoặc tên hàng."
+						title: "BIỂU THUẾ",
+						sub: "Gõ mã HS hoặc tên hàng; app chỉ query các dòng khớp từ SQLite có chỉ mục, không tải cả Excel lên màn hình."
+					}),
+					n?.canManage && /* @__PURE__ */ (0, B.jsxs)("details", {
+						className: "mb-4 rounded-xl border border-slate-200 bg-slate-50",
+						children: [
+							/* @__PURE__ */ (0, B.jsx)("summary", {
+								className: "cursor-pointer px-3 py-3 text-[13px] font-extrabold text-[#0f2a4a]",
+								children: "Quản trị nguồn BIỂU THUẾ"
+							}),
+							/* @__PURE__ */ (0, B.jsxs)("div", {
+								className: "border-t border-slate-200 p-3",
+								children: [
+									/* @__PURE__ */ (0, B.jsx)("p", {
+										className: "text-[12.5px] text-slate-600",
+										children: "ADMIN chọn file .xlsx mới. Backend build SQLite + index + FTS, nén và lưu bền trong Mongo."
+									}),
+									/* @__PURE__ */ (0, B.jsx)("input", {
+										type: "file",
+										accept: ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+										onChange: (e) => { l(e.target.files?.[0] ?? null), p(""), h(""); },
+										className: "mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[13px]",
+										"data-testid": "tariff-source-file"
+									}),
+									/* @__PURE__ */ (0, B.jsx)("button", {
+										type: "button",
+										onClick: x,
+										disabled: !s || !!u,
+										className: "mt-2 rounded-xl bg-[#0f2a4a] px-4 py-2.5 text-[13px] font-extrabold text-white disabled:opacity-40",
+										"data-testid": "tariff-source-upload",
+										children: u ? "ĐANG BUILD DB…" : "CẬP NHẬT FILE"
+									}),
+									f && /* @__PURE__ */ (0, B.jsx)("p", { className: "mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12.5px] font-semibold text-red-700", children: f }),
+									m && /* @__PURE__ */ (0, B.jsx)("p", { className: "mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] font-semibold text-emerald-800", children: m })
+								]
+							})
+						]
 					}),
 					/* @__PURE__ */ (0, B.jsxs)("form", {
 						className: "flex flex-col md:flex-row gap-2.5",
-						onSubmit: (e) => {
-							e.preventDefault(), c();
-						},
-						children: [/* @__PURE__ */ (0, B.jsx)("input", {
-							value: t,
-							onChange: (e) => n(e.target.value),
-							placeholder: "Ví dụ: 9401, 9403.20 hoặc ghế gỗ…",
-							className: "flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] font-mono placeholder:font-sans focus:border-[#1e5aa8] outline-none",
-							"aria-label": "Mã HS hoặc tên hàng"
-						}), /* @__PURE__ */ (0, B.jsxs)("button", {
-							type: "submit",
-							disabled: t.trim().length < 2,
-							className: "btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-5 min-h-[48px] disabled:opacity-40 disabled:pointer-events-none",
-							children: [/* @__PURE__ */ (0, B.jsx)(Ma, { size: 17 }), " Tra cứu"]
-						})]
-					}),
-					l && /* @__PURE__ */ (0, B.jsxs)("div", {
-						className: W("mt-3 rounded-xl border p-3 flex items-start gap-2.5 text-[13px]", l.configured && l.rows ? "border-slate-200 bg-slate-50 text-slate-600" : "border-amber-200 bg-amber-50 text-amber-900"),
-						children: [/* @__PURE__ */ (0, B.jsx)(li, {
-							size: 16,
-							className: "shrink-0 mt-0.5"
-						}), /* @__PURE__ */ (0, B.jsxs)("div", { children: [l.configured && l.rows ? /* @__PURE__ */ (0, B.jsxs)("p", { children: [
-							"Nguồn nội bộ: ",
-							/* @__PURE__ */ (0, B.jsx)("b", { children: "tariff_table" }),
-							" · ",
-							l.rows.toLocaleString("vi-VN"),
-							" dòng ·",
-							" ",
-							/* @__PURE__ */ (0, B.jsx)("span", {
-								className: "font-mono text-[12px] break-all",
-								children: l.path
+						onSubmit: (e) => { e.preventDefault(), b(); },
+						children: [
+							/* @__PURE__ */ (0, B.jsx)("input", {
+								value: r,
+								onChange: (e) => i(e.target.value),
+								placeholder: "Ví dụ: 01012900, 0101, 9403.20 hoặc ghế gỗ…",
+								className: "flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] font-mono placeholder:font-sans focus:border-[#1e5aa8] outline-none",
+								"aria-label": "Mã HS hoặc tên hàng"
+							}),
+							/* @__PURE__ */ (0, B.jsxs)("button", {
+								type: "submit",
+								disabled: r.trim().length < 2 || !n?.configured,
+								className: "btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-5 min-h-[48px] disabled:opacity-40",
+								children: [/* @__PURE__ */ (0, B.jsx)(Ma, { size: 17 }), " Tra cứu"]
 							})
-						] }) : /* @__PURE__ */ (0, B.jsx)("p", {
-							className: "font-semibold",
-							children: l.note
-						}), e?.truncated && /* @__PURE__ */ (0, B.jsxs)("p", {
-							className: "mt-1 font-semibold",
-							children: [
-								"Kết quả bị giới hạn ",
-								e.limit,
-								" dòng — hãy nhập mã HS cụ thể hơn."
-							]
-						})] })]
+						]
 					}),
-					u && /* @__PURE__ */ (0, B.jsxs)("div", {
-						className: "mt-2.5 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-3 flex items-start gap-2.5 text-[13px] text-amber-900",
-						children: [/* @__PURE__ */ (0, B.jsx)(Qa, {
-							size: 16,
-							className: "shrink-0 mt-0.5"
-						}), /* @__PURE__ */ (0, B.jsx)("p", { children: u.note })]
+					n && /* @__PURE__ */ (0, B.jsx)("div", {
+						className: "mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-700",
+						children: n.configured && n.rows ? /* @__PURE__ */ (0, B.jsxs)("div", { children: [
+							/* @__PURE__ */ (0, B.jsxs)("p", { children: [
+								/* @__PURE__ */ (0, B.jsx)("b", { children: n.sourceFile || "SQLite tariff_table" }),
+								n.year ? " · năm " + n.year : "",
+								" · ",
+								n.rows.toLocaleString("vi-VN"),
+								" dòng có mã HS."
+							] }),
+							n.searchMode && /* @__PURE__ */ (0, B.jsx)("p", { className: "mt-0.5 text-[12px] text-slate-500", children: n.searchMode })
+						] }) : /* @__PURE__ */ (0, B.jsx)("p", { className: "font-semibold text-amber-800", children: n.note })
+					}),
+					t?.provenance && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "mt-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900",
+						children: t.provenance.note
 					})
 				]
 			}),
-			a && /* @__PURE__ */ (0, B.jsx)("div", {
-				className: "rounded-2xl bg-white border border-slate-200 p-8 text-center",
-				children: /* @__PURE__ */ (0, B.jsxs)("p", {
-					className: "text-[15px] font-semibold text-slate-500",
-					children: [
-						"Đang tra cứu “",
-						r,
-						"”…"
-					]
-				})
-			}),
-			!a && !s && /* @__PURE__ */ (0, B.jsxs)("div", {
+			g && /* @__PURE__ */ (0, B.jsx)("div", { className: "rounded-2xl bg-white border border-slate-200 p-8 text-center", children: "Đang tra “" + a + "”…" }),
+			!g && !y && /* @__PURE__ */ (0, B.jsxs)("div", {
 				className: "rounded-2xl border-2 border-dashed border-slate-300 bg-white p-10 text-center",
 				children: [
-					/* @__PURE__ */ (0, B.jsx)("span", {
-						className: "mx-auto w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 grid place-items-center",
-						children: /* @__PURE__ */ (0, B.jsx)(Ma, { size: 26 })
-					}),
-					/* @__PURE__ */ (0, B.jsx)("h3", {
-						className: "text-[16px] font-extrabold text-[#0f2a4a] mt-3",
-						children: "Bảng kết quả đang trống"
-					}),
-					/* @__PURE__ */ (0, B.jsxs)("p", {
-						className: "text-[14px] text-slate-500 mt-1",
-						children: [
-							"Nhập mã HS hoặc tên hàng phía trên rồi bấm ",
-							/* @__PURE__ */ (0, B.jsx)("b", { children: "Tra cứu" }),
-							"."
-						]
-					})
+					/* @__PURE__ */ (0, B.jsx)("h3", { className: "text-[16px] font-extrabold text-[#0f2a4a]", children: n?.configured ? "Nhập mã HS hoặc tên hàng để tra" : "Chưa có dữ liệu BIỂU THUẾ" }),
+					/* @__PURE__ */ (0, B.jsx)("p", { className: "mt-1 text-[13.5px] text-slate-500", children: n?.configured ? "Mã 8 số tra bằng index; mã ngắn tra prefix; tên hàng tra bằng FTS." : n?.canManage ? "Mở Quản trị nguồn phía trên và tải file .xlsx." : "Liên hệ ADMIN để nạp file BIỂU THUẾ." })
 				]
 			}),
-			s && e && o.length === 0 && /* @__PURE__ */ (0, B.jsxs)("div", {
-				className: "rounded-2xl bg-white border border-slate-200 p-8 text-center",
+			y && t && v.length === 0 && /* @__PURE__ */ (0, B.jsx)("div", { className: "rounded-2xl bg-white border border-slate-200 p-8 text-center", children: t.reason || "Không tìm thấy kết quả." }),
+			y && t && v.length > 0 && /* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "space-y-3",
 				children: [
-					/* @__PURE__ */ (0, B.jsx)("span", {
-						className: "mx-auto w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 grid place-items-center",
-						children: /* @__PURE__ */ (0, B.jsx)(Pi, { size: 26 })
-					}),
-					/* @__PURE__ */ (0, B.jsx)("h3", {
-						className: "text-[16px] font-extrabold text-[#0f2a4a] mt-3",
-						children: "Không tìm thấy kết quả"
-					}),
-					/* @__PURE__ */ (0, B.jsx)("p", {
-						className: "text-[14px] text-slate-500 mt-1",
-						children: e.reason
-					})
-				]
-			}),
-			s && e && o.length > 0 && /* @__PURE__ */ (0, B.jsxs)("div", {
-				className: "space-y-4",
-				children: [
-					/* @__PURE__ */ (0, B.jsxs)("p", {
-						className: "text-[13.5px] font-semibold text-slate-500 px-1",
+					/* @__PURE__ */ (0, B.jsx)("p", { className: "px-1 text-[13.5px] font-semibold text-slate-500", children: t.count.toLocaleString("vi-VN") + " dòng khớp “" + t.query + "”" }),
+					...v.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("article", {
+						className: "rounded-2xl border border-slate-200 bg-white p-4",
 						children: [
-							"Tìm thấy ",
-							e.count.toLocaleString("vi-VN"),
-							" dòng khớp “",
-							e.query,
-							"” — mã HS và mô tả theo dữ liệu tham chiếu nội bộ."
+							/* @__PURE__ */ (0, B.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-3", children: [
+								/* @__PURE__ */ (0, B.jsxs)("div", { children: [
+									/* @__PURE__ */ (0, B.jsx)("p", { className: "font-mono text-[18px] font-extrabold text-[#0f2a4a]", children: TariffVal_20260930(e.hsCode) }),
+									/* @__PURE__ */ (0, B.jsx)("p", { className: "mt-1 text-[15px] font-semibold text-slate-800", children: TariffVal_20260930(e.descriptionVi) })
+								] }),
+								/* @__PURE__ */ (0, B.jsxs)("div", { className: "flex flex-wrap gap-1.5", children: [
+									/* @__PURE__ */ (0, B.jsx)(TariffRate_20260930, { label: "NK TT", value: e.importNormal }),
+									/* @__PURE__ */ (0, B.jsx)(TariffRate_20260930, { label: "NK ưu đãi", value: e.importPreferential }),
+									/* @__PURE__ */ (0, B.jsx)(TariffRate_20260930, { label: "VAT", value: e.vat })
+								] })
+							] }),
+							e.policy && /* @__PURE__ */ (0, B.jsxs)("div", { className: "mt-3 rounded-xl border border-blue-100 bg-slate-50 p-3 text-[12.5px]", children: [
+								/* @__PURE__ */ (0, B.jsx)("p", { className: "font-extrabold text-[#0f2a4a]", children: "Chính sách mặt hàng" }),
+								/* @__PURE__ */ (0, B.jsx)("p", { className: "mt-1", children: e.policy })
+							] }),
+							e.vatReduction && /* @__PURE__ */ (0, B.jsxs)("div", { className: "mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-[12.5px]", children: [
+								/* @__PURE__ */ (0, B.jsx)("p", { className: "font-extrabold text-amber-900", children: "Giảm VAT" }),
+								/* @__PURE__ */ (0, B.jsx)("p", { className: "mt-1", children: e.vatReduction })
+							] }),
+							e.fields?.length > 0 && /* @__PURE__ */ (0, B.jsx)("details", { className: "mt-2", children: /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [
+								/* @__PURE__ */ (0, B.jsx)("summary", { className: "cursor-pointer text-[12.5px] font-bold text-[#1e5aa8]", children: "Thuế FTA / XK / sắc thuế khác (" + e.fields.length + ")" }),
+								/* @__PURE__ */ (0, B.jsx)("div", { className: "mt-2 flex flex-wrap gap-1.5", children: e.fields.map((e) => /* @__PURE__ */ (0, B.jsx)(TariffRate_20260930, { label: e.label, value: e.value }, e.label)) })
+							] }) })
 						]
-					}),
-					/* @__PURE__ */ (0, B.jsx)("div", {
-						className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
-						children: /* @__PURE__ */ (0, B.jsx)("div", {
-							className: "overflow-x-auto",
-							children: /* @__PURE__ */ (0, B.jsxs)("table", {
-								className: "tbl w-full text-[14.5px]",
-								children: [/* @__PURE__ */ (0, B.jsx)("thead", { children: /* @__PURE__ */ (0, B.jsxs)("tr", { children: [
-									/* @__PURE__ */ (0, B.jsx)("th", {
-										className: "w-[150px]",
-										children: "Mã HS"
-									}),
-									/* @__PURE__ */ (0, B.jsx)("th", { children: "Mô tả tiếng Việt" }),
-									/* @__PURE__ */ (0, B.jsx)("th", { children: "Mô tả tiếng Anh" }),
-									/* @__PURE__ */ (0, B.jsx)("th", { children: "Thông tin khác (nguyên văn)" })
-								] }) }), /* @__PURE__ */ (0, B.jsx)("tbody", { children: o.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("tr", {
-									className: "hover:bg-slate-50",
-									children: [
-										/* @__PURE__ */ (0, B.jsx)("td", {
-											className: "font-mono font-extrabold text-[15px] text-[#0f2a4a] whitespace-nowrap",
-											children: $l(e.hsCode)
-										}),
-										/* @__PURE__ */ (0, B.jsx)("td", {
-											className: "font-semibold",
-											children: $l(e.descriptionVi)
-										}),
-										/* @__PURE__ */ (0, B.jsx)("td", {
-											className: "text-slate-600",
-											children: $l(e.descriptionEn)
-										}),
-										/* @__PURE__ */ (0, B.jsx)("td", { children: /* @__PURE__ */ (0, B.jsx)(eu, { row: e }) })
-									]
-								}, (e.hsCode ?? "?") + t)) })]
-							})
-						})
-					}),
-					/* @__PURE__ */ (0, B.jsx)("div", {
-						className: "md:hidden space-y-3",
-						children: o.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("div", {
-							className: "rounded-2xl bg-white border border-slate-200 p-4",
-							children: [
-								/* @__PURE__ */ (0, B.jsx)("p", {
-									className: "font-mono font-extrabold text-[17px] text-[#0f2a4a] break-all",
-									children: $l(e.hsCode)
-								}),
-								/* @__PURE__ */ (0, B.jsx)("p", {
-									className: "text-[15px] font-semibold text-slate-800 mt-1.5",
-									children: $l(e.descriptionVi)
-								}),
-								/* @__PURE__ */ (0, B.jsx)("p", {
-									className: "text-[13px] text-slate-500 mt-0.5",
-									children: $l(e.descriptionEn)
-								}),
-								e.fields.length > 0 && /* @__PURE__ */ (0, B.jsxs)("div", {
-									className: "mt-2.5 rounded-xl bg-slate-50 border border-slate-200 p-3",
-									children: [/* @__PURE__ */ (0, B.jsx)("p", {
-										className: "text-[12px] font-bold uppercase tracking-wide text-slate-400",
-										children: "Thông tin khác (nguyên văn)"
-									}), /* @__PURE__ */ (0, B.jsx)("div", {
-										className: "mt-1",
-										children: /* @__PURE__ */ (0, B.jsx)(eu, {
-											row: e,
-											stacked: !0
-										})
-									})]
-								})
-							]
-						}, (e.hsCode ?? "?") + t))
-					})
+					}, String(e.hsCode || "?") + "-" + t))
 				]
 			})
 		]
@@ -31052,180 +31031,162 @@ function Pd() {
 	});
 }
 //#endregion
-//#region src/components/NotebookLMLauncher.admin-registry-repair.tsx
-function NbLmOpen_20260930(e) {
-	let t = window.screen.availWidth || window.innerWidth,
-		n = window.screen.availHeight || window.innerHeight,
-		r = Math.min(t, Math.max(960, Math.floor(t * .82))),
-		i = Math.min(n, Math.max(720, Math.floor(n * .86))),
-		a = Math.max(0, Math.floor((t - r) / 2)),
-		o = Math.max(0, Math.floor((n - i) / 2)),
-		s = window.open(e, "logistics-notebooklm", [
-			"popup=yes",
-			`width=${r}`,
-			`height=${i}`,
-			`left=${a}`,
-			`top=${o}`,
-			"resizable=yes",
-			"scrollbars=yes"
-		].join(","));
-	s?.focus();
+//#region src/pages/PolicyLookup.bundle-repair.tsx
+function PolicyOpen_20260930(e) {
+	let t = window.open(e, "logistics-notebooklm");
+	t?.focus();
 }
-function NbLmRequestId_20260930() {
-	return `NOTEBOOKLM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+function PolicyRequestId_20260930() {
+	return "NOTEBOOKLM-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
-function NbLmLauncher_20260930() {
+function PolicyLookup_20260930() {
 	let e = (0, _.useSyncExternalStore)(C, S, S),
 		t = e?.notebookLM,
 		n = t?.items ?? [],
 		r = t?.canManage === !0,
 		[i, a] = (0, _.useState)(!1),
-		[o, s] = (0, _.useState)(!1),
-		[c, l] = (0, _.useState)([]),
-		[u, d] = (0, _.useState)(null),
-		[f, p] = (0, _.useState)("");
+		[o, s] = (0, _.useState)([]),
+		[c, l] = (0, _.useState)(null),
+		[u, d] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
-		o || l(n.map((e) => ({ ...e })));
-	}, [o, t?.items]);
+		i || s(n.map((e) => ({ ...e })));
+	}, [i, t?.items]);
 	(0, _.useEffect)(() => {
-		if (!u) return;
-		let t = e?.lastWrites?.find((e) => e.event === "notebooklm_registry_save" && e.requestId === u);
-		t && (d(null), t.ok ? (s(!1), p("")) : p(t.error || "Backend từ chối lưu danh sách NotebookLM."));
-	}, [u, e?.lastWrites]);
-	let m = () => {
-		l(n.map((e) => ({ ...e }))), p(""), s(!0);
-	}, h = () => {
-		if (u) return;
-		if (c.length === 0) {
-			p("Phải giữ ít nhất một NotebookLM.");
+		if (!c) return;
+		let t = e?.lastWrites?.find((e) => e.event === "notebooklm_registry_save" && e.requestId === c);
+		t && (l(null), t.ok ? (a(!1), d("")) : d(t.error || "Backend từ chối lưu danh sách nguồn."));
+	}, [c, e?.lastWrites]);
+	let f = () => {
+		if (c) return;
+		if (!o.length) {
+			d("Phải giữ ít nhất một nguồn chính sách.");
 			return;
 		}
-		if (c.some((e) => !String(e.label || "").trim() || !String(e.url || "").trim())) {
-			p("Mỗi NotebookLM phải có đủ tên và URL.");
+		if (o.some((e) => !String(e.label || "").trim() || !String(e.url || "").trim())) {
+			d("Mỗi nguồn phải có đủ tên và URL.");
 			return;
 		}
-		let e = NbLmRequestId_20260930(), t = A("notebooklm_registry_save", {
-			items: c.map((e) => ({ label: String(e.label || "").trim(), url: String(e.url || "").trim() })),
-			requestId: e
-		});
-		t ? (p(""), d(e)) : p("Component chưa kết nối backend — chưa lưu được.");
+		let e = PolicyRequestId_20260930(),
+			t = A("notebooklm_registry_save", {
+				items: o.map((e) => ({
+					label: String(e.label || "").trim(),
+					url: String(e.url || "").trim()
+				})),
+				requestId: e
+			});
+		t ? (d(""), l(e)) : d("Component chưa kết nối backend.");
 	};
-	return /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [
-		i && /* @__PURE__ */ (0, B.jsxs)("div", {
-			className: "no-print rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl",
-			style: {
-				position: "fixed",
-				right: 16,
-				bottom: 152,
-				zIndex: 31,
-				width: o ? "min(620px, calc(100vw - 32px))" : "min(380px, calc(100vw - 32px))",
-				maxHeight: "70vh",
-				overflowY: "auto"
-			},
-			"data-testid": "notebooklm-menu",
+	return /* @__PURE__ */ (0, B.jsx)("div", {
+		className: "space-y-4 max-w-[1100px]",
+		children: /* @__PURE__ */ (0, B.jsxs)("div", {
+			className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 			children: [
 				/* @__PURE__ */ (0, B.jsxs)("div", {
-					className: "flex items-center justify-between gap-2 px-3 pb-2 pt-1",
+					className: "flex items-start justify-between gap-3",
 					children: [
 						/* @__PURE__ */ (0, B.jsxs)("div", { children: [
-							/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[13px] font-extrabold text-[#0f2a4a]", children: "NotebookLM" }),
-							/* @__PURE__ */ (0, B.jsx)("p", { className: "text-[12px] text-slate-500", children: o ? "Quản lý danh sách dùng chung" : "Chọn bộ tài liệu cần mở" })
+							/* @__PURE__ */ (0, B.jsx)("h1", {
+								className: "text-[20px] md:text-[22px] font-extrabold text-[#0f2a4a]",
+								children: "Tra cứu chính sách"
+							}),
+							/* @__PURE__ */ (0, B.jsx)("p", {
+								className: "mt-1 text-[13.5px] text-slate-500",
+								children: "Các bộ NotebookLM chính sách dùng chung của công ty."
+							})
 						] }),
-						r && !o && /* @__PURE__ */ (0, B.jsx)("button", {
+						r && !i && /* @__PURE__ */ (0, B.jsx)("button", {
 							type: "button",
-							onClick: m,
-							className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] font-bold text-[#0f2a4a]",
-							"data-testid": "notebooklm-manage",
-							children: "Quản lý"
+							onClick: () => {
+								s(n.map((e) => ({ ...e }))), d(""), a(!0);
+							},
+							className: "rounded-xl border border-slate-200 px-3 py-2 text-[13px] font-extrabold text-[#0f2a4a]",
+							"data-testid": "policy-manage",
+							children: "Quản lý nguồn"
 						})
 					]
 				}),
-				o ? /* @__PURE__ */ (0, B.jsxs)("div", {
-					className: "space-y-2 px-1 pb-1",
+				i ? /* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "mt-4 space-y-3",
+					"data-testid": "policy-manager",
 					children: [
-						...c.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("div", {
-							className: "rounded-xl border border-slate-200 p-2.5",
+						...o.map((e, t) => /* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "rounded-xl border border-slate-200 p-3",
 							children: [
 								/* @__PURE__ */ (0, B.jsx)("input", {
 									value: e.label,
-									onChange: (e) => l((n) => n.map((n, r) => r === t ? { ...n, label: e.target.value } : n)),
-									placeholder: "Tên notebook",
-									className: "mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px]"
+									onChange: (e) => s((n) => n.map((n, r) => r === t ? { ...n, label: e.target.value } : n)),
+									placeholder: "Tên nguồn chính sách",
+									className: "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-[13.5px]"
 								}),
 								/* @__PURE__ */ (0, B.jsx)("input", {
 									value: e.url,
-									onChange: (e) => l((n) => n.map((n, r) => r === t ? { ...n, url: e.target.value } : n)),
+									onChange: (e) => s((n) => n.map((n, r) => r === t ? { ...n, url: e.target.value } : n)),
 									placeholder: "https://notebook.google.com/notebook/.../preview",
-									className: "w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[12px]"
+									className: "mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-[12px]"
 								}),
 								/* @__PURE__ */ (0, B.jsx)("button", {
 									type: "button",
-									onClick: () => l((e) => e.filter((e, n) => n !== t)),
+									onClick: () => s((e) => e.filter((e, n) => n !== t)),
 									className: "mt-2 rounded-lg border border-red-200 px-2.5 py-1.5 text-[12px] font-bold text-red-700",
 									children: "Xóa"
 								})
 							]
-						}, `${t}-${e.url}`)),
+						}, String(t) + "-" + e.url)),
 						/* @__PURE__ */ (0, B.jsx)("button", {
 							type: "button",
-							onClick: () => l((e) => e.length >= (t?.maxItems ?? 30) ? e : [...e, { label: "", url: "" }]),
-							className: "rounded-lg border border-slate-200 px-3 py-2 text-[12.5px] font-bold text-[#0f2a4a]",
-							children: "+ Thêm NotebookLM"
+							onClick: () => s((e) => e.length >= (t?.maxItems ?? 30) ? e : [...e, { label: "", url: "" }]),
+							className: "rounded-xl border border-slate-200 px-3 py-2 text-[12.5px] font-bold text-[#0f2a4a]",
+							children: "+ Thêm nguồn chính sách"
 						}),
-						f && /* @__PURE__ */ (0, B.jsx)("p", {
+						u && /* @__PURE__ */ (0, B.jsx)("p", {
 							className: "rounded-lg bg-red-50 px-3 py-2 text-[12.5px] font-semibold text-red-700",
-							children: f
+							children: u
 						}),
 						/* @__PURE__ */ (0, B.jsxs)("div", {
-							className: "flex justify-end gap-2 pt-1",
+							className: "flex justify-end gap-2",
 							children: [
 								/* @__PURE__ */ (0, B.jsx)("button", {
 									type: "button",
-									onClick: () => { s(!1); p(""); },
-									disabled: !!u,
-									className: "rounded-lg border border-slate-200 px-3 py-2 text-[12.5px] font-bold text-slate-700",
+									onClick: () => { a(!1); d(""); },
+									disabled: !!c,
+									className: "rounded-xl border border-slate-200 px-4 py-2.5 text-[13px] font-bold",
 									children: "Hủy"
 								}),
 								/* @__PURE__ */ (0, B.jsx)("button", {
 									type: "button",
-									onClick: h,
-									disabled: !!u,
-									className: "rounded-lg bg-[#0f2a4a] px-3 py-2 text-[12.5px] font-bold text-white",
-									"data-testid": "notebooklm-save",
-									children: u ? "ĐANG LƯU…" : "LƯU DANH SÁCH"
+									onClick: f,
+									disabled: !!c,
+									className: "rounded-xl bg-[#0f2a4a] px-4 py-2.5 text-[13px] font-extrabold text-white",
+									"data-testid": "policy-save",
+									children: c ? "ĐANG LƯU…" : "LƯU DANH SÁCH"
 								})
 							]
 						})
 					]
 				}) : /* @__PURE__ */ (0, B.jsx)("div", {
-					className: "space-y-1",
-					children: n.length === 0 ? /* @__PURE__ */ (0, B.jsx)("p", {
-						className: "px-3 py-3 text-[13px] text-slate-500",
-						children: "Đang tải danh sách NotebookLM…"
-					}) : n.map((e) => /* @__PURE__ */ (0, B.jsxs)("button", {
+					className: "mt-4 grid gap-3 md:grid-cols-2",
+					children: n.map((e) => /* @__PURE__ */ (0, B.jsxs)("button", {
 						type: "button",
-						onClick: () => { NbLmOpen_20260930(e.url); a(!1); },
-						className: "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-bold text-slate-700",
+						onClick: () => PolicyOpen_20260930(e.url),
+						className: "flex min-h-[80px] items-center gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:bg-slate-50",
 						children: [
-							/* @__PURE__ */ (0, B.jsx)(jr, { size: 17, className: "shrink-0 text-[#1e5aa8]" }),
-							/* @__PURE__ */ (0, B.jsx)("span", { children: e.label })
+							/* @__PURE__ */ (0, B.jsx)(jr, { size: 20, className: "shrink-0 text-[#1e5aa8]" }),
+							/* @__PURE__ */ (0, B.jsxs)("span", { children: [
+								/* @__PURE__ */ (0, B.jsx)("span", {
+									className: "block text-[15px] font-extrabold text-[#0f2a4a]",
+									children: e.label
+								}),
+								/* @__PURE__ */ (0, B.jsx)("span", {
+									className: "block mt-0.5 text-[12.5px] text-slate-500",
+									children: "Mở NotebookLM"
+								})
+							] })
 						]
 					}, e.url))
 				})
 			]
-		}),
-		/* @__PURE__ */ (0, B.jsxs)("button", {
-			type: "button",
-			onClick: () => { a((e) => !e); i && s(!1); },
-			style: { position: "fixed", right: 16, bottom: 96, zIndex: 30 },
-			className: "no-print inline-flex min-h-[48px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-extrabold text-[#0f2a4a] shadow-lg",
-			"aria-label": "Chọn NotebookLM",
-			"aria-expanded": i,
-			title: "Chọn NotebookLM",
-			"data-testid": "notebooklm-launcher",
-			children: [/* @__PURE__ */ (0, B.jsx)(jr, { size: 19 }), "NotebookLM"]
 		})
-	] });
+	});
 }
 //#endregion
 //#region src/App.tsx
@@ -31240,7 +31201,7 @@ function Fd() {
 }
 function Id() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
-	return /* @__PURE__ */ (0, B.jsx)(Kn, { children: /* @__PURE__ */ (0, B.jsx)(Vt, { children: /* @__PURE__ */ (0, B.jsxs)(rs, { children: [/* @__PURE__ */ (0, B.jsx)(NbLmLauncher_20260930, {}), e ? /* @__PURE__ */ (0, B.jsxs)(Gt, { children: [
+	return /* @__PURE__ */ (0, B.jsx)(Kn, { children: /* @__PURE__ */ (0, B.jsx)(Vt, { children: /* @__PURE__ */ (0, B.jsxs)(rs, { children: [e ? /* @__PURE__ */ (0, B.jsxs)(Gt, { children: [
 		/* @__PURE__ */ (0, B.jsx)(Ut, {
 			path: "/",
 			element: /* @__PURE__ */ (0, B.jsx)(os, {})
@@ -31309,6 +31270,10 @@ function Id() {
 		/* @__PURE__ */ (0, B.jsx)(Ut, {
 			path: "/tra-cuu-thue",
 			element: /* @__PURE__ */ (0, B.jsx)(tu, {})
+		}),
+		/* @__PURE__ */ (0, B.jsx)(Ut, {
+			path: "/tra-cuu-chinh-sach",
+			element: /* @__PURE__ */ (0, B.jsx)(PolicyLookup_20260930, {})
 		}),
 		/* @__PURE__ */ (0, B.jsx)(Ut, {
 			path: "/dich-thuat",

@@ -1,13 +1,18 @@
 """Tiện ích dùng chung, không chứa nghiệp vụ riêng của giao diện."""
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import logging
+import lzma
+import os
 import re
 import sqlite3
+import tempfile
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
@@ -145,24 +150,194 @@ def get_tracking_url(carrier: str, ref_no: str) -> str:
     return f"https://www.google.com/search?q={quote_plus(f'{carrier} cargo tracking {ref_no}') }"
 
 
+# LOGI_TARIFF_FAST_DB_02 — Admin-managed tariff asset -> local SQLite.
+# Runtime NEVER opens the XLSX. ADMIN uploads a workbook once; the backend
+# converts it to an indexed SQLite database, stores the compressed database in
+# Mongo, and each app process materializes that compact asset into /tmp on the
+# first lookup. An explicit existing TARIFF_DB_PATH still wins.
+_TARIFF_TEMP_PREFIX = "logistics-tariff-"
+
+
+def invalidate_tariff_db_cache() -> None:
+    """Forget the resolved tariff path after an Admin replaces the source."""
+    resolve_tariff_db_path.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def resolve_tariff_db_path() -> Path:
+    configured = Path(TARIFF_DB_PATH)
+
+    # Admin-managed asset is the primary source once it exists. This prevents a
+    # stale default tariff.db left in an app process from shadowing a fresh
+    # workbook the Admin just published.
+    try:
+        from core.database import load_tariff_asset
+        asset = load_tariff_asset()
+    except Exception as exc:  # noqa: BLE001 - lookup must fail closed
+        log_error(exc, "resolve_tariff_db_path.asset")
+        asset = None
+
+    if isinstance(asset, dict):
+        compressed = asset.get("payload_lzma")
+        sha256 = str(asset.get("db_sha256") or "").strip().lower()
+        if isinstance(compressed, (bytes, bytearray)) and sha256:
+            target = Path(tempfile.gettempdir()) / (
+                f"{_TARIFF_TEMP_PREFIX}{sha256[:16]}.db"
+            )
+            if target.exists() and target.stat().st_size > 0:
+                return target
+
+            tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+            try:
+                raw = lzma.decompress(bytes(compressed))
+                digest = hashlib.sha256(raw).hexdigest()
+                if digest != sha256:
+                    raise ValueError(
+                        "Tariff database checksum mismatch: "
+                        f"{digest} != {sha256}"
+                    )
+                tmp.write_bytes(raw)
+                os.replace(tmp, target)
+                return target
+            except (OSError, lzma.LZMAError, ValueError) as exc:
+                log_error(exc, "resolve_tariff_db_path.materialize")
+            finally:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+    # Backward-compatible fallback for deployments that still own an explicit
+    # local tariff database and have not published an Admin-managed asset yet.
+    return configured
+
+def _tariff_columns(conn: sqlite3.Connection) -> set[str]:
+    try:
+        return {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(tariff_table)").fetchall()
+        }
+    except sqlite3.Error:
+        return set()
+
+
+def _fts_query(raw: str) -> str:
+    # FTS syntax is never accepted from the caller verbatim. Each Unicode word
+    # becomes an escaped prefix term, so a product phrase is an AND search.
+    tokens = re.findall(r"\w+", raw, flags=re.UNICODE)
+    return " AND ".join(f'"{token.replace(chr(34), chr(34) * 2)}"*' for token in tokens[:12])
+
+
 def fast_search_tariff(keyword: str, limit: int = 100) -> pd.DataFrame:
-    if not keyword or len(keyword.strip()) < 2:
+    """Fast bounded tariff lookup.
+
+    * Code-looking input: indexed exact / prefix B-tree lookup.
+    * Product/policy text: SQLite FTS5 over Vietnamese description + policy.
+    * Older externally configured databases without FTS fall back to LIKE.
+
+    The XLSX is build input only and is never loaded in the request path.
+    """
+    raw = str(keyword or "").strip()
+    if len(raw) < 2:
         return pd.DataFrame()
-    db_path = Path(TARIFF_DB_PATH)
+    db_path = resolve_tariff_db_path()
     if not db_path.exists():
         return pd.DataFrame()
+
+    bounded_limit = max(1, min(int(limit), 200))
+    normalized_code = re.sub(r"[.\s]", "", raw)
+    code_like = normalized_code.isdigit() and 2 <= len(normalized_code) <= 8
+
     try:
-        with sqlite3.connect(db_path) as conn:
-            search_term = f"%{keyword.strip()}%"
-            query = '''
-                SELECT * FROM tariff_table
-                WHERE "Mã HS" LIKE ?
-                   OR "Mô tả tiếng Việt" LIKE ?
-                   OR "Mô tả tiếng Anh" LIKE ?
-                LIMIT ?
-            '''
-            return pd.read_sql_query(query, conn, params=(search_term, search_term, search_term, int(limit)))
-    except (sqlite3.Error, pd.errors.DatabaseError) as exc:
+        with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
+            conn.execute("PRAGMA query_only=ON")
+            columns = _tariff_columns(conn)
+            if "Mã HS" not in columns:
+                return pd.DataFrame()
+
+            row_order = '"_source_row"' if "_source_row" in columns else "rowid"
+
+            if code_like:
+                if len(normalized_code) == 8:
+                    # New assets store compact 8 digits; legacy governed DBs
+                    # may still store dotted codes (9403.20.10). Both exact
+                    # representations stay indexable.
+                    sql = f'''
+                        SELECT * FROM tariff_table
+                        WHERE "Mã HS" IN (?, ?)
+                        ORDER BY {row_order}
+                        LIMIT ?
+                    '''
+                    return pd.read_sql_query(
+                        sql,
+                        conn,
+                        params=(normalized_code, raw, bounded_limit),
+                    )
+
+                # GLOB with a constant prefix is optimized by SQLite into a
+                # range scan over idx_tariff_hs; exact heading goes first.
+                sql = f'''
+                    SELECT * FROM tariff_table
+                    WHERE "Mã HS" GLOB ? OR "Mã HS" GLOB ?
+                    ORDER BY
+                        CASE WHEN "Mã HS" IN (?, ?) THEN 0 ELSE 1 END,
+                        length("Mã HS"),
+                        "Mã HS",
+                        {row_order}
+                    LIMIT ?
+                '''
+                return pd.read_sql_query(
+                    sql,
+                    conn,
+                    params=(
+                        normalized_code + "*",
+                        raw + "*",
+                        normalized_code,
+                        raw,
+                        bounded_limit,
+                    ),
+                )
+
+            fts = _fts_query(raw)
+            if fts:
+                try:
+                    return pd.read_sql_query(
+                        '''
+                        SELECT t.*
+                        FROM tariff_fts
+                        JOIN tariff_table AS t ON t.id = tariff_fts.rowid
+                        WHERE tariff_fts MATCH ?
+                        ORDER BY bm25(tariff_fts), coalesce(t."_source_row", t.id)
+                        LIMIT ?
+                        ''',
+                        conn,
+                        params=(fts, bounded_limit),
+                    )
+                except (sqlite3.Error, pd.errors.DatabaseError):
+                    # Governed external v1 DBs may not have the v2 FTS table.
+                    pass
+
+            text_columns = [
+                name
+                for name in (
+                    "Mô tả tiếng Việt",
+                    "Mô tả tiếng Anh",
+                    "Chính sách mặt hàng",
+                    "Giảm VAT",
+                )
+                if name in columns
+            ]
+            if not text_columns:
+                return pd.DataFrame()
+            search_term = f"%{raw}%"
+            where = " OR ".join(f'"{name}" LIKE ?' for name in text_columns)
+            sql = f"SELECT * FROM tariff_table WHERE {where} LIMIT ?"
+            return pd.read_sql_query(
+                sql,
+                conn,
+                params=tuple([search_term] * len(text_columns) + [bounded_limit]),
+            )
+    except (sqlite3.Error, pd.errors.DatabaseError, OSError) as exc:
         log_error(exc, "fast_search_tariff")
         return pd.DataFrame()
 

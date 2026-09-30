@@ -1190,7 +1190,13 @@ export interface TariffRow {
   hsCode: string | null;
   descriptionVi: string | null;
   descriptionEn: string | null;
-  /** Verbatim extra columns of a richer deployment DB (uninterpreted). */
+  unit: string | null;
+  importNormal: string | null;
+  importPreferential: string | null;
+  vat: string | null;
+  policy: string | null;
+  vatReduction: string | null;
+  /** Non-empty FTA/export/special-tax fields passed through verbatim. */
   fields: TariffField[];
 }
 
@@ -1199,6 +1205,11 @@ export interface TariffSource {
   path: string;
   rows: number | null;
   note: string | null;
+  sourceFile?: string | null;
+  sourceSha256?: string | null;
+  year?: string | null;
+  searchMode?: string | null;
+  canManage?: boolean;
 }
 
 export interface TariffProvenance {

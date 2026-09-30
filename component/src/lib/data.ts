@@ -72,7 +72,8 @@ export const NAV: {
   {
     group: "CÔNG CỤ",
     items: [
-      { to: "/tra-cuu-thue", label: "Tra cứu thuế / HS", icon: "search" },
+      { to: "/tra-cuu-thue", label: "BIỂU THUẾ", icon: "search" },
+      { to: "/tra-cuu-chinh-sach", label: "Tra cứu chính sách", icon: "book" },
       { to: "/so-tay", label: "Sổ tay", icon: "book" },
       { to: "/dich-thuat", label: "Dịch thuật", icon: "lang" },
       // LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — standalone calculator (moved

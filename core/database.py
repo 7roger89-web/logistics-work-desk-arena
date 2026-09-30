@@ -28,6 +28,7 @@ try:
 except ImportError:
     st = None  # type: ignore[assignment]
 from bson import ObjectId
+from bson.binary import Binary
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
@@ -295,6 +296,7 @@ def ensure_indexes() -> bool:
         (db.entrustments, "id", {"unique": True, "name": "uq_entrustment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.knowledge_base, "id", {"unique": True, "name": "uq_kb_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.app_settings, "id", {"unique": True, "name": "uq_app_setting_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.app_assets, "id", {"unique": True, "name": "uq_app_asset_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.audit_logs, [("entity_type", 1), ("entity_id", 1), ("created_at", -1)], {"name": "ix_audit_entity"}),
         (db.notification_outbox, [("status", 1), ("next_retry_at", 1)], {"name": "ix_notification_queue"}),
         (db.notification_outbox, "event_id", {"unique": True, "name": "uq_notification_event", "partialFilterExpression": {"event_id": {"$type": "string"}}}),
@@ -1879,6 +1881,130 @@ def save_app_setting(setting_id: str, value: Mapping[str, Any]) -> bool:
         )
         _set_last_error("")
     return ok
+
+
+
+TARIFF_ASSET_ID = "tariff_lookup_sqlite"
+MAX_TARIFF_ASSET_COMPRESSED_BYTES = 4 * 1024 * 1024
+
+
+def load_tariff_asset(*, db: Any = _UNSET_DB) -> dict[str, Any] | None:
+    """Return the current compressed tariff SQLite asset, if configured."""
+    db = get_db() if db is _UNSET_DB or db is None else db
+    if db is None:
+        return None
+    try:
+        row = db.app_assets.find_one({"id": TARIFF_ASSET_ID}, {"_id": 0})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return None
+    if not isinstance(row, Mapping):
+        return None
+    out = dict(row)
+    payload = out.get("payload_lzma")
+    if payload is not None:
+        try:
+            out["payload_lzma"] = bytes(payload)
+        except (TypeError, ValueError):
+            out["payload_lzma"] = None
+    return out
+
+
+def save_tariff_asset(
+    payload_lzma: bytes,
+    *,
+    db_sha256: str,
+    metadata: Mapping[str, Any],
+) -> bool:
+    """Admin-only durable replacement of the tariff SQLite source asset.
+
+    The compressed database is intentionally stored as ONE bounded Mongo BSON
+    binary (<4 MiB). The request path never reads XLSX; it materializes this
+    compact blob to a local read-only SQLite file and then uses indexes.
+    """
+    if not _require_business_permission(
+        "*", "Chỉ Admin mới được cập nhật BIỂU THUẾ."
+    ):
+        return False
+    data = bytes(payload_lzma or b"")
+    if not data:
+        _set_last_error("Dữ liệu BIỂU THUẾ rỗng.")
+        return False
+    if len(data) > MAX_TARIFF_ASSET_COMPRESSED_BYTES:
+        _set_last_error(
+            "Dữ liệu BIỂU THUẾ sau nén vượt giới hạn 4 MB."
+        )
+        return False
+
+    digest = str(db_sha256 or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        _set_last_error("Checksum BIỂU THUẾ không hợp lệ.")
+        return False
+
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return False
+
+    old = db.app_assets.find_one({"id": TARIFF_ASSET_ID}, {"_id": 0})
+    actor_context = _actor_context()
+    now = utc_now()
+    clean_meta = copy.deepcopy(dict(metadata))
+    payload = {
+        "id": TARIFF_ASSET_ID,
+        "kind": "tariff_sqlite_lzma",
+        "payload_lzma": Binary(data),
+        "db_sha256": digest,
+        "compressed_bytes": len(data),
+        "metadata": clean_meta,
+        "updated_at": now,
+        "updated_by": actor_context["username"],
+        "updated_by_user_id": actor_context["user_id"],
+        "updated_by_role": actor_context["role"],
+    }
+    set_on_insert = {
+        "created_at": now,
+        "created_by": actor_context["username"],
+        "created_by_user_id": actor_context["user_id"],
+        "created_by_role": actor_context["role"],
+    }
+    try:
+        db.app_assets.update_one(
+            {"id": TARIFF_ASSET_ID},
+            {"$set": payload, "$setOnInsert": set_on_insert},
+            upsert=True,
+        )
+        audit_before = None
+        if isinstance(old, Mapping):
+            audit_before = {
+                key: old.get(key)
+                for key in (
+                    "id", "kind", "db_sha256", "compressed_bytes",
+                    "metadata", "updated_at", "updated_by",
+                )
+            }
+        audit_after = {
+            "id": TARIFF_ASSET_ID,
+            "kind": "tariff_sqlite_lzma",
+            "db_sha256": digest,
+            "compressed_bytes": len(data),
+            "metadata": clean_meta,
+            "updated_at": now,
+            "updated_by": actor_context["username"],
+        }
+        _audit(
+            db,
+            "app_asset",
+            TARIFF_ASSET_ID,
+            "create" if old is None else "update",
+            before=audit_before,
+            after=audit_after,
+        )
+        _set_last_error("")
+        return True
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
 
 
 def load_knowledge_base(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
