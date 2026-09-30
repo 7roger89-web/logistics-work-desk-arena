@@ -152,119 +152,17 @@ def get_tracking_url(carrier: str, ref_no: str) -> str:
     return f"https://www.google.com/search?q={quote_plus(f'{carrier} cargo tracking {ref_no}') }"
 
 
-# LOGI_TARIFF_2026_FAST_DB_01 — compact repository bundle → local SQLite.
-# Runtime NEVER opens the XLSX. The repository carries a 260KB XZ-compressed
-# normalized CSV; on the first process query it is turned into a ~7MB indexed
-# SQLite file in the temp directory (measured ~0.25s cold build), then every
-# subsequent lookup goes straight to SQLite. An explicit existing
-# TARIFF_DB_PATH still wins for operator-managed deployments.
-_BUNDLED_TARIFF_CSV_XZ = (
-    Path(__file__).resolve().parents[1] / "data" / "tariff_2026.csv.xz"
-)
-_BUNDLED_TARIFF_META = (
-    Path(__file__).resolve().parents[1] / "data" / "tariff_2026.meta.json"
-)
-_BUNDLED_TARIFF_SHA256 = (
-    "cbdc90978394232ebb3c43ecb46149cbfc762c50a0d289e91e32d7d6c3925efe"
-)
+# LOGI_TARIFF_FAST_DB_02 — Admin-managed tariff asset -> local SQLite.
+# Runtime NEVER opens the XLSX. ADMIN uploads a workbook once; the backend
+# converts it to an indexed SQLite database, stores the compressed database in
+# Mongo, and each app process materializes that compact asset into /tmp on the
+# first lookup. An explicit existing TARIFF_DB_PATH still wins.
+_TARIFF_TEMP_PREFIX = "logistics-tariff-"
 
 
-def _build_bundled_tariff_db(target: Path) -> None:
-    bundle = _BUNDLED_TARIFF_CSV_XZ.read_bytes()
-    digest = hashlib.sha256(bundle).hexdigest()
-    if digest != _BUNDLED_TARIFF_SHA256:
-        raise ValueError(
-            "Bundled tariff data checksum mismatch: "
-            f"{digest} != {_BUNDLED_TARIFF_SHA256}"
-        )
-
-    raw = lzma.decompress(bundle).decode("utf-8")
-    reader = csv.DictReader(io.StringIO(raw))
-    columns = list(reader.fieldnames or [])
-    if "Mã HS" not in columns or "Mô tả tiếng Việt" not in columns:
-        raise ValueError("Bundled tariff data is missing canonical HS columns.")
-    rows = list(reader)
-
-    meta: dict[str, Any] = {}
-    if _BUNDLED_TARIFF_META.exists():
-        try:
-            loaded = json.loads(_BUNDLED_TARIFF_META.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                meta = loaded
-        except (OSError, json.JSONDecodeError):
-            meta = {}
-
-    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    try:
-        tmp.unlink(missing_ok=True)
-        with sqlite3.connect(tmp) as conn:
-            definition = ",".join(f'"{name}" TEXT' for name in columns)
-            conn.execute(
-                f"CREATE TABLE tariff_table "
-                f"(id INTEGER PRIMARY KEY, {definition})"
-            )
-            quoted = ",".join(f'"{name}"' for name in columns)
-            placeholders = ",".join("?" for _ in columns)
-            conn.executemany(
-                f"INSERT INTO tariff_table ({quoted}) VALUES ({placeholders})",
-                [
-                    [row.get(name) or None for name in columns]
-                    for row in rows
-                ],
-            )
-            conn.execute(
-                'CREATE INDEX idx_tariff_hs ON tariff_table("Mã HS")'
-            )
-            conn.execute(
-                'CREATE INDEX idx_tariff_hs_len '
-                'ON tariff_table(length("Mã HS"), "Mã HS")'
-            )
-            conn.execute(
-                """
-                CREATE VIRTUAL TABLE tariff_fts USING fts5(
-                    description_vi,
-                    policy,
-                    vat_reduction,
-                    content='tariff_table',
-                    content_rowid='id',
-                    tokenize='unicode61 remove_diacritics 2'
-                )
-                """
-            )
-            conn.execute(
-                """
-                INSERT INTO tariff_fts(
-                    rowid, description_vi, policy, vat_reduction
-                )
-                SELECT
-                    id,
-                    coalesce("Mô tả tiếng Việt", ''),
-                    coalesce("Chính sách mặt hàng", ''),
-                    coalesce("Giảm VAT", '')
-                FROM tariff_table
-                """
-            )
-            conn.execute(
-                "CREATE TABLE tariff_meta "
-                "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-            )
-            meta.setdefault("indexed_rows", len(rows))
-            meta.setdefault("year", "2026")
-            meta.setdefault(
-                "search",
-                "B-tree exact/prefix HS + FTS5 Vietnamese",
-            )
-            conn.executemany(
-                "INSERT INTO tariff_meta(key, value) VALUES (?, ?)",
-                [(str(key), str(value)) for key, value in meta.items()
-                 if value is not None],
-            )
-            conn.execute("ANALYZE")
-            conn.execute("PRAGMA optimize")
-            conn.commit()
-        os.replace(tmp, target)
-    finally:
-        tmp.unlink(missing_ok=True)
+def invalidate_tariff_db_cache() -> None:
+    """Forget the resolved tariff path after an Admin replaces the source."""
+    resolve_tariff_db_path.cache_clear()
 
 
 @lru_cache(maxsize=1)
@@ -272,21 +170,49 @@ def resolve_tariff_db_path() -> Path:
     configured = Path(TARIFF_DB_PATH)
     if configured.exists():
         return configured
-    if not _BUNDLED_TARIFF_CSV_XZ.exists():
+
+    # Local import avoids a module cycle: core.database imports utility helpers
+    # from this module during startup, while this read only runs on demand.
+    try:
+        from core.database import load_tariff_asset
+        asset = load_tariff_asset()
+    except Exception as exc:  # noqa: BLE001 - lookup must fail closed
+        log_error(exc, "resolve_tariff_db_path.asset")
+        asset = None
+
+    if not isinstance(asset, dict):
+        return configured
+    compressed = asset.get("payload_lzma")
+    sha256 = str(asset.get("db_sha256") or "").strip().lower()
+    if not isinstance(compressed, (bytes, bytearray)) or not sha256:
         return configured
 
     target = Path(tempfile.gettempdir()) / (
-        f"logistics-tariff-2026-{_BUNDLED_TARIFF_SHA256[:12]}.db"
+        f"{_TARIFF_TEMP_PREFIX}{sha256[:16]}.db"
     )
     if target.exists() and target.stat().st_size > 0:
         return target
 
+    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
     try:
-        _build_bundled_tariff_db(target)
+        raw = lzma.decompress(bytes(compressed))
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != sha256:
+            raise ValueError(
+                "Tariff database checksum mismatch: "
+                f"{digest} != {sha256}"
+            )
+        tmp.write_bytes(raw)
+        os.replace(tmp, target)
         return target
-    except (OSError, lzma.LZMAError, sqlite3.Error, ValueError) as exc:
-        log_error(exc, "resolve_tariff_db_path")
+    except (OSError, lzma.LZMAError, ValueError) as exc:
+        log_error(exc, "resolve_tariff_db_path.materialize")
         return configured
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _tariff_columns(conn: sqlite3.Connection) -> set[str]:
