@@ -294,6 +294,7 @@ def ensure_indexes() -> bool:
         (db.cost_catalog, [("kind", 1), ("active", 1), ("name", 1)], {"name": "ix_cost_catalog_kind_active"}),
         (db.entrustments, "id", {"unique": True, "name": "uq_entrustment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.knowledge_base, "id", {"unique": True, "name": "uq_kb_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.app_settings, "id", {"unique": True, "name": "uq_app_setting_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.audit_logs, [("entity_type", 1), ("entity_id", 1), ("created_at", -1)], {"name": "ix_audit_entity"}),
         (db.notification_outbox, [("status", 1), ("next_retry_at", 1)], {"name": "ix_notification_queue"}),
         (db.notification_outbox, "event_id", {"unique": True, "name": "uq_notification_event", "partialFilterExpression": {"event_id": {"$type": "string"}}}),
@@ -1838,6 +1839,46 @@ def save_entrustment_book(
         LOGGER.exception("save_entrustment_book failed")
         _set_last_error(str(exc))
         return False
+
+
+def load_app_setting(setting_id: str, *, db: Any = _UNSET_DB) -> dict[str, Any] | None:
+    """Read one small application setting document by stable id."""
+    db = get_db() if db is _UNSET_DB or db is None else db
+    if db is None:
+        return None
+    try:
+        return db.app_settings.find_one({"id": str(setting_id)}, {"_id": 0})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return None
+
+
+def save_app_setting(setting_id: str, value: Mapping[str, Any]) -> bool:
+    """Admin-only upsert for bounded application settings, with audit."""
+    if not _require_business_permission("*", "Chỉ Admin mới được cập nhật cấu hình ứng dụng."):
+        return False
+    key = str(setting_id or "").strip()
+    if not key:
+        _set_last_error("Thiếu mã cấu hình ứng dụng.")
+        return False
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return False
+    old = db.app_settings.find_one({"id": key}, {"_id": 0})
+    payload = {"id": key, "value": copy.deepcopy(dict(value))}
+    ok = _save_document("app_settings", payload, db=db)
+    if ok:
+        _audit(
+            db,
+            "app_setting",
+            key,
+            "create" if old is None else "update",
+            before=old,
+            after=payload,
+        )
+        _set_last_error("")
+    return ok
 
 
 def load_knowledge_base(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
