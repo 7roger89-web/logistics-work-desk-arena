@@ -10,7 +10,7 @@
  * produced by the REAL Run 3 orchestration (attachment metadata → server-side
  * byte read → Run 2 located text → Run 1 cross-check → Run 3 projection).
  *
- *   1. shipment detail → "Chứng từ & PXK" exposes the review surface;
+ *   1. shipment detail → "Quy trình & Chứng từ" exposes the review surface;
  *   2. PDF/XLSX rows carry a large usable checkbox; JPG/DOCX rows stay VISIBLE
  *      with their honest non-selectable wording and are never implied damaged;
  *   3. the selected count is visible and the button is disabled at zero;
@@ -185,7 +185,7 @@ async function gotoReviewTab() {
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
   const workspaceTabs = window.document.getElementById("workspace-tabs");
   assert.ok(workspaceTabs, "workspace tabs must exist");
-  await click("Chứng từ & PXK", "button", workspaceTabs);
+  await click("Quy trình & Chứng từ", "button", workspaceTabs);
   const shell = $("[data-testid='shipment-attachments']")[0];
   assert.ok(shell, "attachment section missing after navigation");
   const reviewPanel = $("[data-testid='document-review']", shell)[0];
@@ -213,7 +213,7 @@ await click("Lô Hàng", "a", $("aside")[0]);
 await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
 const tabs = window.document.getElementById("workspace-tabs");
 assert.ok(tabs, "workspace tabs must exist");
-await click("Chứng từ & PXK", "button", tabs);
+await click("Quy trình & Chứng từ", "button", tabs);
 
 const section = $("[data-testid='shipment-attachments']")[0];
 assert.ok(section, "attachment section missing");

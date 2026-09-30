@@ -21,7 +21,17 @@ from views import logi_view_model as vm
 SHIPMENT = {
     "id": "SHP-143",
     "customer_id": "CUS-143",
-    "data": {"2.4": {}},
+    "data": {
+        "0.0": {
+            "commercial_flow": {
+                "mode": "CUSTOMER_SELF",
+                "confirmed": True,
+                "company_id": "",
+                "sub_agent_id": "",
+            },
+        },
+        "2.4": {},
+    },
 }
 
 GNT_DATA = {
@@ -111,8 +121,17 @@ def ready_gnt(monkeypatch):
     """Patch only the business/generator seams; storage remains observable."""
     monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
     monkeypatch.setattr("core.auth.current_user", lambda: {"username": "writer-143"})
-    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: dict(SHIPMENT))
-    monkeypatch.setattr("core.database.load_customers", lambda: {})
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: copy.deepcopy(SHIPMENT))
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {
+            "CUS-143": {
+                "customer_id": "CUS-143",
+                "name": "CÔNG TY 143",
+                "tax_code": "0101430143",
+            },
+        },
+    )
     monkeypatch.setattr(
         "core.gnt_builder.check_gnt_prerequisites",
         lambda shipment: {"data": dict(GNT_DATA), "missing": [], "no_payable": False},

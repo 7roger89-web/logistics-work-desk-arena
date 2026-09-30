@@ -31,6 +31,11 @@ export type LogiEventName =
   // `mode` / `incoterm` shipment paths plus one profile block, through the
   // existing atomic writer, with RBAC → audit → fresh readback.
   | "shipment_profile_save"
+  // LOGI_SHIPMENT_DOCUMENT_WORKFLOW_01 — ONE bounded write for the
+  // operator-confirmed commercial/import model: typed event → this bounded
+  // dispatcher → shipment_edit RBAC → the existing atomic shipment writer →
+  // audit → fresh readback (same contract as shipment_profile_save).
+  | "shipment_commercial_flow_save"
   | "delivery_confirm"
   | "finance_actual_save"
   | "payment_record"
@@ -149,6 +154,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_customer_save",
   "shipment_transport_save",
   "shipment_profile_save",
+  "shipment_commercial_flow_save",
   "delivery_confirm",
   "finance_actual_save",
   "payment_record",

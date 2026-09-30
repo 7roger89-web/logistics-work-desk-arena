@@ -354,7 +354,7 @@ if (run(8)) {
     `OLD BEHAVIOUR: the truncated tab matched NO section, so no work section opened (active tabs: ${active.length})`);
   const TAB_LABEL = { "lay-hang": "Xuất khẩu", "nhap": "Nhập khẩu & Giao hàng",
                       "van-tai": "Vận chuyển & Hàng hóa", "tai-chinh": "Tài chính / Công nợ",
-                      "chung-tu": "Chứng từ & PXK", "lich-su": "Lịch sử" };
+                      "chung-tu": "Quy trình & Chứng từ", "lich-su": "Lịch sử" };
   const wanted = TAB_LABEL[HYPHEN_TAB];
   assert.ok(wanted, `unmapped fixture tab ${HYPHEN_TAB}`);
   assert.ok(text(active[0]).includes(wanted),
@@ -399,7 +399,7 @@ if (run(9)) {
   assert.ok(docsTab, "shipment documents tab missing");
   docsTab.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(160);
-  assert.ok(mainText().includes("Hợp đồng liên kết"), "linked-contract card missing");
+  assert.ok(mainText().includes("Hợp đồng / docgen liên kết hiện có"), "linked-contract card missing");
   assert.ok(mainText().includes("Phiếu xuất kho"),
     "precondition: the employee starts on the SHIPMENT documents surface");
 
