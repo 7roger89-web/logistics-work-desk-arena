@@ -168,11 +168,10 @@ def invalidate_tariff_db_cache() -> None:
 @lru_cache(maxsize=1)
 def resolve_tariff_db_path() -> Path:
     configured = Path(TARIFF_DB_PATH)
-    if configured.exists():
-        return configured
 
-    # Local import avoids a module cycle: core.database imports utility helpers
-    # from this module during startup, while this read only runs on demand.
+    # Admin-managed asset is the primary source once it exists. This prevents a
+    # stale default tariff.db left in an app process from shadowing a fresh
+    # workbook the Admin just published.
     try:
         from core.database import load_tariff_asset
         asset = load_tariff_asset()
@@ -180,40 +179,39 @@ def resolve_tariff_db_path() -> Path:
         log_error(exc, "resolve_tariff_db_path.asset")
         asset = None
 
-    if not isinstance(asset, dict):
-        return configured
-    compressed = asset.get("payload_lzma")
-    sha256 = str(asset.get("db_sha256") or "").strip().lower()
-    if not isinstance(compressed, (bytes, bytearray)) or not sha256:
-        return configured
-
-    target = Path(tempfile.gettempdir()) / (
-        f"{_TARIFF_TEMP_PREFIX}{sha256[:16]}.db"
-    )
-    if target.exists() and target.stat().st_size > 0:
-        return target
-
-    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    try:
-        raw = lzma.decompress(bytes(compressed))
-        digest = hashlib.sha256(raw).hexdigest()
-        if digest != sha256:
-            raise ValueError(
-                "Tariff database checksum mismatch: "
-                f"{digest} != {sha256}"
+    if isinstance(asset, dict):
+        compressed = asset.get("payload_lzma")
+        sha256 = str(asset.get("db_sha256") or "").strip().lower()
+        if isinstance(compressed, (bytes, bytearray)) and sha256:
+            target = Path(tempfile.gettempdir()) / (
+                f"{_TARIFF_TEMP_PREFIX}{sha256[:16]}.db"
             )
-        tmp.write_bytes(raw)
-        os.replace(tmp, target)
-        return target
-    except (OSError, lzma.LZMAError, ValueError) as exc:
-        log_error(exc, "resolve_tariff_db_path.materialize")
-        return configured
-    finally:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+            if target.exists() and target.stat().st_size > 0:
+                return target
 
+            tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+            try:
+                raw = lzma.decompress(bytes(compressed))
+                digest = hashlib.sha256(raw).hexdigest()
+                if digest != sha256:
+                    raise ValueError(
+                        "Tariff database checksum mismatch: "
+                        f"{digest} != {sha256}"
+                    )
+                tmp.write_bytes(raw)
+                os.replace(tmp, target)
+                return target
+            except (OSError, lzma.LZMAError, ValueError) as exc:
+                log_error(exc, "resolve_tariff_db_path.materialize")
+            finally:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+    # Backward-compatible fallback for deployments that still own an explicit
+    # local tariff database and have not published an Admin-managed asset yet.
+    return configured
 
 def _tariff_columns(conn: sqlite3.Connection) -> set[str]:
     try:
