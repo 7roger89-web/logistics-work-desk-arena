@@ -572,7 +572,7 @@ def build_document_workflow(
         delivery_note_state,
         delivery_note_reason,
         target_tab="nhap",
-        action_label="Tạo phiếu giao hàng" if delivered and not has_delivery_note else "Mở giao hàng",
+        action_label="Tạo phiếu giao hàng" if delivery_note_state == STATE_READY else "Mở giao hàng",
     ))
 
     pxk_flow = pxk_flow_gate(flow)
