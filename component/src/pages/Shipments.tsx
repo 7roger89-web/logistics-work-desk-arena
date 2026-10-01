@@ -36,10 +36,14 @@ const PERIODS: Array<{ id: PeriodId; label: string }> = [
   { id: "khac", label: "Thời gian khác" },
 ];
 
-/** Inclusive [from, to) bounds in ms for a named period, relative to `now`. */
+/** Inclusive [from, to) UTC-midnight bounds for the operator's LOCAL calendar period. */
 export function periodBounds(period: PeriodId, now: Date, from: string, to: string): [number, number] | null {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
+  // The shipment date is a date-only business fact. Pick the named month/year
+  // from the browser's local calendar, then express those date-only boundaries
+  // at UTC midnight so they compare directly with createdTs(). Using getUTC*
+  // here makes 00:xx on the first day in UTC+7 still look like LAST month.
+  const y = now.getFullYear();
+  const m = now.getMonth();
   if (period === "thang-nay") return [Date.UTC(y, m, 1), Date.UTC(y, m + 1, 1)];
   if (period === "thang-truoc") return [Date.UTC(y, m - 1, 1), Date.UTC(y, m, 1)];
   if (period === "nam-nay") return [Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1)];
@@ -87,11 +91,13 @@ export default function Shipments() {
     if (!(status === "ALL" || s.status === status)) return false;
     if (q && !(s.id + s.customer + s.contract + s.route + s.sale + s.support).toLowerCase().includes(q.toLowerCase())) return false;
     // Canonical shipment-created authority: `createdAt` (the same field the lot
-    // header edits through shipment_field_save). A lot without a known created
-    // date is never hidden by a period filter — UNKNOWN is not "outside".
+    // header edits through shipment_field_save). A named/custom date period is
+    // a positive inclusion rule: only a KNOWN, parseable creation date inside
+    // the requested range belongs in it. Unknown dates remain reachable through
+    // "Tất cả thời gian" instead of leaking into every month.
     if (bounds) {
       const ts = createdTs(s.createdAt);
-      if (ts && !(ts >= bounds[0] && ts < bounds[1])) return false;
+      if (!ts || !(ts >= bounds[0] && ts < bounds[1])) return false;
     }
     const settled = isSettled(s);
     if (archive === "dang-lam" && settled) return false;
