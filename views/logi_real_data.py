@@ -1244,6 +1244,13 @@ def shipment_projection(
     gnt_view = _gnt_projection(shipment, customs, customer_doc, sid)
     finance_view = finance_projection(shipment, quotes, ledger=ledger, agents=agents)
     delivery_note_view = _delivery_note_document(sid, grouped=docgen_documents)
+    if not delivery_note_view:
+        from core.delivery_note import inspect_delivery_note_source  # noqa: PLC0415
+
+        delivery_note_view = inspect_delivery_note_source(
+            shipment,
+            customer=customer_doc,
+        )
     pxk_view = pxk_projection(
         shipment,
         contracts,
