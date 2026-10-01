@@ -14521,7 +14521,7 @@ var Js = [
 	}
 ];
 function Ys(e, t, n, r) {
-	let i = t.getUTCFullYear(), a = t.getUTCMonth();
+	let i = t.getFullYear(), a = t.getMonth();
 	if (e === "thang-nay") return [Date.UTC(i, a, 1), Date.UTC(i, a + 1, 1)];
 	if (e === "thang-truoc") return [Date.UTC(i, a - 1, 1), Date.UTC(i, a, 1)];
 	if (e === "nam-nay") return [Date.UTC(i, 0, 1), Date.UTC(i + 1, 0, 1)];
@@ -14544,7 +14544,7 @@ function Xs() {
 		if (a !== "ALL" && e.status !== a || t && !(e.id + e.customer + e.contract + e.route + e.sale + e.support).toLowerCase().includes(t.toLowerCase())) return !1;
 		if (S) {
 			let t = ws(e.createdAt);
-			if (t && !(t >= S[0] && t < S[1])) return !1;
+			if (!t || !(t >= S[0] && t < S[1])) return !1;
 		}
 		let n = qs(e);
 		return !(b === "dang-lam" && n || b === "hoan-tat" && !n);

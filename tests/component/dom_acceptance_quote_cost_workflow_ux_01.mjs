@@ -27,6 +27,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
+// Production operators are in Vietnam. This matters at the first hours of a
+// month: 2026-10-01 00:30 +07 is still 2026-09-30 in UTC.
+process.env.TZ = "Asia/Bangkok";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(path.join(ROOT, "component/package.json"));
 const { JSDOM } = require("jsdom");
@@ -189,9 +193,9 @@ function costFixtureVm() {
 function listFixtureVm(now) {
   const vm = JSON.parse(JSON.stringify(BASE));
   const base = vm.shipments[0];
-  const dd = (d) => `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
-  const thisMonth = dd(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 3)));
-  const lastMonth = dd(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 3)));
+  const dd = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  const thisMonth = dd(new Date(now.getFullYear(), now.getMonth(), 3));
+  const lastMonth = dd(new Date(now.getFullYear(), now.getMonth() - 1, 3));
 
   const mk = (id, createdAt, fin, imp) => {
     const s = JSON.parse(JSON.stringify(base));
@@ -209,6 +213,10 @@ function listFixtureVm(now) {
     mk("LO-9003", thisMonth, { outstanding: 41520000 }, { delivered: false, actualDelivery: "" }),
     // finished + paid but LAST month → out of the default period
     mk("LO-9004", lastMonth, { outstanding: 0 }, { delivered: true, actualDelivery: "10/08/2026" }),
+    // Owner repro: a clearly old lot must never leak into the current month.
+    mk("LO-9005", "29/07/2026", { outstanding: 41520000 }, { delivered: false, actualDelivery: "" }),
+    // Legacy/unknown creation date must not belong to ANY named month.
+    mk("LO-9006", "", { outstanding: 41520000 }, { delivered: false, actualDelivery: "" }),
   ];
   return vm;
 }
@@ -634,6 +642,14 @@ console.log("STEP 8c — Cost Intelligence: DÙNG LÀM GIÁ VỐN opens a draft,
 // ---------------------------------------------------------------------------
 console.log("STEP 9 — D: the list opens on Tháng này + Đang làm; UNKNOWN never archives");
 {
+  // Exact month-boundary repro: local Vietnam time is already 01/10
+  // while UTC is still 30/09. Named periods must follow LOCAL October.
+  const RealDate = globalThis.Date;
+  const fixedNowMs = RealDate.parse("2026-10-01T00:30:00+07:00");
+  globalThis.Date = class extends RealDate {
+    constructor(...args) { super(...(args.length ? args : [fixedNowMs])); }
+    static now() { return fixedNowMs; }
+  };
   const now = new Date();
   await mountWith(listFixtureVm(now));
   await click("Lô Hàng", "a", aside());
@@ -649,6 +665,8 @@ console.log("STEP 9 — D: the list opens on Tháng này + Đang làm; UNKNOWN n
   assert.ok(shown().includes("LO-9002"), "an UNKNOWN outstanding must NEVER be archived");
   assert.ok(shown().includes("LO-9003"), "a running lot stays visible");
   assert.ok(!shown().includes("LO-9004"), "last month's lot is outside Tháng này");
+  assert.ok(!shown().includes("LO-9005"), "29/07/2026 must not leak into October");
+  assert.ok(!shown().includes("LO-9006"), "unknown createdAt belongs only to Tất cả thời gian");
 
   await clickTestId("shipment-archive-hoan-tat");
   assert.ok(mainText().includes("LO-9001"), "the settled lot appears under Đã hoàn tất & thanh toán");
@@ -670,10 +688,11 @@ console.log("STEP 9 — D: the list opens on Tháng này + Đang làm; UNKNOWN n
 
   await clickTestId("shipment-archive-tat-ca");
   await clickTestId("shipment-period-tat-ca");
-  for (const id of ["LO-9001", "LO-9002", "LO-9003", "LO-9004"]) {
+  for (const id of ["LO-9001", "LO-9002", "LO-9003", "LO-9004", "LO-9005", "LO-9006"]) {
     assert.ok(mainText().includes(id), `${id} must reappear under Tất cả — nothing was deleted`);
   }
-  ok("default Tháng này + Đang làm, UNKNOWN never archives, URL-preserved, non-destructive");
+  globalThis.Date = RealDate;
+  ok("local-calendar Tháng này excludes July/unknown dates; Tất cả stays non-destructive");
 }
 
 // ---------------------------------------------------------------------------

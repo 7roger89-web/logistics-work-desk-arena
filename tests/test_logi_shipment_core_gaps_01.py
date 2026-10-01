@@ -92,7 +92,7 @@ def test_created_at_is_now_in_the_write_whitelist():
     """
     assert vm.FIELD_PATHS["created_at"] == ("data", "0.0", "created_at")
     assert "created_at" in vm._DATE_FIELDS
-    assert len(vm.FIELD_PATHS) == 31
+    assert len(vm.FIELD_PATHS) == 34
     under_00 = {k for k, path in vm.FIELD_PATHS.items() if path[1:2] == ("0.0",)}
     assert under_00 == {"incoterm", "mode", "created_at"}
     # The lot CODE is an identifier, not a name field: never writable here.
@@ -111,6 +111,59 @@ def test_created_at_edit_persists_and_reads_back_fresh(staging, event_seq):
     assert out["version"] == int(before or 0) + 1, "the canonical writer bumped the version"
     assert any(row["action"] in {"shipment_update", "update"} or "shipment" in row["action"]
                for row in out["audit"]), out["audit"]
+
+
+def _set_root_and_head_created_at(sid, *, root, head):
+    """Test-only seed: head=None removes the key; otherwise sets it verbatim.
+
+    ``data`` stores the section under the LITERAL key "0.0", which a Mongo
+    dotted update path cannot address, so the document is rewritten whole.
+    """
+    from core.database import get_db
+
+    db = get_db()
+    assert db is not None
+    doc = db.shipments.find_one({"id": sid})
+    section = dict(doc["data"]["0.0"])
+    if head is None:
+        section.pop("created_at", None)
+    else:
+        section["created_at"] = head
+    data = dict(doc["data"])
+    data["0.0"] = section
+    res = db.shipments.update_one({"id": sid}, {"$set": {"data": data, "created_at": root}})
+    assert res.matched_count == 1
+
+
+def _projected_created_at(sid):
+    model = vm.build_view_model()
+    return next(s for s in model["shipments"] if s["id"] == sid)["createdAt"]
+
+
+def test_legacy_missing_header_created_at_falls_back_to_root_timestamp(staging):
+    """Legacy rows missing the business header date still sort into a real month.
+
+    The root Mongo created_at is read-only fallback authority ONLY when the
+    data.0.0 key does not exist. An explicit blank remains UNKNOWN (next test).
+    """
+    from datetime import datetime, timezone
+
+    _set_root_and_head_created_at(
+        "LO-0306", root=datetime(2026, 7, 29, 8, 0, tzinfo=timezone.utc), head=None
+    )
+    assert "created_at" not in _head("LO-0306")
+    assert _projected_created_at("LO-0306") == "29/07/2026"
+
+
+def test_explicit_blank_header_created_at_ignores_root_timestamp(staging):
+    """An explicit blank business date stays UNKNOWN even if a root timestamp exists."""
+    from datetime import datetime, timezone
+
+    _set_root_and_head_created_at(
+        "LO-0306", root=datetime(2026, 7, 29, 8, 0, tzinfo=timezone.utc), head=""
+    )
+    assert _head("LO-0306")["created_at"] == ""
+    assert _projected_created_at("LO-0306") == ""
 
 
 def test_created_at_blank_stays_unknown_and_is_never_today(staging, event_seq):
