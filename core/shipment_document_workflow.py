@@ -402,9 +402,9 @@ def build_document_workflow(
     quote_linked: bool,
     gnt: Mapping[str, Any] | None,
     delivered: bool,
-    delivery_note: Mapping[str, Any] | None = None,
     pxk: Mapping[str, Any] | None,
     finance: Mapping[str, Any] | None,
+    delivery_note: Mapping[str, Any] | None = None,
     sub_purchase_contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the shipment's conditional document/work lifecycle.
