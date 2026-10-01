@@ -204,3 +204,23 @@ def test_delivery_note_keeps_optional_numeric_unknowns_blank(tmp_path):
     assert ws["B17"].value != 0
     assert ws["B19"].value != 0
     assert ws["B20"].value != 0
+
+
+def test_delivery_note_rejects_sheet_with_missing_cell_contract(tmp_path):
+    path = tmp_path / "owner.xlsx"
+    wb = openpyxl.Workbook()
+    wb.active.title = "HDMB"
+    ws = wb.create_sheet("delivery_note")
+    ws["B4"] = "..."
+    wb.save(path)
+
+    with pytest.raises(DeliveryNoteError) as exc:
+        generate_delivery_note_xlsx(
+            str(path),
+            shipment=_shipment(),
+            customer={"tax_code": "0101234567"},
+            delivery_note_no="PGH-MISSING-CELLS",
+            delivery_note_date="2026-09-30",
+        )
+
+    assert exc.value.code == "OUTPUT_CONTRACT_MISMATCH"
