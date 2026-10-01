@@ -584,6 +584,45 @@ def test_delivery_note_handler_persists_attachment_and_metadata(monkeypatch):
     assert store.call_args.args[2]["document_type"] == "DELIVERY_NOTE"
 
 
+def test_delivery_note_handler_ignores_client_template_path_override(monkeypatch):
+    from core.delivery_note import DeliveryNoteError
+
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {"CUS-143": {"customer_id": "CUS-143", "name": "CÔNG TY 143"}},
+    )
+    monkeypatch.setattr(
+        vm,
+        "_next_delivery_note_revision",
+        lambda shipment_id: {
+            "ok": True,
+            "document_id": "DELIVERY_NOTE::SHP-143",
+            "revision": 1,
+        },
+    )
+    monkeypatch.setattr(vm.logi_c1, "_resolve_template_paths", lambda: ("/owner.xlsx", None))
+    generate = Mock(
+        side_effect=DeliveryNoteError(
+            "TEMPLATE_SHEET_MISSING",
+            "bounded stop after template-path assertion",
+        )
+    )
+    monkeypatch.setattr("core.delivery_note.generate_delivery_note_xlsx", generate)
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "PGH-143",
+        "deliveryNoteDate": "2026-09-30",
+        "templatePathXlsx": "/client-controlled.xlsx",
+    })
+
+    assert result["ok"] is False
+    assert result["gate"] == "TEMPLATE_SHEET_MISSING"
+    assert generate.call_args.args[0] == "/owner.xlsx"
+
+
 def test_delivery_note_handler_fails_before_attachment_when_identity_missing(monkeypatch):
     monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
     monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
