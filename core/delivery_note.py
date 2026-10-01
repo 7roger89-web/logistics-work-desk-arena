@@ -50,8 +50,8 @@ def _section(shipment: Mapping[str, Any], key: str) -> Mapping[str, Any]:
 
 
 _DELIVERY_NOTE_DATE_RE = re.compile(
-    r"^(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}/\\d{2}/\\d{4}|\\d{2}-\\d{2}-\\d{4}|"
-    r"\\d{4}/\\d{2}/\\d{2}|\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})$"
+    r"^(?:\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}|\d{2}-\d{2}-\d{4}|"
+    r"\d{4}/\d{2}/\d{2}|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})$"
 )
 
 
