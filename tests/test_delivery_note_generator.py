@@ -177,3 +177,30 @@ def test_delivery_note_rejects_invalid_date_instead_of_using_today(tmp_path):
         )
 
     assert exc.value.code == "INVALID_DATE"
+
+
+def test_delivery_note_keeps_optional_numeric_unknowns_blank(tmp_path):
+    path = tmp_path / "owner.xlsx"
+    _template(path)
+    shipment = _shipment()
+    cargo = shipment["data"]["1.2"]["cargo_summary"]
+    cargo["package_count"] = None
+    cargo["gross_weight_kg"] = None
+    cargo["cbm"] = None
+
+    result = generate_delivery_note_xlsx(
+        str(path),
+        shipment=shipment,
+        customer={"tax_code": "0101234567"},
+        delivery_note_no="PGH-UNKNOWN",
+        delivery_note_date="2026-09-30",
+    )
+
+    wb = openpyxl.load_workbook(io.BytesIO(result["bytes"]), data_only=False)
+    ws = wb["delivery_note"]
+    assert ws["B17"].value in (None, "")
+    assert ws["B19"].value in (None, "")
+    assert ws["B20"].value in (None, "")
+    assert ws["B17"].value != 0
+    assert ws["B19"].value != 0
+    assert ws["B20"].value != 0
