@@ -4,6 +4,7 @@ from core.shipment_document_workflow import (
     FLOW_TT_ENTRUSTED_SUB,
     STATE_BLOCKED,
     STATE_COMPLETE,
+    STATE_MISSING,
     STATE_NOT_APPLICABLE,
     STATE_PENDING_DOCUMENT,
     STATE_READY,
@@ -311,7 +312,10 @@ def test_delivery_note_becomes_ready_after_delivery_and_complete_from_durable_do
         finance={},
     )
 
-    ready = build_document_workflow(**base)
+    ready = build_document_workflow(
+        **base,
+        delivery_note={"ready": True, "missing": []},
+    )
     delivery_ready = _step(ready, "delivery_note")
     assert delivery_ready["state"] == STATE_READY
     assert "số/ngày" in delivery_ready["reason"].lower()
@@ -340,3 +344,23 @@ def test_delivery_note_stays_blocked_before_delivery_even_when_generator_exists(
     )
     delivery = _step(workflow, "delivery_note")
     assert delivery["state"] == STATE_BLOCKED
+
+
+def test_delivery_note_workflow_reports_missing_generator_source_facts():
+    workflow = build_document_workflow(
+        flow={"mode": FLOW_TT_ENTRUSTED_DIRECT, "confirmed": True, "legalImporterTaxCode": "0101"},
+        quote_linked=True,
+        gnt={"ready": True, "taxCode": "0101"},
+        delivered=True,
+        pxk={"gateOpen": True},
+        finance={},
+        delivery_note={
+            "ready": False,
+            "missing": ["Thiếu mô tả hàng hóa trong cargo_summary."],
+        },
+    )
+
+    delivery = _step(workflow, "delivery_note")
+    assert delivery["state"] == STATE_MISSING
+    assert "mô tả hàng hóa" in delivery["reason"].lower()
+    assert delivery["actionLabel"] == "Mở giao hàng"
