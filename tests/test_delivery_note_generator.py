@@ -33,14 +33,31 @@ def _shipment(*, delivered: bool = True, goods_description: str = "Máy móc cô
                 },
                 "transport_legs": [
                     {
-                        "id": "LEG-1",
+                        "id": "LEG-PICKUP",
                         "sequence": 1,
                         "mode": "Truck",
-                        "origin": "Hải Phòng",
-                        "destination": "Hà Nội",
+                        "origin": "Nhà cung cấp",
+                        "destination": "Cảng Hải Phòng",
                         "units": [
                             {
-                                "id": "TRUCK-1",
+                                "id": "TRUCK-PICKUP",
+                                "kind": "truck",
+                                "number": "15C-111.11",
+                                "type_size": "8T",
+                                "driver_name": "Lái xe lấy hàng",
+                                "driver_phone": "0900000001",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "LEG-DELIVERY",
+                        "sequence": 2,
+                        "mode": "Truck",
+                        "origin": "Cảng Hải Phòng",
+                        "destination": "Kho khách hàng Hà Nội",
+                        "units": [
+                            {
+                                "id": "TRUCK-DELIVERY",
                                 "kind": "truck",
                                 "number": "29H-123.45",
                                 "type_size": "5T",
@@ -48,7 +65,7 @@ def _shipment(*, delivered: bool = True, goods_description: str = "Máy móc cô
                                 "driver_phone": "0901000000",
                             }
                         ],
-                    }
+                    },
                 ],
             },
             "2.7": {
@@ -144,3 +161,19 @@ def test_delivery_note_generates_real_xlsx_from_canonical_facts(tmp_path):
     assert ws["B20"].value == 8.25
     assert ws["B24"].value == "29H-123.45"
     assert ws["B25"].value == "Nguyễn Văn A"
+
+
+def test_delivery_note_rejects_invalid_date_instead_of_using_today(tmp_path):
+    path = tmp_path / "owner.xlsx"
+    _template(path)
+
+    with pytest.raises(DeliveryNoteError) as exc:
+        generate_delivery_note_xlsx(
+            str(path),
+            shipment=_shipment(),
+            customer={"tax_code": "0101234567"},
+            delivery_note_no="PGH-INVALID-DATE",
+            delivery_note_date="khong-phai-ngay",
+        )
+
+    assert exc.value.code == "INVALID_DATE"
