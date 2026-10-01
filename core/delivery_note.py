@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import re
 from collections.abc import Mapping
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,10 +49,22 @@ def _section(shipment: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+_DELIVERY_NOTE_DATE_RE = re.compile(
+    r"^(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}/\\d{2}/\\d{4}|\\d{2}-\\d{2}-\\d{4}|"
+    r"\\d{4}/\\d{2}/\\d{2}|\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})$"
+)
+
+
 def _date_ddmmyyyy(value: Any) -> str:
     if value is None or str(value).strip() == "":
         return ""
-    parsed = parse_date_optional(value)
+    if isinstance(value, (date, datetime)):
+        parsed = parse_date_optional(value)
+    else:
+        raw = str(value).strip()
+        if not _DELIVERY_NOTE_DATE_RE.fullmatch(raw):
+            raise DeliveryNoteError("INVALID_DATE", f"Ngày Phiếu giao hàng không hợp lệ: {value}")
+        parsed = parse_date_optional(raw)
     if parsed is None:
         raise DeliveryNoteError("INVALID_DATE", f"Ngày Phiếu giao hàng không hợp lệ: {value}")
     return parsed.strftime("%d/%m/%Y")
@@ -65,7 +79,16 @@ def _template_hash(template_path: str) -> str:
 
 
 def _assert_template_contract(template_path: str) -> None:
-    """Require the Owner workbook to expose the bounded delivery-note sheet."""
+    """Require a readable Owner workbook with the bounded delivery-note sheet."""
+    try:
+        with Path(template_path).open("rb"):
+            pass
+    except OSError as exc:
+        raise DeliveryNoteError(
+            "TEMPLATE_NOT_FOUND",
+            "Không đọc được template Phiếu giao hàng.",
+        ) from exc
+
     try:
         import openpyxl
 
