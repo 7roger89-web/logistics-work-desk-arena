@@ -150,10 +150,12 @@ export default function ShipmentAttachments({
   shipmentId,
   attachments,
   policy,
+  contextCategories,
 }: {
   shipmentId: string;
   attachments: ShipmentAttachment[];
   policy?: AttachmentPolicy;
+  contextCategories?: string[];
 }) {
   const { dispatch, toast } = useStore();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -164,6 +166,12 @@ export default function ShipmentAttachments({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
+  const [showAllContext, setShowAllContext] = useState(false);
+  const categoryContext = contextCategories?.join("|") || "";
+  useEffect(() => {
+    setShowAllContext(false);
+    if (contextCategories?.length) setCategory(contextCategories[0]);
+  }, [shipmentId, categoryContext]);
   const [file, setFile] = useState<File | null>(null);
   const [pendingUpload, setPendingUpload] = useState("");
   const [pendingDownload, setPendingDownload] = useState<{ requestId: string; attachmentId: string } | null>(null);
@@ -392,10 +400,15 @@ export default function ShipmentAttachments({
     }
   };
 
-  const rows = Array.isArray(attachments) ? attachments : [];
+  const allRows = Array.isArray(attachments) ? attachments : [];
+  const rows = contextCategories && !showAllContext ? allRows.filter(item => contextCategories.includes(item.category)) : allRows;
 
   return (
     <section className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-attachments">
+      {contextCategories && <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <span>{showAllContext ? "Tất cả tệp của lô" : "Tệp liên quan công đoạn"}</span>
+        <button type="button" onClick={() => setShowAllContext(v => !v)} className="touch-target rounded-lg border px-3 py-2 font-bold">{showAllContext ? "Về công đoạn" : `Xem toàn bộ tệp (${allRows.length})`}</button>
+      </div>}
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
         title="Tệp đính kèm lô hàng"

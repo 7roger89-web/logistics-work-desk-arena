@@ -213,6 +213,7 @@ export interface MoneyLine {
  * it is never filled with a fabricated 0 or a guessed service code.
  */
 export interface FinanceActualLine extends MoneyLine {
+  journeyStage?: string;
   id: string;
   name: string;
   code: string;
@@ -798,7 +799,23 @@ export interface DocumentWorkflow {
   };
 }
 
+export interface JourneyNode {
+  id: string; label: string; family: string; targetTab: string;
+  /** Derived occurrence fact; CURRENT/PROBLEM are independent visual overlays. */
+  completed: boolean;
+  state: "COMPLETED" | "CURRENT" | "UPCOMING" | "WAITING" | "PROBLEM";
+  factState: string; evidence: string; deadline: string; owned: boolean; current: boolean;
+  blockers: string[]; dependencies: string[]; documentCategories: string[]; documentIds: string[];
+}
+export interface ShipmentJourney {
+  nodes: JourneyNode[]; edges: { from: string; to: string }[];
+  currentStageId: string; owner: string; positionNote: string;
+  seaFacts: Record<string, string>;
+  primaryAction: { text: string; detail: string; priority: string; route: string };
+}
+
 export interface Shipment {
+  journey?: ShipmentJourney;
   id: string;
   customer: string;
   customerMST: string;
