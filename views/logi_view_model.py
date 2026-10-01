@@ -1045,6 +1045,7 @@ PHASE_B_EVENTS = {
     "shipment_create",
     "pxk_generate",
     "gnt_generate",
+    "delivery_note_generate",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -3616,6 +3617,60 @@ def _next_gnt_revision(shipment_id: str) -> dict[str, Any]:
     }
 
 
+def _next_delivery_note_revision(shipment_id: str) -> dict[str, Any]:
+    """Read the next delivery-note revision from durable docgen metadata only."""
+    from core.database import load_docgen_documents
+
+    logical_id = f"DELIVERY_NOTE::{shipment_id}"
+    try:
+        documents = load_docgen_documents(shipment_id) or {}
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"Không đọc được revision Phiếu giao hàng: {exc}",
+            "document_id": logical_id,
+        }
+
+    revisions: list[int] = []
+    for document in documents.values():
+        if not isinstance(document, Mapping):
+            continue
+        if rd.text(document.get("document_type")).upper() != "DELIVERY_NOTE":
+            continue
+        if rd.text(document.get("document_id")) != logical_id:
+            continue
+        generation_raw = document.get("generation_revision")
+        revision_raw = document.get("revision")
+        if generation_raw is None and revision_raw is None:
+            return {
+                "ok": False,
+                "error": f"Metadata Phiếu giao hàng {document.get('id') or logical_id} thiếu revision; không đoán tiếp.",
+                "document_id": logical_id,
+            }
+        try:
+            generation = int(generation_raw if generation_raw is not None else revision_raw)
+            revision = int(revision_raw if revision_raw is not None else generation_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": f"Metadata Phiếu giao hàng {document.get('id') or logical_id} có revision không hợp lệ.",
+                "document_id": logical_id,
+            }
+        if generation < 1 or revision < 1 or generation != revision:
+            return {
+                "ok": False,
+                "error": f"Metadata Phiếu giao hàng {document.get('id') or logical_id} có revision không nhất quán.",
+                "document_id": logical_id,
+            }
+        revisions.append(generation)
+
+    return {
+        "ok": True,
+        "document_id": logical_id,
+        "revision": max(revisions) + 1 if revisions else 1,
+    }
+
+
 def _generated_attachment_failure(
     event: str,
     shipment_id: str,
@@ -4129,6 +4184,215 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 
+def _handle_delivery_note_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Generate one durable delivery-note XLSX from canonical shipment facts."""
+    from datetime import datetime, timezone
+
+    from core.auth import can_generate_documents
+    from core.database import load_customers
+    from core.delivery_note import DeliveryNoteError, generate_delivery_note_xlsx
+    from core.shipment_attachments import upload_attachment
+    from views import logi_c1
+
+    event_name = "delivery_note_generate"
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result(event_name, sid, False, "Thiếu shipmentId.")
+    if not can_generate_documents():
+        return _result(
+            event_name,
+            sid,
+            False,
+            "RBAC: không có quyền sales_write để sinh Phiếu giao hàng.",
+            gate="BLOCKED_PERMISSION_DENIED",
+        )
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result(event_name, sid, False, f"Không tìm thấy lô {sid}.")
+
+    delivery_note_no = rd.text(payload.get("deliveryNoteNo")).strip()
+    delivery_note_date = rd.text(payload.get("deliveryNoteDate")).strip()
+    if not delivery_note_no or not delivery_note_date:
+        missing = []
+        if not delivery_note_no:
+            missing.append("Số Phiếu giao hàng")
+        if not delivery_note_date:
+            missing.append("Ngày Phiếu giao hàng")
+        return _result(
+            event_name,
+            sid,
+            False,
+            "Chưa đủ định danh Phiếu giao hàng: " + ", ".join(missing),
+            gate="MISSING_DOCUMENT_IDENTITY",
+            missing=missing,
+        )
+
+    revision = _next_delivery_note_revision(sid)
+    if not revision.get("ok"):
+        return _result(
+            event_name,
+            sid,
+            False,
+            rd.text(revision.get("error")) or "Không xác định được revision Phiếu giao hàng.",
+            gate="DELIVERY_NOTE_REVISION_INVALID",
+            failClosed=True,
+        )
+
+    customer_id = rd.text(shipment.get("customer_id"))
+    try:
+        customers = load_customers() or {}
+    except Exception:
+        customers = {}
+    customer = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+
+    template_xlsx = rd.text(payload.get("templatePathXlsx"))
+    if not template_xlsx:
+        template_xlsx = rd.text(logi_c1._resolve_template_paths()[0])
+
+    try:
+        generated = generate_delivery_note_xlsx(
+            template_xlsx,
+            shipment=shipment,
+            customer=customer,
+            delivery_note_no=delivery_note_no,
+            delivery_note_date=delivery_note_date,
+        )
+    except DeliveryNoteError as exc:
+        return _result(
+            event_name,
+            sid,
+            False,
+            exc.reason,
+            gate=exc.code,
+            missing=list(exc.missing),
+            failClosed=True,
+        )
+
+    raw = generated.get("bytes") or b""
+    rev = int(revision["revision"])
+    logical_id = rd.text(revision.get("document_id"))
+    record_id = f"{logical_id}::R{rev}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    actor_name = _actor()
+    file_name = rd.text(generated.get("output_file_name")) or f"PHIEU_GIAO_HANG_{sid}.xlsx"
+
+    attachment_outcome = upload_attachment(
+        shipment_id=sid,
+        category="other",
+        file_name=file_name,
+        mime=logi_c1._MIME_XLSX,
+        data=raw,
+        uploaded_by=actor_name,
+        declared_size=len(raw),
+        shipment_context=shipment,
+    )
+    attachment_record = attachment_outcome.get("record") or {}
+    if not attachment_outcome.get("ok"):
+        return _generated_attachment_failure(
+            event_name,
+            sid,
+            attachment_outcome,
+            service="core.delivery_note.generate_delivery_note_xlsx",
+        )
+    if not isinstance(attachment_record, Mapping) or not rd.text(attachment_record.get("id")):
+        return _generated_attachment_failure(
+            event_name,
+            sid,
+            {
+                "code": "ATTACHMENT_READBACK_UNPROVEN",
+                "error": "Kho chứng từ báo thành công nhưng thiếu hồ sơ tệp canonical.",
+            },
+            service="core.delivery_note.generate_delivery_note_xlsx",
+        )
+    attachment_view = _project_generated_attachment(attachment_outcome)
+
+    metadata = {
+        "id": record_id,
+        "document_id": logical_id,
+        "document_type": "DELIVERY_NOTE",
+        "shipment_id": sid,
+        "contract_id": "",
+        "parent_contract_id": None,
+        "counterparty_id": customer_id,
+        "template_hash": rd.text(generated.get("template_hash")),
+        "generation_revision": rev,
+        "revision": rev,
+        "status": "GENERATED",
+        "generated_at": now_iso,
+        "generated_by": actor_name,
+        "source_snapshot": dict(generated.get("source_snapshot") or {}),
+        "source_reference": rd.text(generated.get("source_reference")),
+        "output_file_name": file_name,
+        "output_hash": rd.text(generated.get("output_hash")),
+        "supersedes_document_id": None,
+        "superseded_by_document_id": None,
+    }
+    metadata_outcome = _persist_generated_docgen_metadata(metadata)
+    if not metadata_outcome.get("ok"):
+        return _result(
+            event_name,
+            sid,
+            False,
+            rd.text(metadata_outcome.get("error")) or "Không lưu được metadata Phiếu giao hàng.",
+            gate=(
+                "DELIVERY_NOTE_REVISION_COLLISION"
+                if metadata_outcome.get("collision")
+                else "DELIVERY_NOTE_METADATA_FAILED"
+            ),
+            failClosed=True,
+            attachmentPersisted=True,
+            partialDurable=True,
+            attachment=attachment_view,
+            metadataCommitted=bool(metadata_outcome.get("metadata_committed")),
+            duplicate=bool(attachment_outcome.get("duplicate")),
+            **_attachment_result_extras(sid),
+        )
+
+    session_cache_error = ""
+    try:
+        logi_c1.store_output(
+            sid,
+            record_id,
+            {
+                "file_name": file_name,
+                "mime": logi_c1._MIME_XLSX,
+                "bytes": raw,
+                "document_type": "DELIVERY_NOTE",
+                "revision": rev,
+                "generated_at": now_iso,
+                "generated_by": actor_name,
+            },
+        )
+    except Exception as exc:
+        session_cache_error = str(exc)
+
+    return _result(
+        event_name,
+        sid,
+        True,
+        "Đã tạo Phiếu giao hàng XLSX và lưu vào kho chứng từ của lô.",
+        gate="READY",
+        persisted={
+            "documentId": logical_id,
+            "recordId": record_id,
+            "attachmentId": rd.text(attachment_record.get("id")),
+            "fileName": file_name,
+            "revision": rev,
+            "bytes": len(raw),
+            "isOfficeFile": raw[:2] == b"PK",
+            "deliveryNoteNo": delivery_note_no,
+            "deliveryNoteDate": delivery_note_date,
+            "attachmentDuplicate": bool(attachment_outcome.get("duplicate")),
+            "sessionCachePersisted": not bool(session_cache_error),
+        },
+        attachment=attachment_view,
+        sessionCacheError=session_cache_error,
+        readback=_projection_for(read_shipment(sid) or {}),
+        audit=_audit_trail(sid),
+    )
+
+
 def _handle_tariff_source_upload(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Admin-only XLSX -> indexed SQLite -> compressed durable Mongo asset."""
     from core.auth import can_operate_business
@@ -4242,6 +4506,7 @@ _HANDLERS = {
     "shipment_create": _handle_shipment_create,
     "pxk_generate": _handle_pxk_generate,
     "gnt_generate": _handle_gnt_generate,
+    "delivery_note_generate": _handle_delivery_note_generate,
     "partner_payable_record": _handle_partner_payable_record,
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
