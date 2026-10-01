@@ -1243,6 +1243,7 @@ def shipment_projection(
 
     gnt_view = _gnt_projection(shipment, customs, customer_doc, sid)
     finance_view = finance_projection(shipment, quotes, ledger=ledger, agents=agents)
+    delivery_note_view = _delivery_note_document(sid, grouped=docgen_documents)
     pxk_view = pxk_projection(
         shipment,
         contracts,
@@ -1280,6 +1281,7 @@ def shipment_projection(
         delivered=bool(delivery.get("is_delivered")),
         pxk=pxk_view,
         finance=finance_view,
+        delivery_note=delivery_note_view,
         sub_purchase_contract=sub_purchase_contract,
     )
 
@@ -1672,6 +1674,53 @@ def _pxk_document(
         "downloadBase64": file_view["downloadBase64"],
         "number": text(snapshot.get("pxk_no")),
         "date": text(snapshot.get("pxk_date")),
+    }
+
+
+def _delivery_note_document(
+    shipment_id: str,
+    *,
+    grouped: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Latest durable delivery-note metadata for one shipment."""
+    if not shipment_id:
+        return {}
+    if grouped is None:
+        from core.database import load_docgen_documents
+
+        try:
+            docs = load_docgen_documents(shipment_id) or {}
+        except Exception:  # noqa: BLE001
+            return {}
+    else:
+        docs = grouped.get(shipment_id) or {}
+
+    rows = [
+        doc for doc in docs.values()
+        if isinstance(doc, Mapping)
+        and text(doc.get("document_type")).upper() == "DELIVERY_NOTE"
+    ]
+    if not rows:
+        return {}
+
+    def _revision(doc: Mapping[str, Any]) -> int:
+        try:
+            return int(doc.get("generation_revision") or doc.get("revision") or 1)
+        except Exception:  # noqa: BLE001
+            return 1
+
+    latest = max(rows, key=_revision)
+    snapshot = latest.get("source_snapshot")
+    snapshot = snapshot if isinstance(snapshot, Mapping) else {}
+    return {
+        "done": True,
+        "recordId": text(latest.get("id")),
+        "documentId": text(latest.get("document_id")),
+        "revision": _revision(latest),
+        "number": text(snapshot.get("delivery_note_no")),
+        "date": text(snapshot.get("delivery_note_date")),
+        "fileName": text(latest.get("output_file_name")),
+        "status": text(latest.get("status")),
     }
 
 
