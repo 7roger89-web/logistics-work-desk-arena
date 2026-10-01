@@ -92,7 +92,7 @@ def test_created_at_is_now_in_the_write_whitelist():
     """
     assert vm.FIELD_PATHS["created_at"] == ("data", "0.0", "created_at")
     assert "created_at" in vm._DATE_FIELDS
-    assert len(vm.FIELD_PATHS) == 31
+    assert len(vm.FIELD_PATHS) == 34
     under_00 = {k for k, path in vm.FIELD_PATHS.items() if path[1:2] == ("0.0",)}
     assert under_00 == {"incoterm", "mode", "created_at"}
     # The lot CODE is an identifier, not a name field: never writable here.
