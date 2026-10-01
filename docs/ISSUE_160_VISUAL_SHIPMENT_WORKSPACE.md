@@ -107,3 +107,67 @@ does not resolve unrelated baseline test drift.
 
 `LEARNING_RECONCILIATION=NONE`: bounded task-specific decisions and environment
 workarounds are captured here; no new reusable project-law rule is proposed.
+
+## Corrective follow-up to independent review 5936389815
+
+Fresh main remains `aaa3136ca354ac3c7671ea04e493ed6818ec688a`.
+Fresh branch/PR head matched the reviewed head
+`b267c0192da0f78e3358d9ee5d4adafe797639d3`; no initial drift.
+All PR conversation/review endpoints were read: one conversation finding,
+zero formal reviews, zero inline review comments. The updated head is pinned
+in the corrective commit and the direct PR conversation reply, avoiding a
+self-referential commit hash inside its own tree.
+
+**Root cause:** readiness consulted a mutable presentation `state`. Real ATA
+made Arrival factually complete, then CURRENT (or a dashboard alert made it
+PROBLEM), so import readiness lost that occurrence truth.
+
+**Exact repair:** each projected node now carries derived `completed: bool`.
+Dependency readiness reads parent `completed`; its own readiness condition
+also reads factual completion. Existing CURRENT / PROBLEM overlays, current
+position, blockers, stage families, edges and final action precedence stay
+unchanged. TypeScript declares the derived boolean. It is never written back
+as workflow state. No writer, RBAC, payment or document paths changed.
+
+Two regression variants use actual main-leg ATD + ATA and relevant import
+customs. An existing declaration number satisfies the profile's information
+requirement without implying clearance. Arrival is `completed=true` and
+`current=true`, with either CURRENT or dashboard-overlaid PROBLEM. Import is
+`completed=false`, depends on Arrival and becomes WAITING. Earlier missing
+SI/VGM evidence still coexists with physical arrival. The projected input
+document remains byte-for-byte equivalent as a Python value.
+
+Both variants failed on the old reviewed derivation with **UPCOMING != WAITING**
+before the repair. After repair:
+
+| Check | Result |
+| --- | --- |
+| Focused Visual Shipment Workspace | 21 passed (two new regression variants) |
+| Nine related suites: operations/projection, execution profile, finance, document workflow, primary action, scope, two Support RBAC suites, slash routes | 261 passed, 5 known baseline failures |
+| Combined challenged boundaries | 282 passed, same 5 baseline failures |
+| Five-failure recheck on untouched pinned-main sources | All five reproduced with the same assertions/errors; 429 materialized source blobs verified against main |
+| Production-bundle DOM acceptance | PASS; real backend snapshots, pending/refusal/readback and contexts |
+| Browser runtime | PASS; 1440/390px, real isolated dispatcher/writer/readback, no page overflow, 44px workspace controls, zero page errors |
+| Typecheck / Vite build / process scan | PASS / PASS / 0 executable process references |
+| Repeated clean rebuild consistency | PASS; JS/CSS are byte-identical to each other and the old PR bundle (TypeScript-only frontend contract change erases at build time) |
+
+The five unchanged baseline failures are:
+
+- `test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data`
+- `test_service_catalog_is_projected_from_core_config`
+- `test_service_catalog_is_not_hardcoded_in_react`
+- `SupportContractPersistenceTests::test_support_route_visibility_keeps_admin_only_user_route_hidden`
+- `SupportContractMountedUiTests::test_support_contract_form_is_mounted_and_save_control_is_enabled`
+
+`SEA_POS`, the SI/VGM + gate-in construction and static stage IDs were only
+reviewed as existing seams and deliberately left unchanged. No Phase 2 work.
+Independent re-review remains pending. No merge, auto-merge or production deploy.
+
+**Learning reconciliation supersedes the earlier routine-success receipt:**
+`LEARNING_RECONCILIATION=CANDIDATE`, scope `DOMAIN`. Trigger: dependency graphs
+whose display badges can override completion labels. Candidate correction:
+evaluate readiness from immutable derived occurrence facts, independently of
+attention/current-position overlays. Evidence: reviewer counterexample,
+both failing-before regression variants, and the 21-passing-after suite.
+This receipt is a candidate only; it is not promoted to shared experience,
+project law or a framework.

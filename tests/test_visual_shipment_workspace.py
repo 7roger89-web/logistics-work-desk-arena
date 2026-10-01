@@ -62,6 +62,7 @@ def test_past_schedule_scope_config_and_declaration_are_not_occurrence():
     row = project(doc)
     assert row['journey']['currentStageId'] == ''
     for id in ('pickup', 'customs-export', 'etd', 'on-board', 'transit', 'arrival'):
+        assert nodes(row)[id]['completed'] is False
         assert nodes(row)[id]['state'] != 'COMPLETED'
     assert nodes(row)['customs-export']['factState'] == 'KNOWN'
     assert nodes(row)['on-board']['factState'] == 'UNKNOWN'
@@ -77,6 +78,32 @@ def test_actual_main_sea_leg_controls_position_not_pickup_departure():
     assert nodes(row)['gate-in']['state'] != 'COMPLETED'
     doc['data']['1.2']['transport_legs'][1]['ata'] = '2026-10-05'
     assert project(doc)['journey']['currentStageId'] == 'arrival'
+
+
+@pytest.mark.parametrize('alert', [None, {'code': 'FREE_TIME_OVERDUE', 'label': 'Quá hạn free time'}],
+                         ids=['completed-current', 'completed-problem'])
+def test_arrival_occurrence_satisfies_import_dependency_despite_visual_overlay(alert):
+    doc = document(scope=['MAIN_CARRIAGE', 'IMPORT_CUSTOMS'])
+    main = doc['data']['1.2']['transport_legs'][1]
+    main.update(atd='2026-10-02', ata='2026-10-05')
+    # Registration satisfies the existing profile's information requirement;
+    # it is NOT clearance. Import remains factually incomplete and unblocked.
+    doc['data']['2.4']['tk_no'] = 'IMPORT-REGISTERED-160'
+    original = deepcopy(doc)
+    row = project(doc, dashboard={'alerts': [alert] if alert else []})
+    arrival, customs = nodes(row)['arrival'], nodes(row)['customs-import']
+    assert customs['dependencies'] == ['arrival']
+    assert customs['state'] == 'WAITING'  # old head: UPCOMING after overlay
+    assert arrival['completed'] is True
+    assert arrival['state'] == ('PROBLEM' if alert else 'CURRENT')
+    assert arrival['current'] is True
+    assert row['journey']['currentStageId'] == 'arrival'
+    assert bool(arrival['blockers']) is bool(alert)
+    assert customs['completed'] is False
+    assert nodes(row)['si-vgm']['completed'] is False
+    assert nodes(row)['si-vgm']['blockers']  # earlier missing evidence coexists
+    assert row['journey']['primaryAction']['text'] == row['nextAction']
+    assert doc == original  # occurrence is projected, never persisted
 
 
 def test_primary_critical_and_profile_anchor_remain_authoritative():
@@ -104,6 +131,7 @@ def test_same_attachment_id_can_belong_to_multiple_nodes_and_upload_is_not_submi
     assert 'ATT-1' in nodes(row)['booking']['documentIds']
     assert 'ATT-1' in nodes(row)['on-board']['documentIds']
     assert nodes(row)['si-vgm']['documentIds'] == ['ATT-VGM']
+    assert nodes(row)['si-vgm']['completed'] is False
     assert nodes(row)['si-vgm']['state'] != 'COMPLETED'
     assert row['journey']['seaFacts']['vgm_status'] == 'UNKNOWN'
 

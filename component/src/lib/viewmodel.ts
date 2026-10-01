@@ -801,6 +801,8 @@ export interface DocumentWorkflow {
 
 export interface JourneyNode {
   id: string; label: string; family: string; targetTab: string;
+  /** Derived occurrence fact; CURRENT/PROBLEM are independent visual overlays. */
+  completed: boolean;
   state: "COMPLETED" | "CURRENT" | "UPCOMING" | "WAITING" | "PROBLEM";
   factState: string; evidence: string; deadline: string; owned: boolean; current: boolean;
   blockers: string[]; dependencies: string[]; documentCategories: string[]; documentIds: string[];

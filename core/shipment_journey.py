@@ -51,6 +51,8 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
 
     def add(id, label, family, tab, *, done=False, evidence='', deadline='', categories=(), owned=False):
         nodes.append({'id': id, 'label': label, 'family': family, 'targetTab': tab,
+                      # Derived occurrence truth; visual overlays never erase it.
+                      'completed': bool(done),
                       'state': 'COMPLETED' if done else 'UPCOMING',
                       'factState': 'KNOWN' if evidence else 'UNKNOWN', 'evidence': str(evidence or ''),
                       'deadline': str(deadline or ''), 'owned': owned,
@@ -147,7 +149,7 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     for n in nodes:
         if n['blockers']: n['state'] = 'PROBLEM'
         elif n['id'] == current: n['state'] = 'CURRENT'
-        elif n['state'] != 'COMPLETED' and n['dependencies'] and all(by_id[p]['state'] == 'COMPLETED' for p in n['dependencies']): n['state'] = 'WAITING'
+        elif not n['completed'] and n['dependencies'] and all(by_id[p]['completed'] for p in n['dependencies']): n['state'] = 'WAITING'
         n['current'] = n['id'] == current
     return {'nodes': nodes, 'edges': edges, 'currentStageId': current,
             'owner': str(dashboard.get('owner') or ''),
