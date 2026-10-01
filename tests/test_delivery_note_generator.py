@@ -163,6 +163,37 @@ def test_delivery_note_generates_real_xlsx_from_canonical_facts(tmp_path):
     assert ws["B25"].value == "Nguyễn Văn A"
 
 
+def test_delivery_note_reports_missing_owner_template(tmp_path):
+    path = tmp_path / "missing-owner.xlsx"
+
+    with pytest.raises(DeliveryNoteError) as exc:
+        generate_delivery_note_xlsx(
+            str(path),
+            shipment=_shipment(),
+            customer={"tax_code": "0101234567"},
+            delivery_note_no="PGH-MISSING-TEMPLATE",
+            delivery_note_date="2026-09-30",
+        )
+
+    assert exc.value.code == "TEMPLATE_NOT_FOUND"
+
+
+def test_delivery_note_rejects_trailing_garbage_in_date(tmp_path):
+    path = tmp_path / "owner.xlsx"
+    _template(path)
+
+    with pytest.raises(DeliveryNoteError) as exc:
+        generate_delivery_note_xlsx(
+            str(path),
+            shipment=_shipment(),
+            customer={"tax_code": "0101234567"},
+            delivery_note_no="PGH-TRAILING-GARBAGE",
+            delivery_note_date="15-08-2026x",
+        )
+
+    assert exc.value.code == "INVALID_DATE"
+
+
 def test_delivery_note_rejects_invalid_date_instead_of_using_today(tmp_path):
     path = tmp_path / "owner.xlsx"
     _template(path)
