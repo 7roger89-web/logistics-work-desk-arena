@@ -12,6 +12,7 @@ when they are required; optional numeric facts are written blank, never as 0.
 from __future__ import annotations
 
 import hashlib
+import io
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -207,6 +208,38 @@ def build_delivery_note_fill(
     }
 
 
+def _assert_output_contract(output: bytes, fill: Mapping[str, Mapping[str, Any]]) -> None:
+    """Read the generated workbook back so missing template cells cannot pass silently."""
+    try:
+        import openpyxl
+
+        workbook = openpyxl.load_workbook(io.BytesIO(output), read_only=True, data_only=False)
+        try:
+            sheet = workbook[SHEET_NAME]
+            mismatches: list[str] = []
+            for coord, expected in (fill.get(SHEET_NAME) or {}).items():
+                # UNKNOWN/optional blanks intentionally remain blank.
+                if expected is None or str(expected) == "":
+                    continue
+                actual = sheet[coord].value
+                if str(actual) != str(expected):
+                    mismatches.append(f"{coord}: expected={expected!r}, actual={actual!r}")
+            if mismatches:
+                raise DeliveryNoteError(
+                    "OUTPUT_CONTRACT_MISMATCH",
+                    "Template Phiếu giao hàng thiếu/sai ô contract: " + "; ".join(mismatches[:6]),
+                )
+        finally:
+            workbook.close()
+    except DeliveryNoteError:
+        raise
+    except Exception as exc:
+        raise DeliveryNoteError(
+            "OUTPUT_INVALID",
+            f"Không đọc lại được Phiếu giao hàng vừa sinh: {exc}",
+        ) from exc
+
+
 def generate_delivery_note_xlsx(
     template_path: str,
     *,
@@ -231,6 +264,7 @@ def generate_delivery_note_xlsx(
     output = mutate_xlsx(template_path, fill)
     if output[:2] != b"PK":
         raise DeliveryNoteError("OUTPUT_INVALID", "Phiếu giao hàng sinh ra không phải XLSX hợp lệ.")
+    _assert_output_contract(output, fill)
 
     safe_no = _text(delivery_note_no).replace("/", "-").replace("\\", "-")
     return {
