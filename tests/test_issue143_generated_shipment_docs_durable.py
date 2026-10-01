@@ -599,3 +599,56 @@ def test_delivery_note_handler_fails_before_attachment_when_identity_missing(mon
     assert result["ok"] is False
     assert result["gate"] == "MISSING_DOCUMENT_IDENTITY"
     upload.assert_not_called()
+
+
+def test_delivery_note_attachment_failure_stops_before_metadata_and_session_success(monkeypatch):
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr("core.auth.current_user", lambda: {"username": "writer-143"})
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {"CUS-143": {"customer_id": "CUS-143", "name": "CÔNG TY 143"}},
+    )
+    monkeypatch.setattr(
+        vm,
+        "_next_delivery_note_revision",
+        lambda shipment_id: {
+            "ok": True,
+            "document_id": "DELIVERY_NOTE::SHP-143",
+            "revision": 1,
+        },
+    )
+    monkeypatch.setattr(
+        "core.delivery_note.generate_delivery_note_xlsx",
+        lambda *args, **kwargs: {
+            "bytes": b"PK-delivery-note",
+            "output_file_name": "PHIEU_GIAO_HANG_PGH-143.xlsx",
+            "output_hash": "out-hash",
+            "template_hash": "tpl-hash",
+            "source_snapshot": {
+                "delivery_note_no": "PGH-143",
+                "delivery_note_date": "2026-09-30",
+            },
+            "source_reference": "shipment:SHP-143:data.2.7+cargo_summary",
+        },
+    )
+    monkeypatch.setattr(vm.logi_c1, "_resolve_template_paths", lambda: ("/owner.xlsx", None))
+    monkeypatch.setattr(vm, "_attachment_result_extras", lambda shipment_id: {})
+    upload = Mock(return_value={"ok": False, "code": "STORE_FAILED", "error": "write failed"})
+    metadata = Mock()
+    store = Mock()
+    monkeypatch.setattr("core.shipment_attachments.upload_attachment", upload)
+    monkeypatch.setattr(vm, "_persist_generated_docgen_metadata", metadata)
+    monkeypatch.setattr(vm.logi_c1, "store_output", store)
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "PGH-143",
+        "deliveryNoteDate": "2026-09-30",
+    })
+
+    assert result["ok"] is False
+    assert result["gate"] == "STORE_FAILED"
+    assert result["attachmentPersisted"] is False
+    metadata.assert_not_called()
+    store.assert_not_called()
