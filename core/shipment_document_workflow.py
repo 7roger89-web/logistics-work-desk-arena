@@ -547,14 +547,25 @@ def build_document_workflow(
     if has_delivery_note:
         delivery_note_state = STATE_COMPLETE
         delivery_note_reason = "Phiếu giao hàng đã được tạo và lưu bền vững cho lô."
-    elif delivered:
-        delivery_note_state = STATE_READY
-        delivery_note_reason = (
-            "Đã giao hàng; nhập Số/Ngày Phiếu giao hàng và tạo XLSX từ template Owner."
-        )
-    else:
+    elif not delivered:
         delivery_note_state = STATE_BLOCKED
         delivery_note_reason = "Chưa xác nhận giao hàng thực tế."
+    elif delivery_note.get("ready"):
+        delivery_note_state = STATE_READY
+        delivery_note_reason = (
+            "Đã đủ dữ liệu giao hàng; nhập Số/Ngày Phiếu giao hàng và tạo XLSX từ template Owner."
+        )
+    else:
+        delivery_note_state = STATE_MISSING
+        missing = [
+            str(item) for item in (delivery_note.get("missing") or [])
+            if str(item).strip()
+        ]
+        delivery_note_reason = (
+            "Thiếu: " + ", ".join(missing)
+            if missing
+            else "Chưa đủ dữ liệu nguồn để tạo Phiếu giao hàng."
+        )
     steps.append(_step(
         "delivery_note",
         "Phiếu giao hàng",
