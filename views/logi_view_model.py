@@ -4246,9 +4246,10 @@ def _handle_delivery_note_generate(payload: Mapping[str, Any]) -> dict[str, Any]
         customers = {}
     customer = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
 
-    template_xlsx = rd.text(payload.get("templatePathXlsx"))
-    if not template_xlsx:
-        template_xlsx = rd.text(logi_c1._resolve_template_paths()[0])
+    # Template location is server authority. The event payload may never
+    # override the Owner-controlled production workbook; the existing resolver
+    # already selects the QA workbook only in sandbox transport.
+    template_xlsx = rd.text(logi_c1._resolve_template_paths()[0])
 
     try:
         generated = generate_delivery_note_xlsx(
