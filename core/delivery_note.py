@@ -18,7 +18,7 @@ from typing import Any
 
 from core.docgen.template_engine import mutate_xlsx
 from core.shipment_operations import cargo_summary_for_read, compatibility_facts
-from core.utils import parse_date
+from core.utils import parse_date_optional
 
 DOCUMENT_TYPE = "DELIVERY_NOTE"
 SHEET_NAME = "delivery_note"
@@ -49,10 +49,10 @@ def _section(shipment: Mapping[str, Any], key: str) -> Mapping[str, Any]:
 def _date_ddmmyyyy(value: Any) -> str:
     if value is None or str(value).strip() == "":
         return ""
-    try:
-        return parse_date(value).strftime("%d/%m/%Y")
-    except Exception as exc:
-        raise DeliveryNoteError("INVALID_DATE", f"Ngày phiếu giao hàng không hợp lệ: {value}") from exc
+    parsed = parse_date_optional(value)
+    if parsed is None:
+        raise DeliveryNoteError("INVALID_DATE", f"Ngày Phiếu giao hàng không hợp lệ: {value}")
+    return parsed.strftime("%d/%m/%Y")
 
 
 def _template_hash(template_path: str) -> str:
