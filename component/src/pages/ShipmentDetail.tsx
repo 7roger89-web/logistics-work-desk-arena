@@ -9,6 +9,8 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
+import ShipmentJourney, { SeaExportFacts } from "../components/ShipmentJourney";
+import type { JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
 import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile, parseAmountVN } from "../lib/format";
@@ -210,6 +212,16 @@ export default function ShipmentDetail() {
   // labelled with this code and amounts of different currencies are never
   // summed. The "VND" fallback mirrors core.logic's own default.
   const ccy = s.finance.currency || "VND";
+  const workspaceNode = s.journey?.nodes.find(n => n.id === sp.get("stage"));
+  const workspaceWork = sp.get("work") || "info";
+  const showExistingWork = !workspaceNode || (workspaceWork !== "overview" && !(workspaceWork === "info" && ["si-vgm", "gate-in"].includes(workspaceNode.id)));
+  const openStageWorkspace = (node: JourneyNode, work: string) => {
+    const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
+    // The existing advisory gate still governs origin navigation. Authoritative
+    // primary-action/deep links keep their existing bypass.
+    if (targetTab === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
+    setSp({ tab: targetTab, stage: node.id, work });
+  };
 
   const saveCommercialFlow = () => {
     if (!flowModeDraft) {
@@ -877,7 +889,10 @@ export default function ShipmentDetail() {
     if (s.nextRoute.startsWith("/lo-hang")) {
       const t = nextRouteTab(s.nextRoute);
       const anchor = nextRouteAnchor(s.nextRoute);
-      setSp(t ? { tab: t } : {});
+      const q = s.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "";
+      const params = new URLSearchParams(q);
+      if (t) params.set("tab", t);
+      setSp(params);
       if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor);
       else setTimeout(() => revealAnchor(anchor), 150);
     } else {
@@ -1034,6 +1049,14 @@ export default function ShipmentDetail() {
           </div>
         )}
       </div>
+
+      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
+        onOpen={openStageWorkspace} onGlobal={() => setSp({ tab: "van-tai" })} runPrimary={runPrimaryAction} />
+      {workspaceNode && workspaceWork === "info" && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
+        <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
+      {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
+        {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
+      </p>}
 
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
           LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
@@ -1242,7 +1265,7 @@ export default function ShipmentDetail() {
       {/* ============ TAB: OPERATIONAL TRANSPORT + CARGO ============
           The full execution-profile editor belongs here: it is the tab that owns
           transport/cargo reality, and the profile decides which stages exist. */}
-      {tab === "van-tai" && (
+      {showExistingWork && tab === "van-tai" && (
         <>
           <ShipmentExecutionProfile
             shipment={s}
@@ -1255,7 +1278,7 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: PICKUP ============ */}
-      {tab === "lay-hang" && (
+      {showExistingWork && tab === "lay-hang" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4" id="missing-anchor">
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><MapPin size={19} className="text-[#1e5aa8]" /> Nhà máy & xuất khẩu</h3>
@@ -1284,7 +1307,7 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: IMPORT ============ */}
-      {tab === "nhap" && (
+      {showExistingWork && tab === "nhap" && (
         <div className="space-y-4" id="missing-anchor">
           {/* LOGI_SCOPE_AWARE_MISSING_INFO_01 — scope-relevant checklist moved from lay-hang / Xuất khẩu (misleading heading) to the correct existing Nhập khẩu & Giao hàng surface. Only relevant rows per confirmed service scope. Truthful routing per fact. */}
           {s.docs.length > 0 && (
@@ -1546,10 +1569,11 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: FINANCE ============ */}
-      {tab === "tai-chinh" && (
+      {showExistingWork && tab === "tai-chinh" && (
         <div className="space-y-4" id="missing-anchor">
           {/* 1 — DỊCH VỤ & CHI PHÍ THỰC TẾ: what Sale/Support really enter first. */}
           <FinanceActualEntry
+            stageContext={workspaceNode?.id}
             shipment={s}
             services={financeServices}
             ccy={ccy}
@@ -1733,7 +1757,7 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: DOCS ============ */}
-      {tab === "chung-tu" && (
+      {showExistingWork && tab === "chung-tu" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <section
             className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
@@ -2062,6 +2086,7 @@ export default function ShipmentDetail() {
               bounded attachment_download event, so no Drive id, folder id or
               credential ever reaches the DOM. */}
           <ShipmentAttachments
+            contextCategories={workspaceNode?.documentCategories}
             shipmentId={s.id}
             attachments={s.attachments ?? []}
             policy={vm?.attachmentPolicy}
@@ -2070,7 +2095,7 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: HISTORY ============ */}
-      {tab === "lich-su" && (
+      {showExistingWork && tab === "lich-su" && (
         <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 max-w-[800px]">
           <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-4">Dòng thời gian — {s.id}</h3>
           <div className="relative pl-6 space-y-4 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">

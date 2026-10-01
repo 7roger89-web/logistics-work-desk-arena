@@ -1,0 +1,171 @@
+"""Issue #160: visual index, never a workflow authority or persisted stage store.
+
+Relevance comes from the already-built execution profile. Occurrence comes
+only from canonical facts; coarse ``done`` can mean scope/configuration and
+must never be interpreted as proof that customs or a vessel departed.
+"""
+from __future__ import annotations
+from datetime import datetime
+from typing import Any, Mapping
+
+SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no'})
+SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
+JOURNEY_STAGE_IDS = frozenset({'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
+
+
+def normalize_sea_facts(fields: Mapping[str, Any]) -> dict[str, str]:
+    if not fields or set(fields) - SEA_FACT_FIELDS:
+        raise ValueError('Trường Sea Export không được phép ghi.')
+    out = {}
+    for key, value in fields.items():
+        raw = str(value or '').strip()
+        if key == 'export_declaration_no':
+            if len(raw) > 120: raise ValueError('Số tờ khai xuất dài quá 120 ký tự.')
+        elif key.endswith('_status'):
+            raw = raw or 'UNKNOWN'
+            if raw not in SUBMISSION_STATES:
+                raise ValueError('Trạng thái SI/VGM phải là UNKNOWN, RECEIVED, SUBMITTED hoặc ACCEPTED.')
+        elif raw:
+            try:
+                parsed = datetime.fromisoformat(raw)
+                raw = parsed.isoformat(timespec='minutes') if 'T' in raw else parsed.date().isoformat()
+            except ValueError as exc:
+                raise ValueError('Mốc thời gian phải là ISO YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm.') from exc
+        out[key] = raw
+    return out
+
+
+def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
+                  operational: Mapping[str, Any], primary: Mapping[str, Any],
+                  dashboard: Mapping[str, Any], attachments: list[dict]) -> dict[str, Any]:
+    data = shipment.get('data') or {}
+    transport = data.get('1.2') or {}
+    sea = transport.get('sea_export') or {}
+    customs = data.get('2.4') or {}
+    delivery = data.get('2.7') or {}
+    main = operational.get('main_leg') or {}
+    pickup = operational.get('pickup_leg') or {}
+    codes = {s.get('code') for s in profile.get('stages') or []}
+    scope = set(profile.get('serviceScope') or []) if profile.get('serviceScopeConfirmed') else set()
+    nodes: list[dict] = []
+
+    def add(id, label, family, tab, *, done=False, evidence='', deadline='', categories=(), owned=False):
+        nodes.append({'id': id, 'label': label, 'family': family, 'targetTab': tab,
+                      'state': 'COMPLETED' if done else 'UPCOMING',
+                      'factState': 'KNOWN' if evidence else 'UNKNOWN', 'evidence': str(evidence or ''),
+                      'deadline': str(deadline or ''), 'owned': owned,
+                      'current': False, 'blockers': [], 'dependencies': [],
+                      'documentCategories': list(categories),
+                      'documentIds': [a['id'] for a in attachments if a.get('category') in categories]})
+
+    is_sea = profile.get('mode') == 'SEA'
+    if is_sea and {'MAIN_CARRIAGE', 'SEA_DOCUMENTS'} & codes:
+        owns_main = 'MAIN_CARRIAGE' in scope
+        booking = main.get('booking_no')
+        add('booking', 'BOOKING', 'MAIN_CARRIAGE', 'van-tai', done=bool(booking),
+            evidence=f"Booking: {booking}" if booking else '', categories=('booking', 'transport'), owned=owns_main)
+    if 'ORIGIN_PICKUP' in codes:
+        add('pickup', 'PICKUP' if is_sea else 'Lấy hàng', 'ORIGIN_PICKUP', 'lay-hang',
+            done=bool(pickup.get('atd')), evidence=pickup.get('atd'), deadline=pickup.get('etd'),
+            categories=('transport',), owned='ORIGIN_PICKUP' in scope)
+    if 'EXPORT_HANDLING' in codes:
+        decl = shipment.get('china_export_decl_no')
+        # A declaration number proves registration, not clearance completion.
+        add('customs-export', 'CUSTOMS EXPORT' if is_sea else 'Hải quan xuất', 'EXPORT_HANDLING', 'lay-hang',
+            evidence=f"Tờ khai: {decl}" if decl else '', categories=('customs',),
+            owned=bool({'EXPORT_HANDLING', 'EXPORT_CUSTOMS'} & scope))
+    has_main = is_sea and 'booking' in {n['id'] for n in nodes}
+    if has_main:
+        if 'MAIN_CARRIAGE' in scope:
+            si, vgm = sea.get('si_status', 'UNKNOWN'), sea.get('vgm_status', 'UNKNOWN')
+            add('si-vgm', 'SI / VGM', 'SEA_DOCUMENTS', 'van-tai',
+                done=si == vgm == 'ACCEPTED', evidence=f'SI: {si} · VGM: {vgm}' if si != 'UNKNOWN' or vgm != 'UNKNOWN' else '',
+                deadline=' · '.join(x for x in (sea.get('si_cutoff'), sea.get('vgm_cutoff')) if x),
+                categories=('si', 'vgm'), owned=True)
+        if 'ORIGIN_HANDOFF' in codes and profile.get('loadModel') == 'FCL':
+            add('gate-in', 'GATE-IN', 'ORIGIN_HANDOFF', 'van-tai', done=bool(sea.get('gate_in_at')),
+                evidence=sea.get('gate_in_at'), categories=('transport',), owned='ORIGIN_TERMINAL_OR_BORDER' in scope)
+        atd, ata = main.get('atd'), main.get('ata')
+        add('etd', 'ETD', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd),
+            evidence=f"ATD: {atd}" if atd else '', deadline=main.get('etd'), owned='MAIN_CARRIAGE' in scope)
+        add('on-board', 'ON BOARD / ATD', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd),
+            evidence=f"Khởi hành thực tế: {atd}" if atd else '', categories=('transport',), owned='MAIN_CARRIAGE' in scope)
+        add('transit', 'TRANSIT', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd and ata),
+            evidence=f"ATD: {atd}" if atd else '', deadline=main.get('eta'), owned='MAIN_CARRIAGE' in scope)
+        add('arrival', 'ARRIVAL', 'MAIN_CARRIAGE', 'van-tai', done=bool(ata),
+            evidence=f"ATA: {ata}" if ata else '', deadline=main.get('eta'), categories=('transport',), owned='MAIN_CARRIAGE' in scope)
+        # Position is separate from unresolved earlier work. ETA/past ETD are
+        # NEVER evidence that a ship departed or arrived. ATD != loaded-on-board.
+        current = 'arrival' if ata else 'transit' if atd else ''
+    else:
+        current = ''
+        for stage in profile.get('stages') or []:
+            code = stage['code']
+            if code in {'ORIGIN_PICKUP', 'EXPORT_HANDLING', 'IMPORT_CUSTOMS', 'DELIVERY'}:
+                continue
+            add(code, stage['label'], code, 'van-tai',
+                owned=stage.get('reason') == 'SERVICE_SCOPE')
+    if 'IMPORT_CUSTOMS' in codes:
+        add('customs-import', 'CUSTOMS IMPORT' if is_sea else 'Hải quan nhập', 'IMPORT_CUSTOMS', 'nhap',
+            done=bool(customs.get('customs_status')), evidence=customs.get('clearance_date') if customs.get('customs_status') else customs.get('tk_no'),
+            categories=('customs',), owned='IMPORT_CUSTOMS' in scope)
+    if 'DELIVERY' in codes:
+        add('delivery', 'DELIVERY' if is_sea else 'Giao hàng', 'DELIVERY', 'nhap',
+            done=bool(delivery.get('is_delivered')), evidence=delivery.get('delivered_at') if delivery.get('is_delivered') else '',
+            deadline=delivery.get('delivery_date'), categories=('transport',),
+            owned=bool({'DESTINATION_TRUCKING', 'FINAL_DELIVERY'} & scope))
+    by_id = {n['id']: n for n in nodes}
+    edges = []
+    previous = None
+    branch = []
+    for n in nodes:
+        if n['id'] in {'si-vgm', 'gate-in'}:
+            if previous: edges.append({'from': previous, 'to': n['id']})
+            branch.append(n['id'])
+            continue
+        parents = branch or ([previous] if previous else [])
+        for parent in parents: edges.append({'from': parent, 'to': n['id']})
+        branch = []
+        previous = n['id']
+    for edge in edges: by_id[edge['to']]['dependencies'].append(edge['from'])
+    # The same final action can expose a granular missing-fact blocker. Do not
+    # turn every future UNKNOWN into an independent task/alert.
+    if 'stage=si-vgm' in str(primary.get('route') or '') and 'si-vgm' in by_id:
+        by_id['si-vgm']['blockers'].append(str(primary.get('text') or ''))
+    if 'stage=gate-in' in str(primary.get('route') or '') and 'gate-in' in by_id:
+        by_id['gate-in']['blockers'].append(str(primary.get('text') or ''))
+    # Existing profile gaps and dashboard alerts, not a client alert engine.
+    for stage in profile.get('stages') or []:
+        if stage.get('missing'):
+            target = next((n for n in nodes if n['family'] == stage['code']), None)
+            if target: target['blockers'].append(stage['missing'])
+    for alert in dashboard.get('alerts') or []:
+        code = str(alert.get('code', '')).upper()
+        targets = ['arrival'] if any(k in code for k in ('ETA', 'FREE_TIME', 'DEADLINE')) else ['pickup'] if 'FACTORY' in code else []
+        for id in targets:
+            if id in by_id: by_id[id]['blockers'].append(str(alert.get('label') or alert.get('detail') or code))
+    for n in nodes:
+        if n['blockers']: n['state'] = 'PROBLEM'
+        elif n['id'] == current: n['state'] = 'CURRENT'
+        elif n['state'] != 'COMPLETED' and n['dependencies'] and all(by_id[p]['state'] == 'COMPLETED' for p in n['dependencies']): n['state'] = 'WAITING'
+        n['current'] = n['id'] == current
+    return {'nodes': nodes, 'edges': edges, 'currentStageId': current,
+            'owner': str(dashboard.get('owner') or ''),
+            'primaryAction': dict(primary), 'seaFacts': {k: (shipment.get('china_export_decl_no') or '') if k == 'export_declaration_no' else sea.get(k, 'UNKNOWN' if k.endswith('_status') else '') for k in SEA_FACT_FIELDS},
+            'positionNote': '' if current else 'Chưa đủ mốc thực tế để xác định vị trí vận hành.'}
+
+
+def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> dict[str, str] | None:
+    """Small factual refinement consumed by compose_primary_action, never a
+    second final-action authority. Profile gaps/critical alerts still win.
+    """
+    scope = set(profile.get('serviceScope') or []) if profile.get('serviceScopeConfirmed') else set()
+    if profile.get('mode') != 'SEA' or 'MAIN_CARRIAGE' not in scope:
+        return None
+    facts = ((shipment.get('data') or {}).get('1.2') or {}).get('sea_export') or {}
+    for key, label in (('si_status', 'SI'), ('vgm_status', 'VGM')):
+        if facts.get(key) != 'ACCEPTED':
+            return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
+    if 'ORIGIN_TERMINAL_OR_BORDER' in scope and profile.get('loadModel') == 'FCL' and not facts.get('gate_in_at'):
+        return {'text': 'Ghi nhận gate-in thực tế', 'detail': 'Chưa có mốc container vào bãi.', 'stage': 'gate-in'}
+    return None

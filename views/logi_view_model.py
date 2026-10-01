@@ -1028,6 +1028,7 @@ PHASE_B_EVENTS = {
     # whitelist.  This one shipment-local event writes exactly the canonical
     # operational collections through the existing atomic writer.
     "shipment_transport_save",
+    "shipment_sea_facts_save",
     # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — ONE bounded write for the shipment
     # execution profile (Incoterms code/version/named place, Trường Thành
     # service scope, load model, actual cargo insurance). It writes the
@@ -2434,6 +2435,46 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
                    audit=_audit_trail(sid))
 
 
+def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.shipment_journey import normalize_sea_facts
+    from core.shipment_execution_profile import build_execution_profile
+    sid, request_id = rd.text(payload.get("shipmentId")), rd.text(payload.get("requestId"))
+    def out(ok, error="", **extra):
+        return _result("shipment_sea_facts_save", sid, ok, error, requestId=request_id, **extra)
+    if not sid or not request_id or not isinstance(payload.get("fields"), Mapping):
+        return out(False, "Thiếu shipmentId, requestId hoặc fields.")
+    if not can_operate_business("shipment_edit"):
+        return out(False, "RBAC: không có quyền shipment_edit.")
+    shipment = read_shipment(sid)
+    if shipment is None: return out(False, "Không tìm thấy lô.")
+    expected = payload.get("expectedVersion")
+    if isinstance(expected, bool) or not isinstance(expected, int) or expected != int(shipment.get("version") or 0):
+        return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.")
+    profile = build_execution_profile(shipment)
+    scope = set(profile.get("serviceScope") or []) if profile.get("serviceScopeConfirmed") else set()
+    if profile.get("mode") != "SEA": return out(False, "Mốc này chỉ dành cho lô đường biển.")
+    fields = payload["fields"]
+    if any(k.startswith(('si_', 'vgm_')) for k in fields) and "MAIN_CARRIAGE" not in scope:
+        return out(False, "SI/VGM không thuộc phạm vi chặng chính đã xác nhận.")
+    if "gate_in_at" in fields and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
+        return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
+    if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
+        return out(False, "Tờ khai xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    try: normalized = normalize_sea_facts(fields)
+    except ValueError as exc: return out(False, str(exc))
+    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault("sea_export", {})
+    if "export_declaration_no" in normalized:
+        shipment["china_export_decl_no"] = normalized.pop("export_declaration_no")
+    block.update(normalized)
+    if not save_shipment_atomic(shipment, expected_version=expected, actor=_actor()):
+        return out(False, get_last_db_error() or "Không lưu được.")
+    fresh = read_shipment(sid)
+    if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
+    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+
+
 def _handle_shipment_transport_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Save repeatable legs and/or cargo through the existing atomic writer.
 
@@ -2929,6 +2970,11 @@ def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     if shipment is None:
         return _out(False, f"Không tìm thấy lô {sid}.")
 
+    from core.shipment_journey import JOURNEY_STAGE_IDS
+    stage = rd.text(line.get("journeyStage")) if "journeyStage" in line else None
+    if stage and stage not in JOURNEY_STAGE_IDS:
+        return _out(False, "Công đoạn chi phí không hợp lệ.")
+
     finance = shipment.setdefault("data", {}).setdefault("3.4", {})
     details = finance.setdefault("details", [])
 
@@ -2985,6 +3031,8 @@ def _handle_finance_actual_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         entry = {"id": f"PAY-LINE-{uuid4().hex.upper()[:12]}"}
         details.append(entry)
 
+    if stage is not None:
+        entry["journey_stage"] = stage
     entry["name_full"] = name
     entry["display_name"] = name
     entry["unit"] = rd.text(line.get("unit")) or entry.get("unit") or "Lần"
@@ -4233,6 +4281,7 @@ _HANDLERS = {
     "shipment_field_save": _handle_field_save,
     "shipment_customer_save": _handle_shipment_customer_save,
     "shipment_transport_save": _handle_shipment_transport_save,
+    "shipment_sea_facts_save": _handle_sea_facts_save,
     "shipment_profile_save": _handle_shipment_profile_save,
     "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
     "delivery_confirm": _handle_delivery_confirm,
@@ -4288,7 +4337,8 @@ def consume_phase_b_triggers(session: dict, result: Any) -> list[dict[str, Any]]
             outcomes.append(handler(data))
         except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
             outcomes.append(_result(event_name, rd.text(data.get("shipmentId")), False,
-                                    f"{type(exc).__name__}: {exc}"))
+                                    f"{type(exc).__name__}: {exc}",
+                                    **({"requestId": rd.text(data.get("requestId"))} if event_name == "shipment_sea_facts_save" else {})))
     if outcomes:
         session["writes"] = outcomes
     return outcomes

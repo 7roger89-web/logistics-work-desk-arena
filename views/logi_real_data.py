@@ -553,6 +553,7 @@ def finance_projection(
             "code": text(line.get("code")),
             "unit": text(line.get("unit")),
             "note": text(line.get("note")),
+            "journeyStage": text(line.get("journey_stage")),
             "amount": num(line.get("price", line.get("price_out"))),
             "price": num(line.get("price", line.get("price_out"))),
             "cost": num(line.get("cost", line.get("price_in"))),
@@ -1070,6 +1071,7 @@ def compose_primary_action(
     dashboard: Mapping[str, Any] | None,
     execution_profile: Mapping[str, Any] | None,
     status_tab: str,
+    sea_requirement: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Compose ONE primary action from the two existing projections.
 
@@ -1119,6 +1121,12 @@ def compose_primary_action(
         route = f"{shipment_path(shipment_id)}?tab={tab}" + (f"#{anchor}" if anchor else "")
         return {"text": profile_label, "detail": profile_detail,
                 "priority": priority, "route": route}
+
+    # #160: bounded Sea fact requirement participates in THIS authority,
+    # after critical/profile gaps; never overrides their routes.
+    if sea_requirement:
+        return {"text": sea_requirement["text"], "detail": sea_requirement["detail"],
+                "priority": "CanXuLy", "route": f"{shipment_path(shipment_id)}?tab=van-tai&stage={sea_requirement['stage']}&work=info"}
 
     # 4. DONE/MONITOR preserves the existing dashboard action when one exists.
     if has_dashboard:
@@ -1217,11 +1225,14 @@ def shipment_projection(
     missing = missing_docs(shipment, execution_profile=execution_profile)
 
     tab = "nhap" if status_label in {"Chờ thông quan", "Chờ giao"} else ("lay-hang" if status_label == "Chờ lấy hàng" else "lay-hang")
+    from core.shipment_journey import build_journey, sea_requirement
+
     primary_action = compose_primary_action(
         shipment_id=sid,
         dashboard=view,
         execution_profile=execution_profile,
         status_tab=tab,
+        sea_requirement=sea_requirement(shipment, execution_profile),
     )
     next_text = primary_action["text"]
     next_detail = primary_action["detail"]
@@ -1283,8 +1294,13 @@ def shipment_projection(
         sub_purchase_contract=sub_purchase_contract,
     )
 
+    attachment_view = attachment_rows(sid, grouped=attachments, download=attachment_download)
+    journey = build_journey(shipment, profile=execution_profile, operational=operational,
+                            primary=primary_action, dashboard=view, attachments=attachment_view)
+
     return {
         "id": sid,
+        "journey": journey,
         "customer": customer_name,
         "customerMST": text(customer_doc.get("tax_code")),
         "customerId": customer_id,
@@ -1323,7 +1339,7 @@ def shipment_projection(
         # lot: bounded metadata read back from the canonical
         # ``shipment_attachments`` collection. Bytes live in Google Drive; no
         # Drive id, folder id or credential is projected here.
-        "attachments": attachment_rows(sid, grouped=attachments, download=attachment_download),
+        "attachments": attachment_view,
         "version": int(shipment.get("version") or 0),
         "rawStatus": text(shipment.get("status") or head.get("st")),
         "mode": text(operational.get("mode")) or text(head.get("mode")),

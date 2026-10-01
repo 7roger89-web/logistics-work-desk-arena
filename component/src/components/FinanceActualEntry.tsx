@@ -41,6 +41,7 @@ import type {
 
 interface Props {
   shipment: Shipment;
+  stageContext?: string;
   /** Catalog slice delivered by the backend (never copied into the UI). */
   services: FinanceServiceCatalogEntry[];
   /** The lot's one authoritative currency — amounts are never converted. */
@@ -54,6 +55,7 @@ interface Props {
 /** One line being added (id === "") or edited (id === canonical line id). */
 interface LineDraft {
   id: string;
+  journeyStage: string;
   code: string;
   name: string;
   unit: string;
@@ -66,6 +68,7 @@ interface LineDraft {
 
 const BLANK_DRAFT: LineDraft = {
   id: "",
+  journeyStage: "",
   code: "",
   name: "",
   unit: "",
@@ -84,6 +87,7 @@ const BLANK_DRAFT: LineDraft = {
 function draftFromLine(line: FinanceActualLine): LineDraft {
   return {
     id: line.id ?? "",
+    journeyStage: line.journeyStage ?? "",
     code: line.code ?? "",
     name: line.name || line.label || "",
     unit: line.unit ?? "",
@@ -109,8 +113,12 @@ function Cell({ label, className, children }: { label: string; className?: strin
   );
 }
 
-export default function FinanceActualEntry({ shipment, services, ccy, dispatch, toast, lastWrites }: Props) {
-  const lines = shipment.finance.actual ?? [];
+export default function FinanceActualEntry({ shipment, services, ccy, dispatch, toast, lastWrites, stageContext }: Props) {
+  const [showUnassigned, setShowUnassigned] = useState(false);
+  const allLines = shipment.finance.actual ?? [];
+  const stageIds = new Set(shipment.journey?.nodes.map(n => n.id) ?? []);
+  const unassigned = allLines.filter(l => !l.journeyStage || !stageIds.has(l.journeyStage));
+  const lines = stageContext ? (showUnassigned ? unassigned : allLines.filter(l => l.journeyStage === stageContext)) : allLines;
 
   const [draft, setDraft] = useState<LineDraft>(BLANK_DRAFT);
   const [open, setOpen] = useState(false);
@@ -162,7 +170,7 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
   })();
 
   const openFor = (line: FinanceActualLine | null) => {
-    setDraft(line ? draftFromLine(line) : BLANK_DRAFT);
+    setDraft(line ? draftFromLine(line) : { ...BLANK_DRAFT, journeyStage: stageContext || "" });
     setLocalError("");
     setBackendError("");
     setPending(null);
@@ -249,6 +257,7 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
       price: draft.price.trim(),
       vat: draft.vat.trim(),
       note: draft.note.trim(),
+      journeyStage: draft.journeyStage,
     };
     // EDIT sends the canonical id → the SAME row is updated, never duplicated.
     if (draft.id) line.id = draft.id;
@@ -291,6 +300,10 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
 
   return (
     <section className="rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5" id="finance-actual-lines">
+      {stageContext && <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <span>{showUnassigned ? "Chi phí chưa phân công / công đoạn khác" : `Chi phí công đoạn: ${shipment.journey?.nodes.find(n => n.id === stageContext)?.label || stageContext}`}</span>
+        <button type="button" onClick={() => setShowUnassigned(v => !v)} className="touch-target rounded-lg border px-3 py-2 font-bold">{showUnassigned ? "Về công đoạn" : `Xem chưa phân công / khác (${unassigned.length})`}</button>
+      </div>}
       <div className="flex flex-col sm:flex-row sm:items-start gap-3 mb-1">
         <div className="min-w-0">
           <h3 className="font-extrabold text-[16.5px] md:text-[18px] text-[#0f2a4a] flex items-center gap-2">
@@ -477,6 +490,13 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
               />
             </Field>
             <div className="sm:col-span-2 md:col-span-9">
+              <Field label="Công đoạn chi phí">
+                <select aria-label="Công đoạn chi phí" value={draft.journeyStage} onChange={e => set("journeyStage", e.target.value)} className={inputCls()}>
+                  <option value="">Toàn lô / chưa phân công</option>
+                  {shipment.journey?.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                  {draft.journeyStage && !stageIds.has(draft.journeyStage) && <option value={draft.journeyStage}>Công đoạn trước đây: {draft.journeyStage}</option>}
+                </select>
+              </Field>
               <Field label="Ghi chú" hint="Không bắt buộc — VD: số hóa đơn, người chốt">
                 <input value={draft.note} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú cho dòng này" className={inputCls()} />
               </Field>

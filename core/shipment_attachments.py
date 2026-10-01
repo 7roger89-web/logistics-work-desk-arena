@@ -75,6 +75,9 @@ CATEGORIES: tuple[dict[str, str], ...] = (
     {"id": "customs", "label": "Hải quan"},
     {"id": "contract", "label": "Hợp đồng"},
     {"id": "transport", "label": "Vận chuyển"},
+    {"id": "booking", "label": "Booking"},
+    {"id": "si", "label": "Shipping Instruction (SI)"},
+    {"id": "vgm", "label": "VGM"},
     {"id": "other", "label": "Khác"},
 )
 DEFAULT_CATEGORY = "other"
