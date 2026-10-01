@@ -3,6 +3,7 @@ from core.shipment_document_workflow import (
     FLOW_TT_ENTRUSTED_DIRECT,
     FLOW_TT_ENTRUSTED_SUB,
     STATE_BLOCKED,
+    STATE_COMPLETE,
     STATE_NOT_APPLICABLE,
     STATE_PENDING_DOCUMENT,
     STATE_READY,
@@ -298,3 +299,44 @@ def test_customer_contract_does_not_masquerade_as_agent_company_docgen():
     assert customer_contract["state"] == STATE_PENDING_DOCUMENT
     assert customer_contract["targetRoute"] == ""
     assert "không dùng nhầm docgen" in customer_contract["reason"].lower()
+
+
+def test_delivery_note_becomes_ready_after_delivery_and_complete_from_durable_docgen():
+    base = dict(
+        flow={"mode": FLOW_TT_ENTRUSTED_DIRECT, "confirmed": True, "legalImporterTaxCode": "0101"},
+        quote_linked=True,
+        gnt={"ready": True, "taxCode": "0101"},
+        delivered=True,
+        pxk={"gateOpen": True},
+        finance={},
+    )
+
+    ready = build_document_workflow(**base)
+    delivery_ready = _step(ready, "delivery_note")
+    assert delivery_ready["state"] == STATE_READY
+    assert "số/ngày" in delivery_ready["reason"].lower()
+
+    complete = build_document_workflow(
+        **base,
+        delivery_note={
+            "done": True,
+            "recordId": "DELIVERY_NOTE::SHIP-1::R1",
+            "revision": 1,
+        },
+    )
+    delivery_complete = _step(complete, "delivery_note")
+    assert delivery_complete["state"] == STATE_COMPLETE
+    assert "lưu bền vững" in delivery_complete["reason"].lower()
+
+
+def test_delivery_note_stays_blocked_before_delivery_even_when_generator_exists():
+    workflow = build_document_workflow(
+        flow={"mode": FLOW_TT_ENTRUSTED_DIRECT, "confirmed": True, "legalImporterTaxCode": "0101"},
+        quote_linked=True,
+        gnt={"ready": True, "taxCode": "0101"},
+        delivered=False,
+        pxk={},
+        finance={},
+    )
+    delivery = _step(workflow, "delivery_note")
+    assert delivery["state"] == STATE_BLOCKED
