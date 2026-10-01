@@ -1341,7 +1341,13 @@ def shipment_projection(
         # stages justify. Reuses the ONE object built above —
         # EXECUTION_PROFILE_BUILDS_PER_ROW=1.
         "executionProfile": execution_profile,
-        "createdAt": _ddmmyyyy(head.get("created_at")),
+        # Business header date is authoritative when the key exists — even an
+        # explicit blank stays UNKNOWN. Legacy rows created before that header
+        # field existed can still be classified by their immutable root Mongo
+        # creation timestamp, read-only; no migration or rewrite is performed.
+        "createdAt": _ddmmyyyy(
+            head.get("created_at") if "created_at" in head else shipment.get("created_at")
+        ),
         # Canonical repeatable operational model.  For a legacy document this
         # is a read-only fallback projection; it becomes canonical only when an
         # operator explicitly saves the transport editor.
