@@ -429,3 +429,265 @@ def test_gnt_handler_collision_preserves_attachment_and_skips_session_cache(read
     assert result["attachmentPersisted"] is True
     assert result["partialDurable"] is True
     store.assert_not_called()
+
+
+# ===========================================================================
+# Delivery-note durable generation (#156)
+# ===========================================================================
+
+def _delivery_note_shipment():
+    row = copy.deepcopy(SHIPMENT)
+    row["customer"] = "CÔNG TY 143"
+    row["data"]["1.2"] = {
+        "cargo_summary": {
+            "goods_description": "Máy móc công nghiệp",
+            "package_count": 2,
+            "package_type": "Kiện",
+            "gross_weight_kg": 500,
+            "cbm": 3.5,
+            "dimensions": "",
+            "note": "",
+        }
+    }
+    row["data"]["2.7"] = {
+        "is_delivered": True,
+        "delivered_at": "2026-09-30",
+        "delivery_date": "2026-09-30",
+        "delivery_location": "Kho khách hàng",
+        "receiver_name": "Nguyễn Văn Nhận",
+        "receiver_title": "Thủ kho",
+        "phone_receiver": "0902000000",
+    }
+    return row
+
+
+def test_delivery_note_revision_reads_durable_docgen_metadata(monkeypatch):
+    monkeypatch.setattr(
+        "core.database.load_docgen_documents",
+        lambda shipment_id: {
+            "DELIVERY_NOTE::SHP-143::R1": {
+                "id": "DELIVERY_NOTE::SHP-143::R1",
+                "document_id": "DELIVERY_NOTE::SHP-143",
+                "document_type": "DELIVERY_NOTE",
+                "shipment_id": "SHP-143",
+                "revision": 1,
+                "generation_revision": 1,
+            },
+            "DELIVERY_NOTE::SHP-143::R2": {
+                "id": "DELIVERY_NOTE::SHP-143::R2",
+                "document_id": "DELIVERY_NOTE::SHP-143",
+                "document_type": "DELIVERY_NOTE",
+                "shipment_id": "SHP-143",
+                "revision": 2,
+                "generation_revision": 2,
+            },
+        },
+    )
+
+    result = vm._next_delivery_note_revision("SHP-143")
+
+    assert result == {
+        "ok": True,
+        "document_id": "DELIVERY_NOTE::SHP-143",
+        "revision": 3,
+    }
+
+
+def test_delivery_note_handler_persists_attachment_and_metadata(monkeypatch):
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr("core.auth.current_user", lambda: {"username": "writer-143"})
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {
+            "CUS-143": {
+                "customer_id": "CUS-143",
+                "name": "CÔNG TY 143",
+                "tax_code": "0101430143",
+            }
+        },
+    )
+    monkeypatch.setattr(
+        vm,
+        "_next_delivery_note_revision",
+        lambda shipment_id: {
+            "ok": True,
+            "document_id": "DELIVERY_NOTE::SHP-143",
+            "revision": 2,
+        },
+    )
+    monkeypatch.setattr(
+        "core.delivery_note.generate_delivery_note_xlsx",
+        lambda *args, **kwargs: {
+            "bytes": b"PK-delivery-note",
+            "output_file_name": "PHIEU_GIAO_HANG_PGH-143.xlsx",
+            "output_hash": "out-hash",
+            "template_hash": "tpl-hash",
+            "source_snapshot": {
+                "delivery_note_no": "PGH-143",
+                "delivery_note_date": "2026-09-30",
+            },
+            "source_reference": "shipment:SHP-143:data.2.7+cargo_summary",
+        },
+    )
+    monkeypatch.setattr(vm.logi_c1, "_resolve_template_paths", lambda: ("/owner.xlsx", None))
+    monkeypatch.setattr(vm, "_attachment_result_extras", lambda shipment_id: {})
+    monkeypatch.setattr(vm, "_project_generated_attachment", lambda outcome: {"id": "ATT-DN-143"})
+    upload = Mock(return_value={
+        "ok": True,
+        "duplicate": False,
+        "record": {
+            "id": "ATT-DN-143",
+            "shipment_id": "SHP-143",
+            "original_name": "PHIEU_GIAO_HANG_PGH-143.xlsx",
+        },
+    })
+    monkeypatch.setattr("core.shipment_attachments.upload_attachment", upload)
+    metadata = Mock(return_value={
+        "ok": True,
+        "already_present": False,
+        "collision": False,
+        "metadata_committed": True,
+        "error": "",
+        "record": {},
+        "status": "CREATED",
+    })
+    monkeypatch.setattr(vm, "_persist_generated_docgen_metadata", metadata)
+    store = Mock()
+    monkeypatch.setattr(vm.logi_c1, "store_output", store)
+    monkeypatch.setattr(vm, "_projection_for", lambda shipment: {"id": "SHP-143"})
+    monkeypatch.setattr(vm, "_audit_trail", lambda shipment_id: [])
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "PGH-143",
+        "deliveryNoteDate": "2026-09-30",
+    })
+
+    assert result["ok"] is True
+    assert result["persisted"]["revision"] == 2
+    assert result["persisted"]["attachmentId"] == "ATT-DN-143"
+    assert result["persisted"]["isOfficeFile"] is True
+
+    upload.assert_called_once()
+    assert upload.call_args.kwargs["category"] == "other"
+    assert upload.call_args.kwargs["shipment_id"] == "SHP-143"
+
+    metadata.assert_called_once()
+    saved = metadata.call_args.args[0]
+    assert saved["document_id"] == "DELIVERY_NOTE::SHP-143"
+    assert saved["document_type"] == "DELIVERY_NOTE"
+    assert saved["revision"] == 2
+    assert saved["source_snapshot"]["delivery_note_no"] == "PGH-143"
+
+    store.assert_called_once()
+    assert store.call_args.args[2]["document_type"] == "DELIVERY_NOTE"
+
+
+def test_delivery_note_handler_ignores_client_template_path_override(monkeypatch):
+    from core.delivery_note import DeliveryNoteError
+
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {"CUS-143": {"customer_id": "CUS-143", "name": "CÔNG TY 143"}},
+    )
+    monkeypatch.setattr(
+        vm,
+        "_next_delivery_note_revision",
+        lambda shipment_id: {
+            "ok": True,
+            "document_id": "DELIVERY_NOTE::SHP-143",
+            "revision": 1,
+        },
+    )
+    monkeypatch.setattr(vm.logi_c1, "_resolve_template_paths", lambda: ("/owner.xlsx", None))
+    generate = Mock(
+        side_effect=DeliveryNoteError(
+            "TEMPLATE_SHEET_MISSING",
+            "bounded stop after template-path assertion",
+        )
+    )
+    monkeypatch.setattr("core.delivery_note.generate_delivery_note_xlsx", generate)
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "PGH-143",
+        "deliveryNoteDate": "2026-09-30",
+        "templatePathXlsx": "/client-controlled.xlsx",
+    })
+
+    assert result["ok"] is False
+    assert result["gate"] == "TEMPLATE_SHEET_MISSING"
+    assert generate.call_args.args[0] == "/owner.xlsx"
+
+
+def test_delivery_note_handler_fails_before_attachment_when_identity_missing(monkeypatch):
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    upload = Mock()
+    monkeypatch.setattr("core.shipment_attachments.upload_attachment", upload)
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "",
+        "deliveryNoteDate": "",
+    })
+
+    assert result["ok"] is False
+    assert result["gate"] == "MISSING_DOCUMENT_IDENTITY"
+    upload.assert_not_called()
+
+
+def test_delivery_note_attachment_failure_stops_before_metadata_and_session_success(monkeypatch):
+    monkeypatch.setattr("core.auth.can_generate_documents", lambda: True)
+    monkeypatch.setattr("core.auth.current_user", lambda: {"username": "writer-143"})
+    monkeypatch.setattr(vm, "read_shipment", lambda shipment_id: _delivery_note_shipment())
+    monkeypatch.setattr(
+        "core.database.load_customers",
+        lambda: {"CUS-143": {"customer_id": "CUS-143", "name": "CÔNG TY 143"}},
+    )
+    monkeypatch.setattr(
+        vm,
+        "_next_delivery_note_revision",
+        lambda shipment_id: {
+            "ok": True,
+            "document_id": "DELIVERY_NOTE::SHP-143",
+            "revision": 1,
+        },
+    )
+    monkeypatch.setattr(
+        "core.delivery_note.generate_delivery_note_xlsx",
+        lambda *args, **kwargs: {
+            "bytes": b"PK-delivery-note",
+            "output_file_name": "PHIEU_GIAO_HANG_PGH-143.xlsx",
+            "output_hash": "out-hash",
+            "template_hash": "tpl-hash",
+            "source_snapshot": {
+                "delivery_note_no": "PGH-143",
+                "delivery_note_date": "2026-09-30",
+            },
+            "source_reference": "shipment:SHP-143:data.2.7+cargo_summary",
+        },
+    )
+    monkeypatch.setattr(vm.logi_c1, "_resolve_template_paths", lambda: ("/owner.xlsx", None))
+    monkeypatch.setattr(vm, "_attachment_result_extras", lambda shipment_id: {})
+    upload = Mock(return_value={"ok": False, "code": "STORE_FAILED", "error": "write failed"})
+    metadata = Mock()
+    store = Mock()
+    monkeypatch.setattr("core.shipment_attachments.upload_attachment", upload)
+    monkeypatch.setattr(vm, "_persist_generated_docgen_metadata", metadata)
+    monkeypatch.setattr(vm.logi_c1, "store_output", store)
+
+    result = vm._handle_delivery_note_generate({
+        "shipmentId": "SHP-143",
+        "deliveryNoteNo": "PGH-143",
+        "deliveryNoteDate": "2026-09-30",
+    })
+
+    assert result["ok"] is False
+    assert result["gate"] == "STORE_FAILED"
+    assert result["attachmentPersisted"] is False
+    metadata.assert_not_called()
+    store.assert_not_called()

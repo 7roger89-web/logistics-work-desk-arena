@@ -137,8 +137,12 @@ def _sheet_path_by_name(workbook_element, rels_element) -> dict[str, str]:
         target = rel_map.get(rel_id, "")
         if not target:
             continue
+        # Relationship targets may be package-absolute ("/xl/worksheets/sheet1.xml",
+        # as openpyxl writes them) or workbook-relative ("worksheets/sheet1.xml").
+        # Normalize to the package path so both resolve to the same part.
+        target = target.lstrip("/")
         if not target.startswith("xl/"):
-            target = "xl/" + target.lstrip("/")
+            target = "xl/" + target
         sheet_paths[sheet.get("name")] = target
     return sheet_paths
 

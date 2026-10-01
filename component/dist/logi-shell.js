@@ -8063,7 +8063,7 @@ function T() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.shipment_commercial_flow_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch".split(".")), D = null, O = 0;
+var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_profile_save.shipment_commercial_flow_save.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.delivery_note_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch".split(".")), D = null, O = 0;
 function k(e) {
 	D = e;
 }
@@ -18025,19 +18025,31 @@ function Yc() {
 	}, Tt = () => {
 		h && (d("gnt_generate", { shipmentId: h.id }) ? c("Đã gửi yêu cầu tạo Giấy Nộp Thuế", "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.", "blue") : c("Không gửi được", "Component chưa kết nối backend.", "red"));
 	}, Et = () => {
+		if (!h) return;
+		let e = R("deliveryNoteNo", "").trim(), t = R("deliveryNoteDate", "").trim();
+		if (!e || !t) {
+			c("Chưa tạo được Phiếu giao hàng", "Nhập Số phiếu và Ngày phiếu. Hệ thống không tự đặt số hoặc lấy ngày hôm nay.", "red");
+			return;
+		}
+		d("delivery_note_generate", {
+			shipmentId: h.id,
+			deliveryNoteNo: e,
+			deliveryNoteDate: t
+		}) ? c("Đã gửi yêu cầu tạo Phiếu giao hàng", "Backend kiểm tra dữ liệu giao hàng + template Owner, sinh XLSX rồi lưu vào kho chứng từ của lô.", "blue") : c("Không gửi được", "Component chưa kết nối backend.", "red");
+	}, Dt = () => {
 		let e = h?.importInfo.gnt?.document;
 		if (!e || !e.downloadBase64) {
 			c("File không còn trong phiên này", "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.", "amber");
 			return;
 		}
 		Po(e.fileName || "GNT_" + h.id + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, Dt = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", Ot = h.missingDocs.length, kt = /* @__PURE__ */ new Set([
+	}, Ot = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", kt = h.missingDocs.length, At = /* @__PURE__ */ new Set([
 		"ORIGIN_PICKUP",
 		"EXPORT_HANDLING",
 		"EXPORT_CUSTOMS",
 		"ORIGIN_TERMINAL_OR_BORDER"
-	]), At = (h.executionProfile?.incoterm || h.incoterm || "").trim().toUpperCase(), jt = !!h.executionProfile?.serviceScopeConfirmed && (h.executionProfile?.serviceScope ?? []).some((e) => kt.has(e)), Mt = /^[FCD]/.test(At) && !jt && !j && a !== "lay-hang", Nt = (e) => {
-		if (e === "lay-hang" && Mt) {
+	]), jt = (h.executionProfile?.incoterm || h.incoterm || "").trim().toUpperCase(), Mt = !!h.executionProfile?.serviceScopeConfirmed && (h.executionProfile?.serviceScope ?? []).some((e) => At.has(e)), Nt = /^[FCD]/.test(jt) && !Mt && !j && a !== "lay-hang", Pt = (e) => {
+		if (e === "lay-hang" && Nt) {
 			ee(!0);
 			return;
 		}
@@ -18069,12 +18081,12 @@ function Yc() {
 										tone: h.statusTone,
 										children: h.status
 									}),
-									Ot > 0 && /* @__PURE__ */ (0, B.jsxs)("span", {
+									kt > 0 && /* @__PURE__ */ (0, B.jsxs)("span", {
 										className: "inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5",
 										children: [
 											/* @__PURE__ */ (0, B.jsx)(qr, { size: 15 }),
 											" Thiếu ",
-											Ot,
+											kt,
 											" thông tin"
 										]
 									}),
@@ -18195,9 +18207,9 @@ function Yc() {
 						id: "workspace-tabs",
 						className: "px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3",
 						children: Hc.map((e) => {
-							let t = e.id === "lay-hang" && Mt;
+							let t = e.id === "lay-hang" && Nt;
 							return /* @__PURE__ */ (0, B.jsxs)("button", {
-								onClick: () => Nt(e.id),
+								onClick: () => Pt(e.id),
 								...t ? {
 									"data-locked": "true",
 									"aria-disabled": !0
@@ -18236,7 +18248,7 @@ function Yc() {
 								className: "text-[13px] font-semibold text-slate-700 min-w-0 flex-1",
 								children: [
 									"Xuất khẩu đang được khóa theo điều kiện giao hàng ",
-									At,
+									jt,
 									" — ở các điều kiện F/C/D, dòng chảy nội bộ thường không cần bàn làm việc xuất khẩu. Điều kiện khách hoặc cách xử lý thực tế thay đổi? Mở khóa tay để làm việc trực tiếp."
 								]
 							}),
@@ -18379,7 +18391,7 @@ function Yc() {
 					})
 				]
 			}),
-			Ot > 0 && a !== "chung-tu" && /* @__PURE__ */ (0, B.jsxs)("div", {
+			kt > 0 && a !== "chung-tu" && /* @__PURE__ */ (0, B.jsxs)("div", {
 				className: "rounded-2xl bg-white border-2 border-red-200 p-3 md:p-3.5",
 				"data-testid": "missing-info",
 				children: [/* @__PURE__ */ (0, B.jsxs)("button", {
@@ -18397,7 +18409,7 @@ function Yc() {
 							className: "font-extrabold text-[14px] text-red-800",
 							children: [
 								"Thiếu ",
-								Ot,
+								kt,
 								" thông tin"
 							]
 						}),
@@ -18439,7 +18451,7 @@ function Yc() {
 								});
 							}, 150);
 							else {
-								let t = Dt(e);
+								let t = Ot(e);
 								i({ tab: t }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
 									behavior: "smooth",
 									block: "center"
@@ -18915,7 +18927,7 @@ function Yc() {
 									}), /* @__PURE__ */ (0, B.jsxs)("div", {
 										className: "flex gap-2 pt-1",
 										children: [h.importInfo.gnt.document.downloadAvailable ? /* @__PURE__ */ (0, B.jsxs)("button", {
-											onClick: Et,
+											onClick: Dt,
 											className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-4 min-h-[44px] text-[13.5px]",
 											children: [/* @__PURE__ */ (0, B.jsx)(di, { size: 16 }), " TẢI XLSX"]
 										}) : /* @__PURE__ */ (0, B.jsx)("p", {
@@ -19026,19 +19038,62 @@ function Yc() {
 								]
 							}),
 							h.importInfo.delivered ? /* @__PURE__ */ (0, B.jsxs)("div", {
-								className: "rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
+								className: "space-y-3",
 								children: [
-									/* @__PURE__ */ (0, B.jsx)("p", {
-										className: "font-extrabold text-[17px] text-emerald-800",
-										children: "✅ ĐÃ GIAO HÀNG XONG"
+									/* @__PURE__ */ (0, B.jsxs)("div", {
+										className: "rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
+										children: [/* @__PURE__ */ (0, B.jsx)("p", {
+											className: "font-extrabold text-[17px] text-emerald-800",
+											children: "✅ ĐÃ GIAO HÀNG XONG"
+										}), /* @__PURE__ */ (0, B.jsxs)("p", {
+											className: "text-[13.5px] text-emerald-700",
+											children: [h.importInfo.actualDelivery, " · Có thể phát hành Phiếu giao hàng và tiếp tục PXK theo mô hình lô."]
+										})]
 									}),
-									/* @__PURE__ */ (0, B.jsxs)("p", {
-										className: "text-[13.5px] text-emerald-700",
-										children: [h.importInfo.actualDelivery, " · Sang tab Chứng từ để xuất PXK →"]
+									/* @__PURE__ */ (0, B.jsxs)("div", {
+										className: "rounded-xl border-2 border-slate-200 p-3.5 space-y-3",
+										children: [
+											/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+												className: "font-extrabold text-[14.5px] text-[#0f2a4a]",
+												children: "Phiếu giao hàng XLSX"
+											}), /* @__PURE__ */ (0, B.jsx)("p", {
+												className: "text-[12.5px] text-slate-500",
+												children: "Dùng template Owner trong DOCGEN_TEMPLATE_DIR; app chỉ điền dữ liệu lô, không tự viết mẫu pháp lý."
+											})] }),
+											/* @__PURE__ */ (0, B.jsxs)("div", {
+												className: "grid sm:grid-cols-2 gap-3",
+												children: [/* @__PURE__ */ (0, B.jsx)(X, {
+													label: "Số Phiếu giao hàng",
+													required: !0,
+													children: /* @__PURE__ */ (0, B.jsx)("input", {
+														value: R("deliveryNoteNo", ""),
+														onChange: (e) => _e("deliveryNoteNo", e.target.value),
+														placeholder: "VD: PGH-2026-001",
+														className: Z()
+													})
+												}), /* @__PURE__ */ (0, B.jsx)(X, {
+													label: "Ngày Phiếu giao hàng",
+													required: !0,
+													hint: "Nhập DD/MM/YYYY hoặc YYYY-MM-DD; không tự lấy hôm nay.",
+													children: /* @__PURE__ */ (0, B.jsx)("input", {
+														value: R("deliveryNoteDate", ""),
+														onChange: (e) => _e("deliveryNoteDate", e.target.value),
+														placeholder: "VD: 30/09/2026",
+														className: Z()
+													})
+												})]
+											}),
+											/* @__PURE__ */ (0, B.jsxs)("button", {
+												type: "button",
+												onClick: Et,
+												className: "btn-press touch-target w-full rounded-xl bg-[#0f2a4a] text-white hover:bg-[#1e5aa8] font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]",
+												children: [/* @__PURE__ */ (0, B.jsx)(Di, { size: 17 }), " TẠO PHIẾU GIAO HÀNG XLSX"]
+											})
+										]
 									}),
 									/* @__PURE__ */ (0, B.jsxs)("button", {
 										onClick: () => i({ tab: "chung-tu" }),
-										className: "btn-press touch-target mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
+										className: "btn-press touch-target w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
 										children: ["SANG XUẤT PHIẾU XUẤT KHO ", /* @__PURE__ */ (0, B.jsx)(_r, { size: 17 })]
 									})
 								]
@@ -19820,7 +19875,7 @@ function Yc() {
 											}),
 											!e.ok && /* @__PURE__ */ (0, B.jsxs)("button", {
 												onClick: () => {
-													i({ tab: Dt(e.name) }), c("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
+													i({ tab: Ot(e.name) }), c("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
 												},
 												className: "btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13px] font-bold px-3 min-h-[44px]",
 												children: [/* @__PURE__ */ (0, B.jsx)(ca, { size: 14 }), " Bổ sung"]

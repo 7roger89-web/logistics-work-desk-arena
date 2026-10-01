@@ -3,8 +3,8 @@
 The Owner's legal Office templates are NEVER committed and ``DOCGEN_TEMPLATE_DIR``
 defaults to ``None`` (the owner gate in ``core.config``).  For the isolated
 staging transport ONLY, this module synthesizes minimal-but-REAL OOXML
-templates — an ``.xlsx`` workbook containing the ``HDMB`` / ``pl`` / ``pxk``
-sheets with the mapped cells, and a ``.docx`` with the mapped HDNT paragraphs —
+templates — an ``.xlsx`` workbook containing the ``HDMB`` / ``pl`` / ``pxk`` /
+``delivery_note`` sheets with the mapped cells, and a ``.docx`` with the mapped HDNT paragraphs —
 so the real generation service (``core.docgen.generator``) can be exercised
 end-to-end in Preview.
 
@@ -37,6 +37,14 @@ _XLSX_CELLS: dict[str, dict[str, str]] = {
         "A4": "...", "A5": "...", "A6": "...", "A7": "...", "A9": "...",
         "A10": "...", "A11": "...", "B15": "...", "C15": "...", "D15": "...",
     },
+    # QA-only cell contract for core.delivery_note. Production wording/layout
+    # remains in the Owner-controlled workbook under DOCGEN_TEMPLATE_DIR.
+    "delivery_note": {
+        "B4": "...", "B5": "...", "B6": "...", "B7": "...", "B8": "...",
+        "B10": "...", "B11": "...", "B12": "...", "B13": "...", "B14": "...",
+        "B16": "...", "B17": "...", "B18": "...", "B19": "...", "B20": "...",
+        "B21": "...", "B22": "...", "B24": "...", "B25": "...", "B26": "...",
+    },
 }
 # pl goods rows A10..F27 (18 lines) — the engine writes rows 10..27.
 for _row in range(10, 28):
@@ -55,7 +63,7 @@ def _write_xlsx_template(path: Path) -> None:
     from openpyxl import Workbook
 
     wb = Workbook()
-    sheet_names = ["HDMB", "pl", "pxk"]
+    sheet_names = ["HDMB", "pl", "pxk", "delivery_note"]
     wb.active.title = sheet_names[0]
     for name in sheet_names[1:]:
         wb.create_sheet(title=name)
@@ -96,7 +104,17 @@ def staging_template_paths() -> tuple[str | None, str | None]:
     xlsx = base / "truong-thanh-agent.xlsx"
     docx = base / "HDNT-TT-agent.docx"
     try:
-        if not xlsx.exists():
+        # A prior sandbox process may already have created the pre-delivery-note
+        # workbook. Refresh the QA asset when its sheet contract is stale.
+        refresh_xlsx = not xlsx.exists()
+        if not refresh_xlsx:
+            from openpyxl import load_workbook
+            probe = load_workbook(str(xlsx), read_only=True, data_only=False)
+            try:
+                refresh_xlsx = "delivery_note" not in probe.sheetnames
+            finally:
+                probe.close()
+        if refresh_xlsx:
             _write_xlsx_template(xlsx)
         if not docx.exists():
             _write_docx_template(docx)

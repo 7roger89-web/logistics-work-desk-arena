@@ -782,6 +782,34 @@ export default function ShipmentDetail() {
     }
   };
 
+  const generateDeliveryNote = () => {
+    if (!s) return;
+    const deliveryNoteNo = val("deliveryNoteNo", "").trim();
+    const deliveryNoteDate = val("deliveryNoteDate", "").trim();
+    if (!deliveryNoteNo || !deliveryNoteDate) {
+      toast(
+        "Chưa tạo được Phiếu giao hàng",
+        "Nhập Số phiếu và Ngày phiếu. Hệ thống không tự đặt số hoặc lấy ngày hôm nay.",
+        "red"
+      );
+      return;
+    }
+    const sent = dispatch("delivery_note_generate", {
+      shipmentId: s.id,
+      deliveryNoteNo,
+      deliveryNoteDate,
+    });
+    if (sent) {
+      toast(
+        "Đã gửi yêu cầu tạo Phiếu giao hàng",
+        "Backend kiểm tra dữ liệu giao hàng + template Owner, sinh XLSX rồi lưu vào kho chứng từ của lô.",
+        "blue"
+      );
+    } else {
+      toast("Không gửi được", "Component chưa kết nối backend.", "red");
+    }
+  };
+
   const downloadGNT = () => {
     const doc = s?.importInfo.gnt?.document;
     if (!doc || !doc.downloadBase64) {
@@ -1532,10 +1560,43 @@ export default function ShipmentDetail() {
               {s.importInfo.actualDelivery && <p className="text-[14px] text-emerald-700 font-bold mt-1">✅ Đã giao: {s.importInfo.actualDelivery}</p>}
             </div>
             {s.importInfo.delivered ? (
-              <div className="rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center">
-                <p className="font-extrabold text-[17px] text-emerald-800">✅ ĐÃ GIAO HÀNG XONG</p>
-                <p className="text-[13.5px] text-emerald-700">{s.importInfo.actualDelivery} · Sang tab Chứng từ để xuất PXK →</p>
-                <button onClick={() => setSp({ tab: "chung-tu" })} className="btn-press touch-target mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]">SANG XUẤT PHIẾU XUẤT KHO <ArrowRight size={17} /></button>
+              <div className="space-y-3">
+                <div className="rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center">
+                  <p className="font-extrabold text-[17px] text-emerald-800">✅ ĐÃ GIAO HÀNG XONG</p>
+                  <p className="text-[13.5px] text-emerald-700">{s.importInfo.actualDelivery} · Có thể phát hành Phiếu giao hàng và tiếp tục PXK theo mô hình lô.</p>
+                </div>
+                <div className="rounded-xl border-2 border-slate-200 p-3.5 space-y-3">
+                  <div>
+                    <p className="font-extrabold text-[14.5px] text-[#0f2a4a]">Phiếu giao hàng XLSX</p>
+                    <p className="text-[12.5px] text-slate-500">Dùng template Owner trong DOCGEN_TEMPLATE_DIR; app chỉ điền dữ liệu lô, không tự viết mẫu pháp lý.</p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <Field label="Số Phiếu giao hàng" required>
+                      <input
+                        value={val("deliveryNoteNo", "")}
+                        onChange={(e) => set("deliveryNoteNo", e.target.value)}
+                        placeholder="VD: PGH-2026-001"
+                        className={inputCls()}
+                      />
+                    </Field>
+                    <Field label="Ngày Phiếu giao hàng" required hint="Nhập DD/MM/YYYY hoặc YYYY-MM-DD; không tự lấy hôm nay.">
+                      <input
+                        value={val("deliveryNoteDate", "")}
+                        onChange={(e) => set("deliveryNoteDate", e.target.value)}
+                        placeholder="VD: 30/09/2026"
+                        className={inputCls()}
+                      />
+                    </Field>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateDeliveryNote}
+                    className="btn-press touch-target w-full rounded-xl bg-[#0f2a4a] text-white hover:bg-[#1e5aa8] font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]"
+                  >
+                    <FileSpreadsheet size={17} /> TẠO PHIẾU GIAO HÀNG XLSX
+                  </button>
+                </div>
+                <button onClick={() => setSp({ tab: "chung-tu" })} className="btn-press touch-target w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]">SANG XUẤT PHIẾU XUẤT KHO <ArrowRight size={17} /></button>
               </div>
             ) : (
               <SuccessBtn onClick={() => setShowDeliver(true)} className="w-full text-[17px] min-h-[56px]">✅ XÁC NHẬN ĐÃ GIAO HÀNG</SuccessBtn>
