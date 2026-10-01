@@ -402,6 +402,7 @@ def build_document_workflow(
     quote_linked: bool,
     gnt: Mapping[str, Any] | None,
     delivered: bool,
+    delivery_note: Mapping[str, Any] | None = None,
     pxk: Mapping[str, Any] | None,
     finance: Mapping[str, Any] | None,
     sub_purchase_contract: Mapping[str, Any] | None = None,
@@ -417,6 +418,7 @@ def build_document_workflow(
     mode = _text(flow.get("mode")).upper()
     confirmed = bool(flow.get("confirmed")) and mode in FLOW_MODES
     gnt = _mapping(gnt)
+    delivery_note = _mapping(delivery_note)
     pxk = _mapping(pxk)
     finance = _mapping(finance)
 
@@ -541,14 +543,25 @@ def build_document_workflow(
             target_tab="tai-chinh", action_label="Mở tài chính",
         ))
 
+    has_delivery_note = bool(delivery_note.get("done") or delivery_note.get("recordId"))
+    if has_delivery_note:
+        delivery_note_state = STATE_COMPLETE
+        delivery_note_reason = "Phiếu giao hàng đã được tạo và lưu bền vững cho lô."
+    elif delivered:
+        delivery_note_state = STATE_READY
+        delivery_note_reason = (
+            "Đã giao hàng; nhập Số/Ngày Phiếu giao hàng và tạo XLSX từ template Owner."
+        )
+    else:
+        delivery_note_state = STATE_BLOCKED
+        delivery_note_reason = "Chưa xác nhận giao hàng thực tế."
     steps.append(_step(
         "delivery_note",
         "Phiếu giao hàng",
-        STATE_PENDING_DOCUMENT if delivered else STATE_BLOCKED,
-        "Đã giao hàng; cần phát hành phiếu giao hàng." if delivered
-        else "Chưa xác nhận giao hàng thực tế.",
+        delivery_note_state,
+        delivery_note_reason,
         target_tab="nhap",
-        action_label="Mở giao hàng",
+        action_label="Tạo phiếu giao hàng" if delivered and not has_delivery_note else "Mở giao hàng",
     ))
 
     pxk_flow = pxk_flow_gate(flow)
