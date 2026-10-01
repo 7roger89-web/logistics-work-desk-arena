@@ -113,6 +113,30 @@ def test_created_at_edit_persists_and_reads_back_fresh(staging, event_seq):
                for row in out["audit"]), out["audit"]
 
 
+def test_legacy_missing_header_created_at_falls_back_to_root_timestamp(staging):
+    """Legacy rows missing the business header date still sort into a real month.
+
+    The root Mongo created_at is read-only fallback authority ONLY when the
+    data.0.0 key does not exist. An explicit blank remains UNKNOWN (next test).
+    """
+    from datetime import datetime, timezone
+    from core.database import get_db
+
+    db = get_db()
+    assert db is not None
+    db.shipments.update_one(
+        {"id": "LO-0306"},
+        {
+            "$unset": {"data.0.0.created_at": ""},
+            "$set": {"created_at": datetime(2026, 7, 29, 8, 0, tzinfo=timezone.utc)},
+        },
+    )
+    model = vm.build_view_model()
+    row = next(s for s in model["shipments"] if s["id"] == "LO-0306")
+    assert row["createdAt"] == "29/07/2026"
+
+
+
 def test_created_at_blank_stays_unknown_and_is_never_today(staging, event_seq):
     """UNKNOWN != ZERO: clearing the date must not be filled with today or 0."""
     assert _dispatch(event_seq, "shipment_field_save",
