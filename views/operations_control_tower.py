@@ -256,9 +256,9 @@ def build_operations_control_tower(
             "modules": module_rows,
         },
         "unavailable": [
-            "Chưa có nguồn canonical cho waiting-on party / chase age.",
-            "Deadline hiện tại là theo ngày, không suy diễn thành đồng hồ <24h.",
-            "Không có workload score, employee score, health score hoặc risk score.",
+            "Chưa có nguồn chuẩn cho bên đang chờ hoặc thời gian nhắc việc.",
+            "Hạn hiện tại là theo ngày, không suy diễn thành đồng hồ <24h.",
+            "Không có điểm tải, điểm nhân viên, điểm sức khỏe hoặc điểm rủi ro.",
         ],
     }
 
