@@ -27,6 +27,8 @@ import json
 import math
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Callable, Mapping
 from uuid import uuid4
 
@@ -922,15 +924,22 @@ def build_view_model() -> dict:
         agents=sources["agents"],
     )
     tasks = _task_projection(rows, references)
+    # One business-calendar boundary for all date-sensitive projections.
+    # The app operates in Vietnam; hosting/CI commonly runs UTC, which would
+    # otherwise classify "today" and due/overdue one day late between 00:00
+    # and 06:59 local time.
+    business_today = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
     attention = logi_attention.build_attention_projection(
         rows,
         references.get("tasks") or [],
+        today=business_today,
         unknown_label=rd.UNKNOWN_LABEL,
     )
     home = _home_projection(rows, summary, references, attention)
     operations_control = logi_operations_control.build_operations_control_tower(
         rows,
         attention,
+        today=business_today,
     )
     receivables = rd.receivables_projection(rows)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
