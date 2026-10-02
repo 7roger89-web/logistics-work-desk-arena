@@ -199,11 +199,93 @@ try {
   const choices = (await (await page.request.get(`${HOST}/model`)).json()).shipments.length;
   assert.ok(choices > 0);
 
+  // 8. Gate-less module end to end: the authoring form leaves the gate blank by
+  //    default, so this is the ordinary path — create it, prove the fresh library
+  //    readback still sees it, attach it, and prove no base stage gets a gate.
+  const GATELESS_ID = 'GATELESS_BROWSER_162';
+  const GATELESS_NAME = 'Quy trình hàng nhập không chặn cổng';
+  if (!(await page.getByTestId('wm-library-form').count())) {
+    await page.getByTestId('wm-library-new').click();
+  }
+  const form = page.getByTestId('wm-library-form');
+  await form.waitFor();
+  await form.getByLabel('Mã quy trình', { exact: true }).fill(GATELESS_ID);
+  await form.getByLabel('Tên hiển thị', { exact: true }).fill(GATELESS_NAME);
+  await form.getByLabel('Trạng thái', { exact: true }).selectOption('ACTIVE');
+  await form.getByLabel('Công đoạn neo', { exact: true }).selectOption('customs-import');
+  // The gate select is deliberately left at its default ("Không chặn cổng nào").
+  assert.equal(await form.getByLabel('Cổng chặn', { exact: true }).inputValue(), '');
+  await form.getByLabel('Mã bước 1', { exact: true }).fill('note-info');
+  await form.getByLabel('Tên bước 1', { exact: true }).fill('Ghi nhận thông tin');
+  await form.getByTestId('wm-add-step').click();
+  await form.getByLabel('Mã bước 2', { exact: true }).fill('review-internal');
+  await form.getByLabel('Tên bước 2', { exact: true }).fill('Rà soát nội bộ');
+  await form.getByLabel('Phụ thuộc bước 2', { exact: true }).selectOption('note-info');
+  await form.getByLabel('Loại phụ thuộc 2', { exact: true }).selectOption('INFORMATIONAL');
+  await page.getByTestId('wm-library-submit').click();
+  await page.waitForFunction(
+    (id) => [...document.querySelectorAll('[data-testid^="wm-row-"]')]
+      .some((row) => row.textContent?.includes(id)),
+    GATELESS_ID, { timeout: 15000 });
+
+  const afterCreate = await (await page.request.get(`${HOST}/model`)).json();
+  const created = afterCreate.workModules.all.find((row) => row.templateId === GATELESS_ID);
+  assert.ok(created, 'the gate-less version MUST survive the fresh library readback');
+  assert.equal(created.status, 'ACTIVE');
+  assert.equal(created.gateStage, '', 'no gate was invented');
+  assert.ok(afterCreate.workModules.templates.some((row) => row.templateId === GATELESS_ID),
+    'it is offered in the attach list');
+  await page.getByTestId(`wm-row-${GATELESS_ID}:V1`).scrollIntoViewIfNeeded();
+  await shot(page, 'desktop-11-gateless-library-readback.png');
+
+  // Attach it on the shipment and read the rollup back.
+  await page.getByRole('link', { name: 'Lô Hàng', exact: true }).first().click();
+  await page.getByTestId('shipment-period-tat-ca').click();
+  await page.getByRole('link', { name: 'SEA-162', exact: true }).click();
+  // Base truth BEFORE this attach. (The earlier GATED demo module legitimately
+  // owns the delivery join, so the invariant is "this attach changes nothing",
+  // not "no base node ever has a module dependency".)
+  const beforeGateLess = await (await page.request.get(`${HOST}/model`)).json();
+  const baseBefore = beforeGateLess.shipments.find((s) => s.id === 'SEA-162').journey.nodes
+    .filter((n) => !n.moduleId)
+    .map((n) => ({ id: n.id, completed: n.completed, dependencies: [...n.dependencies], blockers: [...n.blockers] }));
+  assert.equal(baseBefore.length, 7);
+  await page.getByTestId('journey-add-module').click();
+  await page.getByRole('radio', { name: `Chọn ${GATELESS_NAME}`, exact: true }).check();
+  await page.getByTestId('journey-add-module-confirm').click();
+  await page.waitForFunction(
+    (name) => document.querySelector('[data-testid="journey-modules"]')?.textContent?.includes(name),
+    GATELESS_NAME, { timeout: 15000 });
+
+  const afterGateLessAttach = await (await page.request.get(`${HOST}/model`)).json();
+  const lotAfter = afterGateLessAttach.shipments.find((s) => s.id === 'SEA-162');
+  const gateLess = lotAfter.journey.modules.find((m) => m.templateId === GATELESS_ID);
+  assert.ok(gateLess, 'the module rollup exists after attach');
+  assert.equal(gateLess.templateVersion, created.version, 'the exact version is pinned');
+  assert.equal(gateLess.gateText, '', 'no gate sentence may be invented');
+  assert.deepEqual(gateLess.gate, {}, 'no gate object may be invented');
+  assert.equal(gateLess.status, 'WAITING', 'a gate-less module waits; it never claims to block');
+  assert.equal(await page.getByTestId(`journey-module-gate-${gateLess.instanceId}`).count(), 0,
+    'the UI renders no gate sentence for it');
+
+  // Base truth untouched BY THIS ATTACH: identical nodes, dependencies, blockers.
+  const baseAfter = lotAfter.journey.nodes.filter((n) => !n.moduleId)
+    .map((n) => ({ id: n.id, completed: n.completed, dependencies: [...n.dependencies], blockers: [...n.blockers] }));
+  assert.equal(baseAfter.length, 7, 'the base map keeps its authority');
+  assert.deepEqual(baseAfter, baseBefore, 'attaching a gate-less module must not touch any base stage');
+  assert.ok(baseAfter.every((n) => !n.dependencies.some((d) => String(d).includes(gateLess.instanceId))),
+    'no base stage acquired a dependency on the gate-less module');
+  assert.ok(baseAfter.every((n) => !n.blockers.some((b) => b.includes('Chặn'))),
+    'the gate-less module placed no gate sentence on any base stage');
+  await page.getByTestId(`journey-module-${gateLess.instanceId}`).scrollIntoViewIfNeeded();
+  await shot(page, 'desktop-12-gateless-attached.png');
+
   assert.deepEqual(errors, [], 'zero page errors for the whole journey');
   console.log(
     `PASS #162 browser: 1440/390px, attach → rollup 0/3 BLOCKING → 3/3 DONE with gate cleared, ` +
     `facts persisted server-side, library bounded, template lifecycle DRAFT → ACTIVE → RETIRED ` +
-    `clicked through with authoritative readback and an unchanged version body, zero page errors → ${output}`);
+    `clicked through with authoritative readback, a gate-less module created blank-gated then ` +
+    `attached with no invented gate on any base stage, zero page errors → ${output}`);
 } catch (err) {
   console.error(hostErrors.slice(-1500));
   throw err;

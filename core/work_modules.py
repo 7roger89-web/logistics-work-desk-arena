@@ -211,22 +211,34 @@ def normalize_template(document: Mapping[str, Any]) -> dict[str, Any]:
             }
         )
 
+    # A version may legitimately block NOTHING on the base journey: the vocabulary
+    # allows purely INFORMATIONAL / PARALLEL_REQUIRED work, and the authoring form
+    # lets the gate stay blank. So a missing join, an explicit ``join=None`` and
+    # the persisted canonical ``join={}`` are all valid for a gate-less version
+    # and must normalize to the SAME shape (idempotent) — no invented gate, no
+    # invented join node, no invented BLOCKING semantics.
     join = raw.get("join")
-    join_out: dict[str, str] = {}
+    join_from = ""
+    join_type = "BLOCKING"
     if isinstance(join, Mapping):
-        from_node = _text(join.get("from") or join.get("nodeId"))
+        join_from = _text(join.get("from") or join.get("nodeId"))
         join_type = _text(join.get("type") or "BLOCKING").upper()
-        if from_node not in known:
-            raise ValueError(f"Điểm nối phải là một bước của quy trình: {from_node or '(trống)'}.")
+        if not join_from and any(_text(join.get(key)) for key in ("type", "to")):
+            # A half-declared join is still refused: never guess a release point.
+            raise ValueError("Điểm nối phải là một bước của quy trình: (trống).")
+    join_out: dict[str, str] = {}
+    if join_from or gate_stage:
+        if not join_from:
+            # A DECLARED gate needs an explicit join node: never guess which step
+            # releases the gate. This case is not loosened.
+            raise ValueError("Khai báo cổng chặn phải kèm điểm nối (join).")
+        if join_from not in known:
+            raise ValueError(f"Điểm nối phải là một bước của quy trình: {join_from}.")
         if join_type not in DEPENDENCY_TYPES:
             raise ValueError(f"Loại nối phải là {', '.join(DEPENDENCY_TYPES)}.")
-        join_out = {"from": from_node, "type": join_type}
+        join_out = {"from": join_from, "type": join_type}
         if gate_stage:
             join_out["to"] = gate_stage
-    elif gate_stage:
-        # A declared gate needs an explicit join node: never guess which step
-        # releases the gate.
-        raise ValueError("Khai báo cổng chặn phải kèm điểm nối (join).")
 
     categories = [
         _text(c) for c in (raw.get("document_categories") or []) if _text(c)

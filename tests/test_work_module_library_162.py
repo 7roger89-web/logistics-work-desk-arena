@@ -712,3 +712,153 @@ def test_informational_dependency_never_blocks_completion(staging):
     assert outcome["ok"], outcome
     stored = next(m for m in vm.read_shipment("SEA-162")["work_modules"] if m["instance_id"] == instance_id)
     assert [step["node_id"] for step in stored["completed_steps"]] == ["second"]
+
+
+# ---------------------- final blocker repair: gate-less modules (round 3)
+
+def gateless_template(**overrides) -> dict:
+    """A valid template that blocks NO base stage (gate left blank by the author).
+
+    The bounded vocabulary allows purely informational work, and the authoring
+    form says the gate may be left empty, so this is a supported shape.
+    """
+    base = {
+        "template_id": "GATELESS_162", "name": "Gate-less module", "version": 1, "status": "DRAFT",
+        "anchor_stage": "customs-import", "gate_stage": "",
+        "nodes": [
+            {"id": "note", "label": "Ghi nhận thông tin"},
+            {"id": "review", "label": "Rà soát nội bộ",
+             "dependencies": [{"type": "INFORMATIONAL", "nodeId": "note"}]},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_gateless_normalization_is_idempotent_and_never_invents_a_gate():
+    """A gate-less version is a supported shape; re-normalizing it must be stable."""
+    for absent in ({}, {"join": None}, {"join": {}}):
+        first = normalize_template(gateless_template(**absent))
+        second = normalize_template(first)
+        assert second == first, f"normalize_template must be idempotent for {absent!r}"
+        assert first["gate_stage"] == "" and not first["join"]
+        assert not first["join"], "no join node may be invented"
+        assert first["anchor_dependency_type"] == "INFORMATIONAL", "no BLOCKING may be invented"
+
+    # Gated versions are NOT loosened: an explicit, valid join stays mandatory.
+    for broken in (
+        {"gate_stage": "delivery"},
+        {"gate_stage": "delivery", "join": None},
+        {"gate_stage": "delivery", "join": {}},
+        {"gate_stage": "delivery", "join": {"from": "ghost"}},
+        {"gate_stage": "delivery", "join": {"from": "review", "type": "MAGIC"}},
+        {"join": {"type": "BLOCKING"}},      # half-declared: never guess a source
+        {"join": {"to": "delivery"}},
+    ):
+        with pytest.raises(ValueError):
+            normalize_template(gateless_template(**broken))
+
+
+def test_gateless_template_survives_the_fresh_library_readback(staging):
+    """Write → fresh read must agree: a stored gate-less version cannot vanish."""
+    assert "join" not in gateless_template()
+    publish(gateless_template(status="ACTIVE"))
+
+    library = vm.build_view_model()["workModules"]
+    stored = [row for row in library["all"] if row["templateId"] == "GATELESS_162"]
+    assert stored, "the stored version must appear in workModules.all"
+    assert stored[0]["status"] == "ACTIVE" and stored[0]["gateStage"] == ""
+    assert [row for row in library["templates"] if row["templateId"] == "GATELESS_162"], \
+        "an ACTIVE gate-less version is attachable"
+    # The canonical shape really is the {} join that used to break the readback.
+    assert stored_template("GATELESS_162:V1")["join"] == {}
+
+
+def test_gateless_attach_pins_exactly_and_adds_no_fake_gate_dependency(staging):
+    publish(gateless_template(status="ACTIVE"))
+    base_before = current()["journey"]["nodes"]
+    base_before = {
+        n["id"]: {"completed": n["completed"], "dependencies": list(n["dependencies"]),
+                  "blockers": list(n["blockers"])}
+        for n in base_before if not n.get("moduleId")
+    }
+
+    attached = attach("GATELESS_162")
+    assert attached["ok"], attached
+    doc = vm.read_shipment("SEA-162")
+    instance = doc["work_modules"][0]
+    assert (instance["template_id"], instance["template_version"]) == ("GATELESS_162", 1)
+    assert instance["provenance"] == "MANUAL_ADDITION"
+    assert instance["added_by"] == logi_sandbox.STAGING_ACTOR["username"] and instance["added_at"]
+
+    row = attached["readback"]
+    module = row["journey"]["modules"][0]
+    assert module["templateId"] == "GATELESS_162" and module["templateVersion"] == 1
+    assert module["gate"] == {} and module["gateText"] == ""
+    assert module["status"] == "WAITING", "without a gate the module waits; it never claims to block"
+
+    # The base journey is untouched: no new dependency edge, no blocker sentence.
+    base_after = {
+        n["id"]: {"completed": n["completed"], "dependencies": list(n["dependencies"]),
+                  "blockers": list(n["blockers"])}
+        for n in row["journey"]["nodes"] if not n.get("moduleId")
+    }
+    assert base_after == base_before, "a gate-less module must not touch any base stage"
+    assert len(base_after) == 7
+    assert not [n for n in row["journey"]["nodes"]
+                if not n.get("moduleId") and any("Chặn" in b for b in n["blockers"])]
+    # Module step nodes exist only as machine truth, not as base-stage rewrites.
+    assert all(n["id"].startswith("wm-") for n in row["journey"]["nodes"] if n.get("moduleId"))
+
+
+def test_gateless_completion_enforces_internal_requirements_without_a_base_gate(staging):
+    """Gate-less means no BASE gate — internal BLOCKING/INFORMATIONAL still hold."""
+    publish(gateless_template(status="ACTIVE", nodes=[
+        {"id": "prepare", "label": "Prepare"},
+        {"id": "result", "label": "Result",
+         "dependencies": [{"type": "BLOCKING", "nodeId": "prepare"}]},
+        {"id": "notice", "label": "Notice",
+         "dependencies": [{"type": "INFORMATIONAL", "nodeId": "prepare"}]},
+    ]))
+    assert attach("GATELESS_162")["ok"]
+    instance_id = current()["journey"]["modules"][0]["instanceId"]
+
+    early = complete(instance_id, "result")
+    assert early["ok"] is False and "còn thiếu bước bắt buộc (Prepare)" in early["error"]
+    assert vm.read_shipment("SEA-162")["work_modules"][0]["completed_steps"] == []
+
+    # INFORMATIONAL can be completed first: it never holds anything.
+    assert complete(instance_id, "notice")["ok"]
+    assert complete(instance_id, "prepare")["ok"]
+    done = complete(instance_id, "result")
+    assert done["ok"], done
+    module = done["readback"]["journey"]["modules"][0]
+    assert module["status"] == "DONE" and module["gateText"] == "" and module["gate"] == {}
+    base = [n for n in done["readback"]["journey"]["nodes"] if not n.get("moduleId")]
+    assert not [n for n in base if any("Chặn" in b for b in n["blockers"])], \
+        "a gate-less module must never place a gate sentence on a base stage"
+
+
+def test_gateless_template_still_walks_the_ui_lifecycle(staging):
+    """The round-2 lifecycle repair must also hold for a gate-less version."""
+    publish(gateless_template())
+    identifier = "GATELESS_162:V1"
+    assert stored_template(identifier)["status"] == "DRAFT"
+    body_before = body_of(stored_template(identifier))
+
+    activated = event("work_module_template_save", ui_payload_of("GATELESS_162", "ACTIVE"))
+    assert activated["ok"], activated
+    assert activated["saved"]["status"] == "ACTIVE"
+    assert stored_template(identifier)["join"] == {}
+
+    retired = event("work_module_template_save", ui_payload_of("GATELESS_162", "RETIRED"))
+    assert retired["ok"], retired
+    after = stored_template(identifier)
+    assert after["status"] == "RETIRED"
+    assert body_of(after) == body_before, "a status step must not rewrite the version body"
+
+    revived = event("work_module_template_save", ui_payload_of("GATELESS_162", "ACTIVE"))
+    assert revived["ok"] is False and stored_template(identifier)["status"] == "RETIRED"
+    library = vm.build_view_model()["workModules"]
+    assert [row for row in library["all"] if row["templateId"] == "GATELESS_162"], "still listed for lookup"
+    assert not [row for row in library["templates"] if row["templateId"] == "GATELESS_162"], "no longer attachable"
