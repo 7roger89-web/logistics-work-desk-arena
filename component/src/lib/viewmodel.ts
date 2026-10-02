@@ -969,6 +969,7 @@ export interface AttentionItem {
   deadline: string;
   blockedGate: string;
   primary: boolean;
+  sourcePriority?: Priority;
   provenance: string;
   unknown: boolean;
 }
