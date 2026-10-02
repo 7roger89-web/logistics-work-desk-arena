@@ -28,6 +28,13 @@ const BAND_LABEL: Record<string, string> = {
   INFO: "Thông tin",
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  TASK: "Việc được giao",
+  PRIMARY_ACTION: "Việc chính",
+  ALERT: "Cảnh báo",
+  WORK_MODULE: "Quy trình phát sinh",
+};
+
 function bandMeta(item: OperationsControlQueueItem) {
   if (item.unknown) {
     return { label: "Chưa rõ", cls: "border-slate-300 bg-slate-100 text-slate-700" };
@@ -71,7 +78,7 @@ function InterventionRow({ item }: { item: OperationsControlQueueItem }) {
             {item.owner ? <span>Phụ trách: <b className="text-slate-700">{item.owner}</b></span> : <span>Phụ trách: <b className="text-slate-700">Chưa phân công / Chưa xác định</b></span>}
             {item.deadline ? <span>Hạn: <b className="text-slate-700">{item.deadline}</b></span> : null}
             {item.blockedGate ? <span>Chặn: <b className="text-red-700">{item.blockedGate}</b></span> : null}
-            <span>Nguồn: <b className="text-slate-700">{item.sourceType}</b></span>
+            <span>Nguồn: <b className="text-slate-700">{SOURCE_LABEL[item.sourceType] ?? item.sourceType}</b></span>
           </div>
         </div>
         <span className="inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg bg-[#0f2a4a] px-3 text-[13px] font-bold text-white">
@@ -212,11 +219,11 @@ export default function OperationsControlTower() {
         <SectionTitle
           icon={<Crosshair size={20} />}
           title="Điều hành vận hành"
-          sub="Chọn chỗ cần can thiệp từ cùng Attention truth của Support. Chỉ đọc; không có điểm rủi ro hay chấm điểm nhân viên."
+          sub="Chọn đúng việc cần quản lý can thiệp từ cùng nguồn việc của Support. Chỉ đọc; không chấm điểm rủi ro hay nhân viên."
           right={<ToneBadge tone="blue" size="sm">CHỈ ĐỌC</ToneBadge>}
         />
         <div className="flex flex-wrap gap-2 text-[12.5px] text-slate-600">
-          <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">Deadline: theo <b>ngày có nguồn</b>, không giả đồng hồ &lt;24h</span>
+          <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">Hạn xử lý: theo <b>ngày có nguồn</b>, không giả định giờ &lt;24h</span>
           <Link to="/bao-cao-ceo" className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-bold text-[#1e5aa8]">Mở Báo cáo CEO →</Link>
         </div>
       </section>
@@ -230,8 +237,8 @@ export default function OperationsControlTower() {
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
           {[
             ["Lô trong phạm vi", scope.shipmentCount, "bg-slate-50 border-slate-200"],
-            ["Có Attention", scope.attentionShipmentCount, "bg-blue-50 border-blue-200"],
-            ["Cần quản lý chú ý", scope.managerItemCount, "bg-amber-50 border-amber-200"],
+            ["Lô có tín hiệu xử lý", scope.attentionShipmentCount, "bg-blue-50 border-blue-200"],
+            ["Mục cần quản lý chú ý", scope.managerItemCount, "bg-amber-50 border-amber-200"],
             ["Chưa có tín hiệu", scope.noSignalShipmentCount, "bg-slate-50 border-slate-200"],
             ["Chưa rõ", scope.unknownShipmentCount, "bg-violet-50 border-violet-200"],
           ].map(([label, value, cls]) => (
@@ -247,7 +254,7 @@ export default function OperationsControlTower() {
         <SectionTitle
           icon={<AlertTriangle size={19} />}
           title={`Cần quản lý chú ý (${queue.length})`}
-          sub="Chặn · quá hạn · sắp hạn · dữ liệu chưa rõ · primary action thật sự khẩn. Không phải toàn bộ việc của Support."
+          sub="Chặn · quá hạn · sắp hạn · dữ liệu chưa rõ · việc chính được đánh dấu khẩn. Không phải toàn bộ việc của Support."
           right={hasFilter ? (
             <button type="button" onClick={() => setSp(new URLSearchParams())} className="touch-target rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-bold text-slate-600">
               Xóa lọc
@@ -293,7 +300,7 @@ export default function OperationsControlTower() {
         <SectionTitle
           icon={<CalendarClock size={19} />}
           title="Hạn theo dữ liệu hiện có"
-          sub={`Mốc ngày ${operationsControl.horizon.asOf} · chỉ task có deadline cấu trúc; không suy diễn ETA/ETD hay guidance text.`}
+          sub={`Mốc ngày ${operationsControl.horizon.asOf} · chỉ việc có hạn ngày cấu trúc; không suy diễn ETA/ETD hay hướng dẫn tự do.`}
         />
         <div className="grid gap-3 md:grid-cols-3">
           {operationsControl.horizon.buckets.map((bucket) => (
@@ -303,7 +310,7 @@ export default function OperationsControlTower() {
                 <span className="rounded-full bg-white px-2 py-0.5 text-[12px] font-extrabold text-[#1e5aa8]">{bucket.count}</span>
               </div>
               <div className="mt-2 space-y-1.5">
-                {bucket.items.length === 0 ? <p className="text-[12px] text-slate-500">Không có mốc đủ authority.</p> : bucket.items.slice(0, 4).map((item) => (
+                {bucket.items.length === 0 ? <p className="text-[12px] text-slate-500">Chưa có mốc ngày đủ căn cứ.</p> : bucket.items.slice(0, 4).map((item) => (
                   <Link key={item.id} to={item.route} className="block rounded-lg bg-white px-2.5 py-2 text-[12px] hover:ring-1 hover:ring-[#1e5aa8]">
                     <b className="text-slate-700">{item.shipmentId}</b>
                     <span className="ml-1.5 text-slate-500">{item.action}</span>
@@ -319,7 +326,7 @@ export default function OperationsControlTower() {
         <SectionTitle
           icon={<Users size={19} />}
           title="Phân bố việc theo trách nhiệm"
-          sub="Đếm sự thật theo loại việc; không có điểm tải, leaderboard hay kết luận ai “quá tải”."
+          sub="Đếm theo loại việc có dữ liệu; không có điểm tải, bảng xếp hạng hay kết luận ai “quá tải”."
         />
         {operationsControl.workload.length === 0 ? (
           <p className="text-[13px] text-slate-500">Chưa có manager-grade Attention để nhóm theo trách nhiệm.</p>
@@ -352,7 +359,7 @@ export default function OperationsControlTower() {
             onSelect={(row) => setFilters({ gate: row.key })}
           />
           <ConcentrationColumn
-            title="Theo Work Module"
+            title="Theo quy trình phát sinh"
             rows={operationsControl.concentration.modules}
             testId="control-concentration-modules"
             onSelect={(row) => setFilters({ module: row.key })}
