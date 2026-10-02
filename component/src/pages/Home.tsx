@@ -52,7 +52,7 @@ export default function Home() {
               Ưu tiên bây giờ: <span className="text-white">{focus.id} — {focus.nextAction}</span>
             </h1>
             <p className="text-[13.5px] md:text-[14.5px] text-blue-100 mt-1 max-w-[760px]">
-              {home?.urgentCount ?? 0} mục chặn / quá hạn / sắp hạn · {fmtText(focus.nextActionDetail)}
+              {home?.urgentCount ?? 0} mục cần ưu tiên · {fmtText(focus.nextActionDetail)}
             </p>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
               <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">XỬ LÝ NGAY <ArrowRight size={18} /></button>
@@ -136,7 +136,7 @@ export default function Home() {
             <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#0f2a4a] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ DANH SÁCH LÔ</Link>
           </div>
           <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex flex-col">
-            <p className="text-[12.5px] font-semibold text-red-800 flex items-center gap-1.5"><ListTodo size={15} /> Việc chặn / hạn gần · <span className="tnum font-extrabold">{urgentTotal} việc</span></p>
+            <p className="text-[12.5px] font-semibold text-red-800 flex items-center gap-1.5"><ListTodo size={15} /> Việc cần ưu tiên · <span className="tnum font-extrabold">{urgentTotal} việc</span></p>
             <p className="text-[13px] text-red-900 mt-1 flex-1">{summary?.deadlineSoon ?? 0} lô sắp tới hạn khách</p>
             <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-red-600 text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ LÔ HÀNG</Link>
           </div>
