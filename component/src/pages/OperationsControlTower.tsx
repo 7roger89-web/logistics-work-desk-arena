@@ -18,7 +18,7 @@ import type {
 } from "../lib/viewmodel";
 import { cx } from "../lib/format";
 
-type BandFilter = "ALL" | "BLOCKING" | "OVERDUE" | "DUE_SOON" | "UNKNOWN";
+type BandFilter = "ALL" | "BLOCKING" | "OVERDUE" | "DUE_SOON" | "ACTION" | "UNKNOWN";
 
 const BAND_LABEL: Record<string, string> = {
   BLOCKING: "Chặn",
@@ -136,6 +136,7 @@ function WorkloadRow({
     ["BLOCKING", "Chặn", row.blocking],
     ["OVERDUE", "Quá hạn", row.overdue],
     ["DUE_SOON", "Sắp hạn", row.dueSoon],
+    ["ACTION", "Khác cần chú ý", row.action],
     ["UNKNOWN", "Chưa rõ", row.unknown],
   ] as const;
   return (
@@ -143,7 +144,7 @@ function WorkloadRow({
       <button type="button" onClick={() => selectOwner(row.ownerKey)} className="text-left">
         <b className="text-[13.5px] text-[#0f2a4a]">{row.owner}</b>
       </button>
-      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
         {stat.map(([band, label, value]) => (
           <button
             key={band}
@@ -184,6 +185,7 @@ export default function OperationsControlTower() {
     if (filter === "BLOCKING" && item.band !== "BLOCKING") return false;
     if (filter === "OVERDUE" && item.band !== "OVERDUE") return false;
     if (filter === "DUE_SOON" && item.band !== "DUE_SOON") return false;
+    if (filter === "ACTION" && item.band !== "ACTION") return false;
     if (filter === "UNKNOWN" && !item.unknown) return false;
     if (owner && (item.owner || "UNASSIGNED") !== owner) return false;
     if (customer && item.customer !== customer) return false;
@@ -258,6 +260,7 @@ export default function OperationsControlTower() {
             ["BLOCKING", "Chặn"],
             ["OVERDUE", "Quá hạn"],
             ["DUE_SOON", "Sắp hạn"],
+            ["ACTION", "Khác cần chú ý"],
             ["UNKNOWN", "Chưa rõ"],
           ] as const).map(([id, label]) => (
             <button
