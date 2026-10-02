@@ -111,10 +111,10 @@ function ConcentrationColumn({
               <span className="shrink-0 text-[12px] font-extrabold text-[#1e5aa8]">{row.count}</span>
             </span>
             <span className="mt-0.5 block text-[11.5px] text-slate-500">
-              {row.blocking ? \`\${row.blocking} chặn\` : "0 chặn"}
-              {row.overdue ? \` · \${row.overdue} quá hạn\` : ""}
-              {row.dueSoon ? \` · \${row.dueSoon} sắp hạn\` : ""}
-              {row.unknown ? \` · \${row.unknown} chưa rõ\` : ""}
+              {row.blocking ? `${row.blocking} chặn` : "0 chặn"}
+              {row.overdue ? ` · ${row.overdue} quá hạn` : ""}
+              {row.dueSoon ? ` · ${row.dueSoon} sắp hạn` : ""}
+              {row.unknown ? ` · ${row.unknown} chưa rõ` : ""}
             </span>
           </button>
         ))}
@@ -246,7 +246,7 @@ export default function OperationsControlTower() {
       <section className="rounded-2xl border-2 border-[#0f2a4a] bg-white p-4 md:p-5" data-testid="control-intervention-queue">
         <SectionTitle
           icon={<AlertTriangle size={19} />}
-          title={\`Cần quản lý chú ý (\${queue.length})\`}
+          title={`Cần quản lý chú ý (${queue.length})`}
           sub="Chặn · quá hạn · sắp hạn · dữ liệu chưa rõ · primary action thật sự khẩn. Không phải toàn bộ việc của Support."
           right={hasFilter ? (
             <button type="button" onClick={() => setSp(new URLSearchParams())} className="touch-target rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-bold text-slate-600">
@@ -293,7 +293,7 @@ export default function OperationsControlTower() {
         <SectionTitle
           icon={<CalendarClock size={19} />}
           title="Hạn theo dữ liệu hiện có"
-          sub={\`Mốc ngày \${operationsControl.horizon.asOf} · chỉ task có deadline cấu trúc; không suy diễn ETA/ETD hay guidance text.\`}
+          sub={`Mốc ngày ${operationsControl.horizon.asOf} · chỉ task có deadline cấu trúc; không suy diễn ETA/ETD hay guidance text.`}
         />
         <div className="grid gap-3 md:grid-cols-3">
           {operationsControl.horizon.buckets.map((bucket) => (
