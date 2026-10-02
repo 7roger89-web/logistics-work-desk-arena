@@ -31,6 +31,7 @@ import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
+import OperationsControlTower from "./pages/OperationsControlTower";
 import Notebook from "./pages/Notebook";
 import UserAccess from "./pages/UserAccess";
 import IntlPaymentTool from "./pages/IntlPaymentTool";
@@ -92,6 +93,8 @@ export default function App() {
             {/* LOGI_CEO_REPORT_01 — bounded READ-ONLY current-position summary
                 over existing Operations, C2C, C2D and reconciliation projections. */}
             <Route path="/bao-cao-ceo" element={<CeoReport />} />
+            {/* Issue #170 — separate read-only manager intervention surface over shared Attention. */}
+            <Route path="/dieu-hanh" element={<OperationsControlTower />} />
             {/* LOGI_NOTEBOOK_WORKSPACE_01 — READ-ONLY handbook over reference
                 material the repo already owns plus the team's own notes via the
                 existing knowledge_base reader (no longer a placeholder; no CMS,
