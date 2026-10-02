@@ -74,7 +74,6 @@ try {
   assert.match(await initialPrimary.innerText(), /Bổ sung số tờ khai nhập khẩu/);
   const initialModel = await (await page.request.get(`${HOST}/model`)).json();
   const initialStage = initialModel.shipments.find((s) => s.id === "SEA-162").journey.currentStageId;
-  assert.ok(initialStage, "Journey keeps an independent currentStageId");
   assert.doesNotMatch(await page.locator("main").innerText(), /toàn bộ lô hàng đang ổn định/i);
   await shot(page, "desktop-1-action-before-journey.png");
 
@@ -93,6 +92,11 @@ try {
   const afterAttach = await (await page.request.get(`${HOST}/model`)).json();
   const lotAfterAttach = afterAttach.shipments.find((s) => s.id === "SEA-162");
   assert.ok(lotAfterAttach.version > beforeVersion, "attach persisted before Attention readback");
+  assert.equal(
+    lotAfterAttach.journey.currentStageId,
+    initialStage,
+    "Attention/module attach does not rewrite Journey physical/current position",
+  );
   const instanceId = lotAfterAttach.journey.modules[0].instanceId;
   assert.match(await moduleAttention.innerText(), /Chặn/);
   assert.match(await moduleAttention.innerText(), /DELIVERY/);
