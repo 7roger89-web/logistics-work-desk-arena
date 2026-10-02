@@ -103,6 +103,10 @@ try {
 
   // Filter is factual and bounded.
   await hero.getByRole("button", { name: "Chặn", exact: true }).click();
+  await page.waitForFunction(() => {
+    const rows = [...document.querySelectorAll('[data-testid="control-intervention-row"]')];
+    return rows.length > 0 && rows.every((row) => row.getAttribute("data-control-band") === "BLOCKING");
+  });
   const filteredRows = page.locator('[data-testid="control-intervention-row"]');
   assert.ok((await filteredRows.count()) >= 1, "blocking filter returns actual rows");
   for (let i = 0; i < await filteredRows.count(); i++) {
