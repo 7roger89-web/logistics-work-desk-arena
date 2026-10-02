@@ -90,7 +90,7 @@ try {
   );
   assert.match(towerText, /Chưa có tín hiệu/);
   assert.match(towerText, /không có nghĩa lô khỏe hay an toàn/i);
-  assert.match(towerText, /không có điểm rủi ro|không có workload score/i);
+  assert.match(towerText, /không chấm điểm rủi ro|không có điểm tải/i);
 
   const blocker = page
     .locator('[data-testid="control-intervention-row"][data-control-band="BLOCKING"]')
