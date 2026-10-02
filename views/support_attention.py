@@ -95,6 +95,7 @@ def build_attention_projection(
                 "deadline": "",
                 "blockedGate": "",
                 "primary": True,
+                "sourcePriority": _text(row.get("priority")),
                 "provenance": "shipment.primaryAction",
                 "unknown": False,
                 "_deadlineSort": "9999-12-31",
