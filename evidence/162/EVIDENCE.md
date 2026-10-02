@@ -1,6 +1,8 @@
 # Issue #162 — Work Module Library V1 · evidence index
 
-**Candidate SHA:** `3939e00d5d04b248ee533c7b47a420ebd9ed2e96`
+**Candidate SHA (round 1, superseded):** `3939e00d5d04b248ee533c7b47a420ebd9ed2e96`
+**Independent review:** `CHANGES_REQUIRED` at `c74dfc400090522ccc88fbd19bc32f314823d733` (3 blockers)
+**Repair candidate SHA:** `2a29a7688c0e0f6417f320ae7f7ca697591cce6d` (sections 1–6 re-measured here, section 7 is new)
 **Branch:** `arena/01a0fafa-logistics-work-desk-arena` (branched from `main@36d4cd4370426a752c3ec0d3c1f205c38f2f6c86`)
 **Status:** candidate ready — **not merged, not deployed.**
 
@@ -91,16 +93,16 @@ host:
 8. zero page errors for the whole journey.
 
 Screenshots (same SHA):
-[desktop 1 base journey](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-1-base-journey.png) ·
-[desktop 2 attach panel](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-2-attach-panel.png) ·
-[desktop 3 rollup attached](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-3-rollup-attached.png) ·
-[desktop 4 steps + guidance](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-4-steps-and-guidance.png) ·
-[desktop 5 step workspace](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-5-step-workspace.png) ·
-[desktop 6 completion readback](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-6-completion-readback.png) ·
-[desktop 7 gate cleared](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-7-gate-cleared.png) ·
-[desktop 8 template library](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/desktop-8-template-library.png) ·
-[mobile 1 journey](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/mobile-1-journey.png) ·
-[mobile 2 rollup](https://github.com/7roger89-web/logistics-work-desk-arena/blob/3939e00d5d04b248ee533c7b47a420ebd9ed2e96/evidence/162/mobile-2-rollup.png)
+[desktop 1 base journey](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-1-base-journey.png) ·
+[desktop 2 attach panel](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-2-attach-panel.png) ·
+[desktop 3 rollup attached](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-3-rollup-attached.png) ·
+[desktop 4 steps + guidance](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-4-steps-and-guidance.png) ·
+[desktop 5 step workspace](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-5-step-workspace.png) ·
+[desktop 6 completion readback](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-6-completion-readback.png) ·
+[desktop 7 gate cleared](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-7-gate-cleared.png) ·
+[desktop 8 template library](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-8-template-library.png) ·
+[mobile 1 journey](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/mobile-1-journey.png) ·
+[mobile 2 rollup](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/mobile-2-rollup.png)
 
 The #160 real-browser suite also passes on this bundle
 (`node tests/component/browser_visual_shipment_workspace.mjs`, 11 nodes, canonical
@@ -125,3 +127,94 @@ provenance values (`CUSTOMER_PLAYBOOK | REGULATORY_RULE | SYSTEM_RECOMMENDATION_
 BPMN/drag-and-drop graph authoring, second workflow/task/document/finance store,
 graph DB, rules engine, background worker, scheduler, module-only event bus,
 per-module document storage or cost attribution.
+
+---
+
+## 7. Independent-review blocker repair (round 2)
+
+Reviewed head `c74dfc400090522ccc88fbd19bc32f314823d733` → `CHANGES_REQUIRED`, exactly
+three blockers. Each was repaired at its smallest safe point and each has a
+regression that fails without the repair. Repair candidate:
+`2a29a7688c0e0f6417f320ae7f7ca697591cce6d`.
+
+### BLOCKER 1 — the template lifecycle never reached its transition (`FIXED`)
+
+Two halves, both needed:
+
+1. `core/database.py::save_work_module_template()` normalized the caller's body
+   **before** looking up the immutable version, so the bounded library UI's
+   status-only payload — `{template_id, name, version, status, anchor_stage}`,
+   with no `nodes` at all — died on `Quy trình phải có danh sách bước` for both
+   `DRAFT → ACTIVE` and `ACTIVE → RETIRED`. The writer now recognises an existing
+   `(template_id, version)` first, loads the **stored** body and validates only
+   the requested transition.
+2. `views/logi_view_model.py::_handle_work_module_template_save()` re-normalized
+   the request body to build its success summary — the same crash, *after* the
+   write had already persisted (the exact "failed write that landed" shape). It
+   now reads the saved version back from the store, and refuses to report success
+   if that readback is missing.
+
+Invariants held and asserted: a status step changes **only** `status` (plus the
+write's own audit metadata); nodes, guidance, anchor, gate and join are
+byte-for-byte identical before/after; a body smuggled into a status call is
+discarded, never applied; `RETIRED → ACTIVE` fails; a same-status re-save is still
+refused as an immutable-version edit.
+
+### BLOCKER 2 — the common exception path dropped `requestId` (`FIXED`)
+
+`consume_phase_b_triggers()` kept `requestId` only for
+`shipment_sea_facts_save`. The repair is the generic bounded rule: **if the
+payload carries a `requestId`, the failure result echoes it** — no per-event
+hard-coding, no change to event authority. The regression challenges the hard
+case the reviewer named: an exception raised *after* the durable write but
+*before* the fresh readback. Asserts: `ok=false`, correct event, exact
+`requestId`, the landed fact still on record with the bumped version (no
+rollback, no invented failure), recovery visible on the next read, and an
+idempotent retry (`noop`). A negative control proves an uncorrelated payload gets
+no invented id.
+
+### BLOCKER 3 — dependency readiness was UI-only (`FIXED`)
+
+`_handle_work_module_step_complete()` persisted completion without checking
+required dependencies. Before appending, the writer now derives readiness from the
+persisted facts of the **exact bound version** through the existing pure
+`module_execution()`: `BLOCKING`/`PARALLEL_REQUIRED` hold, `INFORMATIONAL` never
+does, and a refusal leaves the shipment version and the history untouched.
+Regression: direct dispatcher challenge on `prepare → result (BLOCKING)` —
+completing `result` first is refused with `còn thiếu bước bắt buộc (Prepare)`, no
+version bump, no history mutation, gate still blocked; after `prepare`, `result`
+succeeds and the gate clears; a second module with an `INFORMATIONAL` dependency
+completes out of order without being blocked.
+
+### Gates re-measured at the repair candidate
+
+| Gate | Result |
+| --- | --- |
+| `tests/test_work_module_library_162.py` | **26 passed** (21 round-1 + 5 blocker regressions) |
+| Regression lanes (workspace, execution profile, primary action, documents drive/review, scope-aware missing info, slash-route repair, document workflow) | **364 passed** |
+| Full suite | **23 failed / 1628 passed / 44 skipped / 25 errors** |
+| Pinned untouched `main@36d4cd4` | **23 failed / 1602 passed / 44 skipped / 25 errors** |
+| Failure-set diff | sorted FAILED+ERROR ids **identical** → zero regressions |
+| `typecheck` / `build` / `scan` | PASS / PASS / PASS (`FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`) |
+| Dist rebuild | byte-identical to the reviewed bundle — `logi-shell.js` `311e5b7e…`, `logi-shell.css` `947b1ff8…` (Python-only repair; `dist` untouched and never hand-edited) |
+| DOM acceptance #162 | PASS (stable 3/3 runs) |
+| Real browser #162 | PASS — lifecycle clicked through: DRAFT → ACTIVE → RETIRED with authoritative readback, version body unchanged, zero page errors |
+
+New screenshots (this candidate):
+[desktop 9 lifecycle ACTIVE](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-9-lifecycle-active.png) ·
+[desktop 10 lifecycle RETIRED](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-10-lifecycle-retired.png)
+
+### Pre-existing issues observed, NOT fixed (out of the reviewed scope)
+
+* **`#160` harness flakiness, reproduced on the reviewed head.** In an untouched
+  `c74dfc4` worktree, `dom_acceptance_visual_shipment_workspace.mjs` passed 1/3
+  runs (failing at *different* assertions) and
+  `browser_visual_shipment_workspace.mjs` passed 1/3 runs (cold start). In the
+  repair tree: jsdom 1/5 runs, browser 1/3 runs. Untouched by this repair; #162's
+  own DOM suite is stable (3/3) and its browser suite passed 3/3.
+* **A gate-less template is stored but hidden from the library list.**
+  `_work_module_library()` re-normalizes every stored row and skips rows that
+  raise; `normalize_template()` rejects an empty `join: {}` (produced by any
+  template published without a gate), so such a row never renders. This exists on
+  the reviewed head and is unrelated to the three blockers; it is disclosed here
+  rather than silently fixed (scope discipline).
