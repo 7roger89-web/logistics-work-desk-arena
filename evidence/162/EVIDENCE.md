@@ -2,7 +2,8 @@
 
 **Candidate SHA (round 1, superseded):** `3939e00d5d04b248ee533c7b47a420ebd9ed2e96`
 **Independent review:** `CHANGES_REQUIRED` at `c74dfc400090522ccc88fbd19bc32f314823d733` (3 blockers)
-**Repair candidate SHA:** `2a29a7688c0e0f6417f320ae7f7ca697591cce6d` (sections 1–6 re-measured here, section 7 is new)
+**Repair candidate SHA (round 2, superseded):** `2a29a7688c0e0f6417f320ae7f7ca697591cce6d`
+**Final candidate SHA:** `96d96979d200e4af35a1ba6e850353da641d061e` (section 8 is new; sections 1–7 keep their provenance)
 **Branch:** `arena/01a0fafa-logistics-work-desk-arena` (branched from `main@36d4cd4370426a752c3ec0d3c1f205c38f2f6c86`)
 **Status:** candidate ready — **not merged, not deployed.**
 
@@ -201,8 +202,8 @@ completes out of order without being blocked.
 | Real browser #162 | PASS — lifecycle clicked through: DRAFT → ACTIVE → RETIRED with authoritative readback, version body unchanged, zero page errors |
 
 New screenshots (this candidate):
-[desktop 9 lifecycle ACTIVE](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-9-lifecycle-active.png) ·
-[desktop 10 lifecycle RETIRED](https://github.com/7roger89-web/logistics-work-desk-arena/blob/2a29a7688c0e0f6417f320ae7f7ca697591cce6d/evidence/162/desktop-10-lifecycle-retired.png)
+[desktop 9 lifecycle ACTIVE](https://github.com/7roger89-web/logistics-work-desk-arena/blob/96d96979d200e4af35a1ba6e850353da641d061e/evidence/162/desktop-9-lifecycle-active.png) ·
+[desktop 10 lifecycle RETIRED](https://github.com/7roger89-web/logistics-work-desk-arena/blob/96d96979d200e4af35a1ba6e850353da641d061e/evidence/162/desktop-10-lifecycle-retired.png)
 
 ### Pre-existing issues observed, NOT fixed (out of the reviewed scope)
 
@@ -212,9 +213,79 @@ New screenshots (this candidate):
   `browser_visual_shipment_workspace.mjs` passed 1/3 runs (cold start). In the
   repair tree: jsdom 1/5 runs, browser 1/3 runs. Untouched by this repair; #162's
   own DOM suite is stable (3/3) and its browser suite passed 3/3.
-* **A gate-less template is stored but hidden from the library list.**
-  `_work_module_library()` re-normalizes every stored row and skips rows that
-  raise; `normalize_template()` rejects an empty `join: {}` (produced by any
-  template published without a gate), so such a row never renders. This exists on
-  the reviewed head and is unrelated to the three blockers; it is disclosed here
-  rather than silently fixed (scope discipline).
+* ~~A gate-less template is stored but hidden from the library list.~~ **Fixed in
+  section 8** — the re-review correctly ruled this a real V1 blocker, not an
+  out-of-scope observation.
+
+---
+
+## 8. Final blocker repair — gate-less modules (round 3)
+
+Reviewed head `ae6ff2cf7e740e86eb763994fdd1463d2576293d` → one remaining blocker:
+a **gate-less** Work Module was written, reported as saved, and then silently lost
+on the fresh read. Final candidate: `96d96979d200e4af35a1ba6e850353da641d061e`.
+
+### Root cause
+
+`normalize_template()` emits `join={}` for a version with `gate_stage=""`. Because
+`{}` is still a `Mapping`, the **next** normalization re-entered the join branch,
+read an empty source node and raised `Điểm nối phải là một bước của quy trình:
+(trống).` Every reader skips rows that raise — `index_templates()`,
+`attachable_templates()` and `_work_module_library()` — so the stored version
+vanished from the library **and** from the attach list while the write had
+reported success. A write/readback inconsistency, exactly as reported.
+
+### Repair — canonical model, not a projection patch
+
+`core/work_modules.py` only:
+
+* `gate_stage == ""` accepts a missing join, an explicit `join=None` **and** the
+  persisted `join={}` as the same canonical `{}` → idempotent:
+  `normalize_template(normalize_template(x)) == normalize_template(x)`;
+* no gate, no join node and no `BLOCKING` semantics are invented;
+* a **declared** gate is not loosened — an explicit in-template join node with a
+  valid dependency type stays mandatory;
+* a half-declared join (`{type}` or `{to}` with no source) is still refused rather
+  than guessed.
+
+### Regressions (each verified to FAIL against the reviewed normalizer)
+
+| # | Required check | Result |
+| --- | --- | --- |
+| 1 | pure idempotence for `{}` / `None` / missing join + the negative gated cases (`gate_stage` set with missing, empty, ghost or bad-type join) | PASS |
+| 2 | real write → fresh `build_view_model()`: version still in `workModules.all` **and** `workModules.templates` | PASS |
+| 3 | real attach: exact id + version pinned, provenance/actor/time normal, rollup present, base journey untouched | PASS |
+| 4 | gate-less completion: internal `BLOCKING` still enforced, `INFORMATIONAL` still free, no base gate sentence | PASS |
+| 5 | round-2 UI lifecycle still holds for a gate-less version (RETIRED not re-activatable) | PASS |
+
+Reverting only the normalizer hunk makes all five fail (`5 failed, 26 passed`),
+then restoring it returns `31 passed` — the tests genuinely bind the bug.
+
+### Gates at the final candidate
+
+| Gate | Result |
+| --- | --- |
+| `tests/test_work_module_library_162.py` | **31 passed** (26 prior + 5 gate-less) |
+| Regression lanes (workspace, execution profile, primary action, documents drive/review, scope-aware missing info, slash-route repair, document workflow) | **369 passed** |
+| Full suite | **23F / 1633P / 44S / 25E** vs pinned `main@36d4cd4` **23F / 1602P / 44S / 25E** — sorted FAILED+ERROR ids **identical** |
+| typecheck / build / scan | PASS / PASS / PASS (`FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`) |
+| Dist rebuild | byte-identical (`logi-shell.js` `311e5b7e…`, `logi-shell.css` `947b1ff8…`) — Python-only repair, `dist` untouched |
+| DOM acceptance #162 | PASS, stable 3/3 |
+
+### Real-runtime gate-less flow (browser, shipped bundle)
+
+The form was submitted with the gate left at its default *"Không chặn cổng nào"*
+(`inputValue() == ""` asserted), status ACTIVE, anchor `customs-import`, two steps
+with an `INFORMATIONAL` dependency. Proven by authoritative readback:
+
+* the fresh library shows the version (`workModules.all` **and** `.templates`),
+  `status=ACTIVE`, `gateStage=""` — it did **not** disappear;
+* attaching pins the exact version and renders a rollup reading **`Chờ 0/2 bước`**
+  with **no** `Chặn …` sentence and **no** gate object, while the gated demo module
+  keeps its own `Hoàn thành 3/3` rollup;
+* base truth is byte-identical before/after that attach: same 7 nodes, same
+  dependencies, same blockers, and no base stage acquired a dependency on the
+  gate-less module.
+
+Screenshots: [`desktop-11-gateless-library-readback.png`](https://github.com/7roger89-web/logistics-work-desk-arena/blob/96d96979d200e4af35a1ba6e850353da641d061e/evidence/162/desktop-11-gateless-library-readback.png) ·
+[`desktop-12-gateless-attached.png`](https://github.com/7roger89-web/logistics-work-desk-arena/blob/96d96979d200e4af35a1ba6e850353da641d061e/evidence/162/desktop-12-gateless-attached.png)
