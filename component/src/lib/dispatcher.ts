@@ -37,6 +37,9 @@ export type LogiEventName =
   // dispatcher → shipment_edit RBAC → the existing atomic shipment writer →
   // audit → fresh readback (same contract as shipment_profile_save).
   | "shipment_commercial_flow_save"
+  // Shipment-local picker preferences: stable catalog IDs only, persisted on
+  // the existing shipment truth with the ordinary version/audit/readback path.
+  | "shipment_document_selection_save"
   | "delivery_confirm"
   | "finance_actual_save"
   | "payment_record"
@@ -159,6 +162,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_sea_facts_save",
   "shipment_profile_save",
   "shipment_commercial_flow_save",
+  "shipment_document_selection_save",
   "delivery_confirm",
   "finance_actual_save",
   "payment_record",

@@ -890,117 +890,260 @@ def timelines_projection(shipment_ids: Any, limit: int = 30, *, db: Any = _UNSET
 # GNT projection
 # --------------------------------------------------------------------------
 
+def _generated_document_revision(document: Mapping[str, Any]) -> int:
+    try:
+        return int(document.get("generation_revision") or document.get("revision") or 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _generated_attachment_id(
+    document: Mapping[str, Any],
+    shipment_id: str,
+    attachment_records: list[Mapping[str, Any]],
+) -> str:
+    """Link an output to its exact durable attachment by shipment + SHA-256.
+
+    Generated PXK/GNT bytes are uploaded unchanged by the existing generator
+    path. An attachment ID is exposed only for one exact, same-shipment digest
+    match; ambiguous or incomplete evidence stays unavailable.
+    """
+    output_hash = text(document.get("output_hash")).lower()
+    if not output_hash or not shipment_id:
+        return ""
+    matches = [
+        row
+        for row in attachment_records
+        if isinstance(row, Mapping)
+        and text(row.get("shipment_id")) == shipment_id
+        and text(row.get("sha256")).lower() == output_hash
+        and row.get("is_deleted") is not True
+    ]
+    return text(matches[0].get("id")) if len(matches) == 1 else ""
+
+
+def _project_generated_document_history(
+    document_type: str,
+    shipment_id: str,
+    *,
+    docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None,
+) -> list[dict[str, Any]]:
+    """Bounded metadata/history projection with exact attachment download IDs."""
+    if not shipment_id:
+        return []
+    if docgen_documents is None:
+        from core.database import load_docgen_documents
+
+        try:
+            raw_documents = load_docgen_documents(shipment_id) or {}
+        except Exception:  # noqa: BLE001 - a metadata read failure stays empty
+            raw_documents = {}
+        docs: Mapping[str, Mapping[str, Any]] = raw_documents
+    else:
+        docs = docgen_documents.get(shipment_id) or {}
+
+    if grouped_attachments is None:
+        from core.database import load_shipment_attachments
+
+        try:
+            attachment_map = load_shipment_attachments(shipment_id) or {}
+            attachment_records = [
+                dict(row) for row in attachment_map.values() if isinstance(row, Mapping)
+            ]
+        except Exception:  # noqa: BLE001 - attachment lookup failure is unavailable
+            attachment_records = []
+    else:
+        attachment_records = list(grouped_attachments.get(shipment_id) or [])
+
+    from views import logi_c1
+
+    session_outputs = logi_c1.stored_outputs(shipment_id)
+    history: list[dict[str, Any]] = []
+    for record_id, document in docs.items():
+        if not isinstance(document, Mapping):
+            continue
+        if text(document.get("document_type")).upper() != document_type.upper():
+            continue
+        if document.get("is_deleted") is True:
+            continue
+        projected = logi_c1.document_projection(document, session_outputs)
+        attachment_id = _generated_attachment_id(
+            document, shipment_id, attachment_records
+        )
+        history.append(
+            {
+                "recordId": text(projected.get("id") or record_id),
+                "documentId": text(projected.get("documentId")),
+                "documentType": document_type.upper(),
+                "revision": _generated_document_revision(document),
+                "status": text(projected.get("status")),
+                "fileName": text(projected.get("fileName")),
+                "mime": text(projected.get("mime")),
+                "generatedAt": text(projected.get("generatedAt")),
+                "generatedBy": text(projected.get("generatedBy")),
+                "attachmentId": attachment_id,
+                "downloadAvailable": bool(
+                    attachment_id or projected.get("downloadAvailable")
+                ),
+            }
+        )
+    history.sort(key=lambda row: (row["revision"], row["recordId"]))
+    return history[-20:]
+
+
 def _gnt_projection(
     shipment: Mapping[str, Any],
     customs: Mapping[str, Any],
     customer_doc: Mapping[str, Any],
     shipment_id: str,
+    *,
+    commercial_flow: Mapping[str, Any] | None = None,
+    docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    import base64
+    from core.gnt_builder import check_gnt_prerequisites
+    from core.shipment_document_workflow import gnt_flow_gate
     from views import logi_c1
 
     gnt_customs = customs.get("gnt") if isinstance(customs.get("gnt"), Mapping) else {}
-    payer = text(
-        gnt_customs.get("nguoi_nop")
-        or customs.get("taxpayer_name")
-        or customs.get("nguoi_nop")
-    )
-    tax_code = text(
-        gnt_customs.get("mst")
-        or customs.get("taxpayer_tax_code")
-        or customs.get("mst")
-    )
-    address = text(
-        gnt_customs.get("dia_chi")
-        or customs.get("taxpayer_address")
-        or customs.get("dia_chi")
-    )
-    customs_office = text(gnt_customs.get("ma_hq") or customs.get("ma_hq"))
     customer_hint = text(customer_doc.get("name") or shipment.get("customer") or shipment.get("client"))
     customer_tax_hint = text(customer_doc.get("tax_code") or shipment.get("customer_tax_code"))
 
+    # Use the same authoritative preflight and confirmed legal-importer gate as
+    # _handle_gnt_generate; this projection reports readiness but never grants
+    # the event or substitutes for its server-side checks.
+    prerequisites = check_gnt_prerequisites(dict(shipment))
+    gnt_data = prerequisites.get("data") if isinstance(prerequisites.get("data"), Mapping) else {}
+    readiness_missing = [text(item) for item in (prerequisites.get("missing") or []) if text(item)]
+    # Keep the pre-existing `missing` labels stable for callers outside this
+    # picker. The new `readiness` block below carries the canonical builder
+    # wording plus the commercial-flow gate; this compatibility list remains
+    # prerequisites-only and never becomes permission to generate.
+    legacy_labels = {
+        "Tên người nộp thuế": "Người nộp thuế",
+        "Mã số thuế (MST)": "Mã số thuế",
+        "Thuế nhập khẩu (số tiền)": "Thuế nhập khẩu",
+        "Thuế nhập khẩu (số tiền không hợp lệ)": "Thuế nhập khẩu",
+        "Thuế nhập khẩu không hợp lệ (âm)": "Thuế nhập khẩu (< 0)",
+        "Thuế GTGT hàng NK (số tiền)": "VAT hàng nhập khẩu",
+        "Thuế GTGT hàng NK (số tiền không hợp lệ)": "VAT hàng nhập khẩu",
+        "Thuế GTGT hàng NK không hợp lệ (âm)": "VAT hàng nhập khẩu (< 0)",
+    }
+    missing = [legacy_labels.get(item, item) for item in readiness_missing]
+    no_payable = bool(prerequisites.get("no_payable"))
+    flow_gate = gnt_flow_gate(commercial_flow or {}, gnt_data.get("taxpayer_tax_code"))
+    if no_payable:
+        readiness_state = "NOT_APPLICABLE"
+        readiness_gate = "NO_PAYABLE_AMOUNT"
+        readiness_reason = "Không có nghĩa vụ thuế phải nộp qua GNT."
+    elif not flow_gate.get("allowed"):
+        readiness_state = "MISSING_INFO"
+        readiness_gate = text(flow_gate.get("gate")) or "GNT_FLOW_BLOCKED"
+        readiness_reason = text(flow_gate.get("reason")) or "Chưa đủ điều kiện pháp lý để tạo GNT."
+        readiness_missing.append(readiness_reason)
+    elif readiness_missing:
+        readiness_state = "MISSING_INFO"
+        readiness_gate = "BLOCKED_MISSING_PREREQUISITES"
+        readiness_reason = text(prerequisites.get("reason")) or "GNT còn thiếu thông tin bắt buộc."
+    else:
+        readiness_state = "READY"
+        readiness_gate = "READY"
+        readiness_reason = ""
+
+    history = _project_generated_document_history(
+        "GNT",
+        shipment_id,
+        docgen_documents=docgen_documents,
+        grouped_attachments=grouped_attachments,
+    )
     stored = logi_c1.stored_outputs(shipment_id)
-    gnt_entries = [
-        v for k, v in stored.items()
-        if isinstance(v, Mapping) and (v.get("document_type") == "GNT" or str(k).startswith(f"GNT::{shipment_id}"))
-    ]
-    latest_gnt = gnt_entries[-1] if gnt_entries else None
-
-    gnt_doc = None
-    if latest_gnt:
-        gnt_raw = latest_gnt.get("bytes")
-        b64 = None
-        if gnt_raw:
+    latest_gnt_metadata = history[-1] if history else None
+    latest_record = None
+    if latest_gnt_metadata:
+        candidate = (docgen_documents or {}).get(shipment_id, {}).get(
+            text(latest_gnt_metadata.get("recordId"))
+        ) if docgen_documents is not None else None
+        if isinstance(candidate, Mapping):
+            latest_record = candidate
+        elif docgen_documents is None:
             try:
-                b64 = base64.b64encode(gnt_raw).decode("ascii")
+                from core.database import load_docgen_document
+                latest_record = load_docgen_document(text(latest_gnt_metadata.get("recordId")))
             except Exception:  # noqa: BLE001
-                b64 = None
+                latest_record = None
+
+    gnt_doc: dict[str, Any] | None = None
+    if isinstance(latest_record, Mapping):
+        projected = logi_c1.document_projection(latest_record, stored)
         gnt_doc = {
-            "fileName": text(latest_gnt.get("file_name") or f"GNT_{shipment_id}.xlsx"),
-            "mime": text(latest_gnt.get("mime") or logi_c1._MIME_XLSX),
-            "generatedAt": text(latest_gnt.get("generated_at")),
-            "generatedBy": text(latest_gnt.get("generated_by")),
-            "downloadAvailable": bool(gnt_raw),
-            "downloadBase64": b64,
+            "documentId": text(projected.get("documentId")),
+            "recordId": text(projected.get("id")),
+            "revision": _generated_document_revision(latest_record),
+            "status": text(projected.get("status")),
+            "fileName": text(projected.get("fileName")) or f"GNT_{shipment_id}.xlsx",
+            "mime": text(projected.get("mime") or logi_c1._MIME_XLSX),
+            "generatedAt": text(projected.get("generatedAt")),
+            "generatedBy": text(projected.get("generatedBy")),
+            "attachmentId": text(latest_gnt_metadata.get("attachmentId")),
+            "downloadAvailable": bool(
+                latest_gnt_metadata.get("downloadAvailable") or projected.get("downloadAvailable")
+            ),
+            "downloadBase64": projected.get("downloadBase64"),
+            "history": history,
         }
-
-    missing = []
-    if not text(customs.get("tk_no")):
-        missing.append("Số tờ khai (TK)")
-    if not _declaration_date(customs):
-        missing.append("Ngày tờ khai")
-
-    raw_duty = customs.get("import_duty_amount")
-    duty = None
-    if raw_duty is None or str(raw_duty).strip() == "" or str(raw_duty).strip() == "None":
-        missing.append("Thuế nhập khẩu")
     else:
-        try:
-            d_val = float(raw_duty)
-            if d_val < 0:
-                missing.append("Thuế nhập khẩu (< 0)")
-            else:
-                duty = d_val
-        except (ValueError, TypeError):
-            missing.append("Thuế nhập khẩu")
-
-    raw_vat = customs.get("import_vat_amount")
-    vat = None
-    if raw_vat is None or str(raw_vat).strip() == "" or str(raw_vat).strip() == "None":
-        missing.append("VAT hàng nhập khẩu")
-    else:
-        try:
-            v_val = float(raw_vat)
-            if v_val < 0:
-                missing.append("VAT hàng nhập khẩu (< 0)")
-            else:
-                vat = v_val
-        except (ValueError, TypeError):
-            missing.append("VAT hàng nhập khẩu")
-
-    if not payer:
-        missing.append("Người nộp thuế")
-    if not tax_code:
-        missing.append("Mã số thuế")
-
-    no_payable = False
-    if duty is not None and vat is not None and duty == 0 and vat == 0 and len(missing) == 0:
-        no_payable = True
-
-    ready = (len(missing) == 0) and not no_payable
+        # Preserve the pre-existing current-session output path if durable
+        # metadata is temporarily unreadable; do not invent a durable history row.
+        session_entries = [
+            (key, value)
+            for key, value in stored.items()
+            if isinstance(value, Mapping)
+            and (value.get("document_type") == "GNT" or str(key).startswith(f"GNT::{shipment_id}"))
+        ]
+        session_entries.sort(key=lambda pair: _generated_document_revision(pair[1]))
+        if session_entries:
+            record_id, entry = session_entries[-1]
+            raw = entry.get("bytes")
+            encoded = None
+            if raw:
+                try:
+                    import base64
+                    encoded = base64.b64encode(raw).decode("ascii")
+                except Exception:  # noqa: BLE001
+                    encoded = None
+            gnt_doc = {
+                "recordId": text(record_id),
+                "revision": _generated_document_revision(entry),
+                "status": "GENERATED",
+                "fileName": text(entry.get("file_name") or f"GNT_{shipment_id}.xlsx"),
+                "mime": text(entry.get("mime") or logi_c1._MIME_XLSX),
+                "generatedAt": text(entry.get("generated_at")),
+                "generatedBy": text(entry.get("generated_by")),
+                "downloadAvailable": bool(raw),
+                "downloadBase64": encoded,
+                "history": history,
+            }
 
     return {
-        "payer": payer,
-        "taxCode": tax_code,
-        "address": address,
-        "customsOffice": customs_office,
+        "payer": text(gnt_data.get("taxpayer_name") or gnt_customs.get("nguoi_nop")),
+        "taxCode": text(gnt_data.get("taxpayer_tax_code") or gnt_customs.get("mst")),
+        "address": text(gnt_data.get("taxpayer_address") or gnt_customs.get("dia_chi")),
+        "customsOffice": text(gnt_customs.get("ma_hq") or customs.get("ma_hq")),
         "customerHint": customer_hint,
         "customerTaxHint": customer_tax_hint,
-        "ready": ready,
+        "ready": bool(prerequisites.get("ready")) and not no_payable,
         "noPayable": no_payable,
         "missing": missing,
         "done": bool(gnt_doc),
         "document": gnt_doc,
+        "documentHistory": history,
+        "readiness": {
+            "state": readiness_state,
+            "gate": readiness_gate,
+            "reason": readiness_reason,
+            "missing": readiness_missing,
+        },
     }
 
 
@@ -1251,20 +1394,33 @@ def shipment_projection(
         match_sub_purchase_contract,
         project_commercial_flow,
     )
+    from core.shipment_document_catalog import project_selected_template_ids  # noqa: PLC0415
 
-    gnt_view = _gnt_projection(shipment, customs, customer_doc, sid)
+    commercial_flow = project_commercial_flow(
+        shipment,
+        customers=customers,
+        companies=companies,
+        agents=agents,
+    )
+    gnt_view = _gnt_projection(
+        shipment,
+        customs,
+        customer_doc,
+        sid,
+        commercial_flow=commercial_flow,
+        docgen_documents=docgen_documents,
+        grouped_attachments=attachments,
+    )
     finance_view = finance_projection(shipment, quotes, ledger=ledger, agents=agents)
     pxk_view = pxk_projection(
         shipment,
         contracts,
         docgen_documents=docgen_documents,
         linked_contracts=linked_contracts,
-    )
-    commercial_flow = project_commercial_flow(
-        shipment,
-        customers=customers,
-        companies=companies,
+        grouped_attachments=attachments,
+        commercial_flow=commercial_flow,
         agents=agents,
+        companies=companies,
     )
     quote_id = text(shipment.get("quote_id"))
     quote_linked = bool(
@@ -1305,6 +1461,9 @@ def shipment_projection(
         "customerMST": text(customer_doc.get("tax_code")),
         "customerId": customer_id,
         "contract": contract_id,
+        "selectedDocumentTemplateIds": project_selected_template_ids(
+            shipment.get("document_template_ids")
+        ),
         "route": " → ".join(part for part in (route_origin, route_destination) if part) or UNKNOWN_LABEL,
         "borderVN": route_destination or UNKNOWN_LABEL,
         # Sale owner = the dashboard's authoritative owner resolution
@@ -1584,15 +1743,20 @@ def pxk_projection(
     *,
     docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None = None,
+    commercial_flow: Mapping[str, Any] | None = None,
+    agents: Mapping[str, Any] | None = None,
+    companies: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """PXK facts + the real delivery gate, from core.docgen rules.
+    """PXK facts + the current server gate and durable output history.
 
-    ``docgen_documents`` (``docgen_documents_by_shipment``) and
-    ``linked_contracts`` (``linked_contracts_index``) are the render-local
-    snapshot the component build path passes; a standalone caller keeps the
-    per-call readers unchanged.
+    Readiness is evaluated with the same flow gate, delivery facts and
+    ``core.docgen.rules.evaluate_document_readiness`` inputs as the existing
+    ``pxk_generate`` handler. This is projection only; the event rechecks every
+    gate before generation.
     """
     from core.docgen import rules as docgen_rules
+    from core.shipment_document_workflow import pxk_flow_gate
 
     shipment_id = text(shipment.get("id"))
     delivery = _section(shipment, "2.7")
@@ -1600,31 +1764,108 @@ def pxk_projection(
     missing_delivery = docgen_rules.delivery_facts_missing(delivery) if delivered else []
     contract_id = text(shipment.get("contract_id") or _section(shipment, "entrustment").get("contract_no"))
     contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    linked: Mapping[str, Any] = {}
     if not contract:
-        # Same canonical N:M linkage the contract page writes ("Lô liên kết →
-        # Thêm"): exactly one linked contract is an unambiguous source, several
-        # stay UNKNOWN rather than being guessed for display.
-        if linked_contracts is not None:
-            linked = linked_contracts.get(shipment_id.upper()) or {}
-        else:
+        # Preserve the existing no-guess rule: only one linked source is
+        # unambiguous; zero or multiple remain a blocking readiness state.
+        linked = (linked_contracts or {}).get(shipment_id.upper()) or {}
+        if linked_contracts is None:
             from core.database import load_contracts_for_shipment
 
             try:
                 linked = load_contracts_for_shipment(shipment_id) or {}
-            except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+            except Exception:  # noqa: BLE001 - a linkage read failure stays UNKNOWN
                 linked = {}
         if len(linked) == 1:
             contract_id, contract = next(iter(linked.items()))
 
-    generated = _pxk_document(shipment_id, grouped=docgen_documents)
+    generated = _pxk_document(
+        shipment_id,
+        grouped=docgen_documents,
+        grouped_attachments=grouped_attachments,
+    )
+    flow_gate = pxk_flow_gate(commercial_flow or {})
+    readiness_state = "MISSING_INFO"
+    readiness_gate = ""
+    readiness_reason = ""
+    readiness_missing: list[str] = []
+
+    if not flow_gate.get("allowed"):
+        readiness_gate = text(flow_gate.get("gate")) or "COMMERCIAL_FLOW_REQUIRED"
+        readiness_reason = text(flow_gate.get("reason")) or "Xác nhận hình thức nhập khẩu trước khi tạo PXK."
+        readiness_missing = [readiness_reason]
+        if readiness_gate == "PXK_NOT_APPLICABLE":
+            readiness_state = "NOT_APPLICABLE"
+    elif not delivered:
+        readiness_gate = "BLOCKED_NOT_DELIVERED"
+        readiness_reason = "PXK bị chặn: lô hàng chưa được xác nhận giao."
+        readiness_missing = ["Xác nhận đã giao hàng"]
+    elif missing_delivery:
+        readiness_gate = "BLOCKED_MISSING_DELIVERY_FACTS"
+        readiness_reason = "PXK bị chặn: " + " ".join(missing_delivery)
+        readiness_missing = list(missing_delivery)
+    elif not contract:
+        readiness_gate = "BLOCKED_AMBIGUOUS_SOURCE" if len(linked) > 1 else "BLOCKED_NO_SOURCE"
+        readiness_reason = (
+            "PXK cần đúng một chứng từ nguồn đã liên kết với lô."
+            if len(linked) > 1
+            else "PXK cần chứng từ nguồn (HDMB hoặc PL) đã liên kết với lô."
+        )
+        readiness_missing = ["Liên kết đúng một chứng từ nguồn (HDMB hoặc PL)"]
+    else:
+        if agents is None or companies is None:
+            from core.database import load_authority_agents, load_authority_companies
+
+            agents = agents if agents is not None else (load_authority_agents() or {})
+            companies = companies if companies is not None else (load_authority_companies() or {})
+        agent = next(iter((agents or {}).values()), {}) or {}
+        company = next(iter((companies or {}).values()), {}) or {}
+        finance = _section(shipment, "3.4")
+        goods_lines = [line for line in (finance.get("details") or []) if isinstance(line, Mapping)]
+        source_line = goods_lines[0] if len(goods_lines) == 1 else None
+        pxk_no = text(generated.get("number"))
+        pxk_date = text(generated.get("date"))
+        pxk_identity = {
+            "id": pxk_no.upper(),
+            "pxk_no": pxk_no,
+            "pxk_date": pxk_date,
+            "currency": text(shipment.get("currency")) or "VND",
+        }
+        pxk_source = {
+            "source_document_type": "HDMB" if "HDMB" in contract_id.upper() else "PL",
+            "source_contract_id": contract_id,
+            "source_line_count": len(goods_lines),
+            "source_goods_line": source_line,
+        }
+        delivery_view = {
+            "delivery_completed": delivered,
+            "delivery_date": text(delivery.get("delivered_at") or delivery.get("delivery_date")),
+            "delivery_location": text(delivery.get("delivery_location") or delivery.get("addr")),
+            "receiver_name": text(delivery.get("receiver_name")),
+            "receiver_title": text(delivery.get("receiver_title")),
+        }
+        readiness = docgen_rules.evaluate_document_readiness(
+            docgen_rules.PXK,
+            goods_lines=goods_lines,
+            agent=agent,
+            company=company,
+            selected_contract=pxk_identity,
+            delivery_completed=delivered,
+            document_identity=pxk_identity,
+            pxk_source=pxk_source,
+            delivery=delivery_view,
+        )
+        readiness_state = text(readiness.state) or "BLOCKED"
+        readiness_gate = readiness_state
+        readiness_reason = text(readiness.reason)
+        readiness_missing = [text(item) for item in readiness.missing if text(item)]
+
     return {
         "source": contract_id,
         "sourceName": text(contract.get("contract_no") or contract.get("hdmb_no") or contract.get("hdnt_no")),
         "delivered": delivered,
         "gateOpen": delivered and not missing_delivery,
         "missingDeliveryFacts": list(missing_delivery),
-        # Read back from the canonical docgen metadata: the number/date/done
-        # facts describe a file that really exists, they are never fabricated.
         "number": generated.get("number", ""),
         "date": generated.get("date", ""),
         "place": text(delivery.get("delivery_location") or delivery.get("addr")),
@@ -1632,6 +1873,13 @@ def pxk_projection(
         "role": text(delivery.get("receiver_title")),
         "done": bool(generated),
         "document": generated or None,
+        "documentHistory": list(generated.get("history") or []),
+        "readiness": {
+            "state": readiness_state,
+            "gate": readiness_gate,
+            "reason": readiness_reason,
+            "missing": readiness_missing,
+        },
     }
 
 
@@ -1639,48 +1887,49 @@ def _pxk_document(
     shipment_id: str,
     *,
     grouped: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """Latest PXK generated for one shipment: metadata + downloadable file.
-
-    Reads the canonical ``docgen_documents`` collection (the writer the contract
-    documents already use) and pairs it with the session file store through the
-    existing ``views.logi_c1.document_projection``. Returns ``{}`` when nothing
-    has been generated — UNKNOWN, never a fabricated "done".
-
-    ``grouped`` is the whole canonical collection, already loaded and grouped by
-    shipment (see ``docgen_documents_by_shipment``). When it is supplied this
-    shipment's slice comes from memory — an empty slice means "no document for
-    this shipment", exactly like the empty result of the single-shipment read —
-    and only a caller that supplies nothing pays for the per-shipment read.
-    """
+    """Latest durable PXK record plus bounded metadata history and output path."""
     if not shipment_id:
         return {}
     if grouped is None:
         from core.database import load_docgen_documents
 
         try:
-            docs = load_docgen_documents(shipment_id) or {}
-        except Exception:  # noqa: BLE001 - a docgen read failure must not blank the desk
+            docs: Mapping[str, Mapping[str, Any]] = load_docgen_documents(shipment_id) or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure stays empty
             return {}
     else:
         docs = grouped.get(shipment_id) or {}
-    pxk = [d for d in docs.values()
-           if isinstance(d, Mapping) and text(d.get("document_type")).upper() == "PXK"]
+
+    pxk = [
+        (record_id, document)
+        for record_id, document in docs.items()
+        if isinstance(document, Mapping)
+        and text(document.get("document_type")).upper() == "PXK"
+        and document.get("is_deleted") is not True
+    ]
     if not pxk:
         return {}
-
-    def _revision(doc: Mapping[str, Any]) -> int:
-        try:
-            return int(doc.get("generation_revision") or doc.get("revision") or 1)
-        except Exception:  # noqa: BLE001
-            return 1
-
-    latest = max(pxk, key=_revision)
+    record_id, latest = max(
+        pxk, key=lambda pair: (_generated_document_revision(pair[1]), text(pair[0]))
+    )
     snapshot = latest.get("source_snapshot")
     snapshot = snapshot if isinstance(snapshot, Mapping) else {}
+    history = _project_generated_document_history(
+        "PXK",
+        shipment_id,
+        docgen_documents=({shipment_id: dict(docs)} if grouped is None else grouped),
+        grouped_attachments=grouped_attachments,
+    )
     from views import logi_c1
 
     file_view = logi_c1.document_projection(latest, logi_c1.stored_outputs(shipment_id))
+    latest_history = next(
+        (entry for entry in history if entry.get("recordId") == text(file_view.get("id") or record_id)),
+        {},
+    )
+    attachment_id = text(latest_history.get("attachmentId"))
     return {
         "documentId": file_view["documentId"],
         "recordId": file_view["id"],
@@ -1690,10 +1939,12 @@ def _pxk_document(
         "mime": file_view["mime"],
         "generatedAt": file_view["generatedAt"],
         "generatedBy": file_view["generatedBy"],
-        "downloadAvailable": file_view["downloadAvailable"],
+        "attachmentId": attachment_id,
+        "downloadAvailable": bool(attachment_id or file_view["downloadAvailable"]),
         "downloadBase64": file_view["downloadBase64"],
         "number": text(snapshot.get("pxk_no")),
         "date": text(snapshot.get("pxk_date")),
+        "history": history,
     }
 
 

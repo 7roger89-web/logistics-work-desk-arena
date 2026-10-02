@@ -33,6 +33,7 @@ export async function importTs(relPath) {
         path.join(srcDir, "quoteTextParser.ts"),
         path.join(srcDir, "miniCalc.ts"),
         path.join(srcDir, "costHistory.ts"),
+        path.join(srcDir, "shipmentDocumentPicker.ts"),
       ],
       { stdio: "pipe" }
     );

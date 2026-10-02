@@ -836,6 +836,8 @@ def build_view_model() -> dict:
         payables=payables,
         reconciliation=reconciliation,
     )
+    attachment_policy = _attachment_policy()
+    shipment_document_picker = _shipment_document_picker_policy(attachment_policy)
 
     model = {
         "version": _payload_version(rows, references, c1),
@@ -979,7 +981,8 @@ def build_view_model() -> dict:
         # byte ceiling, the real categories, and whether THIS session may upload
         # at all (server RBAC — the form hides itself when the backend says no,
         # but the dispatcher refuses independently either way).
-        "attachmentPolicy": _attachment_policy(),
+        "attachmentPolicy": attachment_policy,
+        "shipmentDocumentPicker": shipment_document_picker,
         # LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral
         # read-only review the operator last ran on a shipment's existing
         # attachments. It is projection only: no bytes, no base64, no full
@@ -1039,6 +1042,9 @@ PHASE_B_EVENTS = {
     # operator-confirmed commercial/import model. Same atomic shipment writer,
     # same shipment_edit RBAC, same audit/readback; no workflow collection.
     "shipment_commercial_flow_save",
+    # Shipment-local preference only: a bounded catalog ID list written to the
+    # existing shipment document (no new collection and no document mutation).
+    "shipment_document_selection_save",
     "delivery_confirm",
     "finance_actual_save",
     "payment_record",
@@ -1832,6 +1838,143 @@ def _attachment_policy() -> dict[str, Any]:
         # storageLabel/storageConfigured and does not expose provider details.
         "driveConfigured": bool(configured) if backend == "drive_shared" else False,
     }
+
+
+def _shipment_document_picker_policy(
+    attachment_policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Expose the small active catalog and current server-owned gates."""
+    from pathlib import Path
+
+    from core.auth import can_operate_business
+    from core.shipment_document_catalog import project_catalog
+
+    try:
+        xlsx_path, docx_path = logi_c1._resolve_template_paths()
+    except Exception:  # noqa: BLE001 - unavailable templates fail closed
+        xlsx_path, docx_path = None, None
+
+    def is_file(path: Any) -> bool:
+        try:
+            return bool(path) and Path(str(path)).is_file()
+        except (OSError, TypeError, ValueError):
+            return False
+
+    policy = attachment_policy if isinstance(attachment_policy, Mapping) else _attachment_policy()
+    storage_configured = bool(policy.get("storageConfigured"))
+    try:
+        can_save = bool(can_operate_business("shipment_edit"))
+    except Exception:  # noqa: BLE001 - policy read failure is deny
+        can_save = False
+    return {
+        "catalog": project_catalog(
+            contract_templates_available=is_file(xlsx_path) and is_file(docx_path),
+            pxk_template_available=is_file(xlsx_path),
+            storage_configured=storage_configured,
+        ),
+        "canSaveSelection": can_save,
+        "canGenerate": bool(policy.get("allowUpload")),
+        "storageConfigured": storage_configured,
+    }
+
+
+def _handle_shipment_document_selection_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist one bounded selected-template ID list on the canonical shipment."""
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, save_shipment_atomic
+    from core.shipment_document_catalog import (
+        SELECTION_FIELD,
+        SelectionValidationError,
+        project_selected_template_ids,
+        validate_selected_template_ids,
+    )
+
+    event = "shipment_document_selection_save"
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result(event, sid, ok, error, requestId=request_id, **extra)
+
+    if not sid or not request_id:
+        return out(False, "Thiếu shipmentId hoặc requestId.", gate="INVALID_REQUEST")
+    try:
+        selected_ids = validate_selected_template_ids(payload.get("selectedTemplateIds"))
+    except SelectionValidationError as exc:
+        return out(False, str(exc), gate=exc.code)
+
+    if not can_operate_business("shipment_edit"):
+        return out(False, "RBAC: không có quyền shipment_edit để lưu lựa chọn biểu mẫu.", gate="BLOCKED_PERMISSION_DENIED")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return out(False, f"Không tìm thấy lô {sid}.", gate=SHIPMENT_IDENTITY_NOT_FOUND)
+
+    expected_version = payload.get("expectedVersion")
+    if isinstance(expected_version, bool) or not isinstance(expected_version, int):
+        return out(False, "Thiếu phiên bản lô để xác nhận thao tác.", gate="INVALID_VERSION")
+    current_version = int(shipment.get("version") or 0)
+    if expected_version != current_version:
+        return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.", gate="STALE_VERSION")
+
+    current_ids = project_selected_template_ids(shipment.get(SELECTION_FIELD))
+    current_raw = shipment.get(SELECTION_FIELD)
+    picker_policy = _shipment_document_picker_policy()
+    available = {
+        rd.text(row.get("id")): row
+        for row in (picker_policy.get("catalog") or [])
+        if isinstance(row, Mapping)
+    }
+    for template_id in selected_ids:
+        if template_id in current_ids:
+            continue
+        entry = available.get(template_id)
+        if not isinstance(entry, Mapping) or not entry.get("active"):
+            return out(False, f"Biểu mẫu {template_id} hiện không hoạt động.", gate="INACTIVE_TEMPLATE")
+        if not entry.get("available"):
+            reason = rd.text(entry.get("availabilityReason")) or "Tác vụ này hiện chưa sẵn sàng."
+            return out(False, reason, gate="DOCUMENT_ACTION_UNAVAILABLE", templateId=template_id)
+
+    # A no-op is not an audit/version bump. A stale/unknown persisted value is
+    # canonicalized only when the operator explicitly saves the bounded list.
+    if current_raw == selected_ids:
+        return out(
+            True,
+            "Không có thay đổi để lưu.",
+            gate="UNCHANGED",
+            noop=True,
+            readback={"selectedDocumentTemplateIds": current_ids, "version": current_version},
+            persisted={"selectedDocumentTemplateIds": current_ids},
+        )
+
+    shipment[SELECTION_FIELD] = list(selected_ids)
+    if not save_shipment_atomic(
+        shipment,
+        expected_version=expected_version,
+        actor=_actor(),
+    ):
+        return out(False, get_last_db_error() or "Không lưu được lựa chọn biểu mẫu.", gate="WRITE_FAILED")
+
+    fresh = read_shipment(sid)
+    if fresh is None:
+        return out(False, "Đã gửi lưu nhưng chưa đọc lại được lô; mở lại để xác minh.", gate="READBACK_UNPROVEN")
+    try:
+        persisted_ids = validate_selected_template_ids(fresh.get(SELECTION_FIELD))
+    except SelectionValidationError:
+        return out(False, "Writer báo thành công nhưng readback biểu mẫu không hợp lệ.", gate="READBACK_UNPROVEN")
+    if persisted_ids != selected_ids:
+        return out(False, "Writer báo thành công nhưng readback chưa khớp lựa chọn.", gate="READBACK_MISMATCH")
+
+    return out(
+        True,
+        gate="SAVED",
+        readback={
+            "selectedDocumentTemplateIds": persisted_ids,
+            "version": int(fresh.get("version") or 0),
+        },
+        persisted={"selectedDocumentTemplateIds": persisted_ids},
+        audit=_audit_trail(sid),
+    )
 
 
 def _attachment_download_state() -> dict[str, Any]:
@@ -4284,6 +4427,7 @@ _HANDLERS = {
     "shipment_sea_facts_save": _handle_sea_facts_save,
     "shipment_profile_save": _handle_shipment_profile_save,
     "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
+    "shipment_document_selection_save": _handle_shipment_document_selection_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,
     "payment_record": _handle_payment_record,
