@@ -1006,6 +1006,28 @@ export interface Task {
   source?: string;
 }
 
+export type AttentionBand = "BLOCKING" | "OVERDUE" | "DUE_SOON" | "ACTION" | "INFO";
+export type AttentionSourceType = "TASK" | "PRIMARY_ACTION" | "ALERT" | "WORK_MODULE";
+
+export interface AttentionItem {
+  id: string;
+  shipmentId: string;
+  sourceType: AttentionSourceType;
+  sourceRef: string;
+  band: AttentionBand;
+  reason: string;
+  action: string;
+  context: string;
+  route: string;
+  owner: string;
+  deadline: string;
+  blockedGate: string;
+  primary: boolean;
+  sourcePriority?: Priority;
+  provenance: string;
+  unknown: boolean;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -2175,6 +2197,8 @@ export interface ViewModel {
   shipments: Shipment[];
   home?: Home;
   tasks: Task[];
+  /** Issue #166 — ONE read-only action projection shared by Shipment + Home. */
+  attention?: AttentionItem[];
   contracts: Contract[];
   customers: Customer[];
   quotes: Quote[];
