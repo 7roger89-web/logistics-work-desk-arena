@@ -74,6 +74,20 @@ try {
     "manager intervention queue is the visual hero before horizon",
   );
   const towerText = await tower.innerText();
+  const liveModel = await (await page.request.get(`${HOST}/model`)).json();
+  const vnParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const vnPart = (type) => vnParts.find((part) => part.type === type)?.value;
+  const vietnamDate = `${vnPart("year")}-${vnPart("month")}-${vnPart("day")}`;
+  assert.equal(
+    liveModel.operationsControl.horizon.asOf,
+    vietnamDate,
+    "Tower and Attention use the Vietnam business date rather than runner UTC date",
+  );
   assert.match(towerText, /Chưa có tín hiệu/);
   assert.match(towerText, /không có nghĩa lô khỏe hay an toàn/i);
   assert.doesNotMatch(towerText, /health score|risk score|leaderboard|quá tải/i);
