@@ -41,6 +41,7 @@ import time
 import threading
 
 from views import logi_sandbox
+from views import support_attention as logi_attention
 from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
@@ -460,8 +461,9 @@ def _dashboard_views(shipments: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
-                     references: Mapping[str, Any]) -> dict[str, Any]:
-    """Home tiles/banners from real shipment facts. No fabricated KPI."""
+                     references: Mapping[str, Any],
+                     attention: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Home tiles/banners from real shipment facts + the shared Attention projection."""
     def _stage_rows(stage: str) -> list[dict[str, Any]]:
         return [row for row in rows if row["status"] == stage]
 
@@ -482,8 +484,40 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
                    if row["finance"]["outstanding"] is not None and row["finance"]["outstanding"] > 0]
     outstanding_total = sum(outstanding) if outstanding else None
 
-    urgent = [row for row in rows if row["priority"] == "Khan"]
-    focus = urgent[0] if urgent else (next((r for r in rows if r["priority"] == "CanXuLy"), None) or (rows[0] if rows else None))
+    # Production always passes the shared Attention projection. None is kept
+    # only for older direct helper callers/tests; an explicit empty list remains
+    # the truthful no-supported-attention state.
+    legacy_attention_call = attention is None
+    attention_rows = list(attention or [])
+    row_by_id = {row["id"]: row for row in rows}
+    focus_item = attention_rows[0] if attention_rows else None
+    focus_row = row_by_id.get(focus_item["shipmentId"]) if focus_item else None
+    if legacy_attention_call and focus_item is None:
+        legacy_focus = (
+            next((row for row in rows if row["priority"] == "Khan"), None)
+            or next((row for row in rows if row["priority"] == "CanXuLy"), None)
+            or (rows[0] if rows else None)
+        )
+        if legacy_focus is not None:
+            focus_item = {
+                "shipmentId": legacy_focus["id"],
+                "action": legacy_focus["nextAction"],
+                "reason": legacy_focus["nextActionDetail"],
+                "route": legacy_focus["nextRoute"],
+                "band": "ACTION",
+                "sourcePriority": legacy_focus["priority"],
+            }
+            focus_row = legacy_focus
+    source_priority = (focus_item or {}).get("sourcePriority")
+    focus_priority = (
+        source_priority
+        if source_priority in {"Khan", "CanXuLy", "BinhThuong"}
+        else "Khan"
+        if focus_item and focus_item["band"] in {"BLOCKING", "OVERDUE"}
+        else "CanXuLy"
+        if focus_item and focus_item["band"] in {"DUE_SOON", "ACTION"}
+        else "BinhThuong"
+    )
 
     return {
         "tiles": [
@@ -517,12 +551,25 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
             "financialAttention": int(summary.get("financial_attention") or 0),
             "missingInfo": int(summary.get("missing_info") or 0),
         },
-        "urgentCount": len(urgent),
+        "urgentCount": (
+            sum(1 for row in rows if row["priority"] == "Khan")
+            if legacy_attention_call
+            else sum(
+                1
+                for item in attention_rows
+                if item.get("band") in {"BLOCKING", "OVERDUE", "DUE_SOON"}
+                or item.get("sourcePriority") == "Khan"
+            )
+        ),
         "focus": {
-            "id": focus["id"], "customer": focus["customer"], "status": focus["status"],
-            "nextAction": focus["nextAction"], "nextActionDetail": focus["nextActionDetail"],
-            "priority": focus["priority"], "to": focus["nextRoute"],
-        } if focus else None,
+            "id": focus_item["shipmentId"],
+            "customer": (focus_row or {}).get("customer", rd.UNKNOWN_LABEL),
+            "status": (focus_row or {}).get("status", rd.UNKNOWN_LABEL),
+            "nextAction": focus_item["action"],
+            "nextActionDetail": focus_item["reason"],
+            "priority": focus_priority,
+            "to": focus_item["route"],
+        } if focus_item else None,
         "missingDocsTotal": sum(len(r["missingDocs"]) for r in rows),
         "taskCount": len(references.get("tasks") or []),
     }
@@ -873,8 +920,13 @@ def build_view_model() -> dict:
         shipment_ids=sources["shipmentIds"],
         agents=sources["agents"],
     )
-    home = _home_projection(rows, summary, references)
     tasks = _task_projection(rows, references)
+    attention = logi_attention.build_attention_projection(
+        rows,
+        references.get("tasks") or [],
+        unknown_label=rd.UNKNOWN_LABEL,
+    )
+    home = _home_projection(rows, summary, references, attention)
     receivables = rd.receivables_projection(rows)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
     # ledger rows) instead of re-reading both collections once per shipment.
@@ -920,6 +972,7 @@ def build_view_model() -> dict:
         "shipments": rows,
         "home": home,
         "tasks": tasks,
+        "attention": attention,
         "contracts": c1["contracts"],
         "customers": c1["customers"],
         "quotes": c1["quotes"],

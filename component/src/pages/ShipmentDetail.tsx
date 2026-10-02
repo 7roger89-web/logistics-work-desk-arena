@@ -11,6 +11,7 @@ import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
 import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
+import AttentionNow from "../components/AttentionNow";
 import type { JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import {
@@ -116,7 +117,7 @@ export default function ShipmentDetail() {
   const id = shipmentIdFromPath(pathname, paramId);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
-  const { shipments, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
+  const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
   // The authoritative outcome of a saved actual line comes back in the NEXT
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -298,6 +299,7 @@ export default function ShipmentDetail() {
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
+  const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
@@ -1167,40 +1169,6 @@ export default function ShipmentDetail() {
             state (its state label, its summary lines, its stage chips) and a
             real CONFIG_CHECK / insurance mismatch is still rendered there in
             red. Two warnings for one fact was the clutter the Owner reported. */}
-        <div className="px-4 md:px-6 pb-4 md:pb-5">
-          {/* OWNER_RUNTIME_UAT_REPAIR §2 — ONE primary action, compact row.
-              The AUTHORITY is untouched: the text is `s.nextAction`, the detail
-              is `s.nextActionDetail`, the label is `s.nextLabel` and the click
-              follows `s.nextRoute` exactly as the banner did (PR83 precedence:
-              dashboard critical > profile red/actionable > dashboard fallback).
-              Only the visual weight changed — a large gradient card is replaced
-              by a single row, so the work section sits above the fold. There is
-              deliberately no second next-action surface. */}
-          <div
-            data-testid="shipment-primary-action"
-            data-tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"}
-            className={cx(
-              "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2",
-              s.priority === "Khan" || s.statusTone === "red"
-                ? "border-red-200 bg-red-50/60"
-                : s.statusTone === "green"
-                  ? "border-emerald-200 bg-emerald-50/50"
-                  : "border-amber-200 bg-amber-50/50"
-            )}
-          >
-            <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Việc tiếp theo</span>
-            <span className="text-[14.5px] font-extrabold text-[#0f2a4a] min-w-0">{s.nextAction}</span>
-            {s.nextActionDetail && <span className="text-[12.5px] text-slate-500 min-w-0">{s.nextActionDetail}</span>}
-            <button
-              type="button"
-              onClick={runPrimaryAction}
-              data-testid="shipment-primary-action-go"
-              className="btn-press touch-target ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white text-[13.5px] font-bold px-3.5 min-h-[40px]"
-            >
-              {s.nextLabel || "XỬ LÝ"} <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
           {TABS.map((t) => {
@@ -1248,6 +1216,8 @@ export default function ShipmentDetail() {
           </div>
         )}
       </div>
+
+      <AttentionNow items={shipmentAttention} title="Cần xử lý" />
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
         onOpen={openStageWorkspace} onGlobal={() => setSp({ tab: "van-tai" })} runPrimary={runPrimaryAction} />
