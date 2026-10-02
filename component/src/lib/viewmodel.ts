@@ -1021,11 +1021,75 @@ export interface AttentionItem {
   route: string;
   owner: string;
   deadline: string;
+  /** Canonical structured task date (YYYY-MM-DD); absent for free-text/unknown deadlines. */
+  deadlineDate?: string;
   blockedGate: string;
   primary: boolean;
   sourcePriority?: Priority;
+  moduleTemplateId?: string;
+  moduleName?: string;
   provenance: string;
   unknown: boolean;
+}
+
+export interface OperationsControlQueueItem extends AttentionItem {
+  customer: string;
+  shipmentStatus: string;
+}
+
+export interface OperationsControlWorkloadRow {
+  ownerKey: string;
+  owner: string;
+  blocking: number;
+  overdue: number;
+  dueSoon: number;
+  action: number;
+  unknown: number;
+  itemIds: string[];
+}
+
+export interface OperationsControlConcentrationRow {
+  key: string;
+  label: string;
+  count: number;
+  blocking: number;
+  overdue: number;
+  dueSoon: number;
+  unknown: number;
+  itemIds: string[];
+}
+
+export interface OperationsControlHorizonBucket {
+  id: "OVERDUE" | "TODAY" | "NEXT_3_DAYS" | string;
+  label: string;
+  count: number;
+  items: OperationsControlQueueItem[];
+}
+
+export interface OperationsControlTower {
+  classification: "READ_ONLY_ATTENTION_AGGREGATE_V1" | string;
+  readOnly: boolean;
+  scope: {
+    shipmentCount: number;
+    attentionShipmentCount: number;
+    noSignalShipmentCount: number;
+    unknownShipmentCount: number;
+    managerItemCount: number;
+  };
+  interventionQueue: OperationsControlQueueItem[];
+  horizon: {
+    asOf: string;
+    precision: "DATE_ONLY" | string;
+    labels: Record<string, string>;
+    buckets: OperationsControlHorizonBucket[];
+  };
+  workload: OperationsControlWorkloadRow[];
+  concentration: {
+    customers: OperationsControlConcentrationRow[];
+    gates: OperationsControlConcentrationRow[];
+    modules: OperationsControlConcentrationRow[];
+  };
+  unavailable: string[];
 }
 
 export interface Customer {
@@ -2199,6 +2263,8 @@ export interface ViewModel {
   tasks: Task[];
   /** Issue #166 — ONE read-only action projection shared by Shipment + Home. */
   attention?: AttentionItem[];
+  /** Issue #170 — manager read-only aggregation over the SAME Attention truth. */
+  operationsControl?: OperationsControlTower;
   contracts: Contract[];
   customers: Customer[];
   quotes: Quote[];
