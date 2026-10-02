@@ -205,6 +205,7 @@ await tick();
 
 console.log("STEP 1 — shipment detail → Chứng từ tab");
 await click("Lô Hàng", "a", $("aside")[0]);
+await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
 await click("LO-0306", "a", $("table.tbl")[0]);
 const tabs = window.document.getElementById("workspace-tabs");
 assert.ok(tabs, "workspace tabs must exist");
