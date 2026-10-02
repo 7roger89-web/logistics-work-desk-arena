@@ -56,19 +56,27 @@ try {
 
   await openShipment();
 
-  // Base: neutral Attention state is visible before Journey; no fake healthy claim.
-  const emptyAttention = page.getByTestId("attention-now");
-  await emptyAttention.waitFor();
+  // Base acceptance A: work attention may exist while Journey keeps its own
+  // physical/operational position. Attention must render before Journey and
+  // must not certify a fake all-clear state.
+  const initialAttention = page.getByTestId("attention-now");
+  await initialAttention.waitFor();
+  const journey = page.getByTestId("shipment-journey");
   assert.ok(
-    await emptyAttention.evaluate((a, b) =>
-      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING),
-      await page.getByTestId("shipment-journey").elementHandle(),
+    await initialAttention.evaluate(
+      (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING),
+      await journey.elementHandle(),
     ),
     "Attention renders before Journey",
   );
-  assert.match(await emptyAttention.innerText(), /Chưa có việc cần xử lý theo dữ liệu hiện có/);
+  const initialPrimary = page.locator('[data-attention-source="PRIMARY_ACTION"]').first();
+  await initialPrimary.waitFor();
+  assert.match(await initialPrimary.innerText(), /Bổ sung số tờ khai nhập khẩu/);
+  const initialModel = await (await page.request.get(`${HOST}/model`)).json();
+  const initialStage = initialModel.shipments.find((s) => s.id === "SEA-162").journey.currentStageId;
+  assert.ok(initialStage, "Journey keeps an independent currentStageId");
   assert.doesNotMatch(await page.locator("main").innerText(), /toàn bộ lô hàng đang ổn định/i);
-  await shot(page, "desktop-1-empty-attention-before-journey.png");
+  await shot(page, "desktop-1-action-before-journey.png");
 
   // Attach the existing ACTIVE gated demo module through the real UI.
   await page.getByTestId("journey-add-module").click();
