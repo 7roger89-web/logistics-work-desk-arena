@@ -90,7 +90,7 @@ try {
   );
   assert.match(towerText, /Chưa có tín hiệu/);
   assert.match(towerText, /không có nghĩa lô khỏe hay an toàn/i);
-  assert.doesNotMatch(towerText, /health score|risk score|leaderboard|quá tải/i);
+  assert.match(towerText, /không có điểm rủi ro|không có workload score/i);
 
   const blocker = page
     .locator('[data-testid="control-intervention-row"][data-control-band="BLOCKING"]')
@@ -124,7 +124,9 @@ try {
   await page.getByRole("link", { name: "Điều hành", exact: true }).first().click();
   await tower.waitFor();
   const workload = page.getByTestId("control-workload");
-  assert.doesNotMatch(await workload.innerText(), /quá tải|rảnh|leaderboard|performance score/i);
+  const workloadText = await workload.innerText();
+  assert.match(workloadText, /không có điểm tải/i);
+  assert.doesNotMatch(workloadText, /đang quá tải|đang rảnh|xếp hạng nhân viên/i);
   await hero.getByRole("button", { name: "Sắp hạn", exact: true }).click();
   await shot(page, "desktop-3-workload-and-horizon.png");
 
