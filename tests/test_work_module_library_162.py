@@ -495,3 +495,220 @@ def test_no_second_authority_is_created_by_this_slice():
     assert PROVENANCE_TYPES == ("MANUAL_ADDITION", "COMPANY_STANDARD")
     assert resolve_template(index_templates([two_step_template()]), "TEST_MODULE_162", 2) is None
     assert instances_of({"work_modules": None}) == []
+
+
+# ------------------------------- independent review blocker repairs (round 2)
+
+#: Metadata a write legitimately refreshes on an existing version. Anything else
+#: must be byte-for-byte identical across a lifecycle step.
+LIFECYCLE_META = {
+    "updated_at", "updated_by", "updated_by_user_id", "updated_by_role",
+    "created_at", "created_by", "created_by_user_id", "created_by_role",
+}
+LIFECYCLE_META_KEYS = LIFECYCLE_META | {"status"}
+
+
+def publish(template: dict) -> None:
+    """Publish one immutable version as the admin (the bounded operations authority)."""
+    import streamlit as st
+
+    from core.database import save_work_module_template
+
+    previous = dict(st.session_state["current_user"])
+    st.session_state["current_user"] = {
+        "username": "boot", "role": "ADMIN", "user_id": "B", "active": True,
+    }
+    try:
+        assert save_work_module_template(template), "fixture template must publish"
+    finally:
+        st.session_state["current_user"] = previous
+
+
+def stored_template(identifier: str) -> dict:
+    from core.database import load_work_module_templates
+
+    return next(row for row in load_work_module_templates() if row["id"] == identifier)
+
+
+def body_of(row: dict) -> dict:
+    """The immutable meaning of a version: everything a status step must not touch."""
+    return {key: value for key, value in row.items() if key not in LIFECYCLE_META_KEYS}
+
+
+def test_template_lifecycle_works_from_the_exact_ui_payload_and_never_rewrites_the_body(staging):
+    """BLOCKER 1 — a status-only payload must reach the lifecycle step.
+
+    The bounded library UI sends {template_id, name, version, status, anchor_stage}
+    with NO nodes/join at all. That request must move ONLY the status; the stored
+    body (nodes, guidance, anchor, gate, join) must stay identical across every
+    legal transition, and a body smuggled into the same call must be discarded
+    rather than applied.
+    """
+    publish(two_step_template(template_id="LIFECYCLE_162", version=1, status="DRAFT"))
+    identifier = "LIFECYCLE_162:V1"
+
+    def ui_payload(next_status: str, **extra: object) -> dict:
+        _seq["n"] += 1
+        return {
+            "requestId": f"WMT-{_seq['n']}",
+            "template": {
+                "template_id": "LIFECYCLE_162", "name": "Test module", "version": 1,
+                "status": next_status, "anchor_stage": "customs-import", **extra,
+            },
+        }
+
+    before = stored_template(identifier)
+    assert before["status"] == "DRAFT"
+
+    activate = ui_payload("ACTIVE")
+    activated = event("work_module_template_save", activate)
+    assert activated["ok"], activated
+    assert activated["requestId"] == activate["requestId"]
+    assert activated["saved"]["status"] == "ACTIVE" and activated["saved"]["id"] == identifier
+    after_activate = stored_template(identifier)
+    assert after_activate["status"] == "ACTIVE"
+    assert body_of(after_activate) == body_of(before), "a status step must not rewrite the version body"
+
+    # Same-status re-save is still refused: the version is immutable.
+    resaved = event("work_module_template_save", ui_payload("ACTIVE"))
+    assert resaved["ok"] is False and "đã tồn tại" in resaved["error"]
+
+    retire = ui_payload("RETIRED")
+    retired = event("work_module_template_save", retire)
+    assert retired["ok"], retired
+    assert retired["requestId"] == retire["requestId"]
+    after_retire = stored_template(identifier)
+    assert after_retire["status"] == "RETIRED"
+    assert body_of(after_retire) == body_of(before)
+
+    # RETIRED -> ACTIVE must fail; the version stays retired.
+    revived = event("work_module_template_save", ui_payload("ACTIVE"))
+    assert revived["ok"] is False and "ngừng dùng" in revived["error"]
+    assert stored_template(identifier)["status"] == "RETIRED"
+
+    # A status step can never be a back door for rewriting the stored meaning.
+    publish(two_step_template(template_id="HOSTILE_162", version=1, status="DRAFT"))
+    hostile_id = "HOSTILE_162:V1"
+    hostile_before = stored_template(hostile_id)
+    hostile = ui_payload_of("HOSTILE_162", "ACTIVE", nodes=[{"id": "invented", "label": "Invented"}],
+                            join={"from": "invented", "type": "BLOCKING"},
+                            gate_stage="delivery", guidance={"why": "rewrite attempt"})
+    outcome = event("work_module_template_save", hostile)
+    assert outcome["ok"], outcome
+    hostile_after = stored_template(hostile_id)
+    assert hostile_after["status"] == "ACTIVE"
+    assert body_of(hostile_after) == body_of(hostile_before)
+    assert [node["id"] for node in hostile_after["nodes"]] == ["prepare", "result"]
+    assert hostile_after["join"]["from"] == "result"
+
+
+def ui_payload_of(template_id: str, next_status: str, **extra: object) -> dict:
+    """The EXACT minimal payload the library UI posts for a status change."""
+    _seq["n"] += 1
+    return {
+        "requestId": f"WMT-{_seq['n']}",
+        "template": {
+            "template_id": template_id, "name": "Test module", "version": 1,
+            "status": next_status, "anchor_stage": "customs-import", **extra,
+        },
+    }
+
+
+def test_request_correlated_failure_echoes_request_id_even_after_the_write_landed(staging, monkeypatch):
+    """BLOCKER 2 — correlation survives the common exception path.
+
+    The hardest case is the one the reviewer named: the unexpected failure
+    happens AFTER the durable write but BEFORE the handler can return its fresh
+    readback. The caller must still be able to correlate and recover, and the
+    landed fact must stay landed — never rolled back, never reported as if
+    nothing happened.
+    """
+    assert attach()["ok"]
+    instance_id = current()["journey"]["modules"][0]["instanceId"]
+    version_before = version()
+    payload = {"shipmentId": "SEA-162", "instanceId": instance_id, "nodeId": "prepare",
+               "requestId": "STEP-AFTER-WRITE", "expectedVersion": version_before}
+
+    def explode(*_args, **_kwargs):
+        raise RuntimeError("projection exploded after the write landed")
+
+    monkeypatch.setattr(vm, "_projection_for", explode)
+    outcome = event("work_module_step_complete", payload)
+    monkeypatch.undo()
+
+    assert outcome["event"] == "work_module_step_complete"
+    assert outcome["ok"] is False and "RuntimeError" in outcome["error"]
+    assert outcome["requestId"] == "STEP-AFTER-WRITE", "the failure must echo the caller's requestId"
+
+    landed = vm.read_shipment("SEA-162")
+    assert [step["node_id"] for step in landed["work_modules"][0]["completed_steps"]] == ["prepare"]
+    assert landed["version"] == version_before + 1, "the write really landed"
+    assert current()["journey"]["modules"][0]["summary"] == "1/2 bước", "the fact is recoverable on re-read"
+
+    # Recovery is idempotent: retrying the same business action is a no-op, not a double write.
+    retry = complete(instance_id, "prepare")
+    assert retry["ok"] and retry.get("noop")
+    assert len(vm.read_shipment("SEA-162")["work_modules"][0]["completed_steps"]) == 1
+
+
+def test_uncorrelated_failure_does_not_invent_a_request_id(staging, monkeypatch):
+    """The echo rule is bounded: only when the payload actually carries a requestId."""
+
+    def boom(_payload):
+        raise RuntimeError("uncorrelated")
+
+    monkeypatch.setitem(vm._HANDLERS, "work_module_attach", boom)
+    outcomes = vm.consume_phase_b_triggers(
+        {"seq": 0}, {"work_module_attach": {"seq": 1, "payload": {"shipmentId": "SEA-162"}}}
+    )
+    assert outcomes and outcomes[0]["ok"] is False
+    assert "requestId" not in outcomes[0]
+
+
+def test_backend_refuses_a_dependent_step_until_its_required_dependencies_are_persisted(staging):
+    """BLOCKER 3 — dependency readiness is a WRITER boundary, not a UI convention."""
+    assert attach()["ok"]
+    instance_id = current()["journey"]["modules"][0]["instanceId"]
+    version_before = version()
+
+    early = complete(instance_id, "result")
+    assert early["ok"] is False, early
+    assert "còn thiếu bước bắt buộc (Prepare)" in early["error"]
+    doc = vm.read_shipment("SEA-162")
+    assert [step["node_id"] for step in doc["work_modules"][0]["completed_steps"]] == []
+    assert doc["version"] == version_before, "a refusal must not bump the shipment version"
+    module = current()["journey"]["modules"][0]
+    assert module["status"] == "BLOCKING" and module["summary"] == "0/2 bước"
+
+    assert complete(instance_id, "prepare")["ok"]
+    after = complete(instance_id, "result")
+    assert after["ok"], after
+    assert after["readback"]["journey"]["modules"][0]["status"] == "DONE"
+    assert after["readback"]["journey"]["modules"][0]["gateText"] == ""
+    assert [step["node_id"] for step in vm.read_shipment("SEA-162")["work_modules"][0]["completed_steps"]] == [
+        "prepare", "result",
+    ]
+
+
+def test_informational_dependency_never_blocks_completion(staging):
+    """INFORMATIONAL is context: it must never hold a completion."""
+    info = two_step_template(
+        template_id="INFO_162", version=1, status="ACTIVE", gate_stage="", join=None,
+        nodes=[
+            {"id": "first", "label": "First"},
+            {"id": "second", "label": "Second",
+             "dependencies": [{"type": "INFORMATIONAL", "nodeId": "first"}]},
+        ],
+    )
+    # `join=None` drops the base gate's join for normalization; the empty mapping
+    # it produces is removed so the raw body can be written as a new version.
+    info.pop("join", None)
+    publish(info)
+    assert attach("INFO_162")["ok"]
+    row = current()
+    instance_id = next(m["instanceId"] for m in row["journey"]["modules"] if m["templateId"] == "INFO_162")
+
+    outcome = complete(instance_id, "second")
+    assert outcome["ok"], outcome
+    stored = next(m for m in vm.read_shipment("SEA-162")["work_modules"] if m["instance_id"] == instance_id)
+    assert [step["node_id"] for step in stored["completed_steps"]] == ["second"]

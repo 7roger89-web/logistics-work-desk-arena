@@ -1567,37 +1567,70 @@ def save_work_module_template(document: Mapping[str, Any]) -> bool:
       * the exact ``(template_id, version)`` already exists — an existing
         version is immutable, publish a new version instead;
       * a ``RETIRED`` version is being re-activated.
+
+    A status-only LIFECYCLE step names an existing ``(template_id, version)`` and
+    moves ONLY its status, so it is recognised BEFORE full normalization: the
+    stored body is immutable and is the one that gets written. A caller that
+    sends a minimal payload (the bounded library UI does) must not have to
+    restate — or be able to rewrite — nodes, guidance, anchor, gate or join.
     """
     if not _require_business_permission(
         "operations_write", "Bạn không có quyền tạo/đổi phiên bản quy trình."
     ):
         return False
 
-    from core.work_modules import normalize_template
-
-    try:
-        payload = normalize_template(document)
-    except ValueError as exc:
-        _set_last_error(str(exc))
-        return False
+    from core.work_modules import TEMPLATE_STATUSES, normalize_template, template_key
 
     db = get_db()
     if db is None:
         return False
 
-    identifier = payload["id"]
+    raw = document.get("template") if isinstance(document.get("template"), Mapping) else document
     try:
-        old = db.work_module_templates.find_one({"id": identifier}, {"_id": 0})
-    except PyMongoError as exc:
-        _set_last_error(str(exc))
-        return False
+        raw_version = int(raw.get("version") or 0) if isinstance(raw, Mapping) else 0
+    except (TypeError, ValueError):
+        raw_version = 0
+    raw_identifier = (
+        str(raw.get("template_id") or raw.get("templateId") or "").strip().upper()
+        if isinstance(raw, Mapping)
+        else ""
+    )
+    raw_status = (
+        str(raw.get("status") or "").strip().upper() if isinstance(raw, Mapping) else ""
+    )
+
+    old: Mapping[str, Any] | None = None
+    identifier = ""
+    requested_status = ""
+    if raw_identifier and raw_version > 0 and raw_status in TEMPLATE_STATUSES:
+        identifier = template_key(raw_identifier, raw_version)
+        requested_status = raw_status
+        try:
+            old = db.work_module_templates.find_one({"id": identifier}, {"_id": 0})
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return False
+
+    if old is None:
+        # A NEW version needs the full bounded body.
+        try:
+            payload = normalize_template(document)
+        except ValueError as exc:
+            _set_last_error(str(exc))
+            return False
+        identifier = payload["id"]
+        requested_status = str(payload.get("status") or "").upper()
+        try:
+            old = db.work_module_templates.find_one({"id": identifier}, {"_id": 0})
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return False
 
     if old is not None:
         # Immutability of a published version is not negotiable: V1 means one
         # thing forever. The only legal way to change a procedure is a new
         # version (or the bounded ACTIVE -> RETIRED lifecycle step).
         previous_status = str(old.get("status") or "").upper()
-        requested_status = str(payload.get("status") or "").upper()
         if requested_status == previous_status:
             _set_last_error(
                 f"Phiên bản {identifier} đã tồn tại và không thể sửa. Hãy tạo phiên bản mới."

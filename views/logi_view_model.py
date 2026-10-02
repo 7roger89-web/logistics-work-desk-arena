@@ -2597,10 +2597,19 @@ def _handle_work_module_template_save(payload: Mapping[str, Any]) -> dict[str, A
     if not save_work_module_template(template):
         return out(False, get_last_db_error() or "Không lưu được phiên bản quy trình.")
 
-    from core.work_modules import attachable_templates, normalize_template
+    from core.work_modules import attachable_templates, index_templates, resolve_template
 
-    saved = normalize_template(template)
+    # The success summary comes from the STORED version, never from re-normalizing
+    # the request: a status-only payload (the bounded library UI) carries no
+    # nodes at all, and the stored body is the only authority on what was saved.
+    try:
+        wanted_version = int(template.get("version") or 1)
+    except (TypeError, ValueError):
+        wanted_version = 0
     fresh = load_work_module_templates()
+    saved = resolve_template(index_templates(fresh), template_id, wanted_version)
+    if saved is None:
+        return out(False, "Không đọc lại được phiên bản vừa lưu — không báo thành công.")
     return out(
         True,
         saved={"templateId": saved["template_id"], "version": saved["version"],
@@ -2727,7 +2736,7 @@ def _handle_work_module_step_complete(payload: Mapping[str, Any]) -> dict[str, A
     """
     from core.auth import can_operate_business, current_actor_context
     from core.database import get_last_db_error, load_work_module_templates, save_shipment_atomic
-    from core.work_modules import instances_of, resolve_template
+    from core.work_modules import instances_of, module_execution, resolve_template
 
     sid = rd.text(payload.get("shipmentId"))
     request_id = rd.text(payload.get("requestId"))
@@ -2775,6 +2784,21 @@ def _handle_work_module_step_complete(payload: Mapping[str, Any]) -> dict[str, A
         return out(True, readback=_projection_for(shipment), noop=True,
                    message="Bước này đã được ghi nhận hoàn thành trước đó.",
                    audit=_audit_trail(sid))
+
+    # Dependency readiness is a BACKEND boundary, never a UI convention: the
+    # frontend disabling the button is a courtesy, not business integrity. The
+    # decision is derived from the persisted completion facts of the EXACT bound
+    # version (BLOCKING / PARALLEL_REQUIRED hold; INFORMATIONAL never does), and
+    # a refusal leaves the shipment version and the history untouched.
+    execution = module_execution(template, target)
+    step = next((row for row in execution["steps"] if row["id"] == node_id), None)
+    if step is None:  # pragma: no cover - `known` above already guarantees a row
+        return out(False, f"Bước {node_id} không thuộc quy trình {target['template_id']}.")
+    if step["blockedBy"]:
+        labels = {node["id"]: node["label"] for node in template["nodes"]}
+        missing = ", ".join(labels.get(missing_id, missing_id) for missing_id in step["blockedBy"])
+        return out(False, f"Chưa thể hoàn thành {labels.get(node_id, node_id)}: "
+                          f"còn thiếu bước bắt buộc ({missing}).")
 
     actor = current_actor_context()
     steps = list(target.get("completed_steps") or [])
@@ -4667,9 +4691,15 @@ def consume_phase_b_triggers(session: dict, result: Any) -> list[dict[str, Any]]
         try:
             outcomes.append(handler(data))
         except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
+            # Correlation contract: a failure that can be correlated to a request
+            # MUST echo that request. Callers match on event+requestId, so dropping
+            # it here would leave a pending UI forever — including for an
+            # unexpected failure raised AFTER the write already persisted, which
+            # would otherwise read as "still waiting" instead of "recover this".
+            request_id = rd.text(data.get("requestId"))
             outcomes.append(_result(event_name, rd.text(data.get("shipmentId")), False,
                                     f"{type(exc).__name__}: {exc}",
-                                    **({"requestId": rd.text(data.get("requestId"))} if event_name == "shipment_sea_facts_save" else {})))
+                                    **({"requestId": request_id} if request_id else {})))
     if outcomes:
         session["writes"] = outcomes
     return outcomes

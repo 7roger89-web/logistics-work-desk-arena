@@ -22,9 +22,24 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import streamlit as st  # noqa: E402
 from views import logi_sandbox, logi_view_model as vm  # noqa: E402
-from core.database import save_shipment_atomic  # noqa: E402
+from core.database import save_shipment_atomic, save_work_module_template  # noqa: E402
 
 SHIPMENT_ID = "SEA-162"
+#: A real DRAFT version so the library UI has a lifecycle to exercise: the
+#: browser acceptance must ACTIVATE it and RETIRE it and prove the authoritative
+#: readback changed, not merely screenshot the list. It carries a gate so the
+#: stored row round-trips through normalization like any production template.
+DRAFT_TEMPLATE_ID = "ACCEPTANCE_LIFECYCLE_162"
+
+
+def _draft_template() -> dict:
+    return {
+        "template_id": DRAFT_TEMPLATE_ID, "name": "Quy trình chờ kích hoạt", "version": 1,
+        "status": "DRAFT", "description": "Bản nháp kiểm chứng vòng đời phiên bản.",
+        "anchor_stage": "customs-import", "gate_stage": "delivery",
+        "join": {"from": "check-file", "type": "BLOCKING"},
+        "nodes": [{"id": "check-file", "label": "Kiểm tra hồ sơ chuyên biệt"}],
+    }
 BOUNDED_EVENTS = ("work_module_attach", "work_module_step_complete", "work_module_template_save", "shipment_sea_facts_save")
 
 
@@ -53,6 +68,8 @@ def bootstrap(actor: dict | None = None) -> None:
     st.session_state["current_user"] = actor or dict(logi_sandbox.STAGING_ACTOR)
     doc = _document()
     assert save_shipment_atomic(doc, actor="issue162-fixture")
+    # Published through the real writer as the staging actor (operations_write).
+    assert save_work_module_template(_draft_template()), "the DRAFT fixture must publish"
     st.session_state[vm.LAST_WRITES_KEY] = []
 
 

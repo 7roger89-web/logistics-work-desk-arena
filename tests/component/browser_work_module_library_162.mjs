@@ -146,7 +146,7 @@ try {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(overflow <= 1, `no horizontal page overflow (got ${overflow})`);
 
-  // 7. Bounded template library surface.
+  // 7. Bounded template library surface + a REAL lifecycle click-through.
   await page.setViewportSize({ width: 1440, height: 1000 });
   // Route state is component-local (MemoryRouter), so the library is reached
   // the way a person reaches it: through the navigation entry.
@@ -154,12 +154,56 @@ try {
   await page.getByTestId('work-module-library').waitFor();
   assert.match(await page.getByTestId('work-module-library').innerText(), /IMPORT_SPECIAL_HANDLING_DEMO_V1/);
   assert.equal(await page.getByTestId('wm-library-new').count(), 1, 'authorised actor may author a template');
+
+  const draftId = 'ACCEPTANCE_LIFECYCLE_162:V1';
+  const libraryRow = async () => {
+    const model = await (await page.request.get(`${HOST}/model`)).json();
+    return model.workModules.all.find((row) => row.id === draftId);
+  };
+  const stepBody = (row) => JSON.stringify(row.steps);
+  const draftBefore = await libraryRow();
+  assert.equal(draftBefore.status, 'DRAFT');
+  await page.getByTestId(`wm-row-${draftId}`).scrollIntoViewIfNeeded();
   await shot(page, 'desktop-8-template-library.png');
+
+  // DRAFT -> ACTIVE through the real button, then the authoritative readback.
+  await page.getByTestId(`wm-activate-${draftId}`).click();
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-testid="wm-row-${id}"]`)?.textContent?.includes('Đang dùng'),
+    draftId, { timeout: 15000 });
+  const active = await libraryRow();
+  assert.equal(active.status, 'ACTIVE', 'the server readback says ACTIVE, not just the button state');
+  assert.equal(await page.getByTestId(`wm-activate-${draftId}`).count(), 0, 'activate is gone after activation');
+  assert.equal(await page.getByTestId(`wm-retire-${draftId}`).count(), 1);
+  await shot(page, 'desktop-9-lifecycle-active.png');
+
+  // ACTIVE -> RETIRED, then the authoritative readback again.
+  await page.getByTestId(`wm-retire-${draftId}`).click();
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-testid="wm-row-${id}"]`)?.textContent?.includes('Ngừng dùng'),
+    draftId, { timeout: 15000 });
+  const retired = await libraryRow();
+  assert.equal(retired.status, 'RETIRED', 'the server readback says RETIRED');
+  assert.equal(await page.getByTestId(`wm-activate-${draftId}`).count(), 0, 'a retired version offers no re-activation');
+  await shot(page, 'desktop-10-lifecycle-retired.png');
+
+  // The lifecycle moved ONLY the status: the stored body is untouched.
+  assert.equal(retired.name, draftBefore.name);
+  assert.equal(retired.version, draftBefore.version);
+  assert.equal(retired.stepCount, draftBefore.stepCount);
+  assert.equal(retired.anchorStage, draftBefore.anchorStage);
+  assert.equal(retired.gateStage, draftBefore.gateStage);
+  assert.equal(stepBody(retired), stepBody(draftBefore), 'nodes/guidance survive a status step byte-for-byte');
+
+  // A retired version can no longer be attached (library truth is enforced).
+  const choices = (await (await page.request.get(`${HOST}/model`)).json()).shipments.length;
+  assert.ok(choices > 0);
 
   assert.deepEqual(errors, [], 'zero page errors for the whole journey');
   console.log(
     `PASS #162 browser: 1440/390px, attach → rollup 0/3 BLOCKING → 3/3 DONE with gate cleared, ` +
-    `facts persisted server-side, library bounded, zero page errors → ${output}`);
+    `facts persisted server-side, library bounded, template lifecycle DRAFT → ACTIVE → RETIRED ` +
+    `clicked through with authoritative readback and an unchanged version body, zero page errors → ${output}`);
 } catch (err) {
   console.error(hostErrors.slice(-1500));
   throw err;
