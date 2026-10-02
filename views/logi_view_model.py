@@ -488,8 +488,11 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
     row_by_id = {row["id"]: row for row in rows}
     focus_item = attention_rows[0] if attention_rows else None
     focus_row = row_by_id.get(focus_item["shipmentId"]) if focus_item else None
+    source_priority = (focus_item or {}).get("sourcePriority")
     focus_priority = (
-        "Khan"
+        source_priority
+        if source_priority in {"Khan", "CanXuLy", "BinhThuong"}
+        else "Khan"
         if focus_item and focus_item["band"] in {"BLOCKING", "OVERDUE"}
         else "CanXuLy"
         if focus_item and focus_item["band"] in {"DUE_SOON", "ACTION"}
@@ -532,6 +535,7 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
             1
             for item in attention_rows
             if item.get("band") in {"BLOCKING", "OVERDUE", "DUE_SOON"}
+            or item.get("sourcePriority") == "Khan"
         ),
         "focus": {
             "id": focus_item["shipmentId"],
