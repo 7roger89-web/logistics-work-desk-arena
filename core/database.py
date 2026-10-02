@@ -293,6 +293,13 @@ def ensure_indexes() -> bool:
         (db.rate_cards, [("record_type", 1), ("received_at", -1)], {"name": "ix_rate_card_type_received"}),
         (db.cost_catalog, "id", {"unique": True, "name": "uq_cost_catalog_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.cost_catalog, [("kind", 1), ("active", 1), ("name", 1)], {"name": "ix_cost_catalog_kind_active"}),
+        # Issue #162 — Work Module Library. ONE small collection holding every
+        # immutable template VERSION, keyed by "<template_id>:V<version>". There
+        # is deliberately no per-shipment module collection: attached instances
+        # live inside the existing shipment document.
+        (db.work_module_templates, "id", {"unique": True, "name": "uq_work_module_template_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.work_module_templates, [("template_id", 1), ("version", -1)], {"name": "ix_work_module_template_version"}),
+        (db.work_module_templates, [("status", 1), ("template_id", 1)], {"name": "ix_work_module_template_status"}),
         (db.entrustments, "id", {"unique": True, "name": "uq_entrustment_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.knowledge_base, "id", {"unique": True, "name": "uq_kb_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.app_settings, "id", {"unique": True, "name": "uq_app_setting_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
@@ -1521,6 +1528,108 @@ def save_cost_catalog_entry(document: Mapping[str, Any]) -> bool:
     if not _save_document("cost_catalog", payload):
         return False
     _audit(db, "cost_catalog", identifier, "create" if old is None else "update", before=old, after=payload)
+    return True
+
+
+# ------------------------------------------------------------------ Issue #162
+# Work Module Library — the ONE bounded template store.
+#
+# Design boundaries (see core/work_modules.py for the pure model):
+#   * one collection of IMMUTABLE template versions, keyed "<template_id>:V<n>";
+#   * publishing V2 never touches V1, so an instance bound to V1 keeps its exact
+#     historical meaning;
+#   * no per-module task/document/finance store — attached instances live inside
+#     the existing shipment document and are written by save_shipment_atomic;
+#   * authorization reuses the single ROLE_PERMISSIONS matrix
+#     (core.auth.can_operate_business), never a second permission table.
+
+
+def load_work_module_templates(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
+    """Every stored template version. Small, bounded, ordered by id then version."""
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return []
+    try:
+        rows = [dict(row) for row in db.work_module_templates.find({}, {"_id": 0})]
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return []
+    rows.sort(key=lambda row: (str(row.get("template_id") or ""), int(row.get("version") or 0)))
+    return rows
+
+
+def save_work_module_template(document: Mapping[str, Any]) -> bool:
+    """Persist ONE new immutable template version.
+
+    Refusals (all fail closed, never silently overwrite history):
+      * the caller lacks ``operations_write`` (the existing operations authority);
+      * the document does not normalize against the bounded V1 vocabulary;
+      * the exact ``(template_id, version)`` already exists — an existing
+        version is immutable, publish a new version instead;
+      * a ``RETIRED`` version is being re-activated.
+    """
+    if not _require_business_permission(
+        "operations_write", "Bạn không có quyền tạo/đổi phiên bản quy trình."
+    ):
+        return False
+
+    from core.work_modules import normalize_template
+
+    try:
+        payload = normalize_template(document)
+    except ValueError as exc:
+        _set_last_error(str(exc))
+        return False
+
+    db = get_db()
+    if db is None:
+        return False
+
+    identifier = payload["id"]
+    try:
+        old = db.work_module_templates.find_one({"id": identifier}, {"_id": 0})
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return False
+
+    if old is not None:
+        # Immutability of a published version is not negotiable: V1 means one
+        # thing forever. The only legal way to change a procedure is a new
+        # version (or the bounded ACTIVE -> RETIRED lifecycle step).
+        previous_status = str(old.get("status") or "").upper()
+        requested_status = str(payload.get("status") or "").upper()
+        if requested_status == previous_status:
+            _set_last_error(
+                f"Phiên bản {identifier} đã tồn tại và không thể sửa. Hãy tạo phiên bản mới."
+            )
+            return False
+        if previous_status == "RETIRED":
+            _set_last_error(
+                f"Phiên bản {identifier} đã ngừng dùng và không thể kích hoạt lại. "
+                "Hãy tạo phiên bản mới."
+            )
+            return False
+        if (previous_status, requested_status) not in {("DRAFT", "ACTIVE"), ("DRAFT", "RETIRED"), ("ACTIVE", "RETIRED")}:
+            _set_last_error(
+                f"Không thể chuyển phiên bản {identifier} từ {previous_status} sang {requested_status}."
+            )
+            return False
+        # A lifecycle step keeps the version's MEANING byte-for-byte: only the
+        # stored status moves, and only forward. The caller's body is discarded
+        # here on purpose — otherwise DRAFT -> ACTIVE would be a back door for
+        # rewriting a version's nodes after the fact.
+        payload = {**old, "status": requested_status}
+
+    if not _save_document("work_module_templates", payload):
+        return False
+    _audit(
+        db,
+        "work_module_template",
+        identifier,
+        "create" if old is None else "status",
+        before=old,
+        after=payload,
+    )
     return True
 
 

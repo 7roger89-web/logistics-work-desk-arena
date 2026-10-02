@@ -37,7 +37,16 @@ def normalize_sea_facts(fields: Mapping[str, Any]) -> dict[str, str]:
 
 def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                   operational: Mapping[str, Any], primary: Mapping[str, Any],
-                  dashboard: Mapping[str, Any], attachments: list[dict]) -> dict[str, Any]:
+                  dashboard: Mapping[str, Any], attachments: list[dict],
+                  work_modules: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Base journey, plus (Issue #162) any attached Work Module instances.
+
+    ``work_modules`` carries the already-loaded ``templates`` + this shipment's
+    ``instances``. Composition is ADDITIVE and happens before the single visual
+    overlay loop below, so base nodes, base completion facts, current position
+    and the primary action keep exactly one authority. With no instances the
+    returned payload is identical to the pre-#162 projection.
+    """
     data = shipment.get('data') or {}
     transport = data.get('1.2') or {}
     sea = transport.get('sea_export') or {}
@@ -146,15 +155,34 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         targets = ['arrival'] if any(k in code for k in ('ETA', 'FREE_TIME', 'DEADLINE')) else ['pickup'] if 'FACTORY' in code else []
         for id in targets:
             if id in by_id: by_id[id]['blockers'].append(str(alert.get('label') or alert.get('detail') or code))
+    # Issue #162 — attached Work Modules join the SAME journey here, before the
+    # one overlay loop, so module step nodes obey the same completion-vs-visual
+    # rules as base nodes and a blocking module can only ADD attention to a base
+    # stage (never rewrite its facts).
+    modules = []
+    if work_modules and (work_modules.get('instances') or []):
+        from core.work_modules import compose_journey_modules
+        modules = compose_journey_modules(
+            nodes, edges, by_id,
+            templates=work_modules.get('templates') or [],
+            instances=work_modules.get('instances') or [],
+            attachments=attachments,
+            target_tab='nhap',
+        )
     for n in nodes:
         if n['blockers']: n['state'] = 'PROBLEM'
         elif n['id'] == current: n['state'] = 'CURRENT'
         elif not n['completed'] and n['dependencies'] and all(by_id[p]['completed'] for p in n['dependencies']): n['state'] = 'WAITING'
         n['current'] = n['id'] == current
-    return {'nodes': nodes, 'edges': edges, 'currentStageId': current,
+    journey = {'nodes': nodes, 'edges': edges, 'currentStageId': current,
             'owner': str(dashboard.get('owner') or ''),
             'primaryAction': dict(primary), 'seaFacts': {k: (shipment.get('china_export_decl_no') or '') if k == 'export_declaration_no' else sea.get(k, 'UNKNOWN' if k.endswith('_status') else '') for k in SEA_FACT_FIELDS},
             'positionNote': '' if current else 'Chưa đủ mốc thực tế để xác định vị trí vận hành.'}
+    # Rollups exist only when modules do: a shipment without modules keeps the
+    # exact pre-#162 payload shape.
+    if modules:
+        journey['modules'] = modules
+    return journey
 
 
 def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> dict[str, str] | None:

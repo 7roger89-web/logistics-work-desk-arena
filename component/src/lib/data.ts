@@ -86,7 +86,11 @@ export const NAV: {
     // LOGI_USER_ACCESS_WORKSPACE_01 — /nguoi-dung is a real read-only
     // user/access workspace now, so the deferred marker goes. It remains the
     // only route in this group; no second user-admin route was added.
-    items: [{ to: "/nguoi-dung", label: "Người dùng & Vai trò", icon: "shield" }],
+    items: [
+      { to: "/nguoi-dung", label: "Người dùng & Vai trò", icon: "shield" },
+      // Issue #162 — the Work Module template library (list/version/activate/retire).
+      { to: "/quy-trinh", label: "Thư viện quy trình", icon: "layers" },
+    ],
   },
 ];
 

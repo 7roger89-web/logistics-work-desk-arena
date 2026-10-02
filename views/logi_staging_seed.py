@@ -505,6 +505,14 @@ def seed_staging(actor: str = "staging.support") -> dict[str, int]:
     _seed_many("tasks", TASKS, "task_id")
     _seed_many("authority_companies", AUTHORITY_COMPANIES, "id")
     _seed_many("authority_agents", AUTHORITY_AGENTS, "id")
+    # Issue #162 — the ONE neutral Work Module fixture, and ONLY in the isolated
+    # staging sandbox. It is an architecture verification fixture, not a legal
+    # claim about any commodity, and a real database is never given demo
+    # procedures implicitly: operators publish templates through the bounded
+    # authoring surface.
+    from core.work_modules import demo_template
+
+    _seed_many("work_module_templates", [demo_template()], "id")
 
     # Canonical LOG-C12 quotes + a commercial agreement, built through the REAL
     # domain services (core.quotations / core.commercial_agreements).
