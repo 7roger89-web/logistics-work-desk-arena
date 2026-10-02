@@ -42,6 +42,7 @@ import threading
 
 from views import logi_sandbox
 from views import support_attention as logi_attention
+from views import operations_control_tower as logi_operations_control
 from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
@@ -927,6 +928,10 @@ def build_view_model() -> dict:
         unknown_label=rd.UNKNOWN_LABEL,
     )
     home = _home_projection(rows, summary, references, attention)
+    operations_control = logi_operations_control.build_operations_control_tower(
+        rows,
+        attention,
+    )
     receivables = rd.receivables_projection(rows)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
     # ledger rows) instead of re-reading both collections once per shipment.
@@ -973,6 +978,7 @@ def build_view_model() -> dict:
         "home": home,
         "tasks": tasks,
         "attention": attention,
+        "operationsControl": operations_control,
         "contracts": c1["contracts"],
         "customers": c1["customers"],
         "quotes": c1["quotes"],
