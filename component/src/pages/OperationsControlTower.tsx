@@ -68,7 +68,7 @@ function InterventionRow({ item }: { item: OperationsControlQueueItem }) {
           {item.reason ? <p className="mt-0.5 text-[12.5px] text-slate-600">{item.reason}</p> : null}
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-slate-500">
             <span>Vị trí: <b className="text-slate-700">{item.shipmentStatus}</b></span>
-            {item.owner ? <span>Phụ trách: <b className="text-slate-700">{item.owner}</b></span> : <span>Phụ trách: <b className="text-slate-700">Chưa xác định</b></span>}
+            {item.owner ? <span>Phụ trách: <b className="text-slate-700">{item.owner}</b></span> : <span>Phụ trách: <b className="text-slate-700">Chưa phân công / Chưa xác định</b></span>}
             {item.deadline ? <span>Hạn: <b className="text-slate-700">{item.deadline}</b></span> : null}
             {item.blockedGate ? <span>Chặn: <b className="text-red-700">{item.blockedGate}</b></span> : null}
             <span>Nguồn: <b className="text-slate-700">{item.sourceType}</b></span>
