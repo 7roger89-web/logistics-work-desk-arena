@@ -182,6 +182,7 @@ function settleReview(requestId, { ok = true, review = null, error = "" } = {}) 
  */
 async function gotoReviewTab() {
   await click("Lô Hàng", "a", $("aside")[0]);
+  await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
   const workspaceTabs = window.document.getElementById("workspace-tabs");
   assert.ok(workspaceTabs, "workspace tabs must exist");
@@ -210,6 +211,7 @@ await tick();
 console.log("STEP 1 — shipment detail → Chứng từ tab exposes the review surface");
 // ===========================================================================
 await click("Lô Hàng", "a", $("aside")[0]);
+await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
 await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
 const tabs = window.document.getElementById("workspace-tabs");
 assert.ok(tabs, "workspace tabs must exist");

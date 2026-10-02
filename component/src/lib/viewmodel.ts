@@ -95,6 +95,24 @@ export interface AttachmentPolicy {
   driveConfigured?: boolean;
 }
 
+export interface ShipmentDocumentTemplate {
+  id: string;
+  label: string;
+  category: string;
+  adapter: string;
+  documentType: string;
+  active: boolean;
+  available: boolean;
+  availabilityReason: string;
+}
+
+export interface ShipmentDocumentPickerPolicy {
+  catalog: ShipmentDocumentTemplate[];
+  canSaveSelection: boolean;
+  canGenerate: boolean;
+  storageConfigured: boolean;
+}
+
 /**
  * LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — ONE bounded, read-only review
  * of existing shipment attachments. Every shape below is projection only:
@@ -456,13 +474,41 @@ export interface ExportInfo {
   chinaDeclNo?: string;
 }
 
-export interface GntDocInfo {
+export interface ShipmentDocumentReadiness {
+  state: string;
+  gate?: string;
+  reason?: string;
+  missing?: string[];
+}
+
+export interface ShipmentGeneratedDocumentHistory {
+  recordId: string;
+  documentId?: string;
+  documentType: string;
+  revision: number;
+  status: string;
   fileName: string;
   mime: string;
   generatedAt?: string;
   generatedBy?: string;
+  attachmentId?: string;
   downloadAvailable: boolean;
   downloadBase64?: string | null;
+}
+
+export interface GntDocInfo {
+  fileName: string;
+  mime: string;
+  documentId?: string;
+  recordId?: string;
+  revision?: number;
+  status?: string;
+  attachmentId?: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  downloadAvailable: boolean;
+  downloadBase64?: string | null;
+  history?: ShipmentGeneratedDocumentHistory[];
 }
 
 export interface GntInfo {
@@ -476,6 +522,8 @@ export interface GntInfo {
   noPayable?: boolean;
   missing?: string[];
   done?: boolean;
+  readiness?: ShipmentDocumentReadiness;
+  documentHistory?: ShipmentGeneratedDocumentHistory[];
   document?: GntDocInfo | null;
 }
 
@@ -584,6 +632,8 @@ export interface PxkDocument {
   generatedBy?: string;
   downloadAvailable?: boolean;
   downloadBase64?: string | null;
+  attachmentId?: string;
+  history?: ShipmentGeneratedDocumentHistory[];
   number?: string;
   date?: string;
 }
@@ -595,6 +645,8 @@ export interface Pxk {
   /** The real core.docgen delivery gate. */
   gateOpen?: boolean;
   missingDeliveryFacts?: string[];
+  readiness?: ShipmentDocumentReadiness;
+  documentHistory?: ShipmentGeneratedDocumentHistory[];
   number?: string;
   date?: string;
   place?: string;
@@ -914,6 +966,8 @@ export interface Shipment {
   documentWorkflow?: DocumentWorkflow;
   /** Real attachments of the lot (metadata only; bytes live server-side). */
   attachments: ShipmentAttachment[];
+  /** Durable IDs from the bounded shipment document-picker catalog. */
+  selectedDocumentTemplateIds?: string[];
   version?: number;
   rawStatus?: string;
   mode?: string;
@@ -2164,6 +2218,8 @@ export interface ViewModel {
    * its own extension list or size limit.
    */
   attachmentPolicy?: AttachmentPolicy;
+  /** One server-projected catalog and readiness to edit the selection. */
+  shipmentDocumentPicker?: ShipmentDocumentPickerPolicy;
   /**
    * LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral read-only
    * review of existing shipment attachments, or null. Session-only: it is
@@ -2194,6 +2250,7 @@ export function applyViewModel(next: ViewModel): void {
   // tab renders an honest empty state instead of crashing on a missing field.
   for (const shipment of next.shipments ?? []) {
     if (!Array.isArray(shipment.attachments)) shipment.attachments = [];
+    if (!Array.isArray(shipment.selectedDocumentTemplateIds)) shipment.selectedDocumentTemplateIds = [];
   }
   for (const contract of next.contracts ?? []) {
     if (!Array.isArray((contract as unknown as Record<string, unknown>).intlSnapshots)) (contract as unknown as Record<string, unknown>).intlSnapshots = [];

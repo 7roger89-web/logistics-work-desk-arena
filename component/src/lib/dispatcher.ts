@@ -37,6 +37,9 @@ export type LogiEventName =
   // dispatcher → shipment_edit RBAC → the existing atomic shipment writer →
   // audit → fresh readback (same contract as shipment_profile_save).
   | "shipment_commercial_flow_save"
+  // Shipment-local picker preferences: stable catalog IDs only, persisted on
+  // the existing shipment truth with the ordinary version/audit/readback path.
+  | "shipment_document_selection_save"
   // Issue #162 — Work Module Library. Three bounded events on the SAME seam as
   // every other write: template version authoring/lifecycle (existing
   // operations authority), manual attach of ONE ACTIVE version to ONE shipment,
@@ -168,6 +171,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_sea_facts_save",
   "shipment_profile_save",
   "shipment_commercial_flow_save",
+  "shipment_document_selection_save",
   "work_module_template_save",
   "work_module_attach",
   "work_module_step_complete",

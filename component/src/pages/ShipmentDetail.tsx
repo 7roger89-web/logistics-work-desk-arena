@@ -9,9 +9,16 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
+import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
 import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import type { JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
+import {
+  projectShipmentDocumentCards,
+  type ShipmentDocumentAction,
+  type ShipmentDocumentCard,
+  type ShipmentDocumentHistoryItem,
+} from "../lib/shipmentDocumentPicker";
 import { useStore } from "../lib/store";
 import { fmtMoney, fmtVND, fmtCcy, fmtMillionsCcy, fmtPct, cx, downloadBinaryFile, parseAmountVN } from "../lib/format";
 
@@ -151,6 +158,11 @@ export default function ShipmentDetail() {
   const [flowCompanyDraft, setFlowCompanyDraft] = useState("");
   const [flowPending, setFlowPending] = useState("");
   const [flowError, setFlowError] = useState("");
+  const [documentSelectionOpen, setDocumentSelectionOpen] = useState(false);
+  const [documentSelectionDraftIds, setDocumentSelectionDraftIds] = useState<string[]>([]);
+  const [documentSelectionPending, setDocumentSelectionPending] = useState("");
+  const [documentSelectionError, setDocumentSelectionError] = useState("");
+  const [documentDownloadPending, setDocumentDownloadPending] = useState("");
 
   useEffect(() => { setForm({}); setPartnerAmt(""); }, [id, tab]);
 
@@ -185,6 +197,52 @@ export default function ShipmentDetail() {
       toast("Chưa lưu được hình thức nhập khẩu", message, "red");
     }
   }, [vm?.lastWrites, flowPending, toast]);
+
+  const persistedDocumentIds = s?.selectedDocumentTemplateIds ?? [];
+  const persistedDocumentKey = persistedDocumentIds.join("\u0000");
+  useEffect(() => {
+    setDocumentSelectionDraftIds(persistedDocumentIds);
+  }, [id, persistedDocumentKey]);
+  useEffect(() => {
+    setDocumentSelectionOpen(false);
+    setDocumentSelectionPending("");
+    setDocumentSelectionError("");
+    setDocumentDownloadPending("");
+  }, [id]);
+  useEffect(() => {
+    if (!documentSelectionPending) return;
+    const outcome = vm?.lastWrites?.find(
+      (row) => row.event === "shipment_document_selection_save" && row.requestId === documentSelectionPending
+    );
+    if (!outcome) return;
+    setDocumentSelectionPending("");
+    if (outcome.ok) {
+      const readback = outcome.readback && typeof outcome.readback === "object"
+        ? outcome.readback as Record<string, unknown>
+        : {};
+      if (Array.isArray(readback.selectedDocumentTemplateIds)) {
+        setDocumentSelectionDraftIds(readback.selectedDocumentTemplateIds.filter((value): value is string => typeof value === "string"));
+      }
+      setDocumentSelectionError("");
+      setDocumentSelectionOpen(false);
+      toast("Đã lưu biểu mẫu cho lô", "Danh sách đã được xác nhận bằng readback mới từ backend.", "green");
+    } else {
+      const message = String(outcome.error || "Backend từ chối lưu lựa chọn biểu mẫu.");
+      setDocumentSelectionError(message);
+      toast("Chưa lưu được lựa chọn", message, "red");
+    }
+  }, [vm?.lastWrites, documentSelectionPending, toast]);
+  useEffect(() => {
+    if (!documentDownloadPending) return;
+    const outcome = vm?.lastWrites?.find(
+      (row) => row.event === "attachment_download" && row.requestId === documentDownloadPending
+    );
+    if (!outcome) return;
+    setDocumentDownloadPending("");
+    if (!outcome.ok) {
+      toast("Chưa tải được tệp chứng từ", String(outcome.error || "Backend từ chối yêu cầu đọc tệp."), "red");
+    }
+  }, [vm?.lastWrites, documentDownloadPending, toast]);
   // LOGI_SHIPMENT_PRIMARY_ACTION_UNIFY_01 — deep links from Home/Tasks carry
   // the composed `nextRoute` (?tab=…#anchor). On mount the tab content is
   // already rendered from the query, so honour the anchor once: scroll the
@@ -200,6 +258,42 @@ export default function ShipmentDetail() {
   const val = (k: string, fb: string) => form[k] ?? fb;
 
   const linkedContract = useMemo(() => contracts.find((c) => c.id === s?.contract), [contracts, s]);
+  const pickerLinkedContracts = useMemo(() => {
+    const shipmentId = s?.id.toUpperCase();
+    const selectedContractId = s?.contract.toUpperCase();
+    const matches = contracts.filter((contract) =>
+      contract.id.toUpperCase() === selectedContractId || (contract.linkedShipments ?? []).some(
+        (shipment) => shipment.id.toUpperCase() === shipmentId
+      )
+    );
+    return Array.from(new Map(matches.map((contract) => [contract.id, contract])).values());
+  }, [contracts, s?.contract, s?.id]);
+  const pickerContract = linkedContract ?? (pickerLinkedContracts.length === 1 ? pickerLinkedContracts[0] : null);
+  const pickerPolicy = vm?.shipmentDocumentPicker;
+  const shipmentDocumentCards = useMemo(() => {
+    if (!s) return [];
+    return projectShipmentDocumentCards({
+      catalog: pickerPolicy?.catalog ?? [],
+      selectedIds: persistedDocumentIds,
+      shipment: s,
+      linkedContract: pickerContract,
+      linkedContractCount: pickerLinkedContracts.length,
+      canGenerate: pickerPolicy?.canGenerate === true,
+      storageConfigured: pickerPolicy?.storageConfigured === true,
+      pxkDraft: {
+        number: val("pxkNo", s.pxk.number ?? ""),
+        date: val("pxkDate", s.pxk.date ?? ""),
+      },
+    });
+  }, [
+    s,
+    pickerPolicy,
+    persistedDocumentKey,
+    pickerContract,
+    pickerLinkedContracts.length,
+    form.pxkNo,
+    form.pxkDate,
+  ]);
   const authorityAgents = vm?.authority?.agents ?? [];
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
@@ -258,6 +352,39 @@ export default function ShipmentDetail() {
     if (!sent) {
       setFlowPending("");
       setFlowError("Component chưa kết nối backend.");
+    }
+  };
+
+  const openDocumentSelection = () => {
+    setDocumentSelectionDraftIds(persistedDocumentIds);
+    setDocumentSelectionError("");
+    setDocumentSelectionOpen(true);
+  };
+
+  const closeDocumentSelection = () => {
+    if (documentSelectionPending) return;
+    setDocumentSelectionOpen(false);
+    setDocumentSelectionError("");
+    setDocumentSelectionDraftIds(persistedDocumentIds);
+  };
+
+  const saveDocumentSelection = () => {
+    if (!s || !pickerPolicy?.canSaveSelection) {
+      setDocumentSelectionError("Tài khoản hiện không có quyền lưu lựa chọn biểu mẫu.");
+      return;
+    }
+    const requestId = mintRequestId("SDOC");
+    setDocumentSelectionError("");
+    setDocumentSelectionPending(requestId);
+    const sent = dispatch("shipment_document_selection_save", {
+      shipmentId: s.id,
+      requestId,
+      expectedVersion: Number.isInteger(s.version) ? s.version : 0,
+      selectedTemplateIds: documentSelectionDraftIds,
+    });
+    if (!sent) {
+      setDocumentSelectionPending("");
+      setDocumentSelectionError("Component chưa kết nối backend.");
     }
   };
 
@@ -812,6 +939,75 @@ export default function ShipmentDetail() {
       doc.downloadBase64,
       doc.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
+  };
+
+  const openDocumentAnchor = (tabId: string, elementId: string) => {
+    setSp({ tab: tabId });
+    window.setTimeout(() => {
+      const target = document.getElementById(elementId);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+    }, 160);
+  };
+
+  const handleDocumentAction = (_card: ShipmentDocumentCard, action: ShipmentDocumentAction) => {
+    switch (action) {
+      case "GENERATE_CONTRACT":
+      case "OPEN_CONTRACT":
+        if (pickerContract) nav(`${contractPath(pickerContract.id)}?tab=chung-tu`);
+        else nav("/hop-dong");
+        return;
+      case "GENERATE_PXK":
+        exportPXK();
+        return;
+      case "GENERATE_GNT":
+        generateGNT();
+        return;
+      case "OPEN_CONTRACT_LIST":
+        nav("/hop-dong");
+        return;
+      case "OPEN_COMMERCIAL_FLOW":
+        openDocumentAnchor("chung-tu", "shipment-commercial-flow");
+        return;
+      case "OPEN_IMPORT":
+        openDocumentAnchor("nhap", "fld-gnt-payer");
+        return;
+      case "OPEN_DELIVERY":
+        setSp({ tab: "nhap" });
+        setShowDeliver(true);
+        return;
+      case "OPEN_PXK":
+        openDocumentAnchor("chung-tu", "fld-pxkno");
+        return;
+    }
+  };
+
+  const downloadDocumentHistory = (card: ShipmentDocumentCard, history: ShipmentDocumentHistoryItem) => {
+    if (history.downloadBase64) {
+      downloadBinaryFile(
+        history.fileName || `${card.id}_R${history.revision}`,
+        history.downloadBase64,
+        history.mime || "application/octet-stream"
+      );
+      toast("Đã tải " + (history.fileName || card.label), "Tệp được mở từ đầu ra hiện có của bộ tạo.", "green");
+      return;
+    }
+    if (!history.attachmentId) {
+      toast("Chưa thể tải tệp", "Bản lịch sử chỉ có metadata; không có bytes phiên này hoặc tệp đính kèm đã liên kết.", "amber");
+      return;
+    }
+    if (documentDownloadPending) return;
+    const requestId = mintRequestId("DOCDOWN");
+    setDocumentDownloadPending(requestId);
+    const sent = dispatch("attachment_download", {
+      shipmentId: s.id,
+      attachmentId: history.attachmentId,
+      requestId,
+    });
+    if (!sent) {
+      setDocumentDownloadPending("");
+      toast("Chưa tải được tệp chứng từ", "Component chưa kết nối backend.", "red");
+    }
   };
 
   // `missingDocs` is already the not-ok subset of `docs`; counting both
@@ -1885,6 +2081,29 @@ export default function ShipmentDetail() {
               {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
             </PrimaryBtn>
           </section>
+
+          {pickerPolicy && (
+            <ShipmentDocumentPicker
+              shipmentId={s.id}
+              cards={shipmentDocumentCards}
+              selection={{
+                catalog: pickerPolicy.catalog ?? [],
+                savedIds: persistedDocumentIds,
+                draftIds: documentSelectionDraftIds,
+                canEdit: pickerPolicy.canSaveSelection === true,
+                storageConfigured: pickerPolicy.storageConfigured === true,
+                open: documentSelectionOpen,
+                pending: Boolean(documentSelectionPending),
+                error: documentSelectionError,
+                onOpen: openDocumentSelection,
+                onClose: closeDocumentSelection,
+                onDraftChange: setDocumentSelectionDraftIds,
+                onSave: saveDocumentSelection,
+              }}
+              onAction={handleDocumentAction}
+              onDownload={downloadDocumentHistory}
+            />
+          )}
 
           <section className="xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-document-workflow">
             <div className="flex flex-wrap items-center justify-between gap-2">
