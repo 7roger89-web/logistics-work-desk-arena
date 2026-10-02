@@ -51,6 +51,10 @@ def _enrich(
     sid = _text(item.get("shipmentId"))
     shipment = shipments.get(sid, {})
     result = dict(item)
+    # core.shipment_dashboard deliberately emits this Vietnamese sentinel when
+    # no canonical shipment owner exists. It is not a person's identity.
+    if _text(result.get("owner")).casefold() == "chưa phân công":
+        result["owner"] = ""
     result.update(
         {
             "customer": _text(shipment.get("customer")) or "Chưa xác định",
