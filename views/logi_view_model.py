@@ -484,10 +484,30 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
                    if row["finance"]["outstanding"] is not None and row["finance"]["outstanding"] > 0]
     outstanding_total = sum(outstanding) if outstanding else None
 
+    # Production always passes the shared Attention projection. None is kept
+    # only for older direct helper callers/tests; an explicit empty list remains
+    # the truthful no-supported-attention state.
+    legacy_attention_call = attention is None
     attention_rows = list(attention or [])
     row_by_id = {row["id"]: row for row in rows}
     focus_item = attention_rows[0] if attention_rows else None
     focus_row = row_by_id.get(focus_item["shipmentId"]) if focus_item else None
+    if legacy_attention_call and focus_item is None:
+        legacy_focus = (
+            next((row for row in rows if row["priority"] == "Khan"), None)
+            or next((row for row in rows if row["priority"] == "CanXuLy"), None)
+            or (rows[0] if rows else None)
+        )
+        if legacy_focus is not None:
+            focus_item = {
+                "shipmentId": legacy_focus["id"],
+                "action": legacy_focus["nextAction"],
+                "reason": legacy_focus["nextActionDetail"],
+                "route": legacy_focus["nextRoute"],
+                "band": "ACTION",
+                "sourcePriority": legacy_focus["priority"],
+            }
+            focus_row = legacy_focus
     source_priority = (focus_item or {}).get("sourcePriority")
     focus_priority = (
         source_priority
@@ -531,11 +551,15 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
             "financialAttention": int(summary.get("financial_attention") or 0),
             "missingInfo": int(summary.get("missing_info") or 0),
         },
-        "urgentCount": sum(
-            1
-            for item in attention_rows
-            if item.get("band") in {"BLOCKING", "OVERDUE", "DUE_SOON"}
-            or item.get("sourcePriority") == "Khan"
+        "urgentCount": (
+            sum(1 for row in rows if row["priority"] == "Khan")
+            if legacy_attention_call
+            else sum(
+                1
+                for item in attention_rows
+                if item.get("band") in {"BLOCKING", "OVERDUE", "DUE_SOON"}
+                or item.get("sourcePriority") == "Khan"
+            )
         ),
         "focus": {
             "id": focus_item["shipmentId"],
