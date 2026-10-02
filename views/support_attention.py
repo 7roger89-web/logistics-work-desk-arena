@@ -59,10 +59,14 @@ def build_attention_projection(
     projected_rows = [row for row in rows if isinstance(row, Mapping)]
     by_shipment = {_text(row.get("id")): row for row in projected_rows if _text(row.get("id"))}
     out: list[dict[str, Any]] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
 
     def add(item: dict[str, Any]) -> None:
-        key = (_text(item.get("sourceType")), _text(item.get("sourceRef")))
+        key = (
+            _text(item.get("shipmentId")),
+            _text(item.get("sourceType")),
+            _text(item.get("sourceRef")),
+        )
         if not all(key) or key in seen:
             return
         seen.add(key)
@@ -114,24 +118,24 @@ def build_attention_projection(
             if not instance_id:
                 continue
             next_step_id = _text(module.get("nextStepId"))
+            next_step_label = _text(module.get("nextStep"))
             execution_steps = [
                 step for step in (module.get("steps") or []) if isinstance(step, Mapping)
             ]
-            next_execution_step = next(
-                (step for step in execution_steps if _text(step.get("id")) == next_step_id),
-                {},
-            )
-            if (
-                status == "WAITING"
-                and (
-                    not next_step_id
-                    or (
-                        bool(next_execution_step)
-                        and bool(next_execution_step.get("blockedBy"))
-                    )
+            if status == "WAITING":
+                actionable_step = next(
+                    (
+                        step
+                        for step in execution_steps
+                        if not bool(step.get("completed"))
+                        and not bool(step.get("blockedBy"))
+                    ),
+                    {},
                 )
-            ):
-                continue
+                if not actionable_step:
+                    continue
+                next_step_id = _text(actionable_step.get("id"))
+                next_step_label = _text(actionable_step.get("label")) or next_step_label
             journey_step_id = f"wm-{instance_id}-{next_step_id}" if next_step_id else ""
             module_node = next(
                 (node for node in nodes if _text(node.get("id")) == journey_step_id),
@@ -163,7 +167,7 @@ def build_attention_projection(
                     if unknown
                     else " · ".join(part for part in (_text(module.get("name")), _text(module.get("summary"))) if part)
                 ),
-                "action": _text(module.get("nextStep")) or "Kiểm tra quy trình đã gắn",
+                "action": next_step_label or "Kiểm tra quy trình đã gắn",
                 "context": _text(module.get("name")),
                 "route": route,
                 # Work Module WHO is guidance, not a canonical assignee in V1.
