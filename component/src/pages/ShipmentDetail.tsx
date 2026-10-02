@@ -10,6 +10,7 @@ import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
+import AttentionNow from "../components/AttentionNow";
 import type { JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
@@ -109,7 +110,7 @@ export default function ShipmentDetail() {
   const id = shipmentIdFromPath(pathname, paramId);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
-  const { shipments, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
+  const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
   // The authoritative outcome of a saved actual line comes back in the NEXT
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -204,6 +205,7 @@ export default function ShipmentDetail() {
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
+  const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
