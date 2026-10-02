@@ -39,7 +39,7 @@ export default function Home() {
   const summary = home?.summary;
   const running = (home?.runningSummary ?? []);
   const today = new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
-  const urgentTotal = (summary?.critical ?? 0) + (home?.urgentCount ?? 0);
+  const urgentTotal = home?.urgentCount ?? 0;
 
   return (
     <div className="space-y-4 max-w-[1200px]">
