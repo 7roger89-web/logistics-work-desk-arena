@@ -1,0 +1,90 @@
+name: Verify Issue 166
+
+on:
+  push:
+    branches:
+      - ct/issue-166-support-attention-now-fresh-main
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact task branch
+        uses: actions/checkout@v4
+        with:
+          ref: ct/issue-166-support-attention-now-fresh-main
+          fetch-depth: 0
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Focused and bounded regressions
+        run: |
+          python -m pytest -q             tests/test_support_attention_now_166.py             tests/test_visual_shipment_workspace.py             tests/test_work_module_library_162.py             tests/test_shipment_dashboard.py             tests/test_logi_shipment_primary_action_unify_01.py
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: component/package-lock.json
+
+      - name: Install frontend lockfile
+        working-directory: component
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: component
+        run: npm run typecheck
+
+      - name: Rebuild dist
+        working-directory: component
+        run: npm run build
+
+      - name: Scan generated dist
+        working-directory: component
+        run: npm run scan
+
+      - name: Issue 166 DOM acceptance
+        run: node tests/component/dom_acceptance_support_attention_166.mjs
+
+      - name: Visual Shipment Workspace regression
+        run: |
+          python scripts/verify_visual_shipment_workspace.py --fixture /tmp/log160-dom.json
+          node tests/component/dom_acceptance_visual_shipment_workspace.mjs /tmp/log160-dom.json
+
+      - name: Work Module Library regression
+        run: |
+          python scripts/verify_work_module_library_162.py --fixture /tmp/log162-dom.json
+          node tests/component/dom_acceptance_work_module_library_162.mjs /tmp/log162-dom.json
+
+      - name: Shipment Document Picker overlap regression
+        run: |
+          node tests/component/unit_shipment_document_picker.mjs
+          node tests/component/dom_acceptance_shipment_document_picker_v1.mjs
+
+      - name: Commit generated dist if changed
+        run: |
+          git add component/dist
+          if git diff --cached --quiet; then
+            echo "DIST_CHANGED=NO"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build: rebuild component dist for issue 166"
+            git push origin HEAD:ct/issue-166-support-attention-now-fresh-main
+            echo "DIST_CHANGED=YES"
+          fi
