@@ -1,6 +1,10 @@
 // Optional real-browser #160 acceptance. Uses an externally installed Playwright.
 // PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROMIUM_EXECUTABLE=/path/to/chromium
 // node tests/component/browser_visual_shipment_workspace.mjs /tmp/log160-screenshots
+// PYTHON=/path/to/python and CHROMIUM_LIB_PATH=/path/to/browser/libs override the
+// interpreter and the BROWSER-ONLY LD_LIBRARY_PATH (exporting it globally would
+// shadow system libs for the Python host, e.g. libsqlite3). Same contract as the
+// #162 runner, so both suites are runnable in an offline sandbox.
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -9,12 +13,13 @@ import assert from 'node:assert/strict';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const output=process.argv[2] || '/tmp/log160-screenshots';mkdirSync(output,{recursive:true});
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const host=spawn('python',['scripts/verify_visual_shipment_workspace.py'],{cwd:root,stdio:['ignore','ignore','pipe']});
+const host=spawn(process.env.PYTHON || 'python',['scripts/verify_visual_shipment_workspace.py'],{cwd:root,stdio:['ignore','ignore','pipe']});
 let hostErrors='';host.stderr.on('data',b=>hostErrors+=b);
 let browser;
 try {
   for(let i=0;i<100;i++) {try {if((await fetch('http://127.0.0.1:9501/model')).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
-  browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE || undefined,headless:true,args:['--no-sandbox']});
+  browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE || undefined,headless:true,args:['--no-sandbox'],
+    env:process.env.CHROMIUM_LIB_PATH?{...process.env,LD_LIBRARY_PATH:process.env.CHROMIUM_LIB_PATH}:process.env});
   const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:9501');
   await page.getByRole('link',{name:'Lô Hàng',exact:true}).first().click();

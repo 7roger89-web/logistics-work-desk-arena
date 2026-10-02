@@ -26,6 +26,7 @@ import ContractDetail from "./pages/ContractDetail";
 import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
 import PolicyLookup from "./pages/PolicyLookup";
+import WorkModuleLibrary from "./pages/WorkModuleLibrary";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
@@ -108,6 +109,8 @@ export default function App() {
                 user-management write path: the canonical writers stay in
                 core.database and none is exposed from this page yet. */}
             <Route path="/nguoi-dung" element={<UserAccess />} />
+            {/* Issue #162 — bounded Work Module template management surface. */}
+            <Route path="/quy-trinh" element={<WorkModuleLibrary />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         )}</Layout>
