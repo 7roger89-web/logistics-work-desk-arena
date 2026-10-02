@@ -32128,7 +32128,7 @@ function Jd({ item: e }) {
 									children: e.owner
 								})] }) : /* @__PURE__ */ (0, V.jsxs)("span", { children: ["Phụ trách: ", /* @__PURE__ */ (0, V.jsx)("b", {
 									className: "text-slate-700",
-									children: "Chưa xác định"
+									children: "Chưa phân công / Chưa xác định"
 								})] }),
 								e.deadline ? /* @__PURE__ */ (0, V.jsxs)("span", { children: ["Hạn: ", /* @__PURE__ */ (0, V.jsx)("b", {
 									className: "text-slate-700",
