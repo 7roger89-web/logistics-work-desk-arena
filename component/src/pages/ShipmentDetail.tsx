@@ -10,7 +10,7 @@ import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts } from "../components/ShipmentJourney";
+import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import type { JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import {
@@ -308,7 +308,10 @@ export default function ShipmentDetail() {
   const ccy = s.finance.currency || "VND";
   const workspaceNode = s.journey?.nodes.find(n => n.id === sp.get("stage"));
   const workspaceWork = sp.get("work") || "info";
-  const showExistingWork = !workspaceNode || (workspaceWork !== "overview" && !(workspaceWork === "info" && ["si-vgm", "gate-in"].includes(workspaceNode.id)));
+  // Issue #162 — a Work Module step owns its own bounded "Thông tin" panel (like
+  // the Sea facts panel above), so the generic work blurbs stay hidden for it.
+  const moduleStepNode = workspaceNode?.moduleId ? workspaceNode : undefined;
+  const showExistingWork = !workspaceNode || (workspaceWork !== "overview" && !(workspaceWork === "info" && (["si-vgm", "gate-in"].includes(workspaceNode.id) || Boolean(moduleStepNode))));
   const openStageWorkspace = (node: JourneyNode, work: string) => {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
@@ -1248,8 +1251,10 @@ export default function ShipmentDetail() {
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
         onOpen={openStageWorkspace} onGlobal={() => setSp({ tab: "van-tai" })} runPrimary={runPrimaryAction} />
-      {workspaceNode && workspaceWork === "info" && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
+      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
+      {workspaceNode && moduleStepNode && workspaceWork === "info" &&
+        <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
       {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
         {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
       </p>}

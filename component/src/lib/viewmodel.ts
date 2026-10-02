@@ -858,12 +858,85 @@ export interface JourneyNode {
   state: "COMPLETED" | "CURRENT" | "UPCOMING" | "WAITING" | "PROBLEM";
   factState: string; evidence: string; deadline: string; owned: boolean; current: boolean;
   blockers: string[]; dependencies: string[]; documentCategories: string[]; documentIds: string[];
+  /** Issue #162 — context/display-only edges; never a readiness input. */
+  informationalDependencies?: string[];
+  /** Issue #162 — present only on Work Module step nodes (see WorkModuleRollup). */
+  moduleId?: string;
+  moduleTemplateId?: string;
+  moduleTemplateVersion?: number;
+  moduleName?: string;
+  moduleNodeId?: string;
+  moduleStatus?: string;
+  moduleGateText?: string;
+  moduleProvenance?: string;
+  guidance?: WorkModuleGuidance;
+  moduleSteps?: { id: string; label: string; completed: boolean }[];
+}
+
+/** Issue #162 — plain-text guidance a template may carry (all optional). */
+export interface WorkModuleGuidance {
+  why?: string; what_to_do?: string; who?: string; when?: string;
+  needs?: string; done_when?: string; impact?: string;
+}
+
+/**
+ * Issue #162 — the compact human view of ONE attached module.
+ *
+ * The machine still has the explicit step graph inside `journey.nodes` /
+ * `journey.edges`; the default UI renders only this rollup plus the gate
+ * sentence, and reveals the internal steps on demand through the SAME
+ * Quick Panel / Stage Workspace interaction the base journey uses.
+ */
+export interface WorkModuleRollup {
+  instanceId: string; templateId: string; templateVersion: number;
+  name: string; description: string;
+  /** DONE | WAITING | BLOCKING | UNKNOWN — UNKNOWN is never treated as done. */
+  status: string;
+  summary: string;
+  completedCount: number; totalCount: number;
+  nextStep: string; nextStepId: string;
+  deadline: string; blocker: string;
+  gate: { stage?: string; label?: string; type?: string };
+  gateText: string;
+  provenance: string; addedBy: string; addedAt: string; reason: string;
+  anchorStage?: string; anchorLabel?: string;
+  unresolved?: boolean;
+  steps: {
+    id: string; label: string; completed: boolean; completedAt: string;
+    completedBy: string; note: string; blockedBy: string[];
+    dependencies: string[]; informational: string[]; guidance: WorkModuleGuidance;
+    documentCategories: string[]; needsEvidence: boolean;
+  }[];
+}
+
+/** Issue #162 — one readable choice in the "+ Thêm quy trình phát sinh" panel. */
+export interface WorkModuleTemplateChoice {
+  templateId: string; version: number; name: string; description: string;
+  anchorStage: string; gateStage: string; stepCount: number;
+}
+
+/** Issue #162 — the bounded library projection (read-only; server re-authorizes). */
+export interface WorkModuleLibrary {
+  templates: WorkModuleTemplateChoice[];
+  all: {
+    id: string; templateId: string; name: string; version: number; status: string;
+    description: string; anchorStage: string; gateStage: string; stepCount: number;
+    steps: { id: string; label: string; dependencies: { nodeId: string; type: string }[]; guidance: WorkModuleGuidance }[];
+  }[];
+  /** Canonical journey-stage vocabulary for the authoring form (server-owned). */
+  stages: { id: string; label: string }[];
+  canAuthor: boolean; canAttach: boolean; role: string;
 }
 export interface ShipmentJourney {
   nodes: JourneyNode[]; edges: { from: string; to: string }[];
   currentStageId: string; owner: string; positionNote: string;
   seaFacts: Record<string, string>;
   primaryAction: { text: string; detail: string; priority: string; route: string };
+  /**
+   * Issue #162 — attached Work Module rollups. Absent on a shipment with no
+   * modules, exactly as before this slice.
+   */
+  modules?: WorkModuleRollup[];
 }
 
 export interface Shipment {
@@ -2155,6 +2228,8 @@ export interface ViewModel {
   shipmentDocumentReview?: ShipmentDocumentReview | null;
   /** LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — live FX rates slice, fail-closed. */
   intlFxRates?: IntlFxRates;
+  /** Issue #162 — read-only Work Module template library + display capability. */
+  workModules?: WorkModuleLibrary;
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;

@@ -670,6 +670,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         load_cost_rate_snapshots,
         load_docgen_documents,
         load_shipment_ids,
+        load_work_module_templates,
     )
     from core.financial_ledger import load_ledger_snapshot
 
@@ -702,6 +703,10 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "timelines": lambda: rd.timelines_projection(shipment_ids, db=db),
         "docgenDocumentsRaw": _docgen,
         "shipmentIds": lambda: load_shipment_ids(db=db),
+        # Issue #162 — the Work Module template library is read ONCE per render
+        # (one small collection) and shared by every projected shipment, exactly
+        # like the other render-local snapshots above.
+        "workModuleTemplates": lambda: load_work_module_templates(db=db) or [],
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — attachment METADATA for
         # the whole render, read once and grouped (the same repair as the docgen
         # read above). No bytes: the files themselves live in the selected storage backend.
@@ -725,6 +730,7 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "docgenDocuments": rd.docgen_documents_by_shipment(loaded["docgenDocumentsRaw"]),
         "linkedContracts": rd.linked_contracts_index(references.get("contracts")),
         "shipmentIds": loaded["shipmentIds"],
+        "workModuleTemplates": loaded["workModuleTemplates"],
         "attachments": loaded["attachments"],
         "attachmentDownload": _attachment_download_state(),
         "agreements": loaded["agreements"],
@@ -734,6 +740,58 @@ def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *
         "costCatalog": loaded["costCatalog"],
         "costRates": loaded["costRates"],
         "intlFxRates": loaded["intlFxRates"],
+    }
+
+
+def _work_module_library(templates: list[dict[str, Any]], user: Mapping[str, Any]) -> dict[str, Any]:
+    """Read-only projection of the Work Module template library (Issue #162).
+
+    Both authoring capability flags are DISPLAY hints derived from the single
+    ROLE_PERMISSIONS matrix; the real boundary is re-checked by core.database and
+    core.auth on every mutation, so hiding a control here is never security.
+    """
+    from core.auth import can_operate_business
+    from core.shipment_journey import JOURNEY_STAGE_IDS
+    from core.work_modules import attachable_templates, normalize_template
+
+    rows: list[dict[str, Any]] = []
+    for item in templates or []:
+        try:
+            template = normalize_template(item)
+        except ValueError:
+            continue
+        rows.append({
+            "id": template["id"],
+            "templateId": template["template_id"],
+            "name": template["name"],
+            "version": template["version"],
+            "status": template["status"],
+            "description": template["description"],
+            "anchorStage": template["anchor_stage"],
+            "gateStage": template["gate_stage"],
+            "stepCount": len(template["nodes"]),
+            "steps": [
+                {
+                    "id": node["id"],
+                    "label": node["label"],
+                    "dependencies": [
+                        {"nodeId": d["nodeId"], "type": d["type"]} for d in node["dependencies"]
+                    ],
+                    "guidance": node["guidance"],
+                }
+                for node in template["nodes"]
+            ],
+        })
+    rows.sort(key=lambda row: (row["templateId"], -row["version"]))
+    return {
+        "templates": attachable_templates(templates),
+        "all": rows,
+        # The canonical stage vocabulary, delivered so the authoring form never
+        # hard-codes it in the frontend.
+        "stages": [{"id": stage, "label": stage} for stage in sorted(JOURNEY_STAGE_IDS)],
+        "canAuthor": bool(can_operate_business("operations_write")),
+        "canAttach": bool(can_operate_business("shipment_edit")),
+        "role": rd.text(user.get("role")).upper() or "VIEWER",
     }
 
 
@@ -780,6 +838,7 @@ def build_view_model() -> dict:
             linked_contracts=sources["linkedContracts"],
             attachments=sources["attachments"],
             attachment_download=sources["attachmentDownload"],
+            work_module_templates=sources["workModuleTemplates"],
         )
         for sid, ship in shipments.items()
     ]
@@ -910,6 +969,12 @@ def build_view_model() -> dict:
             field_paths=FIELD_PATHS,
             notes=sources["knowledgeNotes"],
         ),
+        # Issue #162 — Work Module Library. `templates` is the only attachable
+        # set (newest ACTIVE version per template); `all` is the small authoring
+        # view (every stored version with its status). Both are read-only
+        # projections of the ONE template collection: the browser never decides
+        # what is attachable, and every mutation is re-authorized server-side.
+        "workModules": _work_module_library(sources["workModuleTemplates"], user),
         # LOGI_USER_ACCESS_WORKSPACE_01 — the /nguoi-dung workspace. A bounded
         # READ-ONLY slice over the auth/user/RBAC capability that already
         # exists (load_users read through core.users' canonical public view,
@@ -1032,6 +1097,13 @@ PHASE_B_EVENTS = {
     # operational collections through the existing atomic writer.
     "shipment_transport_save",
     "shipment_sea_facts_save",
+    # Issue #162 — Work Module Library: template authoring/versioning, manual
+    # attach, and factual step completion. All three reuse this ONE dispatcher,
+    # the existing ROLE_PERMISSIONS matrix, the existing writers and the
+    # existing fresh-readback contract. No module-specific store or engine.
+    "work_module_template_save",
+    "work_module_attach",
+    "work_module_step_complete",
     # LOGI_SHIPMENT_EXECUTION_PROFILE_01 — ONE bounded write for the shipment
     # execution profile (Incoterms code/version/named place, Trường Thành
     # service scope, load model, actual cargo insurance). It writes the
@@ -1996,6 +2068,7 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         load_authority_agents,
         load_authority_companies,
         load_quotes,
+        load_work_module_templates,
     )
     from core.shipment_dashboard import build_shipment_dashboard_view
 
@@ -2025,6 +2098,7 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
     })
     return rd.shipment_projection(
         shipment,
+        work_module_templates=load_work_module_templates(db=db),
         customers=loaded["customers"] or {},
         contracts=loaded["contracts"] or {},
         quotes=loaded["quotes"] or {},
@@ -2616,6 +2690,284 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     fresh = read_shipment(sid)
     if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
     return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+
+
+# ---------------------------------------------------------------------------
+# Issue #162 — Work Module Library (template authoring / attach / completion).
+#
+# Three bounded events, all on the ONE existing seam:
+#   typed event → bounded dispatcher → existing RBAC (core.auth.ROLE_PERMISSIONS)
+#   → existing writer (core.database.save_work_module_template for the template
+#   collection, save_shipment_atomic for the instance block inside the shipment)
+#   → audit → fresh backend readback.
+#
+# There is deliberately NO module task store, document store, finance store or
+# workflow engine here: attached instances live inside the existing shipment
+# document and every projected fact is derived at read time.
+# ---------------------------------------------------------------------------
+
+WORK_MODULE_TEMPLATE_EVENT = "work_module_template_save"
+WORK_MODULE_ATTACH_EVENT = "work_module_attach"
+WORK_MODULE_STEP_COMPLETE_EVENT = "work_module_step_complete"
+
+
+def _handle_work_module_template_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Create ONE new immutable template version, or move a version's status.
+
+    Authorization is the EXISTING operations authority (``operations_write``) —
+    the same permission the app already uses for operational company-standard
+    issuance. No second permission matrix is introduced, and the writer
+    re-checks it server-side, so hiding a button is never the boundary.
+    """
+    from core.auth import can_operate_business
+    from core.database import get_last_db_error, load_work_module_templates, save_work_module_template
+
+    request_id = rd.text(payload.get("requestId"))
+    template = payload.get("template")
+    template_id = ""
+    if isinstance(template, Mapping):
+        template_id = rd.text(template.get("template_id") or template.get("templateId")).upper()
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("work_module_template_save", template_id, ok, error,
+                       requestId=request_id, **extra)
+
+    if not request_id or not isinstance(template, Mapping):
+        return out(False, "Thiếu requestId hoặc nội dung mẫu quy trình.")
+    if not can_operate_business("operations_write"):
+        return out(False, "RBAC: cần quyền operations_write để tạo phiên bản quy trình.")
+
+    if not save_work_module_template(template):
+        return out(False, get_last_db_error() or "Không lưu được phiên bản quy trình.")
+
+    from core.work_modules import attachable_templates, index_templates, resolve_template
+
+    # The success summary comes from the STORED version, never from re-normalizing
+    # the request: a status-only payload (the bounded library UI) carries no
+    # nodes at all, and the stored body is the only authority on what was saved.
+    try:
+        wanted_version = int(template.get("version") or 1)
+    except (TypeError, ValueError):
+        wanted_version = 0
+    fresh = load_work_module_templates()
+    saved = resolve_template(index_templates(fresh), template_id, wanted_version)
+    if saved is None:
+        return out(False, "Không đọc lại được phiên bản vừa lưu — không báo thành công.")
+    return out(
+        True,
+        saved={"templateId": saved["template_id"], "version": saved["version"],
+               "status": saved["status"], "id": saved["id"]},
+        readback={"templates": attachable_templates(fresh),
+                  "count": len(fresh)},
+    )
+
+
+def _handle_work_module_attach(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Attach ONE ACTIVE template version to ONE shipment (manual attach only).
+
+    DRAFT and RETIRED versions cannot be newly attached, and the instance binds
+    the exact ``template_id`` + ``template_version`` so a later V2 can never
+    change what this shipment means. The write goes through the existing
+    version-guarded atomic shipment writer; the UI only ever sees the module
+    after the fresh readback below.
+    """
+    import uuid
+
+    from core.auth import can_operate_business, current_actor_context
+    from core.database import (
+        get_last_db_error,
+        load_work_module_templates,
+        save_shipment_atomic,
+    )
+    from core.work_modules import build_instance, instances_of, resolve_template
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("work_module_attach", sid, ok, error, requestId=request_id, **extra)
+
+    if not sid or not request_id:
+        return out(False, "Thiếu shipmentId hoặc requestId.")
+    if not can_operate_business("shipment_edit"):
+        return out(False, "RBAC: cần quyền shipment_edit để gắn quy trình.")
+
+    template_id = rd.text(payload.get("templateId")).upper()
+    if not template_id:
+        return out(False, "Chưa chọn quy trình để gắn.")
+    provenance = (rd.text(payload.get("provenance")) or "MANUAL_ADDITION").upper()
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return out(False, "Không tìm thấy lô.")
+
+    expected = payload.get("expectedVersion")
+    if isinstance(expected, bool) or not isinstance(expected, int) or expected != int(shipment.get("version") or 0):
+        return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi gắn quy trình.")
+
+    templates = load_work_module_templates()
+    if payload.get("templateVersion") in (None, ""):
+        # No version given: use the newest ACTIVE version of that template. The
+        # instance still stores the concrete number it resolved to.
+        candidates = [
+            row for row in templates
+            if str(row.get("template_id") or "").upper() == template_id
+            and str(row.get("status") or "").upper() == "ACTIVE"
+        ]
+        if not candidates:
+            return out(False, f"Quy trình {template_id} chưa có phiên bản đang dùng (ACTIVE).")
+        version = max(int(row.get("version") or 0) for row in candidates)
+    else:
+        try:
+            version = int(payload["templateVersion"])
+        except (TypeError, ValueError):
+            return out(False, "Phiên bản quy trình không hợp lệ.")
+        stored = next(
+            (row for row in templates
+             if str(row.get("template_id") or "").upper() == template_id
+             and int(row.get("version") or 0) == version),
+            None,
+        )
+        if stored is None:
+            return out(False, f"Không có phiên bản {template_id} V{version}.")
+        if str(stored.get("status") or "").upper() != "ACTIVE":
+            return out(
+                False,
+                f"Chỉ gắn được phiên bản ACTIVE — {template_id} V{version} đang "
+                f"{str(stored.get('status') or '').upper()}.",
+            )
+
+    template = resolve_template(
+        {row.get("id"): row for row in templates if isinstance(row, Mapping)},
+        template_id, version,
+    )
+    if template is None or template.get("status") != "ACTIVE":
+        return out(False, f"Không gắn được quy trình {template_id} V{version}.")
+
+    actor = current_actor_context()
+    block = list(shipment.get("work_modules") or [])
+    for existing in instances_of(shipment):
+        if existing.get("template_id") == template_id and int(existing.get("template_version") or 0) == version:
+            return out(False, f"Lô đã có quy trình {template_id} V{version}.", alreadyAttached=True)
+
+    instance = build_instance(
+        template,
+        instance_id=f"WM{uuid.uuid4().hex[:8].upper()}",
+        provenance=provenance,
+        reason=rd.text(payload.get("reason")),
+        actor=actor["username"],
+        actor_user_id=actor["user_id"],
+    )
+    block.append(instance)
+    shipment["work_modules"] = block
+
+    if not save_shipment_atomic(shipment, expected_version=expected, actor=actor["username"]):
+        return out(False, get_last_db_error() or "Không gắn được quy trình vào lô.")
+
+    fresh = read_shipment(sid) or {}
+    return out(True, readback=_projection_for(fresh),
+               instance=instance, audit=_audit_trail(sid))
+
+
+def _handle_work_module_step_complete(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist ONE factual module-step completion (who / when / note).
+
+    Completion is a PERSISTED BUSINESS FACT protected by the existing
+    authenticated write boundary. It never derives from an upload, from a
+    visual state, or from the browser claiming success: the caller sees it only
+    in the fresh readback below.
+    """
+    from core.auth import can_operate_business, current_actor_context
+    from core.database import get_last_db_error, load_work_module_templates, save_shipment_atomic
+    from core.work_modules import instances_of, module_execution, resolve_template
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("work_module_step_complete", sid, ok, error, requestId=request_id, **extra)
+
+    if not sid or not request_id:
+        return out(False, "Thiếu shipmentId hoặc requestId.")
+    if not can_operate_business("shipment_edit"):
+        return out(False, "RBAC: cần quyền shipment_edit để ghi nhận hoàn thành bước.")
+
+    instance_id = rd.text(payload.get("instanceId")).upper()
+    node_id = rd.text(payload.get("nodeId"))
+    if not instance_id or not node_id:
+        return out(False, "Thiếu instanceId hoặc nodeId.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return out(False, "Không tìm thấy lô.")
+    expected = payload.get("expectedVersion")
+    if isinstance(expected, bool) or not isinstance(expected, int) or expected != int(shipment.get("version") or 0):
+        return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi ghi nhận.")
+
+    block = list(shipment.get("work_modules") or [])
+    target = next((row for row in instances_of(shipment)
+                   if row.get("instance_id") == instance_id), None)
+    if target is None:
+        return out(False, f"Lô không có quy trình {instance_id}.")
+
+    templates = load_work_module_templates()
+    template = resolve_template(
+        {row.get("id"): row for row in templates if isinstance(row, Mapping)},
+        target["template_id"], int(target["template_version"] or 0),
+    )
+    if template is None:
+        return out(False, "Không đọc được phiên bản quy trình đã gắn — không ghi nhận hoàn thành.")
+
+    known = {node["id"] for node in template["nodes"]}
+    if node_id not in known:
+        return out(False, f"Bước {node_id} không thuộc quy trình {target['template_id']}.")
+
+    already = [s for s in target.get("completed_steps") or [] if s.get("node_id") == node_id]
+    if already:
+        return out(True, readback=_projection_for(shipment), noop=True,
+                   message="Bước này đã được ghi nhận hoàn thành trước đó.",
+                   audit=_audit_trail(sid))
+
+    # Dependency readiness is a BACKEND boundary, never a UI convention: the
+    # frontend disabling the button is a courtesy, not business integrity. The
+    # decision is derived from the persisted completion facts of the EXACT bound
+    # version (BLOCKING / PARALLEL_REQUIRED hold; INFORMATIONAL never does), and
+    # a refusal leaves the shipment version and the history untouched.
+    execution = module_execution(template, target)
+    step = next((row for row in execution["steps"] if row["id"] == node_id), None)
+    if step is None:  # pragma: no cover - `known` above already guarantees a row
+        return out(False, f"Bước {node_id} không thuộc quy trình {target['template_id']}.")
+    if step["blockedBy"]:
+        labels = {node["id"]: node["label"] for node in template["nodes"]}
+        missing = ", ".join(labels.get(missing_id, missing_id) for missing_id in step["blockedBy"])
+        return out(False, f"Chưa thể hoàn thành {labels.get(node_id, node_id)}: "
+                          f"còn thiếu bước bắt buộc ({missing}).")
+
+    actor = current_actor_context()
+    steps = list(target.get("completed_steps") or [])
+    steps.append({
+        "node_id": node_id,
+        "completed_by": actor["username"],
+        "completed_at": _now_iso(),
+        "note": rd.text(payload.get("note")),
+    })
+    for row in block:
+        if str(row.get("instance_id") or "").upper() == instance_id:
+            row["completed_steps"] = steps
+            break
+    shipment["work_modules"] = block
+
+    if not save_shipment_atomic(shipment, expected_version=expected, actor=actor["username"]):
+        return out(False, get_last_db_error() or "Không ghi nhận được hoàn thành bước.")
+
+    fresh = read_shipment(sid) or {}
+    return out(True, readback=_projection_for(fresh), audit=_audit_trail(sid))
+
+
+def _now_iso() -> str:
+    from datetime import datetime
+
+    return datetime.now().isoformat(timespec="seconds")
 
 
 def _handle_shipment_transport_save(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -4425,6 +4777,9 @@ _HANDLERS = {
     "shipment_customer_save": _handle_shipment_customer_save,
     "shipment_transport_save": _handle_shipment_transport_save,
     "shipment_sea_facts_save": _handle_sea_facts_save,
+    "work_module_template_save": _handle_work_module_template_save,
+    "work_module_attach": _handle_work_module_attach,
+    "work_module_step_complete": _handle_work_module_step_complete,
     "shipment_profile_save": _handle_shipment_profile_save,
     "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
     "shipment_document_selection_save": _handle_shipment_document_selection_save,
@@ -4480,9 +4835,15 @@ def consume_phase_b_triggers(session: dict, result: Any) -> list[dict[str, Any]]
         try:
             outcomes.append(handler(data))
         except Exception as exc:  # noqa: BLE001 - one bad event must not break the run
+            # Correlation contract: a failure that can be correlated to a request
+            # MUST echo that request. Callers match on event+requestId, so dropping
+            # it here would leave a pending UI forever — including for an
+            # unexpected failure raised AFTER the write already persisted, which
+            # would otherwise read as "still waiting" instead of "recover this".
+            request_id = rd.text(data.get("requestId"))
             outcomes.append(_result(event_name, rd.text(data.get("shipmentId")), False,
                                     f"{type(exc).__name__}: {exc}",
-                                    **({"requestId": rd.text(data.get("requestId"))} if event_name == "shipment_sea_facts_save" else {})))
+                                    **({"requestId": request_id} if request_id else {})))
     if outcomes:
         session["writes"] = outcomes
     return outcomes

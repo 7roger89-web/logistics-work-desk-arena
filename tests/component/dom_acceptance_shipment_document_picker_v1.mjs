@@ -25,6 +25,9 @@ const RAW = JSON.parse(readFileSync(fixturePath, "utf8"));
 const SHIPMENT_ID = RAW.fixture.shipmentId;
 const PXK_ATTACHMENT_ID = "ATT-LO-0306-PXK-R1";
 const PXK_FILE = "PXK_LO-0306_R1.xlsx";
+const PXK_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const PXK_BYTES = Buffer.from("PXK generated revision one attachment\n", "utf8");
+const PXK_BASE64 = PXK_BYTES.toString("base64");
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
   url: "http://localhost:8501/",
@@ -62,6 +65,16 @@ window.HTMLAnchorElement.prototype.click = function recordClick() {
 const tick = (ms = 80) => new Promise((resolve) => setTimeout(resolve, ms));
 const $ = (selector, root = window.document) => [...root.querySelectorAll(selector)];
 const text = (element) => (element?.textContent || "").replace(/\s+/g, " ").trim();
+
+async function bytesOf(blob) {
+  const reader = new window.FileReader();
+  const result = await new Promise((resolve, reject) => {
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Could not read saved Blob"));
+    reader.readAsArrayBuffer(blob);
+  });
+  return new Uint8Array(result);
+}
 
 function findClickable(needle, selector = "a,button", root = window.document) {
   const elements = $(selector, root);
@@ -227,7 +240,7 @@ function settleAttachmentDownload(requestId) {
   const shipment = currentModel.shipments.find((row) => row.id === SHIPMENT_ID);
   const attachment = shipment.attachments.find((row) => row.id === PXK_ATTACHMENT_ID);
   attachment.downloadAvailable = true;
-  attachment.downloadBase64 = "UEsDBAo=";
+  attachment.downloadBase64 = PXK_BASE64;
   attachment.downloadSeq = 1;
   currentModel.version = `picker-download-${requestId}`;
   currentModel.lastWrites = [{
@@ -299,20 +312,55 @@ assert.ok(text(cardsById.get("PXK")).includes("Xác nhận đã giao hàng"), "g
 assert.ok($("[data-testid='shipment-document-download-latest']", cardsById.get("PXK"))[0].disabled === false);
 console.log("  ✓ READY / MISSING_INFO / GENERATED states use canonical gates and real history");
 
-console.log("STEP 3 — existing output download reuses the shipment attachment path");
+console.log("STEP 3 — PXK download readback arrives while Shipment Detail is unmounted");
+assert.equal(
+  currentModel.shipments.find((row) => row.id === SHIPMENT_ID).pxk.documentHistory[0].attachmentId,
+  PXK_ATTACHMENT_ID,
+  "generated PXK history must retain its durable attachmentId"
+);
 await click("Tải bản mới nhất", "button", cardsById.get("PXK"));
-assert.equal(downloadEvents().length, 1);
+assert.equal(downloadEvents().length, 1, "the latest-PXK action emits exactly one attachment_download");
 const downloadPayload = downloadEvents()[0].value.payload;
 assert.deepEqual(Object.keys(downloadPayload).sort(), ["attachmentId", "requestId", "shipmentId"]);
 assert.equal(downloadPayload.shipmentId, SHIPMENT_ID);
 assert.equal(downloadPayload.attachmentId, PXK_ATTACHMENT_ID);
+const savedBeforeRemount = savedFiles.length;
+await click("Lô Hàng", "a", $("aside")[0]);
+assert.equal($("[data-testid='shipment-document-picker']").length, 0, "leaving Shipment Detail must unmount its picker");
+assert.equal($("#workspace-tabs").length, 0, "Shipment Detail workspace must be unmounted before readback");
+assert.equal(clickedAnchors.filter((row) => row.download === PXK_FILE).length, 0, "no file is saved before backend readback");
+
+// Deliver the ordinary correlated backend outcome and attachment projection
+// while the shipment page (and ShipmentAttachments effect) is genuinely absent.
 settleAttachmentDownload(downloadPayload.requestId);
 await tick(140);
-picker = $("[data-testid='shipment-document-picker']")[0];
-assert.ok(picker, "shipment detail remains open while the download readback arrives");
-assert.equal(clickedAnchors.filter((row) => row.download === PXK_FILE).length, 1, "server-read bytes are saved by the existing attachment surface");
-assert.equal(savedFiles.length, 1);
-console.log("  ✓ download is one bounded attachment_download, with no browser storage path");
+const readbackShipment = currentModel.shipments.find((row) => row.id === SHIPMENT_ID);
+const readbackAttachment = readbackShipment.attachments.find((row) => row.id === PXK_ATTACHMENT_ID);
+assert.ok(readbackAttachment, "backend readback must resolve the same durable attachment");
+assert.equal(readbackAttachment.downloadAvailable, true);
+assert.equal(readbackAttachment.downloadBase64, PXK_BASE64);
+assert.equal(readbackAttachment.downloadSeq, 1);
+assert.equal(currentModel.lastWrites[0].event, "attachment_download");
+assert.equal(currentModel.lastWrites[0].requestId, downloadPayload.requestId);
+assert.equal(currentModel.lastWrites[0].ok, true);
+assert.equal(savedFiles.length, savedBeforeRemount, "unmounted Shipment Detail cannot consume bytes early");
+assert.equal(clickedAnchors.filter((row) => row.download === PXK_FILE).length, 0);
+
+// Re-enter the same lot and tab. The existing attachment path must consume
+// that persisted session readback once, under the original generated filename.
+picker = await gotoPicker();
+await tick(160);
+assert.ok(picker, "the same Shipment Detail remounts successfully");
+assert.equal(downloadEvents().length, 1, "remount must not issue a second backend download");
+const pxkAnchors = clickedAnchors.filter((row) => row.download === PXK_FILE);
+assert.equal(pxkAnchors.length, 1, "the attachment path saves the PXK exactly once after remount");
+assert.equal(savedFiles.length, savedBeforeRemount + 1, "exactly one local Blob is handed to the browser");
+const savedPXK = savedFiles.at(-1);
+assert.equal(savedPXK.size, PXK_BYTES.length, "saved output has the backend-read byte length");
+assert.equal(savedPXK.type, PXK_MIME, "saved output retains the backend-projected MIME type");
+assert.deepEqual([...await bytesOf(savedPXK)], [...PXK_BYTES], "saved file bytes match the backend readback");
+assert.equal(pxkAnchors[0].href, "blob:picker-test");
+console.log("  ✓ one durable PXK attachmentId → one download event → unmount → normal readback → remount → exact bytes saved once");
 
 console.log("STEP 4 — deselection hides the card but preserves independent output history");
 picker = $("[data-testid='shipment-document-picker']")[0];

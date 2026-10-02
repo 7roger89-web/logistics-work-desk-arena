@@ -5,7 +5,7 @@ import {
   Search, BookOpen, Languages, ShieldCheck, Menu, X, Bell, CheckCircle2,
   AlertTriangle, OctagonAlert, Info, ChevronRight, ChevronDown, ArrowRight,
   CircleCheck, Clock, CircleAlert, Ban, FileDown, Eye, PenLine, Trash2,
-  Banknote,
+  Banknote, Layers,
   type LucideIcon,
 } from "lucide-react";
 import { cx, matchLoose } from "../lib/format";
@@ -13,6 +13,7 @@ import { evaluateAmountExpression, looksLikeExpression } from "../lib/miniCalc";
 
 export const ICONS: Record<string, LucideIcon> = {
   layout: LayoutDashboard,
+  layers: Layers,
   alarm: BellRing,
   box: Package,
   plus: PlusCircle,

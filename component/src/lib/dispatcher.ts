@@ -40,6 +40,15 @@ export type LogiEventName =
   // Shipment-local picker preferences: stable catalog IDs only, persisted on
   // the existing shipment truth with the ordinary version/audit/readback path.
   | "shipment_document_selection_save"
+  // Issue #162 — Work Module Library. Three bounded events on the SAME seam as
+  // every other write: template version authoring/lifecycle (existing
+  // operations authority), manual attach of ONE ACTIVE version to ONE shipment,
+  // and factual module-step completion (existing shipment_edit authority).
+  // The module is a template + a small bounded block inside the EXISTING
+  // shipment document — no second task/document/finance store.
+  | "work_module_template_save"
+  | "work_module_attach"
+  | "work_module_step_complete"
   | "delivery_confirm"
   | "finance_actual_save"
   | "payment_record"
@@ -163,6 +172,9 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_profile_save",
   "shipment_commercial_flow_save",
   "shipment_document_selection_save",
+  "work_module_template_save",
+  "work_module_attach",
+  "work_module_step_complete",
   "delivery_confirm",
   "finance_actual_save",
   "payment_record",

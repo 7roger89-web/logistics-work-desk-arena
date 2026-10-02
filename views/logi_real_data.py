@@ -1300,6 +1300,7 @@ def shipment_projection(
     linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     attachments: Mapping[str, list[dict[str, Any]]] | None = None,
     attachment_download: Mapping[str, Any] | None = None,
+    work_module_templates: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Project one canonical shipment document into the frozen UI shape.
 
@@ -1451,8 +1452,27 @@ def shipment_projection(
     )
 
     attachment_view = attachment_rows(sid, grouped=attachments, download=attachment_download)
+    # Issue #162 — attached Work Modules join the SAME journey projection. The
+    # templates snapshot is passed in by the caller (one read per render, or one
+    # read per post-write readback); when it is absent this projection reads the
+    # small template collection once itself, and a shipment with no instances
+    # produces the byte-identical pre-#162 payload either way.
+    work_modules = None
+    from core.work_modules import instances_of as _module_instances
+
+    instances = _module_instances(shipment)
+    if instances:
+        from core.database import load_work_module_templates
+
+        work_modules = {
+            "templates": work_module_templates
+            if work_module_templates is not None
+            else load_work_module_templates(),
+            "instances": instances,
+        }
     journey = build_journey(shipment, profile=execution_profile, operational=operational,
-                            primary=primary_action, dashboard=view, attachments=attachment_view)
+                            primary=primary_action, dashboard=view, attachments=attachment_view,
+                            work_modules=work_modules)
 
     return {
         "id": sid,
