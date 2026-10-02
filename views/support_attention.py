@@ -43,15 +43,6 @@ def _attention_id(source_type: str, shipment_id: str, source_ref: str) -> str:
     return "ATT-" + re.sub(r"[^A-Z0-9]+", "-", raw).strip("-")[:120]
 
 
-def _alert_band(code: str) -> str:
-    upper = _text(code).upper()
-    if "OVERDUE" in upper:
-        return "OVERDUE"
-    if "SOON" in upper or "RISK" in upper:
-        return "DUE_SOON"
-    return "ACTION"
-
-
 def build_attention_projection(
     rows: Iterable[Mapping[str, Any]],
     raw_tasks: Iterable[Mapping[str, Any]],
@@ -85,30 +76,17 @@ def build_attention_projection(
         if owner == unknown_label:
             owner = ""
 
-        ops = row.get("ops") if isinstance(row.get("ops"), Mapping) else {}
-        alerts = [a for a in (ops.get("alerts") or []) if isinstance(a, Mapping)]
-        primary_alert = next(
-            (
-                alert
-                for alert in alerts
-                if _text(alert.get("title")) == _text(row.get("nextAction"))
-                and _text(alert.get("message")) == _text(row.get("nextActionDetail"))
-            ),
-            None,
-        )
-
-        # The stable normal-state fallback is not attention. MissingDocs remains
-        # actionable because it is already part of the canonical primary action.
+        # The ONE composed primary action remains the authority. We deliberately
+        # do not reverse-map its text back to an alert/profile source because
+        # text equality is not stable source identity.
         if row.get("priority") in {"Khan", "CanXuLy"} or bool(row.get("missingDocs")):
-            source_type = "ALERT" if primary_alert else "PRIMARY_ACTION"
-            alert_code = _text((primary_alert or {}).get("code"))
-            source_ref = f"ALERT:{sid}:{alert_code}" if primary_alert else f"PRIMARY:{sid}"
+            source_ref = f"PRIMARY:{sid}"
             add({
-                "id": _attention_id(source_type, sid, source_ref),
+                "id": _attention_id("PRIMARY_ACTION", sid, source_ref),
                 "shipmentId": sid,
-                "sourceType": source_type,
+                "sourceType": "PRIMARY_ACTION",
                 "sourceRef": source_ref,
-                "band": _alert_band(alert_code) if primary_alert else "ACTION",
+                "band": "ACTION",
                 "reason": _text(row.get("nextActionDetail")),
                 "action": _text(row.get("nextAction")),
                 "context": _text(row.get("status")),
@@ -117,7 +95,7 @@ def build_attention_projection(
                 "deadline": "",
                 "blockedGate": "",
                 "primary": True,
-                "provenance": f"core.shipment_dashboard:{alert_code}" if primary_alert else "shipment.primaryAction",
+                "provenance": "shipment.primaryAction",
                 "unknown": False,
                 "_deadlineSort": "9999-12-31",
             })
