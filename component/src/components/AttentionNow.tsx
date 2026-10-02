@@ -48,8 +48,7 @@ export default function AttentionNow({
       ) : (
         <div className="space-y-2">
           {items.map((item) => {
-            const meta = BAND_META[item.band];
-            const Icon = meta.icon;
+            const meta = item.sourcePriority === "Khan"\n              ? { label: "Gấp", cls: "border-red-200 bg-red-50 text-red-800", icon: CircleAlert }\n              : BAND_META[item.band];\n            const Icon = meta.icon;
             return (
               <article
                 key={item.id}
