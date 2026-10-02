@@ -74,6 +74,20 @@ class Attention166Tests(unittest.TestCase):
         )
         self.assertEqual(items, [])
 
+    def test_transparent_priority_order_and_routes(self):
+        shipment = row(priority="CanXuLy", journey=module_journey(True))
+        tasks = [
+            {"task_id": "T-OVER", "shipment_id": "S1", "content": "Over", "assignee": "A", "deadline": "2026-10-01", "done": False},
+            {"task_id": "T-SOON", "shipment_id": "S1", "content": "Soon", "assignee": "A", "deadline": "2026-10-04", "done": False},
+            {"task_id": "T-ACT", "shipment_id": "S1", "content": "Act", "assignee": "A", "deadline": "", "done": False},
+        ]
+        items = build_attention_projection([shipment], tasks, today=date(2026, 10, 2))
+        self.assertEqual([item["band"] for item in items[:3]], ["BLOCKING", "OVERDUE", "DUE_SOON"])
+        primary = next(item for item in items if item["sourceType"] == "PRIMARY_ACTION")
+        task = next(item for item in items if item["sourceRef"] == "TASK:T-ACT")
+        self.assertEqual(primary["route"], shipment["nextRoute"])
+        self.assertEqual(task["route"], "/lo-hang/S1?tab=lay-hang")
+
     def test_task_owner_and_deadline_are_authoritative(self):
         tasks = [
             {
@@ -145,6 +159,16 @@ class Attention166Tests(unittest.TestCase):
             build_attention_projection([row()], [], today=date(2026, 10, 2)),
             [],
         )
+
+    def test_same_task_id_on_two_shipments_does_not_cross_deduplicate(self):
+        s1 = row()
+        s2 = dict(row())
+        s2["id"] = "S2"
+        s2["nextRoute"] = "/lo-hang/S2?tab=nhap"
+        task1 = {"task_id": "T-SAME", "shipment_id": "S1", "content": "A", "assignee": "A", "deadline": "", "done": False}
+        task2 = {"task_id": "T-SAME", "shipment_id": "S2", "content": "B", "assignee": "B", "deadline": "", "done": False}
+        items = build_attention_projection([s1, s2], [task1, task2], today=date(2026, 10, 2))
+        self.assertEqual(sum(item["sourceType"] == "TASK" for item in items), 2)
 
 
 if __name__ == "__main__":
