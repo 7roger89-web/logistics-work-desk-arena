@@ -114,6 +114,21 @@ def build_attention_projection(
             if not instance_id:
                 continue
             next_step_id = _text(module.get("nextStepId"))
+            execution_steps = [
+                step for step in (module.get("steps") or []) if isinstance(step, Mapping)
+            ]
+            next_execution_step = next(
+                (step for step in execution_steps if _text(step.get("id")) == next_step_id),
+                {},
+            )
+            if (
+                status == "WAITING"
+                and (
+                    not next_step_id
+                    or bool(next_execution_step.get("blockedBy"))
+                )
+            ):
+                continue
             journey_step_id = f"wm-{instance_id}-{next_step_id}" if next_step_id else ""
             module_node = next(
                 (node for node in nodes if _text(node.get("id")) == journey_step_id),
