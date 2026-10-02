@@ -115,9 +115,13 @@ class OperationsControlTower170Tests(unittest.TestCase):
         items = [
             attention("OWNED", "S1", band="OVERDUE", owner="Support A"),
             attention("NONE", "S2", band="BLOCKING", owner=""),
+            attention("SENTINEL", "S2", band="ACTION", owner="Chưa phân công", source_priority="Khan"),
         ]
         workload = build_operations_control_tower(rows, items, today=date(2026, 10, 2))["workload"]
         self.assertEqual(workload[0]["ownerKey"], "UNASSIGNED")
+        self.assertEqual(workload[0]["blocking"], 1)
+        self.assertEqual(workload[0]["action"], 1)
+        self.assertNotIn("Chưa phân công", [row["owner"] for row in workload])
         support_a = next(row for row in workload if row["owner"] == "Support A")
         self.assertEqual(support_a["overdue"], 1)
         self.assertNotIn("Support B", [row["owner"] for row in workload])
