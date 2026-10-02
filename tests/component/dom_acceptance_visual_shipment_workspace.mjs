@@ -18,7 +18,7 @@ dom.window.HTMLElement.prototype.scrollIntoView = () => {};
 const mount = (await import(pathToFileURL(path.join(root,'component/dist/logi-shell.js')))).default;
 const triggers = [];
 const deliver = data => mount({name:'logi_shell',data,parentElement:document.getElementById('host'),setTriggerValue:(event,value)=>triggers.push({event,value})});
-const tick = () => new Promise(r => setTimeout(r,70));
+const tick = () => new Promise(r => setTimeout(r,120));
 const byId = id => document.querySelector(`[data-testid="${id}"]`);
 const click = async el => {assert.ok(el,'click target exists');el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));await tick();};
 const button = (label, parent=document) => [...parent.querySelectorAll('button')].find(e=>e.textContent.trim()===label);
