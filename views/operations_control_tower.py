@@ -7,9 +7,8 @@ and never infers responsibility from a last-writer field.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Iterable, Mapping
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 MANAGER_BANDS = frozenset({"BLOCKING", "OVERDUE", "DUE_SOON"})
@@ -75,7 +74,7 @@ def _horizon(
             buckets["OVERDUE"].append(item)
         elif due == as_of:
             buckets["TODAY"].append(item)
-        elif due <= as_of.fromordinal(as_of.toordinal() + 3):
+        elif due <= as_of + timedelta(days=3):
             buckets["NEXT_3_DAYS"].append(item)
 
     return {
