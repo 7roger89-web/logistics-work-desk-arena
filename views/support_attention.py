@@ -125,6 +125,7 @@ def build_attention_projection(
                 status == "WAITING"
                 and (
                     not next_step_id
+                    or not next_execution_step
                     or bool(next_execution_step.get("blockedBy"))
                 )
             ):
