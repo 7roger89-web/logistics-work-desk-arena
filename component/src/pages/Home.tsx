@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Truck, FileCheck2, PackageCheck, FileWarning, ArrowRight, Clock, CircleAlert, Wallet, Scale, FolderX, ListTodo } from "lucide-react";
+import { Truck, FileCheck2, PackageCheck, FileWarning, ArrowRight, Wallet, Scale, FolderX, ListTodo } from "lucide-react";
 import { ToneBadge, SectionTitle, StatusDot } from "../components/ui";
+import AttentionNow from "../components/AttentionNow";
 import { useStore } from "../lib/store";
 import { shipmentPath } from "../lib/shipmentRoute";
 import { cx, fmtMillions, fmtText } from "../lib/format";
@@ -30,14 +31,12 @@ const TILE_ICON: Record<string, { icon: typeof Truck; bar: string }> = {
 const FALLBACK_TILE = { icon: FileWarning, bar: "bg-red-500" };
 
 export default function Home() {
-  const { shipments, home, tasks, environment } = useStore();
+  const { shipments, home, attention, environment } = useStore();
   const nav = useNavigate();
 
   const tiles = home?.tiles ?? [];
   const focus = home?.focus ?? null;
   const summary = home?.summary;
-  // Real overdue/upcoming work, straight from the readiness evidence.
-  const dueSoon = (tasks ?? []).slice(0, 3);
   const running = (home?.runningSummary ?? []);
   const today = new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
   const urgentTotal = (summary?.critical ?? 0) + (home?.urgentCount ?? 0);
@@ -63,7 +62,7 @@ export default function Home() {
           </>
         ) : (
           <>
-            <h1 className="text-[19px] md:text-[23px] font-extrabold leading-snug mt-1">Không có việc khẩn — toàn bộ lô hàng đang ổn định.</h1>
+            <h1 className="text-[19px] md:text-[23px] font-extrabold leading-snug mt-1">Chưa có việc cần xử lý theo dữ liệu hiện có.</h1>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">Mở danh sách lô <ArrowRight size={18} /></Link>
             </div>
@@ -73,23 +72,11 @@ export default function Home() {
 
       {/* 2 — EXCEPTIONS + OPERATIONAL VISIBILITY: deadlines first, running lots beside */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <section className="rounded-2xl bg-white border border-slate-200 p-4">
-          <div className="flex items-center justify-between mb-2.5">
-            <h3 className="font-extrabold text-[16px] text-[#0f2a4a] flex items-center gap-2"><Clock size={18} className="text-red-600" /> Quá hạn và sắp tới hạn</h3>
-            <Link to="/lo-hang" className="text-[13px] font-bold text-[#1e5aa8] inline-flex items-center gap-1">Tất cả lô <ArrowRight size={14} /></Link>
-          </div>
-          <div className="space-y-2">
-            {dueSoon.length === 0 && <p className="text-[14px] text-slate-500 py-2">Không có việc tới hạn theo readiness hiện tại.</p>}
-            {dueSoon.map((t) => (
-              <Link key={t.id} to={t.route} className="flex items-center gap-3 rounded-xl border border-slate-200 hover:border-[#1e5aa8] p-2.5 lift">
-                <span className={cx("w-2.5 h-9 rounded-full shrink-0",
-                  t.statusTone === "red" ? "bg-red-500" : t.statusTone === "amber" ? "bg-amber-500" : t.statusTone === "blue" ? "bg-blue-500" : "bg-slate-400")} />
-                <span className="flex-1 min-w-0"><span className="block font-bold text-[14px] text-[#0f2a4a]">{t.lot} · {t.job}</span><span className="block text-[12.5px] text-slate-500">{fmtText(t.due)} · {fmtText(t.dueNote)}</span></span>
-                <span className="touch-target inline-flex items-center text-[13px] font-bold text-[#1e5aa8]">Xử lý <ArrowRight size={14} /></span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <AttentionNow
+          items={(attention ?? []).slice(home?.focus ? 1 : 0, home?.focus ? 5 : 4)}
+          title="Cần xử lý tiếp"
+          compact
+        />
         <section className="rounded-2xl bg-white border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="font-extrabold text-[16px] text-[#0f2a4a]">Trạng thái các lô đang chạy</h3>
