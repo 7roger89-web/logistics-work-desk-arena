@@ -973,40 +973,6 @@ export default function ShipmentDetail() {
             state (its state label, its summary lines, its stage chips) and a
             real CONFIG_CHECK / insurance mismatch is still rendered there in
             red. Two warnings for one fact was the clutter the Owner reported. */}
-        <div className="px-4 md:px-6 pb-4 md:pb-5">
-          {/* OWNER_RUNTIME_UAT_REPAIR §2 — ONE primary action, compact row.
-              The AUTHORITY is untouched: the text is `s.nextAction`, the detail
-              is `s.nextActionDetail`, the label is `s.nextLabel` and the click
-              follows `s.nextRoute` exactly as the banner did (PR83 precedence:
-              dashboard critical > profile red/actionable > dashboard fallback).
-              Only the visual weight changed — a large gradient card is replaced
-              by a single row, so the work section sits above the fold. There is
-              deliberately no second next-action surface. */}
-          <div
-            data-testid="shipment-primary-action"
-            data-tone={s.statusTone === "green" ? "green" : s.priority === "Khan" ? "red" : "amber"}
-            className={cx(
-              "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2",
-              s.priority === "Khan" || s.statusTone === "red"
-                ? "border-red-200 bg-red-50/60"
-                : s.statusTone === "green"
-                  ? "border-emerald-200 bg-emerald-50/50"
-                  : "border-amber-200 bg-amber-50/50"
-            )}
-          >
-            <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Việc tiếp theo</span>
-            <span className="text-[14.5px] font-extrabold text-[#0f2a4a] min-w-0">{s.nextAction}</span>
-            {s.nextActionDetail && <span className="text-[12.5px] text-slate-500 min-w-0">{s.nextActionDetail}</span>}
-            <button
-              type="button"
-              onClick={runPrimaryAction}
-              data-testid="shipment-primary-action-go"
-              className="btn-press touch-target ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white text-[13.5px] font-bold px-3.5 min-h-[40px]"
-            >
-              {s.nextLabel || "XỬ LÝ"} <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
         {/* TABS */}
         <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
           {TABS.map((t) => {
@@ -1055,7 +1021,7 @@ export default function ShipmentDetail() {
         )}
       </div>
 
-      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
+      <AttentionNow items={shipmentAttention} title="Cần xử lý" />\n\n      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
         onOpen={openStageWorkspace} onGlobal={() => setSp({ tab: "van-tai" })} runPrimary={runPrimaryAction} />
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
