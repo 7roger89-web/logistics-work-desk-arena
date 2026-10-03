@@ -27,6 +27,8 @@ import json
 import math
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Callable, Mapping
 from uuid import uuid4
 
@@ -42,6 +44,7 @@ import threading
 
 from views import logi_sandbox
 from views import support_attention as logi_attention
+from views import operations_control_tower as logi_operations_control
 from views import partner_context as logi_partner_context
 from views import reconciliation_desk as logi_reconciliation
 from views import tariff_lookup as logi_tariff
@@ -921,12 +924,23 @@ def build_view_model() -> dict:
         agents=sources["agents"],
     )
     tasks = _task_projection(rows, references)
+    # One business-calendar boundary for all date-sensitive projections.
+    # The app operates in Vietnam; hosting/CI commonly runs UTC, which would
+    # otherwise classify "today" and due/overdue one day late between 00:00
+    # and 06:59 local time.
+    business_today = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
     attention = logi_attention.build_attention_projection(
         rows,
         references.get("tasks") or [],
+        today=business_today,
         unknown_label=rd.UNKNOWN_LABEL,
     )
     home = _home_projection(rows, summary, references, attention)
+    operations_control = logi_operations_control.build_operations_control_tower(
+        rows,
+        attention,
+        today=business_today,
+    )
     receivables = rd.receivables_projection(rows)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
     # ledger rows) instead of re-reading both collections once per shipment.
@@ -973,6 +987,7 @@ def build_view_model() -> dict:
         "home": home,
         "tasks": tasks,
         "attention": attention,
+        "operationsControl": operations_control,
         "contracts": c1["contracts"],
         "customers": c1["customers"],
         "quotes": c1["quotes"],
