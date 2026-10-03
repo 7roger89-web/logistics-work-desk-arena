@@ -1177,6 +1177,10 @@ PHASE_B_EVENTS = {
     "shipment_create",
     "pxk_generate",
     "gnt_generate",
+    # Issue #168 — FORM_07 Biên bản giao nhận pilot: ONE bounded generation
+    # event through the SAME dispatcher/RBAC/attachment/docgen-revision seams
+    # the PXK and GNT events already use. No second document store.
+    "form07_generate",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -1991,11 +1995,20 @@ def _shipment_document_picker_policy(
         can_save = bool(can_operate_business("shipment_edit"))
     except Exception:  # noqa: BLE001 - policy read failure is deny
         can_save = False
+    # Issue #168 — FORM_07's template is Git-resident and SHA-pinned; a
+    # missing or drifted asset fails closed to "unavailable" in the catalog.
+    from core.docgen.form07 import template_asset_available
+
+    try:
+        form07_available = bool(template_asset_available())
+    except Exception:  # noqa: BLE001 - unreadable spec/asset is unavailable
+        form07_available = False
     return {
         "catalog": project_catalog(
             contract_templates_available=is_file(xlsx_path) and is_file(docx_path),
             pxk_template_available=is_file(xlsx_path),
             storage_configured=storage_configured,
+            form07_template_available=form07_available,
         ),
         "canSaveSelection": can_save,
         "canGenerate": bool(policy.get("allowUpload")),
@@ -4725,6 +4738,303 @@ def _handle_gnt_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 
+def _next_form07_revision(shipment_id: str) -> dict[str, Any]:
+    """Read the next FORM_07 revision from durable docgen metadata only.
+
+    Same shape and same fail-closed revision authority as ``_next_gnt_revision``.
+    """
+    from core.database import load_docgen_documents
+
+    logical_id = f"FORM_07::{shipment_id}"
+    try:
+        documents = load_docgen_documents(shipment_id) or {}
+    except Exception as exc:  # noqa: BLE001 - revision authority must fail closed
+        return {"ok": False, "error": f"Không đọc được revision FORM_07: {exc}", "document_id": logical_id}
+
+    revisions: list[int] = []
+    for document in documents.values():
+        if not isinstance(document, Mapping):
+            continue
+        if rd.text(document.get("document_type")).upper() != "FORM_07":
+            continue
+        if rd.text(document.get("document_id")) != logical_id:
+            continue
+        generation_raw = document.get("generation_revision")
+        revision_raw = document.get("revision")
+        if generation_raw is None and revision_raw is None:
+            return {
+                "ok": False,
+                "error": f"Metadata FORM_07 {document.get('id') or logical_id} thiếu revision; không đoán tiếp.",
+                "document_id": logical_id,
+            }
+        try:
+            generation = int(generation_raw if generation_raw is not None else revision_raw)
+            revision = int(revision_raw if revision_raw is not None else generation_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": f"Metadata FORM_07 {document.get('id') or logical_id} có revision không hợp lệ.",
+                "document_id": logical_id,
+            }
+        if generation < 1 or revision < 1 or generation != revision:
+            return {
+                "ok": False,
+                "error": f"Metadata FORM_07 {document.get('id') or logical_id} có revision không nhất quán.",
+                "document_id": logical_id,
+            }
+        revisions.append(generation)
+
+    return {
+        "ok": True,
+        "document_id": logical_id,
+        "revision": max(revisions) + 1 if revisions else 1,
+    }
+
+
+def _handle_form07_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """FORM_07 Biên bản giao nhận (Issue #168) through the real builder.
+
+    Order mirrors the existing generation events: RBAC first (an unauthorized
+    actor costs zero reads), then the canonical gates re-checked with the SAME
+    pure readiness the projection reports, then deterministic DOCX bytes from
+    the SHA-pinned sanitized template, then the EXISTING durable attachment
+    path, the EXISTING immutable docgen revision metadata and the EXISTING
+    audit/readback. Missing canonical or typed-manual values fail closed —
+    never a blank, never a default, never ``today()``.
+    """
+    from datetime import datetime, timezone
+
+    import streamlit as st
+
+    from core.auth import can_generate_documents
+    from core.database import load_authority_agents, load_authority_companies, load_contracts
+    from core.docgen import form07 as form07_mod
+
+    sid = rd.text(payload.get("shipmentId"))
+    if not sid:
+        return _result("form07_generate", sid, False, "Thiếu shipmentId.")
+
+    if not can_generate_documents():
+        return _result(
+            "form07_generate", sid, False,
+            "RBAC: không có quyền sales_write để sinh biên bản giao nhận.",
+            gate="BLOCKED_PERMISSION_DENIED",
+        )
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result("form07_generate", sid, False, f"Không tìm thấy lô {sid}.")
+
+    # SAME no-guess source resolution as the projection/PXK: canonical link,
+    # else exactly one linked contract; several stay refused.
+    contract_id = rd.text(
+        shipment.get("contract_id") or _get_path(shipment, ("data", "entrustment", "contract_no"))
+    )
+    contracts = load_contracts() or {}
+    contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    if not contract:
+        from core.database import load_contracts_for_shipment
+
+        try:
+            linked = load_contracts_for_shipment(sid) or {}
+        except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+            linked = {}
+        if len(linked) == 1:
+            contract_id, contract = next(iter(linked.items()))
+        elif len(linked) > 1:
+            ids = ", ".join(sorted(str(k).upper() for k in linked))
+            return _result(
+                "form07_generate", sid, False,
+                f"Biên bản giao nhận cần đúng 1 hợp đồng nguồn; lô đang liên kết {len(linked)} hợp đồng ({ids}).",
+                gate="BLOCKED_AMBIGUOUS_SOURCE",
+                missing=["Chọn đúng một chứng từ nguồn"],
+            )
+    if not contract:
+        return _result(
+            "form07_generate", sid, False,
+            "Biên bản giao nhận cần hợp đồng mua bán đã liên kết với lô.",
+            gate="BLOCKED_NO_SOURCE",
+        )
+
+    delivery = _get_path(shipment, ("data", "2.7")) or {}
+    agents = load_authority_agents() or {}
+    companies = load_authority_companies() or {}
+    agent = agents.get(rd.text(contract.get("agent_id"))) or {}
+    company = companies.get(rd.text(contract.get("company_id"))) or {}
+    goods_lines = contract.get("goods_lines") if isinstance(contract.get("goods_lines"), list) else []
+
+    manual = {
+        "form07_no": rd.text(payload.get("form07No")).strip(),
+        "order_date": _normalize_date(payload.get("orderDate")),
+    }
+
+    readiness = form07_mod.evaluate_form07_readiness(
+        delivery=delivery,
+        goods_lines=goods_lines,
+        agent=agent,
+        company=company,
+        contract=contract,
+        manual=manual,
+    )
+    gate_state = readiness.state
+    if readiness.state != form07_mod.READY:
+        missing = list(readiness.missing)
+        not_delivered = not bool(delivery.get("is_delivered"))
+        gate = (
+            "BLOCKED_NOT_DELIVERED" if not_delivered
+            else "BLOCKED_MISSING_DELIVERY_FACTS" if form07_mod.delivery_facts_missing_for_form07(delivery)
+            else gate_state
+        )
+        return _result(
+            "form07_generate", sid, False,
+            (readiness.reason or "FORM_07 chưa sẵn sàng.")
+            + (f" Thiếu: {' '.join(missing)}" if missing else ""),
+            gate=gate, missing=missing,
+        )
+
+    revision_state = _next_form07_revision(sid)
+    if not revision_state.get("ok"):
+        return _result(
+            "form07_generate", sid, False,
+            rd.text(revision_state.get("error")) or "Không xác định được revision FORM_07 bền vững.",
+            gate="FORM07_REVISION_READ_FAILED", failClosed=True,
+        )
+    logical_document_id = rd.text(revision_state.get("document_id"))
+    rev = int(revision_state["revision"])
+    record_id = f"{logical_document_id}::R{rev}"
+
+    try:
+        generated = form07_mod.build_form07_file(
+            shipment_id=sid,
+            delivery=delivery,
+            goods_lines=goods_lines,
+            agent=agent,
+            company=company,
+            contract=contract,
+            manual=manual,
+        )
+    except form07_mod.Form07Blocked as exc:
+        return _result(
+            "form07_generate", sid, False, f"Dịch vụ FORM_07 chặn: {exc.readiness.reason}",
+            gate=exc.readiness.state, failClosed=True, missing=list(exc.readiness.missing),
+        )
+    except form07_mod.Form07TemplateError as exc:
+        return _result(
+            "form07_generate", sid, False, f"Template FORM_07 không khả dụng: {exc}",
+            gate="FORM07_TEMPLATE_UNAVAILABLE", failClosed=True,
+        )
+
+    raw = bytes(generated.get("bytes") or b"")
+    is_office = raw[:2] == b"PK"
+    file_name = rd.text(generated.get("file_name")) or f"FORM07_{sid}.docx"
+
+    from views import logi_c1
+    from core.shipment_attachments import upload_attachment
+
+    actor_name = ""
+    if hasattr(st, "session_state") and "current_user" in st.session_state:
+        actor_name = str(
+            st.session_state["current_user"].get("display_name")
+            or st.session_state["current_user"].get("username")
+            or ""
+        )
+
+    attachment_outcome = upload_attachment(
+        shipment_id=sid,
+        category="other",
+        file_name=file_name,
+        mime=logi_c1._MIME_DOCX,
+        data=raw,
+        uploaded_by=_actor(),
+        declared_size=len(raw),
+        shipment_context=shipment,
+    )
+    attachment_record = attachment_outcome.get("record") or {}
+    if not attachment_outcome.get("ok"):
+        return _generated_attachment_failure(
+            "form07_generate", sid, attachment_outcome,
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    if not isinstance(attachment_record, Mapping) or not rd.text(attachment_record.get("id")):
+        return _generated_attachment_failure(
+            "form07_generate", sid,
+            {"code": "ATTACHMENT_READBACK_UNPROVEN", "error": "Kho chứng từ báo thành công nhưng thiếu hồ sơ tệp canonical."},
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    attachment_view = _project_generated_attachment(attachment_outcome)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    metadata = form07_mod.build_form07_metadata(
+        shipment_id=sid,
+        generated=generated,
+        revision=rev,
+        contract_id=rd.text(contract.get("id") or contract_id),
+        counterparty_id=rd.text(agent.get("agent_id") or agent.get("id")),
+        generated_at=now_iso,
+        generated_by=actor_name or _actor(),
+    )
+    metadata_outcome = _persist_generated_docgen_metadata(metadata)
+    if not metadata_outcome.get("ok"):
+        return _result(
+            "form07_generate", sid, False,
+            rd.text(metadata_outcome.get("error")) or "Không lưu được metadata FORM_07.",
+            gate="FORM07_REVISION_COLLISION" if metadata_outcome.get("collision") else "FORM07_METADATA_FAILED",
+            failClosed=True, attachmentPersisted=True, partialDurable=True,
+            documentId=logical_document_id, recordId=record_id, revision=rev,
+            attachment=attachment_view, metadataCommitted=bool(metadata_outcome.get("metadata_committed")),
+            duplicate=bool(attachment_outcome.get("duplicate")),
+            **_attachment_result_extras(sid),
+        )
+
+    session_cache_error = ""
+    try:
+        logi_c1.store_output(
+            sid,
+            record_id,
+            {
+                "file_name": file_name,
+                "mime": logi_c1._MIME_DOCX,
+                "bytes": raw,
+                "document_type": "FORM_07",
+                "revision": rev,
+                "generated_at": now_iso,
+                "generated_by": actor_name,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 - durable state already proved
+        session_cache_error = str(exc)
+
+    return _result(
+        "form07_generate", sid, True,
+        "Đã tạo Biên bản giao nhận (FORM_07) từ mẫu Owner đã làm sạch.",
+        gate="READY",
+        persisted={
+            "documentId": logical_document_id,
+            "recordId": record_id,
+            "attachmentId": rd.text(attachment_record.get("id")),
+            "fileName": file_name,
+            "revision": rev,
+            "bytes": len(raw),
+            "isOfficeFile": is_office,
+            "form07No": manual["form07_no"],
+            "orderDate": manual["order_date"],
+            "templateId": rd.text(generated.get("template_id")),
+            "templateVersion": generated.get("template_version"),
+            "templateSha256": rd.text(generated.get("template_sha256")),
+            "outputHash": rd.text(generated.get("output_hash")),
+            "goodsLineCount": len(generated.get("context_snapshot", {}).get("goods_lines") or []),
+            "attachmentDuplicate": bool(attachment_outcome.get("duplicate")),
+            "sessionCachePersisted": not bool(session_cache_error),
+        },
+        attachment=attachment_view,
+        sessionCacheError=session_cache_error,
+        readback=_projection_for(read_shipment(sid) or {}),
+        audit=_audit_trail(sid),
+    )
+
+
 def _handle_tariff_source_upload(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Admin-only XLSX -> indexed SQLite -> compressed durable Mongo asset."""
     from core.auth import can_operate_business
@@ -4843,6 +5153,7 @@ _HANDLERS = {
     "shipment_create": _handle_shipment_create,
     "pxk_generate": _handle_pxk_generate,
     "gnt_generate": _handle_gnt_generate,
+    "form07_generate": _handle_form07_generate,
     "partner_payable_record": _handle_partner_payable_record,
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,

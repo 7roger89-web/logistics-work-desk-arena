@@ -23,8 +23,10 @@ class ShipmentDocumentTemplate:
     active: bool = True
 
 
-# V1 contains only current-main generators/actions. Owner-supplied samples are
-# intentionally not included; their original binaries are not in this repo.
+# V1 contains only current-main generators/actions. Issue #168 adds the FIRST
+# Owner-supplied sample (FORM_07) from its exact verified binary, sanitized and
+# SHA-pinned in Git (assets/templates/form07/); the remaining six samples stay
+# queued for later evidence-driven slices.
 SHIPMENT_DOCUMENT_CATALOG: tuple[ShipmentDocumentTemplate, ...] = (
     ShipmentDocumentTemplate(
         "HDNT", "Hợp đồng nguyên tắc (HDNT)", "Hợp đồng", "CONTRACT_DOCGEN", "HDNT"
@@ -40,6 +42,13 @@ SHIPMENT_DOCUMENT_CATALOG: tuple[ShipmentDocumentTemplate, ...] = (
     ),
     ShipmentDocumentTemplate(
         "GNT", "Giấy nộp thuế (GNT)", "Hải quan", "GNT_BUILDER", "GNT"
+    ),
+    ShipmentDocumentTemplate(
+        "FORM_07",
+        "Biên bản giao nhận hàng hóa (FORM_07)",
+        "Giao nhận",
+        "FORM07_DOCGEN",
+        "FORM_07",
     ),
 )
 
@@ -117,6 +126,7 @@ def project_catalog(
     contract_templates_available: bool,
     pxk_template_available: bool,
     storage_configured: bool,
+    form07_template_available: bool = False,
     catalog: Sequence[ShipmentDocumentTemplate] = SHIPMENT_DOCUMENT_CATALOG,
 ) -> list[dict[str, Any]]:
     """Project catalog entries with server-owned availability and no file paths."""
@@ -138,6 +148,13 @@ def project_catalog(
             elif template.adapter == "GNT_BUILDER":
                 available = bool(storage_configured)
                 reason = "Kho chứng từ chưa sẵn sàng để lưu tệp GNT."
+            elif template.adapter == "FORM07_DOCGEN":
+                available = bool(form07_template_available and storage_configured)
+                reason = (
+                    "Mẫu biên bản giao nhận (FORM_07) chưa sẵn sàng."
+                    if not form07_template_available
+                    else "Kho chứng từ chưa sẵn sàng để lưu tệp biên bản giao nhận."
+                )
             else:
                 # Unknown adapters remain visible as unavailable and can never
                 # be dispatched by a client that only understands V1 adapters.

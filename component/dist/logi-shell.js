@@ -8063,7 +8063,7 @@ function T() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_sea_facts_save.shipment_profile_save.shipment_commercial_flow_save.shipment_document_selection_save.work_module_template_save.work_module_attach.work_module_step_complete.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch".split(".")), D = null, O = 0;
+var E = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_sea_facts_save.shipment_profile_save.shipment_commercial_flow_save.shipment_document_selection_save.work_module_template_save.work_module_attach.work_module_step_complete.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.form07_generate.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch".split(".")), D = null, O = 0;
 function k(e) {
 	D = e;
 }
@@ -17867,12 +17867,14 @@ function il(e) {
 		case "GENERATE_CONTRACT": return "Tạo bản chứng từ";
 		case "GENERATE_PXK": return "Tạo phiếu xuất kho";
 		case "GENERATE_GNT": return "Tạo giấy nộp thuế";
+		case "GENERATE_FORM07": return "Tạo biên bản giao nhận";
 		case "OPEN_CONTRACT": return "Mở hợp đồng để bổ sung";
 		case "OPEN_CONTRACT_LIST": return "Mở danh sách hợp đồng";
 		case "OPEN_COMMERCIAL_FLOW": return "Xác nhận hình thức nhập khẩu";
 		case "OPEN_IMPORT": return "Bổ sung thông tin thuế";
 		case "OPEN_DELIVERY": return "Mở xác nhận giao hàng";
 		case "OPEN_PXK": return "Bổ sung thông tin PXK";
+		case "OPEN_FORM07": return "Bổ sung số biên bản / ngày đặt hàng";
 	}
 }
 function al(e) {
@@ -19132,11 +19134,13 @@ function vl({ shipment: e, stageId: t }) {
 var yl = /* @__PURE__ */ new Set([
 	"CONTRACT_DOCGEN",
 	"PXK_DOCGEN",
-	"GNT_BUILDER"
+	"GNT_BUILDER",
+	"FORM07_DOCGEN"
 ]), bl = /* @__PURE__ */ new Set([
 	"GENERATE_CONTRACT",
 	"GENERATE_PXK",
-	"GENERATE_GNT"
+	"GENERATE_GNT",
+	"GENERATE_FORM07"
 ]);
 function xl(e) {
 	return Array.isArray(e) ? e.filter((e) => typeof e == "string" && e.trim().length > 0) : [];
@@ -19249,6 +19253,45 @@ function El(e, t) {
 			missing: r
 		};
 	}
+	if (e.adapter === "FORM07_DOCGEN") {
+		let e = n.form07?.readiness;
+		if (!e || typeof e.state != "string") return {
+			state: "UNAVAILABLE",
+			reason: "Chưa có readback cổng FORM_07 từ backend.",
+			missing: []
+		};
+		let r = xl(e.missing), i = t.form07Draft?.number?.trim() || n.form07?.number?.trim() || "", a = t.form07Draft?.orderDate?.trim() || n.form07?.orderDate?.trim() || "", o = r.some((e) => /thiếu số biên bản/i.test(e)), s = r.some((e) => /thiếu ngày đơn đặt hàng/i.test(e)), c = r.filter((e) => !/thiếu (số biên bản|ngày đơn đặt hàng)/i.test(e)), l = [...i ? [] : ["Số biên bản"], ...a ? [] : ["Ngày đơn đặt hàng"]], u = e.state === "MISSING_INFO" && c.length === 0 && (o || s), d = [...c, ...l];
+		if (e.state === "READY" || u) return l.length ? {
+			state: "MISSING_INFO",
+			reason: "Nhập số biên bản và ngày đơn đặt hàng ở phần tạo biên bản.",
+			missing: l,
+			action: "OPEN_FORM07"
+		} : {
+			state: "READY",
+			reason: e.reason || "",
+			missing: [],
+			action: "GENERATE_FORM07"
+		};
+		if (e.state === "NOT_APPLICABLE") return {
+			state: "UNAVAILABLE",
+			reason: e.reason || "FORM_07 không áp dụng cho dữ liệu hiện tại.",
+			missing: r
+		};
+		if (e.state === "MISSING_INFO" || e.state === "BLOCKED") {
+			let t = e.gate === "BLOCKED_NOT_DELIVERED" || e.gate === "BLOCKED_MISSING_DELIVERY_FACTS" ? "OPEN_DELIVERY" : e.gate === "BLOCKED_NO_SOURCE" || e.gate === "BLOCKED_AMBIGUOUS_SOURCE" ? "OPEN_CONTRACT_LIST" : "OPEN_FORM07";
+			return {
+				state: "MISSING_INFO",
+				reason: e.reason || "FORM_07 còn thiếu thông tin.",
+				missing: d.length ? d : r,
+				action: t
+			};
+		}
+		return {
+			state: "UNAVAILABLE",
+			reason: e.reason || "Cổng FORM_07 chưa xác định; tạo bị khóa an toàn.",
+			missing: r
+		};
+	}
 	let a = n.pxk?.readiness;
 	if (!a || typeof a.state != "string") return {
 		state: "UNAVAILABLE",
@@ -19293,12 +19336,16 @@ function Dl(e, t) {
 		let n = t.shipment.importInfo?.gnt, r = Array.isArray(n?.documentHistory) ? n.documentHistory : [], i = Array.isArray(n?.document?.history) ? n.document.history : [];
 		return wl((r.length ? r : i).filter((t) => t.documentType === e.documentType));
 	}
+	if (e.adapter === "FORM07_DOCGEN") {
+		let n = Array.isArray(t.shipment.form07?.documentHistory) ? t.shipment.form07.documentHistory : [], r = Array.isArray(t.shipment.form07?.document?.history) ? t.shipment.form07.document.history : [];
+		return wl((n.length ? n : r).filter((t) => t.documentType === e.documentType));
+	}
 	let n = Array.isArray(t.shipment.pxk?.documentHistory) ? t.shipment.pxk.documentHistory : [], r = Array.isArray(t.shipment.pxk?.document?.history) ? t.shipment.pxk.document.history : [];
 	return wl((n.length ? n : r).filter((t) => t.documentType === e.documentType));
 }
 function Ol(e, t) {
 	if (e.adapter === "CONTRACT_DOCGEN") return;
-	let n = e.adapter === "GNT_BUILDER" ? t.shipment.importInfo?.gnt?.document : t.shipment.pxk?.document;
+	let n = e.adapter === "GNT_BUILDER" ? t.shipment.importInfo?.gnt?.document : e.adapter === "FORM07_DOCGEN" ? t.shipment.form07?.document : t.shipment.pxk?.document;
 	if (!n) return;
 	let r = Number(n.revision ?? 0), i = n.fileName || "";
 	if (i || n.downloadBase64 || n.attachmentId || n.downloadAvailable) return {
@@ -19322,7 +19369,7 @@ function kl(e, t, n) {
 function Al(e) {
 	let t = new Set(xl(e.selectedIds));
 	return e.catalog.filter((e) => e.active && t.has(e.id)).map((t) => {
-		let n = Dl(t, e), r = Ol(t, e), i = r ?? n[n.length - 1], a = El(t, e), o = n.length > 0 || !!r, s = e.canGenerate ? "" : "Tài khoản hiện không có quyền tạo chứng từ.", c = o ? "GENERATED" : !e.canGenerate && a.state === "READY" ? "UNAVAILABLE" : a.state, l = o ? [a.state === "READY" ? "Đã có bản tạo; lịch sử được giữ nguyên khi bỏ chọn biểu mẫu." : `Đã có bản tạo. ${a.reason}`.trim(), s].filter(Boolean).join(" ") : !e.canGenerate && a.state === "READY" ? s : a.reason, u = o && e.canGenerate && a.state === "READY" ? a.action : void 0, d = !e.canGenerate && a.action && bl.has(a.action) ? void 0 : a.action, f = o ? t.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT" : t.adapter === "GNT_BUILDER" ? "OPEN_IMPORT" : "OPEN_PXK" : void 0;
+		let n = Dl(t, e), r = Ol(t, e), i = r ?? n[n.length - 1], a = El(t, e), o = n.length > 0 || !!r, s = e.canGenerate ? "" : "Tài khoản hiện không có quyền tạo chứng từ.", c = o ? "GENERATED" : !e.canGenerate && a.state === "READY" ? "UNAVAILABLE" : a.state, l = o ? [a.state === "READY" ? "Đã có bản tạo; lịch sử được giữ nguyên khi bỏ chọn biểu mẫu." : `Đã có bản tạo. ${a.reason}`.trim(), s].filter(Boolean).join(" ") : !e.canGenerate && a.state === "READY" ? s : a.reason, u = o && e.canGenerate && a.state === "READY" ? a.action : void 0, d = !e.canGenerate && a.action && bl.has(a.action) ? void 0 : a.action, f = o ? t.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT" : t.adapter === "GNT_BUILDER" ? "OPEN_IMPORT" : t.adapter === "FORM07_DOCGEN" ? "OPEN_FORM07" : "OPEN_PXK" : void 0;
 		return {
 			id: t.id,
 			label: t.label,
@@ -19494,6 +19541,10 @@ function Il() {
 		pxkDraft: {
 			number: z("pxkNo", g.pxk.number ?? ""),
 			date: z("pxkDate", g.pxk.date ?? "")
+		},
+		form07Draft: {
+			number: z("form07No", g.form07?.number ?? ""),
+			orderDate: z("form07OrderDate", g.form07?.orderDate ?? "")
 		}
 	}) : [], [
 		g,
@@ -19502,7 +19553,9 @@ function Il() {
 		Me,
 		je.length,
 		R.pxkNo,
-		R.pxkDate
+		R.pxkDate,
+		R.form07No,
+		R.form07OrderDate
 	]), Fe = m?.authority?.agents ?? [], Ie = m?.authority?.companies ?? [], Le = Fe.find((e) => e.id === le), Re = Ie.find((e) => e.id === de), ze = (0, _.useMemo)(() => s.filter((e) => e.shipmentId === n).slice(0, 5), [s, n]);
 	if (!g) return /* @__PURE__ */ (0, V.jsxs)("div", {
 		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
@@ -19524,7 +19577,7 @@ function Il() {
 	});
 	let Be = g.finance.currency || "VND", Ve = g.journey?.nodes.find((e) => e.id === r.get("stage")), He = r.get("work") || "info", Ue = Ve?.moduleId ? Ve : void 0, We = !Ve || He !== "overview" && (He !== "info" || !["si-vgm", "gate-in"].includes(Ve.id) && !Ue), Ge = (e, t) => {
 		let n = t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : e.targetTab;
-		if (n === "lay-hang" && sn) {
+		if (n === "lay-hang" && ln) {
 			F(!0);
 			return;
 		}
@@ -19801,6 +19854,26 @@ function Il() {
 			}) ? l("Đã gửi yêu cầu xuất PXK " + e, "core.docgen kiểm tra gate giao hàng, sinh file Office thật và lưu metadata chứng từ.", "blue") : l("Không gửi được", "Component chưa kết nối backend.", "red");
 		}
 	}, qt = () => {
+		let e = z("form07No", g?.form07?.number ?? "").trim(), t = z("form07OrderDate", g?.form07?.orderDate ?? "").trim();
+		if (g) {
+			if (!e || !t) {
+				l("Chưa tạo được biên bản giao nhận", "core.docgen.form07 từ chối khi thiếu Số biên bản hoặc Ngày đơn đặt hàng — nhập 2 ô ở tab Chứng từ rồi bấm lại.", "red");
+				return;
+			}
+			f("form07_generate", {
+				shipmentId: g.id,
+				form07No: e,
+				orderDate: t
+			}) ? l("Đã gửi yêu cầu tạo Biên bản giao nhận " + e, "Backend kiểm tra gate giao hàng + hợp đồng nguồn, sinh DOCX từ mẫu Owner đã làm sạch và lưu vào kho chứng từ.", "blue") : l("Không gửi được", "Component chưa kết nối backend.", "red");
+		}
+	}, Jt = () => {
+		let e = g?.form07?.document;
+		if (!e || !e.downloadBase64) {
+			l("File không còn trong phiên này", "Metadata FORM_07 " + (g?.form07?.number || g?.id || "") + " vẫn còn trên backend; tải bản đã lưu qua danh sách lịch sử của thẻ biểu mẫu.", "amber");
+			return;
+		}
+		Go(e.fileName || "FORM07_" + (g?.form07?.number || g?.id) + ".docx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+	}, Yt = () => {
 		let e = Xe({
 			delivery_location: z("pxPlace", g.pxk.place || g.importInfo.deliveryAddr || ""),
 			receiver_name: z("pxReceiver", g.pxk.receiver || g.importInfo.receiver || ""),
@@ -19815,14 +19888,14 @@ function Il() {
 			shipmentId: g.id,
 			fields: e
 		}), Ze("Đã lưu thông tin giao nhận " + g.id, ["pxkNo", "pxkDate"]);
-	}, Jt = () => {
+	}, Xt = () => {
 		let e = g.pxk.document;
 		if (!e || !e.downloadBase64) {
 			l("File không còn trong phiên này", "Metadata PXK " + (g.pxk.number || g.id) + " vẫn còn trên backend; bytes chỉ được giữ trong phiên đã sinh. Bấm sinh lại để có file tải.", "amber");
 			return;
 		}
 		Go(e.fileName || "PXK_" + (g.pxk.number || g.id) + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, Yt = () => {
+	}, Zt = () => {
 		if (!g) return;
 		let e = g.importInfo.gnt || {
 			payer: "",
@@ -19837,16 +19910,16 @@ function Il() {
 			shipmentId: g.id,
 			fields: t
 		}) ? l("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue") : l("Không gửi được", "Component chưa kết nối backend.", "red");
-	}, Xt = () => {
+	}, Qt = () => {
 		g && (f("gnt_generate", { shipmentId: g.id }) ? l("Đã gửi yêu cầu tạo Giấy Nộp Thuế", "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.", "blue") : l("Không gửi được", "Component chưa kết nối backend.", "red"));
-	}, Zt = () => {
+	}, $t = () => {
 		let e = g?.importInfo.gnt?.document;
 		if (!e || !e.downloadBase64) {
 			l("File không còn trong phiên này", "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.", "amber");
 			return;
 		}
 		Go(e.fileName || "GNT_" + g.id + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, Qt = (e, t) => {
+	}, en = (e, t) => {
 		i({ tab: e }), window.setTimeout(() => {
 			let e = document.getElementById(t);
 			e?.scrollIntoView({
@@ -19854,7 +19927,7 @@ function Il() {
 				block: "center"
 			}), e instanceof HTMLElement && e.focus({ preventScroll: !0 });
 		}, 160);
-	}, $t = (e, t) => {
+	}, tn = (e, t) => {
 		switch (t) {
 			case "GENERATE_CONTRACT":
 			case "OPEN_CONTRACT":
@@ -19864,25 +19937,31 @@ function Il() {
 				Kt();
 				return;
 			case "GENERATE_GNT":
-				Xt();
+				Qt();
+				return;
+			case "GENERATE_FORM07":
+				qt();
 				return;
 			case "OPEN_CONTRACT_LIST":
 				h("/hop-dong");
 				return;
 			case "OPEN_COMMERCIAL_FLOW":
-				Qt("chung-tu", "shipment-commercial-flow");
+				en("chung-tu", "shipment-commercial-flow");
 				return;
 			case "OPEN_IMPORT":
-				Qt("nhap", "fld-gnt-payer");
+				en("nhap", "fld-gnt-payer");
 				return;
 			case "OPEN_DELIVERY":
 				i({ tab: "nhap" }), x(!0);
 				return;
 			case "OPEN_PXK":
-				Qt("chung-tu", "fld-pxkno");
+				en("chung-tu", "fld-pxkno");
+				return;
+			case "OPEN_FORM07":
+				en("chung-tu", "fld-form07no");
 				return;
 		}
-	}, en = (e, t) => {
+	}, nn = (e, t) => {
 		if (t.downloadBase64) {
 			Go(t.fileName || `${e.id}_R${t.revision}`, t.downloadBase64, t.mime || "application/octet-stream"), l("Đã tải " + (t.fileName || e.label), "Tệp được mở từ đầu ra hiện có của bộ tạo.", "green");
 			return;
@@ -19898,13 +19977,13 @@ function Il() {
 			attachmentId: t.attachmentId,
 			requestId: n
 		}) || (Ee(""), l("Chưa tải được tệp chứng từ", "Component chưa kết nối backend.", "red"));
-	}, tn = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", nn = g.missingDocs.length, rn = /* @__PURE__ */ new Set([
+	}, rn = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", an = g.missingDocs.length, on = /* @__PURE__ */ new Set([
 		"ORIGIN_PICKUP",
 		"EXPORT_HANDLING",
 		"EXPORT_CUSTOMS",
 		"ORIGIN_TERMINAL_OR_BORDER"
-	]), an = (g.executionProfile?.incoterm || g.incoterm || "").trim().toUpperCase(), on = !!g.executionProfile?.serviceScopeConfirmed && (g.executionProfile?.serviceScope ?? []).some((e) => rn.has(e)), sn = /^[FCD]/.test(an) && !on && !M && a !== "lay-hang", cn = (e) => {
-		if (e === "lay-hang" && sn) {
+	]), sn = (g.executionProfile?.incoterm || g.incoterm || "").trim().toUpperCase(), cn = !!g.executionProfile?.serviceScopeConfirmed && (g.executionProfile?.serviceScope ?? []).some((e) => on.has(e)), ln = /^[FCD]/.test(sn) && !cn && !M && a !== "lay-hang", un = (e) => {
+		if (e === "lay-hang" && ln) {
 			F(!0);
 			return;
 		}
@@ -19936,12 +20015,12 @@ function Il() {
 										tone: g.statusTone,
 										children: g.status
 									}),
-									nn > 0 && /* @__PURE__ */ (0, V.jsxs)("span", {
+									an > 0 && /* @__PURE__ */ (0, V.jsxs)("span", {
 										className: "inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5",
 										children: [
 											/* @__PURE__ */ (0, V.jsx)(Kr, { size: 15 }),
 											" Thiếu ",
-											nn,
+											an,
 											" thông tin"
 										]
 									}),
@@ -20024,9 +20103,9 @@ function Il() {
 						id: "workspace-tabs",
 						className: "px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3",
 						children: jl.map((e) => {
-							let t = e.id === "lay-hang" && sn;
+							let t = e.id === "lay-hang" && ln;
 							return /* @__PURE__ */ (0, V.jsxs)("button", {
-								onClick: () => cn(e.id),
+								onClick: () => un(e.id),
 								...t ? {
 									"data-locked": "true",
 									"aria-disabled": !0
@@ -20065,7 +20144,7 @@ function Il() {
 								className: "text-[13px] font-semibold text-slate-700 min-w-0 flex-1",
 								children: [
 									"Xuất khẩu đang được khóa theo điều kiện giao hàng ",
-									an,
+									sn,
 									" — ở các điều kiện F/C/D, dòng chảy nội bộ thường không cần bàn làm việc xuất khẩu. Điều kiện khách hoặc cách xử lý thực tế thay đổi? Mở khóa tay để làm việc trực tiếp."
 								]
 							}),
@@ -20245,7 +20324,7 @@ function Il() {
 					})
 				]
 			}),
-			nn > 0 && a !== "chung-tu" && /* @__PURE__ */ (0, V.jsxs)("div", {
+			an > 0 && a !== "chung-tu" && /* @__PURE__ */ (0, V.jsxs)("div", {
 				className: "rounded-2xl bg-white border-2 border-red-200 p-3 md:p-3.5",
 				"data-testid": "missing-info",
 				children: [/* @__PURE__ */ (0, V.jsxs)("button", {
@@ -20263,7 +20342,7 @@ function Il() {
 							className: "font-extrabold text-[14px] text-red-800",
 							children: [
 								"Thiếu ",
-								nn,
+								an,
 								" thông tin"
 							]
 						}),
@@ -20305,7 +20384,7 @@ function Il() {
 								});
 							}, 150);
 							else {
-								let t = tn(e);
+								let t = rn(e);
 								i({ tab: t }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
 									behavior: "smooth",
 									block: "center"
@@ -20736,7 +20815,7 @@ function Il() {
 										}),
 										/* @__PURE__ */ (0, V.jsxs)("button", {
 											type: "button",
-											onClick: Yt,
+											onClick: Zt,
 											className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white font-semibold px-3.5 py-2 text-[13px] hover:bg-[#1e5aa8]",
 											children: [/* @__PURE__ */ (0, V.jsx)(va, { size: 14 }), " LƯU THÔNG TIN NGƯỜI NỘP THUẾ"]
 										})
@@ -20781,21 +20860,21 @@ function Il() {
 									}), /* @__PURE__ */ (0, V.jsxs)("div", {
 										className: "flex gap-2 pt-1",
 										children: [g.importInfo.gnt.document.downloadAvailable ? /* @__PURE__ */ (0, V.jsxs)("button", {
-											onClick: Zt,
+											onClick: $t,
 											className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-4 min-h-[44px] text-[13.5px]",
 											children: [/* @__PURE__ */ (0, V.jsx)(gi, { size: 16 }), " TẢI XLSX"]
 										}) : /* @__PURE__ */ (0, V.jsx)("p", {
 											className: "text-[12.5px] text-emerald-800 self-center",
 											children: "Bytes trong phiên trước. Bấm “Tạo lại” để tải."
 										}), /* @__PURE__ */ (0, V.jsxs)("button", {
-											onClick: Xt,
+											onClick: Qt,
 											disabled: !g.importInfo.gnt?.ready,
 											className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white font-semibold px-3 min-h-[44px] text-[13px]",
 											children: [/* @__PURE__ */ (0, V.jsx)(Mi, { size: 15 }), " Tạo lại XLSX"]
 										})]
 									})]
 								}) : /* @__PURE__ */ (0, V.jsxs)("button", {
-									onClick: Xt,
+									onClick: Qt,
 									disabled: !g.importInfo.gnt?.ready,
 									className: W("btn-press touch-target w-full rounded-xl font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]", g.importInfo.gnt?.ready ? "bg-[#0f2a4a] text-white hover:bg-[#1e5aa8]" : "bg-slate-200 text-slate-400 cursor-not-allowed"),
 									children: [/* @__PURE__ */ (0, V.jsx)(Mi, { size: 17 }), " TẠO GIẤY NỘP THUẾ XLSX"]
@@ -21546,8 +21625,8 @@ function Il() {
 							onDraftChange: be,
 							onSave: Ye
 						},
-						onAction: $t,
-						onDownload: en
+						onAction: tn,
+						onDownload: nn
 					}),
 					/* @__PURE__ */ (0, V.jsxs)("section", {
 						className: "xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
@@ -21707,7 +21786,7 @@ function Il() {
 											}),
 											!e.ok && /* @__PURE__ */ (0, V.jsxs)("button", {
 												onClick: () => {
-													i({ tab: tn(e.name) }), l("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
+													i({ tab: rn(e.name) }), l("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
 												},
 												className: "btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13px] font-bold px-3 min-h-[44px]",
 												children: [/* @__PURE__ */ (0, V.jsx)(va, { size: 14 }), " Bổ sung"]
@@ -21739,7 +21818,7 @@ function Il() {
 								]
 							}),
 							g.pxk.document?.downloadAvailable && /* @__PURE__ */ (0, V.jsxs)("button", {
-								onClick: Jt,
+								onClick: Xt,
 								className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-amber-500 text-amber-900 font-bold px-4 min-h-[46px]",
 								children: [/* @__PURE__ */ (0, V.jsx)(gi, { size: 16 }), " TẢI BẢN LỊCH SỬ"]
 							})
@@ -21855,7 +21934,7 @@ function Il() {
 								]
 							}),
 							/* @__PURE__ */ (0, V.jsx)(as, {
-								onClick: qt,
+								onClick: Yt,
 								className: "w-full mt-3",
 								children: "💾 LƯU THÔNG TIN GIAO NHẬN"
 							}),
@@ -21891,7 +21970,7 @@ function Il() {
 										]
 									}),
 									g.pxk.document?.downloadAvailable ? /* @__PURE__ */ (0, V.jsxs)("button", {
-										onClick: Jt,
+										onClick: Xt,
 										className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
 										children: [
 											/* @__PURE__ */ (0, V.jsx)(gi, { size: 17 }),
@@ -21936,6 +22015,104 @@ function Il() {
 									g.pxk.document?.fileName || g.pxk.number || "",
 									" vẫn được giữ; xác nhận mô hình để hệ thống đánh giá tính phù hợp, không xóa lịch sử."
 								]
+							})
+						]
+					}),
+					g.form07 && /* @__PURE__ */ (0, V.jsxs)("section", {
+						className: "rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5",
+						"data-testid": "shipment-form07-panel",
+						children: [
+							/* @__PURE__ */ (0, V.jsx)("h3", {
+								className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-1",
+								children: "Biên bản giao nhận (FORM_07)"
+							}),
+							/* @__PURE__ */ (0, V.jsxs)("p", {
+								className: "text-[13px] text-slate-500 mb-3",
+								children: [
+									"DOCX sinh từ mẫu Owner đã làm sạch (SHA-256 đã ghim). Nguồn hàng hóa: ",
+									g.form07.source || g.contract || "chưa liên kết hợp đồng",
+									". Hai bên, người nhận và ngày giao lấy từ dữ liệu canonical — không nhập tay."
+								]
+							}),
+							!g.form07.delivered && /* @__PURE__ */ (0, V.jsx)(cs, {
+								what: "xác nhận đã giao hàng",
+								where: "Biên bản giao nhận chỉ tạo sau khi lô đã giao thực tế",
+								actionLabel: "Sang xác nhận giao",
+								onAction: () => i({ tab: "nhap" })
+							}),
+							/* @__PURE__ */ (0, V.jsxs)("div", {
+								className: "grid sm:grid-cols-2 gap-3 mt-3",
+								children: [/* @__PURE__ */ (0, V.jsx)(Y, {
+									label: "Số biên bản",
+									required: !g.form07.number,
+									hint: "Số pháp lý của biên bản — backend không tự đặt.",
+									children: /* @__PURE__ */ (0, V.jsx)("input", {
+										id: "fld-form07no",
+										value: z("form07No", g.form07.number ?? ""),
+										onChange: (e) => ke("form07No", e.target.value),
+										placeholder: "VD: BBGN-2026-001",
+										className: X(z("form07No", g.form07.number ?? "") ? "ok" : "missing")
+									})
+								}), /* @__PURE__ */ (0, V.jsx)(Y, {
+									label: "Ngày đơn đặt hàng",
+									required: !g.form07.orderDate,
+									hint: "DD/MM/YYYY — in vào 'Căn cứ Đơn đặt hàng ngày…'.",
+									children: /* @__PURE__ */ (0, V.jsx)("input", {
+										id: "fld-form07orderdate",
+										value: z("form07OrderDate", g.form07.orderDate ?? ""),
+										onChange: (e) => ke("form07OrderDate", e.target.value),
+										placeholder: "VD: 25/09/2026",
+										className: X(z("form07OrderDate", g.form07.orderDate ?? "") ? "ok" : "missing")
+									})
+								})]
+							}),
+							(g.form07.readiness?.missing ?? []).length > 0 && /* @__PURE__ */ (0, V.jsx)(cs, {
+								what: (g.form07.readiness?.missing ?? []).join(" · "),
+								where: "core.docgen.form07 chặn đến khi đủ thông tin",
+								actionLabel: "Nhập ở trên",
+								onAction: () => document.getElementById("fld-form07no")?.focus()
+							}),
+							g.form07.done ? /* @__PURE__ */ (0, V.jsxs)("div", {
+								className: "mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
+								"data-testid": "form07-done",
+								children: [
+									/* @__PURE__ */ (0, V.jsxs)("p", {
+										className: "font-extrabold text-emerald-800",
+										children: ["✅ ĐÃ TẠO ", g.form07.number]
+									}),
+									/* @__PURE__ */ (0, V.jsxs)("p", {
+										className: "text-[13.5px] text-emerald-700 mt-0.5",
+										children: [
+											g.form07.document?.fileName || "FORM_07",
+											" · bản R",
+											g.form07.document?.revision ?? 1,
+											" · ",
+											g.form07.document?.status || "GENERATED",
+											g.form07.document?.generatedBy ? " · " + g.form07.document.generatedBy : ""
+										]
+									}),
+									g.form07.document?.downloadBase64 ? /* @__PURE__ */ (0, V.jsxs)("button", {
+										onClick: Jt,
+										className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
+										children: [
+											/* @__PURE__ */ (0, V.jsx)(gi, { size: 17 }),
+											" TẢI ",
+											g.form07.document?.fileName || "FORM_07"
+										]
+									}) : /* @__PURE__ */ (0, V.jsx)("p", {
+										className: "text-[13px] text-emerald-800 mt-2",
+										children: "File sinh ở phiên trước: metadata còn trên backend — tải đúng bytes đã lưu qua lịch sử ở thẻ “Biểu mẫu & chứng từ”."
+									}),
+									/* @__PURE__ */ (0, V.jsxs)("button", {
+										onClick: qt,
+										className: "btn-press touch-target mt-2 ml-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-600 text-emerald-800 font-bold px-5 min-h-[48px]",
+										children: [/* @__PURE__ */ (0, V.jsx)(Ei, { size: 17 }), " SINH BẢN MỚI (R+1)"]
+									})
+								]
+							}) : /* @__PURE__ */ (0, V.jsx)(os, {
+								onClick: qt,
+								className: "w-full mt-3 text-[16px] min-h-[56px]",
+								children: "🖨 TẠO BIÊN BẢN GIAO NHẬN"
 							})
 						]
 					}),

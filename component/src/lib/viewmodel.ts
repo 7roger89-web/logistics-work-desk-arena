@@ -657,6 +657,47 @@ export interface Pxk {
   document?: PxkDocument | null;
 }
 
+/**
+ * Issue #168 — one FORM_07 (Biên bản giao nhận) the server really generated:
+ * durable metadata from ``docgen_documents`` + the session download store,
+ * exactly like PxkDocument. ``number``/``orderDate`` echo the typed manual
+ * identity of the latest revision (source_snapshot), never a guess.
+ */
+export interface Form07Document {
+  documentId?: string;
+  recordId?: string;
+  revision?: number;
+  status?: string;
+  fileName?: string;
+  mime?: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  downloadAvailable?: boolean;
+  downloadBase64?: string | null;
+  attachmentId?: string;
+  history?: ShipmentGeneratedDocumentHistory[];
+  number?: string;
+  orderDate?: string;
+}
+
+export interface Form07 {
+  source?: string;
+  sourceName?: string;
+  delivered?: boolean;
+  missingDeliveryFacts?: string[];
+  /** Server-owned readiness from canonical facts (core.docgen.form07). */
+  readiness?: ShipmentDocumentReadiness;
+  documentHistory?: ShipmentGeneratedDocumentHistory[];
+  number?: string;
+  orderDate?: string;
+  place?: string;
+  receiver?: string;
+  role?: string;
+  done?: boolean;
+  /** null while nothing has been generated — never a fabricated document. */
+  document?: Form07Document | null;
+}
+
 export interface OpsAlert {
   code: string;
   severity: string;
@@ -986,6 +1027,8 @@ export interface Shipment {
   importInfo: ImportInfo;
   finance: Finance;
   pxk: Pxk;
+  /** Issue #168 — FORM_07 projection; absent only on pre-#168 payloads. */
+  form07?: Form07;
   timeline: TimelineEntry[];
   ops?: Ops;
   tracking?: Tracking;

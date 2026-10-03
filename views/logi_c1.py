@@ -329,7 +329,14 @@ def agreement_projection(a: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-_DOC_LABEL = {"HDNT": "Hợp đồng nguyên tắc", "PL": "Phụ lục Hợp đồng", "HDMB": "Hợp đồng mua bán", "PXK": "Phiếu xuất kho"}
+_DOC_LABEL = {
+    "HDNT": "Hợp đồng nguyên tắc",
+    "PL": "Phụ lục Hợp đồng",
+    "HDMB": "Hợp đồng mua bán",
+    "PXK": "Phiếu xuất kho",
+    "FORM_07": "Biên bản giao nhận",
+}
+_DOCX_TYPES = frozenset({"HDNT", "FORM_07"})
 
 
 def document_projection(d: Mapping[str, Any], stored: Mapping[str, dict[str, Any]]) -> dict[str, Any]:
@@ -350,7 +357,7 @@ def document_projection(d: Mapping[str, Any], stored: Mapping[str, dict[str, Any
         "revision": d.get("generation_revision") or d.get("revision") or 1,
         "status": _text(d.get("status")),
         "fileName": _text(d.get("output_file_name")),
-        "mime": _MIME_DOCX if doc_type == "HDNT" else _MIME_XLSX,
+        "mime": _MIME_DOCX if doc_type in _DOCX_TYPES else _MIME_XLSX,
         "generatedAt": _text(d.get("generated_at")),
         "generatedBy": _text(d.get("generated_by")),
         "issuedAt": _text(d.get("issued_at")),

@@ -56,9 +56,11 @@ def _dispatch(name: str, payload: dict, seq: int = 1) -> dict:
 
 
 def test_catalog_is_small_stable_and_fail_closed():
-    assert [row.id for row in SHIPMENT_DOCUMENT_CATALOG] == ["HDNT", "PL", "HDMB", "PXK", "GNT"]
+    # Issue #168 adds exactly ONE Owner-sample pilot (FORM_07) to the V1 set;
+    # the remaining six samples stay out until their own evidence-driven slices.
+    assert [row.id for row in SHIPMENT_DOCUMENT_CATALOG] == ["HDNT", "PL", "HDMB", "PXK", "GNT", "FORM_07"]
     assert {row.adapter for row in SHIPMENT_DOCUMENT_CATALOG} == {
-        "CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER"
+        "CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER", "FORM07_DOCGEN"
     }
     assert validate_selected_template_ids(["GNT", "HDMB"]) == ["HDMB", "GNT"]
     assert project_selected_template_ids(["PXK", "NOT-IN-CATALOG", "HDNT", 7]) == ["HDNT", "PXK"]

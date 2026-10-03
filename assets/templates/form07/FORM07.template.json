@@ -1,0 +1,98 @@
+{
+  "template_id": "FORM_07",
+  "template_version": 1,
+  "label": "Biên bản giao nhận hàng hóa (FORM_07)",
+  "issue": 168,
+  "asset_path": "assets/templates/form07/FORM07-bien-ban-giao-nhan-v1.docx",
+  "asset_sha256": "568a89bfe5b2ff84bd295ecc6e378ae9520d4a5d24a84b6a813ac591174d5c56",
+  "asset_size_bytes": 16946,
+  "output_extension": ".docx",
+  "output_mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "engine": "docxtpl (single-run Jinja tokens + one {%tr%} goods row loop)",
+  "builder": "core/docgen/form07.py",
+  "sanitize_script": "scripts/form07_build_sanitized_template.py",
+  "source_receipt": {
+    "status": "VERIFIED_EXACT_BINARY",
+    "filename": "Mau-Bien-ban-giao-nhan-hang-hoa.docx",
+    "transport_branch": "owner-input/form07-source-168",
+    "transport_branch_head": "51eaaed93cadbc4772959866dce04cf35ffd3e43",
+    "transport_path": "owner_inputs/form07/Mau-Bien-ban-giao-nhan-hang-hoa.docx",
+    "size_bytes": 18997,
+    "sha256": "cd2a1df5434a217bdae34e292844ad1bacbcc737b2282137b835af46663161b5",
+    "git_blob_sha": "e2c3dea169bff006f4073f7fae2b2c285c912f3f",
+    "policy": "Owner original is evidence/input only: not committed to main, not the production template, never modified in place. The transport branch is never merged."
+  },
+  "sanitization": {
+    "performed_at": "2026-10-03",
+    "deterministic_rebuild": true,
+    "removed_or_replaced": [
+      "cp:lastModifiedBy personal name 'Tien Thanh' -> 'Logistics Work Desk'",
+      "dc:creator 'Microsoft Windows' -> 'Logistics Work Desk'",
+      "app.xml Company 'Version 5.1 build 2600' -> empty",
+      "cp:revision -> 1, TotalTime -> 0, created/modified pinned to 2026-10-03T00:00:00Z",
+      "dot-leader bind slots -> single-run Jinja tokens (layout/fonts/static wording preserved)"
+    ],
+    "verified_absent_in_source": [
+      "transaction/customer data",
+      "signatures/stamps/reusable approval marks",
+      "comments part / tracked changes (w:ins/w:del)",
+      "macros (vbaProject)",
+      "OLE/ActiveX/DDE embeddings",
+      "external relationships / remote templates / externalLinks part",
+      "images / media parts",
+      "headers/footers parts"
+    ],
+    "kept_intentionally": [
+      "two VML straight-line shapes under the national motto (decorative; no image, no OLE; o:gfxdata is Word's own inert VML fallback)",
+      "styles.xml / settings.xml / numbering.xml / theme / fontTable byte-identical",
+      "sectPr page geometry (US Letter portrait, margins top 851 / right 1134 / bottom 1134 / left 1418 twips)"
+    ]
+  },
+  "field_inventory": {
+    "static_text": [
+      "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM / Độc lập – Tự do – Hạnh phúc",
+      "BIÊN BẢN GIAO NHẬN (title)",
+      "Căn cứ Hợp đồng mua bán giữa ... và ...",
+      "Căn cứ Đơn đặt hàng ngày ... của ...",
+      "Hôm nay, ngày ... tháng ... năm ... tại ..., chúng tôi gồm:",
+      "BÊN A (Bên nhận hàng): / BÊN B (Bên giao hàng): + Địa chỉ / Điện thoại / Đại diện Ông/bà / Chức vụ labels",
+      "goods table header: STT / Tên hàng / Quy cách / ĐVT / Số lượng / Ghi chú",
+      "Bên A xác nhận Bên B đã giao cho Bên A đúng chủng loại và đủ số lượng hàng như trên.",
+      "Hai bên đồng ý, thống nhất ký tên. Biên bản được lập thành 02 bản, mỗi bên giữ 01 bản có giá trị pháp lý như nhau.",
+      "signature blocks: ĐẠI DIỆN BÊN A / ĐẠI DIỆN BÊN B (left blank; no signature automation)"
+    ],
+    "canonical_fields": {
+      "cong_ty": "company.legal_name (letterhead of Bên A, the receiving company whose desk issues the Số biên bản; static prefix 'CÔNG TY' subsumed by the full legal name)",
+      "ben_a_name": "company.legal_name (Bên A = Bên nhận hàng, same party mapping PXK uses for Bên nhận)",
+      "ben_a_address": "company.legal_address",
+      "ben_a_phone": "company.phone",
+      "ben_a_representative": "delivery.receiver_name (canonical 2.7 delivery fact, same truth PXK binds)",
+      "ben_a_representative_title": "delivery.receiver_title (canonical 2.7 delivery fact)",
+      "ben_b_name": "agent.legal_name (Bên B = Bên giao hàng = seller, locked rule 'Agent is the seller of goods to Trường Thành')",
+      "ben_b_address": "agent.legal_address",
+      "ben_b_phone": "agent.phone",
+      "ben_b_representative": "agent.legal_representative (same authority-master binding HDMB uses)",
+      "ben_b_representative_title": "agent.representative_title",
+      "dia_diem": "delivery.delivery_location (canonical 2.7 delivery fact; header place and body 'tại ...' are the same fact)",
+      "goods_lines[].ten_hang": "contract.goods_lines[].description",
+      "goods_lines[].quy_cach": "contract.goods_lines[].specification_or_code when present, else honest blank",
+      "goods_lines[].dvt": "contract.goods_lines[].unit",
+      "goods_lines[].so_luong": "contract.goods_lines[].quantity"
+    },
+    "computed_fields": {
+      "ngay/thang/nam": "zero-padded day/month/year parts of delivery.delivered_at (canonical actual handover date; never today(), never invented)",
+      "goods_lines[].stt": "1-based sequence of the canonical goods line"
+    },
+    "manual_fields": {
+      "so_bien_ban": "typed operator input form07No — the receipt's own legal number ('Số: ......'); no canonical source exists; fail closed when empty (same pattern as pxk_no)",
+      "ngay_dat_hang": "typed operator input orderDate — the purchase-order date in 'Căn cứ Đơn đặt hàng ngày ...'; GETFLY shipment order_date is the SALES order and is a different document, never substituted; fail closed when empty/unparseable"
+    },
+    "repeating_rows": {
+      "goods_table": "one docxtpl {%tr for line in goods_lines %} loop over the single template body row; the Owner source's three empty body rows became for-tag / template / endfor-tag rows"
+    },
+    "unsupported_or_unknown": [
+      "'Quy cách' and 'Ghi chú' columns have no canonical per-line source in contract goods lines; rendered blank (honest UNKNOWN) unless the line carries specification_or_code / note",
+      "signature/stamp areas are intentionally never filled (Issue #168 non-goal)"
+    ]
+  }
+}
