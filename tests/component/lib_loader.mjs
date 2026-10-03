@@ -6,7 +6,7 @@
 // dependency, no second bundler config, no runtime transform framework.
 // ============================================================================
 
-import { mkdtempSync, mkdirSync, cpSync } from "node:fs";
+import { mkdtempSync, mkdirSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -22,6 +22,7 @@ export async function importTs(relPath) {
   if (!outDir) {
     outDir = mkdtempSync(path.join(tmpdir(), "logi-lib-"));
     const srcDir = path.join(outDir, "src");
+    const emitDir = path.join(outDir, "out");
     mkdirSync(srcDir, { recursive: true });
     cpSync(path.join(ROOT, "component/src/lib"), srcDir, { recursive: true });
     execFileSync(
@@ -29,14 +30,25 @@ export async function importTs(relPath) {
       [
         "--target", "es2022", "--module", "esnext", "--moduleResolution", "bundler",
         "--skipLibCheck", "--noEmitOnError", "false",
-        "--outDir", path.join(outDir, "out"),
+        "--outDir", emitDir,
+        path.join(srcDir, "shipmentRoute.ts"),
         path.join(srcDir, "quoteTextParser.ts"),
         path.join(srcDir, "miniCalc.ts"),
         path.join(srcDir, "costHistory.ts"),
         path.join(srcDir, "shipmentDocumentPicker.ts"),
+        path.join(srcDir, "customerPlaybook.ts"),
       ],
       { stdio: "pipe" }
     );
+    for (const file of readdirSync(emitDir)) {
+      if (!file.endsWith(".js")) continue;
+      const full = path.join(emitDir, file);
+      const patched = readFileSync(full, "utf8").replace(
+        /from\s+"(\.\/[^".]+)"/g,
+        'from "$1.js"'
+      );
+      writeFileSync(full, patched, "utf8");
+    }
   }
   const name = path.basename(relPath).replace(/\.ts$/, ".js");
   return import(pathToFileURL(path.join(outDir, "out", name)).href);

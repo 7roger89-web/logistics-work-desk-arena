@@ -21,6 +21,7 @@ import {
 } from "../components/ui";
 import { useStore } from "../lib/store";
 import { cx, fmtText, matchLoose } from "../lib/format";
+import { customerPath } from "../lib/customerPlaybook";
 import { getViewModel, subscribeViewModel, type Customer } from "../lib/viewmodel";
 
 const EMPTY_FORM = {
@@ -253,7 +254,7 @@ export default function Customers() {
             <tbody>
               {list.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
-                  <td><span className="font-extrabold text-[#1e5aa8] text-[15px]">{c.id}</span></td>
+                  <td><Link to={customerPath(c.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{c.id}</Link></td>
                   <td className="font-semibold max-w-[220px]">{c.name}</td>
                   <td>{fmtText(c.taxCode)}</td>
                   <td className="text-[13px]">
@@ -262,7 +263,14 @@ export default function Customers() {
                   </td>
                   <td className="max-w-[240px] text-[13px] text-slate-600">{fmtText(c.address)}</td>
                   <td>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Link
+                        to={customerPath(c.id)}
+                        data-testid={`customer-open-playbook-${c.id}`}
+                        className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]"
+                      >
+                        Mở hồ sơ <ArrowRight size={14} />
+                      </Link>
                       <button onClick={() => openEdit(c)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><PenLine size={15} /> Sửa</button>
                       {role === "ADMIN" && (
                         <button onClick={() => setArchiving(c)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-red-200 text-red-700 text-[13px] font-bold px-3 min-h-[44px]"><Archive size={15} /> Lưu trữ</button>
@@ -289,19 +297,26 @@ export default function Customers() {
           <div key={c.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-[17px] text-[#0f2a4a]">{c.id}</span>
+                <Link to={customerPath(c.id)} className="font-extrabold text-[17px] text-[#0f2a4a] hover:underline">{c.id}</Link>
                 <ToneBadge tone="blue" size="sm">MST {fmtText(c.taxCode)}</ToneBadge>
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{c.name}</p>
               <p className="text-[13px] text-slate-500">{fmtText(c.address)}</p>
               <p className="text-[12.5px] text-slate-400 mt-1">{fmtText(c.contactPerson)} · {fmtText(c.phone)}</p>
             </div>
-            <div className="grid grid-cols-2 border-t">
-              <button onClick={() => openEdit(c)} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]"><PenLine size={17} /> SỬA</button>
+            <div className="grid grid-cols-3 border-t">
+              <Link
+                to={customerPath(c.id)}
+                data-testid={`customer-open-playbook-mobile-${c.id}`}
+                className="touch-target flex items-center justify-center gap-1 bg-[#1e5aa8] text-white font-extrabold text-[13.5px] min-h-[52px]"
+              >
+                MỞ HỒ SƠ <ArrowRight size={15} />
+              </Link>
+              <button onClick={() => openEdit(c)} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[14px] min-h-[52px]"><PenLine size={16} /> SỬA</button>
               {role === "ADMIN" ? (
-                <button onClick={() => setArchiving(c)} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-red-700 min-h-[52px]"><Archive size={17} /> LƯU TRỮ</button>
+                <button onClick={() => setArchiving(c)} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[14px] text-red-700 min-h-[52px]"><Archive size={16} /> LƯU TRỮ</button>
               ) : (
-                <Link to="/kinh-doanh-bao-gia" className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]">BÁO GIÁ <ArrowRight size={17} /></Link>
+                <Link to="/kinh-doanh-bao-gia" className="touch-target flex items-center justify-center gap-1 font-bold text-[13.5px] text-[#0f2a4a] min-h-[52px]">BÁO GIÁ <ArrowRight size={15} /></Link>
               )}
             </div>
           </div>
