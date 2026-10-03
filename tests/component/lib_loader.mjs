@@ -34,6 +34,7 @@ export async function importTs(relPath) {
         path.join(srcDir, "miniCalc.ts"),
         path.join(srcDir, "costHistory.ts"),
         path.join(srcDir, "shipmentDocumentPicker.ts"),
+        path.join(srcDir, "customerPlaybook.ts"),
       ],
       { stdio: "pipe" }
     );

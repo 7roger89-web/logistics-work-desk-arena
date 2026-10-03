@@ -262,7 +262,8 @@ export default function Customers() {
                   </td>
                   <td className="max-w-[240px] text-[13px] text-slate-600">{fmtText(c.address)}</td>
                   <td>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Link to={`/khach-hang/${encodeURIComponent(c.id)}`} data-testid="customer-open-playbook" className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-blue-200 text-[13px] font-bold px-3 min-h-[44px] text-[#1e5aa8]"><ArrowRight size={15} /> Mở hồ sơ</Link>
                       <button onClick={() => openEdit(c)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><PenLine size={15} /> Sửa</button>
                       {role === "ADMIN" && (
                         <button onClick={() => setArchiving(c)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-red-200 text-red-700 text-[13px] font-bold px-3 min-h-[44px]"><Archive size={15} /> Lưu trữ</button>
@@ -295,6 +296,11 @@ export default function Customers() {
               <p className="font-semibold text-[14.5px] mt-1">{c.name}</p>
               <p className="text-[13px] text-slate-500">{fmtText(c.address)}</p>
               <p className="text-[12.5px] text-slate-400 mt-1">{fmtText(c.contactPerson)} · {fmtText(c.phone)}</p>
+            </div>
+            <div className="px-4 pb-3">
+              <Link to={`/khach-hang/${encodeURIComponent(c.id)}`} data-testid="customer-open-playbook" className="touch-target flex w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 text-[14px] font-bold text-[#1e5aa8]">
+                Mở hồ sơ <ArrowRight size={16} aria-hidden="true" />
+              </Link>
             </div>
             <div className="grid grid-cols-2 border-t">
               <button onClick={() => openEdit(c)} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]"><PenLine size={17} /> SỬA</button>
