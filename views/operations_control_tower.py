@@ -29,7 +29,7 @@ def _is_manager_grade(item: Mapping[str, Any]) -> bool:
     return (
         _text(item.get("band")).upper() in MANAGER_BANDS
         or bool(item.get("unknown"))
-        or _text(item.get("sourcePriority")) == "Khan"
+        or (bool(item.get("primary")) and _text(item.get("sourcePriority")) == "Khan")
     )
 
 
