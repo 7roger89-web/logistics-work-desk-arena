@@ -77,6 +77,17 @@ class OperationsControlTower170Tests(unittest.TestCase):
         )
         self.assertNotIn("NORMAL", [item["id"] for item in tower["interventionQueue"]])
 
+    def test_non_primary_khan_action_is_excluded_from_intervention_queue(self):
+        rows = [shipment("S1"), shipment("S2")]
+        items = [
+            attention("KHAN-NONPRIMARY", "S1", band="ACTION", source_priority="Khan"),
+            attention("KHAN-PRIMARY", "S2", band="ACTION", source_type="PRIMARY_ACTION", source_priority="Khan"),
+        ]
+        queue = build_operations_control_tower(rows, items, today=date(2026, 10, 2))["interventionQueue"]
+        ids = [item["id"] for item in queue]
+        self.assertNotIn("KHAN-NONPRIMARY", ids)
+        self.assertIn("KHAN-PRIMARY", ids)
+
     def test_scope_distinguishes_attention_no_signal_and_unknown_without_health_claim(self):
         rows = [shipment("S1"), shipment("S2"), shipment("S3"), shipment("S4")]
         items = [
@@ -115,7 +126,7 @@ class OperationsControlTower170Tests(unittest.TestCase):
         items = [
             attention("OWNED", "S1", band="OVERDUE", owner="Support A"),
             attention("NONE", "S2", band="BLOCKING", owner=""),
-            attention("SENTINEL", "S2", band="ACTION", owner="Chưa phân công", source_priority="Khan"),
+            attention("SENTINEL", "S2", band="ACTION", owner="Chưa phân công", source_type="PRIMARY_ACTION", source_priority="Khan"),
         ]
         workload = build_operations_control_tower(rows, items, today=date(2026, 10, 2))["workload"]
         self.assertEqual(workload[0]["ownerKey"], "UNASSIGNED")
