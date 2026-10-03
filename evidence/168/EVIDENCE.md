@@ -111,3 +111,10 @@ event; `core.shipment_document_catalog` (one new row, adapter
 staging); `docgen_documents` immutable revision history; `attachment_download`
 event; existing RBAC (`sales_write`) and Phase-B audit trail. No second
 document DB, no template upload UI, no rules DSL, no workflow engine.
+
+## 6. Drift repair (2026-10-03)
+
+Post-completion drift repair — integrate current main `ca3d955` into the PR
+branch, resolve the single generated-bundle conflict, and revalidate the
+scope-matched surface — is recorded in
+[`DRIFT_REPAIR_173.md`](DRIFT_REPAIR_173.md).
