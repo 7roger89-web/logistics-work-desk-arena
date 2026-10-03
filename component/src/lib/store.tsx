@@ -38,6 +38,7 @@ import {
   type Home,
   type IntlFxRates,
   type NotebookHandbook,
+  type OperationsControlTower,
   type Notif,
   type PartnerPayablesViewModel,
   type ReceivablesViewModel,
@@ -88,6 +89,8 @@ interface StoreShape {
   intlFxRates: IntlFxRates | null;
   /** LOGI_CEO_REPORT_01 — server-derived, read-only management summary. */
   ceoReport: CeoReport | null;
+  /** Issue #170 — read-only manager aggregation over shared Attention. */
+  operationsControl: OperationsControlTower | null;
   /** LOGI_NOTEBOOK_WORKSPACE_01 — read-only /so-tay handbook slice. */
   handbook: NotebookHandbook | null;
   /**
@@ -168,6 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
   const intlFxRates = useMemo(() => vm?.intlFxRates ?? null, [vm]);
   const ceoReport = useMemo(() => vm?.ceoReport ?? null, [vm]);
+  const operationsControl = useMemo(() => vm?.operationsControl ?? null, [vm]);
   const handbook = useMemo(() => vm?.handbook ?? null, [vm]);
   const financeServices = useMemo(() => vm?.financeServiceCatalog ?? [], [vm]);
   const costIntelligence = useMemo(
@@ -253,6 +257,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payables,
       intlFxRates,
       ceoReport,
+      operationsControl,
       handbook,
       financeServices,
       costIntelligence,
@@ -286,6 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payables,
       intlFxRates,
       ceoReport,
+      operationsControl,
       handbook,
       financeServices,
       costIntelligence,

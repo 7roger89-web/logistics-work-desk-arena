@@ -45,6 +45,7 @@ export const NAV: {
     group: "VẬN HÀNH",
     items: [
       { to: "/", label: "Tổng Quan Công Việc", icon: "layout" },
+      { to: "/dieu-hanh", label: "Điều hành", icon: "alarm" },
       { to: "/lo-hang", label: "Lô Hàng", icon: "box" },
       { to: "/tao-lo-moi", label: "Tạo Lô Mới", icon: "plus" },
     ],
