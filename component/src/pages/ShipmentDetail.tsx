@@ -318,8 +318,9 @@ export default function ShipmentDetail() {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
     // primary-action/deep links keep their existing bypass.
-    if (targetTab === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
+    if (targetTab === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; }
     setSp({ tab: targetTab, stage: node.id, work });
+    return true;
   };
 
   const saveCommercialFlow = () => {
@@ -1102,7 +1103,7 @@ export default function ShipmentDetail() {
   };
 
   return (
-    <div className="space-y-4 max-w-[1300px]">
+    <div className="space-y-4 min-w-0">
       <button onClick={() => nav(-1)} className="touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]"><ArrowLeft size={17} /> Quay lại</button>
 
       {/* HEADER */}
@@ -1220,7 +1221,8 @@ export default function ShipmentDetail() {
       <AttentionNow items={shipmentAttention} title="Cần xử lý" />
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
-        onOpen={openStageWorkspace} onGlobal={() => setSp({ tab: "van-tai" })} runPrimary={runPrimaryAction} />
+        onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
+        globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
@@ -1236,7 +1238,7 @@ export default function ShipmentDetail() {
           "Sửa thông tin lô" disclosure: the identity summary STAYS visible on
           the main path, and every edit capability (customer change, creation
           date, save semantics) is one click away — nothing removed. */}
-      <section
+      {!workspaceNode && <section
         className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5"
         data-testid="shipment-header-edit"
       >
@@ -1317,7 +1319,7 @@ export default function ShipmentDetail() {
         </p>
         </>
         )}
-      </section>
+      </section>}
 
       {/* ============ HỒ SƠ THỰC HIỆN LÔ — COMPACT ENTRY ============
           LOGI_QUOTE_COST_WORKFLOW_UX_01 — the FULL editor no longer occupies a
@@ -1328,7 +1330,7 @@ export default function ShipmentDetail() {
           Incoterms and insurance-mismatch logic are all unchanged — only the
           composition moved. A real CONFIG_CHECK / insurance mismatch still
           surfaces here in the same red wording so it cannot be missed. */}
-      {tab !== "van-tai" && (
+      {!workspaceNode && tab !== "van-tai" && (
         <div
           data-testid="shipment-profile-compact"
           data-state={s.executionProfile?.state ?? ""}
@@ -2311,6 +2313,8 @@ export default function ShipmentDetail() {
         {tab === "chung-tu" && s.commercialFlow?.confirmed && s.commercialFlow?.mode !== "CUSTOMER_SELF" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
         {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
       </div>
+
+      </ShipmentJourney>
 
       {/* MODAL: deliver */}
       {showDeliver && (
