@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-scope"
+  short_description: "Chia nhỏ và kiểm soát nhiệm vụ lớn"
+  default_prompt: "Use $p2p-scope to decompose this task and manage its checkpoints."
+policy:
+  allow_implicit_invocation: true

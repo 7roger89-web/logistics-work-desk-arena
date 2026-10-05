@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-pxpipe"
+  short_description: "Kiểm tra PXPIPE ở chế độ tắt"
+  default_prompt: "Use $p2p-pxpipe to inspect PXPIPE without enabling its proxy or compression."
+policy:
+  allow_implicit_invocation: true

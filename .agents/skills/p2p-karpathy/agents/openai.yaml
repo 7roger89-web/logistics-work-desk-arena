@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-karpathy"
+  short_description: "Chỉnh code tối thiểu và có kiểm chứng"
+  default_prompt: "Use $p2p-karpathy to make the smallest defensible change for this coding task."
+policy:
+  allow_implicit_invocation: true

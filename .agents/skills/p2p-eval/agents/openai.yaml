@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-eval"
+  short_description: "Đánh giá P2P riêng cho dự án"
+  default_prompt: "Use $p2p-eval to create a fair project-specific comparison between baseline and P2P workflows."
+policy:
+  allow_implicit_invocation: true

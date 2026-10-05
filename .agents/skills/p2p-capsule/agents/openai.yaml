@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-capsule"
+  short_description: "Lưu và khôi phục ngữ cảnh P2P"
+  default_prompt: "Use $p2p-capsule to create a continuation record for this task."
+policy:
+  allow_implicit_invocation: true
