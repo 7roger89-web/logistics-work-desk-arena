@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-atlas"
+  short_description: "Quản lý bản đồ nhiệm vụ ATLAS"
+  default_prompt: "Use $p2p-atlas to show or update the task map for this work."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,8 @@
+interface:
+  display_name: Scope Reality Check
+  short_description: Phản biện gắt có bằng chứng rồi cắt scope về thứ đáng ship.
+policy:
+  products:
+  - CHAT
+  - CODEX
+  allow_implicit_invocation: false

@@ -1,0 +1,14 @@
+interface:
+  display_name: P2P QUORUM — 8 Agents
+  short_description: Phân tích sâu bằng 8 subagent chuyên biệt
+  default_prompt: Hãy dùng $p2p-quorum full để phân tích nhiệm vụ này bằng đủ 8 subagent
+    thật và đưa ra một kết luận có thể hành động.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  allow_implicit_invocation: false
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas

@@ -1,0 +1,15 @@
+interface:
+  display_name: P2P Idea Compass
+  short_description: Biến ý tưởng mơ hồ thành kế hoạch thử rõ ràng
+  default_prompt: Dùng $p2p-idea để biến ý tưởng của tôi thành gợi ý có căn cứ và
+    một bước thử đầu tiên.
+  brand_color: '#0B6E75'
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

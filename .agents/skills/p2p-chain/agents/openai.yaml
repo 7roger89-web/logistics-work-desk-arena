@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-chain"
+  short_description: "Chạy chuỗi subagent P2P thật"
+  default_prompt: "Use $p2p-chain to run the named P2P roles in the requested order."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-teacher"
+  short_description: "Học P2P theo từng bước thực hành"
+  default_prompt: "Use $p2p-teacher to teach me P2P from my current level."
+policy:
+  allow_implicit_invocation: true

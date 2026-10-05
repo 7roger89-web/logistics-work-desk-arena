@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-approval"
+  short_description: "Kiểm soát phê duyệt bắt buộc của người dùng"
+  default_prompt: "Use $p2p-approval to show the protected action, technical gates, risks, and exact user-approval step."
+policy:
+  allow_implicit_invocation: true

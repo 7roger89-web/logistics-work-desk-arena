@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-feedback"
+  short_description: "Ghi nhận phản hồi chất lượng P2P"
+  default_prompt: "Use $p2p-feedback to record this rating and correction."
+policy:
+  allow_implicit_invocation: true

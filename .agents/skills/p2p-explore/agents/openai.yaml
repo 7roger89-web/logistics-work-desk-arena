@@ -1,0 +1,6 @@
+interface:
+  display_name: "p2p-explore"
+  short_description: "Khám phá và xếp hạng phương án"
+  default_prompt: "Use $p2p-explore to generate and rank alternatives for this topic."
+policy:
+  allow_implicit_invocation: true
