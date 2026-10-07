@@ -44,8 +44,19 @@ export function composeShipmentCompletionGoals(s: Shipment): CompletionGoal[] {
   const applicableDocs = steps.filter(x => x.state !== 'NOT_APPLICABLE');
   const hardDoc = applicableDocs.find(x => x.state === 'BLOCKED' || x.state === 'MISSING_INFO');
   const completeDocs = applicableDocs.filter(x => x.state === 'COMPLETE');
-  const financeKnown = [s.finance.receivable, s.finance.outstanding, s.finance.payable, s.finance.paid]
-    .some(v => v !== null && v !== undefined);
+  const customerOutstanding = s.finance.outstanding;
+  const customerOutstandingKnown = customerOutstanding !== null && customerOutstanding !== undefined;
+  const partner = s.finance.partner;
+  const partnerGroups = partner?.partners ?? [];
+  const partnerRelevant = partnerGroups.length > 0 || Boolean(partner && !partner.suggested && partner.partnerName);
+  const partnerRemaining = partnerGroups.length > 0
+    ? partnerGroups.flatMap(g => Object.values(g.totalsByCurrency).map(t => t.remaining))
+    : partner && !partner.suggested && partner.partnerName ? [partner.remaining] : [];
+  const knownPartnerRemaining = partnerRemaining.filter((v): v is number => v !== null && v !== undefined);
+  const partnerUnknown = partnerRelevant && (partnerRemaining.length === 0 || knownPartnerRemaining.length !== partnerRemaining.length);
+  const financeOpen = (customerOutstandingKnown && customerOutstanding !== 0)
+    || knownPartnerRemaining.some(v => v !== 0);
+  const financeKnown = customerOutstandingKnown || (partnerRelevant && !partnerUnknown && knownPartnerRemaining.length > 0);
   const modules = s.journey?.modules ?? [];
   const moduleBlocker = modules.find(m => m.status === 'BLOCKING');
   const moduleEvidence = modules.filter(m => m.status === 'DONE');
@@ -101,9 +112,19 @@ export function composeShipmentCompletionGoals(s: Shipment): CompletionGoal[] {
     {
       id: 'finance',
       title: 'Tài chính & đối soát',
-      state: financeKnown ? 'EVIDENCED' : 'UNKNOWN',
-      evidence: financeKnown ? 'Đã có số liệu tài chính/ledger để kiểm tra.' : 'Chưa có đủ dữ liệu để kết luận số dư.',
-      missing: financeKnown ? 'Mở Tài chính để kiểm tra khoản thu/phải trả/đối soát; có số liệu không đồng nghĩa đã tất toán.' : 'UNKNOWN được giữ nguyên, không đổi thành 0/đã trả.',
+      state: financeOpen ? 'ACTION' : partnerUnknown ? 'UNKNOWN' : financeKnown ? 'EVIDENCED' : 'UNKNOWN',
+      evidence: financeOpen
+        ? 'Đã có số dư tài chính còn mở cần rà soát.'
+        : financeKnown && !partnerUnknown
+          ? 'Các số dư closeout hiện có không ghi nhận khoản khác 0 đang mở.'
+          : 'Chưa có đủ dữ liệu để kết luận số dư.',
+      missing: financeOpen
+        ? 'Còn công nợ/số dư phải xử lý hoặc đối soát; không được coi là tài chính đã khép.'
+        : partnerUnknown
+          ? 'Có đối tác/ledger liên quan nhưng số dư còn lại chưa đủ authority; giữ UNKNOWN.'
+          : financeKnown
+            ? 'Không có số dư mở được ghi nhận ở authority hiện có; đây vẫn chỉ là bằng chứng rà soát, không phải CLOSED toàn lô.'
+            : 'UNKNOWN được giữ nguyên, không đổi thành 0/đã trả.',
       doneWhen: 'Khoản thu, phải trả và phân bổ được rà soát trên authority tài chính hiện có; không suy ra trạng thái CLOSED toàn lô.',
       tab: 'tai-chinh',
     },
