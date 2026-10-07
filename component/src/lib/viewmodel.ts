@@ -577,6 +577,16 @@ export interface PartnerPaymentRow {
  * the canonical ledger. Every money figure is UNKNOWN (null) until a canonical
  * obligation/payment record exists — null is never rendered as 0.
  */
+export interface PartnerFinanceGroup {
+  partnerId: string | null;
+  partnerName: string | null;
+  partnerKey?: string | null;
+  status?: string | null;
+  /** Per-currency totals — currencies are never combined across groups. */
+  totalsByCurrency: Record<string, { payable: MaybeNum; paid: MaybeNum; remaining: MaybeNum }>;
+  payments: PartnerPaymentRow[];
+}
+
 export interface PartnerFinance {
   partnerId: string | null;
   partnerName: string | null;
@@ -588,6 +598,13 @@ export interface PartnerFinance {
   remaining: MaybeNum;
   currency?: string | null;
   payments: PartnerPaymentRow[];
+  /**
+   * Issue #184 (G06) — every canonical partner group, surfaced only when the
+   * ledger holds MORE THAN ONE group (e.g. China agent + Phú Anh). The
+   * single-partner convenience fields above are left empty in that case: no
+   * arbitrary "main partner" is selected.
+   */
+  partners?: PartnerFinanceGroup[];
 }
 
 export interface Finance {
