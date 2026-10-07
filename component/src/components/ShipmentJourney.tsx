@@ -146,7 +146,7 @@ function ModuleStepButton({ node, onPick, selectedId }: {
  * CONDITIONAL state and reason from the document workflow.
  */
 function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
-  shipment: Shipment; selected: JourneyNode;
+  s: Shipment; selected: JourneyNode;
   onOpen: (node: JourneyNode, work: string) => void; runPrimary: () => void;
 }) {
   const info = s.importInfo;
@@ -155,9 +155,11 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
   const groups = partner?.partners ?? [];
   const gnt = info.gnt;
   const modules = s.journey?.modules ?? [];
+  // B4 (Issue #184 repair): no broad fallback. A Work Module is shown only
+  // when it is anchored/gated to the selected Customs Import context —
+  // never an unrelated shipment module via `modules[0]`.
   const module = modules.find(m => m.anchorLabel === selected.label)
-    ?? modules.find(m => m.gate?.stage === selected.id)
-    ?? modules[0];
+    ?? modules.find(m => m.gate?.stage === selected.id);
   const primary = s.journey?.primaryAction;
   const workflowSteps = s.documentWorkflow?.steps ?? [];
   // Import-relevant workflow steps, most urgent first. BLOCKED beats
@@ -167,6 +169,13 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
   const urgentStep = [...workflowSteps]
     .filter(st => st.targetTab === 'nhap' || st.id === 'tax_payment')
     .sort((a, b) => stepRank(a.state) - stepRank(b.state))[0];
+  // B3 (Issue #184 repair): ONE canonical primary action. The dominant CTA
+  // block always renders journey.primaryAction (text + detail) and executes
+  // runPrimary. The urgent workflow step is contextual missing/blocking
+  // evidence only — it never substitutes the CTA text, detail, or handler,
+  // and no second priority engine is created.
+  const urgentBlocked = (urgentStep?.state === 'BLOCKED' || urgentStep?.state === 'MISSING_INFO')
+    ? urgentStep : undefined;
   const cleared = Boolean(info.customsStatus);
   const gntDoc = gnt?.document;
   const money = (n: number | null | undefined, ccy?: string | null) =>
@@ -192,13 +201,18 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
       {!cleared && info.declarationNo && <p className="mt-1 text-xs text-slate-500">Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan.</p>}
     </div>
 
-    {(primary?.text || urgentStep) && <div className="rounded-lg border-2 border-red-600 bg-red-50 p-3" data-testid="ci-next-action">
+    {primary?.text ? <div className="rounded-lg border-2 border-red-600 bg-red-50 p-3" data-testid="ci-next-action">
       <p className="text-xs font-extrabold tracking-wide text-red-700">CẦN LÀM NGAY</p>
-      <p className="mt-0.5 font-extrabold text-red-900">{urgentStep && (urgentStep.state === 'BLOCKED' || urgentStep.state === 'MISSING_INFO') ? urgentStep.label : primary?.text}</p>
-      <p className="mt-0.5 text-sm text-red-800">{urgentStep && (urgentStep.state === 'BLOCKED' || urgentStep.state === 'MISSING_INFO') ? urgentStep.reason : primary?.detail}</p>
+      <p className="mt-0.5 font-extrabold text-red-900">{primary.text}</p>
+      {primary.detail && <p className="mt-0.5 text-sm text-red-800">{primary.detail}</p>}
       <button type="button" onClick={runPrimary} data-testid="ci-primary-cta"
         className="touch-target mt-2 w-full rounded-lg bg-red-600 px-4 py-2.5 font-extrabold text-white">{s.nextLabel || 'Xử lý ngay'}</button>
-    </div>}
+      {urgentBlocked && <p className="mt-2 text-xs text-slate-600">Thiếu/chặn liên quan: {urgentBlocked.label} — {urgentBlocked.reason}</p>}
+    </div> : urgentBlocked ? <div className="rounded-lg border border-amber-300 bg-amber-50 p-3" data-testid="ci-blocked-evidence">
+      <p className="text-xs font-extrabold tracking-wide text-amber-800">THIẾU / ĐANG CHẶN</p>
+      <p className="mt-0.5 text-sm font-bold text-amber-900">{urgentBlocked.label}</p>
+      <p className="mt-0.5 text-xs text-amber-800">{urgentBlocked.reason}</p>
+    </div> : null}
 
     <div>
       <p className="mb-1 text-xs font-extrabold tracking-wide text-slate-500">THÔNG TIN CHÍNH</p>
