@@ -1,0 +1,89 @@
+{
+  "reference": "Approved original prototype B/src/components/JourneyMap.tsx",
+  "archiveSha256": "cfe20232afcd8c0872825658378d08d428f9f5525a6642fa629a457718673cac",
+  "sourceSha256": "f07faf03b321c7766b42928e3076a4b7242c5b53887fc9a6dd0d54d7e703bc01",
+  "idAdaptation": {
+    "sivgm": "si-vgm",
+    "onboard": "on-board"
+  },
+  "positions": {
+    "start": {
+      "x": 48,
+      "y": 30,
+      "w": 164,
+      "h": 44
+    },
+    "booking": {
+      "x": 48,
+      "y": 140,
+      "w": 164,
+      "h": 136
+    },
+    "pickup": {
+      "x": 260,
+      "y": 140,
+      "w": 164,
+      "h": 136
+    },
+    "customs-export": {
+      "x": 472,
+      "y": 140,
+      "w": 164,
+      "h": 136
+    },
+    "si-vgm": {
+      "x": 684,
+      "y": 56,
+      "w": 164,
+      "h": 136
+    },
+    "gate-in": {
+      "x": 684,
+      "y": 224,
+      "w": 164,
+      "h": 136
+    },
+    "etd": {
+      "x": 896,
+      "y": 140,
+      "w": 164,
+      "h": 136
+    },
+    "on-board": {
+      "x": 896,
+      "y": 400,
+      "w": 164,
+      "h": 136
+    },
+    "transit": {
+      "x": 684,
+      "y": 400,
+      "w": 164,
+      "h": 136
+    },
+    "arrival": {
+      "x": 472,
+      "y": 400,
+      "w": 164,
+      "h": 136
+    },
+    "customs-import": {
+      "x": 260,
+      "y": 400,
+      "w": 164,
+      "h": 136
+    },
+    "delivery": {
+      "x": 48,
+      "y": 400,
+      "w": 164,
+      "h": 136
+    },
+    "completed": {
+      "x": 48,
+      "y": 590,
+      "w": 164,
+      "h": 44
+    }
+  }
+}
