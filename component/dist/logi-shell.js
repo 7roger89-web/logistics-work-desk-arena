@@ -18539,7 +18539,7 @@ function wl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			children: [/* @__PURE__ */ (0, U.jsx)(xl, { node: e }), /* @__PURE__ */ (0, U.jsx)("span", { children: e.label })]
 		}, e.id))]
 	});
-	let C = t[0], w = t[t.length - 1], T = (e.journey?.edges ?? []).filter((e) => g.has(e.from) && g.has(e.to)), E = t.every((e) => e.completed) && (e.journey?.modules ?? []).every((e) => e.status === "DONE"), D = (e, t) => {
+	let C = t[0], w = t[t.length - 1], T = (e.journey?.edges ?? []).filter((e) => g.has(e.from) && g.has(e.to)), E = (e, t) => {
 		(t.detail === 0 || !d.current) && r(e);
 	};
 	return /* @__PURE__ */ (0, U.jsxs)("div", {
@@ -18643,14 +18643,14 @@ function wl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 						},
 						children: "START"
 					}), /* @__PURE__ */ (0, U.jsx)("span", {
-						className: q("absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 text-xs font-bold tracking-wide", E ? "border-emerald-600 bg-emerald-600 text-white" : "border-dashed border-slate-400 bg-white text-slate-500"),
+						className: "absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500",
 						style: {
 							left: _l.completed.x,
 							top: _l.completed.y,
 							width: fl,
 							height: 44
 						},
-						children: "COMPLETED"
+						children: "RÀ SOÁT HOÀN TẤT"
 					})] }),
 					t.map((t, r) => {
 						let i = g.get(t.id), a = bl[t.state];
@@ -18659,7 +18659,7 @@ function wl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 							"data-testid": `journey-node-${t.id}`,
 							"data-state": t.state,
 							"aria-pressed": n === t.id,
-							onClick: (e) => D(t.id, e),
+							onClick: (e) => E(t.id, e),
 							style: {
 								left: i.x,
 								top: i.y,
@@ -20439,12 +20439,7 @@ function Wl(e) {
 		"on-board",
 		"transit",
 		"arrival"
-	]), i = Ul(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = [
-		e.finance.receivable,
-		e.finance.outstanding,
-		e.finance.payable,
-		e.finance.paid
-	].some((e) => e != null), l = e.journey?.modules ?? [], u = l.find((e) => e.status === "BLOCKING"), d = l.filter((e) => e.status === "DONE");
+	]), i = Ul(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = e.finance.outstanding, l = c != null, u = e.finance.partner, d = u?.partners ?? [], f = d.length > 0 || !!(u && !u.suggested && u.partnerName), p = d.length > 0 ? d.flatMap((e) => Object.values(e.totalsByCurrency).map((e) => e.remaining)) : u && !u.suggested && u.partnerName ? [u.remaining] : [], m = p.filter((e) => e != null), h = f && (p.length === 0 || m.length !== p.length), g = l && c !== 0 || m.some((e) => e !== 0), _ = l || f && !h && m.length > 0, v = e.journey?.modules ?? [], y = v.find((e) => e.status === "BLOCKING"), b = v.filter((e) => e.status === "DONE");
 	return [
 		{
 			id: "profile",
@@ -20494,18 +20489,18 @@ function Wl(e) {
 		{
 			id: "finance",
 			title: "Tài chính & đối soát",
-			state: c ? "EVIDENCED" : "UNKNOWN",
-			evidence: c ? "Đã có số liệu tài chính/ledger để kiểm tra." : "Chưa có đủ dữ liệu để kết luận số dư.",
-			missing: c ? "Mở Tài chính để kiểm tra khoản thu/phải trả/đối soát; có số liệu không đồng nghĩa đã tất toán." : "UNKNOWN được giữ nguyên, không đổi thành 0/đã trả.",
+			state: g ? "ACTION" : h ? "UNKNOWN" : _ ? "EVIDENCED" : "UNKNOWN",
+			evidence: g ? "Đã có số dư tài chính còn mở cần rà soát." : _ && !h ? "Các số dư closeout hiện có không ghi nhận khoản khác 0 đang mở." : "Chưa có đủ dữ liệu để kết luận số dư.",
+			missing: g ? "Còn công nợ/số dư phải xử lý hoặc đối soát; không được coi là tài chính đã khép." : h ? "Có đối tác/ledger liên quan nhưng số dư còn lại chưa đủ authority; giữ UNKNOWN." : _ ? "Không có số dư mở được ghi nhận ở authority hiện có; đây vẫn chỉ là bằng chứng rà soát, không phải CLOSED toàn lô." : "UNKNOWN được giữ nguyên, không đổi thành 0/đã trả.",
 			doneWhen: "Khoản thu, phải trả và phân bổ được rà soát trên authority tài chính hiện có; không suy ra trạng thái CLOSED toàn lô.",
 			tab: "tai-chinh"
 		},
 		{
 			id: "modules",
 			title: "Quy trình phát sinh",
-			state: u ? "ACTION" : l.length === 0 ? "NOT_APPLICABLE" : d.length === l.length ? "EVIDENCED" : "UNKNOWN",
-			evidence: l.length ? `${d.length}/${l.length} quy trình gắn đã DONE.` : "Lô không có Work Module đang gắn.",
-			missing: u ? u.gateText || u.blocker || "Có quy trình đang chặn." : l.some((e) => e.status !== "DONE") ? "Còn quy trình WAITING/UNKNOWN; không tự hoàn thành từ file upload." : "Không có bước module còn mở.",
+			state: y ? "ACTION" : v.length === 0 ? "NOT_APPLICABLE" : b.length === v.length ? "EVIDENCED" : "UNKNOWN",
+			evidence: v.length ? `${b.length}/${v.length} quy trình gắn đã DONE.` : "Lô không có Work Module đang gắn.",
+			missing: y ? y.gateText || y.blocker || "Có quy trình đang chặn." : v.some((e) => e.status !== "DONE") ? "Còn quy trình WAITING/UNKNOWN; không tự hoàn thành từ file upload." : "Không có bước module còn mở.",
 			doneWhen: "Từng bước Work Module phải có business fact hoàn thành theo writer hiện có.",
 			tab: "van-tai"
 		}
