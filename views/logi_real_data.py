@@ -443,6 +443,16 @@ def _partner_projection(
         ]
         return result
 
+    if len(groups) > 1:
+        # G06 (Issue #184) — the canonical ledger preserves multiple partner
+        # groups (e.g. China agent + Phú Anh). The single-partner convenience
+        # fields above stay empty: no arbitrary "main partner" is selected and
+        # currencies are never combined. Every group is surfaced separately so
+        # the Customs Import slice can render each partner obligation on its
+        # own, per currency.
+        result["partners"] = [_project_partner_group(g) for g in groups]
+        return result
+
     # Nothing established yet: suggest the single existing catalog agent, if any.
     if agents is None:
         try:
@@ -456,6 +466,44 @@ def _partner_projection(
         result["partnerId"] = text(doc.get("agent_id") or doc.get("id"))
         result["partnerName"] = text(doc.get("legal_name")) or result["partnerId"]
     return result
+
+
+def _project_partner_group(group: Mapping[str, Any]) -> dict[str, Any]:
+    """One partner group from the canonical ledger, shaped for the UI.
+
+    G06 (Issue #184): per-partner, per-currency totals only. Never combines
+    currencies and never invents a single "main partner".
+    """
+    party = group.get("partner") if isinstance(group.get("partner"), Mapping) else {}
+    totals = group.get("totals_by_currency") if isinstance(group.get("totals_by_currency"), Mapping) else {}
+    return {
+        "partnerId": text(party.get("party_id")),
+        "partnerName": text(party.get("name")) or text(party.get("party_id")),
+        "partnerKey": text(group.get("partner_key")),
+        "status": text(group.get("status")),
+        "totalsByCurrency": {
+            str(ccy): {
+                "payable": num((vals or {}).get("payable")),
+                "paid": num((vals or {}).get("paid")),
+                "remaining": num((vals or {}).get("remaining")),
+            }
+            for ccy, vals in totals.items()
+        },
+        "payments": [
+            {
+                "id": text(row.get("transaction_id")),
+                "requestId": text(row.get("request_id")),
+                "date": _ddmmyyyy(row.get("occurred_at")),
+                "kind": text(row.get("transaction_kind")) or "payment",
+                "amount": num(row.get("amount")),
+                "ccy": text(row.get("currency")),
+                "allocated": num(row.get("allocated")),
+                "note": text(row.get("note")),
+            }
+            for row in (group.get("payments") or [])
+            if isinstance(row, Mapping)
+        ],
+    }
 
 
 def finance_service_catalog(cost_catalog: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -597,19 +645,26 @@ def finance_projection(
         else UNKNOWN
     )
 
+    # G08 (Issue #184) — core.logic legitimately returns 0.0 for an empty
+    # book, but without at least one booked actual service line every
+    # line-derived figure is UNKNOWN, per the hasActualLines contract the
+    # Finance interface already documents for profit/margin. A manufactured 0
+    # is never rendered. `received` is payment-derived, so it is UNKNOWN only
+    # when no payment records exist at all.
+    money_known = has_actual_lines
     return {
         "quote": _quote_lines(shipment, quotes),
         "actual": actual,
         "currency": currency,
         "hasActualLines": has_actual_lines,
         # AR — canonical snapshot from core.logic (receivable = net + output VAT).
-        "receivable": num(summary.get("receivable")),
-        "received": num(summary.get("paid")),
-        "receivableNet": revenue_net,
-        "outputVat": num(summary.get("output_vat")),
-        "outstanding": num(summary.get("debt")),
+        "receivable": num(summary.get("receivable")) if money_known else UNKNOWN,
+        "received": num(summary.get("paid")) if payments_raw else UNKNOWN,
+        "receivableNet": revenue_net if money_known else UNKNOWN,
+        "outputVat": num(summary.get("output_vat")) if money_known else UNKNOWN,
+        "outstanding": num(summary.get("debt")) if money_known else UNKNOWN,
         # AP — cost side of the same service lines.
-        "payable": num(summary.get("cost")),
+        "payable": num(summary.get("cost")) if money_known else UNKNOWN,
         # The shipment document does not carry a supplier-payment ledger, so
         # "already paid to partners" is UNKNOWN, not zero.
         "paid": UNKNOWN,
