@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import unittest
 from copy import deepcopy
+from pathlib import Path
 
 from core.shipment_journey import build_journey
 from views import logi_real_data as rd
@@ -211,6 +212,42 @@ class SinglePrimaryActionTest(unittest.TestCase):
             execution_profile={}, status_tab="nhap")
         self.assertEqual(action["priority"], "Khan")
         self.assertIn("Thiếu chứng từ", action["text"])
+
+
+class SuggestedPartnerTest(unittest.TestCase):
+    """B6 (Issue #184 repair) — a catalog suggestion must not look canonical.
+
+    Single catalog authority-agent + zero ledger partner groups =>
+    suggested=True, name from the catalog, money stays UNKNOWN (no payable
+    is invented from the catalog). The Quick Panel must render it visibly
+    qualified, never as an established partner debt.
+    """
+
+    def test_catalog_suggestion_stays_qualified(self):
+        sid = "T184-G1"
+        proj = rd._partner_projection(
+            sid,
+            ledger=_ledger(sid, []),
+            agents={"a1": {"agent_id": "agent-1", "legal_name": "Đại lý Gợi ý"}},
+        )
+        self.assertTrue(proj.get("suggested"))
+        self.assertEqual(proj.get("partnerName"), "Đại lý Gợi ý")
+        # No obligation is inferred from the catalog.
+        self.assertIsNone(proj.get("payable"))
+        self.assertIsNone(proj.get("paid"))
+        self.assertIsNone(proj.get("remaining"))
+        self.assertIsNone(proj.get("currency"))
+        self.assertFalse(proj.get("partners"))
+
+    def test_panel_qualifies_suggested_partner(self):
+        # UI seam pin: the qualified block is keyed on partner.suggested and
+        # carries the canonical "đề xuất từ danh mục" wording.
+        src = (Path(__file__).resolve().parent.parent
+               / "component" / "src" / "components" / "ShipmentJourney.tsx").read_text(encoding="utf-8")
+        self.assertIn("ci-partner-suggested", src)
+        self.assertIn("partner.suggested", src)
+        self.assertIn("Đề xuất từ danh mục", src)
+        self.assertIn("chưa xác nhận đối tác phải trả", src)
 
 
 if __name__ == "__main__":

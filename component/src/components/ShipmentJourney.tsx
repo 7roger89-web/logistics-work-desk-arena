@@ -236,10 +236,20 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
           <span className="text-right">{money(t.payable, ccy)}{t.paid ? ` · đã trả ${fmtCcy(t.paid, ccy)}` : ''}</span>
         </div>)}
         {Object.keys(g.totalsByCurrency).length === 0 && <p className="text-sm text-slate-500">Chưa có thông tin</p>}
-      </div>) : partner?.partnerName ? <div className="rounded-lg border border-slate-200 p-2.5 text-sm">
-        <p className="font-extrabold">{partner.partnerName}</p>
-        <div className="mt-1 flex items-start justify-between gap-2"><span className="text-slate-500">Phải trả</span><span className="text-right">{money(partner.payable, partner.currency)}</span></div>
-      </div> : <p className="rounded-lg border border-slate-200 p-2.5 text-sm text-slate-500">Chưa có thông tin đối tác phải trả.</p>}
+      </div>) : partner?.partnerName ? (
+        // B6 (Issue #184 repair): a catalog suggestion must not look like an
+        // established payable party. When suggested === true there are no
+        // ledger rows behind this partner: qualify visibly and keep money
+        // truthful (no payable is inferred from the catalog).
+        partner.suggested ? <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm" data-testid="ci-partner-suggested">
+          <p className="font-extrabold">{partner.partnerName}</p>
+          <p className="mt-0.5 text-xs font-bold text-amber-800">Đề xuất từ danh mục · chưa xác nhận đối tác phải trả</p>
+          <p className="mt-1 text-xs text-slate-600">Chưa có thông tin phải trả.</p>
+        </div> : <div className="rounded-lg border border-slate-200 p-2.5 text-sm">
+          <p className="font-extrabold">{partner.partnerName}</p>
+          <div className="mt-1 flex items-start justify-between gap-2"><span className="text-slate-500">Phải trả</span><span className="text-right">{money(partner.payable, partner.currency)}</span></div>
+        </div>
+      ) : <p className="rounded-lg border border-slate-200 p-2.5 text-sm text-slate-500">Chưa có thông tin đối tác phải trả.</p>}
       <p className="mt-1 text-xs text-slate-500">Không cộng gộp tiền khác đơn vị khi chưa có tỷ giá.</p>
     </div>
 
