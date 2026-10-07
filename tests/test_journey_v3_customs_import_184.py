@@ -87,8 +87,13 @@ class DeclarationNotClearanceTest(unittest.TestCase):
 class UnknownFinanceTest(unittest.TestCase):
     def test_empty_book_stays_unknown(self):
         fin = rd.finance_projection({"id": "T184-B1", "data": {"3.4": {"details": [], "payments": []}}}, {})
-        for key in ("receivable", "received", "receivableNet", "outputVat", "outstanding", "payable"):
+        for key in ("receivable", "receivableNet", "outputVat", "outstanding", "payable"):
             self.assertIsNone(fin[key], f"{key} must be UNKNOWN, not 0")
+        # B2 (Issue #184 repair): `received` is payment-derived, not
+        # line-derived — a genuine zero when no payment exists, never
+        # UNKNOWN merely because the payments list is empty.
+        # UNKNOWN book != settled balance.
+        self.assertEqual(fin["received"], 0.0)
         self.assertFalse(fin["hasActualLines"])
 
     def test_booked_lines_keep_real_numbers(self):
@@ -98,8 +103,8 @@ class UnknownFinanceTest(unittest.TestCase):
         ], "payments": []}}}, {})
         self.assertEqual(fin["receivable"], 11000000.0)
         self.assertEqual(fin["payable"], 8000000.0)
-        # No payment records -> received stays UNKNOWN even with booked lines.
-        self.assertIsNone(fin["received"])
+        # No payment records -> received is a genuine zero (receivables_projection contract).
+        self.assertEqual(fin["received"], 0.0)
 
     def test_payment_records_make_received_known(self):
         fin = rd.finance_projection({"id": "T184-B3", "data": {"3.4": {
@@ -108,6 +113,17 @@ class UnknownFinanceTest(unittest.TestCase):
         }}}, {})
         self.assertEqual(fin["received"], 5000000.0)
         # ...but line-derived money is still UNKNOWN without booked lines.
+        self.assertIsNone(fin["receivable"])
+
+    def test_reversed_only_payment_keeps_received_zero(self):
+        # B2: `received` is the NON-REVERSED receipt total — a reversed-only
+        # book reads a genuine zero, never the reversed amount, never UNKNOWN.
+        fin = rd.finance_projection({"id": "T184-B4", "data": {"3.4": {
+            "details": [],
+            "payments": [{"id": "p1", "amount": 5000000, "date": "2026-10-01",
+                          "status": "reversed"}],
+        }}}, {})
+        self.assertEqual(fin["received"], 0.0)
         self.assertIsNone(fin["receivable"])
 
 
