@@ -108,7 +108,8 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   </nav>;
   const first = nodes[0], last = nodes[nodes.length - 1];
   const edges = (s.journey?.edges ?? []).filter(e => positions.has(e.from) && positions.has(e.to));
-  const terminalComplete = nodes.every(n => n.completed) && (s.journey?.modules ?? []).every(m => m.status === 'DONE');
+  // End-of-map marker only. Journey occurrence + Work Module completion is NOT
+  // whole-shipment closure: documents/finance may still be open or UNKNOWN.
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
   return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom">
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: CW, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
@@ -120,7 +121,7 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
         {sea && first && <path d={journeyEdgePath(DEMO_POS.start, positions.get(first.id)!)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
         {sea && last && <path d={journeyEdgePath(positions.get(last.id)!, DEMO_POS.completed)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
       </svg>
-      {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className={cx('absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 text-xs font-bold tracking-wide', terminalComplete ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-dashed border-slate-400 bg-white text-slate-500')} style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>COMPLETED</span></>}
+      {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
       {nodes.map((n, i) => { const p = positions.get(n.id)!, m = JOURNEY_META[n.state]; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('absolute z-10 flex flex-col rounded-xl p-2.5 text-left transition-shadow hover:shadow-lg', m.cls, selectedId === n.id && 'outline outline-[3px] outline-offset-4 outline-slate-900')}>
         {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
         {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
