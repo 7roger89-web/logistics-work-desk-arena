@@ -1221,11 +1221,6 @@ export default function ShipmentDetail() {
 
       <AttentionNow items={shipmentAttention} title="Cần xử lý" />
 
-      <ShipmentCompletionGoals shipment={s} onOpenTab={(target) => {
-        if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
-        setSp({ tab: target });
-      }} />
-
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
@@ -2321,6 +2316,11 @@ export default function ShipmentDetail() {
       </div>
 
       </ShipmentJourney>
+
+      <ShipmentCompletionGoals shipment={s} onOpenTab={(target) => {
+        if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
+        setSp({ tab: target });
+      }} />
 
       {/* MODAL: deliver */}
       {showDeliver && (
