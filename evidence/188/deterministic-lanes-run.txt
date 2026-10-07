@@ -1,0 +1,19 @@
+=== ENV ===
+Python 3.11.2
+v22.22.3
+chromium: Chromium 153.0.8010.0
+=== TYPECHECK ===
+> tsc --noEmit
+
+=== SCAN ===
+scanned logi-shell.css: 79873 chars, 0 executable hits
+FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0
+=== TESTS 188/186/184 ===
+----------------------------------------------------------------------
+Ran 31 tests in 2.194s
+
+OK
+=== PROTOTYPE-B ORACLE (regenerated SEA-160 fixture) ===
+PASS demo B: 11 exact reference positions, parallel group/routes, fit/zoom/reset/pan, drag guard, all node selections, right-side workspace, collapse/expand, global process, zero navigation writes
+=== DETERMINISTIC ZERO-NODE DOM LANE ===
+PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, 1 CTA, Attention → Cockpit → Goals, zero writes

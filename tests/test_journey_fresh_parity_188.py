@@ -6,11 +6,17 @@ page. These source-contract tests pin the fail-closed UI shape; real browser
 acceptance is still mandatory before merge.
 """
 from pathlib import Path
+import json
+import shutil
+import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 JOURNEY = (ROOT / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
 DETAIL = (ROOT / "component/src/pages/ShipmentDetail.tsx").read_text(encoding="utf-8")
+FRESH_FIXTURE = ROOT / "tests/component/fixtures/view_model_journey_fresh_188.json"
+FRESH_DOM_LANE = ROOT / "tests/component/dom_acceptance_journey_fresh_188.mjs"
+DIST = ROOT / "component/dist/logi-shell.js"
 
 
 class FreshShipmentCockpitContract(unittest.TestCase):
@@ -43,6 +49,46 @@ class FreshShipmentCockpitContract(unittest.TestCase):
         goals = DETAIL.index("<ShipmentCompletionGoals")
         self.assertLess(attention, journey)
         self.assertLess(journey, goals)
+
+
+class ZeroNodeRenderLane(unittest.TestCase):
+    """Issue #188 root cause C: the zero-node render path must actually EXECUTE.
+
+    The source contracts above prove labels exist. This lane mounts the exact
+    committed ``component/dist`` bundle over a real fresh-shipment projection
+    (created through the canonical ``shipment_create`` handler on isolated
+    mongomock staging) and executes the production shape that was never
+    rendered. It skips only when the local toolchain cannot run it at all.
+    """
+
+    def test_fresh_fixture_is_a_truthful_zero_node_shipment(self):
+        fixture = json.loads(FRESH_FIXTURE.read_text(encoding="utf-8"))
+        meta = fixture["meta"]
+        self.assertEqual(meta["journeyNodes"], 0)
+        self.assertIs(meta["serviceScopeConfirmed"], False)
+        self.assertEqual(meta["serviceScope"], [])
+        self.assertEqual(meta["firstMode"], "")
+        self.assertEqual(meta["incoterm"], "")
+        self.assertEqual(meta["transportLegs"], 0)
+        self.assertEqual(meta["profileState"], "PROFILE_INCOMPLETE")
+        self.assertTrue(meta["persisted"])
+        row = next(s for s in fixture["before"]["shipments"] if s["id"] == meta["shipmentId"])
+        self.assertEqual(row["journey"]["nodes"], [])
+
+    def test_zero_node_render_keeps_the_cockpit_in_a_dom(self):
+        node = shutil.which("node")
+        if node is None:  # pragma: no cover - environment without node
+            self.skipTest("node unavailable")
+        if not (ROOT / "component/node_modules/jsdom").exists():  # pragma: no cover
+            self.skipTest("component dev dependencies not installed (run npm ci in component/)")
+        if not DIST.exists():  # pragma: no cover
+            self.skipTest("component dist not built")
+        proc = subprocess.run(
+            [node, str(FRESH_DOM_LANE), str(FRESH_FIXTURE), str(DIST)],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=300,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("PASS journey fresh 188", proc.stdout)
 
 
 if __name__ == "__main__":
