@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle2, Circle, Clock, CircleAlert, ChevronDown, Chev
 import type { JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
 import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
 import { useStore } from '../lib/store';
-import { cx } from '../lib/format';
+import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
 
 export const JOURNEY_WORK = [
@@ -118,6 +118,130 @@ function ModuleStepButton({ node, onPick, selectedId }: {
   </button>;
 }
 
+/**
+ * Issue #184 — Customs Import Quick Panel (product slice 01).
+ *
+ * A V3-hierarchy projection of EXISTING product authorities for the real
+ * `customs-import` node. It creates no store, no engine, no writer:
+ *
+ * - declaration / clearance / tax / VAT / GNT  <- s.importInfo
+ * - legal importer                            <- s.commercialFlow
+ * - partner obligations (multi-group, G06)    <- s.finance.partner
+ * - workflow step states                      <- s.documentWorkflow
+ * - module rollup                             <- s.journey.modules
+ * - ONE primary action                        <- s.journey.primaryAction (-> runPrimary)
+ *
+ * Semantic locks enforced here:
+ * - declaration registration != customs clearance (tk_no alone never renders
+ *   "Đã thông quan"; only customsStatus/clearDate prove clearance).
+ * - generated GNT != tax paid (three separate states; no payment authority
+ *   exists, so "paid" honestly reports "no evidence").
+ * - unknown money renders "—", never 0 (MaybeNum + fmtCcy).
+ * - no cross-currency totals (per-group, per-currency rows only).
+ *
+ * Issue #184 §16 authority gap (documented, not worked around): no canonical
+ * module/document/dependency authority currently links a specific invoice
+ * attachment to the payment-request action, so this panel does NOT invent an
+ * invoice prerequisite. Payment-request steps render their canonical
+ * CONDITIONAL state and reason from the document workflow.
+ */
+function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
+  shipment: Shipment; selected: JourneyNode;
+  onOpen: (node: JourneyNode, work: string) => void; runPrimary: () => void;
+}) {
+  const info = s.importInfo;
+  const flow = s.commercialFlow;
+  const partner = s.finance?.partner;
+  const groups = partner?.partners ?? [];
+  const gnt = info.gnt;
+  const modules = s.journey?.modules ?? [];
+  const module = modules.find(m => m.anchorLabel === selected.label)
+    ?? modules.find(m => m.gate?.stage === selected.id)
+    ?? modules[0];
+  const primary = s.journey?.primaryAction;
+  const workflowSteps = s.documentWorkflow?.steps ?? [];
+  // Import-relevant workflow steps, most urgent first. BLOCKED beats
+  // MISSING_INFO beats CONDITIONAL; the panel never invents urgency.
+  const stepRank = (state: string) =>
+    ({ BLOCKED: 0, MISSING_INFO: 1, CONDITIONAL: 2 } as Record<string, number>)[state] ?? 3;
+  const urgentStep = [...workflowSteps]
+    .filter(st => st.targetTab === 'nhap' || st.id === 'tax_payment')
+    .sort((a, b) => stepRank(a.state) - stepRank(b.state))[0];
+  const cleared = Boolean(info.customsStatus);
+  const gntDoc = gnt?.document;
+  const money = (n: number | null | undefined, ccy?: string | null) =>
+    <span className="font-bold">{fmtCcy(n ?? null, ccy ?? 'VND')}</span>;
+  return <div className="space-y-3" data-testid="customs-import-quick-panel">
+    <div>
+      <span className="text-xs font-bold text-slate-500">XEM NHANH</span>
+      <h3 className="text-xl font-extrabold text-[#0f2a4a]">NHẬP KHẨU</h3>
+      <Status node={selected} />
+    </div>
+
+    <div className="rounded-lg border border-slate-200 p-3 text-sm" data-testid="ci-registration-clearance">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-slate-500">Tờ khai (đăng ký)</span>
+        <span className="text-right font-bold">{info.declarationNo || 'Chưa có thông tin'}{info.regDate ? ` · ${info.regDate}` : ''}</span>
+      </div>
+      <div className="mt-1 flex items-start justify-between gap-2">
+        <span className="text-slate-500">Thông quan</span>
+        {cleared
+          ? <span className="text-right font-bold text-emerald-800">Đã xác nhận{info.clearDate ? ` · ${info.clearDate}` : ''}</span>
+          : <span className="text-right font-bold text-red-700">Chưa xác nhận</span>}
+      </div>
+      {!cleared && info.declarationNo && <p className="mt-1 text-xs text-slate-500">Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan.</p>}
+    </div>
+
+    {(primary?.text || urgentStep) && <div className="rounded-lg border-2 border-red-600 bg-red-50 p-3" data-testid="ci-next-action">
+      <p className="text-xs font-extrabold tracking-wide text-red-700">CẦN LÀM NGAY</p>
+      <p className="mt-0.5 font-extrabold text-red-900">{urgentStep && (urgentStep.state === 'BLOCKED' || urgentStep.state === 'MISSING_INFO') ? urgentStep.label : primary?.text}</p>
+      <p className="mt-0.5 text-sm text-red-800">{urgentStep && (urgentStep.state === 'BLOCKED' || urgentStep.state === 'MISSING_INFO') ? urgentStep.reason : primary?.detail}</p>
+      <button type="button" onClick={runPrimary} data-testid="ci-primary-cta"
+        className="touch-target mt-2 w-full rounded-lg bg-red-600 px-4 py-2.5 font-extrabold text-white">{s.nextLabel || 'Xử lý ngay'}</button>
+    </div>}
+
+    <div>
+      <p className="mb-1 text-xs font-extrabold tracking-wide text-slate-500">THÔNG TIN CHÍNH</p>
+      <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Người nhập khẩu</dt><dd className="text-right font-bold">{flow?.legalImporterName || 'Chưa có thông tin'}</dd></div>
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Thuế NK</dt><dd className="text-right">{money(info.tax)}</dd></div>
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">VAT</dt><dd className="text-right">{money(info.vat)}</dd></div>
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">GNT đã tạo</dt><dd className="text-right font-bold">{gntDoc ? gntDoc.fileName || 'Đã tạo' : 'Chưa tạo'}</dd></div>
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Tệp GNT đính kèm</dt><dd className="text-right font-bold">{gntDoc?.attachmentId ? 'Đã đính kèm' : 'Chưa đính kèm'}</dd></div>
+        <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Thuế đã nộp</dt><dd className="text-right font-bold text-slate-500">Chưa có bằng chứng</dd></div>
+      </dl>
+      <p className="mt-1 text-xs text-slate-500">Tạo GNT không đồng nghĩa đã nộp thuế. Số thuế/VAT do operator ghi từ chứng từ thực tế, không tự tính.</p>
+    </div>
+
+    <div data-testid="ci-partners">
+      <p className="mb-1 text-xs font-extrabold tracking-wide text-slate-500">ĐỐI TÁC / TÀI CHÍNH</p>
+      {groups.length > 1 ? groups.map(g => <div key={g.partnerKey || g.partnerId || g.partnerName} className="mb-2 rounded-lg border border-slate-200 p-2.5">
+        <p className="font-extrabold text-sm">{g.partnerName || 'Đối tác chưa rõ'}</p>
+        {Object.entries(g.totalsByCurrency).map(([ccy, t]) => <div key={ccy} className="mt-1 flex items-start justify-between gap-2 text-sm">
+          <span className="text-slate-500">Phải trả ({ccy})</span>
+          <span className="text-right">{money(t.payable, ccy)}{t.paid ? ` · đã trả ${fmtCcy(t.paid, ccy)}` : ''}</span>
+        </div>)}
+        {Object.keys(g.totalsByCurrency).length === 0 && <p className="text-sm text-slate-500">Chưa có thông tin</p>}
+      </div>) : partner?.partnerName ? <div className="rounded-lg border border-slate-200 p-2.5 text-sm">
+        <p className="font-extrabold">{partner.partnerName}</p>
+        <div className="mt-1 flex items-start justify-between gap-2"><span className="text-slate-500">Phải trả</span><span className="text-right">{money(partner.payable, partner.currency)}</span></div>
+      </div> : <p className="rounded-lg border border-slate-200 p-2.5 text-sm text-slate-500">Chưa có thông tin đối tác phải trả.</p>}
+      <p className="mt-1 text-xs text-slate-500">Không cộng gộp tiền khác đơn vị khi chưa có tỷ giá.</p>
+    </div>
+
+    {module && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" data-testid="ci-module-rollup">
+      <p className="text-xs font-bold text-slate-500">QUY TRÌNH PHÁT SINH</p>
+      <p className="font-extrabold text-sm">{module.name}</p>
+      <p className="text-xs text-slate-600">{module.summary} · {module.status === 'DONE' ? 'đã xong' : module.status === 'BLOCKING' ? 'đang chặn' : module.status === 'UNKNOWN' ? 'chưa xác định' : 'đang chờ'}</p>
+      {module.gateText && <p className="mt-1 text-sm font-semibold text-red-900">{module.gateText}</p>}
+      {module.nextStep && <p className="mt-1 text-xs text-slate-600">Bước tiếp theo: {module.nextStep}</p>}
+    </div>}
+
+    <button type="button" onClick={() => onOpen(selected, 'overview')} data-testid="ci-open-workspace"
+      className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-3 py-3 font-bold text-white">MỞ CÔNG ĐOẠN →</button>
+  </div>;
+}
+
 export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => void; onGlobal: () => void; runPrimary: () => void;
@@ -229,6 +353,9 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         {sea && baseNodes.some(n => n.id === 'si-vgm') && baseNodes.some(n => n.id === 'gate-in') && <p className="mt-2 text-xs text-slate-500">SI/VGM và Gate-in là hai nhánh song song. Lịch ETD không xác nhận hai nhánh đã hoàn tất; ATD ghi nhận được vẫn hiển thị độc lập.</p>}
       </div>
       <aside className="border-t xl:border-t-0 xl:border-l p-4 space-y-3" data-testid="journey-quick-panel">
+        {selected.id === 'customs-import'
+          ? <CustomsImportQuickPanel s={s} selected={selected} onOpen={onOpen} runPrimary={runPrimary} />
+          : <>
         <div><span className="text-xs font-bold text-slate-500">XEM NHANH</span><h3 className="text-xl font-extrabold text-[#0f2a4a]">{selected.label}</h3><Status node={selected} /></div>
         {selected.moduleId && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" data-testid="journey-module-context">
           <p className="text-xs font-bold text-slate-500">QUY TRÌNH · V{selected.moduleTemplateVersion}</p>
@@ -252,6 +379,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         <div className="text-sm"><p className="text-xs font-bold text-slate-500">Chứng từ / ảnh hưởng</p><p>{selected.documentIds.length} tệp liên quan. {selected.blockers.length ? selected.blockers.join(' · ') : 'Chưa có blocker được ghi nhận cho công đoạn này.'}</p></div>
         <div className="text-sm"><p className="text-xs font-bold text-slate-500">Thông tin có thể báo khách</p><p>{selected.evidence ? `${selected.label}: ${selected.evidence}.` : 'Chưa có bằng chứng để xác nhận tiến độ với khách.'}{selected.deadline ? ` Mốc dự kiến: ${selected.deadline}.` : ''}</p></div>
         <button type="button" onClick={() => onOpen(selected, 'overview')} data-testid="journey-open-workspace" className="touch-target w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] text-white font-bold px-3 py-3">Mở bàn làm việc <ArrowRight size={16} /></button>
+          </>}
       </aside>
     </div>
     {stage && <div className="border-t p-4" data-testid="journey-stage-workspace"><div className="flex flex-wrap gap-2 items-center"><h3 className="font-extrabold text-lg">{stage.label} · bàn làm việc</h3><span className="text-sm text-slate-500">{s.id}</span></div>
