@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 JOURNEY = (ROOT / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
 GOALS = (ROOT / "component/src/components/ShipmentCompletionGoals.tsx").read_text(encoding="utf-8")
 DETAIL = (ROOT / "component/src/pages/ShipmentDetail.tsx").read_text(encoding="utf-8")
+MAP = (ROOT / "component/src/components/JourneyMap.tsx").read_text(encoding="utf-8")
 
 
 class SixPhaseContract(unittest.TestCase):
@@ -61,6 +62,16 @@ class CompletionGoalsContract(unittest.TestCase):
         self.assertIn("UNKNOWN được giữ nguyên, không đổi thành 0/đã trả", GOALS)
         self.assertNotIn("completionPercent", GOALS)
         self.assertNotIn("healthScore", GOALS)
+
+    def test_open_or_unknown_finance_is_not_green_by_presence_alone(self):
+        self.assertIn("customerOutstanding !== 0", GOALS)
+        self.assertIn("knownPartnerRemaining.some(v => v !== 0)", GOALS)
+        self.assertIn("state: financeOpen ? 'ACTION' : partnerUnknown ? 'UNKNOWN'", GOALS)
+
+    def test_journey_terminal_is_review_not_fake_whole_shipment_completion(self):
+        self.assertNotIn("terminalComplete", MAP)
+        self.assertNotIn(">COMPLETED</span>", MAP)
+        self.assertIn("RÀ SOÁT HOÀN TẤT", MAP)
 
 
 class BeginnerQuickPanelContract(unittest.TestCase):
