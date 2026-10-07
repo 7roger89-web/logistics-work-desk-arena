@@ -649,8 +649,11 @@ def finance_projection(
     # book, but without at least one booked actual service line every
     # line-derived figure is UNKNOWN, per the hasActualLines contract the
     # Finance interface already documents for profit/margin. A manufactured 0
-    # is never rendered. `received` is payment-derived, so it is UNKNOWN only
-    # when no payment records exist at all.
+    # is never rendered. `received` is payment-derived, not line-derived: it
+    # is the non-reversed customer receipt total and is a genuine zero when
+    # no payment exists (receivables_projection contract) — it is never
+    # turned UNKNOWN merely because the payments list is empty. UNKNOWN book
+    # != settled balance: the book stays UNKNOWN while received reads 0.
     money_known = has_actual_lines
     return {
         "quote": _quote_lines(shipment, quotes),
@@ -659,7 +662,7 @@ def finance_projection(
         "hasActualLines": has_actual_lines,
         # AR — canonical snapshot from core.logic (receivable = net + output VAT).
         "receivable": num(summary.get("receivable")) if money_known else UNKNOWN,
-        "received": num(summary.get("paid")) if payments_raw else UNKNOWN,
+        "received": num(summary.get("paid")),
         "receivableNet": revenue_net if money_known else UNKNOWN,
         "outputVat": num(summary.get("output_vat")) if money_known else UNKNOWN,
         "outstanding": num(summary.get("debt")) if money_known else UNKNOWN,
