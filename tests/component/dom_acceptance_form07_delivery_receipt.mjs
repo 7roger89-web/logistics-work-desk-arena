@@ -112,6 +112,15 @@ async function click(needle, selector = "a,button", root = window.document) {
   return element;
 }
 
+async function waitForDom(find, label) {
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const element = find();
+    if (element) return element;
+    await tick();
+  }
+  assert.fail(label);
+}
+
 function setInputValue(input, value) {
   Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, value);
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -154,18 +163,21 @@ async function gotoDocuments() {
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
   // Current main (#190) moved the document tab into the Journey Global Workspace.
   // Follow the real navigation instead of restoring the removed permanent tabs.
-  await click("Toàn bộ lô hàng", "button");
-  const workspace = $("[data-testid='journey-global-workspace']")[0];
-  assert.ok(workspace, "Journey Global Workspace opens");
+  // Navigation can settle after the fixed click tick on a busy CI host.
+  const globalButton = await waitForDom(
+    () => findClickable("Toàn bộ lô hàng", "button"),
+    "shipment identity bar opens the Journey Global Workspace",
+  );
+  globalButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  const workspace = await waitForDom(
+    () => $("[data-testid='journey-global-workspace']")[0],
+    "Journey Global Workspace opens",
+  );
   await click("Chứng từ", "button", workspace);
-  // The Global Workspace may settle after the click tick on a busy CI host.
-  // Wait for the actual picker, not an arbitrary longer fixed sleep.
-  for (let attempt = 0; attempt < 25; attempt++) {
-    const picker = $("[data-testid='shipment-document-picker']")[0];
-    if (picker) return picker;
-    await tick();
-  }
-  assert.fail("document picker is on the existing Shipment Detail");
+  return waitForDom(
+    () => $("[data-testid='shipment-document-picker']")[0],
+    "document picker is on the existing Shipment Detail",
+  );
 }
 
 function form07Card(root = window.document) {
