@@ -1,0 +1,54 @@
+{
+ "identity": {
+  "x": 16,
+  "y": 24,
+  "w": 1496,
+  "h": 73
+ },
+ "attention": {
+  "x": 16,
+  "y": 107,
+  "w": 1496,
+  "h": 51
+ },
+ "map": {
+  "x": 16,
+  "y": 168,
+  "w": 1034,
+  "h": 718
+ },
+ "panel": {
+  "x": 1062,
+  "y": 168,
+  "w": 450,
+  "h": 718
+ },
+ "split": {
+  "x": 16,
+  "y": 168,
+  "w": 1496,
+  "h": 718
+ },
+ "nodeBooking": {
+  "w": 148,
+  "h": 123
+ },
+ "fitPct": "90%",
+ "cardWidths": [
+  285,
+  285,
+  285,
+  285,
+  285
+ ],
+ "cardGaps": [
+  12,
+  12,
+  12,
+  12
+ ],
+ "sidebarVisible": false,
+ "topbarVisible": false,
+ "tabRowPresent": false,
+ "pageX": 16
+}
