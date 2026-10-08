@@ -395,7 +395,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
 }) {
   const [picked, setPicked] = useState('');
   const [mapCollapsed, setMapCollapsed] = useState(false);
-  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
+  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'quick');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const [chosen, setChosen] = useState('');
@@ -403,7 +403,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const [attachError, setAttachError] = useState('');
   const { dispatch } = useStore();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'overview'); }, [activeStage, work, globalActive, globalTab]);
+  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'quick'); }, [activeStage, work, globalActive, globalTab]);
   const journey = s.journey;
   const modules = useMemo(() => journey?.modules ?? [], [journey]);
   const attachOutcome = vm?.lastWrites?.find(w => w.event === 'work_module_attach' && w.requestId === attachPending);
@@ -446,25 +446,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   };
   const wide = panelMode === 'stage' || panelMode === 'global';
   const problem = baseNodes.find(n => n.blockers.length);
-  const phaseDefs = [
-    { id: 'profile', label: 'HỒ SƠ', ids: [] as string[], tab: 'van-tai' },
-    { id: 'origin', label: 'ĐẦU ĐI', ids: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'], tab: 'lay-hang' },
-    { id: 'main', label: 'CHẶNG CHÍNH', ids: ['etd', 'on-board', 'transit', 'arrival'], tab: 'van-tai' },
-    { id: 'import', label: 'NHẬP KHẨU', ids: ['customs-import'], tab: 'nhap' },
-    { id: 'delivery', label: 'GIAO HÀNG', ids: ['delivery'], tab: 'nhap' },
-    { id: 'finish', label: 'HOÀN TẤT', ids: [] as string[], tab: 'chung-tu' },
-  ];
-  const phaseItems = phaseDefs.map(phase => {
-    const phaseNodes = baseNodes.filter(n => phase.ids.includes(n.id));
-    const problemNode = phaseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length > 0);
-    const currentNode = phaseNodes.find(n => n.current);
-    const firstOpen = phaseNodes.find(n => !n.completed) ?? phaseNodes[0];
-    const representative = problemNode ?? currentNode ?? firstOpen;
-    const state: JourneyNode['state'] = problemNode ? 'PROBLEM' : currentNode ? 'CURRENT'
-      : phaseNodes.length && phaseNodes.every(n => n.completed) ? 'COMPLETED'
-      : 'UPCOMING';
-    return { ...phase, phaseNodes, representative, state };
-  });
   return <section className="journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden" data-testid="shipment-journey">
     <div className="flex flex-wrap items-center gap-3 border-b p-4">
       <div className="min-w-0 flex-1"><h2 className="font-extrabold text-lg text-[#0f2a4a]">Hành trình lô hàng</h2>
@@ -503,26 +484,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         expanded={expandedModule === m.instanceId} onToggle={() => setExpandedModule(cur => cur === m.instanceId ? '' : m.instanceId)}
         selectedId={selected.id} onPick={pick} />)}</div>
     </div>}
-    <nav className="border-b border-slate-300 bg-slate-50 p-2" aria-label="6 giai đoạn hành trình" data-testid="journey-phase-strip">
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-6">
-        {phaseItems.map((phase, index) => {
-          const meta = META[phase.state];
-          const Icon = meta.icon;
-          return <button key={phase.id} type="button" data-testid={`journey-phase-${phase.id}`}
-            onClick={() => phase.representative ? pick(phase.representative.id) : openGlobal(phase.tab)}
-            className={cx('touch-target min-w-0 rounded-lg border px-2 py-2 text-left', meta.cls)}>
-            <span className="flex items-center gap-1 text-[10px] font-extrabold tracking-wide"><Icon size={12} aria-hidden="true" />{index + 1}/6</span>
-            <span className="mt-0.5 block truncate text-xs font-black">{phase.label}</span>
-            <span className="mt-0.5 block text-[10px] font-medium opacity-80">{phase.phaseNodes.length ? `${phase.phaseNodes.length} bước chi tiết` : phase.id === 'profile' ? 'Hồ sơ & phạm vi' : 'Rà chứng từ / tài chính'}</span>
-          </button>;
-        })}
-      </div>
-    </nav>
-    <div className="flex flex-wrap items-center gap-2 border-b border-slate-300 bg-white px-3 py-2" data-testid="journey-map-toolbar">
-      <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">📍 Đang ở: {baseNodes.find(n => n.current)?.label || 'Chưa đủ mốc thực tế'}</span>
-      {problem ? <button type="button" onClick={() => pick(problem.id)} className="touch-target rounded-md bg-red-600 px-2 py-1 text-xs font-bold text-white">⚠ {problem.blockers[0]}</button> : <span className="text-xs text-slate-500">Chưa ghi nhận blocker trên map</span>}
-      {wide && <button type="button" onClick={() => setMapCollapsed(v => !v)} className="touch-target ml-auto rounded-md border border-slate-300 px-2 text-xs font-semibold" data-testid="journey-collapse-map">{mapCollapsed ? '⇥ Mở lại Journey Map' : '⇤ Thu gọn map'}</button>}
-    </div>
     <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
       <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
       <aside className="journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]" data-testid="journey-side-panel">
