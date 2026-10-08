@@ -2,8 +2,9 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=e7538a08dac4191300f9838d930c71e7ad001ab3c0fa14c1742ca799df864ffb
+SOURCE_CONTENT_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b
 PORTABLE_EXPERIENCE_CONTENT_SHA256=9b10fafe780e47bc82da89d6893d1a88a32c06031dfd7cfb63effc89926cce82
+PORTABLE_SKILL_MANIFEST_SHA256=f74353e4fca11635b43066e24ebff318efae77fedb4b0498f0ac27c386af51ca
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -157,6 +158,15 @@ Rules for the actor self-read receipt:
 - `LAW_CHECK=BLOCKED` requires immediate cessation of substantive work.
 - The receipt is verifiable preflight evidence only; it grants no execution
   authority, permission widening, or acceptance waiver.
+- `LAW_READ_RECEIPT != LAW_APPLICATION_EVIDENCE`. A truthful
+  `LAW_CHECK=PASS` proves only that the actor established source-bound law
+  context; it does not prove that later material decisions actually applied
+  the relevant law.
+- When a material decision is changed, constrained, blocked, or simplified by
+  a Supreme Law clause, bind that observable consequence to the existing
+  evidence/status/ReturnPacket/task-state surface where it materially helps
+  verification. Do not add per-turn ceremony, private-chain-of-thought
+  narration, or a second law-compliance ledger.
 
 A valid law context is, in precedence order: the reachable active canonical
 notebook; an up-to-date installed projection of that notebook; an up-to-date
@@ -372,6 +382,58 @@ Do not create a connector-health daemon, polling service, registry, or
 monitoring framework for this rule. Run the preflight only when GitHub access
 is materially required or when a relevant failure is observed, then stop once
 the failure class is established.
+
+### Prompt-writer repo-skill routing invariant
+
+```text
+PROMPT_WRITER_SKILL_ROUTING_V1=YES
+DELEGATED_REPO_OPERATIONAL_PROMPT => TARGET_REPO_SKILL_DISCOVERY
+MATCHED_SKILL_SET => SOURCE_BOUND_SKILL_HANDOFF
+NO_MATCH => SKILL_CHECK=NO_MATCH
+MAX_SELECTED_SKILLS=3
+```
+
+Before ChatGPT, Control Tower, or any other P2P prompt writer emits an
+operational prompt that delegates repository work to Arena, Codex, Manus,
+Claude, Grok, or another supported AI executor, the prompt writer must perform
+bounded skill routing against the **target repository** first. The Owner must
+not be required to remember skill IDs, manually paste `SKILL.md` bodies, or
+translate a natural-language goal into internal skill wiring.
+
+The required sequence is:
+
+1. Establish the target repository and read its repository instructions.
+   Discover repo-local skill metadata from the existing supported surfaces:
+   `.p2p/portable/P2P-SKILL-PROJECTION.json` when present and
+   `.agents/skills/*/SKILL.md` frontmatter/metadata as needed. When the
+   installed Skill Consumption Wire is available, reuse it. Discovery is
+   metadata-first; do not preload every skill body.
+2. Select the **smallest relevant set**, bounded to at most three skills.
+   Explicit Owner invocation such as `@skill`, `$skill`, or a declared
+   `REQUIRED_SKILLS` set wins when it resolves validly. A prompt writer may
+   name a matching repo-native skill as required after metadata inspection;
+   this does not admit the skill globally or create a second router.
+3. Before issuing the executor prompt, resolve every selected skill to its exact
+   repo-local `SKILL.md` path and SHA-256. Serialize the frozen selected set,
+   exact paths/hashes, destination host mode, and the requirement that the
+   executor read and apply every selected skill before substantive execution
+   and return one `p2p-skill-consumption-receipt/1`.
+4. If no relevant skill matches, serialize `SKILL_CHECK=NO_MATCH` and continue
+   normal delegation. Do not invent a skill merely to satisfy this rule.
+5. If an explicitly required skill is unknown, ambiguous, missing, unloadable,
+   or hash-mismatched, fail closed **before delegation**. Do not silently drop,
+   rename, substitute, or downgrade a required skill.
+6. This invariant applies to both `NEW_CHAT` and `SAME_CHAT`, and to every
+   supported delegated AI/model surface. Skill guidance never widens Owner
+   authority, permissions, mutation authority, deployment/release authority,
+   task scope, or acceptance authority.
+7. Reuse the existing single routing/consumption path. Do not add another
+   router, registry, vector database, background scanner, daemon, or preload-all
+   mechanism to implement this invariant.
+
+A literal `@skill` token in the downstream executor prompt is not itself
+proof of consumption. Source-bound path/hash handoff plus the executor's exact
+consumption receipt is the evidence boundary.
 
 ### Supreme laws
 
@@ -1065,10 +1127,30 @@ mandatory OE Gate:
 5. **SMALLER_VERIFIABLE_SLICE** — Can the current work be reduced to a smaller
    independently verifiable vertical slice that still creates a useful result?
 
+Directional interpretation:
+
+- `SIMPLER_PATH`: **YES** is a reduction signal — choose the simpler valid path
+  unless concrete acceptance/risk evidence shows it is not materially
+  equivalent. **NO** may mean the current path is already the simplest valid
+  path.
+- `MATERIAL_PROGRESS`: **YES** supports proceeding; **NO** is a stop/reduce
+  signal.
+- `NECESSITY`: **YES** supports proceeding; **NO** is a remove/defer signal.
+- `CORE_BEFORE_SUPPORT`: **YES** supports proceeding; **NO** is a
+  core-first/reduce signal.
+- `SMALLER_VERIFIABLE_SLICE`: **YES** is a reduction signal — use the smaller
+  independently useful slice. **NO** may mean the current slice is already
+  minimal.
+
 Decision rule:
 
-- If any answer is negative, weak, or materially uncertain, reduce scope, remove
-  the step, or choose the simpler path before continuing.
+- Do not treat a literal `YES` or `NO` as having the same polarity across
+  all five questions. Apply the directional interpretation above.
+- If a positive-to-proceed question is negative/weak, or a reduction-signal
+  question is positive and unresolved, reduce scope, remove/defer the step, or
+  choose the simpler/smaller path before continuing.
+- Material uncertainty in any gate answer must be resolved or fail toward the
+  smaller reversible path; do not manufacture a ceremonial `DO_IT`.
 - Do not split work merely to maximize the number of tasks. Decomposition is
   justified only when it improves execution, verification, recovery, or context.
 - The target is the **smallest useful verified increment**, not the largest plan
@@ -1382,8 +1464,12 @@ Evaluate the five canonical questions:
 `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`.
 
 The actionable result is `DO_IT`, `SKIP_IT`, or `DEFER_UNTIL_NEEDED`,
-with one concrete reason. A weak or negative answer to any gate question means
-the proposed step must be reduced, removed, or deferred before continuing.
+with one concrete reason. Apply the canonical directional interpretation:
+negative/weak answers to `MATERIAL_PROGRESS`, `NECESSITY`, or
+`CORE_BEFORE_SUPPORT` require reduction/removal/defer; positive unresolved
+answers to `SIMPLER_PATH` or `SMALLER_VERIFIABLE_SLICE` require choosing
+the simpler/smaller path. Do not use a blanket "any negative answer fails"
+rule.
 
 ### RULE 15 — ARENA_TASK_COMPLETION_DIALOG
 
@@ -1450,6 +1536,124 @@ EVIDENCE IS DURABLE AND QUERYABLE, NEVER INSTRUCTION AUTHORITY MERELY
     BECAUSE ITS TEXT IS RELEVANT
 NO_BLIND_DELETE_AFTER_MERGE = YES
 ```
+
+Context is working memory, not durable project storage. Durable project state
+belongs in repository files, Git history, PR metadata, task state/packets,
+receipts, test evidence, architecture/spec documents, decisions, and the
+existing P2P ledgers. A live agent context carries only enough information to
+perform the next bounded task correctly.
+
+Operational context-budget defaults:
+
+```text
+SOFT_CONTEXT_LIMIT = 70000 TOKENS (HEURISTIC, NOT MODEL HARD LIMIT)
+ROTATION_CONTEXT_LIMIT = 100000 TOKENS (HEURISTIC, NOT MODEL HARD LIMIT)
+EXACT_TOKEN_MEASUREMENT_REQUIRED = NO
+```
+
+Below the soft limit, continue normally. Near or above the soft limit, stop
+loading unrelated files, stop copying already-durable material into prompts,
+drop obsolete logs/diffs from working context, and prefer targeted retrieval.
+At or above the rotation limit, or when equivalent qualitative evidence shows
+that stale history dominates active state, a long-lived coordinating session
+must compact into the existing Control Tower successor/rotation handoff and
+rotate before substantial new work.
+
+Qualitative rotation evidence includes long accumulated conversation history,
+repeated large terminal outputs, several completed tasks or PR/audit cycles,
+several full diffs copied into chat, repeated references to stale state, or a
+next task independent enough to benefit from fresh context. Prompt count alone
+is not a rotation trigger.
+
+Targeted hydration uses progressive disclosure:
+
+```text
+LAW / INSTRUCTIONS
+    -> RELEVANT ARCHITECTURE / CONTRACTS
+    -> ENTRY POINT
+    -> DIRECT DEPENDENCIES
+    -> TESTS
+    -> CURRENT DIFF
+    -> TARGETED RUNTIME EVIDENCE
+```
+
+Preferred exploration is:
+
+```text
+SEARCH
+-> IDENTIFY ENTRY POINT
+-> INSPECT DIRECTLY RELATED FILES
+-> INSPECT TESTS / CONTRACTS
+-> MAKE BOUNDED CHANGE
+-> RUN TARGETED VERIFICATION
+-> WIDEN ONLY WHEN FAILURE EVIDENCE REQUIRES IT
+```
+
+Do not preload the whole repository "for completeness", and do not enforce a
+fixed docs/code ratio such as 90/10.
+
+These session-level 70k/100k heuristics do **not** promote, replace, or
+reconfigure the existing `ADAPTIVE_CONTEXT_BUDGET` runtime capability.
+That capability remains governed by its own implementation/evidence and
+capability-ledger status; this RULE 16 policy creates no runtime token-metering
+claim and no capability promotion.
+
+Handoffs are intentionally thin. A normal Writer/Codex implementation handoff
+contains only information the next actor cannot reliably rediscover:
+
+```text
+ROLE
+TASK_ID
+REPOSITORY
+BASE / PR / EXACT_HEAD
+OBJECTIVE
+BOUNDED_SCOPE
+ACCEPTANCE_CRITERIA
+PROHIBITIONS
+REQUIRED_EVIDENCE
+STOP_CONDITION
+AUTHORITATIVE_REFERENCES
+```
+
+Prefer exact durable references over pasted source files, large diffs, giant
+terminal logs, previous-agent transcripts, complete PR discussion history, or
+historical reasoning. If information can be represented as a durable artifact,
+prefer the artifact over conversational history.
+
+The existing `P2P_CONTROL_TOWER_SUCCESSOR_PACKET` and
+`CONTROL_TOWER_ROTATION_HANDOFF` are the compaction mechanism. Do not create a
+second compaction-packet type, second context store, or second handoff
+framework. A successor packet carries current live state, active evidence,
+live decisions, next action, acceptance/stop conditions, and authoritative
+rehydration references; it excludes full chat history and disposable context.
+
+Mutable facts inside any packet remain claims, not authority. Current main SHA,
+PR HEAD, branch state, mergeability, and test status must be freshly verified
+where practical by the receiving actor before they drive a decision.
+
+Writer/Codex rules:
+- start from fresh repository state and actor-own law/experience preflight;
+- hydrate task-relevant docs/code first and stay inside bounded scope;
+- produce durable evidence rather than giant conversational explanation;
+- return changed paths, exact commit SHA, tests/results, unresolved issues, and
+  artifact/receipt references;
+- stop after satisfying the assigned task packet; do not continue unrelated
+  exploration without authorization.
+
+Supervisor/Auditor rules:
+- remain independent from the Writer working conversation;
+- receive the task contract, exact PR/commit/HEAD, acceptance criteria, and
+  required durable evidence references, not the Writer's full chat by default;
+- independently read law, verify exact HEAD, inspect relevant source/diff,
+  run required or challenge tests, verify receipts, and return a reproducible
+  PASS/REJECT verdict under the existing Supervisor authority.
+
+Disposable context after its outcome is durably recorded includes exploratory
+shell output, failures no longer relevant, superseded plans, resolved
+hypotheses, large old diffs, old file copies, repeated summaries, verbose agent
+narration, merged-PR detail no longer affecting active work, and duplicated
+governance text available by authoritative reference. Do not discard unresolved
+blockers or evidence that still affects acceptance.
 
 Runtime enforcement (existing machinery, no new subsystem):
 
@@ -1994,41 +2198,54 @@ UNPROVEN_MODEL_OR_PROVIDER => OBSERVE_BEFORE_CONTROL_WHEN_CONTROL_HAS_MATERIAL_R
 ROUTING_OR_CLASSIFICATION_SIGNAL != DOMAIN_TRUTH_AUTHORITY
 ABSTAIN_OR_UNKNOWN => VALID_OUTCOME_WHEN_EVIDENCE_IS_INSUFFICIENT
 TRUTHFUL_UNKNOWN > UNSUPPORTED_CONFIDENT_GUESS
+MATERIAL_CAPABILITY_REOPEN => PRIOR_DECISION_CHECK_FIRST
+MATERIALLY_EQUIVALENT_PRIOR_DECISION => REUSE_UNLESS_MATERIAL_CONDITION_CHANGED
+REOPEN_REQUIRES_RECORDED_MATERIAL_CHANGE
 ```
 
 Admission order:
 
-1. **Name the target-domain claim.** State what the capability must prove for
+1. **Run a bounded prior-decision check before reopening evaluation.** Look for
+   a durable materially equivalent prior ADMIT / OBSERVE_ONLY / REJECT /
+   UNSURE decision for the same capability family, target domain/language,
+   task type/input distribution, material model/artifact version, authority
+   level, and runtime conditions. Prefer exact durable identity plus bounded
+   synonym/alias lookup over broad historical preload. If the prior decision
+   is still materially equivalent, reuse it. Reopen only when a concrete
+   changed condition is recorded
+   (`MATERIAL_CAPABILITY_REOPEN => PRIOR_DECISION_CHECK_FIRST`,
+   `REOPEN_REQUIRES_RECORDED_MATERIAL_CHANGE`).
+2. **Name the target-domain claim.** State what the capability must prove for
    THIS domain, language, task type, and input distribution. An upstream
    benchmark, another project's success, or a stronger-looking number is
    context, never proof (`CROSS_DOMAIN_SUCCESS != TARGET_DOMAIN_PROOF`).
-2. **Stand up the cheapest credible baseline first** when the candidate is
+3. **Stand up the cheapest credible baseline first** when the candidate is
    materially more complex than the current path. A baseline is the simplest
    meaningful comparison already at hand: the existing
    implementation/provider/ranking, deterministic rules, a no-op/control, or
    manual policy. Do not manufacture one ceremonially
    (`NEW_COMPLEX_CAPABILITY => CHEAP_CREDIBLE_BASELINE_FIRST`).
-3. **Freeze the evaluation set before the result is known** whenever the
+4. **Freeze the evaluation set before the result is known** whenever the
    result could shape the test — for example when the same person/process
    chooses both the rows and the winner
    (`EVALUATION_SET => FREEZE_BEFORE_RESULT_WHEN_RESULT_CAN_BIAS_THE_TEST`).
-4. **Predeclare the promotion criteria** — threshold, what counts as
+5. **Predeclare the promotion criteria** — threshold, what counts as
    materially better, what blocks, and who grades — before the final result is
    produced, and freeze them with the evaluation set
    (`PROMOTION_CRITERIA => PREDECLARE_BEFORE_FINAL_RESULT`).
-5. **Measure under materially relevant target conditions**, reusing RULE 19's
+6. **Measure under materially relevant target conditions**, reusing RULE 19's
    smallest representative probe. If the real bounded task is the cheapest
    representative test, use it. If a tiny probe answers the question, stop
    there; no mandatory broad benchmark ceremony.
-6. **Observe before control** when the model, provider, or artifact is
+7. **Observe before control** when the model, provider, or artifact is
    unproven and granting control carries material risk: run shadow/suggest-only
    and keep the deterministic path authoritative
    (`UNPROVEN_MODEL_OR_PROVIDER => OBSERVE_BEFORE_CONTROL_WHEN_CONTROL_HAS_MATERIAL_RISK`).
-7. **Admit, reject, or abstain on the recorded evidence.** Escalating through
+8. **Admit, reject, or abstain on the recorded evidence.** Escalating through
    `CAN_RUN`, `WORKS_FOR_TARGET_TASK`, `MATERIALLY_BETTER_THAN_CURRENT_PATH`,
    `WORTH_COMPLEXITY`, and `READY_FOR_PRODUCT_CONTROL` requires a separate
    yes at each step; none of them implies the next.
-8. **Stop when the question is answered.** Record the decision, the baseline,
+9. **Stop when the question is answered.** Record the decision, the baseline,
    and the criteria so a later reader can re-check it without rerunning
    everything.
 
@@ -2082,6 +2299,73 @@ DECISION=ADMIT | OBSERVE_ONLY | REJECT | UNSURE_KEEP_CURRENT_PATH
 OWNER_ACTION_NOW=
 ```
 
+
+#### PERFORMANCE_LANGUAGE_ADMISSION_V1 — evidence before Rust/native expansion
+
+This subsection operationalizes `POLYGLOT_BY_EVIDENCE_V1` as one bounded
+application of RULE 19. It answers: "does a measured performance problem
+justify testing or adopting a new native/runtime language such as Rust?" It
+does not create a benchmark service, daemon, watcher, second router, registry,
+microservice, or automatic migration path.
+
+Canonical distinctions:
+
+```text
+PERFORMANCE_SIGNAL != PERFORMANCE_PROOF
+LARGE_DATASET != RUST_NEED
+PERFORMANCE_FAILURE => CLASSIFY_BOTTLENECK_FIRST
+NON_CPU_BOTTLENECK => DO_NOT_ACTIVATE_NATIVE
+CURRENT_STACK_MEETS_ACCEPTANCE => STOP_KEEP_CURRENT_STACK
+NATIVE_SPIKE_REQUIRES_MEASURED_CPU_HOT_PATH
+NATIVE_ADOPTION_REQUIRES_SAME_WORKLOAD_BEFORE_AFTER + SMALLEST_BOUNDARY + OPERATIONS_COST + ROLLBACK_PATH
+MISSING_TASK_SPECIFIC_ACCEPTANCE_OR_MEASUREMENT => INSUFFICIENT_EVIDENCE
+```
+
+Decision order:
+
+1. **Bind a real acceptance target.** Use the task/product requirement that
+   matters (latency, duration, throughput, memory, or another comparable
+   metric). Do not invent a threshold merely because a workload is large.
+2. **Measure the current path.** Capture a comparable baseline for the same
+   target metric. A task-text cue such as "slow", "batch", "scale", "CPU",
+   "parser", or "indexing" is only a discovery hint.
+3. **Classify the bottleneck before blaming the language runtime.** Distinguish
+   at least CPU/algorithm from DB, network, I/O, serialization, external
+   service, memory, or unknown. A non-CPU bottleneck routes to that cause and
+   does not activate Rust/native work.
+4. **Stop if the current stack already meets acceptance.** Faster in theory is
+   not a reason to add a runtime.
+5. **For a CPU bottleneck, require an observed hot path.** Record the concrete
+   component and measured share. If no hot path is measured, return
+   `INSUFFICIENT_EVIDENCE`.
+6. **Try the smallest credible current-stack optimization first** when it is
+   cheaper and reversible. If that path meets acceptance, stop.
+7. **Open only a bounded native spike** when a measured CPU hot path still
+   misses acceptance after the current stack's credible optimization. Keep the
+   boundary small and stable; do not rewrite the application.
+8. **Compare the spike on the same workload and target.** A spike that misses
+   acceptance is rejected. A passing spike still cannot be adopted until the
+   smallest boundary, operating/build/deploy/observability/security/maintenance
+   cost, and rollback/removal path are explicit.
+9. **Adopt only the proved boundary.** A passing Rust/native module proves that
+   component under the tested conditions, not a project-wide migration.
+10. **Stop honestly when evidence is missing.** Scale or reputation never
+    substitutes for task-specific acceptance and measurement.
+
+The existing runtime implementation is
+`.p2p/system/p2p_capabilities/performance_language_gate.py`, with the thin
+CLI `scripts/p2p_performance_language_gate.py`. The helper is a deterministic
+evidence classifier only: it executes no benchmark commands, installs no
+toolchain, makes no project mutation, and emits `PERMISSION_EFFECT=NONE`.
+Its technical verdict cannot widen task authority or bypass Owner Gates.
+
+Representative canary: the verified Ziwei v3 dataset contains 518,400 records
+and 5,878,228,608 bytes with combined SHA-256
+`21fe90f8737931c63397f38e419bbba6e839b7f8318440ccb747f9bb3e9b1870`.
+That real scale is deliberately insufficient by itself: without a task-specific
+performance acceptance target and measured baseline, the correct verdict is
+`INSUFFICIENT_EVIDENCE`, not "use Rust".
+
 ### RULE 20 — OWNER_EXECUTOR_SELECTION_AND_AUTONOMOUS_COMPLETION
 
 The beginner Owner selects an executor with one natural command. The project
@@ -2116,13 +2400,16 @@ otherwise (Supreme Law #7).
 
 #### A. Control Tower responsibility
 
-When such a command is received, the active project Control Tower must
-itself:
+When such a command is received, the active project Control Tower must itself
+follow the sequence below. A minimal read-only bootstrap may precede the law
+receipt only when it is necessary to locate/read the valid law source; that
+bootstrap may not make task decisions, recover substantive mission state,
+choose an executor, or mutate project state.
 
 ```text
-FRESH_CHECK
+READ_ACTIVE_SUPREME_LAW
+→ FRESH_CHECK
 → RECOVER_DURABLE_MISSION_STATE
-→ READ_ACTIVE_SUPREME_LAW
 → READ_PROJECT_AGENTS_SPEC_STATE
 → RESOLVE_UNFINISHED_BOUNDED_GOAL
 → SELECT_OR_CONFIRM_EXECUTOR
@@ -2557,6 +2844,19 @@ machine-readable ledger below is the durable record.
         "tests/test_p2p_domain_capability_admission_01.py",
         "tests/test_p2p_operations_notebook.py (ledger entry BACKLOG_J truthfulness check)"
       ]
+    },
+    {
+      "id": "BACKLOG_K",
+      "item": "PERFORMANCE_LANGUAGE_ADMISSION_V1",
+      "status": "VERIFIED",
+      "evidence": [
+        "Issue #252 P2P — Operationalize Rust evidence gate end-to-end",
+        "docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md (RULE 19 — PERFORMANCE_LANGUAGE_ADMISSION_V1)",
+        ".p2p/system/p2p_capabilities/performance_language_gate.py + scripts/p2p_performance_language_gate.py",
+        "tests/test_p2p_performance_language_admission_01.py",
+        "governance/research-adoption-ledger.json (RA-EXT-103)",
+        "tests/fixtures/p2p_performance_language_gate/ziwei_518400_canary.json"
+      ]
     }
   ]
 }
@@ -2569,6 +2869,8 @@ exact PR head/tree for Issue #42 under RULE_ASSIMILATION_GATE_V1.
 independently verified PR #246 at exact Writer head
 `d14b5e89d14f84dc70d4eb53fda978e4f7b2060a` (PR comment `5793604664`) under
 RULE_ASSIMILATION_GATE_V1 before this status flip.
+
+`BACKLOG_K` (`PERFORMANCE_LANGUAGE_ADMISSION_V1`) is `VERIFIED`. Independent Supervisor review bound exact Writer head `90c69c5d650d54590f3277c00d9ec5cc5b647e3d` / tree `b4a84a495eb13f5c0ff4b17dc1931e3f7a809752` for PR #253, with Control Tower durable receipt comment `5815665839`, before this status flip under `RULE_ASSIMILATION_GATE_V1`.
 
 ## 5. ASSIMILATION_BACKLOG — previously promised items
 
@@ -2621,6 +2923,8 @@ section 4.3.
   `tests/test_p2p_domain_capability_admission_01.py`. Control Tower independently
   verified exact Writer head `d14b5e89d14f84dc70d4eb53fda978e4f7b2060a`
   in PR comment `5793604664` before this status flip.
+
+- **K. Performance/language admission (`PERFORMANCE_LANGUAGE_ADMISSION_V1`)** — `VERIFIED`. Issue #252 operationalizes the earlier Rust/polyglot research through one Rule 19 subsection, a deterministic evidence gate, packaging/install inheritance, a real Ziwei 518,400-record canary, RA-EXT-103, and focused tests. Independent Supervisor verification covered exact Writer head `90c69c5d650d54590f3277c00d9ec5cc5b647e3d` / tree `b4a84a495eb13f5c0ff4b17dc1931e3f7a809752`; Control Tower recorded receipt `5815665839` before this status flip. No Rust dependency, migration, deployment, benchmark service, or background monitor is introduced.
 
 ## 6. Discovery and operator paths
 
