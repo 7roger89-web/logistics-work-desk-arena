@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import unittest
 
+from views.logi_real_data import compose_primary_action
+
 ROOT = Path(__file__).resolve().parent.parent
 JOURNEY = (ROOT / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
 DETAIL = (ROOT / "component/src/pages/ShipmentDetail.tsx").read_text(encoding="utf-8")
@@ -49,6 +51,29 @@ class FreshShipmentCockpitContract(unittest.TestCase):
         goals = DETAIL.index("<ShipmentCompletionGoals")
         self.assertLess(attention, journey)
         self.assertLess(journey, goals)
+
+
+class ProfileActionRouting(unittest.TestCase):
+    def test_profile_gap_routes_to_existing_profile_editor_tab(self):
+        action = compose_primary_action(
+            shipment_id="SEA-188",
+            dashboard={},
+            execution_profile={
+                "nextAction": {
+                    "code": "PROFILE_INCOMPLETE",
+                    "label": "Bổ sung hồ sơ thực hiện lô",
+                    "detail": "Chưa có điều kiện giao hàng (Incoterm).",
+                    "tone": "amber",
+                }
+            },
+            # Reproduces the Supervisor B1 failure: the shipment status may
+            # currently point at lay-hang, but the profile editor does not.
+            status_tab="lay-hang",
+        )
+        self.assertEqual(
+            action["route"],
+            "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile",
+        )
 
 
 class ZeroNodeRenderLane(unittest.TestCase):
