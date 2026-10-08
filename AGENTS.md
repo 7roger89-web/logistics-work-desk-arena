@@ -171,6 +171,10 @@ At task reconciliation, distinguish routine progress from reusable corrections:
 
 ### Repo-native required skill handoff
 
+- `PROMPT_WRITER_SKILL_ROUTING_V1=YES`: before any P2P-generated delegated repository-work prompt, the prompt writer must inspect the target repo's supported skill metadata/projection and select the smallest relevant set (max 3). Reuse the existing Skill Consumption Wire when available; do not create a second router.
+- Explicit Owner `@skill` / `$skill` / `REQUIRED_SKILLS` wins when valid. No relevant match => serialize `SKILL_CHECK=NO_MATCH` and continue normally; unknown/missing/ambiguous/hash-mismatched required skill => fail closed before delegation.
+- For every selected skill, bind exact repo-local `SKILL.md` path + SHA-256 into the handoff, require executor read/apply before substantive work, and require one exact `p2p-skill-consumption-receipt/1`. A downstream `@skill` token alone is not consumption evidence.
+- Do not preload every skill or add another router, registry, vector DB, daemon, or background skill scanner for prompt-writer routing.
 - This managed repository carries a bounded canonical operator-skill projection under `.agents/skills/`: every canonical `p2p-*` skill plus `scope-reality-check`. It is transport, not a second router or authority.
 - Source-bound projection metadata lives at `.p2p/portable/P2P-SKILL-PROJECTION.json`. Do not treat an unlisted or hash-mismatched file as a current projected skill.
 - When an execution prompt serializes `REQUIRED_SKILLS=<ids>`, every required skill is mandatory for that turn. Read each exact repo-local `SKILL.md` before substantive task execution and apply each required skill.

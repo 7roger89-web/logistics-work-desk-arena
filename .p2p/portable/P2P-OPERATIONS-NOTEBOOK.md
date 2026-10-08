@@ -2,7 +2,7 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=316936bc951a466c89cc8efb9291f9425571cf886199c8f4f4372be5d7c25ae4
+SOURCE_CONTENT_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b
 PORTABLE_EXPERIENCE_CONTENT_SHA256=9b10fafe780e47bc82da89d6893d1a88a32c06031dfd7cfb63effc89926cce82
 PORTABLE_SKILL_MANIFEST_SHA256=f74353e4fca11635b43066e24ebff318efae77fedb4b0498f0ac27c386af51ca
 PACKAGE_VERSION=8.4.7-C-codex.74
@@ -382,6 +382,58 @@ Do not create a connector-health daemon, polling service, registry, or
 monitoring framework for this rule. Run the preflight only when GitHub access
 is materially required or when a relevant failure is observed, then stop once
 the failure class is established.
+
+### Prompt-writer repo-skill routing invariant
+
+```text
+PROMPT_WRITER_SKILL_ROUTING_V1=YES
+DELEGATED_REPO_OPERATIONAL_PROMPT => TARGET_REPO_SKILL_DISCOVERY
+MATCHED_SKILL_SET => SOURCE_BOUND_SKILL_HANDOFF
+NO_MATCH => SKILL_CHECK=NO_MATCH
+MAX_SELECTED_SKILLS=3
+```
+
+Before ChatGPT, Control Tower, or any other P2P prompt writer emits an
+operational prompt that delegates repository work to Arena, Codex, Manus,
+Claude, Grok, or another supported AI executor, the prompt writer must perform
+bounded skill routing against the **target repository** first. The Owner must
+not be required to remember skill IDs, manually paste `SKILL.md` bodies, or
+translate a natural-language goal into internal skill wiring.
+
+The required sequence is:
+
+1. Establish the target repository and read its repository instructions.
+   Discover repo-local skill metadata from the existing supported surfaces:
+   `.p2p/portable/P2P-SKILL-PROJECTION.json` when present and
+   `.agents/skills/*/SKILL.md` frontmatter/metadata as needed. When the
+   installed Skill Consumption Wire is available, reuse it. Discovery is
+   metadata-first; do not preload every skill body.
+2. Select the **smallest relevant set**, bounded to at most three skills.
+   Explicit Owner invocation such as `@skill`, `$skill`, or a declared
+   `REQUIRED_SKILLS` set wins when it resolves validly. A prompt writer may
+   name a matching repo-native skill as required after metadata inspection;
+   this does not admit the skill globally or create a second router.
+3. Before issuing the executor prompt, resolve every selected skill to its exact
+   repo-local `SKILL.md` path and SHA-256. Serialize the frozen selected set,
+   exact paths/hashes, destination host mode, and the requirement that the
+   executor read and apply every selected skill before substantive execution
+   and return one `p2p-skill-consumption-receipt/1`.
+4. If no relevant skill matches, serialize `SKILL_CHECK=NO_MATCH` and continue
+   normal delegation. Do not invent a skill merely to satisfy this rule.
+5. If an explicitly required skill is unknown, ambiguous, missing, unloadable,
+   or hash-mismatched, fail closed **before delegation**. Do not silently drop,
+   rename, substitute, or downgrade a required skill.
+6. This invariant applies to both `NEW_CHAT` and `SAME_CHAT`, and to every
+   supported delegated AI/model surface. Skill guidance never widens Owner
+   authority, permissions, mutation authority, deployment/release authority,
+   task scope, or acceptance authority.
+7. Reuse the existing single routing/consumption path. Do not add another
+   router, registry, vector database, background scanner, daemon, or preload-all
+   mechanism to implement this invariant.
+
+A literal `@skill` token in the downstream executor prompt is not itself
+proof of consumption. Source-bound path/hash handoff plus the executor's exact
+consumption receipt is the evidence boundary.
 
 ### Supreme laws
 
