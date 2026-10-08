@@ -1315,8 +1315,12 @@ def compose_primary_action(
     if profile_actionable:
         priority = "Khan" if profile_tone == "red" else "CanXuLy"
         if profile_code in PRIMARY_ACTION_PROFILE_SECTION_CODES:
+            # The execution-profile editor is owned by the existing van-tai tab.
+            # Never inherit status_tab here: a fresh shipment may currently be
+            # classified under lay-hang even though its required profile editor
+            # is not mounted there (Issue #188 Supervisor B1).
             return {"text": profile_label, "detail": profile_detail, "priority": priority,
-                    "route": f"{dashboard_route}#{PRIMARY_ACTION_PROFILE_ANCHOR}"}
+                    "route": f"{shipment_path(shipment_id)}?tab=van-tai#{PRIMARY_ACTION_PROFILE_ANCHOR}"}
         tab = PRIMARY_ACTION_TAB_BY_PROFILE_CODE.get(profile_code, status_tab)
         anchor = PRIMARY_ACTION_FIELD_ANCHOR_BY_CODE.get(profile_code)
         route = f"{shipment_path(shipment_id)}?tab={tab}" + (f"#{anchor}" if anchor else "")
