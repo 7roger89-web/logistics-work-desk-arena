@@ -121,6 +121,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 // ---------------------------------------------------------------------------
 // Simulated Streamlit Components v2 invocation
 // ---------------------------------------------------------------------------
@@ -184,9 +192,7 @@ async function gotoReviewTab() {
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
-  const workspaceTabs = window.document.getElementById("workspace-tabs");
-  assert.ok(workspaceTabs, "workspace tabs must exist");
-  await click("Quy trình & Chứng từ", "button", workspaceTabs);
+  await openGlobalTab("Chứng từ");
   const shell = $("[data-testid='shipment-attachments']")[0];
   assert.ok(shell, "attachment section missing after navigation");
   const reviewPanel = $("[data-testid='document-review']", shell)[0];
@@ -213,9 +219,7 @@ console.log("STEP 1 — shipment detail → Chứng từ tab exposes the review 
 await click("Lô Hàng", "a", $("aside")[0]);
 await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
 await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
-const tabs = window.document.getElementById("workspace-tabs");
-assert.ok(tabs, "workspace tabs must exist");
-await click("Quy trình & Chứng từ", "button", tabs);
+await openGlobalTab("Chứng từ");
 
 const section = $("[data-testid='shipment-attachments']")[0];
 assert.ok(section, "attachment section missing");

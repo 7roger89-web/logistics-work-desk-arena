@@ -178,8 +178,9 @@ console.log("A. slash-shaped shipment identity → one encoded segment → real 
   await clickEl(identity);
   assert.ok(!byTestId("not-found"), "slash identity must NOT reach the App wildcard");
   assert.ok(!mainText().includes("Không tìm thấy màn hình"), "no invalid-route screen");
-  assert.equal(h1(), ID, "the exact identity resolves on the real lot page");
-  assert.ok(window.document.getElementById("workspace-tabs"), "real ShipmentDetail rendered");
+  assert.equal(h1(), "Lô hàng " + ID, "the exact identity resolves on the real lot page");
+  assert.ok(!window.document.getElementById("workspace-tabs"), "no permanent tab row on the default first screen (#190)");
+  assert.ok(byTestId("shipment-identity-bar"), "real ShipmentDetail rendered");
   ok(`${ID} → 360°/identity link → real ShipmentDetail (never wildcard)`);
 
   // Backend-composed deep link (repaired payload shape): the tab must survive.
@@ -191,11 +192,13 @@ console.log("A. slash-shaped shipment identity → one encoded segment → real 
   assert.equal(handle.getAttribute("href"), `${ENCODED}?tab=nhap`, "composed backend route keeps query AFTER the encoded segment");
   await clickEl(handle);
   assert.ok(!byTestId("not-found"), "composed encoded route must not hit the wildcard");
-  assert.equal(h1(), ID, "deep-linked lot resolved");
-  const active = $("button", window.document.getElementById("workspace-tabs")).find((b) =>
-    b.className.includes("bg-[#0f2a4a]")
+  assert.equal(h1(), "Lô hàng " + ID, "deep-linked lot resolved");
+  const gwRoot = window.document.querySelector('[data-testid="journey-global-workspace"]');
+  assert.ok(gwRoot, "the deep-link must open the Global Workspace (#190)");
+  const active = $("button", gwRoot).find((b) =>
+    b.className.includes("border-slate-900")
   );
-  assert.ok(active && text(active).includes("Nhập khẩu"), `requested tab active (${active ? text(active) : "none"})`);
+  assert.ok(active && text(active).includes("Nhập & Giao"), `requested tab active (${active ? text(active) : "none"})`);
   ok("encoded backend deep-link keeps its tab and opens the lot");
 
   // Global search (desktop + mobile result lists share the same handler).
@@ -210,7 +213,7 @@ console.log("A. slash-shaped shipment identity → one encoded segment → real 
   assert.ok(result, "shipment result appears in global search");
   await clickEl(result);
   assert.ok(!byTestId("not-found"), "global search must not land on the wildcard");
-  assert.equal(h1(), ID, "global search opens the exact lot");
+  assert.equal(h1(), "Lô hàng " + ID, "global search opens the exact lot");
   ok("global search reel → exact slash lot (never wildcard)");
 }
 
@@ -229,7 +232,7 @@ console.log("B. identity edge classes: literal %2F, ? and #");
     assert.equal(identity.getAttribute("href"), ENCODED, `${ID} encoded route`);
     await clickEl(identity);
     assert.ok(!byTestId("not-found"), `${ID} must not reach the wildcard`);
-    assert.equal(h1(), ID, `${ID} resolves to the EXACT identity`);
+    assert.equal(h1(), "Lô hàng " + ID, `${ID} resolves to the EXACT identity`);
   }
   ok('literal "%2F"/"%20"/"%25" stay literal (exactly one decode); "?" and "#" cannot inject syntax');
 }
@@ -246,7 +249,7 @@ console.log("C. unchanged identities keep their existing one-segment route");
     const { identity } = await openLotByIdentity(ID);
     assert.equal(identity.getAttribute("href"), ENCODED, `${ID} route byte-identical`);
     await clickEl(identity);
-    assert.equal(h1(), ID, `${ID} opens the exact lot`);
+    assert.equal(h1(), "Lô hàng " + ID, `${ID} opens the exact lot`);
     assert.ok(!byTestId("not-found"), `${ID} must not reach the wildcard`);
   }
   ok("ordinary LO-xxxx, decimal-string 108313713320 and unicode LÔ-xxxx behave as before");

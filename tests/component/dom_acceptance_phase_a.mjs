@@ -101,6 +101,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 async function clickSelector(sel, root = window.document) {
   const el = $(sel, root)[0];
   assert.ok(el, `selector "${sel}" not found`);
@@ -326,18 +334,20 @@ console.log("STEP 7 — open LO-0306");
   // Each tab button renders a desktop label span plus a mobile short-label
   // span; read only the desktop one so the comparison is unambiguous.
   const activeTab = () => {
-    const tabs = $("button", window.document.getElementById("workspace-tabs"));
-    const on = tabs.find((b) => b.className.includes("bg-[#0f2a4a]"));
-    return on ? text($("span", on)[0]) : null;
+    const gwRoot = window.document.querySelector('[data-testid="journey-global-workspace"]');
+    if (!gwRoot) return null;
+    const tabs = $("button", gwRoot);
+    const on = tabs.find((b) => (b.className || "").includes("border-slate-900"));
+    return on ? text(on) : null;
   };
   const expectRoute = [
-    ["Số tờ khai nhập khẩu", "Nhập khẩu & Giao hàng"],
-    ["Xe giao VN + tài xế", "Vận chuyển & Hàng hóa"],
-    ["Xác nhận đã giao hàng", "Nhập khẩu & Giao hàng"],
+    ["Số tờ khai nhập khẩu", "Nhập & Giao"],
+    ["Xe giao VN + tài xế", "Thông tin"],
+    ["Xác nhận đã giao hàng", "Nhập & Giao"],
   ];
   for (const [fact, expected] of expectRoute) {
     // back to the operational tab so every assertion starts from a known state
-    await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
+    await openGlobalTab("Thông tin");
     const box = $("div").find((d) => d.className.includes("border-dashed") && text(d).includes("Thiếu " + fact));
     assert.ok(box, `missing box for ${fact} not found`);
     const btn = $("button", box).find((b) => text(b).includes("Bổ sung ngay"));
@@ -347,7 +357,7 @@ console.log("STEP 7 — open LO-0306");
     assert.equal(activeTab(), expected, `"${fact}" routed to ${activeTab()}, expected ${expected}`);
   }
   // restore the default tab so the next step starts from a clean state
-  await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Thông tin");
   ok("Bổ sung ngay routes each real missing fact to the tab that owns it");
 }
 
@@ -355,23 +365,24 @@ console.log("STEP 7 — open LO-0306");
 // STEP 8 — all Shipment Detail tabs
 // ---------------------------------------------------------------------------
 
-console.log("STEP 8 — Shipment Detail tabs");
+console.log("STEP 8 — Shipment Detail tabs (Issue #190: via Global Workspace)");
 {
+  // Issue #190 — the permanent tab row is gone from the default first screen;
+  // every tab capability is reached through Toàn bộ lô hàng → Global Workspace.
+  assert.equal(window.document.getElementById("workspace-tabs"), null,
+    "no permanent tab row on the default first screen");
   const tabs = {
-    "Vận chuyển & Hàng hóa": "CÁC CHẶNG VẬN CHUYỂN",
+    "Thông tin": "CÁC CHẶNG VẬN CHUYỂN",
     "Xuất khẩu": "Nhà máy & xuất khẩu",
-    "Nhập khẩu & Giao hàng": "Tờ khai & thuế nhập khẩu",
-    "Tài chính / Công nợ": "Phải thu khách hàng (VND)",
-    "Quy trình & Chứng từ": "Phiếu xuất kho (PXK)",
+    "Nhập & Giao": "Tờ khai & thuế nhập khẩu",
+    "Tài chính": "Phải thu khách hàng (VND)",
+    "Chứng từ": "Phiếu xuất kho (PXK)",
     "Lịch sử": "Dòng thời gian — LO-0306",
   };
-  const tabRoot = window.document.getElementById("workspace-tabs");
-  assert.ok(tabRoot, "workspace tabs missing");
-  // default tab
-  assert.ok(bodyText().includes(tabs["Vận chuyển & Hàng hóa"]), "default tab content missing");
-  ok("tab 1: Vận chuyển & Hàng hóa (default)");
+  const gw = () => window.document.querySelector('[data-testid="journey-global-workspace"]');
+  await click("Toàn bộ lô hàng", "button");
+  assert.ok(gw(), "Global Workspace must open");
   for (const [label, marker] of Object.entries(tabs)) {
-    if (label === "Vận chuyển & Hàng hóa") continue;
     // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (§5).
     // This lot is DAP — a D-family Incoterms rule — so "Xuất khẩu" is now LOCKED
     // BY DEFAULT as an advisory. The capability is not removed: a locked tab must
@@ -379,11 +390,7 @@ console.log("STEP 8 — Shipment Detail tabs");
     // manual unlock has to be immediately obvious. Only after unlocking may the
     // export workspace be read. No data changes: this is a UI gate only.
     if (label === "Xuất khẩu") {
-      const exportTab = tabRoot.querySelector('[data-testid="export-tab"]');
-      assert.ok(exportTab, "the Xuất khẩu tab control is missing");
-      assert.equal(exportTab.getAttribute("data-locked"), "true",
-        "a D-family lot must show the export tab locked by default");
-      await click("Xuất khẩu", "button", tabRoot);
+      await click("Xuất khẩu", "button", gw());
       assert.ok(!bodyText().includes(marker),
         "OLD BEHAVIOUR: a locked export tab opened anyway");
       const notice = window.document.querySelector('[data-testid="export-lock-notice"]');
@@ -392,12 +399,10 @@ console.log("STEP 8 — Shipment Detail tabs");
         "the manual unlock must be offered right next to the explanation");
       await click("MỞ KHÓA XUẤT KHẨU", "button");
       assert.ok(bodyText().includes(marker), "the unlock must actually reach the workspace");
-      assert.equal(window.document.querySelector('[data-testid="export-tab"]')?.getAttribute("data-locked") ?? null, null,
-        "after the manual unlock the tab stays unlocked for this session");
       ok("tab: Xuất khẩu — advisory F/C/D lock, explained, manually unlockable");
       continue;
     }
-    await click(label, "button", tabRoot);
+    await click(label, "button", gw());
     assert.ok(bodyText().includes(marker), `tab ${label} content missing`);
     ok(`tab: ${label}`);
   }
@@ -419,7 +424,7 @@ console.log("STEP 9 — global search");
   assert.ok(found, "search result button missing");
   found.click();
   await tick();
-  assert.equal(text($("h1")[0]), "LO-0306", "search navigation failed");
+  assert.equal(text($("h1")[0]), "Lô hàng LO-0306", "search navigation failed");
   // empty-state hint
   const search2 = $('input[placeholder^="Tìm mã lô"]', $("header")[0])[0];
   search2.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
@@ -484,8 +489,7 @@ console.log("STEP 12 — rerender survival");
   // Navigate to LO-0306 detail and switch to the Tài chính tab.
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("LO-0306", "a", $("table.tbl")[0]);
-  const tabRoot = window.document.getElementById("workspace-tabs");
-  await click("Tài chính / Công nợ", "button", tabRoot);
+  await openGlobalTab("Tài chính");
   assert.ok(bodyText().includes("Phải thu khách hàng (VND)"), "tab switch before rerun failed");
 
   // Simulate the backend rerun: Streamlit re-invokes the mount with fresh
@@ -502,7 +506,7 @@ console.log("STEP 12 — rerender survival");
   await tick(120);
 
   assert.equal(host.children.length, 1, "component re-mounted (DOM reset!)");
-  assert.equal(text($("h1")[0]), "LO-0306", "route lost across rerun");
+  assert.equal(text($("h1")[0]), "Lô hàng LO-0306", "route lost across rerun");
   assert.ok(bodyText().includes("Phải thu khách hàng (VND)"), "active tab lost across rerun");
   assert.ok(bodyText().includes("09/09/2026 10:00"), "updated data not visible after rerun");
   ok("route + active tab survive backend rerun; new data rendered");
@@ -517,8 +521,7 @@ console.log("STEP 13 — v2 typed events");
   // LO-0299: confirm delivery → modal → ĐÃ GIAO
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("LO-0299", "a", $("table.tbl")[0]);
-  const tabRoot = window.document.getElementById("workspace-tabs");
-  await click("Nhập khẩu & Giao hàng", "button", tabRoot);
+  await openGlobalTab("Nhập & Giao");
   await click("✅ XÁC NHẬN ĐÃ GIAO HÀNG", "button");
   assert.ok(bodyText().includes("Xác nhận đã giao LO-0299?"), "delivery modal missing");
   await click("✅ ĐÃ GIAO", "button");
@@ -652,8 +655,7 @@ console.log("STEP 16 — import tax clear semantics");
 
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("LO-0307", "a", $("table.tbl")[0]);
-  const tabRoot16 = window.document.getElementById("workspace-tabs");
-  await click("Nhập khẩu & Giao hàng", "button", tabRoot16);
+  await openGlobalTab("Nhập & Giao");
 
   const duty = window.document.getElementById("fld-duty");
   const vat = window.document.getElementById("fld-vat");

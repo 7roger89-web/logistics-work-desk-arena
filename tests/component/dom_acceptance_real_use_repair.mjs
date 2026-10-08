@@ -104,6 +104,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 async function type(input, value) {
   const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
   setter.call(input, value);
@@ -344,17 +352,17 @@ if (run(8)) {
   action.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(160);
 
-  // The selected tab is the ACTIVE one: the tab bar marks it with the navy
-  // fill. Old bundle truncated "lay-hang" → "lay", which matches no tab, so
-  // the view silently fell back to the default section.
-  const tabBar = window.document.getElementById("workspace-tabs");
-  assert.ok(tabBar, "workspace tab bar missing");
-  const active = $("button", tabBar).filter((b) => (b.className || "").includes("bg-[#0f2a4a]"));
+  // Issue #190 — the selected tab is the ACTIVE one in the Global Workspace:
+  // the composed tab route opens it directly. Old bundle truncated "lay-hang"
+  // → "lay", which matches no tab, so the view silently fell back to default.
+  const gwRoot = window.document.querySelector('[data-testid="journey-global-workspace"]');
+  assert.ok(gwRoot, "Global Workspace must open for the composed tab route (#190)");
+  const active = $("button", gwRoot).filter((b) => (b.className || "").includes("border-slate-900"));
   assert.equal(active.length, 1,
     `OLD BEHAVIOUR: the truncated tab matched NO section, so no work section opened (active tabs: ${active.length})`);
-  const TAB_LABEL = { "lay-hang": "Xuất khẩu", "nhap": "Nhập khẩu & Giao hàng",
-                      "van-tai": "Vận chuyển & Hàng hóa", "tai-chinh": "Tài chính / Công nợ",
-                      "chung-tu": "Quy trình & Chứng từ", "lich-su": "Lịch sử" };
+  const TAB_LABEL = { "lay-hang": "Xuất khẩu", "nhap": "Nhập & Giao",
+                      "van-tai": "Thông tin", "tai-chinh": "Tài chính",
+                      "chung-tu": "Chứng từ", "lich-su": "Lịch sử" };
   const wanted = TAB_LABEL[HYPHEN_TAB];
   assert.ok(wanted, `unmapped fixture tab ${HYPHEN_TAB}`);
   assert.ok(text(active[0]).includes(wanted),
@@ -394,10 +402,7 @@ if (run(9)) {
 
   // Start on the shipment's own documents tab — exactly where the old
   // behaviour stranded the employee.
-  const docsTab = $("button", window.document.getElementById("workspace-tabs"))
-    .find((b) => text(b).includes("Chứng từ"));
-  assert.ok(docsTab, "shipment documents tab missing");
-  docsTab.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await openGlobalTab("Chứng từ");
   await tick(160);
   assert.ok(mainText().includes("Hợp đồng / docgen liên kết hiện có"), "linked-contract card missing");
   assert.ok(mainText().includes("Phiếu xuất kho"),

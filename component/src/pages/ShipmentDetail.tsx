@@ -2,11 +2,10 @@ import { contractPath } from "../lib/contractRoute";
 import { shipmentIdFromPath } from "../lib/shipmentRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet, Plus } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
-import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
@@ -92,13 +91,16 @@ export function nextRouteAnchor(nextRoute: string): string | null {
  * the existing element an anchor points at. No-op when it is absent.
  */
 function revealAnchor(anchor: string | null) {
+  // Issue #190 CONTINUE — the permanent tab row is gone; fall back to the
+  // Journey section. No-op when it is absent.
+  const fallback = () => document.querySelector('[data-testid="shipment-journey"]')?.scrollIntoView({ behavior: "smooth" });
   if (!anchor) {
-    document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" });
+    fallback();
     return;
   }
   const el = document.getElementById(anchor);
   if (!el) {
-    document.getElementById("workspace-tabs")?.scrollIntoView({ behavior: "smooth" });
+    fallback();
     return;
   }
   el.scrollIntoView({ behavior: "smooth", block: anchor === "fld-tk" ? "center" : "start" });
@@ -118,7 +120,7 @@ export default function ShipmentDetail() {
   const id = shipmentIdFromPath(pathname, paramId);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
-  const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices } = useStore();
+  const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
   // The authoritative outcome of a saved actual line comes back in the NEXT
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
@@ -140,8 +142,10 @@ export default function ShipmentDetail() {
   //   missingOpen    → the existing missing-fact rows (Issue #84 semantics)
   //   checklistOpen  → the existing scoped import/delivery checklist
   //   exportUnlocked / exportLockNotice → the advisory Xuất khẩu lock (§5)
+  //   (Issue #190 CONTINUE removed the "Thông tin thêm" disclosure and the
+  //   permanent tab row from the default first screen; those facts live in
+  //   the HỒ SƠ & PHẠM VI card and the Global Workspace now.)
   // ---------------------------------------------------------------------------
-  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   // Issue #190 — the reference composition moves the two journey-level
   // controls ("Toàn bộ lô hàng", "+ Quy trình") into this identity bar; the
   // Journey section itself starts at the map+panel split. Presses are
@@ -1071,16 +1075,6 @@ export default function ShipmentDetail() {
   // action that names it) is never shown as locked — that would be a lie.
   const exportTabLocked = exportLockedByDefault && !exportUnlocked && tab !== "lay-hang";
 
-  /** Tab navigation, with the advisory lock in front of the export tab only. */
-  const openTab = (tabId: string) => {
-    if (tabId === "lay-hang" && exportTabLocked) {
-      setExportLockNotice(true);   // never open silently; explain + offer unlock
-      return;
-    }
-    setExportLockNotice(false);
-    setSp({ tab: tabId });
-  };
-
   /** Manual unlock for THIS session only — nothing is persisted. */
   const unlockExportTab = () => {
     setExportUnlocked(true);
@@ -1098,6 +1092,18 @@ export default function ShipmentDetail() {
   const positionNote = curJourneyNode
     ? `Vị trí theo mốc thực tế: ${curJourneyNode.label}`
     : s.journey?.positionNote || "";
+
+  // Issue #190 CONTINUE — identity-bar facts. Every value comes from the
+  // shipment / environment; nothing is invented. The avatar falls back to the
+  // company monogram (as in the Owner reference) when no operator is set.
+  const brandSub = environment?.displayName ? `${environment.displayName} · Nội bộ` : "Nội bộ";
+  const modeLabel = s.commercialFlow?.modeLabel || "";
+  const operatorName = (s.journey?.owner || "").trim() || (s.sale || "").trim();
+  const operatorKnown = Boolean(operatorName) && operatorName !== "—";
+  const operatorInitials = operatorKnown
+    ? operatorName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+    : "TT";
+  const operatorTitle = operatorKnown ? `Phụ trách: ${operatorName}` : "Trường Thành";
 
   const runPrimaryAction = () => {
     if (s.nextRoute.startsWith("/lo-hang")) {
@@ -1119,94 +1125,48 @@ export default function ShipmentDetail() {
 
   return (
     <div className="space-y-2.5 min-w-0">
-      {/* HEADER — Issue #190: compact identity bar with the same rhythm as the
-          Owner reference: identity+state+controls on row 1, customer/route/
-          update on row 2, tabs slim. The five recognition facts move behind
-          the existing "Thông tin thêm" disclosure (nothing deleted). */}
-      <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" />
-        <div className="px-4 py-1.5 md:px-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => nav(-1)} aria-label="Quay lại" className="touch-target inline-flex shrink-0 items-center rounded-lg border border-slate-200 px-2 min-h-[34px] text-slate-500 hover:text-[#0f2a4a]"><ArrowLeft size={15} /></button>
-            <h1 className="text-[20px] font-extrabold text-[#0f2a4a]" title={positionNote || undefined}>{s.id}</h1>
-            <ToneBadge tone={s.statusTone}>{s.status}</ToneBadge>
-            {missingCount > 0 && <span className="inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5"><CircleAlert size={15} /> Thiếu {missingCount} thông tin</span>}
-            <ShipmentQuickFacts shipment={s} dense className="ml-auto hidden min-w-0 md:flex" />
-            {(s.journey?.modules?.length ?? 0) === 0 && Boolean(vm?.workModules?.canAttach) && (
-              <button type="button" onClick={() => setAttachReq((v) => v + 1)} data-testid="journey-add-module-page" className="touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600"><Plus size={14} aria-hidden="true" /> Quy trình</button>
-            )}
-            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600">Toàn bộ lô hàng</button>
+      {/* HEADER — Issue #190 CONTINUE: ONE top white header bar per the Owner
+          reference. LEFT: brand identity + shipment title + mode chip +
+          customer/route line. RIGHT: Toàn bộ lô hàng + operator avatar.
+          The permanent tab row is gone from the default first screen (tabs
+          live in Global Workspace); the secondary identity facts moved into
+          the HỒ SƠ & PHẠM VI card. Nothing is deleted. */}
+      <div className="rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5" data-testid="shipment-identity-bar">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Về trang chủ">
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
+            <span className="leading-tight hidden sm:block">
+              <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
+              <span className="block text-[11.5px] text-slate-500 font-medium">{brandSub}</span>
+            </span>
+          </Link>
+          <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="text-[19px] font-extrabold text-[#0f2a4a] whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
+              {modeLabel && <span className="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 whitespace-nowrap">{modeLabel}</span>}
+            </div>
+            <p className="mt-0.5 truncate text-[12.5px] text-slate-600">
+              <span className="font-semibold text-slate-800">{s.customer}</span>
+              <span className="text-slate-400"> → </span>
+              <span>{s.route}</span>
+            </p>
           </div>
-          <p className="mt-0.5 flex items-center gap-x-2 text-[12.5px] text-slate-600 min-w-0">
-            <span className="font-semibold text-[13.5px] text-slate-800">{s.customer}</span>
-            <span className="text-slate-400">· MST {s.customerMST}</span>
-            <MapPin size={13} className="shrink-0 text-slate-400" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">{s.route}</span>
-            <span className="flex shrink-0 items-center gap-1 text-[12px] text-slate-400"><Clock size={13} /> Cập nhật {s.updated}</span>
-            <button
-              type="button"
-              onClick={() => setMoreInfoOpen((v) => !v)}
-              aria-expanded={moreInfoOpen}
-              data-testid="shipment-more-info-toggle"
-              className="btn-press touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 min-h-[26px] text-[11.5px] font-bold text-slate-600"
-            >
-              Thông tin thêm
-              <ChevronDown size={13} className={cx("transition-transform", moreInfoOpen && "rotate-180")} />
-            </button>
-          </p>
-          {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the five
-              recognition facts (Incoterm · mode · load model · ETD · ETA) and
-              the route line: Issue #190 keeps the route on identity row 2 and
-              moves the five facts into the existing "Thông tin thêm"
-              disclosure so the Journey work starts at the reference rhythm.
-              Nothing is deleted; the disclosure is one click away. */}
-          {/* OWNER_RUNTIME_UAT_REPAIR — Cửa khẩu · Hợp đồng · Sale phụ trách ·
-              Cập nhật bởi are NOT deleted and NOT re-derived: they are the same
-              already-projected view-model fields, now behind ONE small secondary
-              disclosure that is collapsed by default. */}
-          <div className="mt-1.5">
-            {moreInfoOpen && (
-              <div data-testid="shipment-more-info" className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-1">
-                {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
-                <StateRow label="Cửa khẩu" value={s.borderVN} />
-                <StateRow label="Hợp đồng" value={<Link to={contractPath(s.contract)} className="text-[#1e5aa8] font-bold hover:underline">{s.contract}</Link>} />
-                <StateRow label="Sale phụ trách" value={<span>{s.sale}</span>} />
-                {/* `support` is the backend's `updated_by` (who last wrote this
-                    document), not an assigned handler — the repo has no canonical
-                    shipment-assignment field. It is labelled truthfully. */}
-                <StateRow label="Cập nhật bởi" value={<span>{s.support || "—"}</span>} />
-              </div>
-            )}
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]">Toàn bộ lô hàng</button>
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
           </div>
         </div>
+      </div>
         {/* OWNER_RUNTIME_UAT_REPAIR — the duplicated "HỒ SƠ THỰC HIỆN LÔ ·
             Hồ sơ lô còn thiếu…" yellow band is GONE from the top path: the
             "Hồ sơ thực hiện lô" section below already owns that configuration
             state (its state label, its summary lines, its stage chips) and a
             real CONFIG_CHECK / insurance mismatch is still rendered there in
             red. Two warnings for one fact was the clutter the Owner reported. */}
-        {/* TABS */}
-        <div id="workspace-tabs" className="px-3 md:px-5 pb-1.5 flex gap-1.5 overflow-x-auto no-scrollbar border-t border-slate-100 pt-1.5">
-          {TABS.map((t) => {
-            const locked = t.id === "lay-hang" && exportTabLocked;
-            // The lock is announced by the padlock ICON + dashed muted styling,
-            // and `data-locked` keeps it machine-checkable. The tab's own label
-            // text is deliberately NOT rewritten: prefixing it would change the
-            // accessible name of an existing control for no gain.
-            return (
-              <button
-                key={t.id}
-                onClick={() => openTab(t.id)}
-                {...(locked ? { "data-locked": "true", "aria-disabled": true } : {})}
-                data-testid={t.id === "lay-hang" ? "export-tab" : undefined}
-                className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 min-h-[36px] text-[13.5px] font-bold border-2 whitespace-nowrap", tab === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : locked ? "border-dashed border-slate-300 bg-white text-slate-400" : "border-slate-200 bg-white text-slate-600")}
-              >
-                {locked && <Lock size={14} className="shrink-0" aria-hidden="true" />}
-                <span className="hidden md:inline">{t.label}</span><span className="md:hidden">{t.short}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Issue #190 CONTINUE — the permanent tab row is gone from the default
+            first screen. Tab capabilities stay reachable through Toàn bộ lô
+            hàng → Global Workspace (and deep links); nothing is deleted. */}
         {/* OWNER_RUNTIME_UAT_REPAIR §5 — a locked export tab never opens
             silently and never just disappears: clicking it says WHY in one
             compact line and hands the operator the manual unlock. Session-only,
@@ -1231,7 +1191,6 @@ export default function ShipmentDetail() {
             </button>
           </div>
         )}
-      </div>
 
       <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />
 
