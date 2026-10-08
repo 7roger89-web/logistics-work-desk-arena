@@ -57,7 +57,10 @@ assert.equal(document.querySelectorAll('[data-testid="journey-quick-panel"]').le
 await click(button('← Quick panel'));assert.ok(byId('journey-quick-panel'),'stage workspace returns to the factual Quick Panel');
 // #190: the map no longer carries a manual collapse button. Opening the Global
 // Workspace auto-collapses the map to the approved rail; the rail reopens it.
-await click(button('Toàn bộ lô hàng',byId('shipment-journey')));
+// Issue #190 (Owner reference 6f6c655): the "Toàn bộ lô hàng" control moved out
+// of the Journey section into the page identity bar (data-testid
+// journey-global-page) so the Journey workspace starts at the map+panel split.
+await click(byId('journey-global-page') || button('Toàn bộ lô hàng'));
 assert.ok(byId('journey-global-workspace'));
 assert.ok(byId('journey-map-rail'),'global workspace auto-collapses the map to the rail');
 assert.equal(byId('journey-map-viewport'),null);

@@ -64,7 +64,9 @@ assert.match(document.querySelector('main').textContent,/lịch sử toàn lô|a
 await click(button('Thông tin',byId('journey-stage-workspace')));
 deliver(fixture.viewer);await tick();
 assert.ok([...byId('sea-export-facts').querySelectorAll('input,select,button')].every(el=>el.disabled),'viewer cannot write');
-await click(button('Toàn bộ lô hàng',byId('shipment-journey')));
+// Issue #190 (Owner reference 6f6c655): the global-workspace control lives in
+// the page identity bar now; same behaviour (stage workspace closes, rail mode).
+await click(byId('journey-global-page'));
 assert.equal(byId('journey-stage-workspace'),null);
 assert.ok(byId('shipment-execution-profile'),'canonical global work stays reachable');
 console.log('PASS #160: 11 nodes, view-only selection, scoped workspace, bounded write, pending/refusal, canonical fresh readback, document/finance/history navigation, viewer RBAC, global escape');

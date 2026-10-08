@@ -64,11 +64,13 @@ try {
   await openShipment();
   assert.equal(await page.locator('[data-testid^="journey-node-"]').count(), 7, 'base map = 7 nodes');
   assert.equal(await page.getByTestId('journey-modules').count(), 0, 'no rollup before attach');
-  assert.equal(await page.getByTestId('journey-add-module').count(), 1, 'authorised actor can attach');
+  // Issue #190 (Owner reference 6f6c655): zero-module attach entry lives in
+  // the page identity bar; it mounts the same attach panel in the Journey.
+  assert.equal(await page.getByTestId('journey-add-module-page').count(), 1, 'authorised actor can attach');
   await shot(page, 'desktop-1-base-journey.png');
 
   // 2. Human attach flow: panel → ACTIVE choice → confirm → fresh readback.
-  await page.getByTestId('journey-add-module').click();
+  await page.getByTestId('journey-add-module-page').click();
   await page.getByTestId('journey-add-module-panel').waitFor();
   await page.getByRole('radio', { name: 'Chọn IMPORT SPECIAL HANDLING', exact: true }).check();
   await shot(page, 'desktop-2-attach-panel.png');

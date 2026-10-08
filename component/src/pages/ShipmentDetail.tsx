@@ -2,7 +2,7 @@ import { contractPath } from "../lib/contractRoute";
 import { shipmentIdFromPath } from "../lib/shipmentRoute";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, Clock, FileSpreadsheet, Plus } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
@@ -142,6 +142,12 @@ export default function ShipmentDetail() {
   //   exportUnlocked / exportLockNotice → the advisory Xuất khẩu lock (§5)
   // ---------------------------------------------------------------------------
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  // Issue #190 — the reference composition moves the two journey-level
+  // controls ("Toàn bộ lô hàng", "+ Quy trình") into this identity bar; the
+  // Journey section itself starts at the map+panel split. Presses are
+  // forwarded as monotonic counters.
+  const [globalReq, setGlobalReq] = useState(0);
+  const [attachReq, setAttachReq] = useState(0);
   const [missingOpen, setMissingOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [exportUnlocked, setExportUnlocked] = useState(false);
@@ -1088,6 +1094,11 @@ export default function ShipmentDetail() {
    * (the giant banner became a compact one-row strip). The behaviour below is
    * the previous banner handler, moved verbatim.
    */
+  const curJourneyNode = s.journey?.nodes?.find((n) => n.current);
+  const positionNote = curJourneyNode
+    ? `Vị trí theo mốc thực tế: ${curJourneyNode.label}`
+    : s.journey?.positionNote || "";
+
   const runPrimaryAction = () => {
     if (s.nextRoute.startsWith("/lo-hang")) {
       const t = nextRouteTab(s.nextRoute);
@@ -1107,53 +1118,53 @@ export default function ShipmentDetail() {
   };
 
   return (
-    <div className="space-y-4 min-w-0">
-      <button onClick={() => nav(-1)} className="touch-target inline-flex items-center gap-1.5 text-[14.5px] font-bold text-slate-500 hover:text-[#0f2a4a]"><ArrowLeft size={17} /> Quay lại</button>
-
-      {/* HEADER */}
+    <div className="space-y-2.5 min-w-0">
+      {/* HEADER — Issue #190: compact identity bar with the same rhythm as the
+          Owner reference: identity+state+controls on row 1, customer/route/
+          update on row 2, tabs slim. The five recognition facts move behind
+          the existing "Thông tin thêm" disclosure (nothing deleted). */}
       <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
         <div className="h-1.5 bg-gradient-to-r from-[#0f2a4a] via-[#1e5aa8] to-emerald-500" />
-        <div className="p-4 md:p-6">
+        <div className="px-4 py-1.5 md:px-5">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-[22px] md:text-[26px] font-extrabold text-[#0f2a4a]">{s.id}</h1>
+            <button onClick={() => nav(-1)} aria-label="Quay lại" className="touch-target inline-flex shrink-0 items-center rounded-lg border border-slate-200 px-2 min-h-[34px] text-slate-500 hover:text-[#0f2a4a]"><ArrowLeft size={15} /></button>
+            <h1 className="text-[20px] font-extrabold text-[#0f2a4a]" title={positionNote || undefined}>{s.id}</h1>
             <ToneBadge tone={s.statusTone}>{s.status}</ToneBadge>
             {missingCount > 0 && <span className="inline-flex items-center gap-1.5 text-[13px] font-bold bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1.5"><CircleAlert size={15} /> Thiếu {missingCount} thông tin</span>}
-            <span className="ml-auto text-[12.5px] text-slate-400 flex items-center gap-1"><Clock size={14} /> Cập nhật {s.updated}</span>
+            <ShipmentQuickFacts shipment={s} dense className="ml-auto hidden min-w-0 md:flex" />
+            {(s.journey?.modules?.length ?? 0) === 0 && Boolean(vm?.workModules?.canAttach) && (
+              <button type="button" onClick={() => setAttachReq((v) => v + 1)} data-testid="journey-add-module-page" className="touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600"><Plus size={14} aria-hidden="true" /> Quy trình</button>
+            )}
+            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600">Toàn bộ lô hàng</button>
           </div>
-          <p className="font-semibold text-[15.5px] mt-1">{s.customer} <span className="text-slate-400 font-normal">· MST {s.customerMST}</span></p>
-          {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the five facts
-              an operator uses to RECOGNIZE a lot (Incoterm · mode · load model ·
-              ETD · ETA) now sit at the very top of the header, above the identity
-              grid. They are read off the row this page already has
-              (`executionProfile` + `transportLegs`) — no new reader, no new
-              field, no second derived summary. An unknown fact renders as an
-              explicit "—" instead of disappearing. */}
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-            <ShipmentQuickFacts shipment={s} />
-            {/* OWNER_RUNTIME_UAT_REPAIR — the route stays as ONE small line
-                because lot recognition genuinely needs it (issue #86 §5
-                "ROUTE / key identity"). Everything else that used to sit in a
-                five-cell grid no longer competes with the work below. */}
-            <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-slate-600 min-w-0">
-              <MapPin size={14} className="shrink-0 text-slate-400" />
-              <span className="truncate">{s.route}</span>
-            </p>
-          </div>
-          {/* OWNER_RUNTIME_UAT_REPAIR — Cửa khẩu · Hợp đồng · Sale phụ trách ·
-              Cập nhật bởi are NOT deleted and NOT re-derived: they are the same
-              already-projected view-model fields, now behind ONE small secondary
-              disclosure that is collapsed by default. */}
-          <div className="mt-2">
+          <p className="mt-0.5 flex items-center gap-x-2 text-[12.5px] text-slate-600 min-w-0">
+            <span className="font-semibold text-[13.5px] text-slate-800">{s.customer}</span>
+            <span className="text-slate-400">· MST {s.customerMST}</span>
+            <MapPin size={13} className="shrink-0 text-slate-400" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{s.route}</span>
+            <span className="flex shrink-0 items-center gap-1 text-[12px] text-slate-400"><Clock size={13} /> Cập nhật {s.updated}</span>
             <button
               type="button"
               onClick={() => setMoreInfoOpen((v) => !v)}
               aria-expanded={moreInfoOpen}
               data-testid="shipment-more-info-toggle"
-              className="btn-press touch-target inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-2.5 min-h-[34px] text-[12.5px] font-bold text-slate-600"
+              className="btn-press touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 min-h-[26px] text-[11.5px] font-bold text-slate-600"
             >
               Thông tin thêm
-              <ChevronDown size={14} className={cx("transition-transform", moreInfoOpen && "rotate-180")} />
+              <ChevronDown size={13} className={cx("transition-transform", moreInfoOpen && "rotate-180")} />
             </button>
+          </p>
+          {/* LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 (issue #86) — the five
+              recognition facts (Incoterm · mode · load model · ETD · ETA) and
+              the route line: Issue #190 keeps the route on identity row 2 and
+              moves the five facts into the existing "Thông tin thêm"
+              disclosure so the Journey work starts at the reference rhythm.
+              Nothing is deleted; the disclosure is one click away. */}
+          {/* OWNER_RUNTIME_UAT_REPAIR — Cửa khẩu · Hợp đồng · Sale phụ trách ·
+              Cập nhật bởi are NOT deleted and NOT re-derived: they are the same
+              already-projected view-model fields, now behind ONE small secondary
+              disclosure that is collapsed by default. */}
+          <div className="mt-1.5">
             {moreInfoOpen && (
               <div data-testid="shipment-more-info" className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-1">
                 {/* PR52 slash-safe routing + PR54 truthful responsibility labels. */}
@@ -1175,7 +1186,7 @@ export default function ShipmentDetail() {
             real CONFIG_CHECK / insurance mismatch is still rendered there in
             red. Two warnings for one fact was the clutter the Owner reported. */}
         {/* TABS */}
-        <div id="workspace-tabs" className="px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
+        <div id="workspace-tabs" className="px-3 md:px-5 pb-1.5 flex gap-1.5 overflow-x-auto no-scrollbar border-t border-slate-100 pt-1.5">
           {TABS.map((t) => {
             const locked = t.id === "lay-hang" && exportTabLocked;
             // The lock is announced by the padlock ICON + dashed muted styling,
@@ -1188,7 +1199,7 @@ export default function ShipmentDetail() {
                 onClick={() => openTab(t.id)}
                 {...(locked ? { "data-locked": "true", "aria-disabled": true } : {})}
                 data-testid={t.id === "lay-hang" ? "export-tab" : undefined}
-                className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", tab === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : locked ? "border-dashed border-slate-300 bg-white text-slate-400" : "border-slate-200 bg-white text-slate-600")}
+                className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 min-h-[36px] text-[13.5px] font-bold border-2 whitespace-nowrap", tab === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : locked ? "border-dashed border-slate-300 bg-white text-slate-400" : "border-slate-200 bg-white text-slate-600")}
               >
                 {locked && <Lock size={14} className="shrink-0" aria-hidden="true" />}
                 <span className="hidden md:inline">{t.label}</span><span className="md:hidden">{t.short}</span>
@@ -1222,9 +1233,9 @@ export default function ShipmentDetail() {
         )}
       </div>
 
-      <AttentionNow items={shipmentAttention} title="Cần xử lý" />
+      <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />
 
-      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
+      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} globalRequest={globalReq} attachRequest={attachReq}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, CheckCircle2, ChevronDown, Circle, Info } from 'lucide-react';
 import type { JourneyNode, Shipment, WorkModuleGuidance } from '../lib/viewmodel';
-import { cx } from '../lib/format';
+import { cx, fmtCcy } from '../lib/format';
 import { JOURNEY_META, JourneyStatus } from './JourneyMap';
 
 const GUIDANCE_ROWS: { key: keyof WorkModuleGuidance; label: string }[] = [
@@ -36,16 +36,26 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
   const update = n.evidence ? `${n.label}: ${n.evidence}.${n.deadline ? ` Mốc dự kiến: ${n.deadline}.` : ''}` : 'Chưa có bằng chứng để xác nhận tiến độ với khách.';
   const files = s.attachments?.filter(f => n.documentIds.includes(f.id)) ?? [];
   const copy = async () => { try { await navigator.clipboard.writeText(update); setCopyState('Đã sao chép'); } catch { setCopyState('Không sao chép được; chọn đoạn trên để copy.'); } };
+  const cny = s.finance?.partner?.partners?.find(g => g.totalsByCurrency?.CNY)?.totalsByCurrency?.CNY
+    || (s.finance?.partner?.currency === 'CNY' ? { payable: s.finance.partner.payable, paid: s.finance.partner.paid, remaining: s.finance.partner.remaining } : null);
   const deps = n.dependencies.map(id => nodes.find(x => x.id === id)?.label).filter(Boolean).join(' + ');
   return <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-quick-panel">
-    <div className={cx('border-b-4 px-4 pb-3 pt-3', n.state === 'PROBLEM' ? 'border-red-600 bg-red-50' : 'border-slate-300 bg-white')}>
+    <div className={cx('border-b-4 bg-white px-4 pb-3 pt-3', n.state === 'PROBLEM' ? 'border-red-600' : 'border-slate-300')}>
       <div className="flex items-start justify-between"><div className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Quick panel · {s.id}</div><button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target -mr-1 -mt-1 rounded text-lg text-slate-400">✕</button></div>
       <div className="flex flex-wrap items-center gap-3"><h3 className="text-2xl font-black tracking-tight text-slate-900">{n.label}</h3><JourneyStatus node={n} solid /></div>
       <div className={cx('mt-0.5 text-sm font-bold', m.text)}>{n.evidence || 'Chưa có bằng chứng thực tế'}</div>
     </div>
     <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3">
-      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[11px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div></div></section>
+      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[11px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
+      <section><Label>Thông tin chính</Label></section>
       <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-[13px]" data-testid="journey-quick-facts">
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI NHẬP KHẨU</dt><dd className="text-right font-bold">{s.importInfo.receiver || s.customer || 'Chưa có thông tin'}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">TỜ KHAI</dt><dd className="text-right font-bold">{s.importInfo.declarationNo ? `${s.importInfo.declarationNo} · đã đăng ký` : 'Chưa có thông tin'}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">THÔNG QUAN</dt><dd className={cx('text-right font-bold', !s.importInfo.customsStatus && 'text-red-700')}>{s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">THUẾ NK</dt><dd className={cx('text-right font-bold', s.importInfo.tax == null && 'text-red-700')}>{s.importInfo.tax == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.tax, 'VND')}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">VAT</dt><dd className={cx('text-right font-bold', s.importInfo.vat == null && 'text-red-700')}>{s.importInfo.vat == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.vat, 'VND')}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">GNT</dt><dd className={cx('text-right font-bold', !s.importInfo.gnt && 'text-red-700')}>{s.importInfo.gnt ? (s.importInfo.gnt.ready ? 'Sẵn sàng nộp thuế' : 'Đã ghi nhận') : 'Chưa có'}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">CHINA AGENT</dt><dd className={cx('text-right font-bold', !cny && 'text-red-700')}>{cny ? `${fmtCcy(cny.payable, 'CNY')} · ${(cny.paid ?? 0) > 0 ? 'đã thanh toán' : 'chưa thanh toán'}` : 'Chưa có thông tin'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI THEO</dt><dd className="text-right font-bold">{s.journey!.owner || 'Chưa phân công'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">HẠN</dt><dd className="text-right font-bold">{n.deadline || 'Chưa ghi nhận'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">CHỜ AI / PHỤ THUỘC</dt><dd className="text-right font-bold">{deps || '—'}</dd></div>

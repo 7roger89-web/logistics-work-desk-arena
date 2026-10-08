@@ -357,9 +357,23 @@ async function populatedLane() {
     metrics.populated = m;
     assertPopulatedComposition(m, 'populated 1536×1466');
     assertNodeGeometry(m, 'populated 1536×1466');
-    assert.ok(Math.abs(m.blocks['journey-side-panel'].w - 420) <= 2, `right Quick Panel width ${m.blocks['journey-side-panel'].w} != 420`);
-    assert.ok(Math.abs(m.split.height - 760) <= 2, `populated split height ${m.split.height} != 760`);
+    // Issue #190 — constants re-measured from the Owner reference
+    // (reference190-opt.png @ PR #191 head 6f6c655): right rail 450px,
+    // populated split 718px. The 420/760 pair was the pre-sample donor value.
+    assert.ok(Math.abs(m.blocks['journey-side-panel'].w - 450) <= 2, `right Quick Panel width ${m.blocks['journey-side-panel'].w} != 450`);
+    assert.ok(Math.abs(m.split.height - 718) <= 2, `populated split height ${m.split.height} != 718`);
     ok(`geometry: Journey outer ${m.blocks['shipment-journey'].w}×${m.blocks['shipment-journey'].h} · map ${m.blocks['journey-map-viewport'].w}×${m.blocks['journey-map-viewport'].h} · Quick Panel ${m.blocks['journey-side-panel'].w}×${m.blocks['journey-side-panel'].h} · map/panel ratio ${m.mapPanelRatio} · split height ${m.split.height}px · card gaps ${JSON.stringify(m.cardGaps)}`);
+
+    // Issue #86 keeps the five recognition facts VISIBLE in the lot header;
+    // Issue #190 moves them inline (dense) into the compact identity bar.
+    const factsVisible = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="shipment-quick-facts"]');
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+    assert.ok(factsVisible, 'issue #86 quick-facts strip must stay visible in the compact identity bar');
+    ok('issue #86 quick-facts strip visible inline in the identity bar (dense chips)');
 
     // Completion Goals must stay collapsed and must not dominate the first screen.
     assert.equal(m.blocks['completion-goal-details'], null, 'Completion Goals must be collapsed by default');
@@ -379,10 +393,15 @@ async function populatedLane() {
         const el = document.querySelector(`[data-testid="${id}"]`);
         if (!el) return null;
         const r = el.getBoundingClientRect();
-        return { id, visibleInFirstScreen: r.bottom > top && r.top < top + h, top: Math.round(r.top - top) };
+        return { id, visibleInFirstScreen: r.bottom > top && r.top < top + h, top: Math.round(r.top - top), bottom: Math.round(r.bottom - top) };
       }).filter(Boolean);
     }, REF_H);
     metrics.populatedFirstScreen = firstScreen;
+    const cardsFirst = firstScreen.find((b) => b.id === 'journey-summary-cards');
+    assert.ok(cardsFirst && cardsFirst.visibleInFirstScreen,
+      'five summary cards must be visible inside the 1466 first screen (Owner reference shows the full card row)');
+    assert.ok(cardsFirst.bottom <= REF_H,
+      `five summary cards must END inside the first screen like the Owner reference (cards bottom ${cardsFirst.bottom} > ${REF_H})`);
     ok(`first screen (1536×${REF_H}, scrollTop=0): ${firstScreen.map((b) => `${b.id}${b.visibleInFirstScreen ? '' : '(below fold)'}`).join(' → ')}`);
 
     await page.screenshot({ path: path.join(outDir, 'candidate-populated-desktop.png') });
@@ -419,7 +438,7 @@ async function populatedLane() {
     assert.equal(gw.blocks['journey-map-viewport'], null, 'full map must not keep consuming the width');
     assert.ok(gw.blocks['journey-side-panel'].w >= 600, `workspace pane must get readable width, got ${gw.blocks['journey-side-panel'].w}`);
     await page.screenshot({ path: path.join(outDir, 'global-workspace-expanded.png') });
-    ok(`Global Workspace: map auto-collapsed to rail (${Math.round(gw.blocks['journey-map-rail'].w)}px), workspace pane ${Math.round(gw.blocks['journey-side-panel'].w)}px wide — no full forms squeezed into the 420px Quick Panel`);
+    ok(`Global Workspace: map auto-collapsed to rail (${Math.round(gw.blocks['journey-map-rail'].w)}px), workspace pane ${Math.round(gw.blocks['journey-side-panel'].w)}px wide — no full forms squeezed into the 450px Quick Panel`);
 
     // operator can reopen the map
     const reopen = page.getByTestId('journey-map-rail').locator('button, [aria-label]').first();

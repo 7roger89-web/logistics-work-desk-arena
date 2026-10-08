@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T06:42:51.682Z",
+  "generatedAt": "2026-10-08T07:55:35.008Z",
   "referenceViewport": {
     "width": 1536,
     "height": 1466
@@ -386,7 +386,7 @@
   "populated": {
     "shell": {
       "scrollTop": 0,
-      "scrollHeight": 2006,
+      "scrollHeight": 1652,
       "clientHeight": 1409,
       "clientWidth": 1536,
       "horizontalOverflow": 0
@@ -397,55 +397,55 @@
       "height": 1466
     },
     "fit": {
-      "scale": 0.694946,
-      "transform": "width: 1108px; height: 690px; transform: translate(16px, 140.244px) scale(0.694946);"
+      "scale": 0.66787,
+      "transform": "width: 1108px; height: 690px; transform: translate(16px, 128.585px) scale(0.66787);"
     },
     "blocks": {
       "attention-now": {
         "x": 288,
-        "y": 500.6,
+        "y": 272,
         "w": 1224,
-        "h": 170.5
+        "h": 51.1
       },
       "shipment-journey": {
         "x": 288,
-        "y": 687,
+        "y": 333.1,
         "w": 1224,
-        "h": 1127.5
+        "h": 1132.7
       },
       "journey-modules": null,
       "journey-phase-strip": null,
       "journey-map-toolbar": null,
       "journey-map-viewport": {
         "x": 289,
-        "y": 810.2,
-        "w": 802,
-        "h": 760
+        "y": 334.1,
+        "w": 772,
+        "h": 718
       },
       "journey-side-panel": {
-        "x": 1091,
-        "y": 810.2,
-        "w": 420,
-        "h": 760
+        "x": 1061,
+        "y": 334.1,
+        "w": 450,
+        "h": 718
       },
       "journey-quick-panel": {
-        "x": 1093,
-        "y": 810.2,
-        "w": 418,
-        "h": 760
+        "x": 1063,
+        "y": 334.1,
+        "w": 448,
+        "h": 718
       },
       "journey-overview-panel": null,
       "journey-stage-workspace": null,
       "journey-global-workspace": null,
       "journey-summary-cards": {
         "x": 289,
-        "y": 1570.2,
+        "y": 1052.1,
         "w": 1222,
-        "h": 243.3
+        "h": 412.7
       },
       "shipment-completion-goals": {
         "x": 288,
-        "y": 1830.5,
+        "y": 1475.7,
         "w": 1224,
         "h": 60.4
       },
@@ -455,66 +455,66 @@
       "journey-empty-canvas": null,
       "customs-import-quick-panel": null,
       "journey-parallel-branch": {
-        "x": 770.6,
-        "y": 964.4,
-        "w": 133.4,
-        "h": 246
+        "x": 752.5,
+        "y": 476,
+        "w": 128.2,
+        "h": 236.4
       }
     },
     "order": [
       {
         "id": "attention-now",
-        "y": 500.6,
-        "h": 170.5
+        "y": 272,
+        "h": 51.1
       },
       {
         "id": "shipment-journey",
-        "y": 687,
-        "h": 1127.5
+        "y": 333.1,
+        "h": 1132.7
       },
       {
         "id": "journey-map-viewport",
-        "y": 810.2,
-        "h": 760
+        "y": 334.1,
+        "h": 718
       },
       {
         "id": "journey-side-panel",
-        "y": 810.2,
-        "h": 760
+        "y": 334.1,
+        "h": 718
       },
       {
         "id": "journey-quick-panel",
-        "y": 810.2,
-        "h": 760
+        "y": 334.1,
+        "h": 718
       },
       {
         "id": "journey-parallel-branch",
-        "y": 964.4,
-        "h": 246
+        "y": 476,
+        "h": 236.4
       },
       {
         "id": "journey-summary-cards",
-        "y": 1570.2,
-        "h": 243.3
+        "y": 1052.1,
+        "h": 412.7
       },
       {
         "id": "shipment-completion-goals",
-        "y": 1830.5,
+        "y": 1475.7,
         "h": 60.4
       }
     ],
     "split": {
       "rect": {
         "x": 289,
-        "y": 810.2,
+        "y": 334.1,
         "w": 1222,
-        "h": 760
+        "h": 718
       },
       "className": "journey-split",
-      "height": 760
+      "height": 718
     },
     "mapToPanelGap": 0,
-    "mapPanelRatio": 1.91,
+    "mapPanelRatio": 1.716,
     "nodes": [
       {
         "id": "booking",
@@ -527,10 +527,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 338.4,
-          "y": 1047.8,
-          "w": 114,
-          "h": 94.5
+          "x": 337.1,
+          "y": 556.1,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Hoàn thành1BOOKINGBooking: BK-160📄 0"
       },
@@ -545,10 +545,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 485.7,
-          "y": 1047.8,
-          "w": 114,
-          "h": 94.5
+          "x": 478.6,
+          "y": 556.1,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Đang chờ2PICKUPChưa có bằng chứng thực tế⏱ 2026-10-01📄 0"
       },
@@ -563,10 +563,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 633,
-          "y": 1047.8,
-          "w": 114,
-          "h": 94.5
+          "x": 620.2,
+          "y": 556.1,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới3CUSTOMS EXPORTChưa có bằng chứng thự"
       },
@@ -581,10 +581,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 780.3,
-          "y": 989.4,
-          "w": 114,
-          "h": 94.5
+          "x": 761.8,
+          "y": 500,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới4SI / VGMChưa có bằng chứng thực tế📄"
       },
@@ -599,10 +599,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 780.3,
-          "y": 1106.1,
-          "w": 114,
-          "h": 94.5
+          "x": 761.8,
+          "y": 612.3,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới5GATE-INChưa có bằng chứng thực tế📄 "
       },
@@ -617,10 +617,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 927.7,
-          "y": 1047.8,
-          "w": 114,
-          "h": 94.5
+          "x": 903.4,
+          "y": 556.1,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới6ETDChưa có bằng chứng thực tế⏱ 2000-"
       },
@@ -635,10 +635,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 927.7,
-          "y": 1228.4,
-          "w": 114,
-          "h": 94.5
+          "x": 903.4,
+          "y": 729.8,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới7ON BOARD / ATDChưa có bằng chứng thự"
       },
@@ -653,10 +653,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 780.3,
-          "y": 1228.4,
-          "w": 114,
-          "h": 94.5
+          "x": 761.8,
+          "y": 729.8,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "Chưa xác định / sắp tới8TRANSITChưa có bằng chứng thực tế⏱ 2"
       },
@@ -671,10 +671,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 633,
-          "y": 1228.4,
-          "w": 114,
-          "h": 94.5
+          "x": 620.2,
+          "y": 729.8,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "⚠ VẤN ĐỀCần xử lý9ARRIVALThiếu ETA⏱ 2000-01-03📄 0⚠ 1"
       },
@@ -689,10 +689,10 @@
           "h": 136
         },
         "rendered": {
-          "x": 485.7,
-          "y": 1228.4,
-          "w": 114,
-          "h": 94.5
+          "x": 478.6,
+          "y": 729.8,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "⚠ VẤN ĐỀCần xử lý10CUSTOMS IMPORTBổ sung số tờ khai nhập khẩ"
       },
@@ -707,17 +707,17 @@
           "h": 136
         },
         "rendered": {
-          "x": 338.4,
-          "y": 1228.4,
-          "w": 114,
-          "h": 94.5
+          "x": 337.1,
+          "y": 729.8,
+          "w": 109.5,
+          "h": 90.8
         },
         "label": "⚠ VẤN ĐỀCần xử lý11DELIVERYGhi nhận điểm giao và xác nhận đã"
       }
     ],
     "nodeRendered": {
-      "w": 114,
-      "h": 94.5
+      "w": 109.5,
+      "h": 90.8
     },
     "nodeLogical": {
       "w": 164,
@@ -728,9 +728,9 @@
         "id": "journey-summary-card-1",
         "rect": {
           "x": 301,
-          "y": 1583.2,
+          "y": 1065.1,
           "w": 230,
-          "h": 218.3
+          "h": 387.7
         },
         "title": "BOOKING – ĐẦU ĐI",
         "tabs": 4
@@ -739,9 +739,9 @@
         "id": "journey-summary-card-2",
         "rect": {
           "x": 543,
-          "y": 1583.2,
+          "y": 1065.1,
           "w": 230,
-          "h": 218.3
+          "h": 387.7
         },
         "title": "TÀU ĐẾN – CHẶNG CHÍNH",
         "tabs": 4
@@ -750,9 +750,9 @@
         "id": "journey-summary-card-3",
         "rect": {
           "x": 785,
-          "y": 1583.2,
+          "y": 1065.1,
           "w": 230,
-          "h": 218.3
+          "h": 387.7
         },
         "title": "NHẬP KHẨU – ỦY THÁC",
         "tabs": 4
@@ -761,20 +761,20 @@
         "id": "journey-summary-card-4",
         "rect": {
           "x": 1027,
-          "y": 1583.2,
+          "y": 1065.1,
           "w": 230,
-          "h": 218.3
+          "h": 387.7
         },
         "title": "GIAO HÀNG",
-        "tabs": 4
+        "tabs": 5
       },
       {
         "id": "journey-summary-card-5",
         "rect": {
           "x": 1269,
-          "y": 1583.2,
+          "y": 1065.1,
           "w": 230,
-          "h": 218.3
+          "h": 387.7
         },
         "title": "HỒ SƠ & PHẠM VI",
         "tabs": 4
@@ -786,7 +786,7 @@
       12,
       12
     ],
-    "attentionToJourneyGap": 15.9,
+    "attentionToJourneyGap": 10,
     "journeyToCardsGap": null,
     "completionGoalsText": "Rà soát trước khi kết thúc lô · read-onlyTự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.3 việc cần xử lý",
     "panelMode": "quick"
@@ -795,38 +795,44 @@
     {
       "id": "attention-now",
       "visibleInFirstScreen": true,
-      "top": 501
+      "top": 272,
+      "bottom": 323
     },
     {
       "id": "shipment-journey",
       "visibleInFirstScreen": true,
-      "top": 687
+      "top": 333,
+      "bottom": 1466
     },
     {
       "id": "journey-map-viewport",
       "visibleInFirstScreen": true,
-      "top": 810
+      "top": 334,
+      "bottom": 1052
     },
     {
       "id": "journey-side-panel",
       "visibleInFirstScreen": true,
-      "top": 810
+      "top": 334,
+      "bottom": 1052
     },
     {
       "id": "journey-summary-cards",
-      "visibleInFirstScreen": false,
-      "top": 1570
+      "visibleInFirstScreen": true,
+      "top": 1052,
+      "bottom": 1465
     },
     {
       "id": "shipment-completion-goals",
       "visibleInFirstScreen": false,
-      "top": 1831
+      "top": 1476,
+      "bottom": 1536
     }
   ],
   "completionExpanded": {
     "details": {
       "x": 289,
-      "y": 1889.9,
+      "y": 1535.1,
       "w": 1222,
       "h": 719
     },
@@ -835,15 +841,15 @@
   "globalWorkspace": {
     "rail": {
       "x": 289,
-      "y": 810.2,
+      "y": 334.1,
       "w": 208,
-      "h": 760
+      "h": 718
     },
     "sidePanel": {
       "x": 497,
-      "y": 810.2,
+      "y": 334.1,
       "w": 1014,
-      "h": 760
+      "h": 718
     },
     "mapViewport": null,
     "panelMode": "global",
@@ -853,7 +859,7 @@
     "split": {
       "rect": {
         "x": 13,
-        "y": 985.7,
+        "y": 448.8,
         "w": 364,
         "h": 1340
       },
@@ -862,13 +868,13 @@
     },
     "map": {
       "x": 13,
-      "y": 985.7,
+      "y": 448.8,
       "w": 364,
       "h": 620
     },
     "side": {
       "x": 13,
-      "y": 1605.7,
+      "y": 1068.8,
       "w": 364,
       "h": 720
     },
@@ -881,27 +887,27 @@
       {
         "metric": "journey outer bbox",
         "reference_donor": "1224×904 @(288,687)",
-        "candidate": "1224×1127.5 @(288,687)"
+        "candidate": "1224×1132.7 @(288,333.1)"
       },
       {
         "metric": "map bbox",
         "reference_donor": "802×760 @(289,830)",
-        "candidate": "802×760 @(289,810.2)"
+        "candidate": "772×718 @(289,334.1)"
       },
       {
         "metric": "right quick panel bbox",
         "reference_donor": "420×760 @(1091,830)",
-        "candidate": "420×760 @(1091,810.2)"
+        "candidate": "450×718 @(1061,334.1)"
       },
       {
         "metric": "map/panel width ratio",
         "reference_donor": 1.91,
-        "candidate": 1.91
+        "candidate": 1.716
       },
       {
         "metric": "split height",
         "reference_donor": 760,
-        "candidate": 760
+        "candidate": 718
       },
       {
         "metric": "node logical W/H",
@@ -911,12 +917,12 @@
       {
         "metric": "node rendered W/H",
         "reference_donor": "114×94.5",
-        "candidate": "114×94.5"
+        "candidate": "109.5×90.8"
       },
       {
         "metric": "fit scale",
         "reference_donor": 0.694946,
-        "candidate": 0.694946
+        "candidate": 0.66787
       },
       {
         "metric": "map→panel gap",
@@ -926,7 +932,7 @@
       {
         "metric": "attention→journey gap",
         "reference_donor": 15.9,
-        "candidate": 15.9
+        "candidate": 10
       },
       {
         "metric": "lower cards count",
@@ -1047,7 +1053,7 @@
   "fresh": {
     "shell": {
       "scrollTop": 0,
-      "scrollHeight": 1591,
+      "scrollHeight": 1467,
       "clientHeight": 1409,
       "clientWidth": 1536,
       "horizontalOverflow": 0
@@ -1064,46 +1070,46 @@
     "blocks": {
       "attention-now": {
         "x": 288,
-        "y": 500.6,
+        "y": 272,
         "w": 1224,
-        "h": 170.5
+        "h": 51.1
       },
       "shipment-journey": {
         "x": 288,
-        "y": 687,
+        "y": 333.1,
         "w": 1224,
         "h": 712
       },
       "journey-modules": null,
       "journey-phase-strip": {
         "x": 289,
-        "y": 769,
+        "y": 415.1,
         "w": 1222,
         "h": 88
       },
       "journey-map-toolbar": {
         "x": 289,
-        "y": 857,
+        "y": 503.1,
         "w": 1222,
         "h": 41
       },
       "journey-map-viewport": null,
       "journey-side-panel": {
-        "x": 1091,
-        "y": 898,
-        "w": 420,
+        "x": 1061,
+        "y": 544.1,
+        "w": 450,
         "h": 500
       },
       "journey-quick-panel": {
-        "x": 1093,
-        "y": 983.3,
-        "w": 418,
+        "x": 1063,
+        "y": 629.3,
+        "w": 448,
         "h": 414.7
       },
       "journey-overview-panel": {
-        "x": 1093,
-        "y": 898,
-        "w": 418,
+        "x": 1063,
+        "y": 544.1,
+        "w": 448,
         "h": 500
       },
       "journey-stage-workspace": null,
@@ -1111,7 +1117,7 @@
       "journey-summary-cards": null,
       "shipment-completion-goals": {
         "x": 288,
-        "y": 1415,
+        "y": 1055.1,
         "w": 1224,
         "h": 60.4
       },
@@ -1120,8 +1126,8 @@
       "journey-map-rail": null,
       "journey-empty-canvas": {
         "x": 289,
-        "y": 898,
-        "w": 802,
+        "y": 544.1,
+        "w": 772,
         "h": 500
       },
       "customs-import-quick-panel": null,
@@ -1130,54 +1136,54 @@
     "order": [
       {
         "id": "attention-now",
-        "y": 500.6,
-        "h": 170.5
+        "y": 272,
+        "h": 51.1
       },
       {
         "id": "shipment-journey",
-        "y": 687,
+        "y": 333.1,
         "h": 712
       },
       {
         "id": "journey-phase-strip",
-        "y": 769,
+        "y": 415.1,
         "h": 88
       },
       {
         "id": "journey-map-toolbar",
-        "y": 857,
+        "y": 503.1,
         "h": 41
       },
       {
         "id": "journey-empty-canvas",
-        "y": 898,
+        "y": 544.1,
         "h": 500
       },
       {
         "id": "journey-side-panel",
-        "y": 898,
+        "y": 544.1,
         "h": 500
       },
       {
         "id": "journey-overview-panel",
-        "y": 898,
+        "y": 544.1,
         "h": 500
       },
       {
         "id": "journey-quick-panel",
-        "y": 983.3,
+        "y": 629.3,
         "h": 414.7
       },
       {
         "id": "shipment-completion-goals",
-        "y": 1415,
+        "y": 1055.1,
         "h": 60.4
       }
     ],
     "split": {
       "rect": {
         "x": 289,
-        "y": 898,
+        "y": 544.1,
         "w": 1222,
         "h": 500
       },
@@ -1191,7 +1197,7 @@
     "nodeLogical": null,
     "cards": [],
     "cardGaps": [],
-    "attentionToJourneyGap": 15.9,
+    "attentionToJourneyGap": 10,
     "journeyToCardsGap": null,
     "completionGoalsText": "Rà soát trước khi kết thúc lô · read-onlyTự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.2 việc cần xử lý",
     "panelMode": "overview"
@@ -1200,7 +1206,7 @@
     "split": {
       "rect": {
         "x": 13,
-        "y": 1324.1,
+        "y": 949.8,
         "w": 364,
         "h": 1150
       },
@@ -1209,19 +1215,19 @@
     },
     "canvas": {
       "x": 13,
-      "y": 1324.1,
+      "y": 949.8,
       "w": 364,
       "h": 430
     },
     "side": {
       "x": 13,
-      "y": 1754.1,
+      "y": 1379.8,
       "w": 364,
       "h": 720
     },
     "phases": {
       "x": 13,
-      "y": 1005.1,
+      "y": 630.8,
       "w": 364,
       "h": 238
     }
@@ -1232,13 +1238,14 @@
     "real Chromium 110.0.5478.0 rendered SEA-160; fonts: 24 faces loaded, family=\"Inter\"",
     "SHIPMENTS_STORE_DELIVERY: rendered 11 detailed nodes straight from the host view model (no manual store injection)",
     "populated 1536×1466: composition = Attention → Journey(header + map + right Quick Panel) → five lower cards; no phase strip, no map toolbar, no Global Workspace",
-    "populated 1536×1466: 11 node cards match the immutable Prototype-B geometry oracle (164×136 at the approved DEMO_POS), fit scale=0.694946",
-    "geometry: Journey outer 1224×1127.5 · map 802×760 · Quick Panel 420×760 · map/panel ratio 1.91 · split height 760px · card gaps [12,12,12,12]",
-    "Completion Goals collapsed by default (details absent), copy states derived-guidance truth, block sits below Journey at y=1830.5",
-    "first screen (1536×1466, scrollTop=0): attention-now → shipment-journey → journey-map-viewport → journey-side-panel → journey-summary-cards(below fold) → shipment-completion-goals(below fold)",
+    "populated 1536×1466: 11 node cards match the immutable Prototype-B geometry oracle (164×136 at the approved DEMO_POS), fit scale=0.66787",
+    "geometry: Journey outer 1224×1132.7 · map 772×718 · Quick Panel 450×718 · map/panel ratio 1.716 · split height 718px · card gaps [12,12,12,12]",
+    "issue #86 quick-facts strip visible inline in the identity bar (dense chips)",
+    "Completion Goals collapsed by default (details absent), copy states derived-guidance truth, block sits below Journey at y=1475.7",
+    "first screen (1536×1466, scrollTop=0): attention-now → shipment-journey → journey-map-viewport → journey-side-panel → journey-summary-cards → shipment-completion-goals(below fold)",
     "captured candidate-populated-desktop.png (1536×1466), candidate-populated-journey.png, candidate-populated-fullpage.png",
     "Completion Goals expand on demand: details 1222×719px (collapsed row was 60px)",
-    "Global Workspace: map auto-collapsed to rail (208px), workspace pane 1014px wide — no full forms squeezed into the 420px Quick Panel",
+    "Global Workspace: map auto-collapsed to rail (208px), workspace pane 1014px wide — no full forms squeezed into the 450px Quick Panel",
     "populated 390: no horizontal overflow (page 0px, app scrollport 0px)",
     "populated 390×844: stacked split 364×1340, map 620px tall, panel 720px tall, 5 cards",
     "zero application page errors on the populated lane",
@@ -1249,7 +1256,7 @@
     "captured shipment-list-alerts.png (urgent + non-urgent rows, canonical bands only)",
     "fresh host server truth: SEA-188 persisted, journey.nodes=0, profile=PROFILE_INCOMPLETE",
     "fresh truth: HỒ SƠ actionable; 2/6ĐẦU / 3/6CHẶNG / 4/6NHẬP / 5/6GIAO / 6/6HOÀN remain UNKNOWN and inert; zero fabricated nodes",
-    "fresh density: split height 500px (compact class), canvas 802×500, right panel 420×500",
+    "fresh density: split height 500px (compact class), canvas 772×500, right panel 450×500",
     "fresh 1536: no horizontal overflow (page 0px, app scrollport 0px)",
     "captured fresh-desktop.png (1536×1466) + fresh-desktop-cockpit.png",
     "fresh B1: HỒ SƠ CTA opens Global Workspace → existing Execution Profile editor (no dead CTA)",
