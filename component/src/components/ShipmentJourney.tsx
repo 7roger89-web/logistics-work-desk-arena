@@ -327,7 +327,7 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
       <span className="text-xs text-slate-500">Công đoạn chi tiết sẽ xuất hiện khi có đủ authority để xác định phạm vi.</span>
     </div>
 
-    <div className="journey-split">
+    <div className={cx('journey-split journey-split-fresh', globalActive && 'journey-split-wide')}>
       <div className="journey-canvas relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-6" data-testid="journey-empty-canvas">
         <div className="flex w-full max-w-[760px] flex-col items-center">
           <div className="rounded-full border-2 border-slate-400 bg-white px-8 py-2 text-xs font-extrabold tracking-widest text-slate-600">START</div>
@@ -435,7 +435,15 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   };
   const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
   const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); } };
-  const openGlobal = (tab = 'van-tai') => { if (onGlobal(tab)) setPanelMode('global'); };
+  const openGlobal = (tab = 'van-tai') => {
+    if (onGlobal(tab)) {
+      setPanelMode('global');
+      // Issue #190 — full existing tab content is not designed for a 420px
+      // side pane. Reuse the approved PR177 collapsed-map rail so the real
+      // workspace gets readable width; the operator can reopen the map.
+      setMapCollapsed(true);
+    }
+  };
   const wide = panelMode === 'stage' || panelMode === 'global';
   const problem = baseNodes.find(n => n.blockers.length);
   const phaseDefs = [
