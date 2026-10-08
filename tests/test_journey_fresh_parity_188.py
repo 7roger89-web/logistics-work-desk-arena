@@ -99,6 +99,15 @@ class ZeroNodeRenderLane(unittest.TestCase):
         self.assertTrue(meta["persisted"])
         row = next(s for s in fixture["before"]["shipments"] if s["id"] == meta["shipmentId"])
         self.assertEqual(row["journey"]["nodes"], [])
+        # Supervisor B1: the committed fixture must project the profile action
+        # onto the tab that actually owns ShipmentExecutionProfile (van-tai),
+        # never onto the shipment status tab. A stale fixture fails closed here.
+        self.assertEqual(
+            row["nextRoute"],
+            "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile",
+        )
+        self.assertEqual(row["journey"]["primaryAction"]["route"], row["nextRoute"])
+        self.assertEqual(meta.get("projectedPrimaryRoute"), row["nextRoute"])
 
     def test_zero_node_render_keeps_the_cockpit_in_a_dom(self):
         node = shutil.which("node")

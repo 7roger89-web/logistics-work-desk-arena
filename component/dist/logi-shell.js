@@ -21867,7 +21867,7 @@ function mu() {
 				runPrimary: () => {
 					if (g.nextRoute.startsWith("/lo-hang")) {
 						let e = du(g.nextRoute), t = fu(g.nextRoute), n = g.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "", r = new URLSearchParams(n);
-						e && r.set("tab", e), i(r), !t || t === "shipment-execution-profile" ? pu(t) : setTimeout(() => pu(t), 150);
+						e && r.set("tab", e), i(r), t ? setTimeout(() => pu(t), 150) : pu(null);
 					} else h(g.nextRoute);
 				},
 				globalActive: !!r.get("tab") && !ze,

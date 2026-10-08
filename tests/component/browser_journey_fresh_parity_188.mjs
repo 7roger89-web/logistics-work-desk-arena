@@ -118,6 +118,23 @@ async function scrollShellTop(page) {
   await page.waitForTimeout(120);
 }
 
+// Supervisor B1 — the app routes inside a MemoryRouter (component/src/App.tsx),
+// so `?tab=` never appears on the browser URL and page.url() can never prove the
+// destination. The truthful observation is the DOM: exactly one pressed tab
+// inside the Global Workspace. The reveal recorder proves the anchored reveal
+// waits for the selected tab to mount instead of falling back to the tabs bar.
+const TAB_BY_LABEL = { 'Thông tin': 'van-tai', 'Xuất khẩu': 'lay-hang', 'Nhập & Giao': 'nhap', 'Chứng từ': 'chung-tu', 'Tài chính': 'tai-chinh', 'Lịch sử': 'lich-su' };
+async function selectedGlobalTab(page) {
+  return page.evaluate((map) => {
+    const ws = document.querySelector('[data-testid="journey-global-workspace"]');
+    if (!ws) return null;
+    const btns = [...ws.querySelectorAll('button[aria-pressed]')];
+    const on = btns.filter((b) => b.getAttribute('aria-pressed') === 'true');
+    return { tabs: btns.length, pressed: on.length, ids: on.map((b) => map[b.textContent.replace(/\s+/g, ' ').trim()] || b.textContent.trim()) };
+  }, TAB_BY_LABEL);
+}
+const revealLog = (page) => page.evaluate(() => window.__logi_reveals || []);
+
 // ---------------------------------------------------------------- fresh lane
 async function freshChecks() {
   const host = await startHost(FRESH);
@@ -130,12 +147,23 @@ async function freshChecks() {
   assert.equal(server.firstMode, '', 'fixture must carry no mode');
   assert.equal(server.transportLegs, 0, 'fixture must carry no transport legs');
   assert.equal(server.persisted, true);
-  ok(`server truth: ${server.shipmentId} persisted v${server.version}, journey.nodes=0, profile=${server.profileState}, scope=[], mode="", legs=0`);
+  assert.equal(server.projectedPrimaryRoute, '/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile',
+    'projected profile action must own the van-tai profile editor tab (Supervisor B1)');
+  assert.equal(server.nextRoute, server.projectedPrimaryRoute, 'nextRoute must equal the projected primary route');
+  ok(`server truth: ${server.shipmentId} persisted v${server.version}, journey.nodes=0, profile=${server.profileState}, scope=[], mode="", legs=0, route=${server.projectedPrimaryRoute}`);
 
   let browser;
   try {
     browser = await chromium.launch(LAUNCH);
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    await page.addInitScript(() => {
+      window.__logi_reveals = [];
+      const orig = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = function (...a) {
+        window.__logi_reveals.push(this.id || this.getAttribute?.('data-testid') || '(anonymous)');
+        return orig.apply(this, a);
+      };
+    });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await openShipment(page, FRESH);
@@ -224,10 +252,12 @@ async function freshChecks() {
     await noPageOverflow(page, 'fresh 1440');
 
     // Supervisor B1 — desktop: the dominant CTA must reach the EXISTING
-    // Execution Profile editor, not merely be enabled and write-free.
+    // Execution Profile editor, not merely be enabled and write-free. The tab
+    // lives in the MemoryRouter search state, so the DOM (not page.url()) is
+    // the truthful observation point.
     await cta.click();
     await page.waitForTimeout(250);
-    assert.equal(new URL(page.url()).searchParams.get('tab'), 'van-tai',
+    assert.deepEqual(await selectedGlobalTab(page), { tabs: 6, pressed: 1, ids: ['van-tai'] },
       'desktop profile CTA must open the tab that owns ShipmentExecutionProfile');
     await page.getByTestId('journey-global-workspace').waitFor({ state: 'visible' });
     await page.getByTestId('shipment-execution-profile').waitFor({ state: 'visible' });
@@ -235,7 +265,9 @@ async function freshChecks() {
       document.querySelector('[data-testid="journey-global-workspace"]')
         ?.contains(document.querySelector('[data-testid="shipment-execution-profile"]')) === true);
     assert.equal(desktopProfileInside, true, 'desktop CTA mounts Execution Profile inside Cockpit Global Workspace');
-    ok('desktop BỔ SUNG HỒ SƠ CTA reaches Vận chuyển & Hàng hóa → existing Execution Profile');
+    assert.equal((await revealLog(page)).at(-1), 'shipment-execution-profile',
+      `desktop anchored reveal must wait for the tab mount, got ${JSON.stringify(await revealLog(page))}`);
+    ok('desktop BỔ SUNG HỒ SƠ CTA reaches Vận chuyển & Hàng hóa → existing Execution Profile (tab=van-tai, reveal after mount)');
 
     // Reset to the truthful fresh default before the independent 390px challenge.
     await openShipment(page, FRESH);
@@ -272,7 +304,7 @@ async function freshChecks() {
     // action) and prove the destination, not just the button label.
     await page.getByTestId('journey-phase-profile').click();
     await page.waitForTimeout(250);
-    assert.equal(new URL(page.url()).searchParams.get('tab'), 'van-tai',
+    assert.deepEqual(await selectedGlobalTab(page), { tabs: 6, pressed: 1, ids: ['van-tai'] },
       '390px HỒ SƠ action must open the tab that owns ShipmentExecutionProfile');
     await page.getByTestId('journey-global-workspace').waitFor({ state: 'visible' });
     await page.getByTestId('shipment-execution-profile').waitFor({ state: 'visible' });
@@ -280,8 +312,10 @@ async function freshChecks() {
       document.querySelector('[data-testid="journey-global-workspace"]')
         ?.contains(document.querySelector('[data-testid="shipment-execution-profile"]')) === true);
     assert.equal(mobileProfileInside, true, '390px HỒ SƠ action mounts Execution Profile inside Cockpit Global Workspace');
+    assert.equal((await revealLog(page)).at(-1), 'shipment-execution-profile',
+      `390px anchored reveal must wait for the tab mount, got ${JSON.stringify(await revealLog(page))}`);
     await noPageOverflow(page, 'fresh 390 after profile action');
-    ok('390px HỒ SƠ action reaches Vận chuyển & Hàng hóa → existing Execution Profile');
+    ok('390px HỒ SƠ action reaches Vận chuyển & Hàng hóa → existing Execution Profile (tab=van-tai, editor readable, reveal after mount)');
 
     assert.deepEqual(errors, [], `page errors: ${errors.join(' | ')}`);
     ok('zero application page errors');

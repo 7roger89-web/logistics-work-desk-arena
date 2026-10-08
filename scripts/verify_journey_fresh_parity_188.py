@@ -45,6 +45,7 @@ from views import logi_sandbox, logi_view_model as vm  # noqa: E402
 FRESH_ID = "SEA-188"
 FRESH_CUSTOMER_ID = "CUST-MOI-188"
 FRESH_CUSTOMER_NAME = "Khách hàng mới 188"
+PROFILE_ANCHOR = "shipment-execution-profile"
 
 _state: dict = {}
 
@@ -88,6 +89,10 @@ def build_fresh_fixture() -> dict:
     assert profile.get("state") == "PROFILE_INCOMPLETE", profile.get("state")
     assert profile.get("serviceScopeConfirmed") is False, "scope must stay unconfirmed"
     assert not profile.get("serviceScope"), "no fabricated service scope"
+    # Supervisor B1: the projected profile action must own the tab that actually
+    # mounts ShipmentExecutionProfile (van-tai), never the status tab.
+    projected = (journey.get("primaryAction") or {}).get("route")
+    assert projected == f"/lo-hang/{FRESH_ID}?tab=van-tai#{PROFILE_ANCHOR}", projected
     return {
         "fixture": "FRESH_SHIPMENT_188",
         "shipmentId": FRESH_ID,
@@ -108,6 +113,8 @@ def build_fresh_fixture() -> dict:
             [i for i in (model.get("attention") or []) if i.get("shipmentId") == FRESH_ID]
         ),
         "primaryAction": (journey.get("primaryAction") or {}).get("text"),
+        "projectedPrimaryRoute": projected,
+        "nextRoute": row.get("nextRoute"),
         "nextAction": row.get("nextAction"),
         "nextActionDetail": row.get("nextActionDetail"),
     }

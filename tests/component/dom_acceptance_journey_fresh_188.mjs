@@ -38,7 +38,14 @@ const dom = new JSDOM('<!doctype html><body><div id="host"></div>', { url: 'http
 globalThis.window = dom.window; globalThis.document = dom.window.document;
 Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true });
 for (const k of ['HTMLElement', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLTextAreaElement', 'Event', 'MouseEvent', 'Node', 'MutationObserver', 'getComputedStyle']) globalThis[k] = dom.window[k];
-dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+// Supervisor B1 — record every anchored reveal target so this lane can prove
+// the reveal lands on the MOUNTED editor instead of the workspace-tabs fallback.
+const reveals = [];
+dom.window.HTMLElement.prototype.scrollIntoView = function () { reveals.push(this.id || this.getAttribute?.('data-testid') || '(anonymous)'); };
+// The app routes inside a MemoryRouter (component/src/App.tsx): the query tab
+// never reaches window.location. The truthful observation point is the DOM —
+// the pressed tab inside the Global Workspace.
+const TAB_BY_LABEL = { 'Thông tin': 'van-tai', 'Xuất khẩu': 'lay-hang', 'Nhập & Giao': 'nhap', 'Chứng từ': 'chung-tu', 'Tài chính': 'tai-chinh', 'Lịch sử': 'lich-su' };
 
 const triggers = [];
 const mount = (await import(pathToFileURL(path.resolve(process.argv[3] || path.join(root, 'component/dist/logi-shell.js'))))).default;
@@ -106,11 +113,19 @@ const writes = triggers.filter((t) => t.event !== 'navigate').map((t) => t.event
 assert.deepEqual(writes, [], `fresh-shipment CTA must not invent a business write (got ${writes.join(',')})`);
 
 // Supervisor B1: "actionable" means the click reaches the existing profile
-// editor, not merely that a button is enabled and write-free.
-assert.equal(new URLSearchParams(window.location.search).get('tab'), 'van-tai',
+// editor, not merely that a button is enabled and write-free. The tab lives in
+// the MemoryRouter search state, so assert it through the rendered DOM truth.
+const workspace = byId('journey-global-workspace');
+assert.ok(workspace, 'profile CTA opens the Cockpit global workspace');
+const pressed = [...workspace.querySelectorAll('button[aria-pressed="true"]')];
+assert.equal(pressed.length, 1, 'exactly one selected Global Workspace tab');
+assert.equal(TAB_BY_LABEL[text(pressed[0])], 'van-tai',
   'profile CTA must open the tab that owns ShipmentExecutionProfile');
-assert.ok(byId('journey-global-workspace'), 'profile CTA opens the Cockpit global workspace');
-assert.ok(byId('shipment-execution-profile'), 'profile CTA must mount the existing Execution Profile editor');
+const editor = byId('shipment-execution-profile');
+assert.ok(editor, 'profile CTA must mount the existing Execution Profile editor');
+assert.ok(workspace.contains(editor), 'profile editor must mount INSIDE the Global Workspace');
+assert.equal(reveals[reveals.length - 1], 'shipment-execution-profile',
+  `anchored reveal must land on the mounted editor after the tab mount, got ${JSON.stringify(reveals)}`);
 
-console.log(`PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, CTA reaches Execution Profile, zero writes`);
+console.log(`PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, CTA reaches Execution Profile on tab=van-tai inside Global Workspace with post-mount reveal, zero writes`);
 process.exit(0);
