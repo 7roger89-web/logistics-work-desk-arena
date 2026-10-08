@@ -431,6 +431,14 @@ async function populatedChecks() {
 
     // B8 (#186/#187): the finance guest state must be DERIVED from this
     // fixture's real finance facts, never a cosmetic colour.
+    // #190: Completion Goals are collapsed by default (mandate M5), so expand
+    // on demand before reading the per-goal truth. The assertion below is
+    // unchanged; only the reveal step is added.
+    await scrollShellTo(page, 'shipment-completion-goals');
+    if ((await page.getByTestId('completion-goal-details').count()) === 0) {
+      await page.getByTestId('completion-goal-toggle').click();
+      await page.getByTestId('completion-goal-details').waitFor();
+    }
     const finance = page.getByTestId('completion-goal-finance');
     const financeState = await finance.getAttribute('data-state');
     const financeText = await finance.innerText();

@@ -1,0 +1,100 @@
+{
+  "reference": "evidence/190/reference-donor-journey-crop.png",
+  "candidate": "evidence/190/candidate-journey-crop.png",
+  "viewport": [
+    1224,
+    1127
+  ],
+  "mean_abs_diff_rgb": [
+    65.81,
+    71.17,
+    69.26
+  ],
+  "changed_pixel_pct_threshold": 24,
+  "changed_pixel_pct": 31.3,
+  "changed_region_bbox": [
+    0,
+    11,
+    1224,
+    1127
+  ],
+  "bands": [
+    {
+      "y": 0,
+      "mean_abs_diff": 14.56
+    },
+    {
+      "y": 64,
+      "mean_abs_diff": 24.56
+    },
+    {
+      "y": 128,
+      "mean_abs_diff": 11.81
+    },
+    {
+      "y": 192,
+      "mean_abs_diff": 12.85
+    },
+    {
+      "y": 256,
+      "mean_abs_diff": 39.34
+    },
+    {
+      "y": 320,
+      "mean_abs_diff": 63.98
+    },
+    {
+      "y": 384,
+      "mean_abs_diff": 79.67
+    },
+    {
+      "y": 448,
+      "mean_abs_diff": 22.65
+    },
+    {
+      "y": 512,
+      "mean_abs_diff": 23.98
+    },
+    {
+      "y": 576,
+      "mean_abs_diff": 25.82
+    },
+    {
+      "y": 640,
+      "mean_abs_diff": 10.99
+    },
+    {
+      "y": 704,
+      "mean_abs_diff": 1.6
+    },
+    {
+      "y": 768,
+      "mean_abs_diff": 0.0
+    },
+    {
+      "y": 832,
+      "mean_abs_diff": 0.0
+    },
+    {
+      "y": 896,
+      "mean_abs_diff": 223.12
+    },
+    {
+      "y": 960,
+      "mean_abs_diff": 255.0
+    },
+    {
+      "y": 1024,
+      "mean_abs_diff": 255.0
+    },
+    {
+      "y": 1088,
+      "mean_abs_diff": 255.0
+    }
+  ],
+  "artifacts": {
+    "side_by_side": "evidence/190/side-by-side-journey.png",
+    "overlay": "evidence/190/overlay-journey.png",
+    "diff_heat": "evidence/190/diff-journey.png"
+  }
+}
