@@ -105,5 +105,12 @@ await click(ctas[0]);
 const writes = triggers.filter((t) => t.event !== 'navigate').map((t) => t.event);
 assert.deepEqual(writes, [], `fresh-shipment CTA must not invent a business write (got ${writes.join(',')})`);
 
-console.log(`PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, 1 CTA, Attention → Cockpit → Goals, zero writes`);
+// Supervisor B1: "actionable" means the click reaches the existing profile
+// editor, not merely that a button is enabled and write-free.
+assert.equal(new URLSearchParams(window.location.search).get('tab'), 'van-tai',
+  'profile CTA must open the tab that owns ShipmentExecutionProfile');
+assert.ok(byId('journey-global-workspace'), 'profile CTA opens the Cockpit global workspace');
+assert.ok(byId('shipment-execution-profile'), 'profile CTA must mount the existing Execution Profile editor');
+
+console.log(`PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, CTA reaches Execution Profile, zero writes`);
 process.exit(0);
