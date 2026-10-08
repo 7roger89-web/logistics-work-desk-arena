@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { Shipment } from '../lib/viewmodel';
-import { CheckCircle2, CircleAlert, CircleHelp, MinusCircle } from 'lucide-react';
+import { CheckCircle2, CircleAlert, CircleHelp, ChevronDown, MinusCircle } from 'lucide-react';
 import { cx } from '../lib/format';
 
 export type CompletionGoalState = 'EVIDENCED' | 'ACTION' | 'UNKNOWN' | 'NOT_APPLICABLE';
@@ -151,33 +152,39 @@ export default function ShipmentCompletionGoals({ shipment: s, onOpenTab }: {
   shipment: Shipment;
   onOpenTab: (tab: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const goals = composeShipmentCompletionGoals(s);
   const counted = goals.filter(g => g.state !== 'NOT_APPLICABLE');
   const evidenced = counted.filter(g => g.state === 'EVIDENCED').length;
   const action = counted.filter(g => g.state === 'ACTION').length;
   const unknown = counted.filter(g => g.state === 'UNKNOWN').length;
-  return <section className="rounded-2xl border border-slate-200 bg-white p-4" data-testid="shipment-completion-goals">
-    <div className="flex flex-wrap items-start justify-between gap-2">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-slate-500">Mục tiêu hoàn tất lô · read-only</p>
-        <h2 className="text-lg font-extrabold text-[#0f2a4a]">Còn gì phải rà trước khi coi là xử lý đủ?</h2>
-        <p className="mt-1 text-sm text-slate-500">Đây là lớp hướng dẫn trên dữ liệu hiện có, không phải % hoàn thành hay trạng thái CLOSED.</p>
+  return <section className="rounded-xl border border-slate-200 bg-white" data-testid="shipment-completion-goals">
+    <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
+      className="touch-target flex w-full items-center gap-3 px-3 py-2.5 text-left" data-testid="completion-goal-toggle">
+      <div className="min-w-0 flex-1">
+        <p className="text-[10.5px] font-extrabold uppercase tracking-widest text-slate-500">Rà soát trước khi kết thúc lô · read-only</p>
+        <p className="mt-0.5 text-[13px] font-semibold text-slate-600">Tự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.</p>
       </div>
-      <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700" data-testid="completion-goal-summary">
-        {evidenced} mục có bằng chứng · {action} mục cần xử lý · {unknown} mục chưa xác định
-      </p>
-    </div>
-    <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
-      {goals.map(g => <article key={g.id} className={cx('rounded-xl border p-3', STYLE[g.state])} data-testid={`completion-goal-${g.id}`} data-state={g.state}>
-        <div className="flex items-center gap-2"><Icon state={g.state} /><h3 className="font-extrabold">{g.title}</h3><span className="ml-auto text-[11px] font-bold">{LABEL[g.state]}</span></div>
-        <dl className="mt-2 space-y-1 text-xs">
-          <div><dt className="font-bold opacity-70">Bằng chứng hiện có</dt><dd>{g.evidence}</dd></div>
-          <div><dt className="font-bold opacity-70">Còn thiếu / cần kiểm tra</dt><dd>{g.missing}</dd></div>
-          <div><dt className="font-bold opacity-70">Xong khi</dt><dd>{g.doneWhen}</dd></div>
-        </dl>
-        {g.state !== 'NOT_APPLICABLE' && <button type="button" onClick={() => onOpenTab(g.tab)}
-          className="touch-target mt-2 rounded-lg border border-current bg-white/70 px-2.5 py-1.5 text-xs font-extrabold">Mở chỗ xử lý →</button>}
-      </article>)}
-    </div>
+      <span className={cx('shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-extrabold',
+        action > 0 ? 'bg-red-50 text-red-800 ring-1 ring-red-200' : unknown > 0 ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'bg-slate-100 text-slate-700')}
+        data-testid="completion-goal-summary">
+        {action > 0 ? `${action} việc cần xử lý` : unknown > 0 ? `${unknown} mục chưa xác định` : `${evidenced} mục có bằng chứng`}
+      </span>
+      <ChevronDown size={17} className={cx('shrink-0 text-slate-500 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+    </button>
+    {open && <div className="border-t border-slate-200 p-3" data-testid="completion-goal-details">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
+        {goals.map(g => <article key={g.id} className={cx('rounded-xl border p-3', STYLE[g.state])} data-testid={`completion-goal-${g.id}`} data-state={g.state}>
+          <div className="flex items-center gap-2"><Icon state={g.state} /><h3 className="font-extrabold">{g.title}</h3><span className="ml-auto text-[11px] font-bold">{LABEL[g.state]}</span></div>
+          <dl className="mt-2 space-y-1 text-xs">
+            <div><dt className="font-bold opacity-70">Bằng chứng hiện có</dt><dd>{g.evidence}</dd></div>
+            <div><dt className="font-bold opacity-70">Còn thiếu / cần kiểm tra</dt><dd>{g.missing}</dd></div>
+            <div><dt className="font-bold opacity-70">Xong khi</dt><dd>{g.doneWhen}</dd></div>
+          </dl>
+          {g.state !== 'NOT_APPLICABLE' && <button type="button" onClick={() => onOpenTab(g.tab)}
+            className="touch-target mt-2 rounded-lg border border-current bg-white/70 px-2.5 py-1.5 text-xs font-extrabold">Mở chỗ xử lý →</button>}
+        </article>)}
+      </div>
+    </div>}
   </section>;
 }
