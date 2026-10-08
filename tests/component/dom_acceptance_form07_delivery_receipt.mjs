@@ -158,9 +158,14 @@ async function gotoDocuments() {
   const workspace = $("[data-testid='journey-global-workspace']")[0];
   assert.ok(workspace, "Journey Global Workspace opens");
   await click("Chứng từ", "button", workspace);
-  const picker = $("[data-testid='shipment-document-picker']")[0];
-  assert.ok(picker, "document picker is on the existing Shipment Detail");
-  return picker;
+  // The Global Workspace may settle after the click tick on a busy CI host.
+  // Wait for the actual picker, not an arbitrary longer fixed sleep.
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const picker = $("[data-testid='shipment-document-picker']")[0];
+    if (picker) return picker;
+    await tick();
+  }
+  assert.fail("document picker is on the existing Shipment Detail");
 }
 
 function form07Card(root = window.document) {
