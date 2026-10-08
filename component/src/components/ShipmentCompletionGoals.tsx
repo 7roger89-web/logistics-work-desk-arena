@@ -173,6 +173,7 @@ export default function ShipmentCompletionGoals({ shipment: s, onOpenTab }: {
       <ChevronDown size={17} className={cx('shrink-0 text-slate-500 transition-transform', open && 'rotate-180')} aria-hidden="true" />
     </button>
     {open && <div className="border-t border-slate-200 p-3" data-testid="completion-goal-details">
+      <p className="mb-2 text-xs text-slate-500">Rà soát read-only: đây không phải % hoàn thành hay trạng thái CLOSED toàn lô — mỗi mục chỉ phản ánh bằng chứng đang có.</p>
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
         {goals.map(g => <article key={g.id} className={cx('rounded-xl border p-3', STYLE[g.state])} data-testid={`completion-goal-${g.id}`} data-state={g.state}>
           <div className="flex items-center gap-2"><Icon state={g.state} /><h3 className="font-extrabold">{g.title}</h3><span className="ml-auto text-[11px] font-bold">{LABEL[g.state]}</span></div>

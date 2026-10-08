@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ArrowRight, CheckCircle2, Circle, Clock, CircleAlert, ChevronDown, ChevronRight, Info, Layers, MapPin, Plus } from 'lucide-react';
 import type { JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
 import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
@@ -388,111 +388,6 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   </section>;
 }
 
-function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
-  s: Shipment;
-  nodes: JourneyNode[];
-  onOpen: (node: JourneyNode, work: string) => boolean;
-  onGlobal: (tab?: string) => boolean;
-}) {
-  const node = (id: string) => nodes.find(n => n.id === id);
-  const booking = node('booking');
-  const arrival = node('arrival');
-  const customs = node('customs-import');
-  const delivery = node('delivery');
-  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
-  const tabs = [
-    { id: 'info', label: 'Thông tin' },
-    { id: 'docs', label: 'Chứng từ' },
-    { id: 'costs', label: 'Chi phí' },
-    { id: 'history', label: 'Lịch sử' },
-  ] as const;
-  const statusLabel = (n?: JourneyNode) => n ? META[n.state].label : 'Chưa xác định';
-  const statusCls = (n?: JourneyNode) => n ? META[n.state].text : 'text-slate-500';
-  const openTab = (n: JourneyNode | undefined, tab: typeof tabs[number]['id'], fallback: string) => {
-    if (n) return onOpen(n, tab);
-    return onGlobal(tab === 'docs' ? 'chung-tu' : tab === 'costs' ? 'tai-chinh' : tab === 'history' ? 'lich-su' : fallback);
-  };
-  const rows = [
-    {
-      n: booking, num: 1, title: 'BOOKING – ĐẦU ĐI', accent: 'blue',
-      lines: [
-        ['Số booking', booking?.evidence || 'Chưa có bằng chứng'],
-        ['Cut-off / hạn', booking?.deadline || 'Chưa ghi nhận'],
-        ['Trạng thái', statusLabel(booking)],
-      ],
-      fallback: 'lay-hang',
-    },
-    {
-      n: arrival, num: 2, title: 'TÀU ĐẾN – CHẶNG CHÍNH', accent: 'amber',
-      lines: [
-        ['Mốc tàu đến', arrival?.evidence || 'Chưa có bằng chứng'],
-        ['ETA / ATA', arrival?.deadline || 'Chưa ghi nhận'],
-        ['Trạng thái', statusLabel(arrival)],
-      ],
-      fallback: 'van-tai',
-    },
-    {
-      n: customs, num: 3, title: 'NHẬP KHẨU – ỦY THÁC', accent: 'red',
-      lines: [
-        ['Tờ khai', s.importInfo.declarationNo || 'Chưa có thông tin'],
-        ['Thông quan', s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'],
-        ['Thuế NK / VAT', `${fmtCcy(s.importInfo.tax, 'VND')} / ${fmtCcy(s.importInfo.vat, 'VND')}`],
-      ],
-      fallback: 'nhap',
-    },
-    {
-      n: delivery, num: 4, title: 'GIAO HÀNG', accent: 'slate',
-      lines: [
-        ['Trạng thái', s.importInfo.delivered ? 'Đã giao' : statusLabel(delivery)],
-        ['Địa điểm', s.importInfo.deliveryAddr || 'Chưa có thông tin'],
-        ['Bằng chứng', delivery?.evidence || 'Chưa có bằng chứng'],
-      ],
-      fallback: 'nhap',
-    },
-    {
-      n: undefined, num: 5, title: 'HỒ SƠ & PHẠM VI', accent: 'blue',
-      lines: [
-        ['Khách hàng', s.customer || 'Chưa có thông tin'],
-        ['Incoterm', s.incoterm || 'Chưa xác định'],
-        ['Phạm vi TT', s.executionProfile?.serviceScopeSummary || 'Chưa xác nhận phạm vi'],
-      ],
-      fallback: 'van-tai',
-    },
-  ] as const;
-  const accentCls: Record<string, string> = {
-    blue: 'bg-blue-600 text-white',
-    amber: 'bg-amber-500 text-white',
-    red: 'bg-red-600 text-white',
-    slate: 'bg-slate-500 text-white',
-  };
-  return <div className="journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5" data-testid="journey-summary-cards">
-    {rows.map(card => <article key={card.num} className="min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm" data-testid={`journey-summary-card-${card.num}`}>
-      <div className="flex min-h-[52px] items-start gap-2 border-b border-slate-200 px-3 py-2.5">
-        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black', accentCls[card.accent])}>{card.num}</span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[13px] font-black leading-tight text-[#0f2a4a]">{card.title}</h3>
-        </div>
-        <span className={cx('shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold', card.n ? statusCls(card.n) : profileReady ? 'text-emerald-700' : 'text-blue-700')}>
-          {card.n ? statusLabel(card.n) : profileReady ? 'Đủ hồ sơ' : 'Toàn lô'}
-        </span>
-      </div>
-      <div className="flex border-b border-slate-200 px-2">
-        {tabs.map((tab, idx) => <button type="button" key={tab.id} onClick={() => openTab(card.n, tab.id, card.fallback)}
-          className={cx('touch-target min-w-0 flex-1 border-b-2 px-1 py-2 text-[10.5px] font-bold', idx === 0 ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400')}>
-          {tab.label}
-        </button>)}
-      </div>
-      <dl className="space-y-2 px-3 py-3 text-[11.5px]">
-        {card.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[78px_minmax(0,1fr)] gap-2">
-          <dt className="text-slate-500">{label}</dt>
-          <dd className={cx('min-w-0 break-words text-right font-bold text-slate-800',
-            String(value).toLowerCase().includes('chưa') && 'text-red-700')}>{value}</dd>
-        </div>)}
-      </dl>
-    </article>)}
-  </div>;
-}
-
 export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai" }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
@@ -524,7 +419,10 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
   const baseNodes = nodes.filter(n => !n.moduleId);
-  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
+  // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
+  // default: an explicit problem beats the positional current marker.
+  const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
   const choices = library?.templates ?? [];
@@ -539,7 +437,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     })) { setAttachPending(''); setAttachError('Chưa kết nối backend.'); }
   };
   const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
-  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); } };
+  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
   const openGlobal = (tab = 'van-tai') => {
     if (onGlobal(tab)) {
       setPanelMode('global');
@@ -547,47 +445,71 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       // side pane. Reuse the approved PR177 collapsed-map rail so the real
       // workspace gets readable width; the operator can reopen the map.
       setMapCollapsed(true);
+      return true;
     }
+    return false;
   };
   const wide = panelMode === 'stage' || panelMode === 'global';
-  const problem = baseNodes.find(n => n.blockers.length);
+  const problem = problemNode;
+  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
+  const prevModuleCount = useRef(modules.length);
+  useEffect(() => {
+    if (modules.length > prevModuleCount.current) setModulesOpen(true);
+    prevModuleCount.current = modules.length;
+  }, [modules]);
   return <section className="journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden" data-testid="shipment-journey">
-    <div className="flex flex-wrap items-center gap-3 border-b p-4">
-      <div className="min-w-0 flex-1"><h2 className="font-extrabold text-lg text-[#0f2a4a]">Hành trình lô hàng</h2>
-        <p className="text-sm text-slate-500">{journey.currentStageId ? `Vị trí theo mốc thực tế: ${nodes.find(n => n.current)?.label}` : journey.positionNote}</p></div>
-      {canAttach && <button type="button" onClick={() => { setAttachOpen(v => !v); setAttachError(''); }} data-testid="journey-add-module"
-        className="touch-target inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold"><Plus size={15} aria-hidden="true" />Thêm quy trình phát sinh</button>}
+    <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
+      <div className="min-w-0 flex-1">
+        <h2 className="font-extrabold text-[16px] text-[#0f2a4a]">Lô hàng {s.id}</h2>
+        <p className="truncate text-[12.5px] text-slate-500">{journey.currentStageId ? `Vị trí theo mốc thực tế: ${nodes.find(n => n.current)?.label}` : journey.positionNote}</p>
+      </div>
       <button type="button" onClick={() => openGlobal()} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Toàn bộ lô hàng</button>
     </div>
-    {attachOpen && <div className="border-b bg-slate-50 p-4" data-testid="journey-add-module-panel">
-      <h3 className="font-extrabold text-[#0f2a4a]">Thêm quy trình phát sinh</h3>
-      <p className="text-sm text-slate-500">Chỉ gắn được quy trình đang dùng (ACTIVE). Bản nháp/ngừng dùng không gắn được.</p>
-      {choices.length === 0
-        ? <p className="mt-2 text-sm text-slate-600">Chưa có quy trình nào đang dùng trong thư viện.</p>
-        : <ul className="mt-2 space-y-2">{choices.map(t => <li key={t.templateId}>
-            <label className={cx('flex cursor-pointer flex-col rounded-xl border-2 bg-white p-3', chosen === t.templateId ? 'border-[#0f2a4a]' : 'border-slate-200')}>
-              <span className="flex items-center gap-2">
-                <input type="radio" name="wm-choice" value={t.templateId} checked={chosen === t.templateId}
-                  onChange={() => setChosen(t.templateId)} aria-label={`Chọn ${t.name}`} />
-                <span className="font-bold">{t.name}</span>
-                <span className="text-xs text-slate-500">V{t.version} · {t.stepCount} bước</span>
-              </span>
-              <span className="mt-1 text-sm text-slate-600">{t.description || 'Chưa có mô tả.'}</span>
-            </label>
-          </li>)}</ul>}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" disabled={!canAttach || attachLoading || !chosen} onClick={attach} data-testid="journey-add-module-confirm"
-          className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{attachLoading ? 'Đang chờ đọc lại…' : 'Gắn vào lô này'}</button>
-        <button type="button" onClick={() => { setAttachOpen(false); setAttachError(''); }} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Đóng</button>
-        {attachLoading && <span className="text-sm text-slate-500">Đang ghi qua backend và chờ đọc lại.</span>}
+    {(modules.length > 0 || canAttach) && <div className="border-b bg-slate-50/60" data-testid={modules.length > 0 ? 'journey-modules' : 'journey-modules-empty'}>
+      <div className="flex items-center gap-1 px-3 py-1.5">
+        {modules.length > 0
+          ? <button type="button" onClick={() => setModulesOpen(v => !v)} aria-expanded={modulesOpen} data-testid="journey-modules-toggle"
+              className="touch-target flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left">
+              <Layers size={14} className="shrink-0 text-slate-500" aria-hidden="true" />
+              <span className="truncate text-xs font-extrabold tracking-wide text-slate-600">QUY TRÌNH ĐANG GẮN ({modules.length})</span>
+              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">Đang chặn</span>}
+              <ChevronDown size={15} className={cx('ml-auto shrink-0 text-slate-500 transition-transform', modulesOpen && 'rotate-180')} aria-hidden="true" />
+            </button>
+          : <span className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-xs font-extrabold tracking-wide text-slate-400">
+              <Layers size={14} className="shrink-0" aria-hidden="true" />QUY TRÌNH PHÁT SINH
+            </span>}
+        {canAttach && <button type="button" onClick={() => { setModulesOpen(true); setAttachOpen(v => !v); setAttachError(''); }} data-testid="journey-add-module"
+          className="touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-bold"><Plus size={13} aria-hidden="true" />Thêm quy trình</button>}
       </div>
-      {(attachError || (attachOutcome && !attachOutcome.ok)) && <p role="alert" className="mt-2 text-sm text-red-700">{attachError || attachOutcome?.error}</p>}
-    </div>}
-    {modules.length > 0 && <div className="border-b bg-slate-50/60 p-3" data-testid="journey-modules">
-      <p className="mb-2 inline-flex items-center gap-1 text-xs font-bold tracking-wide text-slate-500"><Layers size={13} aria-hidden="true" />QUY TRÌNH ĐANG GẮN ({modules.length})</p>
-      <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">{modules.map(m => <ModuleCard key={m.instanceId} module={m} nodes={nodes}
-        expanded={expandedModule === m.instanceId} onToggle={() => setExpandedModule(cur => cur === m.instanceId ? '' : m.instanceId)}
-        selectedId={selected.id} onPick={pick} />)}</div>
+      {(modulesOpen || (modules.length === 0 && attachOpen)) && <div className="space-y-2 px-3 pb-3">
+        {attachOpen && <div className="rounded-xl border border-slate-200 bg-white p-4" data-testid="journey-add-module-panel">
+          <h3 className="font-extrabold text-[#0f2a4a]">Thêm quy trình phát sinh</h3>
+          <p className="text-sm text-slate-500">Chỉ gắn được quy trình đang dùng (ACTIVE). Bản nháp/ngừng dùng không gắn được.</p>
+          {choices.length === 0
+            ? <p className="mt-2 text-sm text-slate-600">Chưa có quy trình nào đang dùng trong thư viện.</p>
+            : <ul className="mt-2 space-y-2">{choices.map(t => <li key={t.templateId}>
+                <label className={cx('flex cursor-pointer flex-col rounded-xl border-2 bg-white p-3', chosen === t.templateId ? 'border-[#0f2a4a]' : 'border-slate-200')}>
+                  <span className="flex items-center gap-2">
+                    <input type="radio" name="wm-choice" value={t.templateId} checked={chosen === t.templateId}
+                      onChange={() => setChosen(t.templateId)} aria-label={`Chọn ${t.name}`} />
+                    <span className="font-bold">{t.name}</span>
+                    <span className="text-xs text-slate-500">V{t.version} · {t.stepCount} bước</span>
+                  </span>
+                  <span className="mt-1 text-sm text-slate-600">{t.description || 'Chưa có mô tả.'}</span>
+                </label>
+              </li>)}</ul>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={!canAttach || attachLoading || !chosen} onClick={attach} data-testid="journey-add-module-confirm"
+              className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{attachLoading ? 'Đang chờ đọc lại…' : 'Gắn vào lô này'}</button>
+            <button type="button" onClick={() => { setAttachOpen(false); setAttachError(''); }} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Đóng</button>
+            {attachLoading && <span className="text-sm text-slate-500">Đang ghi qua backend và chờ đọc lại.</span>}
+          </div>
+          {(attachError || (attachOutcome && !attachOutcome.ok)) && <p role="alert" className="mt-2 text-sm text-red-700">{attachError || attachOutcome?.error}</p>}
+        </div>}
+        {modulesOpen && modules.length > 0 && <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">{modules.map(m => <ModuleCard key={m.instanceId} module={m} nodes={nodes}
+          expanded={expandedModule === m.instanceId} onToggle={() => setExpandedModule(cur => cur === m.instanceId ? '' : m.instanceId)}
+          selectedId={selected.id} onPick={pick} />)}</div>}
+      </div>}
     </div>}
     <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
       <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
@@ -620,6 +542,126 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     </div>
     <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal} />
   </section>;
+}
+
+function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
+  s: Shipment;
+  nodes: JourneyNode[];
+  onOpen: (node: JourneyNode, work: string) => boolean;
+  onGlobal: (tab?: string) => boolean;
+}) {
+  const node = (id: string) => nodes.find(n => n.id === id);
+  // Issue #190 — the six-phase STRIP is gone from populated view, but the
+  // phase → detailed-node mapping stays as each card's anchor. Cards project
+  // their region's detailed Journey nodes (never a second business state):
+  // anchor = the region's problem node when one exists, else the region's
+  // primary node. The detailed 11-node model is never replaced.
+  const REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', string[]> = {
+    origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'],
+    main: ['etd', 'on-board', 'transit', 'arrival'],
+    import: ['customs-import'],
+    delivery: ['delivery'],
+  };
+  const regionAnchor = (region: keyof typeof REGION_NODE_IDS, prefer: string) => {
+    const found = REGION_NODE_IDS[region].map(node).filter((n): n is JourneyNode => Boolean(n));
+    return found.find(n => n.state === 'PROBLEM' || n.blockers.length > 0) ?? node(prefer) ?? found[0];
+  };
+  const booking = regionAnchor('origin', 'booking');
+  const arrival = regionAnchor('main', 'arrival');
+  const customs = regionAnchor('import', 'customs-import');
+  const delivery = regionAnchor('delivery', 'delivery');
+  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
+  const tabs = [
+    { id: 'info', label: 'Thông tin' },
+    { id: 'docs', label: 'Chứng từ' },
+    { id: 'costs', label: 'Chi phí' },
+    { id: 'history', label: 'Lịch sử' },
+  ] as const;
+  const statusLabel = (n?: JourneyNode) => n ? META[n.state].label : 'Chưa xác định';
+  const statusCls = (n?: JourneyNode) => n ? META[n.state].text : 'text-slate-500';
+  const openTab = (n: JourneyNode | undefined, tab: typeof tabs[number]['id'], fallback: string) => {
+    if (n) return onOpen(n, tab);
+    return onGlobal(tab === 'docs' ? 'chung-tu' : tab === 'costs' ? 'tai-chinh' : tab === 'history' ? 'lich-su' : fallback);
+  };
+  const rows = [
+    {
+      n: booking, num: 1, testid: 'journey-summary-card-1', title: 'BOOKING – ĐẦU ĐI', accent: 'blue',
+      lines: [
+        ['Số booking', booking?.evidence || 'Chưa có bằng chứng'],
+        ['Cut-off / hạn', booking?.deadline || 'Chưa ghi nhận'],
+        ['Trạng thái', statusLabel(booking)],
+      ],
+      fallback: 'lay-hang',
+    },
+    {
+      n: arrival, num: 2, testid: 'journey-summary-card-2', title: 'TÀU ĐẾN – CHẶNG CHÍNH', accent: 'amber',
+      lines: [
+        ['Mốc tàu đến', arrival?.evidence || 'Chưa có bằng chứng'],
+        ['ETA / ATA', arrival?.deadline || 'Chưa ghi nhận'],
+        ['Trạng thái', statusLabel(arrival)],
+      ],
+      fallback: 'van-tai',
+    },
+    {
+      n: customs, num: 3, testid: 'journey-summary-card-3', title: 'NHẬP KHẨU – ỦY THÁC', accent: 'red',
+      lines: [
+        ['Tờ khai', s.importInfo.declarationNo || 'Chưa có thông tin'],
+        ['Thông quan', s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'],
+        ['Thuế NK / VAT', `${fmtCcy(s.importInfo.tax, 'VND')} / ${fmtCcy(s.importInfo.vat, 'VND')}`],
+      ],
+      fallback: 'nhap',
+    },
+    {
+      n: delivery, num: 4, testid: 'journey-summary-card-4', title: 'GIAO HÀNG', accent: 'slate',
+      lines: [
+        ['Trạng thái', s.importInfo.delivered ? 'Đã giao' : statusLabel(delivery)],
+        ['Địa điểm', s.importInfo.deliveryAddr || 'Chưa có thông tin'],
+        ['Bằng chứng', delivery?.evidence || 'Chưa có bằng chứng'],
+      ],
+      fallback: 'nhap',
+    },
+    {
+      n: undefined, num: 5, testid: 'journey-summary-card-5', title: 'HỒ SƠ & PHẠM VI', accent: 'blue',
+      lines: [
+        ['Khách hàng', s.customer || 'Chưa có thông tin'],
+        ['Incoterm', s.incoterm || 'Chưa xác định'],
+        ['Phạm vi TT', s.executionProfile?.serviceScopeSummary || 'Chưa xác nhận phạm vi'],
+      ],
+      fallback: 'van-tai',
+    },
+  ] as const;
+  const accentCls: Record<string, string> = {
+    blue: 'bg-blue-600 text-white',
+    amber: 'bg-amber-500 text-white',
+    red: 'bg-red-600 text-white',
+    slate: 'bg-slate-500 text-white',
+  };
+  return <div className="journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5" data-testid="journey-summary-cards">
+    {rows.map(card => <article key={card.num} className="min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm" data-testid={card.testid}>
+      <div className="flex min-h-[52px] items-start gap-2 border-b border-slate-200 px-3 py-2.5">
+        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black', accentCls[card.accent])}>{card.num}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[13px] font-black leading-tight text-[#0f2a4a]">{card.title}</h3>
+        </div>
+        <span className={cx('shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold', card.n ? statusCls(card.n) : profileReady ? 'text-emerald-700' : 'text-blue-700')}>
+          {card.n ? statusLabel(card.n) : profileReady ? 'Đủ hồ sơ' : 'Toàn lô'}
+        </span>
+      </div>
+      <div className="flex border-b border-slate-200 px-2">
+        {tabs.map((tab, idx) => <button type="button" key={tab.id} onClick={() => openTab(card.n, tab.id, card.fallback)}
+          className={cx('touch-target min-w-0 flex-1 border-b-2 px-1 py-2 text-[10.5px] font-bold', idx === 0 ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400')}>
+          {tab.label}
+        </button>)}
+      </div>
+      <dl className="space-y-2 px-3 py-3 text-[11.5px]">
+        {card.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[78px_minmax(0,1fr)] gap-2">
+          <dt className="text-slate-500">{label}</dt>
+          <dd className={cx('min-w-0 break-words text-right font-bold text-slate-800',
+            String(value).toLowerCase().includes('chưa') && 'text-red-700')}>{value}</dd>
+        </div>)}
+      </dl>
+    </article>)}
+  </div>;
 }
 
 /**
