@@ -388,6 +388,111 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   </section>;
 }
 
+function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
+  s: Shipment;
+  nodes: JourneyNode[];
+  onOpen: (node: JourneyNode, work: string) => boolean;
+  onGlobal: (tab?: string) => boolean;
+}) {
+  const node = (id: string) => nodes.find(n => n.id === id);
+  const booking = node('booking');
+  const arrival = node('arrival');
+  const customs = node('customs-import');
+  const delivery = node('delivery');
+  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
+  const tabs = [
+    { id: 'info', label: 'Thông tin' },
+    { id: 'docs', label: 'Chứng từ' },
+    { id: 'costs', label: 'Chi phí' },
+    { id: 'history', label: 'Lịch sử' },
+  ] as const;
+  const statusLabel = (n?: JourneyNode) => n ? META[n.state].label : 'Chưa xác định';
+  const statusCls = (n?: JourneyNode) => n ? META[n.state].text : 'text-slate-500';
+  const openTab = (n: JourneyNode | undefined, tab: typeof tabs[number]['id'], fallback: string) => {
+    if (n) return onOpen(n, tab);
+    return onGlobal(tab === 'docs' ? 'chung-tu' : tab === 'costs' ? 'tai-chinh' : tab === 'history' ? 'lich-su' : fallback);
+  };
+  const rows = [
+    {
+      n: booking, num: 1, title: 'BOOKING – ĐẦU ĐI', accent: 'blue',
+      lines: [
+        ['Số booking', booking?.evidence || 'Chưa có bằng chứng'],
+        ['Cut-off / hạn', booking?.deadline || 'Chưa ghi nhận'],
+        ['Trạng thái', statusLabel(booking)],
+      ],
+      fallback: 'lay-hang',
+    },
+    {
+      n: arrival, num: 2, title: 'TÀU ĐẾN – CHẶNG CHÍNH', accent: 'amber',
+      lines: [
+        ['Mốc tàu đến', arrival?.evidence || 'Chưa có bằng chứng'],
+        ['ETA / ATA', arrival?.deadline || 'Chưa ghi nhận'],
+        ['Trạng thái', statusLabel(arrival)],
+      ],
+      fallback: 'van-tai',
+    },
+    {
+      n: customs, num: 3, title: 'NHẬP KHẨU – ỦY THÁC', accent: 'red',
+      lines: [
+        ['Tờ khai', s.importInfo.declarationNo || 'Chưa có thông tin'],
+        ['Thông quan', s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'],
+        ['Thuế NK / VAT', `${fmtCcy(s.importInfo.tax, 'VND')} / ${fmtCcy(s.importInfo.vat, 'VND')}`],
+      ],
+      fallback: 'nhap',
+    },
+    {
+      n: delivery, num: 4, title: 'GIAO HÀNG', accent: 'slate',
+      lines: [
+        ['Trạng thái', s.importInfo.delivered ? 'Đã giao' : statusLabel(delivery)],
+        ['Địa điểm', s.importInfo.deliveryAddr || 'Chưa có thông tin'],
+        ['Bằng chứng', delivery?.evidence || 'Chưa có bằng chứng'],
+      ],
+      fallback: 'nhap',
+    },
+    {
+      n: undefined, num: 5, title: 'HỒ SƠ & PHẠM VI', accent: 'blue',
+      lines: [
+        ['Khách hàng', s.customer || 'Chưa có thông tin'],
+        ['Incoterm', s.incoterm || 'Chưa xác định'],
+        ['Phạm vi TT', s.executionProfile?.serviceScopeSummary || 'Chưa xác nhận phạm vi'],
+      ],
+      fallback: 'van-tai',
+    },
+  ] as const;
+  const accentCls: Record<string, string> = {
+    blue: 'bg-blue-600 text-white',
+    amber: 'bg-amber-500 text-white',
+    red: 'bg-red-600 text-white',
+    slate: 'bg-slate-500 text-white',
+  };
+  return <div className="journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5" data-testid="journey-summary-cards">
+    {rows.map(card => <article key={card.num} className="min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm" data-testid={`journey-summary-card-${card.num}`}>
+      <div className="flex min-h-[52px] items-start gap-2 border-b border-slate-200 px-3 py-2.5">
+        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black', accentCls[card.accent])}>{card.num}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[13px] font-black leading-tight text-[#0f2a4a]">{card.title}</h3>
+        </div>
+        <span className={cx('shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold', card.n ? statusCls(card.n) : profileReady ? 'text-emerald-700' : 'text-blue-700')}>
+          {card.n ? statusLabel(card.n) : profileReady ? 'Đủ hồ sơ' : 'Toàn lô'}
+        </span>
+      </div>
+      <div className="flex border-b border-slate-200 px-2">
+        {tabs.map((tab, idx) => <button type="button" key={tab.id} onClick={() => openTab(card.n, tab.id, card.fallback)}
+          className={cx('touch-target min-w-0 flex-1 border-b-2 px-1 py-2 text-[10.5px] font-bold', idx === 0 ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400')}>
+          {tab.label}
+        </button>)}
+      </div>
+      <dl className="space-y-2 px-3 py-3 text-[11.5px]">
+        {card.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[78px_minmax(0,1fr)] gap-2">
+          <dt className="text-slate-500">{label}</dt>
+          <dd className={cx('min-w-0 break-words text-right font-bold text-slate-800',
+            String(value).toLowerCase().includes('chưa') && 'text-red-700')}>{value}</dd>
+        </div>)}
+      </dl>
+    </article>)}
+  </div>;
+}
+
 export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai" }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
@@ -513,6 +618,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
       </aside>
     </div>
+    <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal} />
   </section>;
 }
 
