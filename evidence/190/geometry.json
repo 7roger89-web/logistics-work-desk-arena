@@ -1,54 +1,937 @@
 {
- "identity": {
-  "x": 16,
-  "y": 24,
-  "w": 1496,
-  "h": 73
- },
- "attention": {
-  "x": 16,
-  "y": 107,
-  "w": 1496,
-  "h": 51
- },
- "map": {
-  "x": 16,
-  "y": 168,
-  "w": 1034,
-  "h": 718
- },
- "panel": {
-  "x": 1062,
-  "y": 168,
-  "w": 450,
-  "h": 718
- },
- "split": {
-  "x": 16,
-  "y": 168,
-  "w": 1496,
-  "h": 718
- },
- "nodeBooking": {
-  "w": 148,
-  "h": 123
- },
- "fitPct": "90%",
- "cardWidths": [
-  285,
-  285,
-  285,
-  285,
-  285
- ],
- "cardGaps": [
-  12,
-  12,
-  12,
-  12
- ],
- "sidebarVisible": false,
- "topbarVisible": false,
- "tabRowPresent": false,
- "pageX": 16
+  "generatedAt": "2026-10-08T11:22:37.212Z",
+  "referenceViewport": {
+    "width": 1536,
+    "height": 1466
+  },
+  "browser": {
+    "executable": "/tmp/chromium",
+    "version": "110.0.5478.0"
+  },
+  "modelShipments": [
+    "LO-0299",
+    "LO-0306",
+    "LO-0307",
+    "LO-0308",
+    "LO-0295",
+    "SEA-160"
+  ],
+  "modelSea160JourneyNodes": 11,
+  "modelAttentionItems": 9,
+  "fonts": {
+    "vietnameseAvailable": true,
+    "interAvailable": true,
+    "familyOnSurface": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", Arial, sans-serif",
+    "loadedFaces": 24
+  },
+  "storeDelivery": {
+    "renderedNodes": 11,
+    "modelNodes": 11,
+    "injectedManually": false
+  },
+  "populated": {
+    "shell": {
+      "scrollTop": 0,
+      "scrollHeight": 1409,
+      "clientHeight": 1409,
+      "scrollWidth": 1536,
+      "clientWidth": 1536,
+      "verticalOverflow": 0,
+      "horizontalOverflow": 0,
+      "bbox": {
+        "x": 0,
+        "y": 0,
+        "w": 1536,
+        "h": 1409
+      }
+    },
+    "document": {
+      "clientWidth": 1536,
+      "scrollWidth": 1536,
+      "clientHeight": 1466,
+      "scrollHeight": 1466
+    },
+    "pageHorizontalOverflow": 0,
+    "viewport": {
+      "width": 1536,
+      "height": 1466
+    },
+    "fit": {
+      "scale": 0.90704,
+      "transform": "width: 1108px; height: 690px; transform: translate(16px, 45.0713px) scale(0.90704);"
+    },
+    "blocks": {
+      "attention-now": {
+        "x": 17,
+        "y": 106.8,
+        "w": 1502,
+        "h": 51.1
+      },
+      "shipment-journey": {
+        "x": 17,
+        "y": 167.9,
+        "w": 1502,
+        "h": 1128.1
+      },
+      "journey-modules": null,
+      "journey-phase-strip": null,
+      "journey-map-toolbar": null,
+      "journey-map-viewport": {
+        "x": 17,
+        "y": 167.9,
+        "w": 1039,
+        "h": 718
+      },
+      "journey-side-panel": {
+        "x": 1068,
+        "y": 167.9,
+        "w": 451,
+        "h": 718
+      },
+      "journey-quick-panel": {
+        "x": 1069,
+        "y": 168.9,
+        "w": 449,
+        "h": 716
+      },
+      "journey-overview-panel": null,
+      "journey-stage-workspace": null,
+      "journey-global-workspace": null,
+      "journey-summary-cards": {
+        "x": 17,
+        "y": 885.9,
+        "w": 1502,
+        "h": 410.1
+      },
+      "shipment-completion-goals": {
+        "x": 17,
+        "y": 1306,
+        "w": 1502,
+        "h": 60.4
+      },
+      "completion-goal-details": null,
+      "shipment-execution-profile": null,
+      "journey-map-rail": null,
+      "journey-empty-canvas": null,
+      "customs-import-quick-panel": null,
+      "ci-next-action": null,
+      "ci-registration-clearance": null,
+      "ci-scroll-region": null,
+      "ci-footer": null,
+      "ci-open-workspace": null,
+      "journey-parallel-branch": {
+        "x": 641.7,
+        "y": 232.1,
+        "w": 174.2,
+        "h": 321.1
+      },
+      "shipment-identity-bar": {
+        "x": 17,
+        "y": 24,
+        "w": 1502,
+        "h": 72.8
+      }
+    },
+    "order": [
+      {
+        "id": "shipment-identity-bar",
+        "y": 24,
+        "h": 72.8
+      },
+      {
+        "id": "attention-now",
+        "y": 106.8,
+        "h": 51.1
+      },
+      {
+        "id": "shipment-journey",
+        "y": 167.9,
+        "h": 1128.1
+      },
+      {
+        "id": "journey-map-viewport",
+        "y": 167.9,
+        "h": 718
+      },
+      {
+        "id": "journey-side-panel",
+        "y": 167.9,
+        "h": 718
+      },
+      {
+        "id": "journey-quick-panel",
+        "y": 168.9,
+        "h": 716
+      },
+      {
+        "id": "journey-parallel-branch",
+        "y": 232.1,
+        "h": 321.1
+      },
+      {
+        "id": "journey-summary-cards",
+        "y": 885.9,
+        "h": 410.1
+      },
+      {
+        "id": "shipment-completion-goals",
+        "y": 1306,
+        "h": 60.4
+      }
+    ],
+    "split": {
+      "rect": {
+        "x": 17,
+        "y": 167.9,
+        "w": 1502,
+        "h": 718
+      },
+      "className": "journey-split",
+      "height": 718
+    },
+    "mapToPanelGap": 12,
+    "mapPanelRatio": 2.304,
+    "nodes": [
+      {
+        "id": "booking",
+        "state": "COMPLETED",
+        "current": "",
+        "logical": {
+          "x": 48,
+          "y": 140,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 77.5,
+          "y": 340.9,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Hoàn thành1BOOKINGBooking: BK-160📄 0"
+      },
+      {
+        "id": "pickup",
+        "state": "WAITING",
+        "current": "",
+        "logical": {
+          "x": 260,
+          "y": 140,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 269.8,
+          "y": 340.9,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Đang chờ2PICKUPChưa có bằng chứng thực tế⏱ 2026-10-01📄 0"
+      },
+      {
+        "id": "customs-export",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 472,
+          "y": 140,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 462.1,
+          "y": 340.9,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới3CUSTOMS EXPORTChưa có bằng chứng thự"
+      },
+      {
+        "id": "si-vgm",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 684,
+          "y": 56,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 654.4,
+          "y": 264.7,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới4SI / VGMChưa có bằng chứng thực tế📄"
+      },
+      {
+        "id": "gate-in",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 684,
+          "y": 224,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 654.4,
+          "y": 417.1,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới5GATE-INChưa có bằng chứng thực tế📄 "
+      },
+      {
+        "id": "etd",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 896,
+          "y": 140,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 846.7,
+          "y": 340.9,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới6ETDChưa có bằng chứng thực tế⏱ 2000-"
+      },
+      {
+        "id": "on-board",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 896,
+          "y": 400,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 846.7,
+          "y": 576.8,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới7ON BOARD / ATDChưa có bằng chứng thự"
+      },
+      {
+        "id": "transit",
+        "state": "UPCOMING",
+        "current": "",
+        "logical": {
+          "x": 684,
+          "y": 400,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 654.4,
+          "y": 576.8,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "Chưa xác định / sắp tới8TRANSITChưa có bằng chứng thực tế⏱ 2"
+      },
+      {
+        "id": "arrival",
+        "state": "PROBLEM",
+        "current": "selected",
+        "logical": {
+          "x": 472,
+          "y": 400,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 462.1,
+          "y": 576.8,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "⚠ VẤN ĐỀCần xử lý9ARRIVALThiếu ETA⏱ 2000-01-03📄 0⚠ 1"
+      },
+      {
+        "id": "customs-import",
+        "state": "PROBLEM",
+        "current": "",
+        "logical": {
+          "x": 260,
+          "y": 400,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 269.8,
+          "y": 576.8,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "⚠ VẤN ĐỀCần xử lý10CUSTOMS IMPORTBổ sung số tờ khai nhập khẩ"
+      },
+      {
+        "id": "delivery",
+        "state": "PROBLEM",
+        "current": "",
+        "logical": {
+          "x": 48,
+          "y": 400,
+          "w": 164,
+          "h": 136
+        },
+        "rendered": {
+          "x": 77.5,
+          "y": 576.8,
+          "w": 148.8,
+          "h": 123.4
+        },
+        "label": "⚠ VẤN ĐỀCần xử lý11DELIVERYGhi nhận điểm giao và xác nhận đã"
+      }
+    ],
+    "nodeRendered": {
+      "w": 148.8,
+      "h": 123.4
+    },
+    "nodeLogical": {
+      "w": 164,
+      "h": 136
+    },
+    "cards": [
+      {
+        "id": "journey-summary-card-1",
+        "rect": {
+          "x": 29,
+          "y": 898.9,
+          "w": 286,
+          "h": 385.1
+        },
+        "title": "BOOKING – ĐẦU ĐI",
+        "tabs": 4
+      },
+      {
+        "id": "journey-summary-card-2",
+        "rect": {
+          "x": 327,
+          "y": 898.9,
+          "w": 286,
+          "h": 385.1
+        },
+        "title": "TÀU ĐẾN – CHẶNG CHÍNH",
+        "tabs": 4
+      },
+      {
+        "id": "journey-summary-card-3",
+        "rect": {
+          "x": 625,
+          "y": 898.9,
+          "w": 286,
+          "h": 385.1
+        },
+        "title": "NHẬP KHẨU – ỦY THÁC",
+        "tabs": 4
+      },
+      {
+        "id": "journey-summary-card-4",
+        "rect": {
+          "x": 923,
+          "y": 898.9,
+          "w": 286,
+          "h": 385.1
+        },
+        "title": "GIAO HÀNG",
+        "tabs": 5
+      },
+      {
+        "id": "journey-summary-card-5",
+        "rect": {
+          "x": 1221,
+          "y": 898.9,
+          "w": 286,
+          "h": 385.1
+        },
+        "title": "HỒ SƠ & PHẠM VI",
+        "tabs": 5
+      }
+    ],
+    "cardGaps": [
+      12,
+      12,
+      12,
+      12
+    ],
+    "attentionToJourneyGap": 10,
+    "journeyToCardsGap": null,
+    "completionGoalsText": "Rà soát trước khi kết thúc lô · read-onlyTự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.3 việc cần xử lý",
+    "panelMode": "quick"
+  },
+  "populatedFirstScreen": [
+    {
+      "id": "attention-now",
+      "visibleInFirstScreen": true,
+      "top": 107,
+      "bottom": 158
+    },
+    {
+      "id": "shipment-journey",
+      "visibleInFirstScreen": true,
+      "top": 168,
+      "bottom": 1296
+    },
+    {
+      "id": "journey-map-viewport",
+      "visibleInFirstScreen": true,
+      "top": 168,
+      "bottom": 886
+    },
+    {
+      "id": "journey-side-panel",
+      "visibleInFirstScreen": true,
+      "top": 168,
+      "bottom": 886
+    },
+    {
+      "id": "journey-summary-cards",
+      "visibleInFirstScreen": true,
+      "top": 886,
+      "bottom": 1296
+    },
+    {
+      "id": "shipment-completion-goals",
+      "visibleInFirstScreen": true,
+      "top": 1306,
+      "bottom": 1366
+    }
+  ],
+  "customsPanel": {
+    "initial": {
+      "actionCount": 1,
+      "registrationCount": 1,
+      "primaryCount": 1,
+      "workspaceCount": 1,
+      "actionBeforeRegistration": true,
+      "actionY": 272.4375,
+      "registrationY": 488.46875,
+      "actionBackground": "rgb(254, 242, 242)",
+      "actionBorder": "rgb(228, 0, 20)",
+      "scrollTop": 0,
+      "scrollHeight": 685,
+      "clientHeight": 551,
+      "footerY": 811.859375,
+      "footerBottom": 884.875,
+      "panelTop": 167.875,
+      "panelBottom": 885.875
+    },
+    "afterInternalScroll": {
+      "scrollTop": 134,
+      "footerY": 811.859375
+    }
+  },
+  "completionExpanded": {
+    "details": {
+      "x": 18,
+      "y": 1365.4,
+      "w": 1492,
+      "h": 703
+    },
+    "text": "Rà soát trước khi kết thúc lô · read-onlyTự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.3 việc cần xử lýRà soát read-only: đây không phải % hoàn thành hay trạng thái CLOSED toàn lô — mỗi mục chỉ phản ánh bằng chứng đang có.Hồ sơ & phạm viCó bằng chứngBằng chứng hiện cóLấy hàng → Giao hàngCòn thiếu / cần kiểm traKhông có thiếu s"
+  },
+  "globalWorkspace": {
+    "rail": {
+      "x": 17,
+      "y": 167.9,
+      "w": 208,
+      "h": 718
+    },
+    "sidePanel": {
+      "x": 237,
+      "y": 167.9,
+      "w": 1282,
+      "h": 718
+    },
+    "mapViewport": null,
+    "panelMode": "global",
+    "splitClass": "journey-split journey-split-wide journey-split-collapsed"
+  },
+  "populated390": {
+    "split": {
+      "rect": {
+        "x": 12,
+        "y": 253.5,
+        "w": 358,
+        "h": 1352
+      },
+      "className": "journey-split",
+      "height": 1352
+    },
+    "map": {
+      "x": 12,
+      "y": 253.5,
+      "w": 358,
+      "h": 620
+    },
+    "side": {
+      "x": 12,
+      "y": 885.5,
+      "w": 358,
+      "h": 720
+    },
+    "cards": 5,
+    "overflow": 0
+  },
+  "normalShell": {
+    "focus": false,
+    "topbar": true,
+    "sidebar": true
+  },
+  "shipmentList": [
+    {
+      "id": "LO-0299",
+      "band": null,
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    },
+    {
+      "id": "LO-0306",
+      "band": "OVERDUE",
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "Quá hạnQuá free time",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    },
+    {
+      "id": "LO-0307",
+      "band": null,
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    },
+    {
+      "id": "LO-0308",
+      "band": "OVERDUE",
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "Quá hạnQuá hạn khách",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    },
+    {
+      "id": "LO-0295",
+      "band": "OVERDUE",
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "Quá hạnBổ sung hồ sơ thực hiện lô",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    },
+    {
+      "id": "SEA-160",
+      "band": null,
+      "alertMarker": false,
+      "pulseDot": false,
+      "nextAction": "",
+      "responsibility": [
+        "Chưa phân công",
+        "staging.supportXỬ"
+      ]
+    }
+  ],
+  "freshServerTruth": {
+    "shipmentId": "SEA-188",
+    "journeyNodes": 0,
+    "profileState": "PROFILE_INCOMPLETE",
+    "persisted": true
+  },
+  "fresh": {
+    "shell": {
+      "scrollTop": 0,
+      "scrollHeight": 1409,
+      "clientHeight": 1409,
+      "scrollWidth": 1536,
+      "clientWidth": 1536,
+      "verticalOverflow": 0,
+      "horizontalOverflow": 0,
+      "bbox": {
+        "x": 0,
+        "y": 0,
+        "w": 1536,
+        "h": 1409
+      }
+    },
+    "document": {
+      "clientWidth": 1536,
+      "scrollWidth": 1536,
+      "clientHeight": 1466,
+      "scrollHeight": 1466
+    },
+    "pageHorizontalOverflow": 0,
+    "viewport": {
+      "width": 1536,
+      "height": 1466
+    },
+    "fit": {
+      "scale": 1,
+      "transform": ""
+    },
+    "blocks": {
+      "attention-now": {
+        "x": 17,
+        "y": 106.8,
+        "w": 1502,
+        "h": 51.1
+      },
+      "shipment-journey": {
+        "x": 17,
+        "y": 167.9,
+        "w": 1502,
+        "h": 712
+      },
+      "journey-modules": null,
+      "journey-phase-strip": {
+        "x": 18,
+        "y": 249.9,
+        "w": 1500,
+        "h": 88
+      },
+      "journey-map-toolbar": {
+        "x": 18,
+        "y": 337.9,
+        "w": 1500,
+        "h": 41
+      },
+      "journey-map-viewport": null,
+      "journey-side-panel": {
+        "x": 1067,
+        "y": 378.9,
+        "w": 451,
+        "h": 500
+      },
+      "journey-quick-panel": {
+        "x": 1068,
+        "y": 465.1,
+        "w": 449,
+        "h": 412.7
+      },
+      "journey-overview-panel": {
+        "x": 1068,
+        "y": 379.9,
+        "w": 449,
+        "h": 498
+      },
+      "journey-stage-workspace": null,
+      "journey-global-workspace": null,
+      "journey-summary-cards": null,
+      "shipment-completion-goals": {
+        "x": 17,
+        "y": 889.9,
+        "w": 1502,
+        "h": 60.4
+      },
+      "completion-goal-details": null,
+      "shipment-execution-profile": null,
+      "journey-map-rail": null,
+      "journey-empty-canvas": {
+        "x": 18,
+        "y": 378.9,
+        "w": 1037,
+        "h": 500
+      },
+      "customs-import-quick-panel": null,
+      "ci-next-action": null,
+      "ci-registration-clearance": null,
+      "ci-scroll-region": null,
+      "ci-footer": null,
+      "ci-open-workspace": null,
+      "journey-parallel-branch": null,
+      "shipment-identity-bar": {
+        "x": 17,
+        "y": 24,
+        "w": 1502,
+        "h": 72.8
+      }
+    },
+    "order": [
+      {
+        "id": "shipment-identity-bar",
+        "y": 24,
+        "h": 72.8
+      },
+      {
+        "id": "attention-now",
+        "y": 106.8,
+        "h": 51.1
+      },
+      {
+        "id": "shipment-journey",
+        "y": 167.9,
+        "h": 712
+      },
+      {
+        "id": "journey-phase-strip",
+        "y": 249.9,
+        "h": 88
+      },
+      {
+        "id": "journey-map-toolbar",
+        "y": 337.9,
+        "h": 41
+      },
+      {
+        "id": "journey-empty-canvas",
+        "y": 378.9,
+        "h": 500
+      },
+      {
+        "id": "journey-side-panel",
+        "y": 378.9,
+        "h": 500
+      },
+      {
+        "id": "journey-overview-panel",
+        "y": 379.9,
+        "h": 498
+      },
+      {
+        "id": "journey-quick-panel",
+        "y": 465.1,
+        "h": 412.7
+      },
+      {
+        "id": "shipment-completion-goals",
+        "y": 889.9,
+        "h": 60.4
+      }
+    ],
+    "split": {
+      "rect": {
+        "x": 18,
+        "y": 378.9,
+        "w": 1500,
+        "h": 500
+      },
+      "className": "journey-split journey-split-fresh",
+      "height": 500
+    },
+    "mapToPanelGap": null,
+    "mapPanelRatio": null,
+    "nodes": [],
+    "nodeRendered": null,
+    "nodeLogical": null,
+    "cards": [],
+    "cardGaps": [],
+    "attentionToJourneyGap": 10,
+    "journeyToCardsGap": null,
+    "completionGoalsText": "Rà soát trước khi kết thúc lô · read-onlyTự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.2 việc cần xử lý",
+    "panelMode": "overview"
+  },
+  "fresh390": {
+    "split": {
+      "rect": {
+        "x": 13,
+        "y": 734.5,
+        "w": 356,
+        "h": 1162
+      },
+      "className": "journey-split journey-split-fresh",
+      "height": 1162
+    },
+    "canvas": {
+      "x": 13,
+      "y": 734.5,
+      "w": 356,
+      "h": 430
+    },
+    "side": {
+      "x": 13,
+      "y": 1176.5,
+      "w": 356,
+      "h": 720
+    },
+    "phases": {
+      "x": 13,
+      "y": 415.5,
+      "w": 356,
+      "h": 238
+    },
+    "topEvidence": {
+      "scrollTop": 0,
+      "phaseVisible": true,
+      "canvasEntranceVisible": true,
+      "shell": {
+        "top": 0,
+        "bottom": 787
+      },
+      "phase": {
+        "top": 415.46875,
+        "bottom": 653.46875
+      },
+      "canvas": {
+        "top": 734.46875,
+        "bottom": 1164.46875
+      }
+    },
+    "onboardingEvidence": {
+      "cta": {
+        "top": 320.734375,
+        "bottom": 368.75
+      },
+      "shell": {
+        "top": 0,
+        "bottom": 787
+      }
+    }
+  },
+  "checks": [
+    "host /model delivers 6 shipments incl. SEA-160 with 11 journey nodes and 9 Attention items",
+    "real Chromium 110.0.5478.0 rendered SEA-160; fonts: 24 faces loaded, family=\"Inter\"",
+    "SHIPMENTS_STORE_DELIVERY: rendered 11 detailed nodes straight from the host view model (no manual store injection)",
+    "populated 1536×1466: composition = Attention → Journey(header + map + right Quick Panel) → five lower cards; no phase strip, no map toolbar, no Global Workspace",
+    "populated 1536×1466: 11 node cards match the immutable Prototype-B geometry oracle (164×136 at the approved DEMO_POS), fit scale=0.90704",
+    "scrollport: .logi-shell client 1536×1409, scroll 1536×1409, vertical overflow 0px",
+    "geometry: Journey outer 1502×1128.1 · map 1039×718 · Quick Panel 451×718 · map/panel ratio 2.304 · fit 91% · split height 718px · card gaps [12,12,12,12]",
+    "compact identity bar + HỒ SƠ secondary-facts disclosure preserved; no permanent legacy tab row",
+    "Completion Goals collapsed by default (details absent), copy states derived-guidance truth, block sits below Journey at y=1306",
+    "first screen (1536×1466, scrollTop=0): attention-now → shipment-journey → journey-map-viewport → journey-side-panel → journey-summary-cards → shipment-completion-goals",
+    "captured candidate-populated-desktop.png (1536×1466), candidate-populated-journey.png, candidate-populated-fullpage.png",
+    "Customs Quick Panel: next action precedes registration/clearance; 1 primary CTA + 1 navigation CTA; content scrolled 134px while footer stayed at y=811.859375; Stage Workspace opened with zero writes",
+    "optional module setup: absent from default first screen, still reachable from HỒ SƠ → Thông tin thêm with zero writes",
+    "Completion Goals expand on demand: details 1492×703px (collapsed row was 60px)",
+    "Global Workspace: map auto-collapsed to rail (208px), workspace pane 1282px wide — no full forms squeezed into the 451px Quick Panel",
+    "populated 390: no horizontal overflow (page 0px, app scrollport 0px)",
+    "populated 390×844: stacked split 358×1352, map 620px tall, panel 720px tall, 5 cards",
+    "normal-shell non-detail route keeps desktop topbar + sidebar",
+    "zero application page errors on the populated lane",
+    "list rows=6; canonical urgent bands=LO-0306:OVERDUE, LO-0308:OVERDUE, LO-0295:OVERDUE; nonurgent rows=LO-0299, LO-0307, SEA-160",
+    "no urgency marker on any row without a canonical Attention band (no wording heuristics)",
+    "responsibility truth: Phụ trách (canonical owner) + Cập nhật bởi (updated_by, secondary) rendered per row, e.g. LO-0299 → Phụ trách: Chưa phân công / Cập nhật bởi: staging.supportXỬ",
+    "shipment list: no horizontal overflow (page 0px, app scrollport 0px)",
+    "captured shipment-list-alerts.png (urgent + non-urgent rows, canonical bands only)",
+    "fresh host server truth: SEA-188 persisted, journey.nodes=0, profile=PROFILE_INCOMPLETE",
+    "fresh truth: HỒ SƠ actionable; 2/6ĐẦU / 3/6CHẶNG / 4/6NHẬP / 5/6GIAO / 6/6HOÀN remain UNKNOWN and inert; zero fabricated nodes",
+    "fresh density: split height 500px (compact class), canvas 1037×500, right panel 451×500",
+    "fresh 1536: no horizontal overflow (page 0px, app scrollport 0px)",
+    "captured candidate-fresh-desktop.png (1536×1466) + candidate-fresh-desktop-cockpit.png",
+    "fresh B1: HỒ SƠ CTA opens Global Workspace → existing Execution Profile editor (no dead CTA)",
+    "fresh 390: no horizontal overflow (page 0px, app scrollport 0px)",
+    "captured candidate-fresh-390-top.png at scrollTop=0 (phase strip + canvas entrance) and candidate-fresh-390-onboarding.png (visible HỒ SƠ action); split 356×1162",
+    "zero application page errors on the fresh lane"
+  ]
 }
