@@ -35,7 +35,8 @@ for(const [id,p] of Object.entries(oracle.positions)) {
 assert.ok(byId('journey-parallel-branch'),'visible SI/VGM + Gate-in group');
 assert.equal(document.querySelector('path[data-from="customs-export"][data-to="si-vgm"]').getAttribute('d'),'M636,208 C660,208 660,124 684,124');
 assert.equal(document.querySelector('path[data-from="customs-export"][data-to="gate-in"]').getAttribute('d'),'M636,208 C660,208 660,292 684,292');
-assert.ok(byId('journey-overview-panel'));
+assert.ok(byId('journey-quick-panel'), '#190: the factual Quick Panel is the default right surface');
+assert.equal(byId('journey-overview-panel'), null, '#190: generic overview must not replace the factual Quick Panel by default');
 const fit=byId('journey-map-transform').style.transform;
 await click(button('+'));assert.notEqual(byId('journey-map-transform').style.transform,fit,'zoom changes transform');
 await click(button('⤢ Fit Journey'));assert.equal(byId('journey-map-transform').style.transform,fit,'fit restores transform');
@@ -45,17 +46,26 @@ window.dispatchEvent(new MouseEvent('pointermove',{clientX:50,clientY:42}));
 window.dispatchEvent(new MouseEvent('pointerup',{clientX:50,clientY:42}));await tick();
 assert.equal(byId('journey-map-transform').style.transform,'translate(64px, 52px) scale(1)','pan follows pointer delta');
 byId('journey-node-si-vgm').dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));await tick();
-assert.ok(byId('journey-overview-panel'),'drag-end mouse click does not accidentally select');
+assert.equal(byId('journey-node-si-vgm').getAttribute('aria-pressed'),'false','drag-end mouse click does not accidentally select');
+assert.ok(byId('journey-quick-panel'),'default factual Quick Panel unchanged after the drag guard');
 for(const id of Object.keys(oracle.positions).filter(id=>!['start','completed'].includes(id))){
   await click(byId(`journey-node-${id}`));const panel=id==='customs-import'?byId('journey-customs-import-panel'):byId('journey-quick-panel');assert.ok(panel&&byId('journey-side-panel').contains(panel),`${id}: right-side quick panel`);
 }
 await click(byId('journey-node-si-vgm'));await click(byId('journey-open-workspace'));
 assert.ok(byId('journey-side-panel').contains(byId('journey-stage-workspace')),'real work replaces Quick Panel on the right');
 assert.equal(document.querySelectorAll('[data-testid="journey-quick-panel"]').length,1,'only stage header, no duplicate Quick Panel');
-await click(byId('journey-collapse-map'));assert.ok(byId('journey-map-rail'));assert.equal(byId('journey-map-viewport'),null);
-await click(button('← Quick panel'));assert.ok(byId('journey-map-viewport'),'quick view restores full map');
-await click(button('Toàn bộ lô hàng',byId('shipment-journey')));assert.ok(byId('journey-global-workspace'));
+await click(button('← Quick panel'));assert.ok(byId('journey-quick-panel'),'stage workspace returns to the factual Quick Panel');
+// #190: the map no longer carries a manual collapse button. Opening the Global
+// Workspace auto-collapses the map to the approved rail; the rail reopens it.
+// Issue #190 (Owner reference 6f6c655): the "Toàn bộ lô hàng" control moved out
+// of the Journey section into the page identity bar (data-testid
+// journey-global-page) so the Journey workspace starts at the map+panel split.
+await click(byId('journey-global-page') || button('Toàn bộ lô hàng'));
+assert.ok(byId('journey-global-workspace'));
+assert.ok(byId('journey-map-rail'),'global workspace auto-collapses the map to the rail');
+assert.equal(byId('journey-map-viewport'),null);
 assert.ok(byId('shipment-execution-profile'),'current app process remains available');
+await click(button('⇥ Mở lại Journey Map'));assert.ok(byId('journey-map-viewport'),'operator can reopen the full map');
 assert.equal(triggers.length,0,'selection, zoom, fit, collapse and workspace navigation emit no business writes');
 console.log('PASS demo B: 11 exact reference positions, parallel group/routes, fit/zoom/reset/pan, drag guard, all node selections, right-side workspace, collapse/expand, global process, zero navigation writes');
 process.exit(0);

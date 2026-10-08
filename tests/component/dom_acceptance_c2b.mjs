@@ -97,6 +97,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 function type(input, value) {
   Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, value);
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -150,8 +158,8 @@ await tick(140);
 assert.ok(!bodyText().includes("process is not defined"), "process is not defined leaked");
 await click("Lô Hàng", "a", $("aside")[0]);
 await click(SHIPMENT, "a", $("table.tbl")[0]);
-assert.equal(text($("h1")[0]), SHIPMENT, "detail header wrong");
-await click("Tài chính / Công nợ", "button", window.document.getElementById("workspace-tabs"));
+assert.equal(text($("h1")[0]), "Lô hàng " + SHIPMENT, "detail header wrong");
+await openGlobalTab("Tài chính");
 await tick();
 let body = bodyText();
 assert.ok(body.includes(PARTNER.partnerName), "partner legal name rendered");
@@ -182,7 +190,7 @@ invoke(NO_LEDGER);
 await tick(140);
 await click("Lô Hàng", "a", $("aside")[0]);
 await click(SHIPMENT, "a", $("table.tbl")[0]);
-await click("Tài chính / Công nợ", "button", window.document.getElementById("workspace-tabs"));
+await openGlobalTab("Tài chính");
 await tick();
 body = bodyText();
 assert.ok(body.includes(PARTNER.partnerName), "suggested partner still identifies the catalog agent");
@@ -198,7 +206,7 @@ invoke(JOURNEY);
 await tick(140);
 await click("Lô Hàng", "a", $("aside")[0]);
 await click(SHIPMENT, "a", $("table.tbl")[0]);
-await click("Tài chính / Công nợ", "button", window.document.getElementById("workspace-tabs"));
+await openGlobalTab("Tài chính");
 await tick();
 triggers = [];
 type(byPlaceholder("VD: 20000000"), "57.000.000");

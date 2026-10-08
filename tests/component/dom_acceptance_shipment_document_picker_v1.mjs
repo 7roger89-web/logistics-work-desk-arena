@@ -92,6 +92,14 @@ async function click(needle, selector = "a,button", root = window.document) {
   return element;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 const host = window.document.createElement("div");
 window.document.body.appendChild(host);
 const triggers = [];
@@ -202,9 +210,7 @@ async function gotoPicker() {
   // view so the fixture remains reachable as the test clock advances.
   await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
-  const tabs = window.document.getElementById("workspace-tabs");
-  assert.ok(tabs, "shipment workspace tabs exist");
-  await click("Quy trình & Chứng từ", "button", tabs);
+  await openGlobalTab("Chứng từ");
   const picker = $("[data-testid='shipment-document-picker']")[0];
   assert.ok(picker, "document picker is on the existing Shipment Detail");
   return picker;

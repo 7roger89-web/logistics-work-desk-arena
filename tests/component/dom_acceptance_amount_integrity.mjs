@@ -98,8 +98,8 @@ await tick(140);
 assert.ok(!bodyText().includes("process is not defined"));
 await click("Lô Hàng","a",$("aside")[0]);
 await click(SHIPMENT,"a",$("table.tbl")[0]);
-assert.equal(text($("h1")[0]),SHIPMENT);
-await click("Tài chính / Công nợ","button",window.document.getElementById("workspace-tabs"));
+assert.equal(text($("h1")[0]),"Lô hàng "+SHIPMENT);
+await openGlobalTab("Tài chính");
 await tick();
 ok(`Finance tab open for ${SHIPMENT}`);
 

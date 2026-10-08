@@ -127,8 +127,8 @@ assert.ok(!bodyText().includes("process is not defined"));
   for(let i=0;i<25;i++){ if($("table.tbl")[0] && text($("table.tbl")[0]).includes(SHIPMENT)) break; await tick(60); }
   assert.ok(text($("table.tbl")[0]).includes(SHIPMENT), "shipments table lists "+SHIPMENT);
   await click(SHIPMENT,"a",$("table.tbl")[0]);
-  assert.equal(text($("h1")[0]),SHIPMENT);
-  await click("Tài chính / Công nợ","button",window.document.getElementById("workspace-tabs"));
+  assert.equal(text($("h1")[0]),"Lô hàng "+SHIPMENT);
+  await openGlobalTab("Tài chính");
   await tick();
   ok("finance workspace open");
 }

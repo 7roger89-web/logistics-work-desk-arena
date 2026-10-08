@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ArrowRight, CheckCircle2, Circle, Clock, CircleAlert, ChevronDown, ChevronRight, Info, Layers, MapPin, Plus } from 'lucide-react';
 import type { JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
 import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
@@ -135,9 +135,10 @@ function ModuleStepButton({ node, onPick, selectedId }: {
  * invoice prerequisite. Payment-request steps render their canonical
  * CONDITIONAL state and reason from the document workflow.
  */
-function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
+function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
   s: Shipment; selected: JourneyNode;
   onOpen: (node: JourneyNode, work: string) => void; runPrimary: () => void;
+  onClose: () => void;
 }) {
   const info = s.importInfo;
   const flow = s.commercialFlow;
@@ -171,11 +172,23 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
   const money = (n: number | null | undefined, ccy?: string | null) =>
     <span className="font-bold">{fmtCcy(n ?? null, ccy ?? 'VND')}</span>;
   return <div className="space-y-3" data-testid="customs-import-quick-panel">
-    <div>
-      <span className="text-xs font-bold text-slate-500">XEM NHANH</span>
-      <h3 className="text-xl font-extrabold text-[#0f2a4a]">NHẬP KHẨU</h3>
-      <Status node={selected} />
+    {/* Issue #190 CONTINUE — reference panel header: one row with the stage
+        icon + title + problem chip + close, then the declaration lead line. */}
+    <div className="flex items-center gap-2">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white" aria-hidden="true"><Info size={16} /></span>
+      <h3 className="text-xl font-extrabold tracking-tight text-[#0f2a4a]">NHẬP KHẨU</h3>
+      {(selected.state === 'PROBLEM' || selected.blockers.length > 0) && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700">
+          <CircleAlert size={12} aria-hidden="true" /> Cần xử lý
+        </span>
+      )}
+      <button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target ml-auto grid h-9 w-9 place-items-center rounded-lg text-lg text-slate-400 hover:bg-slate-100">✕</button>
     </div>
+    <p className="text-[13.5px] leading-snug text-slate-700">
+      {info.declarationNo
+        ? <>Tờ khai NK <b>{info.declarationNo}</b> đã đăng ký · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>
+        : <>Chưa có số tờ khai nhập khẩu · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>}
+    </p>
 
     <div className="rounded-lg border border-slate-200 p-3 text-sm" data-testid="ci-registration-clearance">
       <div className="flex items-start justify-between gap-2">
@@ -196,7 +209,7 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary }: {
       <p className="mt-0.5 font-extrabold text-red-900">{primary.text}</p>
       {primary.detail && <p className="mt-0.5 text-sm text-red-800">{primary.detail}</p>}
       <button type="button" onClick={runPrimary} data-testid="ci-primary-cta"
-        className="touch-target mt-2 w-full rounded-lg bg-red-600 px-4 py-2.5 font-extrabold text-white">{s.nextLabel || 'Xử lý ngay'}</button>
+        className="touch-target mt-2 w-full rounded-lg bg-[#0f2a4a] px-4 py-2.5 font-extrabold text-white">{s.nextLabel || 'Xử lý ngay'}</button>
       {urgentBlocked && <p className="mt-2 text-xs text-slate-600">Thiếu/chặn liên quan: {urgentBlocked.label} — {urgentBlocked.reason}</p>}
     </div> : urgentBlocked ? <div className="rounded-lg border border-amber-300 bg-amber-50 p-3" data-testid="ci-blocked-evidence">
       <p className="text-xs font-extrabold tracking-wide text-amber-800">THIẾU / ĐANG CHẶN</p>
@@ -327,7 +340,7 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
       <span className="text-xs text-slate-500">Công đoạn chi tiết sẽ xuất hiện khi có đủ authority để xác định phạm vi.</span>
     </div>
 
-    <div className="journey-split">
+    <div className={cx('journey-split journey-split-fresh', globalActive && 'journey-split-wide')}>
       <div className="journey-canvas relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-6" data-testid="journey-empty-canvas">
         <div className="flex w-full max-w-[760px] flex-col items-center">
           <div className="rounded-full border-2 border-slate-400 bg-white px-8 py-2 text-xs font-extrabold tracking-widest text-slate-600">START</div>
@@ -351,7 +364,7 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
         </div>
       </div>
 
-      <aside className="journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]" data-testid="journey-side-panel">
+      <aside className="journey-side" data-testid="journey-side-panel">
         {globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
           <div className="border-b bg-slate-100 px-4 py-3">
             <h3 className="text-xl font-black">Toàn bộ lô hàng · {s.id}</h3>
@@ -388,14 +401,18 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   </section>;
 }
 
-export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai" }: {
+export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai", globalRequest = 0, attachRequest = 0 }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
   children?: ReactNode; globalActive?: boolean; globalTab?: string;
+  /** Issue #190 — the reference composition has NO journey section header:
+      the "Toàn bộ lô hàng" / "+ Quy trình" controls live in the page identity
+      bar. The page forwards button presses through these counters. */
+  globalRequest?: number; attachRequest?: number;
 }) {
   const [picked, setPicked] = useState('');
   const [mapCollapsed, setMapCollapsed] = useState(false);
-  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
+  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'quick');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const [chosen, setChosen] = useState('');
@@ -403,7 +420,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const [attachError, setAttachError] = useState('');
   const { dispatch } = useStore();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'overview'); }, [activeStage, work, globalActive, globalTab]);
+  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'quick'); }, [activeStage, work, globalActive, globalTab]);
   const journey = s.journey;
   const modules = useMemo(() => journey?.modules ?? [], [journey]);
   const attachOutcome = vm?.lastWrites?.find(w => w.event === 'work_module_attach' && w.requestId === attachPending);
@@ -419,7 +436,10 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
   const baseNodes = nodes.filter(n => !n.moduleId);
-  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
+  // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
+  // default: an explicit problem beats the positional current marker.
+  const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
   const choices = library?.templates ?? [];
@@ -434,92 +454,57 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     })) { setAttachPending(''); setAttachError('Chưa kết nối backend.'); }
   };
   const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
-  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); } };
-  const openGlobal = (tab = 'van-tai') => { if (onGlobal(tab)) setPanelMode('global'); };
+  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
+  const openGlobal = (tab = 'van-tai') => {
+    if (onGlobal(tab)) {
+      setPanelMode('global');
+      // Issue #190 — full existing tab content is not designed for a 420px
+      // side pane. Reuse the approved PR177 collapsed-map rail so the real
+      // workspace gets readable width; the operator can reopen the map.
+      setMapCollapsed(true);
+      return true;
+    }
+    return false;
+  };
   const wide = panelMode === 'stage' || panelMode === 'global';
-  const problem = baseNodes.find(n => n.blockers.length);
-  const phaseDefs = [
-    { id: 'profile', label: 'HỒ SƠ', ids: [] as string[], tab: 'van-tai' },
-    { id: 'origin', label: 'ĐẦU ĐI', ids: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'], tab: 'lay-hang' },
-    { id: 'main', label: 'CHẶNG CHÍNH', ids: ['etd', 'on-board', 'transit', 'arrival'], tab: 'van-tai' },
-    { id: 'import', label: 'NHẬP KHẨU', ids: ['customs-import'], tab: 'nhap' },
-    { id: 'delivery', label: 'GIAO HÀNG', ids: ['delivery'], tab: 'nhap' },
-    { id: 'finish', label: 'HOÀN TẤT', ids: [] as string[], tab: 'chung-tu' },
-  ];
-  const phaseItems = phaseDefs.map(phase => {
-    const phaseNodes = baseNodes.filter(n => phase.ids.includes(n.id));
-    const problemNode = phaseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length > 0);
-    const currentNode = phaseNodes.find(n => n.current);
-    const firstOpen = phaseNodes.find(n => !n.completed) ?? phaseNodes[0];
-    const representative = problemNode ?? currentNode ?? firstOpen;
-    const state: JourneyNode['state'] = problemNode ? 'PROBLEM' : currentNode ? 'CURRENT'
-      : phaseNodes.length && phaseNodes.every(n => n.completed) ? 'COMPLETED'
-      : 'UPCOMING';
-    return { ...phase, phaseNodes, representative, state };
-  });
-  return <section className="journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden" data-testid="shipment-journey">
-    <div className="flex flex-wrap items-center gap-3 border-b p-4">
-      <div className="min-w-0 flex-1"><h2 className="font-extrabold text-lg text-[#0f2a4a]">Hành trình lô hàng</h2>
-        <p className="text-sm text-slate-500">{journey.currentStageId ? `Vị trí theo mốc thực tế: ${nodes.find(n => n.current)?.label}` : journey.positionNote}</p></div>
-      {canAttach && <button type="button" onClick={() => { setAttachOpen(v => !v); setAttachError(''); }} data-testid="journey-add-module"
-        className="touch-target inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-bold"><Plus size={15} aria-hidden="true" />Thêm quy trình phát sinh</button>}
-      <button type="button" onClick={() => openGlobal()} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Toàn bộ lô hàng</button>
-    </div>
-    {attachOpen && <div className="border-b bg-slate-50 p-4" data-testid="journey-add-module-panel">
-      <h3 className="font-extrabold text-[#0f2a4a]">Thêm quy trình phát sinh</h3>
-      <p className="text-sm text-slate-500">Chỉ gắn được quy trình đang dùng (ACTIVE). Bản nháp/ngừng dùng không gắn được.</p>
-      {choices.length === 0
-        ? <p className="mt-2 text-sm text-slate-600">Chưa có quy trình nào đang dùng trong thư viện.</p>
-        : <ul className="mt-2 space-y-2">{choices.map(t => <li key={t.templateId}>
-            <label className={cx('flex cursor-pointer flex-col rounded-xl border-2 bg-white p-3', chosen === t.templateId ? 'border-[#0f2a4a]' : 'border-slate-200')}>
-              <span className="flex items-center gap-2">
-                <input type="radio" name="wm-choice" value={t.templateId} checked={chosen === t.templateId}
-                  onChange={() => setChosen(t.templateId)} aria-label={`Chọn ${t.name}`} />
-                <span className="font-bold">{t.name}</span>
-                <span className="text-xs text-slate-500">V{t.version} · {t.stepCount} bước</span>
-              </span>
-              <span className="mt-1 text-sm text-slate-600">{t.description || 'Chưa có mô tả.'}</span>
-            </label>
-          </li>)}</ul>}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" disabled={!canAttach || attachLoading || !chosen} onClick={attach} data-testid="journey-add-module-confirm"
-          className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{attachLoading ? 'Đang chờ đọc lại…' : 'Gắn vào lô này'}</button>
-        <button type="button" onClick={() => { setAttachOpen(false); setAttachError(''); }} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Đóng</button>
-        {attachLoading && <span className="text-sm text-slate-500">Đang ghi qua backend và chờ đọc lại.</span>}
-      </div>
-      {(attachError || (attachOutcome && !attachOutcome.ok)) && <p role="alert" className="mt-2 text-sm text-red-700">{attachError || attachOutcome?.error}</p>}
-    </div>}
-    {modules.length > 0 && <div className="border-b bg-slate-50/60 p-3" data-testid="journey-modules">
-      <p className="mb-2 inline-flex items-center gap-1 text-xs font-bold tracking-wide text-slate-500"><Layers size={13} aria-hidden="true" />QUY TRÌNH ĐANG GẮN ({modules.length})</p>
-      <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">{modules.map(m => <ModuleCard key={m.instanceId} module={m} nodes={nodes}
-        expanded={expandedModule === m.instanceId} onToggle={() => setExpandedModule(cur => cur === m.instanceId ? '' : m.instanceId)}
-        selectedId={selected.id} onPick={pick} />)}</div>
-    </div>}
-    <nav className="border-b border-slate-300 bg-slate-50 p-2" aria-label="6 giai đoạn hành trình" data-testid="journey-phase-strip">
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-6">
-        {phaseItems.map((phase, index) => {
-          const meta = META[phase.state];
-          const Icon = meta.icon;
-          return <button key={phase.id} type="button" data-testid={`journey-phase-${phase.id}`}
-            onClick={() => phase.representative ? pick(phase.representative.id) : openGlobal(phase.tab)}
-            className={cx('touch-target min-w-0 rounded-lg border px-2 py-2 text-left', meta.cls)}>
-            <span className="flex items-center gap-1 text-[10px] font-extrabold tracking-wide"><Icon size={12} aria-hidden="true" />{index + 1}/6</span>
-            <span className="mt-0.5 block truncate text-xs font-black">{phase.label}</span>
-            <span className="mt-0.5 block text-[10px] font-medium opacity-80">{phase.phaseNodes.length ? `${phase.phaseNodes.length} bước chi tiết` : phase.id === 'profile' ? 'Hồ sơ & phạm vi' : 'Rà chứng từ / tài chính'}</span>
-          </button>;
-        })}
-      </div>
-    </nav>
-    <div className="flex flex-wrap items-center gap-2 border-b border-slate-300 bg-white px-3 py-2" data-testid="journey-map-toolbar">
-      <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">📍 Đang ở: {baseNodes.find(n => n.current)?.label || 'Chưa đủ mốc thực tế'}</span>
-      {problem ? <button type="button" onClick={() => pick(problem.id)} className="touch-target rounded-md bg-red-600 px-2 py-1 text-xs font-bold text-white">⚠ {problem.blockers[0]}</button> : <span className="text-xs text-slate-500">Chưa ghi nhận blocker trên map</span>}
-      {wide && <button type="button" onClick={() => setMapCollapsed(v => !v)} className="touch-target ml-auto rounded-md border border-slate-300 px-2 text-xs font-semibold" data-testid="journey-collapse-map">{mapCollapsed ? '⇥ Mở lại Journey Map' : '⇤ Thu gọn map'}</button>}
-    </div>
+  // Issue #190 — the page identity bar owns the two journey-level controls in
+  // the reference composition; presses arrive as monotonic counters.
+  const seenGlobalReq = useRef(globalRequest);
+  const seenAttachReq = useRef(attachRequest);
+  useEffect(() => {
+    if (globalRequest === seenGlobalReq.current) return;
+    seenGlobalReq.current = globalRequest;
+    openGlobal();
+  }, [globalRequest]);
+  useEffect(() => {
+    if (attachRequest === seenAttachReq.current) return;
+    seenAttachReq.current = attachRequest;
+    setModulesOpen(true);
+    setAttachOpen(true);
+  }, [attachRequest]);
+  const problem = problemNode;
+  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
+  const prevModuleCount = useRef(modules.length);
+  useEffect(() => {
+    if (modules.length > prevModuleCount.current) setModulesOpen(true);
+    prevModuleCount.current = modules.length;
+  }, [modules]);
+  return <section className="journey-demo min-w-0" data-testid="shipment-journey">
+    {/* Issue #190 — the reference composition starts the Journey workspace
+        directly at the map+panel split: no section title row. Identity,
+        position note and the global-workspace button live in the page
+        identity bar (ShipmentDetail). */}
+    {/* Issue #190 CONTINUE — the map card and the right panel are separate
+        cards with a 12px gap (see .journey-split), matching the reference;
+        the modules strip is its own card above the split. */}
+    {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
+        the strip renders whenever attaching is allowed, even with zero
+        modules, so the capability is never orphaned. */}
     <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
       <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
       <aside className="journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]" data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
-          ? <div className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} /></div>
+          ? <div className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
           <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn trên Journey Map để xem việc cần làm.</p></div>
@@ -544,7 +529,211 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
       </aside>
     </div>
+    <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal} />
+
+    {/* Issue #190 CONTINUE — the attached-module strip lives BELOW the five cards so the
+        default first screen keeps the reference order (identity → attention → map+panel →
+        five cards). The strip is data-driven and nothing is deleted. */}
+
+    {(modules.length > 0 || canAttach) && <div className="mt-3 rounded-xl border border-slate-200 bg-white" data-testid={modules.length > 0 ? 'journey-modules' : 'journey-modules-empty'}>
+      <div className="flex items-center gap-1 px-3 py-1.5">
+        {modules.length > 0
+          ? <button type="button" onClick={() => setModulesOpen(v => !v)} aria-expanded={modulesOpen} data-testid="journey-modules-toggle"
+              className="touch-target flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left">
+              <Layers size={14} className="shrink-0 text-slate-500" aria-hidden="true" />
+              <span className="truncate text-xs font-extrabold tracking-wide text-slate-600">QUY TRÌNH ĐANG GẮN ({modules.length})</span>
+              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">Đang chặn</span>}
+              <ChevronDown size={15} className={cx('ml-auto shrink-0 text-slate-500 transition-transform', modulesOpen && 'rotate-180')} aria-hidden="true" />
+            </button>
+          : <span className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-xs font-extrabold tracking-wide text-slate-400">
+              <Layers size={14} className="shrink-0" aria-hidden="true" />QUY TRÌNH PHÁT SINH
+            </span>}
+        {canAttach && <button type="button" onClick={() => { setModulesOpen(true); setAttachOpen(v => !v); setAttachError(''); }} data-testid="journey-add-module"
+          className="touch-target inline-flex shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-bold"><Plus size={13} aria-hidden="true" />Thêm quy trình</button>}
+      </div>
+      {(modulesOpen || (modules.length === 0 && attachOpen)) && <div className="space-y-2 px-3 pb-3">
+        {attachOpen && <div className="rounded-xl border border-slate-200 bg-white p-4" data-testid="journey-add-module-panel">
+          <h3 className="font-extrabold text-[#0f2a4a]">Thêm quy trình phát sinh</h3>
+          <p className="text-sm text-slate-500">Chỉ gắn được quy trình đang dùng (ACTIVE). Bản nháp/ngừng dùng không gắn được.</p>
+          {choices.length === 0
+            ? <p className="mt-2 text-sm text-slate-600">Chưa có quy trình nào đang dùng trong thư viện.</p>
+            : <ul className="mt-2 space-y-2">{choices.map(t => <li key={t.templateId}>
+                <label className={cx('flex cursor-pointer flex-col rounded-xl border-2 bg-white p-3', chosen === t.templateId ? 'border-[#0f2a4a]' : 'border-slate-200')}>
+                  <span className="flex items-center gap-2">
+                    <input type="radio" name="wm-choice" value={t.templateId} checked={chosen === t.templateId}
+                      onChange={() => setChosen(t.templateId)} aria-label={`Chọn ${t.name}`} />
+                    <span className="font-bold">{t.name}</span>
+                    <span className="text-xs text-slate-500">V{t.version} · {t.stepCount} bước</span>
+                  </span>
+                  <span className="mt-1 text-sm text-slate-600">{t.description || 'Chưa có mô tả.'}</span>
+                </label>
+              </li>)}</ul>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={!canAttach || attachLoading || !chosen} onClick={attach} data-testid="journey-add-module-confirm"
+              className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{attachLoading ? 'Đang chờ đọc lại…' : 'Gắn vào lô này'}</button>
+            <button type="button" onClick={() => { setAttachOpen(false); setAttachError(''); }} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Đóng</button>
+            {attachLoading && <span className="text-sm text-slate-500">Đang ghi qua backend và chờ đọc lại.</span>}
+          </div>
+          {(attachError || (attachOutcome && !attachOutcome.ok)) && <p role="alert" className="mt-2 text-sm text-red-700">{attachError || attachOutcome?.error}</p>}
+        </div>}
+        {modulesOpen && modules.length > 0 && <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">{modules.map(m => <ModuleCard key={m.instanceId} module={m} nodes={nodes}
+          expanded={expandedModule === m.instanceId} onToggle={() => setExpandedModule(cur => cur === m.instanceId ? '' : m.instanceId)}
+          selectedId={selected.id} onPick={pick} />)}</div>}
+      </div>}
+    </div>}
   </section>;
+}
+
+function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
+  s: Shipment;
+  nodes: JourneyNode[];
+  onOpen: (node: JourneyNode, work: string) => boolean;
+  onGlobal: (tab?: string) => boolean;
+}) {
+  const node = (id: string) => nodes.find(n => n.id === id);
+  const leg = s.transportLegs?.[0];
+  // Issue #190 — the six-phase STRIP is gone from populated view, but the
+  // phase → detailed-node mapping stays as each card's anchor. Cards project
+  // their region's detailed Journey nodes (never a second business state):
+  // anchor = the region's problem node when one exists, else the region's
+  // primary node. The detailed 11-node model is never replaced.
+  const REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', string[]> = {
+    origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'],
+    main: ['etd', 'on-board', 'transit', 'arrival'],
+    import: ['customs-import'],
+    delivery: ['delivery'],
+  };
+  const regionAnchor = (region: keyof typeof REGION_NODE_IDS, prefer: string) => {
+    const found = REGION_NODE_IDS[region].map(node).filter((n): n is JourneyNode => Boolean(n));
+    return found.find(n => n.state === 'PROBLEM' || n.blockers.length > 0) ?? node(prefer) ?? found[0];
+  };
+  const booking = regionAnchor('origin', 'booking');
+  const arrival = regionAnchor('main', 'arrival');
+  const customs = regionAnchor('import', 'customs-import');
+  const delivery = regionAnchor('delivery', 'delivery');
+  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
+  const tabs = [
+    { id: 'info', label: 'Thông tin' },
+    { id: 'docs', label: 'Chứng từ' },
+    { id: 'costs', label: 'Chi phí' },
+    { id: 'history', label: 'Lịch sử' },
+  ] as const;
+  const statusLabel = (n?: JourneyNode) => n ? META[n.state].label : 'Chưa xác định';
+  const statusCls = (n?: JourneyNode) => n ? META[n.state].text : 'text-slate-500';
+  const openTab = (n: JourneyNode | undefined, tab: typeof tabs[number]['id'], fallback: string) => {
+    if (n) return onOpen(n, tab);
+    return onGlobal(tab === 'docs' ? 'chung-tu' : tab === 'costs' ? 'tai-chinh' : tab === 'history' ? 'lich-su' : fallback);
+  };
+  const rows = [
+    {
+      n: booking, num: 1, testid: 'journey-summary-card-1', title: 'BOOKING – ĐẦU ĐI', accent: 'blue',
+      lines: [
+        ['Số booking', s.transport?.bookingNo || leg?.bookingNo || 'Chưa có thông tin'],
+        ['Cut-off', booking?.deadline || 'Chưa ghi nhận'],
+        ['ETD', s.transport?.etd || leg?.etd || 'Chưa ghi nhận'],
+        ['Hãng tàu', s.transport?.carrier || leg?.carrier || 'Chưa có thông tin'],
+        ['Tàu / chuyến', [leg?.vessel || s.transport?.vessel, leg?.voyage].filter(Boolean).join(' ') || 'Chưa có thông tin'],
+      ],
+      footer: undefined,
+      fallback: 'lay-hang',
+    },
+    {
+      n: arrival, num: 2, testid: 'journey-summary-card-2', title: 'TÀU ĐẾN – CHẶNG CHÍNH', accent: 'amber',
+      lines: [
+        ['ETA', leg?.eta || arrival?.deadline || 'Chưa ghi nhận'],
+        ['ATA', leg?.ata || 'Chưa ghi nhận'],
+      ],
+      footer: undefined,
+      fallback: 'van-tai',
+    },
+    {
+      n: customs, num: 3, testid: 'journey-summary-card-3', title: 'NHẬP KHẨU – ỦY THÁC', accent: 'red',
+      lines: [
+        ['Tờ khai', s.importInfo.declarationNo ? `${s.importInfo.declarationNo} · đã đăng ký` : 'Chưa có thông tin'],
+        ['Thông quan', s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'],
+        ['Thuế NK', s.importInfo.tax == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.tax, 'VND')],
+        ['VAT', s.importInfo.vat == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.vat, 'VND')],
+      ],
+      footer: undefined,
+      fallback: 'nhap',
+    },
+    {
+      n: delivery, num: 4, testid: 'journey-summary-card-4', title: 'GIAO HÀNG', accent: 'slate',
+      lines: [
+        ['Xe', s.importInfo.truckVN || 'Chưa có thông tin'],
+        ['Biển số', s.importInfo.plateVN || 'Chưa có thông tin'],
+        ['Tài xế', s.importInfo.driverVN || 'Chưa có thông tin'],
+        ['Ngày giao dự kiến', s.importInfo.schedule || 'Chưa có thông tin'],
+        ['Địa điểm giao', s.importInfo.deliveryAddr || 'Chưa có thông tin'],
+        ['Người nhận', s.importInfo.receiver || 'Chưa có thông tin'],
+        ['SĐT người nhận', s.importInfo.receiverPhone || 'Chưa có thông tin'],
+        ['Trạng thái', s.importInfo.delivered ? 'Đã giao' : statusLabel(delivery)],
+      ],
+      footer: delivery ? { label: 'Mở thông tin giao hàng →', node: delivery } : undefined,
+      fallback: 'nhap',
+    },
+    {
+      n: undefined, num: 5, testid: 'journey-summary-card-5', title: 'HỒ SƠ & PHẠM VI', accent: 'blue',
+      lines: [
+        ['Khách hàng', s.customer || 'Chưa có thông tin'],
+        ['Hình thức', s.commercialFlow?.modeLabel || 'Chưa xác nhận'],
+        ['Incoterm', s.incoterm || 'Chưa xác định'],
+        ['Phạm vi TT', s.executionProfile?.serviceScopeSummary || 'Chưa xác nhận phạm vi'],
+      ],
+      footer: undefined,
+      fallback: 'van-tai',
+      // Issue #190 CONTINUE — the identity bar's secondary facts (Cửa khẩu ·
+      // Hợp đồng · Sale · Cập nhật bởi) moved here when the permanent tab row
+      // left the default first screen. Same projected fields, one click away,
+      // collapsed by default; nothing deleted or re-derived.
+      more: <details>
+        <summary className="cursor-pointer px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:text-[#0f2a4a]">Thông tin thêm</summary>
+        <dl className="space-y-1 px-3 pb-1 text-[11.5px]">
+          {[['Cửa khẩu', s.borderVN || '—'], ['Hợp đồng', s.contract || '—'], ['Sale phụ trách', s.sale || '—'], ['Cập nhật bởi', s.support || '—']].map(([label, value]) => (
+            <div key={label} className="flex items-start justify-between gap-2">
+              <dt className="shrink-0 text-slate-500">{label}</dt>
+              <dd className="min-w-0 break-words text-right font-bold text-slate-800">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>,
+    },
+  ];
+  const accentCls: Record<string, string> = {
+    blue: 'bg-blue-600 text-white',
+    amber: 'bg-amber-500 text-white',
+    red: 'bg-red-600 text-white',
+    slate: 'bg-slate-500 text-white',
+  };
+  return <div className="journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5" data-testid="journey-summary-cards">
+    {rows.map(card => <article key={card.num} className="min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm" data-testid={card.testid}>      <div className="flex min-h-[46px] items-start gap-2 border-b border-slate-200 px-3 py-2">
+        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black', accentCls[card.accent])}>{card.num}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[13px] font-black leading-tight text-[#0f2a4a]">{card.title}</h3>
+        </div>
+        <span className={cx('shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold', card.n ? statusCls(card.n) : profileReady ? 'text-emerald-700' : 'text-blue-700')}>
+          {card.n ? statusLabel(card.n) : profileReady ? 'Đủ hồ sơ' : 'Toàn lô'}
+        </span>
+      </div>
+      <div className="flex border-b border-slate-200 px-2">
+        {tabs.map((tab, idx) => <button type="button" key={tab.id} onClick={() => openTab(card.n, tab.id, card.fallback)}
+          className={cx('touch-target min-w-0 flex-1 border-b-2 px-1 py-1.5 text-[10.5px] font-bold', idx === 0 ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400')}>
+          {tab.label}
+        </button>)}
+      </div>
+      <dl className="space-y-1.5 px-3 py-2.5 text-[11.5px]">
+        {card.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[78px_minmax(0,1fr)] gap-2">
+          <dt className="text-slate-500">{label}</dt>
+          <dd className={cx('min-w-0 break-words text-right font-bold text-slate-800',
+            String(value).toLowerCase().includes('chưa') && 'text-red-700')}>{value}</dd>
+        </div>)}
+      </dl>
+      {card.footer && <div className="px-3 pb-2">
+        <button type="button" onClick={() => onOpen(card.footer!.node, 'info')} className="touch-target text-[12px] font-bold text-[#1e5aa8] hover:underline">{card.footer.label}</button>
+      </div>}
+      {'more' in card && card.more}
+    </article>)}
+  </div>;
 }
 
 /**

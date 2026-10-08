@@ -31,6 +31,75 @@ export default function AttentionNow({
   emptyText?: string;
   compact?: boolean;
 }) {
+  // Issue #190 — the Owner reference renders the shipment attention state as
+  // ONE tinted single-row band: [CẦN XỬ LÝ (n)] title+reason · [XỬ LÝ →] ·
+  // "ĐIỂM CHÚ Ý KHÁC" chips. The card list stays for surfaces that need the
+  // full per-item detail (Home); the shipment Journey path uses this band so
+  // the work below starts at the same rhythm as the reference.
+  if (compact) {
+    const [primary, ...rest] = items;
+    return (
+      <section
+        data-testid="attention-now"
+        data-attention-layout="compact"
+        className={cx(
+          "rounded-xl border",
+          items.length > 0 ? "border-red-200 bg-[#f8f3f5]" : "border-slate-200 bg-white"
+        )}
+      >
+        {items.length === 0 ? (
+          <p className="px-3.5 py-2.5 text-[13px] text-slate-500" data-testid="attention-empty">
+            {emptyText}
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-1">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1.5 text-[12px] font-extrabold text-white">
+              <CircleAlert size={14} aria-hidden="true" /> CẦN XỬ LÝ ({items.length})
+            </span>
+            <div
+              className="min-w-0 flex-1"
+              data-testid={`attention-item-${primary.id}`}
+              data-attention-band={primary.band}
+              data-attention-source={primary.sourceType}
+            >
+              <span className="sr-only">{BAND_META[primary.band].label} · {actionLabel(primary)}: </span>
+              <p className="truncate text-[14px] font-extrabold text-red-700">{primary.action}</p>
+              {primary.reason && <p className="truncate text-[12.5px] text-red-600">{primary.reason}</p>}
+            </div>
+            <Link
+              to={primary.route}
+              className="btn-press touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-[13px] font-extrabold text-white"
+              style={{ minHeight: 38 }}
+            >
+              XỬ LÝ <ArrowRight size={14} /><span className="sr-only"> — {actionLabel(primary)}</span>
+            </Link>
+            {rest.length > 0 && (
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500">
+                  ĐIỂM CHÚ Ý KHÁC
+                </span>
+                {rest.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={item.route}
+                    data-testid={`attention-item-${item.id}`}
+                    data-attention-band={item.band}
+                    data-attention-source={item.sourceType}
+                    className={cx(
+                      "inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-bold",
+                      BAND_META[item.band].cls
+                    )}
+                  >
+                    {item.action}<span className="sr-only"> · {BAND_META[item.band].label} · {actionLabel(item)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
   return (
     <section
       className={cx("rounded-2xl bg-white border border-slate-200", compact ? "p-3.5" : "p-4 md:p-5")}

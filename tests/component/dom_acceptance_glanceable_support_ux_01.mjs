@@ -108,6 +108,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 async function clickTestId(id) {
   const el = byTestId(id);
   assert.ok(el, `element [data-testid="${id}"] not found`);
@@ -360,7 +368,7 @@ console.log("STEP 6 — OWNER_RUNTIME_UAT §1: no duplicated profile warning in 
   // band ("HỒ SƠ THỰC HIỆN LÔ · Hồ sơ lô còn thiếu…") repeating what the profile
   // section below already states. It is gone for EVERY state, including
   // CONFIG_CHECK — where the red evidence stays available inside the section.
-  const tabStrip = () => window.document.getElementById("workspace-tabs");
+  const tabStrip = () => window.document.getElementById("workspace-tabs"); // Issue #190: always null now
   for (const [state, id, expectedState] of [
     [FIX.before, LEGACY_LOT, "PROFILE_INCOMPLETE"],
     [FIX.configCheck, LEGACY_LOT, "CONFIG_CHECK"],
@@ -373,10 +381,10 @@ console.log("STEP 6 — OWNER_RUNTIME_UAT §1: no duplicated profile warning in 
     assert.ok(summary, "the profile section must still own the configuration state");
     assert.equal(summary.getAttribute("data-state"), expectedState,
       "the section states exactly the backend profile state, unchanged");
-    // POSITION, not presence: the band may exist, but only where the tabs are
-    // already behind it — never again above them, where it met the operator.
-    assert.ok(tabStrip()?.compareDocumentPosition(summary) & 4,
-      `the profile band must sit BELOW the tabs, not in the primary path (${expectedState})`);
+    // Issue #190: the permanent tab row is gone from the default first screen —
+    // the band simply must not duplicate the header warning (asserted above).
+    assert.equal(tabStrip(), null,
+      `no permanent tab row on the default first screen (${expectedState})`);
   }
   await bootOnLot(FIX.configCheck, LEGACY_LOT);
   assert.ok(byTestId("execution-profile-config-check"),
@@ -448,10 +456,12 @@ console.log("STEP 15 — OWNER_RUNTIME_UAT §2: the primary action is compact, a
   await clickTestId("shipment-primary-action-go");
   await tick(160);
   const wanted = new URLSearchParams(row.nextRoute.split("?")[1] || "").get("tab");
-  const activeTab = $all("button", window.document.getElementById("workspace-tabs"))
-    .find((b) => (b.className || "").includes("bg-[#0f2a4a]"));
+  const gwRoot = window.document.querySelector('[data-testid="journey-global-workspace"]');
+  assert.ok(gwRoot, "the composed tab route must open the Global Workspace (#190)");
+  const activeTab = $all("button", gwRoot)
+    .find((b) => (b.className || "").includes("border-slate-900"));
   assert.ok(activeTab && text(activeTab).includes(
-    { nhap: "Nhập khẩu & Giao hàng", "lay-hang": "Xuất khẩu", "van-tai": "Vận chuyển & Hàng hóa", "tai-chinh": "Tài chính / Công nợ", "chung-tu": "Chứng từ & PXK", "lich-su": "Lịch sử" }[wanted] || "​"),
+    { nhap: "Nhập & Giao", "lay-hang": "Xuất khẩu", "van-tai": "Thông tin", "tai-chinh": "Tài chính", "chung-tu": "Chứng từ", "lich-su": "Lịch sử" }[wanted] || "​"),
     `the compact row must still follow s.nextRoute (${wanted})`);
   ok("one compact row, one button, exactly the backend's composed action");
 }
@@ -486,9 +496,11 @@ console.log("STEP 16 — OWNER_RUNTIME_UAT §3: missing info collapsed → expan
     const box = boxes.find((b) => text(b).includes(truck));
     await click("Bổ sung ngay", "button", box);
     await tick(160);
-    const active = $all("button", window.document.getElementById("workspace-tabs"))
-      .find((b) => (b.className || "").includes("bg-[#0f2a4a]"));
-    assert.ok(text(active).includes("Vận chuyển"), `OPERATIONAL_ACTIONS_TO_CHUNG_TU=0: "${truck}" must reach the transport editor`);
+    const gwRoot2 = window.document.querySelector('[data-testid="journey-global-workspace"]');
+    assert.ok(gwRoot2, "Bổ sung ngay must open the Global Workspace (#190)");
+    const active = $all("button", gwRoot2)
+      .find((b) => (b.className || "").includes("border-slate-900"));
+    assert.ok(active && text(active).includes("Thông tin"), `OPERATIONAL_ACTIONS_TO_CHUNG_TU=0: "${truck}" must reach the transport editor`);
     await clickTestId("missing-info-toggle");   // collapse again (toggle closes)
     await clickTestId("missing-info-toggle");   // and re-open for the next probe
   }
@@ -508,7 +520,7 @@ console.log("STEP 16 — OWNER_RUNTIME_UAT §3: missing info collapsed → expan
 console.log("STEP 17 — OWNER_RUNTIME_UAT §4: import/delivery checklist collapsed by default");
 {
   await bootOnLot(FIX.seaFclSaved, SEA_LOT);
-  await click("Nhập khẩu & Giao hàng", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Nhập & Giao");
   await tick(120);
   const row = rowOf(FIX.seaFclSaved, SEA_LOT);
   const section = byTestId("import-delivery-checklist");
@@ -569,7 +581,7 @@ console.log("STEP 18 — OWNER_RUNTIME_UAT §5: F/C/D lock the export tab, E-fam
   // Clicking a locked tab: no silent open, clear explanation, obvious unlock.
   const triggersBefore = triggers.length;
   await bootOnLot(FIX.seaFclSaved, SEA_LOT);
-  await click("Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Xuất khẩu");
   await tick(120);
   assert.equal(mainText().includes("Nhà máy & xuất khẩu"), false,
     "a locked tab must not open silently");
@@ -630,14 +642,14 @@ console.log("STEP 20 — the repairs are presentation: no data surface moved");
   // Every new affordance on this slice, exercised in one pass.
   await clickTestId("shipment-more-info-toggle");
   await clickTestId("missing-info-toggle");
-  await click("Nhập khẩu & Giao hàng", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Nhập & Giao");
   await clickTestId("import-delivery-checklist-toggle");
-  await click("Xuất khẩu", "button", window.document.getElementById("workspace-tabs"));   // locked
+  await openGlobalTab("Xuất khẩu");   // locked
   await clickTestId("export-unlock");
   // LOGI_QUOTE_COST_WORKFLOW_UX_01 — the full execution-profile editor now
   // lives in "Vận chuyển & Hàng hóa" (other tabs carry a one-line summary), so
   // the disclosure is exercised from its own tab. Same component, same toggle.
-  await click("Vận chuyển & Hàng hóa", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Thông tin");
   await clickTestId("shipment-execution-profile-toggle");
   await tick(160);
   const after = JSON.stringify({
