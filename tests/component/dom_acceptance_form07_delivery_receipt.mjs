@@ -152,9 +152,12 @@ async function gotoDocuments() {
   await click("Lô Hàng", "a", $("aside")[0]);
   await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
   await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
-  const tabs = window.document.getElementById("workspace-tabs");
-  assert.ok(tabs, "shipment workspace tabs exist");
-  await click("Quy trình & Chứng từ", "button", tabs);
+  // Current main (#190) moved the document tab into the Journey Global Workspace.
+  // Follow the real navigation instead of restoring the removed permanent tabs.
+  await click("Toàn bộ lô hàng", "button");
+  const workspace = $("[data-testid='journey-global-workspace']")[0];
+  assert.ok(workspace, "Journey Global Workspace opens");
+  await click("Chứng từ", "button", workspace);
   const picker = $("[data-testid='shipment-document-picker']")[0];
   assert.ok(picker, "document picker is on the existing Shipment Detail");
   return picker;
