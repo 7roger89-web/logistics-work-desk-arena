@@ -223,6 +223,23 @@ async function freshChecks() {
 
     await noPageOverflow(page, 'fresh 1440');
 
+    // Supervisor B1 — desktop: the dominant CTA must reach the EXISTING
+    // Execution Profile editor, not merely be enabled and write-free.
+    await cta.click();
+    await page.waitForTimeout(250);
+    assert.equal(new URL(page.url()).searchParams.get('tab'), 'van-tai',
+      'desktop profile CTA must open the tab that owns ShipmentExecutionProfile');
+    await page.getByTestId('journey-global-workspace').waitFor({ state: 'visible' });
+    await page.getByTestId('shipment-execution-profile').waitFor({ state: 'visible' });
+    const desktopProfileInside = await page.evaluate(() =>
+      document.querySelector('[data-testid="journey-global-workspace"]')
+        ?.contains(document.querySelector('[data-testid="shipment-execution-profile"]')) === true);
+    assert.equal(desktopProfileInside, true, 'desktop CTA mounts Execution Profile inside Cockpit Global Workspace');
+    ok('desktop BỔ SUNG HỒ SƠ CTA reaches Vận chuyển & Hàng hóa → existing Execution Profile');
+
+    // Reset to the truthful fresh default before the independent 390px challenge.
+    await openShipment(page, FRESH);
+
     // ---------- 390px ----------
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(150);
@@ -250,6 +267,22 @@ async function freshChecks() {
     await page.screenshot({ path: path.join(outDir, 'fresh-mobile-390-4-completion-goals-after-cockpit.png') });
     await scrollShellTop(page);
     ok('mobile 390×844 screenshots written (first screen, cockpit, quick panel, goals after cockpit)');
+
+    // Supervisor B1 — 390px: challenge the HỒ SƠ phase itself (same canonical
+    // action) and prove the destination, not just the button label.
+    await page.getByTestId('journey-phase-profile').click();
+    await page.waitForTimeout(250);
+    assert.equal(new URL(page.url()).searchParams.get('tab'), 'van-tai',
+      '390px HỒ SƠ action must open the tab that owns ShipmentExecutionProfile');
+    await page.getByTestId('journey-global-workspace').waitFor({ state: 'visible' });
+    await page.getByTestId('shipment-execution-profile').waitFor({ state: 'visible' });
+    const mobileProfileInside = await page.evaluate(() =>
+      document.querySelector('[data-testid="journey-global-workspace"]')
+        ?.contains(document.querySelector('[data-testid="shipment-execution-profile"]')) === true);
+    assert.equal(mobileProfileInside, true, '390px HỒ SƠ action mounts Execution Profile inside Cockpit Global Workspace');
+    await noPageOverflow(page, 'fresh 390 after profile action');
+    ok('390px HỒ SƠ action reaches Vận chuyển & Hàng hóa → existing Execution Profile');
+
     assert.deepEqual(errors, [], `page errors: ${errors.join(' | ')}`);
     ok('zero application page errors');
     return server;
