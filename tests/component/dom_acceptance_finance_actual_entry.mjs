@@ -97,6 +97,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 function type(input, value) {
   Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, value);
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -171,7 +179,7 @@ console.log("STEP 1 — boot bundle, open Lô Hàng → Tài chính / Công nợ
 
   await click("Lô Hàng", "a", $("aside")[0]);
   await click(SHIPMENT, "a", $("table.tbl")[0]);
-  await click("Tài chính / Công nợ", "button", window.document.getElementById("workspace-tabs"));
+  await openGlobalTab("Tài chính");
   assert.ok(SECTION(), "the DỊCH VỤ & CHI PHÍ THỰC TẾ section must exist");
   ok("section rendered for the real shipment");
 }

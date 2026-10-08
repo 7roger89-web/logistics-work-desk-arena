@@ -52,7 +52,11 @@ assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length,
 assert.ok(!byId("journey-modules"), "no rollup section before any module exists");
 // The attach action is driven by the SERVER's canAttach flag, not by whether
 // modules already exist: this fixture runs as Support, so it is offered.
-assert.ok(byId("journey-add-module"), "an authorised actor can always open the attach panel");
+// Issue #190 (Owner reference 6f6c655): with ZERO modules the entry point
+// lives in the page identity bar; opening it mounts the same attach panel.
+assert.ok(byId("journey-add-module-page"), "an authorised actor can always open the attach panel");
+await click(byId("journey-add-module-page"));
+assert.ok(byId("journey-add-module"), "opening the identity-bar entry mounts the attach strip");
 
 // ------------------------------------------------------------- 2. attached
 deliver(fixture.attached);
@@ -154,8 +158,9 @@ assert.equal(byId("work-module-step-complete").disabled, true, "Viewer cannot co
 deliver(fixture.before);
 await tick();
 await openShipment();
-assert.ok(byId("journey-add-module"), "an authorised actor sees the attach action");
-await click(byId("journey-add-module"));
+assert.ok(byId("journey-add-module-page"), "an authorised actor sees the attach action");
+await click(byId("journey-add-module-page"));
+assert.ok(byId("journey-add-module"), "the attach strip mounts with the panel");
 const attachPanel = byId("journey-add-module-panel");
 assert.ok(attachPanel);
 assert.match(attachPanel.textContent, /IMPORT SPECIAL HANDLING/, "ACTIVE templates are listed");

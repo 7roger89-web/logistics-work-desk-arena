@@ -51,10 +51,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const goSearch = (path: string) => { setSearchOpen(false); setQuery(""); nav(path); setNavOpen(false); };
 
+  // Issue #190 CONTINUE — route-specific desktop FOCUS SHELL for /lo-hang/:id.
+  // The Owner's 100% target covers the ENTIRE desktop composition at the
+  // reference viewport: the global production chrome (top toolbar, 264px
+  // sidebar, footer) must not compress the Journey geometry. The chrome stays
+  // mounted (other routes and mobile are untouched); it is only visually
+  // removed at desktop widths via .focus-shell CSS. Nothing is deleted.
+  const focusShipment = /^\/lo-hang\/[^/]+\/?$/.test(loc.pathname);
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={cx("min-h-screen flex flex-col", focusShipment && "focus-shell")}>
       {/* ===== TOP HEADER ===== */}
-      <header className="no-print sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_12px_rgba(15,42,74,.08)]">
+      <header className="no-print global-topbar sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_12px_rgba(15,42,74,.08)]">
         <div className="flex items-center gap-2 md:gap-4 px-3 md:px-5 h-[64px] max-w-[1600px] mx-auto">
           <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
             <Menu size={22} className="text-[#0f2a4a]" />
@@ -202,9 +210,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <div className="flex flex-1 max-w-[1600px] w-full mx-auto">
+      <div className="focus-content flex flex-1 max-w-[1600px] w-full mx-auto">
         {/* ===== SIDEBAR desktop ===== */}
-        <aside className="no-print hidden lg:block w-[264px] shrink-0 border-r border-slate-200 bg-white min-h-[calc(100vh-64px)] sticky top-[64px] self-start max-h-[calc(100vh-64px)] overflow-y-auto">
+        <aside className="no-print global-sidebar hidden lg:block w-[264px] shrink-0 border-r border-slate-200 bg-white min-h-[calc(100vh-64px)] sticky top-[64px] self-start max-h-[calc(100vh-64px)] overflow-y-auto">
           <nav className="p-3 pb-10">
             {NAV.map((g) => (
               <div key={g.group} className="mb-4">
@@ -271,9 +279,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* ===== MAIN ===== */}
-        <main className="flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full">
+        <main className="focus-main flex-1 min-w-0 px-3 md:px-6 py-4 md:py-6 pb-28 md:pb-10 w-full">
           {children}
-          <footer className="mt-10 text-center text-[12.5px] text-slate-400 pb-4">
+          <footer className="global-footer mt-10 text-center text-[12.5px] text-slate-400 pb-4">
             {/* LOGI_COMPANY_IDENTITY_TRUTH_01 (Control Tower footer repair) —
                 DISPLAY brand only from the view-model
                 (core.config.DISPLAY_COMPANY_NAME). The global footer carries no

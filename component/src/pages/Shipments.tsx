@@ -57,7 +57,7 @@ export function periodBounds(period: PeriodId, now: Date, from: string, to: stri
 }
 
 export default function Shipments() {
-  const { shipments } = useStore();
+  const { shipments, attention } = useStore();
   // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — query/status live in the route's own
   // search params: lọc → mở lô → Quay lại restores the exact list context.
   const [q, setQ] = useQueryParam("q");
@@ -105,6 +105,37 @@ export default function Shipments() {
     return true;
   }), [shipments, q, status, bounds, archive]);
   const statuses = ["ALL", ...Array.from(new Set(shipments.map((s) => s.status)))];
+
+  // Issue #190 — list urgency comes ONLY from the canonical Attention bands.
+  // We do not infer urgency from wording such as "free time", ETD/ETA text, or
+  // red-looking labels. A small pulse is reserved for BLOCKING/OVERDUE and the
+  // global prefers-reduced-motion rule disables it when requested.
+  const alertByShipment = useMemo(() => {
+    const rank: Record<string, number> = { BLOCKING: 0, OVERDUE: 1, DUE_SOON: 2 };
+    const out = new Map<string, { band: string; reason: string }>();
+    for (const item of attention ?? []) {
+      if (!(item.band in rank)) continue;
+      const current = out.get(item.shipmentId);
+      if (!current || rank[item.band] < rank[current.band]) {
+        out.set(item.shipmentId, { band: item.band, reason: item.reason || item.action || "" });
+      }
+    }
+    return out;
+  }, [attention]);
+
+  const nextActionCell = (s: Shipment) => {
+    const signal = alertByShipment.get(s.id);
+    const urgent = signal?.band === "BLOCKING" || signal?.band === "OVERDUE";
+    const dueSoon = signal?.band === "DUE_SOON";
+    return <div className={cx("rounded-lg px-2 py-1.5 -mx-2 -my-1.5", urgent && "bg-red-50", dueSoon && "bg-amber-50")}>
+      {signal && <span className={cx("mb-1 inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide",
+        urgent ? "text-red-700" : "text-amber-700")}>
+        <span className={cx("h-2 w-2 rounded-full", urgent ? "bg-red-600 pulse-dot" : "bg-amber-500")} aria-hidden="true" />
+        {signal.band === "BLOCKING" ? "Đang chặn" : signal.band === "OVERDUE" ? "Quá hạn" : "Sắp tới hạn"}
+      </span>}
+      <span className={cx("block font-semibold text-[13.5px]", urgent && "text-red-900")}>{s.nextAction}</span>
+    </div>;
+  };
 
   return (
     <div className="space-y-4 max-w-[1300px]">
@@ -211,9 +242,9 @@ export default function Shipments() {
                 {/* 2 — QUICK FACTS (missing facts stay visible as amber "—"). */}
                 <td className="max-w-[320px]"><ShipmentQuickFacts shipment={s} dense /></td>
                 {/* 3 — the ONE primary action the backend composed (s.nextAction). */}
-                <td className="max-w-[240px]"><span className="block font-semibold text-[13.5px]">{s.nextAction}</span></td>
+                <td className="max-w-[240px]" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>{nextActionCell(s)}</td>
                 {/* 4 — responsibility: `support` is `updated_by`, labelled truthfully. */}
-                <td className="text-[13px] whitespace-nowrap"><span className="block">Sale: <b>{s.sale}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
+                <td className="text-[13px] whitespace-nowrap"><span className="block">Phụ trách: <b>{s.sale}</b></span><span className="block whitespace-nowrap text-slate-500">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
                 {/* 5 — actions: the same XỬ LÝ route and the same 360° entry. */}
                 <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
               </tr>
@@ -237,11 +268,11 @@ export default function Shipments() {
                   on the card itself, wrapping inside the card width: no horizontal
                   overflow, and no need to open the lot to read it. */}
               <div className="mt-2.5"><ShipmentQuickFacts shipment={s} dense /></div>
-              <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 p-3">
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-amber-700">Việc tiếp theo</p>
-                <p className="text-[14px] font-semibold text-slate-800 mt-0.5">{s.nextAction}</p>
+              <div className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>
+                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">Việc tiếp theo</p>
+                <div className="mt-1">{nextActionCell(s)}</div>
               </div>
-              <p className="text-[12.5px] text-slate-400 mt-2">Sale {s.sale} · cập nhật bởi {s.support || "—"} · {s.updated}</p>
+              <p className="text-[12.5px] text-slate-400 mt-2">Phụ trách <b className="text-slate-600">{s.sale}</b> · cập nhật bởi {s.support || "—"} · {s.updated}</p>
             </div>
             <div className="grid grid-cols-2 border-t">
               <Link to={s.nextRoute} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">XỬ LÝ <ArrowRight size={17} /></Link>

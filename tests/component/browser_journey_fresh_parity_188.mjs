@@ -371,9 +371,14 @@ async function populatedChecks() {
     assert.equal(terminalStyle.text, 'RÀ SOÁT HOÀN TẤT');
     assert.ok(!/emerald|green|red|amber/.test(terminalStyle.cls), `terminal carries no completion/alert colour class: ${terminalStyle.cls}`);
     assert.equal(terminalStyle.color, terminalStyle.refColor, 'terminal text uses the neutral slate-500 tone');
+    // The source contract intentionally uses bg-white. Accept either that
+    // neutral surface or transparency; reject semantic success/error fills.
+    // Comparing only with the journey root was wrong when that root itself is
+    // transparent (notably Chromium 110 used by the portable acceptance lane).
     assert.ok(
-      terminalStyle.bg === terminalStyle.pageBg || /rgba\(0, 0, 0, 0\)|transparent/.test(terminalStyle.bg),
-      `terminal has no coloured fill (bg=${terminalStyle.bg}, card=${terminalStyle.pageBg})`);
+      terminalStyle.bg === terminalStyle.pageBg
+        || /rgba\(0, 0, 0, 0\)|transparent|rgb\(255, 255, 255\)/.test(terminalStyle.bg),
+      `terminal has only a neutral white/transparent fill (bg=${terminalStyle.bg}, card=${terminalStyle.pageBg})`);
     const journeyText = await page.getByTestId('shipment-journey').innerText();
     assert.ok(!journeyText.includes('COMPLETED'), 'no fake whole-shipment COMPLETED');
     // The ONLY percentage allowed in the cockpit is the map zoom readout; a
@@ -386,7 +391,7 @@ async function populatedChecks() {
     const terminalHasPct = await page.evaluate(() => /%|COMPLETED/.test(document.querySelector('[data-testid^="journey-map-rail"], .journey-demo')?.innerText ?? '') &&
       [...document.querySelectorAll('[data-testid="shipment-journey"] span')].some((e) => e.textContent.trim() === 'RÀ SOÁT HOÀN TẤT' && /%|COMPLETED/.test(e.textContent)));
     assert.equal(terminalHasPct, false, 'terminal pill carries no %/COMPLETED claim');
-    ok(`B7 stays neutral: dashed slate "RÀ SOÁT HOÀN TẤT", no colour class/fill, no COMPLETED; only % is the map zoom (${pctNodes[0].pct})`);
+    ok(`B7 stays neutral: dashed slate "RÀ SOÁT HOÀN TẤT", white/transparent neutral fill, no semantic colour class, no COMPLETED; only % is the map zoom (${pctNodes[0].pct})`);
 
     await page.getByTestId('journey-node-si-vgm').click();
     const quick = page.getByTestId('journey-quick-panel');
@@ -431,6 +436,14 @@ async function populatedChecks() {
 
     // B8 (#186/#187): the finance guest state must be DERIVED from this
     // fixture's real finance facts, never a cosmetic colour.
+    // #190: Completion Goals are collapsed by default (mandate M5), so expand
+    // on demand before reading the per-goal truth. The assertion below is
+    // unchanged; only the reveal step is added.
+    await scrollShellTo(page, 'shipment-completion-goals');
+    if ((await page.getByTestId('completion-goal-details').count()) === 0) {
+      await page.getByTestId('completion-goal-toggle').click();
+      await page.getByTestId('completion-goal-details').waitFor();
+    }
     const finance = page.getByTestId('completion-goal-finance');
     const financeState = await finance.getAttribute('data-state');
     const financeText = await finance.innerText();

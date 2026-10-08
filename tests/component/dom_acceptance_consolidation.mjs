@@ -82,6 +82,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 let passed = 0;
 function ok(name) {
   passed += 1;
@@ -302,7 +310,7 @@ console.log("STEP 8 — no faked actions / no sample data as real (Shipment Deta
   const first = VM.shipments.find((s) => !s.pxk?.done && !s.pxk?.date);
   await click(first.id, "a", $("main")[0]);
   await tick(80);
-  await click("Chứng từ", "button", $("#workspace-tabs")[0] ?? $("main")[0]);
+  await openGlobalTab("Chứng từ");
   await tick(80);
   const t = mainText();
   assert.ok(!t.includes("File minh họa"), "fake download toast copy still present");
@@ -337,7 +345,7 @@ console.log("STEP 10 — route + tab survive a backend rerun");
   const sid = VM.shipments[0].id;
   await click(sid, "a", $("main")[0]);
   await tick(80);
-  await click("Chứng từ", "button", $("#workspace-tabs")[0] ?? $("main")[0]);
+  await openGlobalTab("Chứng từ");
   const vm2 = JSON.parse(JSON.stringify(VM));
   vm2.version = VM.version + "-rerun";
   invoke(vm2);

@@ -137,7 +137,7 @@ console.log("FLOW A — Shipments: search + status → open → back → context
   assert.ok(countLine.includes("cho “LO-03”"), "search echoed in the count line");
   await clickText("LO-0306", "a", $("table.tbl")[0]);
   await tick(120);
-  assert.equal(text($("h1")[0]), "LO-0306", "detail opened");
+  assert.equal(text($("h1")[0]), "Lô hàng LO-0306", "detail opened");
   await clickText("Quay lại", "button");
   await tick(120);
   const q2 = mainInput("Nhập mã lô");
@@ -264,12 +264,10 @@ console.log("FLOW F — shipment tab context: XỬ LÝ deep-link selects the rig
   await clickEl(handle);
   await tick(160);
   const tabFromRoute = new URLSearchParams(href.split("?")[1] || "").get("tab");
-  const activeTab = $("button", window.document.getElementById("workspace-tabs")).find((b) => b.className.includes("bg-[#0f2a4a]"));
+  const gwRoot = window.document.querySelector('[data-testid="journey-global-workspace"]');
+  assert.ok(gwRoot, "the deep-link must open the Global Workspace (#190)");
+  const activeTab = $("button", gwRoot).find((b) => b.className.includes("border-slate-900"));
   assert.ok(activeTab, "a workspace tab is active");
-  // The selected tab equals the tab the backend's nextRoute asked for.
-  const labels = $("button", window.document.getElementById("workspace-tabs"));
-  const idx = labels.indexOf(activeTab);
-  assert.ok(idx >= 0, "active tab identified");
   const expectedId = tabFromRoute && tabFromRoute !== "360" ? tabFromRoute : null;
   ok(`deep-link opened the lot with its workspace tab active (${expectedId ?? "default"})`);
 }

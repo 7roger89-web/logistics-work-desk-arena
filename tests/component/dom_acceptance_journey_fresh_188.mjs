@@ -39,7 +39,7 @@ globalThis.window = dom.window; globalThis.document = dom.window.document;
 Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true });
 for (const k of ['HTMLElement', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLTextAreaElement', 'Event', 'MouseEvent', 'Node', 'MutationObserver', 'getComputedStyle']) globalThis[k] = dom.window[k];
 // Supervisor B1 — record every anchored reveal target so this lane can prove
-// the reveal lands on the MOUNTED editor instead of the workspace-tabs fallback.
+// the reveal lands on the MOUNTED editor (Issue #190 removed the workspace-tabs fallback).
 const reveals = [];
 dom.window.HTMLElement.prototype.scrollIntoView = function () { reveals.push(this.id || this.getAttribute?.('data-testid') || '(anonymous)'); };
 // The app routes inside a MemoryRouter (component/src/App.tsx): the query tab

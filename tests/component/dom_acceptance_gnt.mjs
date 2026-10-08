@@ -115,6 +115,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 // ---------------------------------------------------------------------------
 // Simulated Streamlit v2 component invocation
 // ---------------------------------------------------------------------------
@@ -144,8 +152,7 @@ await tick();
 console.log("STEP 1 — Navigate to Shipments -> LO-0307 -> tab nhap");
 await click("Lô Hàng", "a", $("aside")[0]);
 await click("LO-0307", "a", $("table.tbl")[0]);
-const tabRoot = window.document.getElementById("workspace-tabs");
-await click("Nhập khẩu & Giao hàng", "button", tabRoot);
+await openGlobalTab("Nhập & Giao");
 
 console.log("STEP 2 — Verify initial uninitialized GNT state");
 const body = text(window.document.body);

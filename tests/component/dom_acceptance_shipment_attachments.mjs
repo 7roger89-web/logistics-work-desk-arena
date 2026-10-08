@@ -131,6 +131,14 @@ async function click(needle, sel = "a,button", root = window.document) {
   return el;
 }
 
+// Issue #190 — the permanent shipment tab row was removed from the default
+// Journey first screen; the tabs now live in the Global Workspace opened via
+// "Toàn bộ lô hàng". This helper opens it and clicks the remapped tab.
+async function openGlobalTab(label) {
+  await click("Toàn bộ lô hàng", "button");
+  await click(label, "button", window.document.querySelector('[data-testid="journey-global-workspace"]'));
+}
+
 // ---------------------------------------------------------------------------
 // Simulated Streamlit Components v2 invocation
 // ---------------------------------------------------------------------------
@@ -207,9 +215,7 @@ console.log("STEP 1 — shipment detail → Chứng từ tab");
 await click("Lô Hàng", "a", $("aside")[0]);
 await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
 await click("LO-0306", "a", $("table.tbl")[0]);
-const tabs = window.document.getElementById("workspace-tabs");
-assert.ok(tabs, "workspace tabs must exist");
-await click("Quy trình & Chứng từ", "button", tabs);
+await openGlobalTab("Chứng từ");
 assert.ok(mainText().includes("Tệp đính kèm lô hàng"), "attachment section title missing");
 assert.ok(!mainText().includes("Google Drive"), "gridfs mode must use provider-neutral wording");
 assert.ok(
