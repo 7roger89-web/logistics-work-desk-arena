@@ -1485,6 +1485,15 @@ def shipment_projection(
         agents=agents,
         companies=companies,
     )
+    form07_view = form07_projection(
+        shipment,
+        contracts,
+        docgen_documents=docgen_documents,
+        linked_contracts=linked_contracts,
+        grouped_attachments=attachments,
+        agents=agents,
+        companies=companies,
+    )
     quote_id = text(shipment.get("quote_id"))
     quote_linked = bool(
         quote_id
@@ -1692,6 +1701,8 @@ def shipment_projection(
         "finance": finance_view,
         # --- TAB 4 ---
         "pxk": pxk_view,
+        # --- Issue #168: FORM_07 Biên bản giao nhận (same chung-tu surface) ---
+        "form07": form07_view,
         # --- TAB 5 ---
         "timeline": list(history or []),
         # Dashboard/readiness evidence (canonical projection, read-only).
@@ -2026,6 +2037,183 @@ def _pxk_document(
         "downloadBase64": file_view["downloadBase64"],
         "number": text(snapshot.get("pxk_no")),
         "date": text(snapshot.get("pxk_date")),
+        "history": history,
+    }
+
+
+def form07_projection(
+    shipment: Mapping[str, Any],
+    contracts: Mapping[str, Any],
+    *,
+    docgen_documents: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    linked_contracts: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None = None,
+    agents: Mapping[str, Any] | None = None,
+    companies: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """FORM_07 (Issue #168) facts + the current server gate and output history.
+
+    Readiness is evaluated with the SAME pure rules the ``form07_generate``
+    handler re-checks (core.docgen.form07): canonical 2.7 delivery facts, the
+    single linked purchase contract and its goods lines, the authority masters
+    of both parties, and the two typed operator identity inputs. This is
+    projection only; the event re-checks every gate before generation.
+    """
+    from core.docgen.form07 import (
+        delivery_facts_for_form07,
+        delivery_facts_missing_for_form07,
+        evaluate_form07_readiness,
+    )
+
+    shipment_id = text(shipment.get("id"))
+    delivery = _section(shipment, "2.7")
+    facts = delivery_facts_for_form07(delivery)
+    missing_delivery = delivery_facts_missing_for_form07(delivery) if facts["delivered"] else []
+
+    # SAME no-guess source resolution as pxk_projection: the canonical link
+    # first, then exactly one linked contract; several stay ambiguous.
+    contract_id = text(shipment.get("contract_id") or _section(shipment, "entrustment").get("contract_no"))
+    contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    ambiguous = False
+    if not contract:
+        linked = (linked_contracts or {}).get(shipment_id.upper()) or {}
+        if linked_contracts is None:
+            from core.database import load_contracts_for_shipment
+
+            try:
+                linked = load_contracts_for_shipment(shipment_id) or {}
+            except Exception:  # noqa: BLE001 - a linkage read failure stays UNKNOWN
+                linked = {}
+        if len(linked) == 1:
+            contract_id, contract = next(iter(linked.items()))
+        elif len(linked) > 1:
+            ambiguous = True
+
+    generated = _form07_document(
+        shipment_id,
+        grouped=docgen_documents,
+        grouped_attachments=grouped_attachments,
+    )
+
+    agent: Mapping[str, Any] = {}
+    company: Mapping[str, Any] = {}
+    if contract:
+        # shipment_projection normalizes an absent master snapshot to {} for
+        # its other consumers; an empty snapshot here means "not loaded yet",
+        # so the standalone projection reads the same masters itself.
+        if not agents or not companies:
+            from core.database import load_authority_agents, load_authority_companies
+
+            agents = agents or (load_authority_agents() or {})
+            companies = companies or (load_authority_companies() or {})
+        agent = (agents or {}).get(text(contract.get("agent_id"))) or {}
+        company = (companies or {}).get(text(contract.get("company_id"))) or {}
+
+    readiness = evaluate_form07_readiness(
+        delivery=delivery,
+        goods_lines=(contract or {}).get("goods_lines"),
+        agent=agent,
+        company=company,
+        contract=contract or None,
+        ambiguous_source=ambiguous,
+        manual={
+            "form07_no": generated.get("number", ""),
+            "order_date": generated.get("orderDate", ""),
+        },
+    )
+    if not facts["delivered"]:
+        gate = "BLOCKED_NOT_DELIVERED"
+    elif missing_delivery:
+        gate = "BLOCKED_MISSING_DELIVERY_FACTS"
+    elif ambiguous:
+        gate = "BLOCKED_AMBIGUOUS_SOURCE"
+    elif not contract:
+        gate = "BLOCKED_NO_SOURCE"
+    else:
+        gate = readiness.state
+    return {
+        "source": contract_id,
+        "sourceName": text(contract.get("contract_no") or contract.get("hdmb_no") or contract.get("hdnt_no")),
+        "delivered": facts["delivered"],
+        "missingDeliveryFacts": list(missing_delivery),
+        "number": generated.get("number", ""),
+        "orderDate": generated.get("orderDate", ""),
+        "place": facts["delivery_location"],
+        "receiver": facts["receiver_name"],
+        "role": facts["receiver_title"],
+        "done": bool(generated),
+        "document": generated or None,
+        "documentHistory": list(generated.get("history") or []),
+        "readiness": {
+            "state": readiness.state,
+            "gate": gate,
+            "reason": readiness.reason,
+            "missing": [text(item) for item in readiness.missing if text(item)],
+        },
+    }
+
+
+def _form07_document(
+    shipment_id: str,
+    *,
+    grouped: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+    grouped_attachments: Mapping[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Latest durable FORM_07 record + bounded metadata history (PXK-shaped)."""
+    if not shipment_id:
+        return {}
+    if grouped is None:
+        from core.database import load_docgen_documents
+
+        try:
+            docs: Mapping[str, Mapping[str, Any]] = load_docgen_documents(shipment_id) or {}
+        except Exception:  # noqa: BLE001 - a docgen read failure stays empty
+            return {}
+    else:
+        docs = grouped.get(shipment_id) or {}
+
+    form07 = [
+        (record_id, document)
+        for record_id, document in docs.items()
+        if isinstance(document, Mapping)
+        and text(document.get("document_type")).upper() == "FORM_07"
+        and document.get("is_deleted") is not True
+    ]
+    if not form07:
+        return {}
+    record_id, latest = max(
+        form07, key=lambda pair: (_generated_document_revision(pair[1]), text(pair[0]))
+    )
+    snapshot = latest.get("source_snapshot")
+    snapshot = snapshot if isinstance(snapshot, Mapping) else {}
+    history = _project_generated_document_history(
+        "FORM_07",
+        shipment_id,
+        docgen_documents=({shipment_id: dict(docs)} if grouped is None else grouped),
+        grouped_attachments=grouped_attachments,
+    )
+    from views import logi_c1
+
+    file_view = logi_c1.document_projection(latest, logi_c1.stored_outputs(shipment_id))
+    latest_history = next(
+        (entry for entry in history if entry.get("recordId") == text(file_view.get("id") or record_id)),
+        {},
+    )
+    attachment_id = text(latest_history.get("attachmentId"))
+    return {
+        "documentId": file_view["documentId"],
+        "recordId": file_view["id"],
+        "revision": file_view["revision"],
+        "status": file_view["status"],
+        "fileName": file_view["fileName"],
+        "mime": file_view["mime"],
+        "generatedAt": file_view["generatedAt"],
+        "generatedBy": file_view["generatedBy"],
+        "attachmentId": attachment_id,
+        "downloadAvailable": bool(attachment_id or file_view["downloadAvailable"]),
+        "downloadBase64": file_view["downloadBase64"],
+        "number": text(snapshot.get("form07_no")),
+        "orderDate": text(snapshot.get("order_date")),
         "history": history,
     }
 

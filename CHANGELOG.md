@@ -1,5 +1,58 @@
 # Changelog
 
+## FORM_07_DELIVERY_RECEIPT_PILOT_168
+
+### Issue #168 — first post-PR-164 shipment document template pilot: FORM_07 "Biên bản giao nhận hàng hóa"
+
+- **Owner source, verified but never merged or modified.** The Owner DOCX
+  travels on `owner-input/form07-source-168`
+  (`owner_inputs/form07/Mau-Bien-ban-giao-nhan-hang-hoa.docx`, SHA-256
+  `cd2a1df5…`, 18,997 bytes, blob `e2c3dea…` — all matching the issue
+  receipt). Production renders a **sanitized, SHA-pinned derivative**
+  (`assets/templates/form07/FORM07-bien-ban-giao-nhan-v1.docx`,
+  `568a89bf…`, 16,946 bytes) rebuilt deterministically by
+  `scripts/form07_build_sanitized_template.py`; personal metadata removed,
+  source proven free of signatures/stamps/comments/tracked changes/macros/
+  OLE/external rels, and `core.docgen.form07.scan_package_safety` re-checks
+  the asset on every generation and for catalog availability (drift fails
+  closed). Evidence + structural visual comparison (original vs sanitized vs
+  a real generated sample, byte-identical to the stored staging R1) in
+  `evidence/168/`.
+- **Server owns everything.** FORM_07 enters through
+  `core/shipment_document_catalog.py` as one new row (adapter
+  `FORM07_DOCGEN`, category "Giao nhận") — no hard-coded checkbox anywhere.
+  Readiness is evaluated from canonical facts only (2.7 delivery facts →
+  single linked purchase contract + `goods_lines` → authority party masters →
+  two explicitly typed operator identity fields: Số biên bản, Ngày đơn đặt
+  hàng). Anything missing fails closed with honest Vietnamese wording; FORM_07
+  prints no money, so an UNKNOWN line price never blocks.
+- **Generation reuses the existing durable path.** `form07_generate` renders a
+  real DOCX (docxtpl over the pinned template, deterministic repack), stores
+  it through `core.shipment_attachments`, writes an immutable
+  `docgen_documents` revision with bounded provenance (template id/version/
+  SHA-256, source refs, value snapshot, actor/time via the existing audit),
+  and regeneration creates R+1 while R1 stays untouched. Deselection hides
+  the picker card but never deletes history; download re-serves the exact
+  stored bytes through the existing `attachment_download` event after
+  remount. RBAC reuses `sales_write` — a viewer is refused with zero writes.
+- **Proof.** `tests/test_form07_delivery_receipt.py` (11 tests: pins, drift
+  fail-closed, catalog gating, readiness matrix, deterministic render,
+  selection persistence, RBAC, full staging end-to-end) and a new DOM
+  acceptance against the rebuilt production bundle with a fixture generated
+  by the real staging stack (`scripts/gen_form07_dom_fixture.py` +
+  `tests/component/dom_acceptance_form07_delivery_receipt.mjs`, 6 steps).
+  Full-suite diff vs pristine main `cec617a`: identical pre-existing failure
+  set, +11 passing; typecheck/build/scan clean
+  (`FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`); all neighboring DOM suites
+  (picker v1, attachments 13, document review 17, WML-162) still pass.
+- **Ceiling respected.** Scalar bindings + one repeating goods table,
+  code-owned envelope/builder. Not built (explicit non-goals): the other six
+  Owner forms, Admin template upload UI, mapping/publish studio, rules DSL,
+  workflow engine, second document store, multi-shipment framework, content
+  controls, runtime `.doc` support, generic Office/finance engines.
+  `OWNER_SAMPLES_TOTAL=7`, `IMPLEMENTED_AFTER_THIS_PR=1`, `REMAINING=6`.
+  Merged to main: NO. Deployed: NO. Production mutations: 0.
+
 ## LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01
 
 ### Reconciled against current main — My Drive OAuth backend (PR #133)

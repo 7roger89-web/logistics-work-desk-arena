@@ -47,12 +47,14 @@ function actionLabel(action: ShipmentDocumentAction): string {
     case "GENERATE_CONTRACT": return "Tạo bản chứng từ";
     case "GENERATE_PXK": return "Tạo phiếu xuất kho";
     case "GENERATE_GNT": return "Tạo giấy nộp thuế";
+    case "GENERATE_FORM07": return "Tạo biên bản giao nhận";
     case "OPEN_CONTRACT": return "Mở hợp đồng để bổ sung";
     case "OPEN_CONTRACT_LIST": return "Mở danh sách hợp đồng";
     case "OPEN_COMMERCIAL_FLOW": return "Xác nhận hình thức nhập khẩu";
     case "OPEN_IMPORT": return "Bổ sung thông tin thuế";
     case "OPEN_DELIVERY": return "Mở xác nhận giao hàng";
     case "OPEN_PXK": return "Bổ sung thông tin PXK";
+    case "OPEN_FORM07": return "Bổ sung số biên bản / ngày đặt hàng";
   }
 }
 

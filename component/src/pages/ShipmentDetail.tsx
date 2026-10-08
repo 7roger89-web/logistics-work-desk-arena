@@ -296,6 +296,10 @@ export default function ShipmentDetail() {
         number: val("pxkNo", s.pxk.number ?? ""),
         date: val("pxkDate", s.pxk.date ?? ""),
       },
+      form07Draft: {
+        number: val("form07No", s.form07?.number ?? ""),
+        orderDate: val("form07OrderDate", s.form07?.orderDate ?? ""),
+      },
     });
   }, [
     s,
@@ -305,6 +309,8 @@ export default function ShipmentDetail() {
     pickerLinkedContracts.length,
     form.pxkNo,
     form.pxkDate,
+    form.form07No,
+    form.form07OrderDate,
   ]);
   const authorityAgents = vm?.authority?.agents ?? [];
   const authorityCompanies = vm?.authority?.companies ?? [];
@@ -860,6 +866,47 @@ export default function ShipmentDetail() {
   };
 
   /**
+   * Issue #168 — FORM_07 Biên bản giao nhận through core.docgen.form07. The
+   * receipt's own legal identity (Số biên bản / Ngày đơn đặt hàng) has no
+   * canonical source, so the shell hands over what the operator typed — the
+   * service refuses to invent them, exactly like pxkNo/pxkDate for PXK.
+   */
+  const exportFORM07 = () => {
+    const form07No = val("form07No", s?.form07?.number ?? "").trim();
+    const orderDate = val("form07OrderDate", s?.form07?.orderDate ?? "").trim();
+    if (!s) return;
+    if (!form07No || !orderDate) {
+      toast("Chưa tạo được biên bản giao nhận",
+        "core.docgen.form07 từ chối khi thiếu Số biên bản hoặc Ngày đơn đặt hàng — nhập 2 ô ở tab Chứng từ rồi bấm lại.",
+        "red");
+      return;
+    }
+    const sent = dispatch("form07_generate", { shipmentId: s.id, form07No, orderDate });
+    if (sent) toast("Đã gửi yêu cầu tạo Biên bản giao nhận " + form07No,
+      "Backend kiểm tra gate giao hàng + hợp đồng nguồn, sinh DOCX từ mẫu Owner đã làm sạch và lưu vào kho chứng từ.", "blue");
+    else toast("Không gửi được", "Component chưa kết nối backend.", "red");
+  };
+
+  /**
+   * Download the FORM_07 file the server really produced. Metadata is durable;
+   * session bytes are session-scoped — the picker card's history rows download
+   * through the EXISTING bounded attachment_download event after a remount.
+   */
+  const downloadForm07 = () => {
+    const doc = s?.form07?.document;
+    if (!doc || !doc.downloadBase64) {
+      toast("File không còn trong phiên này",
+        "Metadata FORM_07 " + (s?.form07?.number || s?.id || "") + " vẫn còn trên backend; tải bản đã lưu qua danh sách lịch sử của thẻ biểu mẫu.", "amber");
+      return;
+    }
+    downloadBinaryFile(
+      doc.fileName || "FORM07_" + (s?.form07?.number || s?.id) + ".docx",
+      doc.downloadBase64,
+      doc.mime || "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  };
+
+  /**
    * The four facts core.docgen checks before PXK (delivery location, receiver
    * name, receiver title, delivery date) are canonical 2.7 fields, so they are
    * saved through the SAME typed writer as the rest of the lot — never kept in
@@ -977,6 +1024,9 @@ export default function ShipmentDetail() {
       case "GENERATE_GNT":
         generateGNT();
         return;
+      case "GENERATE_FORM07":
+        exportFORM07();
+        return;
       case "OPEN_CONTRACT_LIST":
         nav("/hop-dong");
         return;
@@ -992,6 +1042,9 @@ export default function ShipmentDetail() {
         return;
       case "OPEN_PXK":
         openDocumentAnchor("chung-tu", "fld-pxkno");
+        return;
+      case "OPEN_FORM07":
+        openDocumentAnchor("chung-tu", "fld-form07no");
         return;
     }
   };
@@ -2247,6 +2300,47 @@ export default function ShipmentDetail() {
               </div>
             ) : (
               <SuccessBtn onClick={exportPXK} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 XUẤT PHIẾU XUẤT KHO</SuccessBtn>
+            )}
+          </section>
+          )}
+          {/* Issue #168 — FORM_07 Biên bản giao nhận: the SAME chung-tu surface
+              pattern PXK uses. Canonical facts (parties, delivery, goods) are
+              server-bound and read-only here; the operator types only the two
+              values no canonical source owns (Số biên bản, Ngày đơn đặt hàng). */}
+          {s.form07 && (
+          <section className="rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5" data-testid="shipment-form07-panel">
+            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Biên bản giao nhận (FORM_07)</h3>
+            <p className="text-[13px] text-slate-500 mb-3">
+              DOCX sinh từ mẫu Owner đã làm sạch (SHA-256 đã ghim). Nguồn hàng hóa: {s.form07.source || s.contract || "chưa liên kết hợp đồng"}. Hai bên, người nhận và ngày giao lấy từ dữ liệu canonical — không nhập tay.
+            </p>
+            {!s.form07.delivered && <MissingBox what="xác nhận đã giao hàng" where="Biên bản giao nhận chỉ tạo sau khi lô đã giao thực tế" actionLabel="Sang xác nhận giao" onAction={() => setSp({ tab: "nhap" })} />}
+            <div className="grid sm:grid-cols-2 gap-3 mt-3">
+              <Field label="Số biên bản" required={!s.form07.number} hint="Số pháp lý của biên bản — backend không tự đặt.">
+                <input id="fld-form07no" value={val("form07No", s.form07.number ?? "")} onChange={(e) => set("form07No", e.target.value)} placeholder="VD: BBGN-2026-001" className={inputCls(!val("form07No", s.form07.number ?? "") ? "missing" : "ok")} />
+              </Field>
+              <Field label="Ngày đơn đặt hàng" required={!s.form07.orderDate} hint="DD/MM/YYYY — in vào 'Căn cứ Đơn đặt hàng ngày…'.">
+                <input id="fld-form07orderdate" value={val("form07OrderDate", s.form07.orderDate ?? "")} onChange={(e) => set("form07OrderDate", e.target.value)} placeholder="VD: 25/09/2026" className={inputCls(!val("form07OrderDate", s.form07.orderDate ?? "") ? "missing" : "ok")} />
+              </Field>
+            </div>
+            {(s.form07.readiness?.missing ?? []).length > 0 && (
+              <MissingBox what={(s.form07.readiness?.missing ?? []).join(" · ")} where="core.docgen.form07 chặn đến khi đủ thông tin" actionLabel="Nhập ở trên" onAction={() => document.getElementById("fld-form07no")?.focus()} />
+            )}
+            {s.form07.done ? (
+              <div className="mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center" data-testid="form07-done">
+                <p className="font-extrabold text-emerald-800">✅ ĐÃ TẠO {s.form07.number}</p>
+                <p className="text-[13.5px] text-emerald-700 mt-0.5">
+                  {s.form07.document?.fileName || "FORM_07"} · bản R{s.form07.document?.revision ?? 1} · {s.form07.document?.status || "GENERATED"}
+                  {s.form07.document?.generatedBy ? " · " + s.form07.document.generatedBy : ""}
+                </p>
+                {s.form07.document?.downloadBase64 ? (
+                  <button onClick={downloadForm07} className="btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]"><Download size={17} /> TẢI {s.form07.document?.fileName || "FORM_07"}</button>
+                ) : (
+                  <p className="text-[13px] text-emerald-800 mt-2">File sinh ở phiên trước: metadata còn trên backend — tải đúng bytes đã lưu qua lịch sử ở thẻ “Biểu mẫu &amp; chứng từ”.</p>
+                )}
+                <button onClick={exportFORM07} className="btn-press touch-target mt-2 ml-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-600 text-emerald-800 font-bold px-5 min-h-[48px]"><FileDown size={17} /> SINH BẢN MỚI (R+1)</button>
+              </div>
+            ) : (
+              <SuccessBtn onClick={exportFORM07} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 TẠO BIÊN BẢN GIAO NHẬN</SuccessBtn>
             )}
           </section>
           )}

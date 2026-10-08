@@ -13,12 +13,14 @@ export type ShipmentDocumentAction =
   | "GENERATE_CONTRACT"
   | "GENERATE_PXK"
   | "GENERATE_GNT"
+  | "GENERATE_FORM07"
   | "OPEN_CONTRACT"
   | "OPEN_CONTRACT_LIST"
   | "OPEN_COMMERCIAL_FLOW"
   | "OPEN_IMPORT"
   | "OPEN_DELIVERY"
-  | "OPEN_PXK";
+  | "OPEN_PXK"
+  | "OPEN_FORM07";
 
 export interface ShipmentDocumentHistoryItem extends ShipmentGeneratedDocumentHistory {
   downloadBase64?: string | null;
@@ -51,11 +53,13 @@ interface CardProjectionInput {
   canGenerate: boolean;
   storageConfigured: boolean;
   pxkDraft?: { number?: string; date?: string };
+  /** Issue #168 — the operator-typed FORM_07 identity draft (never persisted). */
+  form07Draft?: { number?: string; orderDate?: string };
 }
 
-const SUPPORTED_ADAPTERS = new Set(["CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER"]);
+const SUPPORTED_ADAPTERS = new Set(["CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER", "FORM07_DOCGEN"]);
 const GENERATION_ACTIONS = new Set<ShipmentDocumentAction>([
-  "GENERATE_CONTRACT", "GENERATE_PXK", "GENERATE_GNT",
+  "GENERATE_CONTRACT", "GENERATE_PXK", "GENERATE_GNT", "GENERATE_FORM07",
 ]);
 
 function cleanList(values: unknown): string[] {
@@ -172,6 +176,62 @@ function readinessFor(
     return { state: "UNAVAILABLE", reason: gate.reason || "Cổng GNT chưa xác định; tạo bị khóa an toàn.", missing };
   }
 
+  if (template.adapter === "FORM07_DOCGEN") {
+    // Issue #168 — the server owns FORM_07 readiness from canonical facts; the
+    // only client-side addition is the typed operator identity draft (same
+    // pattern PXK uses for Số/Ngày), never a client-invented gate.
+    const gate = shipment.form07?.readiness;
+    if (!gate || typeof gate.state !== "string") {
+      return { state: "UNAVAILABLE", reason: "Chưa có readback cổng FORM_07 từ backend.", missing: [] };
+    }
+    const missing = cleanList(gate.missing);
+    const draftNumber = input.form07Draft?.number?.trim() || shipment.form07?.number?.trim() || "";
+    const draftOrderDate = input.form07Draft?.orderDate?.trim() || shipment.form07?.orderDate?.trim() || "";
+    const backendRequiresNumber = missing.some((item) => /thiếu số biên bản/i.test(item));
+    const backendRequiresOrderDate = missing.some((item) => /thiếu ngày đơn đặt hàng/i.test(item));
+    const otherMissing = missing.filter((item) =>
+      !/thiếu (số biên bản|ngày đơn đặt hàng)/i.test(item)
+    );
+    const legalIdentityMissing = [
+      ...(!draftNumber ? ["Số biên bản"] : []),
+      ...(!draftOrderDate ? ["Ngày đơn đặt hàng"] : []),
+    ];
+    const hasOnlyOperatorIdentityBlock =
+      gate.state === "MISSING_INFO" &&
+      otherMissing.length === 0 &&
+      (backendRequiresNumber || backendRequiresOrderDate);
+    const mergedMissing = [...otherMissing, ...legalIdentityMissing];
+
+    if (gate.state === "READY" || hasOnlyOperatorIdentityBlock) {
+      if (legalIdentityMissing.length) {
+        return {
+          state: "MISSING_INFO",
+          reason: "Nhập số biên bản và ngày đơn đặt hàng ở phần tạo biên bản.",
+          missing: legalIdentityMissing,
+          action: "OPEN_FORM07",
+        };
+      }
+      return { state: "READY", reason: gate.reason || "", missing: [], action: "GENERATE_FORM07" };
+    }
+    if (gate.state === "NOT_APPLICABLE") {
+      return { state: "UNAVAILABLE", reason: gate.reason || "FORM_07 không áp dụng cho dữ liệu hiện tại.", missing };
+    }
+    if (gate.state === "MISSING_INFO" || gate.state === "BLOCKED") {
+      const action = gate.gate === "BLOCKED_NOT_DELIVERED" || gate.gate === "BLOCKED_MISSING_DELIVERY_FACTS"
+        ? "OPEN_DELIVERY"
+        : gate.gate === "BLOCKED_NO_SOURCE" || gate.gate === "BLOCKED_AMBIGUOUS_SOURCE"
+          ? "OPEN_CONTRACT_LIST"
+          : "OPEN_FORM07";
+      return {
+        state: "MISSING_INFO",
+        reason: gate.reason || "FORM_07 còn thiếu thông tin.",
+        missing: mergedMissing.length ? mergedMissing : missing,
+        action,
+      };
+    }
+    return { state: "UNAVAILABLE", reason: gate.reason || "Cổng FORM_07 chưa xác định; tạo bị khóa an toàn.", missing };
+  }
+
   const gate = shipment.pxk?.readiness;
   if (!gate || typeof gate.state !== "string") {
     return { state: "UNAVAILABLE", reason: "Chưa có readback cổng PXK từ backend.", missing: [] };
@@ -237,6 +297,11 @@ function historyFor(template: ShipmentDocumentTemplate, input: CardProjectionInp
     const nested = Array.isArray(gnt?.document?.history) ? gnt.document.history : [];
     return sortedHistory((projected.length ? projected : nested).filter((row) => row.documentType === template.documentType));
   }
+  if (template.adapter === "FORM07_DOCGEN") {
+    const projected = Array.isArray(input.shipment.form07?.documentHistory) ? input.shipment.form07!.documentHistory! : [];
+    const nested = Array.isArray(input.shipment.form07?.document?.history) ? input.shipment.form07!.document!.history! : [];
+    return sortedHistory((projected.length ? projected : nested).filter((row) => row.documentType === template.documentType));
+  }
   const projected = Array.isArray(input.shipment.pxk?.documentHistory) ? input.shipment.pxk.documentHistory : [];
   const nested = Array.isArray(input.shipment.pxk?.document?.history) ? input.shipment.pxk.document.history : [];
   return sortedHistory((projected.length ? projected : nested).filter((row) => row.documentType === template.documentType));
@@ -249,7 +314,9 @@ function currentOutputFor(
   if (template.adapter === "CONTRACT_DOCGEN") return undefined;
   const document = template.adapter === "GNT_BUILDER"
     ? input.shipment.importInfo?.gnt?.document
-    : input.shipment.pxk?.document;
+    : template.adapter === "FORM07_DOCGEN"
+      ? input.shipment.form07?.document
+      : input.shipment.pxk?.document;
   if (!document) return undefined;
   const revision = Number(document.revision ?? 0);
   const fileName = document.fileName || "";
@@ -316,7 +383,8 @@ export function projectShipmentDocumentCards(input: CardProjectionInput): Shipme
       const openOutputAction: ShipmentDocumentAction | undefined = created
         ? template.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT"
           : template.adapter === "GNT_BUILDER" ? "OPEN_IMPORT"
-            : "OPEN_PXK"
+            : template.adapter === "FORM07_DOCGEN" ? "OPEN_FORM07"
+              : "OPEN_PXK"
         : undefined;
       return {
         id: template.id,
