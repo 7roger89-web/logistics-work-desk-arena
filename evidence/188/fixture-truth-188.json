@@ -1,0 +1,21 @@
+{
+  "fixture": "FRESH_SHIPMENT_188",
+  "shipmentId": "SEA-188",
+  "customer": "Khách hàng mới 188",
+  "persisted": true,
+  "version": 1,
+  "journeyNodes": 0,
+  "profileState": "PROFILE_INCOMPLETE",
+  "profileStateLabel": "Hồ sơ lô còn thiếu",
+  "serviceScope": [],
+  "serviceScopeConfirmed": false,
+  "firstMode": "",
+  "incoterm": "",
+  "transportLegs": 0,
+  "attentionItems": 1,
+  "primaryAction": "Bổ sung hồ sơ thực hiện lô",
+  "projectedPrimaryRoute": "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile",
+  "nextRoute": "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile",
+  "nextAction": "Bổ sung hồ sơ thực hiện lô",
+  "nextActionDetail": "Chưa có điều kiện giao hàng (Incoterm)."
+}

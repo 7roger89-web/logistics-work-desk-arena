@@ -1096,7 +1096,10 @@ export default function ShipmentDetail() {
       const params = new URLSearchParams(q);
       if (t) params.set("tab", t);
       setSp(params);
-      if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor);
+      // Any anchored destination may be mounted only after the query-param tab
+      // change re-renders. Reveal it on the next paint window; otherwise a
+      // profile action can fall back to workspace-tabs before the editor exists.
+      if (!anchor) revealAnchor(null);
       else setTimeout(() => revealAnchor(anchor), 150);
     } else {
       nav(s.nextRoute);
@@ -1220,11 +1223,6 @@ export default function ShipmentDetail() {
       </div>
 
       <AttentionNow items={shipmentAttention} title="Cần xử lý" />
-
-      <ShipmentCompletionGoals shipment={s} onOpenTab={(target) => {
-        if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
-        setSp({ tab: target });
-      }} />
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
@@ -2321,6 +2319,11 @@ export default function ShipmentDetail() {
       </div>
 
       </ShipmentJourney>
+
+      <ShipmentCompletionGoals shipment={s} onOpenTab={(target) => {
+        if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return; }
+        setSp({ tab: target });
+      }} />
 
       {/* MODAL: deliver */}
       {showDeliver && (

@@ -1,0 +1,50 @@
+dom_acceptance_amount_integrity.mjs                rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_c2a.mjs                             rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_c2b.mjs                             rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_c2c.mjs                             rc=0 |   ✓ refusal preserves the form and surfaces the backend's own error
+dom_acceptance_c2d.mjs                             rc=0 | 
+dom_acceptance_ceo_report.mjs                      rc=0 | CEO REPORT DOM ACCEPTANCE PASS — 13 checks
+dom_acceptance_company_identity.mjs                rc=0 | DOM ACCEPTANCE PASS — 6 checks
+dom_acceptance_consolidation.mjs                   rc=1 | AssertionError [ERR_ASSERTION]: Home hero heading missing
+dom_acceptance_contract_core_edit.mjs              rc=0 | CONTRACT CORE-EDIT DOM acceptance PASSED — 8 checks
+dom_acceptance_contract_slash_id.mjs               rc=0 | PASS contract slash-id specimen (3 groups)
+dom_acceptance_contract_workflow.mjs               rc=1 |   ✓ transport unavailable: no navigation, no success, connection error
+dom_acceptance_cost_market_benchmark.mjs           rc=0 | 
+dom_acceptance_create_shipment.mjs                 rc=0 | STEP 3 — backend FAILURE keeps the form and shows the real error
+dom_acceptance_customer_playbook_172.mjs           rc=0 | PASS #172 DOM: exact note/linkage, shared Attention route/band/reason, current Journey/action links,
+dom_acceptance_execution_profile.mjs               rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0306" not found
+dom_acceptance_finance_actual_entry.mjs            rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_getfly_dsdh.mjs                     rc=0 | DOM_ACCEPTANCE_GETFLY_DSDH: PASS (6 checks)
+dom_acceptance_glanceable_support_ux_01.mjs        rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_gnt.mjs                             rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0307" not found
+dom_acceptance_handbook.mjs                        rc=1 | TypeError: Cannot read properties of undefined (reading 'length')
+dom_acceptance_home_hierarchy.mjs                  rc=1 | AssertionError [ERR_ASSERTION]: deadline list present
+dom_acceptance_internal_ux_simplify.mjs            rc=0 | PASS — 8 checks
+dom_acceptance_intl_payment_tool.mjs               rc=1 | AssertionError [ERR_ASSERTION]: clickable "Tra cứu thuế / HS" not found
+dom_acceptance_journey_demo_fidelity.mjs           rc=1 | TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of Buffe
+dom_acceptance_journey_fresh_188.mjs               rc=0 | PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 f
+dom_acceptance_navigation_context.mjs              rc=1 | AssertionError [ERR_ASSERTION]: click target missing
+dom_acceptance_operations_control_tower_170.mjs    rc=0 | PASS #170: separate manager queue, neutral coverage, exact drill-down, factual workload, read-only f
+dom_acceptance_p2_polish.mjs                       rc=0 | P2_POLISH_DOM_ACCEPTANCE=PASSED checks=4
+dom_acceptance_partner_context.mjs                 rc=0 | STEP 11 — RBAC refusal: real backend error shown, nothing faked
+dom_acceptance_payment_correction.mjs              rc=1 | AssertionError [ERR_ASSERTION]: shipments table lists LO-0308
+dom_acceptance_payment_trust.mjs                   rc=1 | AssertionError [ERR_ASSERTION]: shipments table lists LO-0308
+dom_acceptance_phase_a.mjs                         rc=1 |   ✓ no 'process is not defined', no BidiComponent Error, app rendered
+dom_acceptance_quote_cost_workflow_ux_01.mjs       rc=0 | 
+dom_acceptance_quote_line_note_clarity.mjs         rc=0 | PASS — 7 checks
+dom_acceptance_real_use_repair.mjs                 rc=1 | STEP 6 — P0-A · BACKEND REFUSAL keeps the data and shows the real error
+dom_acceptance_reconciliation.mjs                  rc=0 | DOM acceptance PASSED — 14 checks
+dom_acceptance_role_trust.mjs                      rc=0 | ROLE_TRUST_DOM_ACCEPTANCE=PASSED checks=2
+dom_acceptance_shipment_attachments.mjs            rc=0 | SHIPMENT_ATTACHMENT_DOM_ACCEPTANCE=PASSED checks=13
+dom_acceptance_shipment_document_picker_v1.mjs     rc=0 | PASS: Shipment Document Picker V1 DOM acceptance
+dom_acceptance_shipment_document_review.mjs        rc=0 | SHIPMENT_DOCUMENT_REVIEW_DOM_ACCEPTANCE=PASSED checks=17
+dom_acceptance_shipment_header_edit.mjs            rc=1 | AssertionError [ERR_ASSERTION]: clickable "LO-0306" not found
+dom_acceptance_shipment_slash_id.mjs               rc=1 | AssertionError [ERR_ASSERTION]: identity link for "LO/LEGACY/001" present in the shipments desk
+dom_acceptance_support_attention_166.mjs           rc=0 | PASS #166: shared Home/Shipment Attention, exact drill-down, Attention before Journey, neutral empty
+dom_acceptance_tariff.mjs                          rc=1 | AssertionError [ERR_ASSERTION]: sidebar item missing
+dom_acceptance_translation.mjs                     rc=0 | STEP 8 — provider error state is honest and in place
+dom_acceptance_user_access.mjs                     rc=1 | TypeError: Cannot read properties of undefined (reading 'length')
+dom_acceptance_user_management.mjs                 rc=0 | STEP 8 — SET NEW PASSWORD dispatches user_password_reset; fields never leak
+dom_acceptance_visual_shipment_workspace.mjs       rc=1 | TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of Buffe
+dom_acceptance_work_module_library_162.mjs         rc=1 | TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of Buffe
+== rc=0 count: 25 / 49 ==

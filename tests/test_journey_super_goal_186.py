@@ -42,12 +42,12 @@ class CustomsImportPreservation(unittest.TestCase):
 
 
 class CompletionGoalsContract(unittest.TestCase):
-    def test_goals_are_mounted_between_attention_and_journey(self):
+    def test_cockpit_is_mounted_before_completion_review(self):
         attention = DETAIL.index("<AttentionNow")
-        goals = DETAIL.index("<ShipmentCompletionGoals")
         journey = DETAIL.index("<ShipmentJourney")
-        self.assertLess(attention, goals)
-        self.assertLess(goals, journey)
+        goals = DETAIL.index("<ShipmentCompletionGoals")
+        self.assertLess(attention, journey)
+        self.assertLess(journey, goals)
 
     def test_read_only_goal_dimensions_exist(self):
         for goal_id in [
