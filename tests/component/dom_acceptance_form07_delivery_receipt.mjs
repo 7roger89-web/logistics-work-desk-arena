@@ -113,12 +113,21 @@ async function click(needle, selector = "a,button", root = window.document) {
 }
 
 async function waitForDom(find, label) {
-  for (let attempt = 0; attempt < 25; attempt++) {
+  for (let attempt = 0; attempt < 50; attempt++) {
     const element = find();
     if (element) return element;
     await tick();
   }
   assert.fail(label);
+}
+
+async function clickWhenReady(needle, selector, scopeSelector) {
+  const element = await waitForDom(() => {
+    const root = $(scopeSelector)[0];
+    return root && findClickable(needle, selector, root);
+  }, `clickable "${needle}" on ${scopeSelector}`);
+  element.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
 }
 
 function setInputValue(input, value) {
@@ -158,22 +167,13 @@ function invoke(model) {
 }
 
 async function gotoDocuments() {
-  await click("Lô Hàng", "a", $("aside")[0]);
-  await click("Tất cả thời gian", "button", $("[data-testid='shipment-period-controls']")[0]);
-  await click(SHIPMENT_ID, "a", $("table.tbl")[0]);
-  // Current main (#190) moved the document tab into the Journey Global Workspace.
-  // Follow the real navigation instead of restoring the removed permanent tabs.
-  // Navigation can settle after the fixed click tick on a busy CI host.
-  const globalButton = await waitForDom(
-    () => findClickable("Toàn bộ lô hàng", "button"),
-    "shipment identity bar opens the Journey Global Workspace",
-  );
-  globalButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
-  const workspace = await waitForDom(
-    () => $("[data-testid='journey-global-workspace']")[0],
-    "Journey Global Workspace opens",
-  );
-  await click("Chứng từ", "button", workspace);
+  // #190 moved the document tab into Journey's Global Workspace. Wait for each
+  // actual navigation target rather than assuming every route mounts in 80 ms.
+  await clickWhenReady("Lô Hàng", "a", "aside");
+  await clickWhenReady("Tất cả thời gian", "button", "[data-testid='shipment-period-controls']");
+  await clickWhenReady(SHIPMENT_ID, "a", "table.tbl");
+  await clickWhenReady("Toàn bộ lô hàng", "button", "[data-testid='shipment-identity-bar']");
+  await clickWhenReady("Chứng từ", "button", "[data-testid='journey-global-workspace']");
   return waitForDom(
     () => $("[data-testid='shipment-document-picker']")[0],
     "document picker is on the existing Shipment Detail",
