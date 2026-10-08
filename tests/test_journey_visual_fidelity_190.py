@@ -41,6 +41,15 @@ class JourneyDensity(unittest.TestCase):
         self.assertIn("setMapCollapsed(true);", JOURNEY)
         self.assertIn("journey-split-collapsed", JOURNEY)
 
+    def test_populated_default_restores_original_composition(self):
+        populated = JOURNEY.split("export default function ShipmentJourney", 1)[1]
+        self.assertNotIn('data-testid="journey-phase-strip"', populated)
+        self.assertNotIn('data-testid="journey-map-toolbar"', populated)
+        self.assertIn("globalActive ? 'global' : 'quick'", populated)
+        self.assertIn('data-testid="journey-summary-cards"', populated)
+        for idx in range(1, 6):
+            self.assertIn(f'journey-summary-card-{idx}', populated)
+
 
 class CompletionReviewDensity(unittest.TestCase):
     def test_completion_review_is_collapsed_by_default(self):
