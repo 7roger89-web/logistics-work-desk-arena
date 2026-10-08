@@ -31,6 +31,27 @@ class ShipmentListTriage(unittest.TestCase):
 
 
 class JourneyDensity(unittest.TestCase):
+    def test_customs_panel_order_and_fixed_footer_contract(self):
+        next_action = JOURNEY.index('data-testid="ci-next-action"')
+        registration = JOURNEY.index('data-testid="ci-registration-clearance"')
+        self.assertLess(next_action, registration)
+        self.assertEqual(JOURNEY.count('data-testid="ci-primary-cta"'), 1)
+        self.assertEqual(JOURNEY.count('data-testid="ci-open-workspace"'), 1)
+        self.assertIn('data-testid="ci-scroll-region"', JOURNEY)
+        self.assertIn('data-testid="ci-footer"', JOURNEY)
+        self.assertIn('className="min-h-0 flex-1 space-y-3 overflow-auto', JOURNEY)
+        self.assertIn('className="shrink-0 border-t border-slate-300', JOURNEY)
+        self.assertNotIn('className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"', JOURNEY)
+
+    def test_focus_shell_geometry_is_bound_to_scrollbar_free_reference_width(self):
+        self.assertIn('.journey-side { flex-shrink: 0; width: 451px;', CSS)
+        self.assertIn('.focus-shell { min-height: 100%; }', CSS)
+        self.assertIn('padding-left: 17px; padding-right: 17px;', CSS)
+        # Empty optional module setup stays accessible on demand, but no longer
+        # consumes a permanent first-screen row.
+        self.assertIn('(modules.length > 0 || attachOpen)', JOURNEY)
+        self.assertIn('data-testid="journey-add-module-page"', JOURNEY)
+
     def test_fresh_zero_node_shell_is_compact(self):
         self.assertIn("journey-split journey-split-fresh", JOURNEY)
         self.assertIn(".journey-split-fresh { height: 500px; }", CSS)

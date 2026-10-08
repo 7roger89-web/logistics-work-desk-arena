@@ -99,15 +99,15 @@ body {
 
 /* Approved Visual Shipment Workspace B: scoped to Journey, not a new app theme. */
 .journey-demo { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; }
-/* Issue #190 — Owner reference (reference190-opt.png, PR #191 head 6f6c655)
-   measures the populated Journey split at 718px tall (map card top..bottom)
-   with a 450px right rail. Those are the approved visible constants now. */
+/* Issue #190 — Owner reference measures the populated Journey split at 718px
+   tall (map card top..bottom) with a ~451px right rail. The prior 450px value
+   was measured while an accidental shell scrollbar consumed 8px of layout. */
 .journey-split { display: flex; height: 718px; min-height: 0; gap: 12px; }
 /* Issue #190 — truthful fresh shipments have no detailed map yet. Keeping the
    populated 760px canvas here wastes most of the first screen; the compact
    shell preserves the same visual language without fabricating nodes. */
 .journey-split-fresh { height: 500px; }
-.journey-side { flex-shrink: 0; width: 450px; min-width: 0; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; overflow: hidden; }
+.journey-side { flex-shrink: 0; width: 451px; min-width: 0; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; overflow: hidden; }
 .journey-split-wide .journey-side { width: 44%; min-width: 600px; max-width: 860px; }
 .journey-rail { width: 208px; flex-shrink: 0; overflow: auto; border-right: 1px solid #cbd5e1; background: white; }
 .journey-split-collapsed .journey-side { flex: 1; width: auto; max-width: none; }
@@ -133,6 +133,7 @@ body {
   .focus-shell .global-topbar,
   .focus-shell .global-sidebar,
   .focus-shell .global-footer { display: none !important; }
+  .focus-shell { min-height: 100%; }
   .focus-shell .focus-content { max-width: none; }
-  .focus-shell .focus-main { max-width: none; padding-left: 16px; padding-right: 16px; }
+  .focus-shell .focus-main { max-width: none; padding-left: 17px; padding-right: 17px; }
 }

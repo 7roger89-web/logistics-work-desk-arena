@@ -43,6 +43,10 @@ const [REF_W, REF_H] = (process.env.REFERENCE_VIEWPORT || '1536x1466').split('x'
 const LAUNCH = {
   executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
   headless: true,
+  // Playwright hides scrollbars in headless mode by default. That changes the
+  // desktop layout by exactly the scrollbar width and made the previous #190
+  // evidence miss the real 8px loss. Keep Chromium's actual layout scrollbar.
+  ignoreDefaultArgs: ['--hide-scrollbars'],
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   env: process.env.CHROMIUM_LIB_PATH
     ? { ...process.env, LD_LIBRARY_PATH: process.env.CHROMIUM_LIB_PATH }
@@ -205,7 +209,8 @@ async function measure(page) {
       'journey-map-viewport', 'journey-side-panel', 'journey-quick-panel', 'journey-overview-panel',
       'journey-stage-workspace', 'journey-global-workspace', 'journey-summary-cards', 'shipment-completion-goals',
       'completion-goal-details', 'shipment-execution-profile', 'journey-map-rail', 'journey-empty-canvas',
-      'customs-import-quick-panel', 'journey-parallel-branch'];
+      'customs-import-quick-panel', 'ci-next-action', 'ci-registration-clearance', 'ci-scroll-region',
+      'ci-footer', 'ci-open-workspace', 'journey-parallel-branch', 'shipment-identity-bar'];
     const blocks = {};
     for (const id of ids) blocks[id] = rectOf(t(id));
     const split = document.querySelector('.journey-split');
@@ -219,9 +224,17 @@ async function measure(page) {
     return {
       shell: shell ? {
         scrollTop: Math.round(shell.scrollTop), scrollHeight: shell.scrollHeight,
-        clientHeight: shell.clientHeight, clientWidth: shell.clientWidth,
+        clientHeight: shell.clientHeight, scrollWidth: shell.scrollWidth, clientWidth: shell.clientWidth,
+        verticalOverflow: shell.scrollHeight - shell.clientHeight,
         horizontalOverflow: shell.scrollWidth - shell.clientWidth,
+        bbox: rectOf(shell),
       } : null,
+      document: {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientHeight: document.documentElement.clientHeight,
+        scrollHeight: document.documentElement.scrollHeight,
+      },
       pageHorizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       fit: { scale: k, transform: style },
@@ -340,6 +353,10 @@ async function populatedLane() {
     browser = await chromium.launch(LAUNCH);
     metrics.browser = { executable: LAUNCH.executablePath || 'playwright-bundled', version: browser.version() };
     const page = await newPage(browser);
+    let eventPosts = 0;
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && request.url().endsWith('/event')) eventPosts += 1;
+    });
     await openShipment(page, spec);
     metrics.fonts = await fontFamilyUsed(page);
     assert.equal(metrics.fonts.vietnameseAvailable, true, 'Be Vietnam Pro must be available for truthful text metrics');
@@ -357,23 +374,28 @@ async function populatedLane() {
     metrics.populated = m;
     assertPopulatedComposition(m, 'populated 1536×1466');
     assertNodeGeometry(m, 'populated 1536×1466');
-    // Issue #190 — constants re-measured from the Owner reference
-    // (reference190-opt.png @ PR #191 head 6f6c655): right rail 450px,
-    // populated split 718px. The 420/760 pair was the pre-sample donor value.
-    assert.ok(Math.abs(m.blocks['journey-side-panel'].w - 450) <= 2, `right Quick Panel width ${m.blocks['journey-side-panel'].w} != 450`);
-    assert.ok(Math.abs(m.split.height - 718) <= 2, `populated split height ${m.split.height} != 718`);
-    ok(`geometry: Journey outer ${m.blocks['shipment-journey'].w}×${m.blocks['shipment-journey'].h} · map ${m.blocks['journey-map-viewport'].w}×${m.blocks['journey-map-viewport'].h} · Quick Panel ${m.blocks['journey-side-panel'].w}×${m.blocks['journey-side-panel'].h} · map/panel ratio ${m.mapPanelRatio} · split height ${m.split.height}px · card gaps ${JSON.stringify(m.cardGaps)}`);
+    // Issue #190 repair — measure with Chromium's real scrollbar behavior.
+    // Removing the accidental shell overflow restores all 8 consumed pixels;
+    // 17px page gutters + 1039 map + 12 gap + 451 panel match the reference.
+    assert.ok(Math.abs(m.blocks['journey-side-panel'].w - 451) <= 1, `right Quick Panel width ${m.blocks['journey-side-panel'].w} != 451`);
+    assert.ok(Math.abs(m.blocks['journey-map-viewport'].w - 1039) <= 1, `map width ${m.blocks['journey-map-viewport'].w} != 1039`);
+    assert.ok(Math.abs(m.split.height - 718) <= 1, `populated split height ${m.split.height} != 718`);
+    assert.ok(Math.abs(m.mapToPanelGap - 12) <= 0.5, `map/panel gap ${m.mapToPanelGap} != 12`);
+    assert.ok(m.fit.scale >= 0.905 && m.fit.scale < 0.915, `fit scale ${m.fit.scale} must round to 91%`);
+    assert.ok(m.shell.verticalOverflow <= 1,
+      `focus-shell must not create a layout scrollbar: scrollHeight=${m.shell.scrollHeight}, clientHeight=${m.shell.clientHeight}`);
+    assert.equal(m.shell.clientWidth, REF_W, `no vertical scrollbar should consume layout width (${m.shell.clientWidth} != ${REF_W})`);
+    ok(`scrollport: .logi-shell client ${m.shell.clientWidth}×${m.shell.clientHeight}, scroll ${m.shell.scrollWidth}×${m.shell.scrollHeight}, vertical overflow ${m.shell.verticalOverflow}px`);
+    ok(`geometry: Journey outer ${m.blocks['shipment-journey'].w}×${m.blocks['shipment-journey'].h} · map ${m.blocks['journey-map-viewport'].w}×${m.blocks['journey-map-viewport'].h} · Quick Panel ${m.blocks['journey-side-panel'].w}×${m.blocks['journey-side-panel'].h} · map/panel ratio ${m.mapPanelRatio} · fit ${Math.round(m.fit.scale * 100)}% · split height ${m.split.height}px · card gaps ${JSON.stringify(m.cardGaps)}`);
 
-    // Issue #86 keeps the five recognition facts VISIBLE in the lot header;
-    // Issue #190 moves them inline (dense) into the compact identity bar.
-    const factsVisible = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="shipment-quick-facts"]');
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0;
-    });
-    assert.ok(factsVisible, 'issue #86 quick-facts strip must stay visible in the compact identity bar');
-    ok('issue #86 quick-facts strip visible inline in the identity bar (dense chips)');
+    // The focus-shell identity bar is the reference's one compact header. The
+    // permanent legacy tab row is absent; truthful secondary facts remain in
+    // the existing HỒ SƠ & PHẠM VI on-demand disclosure.
+    assert.ok(m.blocks['shipment-identity-bar'], 'compact shipment identity bar must render');
+    assert.equal(await page.locator('#workspace-tabs').count(), 0, 'no permanent shipment tab row on the first screen');
+    assert.ok((await page.getByTestId('journey-summary-card-5').innerText()).includes('HỒ SƠ & PHẠM VI'),
+      'HỒ SƠ & PHẠM VI card must preserve the secondary-facts surface');
+    ok('compact identity bar + HỒ SƠ secondary-facts disclosure preserved; no permanent legacy tab row');
 
     // Completion Goals must stay collapsed and must not dominate the first screen.
     assert.equal(m.blocks['completion-goal-details'], null, 'Completion Goals must be collapsed by default');
@@ -409,6 +431,91 @@ async function populatedLane() {
     await page.screenshot({ path: path.join(outDir, 'candidate-populated-fullpage.png'), fullPage: true });
     ok(`captured candidate-populated-desktop.png (${REF_W}×${REF_H}), candidate-populated-journey.png, candidate-populated-fullpage.png`);
 
+    // ---- B1: Customs Import slot order + pinned, non-scrolling footer.
+    await page.getByTestId('journey-node-customs-import').click();
+    await page.getByTestId('journey-customs-import-panel').waitFor();
+    const customsContract = await page.evaluate(() => {
+      const t = (id) => document.querySelector(`[data-testid="${id}"]`);
+      const panel = t('journey-side-panel').getBoundingClientRect();
+      const action = t('ci-next-action');
+      const registration = t('ci-registration-clearance');
+      const scroll = t('ci-scroll-region');
+      const footer = t('ci-footer');
+      const fr = footer.getBoundingClientRect();
+      return {
+        actionCount: document.querySelectorAll('[data-testid="ci-next-action"]').length,
+        registrationCount: document.querySelectorAll('[data-testid="ci-registration-clearance"]').length,
+        primaryCount: document.querySelectorAll('[data-testid="ci-primary-cta"]').length,
+        workspaceCount: document.querySelectorAll('[data-testid="ci-open-workspace"]').length,
+        actionBeforeRegistration: Boolean(action.compareDocumentPosition(registration) & Node.DOCUMENT_POSITION_FOLLOWING),
+        actionY: action.getBoundingClientRect().y,
+        registrationY: registration.getBoundingClientRect().y,
+        actionBackground: getComputedStyle(action).backgroundColor,
+        actionBorder: getComputedStyle(action).borderColor,
+        scrollTop: scroll.scrollTop,
+        scrollHeight: scroll.scrollHeight,
+        clientHeight: scroll.clientHeight,
+        footerY: fr.y,
+        footerBottom: fr.bottom,
+        panelTop: panel.top,
+        panelBottom: panel.bottom,
+      };
+    });
+    assert.equal(customsContract.actionCount, 1, 'exactly one ci-next-action');
+    assert.equal(customsContract.registrationCount, 1, 'exactly one ci-registration-clearance');
+    assert.equal(customsContract.primaryCount, 1, 'exactly one ci-primary-cta');
+    assert.equal(customsContract.workspaceCount, 1, 'exactly one ci-open-workspace');
+    assert.ok(customsContract.actionBeforeRegistration && customsContract.actionY < customsContract.registrationY,
+      'ci-next-action must precede registration/clearance facts');
+    assert.equal(customsContract.actionBackground, 'rgb(254, 242, 242)', 'dominant next-action surface must remain red');
+    const actionBorderRgb = (customsContract.actionBorder.match(/\d+/g) || []).map(Number);
+    assert.ok(actionBorderRgb.length === 3 && actionBorderRgb[0] >= 180
+      && actionBorderRgb[0] > actionBorderRgb[1] * 2 && actionBorderRgb[0] > actionBorderRgb[2] * 2,
+    `dominant next-action border must remain red, got ${customsContract.actionBorder}`);
+    assert.ok(customsContract.footerY >= customsContract.panelTop && customsContract.footerBottom <= customsContract.panelBottom + 1,
+      'workspace footer must be visible inside the 718px panel without scrolling');
+    assert.ok(customsContract.scrollHeight > customsContract.clientHeight,
+      'canonical long customs facts must overflow only the internal content region');
+    await page.screenshot({ path: path.join(outDir, 'quick-panel-action-order.png') });
+    await page.evaluate(() => {
+      const scroll = document.querySelector('[data-testid="ci-scroll-region"]');
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+    await page.waitForTimeout(100);
+    const afterInternalScroll = await page.evaluate(() => {
+      const scroll = document.querySelector('[data-testid="ci-scroll-region"]');
+      const footer = document.querySelector('[data-testid="ci-footer"]').getBoundingClientRect();
+      return { scrollTop: scroll.scrollTop, footerY: footer.y };
+    });
+    assert.ok(afterInternalScroll.scrollTop > 0, 'long customs content must scroll internally');
+    assert.ok(Math.abs(afterInternalScroll.footerY - customsContract.footerY) <= 0.5,
+      `internal scroll moved fixed footer (${customsContract.footerY} → ${afterInternalScroll.footerY})`);
+    metrics.customsPanel = { initial: customsContract, afterInternalScroll };
+    await page.screenshot({ path: path.join(outDir, 'quick-panel-pinned-footer.png') });
+    const writesBeforeWorkspaceOpen = eventPosts;
+    await page.getByTestId('ci-open-workspace').click();
+    await page.getByTestId('journey-stage-workspace').waitFor();
+    assert.equal(eventPosts, writesBeforeWorkspaceOpen,
+      'opening Stage Workspace is navigation only and must emit zero writes');
+    ok(`Customs Quick Panel: next action precedes registration/clearance; 1 primary CTA + 1 navigation CTA; content scrolled ${afterInternalScroll.scrollTop}px while footer stayed at y=${afterInternalScroll.footerY}; Stage Workspace opened with zero writes`);
+    await openShipment(page, spec);
+    await scrollShellTop(page);
+
+    // B2 capability preservation: the zero-module setup is absent by default,
+    // but remains keyboard/click accessible behind HỒ SƠ's existing disclosure.
+    assert.equal(await page.getByTestId('journey-modules-empty').count(), 0,
+      'empty optional module setup must not consume a permanent first-screen row');
+    const writesBeforeModuleDisclosure = eventPosts;
+    await page.getByTestId('journey-summary-card-5').locator('summary').click();
+    await page.getByTestId('journey-add-module-page').waitFor();
+    await page.getByTestId('journey-add-module-page').click();
+    await page.getByTestId('journey-modules-empty').waitFor();
+    assert.equal(eventPosts, writesBeforeModuleDisclosure,
+      'revealing optional-module setup is navigation only and must emit zero writes');
+    ok('optional module setup: absent from default first screen, still reachable from HỒ SƠ → Thông tin thêm with zero writes');
+    await openShipment(page, spec);
+    await scrollShellTop(page);
+
     // ---- secondary state: Completion Goals expanded
     await page.getByTestId('shipment-completion-goals').screenshot({ path: path.join(outDir, 'completion-collapsed.png') });
     await scrollShellTo(page, 'shipment-completion-goals');
@@ -418,7 +525,7 @@ async function populatedLane() {
     const expanded = await measure(page);
     metrics.completionExpanded = { details: expanded.blocks['completion-goal-details'], text: expanded.completionGoalsText };
     assert.ok(expanded.blocks['completion-goal-details'], 'expanded details must render');
-    await page.getByTestId('shipment-completion-goals').screenshot({ path: path.join(outDir, 'completion-expanded.png') });
+    await page.getByTestId('shipment-completion-goals').screenshot({ path: path.join(outDir, 'completion-goals-expanded.png') });
     ok(`Completion Goals expand on demand: details ${Math.round(expanded.blocks['completion-goal-details'].w)}×${Math.round(expanded.blocks['completion-goal-details'].h)}px (collapsed row was ${Math.round(m.blocks['shipment-completion-goals'].h)}px)`);
     await page.getByTestId('completion-goal-toggle').click();
     await page.waitForTimeout(150);
@@ -437,8 +544,8 @@ async function populatedLane() {
     assert.ok(gw.blocks['journey-map-rail'], 'map must auto-collapse to the existing rail');
     assert.equal(gw.blocks['journey-map-viewport'], null, 'full map must not keep consuming the width');
     assert.ok(gw.blocks['journey-side-panel'].w >= 600, `workspace pane must get readable width, got ${gw.blocks['journey-side-panel'].w}`);
-    await page.screenshot({ path: path.join(outDir, 'global-workspace-expanded.png') });
-    ok(`Global Workspace: map auto-collapsed to rail (${Math.round(gw.blocks['journey-map-rail'].w)}px), workspace pane ${Math.round(gw.blocks['journey-side-panel'].w)}px wide — no full forms squeezed into the 450px Quick Panel`);
+    await page.screenshot({ path: path.join(outDir, 'candidate-global-workspace.png') });
+    ok(`Global Workspace: map auto-collapsed to rail (${Math.round(gw.blocks['journey-map-rail'].w)}px), workspace pane ${Math.round(gw.blocks['journey-side-panel'].w)}px wide — no full forms squeezed into the 451px Quick Panel`);
 
     // operator can reopen the map
     const reopen = page.getByTestId('journey-map-rail').locator('button, [aria-label]').first();
@@ -459,6 +566,22 @@ async function populatedLane() {
     ok(`populated 390×844: stacked split ${Math.round(mob.split.rect.w)}×${Math.round(mob.split.rect.h)}, map ${Math.round(mob.blocks['journey-map-viewport'].h)}px tall, panel ${Math.round(mob.blocks['journey-side-panel'].h)}px tall, ${mob.cards.length} cards`);
 
     await page.setViewportSize({ width: REF_W, height: REF_H });
+    await page.goto(`http://127.0.0.1:${spec.port}`);
+    await page.waitForTimeout(250);
+    const normalShell = await page.evaluate(() => {
+      const visible = (selector) => {
+        const el = document.querySelector(selector);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && getComputedStyle(el).display !== 'none';
+      };
+      return { focus: Boolean(document.querySelector('.focus-shell')), topbar: visible('.global-topbar'), sidebar: visible('.global-sidebar') };
+    });
+    assert.deepEqual(normalShell, { focus: false, topbar: true, sidebar: true },
+      'normal non-detail route must retain production topbar/sidebar chrome');
+    await page.screenshot({ path: path.join(outDir, 'candidate-other-route-home.png') });
+    metrics.normalShell = normalShell;
+    ok('normal-shell non-detail route keeps desktop topbar + sidebar');
     assert.deepEqual(page.__errors, [], `page errors: ${page.__errors.join(' | ')}`);
     ok('zero application page errors on the populated lane');
     return m;
@@ -499,8 +622,11 @@ async function listLane() {
     metrics.shipmentList = rows;
     assert.ok(rows.length >= 2, 'list must render multiple shipments');
     const withBand = rows.filter((r) => r.band);
+    const urgent = rows.filter((r) => r.band === 'BLOCKING' || r.band === 'OVERDUE');
     const without = rows.filter((r) => !r.band);
-    ok(`list rows=${rows.length}; canonical Attention bands present on ${withBand.length} row(s) (${withBand.map((r) => `${r.id}:${r.band}`).join(', ') || 'none'}); ${without.length} row(s) carry no band`);
+    assert.ok(urgent.length >= 1, 'canonical fixture must include a BLOCKING/OVERDUE row');
+    assert.ok(without.length >= 1, 'canonical fixture must include a nonurgent comparison row');
+    ok(`list rows=${rows.length}; canonical urgent bands=${urgent.map((r) => `${r.id}:${r.band}`).join(', ')}; nonurgent rows=${without.map((r) => r.id).join(', ')}`);
     // Urgency must come from canonical Attention only.
     for (const r of rows) {
       if (!r.band) assert.equal(r.pulseDot, false, `${r.id}: pulse/alert without a canonical Attention band`);
@@ -564,9 +690,9 @@ async function freshLane() {
     assert.ok(m.blocks['journey-side-panel'].x > m.blocks['journey-empty-canvas'].x, 'onboarding panel must sit on the right');
     ok(`fresh density: split height ${m.split.height}px (compact class), canvas ${Math.round(m.blocks['journey-empty-canvas'].w)}×${Math.round(m.blocks['journey-empty-canvas'].h)}, right panel ${Math.round(m.blocks['journey-side-panel'].w)}×${Math.round(m.blocks['journey-side-panel'].h)}`);
     await noPageOverflow(page, `fresh ${REF_W}`);
-    await page.screenshot({ path: path.join(outDir, 'fresh-desktop.png') });
-    await page.getByTestId('shipment-journey').screenshot({ path: path.join(outDir, 'fresh-desktop-cockpit.png') });
-    ok(`captured fresh-desktop.png (${REF_W}×${REF_H}) + fresh-desktop-cockpit.png`);
+    await page.screenshot({ path: path.join(outDir, 'candidate-fresh-desktop.png') });
+    await page.getByTestId('shipment-journey').screenshot({ path: path.join(outDir, 'candidate-fresh-desktop-cockpit.png') });
+    ok(`captured candidate-fresh-desktop.png (${REF_W}×${REF_H}) + candidate-fresh-desktop-cockpit.png`);
 
     // B1 — Execution Profile CTA still works.
     const cta = page.getByTestId('journey-empty-primary-cta');
@@ -585,10 +711,40 @@ async function freshLane() {
     await page.waitForTimeout(300);
     await scrollShellTop(page);
     const mob = await measure(page);
-    metrics.fresh390 = { split: mob.split, canvas: mob.blocks['journey-empty-canvas'], side: mob.blocks['journey-side-panel'], phases: mob.blocks['journey-phase-strip'] };
+    const freshTop = await page.evaluate(() => {
+      const shell = document.querySelector('.logi-shell');
+      const phase = document.querySelector('[data-testid="journey-phase-strip"]');
+      const canvas = document.querySelector('[data-testid="journey-empty-canvas"]');
+      const sr = shell.getBoundingClientRect();
+      const pr = phase.getBoundingClientRect();
+      const cr = canvas.getBoundingClientRect();
+      return {
+        scrollTop: shell.scrollTop,
+        phaseVisible: pr.bottom > sr.top && pr.top < sr.bottom,
+        canvasEntranceVisible: cr.top < sr.bottom && cr.bottom > sr.top,
+        shell: { top: sr.top, bottom: sr.bottom }, phase: { top: pr.top, bottom: pr.bottom },
+        canvas: { top: cr.top, bottom: cr.bottom },
+      };
+    });
+    assert.equal(freshTop.scrollTop, 0, 'fresh 390 top evidence must be captured at scrollTop=0');
+    assert.ok(freshTop.phaseVisible, 'fresh 390 top must show the truthful six-phase strip');
+    assert.ok(freshTop.canvasEntranceVisible, 'fresh 390 top must show the zero-node canvas entrance');
+    metrics.fresh390 = { split: mob.split, canvas: mob.blocks['journey-empty-canvas'], side: mob.blocks['journey-side-panel'], phases: mob.blocks['journey-phase-strip'], topEvidence: freshTop };
     await noPageOverflow(page, 'fresh 390');
-    await page.screenshot({ path: path.join(outDir, 'fresh-390.png') });
-    ok(`captured fresh-390.png (390×844): split ${Math.round(mob.split.rect.w)}×${Math.round(mob.split.rect.h)}, canvas ${Math.round(mob.blocks['journey-empty-canvas'].h)}px, panel ${Math.round(mob.blocks['journey-side-panel'].h)}px`);
+    await page.screenshot({ path: path.join(outDir, 'candidate-fresh-390-top.png') });
+    // Keep enough space above the button to show the complete amber onboarding
+    // card below the fixed mobile topbar, rather than aligning the CTA beneath it.
+    await scrollShellTo(page, 'journey-empty-primary-cta', 320);
+    const freshOnboarding = await page.evaluate(() => {
+      const cta = document.querySelector('[data-testid="journey-empty-primary-cta"]').getBoundingClientRect();
+      const shell = document.querySelector('.logi-shell').getBoundingClientRect();
+      return { cta: { top: cta.top, bottom: cta.bottom }, shell: { top: shell.top, bottom: shell.bottom } };
+    });
+    assert.ok(freshOnboarding.cta.top >= 64 && freshOnboarding.cta.bottom <= freshOnboarding.shell.bottom,
+      `fresh onboarding CTA must be visible below mobile topbar (${JSON.stringify(freshOnboarding)})`);
+    metrics.fresh390.onboardingEvidence = freshOnboarding;
+    await page.screenshot({ path: path.join(outDir, 'candidate-fresh-390-onboarding.png') });
+    ok(`captured candidate-fresh-390-top.png at scrollTop=0 (phase strip + canvas entrance) and candidate-fresh-390-onboarding.png (visible HỒ SƠ action); split ${Math.round(mob.split.rect.w)}×${Math.round(mob.split.rect.h)}`);
     assert.deepEqual(page.__errors, [], `page errors: ${page.__errors.join(' | ')}`);
     ok('zero application page errors on the fresh lane');
   } catch (e) {
@@ -665,25 +821,31 @@ function compare(candidate, donor, label) {
 // ------------------------------------------------------------------ run
 const want = (m) => mode === 'all' || mode === m;
 try {
-  if (want('donor')) {
+  if (mode === 'all') {
+    // A donor checkout is optional; the Owner PNG remains the visual oracle.
+    // Always exercise every candidate lane even when DONOR_ROOT is absent.
     const donor = await donorLane();
-    if (donor && (want('populated') || mode === 'all')) {
-      const cand = await populatedLane();
-      compare(cand, donor, 'populated desktop 1536×1466');
-    }
+    const cand = await populatedLane();
+    if (donor) compare(cand, donor, 'populated desktop 1536×1466');
+    await listLane();
+    await freshLane();
+  } else if (mode === 'donor') {
+    await donorLane();
   } else if (want('populated')) {
     await populatedLane();
+  } else if (want('list')) {
+    await listLane();
+  } else if (want('fresh')) {
+    await freshLane();
   }
-  if (want('list')) await listLane();
-  if (want('fresh')) await freshLane();
 } catch (e) {
   metrics.error = String(e && e.stack || e);
-  writeFileSync(path.join(outDir, 'geometry-190.json'), JSON.stringify(metrics, null, 2));
+  writeFileSync(path.join(outDir, 'geometry.json'), JSON.stringify(metrics, null, 2));
   console.error('\nFAILED:', e.message);
   process.exitCode = 1;
   throw e;
 } finally {
   metrics.checks = results;
-  writeFileSync(path.join(outDir, 'geometry-190.json'), JSON.stringify(metrics, null, 2));
+  writeFileSync(path.join(outDir, 'geometry.json'), JSON.stringify(metrics, null, 2));
 }
-console.log(`\n  metrics written to ${path.relative(root, path.join(outDir, 'geometry-190.json'))} (${results.length} checks)`);
+console.log(`\n  metrics written to ${path.relative(root, path.join(outDir, 'geometry.json'))} (${results.length} checks)`);

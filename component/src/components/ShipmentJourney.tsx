@@ -171,39 +171,29 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
   const gntDoc = gnt?.document;
   const money = (n: number | null | undefined, ccy?: string | null) =>
     <span className="font-bold">{fmtCcy(n ?? null, ccy ?? 'VND')}</span>;
-  return <div className="space-y-3" data-testid="customs-import-quick-panel">
-    {/* Issue #190 CONTINUE — reference panel header: one row with the stage
-        icon + title + problem chip + close, then the declaration lead line. */}
-    <div className="flex items-center gap-2">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white" aria-hidden="true"><Info size={16} /></span>
-      <h3 className="text-xl font-extrabold tracking-tight text-[#0f2a4a]">NHẬP KHẨU</h3>
-      {(selected.state === 'PROBLEM' || selected.blockers.length > 0) && (
-        <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700">
-          <CircleAlert size={12} aria-hidden="true" /> Cần xử lý
-        </span>
-      )}
-      <button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target ml-auto grid h-9 w-9 place-items-center rounded-lg text-lg text-slate-400 hover:bg-slate-100">✕</button>
-    </div>
-    <p className="text-[13.5px] leading-snug text-slate-700">
-      {info.declarationNo
-        ? <>Tờ khai NK <b>{info.declarationNo}</b> đã đăng ký · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>
-        : <>Chưa có số tờ khai nhập khẩu · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>}
-    </p>
-
-    <div className="rounded-lg border border-slate-200 p-3 text-sm" data-testid="ci-registration-clearance">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-slate-500">Tờ khai (đăng ký)</span>
-        <span className="text-right font-bold">{info.declarationNo || 'Chưa có thông tin'}{info.regDate ? ` · ${info.regDate}` : ''}</span>
+  return <div className="flex h-full min-h-0 flex-col bg-white" data-testid="customs-import-quick-panel">
+    {/* Issue #190 repair — match the proven JourneyQuickPanel shell: fixed
+        header, one bounded scrolling content region, then a fixed workspace
+        footer. The declaration lead stays with the stage identity. */}
+    <div className="shrink-0 border-b border-slate-300 px-4 pb-3 pt-3">
+      <div className="flex items-center gap-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white" aria-hidden="true"><Info size={16} /></span>
+        <h3 className="text-xl font-extrabold tracking-tight text-[#0f2a4a]">NHẬP KHẨU</h3>
+        {(selected.state === 'PROBLEM' || selected.blockers.length > 0) && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700">
+            <CircleAlert size={12} aria-hidden="true" /> Cần xử lý
+          </span>
+        )}
+        <button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target ml-auto grid h-9 w-9 place-items-center rounded-lg text-lg text-slate-400 hover:bg-slate-100">✕</button>
       </div>
-      <div className="mt-1 flex items-start justify-between gap-2">
-        <span className="text-slate-500">Thông quan</span>
-        {cleared
-          ? <span className="text-right font-bold text-emerald-800">Đã xác nhận{info.clearDate ? ` · ${info.clearDate}` : ''}</span>
-          : <span className="text-right font-bold text-red-700">Chưa xác nhận</span>}
-      </div>
-      {!cleared && info.declarationNo && <p className="mt-1 text-xs text-slate-500">Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan.</p>}
+      <p className="mt-1 text-[13.5px] leading-snug text-slate-700">
+        {info.declarationNo
+          ? <>Tờ khai NK <b>{info.declarationNo}</b> đã đăng ký · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>
+          : <>Chưa có số tờ khai nhập khẩu · {cleared ? 'đã xác nhận thông quan' : 'chưa xác nhận thông quan'}.</>}
+      </p>
     </div>
 
+    <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3" data-testid="ci-scroll-region">
     {primary?.text ? <div className="rounded-lg border-2 border-red-600 bg-red-50 p-3" data-testid="ci-next-action">
       <p className="text-xs font-extrabold tracking-wide text-red-700">CẦN LÀM NGAY</p>
       <p className="mt-0.5 font-extrabold text-red-900">{primary.text}</p>
@@ -219,6 +209,22 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
 
     <div>
       <p className="mb-1 text-xs font-extrabold tracking-wide text-slate-500">THÔNG TIN CHÍNH</p>
+      {/* Registration is a fact, not a competing action. Keep declaration
+          registration and customs clearance visibly separate and below the
+          ONE canonical next action. */}
+      <div className="mb-2 rounded-lg border border-slate-200 p-3 text-sm" data-testid="ci-registration-clearance">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-slate-500">Tờ khai (đăng ký)</span>
+          <span className="text-right font-bold">{info.declarationNo || 'Chưa có thông tin'}{info.regDate ? ` · ${info.regDate}` : ''}</span>
+        </div>
+        <div className="mt-1 flex items-start justify-between gap-2">
+          <span className="text-slate-500">Thông quan</span>
+          {cleared
+            ? <span className="text-right font-bold text-emerald-800">Đã xác nhận{info.clearDate ? ` · ${info.clearDate}` : ''}</span>
+            : <span className="text-right font-bold text-red-700">Chưa xác nhận</span>}
+        </div>
+        {!cleared && info.declarationNo && <p className="mt-1 text-xs text-slate-500">Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan.</p>}
+      </div>
       <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
         <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Người nhập khẩu</dt><dd className="text-right font-bold">{flow?.legalImporterName || 'Chưa có thông tin'}</dd></div>
         <div className="flex items-start justify-between gap-2 px-3 py-1.5"><dt className="text-slate-500">Thuế NK</dt><dd className="text-right">{money(info.tax)}</dd></div>
@@ -263,9 +269,12 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
       {module.gateText && <p className="mt-1 text-sm font-semibold text-red-900">{module.gateText}</p>}
       {module.nextStep && <p className="mt-1 text-xs text-slate-600">Bước tiếp theo: {module.nextStep}</p>}
     </div>}
+    </div>
 
-    <button type="button" onClick={() => onOpen(selected, 'overview')} data-testid="ci-open-workspace"
-      className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-3 py-3 font-bold text-white">MỞ CÔNG ĐOẠN →</button>
+    <div className="shrink-0 border-t border-slate-300 bg-white p-3" data-testid="ci-footer">
+      <button type="button" onClick={() => onOpen(selected, 'overview')} data-testid="ci-open-workspace"
+        className="touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-3 font-bold text-white">MỞ CÔNG ĐOẠN →</button>
+    </div>
   </div>;
 }
 
@@ -504,7 +513,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
       <aside className="journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]" data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
-          ? <div className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
+          ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
           <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn trên Journey Map để xem việc cần làm.</p></div>
@@ -529,13 +538,15 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
       </aside>
     </div>
-    <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal} />
+    <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal}
+      canAttachModule={canAttach} onAttachModule={() => { setModulesOpen(true); setAttachOpen(true); setAttachError(''); }} />
 
-    {/* Issue #190 CONTINUE — the attached-module strip lives BELOW the five cards so the
-        default first screen keeps the reference order (identity → attention → map+panel →
-        five cards). The strip is data-driven and nothing is deleted. */}
+    {/* Issue #190 repair — an EXISTING attached module remains below the five
+        cards. The empty add-module affordance no longer creates an accidental
+        first-screen row: it is available behind the HỒ SƠ card's existing
+        “Thông tin thêm” disclosure and reveals this same canonical panel. */}
 
-    {(modules.length > 0 || canAttach) && <div className="mt-3 rounded-xl border border-slate-200 bg-white" data-testid={modules.length > 0 ? 'journey-modules' : 'journey-modules-empty'}>
+    {(modules.length > 0 || attachOpen) && <div className="mt-3 rounded-xl border border-slate-200 bg-white" data-testid={modules.length > 0 ? 'journey-modules' : 'journey-modules-empty'}>
       <div className="flex items-center gap-1 px-3 py-1.5">
         {modules.length > 0
           ? <button type="button" onClick={() => setModulesOpen(v => !v)} aria-expanded={modulesOpen} data-testid="journey-modules-toggle"
@@ -584,11 +595,13 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   </section>;
 }
 
-function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
+function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule, onAttachModule }: {
   s: Shipment;
   nodes: JourneyNode[];
   onOpen: (node: JourneyNode, work: string) => boolean;
   onGlobal: (tab?: string) => boolean;
+  canAttachModule: boolean;
+  onAttachModule: () => void;
 }) {
   const node = (id: string) => nodes.find(n => n.id === id);
   const leg = s.transportLegs?.[0];
@@ -696,6 +709,12 @@ function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal }: {
             </div>
           ))}
         </dl>
+        {canAttachModule && <div className="px-3 pb-2 pt-1">
+          <button type="button" onClick={onAttachModule} data-testid="journey-add-module-page"
+            className="touch-target inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[11.5px] font-bold text-slate-600">
+            <Plus size={13} aria-hidden="true" /> Thêm quy trình phát sinh
+          </button>
+        </div>}
       </details>,
     },
   ];

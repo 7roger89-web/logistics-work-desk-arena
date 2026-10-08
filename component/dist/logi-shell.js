@@ -19548,321 +19548,333 @@ function Il({ s: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
 		children: q(e ?? null, t ?? "VND")
 	});
 	return /* @__PURE__ */ (0, V.jsxs)("div", {
-		className: "space-y-3",
+		className: "flex h-full min-h-0 flex-col bg-white",
 		"data-testid": "customs-import-quick-panel",
 		children: [
 			/* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "flex items-center gap-2",
-				children: [
-					/* @__PURE__ */ (0, V.jsx)("span", {
-						className: "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white",
-						"aria-hidden": "true",
-						children: /* @__PURE__ */ (0, V.jsx)(qi, { size: 16 })
-					}),
-					/* @__PURE__ */ (0, V.jsx)("h3", {
-						className: "text-xl font-extrabold tracking-tight text-[#0f2a4a]",
-						children: "NHẬP KHẨU"
-					}),
-					(t.state === "PROBLEM" || t.blockers.length > 0) && /* @__PURE__ */ (0, V.jsxs)("span", {
-						className: "inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700",
-						children: [/* @__PURE__ */ (0, V.jsx)(U, {
-							size: 12,
-							"aria-hidden": "true"
-						}), " Cần xử lý"]
-					}),
-					/* @__PURE__ */ (0, V.jsx)("button", {
-						type: "button",
-						onClick: i,
-						"aria-label": "Đóng Quick Panel",
-						className: "touch-target ml-auto grid h-9 w-9 place-items-center rounded-lg text-lg text-slate-400 hover:bg-slate-100",
-						children: "✕"
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, V.jsx)("p", {
-				className: "text-[13.5px] leading-snug text-slate-700",
-				children: a.declarationNo ? /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [
-					"Tờ khai NK ",
-					/* @__PURE__ */ (0, V.jsx)("b", { children: a.declarationNo }),
-					" đã đăng ký · ",
-					_ ? "đã xác nhận thông quan" : "chưa xác nhận thông quan",
-					"."
-				] }) : /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [
-					"Chưa có số tờ khai nhập khẩu · ",
-					_ ? "đã xác nhận thông quan" : "chưa xác nhận thông quan",
-					"."
-				] })
-			}),
-			/* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "rounded-lg border border-slate-200 p-3 text-sm",
-				"data-testid": "ci-registration-clearance",
-				children: [
-					/* @__PURE__ */ (0, V.jsxs)("div", {
-						className: "flex items-start justify-between gap-2",
-						children: [/* @__PURE__ */ (0, V.jsx)("span", {
-							className: "text-slate-500",
-							children: "Tờ khai (đăng ký)"
-						}), /* @__PURE__ */ (0, V.jsxs)("span", {
-							className: "text-right font-bold",
-							children: [a.declarationNo || "Chưa có thông tin", a.regDate ? ` · ${a.regDate}` : ""]
-						})]
-					}),
-					/* @__PURE__ */ (0, V.jsxs)("div", {
-						className: "mt-1 flex items-start justify-between gap-2",
-						children: [/* @__PURE__ */ (0, V.jsx)("span", {
-							className: "text-slate-500",
-							children: "Thông quan"
-						}), _ ? /* @__PURE__ */ (0, V.jsxs)("span", {
-							className: "text-right font-bold text-emerald-800",
-							children: ["Đã xác nhận", a.clearDate ? ` · ${a.clearDate}` : ""]
-						}) : /* @__PURE__ */ (0, V.jsx)("span", {
-							className: "text-right font-bold text-red-700",
-							children: "Chưa xác nhận"
-						})]
-					}),
-					!_ && a.declarationNo && /* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-1 text-xs text-slate-500",
-						children: "Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan."
-					})
-				]
-			}),
-			f?.text ? /* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "rounded-lg border-2 border-red-600 bg-red-50 p-3",
-				"data-testid": "ci-next-action",
-				children: [
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "text-xs font-extrabold tracking-wide text-red-700",
-						children: "CẦN LÀM NGAY"
-					}),
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-0.5 font-extrabold text-red-900",
-						children: f.text
-					}),
-					f.detail && /* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-0.5 text-sm text-red-800",
-						children: f.detail
-					}),
-					/* @__PURE__ */ (0, V.jsx)("button", {
-						type: "button",
-						onClick: r,
-						"data-testid": "ci-primary-cta",
-						className: "touch-target mt-2 w-full rounded-lg bg-[#0f2a4a] px-4 py-2.5 font-extrabold text-white",
-						children: e.nextLabel || "Xử lý ngay"
-					}),
-					g && /* @__PURE__ */ (0, V.jsxs)("p", {
-						className: "mt-2 text-xs text-slate-600",
-						children: [
-							"Thiếu/chặn liên quan: ",
-							g.label,
-							" — ",
-							g.reason
-						]
-					})
-				]
-			}) : g ? /* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "rounded-lg border border-amber-300 bg-amber-50 p-3",
-				"data-testid": "ci-blocked-evidence",
-				children: [
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "text-xs font-extrabold tracking-wide text-amber-800",
-						children: "THIẾU / ĐANG CHẶN"
-					}),
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-0.5 text-sm font-bold text-amber-900",
-						children: g.label
-					}),
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-0.5 text-xs text-amber-800",
-						children: g.reason
-					})
-				]
-			}) : null,
-			/* @__PURE__ */ (0, V.jsxs)("div", { children: [
-				/* @__PURE__ */ (0, V.jsx)("p", {
-					className: "mb-1 text-xs font-extrabold tracking-wide text-slate-500",
-					children: "THÔNG TIN CHÍNH"
-				}),
-				/* @__PURE__ */ (0, V.jsxs)("dl", {
-					className: "divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm",
+				className: "shrink-0 border-b border-slate-300 px-4 pb-3 pt-3",
+				children: [/* @__PURE__ */ (0, V.jsxs)("div", {
+					className: "flex items-center gap-2",
 					children: [
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "Người nhập khẩu"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right font-bold",
-								children: o?.legalImporterName || "Chưa có thông tin"
-							})]
+						/* @__PURE__ */ (0, V.jsx)("span", {
+							className: "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white",
+							"aria-hidden": "true",
+							children: /* @__PURE__ */ (0, V.jsx)(qi, { size: 16 })
 						}),
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "Thuế NK"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right",
-								children: y(a.tax)
-							})]
+						/* @__PURE__ */ (0, V.jsx)("h3", {
+							className: "text-xl font-extrabold tracking-tight text-[#0f2a4a]",
+							children: "NHẬP KHẨU"
 						}),
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "VAT"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right",
-								children: y(a.vat)
-							})]
+						(t.state === "PROBLEM" || t.blockers.length > 0) && /* @__PURE__ */ (0, V.jsxs)("span", {
+							className: "inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700",
+							children: [/* @__PURE__ */ (0, V.jsx)(U, {
+								size: 12,
+								"aria-hidden": "true"
+							}), " Cần xử lý"]
 						}),
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "GNT đã tạo"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right font-bold",
-								children: v ? v.fileName || "Đã tạo" : "Chưa tạo"
-							})]
-						}),
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "Tệp GNT đính kèm"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right font-bold",
-								children: v?.attachmentId ? "Đã đính kèm" : "Chưa đính kèm"
-							})]
-						}),
-						/* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "flex items-start justify-between gap-2 px-3 py-1.5",
-							children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-								className: "text-slate-500",
-								children: "Thuế đã nộp"
-							}), /* @__PURE__ */ (0, V.jsx)("dd", {
-								className: "text-right font-bold text-slate-500",
-								children: "Chưa có bằng chứng"
-							})]
+						/* @__PURE__ */ (0, V.jsx)("button", {
+							type: "button",
+							onClick: i,
+							"aria-label": "Đóng Quick Panel",
+							className: "touch-target ml-auto grid h-9 w-9 place-items-center rounded-lg text-lg text-slate-400 hover:bg-slate-100",
+							children: "✕"
 						})
 					]
-				}),
-				/* @__PURE__ */ (0, V.jsx)("p", {
-					className: "mt-1 text-xs text-slate-500",
-					children: "Tạo GNT không đồng nghĩa đã nộp thuế. Số thuế/VAT do operator ghi từ chứng từ thực tế, không tự tính."
-				})
-			] }),
+				}), /* @__PURE__ */ (0, V.jsx)("p", {
+					className: "mt-1 text-[13.5px] leading-snug text-slate-700",
+					children: a.declarationNo ? /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [
+						"Tờ khai NK ",
+						/* @__PURE__ */ (0, V.jsx)("b", { children: a.declarationNo }),
+						" đã đăng ký · ",
+						_ ? "đã xác nhận thông quan" : "chưa xác nhận thông quan",
+						"."
+					] }) : /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [
+						"Chưa có số tờ khai nhập khẩu · ",
+						_ ? "đã xác nhận thông quan" : "chưa xác nhận thông quan",
+						"."
+					] })
+				})]
+			}),
 			/* @__PURE__ */ (0, V.jsxs)("div", {
-				"data-testid": "ci-partners",
+				className: "min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3",
+				"data-testid": "ci-scroll-region",
 				children: [
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mb-1 text-xs font-extrabold tracking-wide text-slate-500",
-						children: "ĐỐI TÁC / TÀI CHÍNH"
-					}),
-					c.length > 1 ? c.map((e) => /* @__PURE__ */ (0, V.jsxs)("div", {
-						className: "mb-2 rounded-lg border border-slate-200 p-2.5",
+					f?.text ? /* @__PURE__ */ (0, V.jsxs)("div", {
+						className: "rounded-lg border-2 border-red-600 bg-red-50 p-3",
+						"data-testid": "ci-next-action",
 						children: [
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "text-xs font-extrabold tracking-wide text-red-700",
+								children: "CẦN LÀM NGAY"
+							}),
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-0.5 font-extrabold text-red-900",
+								children: f.text
+							}),
+							f.detail && /* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-0.5 text-sm text-red-800",
+								children: f.detail
+							}),
+							/* @__PURE__ */ (0, V.jsx)("button", {
+								type: "button",
+								onClick: r,
+								"data-testid": "ci-primary-cta",
+								className: "touch-target mt-2 w-full rounded-lg bg-[#0f2a4a] px-4 py-2.5 font-extrabold text-white",
+								children: e.nextLabel || "Xử lý ngay"
+							}),
+							g && /* @__PURE__ */ (0, V.jsxs)("p", {
+								className: "mt-2 text-xs text-slate-600",
+								children: [
+									"Thiếu/chặn liên quan: ",
+									g.label,
+									" — ",
+									g.reason
+								]
+							})
+						]
+					}) : g ? /* @__PURE__ */ (0, V.jsxs)("div", {
+						className: "rounded-lg border border-amber-300 bg-amber-50 p-3",
+						"data-testid": "ci-blocked-evidence",
+						children: [
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "text-xs font-extrabold tracking-wide text-amber-800",
+								children: "THIẾU / ĐANG CHẶN"
+							}),
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-0.5 text-sm font-bold text-amber-900",
+								children: g.label
+							}),
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-0.5 text-xs text-amber-800",
+								children: g.reason
+							})
+						]
+					}) : null,
+					/* @__PURE__ */ (0, V.jsxs)("div", { children: [
+						/* @__PURE__ */ (0, V.jsx)("p", {
+							className: "mb-1 text-xs font-extrabold tracking-wide text-slate-500",
+							children: "THÔNG TIN CHÍNH"
+						}),
+						/* @__PURE__ */ (0, V.jsxs)("div", {
+							className: "mb-2 rounded-lg border border-slate-200 p-3 text-sm",
+							"data-testid": "ci-registration-clearance",
+							children: [
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2",
+									children: [/* @__PURE__ */ (0, V.jsx)("span", {
+										className: "text-slate-500",
+										children: "Tờ khai (đăng ký)"
+									}), /* @__PURE__ */ (0, V.jsxs)("span", {
+										className: "text-right font-bold",
+										children: [a.declarationNo || "Chưa có thông tin", a.regDate ? ` · ${a.regDate}` : ""]
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "mt-1 flex items-start justify-between gap-2",
+									children: [/* @__PURE__ */ (0, V.jsx)("span", {
+										className: "text-slate-500",
+										children: "Thông quan"
+									}), _ ? /* @__PURE__ */ (0, V.jsxs)("span", {
+										className: "text-right font-bold text-emerald-800",
+										children: ["Đã xác nhận", a.clearDate ? ` · ${a.clearDate}` : ""]
+									}) : /* @__PURE__ */ (0, V.jsx)("span", {
+										className: "text-right font-bold text-red-700",
+										children: "Chưa xác nhận"
+									})]
+								}),
+								!_ && a.declarationNo && /* @__PURE__ */ (0, V.jsx)("p", {
+									className: "mt-1 text-xs text-slate-500",
+									children: "Số tờ khai chỉ chứng minh đã đăng ký, chưa chứng minh đã thông quan."
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, V.jsxs)("dl", {
+							className: "divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm",
+							children: [
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "Người nhập khẩu"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right font-bold",
+										children: o?.legalImporterName || "Chưa có thông tin"
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "Thuế NK"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right",
+										children: y(a.tax)
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "VAT"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right",
+										children: y(a.vat)
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "GNT đã tạo"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right font-bold",
+										children: v ? v.fileName || "Đã tạo" : "Chưa tạo"
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "Tệp GNT đính kèm"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right font-bold",
+										children: v?.attachmentId ? "Đã đính kèm" : "Chưa đính kèm"
+									})]
+								}),
+								/* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "flex items-start justify-between gap-2 px-3 py-1.5",
+									children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+										className: "text-slate-500",
+										children: "Thuế đã nộp"
+									}), /* @__PURE__ */ (0, V.jsx)("dd", {
+										className: "text-right font-bold text-slate-500",
+										children: "Chưa có bằng chứng"
+									})]
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, V.jsx)("p", {
+							className: "mt-1 text-xs text-slate-500",
+							children: "Tạo GNT không đồng nghĩa đã nộp thuế. Số thuế/VAT do operator ghi từ chứng từ thực tế, không tự tính."
+						})
+					] }),
+					/* @__PURE__ */ (0, V.jsxs)("div", {
+						"data-testid": "ci-partners",
+						children: [
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mb-1 text-xs font-extrabold tracking-wide text-slate-500",
+								children: "ĐỐI TÁC / TÀI CHÍNH"
+							}),
+							c.length > 1 ? c.map((e) => /* @__PURE__ */ (0, V.jsxs)("div", {
+								className: "mb-2 rounded-lg border border-slate-200 p-2.5",
+								children: [
+									/* @__PURE__ */ (0, V.jsx)("p", {
+										className: "font-extrabold text-sm",
+										children: e.partnerName || "Đối tác chưa rõ"
+									}),
+									Object.entries(e.totalsByCurrency).map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)("div", {
+										className: "mt-1 flex items-start justify-between gap-2 text-sm",
+										children: [/* @__PURE__ */ (0, V.jsxs)("span", {
+											className: "text-slate-500",
+											children: [
+												"Phải trả (",
+												e,
+												")"
+											]
+										}), /* @__PURE__ */ (0, V.jsxs)("span", {
+											className: "text-right",
+											children: [y(t.payable, e), t.paid ? ` · đã trả ${q(t.paid, e)}` : ""]
+										})]
+									}, e)),
+									Object.keys(e.totalsByCurrency).length === 0 && /* @__PURE__ */ (0, V.jsx)("p", {
+										className: "text-sm text-slate-500",
+										children: "Chưa có thông tin"
+									})
+								]
+							}, e.partnerKey || e.partnerId || e.partnerName)) : s?.partnerName ? s.suggested ? /* @__PURE__ */ (0, V.jsxs)("div", {
+								className: "rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm",
+								"data-testid": "ci-partner-suggested",
+								children: [
+									/* @__PURE__ */ (0, V.jsx)("p", {
+										className: "font-extrabold",
+										children: s.partnerName
+									}),
+									/* @__PURE__ */ (0, V.jsx)("p", {
+										className: "mt-0.5 text-xs font-bold text-amber-800",
+										children: "Đề xuất từ danh mục · chưa xác nhận đối tác phải trả"
+									}),
+									/* @__PURE__ */ (0, V.jsx)("p", {
+										className: "mt-1 text-xs text-slate-600",
+										children: "Chưa có thông tin phải trả."
+									})
+								]
+							}) : /* @__PURE__ */ (0, V.jsxs)("div", {
+								className: "rounded-lg border border-slate-200 p-2.5 text-sm",
+								children: [/* @__PURE__ */ (0, V.jsx)("p", {
+									className: "font-extrabold",
+									children: s.partnerName
+								}), /* @__PURE__ */ (0, V.jsxs)("div", {
+									className: "mt-1 flex items-start justify-between gap-2",
+									children: [/* @__PURE__ */ (0, V.jsx)("span", {
+										className: "text-slate-500",
+										children: "Phải trả"
+									}), /* @__PURE__ */ (0, V.jsx)("span", {
+										className: "text-right",
+										children: y(s.payable, s.currency)
+									})]
+								})]
+							}) : /* @__PURE__ */ (0, V.jsx)("p", {
+								className: "rounded-lg border border-slate-200 p-2.5 text-sm text-slate-500",
+								children: "Chưa có thông tin đối tác phải trả."
+							}),
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-1 text-xs text-slate-500",
+								children: "Không cộng gộp tiền khác đơn vị khi chưa có tỷ giá."
+							})
+						]
+					}),
+					d && /* @__PURE__ */ (0, V.jsxs)("div", {
+						className: "rounded-lg border border-slate-200 bg-slate-50 p-3",
+						"data-testid": "ci-module-rollup",
+						children: [
+							/* @__PURE__ */ (0, V.jsx)("p", {
+								className: "text-xs font-bold text-slate-500",
+								children: "QUY TRÌNH PHÁT SINH"
+							}),
 							/* @__PURE__ */ (0, V.jsx)("p", {
 								className: "font-extrabold text-sm",
-								children: e.partnerName || "Đối tác chưa rõ"
+								children: d.name
 							}),
-							Object.entries(e.totalsByCurrency).map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)("div", {
-								className: "mt-1 flex items-start justify-between gap-2 text-sm",
-								children: [/* @__PURE__ */ (0, V.jsxs)("span", {
-									className: "text-slate-500",
-									children: [
-										"Phải trả (",
-										e,
-										")"
-									]
-								}), /* @__PURE__ */ (0, V.jsxs)("span", {
-									className: "text-right",
-									children: [y(t.payable, e), t.paid ? ` · đã trả ${q(t.paid, e)}` : ""]
-								})]
-							}, e)),
-							Object.keys(e.totalsByCurrency).length === 0 && /* @__PURE__ */ (0, V.jsx)("p", {
-								className: "text-sm text-slate-500",
-								children: "Chưa có thông tin"
-							})
-						]
-					}, e.partnerKey || e.partnerId || e.partnerName)) : s?.partnerName ? s.suggested ? /* @__PURE__ */ (0, V.jsxs)("div", {
-						className: "rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm",
-						"data-testid": "ci-partner-suggested",
-						children: [
-							/* @__PURE__ */ (0, V.jsx)("p", {
-								className: "font-extrabold",
-								children: s.partnerName
+							/* @__PURE__ */ (0, V.jsxs)("p", {
+								className: "text-xs text-slate-600",
+								children: [
+									d.summary,
+									" · ",
+									d.status === "DONE" ? "đã xong" : d.status === "BLOCKING" ? "đang chặn" : d.status === "UNKNOWN" ? "chưa xác định" : "đang chờ"
+								]
 							}),
-							/* @__PURE__ */ (0, V.jsx)("p", {
-								className: "mt-0.5 text-xs font-bold text-amber-800",
-								children: "Đề xuất từ danh mục · chưa xác nhận đối tác phải trả"
+							d.gateText && /* @__PURE__ */ (0, V.jsx)("p", {
+								className: "mt-1 text-sm font-semibold text-red-900",
+								children: d.gateText
 							}),
-							/* @__PURE__ */ (0, V.jsx)("p", {
+							d.nextStep && /* @__PURE__ */ (0, V.jsxs)("p", {
 								className: "mt-1 text-xs text-slate-600",
-								children: "Chưa có thông tin phải trả."
+								children: ["Bước tiếp theo: ", d.nextStep]
 							})
 						]
-					}) : /* @__PURE__ */ (0, V.jsxs)("div", {
-						className: "rounded-lg border border-slate-200 p-2.5 text-sm",
-						children: [/* @__PURE__ */ (0, V.jsx)("p", {
-							className: "font-extrabold",
-							children: s.partnerName
-						}), /* @__PURE__ */ (0, V.jsxs)("div", {
-							className: "mt-1 flex items-start justify-between gap-2",
-							children: [/* @__PURE__ */ (0, V.jsx)("span", {
-								className: "text-slate-500",
-								children: "Phải trả"
-							}), /* @__PURE__ */ (0, V.jsx)("span", {
-								className: "text-right",
-								children: y(s.payable, s.currency)
-							})]
-						})]
-					}) : /* @__PURE__ */ (0, V.jsx)("p", {
-						className: "rounded-lg border border-slate-200 p-2.5 text-sm text-slate-500",
-						children: "Chưa có thông tin đối tác phải trả."
-					}),
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-1 text-xs text-slate-500",
-						children: "Không cộng gộp tiền khác đơn vị khi chưa có tỷ giá."
 					})
 				]
 			}),
-			d && /* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "rounded-lg border border-slate-200 bg-slate-50 p-3",
-				"data-testid": "ci-module-rollup",
-				children: [
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "text-xs font-bold text-slate-500",
-						children: "QUY TRÌNH PHÁT SINH"
-					}),
-					/* @__PURE__ */ (0, V.jsx)("p", {
-						className: "font-extrabold text-sm",
-						children: d.name
-					}),
-					/* @__PURE__ */ (0, V.jsxs)("p", {
-						className: "text-xs text-slate-600",
-						children: [
-							d.summary,
-							" · ",
-							d.status === "DONE" ? "đã xong" : d.status === "BLOCKING" ? "đang chặn" : d.status === "UNKNOWN" ? "chưa xác định" : "đang chờ"
-						]
-					}),
-					d.gateText && /* @__PURE__ */ (0, V.jsx)("p", {
-						className: "mt-1 text-sm font-semibold text-red-900",
-						children: d.gateText
-					}),
-					d.nextStep && /* @__PURE__ */ (0, V.jsxs)("p", {
-						className: "mt-1 text-xs text-slate-600",
-						children: ["Bước tiếp theo: ", d.nextStep]
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, V.jsx)("button", {
-				type: "button",
-				onClick: () => n(t, "overview"),
-				"data-testid": "ci-open-workspace",
-				className: "touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] px-3 py-3 font-bold text-white",
-				children: "MỞ CÔNG ĐOẠN →"
+			/* @__PURE__ */ (0, V.jsx)("div", {
+				className: "shrink-0 border-t border-slate-300 bg-white p-3",
+				"data-testid": "ci-footer",
+				children: /* @__PURE__ */ (0, V.jsx)("button", {
+					type: "button",
+					onClick: () => n(t, "overview"),
+					"data-testid": "ci-open-workspace",
+					className: "touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-3 font-bold text-white",
+					children: "MỞ CÔNG ĐOẠN →"
+				})
 			})
 		]
 	});
@@ -20233,7 +20245,7 @@ function zl({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 					"data-testid": "journey-side-panel",
 					children: [
 						h === "quick" && (ne.id === "customs-import" ? /* @__PURE__ */ (0, V.jsx)("div", {
-							className: "h-full overflow-auto p-4",
+							className: "h-full min-h-0",
 							"data-testid": "journey-customs-import-panel",
 							children: /* @__PURE__ */ (0, V.jsx)(Il, {
 								s: e,
@@ -20524,9 +20536,13 @@ function zl({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 				s: e,
 				nodes: I,
 				onOpen: se,
-				onGlobal: ce
+				onGlobal: ce,
+				canAttachModule: R,
+				onAttachModule: () => {
+					me(!0), x(!0), k("");
+				}
 			}),
-			(N.length > 0 || R) && /* @__PURE__ */ (0, V.jsxs)("div", {
+			(N.length > 0 || b) && /* @__PURE__ */ (0, V.jsxs)("div", {
 				className: "mt-3 rounded-xl border border-slate-200 bg-white",
 				"data-testid": N.length > 0 ? "journey-modules" : "journey-modules-empty",
 				children: [/* @__PURE__ */ (0, V.jsxs)("div", {
@@ -20680,8 +20696,8 @@ function zl({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		]
 	});
 }
-function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
-	let i = (e) => t.find((t) => t.id === e), a = e.transportLegs?.[0], o = {
+function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAttachModule: a }) {
+	let o = (e) => t.find((t) => t.id === e), s = e.transportLegs?.[0], c = {
 		origin: [
 			"booking",
 			"pickup",
@@ -20697,10 +20713,10 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 		],
 		import: ["customs-import"],
 		delivery: ["delivery"]
-	}, s = (e, t) => {
-		let n = o[e].map(i).filter((e) => !!e);
-		return n.find((e) => e.state === "PROBLEM" || e.blockers.length > 0) ?? i(t) ?? n[0];
-	}, c = s("origin", "booking"), l = s("main", "arrival"), u = s("import", "customs-import"), d = s("delivery", "delivery"), f = e.executionProfile?.state === "PROFILE_READY", p = [
+	}, l = (e, t) => {
+		let n = c[e].map(o).filter((e) => !!e);
+		return n.find((e) => e.state === "PROBLEM" || e.blockers.length > 0) ?? o(t) ?? n[0];
+	}, u = l("origin", "booking"), d = l("main", "arrival"), f = l("import", "customs-import"), p = l("delivery", "delivery"), m = e.executionProfile?.state === "PROFILE_READY", h = [
 		{
 			id: "info",
 			label: "Thông tin"
@@ -20717,35 +20733,35 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 			id: "history",
 			label: "Lịch sử"
 		}
-	], m = (e) => e ? xl[e.state].label : "Chưa xác định", h = (e) => e ? xl[e.state].text : "text-slate-500", g = (e, t, i) => e ? n(e, t) : r(t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : i), _ = [
+	], g = (e) => e ? xl[e.state].label : "Chưa xác định", _ = (e) => e ? xl[e.state].text : "text-slate-500", v = (e, t, i) => e ? n(e, t) : r(t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : i), y = [
 		{
-			n: c,
+			n: u,
 			num: 1,
 			testid: "journey-summary-card-1",
 			title: "BOOKING – ĐẦU ĐI",
 			accent: "blue",
 			lines: [
-				["Số booking", e.transport?.bookingNo || a?.bookingNo || "Chưa có thông tin"],
-				["Cut-off", c?.deadline || "Chưa ghi nhận"],
-				["ETD", e.transport?.etd || a?.etd || "Chưa ghi nhận"],
-				["Hãng tàu", e.transport?.carrier || a?.carrier || "Chưa có thông tin"],
-				["Tàu / chuyến", [a?.vessel || e.transport?.vessel, a?.voyage].filter(Boolean).join(" ") || "Chưa có thông tin"]
+				["Số booking", e.transport?.bookingNo || s?.bookingNo || "Chưa có thông tin"],
+				["Cut-off", u?.deadline || "Chưa ghi nhận"],
+				["ETD", e.transport?.etd || s?.etd || "Chưa ghi nhận"],
+				["Hãng tàu", e.transport?.carrier || s?.carrier || "Chưa có thông tin"],
+				["Tàu / chuyến", [s?.vessel || e.transport?.vessel, s?.voyage].filter(Boolean).join(" ") || "Chưa có thông tin"]
 			],
 			footer: void 0,
 			fallback: "lay-hang"
 		},
 		{
-			n: l,
+			n: d,
 			num: 2,
 			testid: "journey-summary-card-2",
 			title: "TÀU ĐẾN – CHẶNG CHÍNH",
 			accent: "amber",
-			lines: [["ETA", a?.eta || l?.deadline || "Chưa ghi nhận"], ["ATA", a?.ata || "Chưa ghi nhận"]],
+			lines: [["ETA", s?.eta || d?.deadline || "Chưa ghi nhận"], ["ATA", s?.ata || "Chưa ghi nhận"]],
 			footer: void 0,
 			fallback: "van-tai"
 		},
 		{
-			n: u,
+			n: f,
 			num: 3,
 			testid: "journey-summary-card-3",
 			title: "NHẬP KHẨU – ỦY THÁC",
@@ -20760,7 +20776,7 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 			fallback: "nhap"
 		},
 		{
-			n: d,
+			n: p,
 			num: 4,
 			testid: "journey-summary-card-4",
 			title: "GIAO HÀNG",
@@ -20773,11 +20789,11 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 				["Địa điểm giao", e.importInfo.deliveryAddr || "Chưa có thông tin"],
 				["Người nhận", e.importInfo.receiver || "Chưa có thông tin"],
 				["SĐT người nhận", e.importInfo.receiverPhone || "Chưa có thông tin"],
-				["Trạng thái", e.importInfo.delivered ? "Đã giao" : m(d)]
+				["Trạng thái", e.importInfo.delivered ? "Đã giao" : g(p)]
 			],
-			footer: d ? {
+			footer: p ? {
 				label: "Mở thông tin giao hàng →",
-				node: d
+				node: p
 			} : void 0,
 			fallback: "nhap"
 		},
@@ -20795,29 +20811,45 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 			],
 			footer: void 0,
 			fallback: "van-tai",
-			more: /* @__PURE__ */ (0, V.jsxs)("details", { children: [/* @__PURE__ */ (0, V.jsx)("summary", {
-				className: "cursor-pointer px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
-				children: "Thông tin thêm"
-			}), /* @__PURE__ */ (0, V.jsx)("dl", {
-				className: "space-y-1 px-3 pb-1 text-[11.5px]",
-				children: [
-					["Cửa khẩu", e.borderVN || "—"],
-					["Hợp đồng", e.contract || "—"],
-					["Sale phụ trách", e.sale || "—"],
-					["Cập nhật bởi", e.support || "—"]
-				].map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)("div", {
-					className: "flex items-start justify-between gap-2",
-					children: [/* @__PURE__ */ (0, V.jsx)("dt", {
-						className: "shrink-0 text-slate-500",
-						children: e
-					}), /* @__PURE__ */ (0, V.jsx)("dd", {
-						className: "min-w-0 break-words text-right font-bold text-slate-800",
-						children: t
-					})]
-				}, e))
-			})] })
+			more: /* @__PURE__ */ (0, V.jsxs)("details", { children: [
+				/* @__PURE__ */ (0, V.jsx)("summary", {
+					className: "cursor-pointer px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:text-[#0f2a4a]",
+					children: "Thông tin thêm"
+				}),
+				/* @__PURE__ */ (0, V.jsx)("dl", {
+					className: "space-y-1 px-3 pb-1 text-[11.5px]",
+					children: [
+						["Cửa khẩu", e.borderVN || "—"],
+						["Hợp đồng", e.contract || "—"],
+						["Sale phụ trách", e.sale || "—"],
+						["Cập nhật bởi", e.support || "—"]
+					].map(([e, t]) => /* @__PURE__ */ (0, V.jsxs)("div", {
+						className: "flex items-start justify-between gap-2",
+						children: [/* @__PURE__ */ (0, V.jsx)("dt", {
+							className: "shrink-0 text-slate-500",
+							children: e
+						}), /* @__PURE__ */ (0, V.jsx)("dd", {
+							className: "min-w-0 break-words text-right font-bold text-slate-800",
+							children: t
+						})]
+					}, e))
+				}),
+				i && /* @__PURE__ */ (0, V.jsx)("div", {
+					className: "px-3 pb-2 pt-1",
+					children: /* @__PURE__ */ (0, V.jsxs)("button", {
+						type: "button",
+						onClick: a,
+						"data-testid": "journey-add-module-page",
+						className: "touch-target inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[11.5px] font-bold text-slate-600",
+						children: [/* @__PURE__ */ (0, V.jsx)(Fa, {
+							size: 13,
+							"aria-hidden": "true"
+						}), " Thêm quy trình phát sinh"]
+					})
+				})
+			] })
 		}
-	], v = {
+	], b = {
 		blue: "bg-blue-600 text-white",
 		amber: "bg-amber-500 text-white",
 		red: "bg-red-600 text-white",
@@ -20826,7 +20858,7 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 	return /* @__PURE__ */ (0, V.jsx)("div", {
 		className: "journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5",
 		"data-testid": "journey-summary-cards",
-		children: _.map((e) => /* @__PURE__ */ (0, V.jsxs)("article", {
+		children: y.map((e) => /* @__PURE__ */ (0, V.jsxs)("article", {
 			className: "min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm",
 			"data-testid": e.testid,
 			children: [
@@ -20835,7 +20867,7 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 					className: "flex min-h-[46px] items-start gap-2 border-b border-slate-200 px-3 py-2",
 					children: [
 						/* @__PURE__ */ (0, V.jsx)("span", {
-							className: G("grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black", v[e.accent]),
+							className: G("grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black", b[e.accent]),
 							children: e.num
 						}),
 						/* @__PURE__ */ (0, V.jsx)("div", {
@@ -20846,16 +20878,16 @@ function Bl({ s: e, nodes: t, onOpen: n, onGlobal: r }) {
 							})
 						}),
 						/* @__PURE__ */ (0, V.jsx)("span", {
-							className: G("shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold", e.n ? h(e.n) : f ? "text-emerald-700" : "text-blue-700"),
-							children: e.n ? m(e.n) : f ? "Đủ hồ sơ" : "Toàn lô"
+							className: G("shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold", e.n ? _(e.n) : m ? "text-emerald-700" : "text-blue-700"),
+							children: e.n ? g(e.n) : m ? "Đủ hồ sơ" : "Toàn lô"
 						})
 					]
 				}),
 				/* @__PURE__ */ (0, V.jsx)("div", {
 					className: "flex border-b border-slate-200 px-2",
-					children: p.map((t, n) => /* @__PURE__ */ (0, V.jsx)("button", {
+					children: h.map((t, n) => /* @__PURE__ */ (0, V.jsx)("button", {
 						type: "button",
-						onClick: () => g(e.n, t.id, e.fallback),
+						onClick: () => v(e.n, t.id, e.fallback),
 						className: G("touch-target min-w-0 flex-1 border-b-2 px-1 py-1.5 text-[10.5px] font-bold", n === 0 ? "border-slate-900 text-slate-900" : "border-transparent text-slate-400"),
 						children: t.label
 					}, t.id))
