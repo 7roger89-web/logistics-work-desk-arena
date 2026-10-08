@@ -1096,7 +1096,10 @@ export default function ShipmentDetail() {
       const params = new URLSearchParams(q);
       if (t) params.set("tab", t);
       setSp(params);
-      if (!anchor || anchor === "shipment-execution-profile") revealAnchor(anchor);
+      // Any anchored destination may be mounted only after the query-param tab
+      // change re-renders. Reveal it on the next paint window; otherwise a
+      // profile action can fall back to workspace-tabs before the editor exists.
+      if (!anchor) revealAnchor(null);
       else setTimeout(() => revealAnchor(anchor), 150);
     } else {
       nav(s.nextRoute);
