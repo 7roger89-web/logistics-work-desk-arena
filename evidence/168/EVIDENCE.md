@@ -20,10 +20,11 @@ isolated mongomock/GridFS staging sandbox (`views/logi_sandbox.py`) and local gi
 | Field | Value |
 | --- | --- |
 | Asset | `assets/templates/form07/FORM07-bien-ban-giao-nhan-v1.docx` |
-| SHA-256 | `568a89bfe5b2ff84bd295ecc6e378ae9520d4a5d24a84b6a813ac591174d5c56` |
-| Size | 16,946 bytes |
+| SHA-256 | `1f49b2e785c50e8ed0f6c99882296a1dd03fc3933bdc1bbe23143b468dddb261` |
+| Size | 16,962 bytes |
 | Rebuild | `python3 scripts/form07_build_sanitized_template.py` — deterministic, byte-identical output |
 | Bind slots | single-run Jinja tokens (`{{ … }}`, `{%tr for line in goods_lines %}`) |
+| Pagination | goods table header + loop rows carry `w:cantSplit` — a data row never breaks across pages (added 2026-10-09 after real-render visual acceptance found a split row; see §7) |
 
 Sanitization record (full list in `FORM07.template.json → sanitization`):
 personal metadata replaced (`cp:lastModifiedBy`, `dc:creator`, `app.xml`
@@ -118,3 +119,74 @@ Post-completion drift repair — integrate current main `ca3d955` into the PR
 branch, resolve the single generated-bundle conflict, and revalidate the
 scope-matched surface — is recorded in
 [`DRIFT_REPAIR_173.md`](DRIFT_REPAIR_173.md).
+
+## 7. Final DOCX visual acceptance — real renders (2026-10-09)
+
+LibreOffice headless (`soffice --convert-to pdf` → `pdftoppm -r 150`) rendered
+all three DOCX binaries to page PNGs on this host. No HTML/XML substitution.
+
+| PNG | Source DOCX | DOCX SHA-256 | Pages |
+| --- | --- | --- | --- |
+| `form07-original-p1.png` | Owner original (git blob `e2c3dea…`) | `cd2a1df5434a217bdae34e292844ad1bacbcc737b2282137b835af46663161b5` | 1 |
+| `form07-sanitized-p1.png` / `-p2.png` | Sanitized template (post-fix) | `1f49b2e785c50e8ed0f6c99882296a1dd03fc3933bdc1bbe23143b468dddb261` | 2 |
+| `form07-generated-p1.png` / `-p2.png` | Real `render_form07_docx()` output (test fixture `_full_facts()` + `GOODS_LINES` + `MANUAL`, no invented data) | `be90096b9154f462ba131f93817eec352bbddf0bdbae6c71db977c26468fc488` | 2 |
+
+PNG SHA-256:
+- `form07-original-p1.png` `f81e7230c9b8343f80e797c421d4d9771543ad97063f0290a28b399c262686e0`
+- `form07-sanitized-p1.png` `2c2e4fe6b4e13b0c0d0885b5512b1b7c6b86e116d9c84408b77754d4da607fce`
+- `form07-sanitized-p2.png` `723278e8eb01eea655335a5ebb2c273bb2a1e6db16a3fef84e4d05d2a0d15135`
+- `form07-generated-p1.png` `9afd299b371173ad4632209b9ce1a75603a84285838f15fbfc1caf5768cb8960`
+- `form07-generated-p2.png` `124f7073d836bca63ce81aca6a5ecc156cc7e971c98ebea3eb05ead9c9139625`
+
+### Page-by-page inspection
+
+**Original p1:** clean single page. Vietnamese diacritics render correctly
+(CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM, Độc lập – Tự do – Hạnh phúc, BIÊN BẢN
+GIAO NHẬN). Header, Số/date lines, Căn cứ lines, BÊN A (Bên nhận hàng) /
+BÊN B (Bên giao hàng) blocks, 6-column goods table (STT/Tên hàng/Quy
+cách/ĐVT/Số lượng/Ghi chú) with 3 empty rows, confirmation text, signature
+blocks ĐẠI DIỆN BÊN A / ĐẠI DIỆN BÊN B. No clipping, no blank anomalies.
+
+**Sanitized p1–p2:** identical composition to the original; dot-leader slots
+replaced by `{{ … }}` tokens; goods table shows the `{%tr for line in
+goods_lines %}` loop row and `{%tr endfor %}` row (raw template — expected).
+No layout drift vs the original.
+
+**Generated p1:** real data bound. Header company
+"CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH"; "Số: BBGN-2026-0295";
+"Kho Thiên Ân — KP.2, Thủ Đức, TP.HCM, ngày 09 tháng 09 năm 2026";
+BÊN A (Bên nhận hàng) = TRƯỜNG THÀNH (receiving company) with address/phone/
+"A. Kiệt / Thủ kho"; BÊN B (Bên giao hàng) = CÔNG TY TNHH PHÚ ANH LOGISTICS
+(delivering agent) with address/phone/"Phạm Văn Thành / Giám đốc". Party
+mapping preserved. Table header row present; data rows flow to p2 (see fix).
+
+**Generated p2:** both goods rows complete and intact — row 1: "Kính nổi 5mm"
+/ "1200x600" / "Tấm" / "100"; row 2: "Khung nhôm định hình" / "Bộ" / "20.5".
+Confirmation text and both signature blocks present, correctly placed.
+
+### Layout defect found and fixed
+
+**Defect (genuine):** before the fix, goods data row 1 split across the page
+break — "Kính" rendered at the bottom of p1 while "nổi 5mm" rendered at the
+top of p2 (verified in DOCX XML the full text was present; LibreOffice/Word
+default `Allow row to break across pages` caused the split).
+
+**Fix (smallest):** `w:cantSplit` on the goods table header row and the
+docxtpl loop body row, applied inside the deterministic sanitize script
+(`scripts/form07_build_sanitized_template.py`) so rebuilds stay byte-identical;
+template re-pinned in `FORM07.template.json`. After the fix the whole row
+moves to p2 — no row is split. Re-rendered and visually verified.
+
+**Not defects (intentional):** 1-page original vs 2-page generated (data-driven
+pagination); wrapped text inside narrow table cells (column widths inherited
+from the owner layout); order date 25/09/2026 after delivery date 09/09/2026
+(fixture data as-is — no chronology rule invented per packet).
+
+### Regression
+
+`tests/test_form07_delivery_receipt.py` — **11/11 pass** after the fix
+(includes `test_render_is_real_deterministic_docx_with_repeating_goods`,
+`test_template_availability_fails_closed_on_asset_drift`,
+`test_source_receipt_and_sanitized_asset_are_pinned_and_safe`).
+
+**VERDICT: READY_FOR_INDEPENDENT_SUPERVISOR**
