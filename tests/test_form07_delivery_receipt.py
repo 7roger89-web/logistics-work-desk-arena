@@ -420,6 +420,78 @@ def test_render_is_real_deterministic_docx_with_repeating_goods():
         assert static.replace(" ", "") in display_text.replace(" ", "").replace("\xa0", ""), static
 
 
+def test_goods_table_readability_repair_is_pinned():
+    """Supervisor A7 repair (2026-10-09): redistributed goods columns, zero
+    cell indent, repeating header, intact rows — template AND generated file."""
+    import re as _re
+
+    EXPECTED_WIDTHS = ["800", "2800", "1900", "800", "1000", "2388"]
+
+    spec = load_template_spec()
+    template_raw = (REPO_ROOT / spec["asset_path"]).read_bytes()
+    archive = zipfile.ZipFile(io.BytesIO(template_raw))
+    template_xml = archive.read("word/document.xml").decode("utf-8")
+    styles_xml = archive.read("word/styles.xml").decode("utf-8")
+
+    def _goods_table(document_xml: str) -> str:
+        tables = _re.findall(r"<w:tbl>.*?</w:tbl>", document_xml, flags=_re.S)
+        matches = [t for t in tables if "Tên hàng" in t and "Quy cách" in t]
+        assert len(matches) == 1
+        return matches[0]
+
+    def _check_geometry(goods_xml: str, label: str) -> list:
+        grid = _re.search(r"<w:tblGrid>.*?</w:tblGrid>", goods_xml, flags=_re.S).group(0)
+        assert _re.findall(r'<w:gridCol w:w="(\d+)"', grid) == EXPECTED_WIDTHS, label
+        assert sum(int(w) for w in EXPECTED_WIDTHS) == 9688  # printable: 12240-1418-1134
+        assert '<w:tblW w:w="9688" w:type="dxa"/>' in goods_xml, label
+        assert '<w:tblLayout w:type="fixed"/>' in goods_xml, label
+        rows = _re.findall(r"<w:tr [^>]*>.*?</w:tr>|<w:tr>.*?</w:tr>", goods_xml, flags=_re.S)
+        for row in rows:
+            assert _re.findall(r'<w:tcW w:w="(\d+)"', row) == EXPECTED_WIDTHS, label
+        return rows
+
+    # -- Template: geometry, zero indent, repeatable header, intact loop row --
+    goods = _goods_table(template_xml)
+    template_rows = _check_geometry(goods, "template")
+    assert len(template_rows) == 4  # header + for-tag + body + endfor-tag
+    header_trpr = _re.search(r"<w:trPr>.*?</w:trPr>", template_rows[0], flags=_re.S).group(0)
+    assert '<w:tblHeader w:val="true"/>' in header_trpr
+    assert '<w:cantSplit w:val="true"/>' in header_trpr
+    assert len(_re.findall(r"<w:keepNext/>", template_rows[0])) == 6
+    assert len(_re.findall(r"<w:keepNext/>", template_xml)) == 6  # header only
+    body_trpr = _re.search(r"<w:trPr>.*?</w:trPr>", template_rows[2], flags=_re.S).group(0)
+    assert '<w:cantSplit w:val="true"/>' in body_trpr
+    # Zero-indent override lives ONLY in the 24 goods cell paragraphs; the
+    # Owner Normal style (right=936) and every other table are untouched.
+    assert len(_re.findall(r'<w:ind w:left="0" w:right="0"/>', goods)) == 24
+    assert len(_re.findall(r'<w:ind w:left="0" w:right="0"/>', template_xml)) == 24
+    assert '<w:ind w:right="936"/>' in styles_xml
+    # Six Owner columns + wording preserved; fonts never shrunk.
+    assert "".join(_re.findall(r"<w:t(?: [^>]*)?>(.*?)</w:t>", template_rows[0])) == (
+        "STTTên hàngQuy cáchĐVTSố lượngGhi chú"
+    )
+    for size in set(_re.findall(r'<w:sz w:val="(\d+)"/>', goods)):
+        assert size == "26", size
+
+    # -- Generated file: geometry + header + intact data rows survive docxtpl --
+    facts = _full_facts()
+    context = build_form07_context(
+        delivery=facts["delivery"], goods_lines=GOODS_LINES,
+        agent=facts["agent"], company=facts["company"], manual=MANUAL,
+    )
+    generated_xml = zipfile.ZipFile(io.BytesIO(render_form07_docx(context))).read(
+        "word/document.xml").decode("utf-8")
+    gen_goods = _goods_table(generated_xml)
+    gen_rows = _check_geometry(gen_goods, "generated")
+    assert len(gen_rows) == 1 + len(GOODS_LINES)
+    assert '<w:tblHeader w:val="true"/>' in gen_rows[0]
+    assert len(_re.findall(r"<w:keepNext/>", gen_rows[0])) == 6
+    for row in gen_rows:
+        assert '<w:cantSplit w:val="true"/>' in row
+    assert "Kính nổi 5mm" in generated_xml and "1200x600" in generated_xml
+    assert "Khung nhôm định hình" in generated_xml
+
+
 # ---------------------------------------------------------------------------
 # 5. Staging dispatcher: selection, RBAC, fail-closed, end-to-end generation
 # ---------------------------------------------------------------------------
