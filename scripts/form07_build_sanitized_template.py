@@ -18,9 +18,16 @@ receipt. It performs ONLY bounded, asserted mutations:
      italics/bold and every static word around the slots are preserved);
   2. the goods table's three empty body rows -> one ``{%tr for %}`` tag row,
      one token row and one ``{%tr endfor %}`` tag row (docxtpl row loop);
-  3. docProps metadata scrub (personal author names, revision counter and
+  3. goods table readability (2026-10-09 Supervisor A7 repair): near-equal
+     Owner column widths (~1650 dxa each) are redistributed within the exact
+     printable width so product names/specs stay readable; the 24 goods cell
+     paragraphs get an explicit zero indent overriding the inherited Normal
+     right indent (936 dxa), which alone fragments short values; the header
+     row repeats on page continuation (``w:tblHeader``) and is kept with the
+     first data row (``w:keepNext``); data rows keep ``w:cantSplit``;
+  4. docProps metadata scrub (personal author names, revision counter and
      mutable timestamps replaced by fixed system values);
-  4. deterministic ZIP repack (fixed 1980-01-01 entry dates, original entry
+  5. deterministic ZIP repack (fixed 1980-01-01 entry dates, original entry
      order) so the sanitized asset has one stable SHA-256.
 
 Everything else (styles.xml, settings.xml, numbering.xml, theme, fonts, the
@@ -314,6 +321,122 @@ def sanitize_document(document: str) -> str:
     )
     # body_row is the template row docxtpl replicates per goods line.
     new_table = new_table.replace(body_row, _cant_split(body_row, "goods-table-body"), 1)
+
+    # ---- Readability: redistribute the six goods columns --------------------
+    # Owner grid/tcW are near-equal (~1650 dxa each), so "Khung nhôm định
+    # hình" and "1200x600" fragment into 2-3-character lines. New widths stay
+    # within the exact printable area (pgSz 12240 - left 1418 - right 1134 =
+    # 9688 dxa): STT compact, Tên hàng + Quy cách wider, ĐVT + Số lượng
+    # compact, Ghi chú takes the residual. tblGrid and every tcW are set
+    # coherently; fixed layout enforces them. Fonts/wording untouched.
+    # Proven by LibreOffice render measurement (2026-10-09): the Owner Normal
+    # style carries w:ind w:right="936" for justified body text, which the
+    # unstyled table paragraphs inherit - eating 936 dxa from every cell, so
+    # widths alone cannot fix readability. Each goods cell paragraph gets an
+    # explicit zero indent (table-only override; body text keeps Owner style).
+    GOODS_WIDTHS = [800, 2800, 1900, 800, 1000, 2388]
+    GOODS_TOTAL = sum(GOODS_WIDTHS)
+    if GOODS_TOTAL != 9688:
+        _fail(f"goods-table-widths: widths sum to {GOODS_TOTAL}, expected 9688")
+
+    grid_match = re.search(r"<w:tblGrid>.*?</w:tblGrid>", new_table, flags=re.S)
+    if grid_match is None:
+        _fail("goods-table-widths: tblGrid not found")
+    if len(re.findall(r"<w:gridCol ", grid_match.group(0))) != 6:
+        _fail("goods-table-widths: tblGrid does not carry exactly 6 gridCol")
+    new_grid = "<w:tblGrid>" + "".join(
+        f'<w:gridCol w:w="{width}"/>' for width in GOODS_WIDTHS
+    ) + "</w:tblGrid>"
+    new_table = _must_replace_once(
+        new_table, grid_match.group(0), new_grid, "goods-table-grid"
+    )
+
+    # tblW auto(0) -> fixed total; add fixed layout so grid+tcW are honored.
+    if new_table.count('<w:tblW w:w="0" w:type="auto"/>') != 1:
+        _fail("goods-table-widths: expected exactly 1 auto tblW in goods table")
+    if "<w:tblLayout" in new_table:
+        _fail("goods-table-widths: unexpected pre-existing tblLayout")
+    new_table = _must_replace_once(
+        new_table,
+        '<w:tblW w:w="0" w:type="auto"/>',
+        f'<w:tblW w:w="{GOODS_TOTAL}" w:type="dxa"/><w:tblLayout w:type="fixed"/>',
+        "goods-table-tblW",
+    )
+
+    def _set_row_cell_widths(row: str, label: str) -> str:
+        parts = re.split(r'(<w:tcW w:w="\d+" w:type="dxa"/>)', row)
+        hits = [part for part in parts if part.startswith("<w:tcW")]
+        if len(hits) != 6:
+            _fail(f"{label}: expected 6 tcW cells, found {len(hits)}")
+        out: list[str] = []
+        column = 0
+        for part in parts:
+            if part.startswith("<w:tcW"):
+                out.append(f'<w:tcW w:w="{GOODS_WIDTHS[column]}" w:type="dxa"/>')
+                column += 1
+            else:
+                out.append(part)
+        return "".join(out)
+
+    current_rows = re.findall(
+        r"<w:tr [^>]*>.*?</w:tr>|<w:tr>.*?</w:tr>", new_table, flags=re.S
+    )
+    if len(current_rows) != 4:
+        _fail(f"goods-table-widths: expected 4 rows, found {len(current_rows)}")
+    for index, row in enumerate(current_rows):
+        new_table = _must_replace_once(
+            new_table, row,
+            _set_row_cell_widths(row, f"goods-table-widths-row{index}"),
+            f"goods-table-widths-row{index}",
+        )
+
+    # ---- Repeatable header: tblHeader + keep-with-next ----------------------
+    # tblHeader repeats the header row on page continuation; keepNext on each
+    # header paragraph keeps the header with the first data row so the header
+    # never sits alone at the bottom of a page. Data rows keep cantSplit.
+    current_rows = re.findall(
+        r"<w:tr [^>]*>.*?</w:tr>|<w:tr>.*?</w:tr>", new_table, flags=re.S
+    )
+    header_row = current_rows[0]
+    if "<w:tblHeader" in header_row:
+        _fail("goods-table-header: unexpected pre-existing tblHeader")
+    header_trpr = re.search(r"<w:trPr>.*?</w:trPr>", header_row, flags=re.S)
+    if header_trpr is None or "<w:cantSplit" not in header_trpr.group(0):
+        _fail("goods-table-header: header lost its cantSplit row properties")
+    new_header_trpr = header_trpr.group(0).replace(
+        "</w:trPr>", '<w:tblHeader w:val="true"/></w:trPr>', 1
+    )
+    header_row = header_row.replace(header_trpr.group(0), new_header_trpr, 1)
+    header_row, keep_next_count = re.subn(
+        r"(<w:pPr(?: [^>]*)?>)",
+        r"\1<w:keepNext/>",
+        header_row,
+    )
+    if keep_next_count != 6:
+        _fail(f"goods-table-header: expected 6 keepNext insertions, got {keep_next_count}")
+    new_table = _must_replace_once(
+        new_table, current_rows[0], header_row, "goods-table-header-repeat"
+    )
+
+    # ---- Zero cell indent: override inherited Normal right indent ----------
+    # Owner Normal style indents body paragraphs 936 dxa on the right; the 24
+    # unstyled goods cell paragraphs inherit it, which alone fragments short
+    # values ("100" -> "1/0/0") no matter the column widths. Schema order in
+    # CT_PPr is keepNext before ind before jc.
+    new_table, header_ind_count = re.subn(
+        '<w:pPr><w:keepNext/>',
+        '<w:pPr><w:keepNext/><w:ind w:left="0" w:right="0"/>',
+        new_table,
+    )
+    if header_ind_count != 6:
+        _fail(f"goods-table-indent: expected 6 header ind insertions, got {header_ind_count}")
+    new_table, body_ind_count = re.subn(
+        '<w:pPr><w:jc w:val="left"/>',
+        '<w:pPr><w:ind w:left="0" w:right="0"/><w:jc w:val="left"/>',
+        new_table,
+    )
+    if body_ind_count != 18:
+        _fail(f"goods-table-indent: expected 18 body ind insertions, got {body_ind_count}")
 
     document = _must_replace_once(document, goods_table, new_table, "goods-table")
 
