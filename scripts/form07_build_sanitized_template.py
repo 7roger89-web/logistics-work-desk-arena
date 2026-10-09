@@ -287,6 +287,34 @@ def sanitize_document(document: str) -> str:
     new_table = goods_table
     for old_row, new_row in ((rows[1], for_row), (rows[2], body_row), (rows[3], endfor_row)):
         new_table = _must_replace_once(new_table, old_row, new_row, "goods-table-row")
+
+    # ---- Pagination: never split a goods row across pages -----------------
+    # A data row broken by a page break separates one goods line across two
+    # pages (seen: "Kính" at the bottom of p1, "nổi 5mm" at the top of p2).
+    # w:cantSplit keeps each row intact; Word/LibreOffice then moves the whole
+    # row to the next page. Applied to the header row and every loop row
+    # (docxtpl replicates the body row; the for/endfor tag rows are removed
+    # at render time, so they need no treatment).
+    def _cant_split(row: str, label: str) -> str:
+        if "<w:cantSplit" in row:
+            return row
+        trpr = re.search(r"<w:trPr>.*?</w:trPr>", row, flags=re.S)
+        if trpr is None:
+            # No row properties yet: insert a minimal <w:trPr> right after <w:tr>.
+            m = re.search(r"<w:tr(?: [^>]*)?>", row)
+            if m is None:
+                _fail(f"{label}: row has no <w:tr> open tag")
+            trpr_xml = '<w:trPr><w:cantSplit w:val="true"/></w:trPr>'
+            return row[: m.end()] + trpr_xml + row[m.end() :]
+        new_trpr = trpr.group(0).replace("</w:trPr>", '<w:cantSplit w:val="true"/></w:trPr>', 1)
+        return row.replace(trpr.group(0), new_trpr, 1)
+
+    new_table = _must_replace_once(
+        new_table, rows[0], _cant_split(rows[0], "goods-table-header"), "goods-table-cantsplit"
+    )
+    # body_row is the template row docxtpl replicates per goods line.
+    new_table = new_table.replace(body_row, _cant_split(body_row, "goods-table-body"), 1)
+
     document = _must_replace_once(document, goods_table, new_table, "goods-table")
 
     return document
