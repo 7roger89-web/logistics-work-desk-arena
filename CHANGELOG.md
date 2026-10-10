@@ -1,5 +1,46 @@
 # Changelog
 
+## LOGI_UPLOADED_OFFICE_TEMPLATES_193
+
+### Issue #193 — Admin uploads ordinary DOCX/XLSX; the app maps them to verified shipment facts
+
+- **Upload-only onboarding.** An Admin uploads an ordinary `.docx`/`.xlsx` at
+  `/bieu-mau`; the server detects fill positions (blank runs, label
+  neighbours, `{{token}}` markers) and suggests canonical fields. The Admin
+  confirms the mapping once and publishes an **immutable version**. Adding a
+  template is data (a registry row + GridFS bytes) — never code: a third,
+  structurally different workbook is onboarded end-to-end by upload alone in
+  `test_a_third_template_is_onboarded_by_upload_alone_and_survives_the_full_flow`,
+  which also pins the dispatcher event surface and asserts no new module
+  appears in `core/docgen`.
+- **Reuse, not a second system.** Templates enter through
+  `core/shipment_document_catalog.effective_catalog()` as adapter
+  `UPLOADED_DOCGEN`, appear in the SAME `ShipmentDocumentPicker`, generate via
+  the ONE dispatcher event `uploaded_template_generate`, and store through the
+  existing durable attachment path. FORM_07, PXK, GNT and the attachment system
+  are unchanged.
+- **Fail closed by construction.** `CANONICAL_FIELDS` contains no money,
+  price, VAT, currency, payment or bank field, so no financial fact is
+  bindable at all. Conditional goods/party facts require one unambiguous
+  source. An unresolved field yields `MISSING_INFO` with the operator's own
+  wording and never defaults; quantities print verbatim (`19.800` is never
+  re-parsed as `19.8`).
+- **Uploaded bytes never execute.** No Jinja/docxtpl and no expression
+  evaluator touches an upload. `scan_package_safety` refuses legacy
+  `.doc`/`.xls`, macro-enabled `.docm`/`.xlsm`, non-OOXML, oversized payloads,
+  missing core parts, macro parts, external relationships and zip-bomb
+  ratios — without false-positiving ordinary theme colours. Forged mappings
+  (`db.shipments.find()`, `{{ 7*7 }}`, `__import__(...)`, `; DROP`) are
+  refused, not interpreted. Render is SHA-pinned and deterministic.
+- **Evidence.** 50 Python tests; targeted docgen/FORM_07/picker lane
+  340 passed; full-suite FAILED/ERROR set is an exact match with the re-derived
+  baseline (0 new, 0 fixed); `tsc --noEmit` clean; `component/dist` rebuilt
+  from source; runtime DOM acceptance against the production bundle including
+  the full download lifecycle (in-flight duplicate ignored, next file
+  downloadable once the backend resolves the requestId) verified by mutation.
+  Visual evidence is **BLOCKED** — no browser binary in this sandbox; see
+  `evidence/193/EVIDENCE.md` §5 for the handoff checklist.
+
 ## FORM_07_DELIVERY_RECEIPT_PILOT_168
 
 ### Issue #168 — first post-PR-164 shipment document template pilot: FORM_07 "Biên bản giao nhận hàng hóa"

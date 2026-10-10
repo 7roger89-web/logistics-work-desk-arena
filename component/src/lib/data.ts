@@ -91,6 +91,11 @@ export const NAV: {
       { to: "/nguoi-dung", label: "Người dùng & Vai trò", icon: "shield" },
       // Issue #162 — the Work Module template library (list/version/activate/retire).
       { to: "/quy-trinh", label: "Thư viện quy trình", icon: "layers" },
+      // LOGI-193 — Admin uploads an ordinary DOCX/XLSX, confirms its field
+      // mapping ONCE and publishes an immutable version. The published template
+      // then appears in the SAME shipment document picker; this page owns only
+      // the template lifecycle, never a second document system.
+      { to: "/bieu-mau", label: "Biểu mẫu Office", icon: "filetext" },
     ],
   },
 ];

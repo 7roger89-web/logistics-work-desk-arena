@@ -61,6 +61,17 @@ export type LogiEventName =
   | "gnt_generate"
   // Issue #168 — FORM_07 Biên bản giao nhận generation (typed manual identity).
   | "form07_generate"
+  // LOGI-193 — Admin-published Office template generation. The browser sends
+  // only the template id plus the operator-typed manual values; the server owns
+  // the confirmed mapping, readiness and the non-destructive render.
+  | "uploaded_template_generate"
+  // LOGI-193 — Admin-only Office template lifecycle for /bieu-mau. Every event
+  // is re-checked Admin-only server-side; the upload carries ONE bounded
+  // base64 file and the server owns validation, detection and storage.
+  | "docgen_template_upload"
+  | "docgen_template_mapping_save"
+  | "docgen_template_publish"
+  | "docgen_template_status_set"
   // LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — real XLSX preview then explicit
   // commit. The browser sends bytes only for preview; commit references the
   // server-issued previewId and operator VAT choices.

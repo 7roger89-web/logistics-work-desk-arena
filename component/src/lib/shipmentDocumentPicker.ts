@@ -20,7 +20,11 @@ export type ShipmentDocumentAction =
   | "OPEN_IMPORT"
   | "OPEN_DELIVERY"
   | "OPEN_PXK"
-  | "OPEN_FORM07";
+  | "OPEN_FORM07"
+  // LOGI-193 — an Admin-published upload: generate it, or open the lot's
+  // panel where the operator types the template's manual fields.
+  | "GENERATE_UPLOADED"
+  | "OPEN_UPLOADED";
 
 export interface ShipmentDocumentHistoryItem extends ShipmentGeneratedDocumentHistory {
   downloadBase64?: string | null;
@@ -57,9 +61,14 @@ interface CardProjectionInput {
   form07Draft?: { number?: string; orderDate?: string };
 }
 
-const SUPPORTED_ADAPTERS = new Set(["CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER", "FORM07_DOCGEN"]);
+// LOGI-193 — the uploaded-template adapter joins the existing set; it adds no
+// second card shape, only one more branch of the SAME projection.
+const SUPPORTED_ADAPTERS = new Set([
+  "CONTRACT_DOCGEN", "PXK_DOCGEN", "GNT_BUILDER", "FORM07_DOCGEN", "UPLOADED_DOCGEN",
+]);
 const GENERATION_ACTIONS = new Set<ShipmentDocumentAction>([
   "GENERATE_CONTRACT", "GENERATE_PXK", "GENERATE_GNT", "GENERATE_FORM07",
+  "GENERATE_UPLOADED",
 ]);
 
 function cleanList(values: unknown): string[] {
@@ -174,6 +183,44 @@ function readinessFor(
       return { state: "MISSING_INFO", reason: gate.reason || "GNT còn thiếu thông tin.", missing, action };
     }
     return { state: "UNAVAILABLE", reason: gate.reason || "Cổng GNT chưa xác định; tạo bị khóa an toàn.", missing };
+  }
+
+  if (template.adapter === "UPLOADED_DOCGEN") {
+    // LOGI-193 — the server owns this gate completely: the confirmed mapping,
+    // the canonical fact resolution and the missing list all come from the
+    // backend. The client only decides which of the two existing buttons to
+    // show, so it can never invent a readiness the server would refuse.
+    const gate = input.shipment.uploadedTemplates?.[template.id]?.readiness;
+    if (!gate || typeof gate.state !== "string") {
+      return {
+        state: "UNAVAILABLE",
+        reason: "Chưa có readback cổng biểu mẫu tải lên từ backend.",
+        missing: [],
+      };
+    }
+    const missing = cleanList(gate.missing);
+    if (gate.state === "READY") {
+      return { state: "READY", reason: gate.reason || "", missing: [], action: "GENERATE_UPLOADED" };
+    }
+    if (gate.state === "NOT_APPLICABLE") {
+      return { state: "UNAVAILABLE", reason: gate.reason || "Biểu mẫu không áp dụng.", missing };
+    }
+    if (gate.state === "MISSING_INFO") {
+      // A purely operator-typed gap opens the lot's own panel; anything else
+      // is a canonical data gap the operator must close at its source.
+      const onlyManual = missing.every((item) => /nhập tay/i.test(item));
+      return {
+        state: "MISSING_INFO",
+        reason: gate.reason || "Biểu mẫu còn thiếu thông tin.",
+        missing,
+        action: onlyManual ? "OPEN_UPLOADED" : undefined,
+      };
+    }
+    return {
+      state: "UNAVAILABLE",
+      reason: gate.reason || "Cổng biểu mẫu chưa xác định; tạo bị khóa an toàn.",
+      missing,
+    };
   }
 
   if (template.adapter === "FORM07_DOCGEN") {
@@ -297,6 +344,12 @@ function historyFor(template: ShipmentDocumentTemplate, input: CardProjectionInp
     const nested = Array.isArray(gnt?.document?.history) ? gnt.document.history : [];
     return sortedHistory((projected.length ? projected : nested).filter((row) => row.documentType === template.documentType));
   }
+  if (template.adapter === "UPLOADED_DOCGEN") {
+    // LOGI-193 — the same durable docgen history projection the other adapters
+    // read; there is no second history store.
+    const rows = input.shipment.uploadedTemplates?.[template.id]?.documentHistory;
+    return sortedHistory(Array.isArray(rows) ? rows : []);
+  }
   if (template.adapter === "FORM07_DOCGEN") {
     const projected = Array.isArray(input.shipment.form07?.documentHistory) ? input.shipment.form07!.documentHistory! : [];
     const nested = Array.isArray(input.shipment.form07?.document?.history) ? input.shipment.form07!.document!.history! : [];
@@ -384,7 +437,8 @@ export function projectShipmentDocumentCards(input: CardProjectionInput): Shipme
         ? template.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT"
           : template.adapter === "GNT_BUILDER" ? "OPEN_IMPORT"
             : template.adapter === "FORM07_DOCGEN" ? "OPEN_FORM07"
-              : "OPEN_PXK"
+              : template.adapter === "UPLOADED_DOCGEN" ? "OPEN_UPLOADED"
+                : "OPEN_PXK"
         : undefined;
       return {
         id: template.id,
