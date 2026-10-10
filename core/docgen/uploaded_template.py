@@ -1074,6 +1074,28 @@ def _docx_run_for(document: Any, position: str) -> Any:
     return runs[run_index]
 
 
+def _replace_tokens_in_run(run: Any, value: str) -> None:
+    """Fill ONLY the ``{{token}}`` placeholders, keeping the run's own words.
+
+    ``Xác nhận: {{shipment.id}} (đã kiểm)`` is a single ordinary Word run.  A
+    whole-run assignment would silently delete the printed label and the
+    trailing note — a legal wording change nobody can see happen.  So the label
+    and every non-token character are preserved verbatim and only the token
+    spans are substituted.
+
+    One position carries one confirmed value, so every token span in that run
+    receives it.  Detection offers one position per run, which is the limit of
+    what an Admin can map; this neither adds nor removes placeholders.
+    """
+    current = run.text or ""
+    if not _MARKER_PATTERN.search(current):
+        # No token here (a blank run, or a kept label + blank tail): the whole
+        # run is the fill target, exactly as before.
+        run.text = str(value)
+        return
+    run.text = _MARKER_PATTERN.sub(lambda _match: str(value), current)
+
+
 def _render_docx(raw: bytes, values: Mapping[str, str]) -> bytes:
     """Run-level writes only: ``rPr`` and every other part stay untouched."""
     import docx
@@ -1083,7 +1105,7 @@ def _render_docx(raw: bytes, values: Mapping[str, str]) -> bytes:
         run = _docx_run_for(document, position)
         if run is None:
             continue
-        run.text = str(value)
+        _replace_tokens_in_run(run, value)
 
     buffer = io.BytesIO()
     document.save(buffer)

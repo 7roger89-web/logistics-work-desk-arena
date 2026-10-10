@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import copy
 import re
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
@@ -56,11 +57,28 @@ def _text(value: Any) -> str:
     return str(value if value is not None else "").strip()
 
 
+_ID_TAIL_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
+_ID_SLUG_CHARS = 16
+_ID_TAIL_CHARS = 4
+
+
 def new_template_id(label: str) -> str:
-    """Stable, filesystem-safe, human-recognizable template id."""
-    slug = _ID_SLUG_PATTERN.sub("-", _text(label).lower()).strip("-")[:24] or "bieu-mau"
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    return f"UT-{slug}-{stamp}"[:MAX_TEMPLATE_ID]
+    """Filesystem-safe, human-recognizable template id, unique per upload.
+
+    The id must fit MAX_TEMPLATE_ID *and* stay unique.  Those two constraints
+    conflict if the slug takes the whole budget: ``UT-`` (3) + a 24-char slug +
+    ``-`` (1) + a 14-char ``%Y%m%d%H%M%S`` stamp is 42 chars, so slicing to 40
+    silently dropped the seconds and every same-name upload inside one minute
+    produced the SAME id — after which ``get_template()`` would hand back the
+    first row and a later upload could map and publish the wrong file.
+
+    Budget now: 3 + 16 + 1 + 12 (``%y%m%d%H%M%S``) + 4 random = 36 chars, so
+    nothing is truncated and two uploads in the same second still differ.
+    """
+    slug = _ID_SLUG_PATTERN.sub("-", _text(label).lower()).strip("-")[:_ID_SLUG_CHARS] or "bieu-mau"
+    stamp = datetime.now(timezone.utc).strftime("%y%m%d%H%M%S")
+    tail = "".join(secrets.choice(_ID_TAIL_ALPHABET) for _ in range(_ID_TAIL_CHARS))
+    return f"UT-{slug}-{stamp}{tail}"[:MAX_TEMPLATE_ID]
 
 
 def _store(db: Any = None) -> Any:
@@ -211,6 +229,17 @@ def create_draft(
         raise UploadedTemplateError(f"Đã đạt giới hạn {MAX_TEMPLATES} biểu mẫu tải lên.")
 
     template_id = new_template_id(name)
+    # The random tail already makes a clash vanishingly unlikely, but a registry
+    # id is a primary key: refuse to append a duplicate rather than let a later
+    # upload shadow an earlier one.
+    existing_ids = {_text(item.get("id")) for item in rows}
+    for _attempt in range(8):
+        if template_id not in existing_ids:
+            break
+        template_id = new_template_id(name)
+    if template_id in existing_ids:  # pragma: no cover - 36**4 space
+        raise UploadedTemplateError("Không tạo được mã biểu mẫu duy nhất; thử lại.")
+
     file_identity = _store(db).upload_file(
         name=f"{template_id}.{'docx' if kind == KIND_DOCX else 'xlsx'}",
         mime=_text(mime),

@@ -1637,3 +1637,146 @@ def test_a_preview_reports_unresolved_positions_instead_of_filling_them(staging)
     assert outcome["ok"], outcome
     assert outcome["readback"]["missing"], "the operator-typed gap must be reported"
     assert any("Số biên bản" in item for item in outcome["readback"]["missing"])
+
+
+# ---------------------------------------------------------------------------
+# INDEPENDENT SOURCE REVIEW R2 — B5 / B6 regressions
+# ---------------------------------------------------------------------------
+
+def _docx_with_runs(*run_texts: str) -> bytes:
+    """One paragraph whose runs carry exactly the given text, in order."""
+    import docx
+
+    document = docx.Document()
+    paragraph = document.add_paragraph()
+    for chunk in run_texts:
+        paragraph.add_run(chunk)
+    buffer = io.BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
+
+
+def test_an_inline_token_keeps_the_static_text_on_both_sides_of_it(staging):
+    """B5 — a token inside a run must not swallow the run's own words.
+
+    ``Xác nhận: {{shipment.id}} (đã kiểm)`` is one perfectly ordinary Word run.
+    Replacing the whole run with the value silently destroys a legally
+    meaningful label and its trailing note, which no operator can see happen.
+    """
+    raw = _docx_with_runs("Xác nhận: {{shipment.id}} (đã kiểm)")
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+    assert len(positions) == 1 and positions[0]["detectedBy"] == "marker"
+
+    values, missing = engine.resolve_mapping(
+        [{"position": positions[0]["id"], "mode": "field", "value": "shipment.id"}],
+        {"shipment": {"id": SHIPMENT_ID}}, manual={},
+    )
+    assert missing == []
+    rendered = engine.render_uploaded(
+        raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+    )
+
+    import docx
+
+    text = docx.Document(io.BytesIO(rendered)).paragraphs[0].text
+    # The label, the value AND the trailing note all survive.
+    assert text == f"Xác nhận: {SHIPMENT_ID} (đã kiểm)", repr(text)
+
+
+def test_several_tokens_in_one_run_are_each_replaced_in_place(staging):
+    """Two tokens in one run, with words between and around them."""
+    raw = _docx_with_runs("Lô {{shipment.id}} / Booking {{shipment.booking_no}} — hết")
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+    assert positions and positions[0]["detectedBy"] == "marker"
+
+    values, _missing = engine.resolve_mapping(
+        [{"position": positions[0]["id"], "mode": "field", "value": "shipment.id"}],
+        {"shipment": {"id": SHIPMENT_ID, "booking_no": EXPECTED_BOOKING}}, manual={},
+    )
+    rendered = engine.render_uploaded(
+        raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+    )
+    import docx
+
+    text = docx.Document(io.BytesIO(rendered)).paragraphs[0].text
+    assert SHIPMENT_ID in text
+    assert text.startswith("Lô ") and text.endswith("— hết"), repr(text)
+    assert "{{" not in text and "}}" not in text, repr(text)
+
+
+def test_a_run_that_is_only_a_token_still_renders_as_the_bare_value(staging):
+    """The pure-marker case must not regress: no stray spaces are added."""
+    raw = _docx_with_runs("{{customer.name}}")
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+    values, _missing = engine.resolve_mapping(
+        [{"position": positions[0]["id"], "mode": "field", "value": "customer.name"}],
+        {"customer": {"name": EXPECTED_CUSTOMER_NAME}}, manual={},
+    )
+    rendered = engine.render_uploaded(
+        raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+    )
+    import docx
+
+    assert docx.Document(io.BytesIO(rendered)).paragraphs[0].text == EXPECTED_CUSTOMER_NAME
+
+
+def test_two_same_name_uploads_in_the_same_minute_get_different_ids(staging, monkeypatch):
+    """B6 — the id must stay <=40 chars AND stay unique inside one minute.
+
+    ``UT-`` + a 24-char slug + ``-`` + a 14-char stamp is 42 chars, so slicing to
+    40 silently dropped the seconds and every same-name upload within a minute
+    collided.  ``get_template()`` returns the first match, so the later upload
+    could map and publish the WRONG file.
+    """
+    import datetime as _dt
+
+    import core.docgen.uploaded_template_store as store_module
+
+    frozen = _dt.datetime(2026, 10, 10, 12, 9, 1, tzinfo=_dt.timezone.utc)
+
+    class _FrozenDatetime(_dt.datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001 - test clock
+            return frozen if tz is None else frozen.astimezone(tz)
+
+    monkeypatch.setattr(store_module, "datetime", _FrozenDatetime)
+
+    label = "Biên bản giao nhận hàng hóa"
+    first_id = store_module.new_template_id(label)
+    assert len(first_id) <= store_module.MAX_TEMPLATE_ID
+    # Time is frozen, so a second call is the collision the reviewer described.
+    second_id = store_module.new_template_id(label)
+    assert first_id != second_id, f"both uploads produced {first_id!r}"
+
+    # And the real upload path keeps them apart, each independently usable.
+    first = _upload_publish(build_pilot_docx(), label, "bb-trung-1.docx")
+    second = _upload_publish(build_second_docx(), label, "bb-trung-2.docx")
+    assert first["id"] != second["id"]
+    assert len(first["id"]) <= store_module.MAX_TEMPLATE_ID
+    assert len(second["id"]) <= store_module.MAX_TEMPLATE_ID
+
+    # Each row resolves to its OWN bytes and its OWN mapping.
+    first_row = store.get_template(first["id"])
+    second_row = store.get_template(second["id"])
+    assert first_row["draftSha256"] != second_row["draftSha256"]
+    assert engine.detect_kind("a.docx", store.load_bytes(first_row)) == engine.KIND_DOCX
+    assert first["status"] == "ACTIVE" and second["status"] == "ACTIVE"
+    assert first["publishedMappingCount"] != second["publishedMappingCount"] or \
+        first_row["versions"][0]["mapping"] != second_row["versions"][0]["mapping"]
+
+    # Both generate their own distinct file.
+    _support()
+    gen_first = _dispatch_generate({"shipmentId": SHIPMENT_ID, "templateId": first["id"]}, seq=1)
+    gen_second = _dispatch_generate({"shipmentId": SHIPMENT_ID, "templateId": second["id"]}, seq=2)
+    assert gen_first["ok"] and gen_second["ok"]
+    assert gen_first["persisted"]["attachmentId"] != gen_second["persisted"]["attachmentId"]
+    assert gen_first["persisted"]["outputHash"] != gen_second["persisted"]["outputHash"]
+    assert "Số booking" in _docx_text(_fetch(gen_second["persisted"]["attachmentId"])["data"])
+    assert "Số hợp đồng" in _docx_text(_fetch(gen_first["persisted"]["attachmentId"])["data"])
+
+
+def test_template_ids_never_exceed_the_declared_maximum(staging):
+    """The 40-char contract holds for pathological labels too."""
+    for label in ("x" * 400, "Biên bản " * 60, "!!!", "", "a" * 40):
+        produced = store.new_template_id(label)
+        assert 0 < len(produced) <= store.MAX_TEMPLATE_ID, (label[:20], produced)

@@ -298,3 +298,111 @@ the canonical link, so the two surfaces already disagreed.
 Visual evidence remains **BLOCKED** (§5): still no browser binary in this
 sandbox. The new preview control is covered by DOM assertions and by the Python
 tests above, but its pixels have not been seen in a real browser.
+
+---
+
+# Round 3 — Independent Source Review R2 (REJECT): B5 / B6 fixed
+
+Reviewed head: `19c4c26f23dedf654cdd41c3e581bb01a5c10c5e`. Both defects were
+reproduced from the committed source **before** any edit.
+
+## B5 — DOCX destroyed printed text adjacent to an inline token
+
+Reproduced directly against the committed code:
+
+```
+run text : 'Xác nhận: {{shipment.id}} (đã kiểm)'
+rendered : 'LO-0295'
+```
+
+`_MARKER_PATTERN.search(current)` detects a token **anywhere inside a run**, but
+`_render_docx()` did `run.text = str(value)`, replacing the whole run. The
+printed label `Xác nhận:` and the trailing note `(đã kiểm)` were silently
+deleted — a legal wording change no operator can see.
+
+**Fix** — `_replace_tokens_in_run()`: if the run contains a `{{token}}`, only the
+token spans are substituted (`_MARKER_PATTERN.sub`), so every non-token
+character is preserved verbatim. If the run has no token (a blank run, or a kept
+label + blank tail) the whole run is the fill target exactly as before. No Jinja,
+no second engine, no layout logic. One position carries one confirmed value, so
+every token span in that run receives it — detection offers one position per run,
+which is the limit of what an Admin can map.
+
+**Red → green**:
+| test | before | after |
+|---|---|---|
+| `test_an_inline_token_keeps_the_static_text_on_both_sides_of_it` | FAIL (`'LO-0295'`) | PASS — full paragraph equals `Xác nhận: LO-0295 (đã kiểm)` |
+| `test_several_tokens_in_one_run_are_each_replaced_in_place` | FAIL | PASS — prefix `Lô ` and suffix `— hết` kept, no residual `{{` |
+| `test_a_run_that_is_only_a_token_still_renders_as_the_bare_value` | PASS | PASS — no stray whitespace introduced |
+
+## B6 — Template IDs collided for long names within one minute
+
+`new_template_id()` built `f"UT-{slug[:24]}-{%Y%m%d%H%M%S}"[:40]`. At a 24-char
+slug that string is **42** chars, so the slice removed the last two digits — the
+**seconds** — leaving `YYYYMMDDHHMM`. Reproduced against the committed code:
+
+```
+new_template_id('Biên bản giao nhận hàng hóa') -> 'UT-bi-n-b-n-giao-nh-n-h-ng--20261010100803'[:40]
+                                                -> 'UT-bi-n-b-n-giao-nh-n-h-ng--202610101008'   (seconds gone)
+```
+
+`create_draft()` appended the id with no uniqueness check and `get_template()`
+returns the first match, so a later same-name upload could map and publish the
+**wrong file**.
+
+**Fix** — the budget is now sized so nothing is truncated:
+`UT-` (3) + slug (16) + `-` (1) + `%y%m%d%H%M%S` (12) + 4 random base-36 chars
+(`secrets.choice`) = **36** chars ≤ 40. `create_draft()` additionally refuses to
+append an id already present in the registry. Existing stored ids and history are
+untouched — only newly generated ids change shape.
+
+```
+UT-bi-n-b-n-giao-nh-26101008054779a7   (36 chars)
+UT-bi-n-b-n-giao-nh-261010080547av33   (36 chars)  — same second, different id
+```
+
+**Red → green**:
+| test | before | after |
+|---|---|---|
+| `test_two_same_name_uploads_in_the_same_minute_get_different_ids` | FAIL — `both uploads produced 'UT-bi-n-b-n-giao-nh-n-h-ng--202610101209'` | PASS — clock frozen, two different ids, each independently published and generating its own file (`Số hợp đồng` vs `Số booking`, different attachments and hashes) |
+| `test_template_ids_never_exceed_the_declared_maximum` | PASS | PASS — 400-char, repeated, punctuation-only and empty labels all stay ≤ 40 |
+
+## Round 3 results
+
+- `tests/test_logi_193_uploaded_office_templates.py` — **70 passed** (was 65).
+- `npx tsc --noEmit` exit 0. `npm run build` → 1915 modules, js 1,411.47 kB,
+  css 81.76 kB. **The rebuilt `dist` is byte-identical to the committed one**
+  (`git status --porcelain component/dist` empty), confirming B5/B6 are
+  backend-only and the committed `dist` is genuinely built from source.
+- `npm run scan` → `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`.
+- Targeted lane (`form07|docgen|document_picker|shipment_document|gnt|attachment`):
+  **340 passed, 16 skipped, 4 errors**; baseline lane re-derived at `b80267a` in
+  a clean worktree = 338 passed / 4 errors, and `comm` on the FAILED/ERROR sets
+  shows **0 new, 0 fixed**.
+- `dom_acceptance_logi193_uploaded_templates.mjs` **PASS**;
+  `dom_acceptance_form07_delivery_receipt.mjs` **PASS**;
+  `unit_shipment_document_picker.mjs` **PASS**.
+- Generated-file sha256 unchanged (`7e163a6c8152cb3d…` / `5924121785ea597a…`) —
+  the pilots fill blank runs, not inline tokens, so B5 correctly leaves their
+  output identical.
+
+## GNT intermittent failure — status after round 3
+
+It recurred **once** in this round's first targeted-lane run, then did **not**
+recur in 18 further identical lane runs. It has never produced a traceback
+despite `--tb=long` on every attempt. Bounded findings:
+
+- Baseline lane at `b80267a`, 6 consecutive runs: **clean every time** (338 passed / 4 errors).
+- In the filtered lane the GNT test collects at position **22**; the only two
+  LOGI-193 tests the `-k` filter selects collect at positions **169–170**, i.e.
+  strictly *after* it, so they cannot influence it.
+- The LOGI-193 source paths are gated behind uploaded templates:
+  `_attach_uploaded_template_state()` returns early when no ACTIVE uploaded
+  template exists, which is the case throughout that test.
+- Passes in isolation and alongside the LOGI-193 module.
+
+This is **not** claimed to be a baseline defect, and it is **not** diagnosed.
+It remains an explicit residual risk. Per instruction, no endless full-suite
+looping was performed.
+
+Visual evidence remains **BLOCKED**: no browser binary in this sandbox.
