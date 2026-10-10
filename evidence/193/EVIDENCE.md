@@ -406,3 +406,89 @@ It remains an explicit residual risk. Per instruction, no endless full-suite
 looping was performed.
 
 Visual evidence remains **BLOCKED**: no browser binary in this sandbox.
+
+---
+
+# Round 4 — Independent Source Review R3 (REJECT): B7 fixed
+
+Reviewed head: `19e9d381c7ee0e5425e0d1cde005ca6870448697`.
+
+## B7 — Different placeholders in ONE run all became the SAME value
+
+This was introduced by my own B5 repair. `_replace_tokens_in_run()` substituted
+**every** `{{...}}` in a run with the single confirmed value, while detection
+produced only **one position per run** (first token only). Reproduced on the
+committed code:
+
+```
+run text : 'Lô {{shipment.id}} / Booking {{shipment.booking_no}} / KH {{customer.name}}'
+detected : [('p0/r0', 'marker', 'shipment.id', 'shipment.id')]   <- one position only
+rendered : 'Lô LO-0295 / Booking LO-0295 / KH LO-0295'
+```
+
+A valid-looking file carrying the wrong booking and the wrong customer. The
+reviewer was also right that the previous
+`test_several_tokens_in_one_run_are_each_replaced_in_place` passed on that wrong
+output, because it only asserted that a value existed and that `{{` was gone.
+
+**Repair — option (A), per-placeholder mapping.** Detection now enumerates every
+`{{token}}` in a run:
+
+- one distinct placeholder (or repeats of the same one) → **one** position with
+  the unchanged `p{para}/r{run}` id, so every mapping published before this
+  change stays valid and repeated identical markers keep working;
+- two or more **distinct** placeholders → one position each, addressed
+  `p{para}/r{run}/t{index}`, each labelled and suggested from its OWN token, so
+  the suggested label is what will actually be printed.
+
+The renderer groups all replacements **by canonical base position** and applies
+them in a single pass. Object identity (`id(run)`) cannot be the group key:
+python-docx returns a fresh `Run` wrapper on every access, which split one run
+into several groups and re-indexed the already-modified text — that was caught by
+the red test before it shipped.
+
+**Fail-closed net.** A replacement that names the run rather than a placeholder
+(the pre-B7 position shape, which can still exist in an already-published
+version) is refused when the run holds more than one distinct placeholder, with a
+Vietnamese message naming the conflicting fields. An unmapped placeholder is left
+untouched, so the existing "output still contains `{{`" guard blocks the file.
+No wrong file is ever produced.
+
+**Red → green**
+
+| test | before | after |
+|---|---|---|
+| `test_each_distinct_token_in_one_run_receives_its_own_value` | FAIL — one position, `Lô LO-0295 / Booking LO-0295 / KH LO-0295` | PASS — three positions; exact text `Lô LO-0295 / Booking BKG-0295 / KH Thiên Ân JSC` |
+| `test_several_tokens_in_one_run_are_each_replaced_in_place` (rewritten) | passed on the WRONG output | rewritten to pin the exact text; PASS |
+| `test_a_whole_run_mapping_over_distinct_tokens_is_refused_not_guessed` | FAIL — did not raise | PASS — `UploadedTemplateError` |
+| `test_an_unmapped_token_in_a_multi_token_run_blocks_the_whole_file` | FAIL — did not raise | PASS — refused, nothing generated |
+| `test_repeated_identical_tokens_in_one_run_still_share_one_value` | PASS | PASS — still one position |
+| `test_a_multi_token_run_survives_the_full_upload_to_download_flow` | n/a (new) | PASS — real upload → mapping → publish → generate → download; asserts `Booking LO-0295` and `KH LO-0295` are **absent** |
+
+## B1–B6 regression
+
+- `tests/test_logi_193_uploaded_office_templates.py` — **75 passed** (was 70).
+- Targeted `form07|docgen|document_picker|shipment_document|gnt|attachment` lane:
+  **340 passed, 16 skipped, 4 errors**; baseline lane re-derived at `b80267a` in a
+  clean worktree = same 4 errors; `comm` → **0 new / 0 fixed**.
+- `npx tsc --noEmit` exit 0; `npm run build` 1915 modules, js 1,411.47 kB;
+  **rebuilt `dist` byte-identical to the committed one** (`git status --porcelain
+  component/dist` empty) — B7 is backend-only.
+- `npm run scan` → `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`.
+- `dom_acceptance_logi193_uploaded_templates.mjs`, `dom_acceptance_form07_delivery_receipt.mjs`,
+  `unit_shipment_document_picker.mjs` — all **PASS**.
+- Generated-file sha256 unchanged (`7e163a6c8152cb3d…` / `5924121785ea597a…`): the
+  pilot templates fill blank runs, not inline tokens, so B1–B6 output is intact.
+
+## GNT intermittent — status after round 4
+
+Did **not** appear in this round's targeted lane run. Cumulative: observed twice
+(round 1 full suite, round 3 lane) out of ~40 runs on this branch; baseline has
+been clean in every one of its ~12 comparison runs. Never captured a traceback
+despite `--tb=long`. Bounded findings unchanged: in the filtered lane the GNT test
+collects at position 22 while the only two LOGI-193 tests the `-k` filter selects
+collect at 169–170 (strictly after), and `_attach_uploaded_template_state()`
+returns early when no ACTIVE uploaded template exists. **Not** claimed as a
+baseline defect and **not** diagnosed; it stays an explicit residual risk.
+
+Visual evidence remains **BLOCKED** — no browser binary in this sandbox.

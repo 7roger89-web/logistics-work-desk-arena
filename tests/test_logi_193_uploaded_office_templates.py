@@ -1684,23 +1684,29 @@ def test_an_inline_token_keeps_the_static_text_on_both_sides_of_it(staging):
 
 
 def test_several_tokens_in_one_run_are_each_replaced_in_place(staging):
-    """Two tokens in one run, with words between and around them."""
+    """Two different placeholders in one run: each gets ITS value, words survive.
+
+    Superseded assertion: this test originally mapped only the first token and
+    merely checked that ``{{`` had disappeared — which is exactly how the B7
+    same-value corruption passed unnoticed.  It now pins the exact text.
+    """
     raw = _docx_with_runs("Lô {{shipment.id}} / Booking {{shipment.booking_no}} — hết")
     positions = engine.detect_positions(raw, engine.KIND_DOCX)
-    assert positions and positions[0]["detectedBy"] == "marker"
+    assert {item["label"] for item in positions} == {"shipment.id", "shipment.booking_no"}
 
-    values, _missing = engine.resolve_mapping(
-        [{"position": positions[0]["id"], "mode": "field", "value": "shipment.id"}],
+    values, missing = engine.resolve_mapping(
+        [{"position": item["id"], "mode": "field", "value": item["suggestion"]}
+         for item in positions],
         {"shipment": {"id": SHIPMENT_ID, "booking_no": EXPECTED_BOOKING}}, manual={},
     )
+    assert missing == []
     rendered = engine.render_uploaded(
         raw, kind=engine.KIND_DOCX, template_sha256="", values=values
     )
     import docx
 
     text = docx.Document(io.BytesIO(rendered)).paragraphs[0].text
-    assert SHIPMENT_ID in text
-    assert text.startswith("Lô ") and text.endswith("— hết"), repr(text)
+    assert text == f"Lô {SHIPMENT_ID} / Booking {EXPECTED_BOOKING} — hết", repr(text)
     assert "{{" not in text and "}}" not in text, repr(text)
 
 
@@ -1780,3 +1786,159 @@ def test_template_ids_never_exceed_the_declared_maximum(staging):
     for label in ("x" * 400, "Biên bản " * 60, "!!!", "", "a" * 40):
         produced = store.new_template_id(label)
         assert 0 < len(produced) <= store.MAX_TEMPLATE_ID, (label[:20], produced)
+
+
+# ---------------------------------------------------------------------------
+# INDEPENDENT SOURCE REVIEW R3 — B7 regression
+# ---------------------------------------------------------------------------
+
+def test_each_distinct_token_in_one_run_receives_its_own_value(staging):
+    """B7 — different tokens in ONE run must not all become the same value.
+
+    ``Lô {{shipment.id}} / Booking {{shipment.booking_no}} / KH {{customer.name}}``
+    is one ordinary Word run.  Filling every token with the single confirmed
+    value produced ``Lô LO-0295 / Booking LO-0295 / KH LO-0295`` — a
+    valid-looking file carrying the WRONG booking and the WRONG customer.  Each
+    placeholder is now its own detectable, mappable, renderable position, and
+    this asserts the exact resulting text, not merely that ``{{`` disappeared.
+    """
+    raw = _docx_with_runs(
+        "Lô {{shipment.id}} / Booking {{shipment.booking_no}} / KH {{customer.name}}"
+    )
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+
+    # One position per placeholder, each suggesting its OWN field.
+    by_label = {item["label"]: item for item in positions}
+    assert set(by_label) == {"shipment.id", "shipment.booking_no", "customer.name"}, by_label
+    for item in positions:
+        assert item["detectedBy"] == "marker"
+        assert item["suggestion"] == item["label"]
+    # The three positions are distinct addresses inside the same run.
+    assert len({item["id"] for item in positions}) == 3
+
+    mapping = [
+        {"position": item["id"], "mode": "field", "value": item["suggestion"]}
+        for item in positions
+    ]
+    values, missing = engine.resolve_mapping(
+        mapping,
+        {
+            "shipment": {"id": SHIPMENT_ID, "booking_no": EXPECTED_BOOKING},
+            "customer": {"name": EXPECTED_CUSTOMER_NAME},
+        },
+        manual={},
+    )
+    assert missing == []
+    rendered = engine.render_uploaded(
+        raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+    )
+
+    import docx
+
+    text = docx.Document(io.BytesIO(rendered)).paragraphs[0].text
+    assert text == (
+        f"Lô {SHIPMENT_ID} / Booking {EXPECTED_BOOKING} / KH {EXPECTED_CUSTOMER_NAME}"
+    ), repr(text)
+
+
+def test_a_whole_run_mapping_over_distinct_tokens_is_refused_not_guessed(staging):
+    """Fail-closed net for a mapping that names the RUN, not a placeholder.
+
+    A version published before per-token positions existed would carry ``p0/r0``
+    for a multi-token run.  Filling it would be exactly the B7 corruption, so the
+    renderer refuses instead of guessing which token the value was meant for.
+    """
+    raw = _docx_with_runs("Lô {{shipment.id}} / KH {{customer.name}}")
+    with pytest.raises(engine.UploadedTemplateError):
+        engine.render_uploaded(
+            raw, kind=engine.KIND_DOCX, template_sha256="",
+            values={"p0/r0": SHIPMENT_ID},
+        )
+
+
+def test_repeated_identical_tokens_in_one_run_still_share_one_value(staging):
+    """Duplicate identical placeholders are safe and keep working as ONE position."""
+    raw = _docx_with_runs("{{shipment.id}} và {{shipment.id}}")
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+    assert len(positions) == 1, positions
+    assert positions[0]["label"] == "shipment.id"
+
+    values, missing = engine.resolve_mapping(
+        [{"position": positions[0]["id"], "mode": "field", "value": "shipment.id"}],
+        {"shipment": {"id": SHIPMENT_ID}}, manual={},
+    )
+    assert missing == []
+    rendered = engine.render_uploaded(
+        raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+    )
+    import docx
+
+    assert docx.Document(io.BytesIO(rendered)).paragraphs[0].text == (
+        f"{SHIPMENT_ID} và {SHIPMENT_ID}"
+    )
+
+
+def test_an_unmapped_token_in_a_multi_token_run_blocks_the_whole_file(staging):
+    """Leaving one placeholder unmapped must fail closed, not print a token."""
+    raw = _docx_with_runs("Lô {{shipment.id}} / KH {{customer.name}}")
+    positions = engine.detect_positions(raw, engine.KIND_DOCX)
+    only = next(item for item in positions if item["label"] == "shipment.id")
+    values, _missing = engine.resolve_mapping(
+        [{"position": only["id"], "mode": "field", "value": "shipment.id"}],
+        {"shipment": {"id": SHIPMENT_ID}, "customer": {"name": EXPECTED_CUSTOMER_NAME}},
+        manual={},
+    )
+    with pytest.raises(engine.UploadedTemplateError):
+        engine.render_uploaded(
+            raw, kind=engine.KIND_DOCX, template_sha256="", values=values
+        )
+
+
+def test_a_multi_token_run_survives_the_full_upload_to_download_flow(staging):
+    """B7 end to end: real upload -> mapping -> publish -> generate -> download.
+
+    The engine-level test proves the substitution; this proves the whole Admin
+    and staff flow carries a distinct value per placeholder, using the verified
+    staging facts rather than values typed into the test.
+    """
+    raw = _docx_with_runs(
+        "Lô {{shipment.id}} / Booking {{shipment.booking_no}} / KH {{customer.name}}"
+    )
+    _admin()
+    draft = _dispatch_template("docgen_template_upload", {
+        "label": "BB NHIEU TOKEN", "fileName": "bb-nhieu-token.docx",
+        "base64": _b64(raw), "requestId": "req-multitoken",
+    }, seq=1)
+    assert draft["ok"], draft
+    template_id = draft["readback"]["id"]
+
+    # Detection offers the Admin one row per placeholder, labelled with the
+    # field that will actually be printed there.
+    detected = draft["readback"]["detected"]
+    assert [item["label"] for item in detected] == [
+        "shipment.id", "shipment.booking_no", "customer.name"
+    ], detected
+    mapping = [
+        {"position": item["id"], "mode": "field", "value": item["suggestion"]}
+        for item in detected
+    ]
+    saved = _dispatch_template("docgen_template_mapping_save", {
+        "templateId": template_id, "mapping": mapping, "requestId": "req-mt-map",
+    }, seq=2)
+    assert saved["ok"], saved
+    published = _dispatch_template("docgen_template_publish", {
+        "templateId": template_id, "requestId": "req-mt-pub",
+    }, seq=3)
+    assert published["ok"], published
+
+    _support()
+    generated = _dispatch_generate({"shipmentId": SHIPMENT_ID, "templateId": template_id}, seq=4)
+    assert generated["ok"], generated
+    stored = _fetch(generated["persisted"]["attachmentId"])["data"]
+    assert hashlib.sha256(stored).hexdigest() == generated["persisted"]["outputHash"]
+
+    text = _docx_text(stored)
+    assert f"Lô {SHIPMENT_ID} / Booking {EXPECTED_BOOKING} / KH {EXPECTED_CUSTOMER_NAME}" in text
+    # The corrupted shape must be impossible.
+    assert f"Booking {SHIPMENT_ID}" not in text
+    assert f"KH {SHIPMENT_ID}" not in text

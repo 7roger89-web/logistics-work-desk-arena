@@ -524,21 +524,42 @@ def _parse_docx_positions(raw: bytes) -> list[dict[str, Any]]:
                 position_id = _docx_position_id(
                     paragraph=para_index, run=run_index, table=table, row=row, col=col
                 )
-                marker = _MARKER_PATTERN.search(current)
-                if marker:
-                    positions.append(
-                        {
-                            "id": position_id,
-                            "kind": KIND_DOCX,
-                            "sheet": "",
-                            "cell": position_id,
-                            "label": marker.group(1)[:MAX_LABEL_TEXT],
-                            "text": current[:MAX_LABEL_TEXT],
-                            "prefix": "",
-                            "suggestion": suggest_field(marker.group(1)) or _match_token(marker.group(1)),
-                            "detectedBy": "marker",
-                        }
-                    )
+                token_names = _MARKER_PATTERN.findall(current)
+                if token_names:
+                    # A run holding several DIFFERENT placeholders is not one
+                    # fill target: ``Lô {{shipment.id}} / KH {{customer.name}}``
+                    # needs two independently mappable positions, or a single
+                    # confirmed value would be printed into both and the file
+                    # would name the wrong customer.  Distinct tokens therefore
+                    # get one position each, addressed by token index.
+                    #
+                    # Repeated occurrences of the SAME token stay ONE position
+                    # (one value is correct for all of them), which also keeps
+                    # the plain ``p/r`` id — and every mapping published before
+                    # per-token positions — valid.
+                    if len(dict.fromkeys(token_names)) > 1:
+                        targets = [
+                            (f"{position_id}/t{index}", name)
+                            for index, name in enumerate(token_names)
+                        ]
+                    else:
+                        targets = [(position_id, token_names[0])]
+                    for token_id, name in targets:
+                        if len(positions) >= MAX_POSITIONS:
+                            return
+                        positions.append(
+                            {
+                                "id": token_id,
+                                "kind": KIND_DOCX,
+                                "sheet": "",
+                                "cell": token_id,
+                                "label": name[:MAX_LABEL_TEXT],
+                                "text": current[:MAX_LABEL_TEXT],
+                                "prefix": "",
+                                "suggestion": suggest_field(name) or _match_token(name),
+                                "detectedBy": "marker",
+                            }
+                        )
                     continue
 
                 # ONE-run line: "Số hợp đồng: ________" — keep the label, fill
@@ -1046,8 +1067,25 @@ def _docx_table_cell(document: Any, head: str) -> Any:
     return cells[col_index]
 
 
+_TOKEN_INDEX_PATTERN = re.compile(r"/t(\d+)$")
+
+
+def _split_token_index(position: str) -> tuple[str, int | None]:
+    """Split ``p0/r0/t2`` into ``("p0/r0", 2)``; ``p0/r0`` into ``("p0/r0", None)``."""
+    cleaned = _text(position)
+    match = _TOKEN_INDEX_PATTERN.search(cleaned)
+    if not match:
+        return cleaned, None
+    return cleaned[: match.start()], int(match.group(1))
+
+
 def _docx_run_for(document: Any, position: str) -> Any:
-    """Resolve one detected position id (``p3/r1`` or ``t0:1:2/p0/r0``) to a run."""
+    """Resolve one detected position id (``p3/r1`` or ``t0:1:2/p0/r0``) to a run.
+
+    A trailing ``/t<n>`` selects one placeholder *inside* the run and is handled
+    by the caller, so it is stripped here.
+    """
+    position, _token_index = _split_token_index(position)
     segments = _text(position).split("/")
     if len(segments) == 2:
         container, para_segment, run_segment = document, segments[0], segments[1]
@@ -1074,26 +1112,62 @@ def _docx_run_for(document: Any, position: str) -> Any:
     return runs[run_index]
 
 
-def _replace_tokens_in_run(run: Any, value: str) -> None:
-    """Fill ONLY the ``{{token}}`` placeholders, keeping the run's own words.
+def _apply_run_replacements(run: Any, replacements: list[tuple[int | None, str]]) -> None:
+    """Fill the ``{{token}}`` placeholders of ONE run, keeping its own words.
 
-    ``Xác nhận: {{shipment.id}} (đã kiểm)`` is a single ordinary Word run.  A
-    whole-run assignment would silently delete the printed label and the
-    trailing note — a legal wording change nobody can see happen.  So the label
-    and every non-token character are preserved verbatim and only the token
-    spans are substituted.
+    ``Xác nhận: {{shipment.id}} (đã kiểm)`` is a single ordinary Word run, and a
+    whole-run assignment would silently delete the printed label — so only the
+    placeholder spans are substituted and every other character survives
+    verbatim.
 
-    One position carries one confirmed value, so every token span in that run
-    receives it.  Detection offers one position per run, which is the limit of
-    what an Admin can map; this neither adds nor removes placeholders.
+    ``replacements`` pairs a token index with its confirmed value.  Several
+    placeholders in one run arrive together and are applied in a single pass, so
+    each keeps its own value instead of the last one overwriting the others.
+
+    A replacement with no token index means "this whole run is the fill target".
+    That is correct while the run holds at most ONE distinct placeholder.  If the
+    run holds several different ones, there is no way to know which placeholder
+    the value belongs to, so the render is refused rather than guessed — a
+    wrong-but-valid-looking file is the worst possible outcome.
     """
     current = run.text or ""
-    if not _MARKER_PATTERN.search(current):
-        # No token here (a blank run, or a kept label + blank tail): the whole
-        # run is the fill target, exactly as before.
-        run.text = str(value)
+    occurrences = list(_MARKER_PATTERN.finditer(current))
+
+    if not occurrences:
+        # No placeholder here (a blank run, or a kept label + blank tail): the
+        # whole run is the fill target, exactly as before.
+        run.text = str(replacements[0][1])
         return
-    run.text = _MARKER_PATTERN.sub(lambda _match: str(value), current)
+
+    by_index: dict[int, str] = {}
+    whole_run: list[str] = []
+    for token_index, value in replacements:
+        if token_index is None:
+            whole_run.append(str(value))
+        else:
+            by_index[token_index] = str(value)
+
+    if whole_run:
+        distinct = list(dict.fromkeys(match.group(1) for match in occurrences))
+        if len(distinct) > 1:
+            raise UploadedTemplateError(
+                "Một dòng trong tệp chứa nhiều trường khác nhau "
+                f"({', '.join(distinct[:4])}); không thể suy ra trường nào nhận giá trị này. "
+                "Hãy xác nhận lại vị trí điền cho từng trường."
+            )
+        for index in range(len(occurrences)):
+            by_index.setdefault(index, whole_run[0])
+
+    pieces: list[str] = []
+    cursor = 0
+    for index, match in enumerate(occurrences):
+        pieces.append(current[cursor:match.start()])
+        # An unmapped placeholder is left exactly as written: render_uploaded
+        # refuses a file that still contains "{{", so nothing is invented.
+        pieces.append(by_index.get(index, match.group(0)))
+        cursor = match.end()
+    pieces.append(current[cursor:])
+    run.text = "".join(pieces)
 
 
 def _render_docx(raw: bytes, values: Mapping[str, str]) -> bytes:
@@ -1101,11 +1175,24 @@ def _render_docx(raw: bytes, values: Mapping[str, str]) -> bytes:
     import docx
 
     document = docx.Document(io.BytesIO(raw))
+
+    # Group by RUN before writing: several placeholders in one run must be
+    # applied in a single pass, because each write changes the run's text and
+    # would re-index the placeholders still waiting.  The group key is the
+    # canonical base position ("p0/r0"), NOT id(run) — python-docx hands back a
+    # fresh Run wrapper on every access, so object identity would split one run
+    # into several groups and misalign every index after the first.
+    per_run: dict[str, list[tuple[int | None, str]]] = {}
     for position, value in values.items():
-        run = _docx_run_for(document, position)
-        if run is None:
+        base, token_index = _split_token_index(position)
+        if _docx_run_for(document, position) is None:
             continue
-        _replace_tokens_in_run(run, value)
+        per_run.setdefault(base, []).append((token_index, str(value)))
+
+    for base, replacements in per_run.items():
+        run = _docx_run_for(document, base)
+        if run is not None:
+            _apply_run_replacements(run, replacements)
 
     buffer = io.BytesIO()
     document.save(buffer)
