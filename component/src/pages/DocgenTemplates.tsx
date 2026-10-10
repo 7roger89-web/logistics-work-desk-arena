@@ -27,6 +27,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
+  Eye,
   FileSpreadsheet,
   FileText,
   Info,
@@ -43,7 +44,7 @@ import {
   ToneBadge,
   inputCls,
 } from "../components/ui";
-import { cx } from "../lib/format";
+import { cx, downloadBinaryFile } from "../lib/format";
 import { dispatchLogiEvent, type LogiEventName } from "../lib/dispatcher";
 import { docgenTemplateWorkspace, getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import type {
@@ -57,6 +58,7 @@ const TEMPLATE_EVENTS = new Set([
   "docgen_template_mapping_save",
   "docgen_template_publish",
   "docgen_template_status_set",
+  "docgen_template_preview",
 ]);
 
 const STATUS_TONE: Record<string, "green" | "amber" | "gray"> = {
@@ -94,7 +96,7 @@ export default function DocgenTemplates() {
   const [editing, setEditing] = useState<UploadedTemplateRow | null>(null);
   const [draftMapping, setDraftMapping] = useState<UploadedTemplateMapping[]>([]);
   const [pending, setPending] = useState<string>("");
-  const [notice, setNotice] = useState<{ tone: "green" | "red"; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ tone: "green" | "amber" | "red"; text: string } | null>(null);
 
   const canManage = workspace?.canManage === true;
   const templates = useMemo(() => workspace?.templates ?? [], [workspace?.templates]);
@@ -120,9 +122,34 @@ export default function DocgenTemplates() {
     if (!outcome) return;
     setPending("");
     if (outcome.ok) {
-      setNotice({ tone: "green", text: String(outcome.message ?? "Đã lưu.") });
-      if (outcome.event === "docgen_template_mapping_save" || outcome.event === "docgen_template_publish") {
-        setEditing(null);
+      if (outcome.event === "docgen_template_preview") {
+        // The trial file is the whole point of the review step: hand it to the
+        // browser and name any position the Admin still has to resolve.  Nothing
+        // was persisted, so there is no history to refresh.
+        const preview = (outcome.readback ?? {}) as {
+          fileName?: string;
+          mime?: string;
+          bytesBase64?: string;
+          marker?: string;
+          missing?: string[];
+        };
+        downloadBinaryFile(
+          preview.fileName ?? "XEM-THU.docx",
+          preview.bytesBase64 ?? null,
+          preview.mime ?? "application/octet-stream"
+        );
+        const gaps = (preview.missing ?? []).filter(Boolean);
+        setNotice({
+          tone: gaps.length ? "amber" : "green",
+          text: gaps.length
+            ? `Bản xem thử đã tải (dữ liệu giả ${preview.marker ?? ""}). Còn thiếu: ${gaps.join("; ")}`
+            : `Bản xem thử đã tải bằng dữ liệu giả ${preview.marker ?? ""}; chưa lưu hồ sơ nào.`,
+        });
+      } else {
+        setNotice({ tone: "green", text: String(outcome.message ?? "Đã lưu.") });
+        if (outcome.event === "docgen_template_mapping_save" || outcome.event === "docgen_template_publish") {
+          setEditing(null);
+        }
       }
     } else {
       setNotice({ tone: "red", text: String(outcome.error ?? "Backend từ chối thao tác.") });
@@ -246,7 +273,9 @@ export default function DocgenTemplates() {
               "mt-3 rounded-lg border px-3 py-2 text-[13px] font-semibold",
               notice.tone === "red"
                 ? "border-red-200 bg-red-50 text-red-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : notice.tone === "amber"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
             )}
           >
             {notice.text}
@@ -372,6 +401,13 @@ export default function DocgenTemplates() {
                         <GhostBtn onClick={() => openMapping(row)} testId={`docgen-template-map-${row.id}`}>
                           Xác nhận vị trí điền ({row.detected?.length ?? 0} vị trí nhận diện)
                         </GhostBtn>
+                        <GhostBtn
+                          onClick={() => send("docgen_template_preview", { templateId: row.id })}
+                          disabled={Boolean(pending) || row.mappingCount === 0}
+                          testId={`docgen-template-preview-${row.id}`}
+                        >
+                          <Eye size={15} aria-hidden="true" /> Xem thử (dữ liệu giả)
+                        </GhostBtn>
                         <PrimaryBtn
                           onClick={() => send("docgen_template_publish", { templateId: row.id })}
                           disabled={Boolean(pending) || row.mappingCount === 0}
@@ -380,6 +416,15 @@ export default function DocgenTemplates() {
                           <CheckCircle2 size={15} aria-hidden="true" /> Phát hành
                         </PrimaryBtn>
                       </>
+                    )}
+                    {row.status === "ACTIVE" && (
+                      <GhostBtn
+                        onClick={() => send("docgen_template_preview", { templateId: row.id })}
+                        disabled={Boolean(pending)}
+                        testId={`docgen-template-preview-${row.id}`}
+                      >
+                        <Eye size={15} aria-hidden="true" /> Xem thử (dữ liệu giả)
+                      </GhostBtn>
                     )}
                     {row.status === "ACTIVE" && (
                       <GhostBtn

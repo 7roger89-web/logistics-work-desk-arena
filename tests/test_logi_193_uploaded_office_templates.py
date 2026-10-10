@@ -25,6 +25,7 @@ import base64
 import hashlib
 import io
 from datetime import datetime
+import struct
 import zipfile
 
 import pytest
@@ -1012,6 +1013,7 @@ def test_a_second_ordinary_template_is_onboarded_by_upload_without_code_change(s
     assert vm.logi_templates.DOCGEN_TEMPLATE_EVENTS == {
         "docgen_template_upload", "docgen_template_mapping_save",
         "docgen_template_publish", "docgen_template_status_set",
+        "docgen_template_preview",
     }
     assert engine.UPLOADED_ADAPTER == "UPLOADED_DOCGEN"
 
@@ -1239,3 +1241,399 @@ def test_form07_readiness_still_fails_closed_on_its_own_rules():
     )
     assert blocked.state != READY
     assert blocked.missing
+
+
+# ---------------------------------------------------------------------------
+# CONTROL TOWER REVIEW — blocker regressions
+# ---------------------------------------------------------------------------
+
+def _count_durable_writes(shipment_id: str) -> tuple[int, int]:
+    """(docgen metadata rows, attachment rows) for one shipment."""
+    db = database.get_db()
+    docs = len([
+        row for row in (database.load_docgen_documents(shipment_id) or {}).values()
+        if isinstance(row, dict) and row.get("is_deleted") is not True
+    ])
+    attachments = len(list(db["shipment_attachments"].find({"shipment_id": shipment_id})))
+    return docs, attachments
+
+
+def test_a_retired_template_cannot_be_generated_by_a_direct_event(staging):
+    """Retire must stop generation server-side, not only hide the picker row.
+
+    A forged ``uploaded_template_generate`` naming a RETIRED template still
+    finds a published version row (retire keeps history by design), so the
+    handler has to check the template STATUS itself.
+    """
+    template = _upload_publish(build_pilot_docx(), "BB RETIRED GEN", "bb-retired-gen.docx")
+    _support()
+    first = _dispatch_generate({"shipmentId": SHIPMENT_ID, "templateId": template["id"]}, seq=1)
+    assert first["ok"], first
+
+    _admin()
+    retired = _dispatch_template("docgen_template_status_set", {
+        "templateId": template["id"], "active": False, "requestId": "req-retire-gen",
+    }, seq=4)
+    assert retired["ok"] and retired["readback"]["status"] == "RETIRED"
+    # The version row survives — that is what makes the status check necessary.
+    assert store.active_version(store.get_template(template["id"])) is not None
+
+    before = _count_durable_writes(SHIPMENT_ID)
+    forged = _dispatch_generate({"shipmentId": SHIPMENT_ID, "templateId": template["id"]}, seq=5)
+    assert forged["ok"] is False, "a retired template must not generate"
+    assert "ngừng" in forged["error"].lower() or "retired" in forged.get("gate", "").lower()
+    assert forged.get("gate") == "TEMPLATE_RETIRED"
+
+    # Zero attachment and zero metadata writes from the refused generation.
+    assert _count_durable_writes(SHIPMENT_ID) == before
+
+    # The already-generated history stays downloadable.
+    still = _fetch(first["persisted"]["attachmentId"])
+    assert still["ok"] and still["data"][:2] == b"PK"
+
+
+def test_publishing_an_already_active_template_does_not_create_a_new_version(staging):
+    """Publish on an ACTIVE template must not mint an unintended version."""
+    template = _upload_publish(build_pilot_docx(), "BB PUB TWICE", "bb-pub-twice.docx")
+    assert template["status"] == "ACTIVE"
+    assert template["activeVersion"] == 1 and template["versionCount"] == 1
+
+    _admin()
+    again = _dispatch_template("docgen_template_publish", {
+        "templateId": template["id"], "requestId": "req-pub-again",
+    }, seq=4)
+    assert again["ok"] is False, "re-publishing without a new draft must be refused"
+
+    row = store.get_template(template["id"])
+    assert len(row["versions"]) == 1, "no extra version row was created"
+    assert row["activeVersion"] == 1
+
+
+def test_uncompressed_limits_are_checked_before_any_member_is_decompressed(staging, monkeypatch):
+    """The zip-bomb limits must run before testzip()/read() touch member bytes.
+
+    ``ZipFile.testzip()`` fully decompresses every member to CRC-check it, so
+    calling it first defeats the very limits meant to stop a bomb.
+    """
+    import zipfile as _zipfile
+
+    # Build the fixture BEFORE arming the spies: python-docx itself calls
+    # ZipFile.read while assembling the package, which is not what is under test.
+    ordinary = build_pilot_docx()
+
+    def _boom(self, *args, **kwargs):  # noqa: ANN001 - spy
+        raise AssertionError("scan_package_safety decompressed a member before the limits")
+
+    monkeypatch.setattr(_zipfile.ZipFile, "testzip", _boom, raising=True)
+    monkeypatch.setattr(_zipfile.ZipFile, "read", _boom, raising=True)
+
+    # Shrink the limits rather than allocate a real 40 MB bomb: the point is the
+    # ORDER of the checks, and the spies above fail if any member is touched.
+    monkeypatch.setattr(engine, "MAX_UNCOMPRESSED_BYTES", 8)
+    findings = engine.scan_package_safety(ordinary)
+    assert findings["ok"] is False
+    assert any("uncompressed size too large" in issue for issue in findings["issues"]), findings
+
+    # Same for the part-count limit, with a genuinely many-part package.
+    monkeypatch.setattr(engine, "MAX_PARTS", 3)
+    findings = engine.scan_package_safety(ordinary)
+    assert findings["ok"] is False
+    assert any("too many parts" in issue for issue in findings["issues"]), findings
+
+    # And the compression-ratio limit, again without inflating anything.
+    monkeypatch.setattr(engine, "MAX_UNCOMPRESSED_RATIO", 1.0001)
+    findings = engine.scan_package_safety(ordinary)
+    assert findings["ok"] is False
+    assert any("suspicious compression ratio" in issue for issue in findings["issues"]), findings
+
+
+def test_an_ordinary_file_still_passes_the_reordered_safety_scan(staging):
+    """The reordering must not break real uploads."""
+    for raw, kind in ((build_pilot_docx(), engine.KIND_DOCX), (build_pilot_xlsx(), engine.KIND_XLSX)):
+        findings = engine.scan_package_safety(raw)
+        assert findings["ok"] is True, findings
+        assert engine.detect_kind("x.docx" if kind == engine.KIND_DOCX else "x.xlsx", raw) == kind
+
+
+def _rels_package(rels_xml: str) -> bytes:
+    """A minimal but valid DOCX whose root .rels carries the given relationship."""
+    inner = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + rels_xml +
+        '</Relationships>'
+    )
+    document = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:body><w:p><w:r><w:t>Khách hàng: </w:t></w:r>'
+        '<w:r><w:t>____</w:t></w:r></w:p></w:body></w:document>'
+    )
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/word/document.xml" ContentType='
+        '"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        '</Types>'
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as sink:
+        sink.writestr("[Content_Types].xml", content_types)
+        sink.writestr("_rels/.rels", inner)
+        sink.writestr("word/document.xml", document)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("rels_xml,label", [
+    # The double-quoted form the original regex already caught.
+    ('<Relationship Id="rId1" Type="http://x/y" Target="http://evil/x" TargetMode="External"/>',
+     "double-quoted external"),
+    # Single-quoted XML is equally legal — and slipped past a "..."-only regex.
+    ("<Relationship Id='rId1' Type='http://x/y' Target='http://evil/x' TargetMode='External'/>",
+     "single-quoted external"),
+    # Attribute order / spacing must not matter either.
+    ('<Relationship TargetMode="External" Id="rId1" Target="file:///etc/passwd" Type="http://x/y"/>',
+     "reordered attributes"),
+    # A relative Target is fine, but an external SCHEME is not, quoted either way.
+    ("<Relationship Id='rId2' Type='http://x/y' Target='file:///tmp/x'/>",
+     "single-quoted file scheme"),
+])
+def test_external_relationships_are_refused_whatever_quote_style_is_used(staging, rels_xml, label):
+    """Relationships are parsed as XML, so quoting style cannot hide an external target."""
+    raw = _rels_package(rels_xml)
+    findings = engine.scan_package_safety(raw)
+    assert findings["ok"] is False, f"{label} was accepted: {findings}"
+    assert any("external relationship" in issue for issue in findings["issues"]), findings
+    with pytest.raises(engine.UploadedTemplateError):
+        engine.validate_uploaded_template("mau.docx", raw)
+
+
+def test_an_internal_relationship_is_not_refused_by_the_xml_scan(staging):
+    raw = _rels_package(
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="word/document.xml"/>'
+    )
+    findings = engine.scan_package_safety(raw)
+    assert findings["ok"] is True, findings
+
+
+def _duplicate_named_customers() -> None:
+    """Seed two customers that share a NAME but differ in id and tax code."""
+    db = database.get_db()
+    db["shipments"].update_one({"id": SHIPMENT_ID}, {"$unset": {"customer_id": ""}})
+    db["shipments"].update_one(
+        {"id": SHIPMENT_ID}, {"$set": {"customer": "CÔNG TY TRÙNG TÊN"}}
+    )
+    db["customers"].delete_many({"name": "CÔNG TY TRÙNG TÊN"})
+    db["customers"].insert_many([
+        {"id": "CUST-DUP-A", "name": "CÔNG TY TRÙNG TÊN", "tax_code": "0100000001",
+         "address": "Địa chỉ A", "is_deleted": False},
+        {"id": "CUST-DUP-B", "name": "CÔNG TY TRÙNG TÊN", "tax_code": "0100000002",
+         "address": "Địa chỉ B", "is_deleted": False},
+    ])
+
+
+def _publish_customer_name_template(label: str, file_name: str, request: str) -> str:
+    """Publish a template whose ONLY mapping needs ``customer.name``."""
+    _admin()
+    draft = _dispatch_template("docgen_template_upload", {
+        "label": label, "fileName": file_name,
+        "base64": _b64(build_pilot_docx()), "requestId": f"req-{request}",
+    }, seq=1)
+    assert draft["ok"], draft
+    template_id = draft["readback"]["id"]
+    position = draft["readback"]["detected"][0]["id"]
+    saved = _dispatch_template("docgen_template_mapping_save", {
+        "templateId": template_id, "requestId": f"req-map-{request}",
+        "mapping": [{"position": position, "mode": "field", "value": "customer.name"}],
+    }, seq=2)
+    assert saved["ok"], saved
+    published = _dispatch_template("docgen_template_publish", {
+        "templateId": template_id, "requestId": f"req-pub-{request}",
+    }, seq=3)
+    assert published["ok"], published
+    return template_id
+
+
+def test_two_customers_sharing_a_name_never_resolve_to_one_of_them(staging):
+    """An ambiguous free-text customer name must fail closed, not pick a winner.
+
+    Both customers are named the same but carry different ids and tax codes, so
+    a name match cannot identify a legal entity — and picking one would print
+    the other's identity on a document.  The readiness projection and the
+    generation handler must agree.
+    """
+    _duplicate_named_customers()
+    template_id = _publish_customer_name_template(
+        "BB TRÙNG TÊN", "bb-trung-ten.docx", "dup"
+    )
+
+    # Generation refuses: neither tax code may stand in for the other.
+    _support()
+    outcome = _dispatch_generate(
+        {"shipmentId": SHIPMENT_ID, "templateId": template_id}, seq=9
+    )
+    assert outcome["ok"] is False, outcome
+    assert outcome.get("gate") == "MISSING_INFO", outcome
+
+    # The shared resolver — the ONE place both surfaces read identity from —
+    # returns NO customer rather than an arbitrary one.
+    db = database.get_db()
+    shipment = dict(db["shipments"].find_one({"id": SHIPMENT_ID}) or {})
+    customers = {
+        row["id"]: row for row in db["customers"].find({"name": "CÔNG TY TRÙNG TÊN"})
+    }
+    assert len(customers) == 2
+    _cid, _contract, _company, customer = vm._resolve_uploaded_template_parties(
+        shipment, SHIPMENT_ID,
+        contracts={}, companies={}, customers=customers,
+    )
+    assert customer == {}, "an ambiguous name resolves to NO customer"
+
+    # And the readiness the picker card shows says the same thing.
+    readiness = engine.evaluate_uploaded_readiness(
+        store.active_version(store.get_template(template_id))["mapping"],
+        vm._uploaded_template_facts(shipment, contract={}, company={}, customer={}),
+        manual={},
+    )
+    assert readiness.state == "MISSING_INFO"
+    assert readiness.missing, "the operator is told what is missing"
+
+
+def test_a_unique_customer_name_match_is_still_accepted(staging):
+    """A provably-unique name match is not ambiguity and must keep working."""
+    db = database.get_db()
+    db["shipments"].update_one({"id": SHIPMENT_ID}, {"$unset": {"customer_id": ""}})
+    db["shipments"].update_one({"id": SHIPMENT_ID}, {"$set": {"customer": "CÔNG TY DUY NHẤT"}})
+    db["customers"].delete_many({"name": {"$in": ["CÔNG TY DUY NHẤT", "CÔNG TY TRÙNG TÊN"]}})
+    db["customers"].insert_one({"id": "CUST-ONLY", "name": "CÔNG TY DUY NHẤT",
+                                "tax_code": "0100000009", "is_deleted": False})
+    shipment = dict(db["shipments"].find_one({"id": SHIPMENT_ID}) or {})
+    _id, _contract, _company, customer = vm._resolve_uploaded_template_parties(
+        shipment, SHIPMENT_ID,
+        contracts={}, companies={},
+        customers={"CUST-ONLY": db["customers"].find_one({"id": "CUST-ONLY"})},
+    )
+    assert customer.get("id") == "CUST-ONLY"
+    assert customer.get("tax_code") == "0100000009"
+
+
+def _draft_template(label: str, file_name: str, request: str, *, raw=None) -> str:
+    """Upload + confirm a mapping, but DO NOT publish."""
+    _admin()
+    draft = _dispatch_template("docgen_template_upload", {
+        "label": label, "fileName": file_name,
+        "base64": _b64(raw if raw is not None else build_pilot_docx()),
+        "requestId": f"req-{request}",
+    }, seq=1)
+    assert draft["ok"], draft
+    template_id = draft["readback"]["id"]
+    mapping = [
+        {"position": item["id"], "mode": "field", "value": item["suggestion"]}
+        for item in draft["readback"]["detected"] if item["suggestion"]
+    ]
+    saved = _dispatch_template("docgen_template_mapping_save", {
+        "templateId": template_id, "mapping": mapping, "requestId": f"req-map-{request}",
+    }, seq=2)
+    assert saved["ok"], saved
+    return template_id
+
+
+def _dispatch_preview(template_id: str, seq: int = 3) -> dict:
+    _admin()
+    outcomes = vm.logi_templates.consume_docgen_template_triggers(
+        {"seq": seq - 1},
+        {"docgen_template_preview": {
+            "seq": seq, "event": "docgen_template_preview",
+            "payload": {"templateId": template_id, "requestId": f"req-prev-{seq}"},
+        }},
+    )
+    assert len(outcomes) == 1, outcomes
+    return outcomes[0]
+
+
+def test_admin_can_preview_a_draft_before_publishing_it(staging):
+    """Issue #193: the Admin sees the filled result BEFORE activating."""
+    template_id = _draft_template("BB XEM THU", "bb-xem-thu.docx", "prev")
+    assert store.get_template(template_id)["status"] == "DRAFT"
+
+    outcome = _dispatch_preview(template_id)
+    assert outcome["ok"], outcome
+    assert outcome["gate"] == "PREVIEW_READY"
+    readback = outcome["readback"]
+    assert readback["persisted"] is False
+    assert readback["fileName"].startswith("XEM-THU_")
+    assert readback["marker"] == engine.PREVIEW_MARKER
+
+    raw = base64.b64decode(readback["bytesBase64"])
+    assert raw[:2] == b"PK"
+    assert hashlib.sha256(raw).hexdigest() == readback["sha256"]
+
+    # The sample data is unmistakably fake, and no real staging fact leaked in.
+    text = _docx_text(raw)
+    assert engine.PREVIEW_MARKER in text
+    assert EXPECTED_CUSTOMER_NAME not in text
+    assert EXPECTED_CUSTOMER_TAX_CODE not in text
+    assert SHIPMENT_ID not in text
+
+
+def test_a_preview_writes_no_attachment_metadata_or_shipment_record(staging):
+    """A preview must never enter any history or touch a real lot."""
+    template_id = _draft_template("BB XEM THU 2", "bb-xem-thu-2.docx", "prev2")
+    before = _count_durable_writes(SHIPMENT_ID)
+    templates_before = len(store.load_registry())
+
+    outcome = _dispatch_preview(template_id)
+    assert outcome["ok"], outcome
+
+    assert _count_durable_writes(SHIPMENT_ID) == before, "a preview wrote durable rows"
+    assert len(store.load_registry()) == templates_before
+    # Still a draft: previewing did not publish anything.
+    row = store.get_template(template_id)
+    assert row["status"] == "DRAFT"
+    assert not row.get("activeVersion")
+    assert not row.get("versions")
+    # And it is still not selectable by staff.
+    catalog = project_catalog(contract_templates_available=False, pxk_template_available=False,
+                              storage_configured=True, form07_template_available=False,
+                              catalog=effective_catalog())
+    assert not any(item["id"] == template_id for item in catalog)
+
+
+def test_a_non_admin_cannot_preview_a_template(staging):
+    template_id = _draft_template("BB XEM THU 3", "bb-xem-thu-3.docx", "prev3")
+    _support()
+    outcomes = vm.logi_templates.consume_docgen_template_triggers(
+        {"seq": 0},
+        {"docgen_template_preview": {
+            "seq": 1, "event": "docgen_template_preview",
+            "payload": {"templateId": template_id, "requestId": "req-prev-denied"},
+        }},
+    )
+    assert outcomes[0]["ok"] is False
+    assert outcomes[0]["gate"] == "BLOCKED_PERMISSION_DENIED"
+
+
+def test_a_preview_reports_unresolved_positions_instead_of_filling_them(staging):
+    """The point of reviewing first: gaps are named, not papered over."""
+    template_id = _draft_template("BB XEM THU 4", "bb-xem-thu-4.docx", "prev4")
+    # Add a manual field with no value: the preview must say it is missing.
+    _admin()
+    row = store.get_template(template_id)
+    mapping = list(row.get("mapping") or [])
+    # Turn one confirmed field back into an operator-typed field with no value
+    # yet: the preview must name that gap instead of filling it.
+    mapping[0] = {"position": mapping[0]["position"], "mode": "manual",
+                  "value": "Số biên bản"}
+    saved = _dispatch_template("docgen_template_mapping_save", {
+        "templateId": template_id, "mapping": mapping, "requestId": "req-prev4-map",
+    }, seq=4)
+    assert saved["ok"], saved.get("error")
+
+    outcome = _dispatch_preview(template_id, seq=5)
+    assert outcome["ok"], outcome
+    assert outcome["readback"]["missing"], "the operator-typed gap must be reported"
+    assert any("Số biên bản" in item for item in outcome["readback"]["missing"])

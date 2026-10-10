@@ -198,6 +198,18 @@ assert.equal(fileInput.getAttribute("accept"), ".docx,.xlsx",
 assert.ok(bodyText().includes(WORKSPACE.maxUploadLabel), "the server upload limit is displayed");
 console.log("  ✓ upload surface takes its limits from the server projection");
 
+// Issue #193 requires the Admin to review the result BEFORE activating, so every
+// row offers a trial render.  It is a normal button on the existing page — no
+// editor, no viewer framework, and the bytes come from the server.
+const previewButtons = $("[data-testid^='docgen-template-preview-']");
+assert.equal(previewButtons.length, 2, "each template offers a pre-publish trial render");
+for (const button of previewButtons) {
+  assert.ok(text(button).includes("dữ liệu giả"),
+    "the trial render is labelled as fake data so it can never be mistaken for a real file");
+  assert.equal(button.disabled, false, "the trial render is available");
+}
+console.log("  ✓ every template offers a labelled pre-publish trial render");
+
 // The safety boundary notes are the server's own wording.
 for (const note of WORKSPACE.notes) {
   assert.ok(bodyText().includes(note.slice(0, 40)), `server note rendered: ${note.slice(0, 30)}…`);
@@ -233,6 +245,8 @@ assert.equal($("[data-testid='docgen-template-row']").length, 2,
   "the list itself is still visible (display hint only)");
 assert.equal($("[data-testid^='docgen-template-retire-']").length, 0,
   "a non-Admin gets no lifecycle control");
+assert.equal($("[data-testid^='docgen-template-preview-']").length, 0,
+  "a non-Admin gets no trial render (the server re-checks anyway)");
 console.log("  ✓ non-Admin: same truth, zero write controls (server still re-checks)");
 
 // ===========================================================================

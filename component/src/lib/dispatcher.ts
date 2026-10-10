@@ -72,6 +72,7 @@ export type LogiEventName =
   | "docgen_template_mapping_save"
   | "docgen_template_publish"
   | "docgen_template_status_set"
+  | "docgen_template_preview"
   // LOGI_GETFLY_DSDH_IMPORT_PARITY_01 — real XLSX preview then explicit
   // commit. The browser sends bytes only for preview; commit references the
   // server-issued previewId and operator VAT choices.

@@ -105,9 +105,6 @@ _BANNED_XML_PATTERN = re.compile(
     r"<w:ins[ >]|<w:del[ >]|instrText|fldSimple|w:attachedTemplate"
     r"|DDEAUTO|DDEDATA|ProgID=\"DDE|o:OLEObject|<w:subDoc"
 )
-_EXTERNAL_REL_PATTERN = re.compile(
-    r'TargetMode="External"|Target="(?:https?|file|ftp|mailto|\\\\):'
-)
 _MARKER_PATTERN = re.compile(r"\{\{\s*([A-Za-z0-9_.]{1,64})\s*\}\}")
 _BLANK_RUN_PATTERN = re.compile(r"^[\s_.\-–—·]{2,}$")
 # An ordinary Word line is often ONE run: "Số hợp đồng: ________".  The printed
@@ -357,38 +354,107 @@ def detect_kind(file_name: str, data: bytes) -> str:
     return KIND_XLSX
 
 
+_EXTERNAL_SCHEMES = ("http:", "https:", "file:", "ftp:", "mailto:", "\\\\")
+
+
+def _external_relationship_parts(payload: str) -> list[str]:
+    """Parse a .rels part as XML and report every external relationship.
+
+    A regex over the serialised text can be dodged by anything XML allows but
+    the pattern did not enumerate — single-quoted attributes, reordered
+    attributes, unusual whitespace, entity-encoded values.  Parsing removes the
+    whole class: the parser normalises quoting and whitespace, so the check is
+    on the *value*, not on how it was written.
+
+    A part that does not parse is reported, never silently passed.
+    """
+    import xml.etree.ElementTree as ET
+
+    problems: list[str] = []
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as exc:
+        return [f"unparseable relationships xml ({exc})"]
+    for rel in root.iter():
+        if not rel.tag.endswith("Relationship"):
+            continue
+        attribs = rel.attrib
+        mode = _text(attribs.get("TargetMode")).strip().lower()
+        target = _text(attribs.get("Target")).strip()
+        if mode == "external":
+            problems.append(f"TargetMode=External -> {target[:120]!r}")
+            continue
+        # No TargetMode at all must still not smuggle an absolute/external URI.
+        lowered = target.lower()
+        if any(lowered.startswith(scheme) for scheme in _EXTERNAL_SCHEMES):
+            problems.append(f"external target scheme -> {target[:120]!r}")
+    return problems
+
+
 def scan_package_safety(raw: bytes) -> dict[str, Any]:
-    """Bounded OPC safety scan for an uploaded template OR a generated file."""
+    """Bounded OPC safety scan for an uploaded template OR a generated file.
+
+    Order matters.  Everything here that can be answered from the ZIP CENTRAL
+    DIRECTORY runs before a single member is inflated, because ``testzip()``
+    and ``read()`` both fully decompress — calling them first would hand a zip
+    bomb the memory it is trying to deny.  Only after the part-count,
+    uncompressed-size and compression-ratio limits pass does anything read
+    member bytes.
+    """
     findings: dict[str, Any] = {"ok": True, "issues": []}
     try:
         archive = zipfile.ZipFile(io.BytesIO(raw))
-        if archive.testzip() is not None:
-            findings.update(ok=False, issues=["ZIP corrupt"])
-            return findings
     except zipfile.BadZipFile:
         findings.update(ok=False, issues=["not a valid OOXML ZIP"])
         return findings
 
-    names = archive.namelist()
+    # --- Phase 1: central-directory-only limits. No member is decompressed. ---
+    try:
+        infos = archive.infolist()
+    except (zipfile.BadZipFile, NotImplementedError) as exc:
+        findings.update(ok=False, issues=[f"unreadable central directory: {exc}"])
+        return findings
+
+    names = [info.filename for info in infos]
     findings["part_count"] = len(names)
     if len(names) > MAX_PARTS:
         findings["issues"].append(f"too many parts ({len(names)})")
 
     total = 0
-    for info in archive.infolist():
+    ratio_offenders: list[str] = []
+    for info in infos:
         total += int(info.file_size or 0)
-        if info.file_size and info.compress_size:
-            if info.file_size / max(info.compress_size, 1) > MAX_UNCOMPRESSED_RATIO:
-                findings["issues"].append(f"suspicious compression ratio: {info.filename}")
+        compressed = int(info.compress_size or 0)
+        if info.file_size and compressed:
+            if info.file_size / max(compressed, 1) > MAX_UNCOMPRESSED_RATIO:
+                ratio_offenders.append(info.filename)
+    if ratio_offenders:
+        findings["issues"].append(
+            "suspicious compression ratio: " + ", ".join(ratio_offenders[:5])
+        )
     findings["uncompressed_bytes"] = total
     if total > MAX_UNCOMPRESSED_BYTES:
         findings["issues"].append(f"uncompressed size too large ({total})")
 
+    # A RESOURCE limit failing is what must short-circuit: continuing would mean
+    # inflating members of a package that has already proven unbounded.
+    if findings["issues"]:
+        findings["ok"] = False
+        return findings
+
+    # Part-NAME checks are free (no decompression), so they are reported
+    # alongside the content scan rather than instead of it — a trojan carrying
+    # both a macro part and an external relationship must report both.
     banned_parts = [name for name in names if _BANNED_PART_PATTERN.search(name)]
     if banned_parts:
         findings["issues"].append(f"banned parts: {banned_parts}")
     if any(n.lower().endswith((".docm", ".dotm", ".xlsm", ".xltm")) for n in names):
         findings["issues"].append("macro-enabled part name")
+
+    # --- Phase 2: the package is bounded, so reading members is now safe. ---
+    if archive.testzip() is not None:
+        findings.update(ok=False, issues=["ZIP corrupt"])
+        return findings
 
     for name in names:
         if not name.endswith((".xml", ".rels")):
@@ -404,10 +470,12 @@ def scan_package_safety(raw: bytes) -> dict[str, Any]:
     for name in names:
         if not name.endswith(".rels"):
             continue
-        payload = archive.read(name).decode("utf-8", errors="ignore")
-        match = _EXTERNAL_REL_PATTERN.search(payload)
-        if match:
-            findings["issues"].append(f"{name}: external relationship")
+        try:
+            payload = archive.read(name).decode("utf-8", errors="ignore")
+        except KeyError:  # pragma: no cover - defensive
+            continue
+        for problem in _external_relationship_parts(payload):
+            findings["issues"].append(f"{name}: external relationship ({problem})")
 
     findings["ok"] = not findings["issues"]
     return findings
@@ -1170,6 +1238,47 @@ def _residual_markers(raw: bytes, kind: str) -> list[str]:
 def _slug(value: str, fallback: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", _text(value)).strip("-").upper()
     return slug or fallback
+
+
+PREVIEW_MARKER = "[DU LIEU THU]"
+
+
+def preview_facts() -> dict[str, Any]:
+    """Obviously-fake, clearly-labelled sample facts for a pre-publish preview.
+
+    Derived from ``CANONICAL_FIELDS`` itself, so the preview can never drift
+    from what is bindable and can never contain a real legal identity, tax
+    code, amount or date.  Every value carries ``PREVIEW_MARKER`` so a preview
+    file is unmistakable if it is ever opened or forwarded by mistake.
+    """
+    facts: dict[str, Any] = {}
+    for field in CANONICAL_FIELDS:
+        group, _, name = field.key.partition(".")
+        facts.setdefault(group, {})[name] = f"{PREVIEW_MARKER} {field.label}"
+    facts.setdefault("goods_lines", []).append({
+        "description": f"{PREVIEW_MARKER} Tên hàng hóa mẫu",
+        "specification": f"{PREVIEW_MARKER} Quy cách mẫu",
+        "unit": f"{PREVIEW_MARKER} ĐVT",
+        "quantity": f"{PREVIEW_MARKER} Số lượng",
+    })
+    return facts
+
+
+def render_preview(
+    raw: bytes, *, kind: str, template_sha256: str, mapping: list[Mapping[str, Any]]
+) -> tuple[bytes, list[str]]:
+    """Render one trial file from labelled sample data. Returns ``(bytes, missing)``.
+
+    Reuses the production renderer, so what the Admin sees is exactly what a
+    real generation would produce — same detection-independent fill, same
+    re-scan, same determinism.  Unresolved positions are reported rather than
+    silently filled, which is the whole point of reviewing before publishing.
+    """
+    values, missing = resolve_mapping(mapping, preview_facts(), manual={})
+    rendered = render_uploaded(
+        raw, kind=kind, template_sha256=template_sha256, values=values
+    )
+    return rendered, missing
 
 
 def output_file_name(shipment_id: str, template_label: str, kind: str) -> str:

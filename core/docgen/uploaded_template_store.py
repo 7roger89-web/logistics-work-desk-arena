@@ -280,8 +280,17 @@ def publish(
     row = next((item for item in rows if _text(item.get("id")) == _text(template_id)), None)
     if row is None:
         raise UploadedTemplateError("Không tìm thấy biểu mẫu.")
-    if _text(row.get("status")).upper() == STATUS_RETIRED:
+    status = _text(row.get("status")).upper()
+    if status == STATUS_RETIRED:
         raise UploadedTemplateError("Biểu mẫu đã ngừng dùng; không phát hành lại.")
+    if status == STATUS_ACTIVE:
+        # A published row cannot take a new draft (create_draft always mints a
+        # NEW template), so a second publish could only ever freeze the exact
+        # same bytes + mapping into a duplicate version.  Refuse instead of
+        # silently inflating the version list.
+        raise UploadedTemplateError(
+            "Biểu mẫu đã phát hành; tải lên biểu mẫu mới nếu cần thay đổi nội dung."
+        )
     mapping = row.get("mapping") if isinstance(row.get("mapping"), list) else []
     if not mapping:
         raise UploadedTemplateError("Chưa có mapping nào được xác nhận — không phát hành.")
@@ -324,6 +333,35 @@ def set_active(*, template_id: str, active: bool, actor: str, db: Any = None) ->
     row["statusBy"] = _text(actor)
     _save_registry(rows)
     return row
+
+
+def preview_source(template: Mapping[str, Any], db: Any = None) -> tuple[bytes, str, list[Any]]:
+    """Bytes + SHA-256 + mapping to preview, WITHOUT publishing anything.
+
+    A draft is previewed from its own draft bytes and its still-editable
+    mapping; an already-published template previews its active version.  This
+    only READS the stored object — no attachment, no docgen revision and no
+    shipment record is written by a preview.
+    """
+    status = _text(template.get("status")).upper()
+    if status == STATUS_ACTIVE:
+        version = active_version(template) or {}
+        file_id = _text(version.get("fileId"))
+        sha256 = _text(version.get("sha256"))
+        mapping = version.get("mapping") if isinstance(version.get("mapping"), list) else []
+    else:
+        file_id = _text(template.get("draftFileId"))
+        sha256 = _text(template.get("draftSha256"))
+        mapping = template.get("mapping") if isinstance(template.get("mapping"), list) else []
+    if not file_id:
+        raise TemplateStoreError("Bản nháp thiếu tệp trong kho — không xem thử được.")
+    try:
+        raw = bytes(_store(db).download_file(file_id))
+    except TemplateStoreError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - provider failure boundary
+        raise TemplateStoreError(f"Không đọc được tệp biểu mẫu để xem thử: {exc}") from exc
+    return raw, sha256, list(mapping)
 
 
 def project_template(row: Mapping[str, Any], *, include_detected: bool = False) -> dict[str, Any]:

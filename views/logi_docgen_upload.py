@@ -37,6 +37,7 @@ DOCGEN_TEMPLATE_EVENTS = {
     "docgen_template_mapping_save",
     "docgen_template_publish",
     "docgen_template_status_set",
+    "docgen_template_preview",
 }
 
 MAX_UPLOAD_BASE64_CHARS = 8 * 1024 * 1024
@@ -213,6 +214,78 @@ def _handle_template_publish(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+def _handle_template_preview(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Render ONE trial file from clearly-labelled sample data, before publish.
+
+    Issue #193 requires the Admin to see the result before activating.  This is
+    deliberately the smallest thing that satisfies that: it reuses the SAME
+    production renderer over obviously-fake ``[DU LIEU THU]`` facts and hands
+    the bytes back to the browser.  It writes NOTHING — no attachment, no
+    docgen revision, no shipment record — so a preview can never be mistaken
+    for a real document in any history.
+    """
+    import base64
+    import hashlib
+
+    from core.docgen import uploaded_template as engine
+    from core.docgen import uploaded_template_store as store
+
+    template_id = _text(payload.get("templateId"))
+    request_id = _text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("docgen_template_preview", template_id, ok, error,
+                       requestId=request_id, **extra)
+
+    if not _admin_gate():
+        return out(False, "RBAC: chỉ Admin mới được xem thử biểu mẫu.",
+                   gate="BLOCKED_PERMISSION_DENIED")
+    if not template_id:
+        return out(False, "Thiếu templateId.", gate="INVALID_REQUEST")
+
+    try:
+        template = store.get_template(template_id)
+    except store.TemplateStoreError as exc:
+        return out(False, str(exc), gate="TEMPLATE_STORE_FAILED")
+    if template is None:
+        return out(False, "Không tìm thấy biểu mẫu.", gate="TEMPLATE_NOT_FOUND")
+
+    try:
+        raw, sha256, mapping = store.preview_source(template)
+    except store.TemplateStoreError as exc:
+        return out(False, str(exc), gate="TEMPLATE_STORE_FAILED")
+    if not mapping:
+        return out(False, "Chưa có mapping nào được xác nhận — không có gì để xem thử.",
+                   gate="TEMPLATE_NO_MAPPING")
+
+    kind = _text(template.get("kind"))
+    try:
+        rendered, missing = engine.render_preview(
+            raw, kind=kind, template_sha256=sha256, mapping=mapping
+        )
+    except engine.UploadedTemplateError as exc:
+        return out(False, str(exc), gate="PREVIEW_REJECTED")
+
+    label = _text(template.get("label")) or template_id
+    file_name = f"XEM-THU_{engine.output_file_name('PREVIEW', label, kind)}"
+    return out(
+        True,
+        "Bản xem thử dùng dữ liệu giả có nhãn; không lưu hồ sơ nào.",
+        gate="PREVIEW_READY",
+        readback={
+            "templateId": template_id,
+            "fileName": file_name,
+            "mime": engine.MIME_DOCX if kind == engine.KIND_DOCX else engine.MIME_XLSX,
+            "bytesBase64": base64.b64encode(rendered).decode("ascii"),
+            "sizeBytes": len(rendered),
+            "sha256": hashlib.sha256(rendered).hexdigest(),
+            "marker": engine.PREVIEW_MARKER,
+            "missing": list(missing),
+            "persisted": False,
+        },
+    )
+
+
 def _handle_template_status_set(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Activate/retire. Retire never deletes bytes or generated history."""
     from core.docgen import uploaded_template as engine
@@ -251,6 +324,7 @@ _HANDLERS = {
     "docgen_template_mapping_save": _handle_template_mapping_save,
     "docgen_template_publish": _handle_template_publish,
     "docgen_template_status_set": _handle_template_status_set,
+    "docgen_template_preview": _handle_template_preview,
 }
 
 

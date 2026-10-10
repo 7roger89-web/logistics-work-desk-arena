@@ -32224,7 +32224,8 @@ var Hd = /* @__PURE__ */ new Set([
 	"docgen_template_upload",
 	"docgen_template_mapping_save",
 	"docgen_template_publish",
-	"docgen_template_status_set"
+	"docgen_template_status_set",
+	"docgen_template_preview"
 ]), Ud = {
 	ACTIVE: "green",
 	DRAFT: "amber",
@@ -32254,13 +32255,25 @@ function Kd() {
 	(0, _.useEffect)(() => {
 		if (!y) return;
 		let e = M.find((e) => e.requestId === y && Hd.has(String(e.event ?? "")));
-		e && (b(""), e.ok ? (w({
-			tone: "green",
-			text: String(e.message ?? "Đã lưu.")
-		}), (e.event === "docgen_template_mapping_save" || e.event === "docgen_template_publish") && h(null)) : w({
-			tone: "red",
-			text: String(e.error ?? "Backend từ chối thao tác.")
-		}));
+		if (e) {
+			if (b(""), e.ok) {
+				if (e.event === "docgen_template_preview") {
+					let t = e.readback ?? {};
+					Zo(t.fileName ?? "XEM-THU.docx", t.bytesBase64 ?? null, t.mime ?? "application/octet-stream");
+					let n = (t.missing ?? []).filter(Boolean);
+					w({
+						tone: n.length ? "amber" : "green",
+						text: n.length ? `Bản xem thử đã tải (dữ liệu giả ${t.marker ?? ""}). Còn thiếu: ${n.join("; ")}` : `Bản xem thử đã tải bằng dữ liệu giả ${t.marker ?? ""}; chưa lưu hồ sơ nào.`
+					});
+				} else w({
+					tone: "green",
+					text: String(e.message ?? "Đã lưu.")
+				}), (e.event === "docgen_template_mapping_save" || e.event === "docgen_template_publish") && h(null);
+			} else w({
+				tone: "red",
+				text: String(e.error ?? "Backend từ chối thao tác.")
+			});
+		}
 	}, [M, y]);
 	let N = (e, t) => {
 		let n = `${e}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -32353,7 +32366,7 @@ function Kd() {
 					x && /* @__PURE__ */ (0, H.jsx)("p", {
 						role: x.tone === "red" ? "alert" : "status",
 						"data-testid": "docgen-templates-notice",
-						className: K("mt-3 rounded-lg border px-3 py-2 text-[13px] font-semibold", x.tone === "red" ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"),
+						className: K("mt-3 rounded-lg border px-3 py-2 text-[13px] font-semibold", x.tone === "red" ? "border-red-200 bg-red-50 text-red-800" : x.tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-800"),
 						children: x.text
 					})
 				]
@@ -32524,23 +32537,44 @@ function Kd() {
 								T && /* @__PURE__ */ (0, H.jsxs)("div", {
 									className: "mt-3 flex flex-wrap gap-2",
 									children: [
-										e.status === "DRAFT" && /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsxs)(ps, {
-											onClick: () => F(e),
-											testId: `docgen-template-map-${e.id}`,
-											children: [
-												"Xác nhận vị trí điền (",
-												e.detected?.length ?? 0,
-												" vị trí nhận diện)"
-											]
-										}), /* @__PURE__ */ (0, H.jsxs)(ds, {
-											onClick: () => N("docgen_template_publish", { templateId: e.id }),
-											disabled: !!y || e.mappingCount === 0,
-											testId: `docgen-template-publish-${e.id}`,
-											children: [/* @__PURE__ */ (0, H.jsx)(Xr, {
+										e.status === "DRAFT" && /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [
+											/* @__PURE__ */ (0, H.jsxs)(ps, {
+												onClick: () => F(e),
+												testId: `docgen-template-map-${e.id}`,
+												children: [
+													"Xác nhận vị trí điền (",
+													e.detected?.length ?? 0,
+													" vị trí nhận diện)"
+												]
+											}),
+											/* @__PURE__ */ (0, H.jsxs)(ps, {
+												onClick: () => N("docgen_template_preview", { templateId: e.id }),
+												disabled: !!y || e.mappingCount === 0,
+												testId: `docgen-template-preview-${e.id}`,
+												children: [/* @__PURE__ */ (0, H.jsx)(W, {
+													size: 15,
+													"aria-hidden": "true"
+												}), " Xem thử (dữ liệu giả)"]
+											}),
+											/* @__PURE__ */ (0, H.jsxs)(ds, {
+												onClick: () => N("docgen_template_publish", { templateId: e.id }),
+												disabled: !!y || e.mappingCount === 0,
+												testId: `docgen-template-publish-${e.id}`,
+												children: [/* @__PURE__ */ (0, H.jsx)(Xr, {
+													size: 15,
+													"aria-hidden": "true"
+												}), " Phát hành"]
+											})
+										] }),
+										e.status === "ACTIVE" && /* @__PURE__ */ (0, H.jsxs)(ps, {
+											onClick: () => N("docgen_template_preview", { templateId: e.id }),
+											disabled: !!y,
+											testId: `docgen-template-preview-${e.id}`,
+											children: [/* @__PURE__ */ (0, H.jsx)(W, {
 												size: 15,
 												"aria-hidden": "true"
-											}), " Phát hành"]
-										})] }),
+											}), " Xem thử (dữ liệu giả)"]
+										}),
 										e.status === "ACTIVE" && /* @__PURE__ */ (0, H.jsx)(ps, {
 											onClick: () => N("docgen_template_status_set", {
 												templateId: e.id,

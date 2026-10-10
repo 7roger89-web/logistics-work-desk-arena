@@ -170,3 +170,131 @@ Residual risk: a real ordering/timing-sensitive interaction cannot be fully
 excluded, because the one observed failure was never captured with a traceback.
 Recommended supervisor action: if it recurs, capture `--tb=long` for that single
 test and treat it as a branch defect until disproved.
+
+---
+
+# Round 2 — CONTROL_TOWER_VERDICT=REJECT: four source blockers fixed
+
+Reviewed head: `451e015bc6001c4ab96015b30cca5f229e335a3e`. All four blockers were
+first **reproduced by a failing test**, then fixed, then re-run.
+
+## B1 — Retired template could still be generated
+
+`_handle_uploaded_template_generate()` called `store.active_version(template)`
+and only checked `if not version`. `set_active()` retires by flipping `status`
+while deliberately keeping `activeVersion` and the version rows (history must
+stay readable), so a retired template still had a version and a forged
+`uploaded_template_generate` naming its id would produce a new file.
+
+- `views/logi_view_model.py`: status is now checked **before** the version.
+  `RETIRED` → gate `TEMPLATE_RETIRED` (`failClosed=True`); any other non-ACTIVE
+  status → `TEMPLATE_NOT_PUBLISHED`, so a DRAFT still reports "not published".
+- `core/docgen/uploaded_template_store.publish()`: an already-`ACTIVE` row is
+  refused. `create_draft()` always mints a NEW template, so a second publish
+  could only ever freeze identical bytes + mapping into a duplicate version.
+- Tests: `test_a_retired_template_cannot_be_generated_by_a_direct_event`
+  (refused, gate `TEMPLATE_RETIRED`, `_count_durable_writes` unchanged → zero
+  attachment and zero metadata rows, and the earlier R1 file still downloads as
+  a real `PK` package);
+  `test_publishing_an_already_active_template_does_not_create_a_new_version`
+  (refused, `len(versions) == 1`, `activeVersion == 1`).
+
+## B2 — OOXML scan order + relationship detection
+
+`scan_package_safety()` called `archive.testzip()` first. `testzip()` fully
+decompresses every member to CRC-check it, so the part-count / uncompressed-size
+/ compression-ratio limits ran *after* the bomb had already been inflated.
+
+- Restructured into two phases. **Phase 1** reads only the ZIP central
+  directory (`infolist()`) and enforces part count, total declared uncompressed
+  bytes and per-member compression ratio; if any fails it returns **without
+  touching a member**. **Phase 2** — reached only for a bounded package — runs
+  `testzip()` and the content scans.
+- Part-*name* checks (banned parts, macro-enabled names) are free, so they were
+  moved next to the content scan rather than short-circuiting it: a trojan
+  carrying both a macro part and an external relationship must report **both**.
+- `_EXTERNAL_REL_PATTERN` (a regex matching only `TargetMode="External"` /
+  `Target="scheme:`) is **deleted**. Relationships are now parsed with
+  `xml.etree.ElementTree` in `_external_relationship_parts()`, which checks the
+  *value*, not the spelling: single quotes, reordered attributes and odd
+  whitespace all normalise away. An unparseable `.rels` is reported, never
+  silently passed. An external scheme with no `TargetMode` is also refused.
+- Tests: `test_uncompressed_limits_are_checked_before_any_member_is_decompressed`
+  monkeypatches `ZipFile.testzip` **and** `ZipFile.read` to raise, then shrinks
+  each limit in turn — the scan still refuses, proving no member was inflated.
+  (The fixture is built *before* the spies are armed: python-docx itself calls
+  `ZipFile.read` while assembling a package.)
+  `test_external_relationships_are_refused_whatever_quote_style_is_used` is
+  parametrised over double-quoted, **single-quoted**, reordered-attribute and
+  single-quoted-`file:` forms — only the single-quoted ones failed before the
+  fix. `test_an_internal_relationship_is_not_refused_by_the_xml_scan` and
+  `test_an_ordinary_file_still_passes_the_reordered_safety_scan` guard against
+  over-blocking.
+
+## B3 — Ambiguous customer identity
+
+`_uploaded_template_source()` fell back to `next(customer whose name matches)`.
+Two customers can share a registered name with different ids and tax codes, so
+this could print one company's tax code on another's document — and `next()`
+over a dict is not even stable. The readiness projection meanwhile used **only**
+the canonical link, so the two surfaces already disagreed.
+
+- One shared resolver, `_resolve_uploaded_template_parties()`, now backs **both**
+  the readiness projection and the generation handler.
+  `_resolve_uploaded_template_customer()` accepts the canonical `customer_id`
+  link, and a free-text name match **only when exactly one candidate exists**;
+  zero or several resolve to `{}`, which readiness turns into `MISSING_INFO`.
+- The dead `BLOCKED_AMBIGUOUS_SOURCE` return (the handler discarded it as
+  `_gate`) was removed rather than kept as a second code path.
+- Tests: `test_two_customers_sharing_a_name_never_resolve_to_one_of_them`
+  (two same-named customers with different tax codes → generation refused with
+  gate `MISSING_INFO`, resolver returns `{}`, readiness says `MISSING_INFO`);
+  `test_a_unique_customer_name_match_is_still_accepted` (a provably unique name
+  still resolves, with the right tax code).
+
+## B4 — Admin could not see the result before activating
+
+- `core/docgen/uploaded_template.py`: `preview_facts()` derives obviously-fake
+  values from `CANONICAL_FIELDS` itself, every one prefixed `[DU LIEU THU]`, so
+  the preview can never drift from what is bindable and never contains a real
+  identity, tax code, amount or date. `render_preview()` reuses the **production**
+  `resolve_mapping` + `render_uploaded`, and returns `(bytes, missing)`.
+- `core/docgen/uploaded_template_store.preview_source()`: reads the DRAFT bytes
+  + still-editable mapping (or the active version for a published template).
+  Read-only.
+- New event `docgen_template_preview` on the same dispatcher, behind the same
+  `_admin_gate()`. Returns base64 + fileName (`XEM-THU_…`) + sha256 + `missing`
+  + `persisted: false`. **Writes nothing.**
+- `/bieu-mau` gains one `GhostBtn` per row ("Xem thử (dữ liệu giả)") on DRAFT and
+  ACTIVE. On the outcome it downloads the trial file and, if positions are
+  unresolved, shows them in an amber notice. No editor, no viewer framework.
+- Tests: `test_admin_can_preview_a_draft_before_publishing_it` (bytes are a real
+  `PK` package, sha256 matches, the marker is present, and **no** real staging
+  customer name / tax code / shipment id appears);
+  `test_a_preview_writes_no_attachment_metadata_or_shipment_record` (durable row
+  counts unchanged, registry length unchanged, still `DRAFT`, no `activeVersion`,
+  no versions, still absent from the picker catalog);
+  `test_a_non_admin_cannot_preview_a_template` (`BLOCKED_PERMISSION_DENIED`);
+  `test_a_preview_reports_unresolved_positions_instead_of_filling_them` (an
+  operator-typed field with no value is **named** in `missing`).
+
+## Round 2 results
+
+- `tests/test_logi_193_uploaded_office_templates.py` — **65 passed** (was 50).
+- Targeted lane (`form07|docgen|document_picker|shipment_document|gnt|attachment`)
+  — **340 passed, 16 skipped, 4 errors**; `comm` against the baseline lane
+  re-derived at `b80267a` in a clean worktree: **0 new, 0 fixed** (4 == 4).
+- `npx tsc --noEmit` → exit 0. `npm run build` → 1915 modules, js 1,411.47 kB,
+  css 81.76 kB. `npm run scan` → `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`.
+  `component/dist` rebuilt from source and committed.
+- `dom_acceptance_logi193_uploaded_templates.mjs` → **PASS** (11 groups), still
+  including the download pending → resolve → next-file lifecycle.
+- `dom_acceptance_form07_delivery_receipt.mjs` → **PASS**;
+  `unit_shipment_document_picker.mjs` → **PASS**.
+- Rendered-file sha256 values are unchanged from round 1
+  (`7e163a6c8152cb3d…` / `5924121785ea597a…`) — the fixes did not alter output
+  bytes for a valid generation.
+
+Visual evidence remains **BLOCKED** (§5): still no browser binary in this
+sandbox. The new preview control is covered by DOM assertions and by the Python
+tests above, but its pixels have not been seen in a real browser.

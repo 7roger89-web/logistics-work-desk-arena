@@ -2058,13 +2058,19 @@ def _attach_uploaded_template_state(
             continue
 
         shipment = shipments.get(sid) if isinstance(shipments.get(sid), Mapping) else {}
-        contract_id = rd.text(shipment.get("contract_id"))
-        contract = contract_master.get(contract_id) if isinstance(contract_master.get(contract_id), Mapping) else {}
-        company = company_master.get(rd.text(contract.get("company_id"))) or {}
-        customer_id = rd.text(shipment.get("customer_id")).upper()
-        customer = customer_master.get(customer_id) or {}
+        # The SAME resolver the generation handler uses, so the card can never
+        # promise facts the generator would resolve differently.
+        from core.database import load_contracts_for_shipment
+
+        _contract_id, contract, company, customer = _resolve_uploaded_template_parties(
+            shipment, sid,
+            contracts=contract_master,
+            companies=company_master,
+            customers=customer_master,
+            linked_lookup=load_contracts_for_shipment,
+        )
         facts = _uploaded_template_facts(
-            shipment, contract=dict(contract), company=dict(company), customer=dict(customer)
+            shipment, contract=contract, company=company, customer=customer
         )
 
         # The EXISTING generated-document history projector: it resolves the
@@ -5346,55 +5352,91 @@ def _uploaded_template_facts(
     }
 
 
-def _uploaded_template_source(
-    shipment: Mapping[str, Any], sid: str, event: str
-) -> tuple[str, dict[str, Any], str, dict[str, Any], dict[str, Any]]:
-    """Resolve (contract_id, contract, error_gate, company, customer).
+def _resolve_uploaded_template_customer(
+    shipment: Mapping[str, Any], customers: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The customer identity an uploaded template may print — or nothing.
 
-    Same no-guess source resolution the FORM_07/PXK paths use: the canonical
-    link wins, else exactly one linked contract; several stay refused.  The
-    Company comes from the contract's authority master and the customer from
-    the shipment's own canonical link.
+    Only the shipment's OWN canonical ``customer_id`` link identifies a legal
+    entity.  A free-text name match is accepted *only* when it is provably
+    unique: two customers can share a registered name while carrying different
+    ids and tax codes, and printing one of them would put the other's tax code
+    on a customer document.  Zero or several matches resolve to NO customer,
+    which readiness then reports as missing information.
     """
-    from core.database import load_authority_companies, load_contracts, load_customers
+    customer_id = rd.text(shipment.get("customer_id")).upper()
+    linked = customers.get(customer_id)
+    if isinstance(linked, Mapping):
+        return dict(linked)
 
+    wanted = rd.text(shipment.get("customer")).upper()
+    if not wanted:
+        return {}
+    matches = [
+        dict(item)
+        for item in customers.values()
+        if isinstance(item, Mapping) and rd.text(item.get("name")).upper() == wanted
+    ]
+    if len(matches) != 1:
+        return {}
+    return matches[0]
+
+
+def _resolve_uploaded_template_parties(
+    shipment: Mapping[str, Any],
+    sid: str,
+    *,
+    contracts: Mapping[str, Any],
+    companies: Mapping[str, Any],
+    customers: Mapping[str, Any],
+    linked_lookup: Any = None,
+) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """The ONE party resolver for uploaded templates: (contract, company, customer).
+
+    Both the readiness projection and the generation handler call this, so a
+    picker card can never promise facts the generator would resolve differently.
+    No guessing anywhere: the canonical link wins, an exactly-one linked
+    contract is accepted, and anything ambiguous collapses to empty — which
+    readiness turns into MISSING_INFO instead of a plausible-looking value.
+    """
     contract_id = rd.text(
         shipment.get("contract_id") or _get_path(shipment, ("data", "entrustment", "contract_no"))
     )
-    contracts = load_contracts() or {}
     contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
-    if not contract:
-        from core.database import load_contracts_for_shipment
-
+    if not contract and linked_lookup is not None:
         try:
-            linked = load_contracts_for_shipment(sid) or {}
+            linked = linked_lookup(sid) or {}
         except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
             linked = {}
         if len(linked) == 1:
             contract_id, contract = next(iter(linked.items()))
         elif len(linked) > 1:
-            return "", {}, "BLOCKED_AMBIGUOUS_SOURCE", {}, {}
+            # Several linked contracts: no single source of truth, so no facts.
+            return "", {}, {}, {}
 
-    companies = load_authority_companies() or {}
     company = companies.get(rd.text(contract.get("company_id"))) or {}
     if not company:
         # Fall back to the shipment's own company link when the contract has none.
         company = companies.get(rd.text(shipment.get("company_id"))) or {}
-    customers = load_customers() or {}
-    customer_id = rd.text(shipment.get("customer_id")).upper()
-    customer = customers.get(customer_id) or {}
-    if not customer:
-        customer = next(
-            (
-                doc
-                for doc in customers.values()
-                if isinstance(doc, Mapping)
-                and rd.text(doc.get("name")).upper() == rd.text(shipment.get("customer")).upper()
-                and rd.text(shipment.get("customer"))
-            ),
-            {},
-        )
-    return contract_id, dict(contract), event, dict(company), dict(customer)
+    customer = _resolve_uploaded_template_customer(shipment, customers)
+    return contract_id, dict(contract), dict(company), customer
+
+
+def _uploaded_template_party_masters(sid: str) -> tuple[Any, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Freshly loaded masters + the per-shipment linkage lookup for one generate."""
+    from core.database import (
+        load_authority_companies,
+        load_contracts,
+        load_contracts_for_shipment,
+        load_customers,
+    )
+
+    return (
+        load_contracts_for_shipment,
+        load_contracts() or {},
+        load_authority_companies() or {},
+        load_customers() or {},
+    )
 
 
 def _handle_uploaded_template_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -5441,6 +5483,25 @@ def _handle_uploaded_template_generate(payload: Mapping[str, Any]) -> dict[str, 
         return _result(event, sid, False, str(exc), gate="TEMPLATE_STORE_FAILED", failClosed=True)
     if template is None:
         return _result(event, sid, False, "Không tìm thấy biểu mẫu.", gate="TEMPLATE_NOT_FOUND")
+    # Retire keeps the published version rows on purpose (history must stay
+    # readable), so a version existing is NOT permission to generate.  The
+    # status itself is the authority — otherwise a forged event naming a
+    # retired template id would still produce a new file.
+    status = rd.text(template.get("status")).upper()
+    if status == store.STATUS_RETIRED:
+        # Retire keeps the published version rows on purpose (history must stay
+        # readable), so a version existing is NOT permission to generate.  The
+        # status itself is the authority — otherwise a forged event naming a
+        # retired template id would still produce a new file.
+        return _result(
+            event, sid, False,
+            "Biểu mẫu đã ngừng dùng; không sinh thêm tệp mới.",
+            gate="TEMPLATE_RETIRED",
+            failClosed=True,
+        )
+    if status != store.STATUS_ACTIVE:
+        return _result(event, sid, False, "Biểu mẫu chưa được kích hoạt.",
+                       gate="TEMPLATE_NOT_PUBLISHED")
     version = store.active_version(template)
     if not version:
         return _result(event, sid, False, "Biểu mẫu chưa có phiên bản đã phát hành.",
@@ -5450,7 +5511,15 @@ def _handle_uploaded_template_generate(payload: Mapping[str, Any]) -> dict[str, 
         return _result(event, sid, False, "Phiên bản biểu mẫu chưa có mapping.",
                        gate="TEMPLATE_NO_MAPPING")
 
-    contract_id, contract, _gate, company, customer = _uploaded_template_source(shipment, sid, event)
+    linked_lookup, contracts_master, companies_master, customers_master = \
+        _uploaded_template_party_masters(sid)
+    contract_id, contract, company, customer = _resolve_uploaded_template_parties(
+        shipment, sid,
+        contracts=contracts_master,
+        companies=companies_master,
+        customers=customers_master,
+        linked_lookup=linked_lookup,
+    )
     facts = _uploaded_template_facts(shipment, contract=contract, company=company, customer=customer)
 
     manual_raw = payload.get("manualValues")
