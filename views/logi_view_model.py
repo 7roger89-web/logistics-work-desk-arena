@@ -870,6 +870,19 @@ def build_view_model() -> dict:
     views = _dashboard_views(shipments)
     sources = _read_sources(shipments, references, db=db)
 
+    # Issue #195 — the effective document catalog (code-owned V1 entries +
+    # Admin-published uploads) is render-stable: read the registry ONCE for
+    # the whole build instead of once per shipment row (each rebuild issued
+    # another app_settings.find_one).  shipment_projection and the picker
+    # policy reuse this value.
+    from core.shipment_document_catalog import effective_catalog as _effective_catalog
+    from core.docgen import uploaded_template_store as _uploaded_template_store
+
+    document_catalog = _effective_catalog()
+    # The same render-local registry snapshot feeds the uploaded-template
+    # attach and the Admin workspace projection: one read, shared.
+    registry_rows = _uploaded_template_store.load_registry(db=db)
+
     rows = [
         rd.shipment_projection(
             ship,
@@ -890,6 +903,7 @@ def build_view_model() -> dict:
             attachments=sources["attachments"],
             attachment_download=sources["attachmentDownload"],
             work_module_templates=sources["workModuleTemplates"],
+            document_catalog=document_catalog,
         )
         for sid, ship in shipments.items()
     ]
@@ -907,6 +921,7 @@ def build_view_model() -> dict:
         docgen_documents=sources["docgenDocuments"],
         companies=sources["companies"],
         attachments=sources["attachments"],
+        registry_rows=registry_rows,
     )
 
     summary = build_dashboard_summary(views.values())
@@ -976,7 +991,7 @@ def build_view_model() -> dict:
         reconciliation=reconciliation,
     )
     attachment_policy = _attachment_policy()
-    shipment_document_picker = _shipment_document_picker_policy(attachment_policy)
+    shipment_document_picker = _shipment_document_picker_policy(attachment_policy, catalog=document_catalog)
 
     model = {
         "version": _payload_version(rows, references, c1),
@@ -1076,7 +1091,7 @@ def build_view_model() -> dict:
         # registry projection, the canonical field whitelist the mapping editor
         # may bind, and the upload limits. ``canManage`` is a DISPLAY hint only;
         # every mutation re-checks the Admin boundary server-side.
-        "docgenTemplates": logi_templates.template_workspace_projection(db=db),
+        "docgenTemplates": logi_templates.template_workspace_projection(db=db, registry_rows=registry_rows),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
@@ -2021,6 +2036,10 @@ def _attach_uploaded_template_state(
     docgen_documents: Mapping[str, Any],
     companies: Mapping[str, Any] | None = None,
     attachments: Mapping[str, Any] | None = None,
+    # Issue #195 — render-local registry snapshot: the caller reads the
+    # registry once per build and shares it, instead of one read here plus
+    # one in the workspace projection plus one per catalog rebuild.
+    registry_rows: list[dict[str, Any]] | None = None,
 ) -> None:
     """Attach LOGI-193 readiness/history for Admin-published uploaded templates.
 
@@ -2035,8 +2054,9 @@ def _attach_uploaded_template_state(
     from core.docgen import uploaded_template_store as store
 
     try:
+        registry = registry_rows if registry_rows is not None else store.load_registry()
         active = {
-            rd.text(row.get("id")): row for row in store.load_registry()
+            rd.text(row.get("id")): row for row in registry
             if rd.text(row.get("status")).upper() == store.STATUS_ACTIVE and row.get("activeVersion")
         }
     except Exception:  # noqa: BLE001 - a registry failure must not blank the desk
@@ -2135,6 +2155,11 @@ def _effective_document_catalog() -> tuple[Any, ...]:
 
 def _shipment_document_picker_policy(
     attachment_policy: Mapping[str, Any] | None = None,
+    *,
+    # Issue #195 — render-local catalog snapshot: the caller shares the one
+    # effective catalog it already built instead of rebuilding it (and
+    # re-reading the registry) for the policy.
+    catalog: Any = None,
 ) -> dict[str, Any]:
     """Expose the small active catalog and current server-owned gates."""
     from pathlib import Path
@@ -2173,7 +2198,7 @@ def _shipment_document_picker_policy(
             pxk_template_available=is_file(xlsx_path),
             storage_configured=storage_configured,
             form07_template_available=form07_available,
-            catalog=_effective_document_catalog(),
+            catalog=catalog if catalog is not None else _effective_document_catalog(),
         ),
         "canSaveSelection": can_save,
         "canGenerate": bool(policy.get("allowUpload")),
@@ -2240,9 +2265,14 @@ def _handle_shipment_document_selection_save(payload: Mapping[str, Any]) -> dict
         entry = available.get(template_id)
         if not isinstance(entry, Mapping) or not entry.get("active"):
             return out(False, f"Biểu mẫu {template_id} hiện không hoạt động.", gate="INACTIVE_TEMPLATE")
-        if not entry.get("available"):
-            reason = rd.text(entry.get("availabilityReason")) or "Tác vụ này hiện chưa sẵn sàng."
-            return out(False, reason, gate="DOCUMENT_ACTION_UNAVAILABLE", templateId=template_id)
+        # Issue #195 — selection is a planning/tracking decision; generation
+        # availability is a separate runtime readiness fact. An active + known
+        # template may be selected even when the generator is currently
+        # unavailable: the document card stays truthfully UNAVAILABLE with the
+        # server's availabilityReason, and every generation handler/storage/
+        # readiness/legal-fact gate stays fail-closed on its own.
+        # Unknown/inactive templates still fail closed above and in
+        # validate_selected_template_ids (UNKNOWN_TEMPLATE / INACTIVE_TEMPLATE).
 
     # A no-op is not an audit/version bump. A stale/unknown persisted value is
     # canonicalized only when the operator explicitly saves the bounded list.

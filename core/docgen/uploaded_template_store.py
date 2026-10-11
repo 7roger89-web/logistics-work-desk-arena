@@ -419,5 +419,7 @@ def project_template(row: Mapping[str, Any], *, include_detected: bool = False) 
     return projection
 
 
-def project_registry(db: Any = None, *, include_detected: bool = False) -> list[dict[str, Any]]:
-    return [project_template(row, include_detected=include_detected) for row in load_registry(db=db)]
+def project_registry(db: Any = None, *, include_detected: bool = False,
+                     registry_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    rows = registry_rows if registry_rows is not None else load_registry(db=db)
+    return [project_template(row, include_detected=include_detected) for row in rows]

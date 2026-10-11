@@ -152,7 +152,13 @@ def test_selection_save_readback_and_unselect_preserve_generated_history(staging
     assert "shipment_document_selections" not in db.list_collection_names()
 
 
-def test_selection_rejects_unknown_unavailable_and_stale_version_without_mutation(staging, monkeypatch):
+def test_selection_rejects_unknown_inactive_and_stale_version_without_mutation(staging, monkeypatch):
+    # Issue #195 — selection and generation availability are separate
+    # concepts. An active + known template may be selected/tracked even when
+    # the generator is currently unavailable; unknown/inactive/stale still
+    # fail closed with no mutation.
+    from dataclasses import replace
+
     monkeypatch.setattr(vm, "_shipment_document_picker_policy", _available_policy)
     shipment = vm.read_shipment(SHIPMENT_ID)
     assert shipment is not None
@@ -168,6 +174,22 @@ def test_selection_rejects_unknown_unavailable_and_stale_version_without_mutatio
     assert not unknown["ok"]
     assert unknown["gate"] == "UNKNOWN_TEMPLATE"
 
+    real_catalog = vm._effective_document_catalog()
+    inactive_catalog = tuple(
+        replace(template, active=False) if template.id == "PXK" else template
+        for template in real_catalog
+    )
+    monkeypatch.setattr(vm, "_effective_document_catalog", lambda: inactive_catalog)
+    inactive = _dispatch("shipment_document_selection_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "SDOC-INACTIVE",
+        "expectedVersion": version,
+        "selectedTemplateIds": ["PXK"],
+    }, seq=2)
+    assert not inactive["ok"]
+    assert inactive["gate"] == "INACTIVE_TEMPLATE"
+    monkeypatch.undo()
+
     def pxk_unavailable(*_args, **_kwargs):
         policy = _available_policy()
         for row in policy["catalog"]:
@@ -182,24 +204,67 @@ def test_selection_rejects_unknown_unavailable_and_stale_version_without_mutatio
         "requestId": "SDOC-UNAVAILABLE",
         "expectedVersion": version,
         "selectedTemplateIds": ["PXK"],
-    }, seq=2)
-    assert not unavailable["ok"]
-    assert unavailable["gate"] == "DOCUMENT_ACTION_UNAVAILABLE"
-    assert "đang khóa" in unavailable["error"]
+    }, seq=3)
+    # Issue #195: active + known + currently-unavailable SAVES (tracking).
+    assert unavailable["ok"], unavailable.get("error")
+    assert unavailable["gate"] == "SAVED"
+    assert "PXK" in unavailable["readback"]["selectedDocumentTemplateIds"]
+    fresh = vm.read_shipment(SHIPMENT_ID)
+    assert fresh is not None
+    assert "PXK" in (fresh.get("document_template_ids") or [])
 
+    new_version = int(fresh.get("version") or 0)
+    assert new_version == version + 1
     stale = _dispatch("shipment_document_selection_save", {
         "shipmentId": SHIPMENT_ID,
         "requestId": "SDOC-STALE",
-        "expectedVersion": version + 1,
+        "expectedVersion": version,
         "selectedTemplateIds": ["HDNT"],
-    }, seq=3)
+    }, seq=4)
     assert not stale["ok"]
     assert stale["gate"] == "STALE_VERSION"
 
-    fresh = vm.read_shipment(SHIPMENT_ID)
-    assert fresh is not None
-    assert fresh.get("document_template_ids") == original_ids
-    assert int(fresh.get("version") or 0) == version
+    refinal = vm.read_shipment(SHIPMENT_ID)
+    assert refinal is not None
+    assert int(refinal.get("version") or 0) == new_version
+    assert "PXK" in (refinal.get("document_template_ids") or [])
+
+
+def test_generation_stays_refused_after_unavailable_template_selected(staging, monkeypatch):    # Issue #195 — the selection write no longer couples to availability, but
+    # every generation handler keeps its own fail-closed readiness gates.
+    monkeypatch.setattr(vm, "_shipment_document_picker_policy", _available_policy)
+    shipment = vm.read_shipment(SHIPMENT_ID)
+    assert shipment is not None
+    version = int(shipment.get("version") or 0)
+
+    saved = _dispatch("shipment_document_selection_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "SDOC-195-GEN",
+        "expectedVersion": version,
+        "selectedTemplateIds": ["PXK"],
+    })
+    assert saved["ok"], saved.get("error")
+
+    # Confirm a real commercial flow first so the generation attempt reaches
+    # its own readiness gates (not the flow gate).
+    flow = _dispatch("shipment_commercial_flow_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "FLOW-195-GEN",
+        "mode": "TT_ENTRUSTED_DIRECT",
+        "companyId": "TT-COMPANY",
+    }, seq=2)
+    assert flow["ok"], flow.get("error")
+
+    # A real generation attempt is still refused by its own readiness gates
+    # (here: the shipment is not delivered) until readiness is satisfied.
+    refused = _dispatch("pxk_generate", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "PXK-GEN-195",
+        "pxkNo": "PXK-2026-0195",
+        "pxkDate": "2026-10-11",
+    }, seq=3)
+    assert not refused["ok"]
+    assert refused["gate"] == "BLOCKED_NOT_DELIVERED", refused
 
 
 def test_read_projection_exposes_durable_ids_existing_gates_and_generated_history(staging):
@@ -235,3 +300,66 @@ def test_read_projection_exposes_durable_ids_existing_gates_and_generated_histor
 def test_selection_writer_and_single_handler_are_registered():
     assert vm.PHASE_B_EVENTS == set(vm._HANDLERS)
     assert vm._HANDLERS["shipment_document_selection_save"] is vm._handle_shipment_document_selection_save
+
+
+def test_customer_self_refused_without_customer_id_then_confirmed_after_real_customer_assigned(staging):
+    """Issue #195 — CUSTOMER_SELF UX at the handler level.
+
+    The backend identity gate stays: CUSTOMER_SELF requires a canonical
+    customer_id and an unknown/ambiguous customer is refused (never guessed).
+    The guided recovery is: assign a REAL master customer through the
+    existing shipment_customer_save writer, get the authoritative readback,
+    then confirm the flow.
+    """
+    from core import database as core_database
+
+    db = core_database.get_db()
+    # A shipment with NO customer identity (staging-only mutation; the
+    # fixture resets the backend per test).
+    db["shipments"].update_one(
+        {"id": SHIPMENT_ID}, {"$set": {"customer_id": "", "customer": ""}}
+    )
+    shipment = vm.read_shipment(SHIPMENT_ID)
+    assert shipment is not None
+    assert not shipment.get("customer_id")
+
+    refused = _dispatch("shipment_commercial_flow_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "FLOW-SELF-NOCUST",
+        "mode": "CUSTOMER_SELF",
+    })
+    assert not refused["ok"]
+    assert refused["gate"] == "COMMERCIAL_FLOW_REFUSED"
+    assert "mã khách hàng" in refused["error"]
+
+    # Unknown customer: refused, never guessed from a name.
+    unknown = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-UNKNOWN-195",
+        "customerId": "CUST-KHONGTONTAI",
+    }, seq=2)
+    assert not unknown["ok"]
+    assert "danh bạ" in unknown["error"]
+
+    # Real master customer through the EXISTING writer.
+    assigned = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-ASSIGN-195",
+        "customerId": "CUST-ANPHAT",
+    }, seq=3)
+    assert assigned["ok"], assigned.get("error")
+
+    fresh = vm.read_shipment(SHIPMENT_ID)
+    assert fresh is not None
+    assert fresh.get("customer_id") == "CUST-ANPHAT"
+
+    confirmed = _dispatch("shipment_commercial_flow_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "FLOW-SELF-195",
+        "mode": "CUSTOMER_SELF",
+    }, seq=4)
+    assert confirmed["ok"], confirmed.get("error")
+    assert confirmed["persisted"]["commercialFlow"]["mode"] == "CUSTOMER_SELF"
+    readback = confirmed["readback"]
+    assert readback["commercialFlow"]["confirmed"] is True
+    assert readback["commercialFlow"]["legalImporterName"] == "An Phát JSC"

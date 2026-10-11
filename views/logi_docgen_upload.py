@@ -368,11 +368,15 @@ def consume_docgen_template_triggers(session: dict, result: Any) -> list[dict[st
 # Read projection for /bieu-mau
 # ---------------------------------------------------------------------------
 
-def template_workspace_projection(*, db: Any = None, include_detected: bool = True) -> dict[str, Any]:
+def template_workspace_projection(*, db: Any = None, include_detected: bool = True,
+                                 registry_rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Assemble the Admin template workspace slice (pure read, pure build).
 
     ``canManage`` is a DISPLAY hint only: the real Admin boundary is re-checked
     server-side by every handler above.
+
+    ``registry_rows`` is a render-local snapshot: when the caller already read
+    the registry for this render, pass it in so the registry is not re-read.
     """
     from core.auth import can_operate_business
     from core.docgen import uploaded_template as engine
@@ -383,7 +387,7 @@ def template_workspace_projection(*, db: Any = None, include_detected: bool = Tr
     except Exception:  # noqa: BLE001 - a policy read failure is a denial
         can_manage = False
     try:
-        rows = store.project_registry(db=db, include_detected=include_detected)
+        rows = store.project_registry(db=db, include_detected=include_detected, registry_rows=registry_rows)
     except Exception:  # noqa: BLE001 - the workspace degrades to an empty list
         rows = []
 

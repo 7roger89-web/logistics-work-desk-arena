@@ -16,7 +16,7 @@ a blank is a statement about knowledge, not about money.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from core.database import _UNSET_DB
 
@@ -1363,6 +1363,11 @@ def shipment_projection(
     attachments: Mapping[str, list[dict[str, Any]]] | None = None,
     attachment_download: Mapping[str, Any] | None = None,
     work_module_templates: list[dict[str, Any]] | None = None,
+    # Issue #195 — the effective catalog (code-owned V1 + Admin-published
+    # uploads) is render-stable: pass it in once per build instead of
+    # rebuilding it per row (each rebuild re-reads the app_settings registry).
+    # None keeps the old per-call behavior for single-row callers.
+    document_catalog: Sequence[Any] | None = None,
 ) -> dict[str, Any]:
     """Project one canonical shipment document into the frozen UI shape.
 
@@ -1560,7 +1565,7 @@ def shipment_projection(
         # instead of being dropped as an unknown id.
         "selectedDocumentTemplateIds": project_selected_template_ids(
             shipment.get("document_template_ids"),
-            catalog=effective_catalog(),
+            catalog=document_catalog if document_catalog is not None else effective_catalog(),
         ),
         "route": " → ".join(part for part in (route_origin, route_destination) if part) or UNKNOWN_LABEL,
         "borderVN": route_destination or UNKNOWN_LABEL,

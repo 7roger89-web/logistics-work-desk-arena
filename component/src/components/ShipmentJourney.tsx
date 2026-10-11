@@ -421,6 +421,12 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
 }) {
   const [picked, setPicked] = useState('');
   const [mapCollapsed, setMapCollapsed] = useState(false);
+  // Issue #195 — the operational overview is the default: whole journey +
+  // current/problem + next action visible at once. The detailed 11-node
+  // JourneyMap stays intact and mounts only when the operator explicitly asks
+  // for it. This is local UI state only: no second engine, no duplicated
+  // journey state — the same `nodes`, the same `pick`, the same panels.
+  const [detailMapOpen, setDetailMapOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'quick');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -498,25 +504,19 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (modules.length > prevModuleCount.current) setModulesOpen(true);
     prevModuleCount.current = modules.length;
   }, [modules]);
-  return <section className="journey-demo min-w-0" data-testid="shipment-journey">
-    {/* Issue #190 — the reference composition starts the Journey workspace
-        directly at the map+panel split: no section title row. Identity,
-        position note and the global-workspace button live in the page
-        identity bar (ShipmentDetail). */}
-    {/* Issue #190 CONTINUE — the map card and the right panel are separate
-        cards with a 12px gap (see .journey-split), matching the reference;
-        the modules strip is its own card above the split. */}
-    {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
-        the strip renders whenever attaching is allowed, even with zero
-        modules, so the capability is never orphaned. */}
-    <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
-      <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
-      <aside className="journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]" data-testid="journey-side-panel">
+  // Issue #195 — ONE shared side-panel render: the detail map hosts it in
+  // the 451px right rail, the compact overview stacks it below the step
+  // strip. Same nodes, same pick, same panels — no duplicated journey
+  // state, no second engine. A plain render function (not a component) so
+  // panel-local state survives parent re-renders in both layouts.
+  const currentLabel = baseNodes.find(n => n.current)?.label || 'Chưa xác định';
+  const renderSidePanel = (extraClass: string) => (
+    <aside className={cx('journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]', extraClass)} data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
-          <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn trên Journey Map để xem việc cần làm.</p></div>
+          <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
           <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
             {problem && <button type="button" onClick={() => pick(problem.id)} className="w-full rounded-lg border-2 border-red-600 bg-red-50 p-3 text-left"><p className="text-xs font-bold text-red-700">⚠ Attention</p><p className="text-lg font-extrabold text-red-800">{problem.blockers[0]}</p><p className="text-xs text-red-700">{problem.label} → Xử lý ngay</p></button>}
             <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
@@ -536,8 +536,50 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
           </div>
         </div>}
         {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
-      </aside>
+    </aside>
+  );
+
+  return <section className="journey-demo min-w-0" data-testid="shipment-journey">
+    {/* Issue #190 — the reference composition starts the Journey workspace
+        directly at the map+panel split: no section title row. Identity,
+        position note and the global-workspace button live in the page
+        identity bar (ShipmentDetail). */}
+    {/* Issue #190 CONTINUE — the map card and the right panel are separate
+        cards with a 12px gap (see .journey-split), matching the reference;
+        the modules strip is its own card above the split. */}
+    {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
+        the strip renders whenever attaching is allowed, even with zero
+        modules, so the capability is never orphaned. */}
+    {/* Issue #195 — operational overview is the default: whole journey +
+        current/problem + next action at a glance. The detailed 11-node map
+        stays intact behind the explicit "Bản đồ chi tiết" control; the same
+        toolbar closes it again. */}
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2" data-testid="journey-compact-toolbar">
+      <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">📍 Đang ở: {currentLabel}</span>
+      {problem && <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">⚠ Cần xử lý: {problem.label} — {problem.blockers[0]}</span>}
+      <button type="button" onClick={() => setDetailMapOpen(v => !v)} aria-expanded={detailMapOpen} data-testid="journey-detail-map-toggle" className="touch-target ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] px-3.5 py-2 text-sm font-extrabold text-white">{detailMapOpen ? 'Thu gọn bản đồ' : '🗺 Bản đồ chi tiết'}</button>
     </div>
+    {detailMapOpen ? (
+      <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
+        <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
+        {renderSidePanel('')}
+      </div>
+    ) : (
+      <div className="space-y-3" data-testid="journey-compact-overview">
+        <nav aria-label="Tóm tắt hành trình" data-testid="journey-compact-stepper" className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-4">
+          {baseNodes.map((n, idx) => {
+            const m = META[n.state]; const Icon = m.icon;
+            return <button key={n.id} type="button" data-testid={`journey-step-${n.id}`} data-state={n.state} aria-pressed={selected.id === n.id} onClick={() => pick(n.id)}
+              className={cx('touch-target flex min-w-0 items-center gap-2 rounded-lg border-2 px-2.5 py-2 text-left text-xs font-bold', m.cls, selected.id === n.id && 'ring-2 ring-[#0f2a4a] ring-offset-1')}>
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{idx + 1}</span>
+              <Icon size={13} className="shrink-0" aria-hidden="true" />
+              <span className="min-w-0"><span className="block truncate text-[12.5px] font-extrabold">{n.label}</span><span className="block truncate text-[10.5px] font-semibold opacity-80">{n.current ? '📍 Đang ở đây' : m.label}{n.blockers.length > 0 ? ` · ⚠ ${n.blockers.length}` : ''}</span></span>
+            </button>;
+          })}
+        </nav>
+        {renderSidePanel('journey-compact-side')}
+      </div>
+    )}
     <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal}
       canAttachModule={canAttach} onAttachModule={() => { setModulesOpen(true); setAttachOpen(true); setAttachError(''); }} />
 
