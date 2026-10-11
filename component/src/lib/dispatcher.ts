@@ -199,6 +199,15 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "pxk_generate",
   "gnt_generate",
   "form07_generate",
+  // LOGI-193 (B8) — Admin-uploaded Office template lifecycle + generation.
+  // These typed events were dispatchable in name only: the runtime allowlist
+  // dropped them, so no browser write/preview ever reached the backend.
+  "uploaded_template_generate",
+  "docgen_template_upload",
+  "docgen_template_mapping_save",
+  "docgen_template_publish",
+  "docgen_template_status_set",
+  "docgen_template_preview",
   "getfly_preview",
   "getfly_import",
   "customer_create",
