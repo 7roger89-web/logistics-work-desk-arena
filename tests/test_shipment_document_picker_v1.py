@@ -363,3 +363,77 @@ def test_customer_self_refused_without_customer_id_then_confirmed_after_real_cus
     readback = confirmed["readback"]
     assert readback["commercialFlow"]["confirmed"] is True
     assert readback["commercialFlow"]["legalImporterName"] == "An Phát JSC"
+
+
+# ---------------------------------------------------------------------------
+# Issue #195 follow-up — requestId echo on shipment_customer_save.
+#
+# The UI mints a requestId per GÁN intent and settles pending only on a
+# lastWrites row whose requestId matches. The backend must echo it on every
+# success/refusal, but must NOT make it mandatory: the legacy header editor
+# still dispatches shipment_customer_save without one.
+# ---------------------------------------------------------------------------
+
+def test_customer_save_echoes_request_id_on_success(staging):
+    out = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-RID-OK",
+        "customerId": "CUST-ANPHAT",
+    })
+    assert out["ok"], out.get("error")
+    assert out["requestId"] == "CUST-RID-OK"
+    assert out["persisted"]["customerId"] == "CUST-ANPHAT"
+
+
+def test_customer_save_echoes_request_id_on_unknown_customer_refusal(staging):
+    out = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-RID-UNKNOWN",
+        "customerId": "CUST-KHONGTONTAI",
+    })
+    assert not out["ok"]
+    assert "danh bạ" in out["error"]
+    assert out["requestId"] == "CUST-RID-UNKNOWN"
+
+
+def test_customer_save_echoes_request_id_on_rbac_refusal(staging):
+    import streamlit as st
+
+    st.session_state["current_user"] = {
+        "username": "viewer.rid", "full_name": "viewer.rid",
+        "role": "viewer", "user_id": "ID-viewer.rid",
+    }
+    out = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-RID-RBAC",
+        "customerId": "CUST-ANPHAT",
+    })
+    assert not out["ok"]
+    assert "RBAC" in out["error"]
+    assert out["requestId"] == "CUST-RID-RBAC"
+
+
+def test_customer_save_echoes_request_id_on_writer_refusal(staging, monkeypatch):
+    import core.database as core_database
+
+    monkeypatch.setattr(core_database, "update_shipment_customer",
+                        lambda *args, **kwargs: False)
+    out = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "CUST-RID-WRITE",
+        "customerId": "CUST-HONGHA",
+    })
+    assert not out["ok"]
+    assert out["requestId"] == "CUST-RID-WRITE"
+
+
+def test_customer_save_request_id_not_mandatory_for_legacy_header_editor(staging):
+    # The legacy header editor dispatches without a requestId; it must keep
+    # working and the echo degrades to "".
+    out = _dispatch("shipment_customer_save", {
+        "shipmentId": SHIPMENT_ID,
+        "customerId": "CUST-HONGHA",
+    })
+    assert out["ok"], out.get("error")
+    assert out["requestId"] == ""
+    assert out["persisted"]["customerId"] == "CUST-HONGHA"

@@ -23,6 +23,10 @@
  *  5. an active-but-unavailable template checkbox is NOT selection-locked,
  *     toggling it is LOCAL, and Save dispatches exactly ONE
  *     shipment_document_selection_save.
+ *  6. clicking GÁN really: a backend refusal (with the echoed requestId the
+ *     real backend now returns) ends pending, shows the error, and GÁN stays
+ *     retryable; a success/readback ends pending, the canonical customer
+ *     appears, and the flow confirm unlocks.
  */
 
 import { readFileSync } from "node:fs";
@@ -237,5 +241,156 @@ await click("Lưu lựa chọn", "button", dialog);
 await tick(300);
 assert.equal(events("shipment_document_selection_save").length, 1, "exactly ONE selection save dispatched");
 assert.equal(triggers.length, beforeSave + 1, "no other backend traffic from the save click");
+
+// ===========================================================================
+// D. GÁN is really clicked: refusal settles pending + shows error + retry;
+//    success/readback settles pending + canonical customer appears + Confirm
+//    unlocks. The simulated lastWrites rows carry the echoed requestId — the
+//    exact shape the REAL backend now returns, proven by the requestId unit
+//    tests in tests/test_shipment_document_picker_v1.py.
+// ===========================================================================
+async function openRecoveryPanel() {
+  await gotoShipment(NO_CUSTOMER_ID);
+  await gotoDocumentsTab();
+  const flowSection = await waitForDom(
+    () => $("[data-testid='shipment-commercial-flow']")[0],
+    "commercial flow section is mounted",
+  );
+  const radio = $(`input[name='commercial-flow'][value='CUSTOMER_SELF']`, flowSection)[0];
+  assert.ok(radio, "the CUSTOMER_SELF radio exists");
+  radio.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  const panel = await waitForDom(
+    () => $("[data-testid='commercial-flow-customer-recovery']", flowSection)[0],
+    "the guided customer recovery panel appears",
+  );
+  return { flowSection, panel };
+}
+
+async function pickCustomerInRecovery(panel, customerId) {
+  const toggle = $(`[data-testid='commercial-flow-customer-picker-toggle']`, panel)[0];
+  assert.ok(toggle, "the customer picker toggle exists");
+  toggle.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  const option = await waitForDom(
+    () => $(`[data-testid='commercial-flow-customer-picker-option-${customerId}']`, panel)[0],
+    `customer option ${customerId} is listed`,
+  );
+  option.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+}
+
+function lastCustomerSave() {
+  const rows = events("shipment_customer_save");
+  assert.ok(rows.length > 0, "a shipment_customer_save was dispatched");
+  // dispatchLogiEvent wraps as { seq, event, payload } on the transport.
+  return rows[rows.length - 1].value.payload;
+}
+
+function settleCustomerSave(row) {
+  // A fresh top-level model object: applyViewModel notifies listeners only
+  // when the payload identity changes, exactly like a real backend rerun.
+  currentModel = { ...currentModel, lastWrites: [row] };
+  invoke(currentModel);
+}
+
+const hasPendingNote = (flowSection) =>
+  $("p", flowSection).some((p) => text(p).includes("Đang chờ backend"));
+
+// --- D.1 refusal: pending ends, error shows, GÁN stays retryable -----------
+{
+  const { flowSection, panel } = await openRecoveryPanel();
+  await pickCustomerInRecovery(panel, "CUST-HONGHA");
+  const ganBtn = $(`[data-testid='commercial-flow-customer-save']`, flowSection)[0];
+  assert.ok(ganBtn, "the GÁN button exists");
+  assert.equal(ganBtn.disabled, false, "GÁN is enabled once a customer is picked");
+  const beforeAssign = events("shipment_customer_save").length;
+  ganBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(150);
+  assert.equal(events("shipment_customer_save").length, beforeAssign + 1, "GÁN dispatches exactly one save");
+  const sent = lastCustomerSave();
+  assert.ok(sent.requestId, "the dispatch carries a requestId");
+  assert.equal(text(ganBtn), "ĐANG GÁN…", "pending renders on the GÁN button");
+  assert.ok(hasPendingNote(flowSection), "a pending note is shown while the backend has not answered");
+
+  // The backend refuses (writer failure) and echoes the requestId.
+  settleCustomerSave({
+    event: "shipment_customer_save", shipmentId: NO_CUSTOMER_ID,
+    ok: false, error: "Không cập nhật được khách hàng của lô.",
+    requestId: sent.requestId, readback: null,
+  });
+  await tick(200);
+  assert.ok(!hasPendingNote(flowSection), "a refusal ends the pending state");
+  const alert = $(`[role='alert']`, flowSection)[0];
+  assert.ok(alert && text(alert).includes("Không cập nhật được khách hàng"),
+    "the refusal error is shown to the operator");
+
+  // Retry: change the pick, click GÁN again — a fresh intent must dispatch.
+  await pickCustomerInRecovery($("[data-testid='commercial-flow-customer-recovery']", flowSection)[0], "CUST-ANPHAT");
+  const retryBtn = $(`[data-testid='commercial-flow-customer-save']`, flowSection)[0];
+  assert.equal(retryBtn.disabled, false, "GÁN is clickable again — retry is possible");
+  const beforeRetry = events("shipment_customer_save").length;
+  retryBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(150);
+  assert.equal(events("shipment_customer_save").length, beforeRetry + 1, "the retry dispatches a fresh intent");
+  const retrySent = lastCustomerSave();
+  assert.ok(retrySent.requestId && retrySent.requestId !== sent.requestId, "the retry mints a fresh requestId");
+  assert.ok(hasPendingNote(flowSection), "the retry shows pending again");
+
+  // The retry is refused too (RBAC-flavored) — pending must still settle.
+  settleCustomerSave({
+    event: "shipment_customer_save", shipmentId: NO_CUSTOMER_ID,
+    ok: false, error: "RBAC: không có quyền shipment_edit.",
+    requestId: retrySent.requestId, readback: null,
+  });
+  await tick(200);
+  assert.ok(!hasPendingNote(flowSection), "the second refusal also ends pending");
+  assert.ok(text($(`[role='alert']`, flowSection)[0]).includes("RBAC"),
+    "the second refusal error replaces the first");
+  const confirmBtn = findClickable("XÁC NHẬN HÌNH THỨC NHẬP KHẨU", "button", flowSection);
+  assert.equal(confirmBtn.disabled, true, "confirm stays locked while no customer is assigned");
+}
+
+// --- D.2 success/readback: canonical customer appears, Confirm unlocks ----
+{
+  const flowSection = $("[data-testid='shipment-commercial-flow']")[0];
+  assert.ok($("[data-testid='commercial-flow-customer-recovery']", flowSection)[0],
+    "the recovery panel is still there after the refusals");
+  await pickCustomerInRecovery($("[data-testid='commercial-flow-customer-recovery']", flowSection)[0], "CUST-ANPHAT");
+  const beforeAssign = events("shipment_customer_save").length;
+  const ganBtn = $(`[data-testid='commercial-flow-customer-save']`, flowSection)[0];
+  ganBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(150);
+  assert.equal(events("shipment_customer_save").length, beforeAssign + 1, "GÁN dispatches the success intent");
+  const sent = lastCustomerSave();
+  assert.ok(sent.requestId, "the success dispatch carries a requestId");
+
+  // The backend succeeds and the authoritative readback carries the canonical
+  // identity — the model update is exactly what a real rerun would deliver.
+  const successRow = {
+    event: "shipment_customer_save", shipmentId: NO_CUSTOMER_ID,
+    ok: true, error: "",
+    requestId: sent.requestId, readback: null,
+    persisted: { customer: "An Phát JSC", customerId: "CUST-ANPHAT" },
+  };
+  currentModel = {
+    ...currentModel,
+    shipments: currentModel.shipments.map((row) => row.id === NO_CUSTOMER_ID
+      ? { ...row, customerId: "CUST-ANPHAT", customer: "An Phát JSC" }
+      : row),
+    lastWrites: [successRow],
+  };
+  invoke(currentModel);
+  await tick(200);
+
+  assert.ok(!hasPendingNote(flowSection), "success ends the pending state");
+  assert.equal($(`[role='alert']`, flowSection).length, 0, "no error remains after success");
+  assert.equal($("[data-testid='commercial-flow-customer-recovery']").length, 0,
+    "the recovery panel is gone once the canonical customer exists");
+  assert.ok(text($("[data-testid='shipment-identity-bar']")[0]).includes("An Phát JSC"),
+    "the canonical customer name appears in the shipment identity bar");
+  const confirmBtn = findClickable("XÁC NHẬN HÌNH THỨC NHẬP KHẨU", "button", flowSection);
+  assert.equal(confirmBtn.disabled, false, "the flow confirm unlocks after the customer is assigned");
+}
 
 console.log("LOGI-195 DOM acceptance: compact journey + smooth operations — all assertions passed.");

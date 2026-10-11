@@ -2871,14 +2871,20 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     from core.database import get_last_db_error, load_customers, update_shipment_customer
 
     sid = rd.text(payload.get("shipmentId"))
+    # Issue #195 follow-up: echo the caller's requestId on every success and
+    # refusal so the UI can settle its pending intent. NOT mandatory — the
+    # legacy header editor still dispatches without one.
+    request_id = rd.text(payload.get("requestId"))
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("shipment_customer_save", sid, ok, error, requestId=request_id, **extra)
     if not sid:
-        return _result("shipment_customer_save", sid, False, "Thiếu shipmentId.")
+        return out(False, "Thiếu shipmentId.")
     if not can_operate_business("shipment_edit"):
-        return _result("shipment_customer_save", sid, False, "RBAC: không có quyền shipment_edit.")
+        return out(False, "RBAC: không có quyền shipment_edit.")
 
     shipment = read_shipment(sid)
     if shipment is None:
-        return _result("shipment_customer_save", sid, False, f"Không tìm thấy lô {sid}.")
+        return out(False, f"Không tìm thấy lô {sid}.")
 
     customer_id = rd.text(payload.get("customerId")).upper()
     typed_name = rd.text(payload.get("customer"))
@@ -2886,18 +2892,18 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     if customer_id:
         document = customers.get(customer_id)
         if not isinstance(document, Mapping):
-            return _result("shipment_customer_save", sid, False,
-                           f"Không có khách hàng {customer_id} trong danh bạ.")
+            return out(False,
+                       f"Không có khách hàng {customer_id} trong danh bạ.")
         name = rd.text(document.get("name"))
         if not name:
-            return _result("shipment_customer_save", sid, False,
-                           f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+            return out(False,
+                       f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
     else:
         # No invented identity: an empty picker with no typed name is a
         # mistake, not a business fact, and is refused rather than written.
         if not typed_name:
-            return _result("shipment_customer_save", sid, False,
-                           "Chọn khách hàng trong danh bạ hoặc gõ đúng tên khách.")
+            return out(False,
+                       "Chọn khách hàng trong danh bạ hoặc gõ đúng tên khách.")
         name = typed_name
         customer_id = ""
 
@@ -2905,20 +2911,20 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     if name == previous and (not customer_id or customer_id == rd.text(shipment.get("customer_id"))):
         # Nothing to write: report the unchanged truth instead of a no-op
         # version bump that would look like a change in the audit trail.
-        return _result("shipment_customer_save", sid, True, "Không có thay đổi để lưu.",
-                       readback=_projection_for(shipment), noop=True,
-                       persisted={"customer": previous})
+        return out(True, "Không có thay đổi để lưu.",
+                   readback=_projection_for(shipment), noop=True,
+                   persisted={"customer": previous})
 
     if not update_shipment_customer(sid, name, customer_id):
-        return _result("shipment_customer_save", sid, False,
-                       get_last_db_error() or "Không cập nhật được khách hàng của lô.")
+        return out(False,
+                   get_last_db_error() or "Không cập nhật được khách hàng của lô.")
 
     fresh = read_shipment(sid) or {}
-    return _result("shipment_customer_save", sid, True, readback=_projection_for(fresh),
-                   persisted={"customer": rd.text(fresh.get("customer")),
-                              "customerId": rd.text(fresh.get("customer_id"))},
-                   version=int(fresh.get("version") or 0),
-                   audit=_audit_trail(sid))
+    return out(True, readback=_projection_for(fresh),
+               persisted={"customer": rd.text(fresh.get("customer")),
+                          "customerId": rd.text(fresh.get("customer_id"))},
+               version=int(fresh.get("version") or 0),
+               audit=_audit_trail(sid))
 
 
 def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
