@@ -1026,6 +1026,12 @@ export interface Shipment {
   attachments: ShipmentAttachment[];
   /** Durable IDs from the bounded shipment document-picker catalog. */
   selectedDocumentTemplateIds?: string[];
+  /**
+   * LOGI-193 — readiness/history for the Admin-published uploads THIS lot
+   * selected, keyed by template id. Absent when the lot selected none, so the
+   * picker never pays for templates it does not use.
+   */
+  uploadedTemplates?: Record<string, UploadedTemplateShipmentState>;
   version?: number;
   rawStatus?: string;
   mode?: string;
@@ -2314,6 +2320,99 @@ export interface NotebookLMRegistry {
   maxItems: number;
 }
 
+// ----------------------------------------------------------------------------
+// LOGI-193 — Admin-uploaded Office templates (/bieu-mau + the shipment picker).
+//
+// The browser owns NO mapping logic and NO field list: ``fields`` is the
+// backend's canonical whitelist verbatim, ``detected`` is the backend's
+// detection, and readiness/history arrive pre-computed per shipment. A mapping
+// is only ever sent back as {position, mode, value} triples the backend
+// re-validates against that whitelist.
+// ----------------------------------------------------------------------------
+
+/** ONE canonical fact an uploaded template may be bound to (backend-owned). */
+export interface UploadedTemplateField {
+  key: string;
+  label: string;
+  group: string;
+  /** Needs an unambiguous single contract / goods line to resolve. */
+  conditional: boolean;
+  hint?: string;
+}
+
+/** ONE detected fill position inside the uploaded file (a review aid only). */
+export interface UploadedTemplatePosition {
+  id: string;
+  kind: "DOCX" | "XLSX";
+  /** XLSX sheet name; empty for DOCX. */
+  sheet: string;
+  /** XLSX cell coordinate, or the DOCX run address. */
+  cell: string;
+  label: string;
+  text: string;
+  /** Printed label kept in the same run ("Số hợp đồng: "); empty when none. */
+  prefix?: string;
+  /** Backend keyword suggestion; empty when unsure — never an assignment. */
+  suggestion: string;
+  detectedBy: string;
+}
+
+export type UploadedTemplateMappingMode = "field" | "manual" | "static";
+
+/** ONE Admin-confirmed binding. Re-validated server-side on every save. */
+export interface UploadedTemplateMapping {
+  position: string;
+  mode: UploadedTemplateMappingMode;
+  /** canonical field key | manual label | static literal */
+  value: string;
+  label?: string;
+}
+
+export interface UploadedTemplateRow {
+  id: string;
+  label: string;
+  category: string;
+  kind: "DOCX" | "XLSX" | string;
+  status: "DRAFT" | "ACTIVE" | "RETIRED" | string;
+  activeVersion: number | null;
+  versionCount: number;
+  mappingCount: number;
+  publishedMappingCount: number;
+  uploadedBy: string;
+  updatedAt: string;
+  publishedBy: string;
+  publishedAt: string;
+  sizeBytes: number;
+  sha256: string;
+  /** Only delivered to the Admin workspace. */
+  detected?: UploadedTemplatePosition[];
+  mapping?: UploadedTemplateMapping[];
+}
+
+export interface UploadedTemplateWorkspace {
+  /** DISPLAY hint only — the Admin boundary is re-checked server-side. */
+  canManage: boolean;
+  templates: UploadedTemplateRow[];
+  activeCount: number;
+  fields: UploadedTemplateField[];
+  maxUploadBytes: number;
+  maxUploadLabel: string;
+  accept: string;
+  notes: string[];
+}
+
+/** Per-shipment state for the uploaded templates that lot actually selected. */
+export interface UploadedTemplateShipmentState {
+  id: string;
+  label: string;
+  kind: string;
+  version: number;
+  /** Operator-typed fields this template needs, in mapping order. */
+  manualFields: string[];
+  readiness: { state: string; reason: string; missing: string[] };
+  documentHistory: ShipmentGeneratedDocumentHistory[];
+}
+
 export interface ViewModel {
   version: string;
   environment?: Environment;
@@ -2351,6 +2450,8 @@ export interface ViewModel {
   userAccess?: UserAccessWorkspace;
   /** Shared NotebookLM list; Admin may manage it through one bounded write. */
   notebookLM?: NotebookLMRegistry;
+  /** LOGI-193 — the Admin Office-template workspace slice for /bieu-mau. */
+  docgenTemplates?: UploadedTemplateWorkspace;
   /**
    * LOGI_FINANCE_ACTUAL_ENTRY_PARITY_01 — read-only service catalog slice
    * (``core.config.GETFLY_SERVICES_LIST`` projected by the backend) used by the
@@ -2456,6 +2557,11 @@ export function reconciliationDesk(): ReconciliationSlice | null {
 /** The bounded /nguoi-dung user & access slice (null until delivered). */
 export function userAccessWorkspace(): UserAccessWorkspace | null {
   return current?.userAccess ?? null;
+}
+
+/** The bounded /bieu-mau Admin Office-template slice (null until delivered). */
+export function docgenTemplateWorkspace(): UploadedTemplateWorkspace | null {
+  return current?.docgenTemplates ?? null;
 }
 
 /**

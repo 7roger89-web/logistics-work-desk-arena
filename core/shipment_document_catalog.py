@@ -121,6 +121,47 @@ def project_selected_template_ids(
     ]
 
 
+def with_uploaded_templates(
+    uploaded: Sequence[ShipmentDocumentTemplate] = (),
+    catalog: Sequence[ShipmentDocumentTemplate] = SHIPMENT_DOCUMENT_CATALOG,
+) -> tuple[ShipmentDocumentTemplate, ...]:
+    """The effective picker catalog: the code-owned V1 entries first, then the
+    Admin-published uploads (Issue #193) in their own stable order.
+
+    This is the ONLY place the two lists are joined, so selection validation,
+    availability projection and the UI all see exactly one catalog.  A second
+    document system is deliberately not created: uploaded templates are extra
+    rows in the same catalog, dispatched through the same picker.
+    """
+    seen = {template.id for template in catalog}
+    extra = tuple(
+        template
+        for template in uploaded
+        if template.active and template.id and template.id not in seen
+    )
+    return tuple(catalog) + extra
+
+
+def effective_catalog(
+    catalog: Sequence[ShipmentDocumentTemplate] = SHIPMENT_DOCUMENT_CATALOG,
+) -> tuple[ShipmentDocumentTemplate, ...]:
+    """The ONE runtime picker catalog, including Admin-published uploads.
+
+    LOGI-193.  This is the single authority both the picker projection and the
+    selection validator resolve through, so an uploaded template is an extra
+    row in the existing catalog rather than a second document system.  An
+    unreadable template registry degrades to the code-owned catalog only — it
+    never blanks the picker.
+    """
+    from core.docgen import uploaded_template_store as template_store
+
+    try:
+        uploaded = template_store.catalog_templates()
+    except Exception:  # noqa: BLE001 - registry/storage failure degrades to V1
+        uploaded = ()
+    return with_uploaded_templates(uploaded, catalog=catalog)
+
+
 def project_catalog(
     *,
     contract_templates_available: bool,
@@ -155,6 +196,12 @@ def project_catalog(
                     if not form07_template_available
                     else "Kho chứng từ chưa sẵn sàng để lưu tệp biên bản giao nhận."
                 )
+            elif template.adapter == "UPLOADED_DOCGEN":
+                # Issue #193 — an Admin-published upload only needs the existing
+                # document store to save its output; the template bytes are
+                # already in the store (a published version pinned them).
+                available = bool(storage_configured)
+                reason = "Kho chứng từ chưa sẵn sàng để lưu tệp biểu mẫu đã điền."
             else:
                 # Unknown adapters remain visible as unavailable and can never
                 # be dispatched by a client that only understands V1 adapters.

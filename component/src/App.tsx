@@ -28,6 +28,7 @@ import NewContract from "./pages/NewContract";
 import TariffLookup from "./pages/TariffLookup";
 import PolicyLookup from "./pages/PolicyLookup";
 import WorkModuleLibrary from "./pages/WorkModuleLibrary";
+import DocgenTemplates from "./pages/DocgenTemplates";
 import TranslationWorkspace from "./pages/TranslationWorkspace";
 import PartnerContext from "./pages/PartnerContext";
 import Reconciliation from "./pages/Reconciliation";
@@ -116,6 +117,8 @@ export default function App() {
             <Route path="/nguoi-dung" element={<UserAccess />} />
             {/* Issue #162 — bounded Work Module template management surface. */}
             <Route path="/quy-trinh" element={<WorkModuleLibrary />} />
+            {/* LOGI-193 — Admin Office-template lifecycle (/bieu-mau). */}
+            <Route path="/bieu-mau" element={<DocgenTemplates />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         )}</Layout>

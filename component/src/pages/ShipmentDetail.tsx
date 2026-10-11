@@ -12,7 +12,8 @@ import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
 import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import AttentionNow from "../components/AttentionNow";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
-import type { JourneyNode } from "../lib/viewmodel";
+import type {
+  UploadedTemplateShipmentState, JourneyNode } from "../lib/viewmodel";
 import { getViewModel, subscribeViewModel, type Payment } from "../lib/viewmodel";
 import {
   projectShipmentDocumentCards,
@@ -312,6 +313,27 @@ export default function ShipmentDetail() {
     form.form07No,
     form.form07OrderDate,
   ]);
+  // LOGI-193 — the Admin-published templates this lot selected, paired with
+  // their server-computed readiness. Derived only from what the backend sent.
+  const uploadedTemplateRows = useMemo(() => {
+    const states = s?.uploadedTemplates ?? {};
+    const catalog = vm?.shipmentDocumentPicker?.catalog ?? [];
+    return persistedDocumentIds
+      .map((templateId) => {
+        const state = states[templateId];
+        const entry = catalog.find((item) => item.id === templateId);
+        if (!state || !entry) return null;
+        return { id: templateId, label: entry.label, category: entry.category, state };
+      })
+      .filter(
+        (row): row is {
+          id: string;
+          label: string;
+          category: string;
+          state: UploadedTemplateShipmentState;
+        } => row !== null
+      );
+  }, [s?.uploadedTemplates, vm?.shipmentDocumentPicker?.catalog, persistedDocumentIds]);
   const authorityAgents = vm?.authority?.agents ?? [];
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
@@ -907,6 +929,40 @@ export default function ShipmentDetail() {
   };
 
   /**
+   * LOGI-193 — generate ONE file from an Admin-published uploaded template.
+   *
+   * The browser sends only the template id plus the operator-typed manual
+   * values; the server owns the confirmed mapping, the canonical fact
+   * resolution, readiness and the non-destructive render. Nothing here can
+   * widen what gets filled: an unmapped or unresolved position is refused
+   * server-side, never silently blanked.
+   */
+  const exportUploadedTemplate = (templateId: string, label: string, manualFields: string[]) => {
+    if (!s) return;
+    const manualValues: Record<string, string> = {};
+    const stillMissing: string[] = [];
+    for (const field of manualFields) {
+      const typed = val(`up_${templateId}_${field}`, "").trim();
+      if (typed) manualValues[field] = typed;
+      else stillMissing.push(field);
+    }
+    if (stillMissing.length) {
+      toast("Chưa tạo được " + label,
+        "Backend từ chối khi thiếu thông tin nhập tay: " + stillMissing.join(", ") +
+        " — nhập đủ ở tab Chứng từ rồi bấm lại. Không có giá trị nào được tự đặt.",
+        "red");
+      return;
+    }
+    const sent = dispatch("uploaded_template_generate", {
+      shipmentId: s.id, templateId, manualValues,
+    });
+    if (sent) toast("Đã gửi yêu cầu tạo " + label,
+      "Backend kiểm tra mapping đã xác nhận + dữ liệu canonical, điền không phá vỡ bố cục và lưu vào kho chứng từ.",
+      "blue");
+    else toast("Không gửi được", "Component chưa kết nối backend.", "red");
+  };
+
+  /**
    * The four facts core.docgen checks before PXK (delivery location, receiver
    * name, receiver title, delivery date) are canonical 2.7 fields, so they are
    * saved through the SAME typed writer as the rest of the lot — never kept in
@@ -1011,7 +1067,9 @@ export default function ShipmentDetail() {
     }, 160);
   };
 
-  const handleDocumentAction = (_card: ShipmentDocumentCard, action: ShipmentDocumentAction) => {
+  // LOGI-193 — `card` is now used: an uploaded-template card's id IS its
+  // server-owned template id, which the generate event needs.
+  const handleDocumentAction = (card: ShipmentDocumentCard, action: ShipmentDocumentAction) => {
     switch (action) {
       case "GENERATE_CONTRACT":
       case "OPEN_CONTRACT":
@@ -1045,6 +1103,15 @@ export default function ShipmentDetail() {
         return;
       case "OPEN_FORM07":
         openDocumentAnchor("chung-tu", "fld-form07no");
+        return;
+      // LOGI-193 — the card id IS the template id (server-owned catalog ids).
+      case "GENERATE_UPLOADED": {
+        const uploaded = s?.uploadedTemplates?.[card.id];
+        exportUploadedTemplate(card.id, card.label, uploaded?.manualFields ?? []);
+        return;
+      }
+      case "OPEN_UPLOADED":
+        openDocumentAnchor("chung-tu", "shipment-uploaded-templates");
         return;
     }
   };
@@ -2342,6 +2409,100 @@ export default function ShipmentDetail() {
             ) : (
               <SuccessBtn onClick={exportFORM07} className="w-full mt-3 text-[16px] min-h-[56px]">🖨 TẠO BIÊN BẢN GIAO NHẬN</SuccessBtn>
             )}
+          </section>
+          )}
+          {/* LOGI-193 — Admin-published Office templates this lot selected.
+              Every filled value is server-bound from verified facts; the ONLY
+              thing typed here is a field the Admin explicitly marked as
+              operator-input. Nothing is defaulted, so an UNKNOWN fact stays
+              visibly missing instead of printing a blank or a zero. */}
+          {uploadedTemplateRows.length > 0 && (
+          <section
+            id="shipment-uploaded-templates"
+            className="rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
+            data-testid="shipment-uploaded-templates-panel"
+          >
+            <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] mb-1">Biểu mẫu Office do Admin phát hành</h3>
+            <p className="text-[13px] text-slate-500 mb-3">
+              Bố cục gốc của tệp được giữ nguyên; chỉ các vị trí Admin đã xác nhận được điền từ dữ liệu đã xác nhận của lô. Trường tiền tệ/giá/thanh toán không bao giờ tự điền.
+            </p>
+            <div className="space-y-3">
+              {uploadedTemplateRows.map((row) => {
+                const state = row.state;
+                const ready = state.readiness.state === "READY";
+                const missingManual = (state.manualFields ?? []).filter((field) => !val(`up_${row.id}_${field}`, "").trim());
+                const missingCanonical = (state.readiness.missing ?? []).filter((item) => !/nhập tay/i.test(item));
+                return (
+                  <article
+                    key={row.id}
+                    data-testid="uploaded-template-card"
+                    data-template-id={row.id}
+                    data-state={state.readiness.state}
+                    className="rounded-xl border border-slate-200 p-3.5"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-[14.5px] text-[#0f2a4a] break-words">{row.label}</p>
+                        <p className="text-[11.5px] text-slate-500 mt-0.5">
+                          {state.kind} · bản v{state.version} · {row.category}
+                        </p>
+                      </div>
+                      <ToneBadge tone={ready ? "blue" : "amber"} size="sm">
+                        {ready ? "Sẵn sàng" : "Thiếu thông tin"}
+                      </ToneBadge>
+                    </div>
+
+                    {missingCanonical.length > 0 && (
+                      <MissingBox
+                        what={missingCanonical.join(" · ")}
+                        where="Backend chặn đến khi dữ liệu canonical của lô được bổ sung — không tự đặt giá trị."
+                        actionLabel="Sang thông tin lô"
+                        onAction={() => setSp({ tab: "info" })}
+                      />
+                    )}
+
+                    {(state.manualFields ?? []).length > 0 && (
+                      <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                        {(state.manualFields ?? []).map((field) => {
+                          const fieldId = `fld-up-${row.id}-${field}`;
+                          const typed = val(`up_${row.id}_${field}`, "");
+                          return (
+                            <Field
+                              key={field}
+                              label={field}
+                              required
+                              hint="Admin đánh dấu ô này là nhập tay — backend không tự đặt."
+                            >
+                              <input
+                                id={fieldId}
+                                value={typed}
+                                onChange={(event) => set(`up_${row.id}_${field}`, event.target.value)}
+                                placeholder={"Nhập " + field}
+                                className={inputCls(typed.trim() ? "ok" : "missing")}
+                              />
+                            </Field>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <SuccessBtn
+                      onClick={() => exportUploadedTemplate(row.id, row.label, state.manualFields ?? [])}
+                      disabled={!ready || missingManual.length > 0}
+                      className="w-full mt-3 text-[15px] min-h-[52px]"
+                      testId={"uploaded-template-generate-" + row.id}
+                    >
+                      🖨 TẠO TỆP {state.kind} TỪ BIỂU MẪU
+                    </SuccessBtn>
+                    {!ready && missingManual.length > 0 && (
+                      <p className="text-[12.5px] text-amber-800 mt-2">
+                        Còn thiếu thông tin nhập tay: {missingManual.join(", ")}.
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
           </section>
           )}
           {/* LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of

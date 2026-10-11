@@ -52,6 +52,7 @@ from views import translation as logi_translation
 from views import user_access as logi_user_access
 from views import user_management as logi_user_management
 from views import notebooklm_registry as logi_notebooklm
+from views import logi_docgen_upload as logi_templates
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -895,6 +896,19 @@ def build_view_model() -> dict:
     order = {"Khan": 0, "CanXuLy": 1, "BinhThuong": 2}
     rows.sort(key=lambda row: (order.get(row["priority"], 9), row["id"]))
 
+    # LOGI-193 — per-shipment readiness/history for Admin-published uploads.
+    # Bounded by construction: it only runs for shipments that actually
+    # selected an uploaded template, and it reuses the docgen rows this render
+    # already read (no extra read, no per-shipment loop over every lot).
+    _attach_uploaded_template_state(
+        rows,
+        shipments=shipments,
+        references=references,
+        docgen_documents=sources["docgenDocuments"],
+        companies=sources["companies"],
+        attachments=sources["attachments"],
+    )
+
     summary = build_dashboard_summary(views.values())
     user = current_user() or {}
     # The contract→shipment links read the SAME shipment map this render already
@@ -1058,6 +1072,11 @@ def build_view_model() -> dict:
         # resolved DB handle as this render; non-Admin sessions receive the same
         # list but canManage=False.
         "notebookLM": logi_notebooklm.registry_projection(db=db),
+        # LOGI-193 — the Admin Office-template workspace for /bieu-mau: the
+        # registry projection, the canonical field whitelist the mapping editor
+        # may bind, and the upload limits. ``canManage`` is a DISPLAY hint only;
+        # every mutation re-checks the Admin boundary server-side.
+        "docgenTemplates": logi_templates.template_workspace_projection(db=db),
         # LOGI_TARIFF_LOOKUP_01 — bounded read-only HS/tariff lookup over the
         # EXISTING governed reference database (see views/tariff_lookup.py).
         # Absent from session state until the user submits a query; the
@@ -1196,6 +1215,10 @@ PHASE_B_EVENTS = {
     # event through the SAME dispatcher/RBAC/attachment/docgen-revision seams
     # the PXK and GNT events already use. No second document store.
     "form07_generate",
+    # LOGI-193 — Admin-uploaded Office template generation: ONE bounded event
+    # through the SAME dispatcher/RBAC/attachment/docgen-revision seams the
+    # PXK, GNT and FORM_07 events already use. No second document store.
+    "uploaded_template_generate",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -1269,10 +1292,16 @@ RECONCILIATION_EVENTS = {"reconciliation_filter"}
 USER_MANAGEMENT_EVENTS = logi_user_management.USER_MANAGEMENT_EVENTS
 NOTEBOOKLM_EVENTS = logi_notebooklm.NOTEBOOKLM_EVENTS
 
+# LOGI-193 — Admin-only Office template lifecycle for /bieu-mau (see
+# views.logi_docgen_upload).  Every handler re-checks the Admin RBAC boundary
+# itself; this set only decides which typed events reach Python at all.
+DOCGEN_TEMPLATE_EVENTS = logi_templates.DOCGEN_TEMPLATE_EVENTS
+
 ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
-              | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS)
+              | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS
+              | DOCGEN_TEMPLATE_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -1984,6 +2013,126 @@ def _attachment_policy() -> dict[str, Any]:
     }
 
 
+def _attach_uploaded_template_state(
+    rows: list[dict[str, Any]],
+    *,
+    shipments: Mapping[str, Any],
+    references: Mapping[str, Any],
+    docgen_documents: Mapping[str, Any],
+    companies: Mapping[str, Any] | None = None,
+    attachments: Mapping[str, Any] | None = None,
+) -> None:
+    """Attach LOGI-193 readiness/history for Admin-published uploaded templates.
+
+    Bounded by construction: one registry read for the whole render, and the
+    per-shipment work only happens for lots that actually selected an uploaded
+    template.  Readiness is the SAME pure evaluation the generation handler
+    re-checks, so the card can never promise a generation the server refuses.
+    A registry/storage failure degrades to an empty map — it never blanks the
+    rest of the row.
+    """
+    from core.docgen import uploaded_template as engine
+    from core.docgen import uploaded_template_store as store
+
+    try:
+        active = {
+            rd.text(row.get("id")): row for row in store.load_registry()
+            if rd.text(row.get("status")).upper() == store.STATUS_ACTIVE and row.get("activeVersion")
+        }
+    except Exception:  # noqa: BLE001 - a registry failure must not blank the desk
+        return
+    if not active:
+        return
+
+    company_master = companies if isinstance(companies, Mapping) else {}
+    customer_master = references.get("customers") if isinstance(references.get("customers"), Mapping) else {}
+    contract_master = references.get("contracts") if isinstance(references.get("contracts"), Mapping) else {}
+
+    for row in rows:
+        sid = rd.text(row.get("id"))
+        selected = row.get("selectedDocumentTemplateIds")
+        if not isinstance(selected, list):
+            continue
+        wanted = [item for item in selected if rd.text(item) in active]
+        if not wanted:
+            continue
+
+        shipment = shipments.get(sid) if isinstance(shipments.get(sid), Mapping) else {}
+        # The SAME resolver the generation handler uses, so the card can never
+        # promise facts the generator would resolve differently.
+        from core.database import load_contracts_for_shipment
+
+        _contract_id, contract, company, customer = _resolve_uploaded_template_parties(
+            shipment, sid,
+            contracts=contract_master,
+            companies=company_master,
+            customers=customer_master,
+            linked_lookup=load_contracts_for_shipment,
+        )
+        facts = _uploaded_template_facts(
+            shipment, contract=contract, company=company, customer=customer
+        )
+
+        # The EXISTING generated-document history projector: it resolves the
+        # real attachment id per revision, so download works exactly as it does
+        # for PXK/GNT/FORM_07 — no parallel history shape.
+        try:
+            history_rows = rd._project_generated_document_history(
+                engine.UPLOADED_DOCUMENT_TYPE,
+                sid,
+                docgen_documents=docgen_documents,
+                grouped_attachments=attachments,
+            )
+        except Exception:  # noqa: BLE001 - a history failure must not blank the row
+            history_rows = []
+
+        per_template: dict[str, Any] = {}
+        for template_id in wanted:
+            template = active[template_id]
+            version = store.active_version(template) or {}
+            mapping = version.get("mapping") if isinstance(version.get("mapping"), list) else []
+            try:
+                readiness = engine.evaluate_uploaded_readiness(
+                    mapping, facts, manual={}, template_label=rd.text(template.get("label"))
+                )
+                missing = list(readiness.missing)
+                state = readiness.state
+                reason = readiness.reason
+            except Exception:  # noqa: BLE001 - a bad mapping degrades this card only
+                missing, state, reason = [], "UNAVAILABLE", "Không đọc được mapping của biểu mẫu."
+
+            # document_id is "<TYPE>::<templateId>::<shipmentId>", so the
+            # template's own revisions are selected without a second read.
+            logical_id = f"{engine.UPLOADED_DOCUMENT_TYPE}::{template_id}::{sid}"
+            history = [
+                row for row in history_rows
+                if rd.text(row.get("documentId")) == logical_id
+            ]
+
+            per_template[template_id] = {
+                "id": template_id,
+                "label": rd.text(template.get("label")),
+                "kind": rd.text(template.get("kind")),
+                "version": int(version.get("version") or 1),
+                "manualFields": engine.manual_field_labels(mapping),
+                "readiness": {"state": state, "reason": reason, "missing": missing},
+                "documentHistory": history,
+            }
+        if per_template:
+            row["uploadedTemplates"] = per_template
+
+
+def _effective_document_catalog() -> tuple[Any, ...]:
+    """The ONE picker catalog: code-owned V1 entries + Admin-published uploads.
+    Delegates to the neutral ``core.shipment_document_catalog.effective_catalog``
+    authority so the picker projection, the selection validator and the row
+    projection in ``views.logi_real_data`` all resolve the exact same list.
+    """
+    from core.shipment_document_catalog import effective_catalog
+
+    return effective_catalog()
+
+
 def _shipment_document_picker_policy(
     attachment_policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -2024,6 +2173,7 @@ def _shipment_document_picker_policy(
             pxk_template_available=is_file(xlsx_path),
             storage_configured=storage_configured,
             form07_template_available=form07_available,
+            catalog=_effective_document_catalog(),
         ),
         "canSaveSelection": can_save,
         "canGenerate": bool(policy.get("allowUpload")),
@@ -2052,7 +2202,11 @@ def _handle_shipment_document_selection_save(payload: Mapping[str, Any]) -> dict
     if not sid or not request_id:
         return out(False, "Thiếu shipmentId hoặc requestId.", gate="INVALID_REQUEST")
     try:
-        selected_ids = validate_selected_template_ids(payload.get("selectedTemplateIds"))
+        # LOGI-193 — validate against the EFFECTIVE catalog so an Admin-published
+        # upload is a legal selection, exactly like the V1 entries.
+        selected_ids = validate_selected_template_ids(
+            payload.get("selectedTemplateIds"), catalog=_effective_document_catalog()
+        )
     except SelectionValidationError as exc:
         return out(False, str(exc), gate=exc.code)
 
@@ -2070,7 +2224,9 @@ def _handle_shipment_document_selection_save(payload: Mapping[str, Any]) -> dict
     if expected_version != current_version:
         return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.", gate="STALE_VERSION")
 
-    current_ids = project_selected_template_ids(shipment.get(SELECTION_FIELD))
+    current_ids = project_selected_template_ids(
+        shipment.get(SELECTION_FIELD), catalog=_effective_document_catalog()
+    )
     current_raw = shipment.get(SELECTION_FIELD)
     picker_policy = _shipment_document_picker_policy()
     available = {
@@ -2112,7 +2268,9 @@ def _handle_shipment_document_selection_save(payload: Mapping[str, Any]) -> dict
     if fresh is None:
         return out(False, "Đã gửi lưu nhưng chưa đọc lại được lô; mở lại để xác minh.", gate="READBACK_UNPROVEN")
     try:
-        persisted_ids = validate_selected_template_ids(fresh.get(SELECTION_FIELD))
+        persisted_ids = validate_selected_template_ids(
+            fresh.get(SELECTION_FIELD), catalog=_effective_document_catalog()
+        )
     except SelectionValidationError:
         return out(False, "Writer báo thành công nhưng readback biểu mẫu không hợp lệ.", gate="READBACK_UNPROVEN")
     if persisted_ids != selected_ids:
@@ -5050,6 +5208,499 @@ def _handle_form07_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+def _next_uploaded_template_revision(shipment_id: str, template_id: str) -> dict[str, Any]:
+    """Read the next revision for ONE uploaded template from durable metadata.
+
+    Same shape, same fail-closed revision authority as ``_next_form07_revision``;
+    the logical id additionally carries the template id so two uploaded
+    templates on one shipment never share a revision counter.
+    """
+    from core.database import load_docgen_documents
+    from core.docgen.uploaded_template import UPLOADED_DOCUMENT_TYPE
+
+    logical_id = f"{UPLOADED_DOCUMENT_TYPE}::{rd.text(template_id)}::{shipment_id}"
+    try:
+        documents = load_docgen_documents(shipment_id) or {}
+    except Exception as exc:  # noqa: BLE001 - revision authority must fail closed
+        return {"ok": False, "error": f"Không đọc được revision biểu mẫu: {exc}", "document_id": logical_id}
+
+    revisions: list[int] = []
+    for document in documents.values():
+        if not isinstance(document, Mapping):
+            continue
+        if rd.text(document.get("document_type")).upper() != UPLOADED_DOCUMENT_TYPE:
+            continue
+        if rd.text(document.get("document_id")) != logical_id:
+            continue
+        generation_raw = document.get("generation_revision")
+        revision_raw = document.get("revision")
+        if generation_raw is None and revision_raw is None:
+            return {
+                "ok": False,
+                "error": f"Metadata biểu mẫu {document.get('id') or logical_id} thiếu revision; không đoán tiếp.",
+                "document_id": logical_id,
+            }
+        try:
+            generation = int(generation_raw if generation_raw is not None else revision_raw)
+            revision = int(revision_raw if revision_raw is not None else generation_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": f"Metadata biểu mẫu {document.get('id') or logical_id} có revision không hợp lệ.",
+                "document_id": logical_id,
+            }
+        if generation < 1 or revision < 1 or generation != revision:
+            return {
+                "ok": False,
+                "error": f"Metadata biểu mẫu {document.get('id') or logical_id} có revision không nhất quán.",
+                "document_id": logical_id,
+            }
+        revisions.append(generation)
+
+    return {
+        "ok": True,
+        "document_id": logical_id,
+        "revision": max(revisions) + 1 if revisions else 1,
+    }
+
+
+def _uploaded_template_facts(
+    shipment: Mapping[str, Any],
+    *,
+    contract: Mapping[str, Any],
+    company: Mapping[str, Any],
+    customer: Mapping[str, Any],
+) -> dict[str, Any]:
+    """The verified fact snapshot ONE uploaded template may read (LOGI-193).
+
+    Every value is read from canonical truth already owned by the app; nothing
+    is derived, calculated or defaulted here.  Absent keys simply stay absent,
+    so an unknown fact surfaces as MISSING instead of a blank or a zero.
+    """
+    delivery = _get_path(shipment, ("data", "2.7")) or {}
+    head = _get_path(shipment, ("data", "0.0")) or {}
+    sea = _get_path(shipment, ("data", "1.2")) or {}
+    customs = _get_path(shipment, ("data", "2.4")) or {}
+    arrival = _get_path(shipment, ("data", "2.6")) or {}
+    goods_lines = contract.get("goods_lines") if isinstance(contract.get("goods_lines"), list) else []
+
+    return {
+        "shipment": {
+            "id": rd.text(shipment.get("id")),
+            "status": rd.text(shipment.get("status")),
+            "created_at": rd.text(head.get("created_at")),
+            "mode": rd.text(head.get("mode")),
+            "incoterm": rd.text(head.get("incoterm")),
+            "booking_no": rd.text(sea.get("booking_no")),
+            "carrier": rd.text(sea.get("carrier")),
+            "mbl": rd.text(sea.get("mbl")),
+            "hbl": rd.text(sea.get("hbl")),
+            "vessel": rd.text(sea.get("vessel")),
+            "etd": rd.text(sea.get("etd")),
+            "pol": rd.text(sea.get("pol")),
+            "pod": rd.text(sea.get("pod")),
+            "container_no": rd.text(sea.get("container_no")),
+            "qty_pkg": rd.text(sea.get("qty_pkg")),
+            "pickup_truck_type": rd.text(sea.get("pickup_truck_type")),
+            "tk_no": rd.text(customs.get("tk_no")),
+            "tk_date": rd.text(customs.get("tk_date")),
+            "customs_status": rd.text(customs.get("customs_status")),
+            "arrival_date": rd.text(arrival.get("arrival_date")),
+            "free_time": rd.text(arrival.get("free_time")),
+        },
+        "delivery": {
+            "delivered_at": rd.text(delivery.get("delivered_at") or delivery.get("delivery_date")),
+            "delivery_location": rd.text(delivery.get("delivery_location") or delivery.get("addr")),
+            "receiver_name": rd.text(delivery.get("receiver_name")),
+            "receiver_title": rd.text(delivery.get("receiver_title")),
+            "receiver_phone": rd.text(delivery.get("phone_receiver")),
+            "truck_no": rd.text(delivery.get("truck_no")),
+            "seal_no": rd.text(delivery.get("seal_no")),
+        },
+        "company": {
+            "legal_name": rd.text(company.get("legal_name")),
+            "legal_address": rd.text(company.get("legal_address")),
+            "phone": rd.text(company.get("phone")),
+            "tax_code": rd.text(company.get("tax_code")),
+            "legal_representative": rd.text(company.get("legal_representative")),
+            "representative_title": rd.text(company.get("representative_title")),
+        },
+        "customer": {
+            "name": rd.text(customer.get("name") or customer.get("customer_name")),
+            "address": rd.text(customer.get("address")),
+            "phone": rd.text(customer.get("phone")),
+            "tax_code": rd.text(customer.get("tax_code")),
+            "email": rd.text(customer.get("email")),
+            "contact_person": rd.text(customer.get("contact_person")),
+        },
+        "contract": {
+            "contract_no": rd.text(contract.get("contract_no") or contract.get("id")),
+            "contract_date": rd.text(contract.get("contract_date")),
+        } if contract else {},
+        # Money is deliberately NOT part of this snapshot: an uploaded template
+        # can only print an amount from an operator-typed manual value.
+        "goods_lines": [
+            {
+                "description": rd.text(line.get("description") or line.get("name")),
+                "specification": rd.text(line.get("specification_or_code")),
+                "unit": rd.text(line.get("unit")),
+                "quantity": rd.text(line.get("quantity")),
+            }
+            for line in goods_lines
+            if isinstance(line, Mapping)
+        ],
+    }
+
+
+def _resolve_uploaded_template_customer(
+    shipment: Mapping[str, Any], customers: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The customer identity an uploaded template may print — or nothing.
+
+    Only the shipment's OWN canonical ``customer_id`` link identifies a legal
+    entity.  A free-text name match is accepted *only* when it is provably
+    unique: two customers can share a registered name while carrying different
+    ids and tax codes, and printing one of them would put the other's tax code
+    on a customer document.  Zero or several matches resolve to NO customer,
+    which readiness then reports as missing information.
+    """
+    customer_id = rd.text(shipment.get("customer_id")).upper()
+    linked = customers.get(customer_id)
+    if isinstance(linked, Mapping):
+        return dict(linked)
+
+    wanted = rd.text(shipment.get("customer")).upper()
+    if not wanted:
+        return {}
+    matches = [
+        dict(item)
+        for item in customers.values()
+        if isinstance(item, Mapping) and rd.text(item.get("name")).upper() == wanted
+    ]
+    if len(matches) != 1:
+        return {}
+    return matches[0]
+
+
+def _resolve_uploaded_template_parties(
+    shipment: Mapping[str, Any],
+    sid: str,
+    *,
+    contracts: Mapping[str, Any],
+    companies: Mapping[str, Any],
+    customers: Mapping[str, Any],
+    linked_lookup: Any = None,
+) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """The ONE party resolver for uploaded templates: (contract, company, customer).
+
+    Both the readiness projection and the generation handler call this, so a
+    picker card can never promise facts the generator would resolve differently.
+    No guessing anywhere: the canonical link wins, an exactly-one linked
+    contract is accepted, and anything ambiguous collapses to empty — which
+    readiness turns into MISSING_INFO instead of a plausible-looking value.
+    """
+    contract_id = rd.text(
+        shipment.get("contract_id") or _get_path(shipment, ("data", "entrustment", "contract_no"))
+    )
+    contract = contracts.get(contract_id) if isinstance(contracts.get(contract_id), Mapping) else {}
+    if not contract and linked_lookup is not None:
+        try:
+            linked = linked_lookup(sid) or {}
+        except Exception:  # noqa: BLE001 - a linkage read failure must not blank the desk
+            linked = {}
+        if len(linked) == 1:
+            contract_id, contract = next(iter(linked.items()))
+        elif len(linked) > 1:
+            # Several linked contracts: no single source of truth, so no facts.
+            return "", {}, {}, {}
+
+    company = companies.get(rd.text(contract.get("company_id"))) or {}
+    if not company:
+        # Fall back to the shipment's own company link when the contract has none.
+        company = companies.get(rd.text(shipment.get("company_id"))) or {}
+    customer = _resolve_uploaded_template_customer(shipment, customers)
+    return contract_id, dict(contract), dict(company), customer
+
+
+def _uploaded_template_party_masters(sid: str) -> tuple[Any, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Freshly loaded masters + the per-shipment linkage lookup for one generate."""
+    from core.database import (
+        load_authority_companies,
+        load_contracts,
+        load_contracts_for_shipment,
+        load_customers,
+    )
+
+    return (
+        load_contracts_for_shipment,
+        load_contracts() or {},
+        load_authority_companies() or {},
+        load_customers() or {},
+    )
+
+
+def _handle_uploaded_template_generate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Generate ONE filled file from an Admin-published uploaded template.
+
+    Order mirrors the existing generation events: RBAC first (an unauthorized
+    actor costs zero reads), then the template's confirmed mapping re-read from
+    the registry, then readiness from canonical facts, then deterministic
+    non-destructive bytes, then the EXISTING durable attachment path, the
+    EXISTING immutable docgen revision metadata and the EXISTING
+    audit/readback.  An unresolved mapping fails closed — never a blank, never
+    a default, never ``today()``.
+    """
+    from datetime import datetime, timezone
+
+    import streamlit as st
+
+    from core.auth import can_generate_documents
+    from core.docgen import uploaded_template as engine
+    from core.docgen import uploaded_template_store as store
+
+    event = "uploaded_template_generate"
+    sid = rd.text(payload.get("shipmentId"))
+    template_id = rd.text(payload.get("templateId"))
+    if not sid:
+        return _result(event, sid, False, "Thiếu shipmentId.")
+    if not template_id:
+        return _result(event, sid, False, "Thiếu templateId.", gate="INVALID_REQUEST")
+
+    if not can_generate_documents():
+        return _result(
+            event, sid, False,
+            "RBAC: không có quyền sales_write để sinh biểu mẫu.",
+            gate="BLOCKED_PERMISSION_DENIED",
+        )
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _result(event, sid, False, f"Không tìm thấy lô {sid}.")
+
+    try:
+        template = store.get_template(template_id)
+    except store.TemplateStoreError as exc:
+        return _result(event, sid, False, str(exc), gate="TEMPLATE_STORE_FAILED", failClosed=True)
+    if template is None:
+        return _result(event, sid, False, "Không tìm thấy biểu mẫu.", gate="TEMPLATE_NOT_FOUND")
+    # Retire keeps the published version rows on purpose (history must stay
+    # readable), so a version existing is NOT permission to generate.  The
+    # status itself is the authority — otherwise a forged event naming a
+    # retired template id would still produce a new file.
+    status = rd.text(template.get("status")).upper()
+    if status == store.STATUS_RETIRED:
+        # Retire keeps the published version rows on purpose (history must stay
+        # readable), so a version existing is NOT permission to generate.  The
+        # status itself is the authority — otherwise a forged event naming a
+        # retired template id would still produce a new file.
+        return _result(
+            event, sid, False,
+            "Biểu mẫu đã ngừng dùng; không sinh thêm tệp mới.",
+            gate="TEMPLATE_RETIRED",
+            failClosed=True,
+        )
+    if status != store.STATUS_ACTIVE:
+        return _result(event, sid, False, "Biểu mẫu chưa được kích hoạt.",
+                       gate="TEMPLATE_NOT_PUBLISHED")
+    version = store.active_version(template)
+    if not version:
+        return _result(event, sid, False, "Biểu mẫu chưa có phiên bản đã phát hành.",
+                       gate="TEMPLATE_NOT_PUBLISHED")
+    mapping = version.get("mapping") if isinstance(version.get("mapping"), list) else []
+    if not mapping:
+        return _result(event, sid, False, "Phiên bản biểu mẫu chưa có mapping.",
+                       gate="TEMPLATE_NO_MAPPING")
+
+    linked_lookup, contracts_master, companies_master, customers_master = \
+        _uploaded_template_party_masters(sid)
+    contract_id, contract, company, customer = _resolve_uploaded_template_parties(
+        shipment, sid,
+        contracts=contracts_master,
+        companies=companies_master,
+        customers=customers_master,
+        linked_lookup=linked_lookup,
+    )
+    facts = _uploaded_template_facts(shipment, contract=contract, company=company, customer=customer)
+
+    manual_raw = payload.get("manualValues")
+    typed = manual_raw if isinstance(manual_raw, Mapping) else {}
+    manual = {rd.text(key): rd.text(value) for key, value in typed.items()}
+    labels = engine.manual_field_labels(mapping)
+    manual = {label: manual.get(label, "") for label in labels}
+
+    try:
+        detected = template.get("detected") if isinstance(template.get("detected"), list) else []
+        prefixes = {
+            rd.text(row.get("id")): str(row.get("prefix") or "")
+            for row in detected
+            if isinstance(row, Mapping)
+        }
+        readiness = engine.evaluate_uploaded_readiness(
+            mapping, facts, manual=manual,
+            template_label=rd.text(template.get("label")),
+        )
+    except engine.UploadedTemplateError as exc:
+        return _result(event, sid, False, str(exc), gate="MAPPING_REJECTED", failClosed=True)
+
+    if readiness.state != engine.READY:
+        missing = list(readiness.missing)
+        return _result(
+            event, sid, False,
+            (readiness.reason or "Biểu mẫu chưa sẵn sàng.")
+            + (f" Thiếu: {' '.join(missing)}" if missing else ""),
+            gate=readiness.state, missing=missing,
+        )
+
+    revision_state = _next_uploaded_template_revision(sid, template_id)
+    if not revision_state.get("ok"):
+        return _result(
+            event, sid, False,
+            rd.text(revision_state.get("error")) or "Không xác định được revision biểu mẫu.",
+            gate="TEMPLATE_REVISION_READ_FAILED", failClosed=True,
+        )
+    logical_document_id = rd.text(revision_state.get("document_id"))
+    rev = int(revision_state["revision"])
+    record_id = f"{logical_document_id}::R{rev}"
+
+    kind = rd.text(template.get("kind")).upper()
+    label = rd.text(template.get("label")) or template_id
+    try:
+        raw_template = store.load_bytes(template)
+        values, _missing = engine.resolve_mapping(mapping, facts, manual=manual, prefixes=prefixes)
+        raw = engine.render_uploaded(
+            raw_template,
+            kind=kind,
+            template_sha256=rd.text(version.get("sha256")),
+            values=values,
+        )
+    except engine.UploadedTemplateError as exc:
+        return _result(event, sid, False, f"Không sinh được biểu mẫu: {exc}",
+                       gate="TEMPLATE_RENDER_FAILED", failClosed=True)
+    except store.TemplateStoreError as exc:
+        return _result(event, sid, False, f"Template không khả dụng: {exc}",
+                       gate="TEMPLATE_UNAVAILABLE", failClosed=True)
+
+    import hashlib as _hashlib
+
+    mime = engine.MIME_DOCX if kind == engine.KIND_DOCX else engine.MIME_XLSX
+    file_name = engine.output_file_name(sid, label, kind)
+
+    from views import logi_c1
+    from core.shipment_attachments import upload_attachment
+
+    actor_name = ""
+    if hasattr(st, "session_state") and "current_user" in st.session_state:
+        actor_name = str(
+            st.session_state["current_user"].get("display_name")
+            or st.session_state["current_user"].get("username")
+            or ""
+        )
+
+    attachment_outcome = upload_attachment(
+        shipment_id=sid,
+        category="other",
+        file_name=file_name,
+        mime=mime,
+        data=raw,
+        uploaded_by=_actor(),
+        declared_size=len(raw),
+        shipment_context=shipment,
+    )
+    attachment_record = attachment_outcome.get("record") or {}
+    if not attachment_outcome.get("ok"):
+        return _generated_attachment_failure(
+            event, sid, attachment_outcome,
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    if not isinstance(attachment_record, Mapping) or not rd.text(attachment_record.get("id")):
+        return _generated_attachment_failure(
+            event, sid,
+            {"code": "ATTACHMENT_READBACK_UNPROVEN",
+             "error": "Kho chứng từ báo thành công nhưng thiếu hồ sơ tệp canonical."},
+            documentId=logical_document_id, recordId=record_id,
+            revision=rev, fileName=file_name,
+        )
+    attachment_view = _project_generated_attachment(attachment_outcome)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    metadata = engine.build_generated_metadata(
+        shipment_id=sid,
+        template_id=template_id,
+        template_label=label,
+        template_version=int(version.get("version") or 1),
+        template_sha256=rd.text(version.get("sha256")),
+        mime=mime,
+        file_name=file_name,
+        output_hash=_hashlib.sha256(raw).hexdigest(),
+        revision=rev,
+        contract_id=rd.text(contract.get("id") or contract_id),
+        counterparty_id=rd.text(customer.get("id") or shipment.get("customer_id")),
+        generated_at=now_iso,
+        generated_by=actor_name or _actor(),
+        values=values,
+    )
+    metadata_outcome = _persist_generated_docgen_metadata(metadata)
+    if not metadata_outcome.get("ok"):
+        return _result(
+            event, sid, False,
+            rd.text(metadata_outcome.get("error")) or "Không lưu được metadata biểu mẫu.",
+            gate="TEMPLATE_REVISION_COLLISION" if metadata_outcome.get("collision")
+            else "TEMPLATE_METADATA_FAILED",
+            failClosed=True, attachmentPersisted=True, partialDurable=True,
+            documentId=logical_document_id, recordId=record_id, revision=rev,
+            attachment=attachment_view,
+            metadataCommitted=bool(metadata_outcome.get("metadata_committed")),
+            duplicate=bool(attachment_outcome.get("duplicate")),
+            **_attachment_result_extras(sid),
+        )
+
+    session_cache_error = ""
+    try:
+        logi_c1.store_output(
+            sid,
+            record_id,
+            {
+                "file_name": file_name,
+                "mime": mime,
+                "bytes": raw,
+                "document_type": engine.UPLOADED_DOCUMENT_TYPE,
+                "template_id": template_id,
+                "revision": rev,
+                "generated_at": now_iso,
+                "generated_by": actor_name,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 - durable state already proved
+        session_cache_error = str(exc)
+
+    return _result(
+        event, sid, True,
+        f"Đã tạo {label} từ biểu mẫu Admin đã phát hành (v{int(version.get('version') or 1)}).",
+        gate="READY",
+        persisted={
+            "documentId": logical_document_id,
+            "recordId": record_id,
+            "attachmentId": rd.text(attachment_record.get("id")),
+            "fileName": file_name,
+            "revision": rev,
+            "bytes": len(raw),
+            "templateId": template_id,
+            "templateVersion": int(version.get("version") or 1),
+            "templateSha256": rd.text(version.get("sha256")),
+            "outputHash": _hashlib.sha256(raw).hexdigest(),
+            "filledCount": len(values),
+            "manualFieldCount": len(labels),
+            "attachmentDuplicate": bool(attachment_outcome.get("duplicate")),
+            "sessionCachePersisted": not bool(session_cache_error),
+        },
+        attachment=attachment_view,
+        sessionCacheError=session_cache_error,
+        readback=_projection_for(read_shipment(sid) or {}),
+        audit=_audit_trail(sid),
+    )
+
+
 def _handle_tariff_source_upload(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Admin-only XLSX -> indexed SQLite -> compressed durable Mongo asset."""
     from core.auth import can_operate_business
@@ -5169,6 +5820,9 @@ _HANDLERS = {
     "pxk_generate": _handle_pxk_generate,
     "gnt_generate": _handle_gnt_generate,
     "form07_generate": _handle_form07_generate,
+    # LOGI-193 — Admin-uploaded Office template generation through the SAME
+    # attachment / docgen-revision / audit seams as FORM_07.
+    "uploaded_template_generate": _handle_uploaded_template_generate,
     "partner_payable_record": _handle_partner_payable_record,
     "partner_payment_record": _handle_partner_payment_record,
     "getfly_preview": _handle_getfly_preview,
@@ -5531,6 +6185,16 @@ def dispatch(
     )
     outcomes.extend(notebooklm_outcomes)
     write_outcomes.extend(notebooklm_outcomes)
+
+    # LOGI-193 — Admin-only Office template lifecycle for /bieu-mau. Shares the
+    # same seq counter so a replayed trigger can never double-write; every
+    # outcome (success or Admin/validation refusal) reaches the component in
+    # lastWrites exactly like every other write path.
+    template_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    template_outcomes = logi_templates.consume_docgen_template_triggers(template_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0), template_session["seq"])
+    outcomes.extend(template_outcomes)
+    write_outcomes.extend(template_outcomes)
 
     # Store the outcomes BEFORE any rerun so the fresh view-model built on the
     # rerun embeds them (``_last_writes_readback``) — the rerun restarts the

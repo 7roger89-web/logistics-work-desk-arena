@@ -1457,7 +1457,10 @@ def shipment_projection(
         match_sub_purchase_contract,
         project_commercial_flow,
     )
-    from core.shipment_document_catalog import project_selected_template_ids  # noqa: PLC0415
+    from core.shipment_document_catalog import (  # noqa: PLC0415
+        effective_catalog,
+        project_selected_template_ids,
+    )
 
     commercial_flow = project_commercial_flow(
         shipment,
@@ -1552,8 +1555,12 @@ def shipment_projection(
         "customerMST": text(customer_doc.get("tax_code")),
         "customerId": customer_id,
         "contract": contract_id,
+        # LOGI-193 — project against the EFFECTIVE catalog, so an Admin-published
+        # upload survives the projection exactly like the code-owned V1 entries
+        # instead of being dropped as an unknown id.
         "selectedDocumentTemplateIds": project_selected_template_ids(
-            shipment.get("document_template_ids")
+            shipment.get("document_template_ids"),
+            catalog=effective_catalog(),
         ),
         "route": " → ".join(part for part in (route_origin, route_destination) if part) or UNKNOWN_LABEL,
         "borderVN": route_destination or UNKNOWN_LABEL,
