@@ -3578,16 +3578,16 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
             resolved_customer_id = requested_customer_id
             resolved_customer = row
         else:
-            wanted = " ".join(
-                rd.text(shipment.get("customer") or shipment.get("client")).split()
-            ).casefold()
+            # Reuse the module's existing exact normalized customer-name
+            # key (NFKC + whitespace + casefold). This is equality, never fuzzy
+            # similarity, and is already used by the GetFly customer matcher.
+            wanted = _getfly_customer_key(shipment.get("customer") or shipment.get("client"))
             matches: list[tuple[str, Mapping[str, Any]]] = []
             if wanted:
                 for key, row in customers.items():
                     if not isinstance(row, Mapping):
                         continue
-                    candidate_name = " ".join(rd.text(row.get("name")).split()).casefold()
-                    if candidate_name != wanted:
+                    if _getfly_customer_key(row.get("name")) != wanted:
                         continue
                     candidate_id = rd.text(
                         row.get("id") or row.get("customer_id") or key
