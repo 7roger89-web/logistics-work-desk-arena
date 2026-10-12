@@ -704,27 +704,28 @@ function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule,
   const main = regionAnchor('main', 'arrival');
   const customs = regionAnchor('import', 'customs-import');
   const delivery = regionAnchor('delivery', 'delivery');
-  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
-
   const phaseRows: Array<{
     num: number; key: string; title: string; region?: RegionKey; n?: JourneyNode;
-    summary: string; fallback: string;
+    summary: string;
   }> = [
     { num: 1, key: 'origin', title: 'Đầu đi', region: 'origin', n: booking,
-      summary: s.transport?.bookingNo || leg?.bookingNo || booking?.deadline || 'Chưa có mốc chính', fallback: 'lay-hang' },
+      summary: s.transport?.bookingNo || leg?.bookingNo || booking?.deadline || 'Chưa có mốc chính' },
     { num: 2, key: 'main', title: 'Chặng chính', region: 'main', n: main,
-      summary: leg?.ata ? `ATA ${leg.ata}` : leg?.eta ? `ETA ${leg.eta}` : main?.deadline || 'Chưa có ETA/ATA', fallback: 'van-tai' },
+      summary: leg?.ata ? `ATA ${leg.ata}` : leg?.eta ? `ETA ${leg.eta}` : main?.deadline || 'Chưa có ETA/ATA' },
     { num: 3, key: 'import', title: 'Nhập khẩu', region: 'import', n: customs,
-      summary: s.importInfo.customsStatus ? 'Đã thông quan' : s.importInfo.declarationNo ? `Tờ khai ${s.importInfo.declarationNo}` : 'Chưa có tờ khai', fallback: 'nhap' },
+      summary: s.importInfo.customsStatus ? 'Đã thông quan' : s.importInfo.declarationNo ? `Tờ khai ${s.importInfo.declarationNo}` : 'Chưa có tờ khai' },
     { num: 4, key: 'delivery', title: 'Giao hàng', region: 'delivery', n: delivery,
-      summary: s.importInfo.delivered ? 'Đã giao' : s.importInfo.schedule ? `Dự kiến ${s.importInfo.schedule}` : 'Chưa có lịch giao', fallback: 'nhap' },
+      summary: s.importInfo.delivered ? 'Đã giao' : s.importInfo.schedule ? `Dự kiến ${s.importInfo.schedule}` : 'Chưa có lịch giao' },
     { num: 5, key: 'files-finance', title: 'Hồ sơ & Chi phí',
-      summary: s.commercialFlow?.modeLabel || (profileReady ? 'Hồ sơ đã xác nhận' : 'Chưa xác nhận hình thức'), fallback: 'chung-tu' },
+      summary: s.commercialFlow?.modeLabel || 'Hồ sơ & chi phí toàn lô' },
   ];
 
+  // Issue #197 — a macro phase without a canonical Journey node must stay
+  // unavailable. Falling back to a whole-lot tab would recreate the exact
+  // "every phase opens the same global workspace" defect this redesign fixes.
   const openStage = (row: typeof phaseRows[number], work: 'info' | 'docs') => {
-    if (row.n) return onOpen(row.n, work);
-    return onGlobal(work === 'docs' ? 'chung-tu' : row.fallback);
+    if (!row.n) return false;
+    return onOpen(row.n, work);
   };
 
   return <nav aria-label="Hành trình lô hàng" data-testid="journey-macro-steps"
@@ -732,7 +733,7 @@ function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule,
     {phaseRows.map(row => {
       const isCurrent = row.region ? regionCurrent(row.region) : false;
       const problems = row.region ? regionProblemCount(row.region) : 0;
-      const done = row.region ? regionDone(row.region) : profileReady;
+      const done = row.region ? regionDone(row.region) : false;
       return <section key={row.key} data-testid={`journey-macro-step-${row.num}`}
         className={cx(
           'min-w-0 rounded-lg border-2 bg-white p-2',
@@ -747,15 +748,15 @@ function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule,
               {problems > 0 && <span className="shrink-0 text-[10px] font-extrabold text-red-700">⚠ {problems}</span>}
             </div>
             <p className={cx('truncate text-[10.5px] font-semibold', isCurrent ? 'text-blue-700' : 'text-slate-500')}>
-              {isCurrent ? '📍 Đang ở đây' : row.summary}
+              {isCurrent ? '📍 Đang ở đây' : row.num < 5 && !row.n ? 'Chưa có công đoạn' : row.summary}
             </p>
           </div>
         </div>
         {row.num < 5 ? <div className="mt-2 grid grid-cols-2 gap-1">
-          <button type="button" onClick={() => openStage(row, 'info')} data-testid={`journey-macro-work-${row.num}`}
-            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700">Công việc</button>
-          <button type="button" onClick={() => openStage(row, 'docs')} data-testid={`journey-macro-docs-${row.num}`}
-            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700">Chứng từ</button>
+          <button type="button" disabled={!row.n} onClick={() => openStage(row, 'info')} data-testid={`journey-macro-work-${row.num}`}
+            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Công việc</button>
+          <button type="button" disabled={!row.n} onClick={() => openStage(row, 'docs')} data-testid={`journey-macro-docs-${row.num}`}
+            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Chứng từ</button>
         </div> : <div className="mt-2 grid grid-cols-2 gap-1">
           <button type="button" onClick={() => onGlobal('chung-tu')} data-testid="journey-macro-files-5"
             className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700">Hồ sơ</button>
