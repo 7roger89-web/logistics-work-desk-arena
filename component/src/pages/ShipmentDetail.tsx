@@ -1355,6 +1355,10 @@ export default function ShipmentDetail() {
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} globalRequest={globalReq} attachRequest={attachReq}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
+        hasStageContent={Boolean(workspaceNode && (
+          workspaceWork === "docs"
+          || (workspaceWork === "info" && (Boolean(moduleStepNode) || ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id)))
+        ))}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
