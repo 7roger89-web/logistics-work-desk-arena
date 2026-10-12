@@ -8,7 +8,7 @@ import { Field, inputCls } from './ui';
 import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
 
-export const JOURNEY_REGION_NODE_IDS = {
+export const JOURNEY_REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', readonly string[]> = {
   // Sea has detailed node ids; Air/Rail/Road may project canonical profile
   // stage ids instead. Keep the five macro phases transport-mode neutral.
   origin: [
