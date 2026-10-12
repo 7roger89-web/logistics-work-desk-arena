@@ -1294,7 +1294,7 @@ export default function ShipmentDetail() {
         <div>
           <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
           <p className="text-[13px] text-slate-500 mt-0.5">
-            Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán.
+            Chọn pháp nhân đứng nhập khẩu cho lô này.
           </p>
         </div>
         {s.commercialFlow?.confirmed && (
