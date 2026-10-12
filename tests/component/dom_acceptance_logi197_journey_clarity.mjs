@@ -158,7 +158,7 @@ const phase1Docs = $("[data-testid='journey-macro-docs-1']")[0];
 await clickElement(phase1Docs, "phase 1 Chứng từ");
 const stage = await waitForDom(() => $("[data-testid='journey-stage-workspace']")[0], "phase workspace");
 assert.ok($("[data-testid='shipment-attachments']", stage)[0], "phase uses attachment surface");
-assert.ok(text(stage).includes("Tệp liên quan công đoạn"), "phase attachment context is explicit");
+assert.ok(text(stage).includes("Chứng từ công đoạn"), "phase attachment context is explicit");
 assert.equal($("[data-testid='shipment-document-picker']", stage).length, 0, "global document picker is absent from phase");
 assert.ok(findClickable("Công việc", "button", stage), "phase has Công việc");
 assert.ok(findClickable("Chứng từ", "button", stage), "phase has Chứng từ");
