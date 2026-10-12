@@ -167,9 +167,12 @@ export default function ShipmentAttachments({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
   const categoryContext = contextCategories?.join("|") || "";
-  const scopedContext = Boolean(contextCategories?.length);
-  const categoryOptions = contextCategories?.length
-    ? effective.categories.filter((item) => contextCategories.includes(item.id))
+  // Issue #197 — undefined means the whole-lot surface. An explicit [] means
+  // "this stage has no document category", which must stay scoped-empty rather
+  // than silently falling back to every file in the shipment.
+  const scopedContext = Array.isArray(contextCategories);
+  const categoryOptions = scopedContext
+    ? effective.categories.filter((item) => (contextCategories ?? []).includes(item.id))
     : effective.categories;
   useEffect(() => {
     setCategory(categoryOptions[0]?.id ?? "");
@@ -404,19 +407,19 @@ export default function ShipmentAttachments({
   };
 
   const allRows = Array.isArray(attachments) ? attachments : [];
-  const rows = contextCategories?.length
-    ? allRows.filter(item => contextCategories.includes(item.category))
+  const rows = scopedContext
+    ? allRows.filter(item => (contextCategories ?? []).includes(item.category))
     : allRows;
 
   return (
     <section className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-attachments">
-      {contextCategories?.length ? <div className="mb-2 text-[12.5px] font-bold text-slate-600">
+      {scopedContext ? <div className="mb-2 text-[12.5px] font-bold text-slate-600">
         Chứng từ công đoạn
       </div> : null}
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
-        title={contextCategories?.length ? "Chứng từ liên quan" : "Tệp đính kèm lô hàng"}
-        sub={contextCategories?.length ? "Chỉ hiện tệp thuộc công đoạn đang mở." : `Tệp thật của lô được lưu trong ${storageLabel}.`}
+        title={scopedContext ? "Chứng từ liên quan" : "Tệp đính kèm lô hàng"}
+        sub={scopedContext ? "Chỉ hiện tệp thuộc công đoạn đang mở." : `Tệp thật của lô được lưu trong ${storageLabel}.`}
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp
@@ -538,7 +541,7 @@ export default function ShipmentAttachments({
 
       {rows.length === 0 ? (
         <p className="mt-3 text-slate-500 text-[14px]" data-testid="attachment-empty">
-          {contextCategories?.length ? "Chưa có chứng từ thuộc công đoạn này." : "Lô chưa có tệp đính kèm nào."}
+          {scopedContext ? "Chưa có chứng từ thuộc công đoạn này." : "Lô chưa có tệp đính kèm nào."}
         </p>
       ) : (
         <ul className="mt-3 space-y-2" data-testid="attachment-list">
