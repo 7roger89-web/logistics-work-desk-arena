@@ -302,67 +302,92 @@ def test_selection_writer_and_single_handler_are_registered():
     assert vm._HANDLERS["shipment_document_selection_save"] is vm._handle_shipment_document_selection_save
 
 
-def test_customer_self_refused_without_customer_id_then_confirmed_after_real_customer_assigned(staging):
-    """Issue #195 — CUSTOMER_SELF UX at the handler level.
+def test_customer_self_legacy_unique_name_autolinks_and_confirms_atomically(staging):
+    """Issue #197 — do not ask for the same customer twice.
 
-    The backend identity gate stays: CUSTOMER_SELF requires a canonical
-    customer_id and an unknown/ambiguous customer is refused (never guessed).
-    The guided recovery is: assign a REAL master customer through the
-    existing shipment_customer_save writer, get the authoritative readback,
-    then confirm the flow.
+    A legacy shipment may have the canonical customer NAME but no customer_id.
+    If that name has exactly one exact master match, CUSTOMER_SELF links that
+    id and confirms the flow in the same atomic shipment write.
     """
     from core import database as core_database
 
     db = core_database.get_db()
-    # A shipment with NO customer identity (staging-only mutation; the
-    # fixture resets the backend per test).
     db["shipments"].update_one(
-        {"id": SHIPMENT_ID}, {"$set": {"customer_id": "", "customer": ""}}
+        {"id": SHIPMENT_ID},
+        {"$set": {"customer_id": "", "customer": "An Phát JSC", "client": "An Phát JSC"}},
     )
-    shipment = vm.read_shipment(SHIPMENT_ID)
-    assert shipment is not None
-    assert not shipment.get("customer_id")
+    before = vm.read_shipment(SHIPMENT_ID)
+    assert before is not None
+    before_version = int(before.get("version") or 0)
+    assert not before.get("customer_id")
 
-    refused = _dispatch("shipment_commercial_flow_save", {
+    confirmed = _dispatch("shipment_commercial_flow_save", {
         "shipmentId": SHIPMENT_ID,
-        "requestId": "FLOW-SELF-NOCUST",
+        "requestId": "FLOW-SELF-197-UNIQUE",
         "mode": "CUSTOMER_SELF",
     })
-    assert not refused["ok"]
-    assert refused["gate"] == "COMMERCIAL_FLOW_REFUSED"
-    assert "mã khách hàng" in refused["error"]
-
-    # Unknown customer: refused, never guessed from a name.
-    unknown = _dispatch("shipment_customer_save", {
-        "shipmentId": SHIPMENT_ID,
-        "requestId": "CUST-UNKNOWN-195",
-        "customerId": "CUST-KHONGTONTAI",
-    }, seq=2)
-    assert not unknown["ok"]
-    assert "danh bạ" in unknown["error"]
-
-    # Real master customer through the EXISTING writer.
-    assigned = _dispatch("shipment_customer_save", {
-        "shipmentId": SHIPMENT_ID,
-        "requestId": "CUST-ASSIGN-195",
-        "customerId": "CUST-ANPHAT",
-    }, seq=3)
-    assert assigned["ok"], assigned.get("error")
+    assert confirmed["ok"], confirmed.get("error")
+    assert confirmed["persisted"]["customerId"] == "CUST-ANPHAT"
+    assert confirmed["persisted"]["commercialFlow"]["mode"] == "CUSTOMER_SELF"
 
     fresh = vm.read_shipment(SHIPMENT_ID)
     assert fresh is not None
     assert fresh.get("customer_id") == "CUST-ANPHAT"
+    assert int(fresh.get("version") or 0) == before_version + 1
+    assert confirmed["readback"]["commercialFlow"]["confirmed"] is True
+    assert confirmed["readback"]["commercialFlow"]["legalImporterName"] == "An Phát JSC"
+
+
+def test_customer_self_legacy_ambiguous_name_refuses_and_requests_one_choice(staging, monkeypatch):
+    """Exact-name ambiguity stays fail-closed; no legal identity is guessed."""
+    from core import database as core_database
+
+    db = core_database.get_db()
+    db["shipments"].update_one(
+        {"id": SHIPMENT_ID},
+        {"$set": {"customer_id": "", "customer": "Công ty Trùng Tên", "client": "Công ty Trùng Tên"}},
+    )
+    monkeypatch.setattr(core_database, "load_customers", lambda: {
+        "CUST-DUP-1": {"id": "CUST-DUP-1", "name": "Công ty Trùng Tên"},
+        "CUST-DUP-2": {"id": "CUST-DUP-2", "name": "Công ty Trùng Tên"},
+    })
+
+    refused = _dispatch("shipment_commercial_flow_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "FLOW-SELF-197-AMB",
+        "mode": "CUSTOMER_SELF",
+    })
+    assert not refused["ok"]
+    assert refused["gate"] == "COMMERCIAL_FLOW_REFUSED"
+    assert refused["needsCustomerChoice"] is True
+    assert "trùng tên" in refused["error"]
+    fresh = vm.read_shipment(SHIPMENT_ID)
+    assert fresh is not None
+    assert not fresh.get("customer_id")
+
+
+def test_customer_self_explicit_master_choice_repairs_legacy_link_in_same_save(staging):
+    """When exact matching cannot decide, one explicit master id is enough."""
+    from core import database as core_database
+
+    db = core_database.get_db()
+    db["shipments"].update_one(
+        {"id": SHIPMENT_ID},
+        {"$set": {"customer_id": "", "customer": "Tên cũ chưa chuẩn", "client": "Tên cũ chưa chuẩn"}},
+    )
 
     confirmed = _dispatch("shipment_commercial_flow_save", {
         "shipmentId": SHIPMENT_ID,
-        "requestId": "FLOW-SELF-195",
+        "requestId": "FLOW-SELF-197-EXPLICIT",
         "mode": "CUSTOMER_SELF",
-    }, seq=4)
+        "customerId": "CUST-ANPHAT",
+    })
     assert confirmed["ok"], confirmed.get("error")
-    assert confirmed["persisted"]["commercialFlow"]["mode"] == "CUSTOMER_SELF"
-    readback = confirmed["readback"]
-    assert readback["commercialFlow"]["confirmed"] is True
-    assert readback["commercialFlow"]["legalImporterName"] == "An Phát JSC"
+    assert confirmed["persisted"]["customerId"] == "CUST-ANPHAT"
+    fresh = vm.read_shipment(SHIPMENT_ID)
+    assert fresh is not None
+    assert fresh.get("customer_id") == "CUST-ANPHAT"
+    assert fresh.get("customer") == "An Phát JSC"
 
 
 # ---------------------------------------------------------------------------
