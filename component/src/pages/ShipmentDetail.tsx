@@ -376,7 +376,11 @@ export default function ShipmentDetail() {
   // screen. Do not pour the whole global tab into every phase. Global surfaces
   // remain reachable from phase 5 / "Toàn bộ lô hàng".
   const moduleStepNode = workspaceNode?.moduleId ? workspaceNode : undefined;
-  const showExistingWork = !workspaceNode;
+  // Boolean() breaks TS 7.0.2's aliased-negation narrowing: `!workspaceNode`
+  // narrows workspaceNode to `never` inside the showExistingWork guards, which
+  // breaks the pre-existing optional accesses below. Runtime semantics are
+  // identical (workspaceNode is only ever an object or undefined).
+  const showExistingWork = !Boolean(workspaceNode);
   const workspaceDocumentCategories = workspaceNode && s.journey
     ? Array.from(new Set(
         journeyRegionNodeIds(workspaceNode.id).flatMap((nodeId) =>
