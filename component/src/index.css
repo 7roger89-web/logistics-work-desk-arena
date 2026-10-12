@@ -108,6 +108,9 @@ body {
    shell preserves the same visual language without fabricating nodes. */
 .journey-split-fresh { height: 500px; }
 .journey-side { flex-shrink: 0; width: 451px; min-width: 0; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; overflow: hidden; }
+/* Issue #195 — the compact overview stacks the SAME side panel below the step
+   strip instead of the 451px right rail: full width, natural height. */
+.journey-side.journey-compact-side { flex: none; width: 100%; min-width: 0; max-width: none; height: auto; }
 .journey-split-wide .journey-side { width: 44%; min-width: 600px; max-width: 860px; }
 .journey-rail { width: 208px; flex-shrink: 0; overflow: auto; border-right: 1px solid #cbd5e1; background: white; }
 .journey-split-collapsed .journey-side { flex: 1; width: auto; max-width: none; }

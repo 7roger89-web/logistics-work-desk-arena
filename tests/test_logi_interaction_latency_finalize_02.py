@@ -601,6 +601,77 @@ def test_payment_record_truthful_readback(dataset, monkeypatch, capsys):
 
 
 # ---------------------------------------------------------------------------
+# Issue #195 — Save/Confirm latency for the two operator-confirmed writes.
+# Same lifecycle as the existing intents: ONE handler call, ONE build, zero
+# explicit reruns, authoritative readback.  These two tests are the
+# before/after instrument for the C-lane server-path change (the availability
+# refusal moves out of the selection write path); they assert the lifecycle
+# invariants on both sides of that change.
+# ---------------------------------------------------------------------------
+
+
+def _commercial_flow_trigger(seq: int, sid: str, request_id: str) -> dict:
+    # TT_ENTRUSTED_DIRECT with the single seeded authority company: the
+    # canonical validation auto-resolves the company, exactly like the UI does.
+    return {"shipment_commercial_flow_save": {"seq": seq, "event": "shipment_commercial_flow_save",
+        "payload": {"shipmentId": sid, "requestId": request_id,
+                    "mode": "TT_ENTRUSTED_DIRECT", "companyId": "TT-COMPANY"}}}
+
+
+def _selection_trigger(seq: int, sid: str, request_id: str, template_ids: list) -> dict:
+    shipment = vm.read_shipment(sid)
+    assert shipment is not None
+    version = int(shipment.get("version") or 0)
+    return {"shipment_document_selection_save": {"seq": seq, "event": "shipment_document_selection_save",
+        "payload": {"shipmentId": sid, "requestId": request_id,
+                    "expectedVersion": version, "selectedTemplateIds": template_ids}}}
+
+
+def test_shipment_commercial_flow_save_truthful_readback(dataset, monkeypatch, capsys):
+    sid = dataset["ids"][13]
+    with patch.object(core_database, "save_shipment_atomic", wraps=core_database.save_shipment_atomic) as writer:
+        result = _run_interaction(monkeypatch, _commercial_flow_trigger(1, sid, "REQ-FLOW-195"), seq=1)
+        assert writer.call_count == 1, "exactly ONE writer call per intent"
+    assert result["vm_builds"] == 1 and result["explicit_reruns"] == 0
+    assert len(result["handler_outcomes"]) == 1, "HANDLER_CALLS_PER_INTENT=1"
+    outcome = result["handler_outcomes"][0]
+    assert outcome["ok"] is True, outcome.get("error")
+    assert outcome["persisted"]["commercialFlow"]["mode"] == "TT_ENTRUSTED_DIRECT"
+    assert outcome["readback"]["id"] == sid
+    # The fresh view-model built in the SAME run already carries the write.
+    row = next(r for r in result["model"]["shipments"] if r["id"] == sid)
+    assert row["commercialFlow"]["confirmed"] is True
+    assert row["commercialFlow"]["mode"] == "TT_ENTRUSTED_DIRECT"
+    assert result["model"]["lastWrites"][0]["persisted"]["commercialFlow"]["mode"] == "TT_ENTRUSTED_DIRECT"
+    assert result["counter"].total(WRITER) >= 2  # write + audit really happened
+    with capsys.disabled():
+        print("\n" + _report("shipment_commercial_flow_save", result))
+    _assert_build_read_budget(result)
+
+
+def test_shipment_document_selection_save_truthful_readback(dataset, monkeypatch, capsys):
+    sid = dataset["ids"][17]
+    with patch.object(core_database, "save_shipment_atomic", wraps=core_database.save_shipment_atomic) as writer:
+        result = _run_interaction(monkeypatch, _selection_trigger(1, sid, "REQ-SDOC-195", ["HDNT"]), seq=1)
+        assert writer.call_count == 1, "exactly ONE writer call per intent"
+    assert result["vm_builds"] == 1 and result["explicit_reruns"] == 0
+    assert len(result["handler_outcomes"]) == 1, "HANDLER_CALLS_PER_INTENT=1"
+    outcome = result["handler_outcomes"][0]
+    assert outcome["ok"] is True, outcome.get("error")
+    assert outcome["gate"] == "SAVED", outcome
+    assert "HDNT" in outcome["readback"]["selectedDocumentTemplateIds"]
+    assert outcome["shipmentId"] == sid
+    # The fresh view-model built in the SAME run already carries the write.
+    row = next(r for r in result["model"]["shipments"] if r["id"] == sid)
+    assert "HDNT" in (row.get("selectedDocumentTemplateIds") or [])
+    assert result["model"]["lastWrites"][0]["persisted"]["selectedDocumentTemplateIds"] == outcome["persisted"]["selectedDocumentTemplateIds"]
+    assert result["counter"].total(WRITER) >= 2  # write + audit really happened
+    with capsys.disabled():
+        print("\n" + _report("shipment_document_selection_save", result))
+    _assert_build_read_budget(result)
+
+
+# ---------------------------------------------------------------------------
 # Deterministic acceptance — the ONE build reads each source at most once
 # ---------------------------------------------------------------------------
 
@@ -611,16 +682,26 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
     most ONCE and nothing is read per contract or per shipment.  The two
     ``shipments`` reads are the worklist itself and the bounded id projection
     the finance worklists need (archived shipments included).
+
+    Issue #195 — the total bound was recalibrated from 18 to 26: the product
+    has grown since PR74 (Admin-published uploaded templates need the
+    app_settings registry, the NotebookLM registry, work-module templates),
+    and each of those is a bounded once-per-build read, not an N+1.  The
+    strict guards that actually catch N+1 regressions stay: no
+    contracts.find_one, every collection's find at most once (app_settings at
+    most 3: one shared uploaded-template registry read, one effective-catalog
+    build, one NotebookLM registry), and nothing per shipment.
     """
     ops = _build_ops_by_collection(result)
     assert ops.get("contracts.find_one", 0) == 0, ops   # was one read PER CONTRACT
+    assert ops.get("app_settings.find_one", 0) <= 3, ops  # shared reads, never per shipment
     for collection in ("customers", "contracts", "quotes", "tasks", "agreements",
                        "authority_companies", "authority_agents", "docgen_documents",
                        "shipment_attachments", "audit_logs", "knowledge_base", "users",
                        "financial_obligations", "financial_transactions", "financial_allocations"):
         assert ops.get(f"{collection}.find", 0) <= 1, (collection, ops)
     assert ops.get("shipments.find", 0) <= 2, ops
-    assert sum(ops.values()) <= 18, ops
+    assert sum(ops.values()) <= 26, ops
 
 
 # ---------------------------------------------------------------------------

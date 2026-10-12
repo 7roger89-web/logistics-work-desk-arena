@@ -279,7 +279,13 @@ export default function ShipmentDocumentPicker({
             <legend className="sr-only">Danh mục biểu mẫu</legend>
             {selection.catalog.map((template) => {
               const checked = selection.draftIds.includes(template.id);
-              const disabled = !template.active || (!template.available && !checked);
+              // Issue #195 — selection is a planning decision, generation
+              // availability is a runtime readiness fact. An active template
+              // stays selectable/tracked even when available=false; the card
+              // stays truthfully UNAVAILABLE for generation with the server's
+              // availabilityReason. Unknown/inactive templates still fail
+              // closed (disabled) and are filtered out of the draft below.
+              const disabled = !template.active;
               const reasonId = disabledOptionReasonId(template.id);
               return (
                 <label
@@ -314,7 +320,10 @@ export default function ShipmentDocumentPicker({
                     <span className="block text-[13.5px] font-bold text-[#0f2a4a]">{template.label}</span>
                     <span className="block text-[11.5px] text-slate-500 mt-0.5">{template.category}</span>
                     {!template.available && (
-                      <span id={reasonId} className="block text-[11.5px] text-amber-800 mt-1">{template.availabilityReason || "Hiện chưa sẵn sàng."}</span>
+                      <span id={reasonId} className="block text-[11.5px] text-amber-800 mt-1">
+                        {template.availabilityReason || "Hiện chưa sẵn sàng."}
+                        {" "}· vẫn chọn được để theo dõi; tạo bản mới vẫn bị khóa.
+                      </span>
                     )}
                   </span>
                 </label>

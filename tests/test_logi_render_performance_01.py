@@ -135,6 +135,13 @@ def _real_pxk_document(event_seq) -> str:
         "receiverName": "A. Nam", "receiverTitle": "Thủ kho",
         "deliveryLocation": "Kho An Phát — KCN Quế Võ"})
     assert confirm["ok"], confirm["error"]
+    # The commercial-flow gate is a real product requirement (LOGI-193+): PXK
+    # generation needs a confirmed flow, so the fixture confirms one through
+    # the real shipment_commercial_flow_save event first.
+    flow = _dispatch(event_seq, "shipment_commercial_flow_save", {
+        "shipmentId": sid, "requestId": "REQ-FIXTURE-FLOW-0460",
+        "mode": "TT_ENTRUSTED_DIRECT", "companyId": "TT-COMPANY"})
+    assert flow["ok"], flow["error"]
     generated = _dispatch(event_seq, "pxk_generate", {
         "shipmentId": sid, "pxkNo": "PXK-2026-0460", "pxkDate": "2026-09-12"})
     assert generated["ok"], generated
