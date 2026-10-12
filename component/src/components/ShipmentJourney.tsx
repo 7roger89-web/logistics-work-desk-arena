@@ -9,8 +9,18 @@ import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
 
 export const JOURNEY_REGION_NODE_IDS = {
-  origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'],
-  main: ['etd', 'on-board', 'transit', 'arrival'],
+  // Sea has detailed node ids; Air/Rail/Road may project canonical profile
+  // stage ids instead. Keep the five macro phases transport-mode neutral.
+  origin: [
+    'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in',
+    'ORIGIN_HANDOFF', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS',
+    'SEA_EQUIPMENT', 'SEA_CONSOLIDATION',
+  ],
+  main: [
+    'etd', 'on-board', 'transit', 'arrival',
+    'CROSS_BORDER', 'MAIN_CARRIAGE', 'RAIL_CARRIAGE',
+    'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE',
+  ],
   import: ['customs-import'],
   delivery: ['delivery'],
 } as const;
