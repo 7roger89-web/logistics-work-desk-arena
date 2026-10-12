@@ -9,7 +9,7 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
+import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel, journeyRegionNodeIds } from "../components/ShipmentJourney";
 import AttentionNow from "../components/AttentionNow";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
 import type {
@@ -372,10 +372,19 @@ export default function ShipmentDetail() {
   const ccy = s.finance.currency || "VND";
   const workspaceNode = s.journey?.nodes.find(n => n.id === sp.get("stage"));
   const workspaceWork = sp.get("work") || "info";
-  // Issue #162 — a Work Module step owns its own bounded "Thông tin" panel (like
-  // the Sea facts panel above), so the generic work blurbs stay hidden for it.
+  // Issue #197 — when a Journey phase is open, its Stage Workspace owns the
+  // screen. Do not pour the whole global tab into every phase. Global surfaces
+  // remain reachable from phase 5 / "Toàn bộ lô hàng".
   const moduleStepNode = workspaceNode?.moduleId ? workspaceNode : undefined;
-  const showExistingWork = !workspaceNode || (workspaceWork !== "overview" && !(workspaceWork === "info" && (["si-vgm", "gate-in"].includes(workspaceNode.id) || Boolean(moduleStepNode))));
+  const showExistingWork = !workspaceNode;
+  const workspaceDocumentCategories = useMemo(() => {
+    if (!workspaceNode || !s.journey) return undefined;
+    const ids = journeyRegionNodeIds(workspaceNode.id);
+    const categories = ids.flatMap((nodeId) =>
+      s.journey?.nodes.find((row) => row.id === nodeId)?.documentCategories ?? []
+    );
+    return Array.from(new Set(categories));
+  }, [workspaceNode?.id, s.journey]);
   const openStageWorkspace = (node: JourneyNode, work: string) => {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
@@ -1352,9 +1361,13 @@ export default function ShipmentDetail() {
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
-      {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
-        {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
-      </p>}
+      {workspaceNode && workspaceWork === "docs" &&
+        <ShipmentAttachments
+          contextCategories={workspaceDocumentCategories}
+          shipmentId={s.id}
+          attachments={s.attachments ?? []}
+          policy={vm?.attachmentPolicy}
+        />}
 
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
           LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
