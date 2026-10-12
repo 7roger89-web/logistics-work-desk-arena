@@ -166,11 +166,12 @@ export default function ShipmentAttachments({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
-  const [showAllContext, setShowAllContext] = useState(false);
   const categoryContext = contextCategories?.join("|") || "";
+  const categoryOptions = contextCategories?.length
+    ? effective.categories.filter((item) => contextCategories.includes(item.id))
+    : effective.categories;
   useEffect(() => {
-    setShowAllContext(false);
-    if (contextCategories?.length) setCategory(contextCategories[0]);
+    if (categoryOptions.length) setCategory(categoryOptions[0].id);
   }, [shipmentId, categoryContext]);
   const [file, setFile] = useState<File | null>(null);
   const [pendingUpload, setPendingUpload] = useState("");
@@ -205,11 +206,14 @@ export default function ShipmentAttachments({
     setSelected([]);
     setPendingReview("");
     setReviewError("");
-  }, [shipmentId]);
+  }, [shipmentId, categoryContext]);
 
   const reviewableRows = useMemo(
-    () => (Array.isArray(attachments) ? attachments : []).filter((item) => item.reviewSelectable === true),
-    [attachments]
+    () => (Array.isArray(attachments) ? attachments : []).filter((item) =>
+      item.reviewSelectable === true
+      && (!contextCategories?.length || contextCategories.includes(item.category))
+    ),
+    [attachments, categoryContext]
   );
 
   // The pending review settles ONLY on the outcome carrying the requestId this
@@ -401,18 +405,19 @@ export default function ShipmentAttachments({
   };
 
   const allRows = Array.isArray(attachments) ? attachments : [];
-  const rows = contextCategories && !showAllContext ? allRows.filter(item => contextCategories.includes(item.category)) : allRows;
+  const rows = contextCategories?.length
+    ? allRows.filter(item => contextCategories.includes(item.category))
+    : allRows;
 
   return (
     <section className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-attachments">
-      {contextCategories && <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-        <span>{showAllContext ? "Tất cả tệp của lô" : "Tệp liên quan công đoạn"}</span>
-        <button type="button" onClick={() => setShowAllContext(v => !v)} className="touch-target rounded-lg border px-3 py-2 font-bold">{showAllContext ? "Về công đoạn" : `Xem toàn bộ tệp (${allRows.length})`}</button>
-      </div>}
+      {contextCategories?.length ? <div className="mb-2 text-[12.5px] font-bold text-slate-600">
+        Chứng từ công đoạn
+      </div> : null}
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
-        title="Tệp đính kèm lô hàng"
-        sub={`Tệp thật của lô: nội dung tệp được lưu trong ${storageLabel}; thông tin mô tả được lưu cùng hồ sơ lô.`}
+        title={contextCategories?.length ? "Chứng từ liên quan" : "Tệp đính kèm lô hàng"}
+        sub={contextCategories?.length ? "Chỉ hiện tệp thuộc công đoạn đang mở." : `Tệp thật của lô được lưu trong ${storageLabel}.`}
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp
@@ -431,7 +436,7 @@ export default function ShipmentAttachments({
               onChange={(event) => setCategory(event.target.value)}
               className={inputCls()}
             >
-              {effective.categories.map((item) => (
+              {categoryOptions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
                 </option>
@@ -530,7 +535,7 @@ export default function ShipmentAttachments({
 
       {rows.length === 0 ? (
         <p className="mt-3 text-slate-500 text-[14px]" data-testid="attachment-empty">
-          Lô chưa có tệp đính kèm nào.
+          {contextCategories?.length ? "Chưa có chứng từ thuộc công đoạn này." : "Lô chưa có tệp đính kèm nào."}
         </p>
       ) : (
         <ul className="mt-3 space-y-2" data-testid="attachment-list">
