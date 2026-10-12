@@ -377,14 +377,13 @@ export default function ShipmentDetail() {
   // remain reachable from phase 5 / "Toàn bộ lô hàng".
   const moduleStepNode = workspaceNode?.moduleId ? workspaceNode : undefined;
   const showExistingWork = !workspaceNode;
-  const workspaceDocumentCategories = useMemo(() => {
-    if (!workspaceNode || !s.journey) return undefined;
-    const ids = journeyRegionNodeIds(workspaceNode.id);
-    const categories = ids.flatMap((nodeId) =>
-      s.journey?.nodes.find((row) => row.id === nodeId)?.documentCategories ?? []
-    );
-    return Array.from(new Set(categories));
-  }, [workspaceNode?.id, s.journey]);
+  const workspaceDocumentCategories = workspaceNode && s.journey
+    ? Array.from(new Set(
+        journeyRegionNodeIds(workspaceNode.id).flatMap((nodeId) =>
+          s.journey?.nodes.find((row) => row.id === nodeId)?.documentCategories ?? []
+        )
+      ))
+    : undefined;
   const openStageWorkspace = (node: JourneyNode, work: string) => {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
