@@ -466,7 +466,7 @@ export default function ShipmentAttachments({
               )}
             />
           </label>
-          <div
+          {!scopedContext && <div
             tabIndex={0}
             role="group"
             aria-label="Dán ảnh JPEG hoặc PNG từ clipboard vào tệp đính kèm"
@@ -482,7 +482,7 @@ export default function ShipmentAttachments({
             <p className="mt-0.5 break-words">
               Bấm vào khung này rồi nhấn Ctrl+V/Cmd+V với ảnh JPEG/PNG. Hệ thống chỉ chọn tệp, không tự tải lên.
             </p>
-          </div>
+          </div>}
         </div>
       ) : effective.allowUpload && scopedContext ? (
         <p className="text-[13.5px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5" data-testid="attachment-no-context-category">
@@ -507,7 +507,9 @@ export default function ShipmentAttachments({
             )}
           >
             {pendingUpload ? <LoaderCircle size={17} className="animate-spin" /> : <CloudUpload size={17} />}
-            {pendingUpload ? `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…` : `LƯU VÀO ${storageLabel.toUpperCase()}`}
+            {pendingUpload
+              ? (scopedContext ? "ĐANG LƯU…" : `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…`)
+              : (scopedContext ? "TẢI LÊN CHỨNG TỪ" : `LƯU VÀO ${storageLabel.toUpperCase()}`)}
           </button>
           {file && (
             <span data-testid="attachment-selected-file" className="text-[13px] text-slate-600 min-w-0 break-words">
@@ -629,9 +631,9 @@ export default function ShipmentAttachments({
         onReview={startDocumentReview}
       />}
 
-      <p className="mt-3 text-[12.5px] text-slate-500">
+      {!scopedContext && <p className="mt-3 text-[12.5px] text-slate-500">
         Tệp trùng trong cùng lô không được lưu bản sao lần hai. Tệp giữ nguyên quyền riêng tư trong kho chứng từ — hệ thống không tạo liên kết công khai.
-      </p>
+      </p>}
     </section>
   );
 }
