@@ -40,6 +40,10 @@ function mintRequestId(prefix: string): string {
   return `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+function normalizeIdentityName(value: string): string {
+  return String(value || "").normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
+}
+
 function workflowStateClass(state: string): string {
   if (state === "COMPLETE") return "bg-emerald-50 border-emerald-200 text-emerald-800";
   if (state === "READY") return "bg-blue-50 border-blue-200 text-blue-800";
@@ -178,8 +182,6 @@ export default function ShipmentDetail() {
   // second writer, no fuzzy name guessing; the flow confirm stays locked
   // until the authoritative readback brings the customer_id back.
   const [flowCustomerDraft, setFlowCustomerDraft] = useState("");
-  const [flowCustomerPending, setFlowCustomerPending] = useState("");
-  const [flowCustomerError, setFlowCustomerError] = useState("");
   const [documentSelectionOpen, setDocumentSelectionOpen] = useState(false);
   const [documentSelectionDraftIds, setDocumentSelectionDraftIds] = useState<string[]>([]);
   const [documentSelectionPending, setDocumentSelectionPending] = useState("");
@@ -194,6 +196,7 @@ export default function ShipmentDetail() {
     setFlowAgentDraft(flow?.subAgentId || "");
     const companies = vm?.authority?.companies ?? [];
     setFlowCompanyDraft(flow?.companyId || (companies.length === 1 ? companies[0].id : ""));
+    setFlowCustomerDraft("");
     setFlowError("");
   }, [
     id,
@@ -219,28 +222,6 @@ export default function ShipmentDetail() {
       toast("Chưa lưu được hình thức nhập khẩu", message, "red");
     }
   }, [vm?.lastWrites, flowPending, toast]);
-
-  useEffect(() => {
-    if (!flowCustomerPending) return;
-    const outcome = vm?.lastWrites?.find(
-      (row) => row.event === "shipment_customer_save" && row.requestId === flowCustomerPending
-    );
-    if (!outcome) return;
-    setFlowCustomerPending("");
-    if (outcome.ok) {
-      setFlowCustomerDraft("");
-      setFlowCustomerError("");
-      toast(
-        "Đã gắn khách hàng cho lô",
-        "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.",
-        "green"
-      );
-    } else {
-      const message = String(outcome.error || "Backend từ chối gán khách hàng.");
-      setFlowCustomerError(message);
-      toast("Chưa gán được khách hàng", message, "red");
-    }
-  }, [vm?.lastWrites, flowCustomerPending, toast]);
 
   const persistedDocumentIds = s?.selectedDocumentTemplateIds ?? [];
   const persistedDocumentKey = persistedDocumentIds.join("\u0000");
@@ -369,6 +350,17 @@ export default function ShipmentDetail() {
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
+  const flowCustomerMatches = useMemo(() => {
+    if (!s || s.customerId) return [];
+    const wanted = normalizeIdentityName(s.customer);
+    if (!wanted) return [];
+    return customers.filter((customer) => normalizeIdentityName(customer.name || "") === wanted);
+  }, [customers, s?.customer, s?.customerId]);
+  const autoFlowCustomer = flowCustomerMatches.length === 1 ? flowCustomerMatches[0] : undefined;
+  const flowCustomerChoiceId = s?.customerId || autoFlowCustomer?.id || flowCustomerDraft.trim();
+  const flowNeedsCustomerChoice = flowModeDraft === "CUSTOMER_SELF"
+    && !s?.customerId
+    && !autoFlowCustomer;
   const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
@@ -393,37 +385,16 @@ export default function ShipmentDetail() {
     return true;
   };
 
-  const saveFlowCustomer = () => {
-    if (!s) return;
-    const picked = flowCustomerDraft.trim();
-    if (!picked) {
-      setFlowCustomerError("Chọn một khách hàng trong danh bạ trước khi gán — hệ thống không đoán theo tên.");
-      return;
-    }
-    const requestId = mintRequestId("FLOWC");
-    setFlowCustomerError("");
-    setFlowCustomerPending(requestId);
-    const sent = dispatch("shipment_customer_save", {
-      shipmentId: s.id,
-      customerId: picked,
-      requestId,
-    });
-    if (!sent) {
-      setFlowCustomerPending("");
-      setFlowCustomerError("Component chưa kết nối backend.");
-    }
-  };
-
   const saveCommercialFlow = () => {
     if (!flowModeDraft) {
       setFlowError("Chọn một hình thức nhập khẩu trước khi lưu.");
       return;
     }
-    // Issue #195 — belt and suspenders: the button above is already locked,
-    // but CUSTOMER_SELF must never dispatch without the canonical customer_id
-    // the backend identity gate requires; the recovery panel above is the way.
-    if (flowModeDraft === "CUSTOMER_SELF" && !s?.customerId) {
-      setFlowError("Gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.");
+    // Issue #197 — a modern shipment already carries customerId. A legacy
+    // name-only shipment may be exact-unique matched by the backend in the same
+    // save; only unresolved/ambiguous rows need one explicit master choice.
+    if (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId) {
+      setFlowError("Chọn đúng khách hàng trong danh bạ để xác nhận hình thức nhập khẩu.");
       return;
     }
     if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowAgentDraft) {
@@ -449,6 +420,7 @@ export default function ShipmentDetail() {
       mode: flowModeDraft,
       companyId,
       subAgentId: flowModeDraft === "TT_ENTRUSTED_SUB" ? flowAgentDraft : "",
+      customerId: flowModeDraft === "CUSTOMER_SELF" && !s.customerId ? flowCustomerChoiceId : "",
     });
     if (!sent) {
       setFlowPending("");
@@ -2137,29 +2109,33 @@ export default function ShipmentDetail() {
               ))}
             </div>
 
-            {/* Issue #195 — CUSTOMER_SELF requires a canonical customer_id and the
-                backend gate stays. Instead of a dead-end error, the operator
-                gets the guided path: pick the real customer from the EXISTING
-                master, save through the EXISTING shipment_customer_save
-                writer, then confirm the flow after the authoritative
-                readback. */}
-            {flowModeDraft === "CUSTOMER_SELF" && !s.customerId && (
+            {/* Issue #197 — reuse shipment customer identity. Normal rows do
+                not ask the operator to choose the same customer twice.
+                Name-only legacy rows auto-link only on ONE exact master match;
+                ambiguous/missing rows show a compact chooser. */}
+            {flowModeDraft === "CUSTOMER_SELF" && !flowNeedsCustomerChoice && (
               <div
-                className="mt-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3.5"
+                className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
+                data-testid="commercial-flow-customer-identity"
+              >
+                <span className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người nhập khẩu</span>
+                <span className="font-extrabold text-[14.5px] text-emerald-950">
+                  {s.customer || autoFlowCustomer?.name || "Khách hàng của lô"}
+                </span>
+                <span className="ml-auto text-[12px] font-bold text-emerald-700">✓ Đã xác định</span>
+              </div>
+            )}
+
+            {flowNeedsCustomerChoice && (
+              <div
+                className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3"
                 data-testid="commercial-flow-customer-recovery"
               >
-                <p className="font-extrabold text-[14.5px] text-amber-900">
-                  Lô chưa gắn mã khách hàng
-                </p>
-                <p className="mt-1 text-[13px] text-amber-800">
-                  “Khách hàng tự nhập” yêu cầu xác định đúng pháp nhân đứng nhập khẩu.
-                  Chọn khách hàng thật trong danh bạ rồi bấm <b>Gán cho lô này</b>;
-                  hệ thống không đoán theo tên. Sau khi backend đọc lại, nút xác nhận
-                  hình thức bên dưới sẽ mở.
-                </p>
-                <div className="mt-2.5">
+                <p className="font-extrabold text-[14px] text-amber-900">Chưa xác định đúng khách hàng</p>
+                <p className="mt-0.5 text-[12.5px] text-amber-800">Chọn đúng pháp nhân một lần rồi xác nhận.</p>
+                <div className="mt-2">
                   <SearchPicker
-                    label="Khách hàng đứng nhập khẩu"
+                    label="Khách hàng"
                     testId="commercial-flow-customer-picker"
                     options={customers.map((x) => ({
                       id: x.id,
@@ -2167,30 +2143,12 @@ export default function ShipmentDetail() {
                       sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
                     }))}
                     selectedId={flowCustomerDraft}
-                    selectedLabel={
-                      customers.find((x) => x.id === flowCustomerDraft)?.name || ""
-                    }
-                    placeholder="Gõ tên khách hoặc mã khách để tìm…"
-                    emptyHint="Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước."
-                    onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowCustomerError(""); }}
+                    selectedLabel={customers.find((x) => x.id === flowCustomerDraft)?.name || ""}
+                    placeholder="Gõ tên, mã khách hoặc MST…"
+                    emptyHint="Danh bạ khách hàng đang trống."
+                    onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowError(""); }}
                   />
                 </div>
-                {flowCustomerError && (
-                  <p role="alert" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">
-                    {flowCustomerError}
-                  </p>
-                )}
-                <PrimaryBtn
-                  onClick={saveFlowCustomer}
-                  disabled={!!flowCustomerPending || !flowCustomerDraft}
-                  className="mt-2.5 min-w-[220px]"
-                  testId="commercial-flow-customer-save"
-                >
-                  {flowCustomerPending ? "ĐANG GÁN…" : "GÁN KHÁCH HÀNG CHO LÔ NÀY"}
-                </PrimaryBtn>
-                {flowCustomerPending && (
-                  <p className="mt-1.5 text-[12.5px] text-amber-800">Đang chờ backend xác nhận qua đọc lại…</p>
-                )}
               </div>
             )}
 
@@ -2259,14 +2217,9 @@ export default function ShipmentDetail() {
               </p>
             )}
             {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
-            {flowModeDraft === "CUSTOMER_SELF" && !s.customerId && (
-              <p className="mt-2 text-[12.5px] font-semibold text-amber-800">
-                Hãy gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.
-              </p>
-            )}
             <PrimaryBtn
               onClick={saveCommercialFlow}
-              disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !s.customerId)}
+              disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId)}
               className="mt-3 min-w-[220px]"
             >
               {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
