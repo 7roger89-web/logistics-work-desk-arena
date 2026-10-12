@@ -230,4 +230,21 @@ await clickElement(checkbox, "template checkbox");
 assert.equal(triggers.length, beforeCheck, "checkbox selection is local");
 assert.equal(checkbox.checked, true, "template can be selected for the lot");
 
+// E — a macro phase with no canonical Journey node must NOT fall back to
+// the whole-lot workspace. This is the regression form of the Owner's
+// original complaint: "Chứng từ" in one step must never become global files.
+const sparse = clone(FIX.viewModel);
+const sparseShipment = sparse.shipments.find((row) => row.id === SHIPMENT_ID);
+assert.ok(sparseShipment, "sparse-phase fixture shipment exists");
+sparseShipment.journey.nodes = sparseShipment.journey.nodes.filter((row) => row.id !== "delivery");
+currentModel = { ...sparse, lastWrites: [] };
+invoke(currentModel);
+await tick(160);
+await gotoShipment(SHIPMENT_ID);
+const absentDeliveryWork = $("[data-testid='journey-macro-work-4']")[0];
+const absentDeliveryDocs = $("[data-testid='journey-macro-docs-4']")[0];
+assert.ok(absentDeliveryWork?.disabled, "absent phase Công việc is disabled");
+assert.ok(absentDeliveryDocs?.disabled, "absent phase Chứng từ is disabled");
+assert.ok(text($("[data-testid='journey-macro-step-4']")[0]).includes("Chưa có công đoạn"), "absent phase stays explicit instead of inventing scope");
+
 console.log("LOGI-197 DOM acceptance: five-phase Journey + scoped work + one-action customer identity — all assertions passed.");
