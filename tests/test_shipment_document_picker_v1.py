@@ -302,6 +302,27 @@ def test_selection_writer_and_single_handler_are_registered():
     assert vm._HANDLERS["shipment_document_selection_save"] is vm._handle_shipment_document_selection_save
 
 
+def test_customer_self_existing_customer_id_confirms_without_reselecting(staging):
+    """Issue #197 — a normal created lot already knows its customer."""
+    from core import database as core_database
+
+    db = core_database.get_db()
+    db["shipments"].update_one(
+        {"id": SHIPMENT_ID},
+        {"$set": {"customer_id": "CUST-ANPHAT", "customer": "An Phát JSC", "client": "An Phát JSC"}},
+    )
+
+    confirmed = _dispatch("shipment_commercial_flow_save", {
+        "shipmentId": SHIPMENT_ID,
+        "requestId": "FLOW-SELF-197-MODERN",
+        "mode": "CUSTOMER_SELF",
+    })
+    assert confirmed["ok"], confirmed.get("error")
+    assert confirmed["persisted"]["customerId"] == "CUST-ANPHAT"
+    assert confirmed["persisted"]["commercialFlow"]["mode"] == "CUSTOMER_SELF"
+    assert confirmed["readback"]["commercialFlow"]["legalImporterName"] == "An Phát JSC"
+
+
 def test_customer_self_legacy_unique_name_autolinks_and_confirms_atomically(staging):
     """Issue #197 — do not ask for the same customer twice.
 
