@@ -481,9 +481,13 @@ export default function ShipmentAttachments({
             </p>
           </div>
         </div>
+      ) : effective.allowUpload && scopedContext ? (
+        <p className="text-[13.5px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5" data-testid="attachment-no-context-category">
+          Công đoạn này chưa có loại chứng từ để tải lên.
+        </p>
       ) : (
         <p className="text-[13.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5" data-testid="attachment-readonly">
-          Vai trò hiện tại chỉ được xem và tải tệp đính kèm — không được tải lên. Cần quyền sales_write.
+          Tài khoản hiện tại chỉ được xem và tải tệp.
         </p>
       )}
 
