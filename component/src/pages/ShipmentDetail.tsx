@@ -1282,6 +1282,180 @@ export default function ShipmentDetail() {
     }
   };
 
+  // Issue #197 — the import identity/model belongs to the Nhập khẩu phase.
+  // Keep one render authority and reuse it in the stage workspace; step 5 is
+  // reserved for whole-lot documents/finance rather than duplicating this form.
+  const commercialFlowPanel = (
+    <section
+      className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
+      data-testid="shipment-commercial-flow"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
+          <p className="text-[13px] text-slate-500 mt-0.5">
+            Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán.
+          </p>
+        </div>
+        {s.commercialFlow?.confirmed && (
+          <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
+            ✓ ĐÃ XÁC NHẬN
+          </span>
+        )}
+      </div>
+    
+      <div className="grid md:grid-cols-3 gap-2.5 mt-4">
+        {[
+          ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
+          ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
+          ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
+        ].map(([mode, title, desc]) => (
+          <label
+            key={mode}
+            className={cx(
+              "cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5",
+              flowModeDraft === mode ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"
+            )}
+          >
+            <input
+              type="radio"
+              name="commercial-flow"
+              value={mode}
+              checked={flowModeDraft === mode}
+              disabled={!!flowPending}
+              onChange={() => {
+                setFlowModeDraft(mode);
+                setFlowError("");
+                if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
+              }}
+              className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
+            />
+            <span>
+              <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">{title}</span>
+              <span className="block text-[12.5px] text-slate-500 mt-1">{desc}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    
+      {/* Issue #197 — reuse shipment customer identity. Normal rows do
+          not ask the operator to choose the same customer twice.
+          Name-only legacy rows auto-link only on ONE exact master match;
+          ambiguous/missing rows show a compact chooser. */}
+      {flowModeDraft === "CUSTOMER_SELF" && !flowNeedsCustomerChoice && (
+        <div
+          className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
+          data-testid="commercial-flow-customer-identity"
+        >
+          <span className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người nhập khẩu</span>
+          <span className="font-extrabold text-[14.5px] text-emerald-950">
+            {s.customer || autoFlowCustomer?.name || "Khách hàng của lô"}
+          </span>
+          <span className="ml-auto text-[12px] font-bold text-emerald-700">✓ Đã xác định</span>
+        </div>
+      )}
+    
+      {flowNeedsCustomerChoice && (
+        <div
+          className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3"
+          data-testid="commercial-flow-customer-recovery"
+        >
+          <p className="font-extrabold text-[14px] text-amber-900">Chưa xác định đúng khách hàng</p>
+          <p className="mt-0.5 text-[12.5px] text-amber-800">Chọn đúng pháp nhân một lần rồi xác nhận.</p>
+          <div className="mt-2">
+            <SearchPicker
+              label="Khách hàng"
+              testId="commercial-flow-customer-picker"
+              options={customers.map((x) => ({
+                id: x.id,
+                label: x.name || x.id,
+                sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
+              }))}
+              selectedId={flowCustomerDraft}
+              selectedLabel={customers.find((x) => x.id === flowCustomerDraft)?.name || ""}
+              placeholder="Gõ tên, mã khách hoặc MST…"
+              emptyHint="Danh bạ khách hàng đang trống."
+              onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowError(""); }}
+            />
+          </div>
+        </div>
+      )}
+    
+      {flowModeDraft === "TT_ENTRUSTED_SUB" && (
+        <div className="mt-3 grid md:grid-cols-2 gap-3">
+          <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
+            <select
+              value={flowAgentDraft}
+              disabled={!!flowPending}
+              onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
+              className={inputCls(!flowAgentDraft ? "missing" : "ok")}
+            >
+              <option value="">— Chọn đối tác —</option>
+              {authorityAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
+            <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
+            <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
+          </div>
+        </div>
+      )}
+    
+      {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
+        <div className="mt-3 max-w-[560px]">
+          <Field
+            label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
+            required={!flowCompanyDraft}
+          >
+            <select
+              value={flowCompanyDraft}
+              disabled={!!flowPending}
+              onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
+              className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
+            >
+              <option value="">— Chọn pháp nhân —</option>
+              {authorityCompanies.map((company) => (
+                <option key={company.id} value={company.id}>{company.legalName || company.id}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+    
+      {s.commercialFlow?.confirmed && (
+        <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+          <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
+          <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
+            {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
+          </p>
+          <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
+          {(s.commercialFlow.missing ?? []).length > 0 && (
+            <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
+              Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+    
+      {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
+        <p className="mt-2 text-[12.5px] text-slate-500">
+          Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
+        </p>
+      )}
+      {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
+      <PrimaryBtn
+        onClick={saveCommercialFlow}
+        disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId)}
+        className="mt-3 min-w-[220px]"
+      >
+        {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
+      </PrimaryBtn>
+    </section>
+  );
+
   return (
     <div className="space-y-2.5 min-w-0">
       {/* HEADER — Issue #190 CONTINUE: ONE top white header bar per the Owner
@@ -1357,13 +1531,14 @@ export default function ShipmentDetail() {
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         hasStageContent={Boolean(workspaceNode && (
           workspaceWork === "docs"
-          || (workspaceWork === "info" && (Boolean(moduleStepNode) || ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id)))
+          || (workspaceWork === "info" && (Boolean(moduleStepNode) || ["si-vgm", "gate-in", "customs-export", "customs-import"].includes(workspaceNode.id)))
         ))}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
+      {workspaceNode?.id === "customs-import" && workspaceWork === "info" && commercialFlowPanel}
       {workspaceNode && workspaceWork === "docs" &&
         <ShipmentAttachments
           contextCategories={workspaceDocumentCategories}
@@ -2073,175 +2248,6 @@ export default function ShipmentDetail() {
       {/* ============ TAB: DOCS ============ */}
       {showExistingWork && tab === "chung-tu" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <section
-            className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
-            data-testid="shipment-commercial-flow"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
-                <p className="text-[13px] text-slate-500 mt-0.5">
-                  Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán.
-                </p>
-              </div>
-              {s.commercialFlow?.confirmed && (
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
-                  ✓ ĐÃ XÁC NHẬN
-                </span>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-2.5 mt-4">
-              {[
-                ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
-                ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
-                ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
-              ].map(([mode, title, desc]) => (
-                <label
-                  key={mode}
-                  className={cx(
-                    "cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5",
-                    flowModeDraft === mode ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="commercial-flow"
-                    value={mode}
-                    checked={flowModeDraft === mode}
-                    disabled={!!flowPending}
-                    onChange={() => {
-                      setFlowModeDraft(mode);
-                      setFlowError("");
-                      if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
-                    }}
-                    className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
-                  />
-                  <span>
-                    <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">{title}</span>
-                    <span className="block text-[12.5px] text-slate-500 mt-1">{desc}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {/* Issue #197 — reuse shipment customer identity. Normal rows do
-                not ask the operator to choose the same customer twice.
-                Name-only legacy rows auto-link only on ONE exact master match;
-                ambiguous/missing rows show a compact chooser. */}
-            {flowModeDraft === "CUSTOMER_SELF" && !flowNeedsCustomerChoice && (
-              <div
-                className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
-                data-testid="commercial-flow-customer-identity"
-              >
-                <span className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người nhập khẩu</span>
-                <span className="font-extrabold text-[14.5px] text-emerald-950">
-                  {s.customer || autoFlowCustomer?.name || "Khách hàng của lô"}
-                </span>
-                <span className="ml-auto text-[12px] font-bold text-emerald-700">✓ Đã xác định</span>
-              </div>
-            )}
-
-            {flowNeedsCustomerChoice && (
-              <div
-                className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3"
-                data-testid="commercial-flow-customer-recovery"
-              >
-                <p className="font-extrabold text-[14px] text-amber-900">Chưa xác định đúng khách hàng</p>
-                <p className="mt-0.5 text-[12.5px] text-amber-800">Chọn đúng pháp nhân một lần rồi xác nhận.</p>
-                <div className="mt-2">
-                  <SearchPicker
-                    label="Khách hàng"
-                    testId="commercial-flow-customer-picker"
-                    options={customers.map((x) => ({
-                      id: x.id,
-                      label: x.name || x.id,
-                      sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
-                    }))}
-                    selectedId={flowCustomerDraft}
-                    selectedLabel={customers.find((x) => x.id === flowCustomerDraft)?.name || ""}
-                    placeholder="Gõ tên, mã khách hoặc MST…"
-                    emptyHint="Danh bạ khách hàng đang trống."
-                    onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowError(""); }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {flowModeDraft === "TT_ENTRUSTED_SUB" && (
-              <div className="mt-3 grid md:grid-cols-2 gap-3">
-                <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
-                  <select
-                    value={flowAgentDraft}
-                    disabled={!!flowPending}
-                    onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
-                    className={inputCls(!flowAgentDraft ? "missing" : "ok")}
-                  >
-                    <option value="">— Chọn đối tác —</option>
-                    {authorityAgents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
-                    ))}
-                  </select>
-                </Field>
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
-                  <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
-                  <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
-                </div>
-              </div>
-            )}
-
-            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
-              <div className="mt-3 max-w-[560px]">
-                <Field
-                  label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
-                  required={!flowCompanyDraft}
-                >
-                  <select
-                    value={flowCompanyDraft}
-                    disabled={!!flowPending}
-                    onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
-                    className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
-                  >
-                    <option value="">— Chọn pháp nhân —</option>
-                    {authorityCompanies.map((company) => (
-                      <option key={company.id} value={company.id}>{company.legalName || company.id}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-            )}
-
-            {s.commercialFlow?.confirmed && (
-              <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
-                <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
-                  {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
-                </p>
-                <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
-                {(s.commercialFlow.missing ?? []).length > 0 && (
-                  <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
-                    Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
-              <p className="mt-2 text-[12.5px] text-slate-500">
-                Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
-              </p>
-            )}
-            {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
-            <PrimaryBtn
-              onClick={saveCommercialFlow}
-              disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId)}
-              className="mt-3 min-w-[220px]"
-            >
-              {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
-            </PrimaryBtn>
-          </section>
-
           {pickerPolicy && (
             <ShipmentDocumentPicker
               shipmentId={s.id}
