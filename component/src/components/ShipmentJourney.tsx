@@ -430,10 +430,10 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   </section>;
 }
 
-export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai", globalRequest = 0, attachRequest = 0 }: {
+export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, hasStageContent = false, globalActive = false, globalTab = "van-tai", globalRequest = 0, attachRequest = 0 }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
-  children?: ReactNode; globalActive?: boolean; globalTab?: string;
+  children?: ReactNode; hasStageContent?: boolean; globalActive?: boolean; globalTab?: string;
   /** Issue #190 — the reference composition has NO journey section header:
       the "Toàn bộ lô hàng" / "+ Quy trình" controls live in the page identity
       bar. The page forwards button presses through these counters. */
@@ -558,7 +558,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
           <div className="flex shrink-0 overflow-x-auto border-b border-slate-300 bg-white px-2" aria-label="Nội dung công đoạn">{JOURNEY_WORK.map(w => <button type="button" key={w.id} aria-pressed={work === w.id} onClick={() => open(stage, w.id)} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2.5 text-xs font-extrabold tracking-wide', work === w.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500')}>{w.label}</button>)}</div>
           <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4" data-testid="journey-workspace-content">
             {work === 'overview' ? <div className="space-y-3 text-sm"><p>{stage.evidence || 'Chưa có bằng chứng hoàn thành.'}</p><p>{stage.blockers.join(' · ') || 'Chưa có việc chặn riêng.'}</p><button type="button" onClick={() => open(stage, 'info')} className="touch-target rounded-lg border px-3 font-bold">Mở công việc →</button></div>
-              : work === 'info' && !children ? <div className="space-y-3 text-sm" data-testid="journey-stage-work-summary">
+              : work === 'info' && !hasStageContent ? <div className="space-y-3 text-sm" data-testid="journey-stage-work-summary">
                   <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
                     <div className="flex items-start justify-between gap-3 px-3 py-2"><dt className="text-slate-500">Trạng thái</dt><dd className="text-right font-bold"><Status node={stage} /></dd></div>
                     <div className="flex items-start justify-between gap-3 px-3 py-2"><dt className="text-slate-500">Mốc</dt><dd className="text-right font-bold">{stage.deadline || 'Chưa ghi nhận'}</dd></div>
