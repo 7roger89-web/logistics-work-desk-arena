@@ -165,13 +165,18 @@ assert.ok(findClickable("Chứng từ", "button", stage), "phase has Chứng t�
 assert.equal(Boolean(findClickable("Chi phí", "button", stage)), false, "phase has no Chi phí tab");
 assert.equal(Boolean(findClickable("Lịch sử", "button", stage)), false, "phase has no Lịch sử tab");
 
-// C — legacy exact-name CUSTOMER_SELF is one action, no duplicate customer picker.
+// C — import identity lives in phase 3; legacy exact-name CUSTOMER_SELF is
+// one action with no duplicate customer picker.
 await gotoShipment(LEGACY_EXACT);
-await openStep5Files();
+await clickElement(
+  await waitForDom(() => $("[data-testid='journey-macro-work-3']")[0], "phase 3 Công việc"),
+  "phase 3 Công việc",
+);
 const flowSection = await waitForDom(
   () => $("[data-testid='shipment-commercial-flow']")[0],
-  "commercial-flow section",
+  "phase 3 commercial-flow section",
 );
+assert.ok(flowSection.closest("[data-testid='journey-stage-workspace']"), "import model is owned by phase 3");
 const radio = $("input[name='commercial-flow'][value='CUSTOMER_SELF']", flowSection)[0];
 await clickElement(radio, "CUSTOMER_SELF radio");
 assert.ok($("[data-testid='commercial-flow-customer-identity']", flowSection)[0], "exact unique name resolves visibly");
