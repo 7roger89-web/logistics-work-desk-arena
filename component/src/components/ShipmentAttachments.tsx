@@ -167,11 +167,12 @@ export default function ShipmentAttachments({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
   const categoryContext = contextCategories?.join("|") || "";
+  const scopedContext = Boolean(contextCategories?.length);
   const categoryOptions = contextCategories?.length
     ? effective.categories.filter((item) => contextCategories.includes(item.id))
     : effective.categories;
   useEffect(() => {
-    if (categoryOptions.length) setCategory(categoryOptions[0].id);
+    setCategory(categoryOptions[0]?.id ?? "");
   }, [shipmentId, categoryContext]);
   const [file, setFile] = useState<File | null>(null);
   const [pendingUpload, setPendingUpload] = useState("");
@@ -209,11 +210,9 @@ export default function ShipmentAttachments({
   }, [shipmentId, categoryContext]);
 
   const reviewableRows = useMemo(
-    () => (Array.isArray(attachments) ? attachments : []).filter((item) =>
-      item.reviewSelectable === true
-      && (!contextCategories?.length || contextCategories.includes(item.category))
-    ),
-    [attachments, categoryContext]
+    () => scopedContext ? [] : (Array.isArray(attachments) ? attachments : [])
+      .filter((item) => item.reviewSelectable === true),
+    [attachments, scopedContext]
   );
 
   // The pending review settles ONLY on the outcome carrying the requestId this
@@ -425,7 +424,7 @@ export default function ShipmentAttachments({
         }
       />
 
-      {effective.allowUpload ? (
+      {effective.allowUpload && (!scopedContext || categoryOptions.length > 0) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
           <label className="block min-w-0">
             <span className="block text-[13px] font-bold text-slate-600 mb-1">Loại chứng từ</span>
@@ -488,7 +487,7 @@ export default function ShipmentAttachments({
         </p>
       )}
 
-      {effective.allowUpload && (
+      {effective.allowUpload && (!scopedContext || categoryOptions.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -551,7 +550,7 @@ export default function ShipmentAttachments({
                   finger-sized affordance for the files this run can read. A
                   non-selectable file stays visible with its honest reason and
                   is never implied to be damaged. */}
-              {item.reviewSelectable === true ? (
+              {!scopedContext && item.reviewSelectable === true ? (
                 <label
                   className="inline-flex items-center gap-2 shrink-0 cursor-pointer touch-target min-h-[44px] px-1"
                   data-testid="attachment-review-toggle"
@@ -614,14 +613,14 @@ export default function ShipmentAttachments({
         </ul>
       )}
 
-      <DocumentReviewPanel
+      {!scopedContext && <DocumentReviewPanel
         pendingReview={pendingReview}
         selectedCount={selected.length}
         reviewableCount={reviewableRows.length}
         reviewError={reviewError}
         review={review}
         onReview={startDocumentReview}
-      />
+      />}
 
       <p className="mt-3 text-[12.5px] text-slate-500">
         Tệp trùng trong cùng lô không được lưu bản sao lần hai. Tệp giữ nguyên quyền riêng tư trong kho chứng từ — hệ thống không tạo liên kết công khai.
