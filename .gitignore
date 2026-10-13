@@ -52,3 +52,5 @@ docs/goals/LOG-LG02/backups/
 # Python venv / node deps (machine-specific; component/dist is committed)
 .venv/
 component/node_modules/
+# Hook-transition test build output (rebuildable; see dom_hook_transition_197.mjs)
+tests/component/dist-test/

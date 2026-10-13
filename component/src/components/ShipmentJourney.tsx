@@ -401,6 +401,12 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'overview'); }, [activeStage, work, globalActive, globalTab]);
   const journey = s.journey;
+  // Issue #197 hook-ordering repair — the zero-node early return MUST come
+  // after every Hook. A shipment that gains Journey nodes while mounted would
+  // otherwise render a different hook count and React throws "Rendered more
+  // hooks than during the previous render". The hasNodes guards keep the
+  // zero-node behavior identical: the request/module effects stay inert there.
+  const hasNodes = Boolean(journey?.nodes.length);
   const modules = useMemo(() => journey?.modules ?? [], [journey]);
   const attachOutcome = vm?.lastWrites?.find(w => w.event === 'work_module_attach' && w.requestId === attachPending);
   const attachLoading = Boolean(attachPending && !attachOutcome);
@@ -409,11 +415,46 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (attachOutcome.ok) { setAttachOpen(false); setChosen(''); setAttachPending(''); setAttachError(''); }
     else { setAttachError(String(attachOutcome.error || 'Backend từ chối gắn quy trình.')); setAttachPending(''); }
   }, [attachOutcome]);
+  const openGlobal = (tab = 'van-tai') => {
+    if (onGlobal(tab)) {
+      setPanelMode('global');
+      // Issue #190 — full existing tab content is not designed for a 420px
+      // side pane. Reuse the approved PR177 collapsed-map rail so the real
+      // workspace gets readable width; the operator can reopen the map.
+      setMapCollapsed(true);
+      return true;
+    }
+    return false;
+  };
+  // Issue #190 — the page identity bar owns the two journey-level controls in
+  // the reference composition; presses arrive as monotonic counters.
+  const seenGlobalReq = useRef(globalRequest);
+  const seenAttachReq = useRef(attachRequest);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (globalRequest === seenGlobalReq.current) return;
+    seenGlobalReq.current = globalRequest;
+    openGlobal();
+  }, [globalRequest, hasNodes]);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (attachRequest === seenAttachReq.current) return;
+    seenAttachReq.current = attachRequest;
+    setModulesOpen(true);
+    setAttachOpen(true);
+  }, [attachRequest, hasNodes]);
+  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
+  const prevModuleCount = useRef(modules.length);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (modules.length > prevModuleCount.current) setModulesOpen(true);
+    prevModuleCount.current = modules.length;
+  }, [modules, hasNodes]);
   // Issue #197 follow-up — zero nodes (or a missing Journey) render the same
   // five compact macro phases as the populated path, never the six-phase
   // canvas, never an invented current phase.
-  if (!journey?.nodes.length) return <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>;
-  const nodes = journey.nodes;
+  if (!hasNodes) return <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>;
+  const nodes = journey?.nodes ?? [];
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
@@ -421,6 +462,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
   // default: an explicit problem beats the positional current marker.
   const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const problem = problemNode;
   const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
@@ -437,40 +479,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   };
   const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
   const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
-  const openGlobal = (tab = 'van-tai') => {
-    if (onGlobal(tab)) {
-      setPanelMode('global');
-      // Issue #190 — full existing tab content is not designed for a 420px
-      // side pane. Reuse the approved PR177 collapsed-map rail so the real
-      // workspace gets readable width; the operator can reopen the map.
-      setMapCollapsed(true);
-      return true;
-    }
-    return false;
-  };
   const wide = panelMode === 'stage' || panelMode === 'global';
-  // Issue #190 — the page identity bar owns the two journey-level controls in
-  // the reference composition; presses arrive as monotonic counters.
-  const seenGlobalReq = useRef(globalRequest);
-  const seenAttachReq = useRef(attachRequest);
-  useEffect(() => {
-    if (globalRequest === seenGlobalReq.current) return;
-    seenGlobalReq.current = globalRequest;
-    openGlobal();
-  }, [globalRequest]);
-  useEffect(() => {
-    if (attachRequest === seenAttachReq.current) return;
-    seenAttachReq.current = attachRequest;
-    setModulesOpen(true);
-    setAttachOpen(true);
-  }, [attachRequest]);
-  const problem = problemNode;
-  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
-  const prevModuleCount = useRef(modules.length);
-  useEffect(() => {
-    if (modules.length > prevModuleCount.current) setModulesOpen(true);
-    prevModuleCount.current = modules.length;
-  }, [modules]);
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
   // the 451px right rail, the compact overview stacks it below the step
   // strip. Same nodes, same pick, same panels — no duplicated journey
@@ -491,8 +500,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
           <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
           <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
             {problem && <button type="button" onClick={() => pick(problem.id)} className="w-full rounded-lg border-2 border-red-600 bg-red-50 p-3 text-left"><p className="text-xs font-bold text-red-700">⚠ Attention</p><p className="text-lg font-extrabold text-red-800">{problem.blockers[0]}</p><p className="text-xs text-red-700">{problem.label} → Xử lý ngay</p></button>}
-            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
-            <div className="grid grid-cols-2 gap-3"><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Current</p><p className="text-sm font-bold text-blue-700">{baseNodes.find(n => n.current)?.label || 'Chưa xác định'}</p></div><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Owner lô hàng</p><p className="text-sm font-bold">{journey.owner || 'Chưa phân công'}</p></div><button type="button" onClick={() => openGlobal('chung-tu')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Documents</p><p className="font-bold">{s.attachments?.length ?? 0} tệp đã ghi nhận</p></button><button type="button" onClick={() => openGlobal('tai-chinh')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Finance</p><p className="text-sm font-bold">Xem tài chính toàn lô →</p></button></div>
+            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey?.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
+            <div className="grid grid-cols-2 gap-3"><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Current</p><p className="text-sm font-bold text-blue-700">{baseNodes.find(n => n.current)?.label || 'Chưa xác định'}</p></div><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Owner lô hàng</p><p className="text-sm font-bold">{journey?.owner || 'Chưa phân công'}</p></div><button type="button" onClick={() => openGlobal('chung-tu')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Documents</p><p className="font-bold">{s.attachments?.length ?? 0} tệp đã ghi nhận</p></button><button type="button" onClick={() => openGlobal('tai-chinh')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Finance</p><p className="text-sm font-bold">Xem tài chính toàn lô →</p></button></div>
             <button type="button" onClick={() => openGlobal()} className="touch-target w-full rounded-lg border border-slate-800 px-3 text-sm font-bold">Mở Global Workspace →</button>
           </div>
         </div>}
