@@ -1,8 +1,9 @@
 // Issue #197 follow-up — deterministic zero-node / missing-Journey acceptance.
 //
-// The zero-node default view is the SAME five compact macro phases as the
-// populated path (via JourneyStageSummaryCards): no six-phase canvas, no
-// Quick Panel, no invented current phase. This lane mounts the exact
+// Owner correction 2026-10-13: no compact five-phase cards anywhere. The
+// zero-node view uses the same split language as the populated path — a slim
+// empty-map placeholder left, the unchanged action content right — with a
+// truthful "Chưa xác định" and one dominant CTA. This lane mounts the exact
 // committed `component/dist` bundle in jsdom over a REAL fresh-shipment
 // projection (created through the canonical `shipment_create` handler on
 // isolated mongomock staging) and executes both the nodes=[] and the
@@ -59,58 +60,38 @@ const label = variant === 'absent' ? 'journey absent' : 'nodes=[]';
   await click(byId('shipment-period-tat-ca'));
   await click([...document.querySelectorAll('main a')].find((a) => text(a) === meta.shipmentId));
 
-  // 1. the compact five-phase shell renders for a truthful zero-node Journey
+  // 1. the split-view shell renders for a truthful zero-node Journey
   const cockpit = byId('shipment-journey');
   assert.ok(cockpit, `[${label}] journey shell must exist`);
   assert.equal(cockpit.getAttribute('data-empty-journey'), 'true', `[${label}] renders the fresh-shipment state`);
 
-  // 2. exactly five compact macro phases — the same component as the populated path
-  const steps = [...document.querySelectorAll('[data-testid^="journey-macro-step-"]')];
-  assert.equal(steps.length, 5, `[${label}] five macro phases, got ${steps.length}`);
-  const titles = steps.map((s) => s.querySelector('h3').textContent.trim());
-  assert.deepEqual(titles, ['Đầu đi', 'Chặng chính', 'Nhập khẩu', 'Giao hàng', 'Hồ sơ & Chi phí'], `[${label}] exact phase titles`);
+  // 2. Owner correction 2026-10-13 — no compact five-phase cards anywhere.
+  // Left: slim empty-map placeholder. Right: the unchanged action content.
+  assert.ok(byId('journey-split-view'), `[${label}] split view renders`);
+  assert.ok(byId('journey-empty-map'), `[${label}] empty-map placeholder on the left`);
+  assert.ok(text(byId('journey-empty-map')).includes('Chưa có sơ đồ Journey'), `[${label}] placeholder is honest`);
+  assert.equal(document.querySelectorAll('[data-testid^="journey-macro-step-"]').length, 0, `[${label}] no five-phase cards`);
+  assert.ok(byId('journey-zero-panel'), `[${label}] action panel on the right`);
 
-  // 3. steps 1–4: Công việc/Chứng từ disabled, "Chưa có công đoạn", never a fallback
-  for (let n = 1; n <= 4; n++) {
-    const work = byId(`journey-macro-work-${n}`);
-    const docs = byId(`journey-macro-docs-${n}`);
-    assert.ok(work && docs, `[${label}] step ${n} has both buttons`);
-    assert.equal(work.disabled, true, `[${label}] step ${n} Công việc disabled without a canonical node`);
-    assert.equal(docs.disabled, true, `[${label}] step ${n} Chứng từ disabled without a canonical node`);
-    assert.ok(text(byId(`journey-macro-step-${n}`)).includes('Chưa có công đoạn'), `[${label}] step ${n} says Chưa có công đoạn`);
-  }
-
-  // 4. current position is truthful UNKNOWN — never an invented phase
+  // 3. current position is truthful UNKNOWN — never an invented phase
   const toolbar = byId('journey-compact-toolbar');
   assert.ok(toolbar, `[${label}] compact toolbar exists`);
   assert.ok(text(toolbar).includes('📍 Đang ở: Chưa xác định'), `[${label}] current reads Chưa xác định`);
   assert.equal(text(toolbar).includes('Đang ở: HỒ SƠ'), false, `[${label}] never invents a current phase`);
 
-  // 5. no six-phase canvas, no Quick Panel on the default view
+  // 4. no six-phase canvas, no Quick Panel, no fabricated nodes
   assert.equal(byId('journey-phase-strip'), null, `[${label}] no six-phase strip`);
   assert.equal(byId('journey-empty-canvas'), null, `[${label}] no onboarding canvas`);
   assert.equal(byId('journey-quick-panel'), null, `[${label}] no Quick Panel`);
   assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length, 0, `[${label}] no fabricated detailed nodes`);
 
-  // 6. step 5 keeps legitimate whole-lot Hồ sơ / Chi phí access
-  const files = byId('journey-macro-files-5');
-  const finance = byId('journey-macro-finance-5');
-  assert.ok(files && finance, `[${label}] step 5 has Hồ sơ + Chi phí`);
-  assert.equal(files.disabled, false, `[${label}] step 5 Hồ sơ enabled`);
-  assert.equal(finance.disabled, false, `[${label}] step 5 Chi phí enabled`);
-
-  // 7. exactly ONE dominant action, bound to the Execution Profile next action
+  // 5. exactly ONE dominant action, bound to the Execution Profile next action
   const ctas = document.querySelectorAll('[data-testid="journey-zero-primary-cta"]');
   assert.equal(ctas.length, 1, `[${label}] one dominant fresh-shipment CTA`);
   assert.match(text(ctas[0]), /BỔ SUNG HỒ SƠ/, `[${label}] dominant CTA label`);
   assert.ok(text(byId('journey-zero-profile')).includes(meta.primaryAction), `[${label}] profile card states the server primary action`);
 
-  // 8. clicking a disabled step button opens nothing and writes nothing
-  await click(byId('journey-macro-work-1'));
-  assert.equal(byId('journey-stage-workspace'), null, `[${label}] disabled step opens no stage workspace`);
-  assert.equal(triggers.filter((t) => t.event !== 'navigate').length, 0, `[${label}] no business write on load`);
-
-  // 9. the dominant action writes nothing and reaches the Execution Profile editor
+  // 6. the dominant action writes nothing and reaches the Execution Profile editor
   await click(ctas[0]);
   const writes = triggers.filter((t) => t.event !== 'navigate').map((t) => t.event);
   assert.deepEqual(writes, [], `[${label}] CTA must not invent a business write (got ${writes.join(',')})`);
@@ -126,5 +107,5 @@ const label = variant === 'absent' ? 'journey absent' : 'nodes=[]';
   assert.ok(order[0] < order[1] && order[1] < order[2], `[${label}] Attention → Cockpit → Completion Goals order`);
 }
 
-console.log(`PASS journey fresh 188 zero-node [${label}] (deterministic jsdom): 5 compact phases (steps 1-4 disabled, Chua co cong doan), current Chua xac dinh, 1 CTA reaching Execution Profile, step-5 global access kept, zero writes`);
+console.log(`PASS journey fresh 188 zero-node [${label}] (deterministic jsdom): split view (empty-map placeholder + action panel), current Chua xac dinh, 1 CTA reaching Execution Profile, zero writes`);
 process.exit(0);

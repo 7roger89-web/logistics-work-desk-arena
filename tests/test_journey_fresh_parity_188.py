@@ -22,28 +22,27 @@ DIST = ROOT / "component/dist/logi-shell.js"
 
 
 class FreshShipmentCockpitContract(unittest.TestCase):
-    """Issue #197 follow-up — the zero-node default view is the same five
-    compact macro phases as the populated path, never the old six-phase
-    canvas + Quick Panel, never an invented current phase."""
+    """Issue #197 follow-up — owner correction 2026-10-13: no compact
+    five-phase cards anywhere. The zero-node view uses the split language —
+    a slim empty-map placeholder left, the unchanged action content right —
+    never an invented current phase."""
 
-    def test_zero_nodes_render_the_compact_five_phase_shell(self):
+    def test_zero_nodes_render_the_split_empty_shell(self):
         self.assertIn("function ZeroNodeJourney", JOURNEY)
         self.assertNotIn("function FreshShipmentCockpit", JOURNEY)
         self.assertNotIn("const EMPTY_PHASES", JOURNEY)
+        self.assertNotIn("function JourneyStageSummaryCards", JOURNEY)
         self.assertIn('data-empty-journey="true"', JOURNEY)
-        self.assertIn("JourneyStageSummaryCards s={s} nodes={[]}", JOURNEY)
+        self.assertIn('data-testid="journey-empty-map"', JOURNEY)
+        self.assertIn('data-testid="journey-split-view"', JOURNEY)
         self.assertIn("📍 Đang ở: Chưa xác định", JOURNEY)
         self.assertNotIn("Đang ở: HỒ SƠ", JOURNEY)
 
-    def test_zero_node_view_has_five_phases_and_one_profile_action(self):
+    def test_zero_node_view_has_one_profile_action(self):
         self.assertIn('data-testid="journey-zero-primary-cta"', JOURNEY)
         self.assertIn("onClick={runPrimary}", JOURNEY)
         self.assertIn("BỔ SUNG HỒ SƠ", JOURNEY)
-        # steps 1-4 stay disabled without a canonical node; step 5 keeps
-        # whole-lot access through onGlobal
-        self.assertIn("disabled={!row.n}", JOURNEY)
-        self.assertIn("onGlobal('chung-tu')", JOURNEY)
-        self.assertIn("onGlobal('tai-chinh')", JOURNEY)
+        self.assertIn('data-testid="journey-zero-profile"', JOURNEY)
 
     def test_zero_node_view_has_no_six_phase_canvas_or_quick_panel(self):
         start = JOURNEY.index("function ZeroNodeJourney")

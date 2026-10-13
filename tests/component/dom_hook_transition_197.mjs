@@ -78,7 +78,8 @@ let shell = byId('shipment-journey');
 assert.ok(shell, 'zero-node: journey shell must mount');
 assert.equal(shell.getAttribute('data-empty-journey'), 'true', 'zero-node: renders the empty state');
 assert.ok(text(byId('journey-compact-toolbar')).includes('Chưa xác định'), 'zero-node: truthful UNKNOWN');
-assert.equal(document.querySelectorAll('[data-testid^="journey-macro-step-"]').length, 5, 'zero-node: five phases');
+assert.ok(byId('journey-empty-map'), 'zero-node: empty-map placeholder');
+assert.ok(byId('journey-zero-panel'), 'zero-node: action panel');
 
 // Phase 2 — SAME mounted instance, populated Journey.
 errors.length = 0;
@@ -91,16 +92,14 @@ assert.equal(hookErr, undefined, `no React hook-ordering crash on zero->populate
 shell = byId('shipment-journey');
 assert.ok(shell, 'populated: journey shell must still be mounted (no crash-unmount)');
 assert.notEqual(shell.getAttribute('data-empty-journey'), 'true', 'populated: must NOT render the empty state');
-assert.equal(document.querySelectorAll('[data-testid^="journey-macro-step-"]').length, 5, 'populated: five phases');
+assert.ok(byId('journey-split-view'), 'populated: split view renders');
+assert.ok(byId('journey-map-viewport'), 'populated: map viewport mounted');
 const toolbar = text(byId('journey-compact-toolbar'));
 assert.ok(toolbar.includes('Chặng chính'), `populated: real current position from Journey (got: ${toolbar.slice(0, 80)})`);
 assert.equal(toolbar.includes('Chưa xác định'), false, 'populated: no stale UNKNOWN');
-// Phase 2 has a canonical node now: its buttons must be enabled.
-assert.equal(byId('journey-macro-work-2').disabled, false, 'populated: phase-2 Công việc enabled');
-assert.equal(byId('journey-macro-docs-2').disabled, false, 'populated: phase-2 Chứng từ enabled');
 
 console.error = origConsoleError;
-console.log('HOOK_TRANSITION_197: PASS — zero->populated on the same mounted instance, no hook-ordering crash, correct five-phase render.');
+console.log('HOOK_TRANSITION_197: PASS — zero->populated on the same mounted instance, no hook-ordering crash, correct split-view render.');
 
 // Phase 3 — reverse: populated -> zero on the SAME mounted instance.
 errors.length = 0;

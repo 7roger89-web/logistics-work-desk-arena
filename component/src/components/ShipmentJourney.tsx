@@ -311,12 +311,10 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
 /**
  * Issue #197 follow-up — zero-node / missing-Journey closure.
  *
- * A shipment with no Journey nodes gets the SAME five compact macro phases as
- * the populated path (via JourneyStageSummaryCards), never the old six-phase
- * canvas + Quick Panel, and never an invented current phase: the position
- * reads "Chưa xác định". Steps 1–4 stay disabled without a canonical node;
- * step 5 keeps legitimate whole-lot Hồ sơ / Chi phí access through onGlobal.
- * One obvious "Bổ sung hồ sơ" action completes the execution profile.
+ * A shipment with no Journey nodes shows a slim empty-map placeholder on the
+ * left and the unchanged action content on the right: never an invented
+ * current phase, the position reads "Chưa xác định". One obvious
+ * "Bổ sung hồ sơ" action completes the execution profile.
  *
  * The global branch preserves the page's tab content ({children} carries the
  * whole-lot tab panels, including the Execution Profile editor the primary
@@ -339,9 +337,9 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
     { id: 'tai-chinh', label: 'Tài chính' },
     { id: 'lich-su', label: 'Lịch sử' },
   ];
-  // No canonical nodes exist, so the stage callbacks can never fire — the
-  // buttons stay disabled. The handler only satisfies the component type.
-  const openNothing = () => false;
+  // Owner correction 2026-10-13 — no compact five-phase cards anywhere. The
+  // zero-node view keeps the same split language: a slim empty-map placeholder
+  // left, the unchanged action content right.
   return <section className="journey-demo min-w-0" data-testid="shipment-journey" data-empty-journey="true">
     {globalActive ? (
       <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
@@ -360,14 +358,22 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">📍 Đang ở: Chưa xác định</span>
         <span className="text-xs text-slate-500">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</span>
       </div>
-      <JourneyStageSummaryCards s={s} nodes={[]} onOpen={openNothing} onGlobal={onGlobal}
-        canAttachModule={false} onAttachModule={() => {}} />
-      <div className="mt-3 rounded-xl border-2 border-amber-500 bg-amber-50 p-4" data-testid="journey-zero-profile">
-        <p className="text-xs font-extrabold tracking-wide text-amber-800">CẦN LÀM NGAY</p>
-        <p className="mt-1 text-lg font-extrabold text-amber-950">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
-        <p className="mt-1 text-sm text-amber-900">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
-        <button type="button" onClick={runPrimary} data-testid="journey-zero-primary-cta"
-          className="touch-target mt-3 w-full rounded-lg bg-[#0f2a4a] px-4 py-3 font-extrabold text-white">BỔ SUNG HỒ SƠ →</button>
+      <div className="journey-split journey-split-small-map" data-testid="journey-split-view">
+        <div className="journey-canvas grid place-items-center p-6 text-center" data-testid="journey-empty-map">
+          <div>
+            <p className="text-sm font-extrabold text-slate-500">Chưa có sơ đồ Journey</p>
+            <p className="mt-1 text-xs text-slate-400">Bổ sung hồ sơ để hình thành Journey.</p>
+          </div>
+        </div>
+        <div className="journey-side p-4" data-testid="journey-zero-panel">
+          <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4" data-testid="journey-zero-profile">
+            <p className="text-xs font-extrabold tracking-wide text-amber-800">CẦN LÀM NGAY</p>
+            <p className="mt-1 text-lg font-extrabold text-amber-950">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
+            <p className="mt-1 text-sm text-amber-900">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
+            <button type="button" onClick={runPrimary} data-testid="journey-zero-primary-cta"
+              className="touch-target mt-3 w-full rounded-lg bg-[#0f2a4a] px-4 py-3 font-extrabold text-white">BỔ SUNG HỒ SƠ →</button>
+          </div>
+        </div>
       </div>
     </>)}
   </section>;
@@ -385,12 +391,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
 }) {
   const [picked, setPicked] = useState('');
   const [mapCollapsed, setMapCollapsed] = useState(false);
-  // Issue #195 — the operational overview is the default: whole journey +
-  // current/problem + next action visible at once. The detailed 11-node
-  // JourneyMap stays intact and mounts only when the operator explicitly asks
-  // for it. This is local UI state only: no second engine, no duplicated
-  // journey state — the same `nodes`, the same `pick`, the same panels.
-  const [detailMapOpen, setDetailMapOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -541,27 +541,18 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
         the strip renders whenever attaching is allowed, even with zero
         modules, so the capability is never orphaned. */}
-    {/* Issue #195 — operational overview is the default: whole journey +
-        current/problem + next action at a glance. The detailed 11-node map
-        stays intact behind the explicit "Bản đồ chi tiết" control; the same
-        toolbar closes it again. */}
+    {/* Owner correction 2026-10-13 — persistent split view, no toggle, no
+        compact five-phase default: the Journey map stays small on the left,
+        the business content takes the wide right column. All panel content
+        is unchanged; only the proportions changed. */}
     <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2" data-testid="journey-compact-toolbar">
       <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">📍 Đang ở: {currentLabel}</span>
       {problem && <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">⚠ {problem.blockers[0] || problem.label}</span>}
-      <button type="button" onClick={() => setDetailMapOpen(v => !v)} aria-expanded={detailMapOpen} data-testid="journey-detail-map-toggle" className="touch-target ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] px-3.5 py-2 text-sm font-extrabold text-white">{detailMapOpen ? 'Thu gọn bản đồ' : '🗺 Bản đồ chi tiết'}</button>
     </div>
-    {detailMapOpen ? (
-      <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
-        <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
-        {renderSidePanel('')}
-      </div>
-    ) : (
-      <div className="space-y-3" data-testid="journey-compact-overview">
-        <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal}
-          canAttachModule={canAttach} onAttachModule={() => { setModulesOpen(true); setAttachOpen(true); setAttachError(''); }} />
-        {panelMode !== 'overview' && renderSidePanel('journey-compact-side')}
-      </div>
-    )}
+    <div className={cx('journey-split', 'journey-split-small-map', wide && mapCollapsed && 'journey-split-collapsed')} data-testid="journey-split-view">
+      <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
+      {renderSidePanel('')}
+    </div>
 
     {/* Issue #190 repair — an EXISTING attached module remains below the five
         cards. The empty add-module affordance no longer creates an accidental
@@ -615,107 +606,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       </div>}
     </div>}
   </section>;
-}
-
-function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule, onAttachModule }: {
-  s: Shipment;
-  nodes: JourneyNode[];
-  onOpen: (node: JourneyNode, work: string) => boolean;
-  onGlobal: (tab?: string) => boolean;
-  canAttachModule: boolean;
-  onAttachModule: () => void;
-}) {
-  const node = (id: string) => nodes.find(n => n.id === id);
-  const leg = s.transportLegs?.[0];
-  type RegionKey = keyof typeof JOURNEY_REGION_NODE_IDS;
-
-  const regionNodes = (region: RegionKey) =>
-    JOURNEY_REGION_NODE_IDS[region].map(node).filter((n): n is JourneyNode => Boolean(n));
-  const regionAnchor = (region: RegionKey, prefer: string) => {
-    const found = regionNodes(region);
-    return found.find(n => n.current)
-      ?? found.find(n => n.state === 'PROBLEM' || n.blockers.length > 0)
-      ?? node(prefer)
-      ?? found[0];
-  };
-  const regionProblemCount = (region: RegionKey) =>
-    regionNodes(region).filter(n => n.state === 'PROBLEM' || n.blockers.length > 0).length;
-  const regionCurrent = (region: RegionKey) => regionNodes(region).some(n => n.current);
-  const regionDone = (region: RegionKey) => {
-    const found = regionNodes(region);
-    return found.length > 0 && found.every(n => n.completed);
-  };
-
-  const booking = regionAnchor('origin', 'booking');
-  const main = regionAnchor('main', 'arrival');
-  const customs = regionAnchor('import', 'customs-import');
-  const delivery = regionAnchor('delivery', 'delivery');
-  const phaseRows: Array<{
-    num: number; key: string; title: string; region?: RegionKey; n?: JourneyNode;
-    summary: string;
-  }> = [
-    { num: 1, key: 'origin', title: 'Đầu đi', region: 'origin', n: booking,
-      summary: s.transport?.bookingNo || leg?.bookingNo || booking?.deadline || 'Chưa có mốc chính' },
-    { num: 2, key: 'main', title: 'Chặng chính', region: 'main', n: main,
-      summary: leg?.ata ? `ATA ${leg.ata}` : leg?.eta ? `ETA ${leg.eta}` : main?.deadline || 'Chưa có ETA/ATA' },
-    { num: 3, key: 'import', title: 'Nhập khẩu', region: 'import', n: customs,
-      summary: s.importInfo.customsStatus ? 'Đã thông quan' : s.importInfo.declarationNo ? `Tờ khai ${s.importInfo.declarationNo}` : 'Chưa có tờ khai' },
-    { num: 4, key: 'delivery', title: 'Giao hàng', region: 'delivery', n: delivery,
-      summary: s.importInfo.delivered ? 'Đã giao' : s.importInfo.schedule ? `Dự kiến ${s.importInfo.schedule}` : 'Chưa có lịch giao' },
-    { num: 5, key: 'files-finance', title: 'Hồ sơ & Chi phí',
-      summary: s.commercialFlow?.modeLabel || 'Hồ sơ & chi phí toàn lô' },
-  ];
-
-  // Issue #197 — a macro phase without a canonical Journey node must stay
-  // unavailable. Falling back to a whole-lot tab would recreate the exact
-  // "every phase opens the same global workspace" defect this redesign fixes.
-  const openStage = (row: typeof phaseRows[number], work: 'info' | 'docs') => {
-    if (!row.n) return false;
-    return onOpen(row.n, work);
-  };
-
-  return <nav aria-label="Hành trình lô hàng" data-testid="journey-macro-steps"
-    className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-2 sm:grid-cols-5">
-    {phaseRows.map(row => {
-      const isCurrent = row.region ? regionCurrent(row.region) : false;
-      const problems = row.region ? regionProblemCount(row.region) : 0;
-      const done = row.region ? regionDone(row.region) : false;
-      return <section key={row.key} data-testid={`journey-macro-step-${row.num}`}
-        className={cx(
-          'min-w-0 rounded-lg border-2 bg-white p-2',
-          isCurrent ? 'border-blue-600 bg-blue-50/60' : problems > 0 ? 'border-red-300' : done ? 'border-emerald-300' : 'border-slate-200'
-        )}>
-        <div className="flex items-start gap-2">
-          <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black',
-            isCurrent ? 'bg-blue-600 text-white' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700')}>{row.num}</span>
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1">
-              <h3 className="truncate text-[12.5px] font-black text-[#0f2a4a]">{row.title}</h3>
-              {problems > 0 && <span className="shrink-0 text-[10px] font-extrabold text-red-700">⚠ {problems}</span>}
-            </div>
-            <p className={cx('truncate text-[10.5px] font-semibold', isCurrent ? 'text-blue-700' : 'text-slate-500')}>
-              {isCurrent ? '📍 Đang ở đây' : row.num < 5 && !row.n ? 'Chưa có công đoạn' : row.summary}
-            </p>
-          </div>
-        </div>
-        {row.num < 5 ? <div className="mt-2 grid grid-cols-2 gap-1">
-          <button type="button" disabled={!row.n} onClick={() => openStage(row, 'info')} data-testid={`journey-macro-work-${row.num}`}
-            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Công việc</button>
-          <button type="button" disabled={!row.n} onClick={() => openStage(row, 'docs')} data-testid={`journey-macro-docs-${row.num}`}
-            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Chứng từ</button>
-        </div> : <div className="mt-2 grid grid-cols-2 gap-1">
-          <button type="button" onClick={() => onGlobal('chung-tu')} data-testid="journey-macro-files-5"
-            className="touch-target rounded-md border border-slate-200 px-1.5 py-1 text-[10.5px] font-bold text-slate-700">Hồ sơ</button>
-          <button type="button" onClick={() => onGlobal('tai-chinh')} data-testid="journey-macro-finance-5"
-            className="touch-target rounded-md bg-[#0f2a4a] px-1.5 py-1 text-[10.5px] font-bold text-white">Chi phí</button>
-          <button type="button" onClick={() => onGlobal('lich-su')} data-testid="journey-macro-history-5"
-            className="touch-target col-span-2 rounded-md px-1.5 py-1 text-[10px] font-semibold text-slate-500">Lịch sử</button>
-          {canAttachModule && <button type="button" onClick={onAttachModule} data-testid="journey-add-module-page"
-            className="touch-target col-span-2 rounded-md border border-dashed border-slate-300 px-1.5 py-1 text-[10px] font-semibold text-slate-500">+ Quy trình phát sinh</button>}
-        </div>}
-      </section>;
-    })}
-  </nav>;
 }
 
 /**

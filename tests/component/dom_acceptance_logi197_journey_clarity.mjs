@@ -6,11 +6,12 @@
  * Run:
  *   node tests/component/dom_acceptance_logi197_journey_clarity.mjs /tmp/logi197-dom.json
  *
- * Proves the redesigned browser contract against the CURRENT built bundle:
- * - default = five compact macro phases, no 11-node canvas / giant side panel;
- * - detailed 11-node map remains available on demand;
- * - steps 1–4 expose only Công việc + Chứng từ; Chi phí is owned by step 5;
- * - phase Chứng từ uses the existing stage-scoped attachment surface, not the
+ * Proves the redesigned browser contract against the CURRENT built bundle
+ * (Owner correction 2026-10-13 — persistent split view, no toggle, no
+ * compact five-phase default):
+ * - persistent split: small Journey map left, big business content right;
+ * - map viewport is always mounted; no "Bản đồ chi tiết" toggle;
+ * - stage Chứng từ uses the existing stage-scoped attachment surface, not the
  *   global document-picker/workflow;
  * - legacy exact-name CUSTOMER_SELF confirms in one action and sends the
  *   canonical customerId on shipment_commercial_flow_save (no separate GÁN);
@@ -112,15 +113,44 @@ async function gotoShipment(sid) {
 }
 
 async function openStep5Files() {
+  // Global Hồ sơ via the overview panel's Documents button (no phase cards).
   const button = await waitForDom(
-    () => $("[data-testid='journey-macro-files-5']")[0],
-    "step 5 Hồ sơ button",
+    () => findClickable("Documents", "button", $("[data-testid='journey-overview-panel']")[0]),
+    "overview Documents button",
   );
-  await clickElement(button, "step 5 Hồ sơ button");
+  await clickElement(button, "overview Documents button");
   return waitForDom(
     () => $("[data-testid='shipment-document-picker']")[0],
     "global Hồ sơ surface",
   );
+}
+
+// Helper: open a stage workspace by clicking its map node, then the quick
+// panel's "MỞ CÔNG ĐOẠN →", then optionally a work tab.
+async function openStageViaMap(nodeId, workLabel) {
+  const node = await waitForDom(
+    () => $(`[data-testid='journey-node-${nodeId}']`)[0],
+    `map node ${nodeId}`,
+  );
+  await clickElement(node, `map node ${nodeId}`);
+  const quick = await waitForDom(
+    () => $("[data-testid='journey-side-panel']")[0],
+    "quick panel",
+  );
+  const openBtn = findClickable("MỞ CÔNG ĐOẠN", "button", quick);
+  assert.ok(openBtn, "quick panel has MỞ CÔNG ĐOẠN");
+  await clickElement(openBtn, "MỞ CÔNG ĐOẠN");
+  const stage = await waitForDom(
+    () => $("[data-testid='journey-stage-workspace']")[0],
+    "stage workspace",
+  );
+  if (workLabel) {
+    const tab = findClickable(workLabel, "button", stage);
+    assert.ok(tab, `stage has ${workLabel} tab`);
+    await clickElement(tab, `${workLabel} tab`);
+    await tick(160);
+  }
+  return $("[data-testid='journey-stage-workspace']")[0];
 }
 
 const module = await import(pathToFileURL(bundlePath).href);
@@ -129,34 +159,25 @@ mountRef.current = module.default;
 invoke(currentModel);
 await tick(200);
 
-// A — five-phase default, detailed 11-node map only on demand.
+// A — persistent split view: small map left, big content right. No toggle,
+// no compact five-phase default.
 await gotoShipment(SHIPMENT_ID);
-assert.ok($("[data-testid='journey-compact-overview']")[0], "compact Journey is default");
-assert.ok($("[data-testid='journey-macro-steps']")[0], "five-phase Journey exists");
-assert.equal($("[data-testid^='journey-macro-step-']").length, 5, "exactly five macro phases");
-assert.equal($("[data-testid='journey-map-viewport']").length, 0, "detailed canvas is not mounted by default");
-assert.equal($("[data-testid='journey-side-panel']").length, 0, "giant side panel is not mounted by default");
-assert.equal($("[data-testid^='journey-macro-work-']").length, 4, "steps 1-4 own Công việc");
-assert.equal($("[data-testid^='journey-macro-docs-']").length, 4, "steps 1-4 own Chứng từ");
-assert.equal($("[data-testid='journey-macro-finance-5']").length, 1, "step 5 alone owns Chi phí");
-assert.equal($("[data-testid^='journey-macro-finance-']").length, 1, "no per-stage Chi phí duplicates");
-assert.ok(text($("[data-testid='journey-compact-toolbar']")[0]).includes("Đang ở:"), "position remains visible");
-
-await clickWhenReady("Bản đồ chi tiết", "button", "[data-testid='journey-compact-toolbar']");
-await waitForDom(() => $("[data-testid='journey-map-viewport']")[0], "detailed map");
+assert.ok($("[data-testid='journey-split-view']")[0], "split view renders");
+assert.ok($("[data-testid='journey-map-viewport']")[0], "map viewport is persistently mounted");
+assert.ok($("[data-testid='journey-side-panel']")[0], "side panel is mounted");
+assert.equal($("[data-testid='journey-detail-map-toggle']").length, 0, "no detail-map toggle");
+assert.equal($("[data-testid='journey-compact-overview']").length, 0, "no compact overview");
+assert.equal($("[data-testid^='journey-macro-step-']").length, 0, "no five-phase cards");
 for (const id of NODE_IDS) {
   assert.ok(
     $(`[data-testid='journey-node-${id}']`).some((el) => el.closest("[data-testid='journey-map-viewport']")),
-    `detailed node ${id} remains available`,
+    `map node ${id} is present`,
   );
 }
-await clickWhenReady("Thu gọn bản đồ", "button", "[data-testid='journey-compact-toolbar']");
-assert.equal($("[data-testid='journey-map-viewport']").length, 0, "detailed map closes");
+assert.ok(text($("[data-testid='journey-compact-toolbar']")[0]).includes("Đang ở:"), "position remains visible");
 
 // B — stage documents are scoped; global picker/workflow does not bleed in.
-const phase1Docs = $("[data-testid='journey-macro-docs-1']")[0];
-await clickElement(phase1Docs, "phase 1 Chứng từ");
-const stage = await waitForDom(() => $("[data-testid='journey-stage-workspace']")[0], "phase workspace");
+const stage = await openStageViaMap("booking", "Chứng từ");
 assert.ok($("[data-testid='shipment-attachments']", stage)[0], "phase uses attachment surface");
 assert.ok(text(stage).includes("Chứng từ công đoạn"), "phase attachment context is explicit");
 assert.equal($("[data-testid='shipment-document-picker']", stage).length, 0, "global document picker is absent from phase");
@@ -168,12 +189,9 @@ assert.equal(Boolean(findClickable("Lịch sử", "button", stage)), false, "pha
 // C.1 — a normal modern shipment already has canonical customerId: selecting
 // CUSTOMER_SELF must never ask for the same customer again.
 await gotoShipment(SHIPMENT_ID);
-await clickElement(
-  await waitForDom(() => $("[data-testid='journey-macro-work-3']")[0], "modern phase 3 Công việc"),
-  "modern phase 3 Công việc",
-);
+const modernStage = await openStageViaMap("customs-import", "Công việc");
 let flowSection = await waitForDom(
-  () => $("[data-testid='shipment-commercial-flow']")[0],
+  () => $("[data-testid='shipment-commercial-flow']", modernStage)[0],
   "modern phase 3 commercial-flow section",
 );
 let radio = $("input[name='commercial-flow'][value='CUSTOMER_SELF']", flowSection)[0];
@@ -186,12 +204,9 @@ assert.ok(confirm && !confirm.disabled, "modern lot can confirm immediately");
 // C.2 — import identity lives in phase 3; a legacy exact-name CUSTOMER_SELF is
 // still one action with no duplicate customer picker.
 await gotoShipment(LEGACY_EXACT);
-await clickElement(
-  await waitForDom(() => $("[data-testid='journey-macro-work-3']")[0], "phase 3 Công việc"),
-  "phase 3 Công việc",
-);
+const legacyStage = await openStageViaMap("customs-import", "Công việc");
 flowSection = await waitForDom(
-  () => $("[data-testid='shipment-commercial-flow']")[0],
+  () => $("[data-testid='shipment-commercial-flow']", legacyStage)[0],
   "phase 3 commercial-flow section",
 );
 assert.ok(flowSection.closest("[data-testid='journey-stage-workspace']"), "import model is owned by phase 3");
@@ -230,9 +245,9 @@ await clickElement(checkbox, "template checkbox");
 assert.equal(triggers.length, beforeCheck, "checkbox selection is local");
 assert.equal(checkbox.checked, true, "template can be selected for the lot");
 
-// E — a macro phase with no canonical Journey node must NOT fall back to
-// the whole-lot workspace. This is the regression form of the Owner's
-// original complaint: "Chứng từ" in one step must never become global files.
+// E — a Journey node removed from the model leaves no way to open its stage.
+// (Owner correction 2026-10-13: no phase cards, so stages open only via map
+// nodes; a missing node means no button, no fallback to a global workspace.)
 const sparse = clone(FIX.viewModel);
 const sparseShipment = sparse.shipments.find((row) => row.id === SHIPMENT_ID);
 assert.ok(sparseShipment, "sparse-phase fixture shipment exists");
@@ -241,10 +256,7 @@ currentModel = { ...sparse, lastWrites: [] };
 invoke(currentModel);
 await tick(160);
 await gotoShipment(SHIPMENT_ID);
-const absentDeliveryWork = $("[data-testid='journey-macro-work-4']")[0];
-const absentDeliveryDocs = $("[data-testid='journey-macro-docs-4']")[0];
-assert.ok(absentDeliveryWork?.disabled, "absent phase Công việc is disabled");
-assert.ok(absentDeliveryDocs?.disabled, "absent phase Chứng từ is disabled");
-assert.ok(text($("[data-testid='journey-macro-step-4']")[0]).includes("Chưa có công đoạn"), "absent phase stays explicit instead of inventing scope");
+assert.equal($("[data-testid='journey-node-delivery']").length, 0, "removed node has no map button");
+assert.ok($("[data-testid='journey-split-view']")[0], "split view still renders");
 
-console.log("LOGI-197 DOM acceptance: five-phase Journey + scoped work + one-action customer identity — all assertions passed.");
+console.log("LOGI-197 DOM acceptance: persistent split view + scoped work + one-action customer identity — all assertions passed.");
