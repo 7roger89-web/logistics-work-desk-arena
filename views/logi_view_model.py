@@ -3509,10 +3509,18 @@ def factual_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
 def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Persist the shipment's operator-confirmed import/entrustment model.
 
-    The write owns exactly one block: ``data.0.0.commercial_flow``.
-    It never generates a contract, GNT, PXK or payment request by itself; those
-    remain separate capabilities whose readiness is re-derived by
-    core.shipment_document_workflow on the next fresh read.
+    Issue #197: CUSTOMER_SELF reuses the shipment customer identity instead
+    of making the operator select the same customer twice. A modern shipment
+    already carries customer_id from Create Shipment. For legacy rows that
+    only carry the customer name, this handler may repair the missing link
+    INSIDE THE SAME atomic shipment save, but only when the name has exactly
+    one exact master match (or when the operator explicitly supplies one
+    master customer id after an ambiguous/missing match). No fuzzy legal-
+    identity matching is allowed.
+
+    The write still owns one shipment mutation. It never generates a contract,
+    GNT, PXK or payment request by itself; those remain separate capabilities
+    whose readiness is re-derived on the next fresh read.
     """
 
     from core.auth import can_operate_business
@@ -3520,13 +3528,15 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         get_last_db_error,
         load_authority_agents,
         load_authority_companies,
+        load_customers,
         save_shipment_atomic,
     )
     from core.logic import apply_financial_snapshot
-    from core.shipment_document_workflow import validate_flow_write
+    from core.shipment_document_workflow import FLOW_CUSTOMER_SELF, validate_flow_write
 
     sid = rd.text(payload.get("shipmentId"))
     request_id = rd.text(payload.get("requestId"))
+    mode = rd.text(payload.get("mode")).upper()
 
     def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
         return _result(
@@ -3547,11 +3557,77 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
     if shipment is None:
         return _res(False, f"Không tìm thấy lô {sid}.")
 
+    # Issue #197 — legacy identity repair happens only for CUSTOMER_SELF and is
+    # persisted together with commercial_flow in the SAME save_shipment_atomic
+    # call below. Modern rows already have customer_id and skip this block.
+    customer_link_changed = False
+    if mode == FLOW_CUSTOMER_SELF and not rd.text(shipment.get("customer_id")):
+        customers = load_customers() or {}
+        requested_customer_id = rd.text(payload.get("customerId")).upper()
+        resolved_customer_id = ""
+        resolved_customer: Mapping[str, Any] | None = None
+
+        if requested_customer_id:
+            row = customers.get(requested_customer_id)
+            if not isinstance(row, Mapping):
+                message = f"Không có khách hàng {requested_customer_id} trong danh bạ."
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+            resolved_customer_id = requested_customer_id
+            resolved_customer = row
+        else:
+            # Reuse the module's existing exact normalized customer-name
+            # key (NFKC + whitespace + casefold). This is equality, never fuzzy
+            # similarity, and is already used by the GetFly customer matcher.
+            wanted = _getfly_customer_key(shipment.get("customer") or shipment.get("client"))
+            matches: list[tuple[str, Mapping[str, Any]]] = []
+            if wanted:
+                for key, row in customers.items():
+                    if not isinstance(row, Mapping):
+                        continue
+                    if _getfly_customer_key(row.get("name")) != wanted:
+                        continue
+                    candidate_id = rd.text(
+                        row.get("id") or row.get("customer_id") or key
+                    ).upper()
+                    if candidate_id:
+                        matches.append((candidate_id, row))
+
+            if len(matches) == 1:
+                resolved_customer_id, resolved_customer = matches[0]
+            elif len(matches) > 1:
+                message = (
+                    "Có nhiều khách hàng trùng tên trong danh bạ. "
+                    "Chọn đúng pháp nhân một lần để xác nhận hình thức nhập khẩu."
+                )
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+            else:
+                message = (
+                    "Chưa xác định được đúng khách hàng trong danh bạ. "
+                    "Chọn đúng pháp nhân một lần để xác nhận hình thức nhập khẩu."
+                )
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+
+        shipment["customer_id"] = resolved_customer_id
+        canonical_name = rd.text((resolved_customer or {}).get("name"))
+        if canonical_name:
+            shipment["customer"] = canonical_name
+            shipment["client"] = canonical_name
+        customer_link_changed = True
+
     companies = load_authority_companies() or {}
     agents = load_authority_agents() or {}
     document, errors = validate_flow_write(
         shipment=shipment,
-        mode=payload.get("mode"),
+        mode=mode,
         companies=companies,
         agents=agents,
         company_id=payload.get("companyId"),
@@ -3559,7 +3635,7 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
     )
     rejected = [
         key for key in payload
-        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId"}
+        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId", "customerId"}
     ]
     if errors or document is None:
         return _res(
@@ -3572,13 +3648,16 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
 
     head = shipment.setdefault("data", {}).setdefault("0.0", {})
     previous = head.get("commercial_flow") if isinstance(head.get("commercial_flow"), Mapping) else {}
-    if factual_equal(previous, document):
+    if factual_equal(previous, document) and not customer_link_changed:
         return _res(
             True,
             "Không có thay đổi để lưu.",
             noop=True,
             rejected=rejected,
-            persisted={"commercialFlow": dict(previous)},
+            persisted={
+                "commercialFlow": dict(previous),
+                "customerId": rd.text(shipment.get("customer_id")),
+            },
         )
 
     head["commercial_flow"] = document
@@ -3597,10 +3676,13 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         readback=_projection_for(fresh),
         rejected=rejected,
         version=int(fresh.get("version") or 0),
-        persisted={"commercialFlow": dict(fresh_head.get("commercial_flow") or {})},
+        persisted={
+            "commercialFlow": dict(fresh_head.get("commercial_flow") or {}),
+            "customer": rd.text(fresh.get("customer") or fresh.get("client")),
+            "customerId": rd.text(fresh.get("customer_id")),
+        },
         audit=_audit_trail(sid),
     )
-
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
     """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""
