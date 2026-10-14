@@ -1008,9 +1008,13 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
                 detail="Hàng đi hàng không: MAWB/HAWB và chuyến bay là chứng từ của chặng chính.",
                 prompt=("Còn thiếu: " + ", ".join(missing)) if missing else ""))
         else:
+            # Outside our service scope means NO owned task, not factual proof
+            # that the counterparty has actually issued a waybill or flight.
+            observed = bool(facts.get("mawb") or facts.get("hawb")) and bool(facts.get("flightNo"))
             stages.append(_stage(
-                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason, done=True,
-                detail="Chặng bay do bên bán thu xếp; lô chỉ ghi nhận lại chứng từ."))
+                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason, done=observed,
+                detail="Chặng bay ngoài phạm vi Trường Thành thu xếp; chỉ ghi nhận MAWB/HAWB và chuyến bay khi có dữ liệu thực tế.",
+                prompt=""))
 
     if mode == MODE_RAIL and (owns_main or main_documents):
         rail_known = bool(facts.get("carrier") or facts.get("mbl"))
