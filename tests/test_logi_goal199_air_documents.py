@@ -91,3 +91,18 @@ def test_air_documents_remain_visible_as_read_only_evidence_when_main_not_owned(
     assert "MAIN_CARRIAGE" not in profile["serviceScope"]
     stage = _air_stage(shipment)
     assert stage["reason"] == ep.REASON_PERSISTED_FACT_DEPENDENCY
+    assert stage["done"] is True
+
+
+@pytest.mark.parametrize("only_partial_evidence", [
+    {"carrier": "VN Cargo"},
+    {"carrier": "VN Cargo", "hawb": "HAWB-321"},
+    {"carrier": "VN Cargo", "flight_no": "VN335"},
+])
+def test_external_carriage_keeps_unknown_air_documents_incomplete(only_partial_evidence):
+    # We cannot assign the counterparty an action; equally, we cannot claim
+    # that an AWB and flight both exist when only the carrier is known.
+    stage = _air_stage(_air_shipment(only_partial_evidence, owned=False))
+    assert stage["reason"] == ep.REASON_PERSISTED_FACT_DEPENDENCY
+    assert stage["done"] is False
+    assert stage["missing"] == ""  # no Trường Thành owned task is fabricated
