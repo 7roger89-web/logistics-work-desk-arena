@@ -259,4 +259,23 @@ await gotoShipment(SHIPMENT_ID);
 assert.equal($("[data-testid='journey-node-delivery']").length, 0, "removed node has no map button");
 assert.ok($("[data-testid='journey-split-view']")[0], "split view still renders");
 
+// F — opening a global tab must NOT collapse the Journey map to the rail.
+// (Owner 2026-10-13: the 340px map stays visible alongside the global
+// workspace, even when a global tab is opened.)
+currentModel = { ...clone(FIX.viewModel), lastWrites: [] };
+invoke(currentModel);
+await tick(160);
+await gotoShipment(SHIPMENT_ID);
+await clickWhenReady("Mở Global Workspace", "button", "[data-testid='journey-side-panel']");
+const globalWs = await waitForDom(
+  () => $("[data-testid='journey-global-workspace']")[0],
+  "global workspace",
+);
+const nhapTab = findClickable("Nhập & Giao", "button", globalWs);
+assert.ok(nhapTab, "global workspace has Nhập & Giao tab");
+await clickElement(nhapTab, "Nhập & Giao tab");
+await tick(160);
+assert.ok($("[data-testid='journey-map-viewport']")[0], "map viewport remains after opening global Nhập & Giao");
+assert.equal($("[data-testid='journey-map-rail']").length, 0, "map is not collapsed to the rail");
+
 console.log("LOGI-197 DOM acceptance: persistent split view + scoped work + one-action customer identity — all assertions passed.");

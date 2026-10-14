@@ -390,7 +390,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   globalRequest?: number; attachRequest?: number;
 }) {
   const [picked, setPicked] = useState('');
-  const [mapCollapsed, setMapCollapsed] = useState(false);
   const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -418,10 +417,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const openGlobal = (tab = 'van-tai') => {
     if (onGlobal(tab)) {
       setPanelMode('global');
-      // Issue #190 — full existing tab content is not designed for a 420px
-      // side pane. Reuse the approved PR177 collapsed-map rail so the real
-      // workspace gets readable width; the operator can reopen the map.
-      setMapCollapsed(true);
+      // Owner 2026-10-13: the 340px Journey map stays visible alongside the
+      // global workspace. Never collapse it to the rail.
       return true;
     }
     return false;
@@ -479,7 +476,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   };
   const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
   const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
-  const wide = panelMode === 'stage' || panelMode === 'global';
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
   // the 451px right rail, the compact overview stacks it below the step
   // strip. Same nodes, same pick, same panels — no duplicated journey
@@ -549,8 +545,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">📍 Đang ở: {currentLabel}</span>
       {problem && <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">⚠ {problem.blockers[0] || problem.label}</span>}
     </div>
-    <div className={cx('journey-split', 'journey-split-small-map', wide && mapCollapsed && 'journey-split-collapsed')} data-testid="journey-split-view">
-      <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
+    <div className={cx('journey-split', 'journey-split-small-map')} data-testid="journey-split-view">
+      <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={false} onExpand={() => {}} />
       {renderSidePanel('')}
     </div>
 

@@ -65,9 +65,10 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;
-    // The demo's desktop fit is exact; small screens retain readable cards and
-    // use pan rather than scaling eleven labels down to illegible text.
-    const k = clamp(Math.min((w - 32) / CW, (h - 32) / canvasHeight), w < 600 ? 0.65 : 0.3, 1.15);
+    // Owner 2026-10-13: the 340px left-column map must fit the complete
+    // Journey (logical canvas 1108px wide needs ~0.278). Allow zooming out
+    // to 0.25 so the small persistent map shows the whole journey at once.
+    const k = clamp(Math.min((w - 32) / CW, (h - 32) / canvasHeight), 0.25, 1.15);
     setTf({ k, x: (w - CW * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
   }, [canvasHeight]);
   useEffect(() => {
