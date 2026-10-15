@@ -84,7 +84,8 @@ try {
   assert.notEqual(await onboard.getAttribute('data-state'), 'COMPLETED');
   await onboard.click();
   await page.getByTestId('journey-open-workspace').first().click();
-  await page.getByTestId('journey-stage-workspace').getByRole('button', { name: 'Thông tin', exact: true }).click();
+  // #198 renames the stage work tab "Thông tin" -> "Công việc"; same panel.
+  await page.getByTestId('journey-stage-workspace').getByRole('button', { name: /^(Thông tin|Công việc)$/ }).first().click();
   const input = page.getByLabel('Ngày xếp hàng lên tàu (on-board)', { exact: true });
   await input.waitFor({ state: 'visible', timeout: 15000 });
   await input.fill('2026-10-03');
