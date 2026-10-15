@@ -62,16 +62,21 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const cleanupDrag = useRef<(() => void) | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   const sea = nodes.some(n => n.id === 'booking');
-  const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 140 + Math.floor(i / 5) * 212, w: W, h: H }]));
-  const canvasHeight = sea ? CH : Math.max(CH, 140 + Math.ceil(nodes.length / 5) * 212);
+  // LOGI-199 T5 — non-sea (AIR/ROAD/scoped) grids size the canvas to the nodes
+  // they really have, so a 2–6 node journey fits at a readable scale instead of
+  // being shrunk into the full sea demo canvas.
+  const gridCols = Math.max(1, Math.min(5, nodes.length)), gridRows = Math.max(1, Math.ceil(nodes.length / 5));
+  const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 40 + Math.floor(i / 5) * PITCH, w: W, h: H }]));
+  const canvasWidth = sea ? CW : col(gridCols - 1) + W + PX;
+  const canvasHeight = sea ? CH : 40 + (gridRows - 1) * PITCH + H + 40;
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;
     // The demo's desktop fit is exact; small screens retain readable cards and
     // use pan rather than scaling eleven labels down to illegible text.
-    const k = clamp(Math.min((w - 32) / CW, (h - 32) / canvasHeight), w < 600 ? 0.65 : 0.3, 1.15);
-    setTf({ k, x: (w - CW * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
-  }, [canvasHeight]);
+    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), w < 600 ? 0.65 : 0.3, 1.15);
+    setTf({ k, x: (w - canvasWidth * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
+  }, [canvasHeight, canvasWidth]);
   useEffect(() => {
     const el = vp.current; if (!el) return;
     if (typeof ResizeObserver === 'undefined') { fit(); return; }
@@ -114,10 +119,10 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   // whole-shipment closure: documents/finance may still be open or UNKNOWN.
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
   return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom">
-    <div className="absolute left-0 top-0 origin-top-left" style={{ width: CW, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
+    <div className="absolute left-0 top-0 origin-top-left" style={{ width: canvasWidth, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
       {positions.has('si-vgm') && positions.has('gate-in') && <div className="absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30" style={{ left: DEMO_POS['si-vgm'].x - 14, top: DEMO_POS['si-vgm'].y - 36, width: W + 28, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 50 }} data-testid="journey-parallel-branch"><span className="absolute -top-2.5 left-3 rounded bg-slate-200 px-1.5 text-[10px] font-extrabold tracking-wider text-slate-600">NHÁNH SONG SONG</span></div>}
       {positions.has('si-vgm') && positions.has('gate-in') && <div className="pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600" style={{ left: DEMO_POS.etd.x - 4, top: DEMO_POS.etd.y - 30, width: W + 8 }}>⛓ Phụ thuộc SI/VGM + Gate-in</div>}
-      <svg width={CW} height={canvasHeight} className="pointer-events-none absolute left-0 top-0 z-[1]" aria-hidden="true">
+      <svg width={canvasWidth} height={canvasHeight} className="pointer-events-none absolute left-0 top-0 z-[1]" aria-hidden="true">
         <defs>{[['g', '#059669'], ['s', '#94a3b8'], ['r', '#dc2626']].map(([k, c]) => <marker key={k} id={`journey-arr-${k}`} markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0.5 L10,5 L0,9.5 z" fill={c} /></marker>)}</defs>
         {edges.map(e => { const n = nodes.find(n => n.id === e.from)!; const k = n.state === 'PROBLEM' ? 'r' : n.completed ? 'g' : 's'; return <path key={e.from + e.to} data-from={e.from} data-to={e.to} d={journeyEdgePath(positions.get(e.from)!, positions.get(e.to)!)} fill="none" stroke={k === 'g' ? '#059669' : k === 'r' ? '#dc2626' : '#94a3b8'} strokeWidth={k === 'g' ? 3 : 2.5} strokeDasharray={k === 'g' ? undefined : '7 5'} markerEnd={`url(#journey-arr-${k})`} />; })}
         {sea && first && <path d={journeyEdgePath(DEMO_POS.start, positions.get(first.id)!)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
