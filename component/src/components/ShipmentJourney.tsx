@@ -314,16 +314,13 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
 }
 
 /**
- * Issue #197 follow-up — zero-node / missing-Journey closure.
+ * Issue #199 follow-up — zero-node / missing-Journey exception only.
+ * Keep the same full-width paper-chart map family as the populated Journey,
+ * but show no invented nodes or stages. The truthful profile status and its
+ * single CTA remain visible; the CTA only navigates to the real editor.
  *
- * A shipment with no Journey nodes shows a slim empty-map placeholder on the
- * left and the unchanged action content on the right: never an invented
- * current phase, the position reads "Chưa xác định". One obvious
- * "Bổ sung hồ sơ" action completes the execution profile.
- *
- * The global branch preserves the page's tab content ({children} carries the
- * whole-lot tab panels, including the Execution Profile editor the primary
- * action navigates to) once the operator explicitly opens a global tab.
+ * The global branch preserves the whole-lot tabs and their existing children,
+ * including the Execution Profile editor reached by the primary action.
  */
 function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalActive = false, globalTab = 'van-tai' }: {
   shipment: Shipment;
@@ -334,6 +331,7 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
   globalTab?: string;
 }) {
   const next = s.executionProfile?.nextAction;
+  const profileState = s.executionProfile?.stateLabel || 'Hồ sơ lô còn thiếu';
   const tabs = [
     { id: 'van-tai', label: 'Thông tin' },
     { id: 'lay-hang', label: 'Xuất khẩu' },
@@ -342,9 +340,6 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
     { id: 'tai-chinh', label: 'Tài chính' },
     { id: 'lich-su', label: 'Lịch sử' },
   ];
-  // Owner correction 2026-10-13 — no compact five-phase cards anywhere. The
-  // zero-node view keeps the same split language: a slim empty-map placeholder
-  // left, the unchanged action content right.
   return <section className="journey-demo min-w-0" data-testid="shipment-journey" data-empty-journey="true">
     {globalActive ? (
       <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
@@ -359,24 +354,26 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
         <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div>
       </div>
     ) : (<>
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2" data-testid="journey-compact-toolbar">
-        <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">📍 Đang ở: Chưa xác định</span>
-        <span className="text-xs text-slate-500">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</span>
-      </div>
-      <div className="journey-split journey-split-small-map" data-testid="journey-split-view">
-        <div className="journey-canvas grid place-items-center p-6 text-center" data-testid="journey-empty-map">
-          <div>
-            <p className="text-sm font-extrabold text-slate-500">Chưa có sơ đồ Journey</p>
-            <p className="mt-1 text-xs text-slate-400">Bổ sung hồ sơ để hình thành Journey.</p>
-          </div>
+      <div className="journey-focus-row" data-testid="journey-zero-focus-row">
+        <div className="journey-toolbar" data-testid="journey-compact-toolbar">
+          <span className="journey-toolbar-chip journey-toolbar-here">📍 Đang ở: Chưa xác định</span>
+          <span className="journey-toolbar-next">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</span>
+          <span className="journey-toolbar-spacer" />
         </div>
-        <div className="journey-side p-4" data-testid="journey-zero-panel">
-          <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4" data-testid="journey-zero-profile">
-            <p className="text-xs font-extrabold tracking-wide text-amber-800">CẦN LÀM NGAY</p>
-            <p className="mt-1 text-lg font-extrabold text-amber-950">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
-            <p className="mt-1 text-sm text-amber-900">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
+      </div>
+      <div className="journey-split journey-map-first journey-zero-map-first" data-testid="journey-zero-map-first"
+        data-layout="full-width" style={{ width: '100%' }}>
+        <JourneyMap shipment={s} nodes={[]} selectedId="" onPick={() => {}} collapsed={false} onExpand={() => {}} />
+        <div className="journey-zero-notice" data-testid="journey-empty-map" role="status" aria-labelledby="journey-zero-title">
+          <div className="journey-zero-profile" data-testid="journey-zero-profile">
+            <p className="journey-zero-kicker">CẦN LÀM NGAY</p>
+            <span className="journey-zero-profile-state" data-testid="journey-zero-profile-state">{profileState}</span>
+            <h2 id="journey-zero-title" className="journey-zero-title">Chưa có sơ đồ Journey</h2>
+            <p className="journey-zero-summary">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</p>
+            <p className="journey-zero-next-action" data-testid="journey-zero-next-action">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
+            <p className="journey-zero-detail">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
             <button type="button" onClick={runPrimary} data-testid="journey-zero-primary-cta"
-              className="touch-target mt-3 w-full rounded-lg bg-[#0f2a4a] px-4 py-3 font-extrabold text-white">BỔ SUNG HỒ SƠ →</button>
+              className="touch-target journey-zero-cta">BỔ SUNG HỒ SƠ →</button>
           </div>
         </div>
       </div>
@@ -456,9 +453,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (modules.length > prevModuleCount.current) setModulesOpen(true);
     prevModuleCount.current = modules.length;
   }, [modules, hasNodes]);
-  // Issue #197 follow-up — zero nodes (or a missing Journey) render the same
-  // five compact macro phases as the populated path, never the six-phase
-  // canvas, never an invented current phase.
+  // LOGI #199 zero-node exception: render a full-width chart-paper empty state;
+  // populated Journeys continue through the unchanged map-first branch below.
   // G2 — the popup is a modal over the map (desktop) / bottom sheet (mobile).
   const modalOpen = panelMode !== 'overview';
   // G2 — Escape closes the popup modal (keyboard parity with the backdrop).

@@ -78,8 +78,13 @@ let shell = byId('shipment-journey');
 assert.ok(shell, 'zero-node: journey shell must mount');
 assert.equal(shell.getAttribute('data-empty-journey'), 'true', 'zero-node: renders the empty state');
 assert.ok(text(byId('journey-compact-toolbar')).includes('Chưa xác định'), 'zero-node: truthful UNKNOWN');
-assert.ok(byId('journey-empty-map'), 'zero-node: empty-map placeholder');
-assert.ok(byId('journey-zero-panel'), 'zero-node: action panel');
+const zeroMap = byId('journey-zero-map-first');
+assert.ok(zeroMap, 'zero-node: full-width map-first canvas');
+assert.equal(zeroMap.getAttribute('data-layout'), 'full-width', 'zero-node: full-width layout contract');
+assert.equal(byId('journey-split-view'), null, 'zero-node: old split view is absent');
+assert.equal(byId('journey-zero-panel'), null, 'zero-node: no right-side action panel');
+assert.ok(byId('journey-empty-map'), 'zero-node: floating empty-state notice');
+assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length, 0, 'zero-node: no fabricated nodes');
 
 // Phase 2 — SAME mounted instance, populated Journey.
 errors.length = 0;
@@ -92,14 +97,18 @@ assert.equal(hookErr, undefined, `no React hook-ordering crash on zero->populate
 shell = byId('shipment-journey');
 assert.ok(shell, 'populated: journey shell must still be mounted (no crash-unmount)');
 assert.notEqual(shell.getAttribute('data-empty-journey'), 'true', 'populated: must NOT render the empty state');
-assert.ok(byId('journey-split-view'), 'populated: split view renders');
+assert.ok(byId('journey-split-view'), 'populated: existing split/map-first workspace renders');
 assert.ok(byId('journey-map-viewport'), 'populated: map viewport mounted');
+assert.equal(byId('journey-zero-map-first'), null, 'populated: zero-node full-width exception is absent');
+assert.equal(byId('journey-empty-map'), null, 'populated: zero-node notice is absent');
+assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length, populatedShip.journey.nodes.length,
+  'populated: all real transition fixture nodes remain rendered');
 const toolbar = text(byId('journey-compact-toolbar'));
 assert.ok(toolbar.includes('Chặng chính'), `populated: real current position from Journey (got: ${toolbar.slice(0, 80)})`);
 assert.equal(toolbar.includes('Chưa xác định'), false, 'populated: no stale UNKNOWN');
 
 console.error = origConsoleError;
-console.log('HOOK_TRANSITION_197: PASS — zero->populated on the same mounted instance, no hook-ordering crash, correct split-view render.');
+console.log('HOOK_TRANSITION_197: PASS — zero->populated on the same mounted instance, no hook-ordering crash, populated map-first render.');
 
 // Phase 3 — reverse: populated -> zero on the SAME mounted instance.
 errors.length = 0;
@@ -112,5 +121,8 @@ shell = byId('shipment-journey');
 assert.ok(shell, 'zero-again: journey shell must still be mounted');
 assert.equal(shell.getAttribute('data-empty-journey'), 'true', 'zero-again: renders the empty state again');
 assert.ok(text(byId('journey-compact-toolbar')).includes('Chưa xác định'), 'zero-again: truthful UNKNOWN again');
+assert.ok(byId('journey-zero-map-first'), 'zero-again: full-width map-first empty state returns');
+assert.equal(byId('journey-split-view'), null, 'zero-again: old split view stays absent');
+assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length, 0, 'zero-again: no fabricated nodes');
 console.error = origConsoleError;
-console.log('HOOK_TRANSITION_197: PASS — populated->zero reverse transition also clean.');
+console.log('HOOK_TRANSITION_197: PASS — populated->zero reverse transition restores the full-width empty state without hook errors.');

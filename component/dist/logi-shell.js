@@ -20113,7 +20113,7 @@ function Ql({ s: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
 	});
 }
 function $l({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive: i = !1, globalTab: a = "van-tai" }) {
-	let o = e.executionProfile?.nextAction;
+	let o = e.executionProfile?.nextAction, s = e.executionProfile?.stateLabel || "Hồ sơ lô còn thiếu";
 	return /* @__PURE__ */ (0, H.jsx)("section", {
 		className: "journey-demo min-w-0",
 		"data-testid": "shipment-journey",
@@ -20172,53 +20172,77 @@ function $l({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 					children: r
 				})
 			]
-		}) : /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsxs)("div", {
-			className: "mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2",
-			"data-testid": "journey-compact-toolbar",
-			children: [/* @__PURE__ */ (0, H.jsx)("span", {
-				className: "rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600",
-				children: "📍 Đang ở: Chưa xác định"
-			}), /* @__PURE__ */ (0, H.jsx)("span", {
-				className: "text-xs text-slate-500",
-				children: "Chưa đủ hồ sơ để xác định công đoạn chi tiết."
-			})]
+		}) : /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("div", {
+			className: "journey-focus-row",
+			"data-testid": "journey-zero-focus-row",
+			children: /* @__PURE__ */ (0, H.jsxs)("div", {
+				className: "journey-toolbar",
+				"data-testid": "journey-compact-toolbar",
+				children: [
+					/* @__PURE__ */ (0, H.jsx)("span", {
+						className: "journey-toolbar-chip journey-toolbar-here",
+						children: "📍 Đang ở: Chưa xác định"
+					}),
+					/* @__PURE__ */ (0, H.jsx)("span", {
+						className: "journey-toolbar-next",
+						children: "Chưa đủ hồ sơ để xác định công đoạn chi tiết."
+					}),
+					/* @__PURE__ */ (0, H.jsx)("span", { className: "journey-toolbar-spacer" })
+				]
+			})
 		}), /* @__PURE__ */ (0, H.jsxs)("div", {
-			className: "journey-split journey-split-small-map",
-			"data-testid": "journey-split-view",
-			children: [/* @__PURE__ */ (0, H.jsx)("div", {
-				className: "journey-canvas grid place-items-center p-6 text-center",
-				"data-testid": "journey-empty-map",
-				children: /* @__PURE__ */ (0, H.jsxs)("div", { children: [/* @__PURE__ */ (0, H.jsx)("p", {
-					className: "text-sm font-extrabold text-slate-500",
-					children: "Chưa có sơ đồ Journey"
-				}), /* @__PURE__ */ (0, H.jsx)("p", {
-					className: "mt-1 text-xs text-slate-400",
-					children: "Bổ sung hồ sơ để hình thành Journey."
-				})] })
+			className: "journey-split journey-map-first journey-zero-map-first",
+			"data-testid": "journey-zero-map-first",
+			"data-layout": "full-width",
+			style: { width: "100%" },
+			children: [/* @__PURE__ */ (0, H.jsx)(Ml, {
+				shipment: e,
+				nodes: [],
+				selectedId: "",
+				onPick: () => {},
+				collapsed: !1,
+				onExpand: () => {}
 			}), /* @__PURE__ */ (0, H.jsx)("div", {
-				className: "journey-side p-4",
-				"data-testid": "journey-zero-panel",
+				className: "journey-zero-notice",
+				"data-testid": "journey-empty-map",
+				role: "status",
+				"aria-labelledby": "journey-zero-title",
 				children: /* @__PURE__ */ (0, H.jsxs)("div", {
-					className: "rounded-xl border-2 border-amber-500 bg-amber-50 p-4",
+					className: "journey-zero-profile",
 					"data-testid": "journey-zero-profile",
 					children: [
 						/* @__PURE__ */ (0, H.jsx)("p", {
-							className: "text-xs font-extrabold tracking-wide text-amber-800",
+							className: "journey-zero-kicker",
 							children: "CẦN LÀM NGAY"
 						}),
+						/* @__PURE__ */ (0, H.jsx)("span", {
+							className: "journey-zero-profile-state",
+							"data-testid": "journey-zero-profile-state",
+							children: s
+						}),
+						/* @__PURE__ */ (0, H.jsx)("h2", {
+							id: "journey-zero-title",
+							className: "journey-zero-title",
+							children: "Chưa có sơ đồ Journey"
+						}),
 						/* @__PURE__ */ (0, H.jsx)("p", {
-							className: "mt-1 text-lg font-extrabold text-amber-950",
+							className: "journey-zero-summary",
+							children: "Chưa đủ hồ sơ để xác định công đoạn chi tiết."
+						}),
+						/* @__PURE__ */ (0, H.jsx)("p", {
+							className: "journey-zero-next-action",
+							"data-testid": "journey-zero-next-action",
 							children: o?.label || "Bổ sung hồ sơ thực hiện lô"
 						}),
 						/* @__PURE__ */ (0, H.jsx)("p", {
-							className: "mt-1 text-sm text-amber-900",
+							className: "journey-zero-detail",
 							children: o?.detail || "Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành."
 						}),
 						/* @__PURE__ */ (0, H.jsx)("button", {
 							type: "button",
 							onClick: n,
 							"data-testid": "journey-zero-primary-cta",
-							className: "touch-target mt-3 w-full rounded-lg bg-[#0f2a4a] px-4 py-3 font-extrabold text-white",
+							className: "touch-target journey-zero-cta",
 							children: "BỔ SUNG HỒ SƠ →"
 						})
 					]

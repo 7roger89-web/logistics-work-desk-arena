@@ -1,8 +1,9 @@
 """Issue #186 — Journey Cockpit V3 terminal integration source contracts.
 
 These tests preserve business invariants. The six-phase display is superseded
-by #197 and Owner 2026-10-13 persistent split (see reconciliation evidence). Completion Goals stay read-only/non-scoring, and the
-validated Customs Import panel remains the specialized truth surface.
+by the Owner's 2026-10-15 map-first Journey; zero-node truth is covered by the
+focused #199 empty-state acceptance. Completion Goals stay read-only/non-scoring,
+and the validated Customs Import panel remains the specialized truth surface.
 """
 from pathlib import Path
 import unittest
@@ -16,10 +17,10 @@ MAP = (ROOT / "component/src/components/JourneyMap.tsx").read_text(encoding="utf
 
 class SixPhaseContract(unittest.TestCase):
     def test_exact_beginner_phase_labels_exist(self):
-        # SUPERSEDED: #186 six phases -> #197 -> Owner 13/10 persistent split.
+        # SUPERSEDED: #186 six phases -> Owner 15/10 map-first composition.
         populated = JOURNEY.split("export default function ShipmentJourney", 1)[1]
         self.assertIn('data-testid="journey-split-view"', populated)
-        self.assertIn('journey-split-small-map', populated)
+        self.assertIn('journey-map-first', populated)
         self.assertIn('collapsed={false}', populated)
         self.assertNotIn('data-testid="journey-phase-strip"', populated)
         self.assertNotIn('data-testid="journey-summary-cards"', populated)
@@ -51,11 +52,12 @@ class CustomsImportPreservation(unittest.TestCase):
 
 class CompletionGoalsContract(unittest.TestCase):
     def test_cockpit_is_mounted_before_completion_review(self):
-        attention = DETAIL.index("<AttentionNow")
         journey = DETAIL.index("<ShipmentJourney")
         goals = DETAIL.index("<ShipmentCompletionGoals")
-        self.assertLess(attention, journey)
         self.assertLess(journey, goals)
+        # Attention is owned by the Journey component, not duplicated in the
+        # page wrapper; the focused DOM acceptance verifies rendered ordering.
+        self.assertIn("<AttentionNow", JOURNEY)
 
     def test_read_only_goal_dimensions_exist(self):
         for goal_id in [

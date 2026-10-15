@@ -3,10 +3,10 @@
 These source-contract checks pin the Owner's production review:
 - urgency is driven by canonical Attention bands, never text heuristics;
 - canonical shipment owner is shown as responsibility, updated_by stays secondary;
-- fresh zero-node Journey is compact;
+- zero-node Journey is a full-width map-first empty state with no fake nodes;
 - full-lot workspace keeps the map beside existing forms (Owner 13/10);
 - completion review is compact by default and explicitly not create-lot input.
-Real Chromium comparison against PR177 remains mandatory before acceptance.
+Real Chromium comparison against the Owner reference remains mandatory before acceptance.
 """
 from pathlib import Path
 import unittest
@@ -43,26 +43,32 @@ class JourneyDensity(unittest.TestCase):
         self.assertIn('className="shrink-0 border-t border-slate-300', JOURNEY)
         self.assertNotIn('className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"', JOURNEY)
 
-    def test_focus_shell_geometry_is_bound_to_scrollbar_free_reference_width(self):
-        # REPAIRED: old 451px summary composition is no longer authority.
-        self.assertIn('.journey-split-small-map .journey-canvas', CSS)
-        self.assertIn('.journey-split-small-map .journey-side { flex: 1;', CSS)
+    def test_map_first_layout_and_zero_state_have_no_legacy_split(self):
+        self.assertIn('.journey-split.journey-map-first .journey-canvas', CSS)
+        self.assertIn('.journey-zero-map-first { position: relative; width: 100%; }', CSS)
+        self.assertIn('.journey-zero-notice', CSS)
+        self.assertNotIn('.journey-split-small-map', CSS)
         self.assertIn('min-width: 0', CSS)
         self.assertIn('@media (max-width: 1100px)', CSS)
-        # Existing attached modules and optional attachment stay reachable.
+        # Existing populated-path modules and optional attachment stay reachable.
         self.assertIn('(modules.length > 0 || attachOpen)', JOURNEY)
         self.assertIn('data-testid="journey-add-module"', JOURNEY)
         self.assertIn('setAttachOpen(true)', JOURNEY)
 
-    def test_fresh_zero_node_shell_is_compact(self):
-        # SUPERSEDED geometry; preserve truthful unknown + one next action.
+    def test_fresh_zero_node_shell_is_full_width_and_truthful(self):
         zero = JOURNEY.split('function ZeroNodeJourney', 1)[1].split('export default function ShipmentJourney', 1)[0]
-        self.assertIn('data-testid="journey-empty-map"', zero)
+        self.assertIn('data-testid="journey-zero-map-first"', zero)
+        self.assertIn('data-layout="full-width"', zero)
+        self.assertIn('journey-map-first journey-zero-map-first', zero)
+        self.assertIn('<JourneyMap shipment={s} nodes={[]}', zero)
+        self.assertIn('Chưa có sơ đồ Journey', zero)
         self.assertIn('Đang ở: Chưa xác định', zero)
+        self.assertIn('Hồ sơ lô còn thiếu', zero)
         self.assertEqual(zero.count('data-testid="journey-zero-primary-cta"'), 1)
-        self.assertNotIn('<JourneyMap', zero)
+        self.assertNotIn('journey-zero-panel', zero)
+        self.assertNotIn('journey-split-small-map', zero)
         self.assertNotIn('journey-phase-strip', zero)
-        self.assertIn('{children}', zero)  # profile editor remains reachable
+        self.assertIn('{children}', zero)  # Global Workspace keeps the editor reachable
 
     def test_global_workspace_reuses_collapsed_map_rail(self):
         # SUPERSEDED: Owner explicitly rejected collapsing to a list rail.
