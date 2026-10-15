@@ -1,0 +1,91 @@
+{
+  "goal_id": "LOGI-APP-RENEWAL-01",
+  "goal_issue": 199,
+  "goal_type": "GOAL",
+  "primary_lane": "UIUX",
+  "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
+  "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
+  "active_branch": "ct/logi-app-renewal-01-t0-air-truth",
+  "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
+  "stage": "T0_BOUNDED_FIXES_VERIFIED__INDEPENDENT_REREVIEW_AND_OWNER_UAT_PENDING",
+  "progress": {
+    "T0": "SOURCE_PYTHON_BUILD_AND_REAL_STAGING_MOBILE_MAP_SMOKE_PASS__OWNER_GATE_PENDING",
+    "T1": "NOT_STARTED",
+    "T2": "NOT_STARTED",
+    "T3": "NOT_STARTED",
+    "T4": "NOT_STARTED",
+    "T5": "NOT_STARTED",
+    "T6": "NOT_STARTED"
+  },
+  "verified_before_work": [
+    "Main React/Streamlit architecture and current execution-profile authorities inspected",
+    "Existing #197 governs five-step compact Journey and stage-scoped documents",
+    "Demo CSS confirms Be Vietnam Pro and IBM Plex Mono",
+    "AIR_DOCUMENTS predicate currently tests MBL/HBL/carrier rather than air AWB/flight"
+  ],
+  "initial_slice": [
+    "Machine-readable and human-readable design baseline",
+    "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
+  ],
+  "blockers": [
+    "The 2-node LO-0306 staging profile is scope-incomplete; full SEA FCL/LCL/AIR/ROAD lifecycle remains outside T0 and is not certified by this visual smoke.",
+    "Independent supervisor re-review of updated evidence remains to be completed (prior rejection belongs to pre-fix HEAD).",
+    "Owner visual UAT / any main->production release remains explicitly gated."
+  ],
+  "existing_issue_dependencies": [
+    197,
+    195,
+    176
+  ],
+  "existing_pr_dependencies": [
+    198
+  ],
+  "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
+  "next": "Request independent re-review of PR #200 using actual browser metrics/screenshots from run #38669073733. Keep PR draft; do not merge/deploy before Owner production approval. Continue T1–T6 in GOAL #199 in bounded slices after T0 gate.",
+  "scope_out": [
+    "new_workflow_engine",
+    "new_frontend_library",
+    "production_write",
+    "auto_merge",
+    "deploy",
+    "rewrite_auth",
+    "rewrite_finance"
+  ],
+  "terminal_states": [
+    "PASS",
+    "BLOCKED",
+    "REJECT"
+  ],
+  "status": "IN_PROGRESS",
+  "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
+  "active_pr": 200,
+  "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/200",
+  "current_subtask": "T0 independent-review blockers V1 (mobile title/attention readability) and V2 (map node click proof) repaired on PR #200 and reproduced in actual isolated Streamlit browser, run #38669073733; await external/owner sign-off.",
+  "source_receipt": {
+    "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
+    "changed_files": 8,
+    "source_review": "PR patch inspected, no file outside bounded scope",
+    "pytest": "PASS_138",
+    "typecheck": "PASS",
+    "build": "PASS_OFFICIAL_VITE",
+    "chromium_real_app": "PASS_BOUNDED_ISOLATED_MONGOMOCK",
+    "production": "UNTOUCHED",
+    "verified_source_sha": "101732e2e759d85021b72e93252b88a420fe19d8",
+    "compiled_dist_commit": "6e00a7289552ad00f3b2bbf2df73102399a2451d",
+    "ci_run_id": 38669073733,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38669073733",
+    "npm_ci": "PASS",
+    "scan": "PASS",
+    "compiled_css_confirmed": true,
+    "tested_source_sha": "4d6959fb502e75d8cdd943d15aa7ba7183bd0b7c",
+    "committed_browser_and_dist_sha": "ea9af7f59923dad9eee5c7b329b82f9c01d7ff89",
+    "desktop_1440x900": "PASS_SCREENSHOT",
+    "mobile_390x844": "PASS_TITLE_CUSTOMER_ATTENTION_READABILITY",
+    "map_node_interaction": "PASS_CLICKED_DELIVERY_FROM_TWO_VERIFIED_SHIPMENT_NODES",
+    "screen_proof_paths": [
+      "evidence/logi-199-t0/desktop-journey-node-open.png",
+      "evidence/logi-199-t0/mobile-journey.png",
+      "evidence/logi-199-t0/browser_metrics.json"
+    ]
+  }
+}
