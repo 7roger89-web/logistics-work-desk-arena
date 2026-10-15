@@ -52,29 +52,29 @@ export default function AttentionNow({
             {emptyText}
           </p>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:gap-y-1.5 sm:py-1">
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1.5 text-[12px] font-extrabold text-white">
               <CircleAlert size={14} aria-hidden="true" /> CẦN XỬ LÝ ({items.length})
             </span>
             <div
-              className="min-w-0 flex-1"
+              className="order-2 w-full min-w-0 sm:order-none sm:w-auto sm:flex-1"
               data-testid={`attention-item-${primary.id}`}
               data-attention-band={primary.band}
               data-attention-source={primary.sourceType}
             >
               <span className="sr-only">{BAND_META[primary.band].label} · {actionLabel(primary)}: </span>
-              <p className="truncate text-[14px] font-extrabold text-red-700">{primary.action}</p>
-              {primary.reason && <p className="truncate text-[12.5px] text-red-600">{primary.reason}</p>}
+              <p data-testid="attention-primary-action" className="break-words text-[14px] font-extrabold leading-snug text-red-700 sm:truncate">{primary.action}</p>
+              {primary.reason && <p className="break-words text-[12.5px] text-red-600 sm:truncate">{primary.reason}</p>}
             </div>
             <Link
               to={primary.route}
-              className="btn-press touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-[13px] font-extrabold text-white"
+              className="btn-press touch-target order-1 ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-[13px] font-extrabold text-white sm:order-none sm:ml-0"
               style={{ minHeight: 38 }}
             >
               XỬ LÝ <ArrowRight size={14} /><span className="sr-only"> — {actionLabel(primary)}</span>
             </Link>
             {rest.length > 0 && (
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:order-none sm:w-auto">
                 <span className="shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500">
                   ĐIỂM CHÚ Ý KHÁC
                 </span>
