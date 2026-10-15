@@ -96,7 +96,9 @@ try {
 
   await page.locator('a[href="/lo-hang"]').first().click({ timeout: 15000 });
   const allPeriods = page.getByTestId('shipment-period-tat-ca');
-  if (await allPeriods.count()) await allPeriods.first().click();
+  await allPeriods.first().waitFor({ state: 'visible', timeout: 30000 });
+  await allPeriods.first().click();
+  assert.equal(await allPeriods.first().getAttribute('aria-pressed'), 'true');
   // Streamlit may deliver a fresh view model during filter updates; a locator
   // click can wait forever for layout stability while React replaces the card.
   // Dispatch a normal DOM click into the current canonical shipment link
