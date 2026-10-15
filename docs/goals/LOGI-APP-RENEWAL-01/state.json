@@ -7,15 +7,15 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/d8927583-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "INT198_TECHNICAL_PASS_EXTEND_ALL_SIX_MOBILE_MATRIX",
+  "stage": "INT198_TECHNICAL_VERIFIED_AWAITING_INDEPENDENT_REVIEW_AND_OWNER_GATE",
   "progress": {
     "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
     "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
     "T2": "PR #203: LCL CFS receipt/count/kg/CBM, consolidation fact, SI-only (no VGM/gate-in/container), deconsolidation CODE+REGRESSION+CI PASS",
     "T3": "PR #203: AIR chain AWB+flight / warehouse acceptance+weights+screening / uplift (ATD != flown) / transit / ATA CODE+REGRESSION+CI PASS",
     "T4": "PR #203: ROAD vehicle plate+driver, LTL receipt/consolidation, border only for cross-border scope, handover+POD; RAIL read-only CODE+REGRESSION+CI PASS",
-    "T5": "LOCAL PASS: merged f0aec79 popup/labels; policy titles wrap fully + icon contained; fonts locally bundled/loaded in real document FontFaceSet; 21 distinct routes x desktop/mobile, no tiny body text/overflow/clipped controls. Independent review pending.",
-    "T6": "LOCAL PASS on integration-with-198: six mode variants incl ROAD-FTL/AIR consolidated, on-board UI write/reopen readback, map default100%/Fit/pan/zoom A/B screenshots, current bundle DOM #197 + hook transition. Local full-suite parity: 31 failed+1 collection error on both sides, zero new IDs. CI pending on fixed Arena branch."
+    "T5": "CI PASS at 1889d2a: policy full titles/icon; actual loaded local Be Vietnam Pro/IBM Plex Mono; visible body labels >=12px; 21 distinct screens x 1440/390. Primary fact forms <=5 + editable folded extras. Independent visual reviewer still pending.",
+    "T6": "CI 38683678222 PASS at exact tested 1889d2a: full-suite parity main 31 failures+1 collection error, zero new IDs; current-bundle DOM #197 and hook transition; typecheck/Vite/scan/dist equality; all six SEA FCL/LCL, AIR direct/consolidated, ROAD FTL/LTL at both viewports; map initial100%/Fit/pan/zoom A/B; on-board UI write and reopen readback. This is isolated mongomock staging, not authenticated production/Owner acceptance."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -28,9 +28,9 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Independent reviewer challenge and Owner UAT/explicit production permission remain required. No independent actor available in this host.",
-    "31 baseline failing tests + 1 collection error persist; parity is NOT release acceptance (auth/bootstrap/UI oracles and finance snapshot coverage gaps). See evidence/logi-199-t6/RECONCILIATION.md.",
-    "Existing ct preview branch intentionally unchanged: this Arena session may push only its fixed arena/d8927583-logistics-work-desk-arena branch."
+    "Independent reviewer gate PENDING; no independent reviewer/subagent capability in this executor host.",
+    "Owner UAT and explicit production authorization remain closed. main merge is a production deploy trigger.",
+    "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver."
   ],
   "existing_issue_dependencies": [
     197,
@@ -41,7 +41,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Verify T6 CI at pushed source HEAD, publish exact evidence and independent-review request on #199/#198; Owner UAT only after preview verification. No merge/deploy.",
+  "next": "Control Tower independent re-review at tested source 1889d2a + immutable CI evidence; only then Owner local UAT via ZIP/double-click instructions. Do not merge/deploy or mutate production. Resolve or explicitly gate baseline auth/bootstrap/finance risks; parity alone is not release approval.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -60,8 +60,41 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Final exact-HEAD T6 with all six modes on both viewports (previous CI PASS; closes remaining mobile matrix gap). Then independent reviewer gate.",
-  "source_receipt": {
+  "current_subtask": "Independent reviewer challenge of tested integration and baseline release risks. Executor cannot supply an independent actor and does not close the review.",
+  "source_receipt_t6": {
+    "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "ci_run_id": 38683678222,
+    "prs": [
+      198,
+      200,
+      201,
+      202,
+      203,
+      204
+    ],
+    "production": "UNTOUCHED"
+  },
+  "continuation_receipt": {
+    "restored_preview": "d96d95125b41b97078d42278a7e1fee30d3bf7b7",
+    "integrated": "f0aec797ce20286aff541985299b4765cd74ffba",
+    "local_patch_recovered": "No local unpushed patch in this fresh clean worktree; reconstructed readable view on existing zoom/pan/Fit.",
+    "law_source": "LOCAL_PORTABLE",
+    "law_source_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "focused_python": "281 passed locally; no blanket deletion of tests",
+    "ci": "SUCCESS",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_CLAIMED",
+    "production": "UNTOUCHED",
+    "tested_source_sha": "1889d2a874365bf59265b721503a0538f90586b0",
+    "ci_run_id": 38683678222,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38683678222",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "final_verdict": "INCOMPLETE_FULL_GOAL__BOUNDED_TECHNICAL_PROOF_PASS",
+    "learning_reconciliation": "CANDIDATE: challenge actual font loading in shadow-root/offline UI, never infer from font-family strings alone; no promotion"
+  },
+  "branch_constraint": "Only arena/d8927583-logistics-work-desk-arena pushed. Legacy ct/logi199-int198-preview remains d96d951; integrated candidate is on the fixed Arena branch.",
+  "source_receipt_t0_historical": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
     "source_review": "PR patch inspected, no file outside bounded scope",
@@ -88,7 +121,7 @@
       "evidence/logi-199-t0/browser_metrics.json"
     ]
   },
-  "source_receipt_t6": {
+  "source_receipt_t6_historical": {
     "ci_run_id": 38675998967,
     "integration_head": "cbdb10f",
     "evidence_commit": "b413c7a",
@@ -102,18 +135,31 @@
     ],
     "production": "UNTOUCHED"
   },
-  "continuation_receipt": {
-    "restored_preview": "d96d95125b41b97078d42278a7e1fee30d3bf7b7",
-    "integrated": "f0aec797ce20286aff541985299b4765cd74ffba",
-    "local_patch_recovered": "No local unpushed patch in this fresh clean worktree; reconstructed readable view on existing zoom/pan/Fit.",
-    "law_source": "LOCAL_PORTABLE",
-    "law_source_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
-    "focused_python": "281 passed locally; no blanket deletion of tests",
-    "ci": "SUCCESS on 246d199 (38682438037) and fe6ed4a (38683078774); final all-six-mobile runner extension queued on next push",
+  "source_receipt": {
+    "tested_source_sha": "1889d2a874365bf59265b721503a0538f90586b0",
+    "product_source_sha": "246d199fb9c7ced8b2ce03811f541279b2213ca4",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "ci_run_id": 38683678222,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38683678222",
+    "ci": "SUCCESS",
+    "focused_python_local": "281 passed",
+    "parity_receipt": "evidence/logi-199-t6/full_suite_parity.txt",
+    "mode_matrix": "six variants x desktop/mobile",
+    "browser_metrics": "evidence/logi-199-t6/browser_metrics.json",
+    "route_audit": "evidence/logi-199-t5/route_audit.json",
+    "reconciliation": "evidence/logi-199-t6/RECONCILIATION.md",
+    "runtime": "REAL_STREAMLIT_COMPONENTS_V2_ISOLATED_MONGOMOCK",
     "independent_review": "PENDING",
-    "owner_uat": "NOT_REQUESTED_YET",
-    "production": "UNTOUCHED",
-    "tested_source_sha": "fe6ed4afb6c2a7fc76b174d0d7735a45843a131e",
-    "ci_run_id": 38683078774
+    "owner_uat": "NOT_CLAIMED",
+    "production": "UNTOUCHED"
+  },
+  "preview": {
+    "port": 9501,
+    "type": "ephemeral Arena sandbox, isolated mongomock fixtures",
+    "owner_uat_acceptance": false,
+    "persistence": "memory only; resets when process stops",
+    "local_uat": "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
+    "windows_launcher": "scripts/logi199_uat.cmd",
+    "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST"
   }
 }
