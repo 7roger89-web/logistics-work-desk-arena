@@ -1,0 +1,72 @@
+name: LOGI-199 T6 integration (real Streamlit browser, isolated staging)
+
+on:
+  push:
+    branches:
+      - ct/logi199-t6-integration
+
+permissions:
+  contents: write
+
+concurrency:
+  group: logi199-t6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  t6:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python requirements
+        run: python -m pip install -r requirements.txt pytest
+      - name: LOGI-199 business-truth regressions (T0 AIR docs, T1 FCL, T2-T4 modes, journey, profile)
+        run: |
+          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py \
+            tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t2_t4_mode_truth.py \
+            tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py \
+            tests/test_journey_super_goal_186.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Official build; committed dist must equal the build Streamlit loads
+        working-directory: component
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          npm run scan
+          git diff --exit-code -- dist
+      - name: Isolated Playwright Chromium
+        run: |
+          npm install --prefix /tmp/pw --package-lock=false playwright@1.56.1
+          PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers /tmp/pw/node_modules/.bin/playwright install --with-deps chromium
+      - name: T0 smoke (existing) + T6 modes on REAL Streamlit staging
+        env:
+          AUTH_REQUIRED: "false"
+          MONGO_URI: ""
+          MONGO_DB_NAME: ""
+          PLAYWRIGHT_MODULE: /tmp/pw/node_modules/playwright/index.mjs
+          PLAYWRIGHT_BROWSERS_PATH: /tmp/pw-browsers
+        run: |
+          test ! -e .streamlit/secrets.toml
+          node tests/component/browser_logi199_real_streamlit.mjs
+          node tests/component/browser_logi199_t6_modes.mjs
+      - name: Commit browser evidence to the integration branch (also on failure)
+        if: always()
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          git add -f evidence/logi-199-t6/ evidence/logi-199-t0/ 2>/dev/null || true
+          if git diff --cached --quiet; then echo NO_EVIDENCE_CHANGE; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(LOGI-199 T6): real Streamlit staging browser evidence [skip ci]"
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:ct/logi199-t6-integration
