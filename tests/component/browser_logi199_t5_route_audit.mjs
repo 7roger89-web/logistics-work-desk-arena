@@ -16,10 +16,13 @@ const port = 9523, url = 'http://127.0.0.1:' + port;
 const output = path.resolve(process.cwd(), 'evidence/logi-199-t5');
 mkdirSync(output, { recursive: true });
 assert.ok(!process.env.MONGO_URI);
-const ROUTES = ['/', '/viec-can-xu-ly', '/dieu-hanh', '/lo-hang', '/lo-hang/T6-FCL', '/tao-lo-moi', '/khach-hang', '/ngu-canh-doi-tac',
+// Legacy paths that App.tsx deliberately redirects (Navigate replace). They are
+// NOT screens: asserted at source by tests/test_logi199_t5_redirects.py and
+// excluded from distinct-surface coverage here.
+const REDIRECTS = { '/viec-can-xu-ly': '/lo-hang', '/theo-doi': '/lo-hang', '/thoa-thuan-ban-giao': '/kinh-doanh-bao-gia' };
+const ROUTES = ['/', '/dieu-hanh', '/lo-hang', '/lo-hang/T6-FCL', '/tao-lo-moi', '/khach-hang', '/ngu-canh-doi-tac',
   '/kinh-doanh-bao-gia', '/hop-dong', '/tai-chinh/thu-tien', '/tai-chinh/cong-no-doi-tac', '/tai-chinh/doi-soat', '/bao-cao-ceo',
-  '/tra-cuu-thue', '/tra-cuu-chinh-sach', '/thanh-toan-quoc-te', '/dich-thuat', '/so-tay', '/bieu-mau', '/quy-trinh', '/theo-doi',
-  '/thoa-thuan-ban-giao', '/nguoi-dung'];
+  '/tra-cuu-thue', '/tra-cuu-chinh-sach', '/thanh-toan-quoc-te', '/dich-thuat', '/so-tay', '/bieu-mau', '/quy-trinh', '/nguoi-dung'];
 const host = spawn('python3', ['-m', 'streamlit', 'run', 'scripts/logi199_t6_staging_app.py', '--server.port', String(port),
   '--server.address', '127.0.0.1', '--server.headless', 'true', '--browser.gatherUsageStats', 'false'],
 { cwd: process.cwd(), env: { ...process.env, AUTH_REQUIRED: 'false', MONGO_URI: '', MONGO_DB_NAME: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -39,7 +42,26 @@ const measure = page => page.evaluate(() => {
     if (/Plex Mono/.test(cs.fontFamily)) monoUsed++;
     if (size < 12 && !el.closest('[data-testid="journey-map-transform"]')) small.push(`${size}px:${el.textContent.trim().slice(0, 40)}`);
   }
-  return { docOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+  // Interactive controls must be readable/tappable: a control whose box leaves
+  // the viewport or the shell is CLIPPED unless an ancestor is a real,
+  // visibly scrollable region (overflow-x auto/scroll with a scrollbar).
+  const vw = innerWidth, shellRect = shell ? shell.getBoundingClientRect() : { left: 0, right: vw };
+  const clipped = [];
+  for (const r of roots) for (const el of r.querySelectorAll('button,a,[role="tab"],input,select,textarea')) {
+    const b = el.getBoundingClientRect(); if (!b.width || !b.height || b.bottom < 0 || b.top > innerHeight) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    if (el.closest('[data-testid="journey-map-transform"],[data-testid="journey-map-viewport"]')) continue; // pan/zoom canvas
+    const outside = b.right > Math.min(vw, shellRect.right) + 1 || b.left < Math.max(0, shellRect.left) - 1;
+    if (!outside) continue;
+    let scroller = null;
+    for (let p = el.parentElement; p; p = p.parentElement || (p.getRootNode && p.getRootNode().host) || null) {
+      const ox = getComputedStyle(p).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && p.scrollWidth > p.clientWidth + 1 && !/no-scrollbar/.test(p.className || '')) { scroller = p; break; }
+      if (p === shell) break;
+    }
+    if (!scroller) clipped.push(`${Math.round(b.left)}..${Math.round(b.right)}:${(el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30)}`);
+  }
+  return { clippedControls: clipped.slice(0, 8), clippedCount: clipped.length, docOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
     shellOverflow: shell ? Math.max(0, shell.scrollWidth - shell.clientWidth) : null,
     font: shell ? getComputedStyle(shell).fontFamily.split(',')[0] : '', monoUsed, smallCount: small.length, smallSample: small.slice(0, 6) };
 });
@@ -51,6 +73,7 @@ try {
     const page = await browser.newPage({ viewport: vp }); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.locator('.logi-shell').first().waitFor({ state: 'visible', timeout: 90000 });
+    let previousDigest = null;
     for (const route of ROUTES) {
       // The app uses MemoryRouter: navigate through the app's own router links
       // (a real DOM click on <a href=route>), exactly what a user tap triggers.
@@ -69,13 +92,20 @@ try {
       (results.routes[route] ||= {})[label] = m;
       const name = `${label}${route.replace(/\//g, '_') || '_home'}.png`;
       await page.screenshot({ path: path.join(output, name) });
-      if (label === 'mobile' && m.docOverflow > 1) failures.push(`${route} mobile overflow ${m.docOverflow}px`);
+      if (!reached) failures.push(`${label} ${route}: not reached through an app link`);
+      if (m.docOverflow > 1) failures.push(`${label} ${route}: page overflow ${m.docOverflow}px`);
+      if ((m.shellOverflow || 0) > 1) failures.push(`${label} ${route}: shell overflow ${m.shellOverflow}px`);
+      if (m.clippedCount) failures.push(`${label} ${route}: clipped controls ${m.clippedControls.join(' | ')}`);
+      if (previousDigest !== null && m.textDigest === previousDigest && route !== '/lo-hang/T6-FCL') failures.push(`${label} ${route}: content did not change (route not rendered)`);
+      previousDigest = m.textDigest;
     }
     if (errors.length) failures.push(`${label} page errors: ${errors.join(' | ')}`);
     await page.close();
   }
   results.failures = failures;
-  results.verdict = failures.length ? 'T5_AUDIT_FAIL' : 'T5_AUDIT_PASS_WITH_FINDINGS';
+  results.redirects = REDIRECTS;
+  results.distinctSurfaces = ROUTES.length;
+  results.verdict = failures.length ? 'T5_AUDIT_FAIL' : 'T5_AUDIT_PASS';
   console.log(results.verdict, JSON.stringify(failures));
   if (failures.length) process.exitCode = 1;
 } catch (e) { results.verdict = 'T5_AUDIT_ERROR'; results.error = String(e.stack || e); console.error(results.error); process.exitCode = 1; }

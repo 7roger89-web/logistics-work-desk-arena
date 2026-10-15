@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -28,10 +29,24 @@ jobs:
         run: python -m pip install -r requirements.txt pytest
       - name: LOGI-199 business-truth regressions (T0 AIR docs, T1 FCL, T2-T4 modes, journey, profile)
         run: |
-          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py \
+          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py tests/test_logi199_t5_redirects.py \
             tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t2_t4_mode_truth.py \
             tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py \
             tests/test_journey_super_goal_186.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
+      - name: FULL suite parity — main@5c6642a vs this integration SHA, same runner
+        run: |
+          mkdir -p evidence/logi-199-t6
+          git worktree add -q /tmp/main-baseline 5c6642a339ec53fe4cc300b15f665e2cd5384bca
+          run_suite() { (cd "$1" && python -m pytest tests -q -p no:cacheprovider --continue-on-collection-errors -rfE 2>&1 | tee "$2" | tail -3) || true; }
+          run_suite /tmp/main-baseline /tmp/main.log
+          run_suite "$PWD" /tmp/branch.log
+          grep -E '^(FAILED|ERROR) ' /tmp/main.log | sed 's/ - .*//' | sort -u > evidence/logi-199-t6/full_suite_main_failures.txt
+          grep -E '^(FAILED|ERROR) ' /tmp/branch.log | sed 's/ - .*//' | sort -u > evidence/logi-199-t6/full_suite_branch_failures.txt
+          { echo "main@5c6642a: $(tail -1 /tmp/main.log)"; echo "branch@$GITHUB_SHA: $(tail -1 /tmp/branch.log)";
+            echo "--- NEW on branch (not on main):"; comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt;
+            echo "--- FIXED on branch:"; comm -23 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt; } > evidence/logi-199-t6/full_suite_parity.txt
+          cat evidence/logi-199-t6/full_suite_parity.txt
+          test -z "$(comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt)"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -58,8 +73,8 @@ jobs:
           test ! -e .streamlit/secrets.toml
           node tests/component/browser_logi199_real_streamlit.mjs
           node tests/component/browser_logi199_t6_modes.mjs
-      - name: T5 app-wide route audit (findings recorded; fails on 390px overflow/page error)
-        continue-on-error: true
+      - name: T5 app-wide route audit (FAILS on page/shell overflow, clipped controls, unreached route, page error)
+        id: t5audit
         env:
           AUTH_REQUIRED: "false"
           MONGO_URI: ""

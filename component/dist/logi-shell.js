@@ -15139,7 +15139,7 @@ function gc() {
 											className: "flex flex-wrap items-center gap-1.5",
 											children: [/* @__PURE__ */ (0, H.jsx)(V, {
 												to: Jn(e.id),
-												className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
+												className: "font-mono font-bold text-[#1e5aa8] hover:underline text-[15px]",
 												children: e.id
 											}), /* @__PURE__ */ (0, H.jsx)(X, {
 												tone: e.statusTone,
@@ -15218,7 +15218,7 @@ function gc() {
 								children: [
 									/* @__PURE__ */ (0, H.jsx)(us, { tone: e.statusTone }),
 									/* @__PURE__ */ (0, H.jsx)("span", {
-										className: "font-extrabold text-[17px] text-[#0f2a4a]",
+										className: "font-mono font-bold text-[17px] text-[#0f2a4a]",
 										children: e.id
 									}),
 									/* @__PURE__ */ (0, H.jsx)(X, {
@@ -29407,7 +29407,7 @@ function _d() {
 						})
 					}),
 					/* @__PURE__ */ (0, H.jsx)("div", {
-						className: "flex gap-2 mb-3",
+						className: "grid grid-cols-3 gap-2 mb-3",
 						role: "tablist",
 						"aria-label": "Khu làm việc báo giá",
 						"data-testid": "quote-workspace-tabs",
@@ -29429,7 +29429,7 @@ function _d() {
 							"aria-selected": f === e.id,
 							onClick: () => m(e.id),
 							"data-testid": `quote-workspace-${e.id}`,
-							className: K("touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-extrabold", f === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							className: K("touch-target min-w-0 rounded-xl border-2 px-2 sm:px-4 min-h-[48px] text-[13px] sm:text-[14.5px] font-extrabold leading-tight", f === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: e.label
 						}, e.id))
 					}),
@@ -29455,7 +29455,8 @@ function _d() {
 						})
 					}),
 					f === "bao-gia" && /* @__PURE__ */ (0, H.jsx)("div", {
-						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
+						className: "flex flex-wrap gap-2 mt-2.5 pb-1",
+						"data-testid": "quote-status-filters",
 						children: j.map((e) => /* @__PURE__ */ (0, H.jsx)("button", {
 							onClick: () => u(e),
 							className: K("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", l === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
@@ -29510,10 +29511,10 @@ function _d() {
 							className: "hover:bg-slate-50",
 							children: [
 								/* @__PURE__ */ (0, H.jsxs)("td", { children: [/* @__PURE__ */ (0, H.jsx)("span", {
-									className: "font-extrabold text-[#1e5aa8] text-[15px]",
+									className: "font-mono font-bold text-[#1e5aa8] text-[15px]",
 									children: e.id
 								}), /* @__PURE__ */ (0, H.jsx)("span", {
-									className: "block text-[12px] text-slate-400",
+									className: "block font-mono text-[12px] text-slate-500",
 									children: e.quoteNo
 								})] }),
 								/* @__PURE__ */ (0, H.jsx)("td", {
@@ -29598,7 +29599,7 @@ function _d() {
 							/* @__PURE__ */ (0, H.jsxs)("div", {
 								className: "flex items-center gap-2 flex-wrap",
 								children: [/* @__PURE__ */ (0, H.jsx)("span", {
-									className: "font-extrabold text-[16px] text-[#0f2a4a]",
+									className: "font-mono font-bold text-[16px] text-[#0f2a4a]",
 									children: e.id
 								}), /* @__PURE__ */ (0, H.jsx)(X, {
 									tone: ld[e.status] ?? "gray",
@@ -30103,7 +30104,7 @@ function vd() {
 							children: [
 								/* @__PURE__ */ (0, H.jsx)("td", { children: /* @__PURE__ */ (0, H.jsx)(V, {
 									to: qn(e.id),
-									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
+									className: "font-mono font-bold text-[#1e5aa8] hover:underline text-[15px]",
 									children: e.id
 								}) }),
 								/* @__PURE__ */ (0, H.jsx)("td", { children: /* @__PURE__ */ (0, H.jsx)(X, {
@@ -30169,7 +30170,7 @@ function vd() {
 							/* @__PURE__ */ (0, H.jsxs)("div", {
 								className: "flex items-center gap-2 flex-wrap",
 								children: [/* @__PURE__ */ (0, H.jsx)("span", {
-									className: "font-extrabold text-[17px] text-[#0f2a4a]",
+									className: "font-mono font-bold text-[17px] text-[#0f2a4a]",
 									children: e.id
 								}), /* @__PURE__ */ (0, H.jsx)(X, {
 									tone: "blue",
@@ -31838,7 +31839,7 @@ function Pd() {
 				children: n.map((e) => /* @__PURE__ */ (0, H.jsxs)("button", {
 					type: "button",
 					onClick: () => Nd(e.url),
-					className: "group flex min-h-[86px] items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:border-[#1e5aa8] hover:bg-slate-50",
+					className: "group flex w-full min-w-0 min-h-[86px] items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:border-[#1e5aa8] hover:bg-slate-50",
 					children: [/* @__PURE__ */ (0, H.jsxs)("span", {
 						className: "flex min-w-0 items-center gap-3",
 						children: [/* @__PURE__ */ (0, H.jsx)("span", {
