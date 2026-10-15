@@ -1,38 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Circle, Clock, CircleAlert, MapPin } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { CheckCircle2, Circle, Clock, CircleAlert, MapPin, FileText, TriangleAlert } from 'lucide-react';
 import type { JourneyNode, Shipment } from '../lib/viewmodel';
 import { cx } from '../lib/format';
+import chartPaperUrl from '../assets/journey/chart-paper.jpg?url';
 
-// Approved prototype B, original ZIP cfe20232…: the canvas geometry, branch,
-// edge routing and fit/pan/zoom interaction are retained. Only IDs/data access
-// adapt to the app's canonical projection (sivgm → si-vgm, onboard → on-board).
-const W = 164, H = 136, PITCH = 212, PX = 48;
+// G2 (LOGI-199 Owner Visual Fidelity Override, 15/10/2026): the map is the
+// primary canvas. Geometry follows the Owner-approved HTML (node 102×58,
+// 137px column pitch, main route on one row, SI/VGM above and GATE-IN below
+// the branch column, paper chart background). Business state and node ids are
+// unchanged; only the presentation and placement of the cards changed.
+export const JOURNEY_NODE_W = 102, JOURNEY_NODE_H = 58;
+const W = JOURNEY_NODE_W, H = JOURNEY_NODE_H, PITCH = 137, PX = 53;
+const ROW_MAIN = 300, ROW_TOP = 176, ROW_BOTTOM = 424;
 const col = (c: number) => PX + c * PITCH;
 export interface JourneyPosition { x: number; y: number; w: number; h: number }
 export const DEMO_POS: Record<string, JourneyPosition> = {
-  start: { x: col(0), y: 30, w: W, h: 44 },
-  booking: { x: col(0), y: 140, w: W, h: H },
-  pickup: { x: col(1), y: 140, w: W, h: H },
-  'customs-export': { x: col(2), y: 140, w: W, h: H },
-  'si-vgm': { x: col(3), y: 56, w: W, h: H },
-  'gate-in': { x: col(3), y: 224, w: W, h: H },
+  booking: { x: col(0), y: ROW_MAIN, w: W, h: H },
+  pickup: { x: col(1), y: ROW_MAIN, w: W, h: H },
+  'customs-export': { x: col(2), y: ROW_MAIN, w: W, h: H },
+  'si-vgm': { x: col(3), y: ROW_TOP, w: W, h: H },
+  'gate-in': { x: col(3), y: ROW_BOTTOM, w: W, h: H },
   // LOGI-199 T2 — LCL CFS/consolidation occupies the FCL gate-in slot (never both).
-  'cfs-receipt': { x: col(3), y: 224, w: W, h: H },
-  etd: { x: col(4), y: 140, w: W, h: H },
-  'on-board': { x: col(4), y: 400, w: W, h: H },
-  transit: { x: col(3), y: 400, w: W, h: H },
-  arrival: { x: col(2), y: 400, w: W, h: H },
-  'customs-import': { x: col(1), y: 400, w: W, h: H },
-  delivery: { x: col(0), y: 400, w: W, h: H },
-  completed: { x: col(0), y: 590, w: W, h: 44 },
+  'cfs-receipt': { x: col(3), y: ROW_BOTTOM, w: W, h: H },
+  etd: { x: col(4), y: ROW_MAIN, w: W, h: H },
+  'on-board': { x: col(5), y: ROW_MAIN, w: W, h: H },
+  transit: { x: col(6), y: ROW_MAIN, w: W, h: H },
+  arrival: { x: col(7), y: ROW_MAIN, w: W, h: H },
+  'customs-import': { x: col(8), y: ROW_MAIN, w: W, h: H },
+  delivery: { x: col(9), y: ROW_MAIN, w: W, h: H },
 };
-const CW = col(4) + W + PX, CH = 690;
+const CW = col(9) + W + PX, CH = ROW_BOTTOM + H + 60;
 export const JOURNEY_META = {
   COMPLETED: { label: 'Hoàn thành', icon: CheckCircle2, cls: 'border-emerald-500 bg-emerald-50 border-2', text: 'text-emerald-700' },
   CURRENT: { label: 'Hiện tại', icon: MapPin, cls: 'border-blue-600 bg-white border-[3px] ring-4 ring-blue-100 shadow-lg shadow-blue-200/60', text: 'text-blue-700' },
   WAITING: { label: 'Đang chờ', icon: Clock, cls: 'border-amber-500 bg-amber-50 border-2 border-dashed', text: 'text-amber-800' },
   PROBLEM: { label: 'Cần xử lý', icon: CircleAlert, cls: 'border-red-600 bg-red-50 border-[3px] journey-problem-pulse', text: 'text-red-700' },
   UPCOMING: { label: 'Chưa xác định / sắp tới', icon: Circle, cls: 'border-slate-300 bg-slate-50/80 border-2 border-dashed', text: 'text-slate-500' },
+};
+// Owner HTML node status vocabulary (compact chip on the card).
+export const JOURNEY_NODE_STATUS: Record<JourneyNode['state'], string> = {
+  PROBLEM: 'CẦN XỬ LÝ',
+  CURRENT: 'ĐANG XỬ LÝ',
+  WAITING: 'CHỜ THÔNG TIN',
+  COMPLETED: 'CÓ BẰNG CHỨNG',
+  UPCOMING: 'CHƯA BẮT ĐẦU',
 };
 export function JourneyStatus({ node, solid = false }: { node: JourneyNode; solid?: boolean }) {
   const m = JOURNEY_META[node.state], Icon = m.icon;
@@ -52,46 +63,57 @@ export function journeyEdgePath(a: JourneyPosition, b: JourneyPosition) {
 }
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
-export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, collapsed, onExpand }: {
+export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, collapsed, onExpand, renderBubble, bubbleNodeId = '' }: {
   shipment: Shipment; nodes: JourneyNode[]; selectedId: string; onPick: (id: string) => void;
   collapsed: boolean; onExpand: () => void;
+  /** G2 — node-attached task bubble, rendered INSIDE the pan/zoom layer so it moves with its node. */
+  renderBubble?: (node: JourneyNode, p: JourneyPosition, canvas: { w: number; h: number }, placeBelow: boolean) => ReactNode;
+  bubbleNodeId?: string;
 }) {
   const [tf, setTf] = useState({ x: 0, y: 0, k: 1 });
   const tfRef = useRef(tf); tfRef.current = tf;
-  const vp = useRef<HTMLDivElement>(null), viewMode = useRef<'readable' | 'fit' | 'manual'>('readable'), moved = useRef(false);
+  const vp = useRef<HTMLDivElement>(null), viewMode = useRef<'auto' | 'fit' | 'readable' | 'manual'>('auto'), moved = useRef(false);
   const cleanupDrag = useRef<(() => void) | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   const sea = nodes.some(n => n.id === 'booking');
-  // LOGI-199 T5 — non-sea (AIR/ROAD/scoped) grids size the canvas to the nodes
-  // they really have, so a 2–6 node journey fits at a readable scale instead of
-  // being shrunk into the full sea demo canvas.
+  // Non-sea (AIR/ROAD/scoped) grids size the canvas to the nodes they really
+  // have; rows are spaced for the compact card and the bubble above it.
   const gridCols = Math.max(1, Math.min(5, nodes.length)), gridRows = Math.max(1, Math.ceil(nodes.length / 5));
-  const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 40 + Math.floor(i / 5) * PITCH, w: W, h: H }]));
+  const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 120 + Math.floor(i / 5) * 170, w: W, h: H }]));
   const canvasWidth = sea ? CW : col(gridCols - 1) + W + PX;
-  const canvasHeight = sea ? CH : 40 + (gridRows - 1) * PITCH + H + 40;
+  const canvasHeight = sea ? CH : 120 + (gridRows - 1) * 170 + H + 80;
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;
-    // Explicit overview fits the real canvas, including narrow mobile columns.
-    // Initial reading scale is handled separately below.
-    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), 0.1, 1.15);
+    // Explicit overview: the whole canvas, never larger than 1:1.
+    const k = clamp(Math.min((w - 24) / canvasWidth, (h - 24) / canvasHeight), 0.1, 1);
     setTf({ k, x: (w - canvasWidth * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
   }, [canvasHeight, canvasWidth]);
-  // Fit remains an explicit overview, not the initial reading scale. Focus
-  // only on a real selected/problem/current node; never manufacture a state.
+  // Focus only on a real selected/problem/current node; never manufacture a state.
   const focusId = selectedId || nodes.find(n => n.state === 'PROBLEM')?.id || nodes.find(n => n.current)?.id || nodes[0]?.id;
   const focus = positions.get(focusId);
   const readable = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !focus) return;
-    setTf({ k: 1, x: el.clientWidth / 2 - focus.x - focus.w / 2, y: Math.max(96, el.clientHeight * 0.32) - focus.y });
-  }, [focus?.x, focus?.y, focus?.w]);
+    setTf({ k: 1, x: el.clientWidth / 2 - focus.x - focus.w / 2, y: el.clientHeight * 0.4 - focus.y - focus.h / 2 });
+  }, [focus?.x, focus?.y, focus?.w, focus?.h]);
+  // Initial view (auto): a desktop-width canvas fits at ≤1:1 so the whole
+  // route is visible like the reference; a phone-width canvas opens at 1:1 on
+  // the focused node so text stays readable, pan/zoom reveals the rest.
+  const auto = useCallback(() => {
+    const el = vp.current; if (!el?.clientWidth) return;
+    if (el.clientWidth < 720) readable(); else fit();
+  }, [fit, readable]);
   useEffect(() => {
     const el = vp.current; if (!el) return;
-    const layout = () => { if (viewMode.current === 'fit') fit(); else if (viewMode.current === 'readable') readable(); };
+    const layout = () => {
+      if (viewMode.current === 'auto') auto();
+      else if (viewMode.current === 'fit') fit();
+      else if (viewMode.current === 'readable') readable();
+    };
     if (typeof ResizeObserver === 'undefined') { layout(); return; }
     const ro = new ResizeObserver(layout);
     ro.observe(el); layout(); return () => ro.disconnect();
-  }, [fit, readable, collapsed]);
+  }, [auto, fit, readable, collapsed]);
   const zoomAt = useCallback((f: number, px: number, py: number) => {
     viewMode.current = 'manual';
     setTf(t => { const k = clamp(t.k * f, 0.1, 2), r = k / t.k; return { k, x: px - (px - t.x) * r, y: py - (py - t.y) * r }; });
@@ -122,40 +144,33 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
     <button type="button" onClick={onExpand} className="touch-target w-full border-b px-3 py-2 text-left text-xs font-bold">⇥ Mở lại Journey Map</button>
     {nodes.map(n => <button key={n.id} type="button" onClick={() => onPick(n.id)} className={cx('touch-target flex w-full items-center gap-2 border-l-4 px-3 py-2 text-left text-xs font-semibold', selectedId === n.id ? 'border-slate-900 bg-slate-100' : 'border-transparent', n.state === 'PROBLEM' && 'bg-red-50 text-red-700')}><JourneyStatus node={n} /><span>{n.label}</span></button>)}
   </nav>;
-  const first = nodes[0], last = nodes[nodes.length - 1];
   const edges = (s.journey?.edges ?? []).filter(e => positions.has(e.from) && positions.has(e.to));
-  // End-of-map marker only. Journey occurrence + Work Module completion is NOT
-  // whole-shipment closure: documents/finance may still be open or UNKNOWN.
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
-  return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom">
+  const bubbleNode = bubbleNodeId ? nodes.find(n => n.id === bubbleNodeId) : undefined;
+  const bubblePos = bubbleNode ? positions.get(bubbleNode.id) : undefined;
+  // Place the bubble below the node when the node sits near the TOP of the
+  // visible viewport (screen space), otherwise it is clipped by the canvas edge.
+  const bubblePlaceBelow = bubblePos ? tf.y + bubblePos.y * tf.k < 300 : false;
+  return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom" style={{ backgroundImage: `url(${chartPaperUrl})` }}>
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: canvasWidth, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
-      {positions.has('si-vgm') && positions.has('gate-in') && <div className="absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30" style={{ left: DEMO_POS['si-vgm'].x - 14, top: DEMO_POS['si-vgm'].y - 36, width: W + 28, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 50 }} data-testid="journey-parallel-branch"><span className="absolute -top-2.5 left-3 rounded bg-slate-200 px-1.5 text-[12px] font-extrabold tracking-wider text-slate-600">NHÁNH SONG SONG</span></div>}
-      {positions.has('si-vgm') && positions.has('gate-in') && <div className="pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[12px] font-bold text-slate-600" style={{ left: DEMO_POS.etd.x - 4, top: DEMO_POS.etd.y - 30, width: W + 8 }}>⛓ Phụ thuộc SI/VGM + Gate-in</div>}
+      {positions.has('si-vgm') && positions.has('gate-in') && <div className="journey-branch-band" style={{ left: DEMO_POS['si-vgm'].x - 12, top: DEMO_POS['si-vgm'].y - 24, width: W + 24, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 48 }} data-testid="journey-parallel-branch"><span className="journey-branch-label">NHÁNH SONG SONG</span></div>}
       <svg width={canvasWidth} height={canvasHeight} className="pointer-events-none absolute left-0 top-0 z-[1]" aria-hidden="true">
-        <defs>{[['g', '#059669'], ['s', '#94a3b8'], ['r', '#dc2626']].map(([k, c]) => <marker key={k} id={`journey-arr-${k}`} markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0.5 L10,5 L0,9.5 z" fill={c} /></marker>)}</defs>
-        {edges.map(e => { const n = nodes.find(n => n.id === e.from)!; const k = n.state === 'PROBLEM' ? 'r' : n.completed ? 'g' : 's'; return <path key={e.from + e.to} data-from={e.from} data-to={e.to} d={journeyEdgePath(positions.get(e.from)!, positions.get(e.to)!)} fill="none" stroke={k === 'g' ? '#059669' : k === 'r' ? '#dc2626' : '#94a3b8'} strokeWidth={k === 'g' ? 3 : 2.5} strokeDasharray={k === 'g' ? undefined : '7 5'} markerEnd={`url(#journey-arr-${k})`} />; })}
-        {sea && first && <path d={journeyEdgePath(DEMO_POS.start, positions.get(first.id)!)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
-        {sea && last && <path d={journeyEdgePath(positions.get(last.id)!, DEMO_POS.completed)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
+        {edges.map(e => { const n = nodes.find(n => n.id === e.from)!; const k = n.state === 'PROBLEM' ? 'r' : n.completed ? 'g' : 's'; return <path key={e.from + e.to} data-from={e.from} data-to={e.to} d={journeyEdgePath(positions.get(e.from)!, positions.get(e.to)!)} fill="none" className={cx('journey-edge', k === 'g' && 'journey-edge-done', k === 'r' && 'journey-edge-problem')} />; })}
       </svg>
-      {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
-      {nodes.map((n, i) => { const p = positions.get(n.id)!, m = JOURNEY_META[n.state]; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('absolute z-10 flex flex-col rounded-xl p-2.5 text-left transition-shadow hover:shadow-lg', m.cls, selectedId === n.id && 'outline outline-[3px] outline-offset-4 outline-slate-900')}>
-        {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[12px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
-        {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
-        <div className="flex items-center justify-between gap-1"><JourneyStatus node={n} /><span className="rounded bg-slate-900/10 px-1 text-[12px] font-bold text-slate-600">{i + 1}</span></div>
-        <div className="mt-1 text-[16px] font-extrabold leading-tight tracking-tight text-slate-900">{n.label}</div>
-        <div className={cx('mt-0.5 line-clamp-2 text-[12px] leading-snug', n.state === 'PROBLEM' ? 'font-bold text-red-700' : 'font-medium text-slate-700')}>{n.blockers[0] || n.evidence || 'Chưa có bằng chứng thực tế'}</div>
-        <div className="text-[12px] font-semibold text-slate-500">{n.deadline ? `⏱ ${n.deadline}` : ''}</div>
-        <div className="mt-auto flex items-center gap-1 text-[12px] font-bold"><span className="rounded bg-slate-900/[0.07] px-1 py-px">📄 {n.documentIds.length}</span>{n.blockers.length > 0 && <span className="rounded bg-red-600 px-1 py-px text-white">⚠ {n.blockers.length}</span>}{s.finance.actual?.filter(l => l.journeyStage === n.id).length ? <span className="rounded bg-slate-900/[0.07] px-1 py-px">₫ {s.finance.actual.filter(l => l.journeyStage === n.id).length}</span> : null}</div>
+      {nodes.map((n, i) => { const p = positions.get(n.id)!; const docs = n.documentIds.length, blockers = n.blockers.length; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} aria-label={`${n.label}: ${JOURNEY_NODE_STATUS[n.state]}`} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('journey-node absolute z-10 flex flex-col text-left', n.current && 'journey-node-here', selectedId === n.id && 'journey-node-selected')}>
+        <span className="journey-node-top"><span className="journey-node-idx">{String(i + 1).padStart(2, '0')}</span>{n.state === 'PROBLEM' && <CircleAlert size={11} className="journey-node-alert" aria-hidden="true" />}</span>
+        <span className="journey-node-title">{n.label}</span>
+        <span className="journey-node-foot"><span className="journey-node-status">{JOURNEY_NODE_STATUS[n.state]}</span>
+          {docs > 0 && <span className="journey-node-count" title="Số chứng từ đã ghi nhận"><FileText size={9} aria-hidden="true" />{docs}</span>}
+          {blockers > 0 && <span className="journey-node-count journey-node-count-warn" title="Việc đang chặn"><TriangleAlert size={9} aria-hidden="true" />{blockers}</span>}
+        </span>
       </button>; })}
+      {bubbleNode && bubblePos && renderBubble?.(bubbleNode, bubblePos, { w: canvasWidth, h: canvasHeight }, bubblePlaceBelow)}
     </div>
-    <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-wrap items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white p-1 shadow-md" onPointerDown={e => e.stopPropagation()}>
-      <button type="button" onClick={() => center(1.2)} aria-label="Zoom In" className="touch-target rounded text-lg font-bold text-slate-700">+</button><button type="button" onClick={() => center(1 / 1.2)} aria-label="Zoom Out" className="touch-target rounded text-lg font-bold text-slate-700">−</button><span className="w-11 text-center text-xs font-semibold tabular-nums text-slate-500" data-testid="journey-zoom-level">{Math.round(tf.k * 100)}%</span>
-      <button type="button" onClick={() => { viewMode.current = 'fit'; fit(); }} className="touch-target rounded px-2 text-xs font-bold">⤢ Fit Journey</button><button type="button" onClick={() => { viewMode.current = 'readable'; readable(); }} className="touch-target rounded px-2 text-xs font-semibold">↺ Đọc rõ</button>
+    <div className="journey-zoom-bar absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1" onPointerDown={e => e.stopPropagation()}>
+      <button type="button" onClick={() => center(1.2)} aria-label="Zoom In" className="journey-zoom-btn">+</button><button type="button" onClick={() => center(1 / 1.2)} aria-label="Zoom Out" className="journey-zoom-btn">−</button><span className="journey-zoom-level" data-testid="journey-zoom-level">{Math.round(tf.k * 100)}%</span>
+      <button type="button" onClick={() => { viewMode.current = 'fit'; fit(); }} className="journey-zoom-text">⤢ Fit Journey</button><button type="button" onClick={() => { viewMode.current = 'readable'; readable(); }} className="journey-zoom-text">↺ Đọc rõ</button>
     </div>
-    <details className="absolute right-3 top-3 z-20 rounded-lg border border-slate-300 bg-white/95 px-2 py-2 text-xs font-semibold text-slate-600 shadow" onPointerDown={e => e.stopPropagation()}>
-      <summary className="cursor-pointer">Trạng thái</summary>
-      <div className="mt-2 flex flex-col gap-1">{Object.entries(JOURNEY_META).map(([state, m]) => { const Icon = m.icon; return <span key={state} className="flex items-center gap-1.5"><Icon size={12} className={m.text} />{m.label}</span>; })}</div>
-    </details>
-    <div className="pointer-events-none absolute left-3 top-3 z-20 rounded bg-white/90 px-2 py-1 text-xs text-slate-600">Kéo để xem · Cuộn để zoom</div>
+    <div className="journey-map-hint pointer-events-none absolute left-3 top-3 z-20 rounded bg-white/90 px-2 py-1 text-[11px] text-slate-600">Kéo để xem · Cuộn để zoom</div>
   </div>;
 }

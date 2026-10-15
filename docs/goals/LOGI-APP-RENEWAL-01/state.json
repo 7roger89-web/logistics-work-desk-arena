@@ -169,5 +169,41 @@
     "error": "Resource not accessible by integration",
     "draft": "evidence/logi-199-t6/REVIEWER_UPDATE.md",
     "review_closed": false
+  },
+  "session_branch": "arena/9e611b96-logistics-work-desk-arena",
+  "goal_state": {
+    "G0": "G0_PARTIAL_EVIDENCE_CAPTURED",
+    "G1": "NOT_COMPLETE",
+    "G2": "SLICE_CODED_AND_SMOKE_CAPTURED_NOT_OWNER_ACCEPTED",
+    "G3": "NOT_COMPLETE",
+    "G4": "NOT_COMPLETE",
+    "G5": "NOT_COMPLETE",
+    "VISUAL_FIDELITY": "FAIL",
+    "BUSINESS_PASS": "NOT_RE_CLAIMED",
+    "FULL_GOAL_199": "INCOMPLETE"
+  },
+  "g2_journey_map_first": {
+    "scope": "Journey map-first only (ShipmentJourney.tsx, JourneyMap.tsx, JourneyBubble.tsx, index.css G2 block). Not whole app.",
+    "checks": {
+      "tsc_noEmit": "PASS",
+      "vite_build": "PASS (component/dist rebuilt)",
+      "scan_executable_process_refs": "0",
+      "fonts_loaded_runtime": "Be Vietnam Pro and IBM Plex Mono FontFace loaded (document.fonts.check true)",
+      "desktop_1440x900_overflow_px": 0,
+      "mobile_390x844_overflow_px": 0,
+      "node_bubble_popup_desktop": "PASS (smoke, real tasks only)",
+      "node_bubble_popup_mobile": "PASS (smoke; bubble placed below node near top; zoom bar top-right on phone)",
+      "save_and_reopen_readback": "PASS on isolated staging app (on-board date 2026-10-03 read back after reload; same process, not a restart)"
+    },
+    "not_verified": [
+      "Mobile save button inside bottom sheet not clicked",
+      "Full restart of staging process between save and reopen",
+      "Pixel comparison vs ref-01..ref-04 not performed",
+      "Default desktop map vertical centering differs from ref-01 (main row sits lower)",
+      "Legend, floating Hồ sơ & Tài chính button and exact map paper tone not yet matched"
+    ],
+    "evidence": "evidence/logi-199-g2/",
+    "production": "UNTOUCHED (isolated staging only)",
+    "owner_gate": "Send first comparison to Owner; no VISUAL_PASS claim"
   }
 }

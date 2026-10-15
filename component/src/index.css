@@ -131,6 +131,105 @@ body {
 }
 @media (prefers-reduced-motion: reduce) { .journey-problem-pulse { animation: none; } }
 
+/* ==========================================================================
+   G2 — LOGI-199 Owner Visual Fidelity Override (15/10/2026)
+   Map-first Journey: paper chart canvas, compact node cards, node-attached
+   task bubble, task popup as a modal (desktop) / bottom sheet (mobile).
+   Tokens follow the Owner HTML: ink #10263C, navy #123A5E, blue #1D6FA8,
+   background #EDF1F5, borders #D6DEE7 / #C9D4DF, surface #FFFFFF.
+   Later rules intentionally override the 340px split from 2026-10-13.
+   ========================================================================== */
+.journey-split.journey-map-first { display: block; height: auto; min-height: 0; gap: 0; }
+.journey-split.journey-map-first .journey-canvas {
+  display: block; width: 100%; height: 680px; min-height: 520px; border-radius: 12px;
+  border: 1px solid #D6DEE7; background-color: #EDF1F5; background-size: cover; background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); touch-action: none;
+}
+.journey-branch-band { position: absolute; z-index: 0; border: 1.5px dashed rgba(100,116,139,.5); border-radius: 14px; background: rgba(148,163,184,.08); pointer-events: none; }
+.journey-branch-label { position: absolute; top: -9px; left: 10px; padding: 0 6px; background: #EDF1F5; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 8px; letter-spacing: .12em; color: #64748B; }
+
+.journey-edge { fill: none; stroke: #8DAAC4; stroke-width: 3; stroke-linecap: round; }
+.journey-edge-done { stroke: #2E7D32; }
+.journey-edge-problem { stroke: #C0392B; stroke-dasharray: 7 5; }
+
+.journey-node {
+  position: absolute; width: 102px; height: 58px; overflow: hidden; border-radius: 10px;
+  border: 1px solid #C9D4DF; background: #fff; color: #10263C; cursor: pointer;
+  padding: 5px 7px 5px 9px; box-shadow: 0 8px 18px -12px rgba(16,38,60,.42);
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif; text-align: left;
+  transition: box-shadow .15s ease, border-color .15s ease;
+  --stripe: #94A3B8;
+}
+.journey-node::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; border-radius: 10px 0 0 10px; background: var(--stripe); }
+.journey-node[data-state='PROBLEM'] { --stripe: #C0392B; }
+.journey-node[data-state='COMPLETED'] { --stripe: #2E7D32; }
+.journey-node[data-state='WAITING'] { --stripe: #D97706; }
+.journey-node[data-state='CURRENT'] { --stripe: #1D6FA8; }
+.journey-node[data-state='UPCOMING'] { --stripe: #94A3B8; }
+.journey-node:hover { box-shadow: 0 12px 22px -12px rgba(16,38,60,.5); }
+.journey-node:focus-visible { outline: 2px solid #1D6FA8; outline-offset: 3px; }
+.journey-node-here { border-color: #123A5E; }
+.journey-node-selected { border-color: #1D6FA8; box-shadow: 0 0 0 2px #1D6FA8, 0 10px 20px -12px rgba(16,38,60,.5); }
+.journey-node-top { display: flex; align-items: center; justify-content: space-between; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 8.5px; line-height: 1; color: #6B7F93; letter-spacing: .04em; }
+.journey-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 9.5px; font-weight: 700; line-height: 1.15; text-transform: uppercase; color: #10263C; }
+.journey-node-foot { margin-top: auto; display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 700; letter-spacing: .06em; white-space: nowrap; }
+.journey-node-status { color: #64748B; }
+.journey-node[data-state='PROBLEM'] .journey-node-status { color: #B42318; }
+.journey-node[data-state='COMPLETED'] .journey-node-status { color: #2E7D32; }
+.journey-node[data-state='WAITING'] .journey-node-status { color: #B45309; }
+.journey-node[data-state='CURRENT'] .journey-node-status { color: #1D6FA8; }
+.journey-node-count { display: inline-flex; align-items: center; gap: 2px; padding: 1px 3px; border-radius: 4px; background: rgba(16,38,60,.07); color: #10263C; font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.journey-node-count-warn { background: #FDECEA; color: #B42318; }
+.journey-node-alert { color: #C0392B; }
+
+.journey-zoom-bar { background: #fff; border: 1px solid #D6DEE7; border-radius: 10px; padding: 4px; box-shadow: 0 6px 16px -10px rgba(16,38,60,.45); }
+.journey-zoom-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #D6DEE7; background: #fff; font-size: 17px; font-weight: 700; color: #10263C; }
+.journey-zoom-level { min-width: 44px; text-align: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #64748B; }
+.journey-zoom-text { height: 32px; padding: 0 8px; border-radius: 8px; font-size: 11px; font-weight: 700; color: #123A5E; }
+
+.journey-bubble { background: #fff; border: 1px solid #C9D4DF; border-radius: 12px; padding: 10px; color: #10263C; box-shadow: 0 18px 36px -18px rgba(16,38,60,.45); font-family: 'Be Vietnam Pro', system-ui, sans-serif; }
+.journey-bubble-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid #E5EBF2; }
+.journey-bubble-kicker { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: #64748B; }
+.journey-bubble-state { margin-top: 2px; font-size: 13px; font-weight: 800; letter-spacing: .02em; }
+.journey-bubble-close { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; border: 1px solid #D6DEE7; background: #fff; color: #475569; }
+.journey-bubble-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; list-style: none; margin: 0; padding: 0; }
+.journey-bubble-task { width: 100%; display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid #D6DEE7; border-radius: 9px; background: #fff; text-align: left; }
+.journey-bubble-task:hover:not(:disabled) { border-color: #1D6FA8; background: #F5F9FD; }
+.journey-bubble-task:focus-visible { outline: 2px solid #1D6FA8; outline-offset: 2px; }
+.journey-bubble-dot { width: 9px; height: 9px; margin-top: 4px; border-radius: 999px; flex-shrink: 0; }
+.journey-bubble-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; font-weight: 700; line-height: 1.3; color: #10263C; }
+.journey-bubble-meta { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .04em; color: #64748B; }
+.journey-bubble-foot { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 32px; margin-top: 8px; border: 1px dashed #9FB3C8; border-radius: 9px; background: #F7FAFC; font-size: 12px; font-weight: 700; color: #123A5E; }
+
+.journey-modal-layer { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; }
+.journey-modal-backdrop { position: absolute; inset: 0; background: rgba(16,38,60,.38); }
+.journey-side.journey-modal-card { position: relative; width: min(560px, 100%); height: auto; max-height: 86vh; display: flex; flex-direction: column; border-radius: 14px; border: 1px solid #C9D4DF; box-shadow: 0 30px 60px -24px rgba(16,38,60,.55); }
+
+.journey-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; padding: 8px 12px; border: 1px solid #D6DEE7; border-radius: 10px; background: #fff; color: #10263C; font-size: 12px; }
+.journey-toolbar-id { padding: 3px 7px; border-radius: 6px; background: #123A5E; color: #fff; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.journey-toolbar-customer { font-weight: 700; }
+.journey-toolbar-route { color: #475569; }
+.journey-toolbar-chip { padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.journey-toolbar-here { background: #EAF2FA; color: #1D4E7A; }
+.journey-toolbar-alert { background: #FDECEA; color: #B42318; }
+.journey-toolbar-next { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; }
+.journey-toolbar-spacer { flex: 1 1 auto; }
+.journey-toolbar-btn { height: 30px; padding: 0 12px; border: 1px solid #C9D4DF; border-radius: 8px; background: #fff; color: #123A5E; font-size: 12px; font-weight: 700; }
+.journey-toolbar-btn-primary { border-color: #123A5E; background: #123A5E; color: #fff; }
+
+@media (max-width: 720px) {
+  /* Phone: the map fills the screen above the bottom app tab bar (~64px) so the zoom bar stays reachable. */
+  .journey-split.journey-map-first .journey-canvas { height: clamp(400px, calc(100vh - 340px), 600px); min-height: 400px; }
+  /* Phone: zoom bar moves to the top-right so it never covers the bubble/sheet above the bottom tab bar. */
+  .journey-split.journey-map-first .journey-zoom-bar { top: 8px; right: 8px; bottom: auto; left: auto; transform: none; }
+  .journey-split.journey-map-first .journey-map-hint { display: none; }
+  .journey-node { width: 96px; height: 56px; }
+  .journey-modal-layer { place-items: end stretch; padding: 0; }
+  .journey-side.journey-modal-card { width: 100%; max-width: none; max-height: 88vh; border-radius: 16px 16px 0 0; }
+  .journey-toolbar-next { white-space: normal; }
+}
+
+
 /* Issue #190 CONTINUE — route-specific desktop FOCUS SHELL for /lo-hang/:id.
    The global production chrome stays mounted (other routes unchanged, mobile
    unchanged); it is only visually removed at desktop widths so the Owner

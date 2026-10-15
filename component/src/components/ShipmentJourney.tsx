@@ -7,6 +7,7 @@ import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
 import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
+import JourneyBubble, { bubbleTasksFor } from './JourneyBubble';
 
 export const JOURNEY_REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', readonly string[]> = {
   // Sea has detailed node ids; Air/Rail/Road may project canonical profile
@@ -393,6 +394,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   globalRequest?: number; attachRequest?: number;
 }) {
   const [picked, setPicked] = useState('');
+  // G2 — node-attached task bubble (Owner HTML): separate from the popup state.
+  const [bubbleId, setBubbleId] = useState('');
   const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -453,6 +456,15 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   // Issue #197 follow-up — zero nodes (or a missing Journey) render the same
   // five compact macro phases as the populated path, never the six-phase
   // canvas, never an invented current phase.
+  // G2 — the popup is a modal over the map (desktop) / bottom sheet (mobile).
+  const modalOpen = panelMode !== 'overview';
+  // G2 — Escape closes the popup modal (keyboard parity with the backdrop).
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanelMode('overview'); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
   if (!hasNodes) return <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>;
   const nodes = journey?.nodes ?? [];
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
@@ -477,8 +489,15 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       expectedVersion: s.version ?? 0, provenance: 'MANUAL_ADDITION',
     })) { setAttachPending(''); setAttachError('Chưa kết nối backend.'); }
   };
-  const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
-  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
+  // G2 — a base node opens its task bubble on the map; a Work Module step (not
+  // drawn as a base node) keeps the direct quick-panel path.
+  const pick = (id: string) => {
+    const n = nodes.find(x => x.id === id);
+    setPicked(id);
+    if (n?.moduleId) { setBubbleId(''); setPanelMode('quick'); } else setBubbleId(id);
+  };
+  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setBubbleId(''); setPanelMode('stage'); return true; } return false; };
+
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
   // the 451px right rail, the compact overview stacks it below the step
   // strip. Same nodes, same pick, same panels — no duplicated journey
@@ -491,19 +510,10 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     ? `${currentRegion ? JOURNEY_REGION_LABELS[currentRegion] + ' · ' : ''}${currentNode.label}`
     : 'Chưa xác định';
   const renderSidePanel = (extraClass: string) => (
-    <aside className={cx('journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]', extraClass)} data-testid="journey-side-panel">
+    <aside className={cx('journey-side journey-modal-card', extraClass)} data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
-        {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
-          <div className="border-b bg-white px-4 py-3"><p className="text-[12px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
-          <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
-            {problem && <button type="button" onClick={() => pick(problem.id)} className="w-full rounded-lg border-2 border-red-600 bg-red-50 p-3 text-left"><p className="text-xs font-bold text-red-700">⚠ Attention</p><p className="text-lg font-extrabold text-red-800">{problem.blockers[0]}</p><p className="text-xs text-red-700">{problem.label} → Xử lý ngay</p></button>}
-            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[12px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey?.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
-            <div className="grid grid-cols-2 gap-3"><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Current</p><p className="text-sm font-bold text-blue-700">{baseNodes.find(n => n.current)?.label || 'Chưa xác định'}</p></div><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Owner lô hàng</p><p className="text-sm font-bold">{journey?.owner || 'Chưa phân công'}</p></div><button type="button" onClick={() => openGlobal('chung-tu')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Documents</p><p className="font-bold">{s.attachments?.length ?? 0} tệp đã ghi nhận</p></button><button type="button" onClick={() => openGlobal('tai-chinh')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Finance</p><p className="text-sm font-bold">Xem tài chính toàn lô →</p></button></div>
-            <button type="button" onClick={() => openGlobal()} className="touch-target w-full rounded-lg border border-slate-800 px-3 text-sm font-bold">Mở Global Workspace →</button>
-          </div>
-        </div>}
         {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col" data-testid="journey-stage-workspace">
           <div className="border-b border-slate-300 bg-slate-100 px-4 py-3" data-testid="journey-quick-panel">
             <div className="flex flex-wrap items-center gap-2 text-[12px] font-extrabold uppercase tracking-widest text-slate-500">CÔNG ĐOẠN · {s.id}<button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded border bg-white px-2 normal-case tracking-normal">← Hành trình</button></div>
@@ -544,14 +554,31 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
         compact five-phase default: the Journey map stays small on the left,
         the business content takes the wide right column. All panel content
         is unchanged; only the proportions changed. */}
-    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2" data-testid="journey-compact-toolbar">
-      <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">📍 Đang ở: {currentLabel}</span>
-      {problem && <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">⚠ {problem.blockers[0] || problem.label}</span>}
+    {/* G2 — compact identity strip (lot, customer, route, position, next action)
+        above a map-first canvas. The popup is a modal, not a dashboard column. */}
+    <div className="journey-toolbar" data-testid="journey-compact-toolbar">
+      <span className="journey-toolbar-id">{s.id}</span>
+      {s.customer && <span className="journey-toolbar-customer">{s.customer}</span>}
+      {s.route && <span className="journey-toolbar-route">{s.route}</span>}
+      <span className="journey-toolbar-chip journey-toolbar-here">Đang ở: {currentLabel}</span>
+      {problem && <span className="journey-toolbar-chip journey-toolbar-alert">⚠ {problem.blockers[0] || problem.label}</span>}
+      {journey?.primaryAction?.text && <span className="journey-toolbar-next"><b>Việc tiếp:</b> {journey.primaryAction.text}</span>}
+      <span className="journey-toolbar-spacer" />
+      <button type="button" onClick={runPrimary} className="journey-toolbar-btn journey-toolbar-btn-primary">Xử lý →</button>
+      <button type="button" onClick={() => openGlobal()} className="journey-toolbar-btn" data-testid="journey-global-open">▤ Hồ sơ &amp; Tài chính</button>
     </div>
-    <div className={cx('journey-split', 'journey-split-small-map')} data-testid="journey-split-view">
-      <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={false} onExpand={() => {}} />
+    <div className="journey-split journey-map-first" data-testid="journey-split-view">
+      <JourneyMap shipment={s} nodes={baseNodes} selectedId={bubbleId || (modalOpen && panelMode !== 'global' ? selected.id : '')} onPick={pick} collapsed={false} onExpand={() => {}}
+        bubbleNodeId={bubbleId}
+        renderBubble={(n, p, c, below) => <JourneyBubble node={n} pos={p} canvas={c} placeBelow={below}
+          tasks={bubbleTasksFor(n, s, modules, (node, work) => { open(node, work); }, (stepId) => pick(stepId), nodes)}
+          onClose={() => setBubbleId('')}
+          onQuick={() => { setBubbleId(''); setPicked(n.id); setPanelMode('quick'); }} />} />
+    </div>
+    {modalOpen && <div className="journey-modal-layer" data-testid="journey-modal">
+      <div className="journey-modal-backdrop" onClick={() => setPanelMode('overview')} aria-hidden="true" />
       {renderSidePanel('')}
-    </div>
+    </div>}
 
     {/* Issue #190 repair — an EXISTING attached module remains below the five
         cards. The empty add-module affordance no longer creates an accidental
