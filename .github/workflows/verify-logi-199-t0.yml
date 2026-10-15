@@ -49,17 +49,34 @@ jobs:
           npm run build
           npm run scan
 
-      - name: Sync only successful source-built files to draft PR branch
+      - name: Install isolated Playwright Chromium
+        run: |
+          npm install --prefix /tmp/logi199-pw --package-lock=false playwright@1.56.1
+          PLAYWRIGHT_BROWSERS_PATH=/tmp/logi199-browsers /tmp/logi199-pw/node_modules/.bin/playwright install --with-deps chromium
+
+      - name: REAL Streamlit v2 staging browser 1440x900 + 390x844
+        env:
+          AUTH_REQUIRED: "false"
+          MONGO_URI: ""
+          MONGO_DB_NAME: ""
+          PLAYWRIGHT_MODULE: /tmp/logi199-pw/node_modules/playwright/index.mjs
+          PLAYWRIGHT_BROWSERS_PATH: /tmp/logi199-browsers
+        run: |
+          test ! -e .streamlit/secrets.toml
+          node tests/component/browser_logi199_real_streamlit.mjs
+
+      - name: Sync only successful source-built files and staging browser evidence to draft PR branch
         env:
           PUSH_TOKEN: ${{ github.token }}
         run: |
           git add component/dist/logi-shell.js component/dist/logi-shell.css
+          git add -f evidence/logi-199-t0/browser_metrics.json evidence/logi-199-t0/*.png
           if git diff --cached --quiet; then
             echo "DIST_SYNC=ALREADY_CURRENT"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "build(LOGI-199): sync verified T0 dist [skip ci]"
+            git commit -m "test(LOGI-199): real Streamlit browser screenshots + verified dist [skip ci]"
             auth_header=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
             git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth_header" push origin HEAD:ct/logi-app-renewal-01-t0-air-truth
             echo "DIST_SYNC=COMMITTED"
