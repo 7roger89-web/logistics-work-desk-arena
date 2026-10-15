@@ -233,6 +233,15 @@ export default function ShipmentDetail() {
     setDocumentSelectionPending("");
     setDocumentSelectionError("");
     setDocumentDownloadPending("");
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      for (const sel of ['[data-testid="stAppViewContainer"]', 'section.main', '.stApp']) {
+        const el = document.querySelector(sel);
+        if (el instanceof HTMLElement) el.scrollTop = 0;
+      }
+    }
   }, [id]);
   useEffect(() => {
     if (!documentSelectionPending) return;

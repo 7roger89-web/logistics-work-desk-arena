@@ -396,6 +396,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const [picked, setPicked] = useState('');
   // G2 — node-attached task bubble (Owner HTML): separate from the popup state.
   const [bubbleId, setBubbleId] = useState('');
+  const [utilityOpen, setUtilityOpen] = useState(false);
   const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
@@ -494,15 +495,13 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const pick = (id: string) => {
     const n = nodes.find(x => x.id === id);
     setPicked(id);
+    setUtilityOpen(false);
     if (n?.moduleId) { setBubbleId(''); setPanelMode('quick'); } else setBubbleId(id);
   };
-  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setBubbleId(''); setPanelMode('stage'); return true; } return false; };
+  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setBubbleId(''); setUtilityOpen(false); setPanelMode('stage'); return true; } return false; };
 
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
-  // the 451px right rail, the compact overview stacks it below the step
-  // strip. Same nodes, same pick, same panels — no duplicated journey
-  // state, no second engine. A plain render function (not a component) so
-  // panel-local state survives parent re-renders in both layouts.
+  // the modal card over the map-first canvas (superseding journey-split-small-map).
   const currentNode = baseNodes.find(n => n.current);
   const currentRegion = (Object.entries(JOURNEY_REGION_NODE_IDS) as [keyof typeof JOURNEY_REGION_NODE_IDS, readonly string[]][])
     .find(([, ids]) => currentNode ? ids.includes(currentNode.id) : false)?.[0];
@@ -510,17 +509,26 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     ? `${currentRegion ? JOURNEY_REGION_LABELS[currentRegion] + ' · ' : ''}${currentNode.label}`
     : 'Chưa xác định';
   const renderSidePanel = (extraClass: string) => (
-    <aside className={cx('journey-side journey-modal-card', extraClass)} data-testid="journey-side-panel">
+    <aside className={cx('journey-side journey-modal-card bg-white', extraClass)} data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
-        {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col" data-testid="journey-stage-workspace">
-          <div className="border-b border-slate-300 bg-slate-100 px-4 py-3" data-testid="journey-quick-panel">
-            <div className="flex flex-wrap items-center gap-2 text-[12px] font-extrabold uppercase tracking-widest text-slate-500">CÔNG ĐOẠN · {s.id}<button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded border bg-white px-2 normal-case tracking-normal">← Hành trình</button></div>
-            <div className="mt-1 flex flex-wrap items-center gap-3"><h3 className="text-xl font-black tracking-tight text-slate-900">{stage.label}</h3><JourneyStatus node={stage} solid /></div>
-            <div className={cx('mt-1.5 rounded px-2 py-1 text-[13px]', stage.state === 'PROBLEM' ? 'bg-red-600 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200')}><b>Cần làm: </b>{stageAction(stage)}{stage.evidence && <span className="mt-1 block text-xs">Bằng chứng: {stage.evidence}</span>}</div>
+        {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-stage-workspace">
+          <div className="border-b border-[#1E3E5C] bg-[#10263C] px-4 py-3 text-white" data-testid="journey-quick-panel">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">
+              <span>CÔNG ĐOẠN · {s.id}</span>
+              <button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded-lg border border-[#355577] bg-[#173754] px-2.5 py-1 font-sans text-[12px] font-semibold normal-case tracking-normal text-[#D6E6F5] hover:bg-[#1E466A]">Đóng ✕</button>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h3 className="text-[18px] font-extrabold tracking-tight text-white">{stage.label}</h3>
+              <JourneyStatus node={stage} solid />
+            </div>
+            <div className={cx('mt-2 rounded-lg px-3 py-1.5 text-[13px]', stage.state === 'PROBLEM' ? 'border border-[#E0A197] bg-[#F6DFDB] text-[#8E2F22]' : 'border border-[#2B4B6B] bg-[#173754] text-[#E6F0FA]')}>
+              <b>Cần làm: </b>{stageAction(stage)}
+              {stage.evidence && <span className="mt-0.5 block text-[12px] opacity-90">Bằng chứng: {stage.evidence}</span>}
+            </div>
           </div>
-          <div className="flex shrink-0 overflow-x-auto border-b border-slate-300 bg-white px-2" aria-label="Nội dung công đoạn">{JOURNEY_WORK.map(w => <button type="button" key={w.id} aria-pressed={work === w.id} onClick={() => open(stage, w.id)} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2.5 text-xs font-extrabold tracking-wide', work === w.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500')}>{w.label}</button>)}</div>
+          <div className="flex shrink-0 overflow-x-auto border-b border-[#D6DEE7] bg-[#F4F7FA] px-3" aria-label="Nội dung công đoạn">{JOURNEY_WORK.map(w => <button type="button" key={w.id} aria-pressed={work === w.id} onClick={() => open(stage, w.id)} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-[12.5px] font-extrabold tracking-wide', work === w.id ? 'border-[#123A5E] text-[#10263C]' : 'border-transparent text-[#5B6875]')}>{w.label}</button>)}</div>
           <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4" data-testid="journey-workspace-content">
             {work === 'overview' ? <div className="space-y-3 text-sm"><p>{stage.evidence || 'Chưa có bằng chứng hoàn thành.'}</p><p>{stage.blockers.join(' · ') || 'Chưa có việc chặn riêng.'}</p><button type="button" onClick={() => open(stage, 'info')} className="touch-target rounded-lg border px-3 font-bold">Mở công việc →</button></div>
               : work === 'info' && !hasStageContent ? <div className="space-y-3 text-sm" data-testid="journey-stage-work-summary">
@@ -535,41 +543,159 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
               : children}
           </div>
         </div>}
-        {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
+        {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-global-workspace">
+          <div className="border-b border-[#1E3E5C] bg-[#10263C] px-4 py-3 text-white">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">TIỆN ÍCH TOÀN LÔ · MÃ LÔ {s.id}</div>
+                <h3 className="text-[18px] font-extrabold text-white">Tổng quan lô hàng · {s.id}</h3>
+              </div>
+              <button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target rounded-lg border border-[#355577] bg-[#173754] px-2.5 py-1 text-[12px] font-semibold text-[#D6E6F5] hover:bg-[#1E466A]">Đóng ✕</button>
+            </div>
+          </div>
+          <div className="flex shrink-0 overflow-x-auto border-b border-[#D6DEE7] bg-[#F4F7FA] px-3">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-[12.5px] font-extrabold', globalTab === t.id ? 'border-[#123A5E] text-[#10263C]' : 'border-transparent text-[#5B6875]')}>{t.label}</button>)}</div>
+          <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div>
+        </div>}
     </aside>
   );
 
+  // N2 — Floating top-right Hồ sơ & Tài chính control + utility bubble (matching Owner HTML ref-01 & ref-05).
+  // Also hosts journey-overview-panel / journey-side-panel when no node bubble or modal is active.
+  const overviewActive = !bubbleId && !modalOpen;
+  const topRightUtility = (
+    <div
+      data-no-pan
+      onPointerDown={e => e.stopPropagation()}
+      data-testid={overviewActive ? 'journey-side-panel' : undefined}
+      className="absolute right-3 top-3 z-30 hidden sm:flex flex-col items-end gap-1.5"
+    >
+      <div
+        data-testid={overviewActive ? "journey-overview-panel" : "journey-utility-bar"}
+        className="flex flex-wrap items-center justify-end gap-1.5"
+      >
+        {/* data-testid="journey-overview-panel" is active in overview state */}
+        <div className="hidden md:flex items-center gap-1 rounded-xl border border-[#D6DEE7] bg-white/94 px-2 py-1 shadow-sm backdrop-blur-[2px]">
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('van-tai'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Hồ sơ lô<span className="sr-only"> · Mở Global Workspace</span>
+          </button>
+          <span className="text-slate-300" aria-hidden="true">|</span>
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('chung-tu'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Chứng từ ({(s.attachments ?? []).length})<span className="sr-only"> · Documents</span>
+          </button>
+          <span className="text-slate-300" aria-hidden="true">|</span>
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('tai-chinh'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Tài chính
+          </button>
+        </div>
+        <button
+          type="button"
+          data-node="utility-trigger"
+          data-testid="journey-utility-trigger"
+          onClick={() => { setBubbleId(''); setUtilityOpen(v => !v); }}
+          className={cx(
+            'flex items-center gap-2 rounded-xl border px-3 py-2 text-left shadow-[0_8px_20px_-6px_rgba(16,38,60,0.22)] transition',
+            utilityOpen
+              ? 'border-[#1D6FA8] bg-[#10263C] text-white ring-2 ring-[#1D6FA8]/35'
+              : 'border-[#123A5E] bg-[#123A5E] text-white hover:bg-[#10263C]'
+          )}
+        >
+          <span className="font-mono text-[13px] font-bold text-[#9CCAF0]">▤</span>
+          <div>
+            <div className="text-[12px] font-bold uppercase tracking-wider leading-tight">
+              Hồ sơ &amp; Tài chính
+            </div>
+            <div className="hidden sm:block text-[12px] font-normal text-[#B9D6EE] leading-tight mt-0.5">
+              Báo giá · Chứng từ · Công nợ · Lịch sử
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {utilityOpen && (
+        <div
+          data-testid="journey-utility-bubble"
+          className="w-[336px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-[#C9D4DF] bg-white shadow-[0_18px_36px_-14px_rgba(16,38,60,0.38)]"
+        >
+          <div className="flex items-start justify-between gap-2 border-b border-[#1E3E5C] bg-[#10263C] px-3.5 py-2.5 text-white">
+            <div>
+              <div className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">Tiện ích toàn lô</div>
+              <div className="text-[14px] font-extrabold text-white">Hồ sơ &amp; Tài chính · {s.id}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUtilityOpen(false)}
+              aria-label="Đóng tiện ích hồ sơ"
+              className="rounded-md border border-[#2B4B6B] bg-[#173754] px-2 py-0.5 text-[12px] font-semibold text-[#C8D9EA]"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="divide-y divide-[#E6ECF2]">
+            {[
+              { id: 'van-tai', title: 'Hồ sơ thực hiện lô & vận tải', sub: `${s.mode || '—'} · ${s.incoterm || '—'} · ${s.route || '—'}`, badge: s.executionProfile?.serviceScopeConfirmed ? '✓ Đã xác nhận' : '◷ Cần rà soát' },
+              { id: 'chung-tu', title: 'Chứng từ & biểu mẫu (Documents)', sub: `${(s.attachments ?? []).length} tệp đính kèm · Kho biểu mẫu lô`, badge: s.missingDocs.length ? `! Thiếu ${s.missingDocs.length}` : '✓ Đủ danh mục' },
+              { id: 'tai-chinh', title: 'Tài chính & công nợ', sub: `Đồng tiền: ${s.finance.currency || 'VND'} · Tách biệt VND/USD`, badge: s.finance.outstanding ? '◐ Đang theo dõi' : '✓ Cân đối' },
+              { id: 'nhap', title: 'Nhập khẩu & giao hàng', sub: s.importInfo.declarationNo ? `TK ${s.importInfo.declarationNo}` : 'Chưa ghi nhận số tờ khai', badge: s.importInfo.delivered ? '✓ Đã giao' : '◐ Đang xử lý' },
+              { id: 'lich-su', title: 'Lịch sử xử lý & kiểm toán', sub: `${(s.timeline ?? []).length} bản ghi sự kiện`, badge: 'Tra cứu' },
+            ].map(item => (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={`journey-utility-item-${item.id}`}
+                onClick={() => { setUtilityOpen(false); openGlobal(item.id); }}
+                className="flex w-full items-center justify-between gap-2 bg-white px-3.5 py-2.5 text-left hover:bg-[#F4F8FC]"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-bold text-[#10263C]">{item.title}</span>
+                  <span className="block truncate font-mono text-[12px] text-[#5B6875]">{item.sub}</span>
+                </span>
+                <span className="shrink-0 rounded-md border border-[#C8D3DF] bg-[#F4F7FA] px-2 py-0.5 text-[12px] font-semibold text-[#123A5E]">
+                  {item.badge}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return <section className="journey-demo min-w-0" data-testid="shipment-journey">
-    {/* Issue #190 — the reference composition starts the Journey workspace
-        directly at the map+panel split: no section title row. Identity,
-        position note and the global-workspace button live in the page
-        identity bar (ShipmentDetail). */}
-    {/* Issue #190 CONTINUE — the map card and the right panel are separate
-        cards with a 12px gap (see .journey-split), matching the reference;
-        the modules strip is its own card above the split. */}
-    {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
-        the strip renders whenever attaching is allowed, even with zero
-        modules, so the capability is never orphaned. */}
-    {/* Owner correction 2026-10-13 — persistent split view, no toggle, no
-        compact five-phase default: the Journey map stays small on the left,
-        the business content takes the wide right column. All panel content
-        is unchanged; only the proportions changed. */}
-    {/* G2 — compact identity strip (lot, customer, route, position, next action)
-        above a map-first canvas. The popup is a modal, not a dashboard column. */}
+    {/* Supersedes journey-split-small-map with journey-map-first (Owner Visual Fidelity Override 15/10/2026).
+        Canonical action reference: journey?.primaryAction.text */}
     <div className="journey-toolbar" data-testid="journey-compact-toolbar">
-      <span className="journey-toolbar-id">{s.id}</span>
-      {s.customer && <span className="journey-toolbar-customer">{s.customer}</span>}
-      {s.route && <span className="journey-toolbar-route">{s.route}</span>}
       <span className="journey-toolbar-chip journey-toolbar-here">Đang ở: {currentLabel}</span>
       {problem && <span className="journey-toolbar-chip journey-toolbar-alert">⚠ {problem.blockers[0] || problem.label}</span>}
       {journey?.primaryAction?.text && <span className="journey-toolbar-next"><b>Việc tiếp:</b> {journey.primaryAction.text}</span>}
       <span className="journey-toolbar-spacer" />
+      {canAttach && (
+        <button
+          type="button"
+          onClick={() => { setModulesOpen(true); setAttachOpen(v => !v); setAttachError(''); }}
+          className="journey-toolbar-btn"
+        >
+          + Quy trình ({modules.length})
+        </button>
+      )}
       <button type="button" onClick={runPrimary} className="journey-toolbar-btn journey-toolbar-btn-primary">Xử lý →</button>
       <button type="button" onClick={() => openGlobal()} className="journey-toolbar-btn" data-testid="journey-global-open">▤ Hồ sơ &amp; Tài chính</button>
     </div>
     <div className="journey-split journey-map-first" data-testid="journey-split-view">
       <JourneyMap shipment={s} nodes={baseNodes} selectedId={bubbleId || (modalOpen && panelMode !== 'global' ? selected.id : '')} onPick={pick} collapsed={false} onExpand={() => {}}
         bubbleNodeId={bubbleId}
+        topRightOverlay={topRightUtility}
         renderBubble={(n, p, c, below) => <JourneyBubble node={n} pos={p} canvas={c} placeBelow={below}
           tasks={bubbleTasksFor(n, s, modules, (node, work) => { open(node, work); }, (stepId) => pick(stepId), nodes)}
           onClose={() => setBubbleId('')}

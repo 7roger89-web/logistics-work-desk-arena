@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, X } from 'lucide-react';
+import { ChevronRight, FileText, Wrench, X } from 'lucide-react';
 import type { JourneyNode, Shipment, WorkModuleRollup } from '../lib/viewmodel';
 import { cx } from '../lib/format';
 import { JOURNEY_NODE_STATUS, JOURNEY_NODE_W, type JourneyPosition } from './JourneyMap';
@@ -73,40 +73,92 @@ const TONE_DOT: Record<BubbleTask['tone'], string> = {
   UPCOMING: 'bg-[#94A3B8]',
 };
 
+const TONE_BADGE: Record<BubbleTask['tone'], { text: string; cls: string }> = {
+  PROBLEM:   { text: '! Cần xử lý',     cls: 'border-[#E0A197] bg-[#F6DFDB] text-[#8E2F22]' },
+  CURRENT:   { text: '◐ Đang xử lý',    cls: 'border-[#8EC0E8] bg-[#DCEBFA] text-[#154C79]' },
+  WAITING:   { text: '◷ Chờ thông tin', cls: 'border-[#E8BE7B] bg-[#FBEBD3] text-[#8A5209]' },
+  COMPLETED: { text: '✓ Có bằng chứng', cls: 'border-[#96C7AF] bg-[#DCEDE4] text-[#22614A]' },
+  UPCOMING:  { text: '· Chưa bắt đầu',  cls: 'border-[#C8D3DF] bg-[#E7ECF2] text-[#5B6875]' },
+};
+
 export default function JourneyBubble({ node, pos, canvas, tasks, onClose, onQuick, placeBelow }: {
   node: JourneyNode; pos: JourneyPosition; canvas: { w: number; h: number };
   tasks: BubbleTask[]; onClose: () => void; onQuick: () => void; placeBelow: boolean;
 }) {
-  const BUBBLE_W = 304;
-  // Above the node by default; below it for the top branch so it never leaves the canvas.
+  const BUBBLE_W = 328;
+  // Above the node by default; below it when the node is in the upper half of the viewport.
   const above = !placeBelow;
   const left = Math.max(8, Math.min(canvas.w - BUBBLE_W - 8, pos.x + JOURNEY_NODE_W / 2 - BUBBLE_W / 2));
-  const place = above ? { bottom: canvas.h - pos.y + 16 } : { top: pos.y + pos.h + 16 };
-  const headerTone = node.state === 'PROBLEM' ? 'text-[#C0392B]' : node.state === 'COMPLETED' ? 'text-[#2E7D32]' : 'text-[#1D6FA8]';
-  return <div className="journey-bubble absolute z-30" style={{ left, width: BUBBLE_W, ...place }} data-testid="journey-bubble" data-node={node.id} role="dialog" aria-label={`Công việc của ${node.label}`}
-    onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
-    <div className="journey-bubble-head">
-      <div className="min-w-0">
-        <div className="journey-bubble-kicker">{node.label.toUpperCase()}</div>
-        <div className={cx('journey-bubble-state', headerTone)}>{JOURNEY_NODE_STATUS[node.state]}</div>
+  const place = above ? { bottom: canvas.h - pos.y + 14 } : { top: pos.y + pos.h + 14 };
+  const primaryStageTask = tasks.find(t => t.key === 'stage');
+  return (
+    <div
+      className="journey-bubble absolute z-30"
+      style={{ left, width: BUBBLE_W, ...place }}
+      data-testid="journey-bubble"
+      data-node={node.id}
+      role="dialog"
+      aria-label={`Công việc của ${node.label}`}
+      onPointerDown={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
+    >
+      <div data-testid="journey-side-panel">
+        <div data-testid="journey-quick-panel">
+          <div className="journey-bubble-head">
+            <div className="min-w-0">
+              <div className="journey-bubble-kicker">{node.label.toUpperCase()}</div>
+              <div className="journey-bubble-state">{JOURNEY_NODE_STATUS[node.state]}</div>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Đóng bong bóng công việc" className="journey-bubble-close">
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
+          <ul className="journey-bubble-list" data-testid="journey-bubble-tasks">
+            {tasks.map(t => {
+              const b = TONE_BADGE[t.tone];
+              return (
+                <li key={t.key}>
+                  <button
+                    type="button"
+                    onClick={t.onOpen}
+                    disabled={t.disabled || !t.onOpen}
+                    data-testid={`journey-bubble-task-${t.key}`}
+                    className={cx('journey-bubble-task', t.disabled && 'opacity-60')}
+                  >
+                    <span className={cx('journey-bubble-dot', TONE_DOT[t.tone])} aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className="journey-bubble-title">{t.title}</span>
+                      <span className="journey-bubble-meta">{t.meta}</span>
+                    </span>
+                    <span className={cx('shrink-0 rounded-md border px-2 py-0.5 text-[12px] font-semibold', b.cls)}>
+                      {b.text}
+                    </span>
+                    <ChevronRight size={14} className="mt-1 shrink-0 text-[#94A3B8]" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="journey-bubble-foot">
+            <button
+              type="button"
+              onClick={() => primaryStageTask?.onOpen ? primaryStageTask.onOpen() : onQuick()}
+              data-testid="journey-open-workspace"
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#123A5E] hover:text-[#1D6FA8]"
+            >
+              <Wrench size={13} aria-hidden="true" /> MỞ CÔNG ĐOẠN →
+            </button>
+            <button
+              type="button"
+              onClick={onQuick}
+              data-testid="journey-bubble-overview"
+              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#5B6875] hover:text-[#123A5E]"
+            >
+              <FileText size={13} aria-hidden="true" /> Xem thông tin công đoạn
+            </button>
+          </div>
+        </div>
       </div>
-      <button type="button" onClick={onClose} aria-label="Đóng bong bóng công việc" className="journey-bubble-close"><X size={14} aria-hidden="true" /></button>
     </div>
-    <ul className="journey-bubble-list" data-testid="journey-bubble-tasks">
-      {tasks.map(t => <li key={t.key}>
-        <button type="button" onClick={t.onOpen} disabled={t.disabled || !t.onOpen} data-testid={`journey-bubble-task-${t.key}`}
-          className={cx('journey-bubble-task', t.disabled && 'opacity-60')}>
-          <span className={cx('journey-bubble-dot', TONE_DOT[t.tone])} aria-hidden="true" />
-          <span className="min-w-0 flex-1">
-            <span className="journey-bubble-title">{t.title}</span>
-            <span className="journey-bubble-meta">{t.meta}</span>
-          </span>
-          <ChevronRight size={14} className="shrink-0 text-[#94A3B8]" aria-hidden="true" />
-        </button>
-      </li>)}
-    </ul>
-    <button type="button" onClick={onQuick} className="journey-bubble-foot" data-testid="journey-bubble-overview">
-      <FileText size={13} aria-hidden="true" /> Xem thông tin công đoạn
-    </button>
-  </div>;
+  );
 }
