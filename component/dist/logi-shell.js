@@ -21132,9 +21132,8 @@ function Ul({ shipment: e, stageId: t }) {
 				className: "text-sm text-slate-500",
 				children: "Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng."
 			}),
-			/* @__PURE__ */ (0, H.jsx)("div", {
-				className: "grid grid-cols-1 md:grid-cols-2 gap-3",
-				children: v.map((t) => /* @__PURE__ */ (0, H.jsx)(Q, {
+			(() => {
+				let t = (t) => /* @__PURE__ */ (0, H.jsx)(Q, {
 					label: t.label,
 					children: t.kind === "status" ? /* @__PURE__ */ (0, H.jsx)("select", {
 						"aria-label": t.label,
@@ -21161,8 +21160,26 @@ function Ul({ shipment: e, stageId: t }) {
 							[t.key]: e.target.value
 						}))
 					})
-				}, t.key))
-			}),
+				}, t.key), n = v.filter((e) => !e.secondary), r = v.filter((e) => e.secondary);
+				return /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("div", {
+					className: "grid grid-cols-1 md:grid-cols-2 gap-3",
+					children: n.map(t)
+				}), r.length > 0 && /* @__PURE__ */ (0, H.jsxs)("details", {
+					className: "rounded-lg border border-slate-200 p-3",
+					"data-testid": "fact-fields-secondary",
+					children: [/* @__PURE__ */ (0, H.jsxs)("summary", {
+						className: "cursor-pointer text-sm font-bold text-slate-600",
+						children: [
+							"Chi tiết phụ (",
+							r.length,
+							")"
+						]
+					}), /* @__PURE__ */ (0, H.jsx)("div", {
+						className: "mt-3 grid grid-cols-1 md:grid-cols-2 gap-3",
+						children: r.map(t)
+					})]
+				})] });
+			})(),
 			/* @__PURE__ */ (0, H.jsx)("button", {
 				type: "button",
 				disabled: !f || h || !p?.owned || g,

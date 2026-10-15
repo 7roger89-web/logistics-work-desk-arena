@@ -35,6 +35,7 @@ _NUMBER_FACTS = {'air_gross_kg': ('Trọng lượng cân tại kho (kg)', False)
                  'cfs_cbm': ('Thể tích nhận (CBM)', False)}
 SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
 BOOKING_STATES = ('UNKNOWN', 'REQUESTED', 'CONFIRMED')
+_SECONDARY_FACTS = frozenset({'cfs_receipt_no', 'cfs_weight_kg'})
 _TEXT_FACTS = {'export_declaration_no': ('Số tờ khai xuất', 120), 'eir_no': ('Số EIR', 120),
                'cfs_receipt_no': ('Số phiếu nhận hàng CFS', 120), 'handover_doc_no': ('Số biên bản giao nhận', 120)}
 _STATUS_OPTIONS = [{'value': k, 'label': v} for k, v in zip(SUBMISSION_STATES, ('Chưa biết', 'Đã nhận hồ sơ', 'Đã gửi hãng tàu', 'Hãng tàu đã chấp nhận'))]
@@ -124,7 +125,13 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     nodes: list[dict] = []
 
     def add(id, label, family, tab, *, done=False, evidence='', deadline='', categories=(), owned=False, fields=()):
-        nodes.append({'factFields': [_fact_field(k, l) for k, l in fields],'id': id, 'label': label, 'family': family, 'targetTab': tab,
+        # #199 inv.: a stage popup shows at most 5 primary fields; the rest are
+        # marked secondary and folded (still editable, never hidden).
+        declared = [_fact_field(k, l) for k, l in fields]
+        for f in declared[:]:
+            if f['key'] in _SECONDARY_FACTS and len(declared) > 5:
+                f['secondary'] = True
+        nodes.append({'factFields': declared,'id': id, 'label': label, 'family': family, 'targetTab': tab,
                       # Derived occurrence truth; visual overlays never erase it.
                       'completed': bool(done),
                       'state': 'COMPLETED' if done else 'UPCOMING',
