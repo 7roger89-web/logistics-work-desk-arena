@@ -1,0 +1,288 @@
+{
+  "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 bounded review repair",
+  "branch": "arena/bb243332-logistics-work-desk-arena",
+  "source_sha": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+  "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+  "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
+  "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
+  "current_dist_sha256": {
+    "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+    "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+  },
+  "capture_script_sha256": "ae4272e65bbb2ef5c9157cdf7304646cd24b6416facc9bdc04a6f15ec4e318a2",
+  "evidence_provenance": {
+    "status": "HISTORICAL_CAPTURE_RECONCILED__CURRENT_REPLAY_NOT_VERIFIED",
+    "note": "The last successful live capture and its metrics were from the previous workspace snapshot (source d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba, CSS 1b87f972...). After the Arena workspace resumed from the pinned base with the saved changes uncommitted, a fresh capture did not reach the app (AUTH_REQUIRED login gate) and the old raw metrics JSON was truncated during a failed restore attempt. Screenshots remain; exact preserved run outcomes are transcribed below and explicitly marked historical. Do not claim those runtime PASS verdicts as current-source verification.",
+    "screenshots_from_previous_successful_capture": [
+      "evidence/logi-199-g2/desktop-01-journey-initial.png",
+      "evidence/logi-199-g2/desktop-02-node-bubble.png",
+      "evidence/logi-199-g2/desktop-03-task-popup.png",
+      "evidence/logi-199-g2/mobile-01-journey-initial.png",
+      "evidence/logi-199-g2/mobile-02-node-bubble.png",
+      "evidence/logi-199-g2/mobile-03-task-sheet.png",
+      "evidence/logi-199-g2/mobile-04-onboard-touch-editor.png",
+      "evidence/logi-199-g2/mobile-04-touch-pan-after.png",
+      "evidence/logi-199-g2/mobile-05-onboard-touch-readback.png",
+      "evidence/logi-199-g2/mobile-receivables-pay-sheet.png",
+      "evidence/logi-199-g2/mobile-receivables-validation.png"
+    ],
+    "current_replay_attempt": {
+      "status": "NOT_VERIFIED",
+      "result": "Fresh Mongomock staging served the auth/login screen with default AUTH_REQUIRED=true; capture timed out before .logi-shell rendered. No touch pan, Save, or business write occurred in that attempt.",
+      "environment_after_workspace_resume": "The earlier .venv and /tmp/chromium runtime were not present after the workspace snapshot resumed; no new auth fixture, auth bypass code, browser framework, or broad QA was added."
+    }
+  },
+  "historical_successful_capture": {
+    "source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba",
+    "dist_sha256": {
+      "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+      "logi-shell.css": "1b87f972552bb74dd01f9be6fca964a110e9f346ca37a27c1cdbdfd2b989f932"
+    },
+    "runtime": {
+      "browser": "Chromium 153.0.8010.0",
+      "environment": "isolated Streamlit + Mongomock; no real MONGO_URI"
+    },
+    "before": {
+      "source_sha": "2bf16eabe7e8c75d9be3f90a40e5c99208235416",
+      "dist_js_sha256": "25c814494819f55bedf29d578b87706d62b0bd064577c03d7b5fd2150dd74009",
+      "dist_css_sha256": "79cdda525561ab85fbac5187c90562595b2402755bae09b9ed989abe1c02751c",
+      "captures": {
+        "desktop": {
+          "viewport": [
+            1440,
+            900
+          ],
+          "identity_box": {
+            "x": 17,
+            "y": 24,
+            "width": 1406,
+            "height": 64
+          },
+          "attention_box": {
+            "x": 17,
+            "y": 98,
+            "width": 1406,
+            "height": 46.625
+          },
+          "toolbar_box": {
+            "x": 17,
+            "y": 154.625,
+            "width": 1406,
+            "height": 46
+          },
+          "map_box": {
+            "x": 17,
+            "y": 208.625,
+            "width": 1406,
+            "height": 635
+          },
+          "completion_review_box": {
+            "x": 17,
+            "y": 853.625,
+            "width": 1406,
+            "height": 60.734375
+          },
+          "page_errors": []
+        },
+        "mobile_journey": {
+          "viewport": [
+            390,
+            844
+          ],
+          "map_box": {
+            "x": 8,
+            "y": 253.9375,
+            "width": 374,
+            "height": 549
+          },
+          "page_errors": []
+        },
+        "mobile_receivables_before": {
+          "viewport": [
+            390,
+            844
+          ],
+          "row_count": 5,
+          "sheet_box": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 828
+          },
+          "save_box": {
+            "x": 200,
+            "y": 759.96875,
+            "width": 170,
+            "height": 48.03125
+          },
+          "cancel_box": {
+            "x": 20,
+            "y": 759.96875,
+            "width": 170,
+            "height": 48.03125
+          },
+          "save_text": "💾 LƯU KHOẢN THU",
+          "save_line_box_count": 2,
+          "page_errors": []
+        }
+      }
+    },
+    "desktop_1440x900": {
+      "identity_box": {
+        "x": 17,
+        "y": 8,
+        "width": 1406,
+        "height": 48
+      },
+      "attention_and_toolbar_row_height_px": 46.62,
+      "map_box": {
+        "x": 17,
+        "y": 106.62,
+        "width": 1406,
+        "height": 780
+      },
+      "map_height_before_px": 635,
+      "map_height_delta_px": 145,
+      "map_top_before_y_px": 208.63,
+      "map_top_delta_px": -102,
+      "completion_review_box_top_y_px": 890.62,
+      "completion_review": "retained, collapsed and below the map",
+      "horizontal_overflow_px": 0,
+      "edge_count": 20,
+      "node_count": 11,
+      "attention_and_primary_cta_visible": true,
+      "bubble_within_map": true,
+      "task_popup_center_error_px": 0,
+      "secondary_reason_line": "visually truncated"
+    },
+    "mobile_journey_390x844": {
+      "map_box": {
+        "x": 8,
+        "y": 269.94,
+        "width": 374,
+        "height": 549
+      },
+      "horizontal_overflow_px": 0,
+      "primary_attention_cta_height_px": 40,
+      "secondary_control_heights_px": [
+        36,
+        40
+      ],
+      "zoom_and_fit_readable_height_px": 40,
+      "bubble_close_height_px": 36,
+      "stage_task_action_height_px": 58.48,
+      "adjacent_hitbox_overlap": false,
+      "tap_zoom_and_global_workspace_isolated_from_node_selection": true
+    },
+    "mobile_receivables_390x844": {
+      "sheet_box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 828
+      },
+      "save_box": {
+        "x": 200,
+        "y": 764.23,
+        "width": 170,
+        "height": 44
+      },
+      "cancel_box": {
+        "x": 20,
+        "y": 764.23,
+        "width": 170,
+        "height": 44
+      },
+      "save_text": "LƯU KHOẢN THU",
+      "save_text_line_boxes": 1,
+      "emoji_present": false,
+      "empty_amount_validation": {
+        "validation_visible": true,
+        "sheet_stayed_open": true,
+        "pay_pending_visible": false,
+        "amount_left_blank": true
+      },
+      "cancel_closed_sheet": true,
+      "payment_intent_or_real_transaction": false
+    },
+    "TOUCH_PAN_VERDICT": "PASS (historical prior-snapshot capture only)",
+    "touch_pan": {
+      "method": "CDP Input.dispatchTouchEvent: touchStart + 12 multi-step touchMove + touchEnd",
+      "pointer_type_values": [
+        "touch"
+      ],
+      "transform_delta_x_px": 269,
+      "on_board_node_delta_x_px": 269,
+      "no_accidental_node_selection": true
+    },
+    "TAP_SAVE_READBACK_VERDICT": "PASS (historical prior-snapshot capture only)",
+    "isolated_save_readback": {
+      "lot": "T6-FCL",
+      "stage": "ON BOARD",
+      "prior_date": "",
+      "saved_date": "2026-10-04",
+      "reloaded_readback": "2026-10-04",
+      "backend_confirmation_visible": false,
+      "real_backend_write": false,
+      "payment_flow_used": false
+    }
+  },
+  "TOUCH_PAN_VERDICT": "NOT_VERIFIED",
+  "TAP_SAVE_READBACK_VERDICT": "NOT_VERIFIED",
+  "focused_verification": {
+    "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "component_typecheck": "PASS (npm run typecheck after source commit)",
+    "component_build": "PASS (Vite 8.2.2; 1936 modules; final stable CSS hash 6973bae4...)",
+    "component_scan": "PASS (0 executable process references)",
+    "dist_sync": "PENDING: final hashes below are from a stable build; commit dist then rerun npm run build/scan and verify a clean diff",
+    "dom_hook_transition_197": "PASS (same mounted instance; zero→populated and populated→zero)",
+    "dom_acceptance_journey_fresh_188": "PASS (zero-node split view, one CTA, zero writes; JSDOM emitted a benign scrollTo-not-implemented warning)",
+    "dom_acceptance_c2c": {
+      "status": "PARTIAL_PASS_WITH_PREEXISTING_FAILURE",
+      "steps_1_to_3": "PASS: route/totals/currency separation; stable request identity; double-click absorption; unrelated writes cannot fake success; refusal/retry; correlated readback; pending state",
+      "failure": "Step 4 finance-tab assertion after Mở lô",
+      "baseline_comparison": "Same assertion failure was reproduced against pre-repair dist in the previous source snapshot",
+      "exit_code": 1
+    },
+    "dom_acceptance_payment_trust": {
+      "status": "PREEXISTING_FIXTURE_ORACLE_FAILURE",
+      "failure": "Step 0: fixture does not list LO-0308",
+      "baseline_comparison": "Identical failure was reproduced against pre-repair dist in the previous source snapshot"
+    },
+    "dom_acceptance_amount_integrity": {
+      "status": "PREEXISTING_FIXTURE_ORACLE_FAILURE",
+      "failure": "Step 1 cannot find/click LO-0308 before payment flow",
+      "baseline_comparison": "Identical failure was reproduced against pre-repair dist in the previous source snapshot"
+    },
+    "pytest": "NOT_RUN; full pytest was explicitly out of scope and system Python lacked pytest",
+    "github_actions_ci": {
+      "status": "NOT_TRIGGERED",
+      "reason": "No checked-in push-workflow branch filter includes arena/bb243332-logistics-work-desk-arena",
+      "historical_run": "38683678222 at 1889d2a… is not current-source verification"
+    },
+    "dom_acceptance_logi197_journey_clarity": "NOT_RUN: fixture generator stopped before test because system Python has no streamlit module; no product assertion ran",
+    "dist_hashes_after_source_build": {
+      "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+      "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+    },
+    "evidence_only_comment": "The 390/1440 browser capture is historical and not current-source verification. Current live touch/readback verdicts remain NOT_VERIFIED."
+  },
+  "overengineering_evaluation": {
+    "SIMPLER_PATH": "Reuse current component, capture script, and focused DOM checks; do not add an auth fixture or new test framework.",
+    "MATERIAL_PROGRESS": "Yes: compact desktop chrome gives the map 145px more height; mobile Receivables label fits one line; touch/save proof existed in prior successful capture.",
+    "NECESSITY": "Yes: directly addresses the latest Independent Review rejection items A–E.",
+    "CORE_BEFORE_SUPPORT": "Yes: limited to core product layout, receivable control sizing, and evidence; no support platform changes.",
+    "SMALLER_VERIFIABLE_SLICE": "Yes: focused typecheck/build/scan and selected regressions only; no 21-route or full pytest rerun.",
+    "OE_VERDICT": "DO_IT for the requested bounded repair; SKIP_IT for extra auth fixtures, new frameworks, rewrites, or broad QA."
+  },
+  "release_gates": {
+    "FULL_GOAL_199": "IN_PROGRESS",
+    "INDEPENDENT_REVIEW": "PENDING",
+    "SUPERVISOR_PASS": "NOT_CLAIMED",
+    "OWNER_UAT": "NOT_RUN; only after Independent Review PASS",
+    "NO_MERGE_MAIN": "YES",
+    "NO_DEPLOY_PRODUCTION": "YES",
+    "auth_bootstrap_finance_snapshot_retry_blockers": "PRESERVED; not waived or repaired by this UI slice"
+  },
+  "current_source_verification_status": "FOCUSED_BUILD_AND_DOM_REGRESSIONS_DONE__DIST_COMMIT_AND_SYNC_PENDING"
+}

@@ -1,0 +1,64 @@
+{
+  "version": "0.1.0",
+  "goal": "LOGI-APP-RENEWAL-01",
+  "issue": 199,
+  "status": "owner_direction_approved__runtime_qa_pending",
+  "donor": {
+    "artifact": "logi_journey_mimo_sonnet_fusion_demo.html",
+    "sha256": "d400c2769a40df604d9b2037a2909f55813a74aa2f6d22b6567664557fb8579d"
+  },
+  "font": {
+    "sans": "Be Vietnam Pro",
+    "mono": "IBM Plex Mono",
+    "sans_fallback": "system-ui, sans-serif",
+    "mono_fallback": "ui-monospace, monospace"
+  },
+  "color": {
+    "ink": "#10263C",
+    "navy": "#123A5E",
+    "blue": "#1D6FA8",
+    "canvas": "#EDF1F5",
+    "surface": "#FFFFFF",
+    "border": "#D6DEE7",
+    "muted": "#5B6875",
+    "success": "#2F7D5E",
+    "warning": "#C97A16",
+    "danger": "#B4402F"
+  },
+  "typography": {
+    "body_px": [
+      14,
+      16
+    ],
+    "heading_px": [
+      18,
+      24
+    ],
+    "caption_floor_px": 12,
+    "touch_target_px": 44,
+    "tabular_numerals": true,
+    "focus_visible": true,
+    "reduced_motion": true
+  },
+  "screen_principles": {
+    "journey": "only shipment detail; first attention + five compact phases; full graph drill-down",
+    "tables": "keep scanning density and numerals",
+    "forms": "only core fields default; secondary details expandable",
+    "documents": "keep exported document formatting unchanged"
+  },
+  "reuse": [
+    "component/src/index.css",
+    "component/src/shell.css",
+    "component/src/components/ui.tsx",
+    "component/src/components/Layout.tsx"
+  ],
+  "proof": {
+    "actual_runtime_visual": "PENDING",
+    "primary_viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "business_authority": "canonical Python shipment/financial sources",
+    "production_merge": "OWNER_GATE"
+  }
+}

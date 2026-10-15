@@ -1,0 +1,7 @@
+{
+  "boundary": "mongomock only; authorized writer + required unique index fixture, not live DB/RBAC acceptance",
+  "first": true,
+  "idempotent": false,
+  "tamper_accepted": false,
+  "persisted_rows": 1
+}

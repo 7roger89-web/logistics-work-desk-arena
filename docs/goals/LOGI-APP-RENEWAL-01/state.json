@@ -1,0 +1,327 @@
+{
+  "goal_id": "LOGI-APP-RENEWAL-01",
+  "goal_issue": 199,
+  "goal_type": "GOAL",
+  "primary_lane": "UIUX",
+  "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
+  "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
+  "active_branch": "arena/bb243332-logistics-work-desk-arena",
+  "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
+  "stage": "CURRENT_SOURCE_AND_FOCUSED_DOM_VERIFIED__DIST_SYNC_AND_REVIEW_HANDOFF_PENDING",
+  "progress": {
+    "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
+    "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
+    "T2": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
+    "T3": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
+    "T4": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
+    "T5": "HISTORICAL: successful T5 audit/CI claims remain bound to tested source 1889d2a… and Actions 38683678222; not current-source verification.",
+    "T6": "HISTORICAL PRE-REPAIR: Actions 38683678222 PASS at exact tested 1889d2a…; preserved as historical CI only.",
+    "G2_REPAIR": "Current source commit 2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7 on the fixed branch; source-built dist hashes in evidence/logi-199-g2/metrics.json. Prior successful browser capture at d774… measured the 780px desktop map, one-line mobile Save, CDP touch pan and isolated Mongomock readback. Current replay verdicts are NOT_VERIFIED after fresh staging stopped at the auth gate and ephemeral browser runtime was absent; do not promote the prior PASS as current-source verification."
+  },
+  "verified_before_work": [
+    "Main React/Streamlit architecture and current execution-profile authorities inspected",
+    "Existing #197 governs five-step compact Journey and stage-scoped documents",
+    "Demo CSS confirms Be Vietnam Pro and IBM Plex Mono",
+    "AIR_DOCUMENTS predicate currently tests MBL/HBL/carrier rather than air AWB/flight"
+  ],
+  "initial_slice": [
+    "Machine-readable and human-readable design baseline",
+    "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
+  ],
+  "blockers": [
+    "Independent reviewer gate PENDING; no independent reviewer/subagent capability in this executor host.",
+    "Owner UAT and explicit production authorization remain closed. main merge is a production deploy trigger.",
+    "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver.",
+    "Historical comment attempt: Resource not accessible by integration. Issue #199 update not published; chained PR #198 comment not attempted. Read/fetch/push still work. current handoff publication pending after push.",
+    "Fixed branch arena/bb243332-logistics-work-desk-arena is not included in existing push-workflow branch filters; current GitHub Actions CI is NOT_TRIGGERED. Historical run 38683678222 at 1889d2a… must not be presented as current.",
+    "Relevant legacy payment DOM oracles retain reproduced pre-repair failures: C2C Step 4 finance-tab assertion; payment-trust/amount-integrity LO-0308 fixture navigation preconditions. Their exact old-dist comparison is in evidence/logi-199-g2/metrics.json; payment logic was not changed.",
+    "Current touch-pan/save-readback NOT_VERIFIED; historical successful capture is at d774… and is not current-source proof. Fresh staging replay stopped at auth gate before the shell; no write occurred.",
+    "Raw metrics JSON from the prior successful capture was lost during workspace-resume restore; metrics.json clearly labels historical values transcribed from preserved summary/screenshots and separates current verification."
+  ],
+  "existing_issue_dependencies": [
+    197,
+    195,
+    176
+  ],
+  "existing_pr_dependencies": [
+    198
+  ],
+  "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
+  "next": "Commit stable source-built dist and reconciled metrics/state/README/reviewer handoff, then rerun focused typecheck/build/scan/dist-sync and DOM regressions. Keep current touch/save verdicts NOT_VERIFIED and prior PASS historical. Push only the fixed branch and submit the exact packet for Independent Review; do not self-sign Supervisor PASS. Owner UAT only after Independent Review PASS; no merge to main or production deployment.",
+  "scope_out": [
+    "new_workflow_engine",
+    "new_frontend_library",
+    "production_write",
+    "auto_merge",
+    "deploy",
+    "rewrite_auth",
+    "rewrite_finance"
+  ],
+  "terminal_states": [
+    "PASS",
+    "BLOCKED",
+    "REJECT"
+  ],
+  "status": "IN_PROGRESS",
+  "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
+  "active_pr": null,
+  "active_pr_url": null,
+  "current_subtask": "Bounded LOGI-199 G2 source is committed on the fixed branch at 2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7; current source-built JS/CSS hashes are in evidence/logi-199-g2/metrics.json. Typecheck/build/scan, hook transition and zero-node DOM pass. C2C steps 1–3 pass with its pre-repair Step 4 finance-tab assertion; payment trust/amount oracles stop at missing LO-0308 fixture preconditions, reproduced on old dist. Current CDP touch and staging save/readback remain NOT_VERIFIED; previous d774… PASS is historical. Dist/evidence sync, focused final check and Independent Review handoff remain.",
+  "source_receipt_t6": {
+    "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "ci_run_id": 38683678222,
+    "prs": [
+      198,
+      200,
+      201,
+      202,
+      203,
+      204
+    ],
+    "production": "UNTOUCHED",
+    "receipt_status": "HISTORICAL_PRE_REPAIR_NOT_CURRENT_SOURCE_VERIFICATION",
+    "current_repair_note": "See g2_repair_20261015 and evidence/logi-199-g2/metrics.json."
+  },
+  "continuation_receipt": {
+    "restored_preview": "d96d95125b41b97078d42278a7e1fee30d3bf7b7",
+    "integrated": "f0aec797ce20286aff541985299b4765cd74ffba",
+    "local_patch_recovered": "No local unpushed patch in this fresh clean worktree; reconstructed readable view on existing zoom/pan/Fit.",
+    "law_source": "LOCAL_PORTABLE",
+    "law_source_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "focused_python": "281 passed locally; no blanket deletion of tests",
+    "ci": "SUCCESS",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_CLAIMED",
+    "production": "UNTOUCHED",
+    "tested_source_sha": "1889d2a874365bf59265b721503a0538f90586b0",
+    "ci_run_id": 38683678222,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38683678222",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "final_verdict": "INCOMPLETE_FULL_GOAL__BOUNDED_TECHNICAL_PROOF_PASS",
+    "learning_reconciliation": "CANDIDATE: challenge actual font loading in shadow-root/offline UI, never infer from font-family strings alone; no promotion",
+    "receipt_status": "HISTORICAL_PRE_REPAIR_NOT_CURRENT_SOURCE_VERIFICATION",
+    "current_repair_note": "See g2_repair_20261015 and evidence/logi-199-g2/metrics.json."
+  },
+  "branch_constraint": "All current work stays on fixed Arena branch arena/bb243332-logistics-work-desk-arena; no other branch is created or pushed. No merge to main; no production deploy.",
+  "source_receipt_t0_historical": {
+    "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
+    "changed_files": 8,
+    "source_review": "PR patch inspected, no file outside bounded scope",
+    "pytest": "PASS_138",
+    "typecheck": "PASS",
+    "build": "PASS_OFFICIAL_VITE",
+    "chromium_real_app": "PASS_BOUNDED_ISOLATED_MONGOMOCK",
+    "production": "UNTOUCHED",
+    "verified_source_sha": "101732e2e759d85021b72e93252b88a420fe19d8",
+    "compiled_dist_commit": "6e00a7289552ad00f3b2bbf2df73102399a2451d",
+    "ci_run_id": 38669073733,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38669073733",
+    "npm_ci": "PASS",
+    "scan": "PASS",
+    "compiled_css_confirmed": true,
+    "tested_source_sha": "4d6959fb502e75d8cdd943d15aa7ba7183bd0b7c",
+    "committed_browser_and_dist_sha": "ea9af7f59923dad9eee5c7b329b82f9c01d7ff89",
+    "desktop_1440x900": "PASS_SCREENSHOT",
+    "mobile_390x844": "PASS_TITLE_CUSTOMER_ATTENTION_READABILITY",
+    "map_node_interaction": "PASS_CLICKED_DELIVERY_FROM_TWO_VERIFIED_SHIPMENT_NODES",
+    "screen_proof_paths": [
+      "evidence/logi-199-t0/desktop-journey-node-open.png",
+      "evidence/logi-199-t0/mobile-journey.png",
+      "evidence/logi-199-t0/browser_metrics.json"
+    ]
+  },
+  "source_receipt_t6_historical": {
+    "ci_run_id": 38675998967,
+    "integration_head": "cbdb10f",
+    "evidence_commit": "b413c7a",
+    "evidence": "evidence/logi-199-t6/",
+    "prs": [
+      200,
+      201,
+      202,
+      203,
+      204
+    ],
+    "production": "UNTOUCHED"
+  },
+  "source_receipt": {
+    "receipt_status": "CURRENT_SOURCE_COMMIT__DIST_SYNC_PENDING",
+    "tested_source_sha": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "product_source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "fixed_branch": "arena/bb243332-logistics-work-desk-arena",
+    "dist_sha256": {
+      "component/dist/logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+      "component/dist/logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+    },
+    "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
+    "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
+    "evidence": "evidence/logi-199-g2/metrics.json",
+    "typecheck": "PASS (npm run typecheck after source commit)",
+    "build": "PASS (Vite 8.2.2, 1936 modules; stable CSS output after rebuilding against source-built dist)",
+    "scan": "PASS (0 executable process references; rerun post-dist-commit)",
+    "dist_sync": "PENDING final dist/evidence commit and post-commit clean rebuild comparison",
+    "current_touch_pan_verdict": "NOT_VERIFIED",
+    "current_tap_save_readback_verdict": "NOT_VERIFIED",
+    "historical_capture": {
+      "source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba",
+      "TOUCH_PAN_VERDICT": "PASS",
+      "TAP_SAVE_READBACK_VERDICT": "PASS",
+      "current_source_claim": false
+    },
+    "github_actions_ci": "NOT_TRIGGERED — fixed Arena branch is not included in push-workflow branch filters; do not cite historical #38683678222 as current",
+    "ci_run_id": null,
+    "independent_review": "PENDING",
+    "supervisor_pass": "NOT_CLAIMED",
+    "owner_uat": "NOT_RUN",
+    "production": "UNTOUCHED",
+    "no_merge_main": "YES",
+    "no_deploy_production": "YES",
+    "focused_dom_regressions": {
+      "dom_hook_transition_197": "PASS (zero→populated and populated→zero on same instance)",
+      "dom_acceptance_journey_fresh_188": "PASS (zero-node truthful view, one CTA, zero writes; benign JSDOM scrollTo warning)",
+      "dom_acceptance_c2c": "PARTIAL PASS — steps 1–3 pass; Step 4 finance-tab assertion after Mở lô fails; baseline failure was previously reproduced",
+      "dom_acceptance_payment_trust": "FAILS before payment at missing LO-0308 fixture; same as pre-repair baseline",
+      "dom_acceptance_amount_integrity": "FAILS before payment at missing/clickable LO-0308 navigation precondition; same as pre-repair baseline",
+      "dom_acceptance_logi197_journey_clarity": "NOT RUN — fixture generator requires missing system-Python streamlit; no product assertion ran"
+    },
+    "touch_pan_verdict": "NOT_VERIFIED on current source; previous d774… CDP PASS is historical only",
+    "tap_save_readback_verdict": "NOT_VERIFIED on current source; previous d774… isolated Mongomock PASS is historical only"
+  },
+  "preview": {
+    "port": 9501,
+    "type": "ephemeral Arena sandbox, isolated mongomock fixtures",
+    "owner_uat_acceptance": false,
+    "persistence": "memory only; resets when process stops",
+    "local_uat": "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
+    "windows_launcher": "scripts/logi199_uat.cmd",
+    "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST"
+  },
+  "publication_receipt": {
+    "historical_issue_199_comment": "BLOCKED_PERMISSION (previous integration-preview attempt; Resource not accessible by integration)",
+    "historical_pr_198_comment": "NOT_ATTEMPTED_AFTER_HISTORICAL_ISSUE_DENIAL",
+    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md",
+    "current_issue_199_comment": "NOT_ATTEMPTED_YET; evidence/dist checkpoint and push pending",
+    "current_independent_review": "PENDING",
+    "review_closed": false
+  },
+  "session_branch": "arena/bb243332-logistics-work-desk-arena",
+  "goal_state": {
+    "G0": "G0_COMPLETE_ORACLE_CAPTURED",
+    "G1": "G1_SHARED_VISUAL_SYSTEM_EVIDENCED",
+    "G2": "G2_MAP_FIRST_EVIDENCED__BOUNDED_REVIEW_REPAIR_SOURCE_COMMITTED__CURRENT_TOUCH_AND_READBACK_NOT_VERIFIED",
+    "G3": "G3_BUSINESS_OPERATIONS_ROUTES_EVIDENCED",
+    "G4": "G4_TOOLS_ADMIN_ROUTES_EVIDENCED",
+    "G5": "G5_HISTORICAL_T6_CI_RECEIPT_RETAINED__CURRENT_REPAIR_REVIEW_PENDING",
+    "VISUAL_FIDELITY": "REPAIR_SOURCE_COMMITTED__HISTORICAL_SCREENSHOTS_PRESENT__CURRENT_BROWSER_REPLAY_NOT_VERIFIED",
+    "BUSINESS_PASS": "HISTORICAL_T6_CI_ONLY; current focused source/build checks are in g2_repair_20261015",
+    "FULL_GOAL_199": "IN_PROGRESS"
+  },
+  "g2_journey_map_first": {
+    "scope": "Journey map-first (ShipmentJourney.tsx, JourneyMap.tsx, JourneyBubble.tsx, component-entry.tsx, index.css G2 block) + G1/G3/G4/G5 app-wide Mimo-Sonnet harmonization.",
+    "checks": {
+      "tsc_noEmit": "PASS",
+      "vite_build": "PASS (component/dist rebuilt and synced)",
+      "scan_executable_process_refs": "0",
+      "fonts_loaded_runtime": "Be Vietnam Pro (400-800) and IBM Plex Mono (400-700) FontFace loaded (beLoaded: true, plexLoaded: true)",
+      "desktop_1440x900_overflow_px": 0,
+      "mobile_390x844_overflow_px": 0,
+      "node_bubble_popup_desktop": "PASS (centered ROW_MAIN, legend, floating Hồ sơ & Tài chính trigger + utility bubble + whole-lot overlay)",
+      "node_bubble_popup_mobile": "PASS (compact top chrome y=253.9px, map height=549px; vietnam-east-sea-chart.webp rendered at 100% auto in upper half without cropping/distortion; active nodes below; z-30 bubble; bottom sheet)",
+      "save_and_reopen_readback_desktop": "PASS (on-board date 2026-10-03 written and read back after reload)",
+      "save_and_reopen_readback_mobile_touch": "HISTORICAL PRIOR CAPTURE ONLY: former capture passed CDP touch and readback at source d774…; current-source verdicts are NOT_VERIFIED."
+    },
+    "not_verified": [
+      "Full OS process restart of mongomock staging resets in-memory DB by design (verified page reload readback within running staging process)",
+      "scripts/logi199_uat.cmd Windows batch runtime NOT_RUN in Linux sandbox (statically audited and underlying streamlit command verified)",
+      "11b-cong-no-popup (Trả đối tác modal) NOT_RUN in G3 staging fixture because fixture has 0 confirmed partner payable rows (UNKNOWN != 0)",
+      "Independent visual review and Owner UAT sign-off PENDING"
+    ],
+    "evidence": "evidence/logi-199-g2/ (including metrics.json), evidence/logi-199-g1/, evidence/logi-199-g3/, evidence/logi-199-g4/, evidence/logi-199-g5/",
+    "production": "UNTOUCHED (isolated staging only)",
+    "owner_gate": "Independent Review PASS required before Owner visual UAT; no self-sign.",
+    "background_asset": {
+      "source": "Owner-uploaded Vietnam/Hoang Sa/Truong Sa nautical image (2026-10-15)",
+      "path": "component/src/assets/journey/vietnam-east-sea-chart.webp",
+      "sha256": "f83d42167dffcb1ac629f261923408a2c6d5d6d7564cf63083aa869bababdef9",
+      "webp_bytes": 107956,
+      "git_blob_sha1": "fe29a19f24b3a56f25536e3b06e631fbbbd14fb5",
+      "real_browser_after_background": "PASS_DESKTOP_1440x900_AND_MOBILE_390x844"
+    },
+    "owner_direction": "Completed N1 + N2 (G2) and G1 -> G3 -> G4 -> G5 on isolated staging; awaiting Owner UAT.",
+    "receipt_status": "HISTORICAL_PRE-REPAIR_G2_PACKET; current source receipt is g2_repair_20261015."
+  },
+  "source_receipt_pre_repair": {
+    "tested_source_sha": "1889d2a874365bf59265b721503a0538f90586b0",
+    "product_source_sha": "246d199fb9c7ced8b2ce03811f541279b2213ca4",
+    "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
+    "ci_run_id": 38683678222,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38683678222",
+    "ci": "SUCCESS",
+    "focused_python_local": "281 passed",
+    "parity_receipt": "evidence/logi-199-t6/full_suite_parity.txt",
+    "mode_matrix": "six variants x desktop/mobile",
+    "browser_metrics": "evidence/logi-199-t6/browser_metrics.json",
+    "route_audit": "evidence/logi-199-t5/route_audit.json",
+    "reconciliation": "evidence/logi-199-t6/RECONCILIATION.md",
+    "runtime": "REAL_STREAMLIT_COMPONENTS_V2_ISOLATED_MONGOMOCK",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_CLAIMED",
+    "production": "UNTOUCHED",
+    "receipt_status": "HISTORICAL_PRE-REPAIR_SOURCE_RECEIPT_NOT_CURRENT",
+    "historical_source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba"
+  },
+  "g2_repair_20261015": {
+    "status": "CURRENT_SOURCE_COMMITTED__FOCUSED_DOM_CHECKED__DIST_SYNC_PENDING__INDEPENDENT_REVIEW_PENDING",
+    "scope": "Bounded A–E repair only; no G0–G5 redo, no product auth/payment/backend change.",
+    "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "dist_sha256": {
+      "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+      "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+    },
+    "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
+    "desktop_1440x900_historical_capture": {
+      "before_map_height_px": 635,
+      "after_map_height_px": 780,
+      "delta_px": 145,
+      "after_map_top_y_px": 106.62,
+      "completion_review": "retained, collapsed, below map",
+      "horizontal_overflow_px": 0
+    },
+    "mobile_390x844_historical_capture": {
+      "journey_map_top_y_px": 269.94,
+      "journey_map_height_px": 549,
+      "horizontal_overflow_px": 0,
+      "primary_cta_height_px": 40,
+      "secondary_controls_height_px": [
+        36,
+        40
+      ],
+      "zoom_controls_height_px": 40,
+      "receivables_save_height_px": 44,
+      "receivables_cancel_height_px": 44,
+      "save_label": "one line; no emoji",
+      "blank_validation": "PASS historically; no payment intent; Cancel closes sheet"
+    },
+    "current_TOUCH_PAN_VERDICT": "NOT_VERIFIED",
+    "current_TAP_SAVE_READBACK_VERDICT": "NOT_VERIFIED",
+    "historical_TOUCH_PAN_VERDICT": "PASS at source d774… (CDP touch; not current-source proof)",
+    "historical_TAP_SAVE_READBACK_VERDICT": "PASS at source d774… (isolated Mongomock; not current-source proof)",
+    "current_replay": "Fresh staging rendered auth/login before the shell; no event or write. Temporary venv/browser absent after workspace resume. No auth fixture, auth bypass in product code, or new framework added.",
+    "metrics_provenance": "Raw previous metrics JSON was truncated during failed workspace restore. Current metrics distinguishes historical values transcribed from preserved summary/screenshots from current-source verification.",
+    "github_actions_ci": "NOT_TRIGGERED on fixed branch; historical CI remains explicitly historical",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_RUN; only after independent PASS",
+    "NO_MERGE_MAIN": "YES",
+    "NO_DEPLOY_PRODUCTION": "YES",
+    "FULL_GOAL_199": "IN_PROGRESS"
+  },
+  "overengineering_evaluation": {
+    "SIMPLER_PATH": "Reuse existing component, capture script, and focused DOM checks; no auth fixture or new test framework.",
+    "MATERIAL_PROGRESS": "Yes: compact desktop map and mobile Receivables/touch-target fixes directly address the rejection.",
+    "NECESSITY": "Yes: bounded A–E repair is explicitly requested.",
+    "CORE_BEFORE_SUPPORT": "Yes: core product surfaces only; no new support platform.",
+    "SMALLER_VERIFIABLE_SLICE": "Yes: focused build/scan/DOM regressions only; no 21-route audit or full pytest.",
+    "OE_VERDICT": "DO_IT for the bounded repair; SKIP_IT for new frameworks, auth fixtures, rewrites, or broad QA."
+  }
+}

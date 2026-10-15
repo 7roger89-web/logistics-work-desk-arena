@@ -1,0 +1,85 @@
+{
+  "source_sha": "2bf16eabe7e8c75d9be3f90a40e5c99208235416",
+  "dist_js_sha256": "25c814494819f55bedf29d578b87706d62b0bd064577c03d7b5fd2150dd74009",
+  "dist_css_sha256": "79cdda525561ab85fbac5187c90562595b2402755bae09b9ed989abe1c02751c",
+  "captures": {
+    "desktop": {
+      "viewport": [
+        1440,
+        900
+      ],
+      "identity_box": {
+        "x": 17,
+        "y": 24,
+        "width": 1406,
+        "height": 64
+      },
+      "attention_box": {
+        "x": 17,
+        "y": 98,
+        "width": 1406,
+        "height": 46.625
+      },
+      "toolbar_box": {
+        "x": 17,
+        "y": 154.625,
+        "width": 1406,
+        "height": 46
+      },
+      "map_box": {
+        "x": 17,
+        "y": 208.625,
+        "width": 1406,
+        "height": 635
+      },
+      "completion_review_box": {
+        "x": 17,
+        "y": 853.625,
+        "width": 1406,
+        "height": 60.734375
+      },
+      "page_errors": []
+    },
+    "mobile_journey": {
+      "viewport": [
+        390,
+        844
+      ],
+      "map_box": {
+        "x": 8,
+        "y": 253.9375,
+        "width": 374,
+        "height": 549
+      },
+      "page_errors": []
+    },
+    "mobile_receivables_before": {
+      "viewport": [
+        390,
+        844
+      ],
+      "row_count": 5,
+      "sheet_box": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 828
+      },
+      "save_box": {
+        "x": 200,
+        "y": 759.96875,
+        "width": 170,
+        "height": 48.03125
+      },
+      "cancel_box": {
+        "x": 20,
+        "y": 759.96875,
+        "width": 170,
+        "height": 48.03125
+      },
+      "save_text": "💾 LƯU KHOẢN THU",
+      "save_line_box_count": 2,
+      "page_errors": []
+    }
+  }
+}

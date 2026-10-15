@@ -1,0 +1,188 @@
+{
+  "desktop": {
+    "01-bieu-thue": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-01-bieu-thue.png"
+    },
+    "02-tra-cuu-chinh-sach": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-02-tra-cuu-chinh-sach.png"
+    },
+    "03-so-tay": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-03-so-tay.png"
+    },
+    "04-dich-thuat": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-04-dich-thuat.png"
+    },
+    "05-thanh-toan-quoc-te": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-05-thanh-toan-quoc-te.png"
+    },
+    "06-quy-trinh": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-06-quy-trinh.png"
+    },
+    "07-bieu-mau": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-07-bieu-mau.png"
+    },
+    "08-nguoi-dung": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-08-nguoi-dung.png"
+    },
+    "09-notif-drawer": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-09-notif-drawer.png"
+    },
+    "10-quick-add-sheet": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/desktop-10-quick-add-sheet.png"
+    },
+    "errors": []
+  },
+  "mobile": {
+    "01-bieu-thue": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-01-bieu-thue.png"
+    },
+    "02-tra-cuu-chinh-sach": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-02-tra-cuu-chinh-sach.png"
+    },
+    "03-so-tay": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-03-so-tay.png"
+    },
+    "04-dich-thuat": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-04-dich-thuat.png"
+    },
+    "05-thanh-toan-quoc-te": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-05-thanh-toan-quoc-te.png"
+    },
+    "06-quy-trinh": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-06-quy-trinh.png"
+    },
+    "07-bieu-mau": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-07-bieu-mau.png"
+    },
+    "08-nguoi-dung": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-08-nguoi-dung.png"
+    },
+    "09-notif-drawer": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-09-notif-drawer.png"
+    },
+    "errors": [],
+    "10-quick-add-sheet": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g4/mobile-10-quick-add-sheet.png"
+    }
+  }
+}
