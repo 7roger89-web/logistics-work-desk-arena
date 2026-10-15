@@ -58,12 +58,21 @@ jobs:
           test ! -e .streamlit/secrets.toml
           node tests/component/browser_logi199_real_streamlit.mjs
           node tests/component/browser_logi199_t6_modes.mjs
+      - name: T5 app-wide route audit (findings recorded; fails on 390px overflow/page error)
+        continue-on-error: true
+        env:
+          AUTH_REQUIRED: "false"
+          MONGO_URI: ""
+          MONGO_DB_NAME: ""
+          PLAYWRIGHT_MODULE: /tmp/pw/node_modules/playwright/index.mjs
+          PLAYWRIGHT_BROWSERS_PATH: /tmp/pw-browsers
+        run: node tests/component/browser_logi199_t5_route_audit.mjs
       - name: Commit browser evidence to the integration branch (also on failure)
         if: always()
         env:
           PUSH_TOKEN: ${{ github.token }}
         run: |
-          git add -f evidence/logi-199-t6/ evidence/logi-199-t0/ 2>/dev/null || true
+          git add -f evidence/logi-199-t6/ evidence/logi-199-t0/ evidence/logi-199-t5/ 2>/dev/null || true
           if git diff --cached --quiet; then echo NO_EVIDENCE_CHANGE; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
