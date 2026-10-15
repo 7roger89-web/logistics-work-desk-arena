@@ -158,14 +158,14 @@ export default function QuickQuotePaste({
                     </span>
                     {l.unit && <span className="text-[12.5px] text-slate-500">/ {l.unit}</span>}
                     {l.condition === "IF_APPLICABLE" && (
-                      <span className={cx("rounded-full border px-2 py-0.5 text-[11.5px] font-bold",
+                      <span className={cx("rounded-full border px-2 py-0.5 text-[12px] font-bold",
                         "border-amber-300 bg-amber-50 text-amber-900")}
                         data-testid={`${testId}-line-${i + 1}-conditional`}>
                         ⚠ Có thể phát sinh (nếu có)
                       </span>
                     )}
                     {l.status === "ESTIMATE_REQUIRES_CONFIRMATION" && (
-                      <span className="rounded-full border border-violet-300 bg-violet-50 px-2 py-0.5 text-[11.5px] font-bold text-violet-900"
+                      <span className="rounded-full border border-violet-300 bg-violet-50 px-2 py-0.5 text-[12px] font-bold text-violet-900"
                         data-testid={`${testId}-line-${i + 1}-estimate`}>
                         ⚠ Ước tính — cần xác nhận
                       </span>
@@ -212,7 +212,7 @@ export default function QuickQuotePaste({
 function PreviewFact({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
       <p data-testid={testId} className={cx("text-[13.5px] font-semibold", value ? "text-slate-800" : "text-slate-400")}>
         {value || "— chưa đọc được —"}
       </p>

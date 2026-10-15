@@ -824,7 +824,7 @@ function FactCard({ fact }: { fact: DocumentReviewFact }) {
         <ToneBadge tone={fact.status === "SAME" ? "green" : fact.status === "CONFLICT" ? "red" : "amber"} size="sm">
           {fact.statusLabel.toUpperCase()}
         </ToneBadge>
-        <span className="text-[11.5px] font-bold opacity-70 break-all">{fact.fieldKey}</span>
+        <span className="text-[12px] font-bold opacity-70 break-all">{fact.fieldKey}</span>
       </div>
 
       {sides.length > 0 && (

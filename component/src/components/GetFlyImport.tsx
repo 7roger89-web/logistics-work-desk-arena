@@ -264,19 +264,19 @@ export default function GetFlyImport() {
             <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
               <ToneBadge tone="blue" size="sm">PREVIEW · {preview.filename}</ToneBadge>
               <span className="text-slate-500">{preview.orders.length} đơn · previewId {preview.previewId}</span>
-              {preview.fingerprint && <span className="text-slate-400 font-mono text-[11px]">SHA-256 {preview.fingerprint.slice(0, 16)}…</span>}
+              {preview.fingerprint && <span className="text-slate-400 font-mono text-[12px]">SHA-256 {preview.fingerprint.slice(0, 16)}…</span>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3">
               <div className="rounded-xl bg-white border border-slate-200 p-3" data-testid="getfly-kpi-revenue">
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-400">Doanh Thu GF</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Doanh Thu GF</p>
                 <p className="font-extrabold text-[20px] text-[#0f2a4a]">{fmtMoney(preview.summary.revenue)}</p>
               </div>
               <div className="rounded-xl bg-white border border-slate-200 p-3" data-testid="getfly-kpi-profit">
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-400">Lợi Nhuận GF</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Lợi Nhuận GF</p>
                 <p className="font-extrabold text-[20px] text-emerald-700">{fmtMoney(preview.summary.profit)}</p>
               </div>
               <div className="rounded-xl bg-white border border-slate-200 p-3" data-testid="getfly-kpi-orders">
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-400">Số Đơn</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Số Đơn</p>
                 <p className="font-extrabold text-[20px] text-[#0f2a4a]">{fmtNum(preview.summary.orders)}</p>
               </div>
             </div>

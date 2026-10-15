@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "1889d2a874365bf59265b721503a0538f90586b0",
+  "commit": "",
   "lots": {
     "T6-FCL": {
       "nodes": [
@@ -82,11 +82,11 @@
     {
       "label": "desktop-map-fit-readable-pan-zoom",
       "typography": {
-        "scale": 1,
-        "titlePx": 16
+        "scale": 0.945205,
+        "titlePx": 11
       },
       "fit": {
-        "scale": 0.276173,
+        "scale": 0.945205,
         "inside": true
       }
     },
@@ -103,10 +103,10 @@
       "label": "mobile-map-fit-readable-pan-zoom",
       "typography": {
         "scale": 1,
-        "titlePx": 16
+        "titlePx": 11
       },
       "fit": {
-        "scale": 0.270758,
+        "scale": 0.232877,
         "inside": true
       }
     },

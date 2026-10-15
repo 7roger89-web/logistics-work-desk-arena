@@ -107,7 +107,7 @@ const newIntentId = () =>
 function Cell({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={cx("min-w-0", className)}>
-      <span className="block md:hidden text-[11px] font-extrabold uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="block md:hidden text-[12px] font-extrabold uppercase tracking-wide text-slate-400">{label}</span>
       {children}
     </div>
   );
@@ -334,7 +334,7 @@ export default function FinanceActualEntry({ shipment, services, ccy, dispatch, 
 
       {lines.length > 0 && (
         <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
-          <div className="hidden md:grid md:grid-cols-12 gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500">
+          <div className="hidden md:grid md:grid-cols-12 gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 text-[12px] font-extrabold uppercase tracking-wide text-slate-500">
             <div className="md:col-span-3">Dịch vụ</div>
             <div className="md:col-span-2">Mã</div>
             <div className="md:col-span-1 text-right">SL</div>

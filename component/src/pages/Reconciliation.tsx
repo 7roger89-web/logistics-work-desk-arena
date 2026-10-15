@@ -176,7 +176,7 @@ function RowCard({ row }: { row: ReconciliationRow }) {
           { label: row.side === "obligation" ? "Còn lại" : "Chưa phân bổ", value: row.remaining },
         ].map((cell) => (
           <div key={cell.label} className="rounded-xl bg-slate-50 border border-slate-200 p-2 text-center">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">{cell.label}</p>
+            <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">{cell.label}</p>
             <p className="text-[13px] mt-0.5"><Money value={cell.value} ccy={row.currency} /></p>
           </div>
         ))}
@@ -398,15 +398,15 @@ export default function Reconciliation() {
                     </p>
                     <div className="grid grid-cols-3 gap-2 mt-3">
                       <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-center">
-                        <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">Phải trả</p>
+                        <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Phải trả</p>
                         <p className="text-[13.5px] mt-0.5"><Money value={bucket.obligations.amount} ccy={ccy} /></p>
                       </div>
                       <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-center">
-                        <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">Đã phân bổ</p>
+                        <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Đã phân bổ</p>
                         <p className="text-[13.5px] mt-0.5"><Money value={bucket.obligations.allocated} ccy={ccy} /></p>
                       </div>
                       <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-center">
-                        <p className="text-[10.5px] font-bold uppercase tracking-wide text-amber-700">Còn lại</p>
+                        <p className="text-[12px] font-bold uppercase tracking-wide text-amber-700">Còn lại</p>
                         <p className="text-[13.5px] mt-0.5"><Money value={bucket.obligations.remaining} ccy={ccy} strong /></p>
                       </div>
                     </div>
@@ -473,7 +473,7 @@ export default function Reconciliation() {
                     <tr>
                       {["Lô hàng", "Đối tác", "Loại", "Trạng thái", "Số tiền", "Đã phân bổ", "Còn lại", "Tiền tệ", "Thao tác"]
                         .map((head) => (
-                          <th key={head} className="text-left font-bold text-[11.5px] uppercase tracking-wide px-3 py-2.5">{head}</th>
+                          <th key={head} className="text-left font-bold text-[12px] uppercase tracking-wide px-3 py-2.5">{head}</th>
                         ))}
                     </tr>
                   </thead>

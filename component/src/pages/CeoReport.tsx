@@ -85,7 +85,7 @@ function StateCount({ label, value, tone = "gray" }: { label: string; value: num
 
   return (
     <div className={`min-w-0 rounded-xl border px-3 py-2.5 ${classes[tone]}`}>
-      <p className="text-[11.5px] font-bold uppercase tracking-wide opacity-75">{label}</p>
+      <p className="text-[12px] font-bold uppercase tracking-wide opacity-75">{label}</p>
       <p className="mt-0.5 text-[18px] leading-tight font-extrabold">{fmtNum(value)}</p>
     </div>
   );
@@ -226,7 +226,7 @@ function ActionableCard({ item }: { item: CeoActionable }) {
     >
       <span className="min-w-0">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={`rounded-md border px-1.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide ${badge}`}>
+          <span className={`rounded-md border px-1.5 py-0.5 text-[12px] font-extrabold uppercase tracking-wide ${badge}`}>
             {LEVEL_LABEL[item.level] ?? item.level}
           </span>
           <b className="text-[14px] text-[#0f2a4a]">{item.shipmentId}</b>

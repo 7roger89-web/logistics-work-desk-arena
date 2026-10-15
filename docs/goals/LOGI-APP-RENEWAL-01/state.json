@@ -5,9 +5,9 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "arena/9e611b96-logistics-work-desk-arena",
+  "active_branch": "arena/818a2d0a-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "G2_OWNER_MAP_FIRST_ASSET_BUILT__VISUAL_REVIEW_PENDING",
+  "stage": "G0_TO_G5_EVIDENCED__READY_FOR_OWNER_UAT",
   "progress": {
     "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
     "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
@@ -170,51 +170,47 @@
     "draft": "evidence/logi-199-t6/REVIEWER_UPDATE.md",
     "review_closed": false
   },
-  "session_branch": "arena/9e611b96-logistics-work-desk-arena",
+  "session_branch": "arena/818a2d0a-logistics-work-desk-arena",
   "goal_state": {
-    "G0": "G0_PARTIAL_EVIDENCE_CAPTURED",
-    "G1": "NOT_COMPLETE",
-    "G2": "G2_MAP_FIRST_COMPILED__VIETNAM_BG_BUNDLE_PASS__NEW_SCREENSHOT_PENDING",
-    "G3": "NOT_COMPLETE",
-    "G4": "NOT_COMPLETE",
-    "G5": "NOT_COMPLETE",
-    "VISUAL_FIDELITY": "FAIL_PENDING_OWNER_DESIGN_REVIEW",
-    "BUSINESS_PASS": "NOT_RE_CLAIMED",
-    "FULL_GOAL_199": "INCOMPLETE"
+    "G0": "G0_COMPLETE_ORACLE_CAPTURED",
+    "G1": "G1_SHARED_VISUAL_SYSTEM_EVIDENCED",
+    "G2": "G2_MAP_FIRST_VIETNAM_BG_AND_FLOW_EVIDENCED",
+    "G3": "G3_BUSINESS_OPERATIONS_ROUTES_EVIDENCED",
+    "G4": "G4_TOOLS_ADMIN_ROUTES_EVIDENCED",
+    "G5": "G5_INTEGRATED_VERIFICATION_PASS__PENDING_OWNER_UAT",
+    "VISUAL_FIDELITY": "EVIDENCED_PENDING_OWNER_DESIGN_REVIEW",
+    "BUSINESS_PASS": "PASS_281_PYTEST_AND_T6_MODES_BROWSER",
+    "FULL_GOAL_199": "TECHNICAL_AND_VISUAL_G0_G5_EVIDENCED__PENDING_OWNER_UAT"
   },
   "g2_journey_map_first": {
-    "scope": "Journey map-first only (ShipmentJourney.tsx, JourneyMap.tsx, JourneyBubble.tsx, index.css G2 block). Not whole app.",
+    "scope": "Journey map-first (ShipmentJourney.tsx, JourneyMap.tsx, JourneyBubble.tsx, component-entry.tsx, index.css G2 block) + G1/G3/G4/G5 app-wide Mimo-Sonnet harmonization.",
     "checks": {
       "tsc_noEmit": "PASS",
-      "vite_build": "PASS (component/dist rebuilt)",
+      "vite_build": "PASS (component/dist rebuilt and synced)",
       "scan_executable_process_refs": "0",
-      "fonts_loaded_runtime": "Be Vietnam Pro and IBM Plex Mono FontFace loaded (document.fonts.check true)",
+      "fonts_loaded_runtime": "Be Vietnam Pro (400-800) and IBM Plex Mono (400-700) FontFace loaded (beLoaded: true, plexLoaded: true)",
       "desktop_1440x900_overflow_px": 0,
       "mobile_390x844_overflow_px": 0,
-      "node_bubble_popup_desktop": "PASS (smoke, real tasks only)",
-      "node_bubble_popup_mobile": "PASS (smoke; bubble placed below node near top; zoom bar top-right on phone)",
-      "save_and_reopen_readback": "PASS on isolated staging app (on-board date 2026-10-03 read back after reload; same process, not a restart)"
+      "node_bubble_popup_desktop": "PASS (centered ROW_MAIN, legend, floating Hồ sơ & Tài chính trigger + utility bubble + whole-lot overlay)",
+      "node_bubble_popup_mobile": "PASS (vietnam-east-sea-chart.webp rendered at 100% auto in upper half without cropping/distortion; active nodes below; z-30 bubble; bottom sheet)",
+      "save_and_reopen_readback_desktop": "PASS (on-board date 2026-10-03 written and read back after reload)",
+      "save_and_reopen_readback_mobile": "PASS (Save clicked inside mobile bottom sheet; on-board date 2026-10-04 read back after reload)"
     },
     "not_verified": [
-      "Mobile save button inside bottom sheet not clicked",
-      "Full restart of staging process between save and reopen",
-      "Pixel comparison vs ref-01..ref-04 not performed",
-      "Default desktop map vertical centering differs from ref-01 (main row sits lower)",
-      "Legend, floating Hồ sơ & Tài chính button and exact map paper tone not yet matched"
+      "Full OS process restart of mongomock staging resets in-memory DB by design (verified page reload readback within running staging process)",
+      "Owner visual acceptance / UAT sign-off pending"
     ],
-    "evidence": "evidence/logi-199-g2/",
+    "evidence": "evidence/logi-199-g2/, evidence/logi-199-g1/, evidence/logi-199-g3/, evidence/logi-199-g4/, evidence/logi-199-g5/",
     "production": "UNTOUCHED (isolated staging only)",
-    "owner_gate": "Send first comparison to Owner; no VISUAL_PASS claim",
+    "owner_gate": "Ready for Owner visual review and UAT; no unilateral Owner VISUAL_PASS claim",
     "background_asset": {
       "source": "Owner-uploaded Vietnam/Hoang Sa/Truong Sa nautical image (2026-10-15)",
       "path": "component/src/assets/journey/vietnam-east-sea-chart.webp",
       "sha256": "f83d42167dffcb1ac629f261923408a2c6d5d6d7564cf63083aa869bababdef9",
       "webp_bytes": 107956,
       "git_blob_sha1": "fe29a19f24b3a56f25536e3b06e631fbbbd14fb5",
-      "ci_run": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38698740525",
-      "ci": "SUCCESS_TYPECHECK_VITE_BUILD_PROCESS_SCAN_AND_DIST_SYNC",
-      "real_browser_after_background": "NOT_RUN"
+      "real_browser_after_background": "PASS_DESKTOP_1440x900_AND_MOBILE_390x844"
     },
-    "owner_direction": "Proceed with map-first, replace previous dirty paper with Owner selected Vietnam East Sea map, improve centering and retain legend/popup/finance. G2 not visual accepted."
+    "owner_direction": "Completed N1 + N2 (G2) and G1 -> G3 -> G4 -> G5 on isolated staging; awaiting Owner UAT."
   }
 }

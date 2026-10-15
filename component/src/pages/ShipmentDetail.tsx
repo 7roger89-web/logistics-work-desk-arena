@@ -1675,7 +1675,7 @@ export default function ShipmentDetail() {
                 : "border-slate-200 bg-white"
           )}
         >
-          <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Hồ sơ thực hiện lô</span>
+          <span className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Hồ sơ thực hiện lô</span>
           <span className="text-[13.5px] font-bold text-[#0f2a4a] min-w-0">
             {s.executionProfile?.stateLabel || "Chưa có dữ liệu hồ sơ"}
           </span>
@@ -1915,19 +1915,19 @@ export default function ShipmentDetail() {
               {/* Read-only summary of declaration & taxes */}
               <div className="grid sm:grid-cols-2 gap-2 text-[13px]">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Số tờ khai</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Số tờ khai</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.declarationNo || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Ngày tờ khai</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Ngày tờ khai</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.regDate || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Thuế nhập khẩu</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Thuế nhập khẩu</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.tax != null ? fmtVND(s.importInfo.tax) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">VAT hàng nhập khẩu</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">VAT hàng nhập khẩu</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.vat != null ? fmtVND(s.importInfo.vat) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
               </div>
@@ -1937,7 +1937,7 @@ export default function ShipmentDetail() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[13.5px] text-[#0f2a4a]">Thông tin Người nộp thuế (Pháp nhân chịu thuế)</span>
                   {s.importInfo.gnt?.customerHint && (
-                    <span className="text-[11.5px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
+                    <span className="text-[12px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
                   )}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-2.5">
@@ -2149,8 +2149,8 @@ export default function ShipmentDetail() {
                       {partnerName ? (
                         <span className="inline-flex items-center gap-1.5 text-[13.5px] font-extrabold text-[#0f2a4a]">
                           <Building2 size={15} className="text-[#1e5aa8]" /> {partnerName}
-                          <span className="text-[11.5px] font-bold text-slate-400">{partnerId}</span>
-                          {suggested && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">đề xuất từ danh mục</span>}
+                          <span className="text-[12px] font-bold text-slate-400">{partnerId}</span>
+                          {suggested && <span className="text-[12px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">đề xuất từ danh mục</span>}
                         </span>
                       ) : (
                         <span className="text-[13.5px] font-bold text-slate-400">—</span>
@@ -2178,7 +2178,7 @@ export default function ShipmentDetail() {
                       <div key={p.id || i} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5">
                         <span className="text-[12px] font-bold text-slate-400 w-[80px]">{p.date || "—"}</span>
                         <span className="flex-1 min-w-[140px] text-[12.5px] text-slate-600">{p.note || p.kind}{p.requestId ? ` · ${p.requestId}` : ""}</span>
-                        <span className="font-extrabold text-[14.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[11px] text-slate-400">{p.ccy}</span></span>
+                        <span className="font-extrabold text-[14.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[12px] text-slate-400">{p.ccy}</span></span>
                       </div>
                     ))}
                   </div>
@@ -2220,10 +2220,10 @@ export default function ShipmentDetail() {
                 <div key={p.id || i} data-payment-row={p.id || undefined} className={cx("flex flex-wrap items-center gap-2 rounded-xl border p-3", p.reversed ? "border-slate-200 bg-slate-50/80" : "border-slate-200")}>
                   <span className="text-[12.5px] font-bold text-slate-400 w-[92px]">{p.date}</span>
                   <span className="flex-1 min-w-[160px]">
-                    <span className="block font-bold text-[14.5px]">{p.kind}{p.reversed && <span className="ml-2 align-middle rounded-full bg-slate-200 text-slate-600 text-[11px] font-extrabold px-2 py-0.5">Đã hoàn tác</span>}</span>
+                    <span className="block font-bold text-[14.5px]">{p.kind}{p.reversed && <span className="ml-2 align-middle rounded-full bg-slate-200 text-slate-600 text-[12px] font-extrabold px-2 py-0.5">Đã hoàn tác</span>}</span>
                     <span className="block text-[12.5px] text-slate-500">{p.by}{p.note ? " · " + p.note : ""}{p.id ? " · " + p.id : ""}</span>
                   </span>
-                  <span className={cx("font-extrabold text-[15.5px]", p.reversed && "text-slate-400 line-through")}>{fmtMoney(p.amount, p.ccy)} <span className="text-[11.5px] text-slate-400">{p.ccy}</span></span>
+                  <span className={cx("font-extrabold text-[15.5px]", p.reversed && "text-slate-400 line-through")}>{fmtMoney(p.amount, p.ccy)} <span className="text-[12px] text-slate-400">{p.ccy}</span></span>
                   {p.reversed
                     ? <span className="text-[12.5px] font-semibold text-slate-400 px-3">Đã điều chỉnh — khóa</span>
                     : p.id
@@ -2240,7 +2240,7 @@ export default function ShipmentDetail() {
               already projected — only the visual weight and position changed. */}
           <details className="rounded-xl border border-dashed border-violet-300 bg-violet-50/40 px-3.5 py-2.5" data-testid="quote-estimate-compact">
             <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-md px-2 py-0.5">
+              <span className="text-[12px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-md px-2 py-0.5">
                 Báo giá / Dự kiến — chưa phải số thực thu/chi
               </span>
               <span className="text-[12.5px] font-bold text-slate-600">Chi phí dự kiến theo báo giá</span>
@@ -2253,7 +2253,7 @@ export default function ShipmentDetail() {
                 <p className="text-[13px] text-slate-500">Chưa gắn báo giá. <Link to="/kinh-doanh-bao-gia" className="font-bold text-[#1e5aa8]">Mở báo giá →</Link></p>
               )}
               {s.finance.quote.map((c) => (
-                <StateRow key={c.label} label={c.label} value={<span className="font-bold text-[14px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[11.5px] font-bold text-violet-600">{c.ccy}</span></span>} />
+                <StateRow key={c.label} label={c.label} value={<span className="font-bold text-[14px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[12px] font-bold text-violet-600">{c.ccy}</span></span>} />
               ))}
               <p className="text-[12px] text-slate-400 mt-1.5">Mỗi đồng tiền ghi rõ VND / USD / CNY — không gộp chung. Đây là ESTIMATE, không phải Finance Actual.</p>
             </div>
@@ -2320,7 +2320,7 @@ export default function ShipmentDetail() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-extrabold text-[14.5px] text-[#0f2a4a]">{step.label}</p>
-                        <span className={cx("rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold", workflowStateClass(step.state))}>
+                        <span className={cx("rounded-full border px-2 py-0.5 text-[12px] font-extrabold", workflowStateClass(step.state))}>
                           {step.stateLabel}
                         </span>
                       </div>
@@ -2559,7 +2559,7 @@ export default function ShipmentDetail() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-extrabold text-[14.5px] text-[#0f2a4a] break-words">{row.label}</p>
-                        <p className="text-[11.5px] text-slate-500 mt-0.5">
+                        <p className="text-[12px] text-slate-500 mt-0.5">
                           {state.kind} · bản v{state.version} · {row.category}
                         </p>
                       </div>

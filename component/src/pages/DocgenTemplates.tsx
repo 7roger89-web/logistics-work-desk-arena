@@ -378,12 +378,12 @@ export default function DocgenTemplates() {
                     <span className="mt-0.5 text-[#0f2a4a]"><TemplateIcon kind={row.kind} /></span>
                     <div className="min-w-0">
                       <p className="font-extrabold text-[14.5px] text-[#0f2a4a] break-words">{row.label}</p>
-                      <p className="text-[11.5px] text-slate-500 mt-0.5 break-words">
+                      <p className="text-[12px] text-slate-500 mt-0.5 break-words">
                         {row.category} · {row.kind}
                         {row.activeVersion ? ` · v${row.activeVersion}/${row.versionCount}` : " · chưa phát hành"}
                         {row.publishedMappingCount ? ` · ${row.publishedMappingCount} vị trí` : ""}
                       </p>
-                      <p className="text-[11.5px] text-slate-400 mt-0.5 break-words">
+                      <p className="text-[12px] text-slate-400 mt-0.5 break-words">
                         {row.uploadedBy ? `Tải bởi ${row.uploadedBy}` : ""}
                         {row.publishedBy ? ` · Phát hành bởi ${row.publishedBy}` : ""}
                       </p>
@@ -519,16 +519,16 @@ export default function DocgenTemplates() {
                     className="rounded-xl border border-slate-200 p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[11.5px] font-semibold text-slate-700">
+                      <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[12px] font-semibold text-slate-700">
                         {position.id}
                       </code>
-                      <span className="text-[11.5px] text-slate-400">{position.detectedBy}</span>
+                      <span className="text-[12px] text-slate-400">{position.detectedBy}</span>
                     </div>
                     <p className="mt-1.5 text-[13px] font-semibold text-[#0f2a4a] break-words">
                       {position.label || "(không có nhãn)"}
                     </p>
                     {position.text && (
-                      <p className="text-[11.5px] text-slate-500 break-words">Nội dung hiện tại: {position.text}</p>
+                      <p className="text-[12px] text-slate-500 break-words">Nội dung hiện tại: {position.text}</p>
                     )}
                     <div className="mt-2 grid gap-2 sm:grid-cols-[150px_1fr]">
                       <select
@@ -573,7 +573,7 @@ export default function DocgenTemplates() {
                       )}
                     </div>
                     {bound && (
-                      <p className="text-[11.5px] text-slate-500 mt-1.5">
+                      <p className="text-[12px] text-slate-500 mt-1.5">
                         Sẽ in: {bound.label}
                         {bound.conditional ? " — chỉ điền khi lô có đúng một nguồn duy nhất, ngược lại báo thiếu." : ""}
                       </p>

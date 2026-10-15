@@ -585,7 +585,7 @@ export default function SalesQuotes() {
                   <td>{fmtText(x.salesOwner)}</td>
                   <td className="font-bold">{fmtMoney(x.sellingPriceTotalVnd ?? x.total, "VND")}
                     {/* A converted total is never shown without the rate behind it. */}
-                    {fxNote(x) && <span className="block text-[11.5px] font-semibold text-slate-400">{fxNote(x)}</span>}
+                    {fxNote(x) && <span className="block text-[12px] font-semibold text-slate-400">{fxNote(x)}</span>}
                   </td>
                   <td><ToneBadge tone={STATUS_TONE[x.status] ?? "gray"} size="sm">{x.statusLabel || x.status}</ToneBadge></td>
                   <td>

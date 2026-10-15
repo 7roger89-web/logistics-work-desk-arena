@@ -20,10 +20,10 @@
   min-width: 0;
 }
 
-/* The shell is its own scrollport so the donor sticky header pins exactly
-   where it does in the standalone app (directly under the Streamlit toolbar). */
+/* The shell is its own scrollport so the donor sticky header pins at the top
+   of the viewport. */
 .logi-shell {
-  height: calc(100vh - var(--logi-toolbar-gap, 57px));
+  height: calc(100vh - var(--logi-toolbar-gap, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
 }

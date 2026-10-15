@@ -3,13 +3,13 @@
 @theme {
   --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --color-navy-950: #0a1f3a;
-  --color-navy-900: #0f2a4a;
-  --color-navy-800: #14365e;
-  --color-navy-700: #1a4d8f;
-  --color-navy-600: #1e5aa8;
-  --color-navy-100: #dbe7f5;
-  --color-navy-50: #eef4fb;
+  --color-navy-950: #10263c;
+  --color-navy-900: #123a5e;
+  --color-navy-800: #154c79;
+  --color-navy-700: #1d6fa8;
+  --color-navy-600: #1d6fa8;
+  --color-navy-100: #dcebFa;
+  --color-navy-50: #edf1f5;
 }
 
 html { font-size: 16px; }
@@ -56,9 +56,10 @@ body {
   background-size: 100% 100%;
 }
 
-/* table on desktop */
-.tbl th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: #5b6b82; font-weight: 700; background: #f1f5fa; }
-.tbl td, .tbl th { padding: 12px 14px; border-bottom: 1px solid #e4e9f1; text-align: left; vertical-align: middle; }
+/* table on desktop — Mimo–Sonnet family */
+.tbl th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: #5b6875; font-weight: 800; background: #f8fafc; border-bottom: 1px solid #d6dee7; }
+.tbl td, .tbl th { padding: 10px 10px; border-bottom: 1px solid #e7ecf2; text-align: left; vertical-align: middle; }
+.tbl tbody tr:hover td { background: #f8fafc; }
 .tbl tr:last-child td { border-bottom: none; }
 
 /* sticky mobile action bar */
@@ -130,6 +131,20 @@ body {
   .journey-split-collapsed .journey-side { flex: none; }
 }
 @media (prefers-reduced-motion: reduce) { .journey-problem-pulse { animation: none; } }
+
+/* ==========================================================================
+   G1 — LOGI-199 Mimo–Sonnet Shared Visual System Harmonization
+   ========================================================================== */
+.bg-\[\#0f2a4a\] { background-color: #10263C !important; }
+.hover\:bg-\[\#14365e\]:hover { background-color: #123A5E !important; }
+.text-\[\#0f2a4a\] { color: #10263C !important; }
+.border-\[\#0f2a4a\] { border-color: #10263C !important; }
+.bg-\[\#1e5aa8\] { background-color: #1D6FA8 !important; }
+.text-\[\#1e5aa8\] { color: #1D6FA8 !important; }
+.border-\[\#1e5aa8\], .focus\:border-\[\#1e5aa8\]:focus, .focus-within\:border-\[\#1e5aa8\]:focus-within, .hover\:border-\[\#1e5aa8\]:hover { border-color: #1D6FA8 !important; }
+.from-\[\#0a1f3a\].via-\[\#0f2a4a\].to-\[\#1e5aa8\] {
+  background-image: linear-gradient(135deg, #10263C 0%, #123A5E 52%, #1D6FA8 100%) !important;
+}
 
 /* ==========================================================================
    G2 — LOGI-199 Owner Visual Fidelity Override (15/10/2026)

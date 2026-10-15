@@ -6,6 +6,7 @@ on:
       - ct/logi199-t6-integration
       - ct/logi199-int198-preview
       - arena/d8927583-logistics-work-desk-arena
+      - arena/818a2d0a-logistics-work-desk-arena
 
 permissions:
   contents: write

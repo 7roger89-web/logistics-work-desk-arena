@@ -12,17 +12,17 @@ import { cx, matchLoose } from "../lib/format";
 function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 shrink-0">
-      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
+      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#123A5E] to-[#10263C] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
       <span className="leading-tight hidden sm:block">
-        <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
+        <span className="block font-extrabold text-[14.5px] text-[#10263C]">TRƯỜNG THÀNH</span>
         {/* DISPLAY brand from the view-model (core.config.DISPLAY_COMPANY_NAME).
             No hard-coded brand string in the bundle: without the vm value the
             subtitle stays a truthful unbranded "Nội bộ". */}
-        <span className="block text-[12px] text-slate-500 font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
+        <span className="block text-[12px] text-[#5B6875] font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
       </span>
       {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
           production-like runtime does not carry prototype residue. */}
-      {sandbox && <span className="text-[12px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
+      {sandbox && <span className="text-[12px] font-mono font-extrabold tracking-wider bg-[#DCEBFA] text-[#154C79] border border-[#1D6FA8]/30 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
     </Link>
   );
 }
@@ -62,24 +62,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className={cx("min-h-screen flex flex-col", focusShipment && "focus-shell")}>
       {/* ===== TOP HEADER ===== */}
-      <header className="no-print global-topbar sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_12px_rgba(15,42,74,.08)]">
+      <header className="no-print global-topbar sticky top-0 z-40 bg-white border-b border-[#D6DEE7] shadow-[0_1px_12px_rgba(16,38,60,.06)]">
         <div className="flex items-center gap-2 md:gap-4 px-3 md:px-5 h-[64px] max-w-[1600px] mx-auto">
-          <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Mở menu">
-            <Menu size={22} className="text-[#0f2a4a]" />
+          <button onClick={() => setNavOpen(true)} className="lg:hidden touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-[#EDF1F5]" aria-label="Mở menu">
+            <Menu size={22} className="text-[#10263C]" />
           </button>
           <Logo sandbox={environment?.isSandbox === true} displayName={environment?.displayName} />
           {/* search desktop */}
           <div className="hidden md:flex flex-1 max-w-[560px] mx-auto relative">
-            <div className="flex items-center w-full rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
-              <Search size={19} className="ml-3.5 text-slate-400 shrink-0" />
+            <div className="flex items-center w-full rounded-xl border-2 border-[#D6DEE7] focus-within:border-[#1D6FA8] bg-[#F8FAFC] overflow-hidden">
+              <Search size={19} className="ml-3.5 text-[#5B6875] shrink-0" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setSearchOpen(true)}
                 placeholder="Tìm mã lô · khách hàng · hợp đồng · container · báo giá…"
-                className="w-full bg-transparent px-3 py-2.5 text-[15px] outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent px-3 py-2.5 text-[15px] text-[#10263C] outline-none placeholder:text-[#5B6875]/75"
               />
-              {query && <button onClick={() => setQuery("")} className="mr-2 w-8 h-8 grid place-items-center rounded-lg hover:bg-slate-200"><X size={16} /></button>}
+              {query && <button onClick={() => setQuery("")} className="mr-2 w-8 h-8 grid place-items-center rounded-lg hover:bg-[#E7ECF2]"><X size={16} /></button>}
             </div>
             {searchOpen && results && (
               <div className="absolute top-[52px] left-0 right-0 bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 z-50 anim-slide-up max-h-[70vh] overflow-auto">
@@ -132,18 +132,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               visibly labelled as display-only. core/auth.py is untouched. */}
           {environment?.isSandbox ? (
           <div className="relative hidden sm:block" data-testid="role-preview-switcher">
-            <button onClick={() => setRoleMenu((v) => !v)} aria-haspopup="menu" aria-expanded={roleMenu} className="flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]">
-              <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
-              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[12px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
-              <span className="text-[12px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5">Xem trước</span>
+            <button onClick={() => setRoleMenu((v) => !v)} aria-haspopup="menu" aria-expanded={roleMenu} className="flex items-center gap-2 rounded-xl border-2 border-[#D6DEE7] pl-1.5 pr-2.5 py-1 hover:border-[#1D6FA8]">
+              <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-[#10263C]" : role === "SUPPORT" ? "bg-[#1D6FA8]" : "bg-[#22614A]")}>{userName.charAt(0)}</span>
+              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#10263C]">{userName}</span><span className="block text-[12px] text-[#5B6875]">{ROLE_LABEL[role]} · {role}</span></span>
+              <span className="text-[12px] font-extrabold tracking-wider uppercase rounded-md bg-[#DCEBFA] text-[#154C79] border border-[#1D6FA8]/30 px-1.5 py-0.5">Xem trước</span>
             </button>
             {roleMenu && (
-              <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up" role="menu" data-testid="role-preview-menu">
-                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">Xem trước giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập</p>
+              <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border border-[#D6DEE7] shadow-2xl p-2 z-50 anim-slide-up" role="menu" data-testid="role-preview-menu">
+                <p className="px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wide text-[#5B6875]">Xem trước giao diện theo vai trò — chỉ thay hiển thị, quyền thật theo tài khoản đăng nhập</p>
                 {(["ADMIN", "SUPPORT", "SALE"] as Role[]).map((r) => (
-                  <button key={r} role="menuitem" onClick={() => { setRole(r); setRoleMenu(false); toast(`Đang XEM TRƯỚC giao diện ${ROLE_LABEL[r]}`, "Chỉ thay đổi hiển thị trong sandbox — quyền thật vẫn theo tài khoản đăng nhập.", "blue"); }} className={cx("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-slate-50", role === r && "bg-blue-50")}>
-                    <span><span className="block font-bold text-[14.5px]">{ROLE_LABEL[r]}</span><span className="block text-[12px] text-slate-500">{r}</span></span>
-                    {role === r && <span className="text-blue-700 font-bold text-[13px]">● Đang xem</span>}
+                  <button key={r} role="menuitem" onClick={() => { setRole(r); setRoleMenu(false); toast(`Đang XEM TRƯỚC giao diện ${ROLE_LABEL[r]}`, "Chỉ thay đổi hiển thị trong sandbox — quyền thật vẫn theo tài khoản đăng nhập.", "blue"); }} className={cx("w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-[#F8FAFC]", role === r && "bg-[#DCEBFA]/50")}>
+                    <span><span className="block font-bold text-[14.5px] text-[#10263C]">{ROLE_LABEL[r]}</span><span className="block text-[12px] text-[#5B6875]">{r}</span></span>
+                    {role === r && <span className="text-[#154C79] font-bold text-[13px]">● Đang xem</span>}
                   </button>
                 ))}
               </div>
@@ -152,17 +152,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ) : (
           <div className="hidden sm:block" data-testid="actual-role-badge" title="Vai trò của tài khoản đăng nhập">
             <div className="flex items-center gap-2 rounded-xl border-2 border-transparent pl-1.5 pr-2.5 py-1">
-              <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
-              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[12px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
+              <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-[#10263C]" : role === "SUPPORT" ? "bg-[#1D6FA8]" : "bg-[#22614A]")}>{userName.charAt(0)}</span>
+              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#10263C]">{userName}</span><span className="block text-[12px] text-[#5B6875]">{ROLE_LABEL[role]} · {role}</span></span>
             </div>
           </div>
           )}
           {/* notif */}
-          <button onClick={() => setNotifOpen(true)} className="relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Thông báo">
-            <Bell size={21} className="text-[#0f2a4a]" />
-            {notifCount > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[12px] font-extrabold grid place-items-center">{notifCount}</span>}
+          <button onClick={() => setNotifOpen(true)} className="relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-[#EDF1F5]" aria-label="Thông báo">
+            <Bell size={21} className="text-[#10263C]" />
+            {notifCount > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#C0392B] text-white text-[12px] font-extrabold grid place-items-center">{notifCount}</span>}
           </button>
-          <button onClick={() => setQuickAddOpen(true)} className="hidden md:inline-flex touch-target items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[44px] hover:bg-[#14365e]">
+          <button onClick={() => setQuickAddOpen(true)} className="hidden md:inline-flex touch-target items-center gap-1.5 rounded-xl bg-[#10263C] text-white font-bold text-[14.5px] px-4 min-h-[44px] hover:bg-[#123A5E]">
             <Plus size={18} /> Thêm
           </button>
         </div>
@@ -212,27 +212,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="focus-content flex flex-1 max-w-[1600px] w-full mx-auto">
         {/* ===== SIDEBAR desktop ===== */}
-        <aside className="no-print global-sidebar hidden lg:block w-[264px] shrink-0 border-r border-slate-200 bg-white min-h-[calc(100vh-64px)] sticky top-[64px] self-start max-h-[calc(100vh-64px)] overflow-y-auto">
+        <aside className="no-print global-sidebar hidden lg:block w-[264px] shrink-0 border-r border-[#D6DEE7] bg-white min-h-[calc(100vh-64px)] sticky top-[64px] self-start max-h-[calc(100vh-64px)] overflow-y-auto">
           <nav className="p-3 pb-10">
             {NAV.map((g) => (
               <div key={g.group} className="mb-4">
-                <p className="px-3 mb-1.5 text-[12px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
+                <p className="px-3 mb-1.5 text-[12px] font-extrabold tracking-wider text-[#5B6875]">{g.group}</p>
                 {g.items.map((it) => {
                   const Icon = ICONS[it.icon] ?? Package;
                   return (
-                    <NavLink key={it.to} to={it.to} className={({ isActive }) => cx("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", isActive || (it.to !== "/" && loc.pathname.startsWith(it.to)) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100")}>
+                    <NavLink key={it.to} to={it.to} className={({ isActive }) => cx("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", isActive || (it.to !== "/" && loc.pathname.startsWith(it.to)) ? "bg-[#10263C] text-white shadow-md" : "text-[#23374B] hover:bg-[#EDF1F5]")}>
                       <Icon size={19} className="shrink-0" />
                       <span className="flex-1">{it.label}</span>
-                      {it.soon && <span className="text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
+                      {it.soon && <span className="text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-[#C9D4DF] bg-[#E7ECF2] text-[#5B6875] px-2 py-0.5">Sắp có</span>}
                     </NavLink>
                   );
                 })}
               </div>
             ))}
-            <div className="mx-1 mt-2 rounded-2xl bg-gradient-to-br from-[#0f2a4a] to-[#1e5aa8] text-white p-4">
+            <div className="mx-1 mt-2 rounded-2xl bg-gradient-to-br from-[#10263C] to-[#123A5E] text-white p-4">
               <p className="font-bold text-[14px]">Cần hỗ trợ thao tác?</p>
-              <p className="text-[12.5px] text-blue-100 mt-1">Sổ tay tra cứu quy trình, chứng từ và phân quyền cho Sale & Support.</p>
-              <Link to="/so-tay" className="mt-2.5 inline-flex items-center gap-1.5 bg-white text-[#0f2a4a] text-[13.5px] font-bold rounded-lg px-3 py-2">Mở sổ tay <ChevronRight size={15} /></Link>
+              <p className="text-[12.5px] text-[#DCEBFA] mt-1">Sổ tay tra cứu quy trình, chứng từ và phân quyền cho Sale & Support.</p>
+              <Link to="/so-tay" className="mt-2.5 inline-flex items-center gap-1.5 bg-white text-[#10263C] text-[13.5px] font-bold rounded-lg px-3 py-2">Mở sổ tay <ChevronRight size={15} /></Link>
             </div>
           </nav>
         </aside>

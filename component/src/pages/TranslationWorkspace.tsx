@@ -496,7 +496,7 @@ export default function TranslationWorkspace() {
               className="rounded-lg bg-slate-50 px-2.5 py-2 min-w-0"
             >
               <p className="text-[13.5px] font-bold text-[#0f2a4a] truncate">{g.zh}</p>
-              <p className="text-[11.5px] text-slate-400 truncate">{g.pinyin}</p>
+              <p className="text-[12px] text-slate-400 truncate">{g.pinyin}</p>
               <p className="text-[12.5px] text-slate-600 truncate">{g.vi}</p>
             </div>
           ))}

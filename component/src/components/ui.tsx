@@ -36,32 +36,32 @@ export const ICONS: Record<string, LucideIcon> = {
 
 export function ToneBadge({ tone, children, size = "md" }: { tone: "green" | "amber" | "red" | "blue" | "gray"; children: React.ReactNode; size?: "sm" | "md" }) {
   const map = {
-    green: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    amber: "bg-amber-50 text-amber-900 border-amber-200",
-    red: "bg-red-50 text-red-800 border-red-200",
-    blue: "bg-blue-50 text-blue-800 border-blue-200",
-    gray: "bg-slate-100 text-slate-700 border-slate-200",
+    green: "bg-[#DCEDE4] text-[#22614A] border-[#2E7D32]/25",
+    amber: "bg-[#FBEBD3] text-[#8A5209] border-[#D97706]/25",
+    red: "bg-[#F6DFDB] text-[#8E2F22] border-[#C0392B]/25",
+    blue: "bg-[#DCEBFA] text-[#154C79] border-[#1D6FA8]/25",
+    gray: "bg-[#E7ECF2] text-[#5B6875] border-[#C9D4DF]",
   } as const;
   return (
-    <span className={cx("inline-flex items-center gap-1.5 font-semibold border rounded-full whitespace-nowrap", size === "sm" ? "text-[12.5px] px-2.5 py-1" : "text-[13.5px] px-3 py-1.5", map[tone])}>
+    <span className={cx("inline-flex items-center gap-1.5 font-bold border rounded-full whitespace-nowrap", size === "sm" ? "text-[12.5px] px-2.5 py-1" : "text-[13.5px] px-3 py-1.5", map[tone])}>
       {children}
     </span>
   );
 }
 
 export function StatusDot({ tone }: { tone: string }) {
-  const map: Record<string, string> = { green: "bg-emerald-500", amber: "bg-amber-500", red: "bg-red-500", blue: "bg-blue-500", gray: "bg-slate-400" };
-  return <span className={cx("inline-block w-2.5 h-2.5 rounded-full shrink-0", map[tone] ?? "bg-slate-400")} />;
+  const map: Record<string, string> = { green: "bg-[#2E7D32]", amber: "bg-[#D97706]", red: "bg-[#C0392B]", blue: "bg-[#1D6FA8]", gray: "bg-[#5B6875]" };
+  return <span className={cx("inline-block w-2.5 h-2.5 rounded-full shrink-0", map[tone] ?? "bg-[#5B6875]")} />;
 }
 
 export function SectionTitle({ icon, title, sub, right }: { icon?: React.ReactNode; title: string; sub?: string; right?: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 mb-3">
       <div className="flex items-start gap-2.5">
-        {icon && <span className="mt-0.5 w-9 h-9 rounded-xl bg-[#0f2a4a] text-white grid place-items-center shrink-0">{icon}</span>}
+        {icon && <span className="mt-0.5 w-9 h-9 rounded-xl bg-gradient-to-br from-[#123A5E] to-[#10263C] text-white grid place-items-center shrink-0 shadow-sm">{icon}</span>}
         <div>
-          <h2 className="text-[17px] md:text-[19px] font-800 font-extrabold text-[#0f2a4a] leading-tight">{title}</h2>
-          {sub && <p className="text-[13.5px] text-slate-500 mt-0.5">{sub}</p>}
+          <h2 className="text-[17px] md:text-[19px] font-800 font-extrabold text-[#10263C] leading-tight">{title}</h2>
+          {sub && <p className="text-[13.5px] text-[#5B6875] mt-0.5">{sub}</p>}
         </div>
       </div>
       {right}
@@ -72,22 +72,22 @@ export function SectionTitle({ icon, title, sub, right }: { icon?: React.ReactNo
 export function Field({ label, required, hint, error, children }: { label: string; required?: boolean; hint?: string; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[14px] font-semibold text-slate-700 mb-1.5">
-        {label} {required && <span className="text-red-600 font-bold">*</span>}
+      <span className="block text-[14px] font-semibold text-[#23374B] mb-1.5">
+        {label} {required && <span className="text-[#C0392B] font-bold">*</span>}
       </span>
       {children}
-      {hint && !error && <span className="block text-[13px] text-slate-500 mt-1">{hint}</span>}
-      {error && <span className="block text-[13.5px] text-red-700 font-medium mt-1">⚠ {error}</span>}
+      {hint && !error && <span className="block text-[13px] text-[#5B6875] mt-1">{hint}</span>}
+      {error && <span className="block text-[13.5px] text-[#8E2F22] font-medium mt-1">⚠ {error}</span>}
     </label>
   );
 }
 
 export const inputCls = (state?: "ok" | "missing" | "invalid") =>
   cx(
-    "w-full rounded-xl border-2 bg-white px-3.5 text-[15.5px] min-h-[48px] py-2.5 placeholder:text-slate-400 transition-colors",
-    state === "missing" && "border-amber-400 bg-amber-50/60",
-    state === "invalid" && "border-red-400 bg-red-50/60",
-    (!state || state === "ok") && "border-slate-200 focus:border-[#1e5aa8]"
+    "w-full rounded-xl border-2 bg-white px-3.5 text-[15.5px] min-h-[48px] py-2.5 text-[#10263C] placeholder:text-[#5B6875]/70 transition-colors",
+    state === "missing" && "border-[#D97706] bg-[#FBEBD3]/40",
+    state === "invalid" && "border-[#C0392B] bg-[#F6DFDB]/40",
+    (!state || state === "ok") && "border-[#D6DEE7] focus:border-[#1D6FA8]"
   );
 
 export function PrimaryBtn({ children, onClick, className, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean; testId?: string }) {
@@ -96,7 +96,7 @@ export function PrimaryBtn({ children, onClick, className, disabled, testId }: {
       onClick={onClick}
       disabled={disabled}
       {...(testId ? { "data-testid": testId } : {})}
-      className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#0f2a4a] hover:bg-[#14365e] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-navy-900/20 disabled:opacity-50 disabled:cursor-not-allowed", className)}
+      className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#10263C] hover:bg-[#123A5E] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-[#10263C]/20 disabled:opacity-50 disabled:cursor-not-allowed", className)}
     >
       {children}
     </button>
@@ -105,7 +105,7 @@ export function PrimaryBtn({ children, onClick, className, disabled, testId }: {
 
 export function SuccessBtn({ children, onClick, className, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; disabled?: boolean; testId?: string }) {
   return (
-    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-emerald-600/25 disabled:opacity-50 disabled:cursor-not-allowed", className)}>
+    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl bg-[#2E7D32] hover:bg-[#22614A] text-white font-bold text-[15.5px] px-5 min-h-[48px] shadow-md shadow-[#2E7D32]/25 disabled:opacity-50 disabled:cursor-not-allowed", className)}>
       {children}
     </button>
   );
@@ -113,7 +113,7 @@ export function SuccessBtn({ children, onClick, className, disabled, testId }: {
 
 export function GhostBtn({ children, onClick, className, danger, disabled, testId }: { children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean; disabled?: boolean; testId?: string }) {
   return (
-    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white disabled:opacity-50 disabled:cursor-not-allowed", danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-slate-200 text-[#0f2a4a] hover:bg-slate-50", className)}>
+    <button onClick={onClick} disabled={disabled} {...(testId ? { "data-testid": testId } : {})} className={cx("btn-press touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 font-semibold text-[15px] px-4 min-h-[48px] bg-white disabled:opacity-50 disabled:cursor-not-allowed", danger ? "border-[#C0392B]/30 text-[#8E2F22] hover:bg-[#F6DFDB]/50" : "border-[#D6DEE7] text-[#10263C] hover:bg-[#F8FAFC] hover:border-[#1D6FA8]", className)}>
       {children}
     </button>
   );

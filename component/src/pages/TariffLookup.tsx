@@ -338,7 +338,7 @@ export default function TariffLookup() {
                       {val(row.hsCode)}
                     </span>
                     {row.unit && (
-                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11.5px] font-bold text-slate-600">
+                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-[12px] font-bold text-slate-600">
                         ĐVT: {row.unit}
                       </span>
                     )}

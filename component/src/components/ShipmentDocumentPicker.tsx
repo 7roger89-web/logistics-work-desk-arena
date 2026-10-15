@@ -137,7 +137,7 @@ export default function ShipmentDocumentPicker({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-extrabold text-[14.5px] text-[#0f2a4a]">{card.label}</p>
-                    <p className="text-[11.5px] text-slate-500 mt-0.5">{card.category}</p>
+                    <p className="text-[12px] text-slate-500 mt-0.5">{card.category}</p>
                   </div>
                   <ToneBadge tone={status.tone} size="sm">{status.label}</ToneBadge>
                 </div>
@@ -149,7 +149,7 @@ export default function ShipmentDocumentPicker({
                 )}
                 {card.missing.length > 0 && (
                   <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                    <p className="text-[11.5px] font-bold uppercase text-amber-800">Cần bổ sung</p>
+                    <p className="text-[12px] font-bold uppercase text-amber-800">Cần bổ sung</p>
                     <ul className="mt-1 list-disc pl-4 text-[12.5px] text-amber-900">
                       {card.missing.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
                     </ul>
@@ -158,7 +158,7 @@ export default function ShipmentDocumentPicker({
 
                 {latest && (
                   <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-2.5">
-                    <p className="text-[11.5px] font-bold uppercase text-emerald-800">Bản mới nhất</p>
+                    <p className="text-[12px] font-bold uppercase text-emerald-800">Bản mới nhất</p>
                     <p className="text-[12.5px] font-semibold text-emerald-950 break-words mt-0.5">{latestSummary(latest)}</p>
                     <button
                       type="button"
@@ -222,14 +222,14 @@ export default function ShipmentDocumentPicker({
                           <li key={row.recordId || `${card.id}-${row.revision}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-2">
                             <div className="min-w-0">
                               <p className="text-[12px] font-semibold text-slate-800">R{row.revision} · {row.fileName || row.status}</p>
-                              <p className="text-[11.5px] text-slate-500">{[row.generatedAt, row.generatedBy].filter(Boolean).join(" · ")}</p>
+                              <p className="text-[12px] text-slate-500">{[row.generatedAt, row.generatedBy].filter(Boolean).join(" · ")}</p>
                             </div>
                             <button
                               type="button"
                               disabled={!enabled}
                               data-testid="shipment-document-download-history"
                               onClick={() => onDownload(card, row)}
-                              className="btn-press touch-target inline-flex min-h-[36px] items-center gap-1 rounded-md border border-slate-200 px-2.5 text-[11.5px] font-bold text-[#0f2a4a] disabled:cursor-not-allowed disabled:text-slate-400"
+                              className="btn-press touch-target inline-flex min-h-[36px] items-center gap-1 rounded-md border border-slate-200 px-2.5 text-[12px] font-bold text-[#0f2a4a] disabled:cursor-not-allowed disabled:text-slate-400"
                               aria-label={enabled ? `Tải ${card.label} bản R${row.revision}` : `${card.label} bản R${row.revision} chưa thể tải`}
                             >
                               <Download size={13} aria-hidden="true" /> Tải
@@ -246,7 +246,7 @@ export default function ShipmentDocumentPicker({
         </div>
       )}
 
-      <p className="text-[11.5px] text-slate-400 mt-3">Đã chọn {selectedCount} biểu mẫu · lịch sử chứng từ độc lập với lựa chọn hiện tại.</p>
+      <p className="text-[12px] text-slate-400 mt-3">Đã chọn {selectedCount} biểu mẫu · lịch sử chứng từ độc lập với lựa chọn hiện tại.</p>
 
       {selection.open && (
         <SheetDialog
@@ -318,9 +318,9 @@ export default function ShipmentDocumentPicker({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-bold text-[#0f2a4a]">{template.label}</span>
-                    <span className="block text-[11.5px] text-slate-500 mt-0.5">{template.category}</span>
+                    <span className="block text-[12px] text-slate-500 mt-0.5">{template.category}</span>
                     {!template.available && (
-                      <span id={reasonId} className="block text-[11.5px] text-amber-800 mt-1">
+                      <span id={reasonId} className="block text-[12px] text-amber-800 mt-1">
                         {template.availabilityReason || "Hiện chưa sẵn sàng."}
                         {" "}· vẫn chọn được để theo dõi; tạo bản mới vẫn bị khóa.
                       </span>
