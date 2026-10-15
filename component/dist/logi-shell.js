@@ -12703,12 +12703,12 @@ function bs({ sandbox: e, displayName: t }) {
 					className: "block font-extrabold text-[14.5px] text-[#0f2a4a]",
 					children: "TRƯỜNG THÀNH"
 				}), /* @__PURE__ */ (0, H.jsx)("span", {
-					className: "block text-[11.5px] text-slate-500 font-medium",
+					className: "block text-[12px] text-slate-500 font-medium",
 					children: t ? `${t} · Nội bộ` : "Nội bộ"
 				})]
 			}),
 			e && /* @__PURE__ */ (0, H.jsx)("span", {
-				className: "text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1",
+				className: "text-[12px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1",
 				children: "PROTOTYPE"
 			})
 		]
@@ -12926,7 +12926,7 @@ function xs({ children: e }) {
 											className: "block text-[13px] font-bold text-[#0f2a4a]",
 											children: r
 										}), /* @__PURE__ */ (0, H.jsxs)("span", {
-											className: "block text-[11.5px] text-slate-500",
+											className: "block text-[12px] text-slate-500",
 											children: [
 												Po[t],
 												" · ",
@@ -12935,7 +12935,7 @@ function xs({ children: e }) {
 										})]
 									}),
 									/* @__PURE__ */ (0, H.jsx)("span", {
-										className: "text-[10px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5",
+										className: "text-[12px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5",
 										children: "Xem trước"
 									})
 								]
@@ -12983,7 +12983,7 @@ function xs({ children: e }) {
 										className: "block text-[13px] font-bold text-[#0f2a4a]",
 										children: r
 									}), /* @__PURE__ */ (0, H.jsxs)("span", {
-										className: "block text-[11.5px] text-slate-500",
+										className: "block text-[12px] text-slate-500",
 										children: [
 											Po[t],
 											" · ",
@@ -13001,7 +13001,7 @@ function xs({ children: e }) {
 								size: 21,
 								className: "text-[#0f2a4a]"
 							}), x > 0 && /* @__PURE__ */ (0, H.jsx)("span", {
-								className: "absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold grid place-items-center",
+								className: "absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[12px] font-extrabold grid place-items-center",
 								children: x
 							})]
 						}),
@@ -13132,7 +13132,7 @@ function xs({ children: e }) {
 							children: [Fo.map((e) => /* @__PURE__ */ (0, H.jsxs)("div", {
 								className: "mb-4",
 								children: [/* @__PURE__ */ (0, H.jsx)("p", {
-									className: "px-3 mb-1.5 text-[11.5px] font-extrabold tracking-wider text-slate-400",
+									className: "px-3 mb-1.5 text-[12px] font-extrabold tracking-wider text-slate-400",
 									children: e.group
 								}), e.items.map((e) => {
 									let t = ls[e.icon] ?? xa;
@@ -13149,7 +13149,7 @@ function xs({ children: e }) {
 												children: e.label
 											}),
 											e.soon && /* @__PURE__ */ (0, H.jsx)("span", {
-												className: "text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5",
+												className: "text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5",
 												children: "Sắp có"
 											})
 										]
@@ -13223,7 +13223,7 @@ function xs({ children: e }) {
 									Fo.map((e) => /* @__PURE__ */ (0, H.jsxs)("div", {
 										className: "mb-3",
 										children: [/* @__PURE__ */ (0, H.jsx)("p", {
-											className: "px-2 mb-1 text-[11px] font-extrabold tracking-wider text-slate-400",
+											className: "px-2 mb-1 text-[12px] font-extrabold tracking-wider text-slate-400",
 											children: e.group
 										}), e.items.map((e) => {
 											let t = ls[e.icon] ?? xa, n = e.to === "/" ? C.pathname === "/" : C.pathname.startsWith(e.to);
@@ -13238,7 +13238,7 @@ function xs({ children: e }) {
 													}),
 													e.label,
 													e.soon && /* @__PURE__ */ (0, H.jsx)("span", {
-														className: "ml-auto text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5",
+														className: "ml-auto text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5",
 														children: "Sắp có"
 													})
 												]
@@ -13292,7 +13292,7 @@ function xs({ children: e }) {
 						let t = e.to === "/" ? C.pathname === "/" : C.pathname.startsWith(e.to), n = e.icon;
 						return /* @__PURE__ */ (0, H.jsxs)(jn, {
 							to: e.to,
-							className: K("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[11.5px] font-semibold", t ? "text-[#0f2a4a]" : "text-slate-400"),
+							className: K("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-semibold", t ? "text-[#0f2a4a]" : "text-slate-400"),
 							children: [
 								/* @__PURE__ */ (0, H.jsx)(n, {
 									size: 22,
@@ -13304,7 +13304,7 @@ function xs({ children: e }) {
 						}, e.to);
 					}), /* @__PURE__ */ (0, H.jsxs)("button", {
 						onClick: () => p(!0),
-						className: "touch-target flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11.5px] font-semibold text-slate-500",
+						className: "touch-target flex flex-col items-center justify-center gap-0.5 py-1.5 text-[12px] font-semibold text-slate-500",
 						children: [/* @__PURE__ */ (0, H.jsx)("span", {
 							className: "w-11 h-8 -mt-3 rounded-2xl bg-[#0f2a4a] text-white grid place-items-center shadow-lg",
 							children: /* @__PURE__ */ (0, H.jsx)(Fa, { size: 22 })
