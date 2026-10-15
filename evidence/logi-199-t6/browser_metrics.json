@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "6dba8cb5a25caeeffcfb90f133676b8838d53e89",
+  "commit": "181eddb3964ca255100983535dac82d40ddc2093",
   "lots": {
     "T6-FCL": {
       "nodes": [
@@ -18,10 +18,58 @@
         "delivery"
       ],
       "overflowPx": 0
+    },
+    "T6-LCL": {
+      "nodes": [
+        "booking",
+        "pickup",
+        "customs-export",
+        "si-vgm",
+        "cfs-receipt",
+        "etd",
+        "on-board",
+        "transit",
+        "arrival",
+        "customs-import",
+        "delivery"
+      ],
+      "overflowPx": 0
+    },
+    "T6-AIR": {
+      "nodes": [
+        "customs-export",
+        "air-booking",
+        "air-acceptance",
+        "uplift",
+        "air-arrival",
+        "customs-import",
+        "delivery"
+      ],
+      "overflowPx": 0
+    },
+    "T6-ROAD-LTL": {
+      "nodes": [
+        "pickup",
+        "MAIN_CARRIAGE",
+        "road-ltl",
+        "delivery"
+      ],
+      "overflowPx": 0
     }
   },
-  "checks": [],
-  "verdict": "T6_MODES_STAGING_FAIL",
-  "failure": "locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('a[href=\"/lo-hang\"]').first()\n    - locator resolved to <a href=\"/lo-hang\" aria-current=\"page\" data-discover=\"true\" class=\"flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors bg-[#0f2a4a] text-white shadow-md\">…</a>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    28 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n\n    at openLot (/home/runner/work/logistics-work-desk-arena/logistics-work-desk-arena/tests/component/browser_logi199_t6_modes.mjs:56:54)\n    at /home/runner/work/logistics-work-desk-arena/logistics-work-desk-arena/tests/component/browser_logi199_t6_modes.mjs:69:11",
-  "serverLogTail": "2026-10-15 03:09:02.380 Uvicorn server started on 127.0.0.1:9521\n\n  You can now view your Streamlit app in your browser.\n\n  URL: http://127.0.0.1:9521\n\n"
+  "checks": [
+    {
+      "label": "fcl-on-board-write-readback",
+      "state": "COMPLETED"
+    },
+    {
+      "label": "mobile-T6-FCL",
+      "overflowPx": 0
+    },
+    {
+      "label": "mobile-T6-AIR",
+      "overflowPx": 0
+    }
+  ],
+  "verdict": "T6_MODES_STAGING_PASS"
 }
