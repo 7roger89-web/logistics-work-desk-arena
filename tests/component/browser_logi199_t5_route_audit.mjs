@@ -48,10 +48,13 @@ const measure = page => page.evaluate(() => {
   const vw = innerWidth, shellRect = shell ? shell.getBoundingClientRect() : { left: 0, right: vw };
   const clipped = [];
   for (const r of roots) for (const el of r.querySelectorAll('button,a,[role="tab"],input,select,textarea')) {
-    const b = el.getBoundingClientRect(); if (!b.width || !b.height || b.bottom < 0 || b.top > innerHeight) continue;
+    const b = el.getBoundingClientRect(); if (b.width < 2 || b.height < 2 || b.bottom < 0 || b.top > innerHeight) continue; // sr-only skip links
+    let fixed = false; for (let q = el; q && q.nodeType === 1; q = q.parentElement) if (getComputedStyle(q).position === 'fixed') { fixed = true; break; }
     const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none') continue;
     if (el.closest('[data-testid="journey-map-transform"],[data-testid="journey-map-viewport"]')) continue; // pan/zoom canvas
-    const outside = b.right > Math.min(vw, shellRect.right) + 1 || b.left < Math.max(0, shellRect.left) - 1;
+    // Fixed bars (bottom tab bar) are bounded by the viewport; everything else by the shell.
+    const right = fixed ? vw : Math.min(vw, shellRect.right), left = fixed ? 0 : Math.max(0, shellRect.left);
+    const outside = b.right > right + 1 || b.left < left - 1;
     if (!outside) continue;
     let scroller = null;
     for (let p = el.parentElement; p; p = p.parentElement || (p.getRootNode && p.getRootNode().host) || null) {
