@@ -5,17 +5,17 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "ct/logi-app-renewal-01-t0-air-truth",
+  "active_branch": "ct/logi199-t6-integration",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "T0_BOUNDED_FIXES_VERIFIED__INDEPENDENT_REREVIEW_AND_OWNER_UAT_PENDING",
+  "stage": "T1_T4_CODE_AND_T6_STAGING_BROWSER_PASS__T5_APPWIDE_AND_OWNER_UAT_PENDING",
   "progress": {
-    "T0": "SOURCE_PYTHON_BUILD_AND_REAL_STAGING_MOBILE_MAP_SMOKE_PASS__OWNER_GATE_PENDING",
-    "T1": "NOT_STARTED",
-    "T2": "NOT_STARTED",
-    "T3": "NOT_STARTED",
-    "T4": "NOT_STARTED",
-    "T5": "NOT_STARTED",
-    "T6": "NOT_STARTED"
+    "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
+    "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
+    "T2": "PR #203: LCL CFS receipt/count/kg/CBM, consolidation fact, SI-only (no VGM/gate-in/container), deconsolidation CODE+REGRESSION+CI PASS",
+    "T3": "PR #203: AIR chain AWB+flight / warehouse acceptance+weights+screening / uplift (ATD != flown) / transit / ATA CODE+REGRESSION+CI PASS",
+    "T4": "PR #203: ROAD vehicle plate+driver, LTL receipt/consolidation, border only for cross-border scope, handover+POD; RAIL read-only CODE+REGRESSION+CI PASS",
+    "T5": "PARTIAL: shell font/palette from #200; non-sea map canvas sizing fix (#203). App-wide route audit (Home/Customers/Quotes/Contracts/Finance/Reports/Tariff/Tools/Admin) NOT_STARTED; compact 5-phase stepper belongs to #198",
+    "T6": "Integration branch ct/logi199-t6-integration (#200 + #201..#203): real Streamlit staging browser PASS run 38674861674 (FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board UI write->readback, 1440x900 + 390x844 no overflow). Owner UAT pending"
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -28,9 +28,10 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "The 2-node LO-0306 staging profile is scope-incomplete; full SEA FCL/LCL/AIR/ROAD lifecycle remains outside T0 and is not certified by this visual smoke.",
-    "Independent supervisor re-review of updated evidence remains to be completed (prior rejection belongs to pre-fix HEAD).",
-    "Owner visual UAT / any main->production release remains explicitly gated."
+    "Owner UAT and explicit production approval (main merge == production deploy).",
+    "Independent reviewer not available in this executor session; evidence is CI+browser only.",
+    "31 pre-existing failing tests on main@5c6642a (e.g. test_partner_reconciliation_desk_write_oracle import ROUTES, primary_action_unify, login bootstrap) — unchanged by this work, not fixed (out of #199 scope).",
+    "tests/component/dom_acceptance_visual_shipment_workspace.mjs already fails on main (expects 11 nodes before compact journey)."
   ],
   "existing_issue_dependencies": [
     197,
@@ -41,7 +42,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Request independent re-review of PR #200 using actual browser metrics/screenshots from run #38669073733. Keep PR draft; do not merge/deploy before Owner production approval. Continue T1–T6 in GOAL #199 in bounded slices after T0 gate.",
+  "next": "1) Independent reviewer re-review of #200,#202,#203. 2) T5 route-by-route audit using evidence/logi-199-t6 runner pattern (add routes). 3) Rebase #202/#203 UI lines onto #198 when #198 is ready. 4) Owner UAT on staging; no main merge/deploy without Owner.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -58,9 +59,9 @@
   ],
   "status": "IN_PROGRESS",
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
-  "active_pr": 200,
+  "active_pr": 203,
   "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/200",
-  "current_subtask": "T0 independent-review blockers V1 (mobile title/attention readability) and V2 (map node click proof) repaired on PR #200 and reproduced in actual isolated Streamlit browser, run #38669073733; await external/owner sign-off.",
+  "current_subtask": "Checkpoint after T1-T4 + T6 staging browser; next: T5 app-wide visual audit per route, then integrate with #198 once its draft lands.",
   "source_receipt": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -87,5 +88,18 @@
       "evidence/logi-199-t0/mobile-journey.png",
       "evidence/logi-199-t0/browser_metrics.json"
     ]
+  },
+  "source_receipt_t6": {
+    "ci_run_id": 38674861674,
+    "integration_head": "181eddb",
+    "evidence_commit": "d50488e",
+    "evidence": "evidence/logi-199-t6/",
+    "prs": [
+      200,
+      201,
+      202,
+      203
+    ],
+    "production": "UNTOUCHED"
   }
 }
