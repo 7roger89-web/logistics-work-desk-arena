@@ -3,12 +3,20 @@ import os
 import sys
 from playwright.sync_api import sync_playwright
 
-ARGS = ["--no-sandbox", "--disable-gpu", "--single-process", "--no-zygote"]
+ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
 ENV = {"LD_LIBRARY_PATH": "/tmp/libs/lib:/tmp", "FONTCONFIG_PATH": "/tmp/libs/fonts"}
-OUT = os.environ.get("OUT", "/tmp/cap/g2")
+OUT = os.environ.get("OUT", "evidence/logi-199-g2")
 os.makedirs(OUT, exist_ok=True)
 URL = os.environ.get("URL", "http://127.0.0.1:9501")
+METRICS_PATH = os.path.join(OUT, "metrics.json")
+
 report: dict = {}
+if os.path.exists(METRICS_PATH):
+    try:
+        with open(METRICS_PATH, "r", encoding="utf-8") as f:
+            report = json.load(f)
+    except Exception:
+        report = {}
 
 
 def scroll_top(pg) -> None:
@@ -44,6 +52,27 @@ def open_lot(pg, lot="T6-FCL") -> None:
     pg.wait_for_timeout(1000)
     scroll_top(pg)
     pg.wait_for_timeout(300)
+
+
+def pan_to_onboard_mobile(pg) -> dict:
+    vp = pg.get_by_test_id("journey-map-viewport")
+    box = vp.bounding_box()
+    assert box is not None, "journey-map-viewport bounding box missing"
+    sx = box["x"] + 50
+    sy = box["y"] + box["height"] * 0.45
+    ex = box["x"] + 330
+    ey = sy
+    pg.mouse.move(sx, sy)
+    pg.mouse.down()
+    pg.mouse.move(ex, ey, steps=12)
+    pg.mouse.up()
+    pg.wait_for_timeout(400)
+    node_box = pg.get_by_test_id("journey-node-on-board").bounding_box()
+    return {
+        "map_top_y": round(box["y"], 1),
+        "map_height": round(box["height"], 1),
+        "onboard_box_after_pan": node_box,
+    }
 
 
 def fonts(pg) -> dict:
@@ -140,6 +169,9 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)[:300]))
         open_lot(pg)
         report["mobile_overflow_px"] = overflow(pg)
+        vp_box = pg.get_by_test_id("journey-map-viewport").bounding_box()
+        report["mobile_map_top_y"] = round(vp_box["y"], 1) if vp_box else None
+        report["mobile_map_height_px"] = round(vp_box["height"], 1) if vp_box else None
         pg.screenshot(path=f"{OUT}/mobile-01-journey-initial.png")
 
         # Tap arrival node for mobile bubble + sheet screenshots
@@ -154,29 +186,44 @@ with sync_playwright() as p:
         report["mobile_overflow_modal_px"] = overflow(pg)
         pg.screenshot(path=f"{OUT}/mobile-03-task-sheet.png")
 
-        # Mobile bottom sheet real write + readback proof on T6-FCL (on-board node)
-        pg.locator('[aria-label="Đóng công đoạn"]').click()
-        pg.wait_for_timeout(300)
-        pg.get_by_test_id("journey-node-on-board").dispatch_event("click")
+        # Close arrival bottom sheet via real touch tap
+        pg.locator('[aria-label="Đóng công đoạn"]').tap()
+        pg.wait_for_timeout(350)
+
+        # REAL TOUCH FLOW on T6-FCL: pan to ON BOARD -> tap node -> tap bubble task -> input -> tap Save -> reload -> pan -> tap -> readback
+        pan_info = pan_to_onboard_mobile(pg)
+        report["mobile_touch_pan"] = pan_info
+        pg.get_by_test_id("journey-node-on-board").tap()
         pg.wait_for_timeout(500)
-        pg.locator('[data-testid="journey-bubble-task-stage"]').dispatch_event("click")
+        pg.locator('[data-testid="journey-bubble-task-stage"]').tap()
         pg.wait_for_timeout(800)
         inp_m = pg.get_by_label("Ngày xếp hàng lên tàu (on-board)", exact=True)
-        if inp_m.count():
-            inp_m.first.fill("2026-10-04")
-            save_btn = pg.get_by_role("button", name="Lưu mốc có bằng chứng", exact=True)
-            save_btn.scroll_into_view_if_needed()
-            save_btn.click()
-            pg.wait_for_timeout(2000)
-            open_lot(pg)
-            pg.get_by_test_id("journey-node-on-board").dispatch_event("click")
-            pg.wait_for_timeout(500)
-            pg.locator('[data-testid="journey-bubble-task-stage"]').dispatch_event("click")
-            pg.wait_for_timeout(800)
-            inp_m2 = pg.get_by_label("Ngày xếp hàng lên tàu (on-board)", exact=True)
-            report["mobile_readback_value"] = inp_m2.first.input_value()
+        assert inp_m.count() > 0, "ON BOARD date input not found in mobile bottom sheet"
+        inp_m.first.tap()
+        inp_m.first.fill("2026-10-04")
+        pg.screenshot(path=f"{OUT}/mobile-04-onboard-touch-editor.png")
+        save_btn = pg.get_by_role("button", name="Lưu mốc có bằng chứng", exact=True)
+        save_btn.scroll_into_view_if_needed()
+        save_btn.tap()
+        report["mobile_touch_save_tapped"] = True
+        pg.wait_for_timeout(2000)
+
+        # Reload lot, pan to ON BOARD, tap node, tap bubble task, read back persisted value
+        open_lot(pg)
+        pan_to_onboard_mobile(pg)
+        pg.get_by_test_id("journey-node-on-board").tap()
+        pg.wait_for_timeout(500)
+        pg.locator('[data-testid="journey-bubble-task-stage"]').tap()
+        pg.wait_for_timeout(800)
+        inp_m2 = pg.get_by_label("Ngày xếp hàng lên tàu (on-board)", exact=True)
+        report["mobile_readback_value"] = inp_m2.first.input_value()
+        report["mobile_touch_flow_verdict"] = "PASS" if report["mobile_readback_value"] == "2026-10-04" else "FAIL"
+        pg.screenshot(path=f"{OUT}/mobile-05-onboard-touch-readback.png")
 
         report["mobile_errors"] = errs[:5]
         pg.close()
     b.close()
+
+with open(METRICS_PATH, "w", encoding="utf-8") as f:
+    json.dump(report, f, ensure_ascii=False, indent=2)
 print(json.dumps(report, ensure_ascii=False, indent=1))

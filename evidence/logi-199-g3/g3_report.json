@@ -135,7 +135,20 @@
       "tooSmallSample": [],
       "screenshot": "evidence/logi-199-g3/desktop-12-bao-cao-ceo.png"
     },
-    "errors": []
+    "errors": [],
+    "08b-hop-dong-chi-tiet": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g3/desktop-08b-hop-dong-chi-tiet.png"
+    },
+    "11b-cong-no-popup": {
+      "status": "NOT_RUN",
+      "reason": "Fixture staging không có dòng công nợ đối tác đã xác nhận (0 dòng — giữ đúng invariant UNKNOWN != 0), nên nút mở popup Trả đối tác không hiển thị."
+    }
   },
   "mobile": {
     "01-home": {
@@ -246,6 +259,46 @@
       "tooSmallSample": [],
       "screenshot": "evidence/logi-199-g3/mobile-12-bao-cao-ceo.png"
     },
-    "errors": []
+    "errors": [],
+    "05b-customer-playbook": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g3/mobile-05b-customer-playbook.png"
+    },
+    "08b-hop-dong-chi-tiet": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g3/mobile-08b-hop-dong-chi-tiet.png"
+    },
+    "08c-hop-dong-moi": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g3/mobile-08c-hop-dong-moi.png"
+    },
+    "09b-thu-tien-popup": {
+      "fontFamily": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+      "color": "rgb(16, 38, 60)",
+      "backgroundColor": "rgb(237, 241, 245)",
+      "overflowPx": 0,
+      "tooSmallCount": 0,
+      "tooSmallSample": [],
+      "screenshot": "evidence/logi-199-g3/mobile-09b-thu-tien-popup.png"
+    },
+    "11b-cong-no-popup": {
+      "status": "NOT_RUN",
+      "reason": "Fixture staging không có dòng công nợ đối tác đã xác nhận (0 dòng — giữ đúng invariant UNKNOWN != 0), nên nút mở popup Trả đối tác không hiển thị."
+    }
   }
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -153,10 +154,11 @@ def run_g3():
             # 5. Khách Hàng + CustomerPlaybook (/khach-hang/:id)
             nav_sidebar(page, "Khách Hàng", mobile=is_mobile)
             snap(page, out_dir, mode, "05-khach-hang", report)
-            playbook_link = page.locator('a[href^="/khach-hang/"], button:has-text("Playbook"), a:has-text("Hồ sơ")')
-            if playbook_link.count() and playbook_link.first.is_visible():
-                playbook_link.first.click()
-                page.wait_for_timeout(300)
+            playbook_link = page.locator('[data-testid="customer-open-playbook"]').first
+            if playbook_link.count():
+                playbook_link.dispatch_event("click")
+                page.wait_for_timeout(350)
+                page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
                 snap(page, out_dir, mode, "05b-customer-playbook", report)
 
             # 6. Đại Lý Trường Thành (/ngu-canh-doi-tac)
@@ -170,26 +172,27 @@ def run_g3():
             # 8. Hợp đồng + Tạo hợp đồng mới + Chi tiết hợp đồng
             nav_sidebar(page, "Hợp đồng", mobile=is_mobile)
             snap(page, out_dir, mode, "08-hop-dong", report)
-            ct_detail = page.locator("a", has_text="HD-").first
-            if ct_detail.count() and ct_detail.is_visible():
-                ct_detail.click()
+            ct_detail = page.locator('a[href^="/hop-dong/HD"]').first
+            if ct_detail.count():
+                ct_detail.dispatch_event("click")
                 page.wait_for_timeout(350)
                 page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
                 snap(page, out_dir, mode, "08b-hop-dong-chi-tiet", report)
             nav_sidebar(page, "Hợp đồng", mobile=is_mobile)
-            new_ct = page.locator('a[href="/hop-dong/moi"], a:has-text("Tạo hợp đồng")').first
-            if new_ct.count() and new_ct.is_visible():
-                new_ct.click()
+            new_ct = page.locator('a[href="/hop-dong/moi"]').first
+            if new_ct.count():
+                new_ct.dispatch_event("click")
                 page.wait_for_timeout(350)
+                page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
                 snap(page, out_dir, mode, "08c-hop-dong-moi", report)
 
             # 9. Thu tiền (/tai-chinh/thu-tien) + Receipt sheet popup
             nav_sidebar(page, "Thu tiền", mobile=is_mobile)
             snap(page, out_dir, mode, "09-thu-tien", report)
-            pay_btn = page.locator('button:has-text("Thu tiền"), button:has-text("GHI NHẬN THU")').first
-            if pay_btn.count() and pay_btn.is_visible():
+            pay_btn = page.locator("button:visible", has_text=re.compile(r"thu tiền", re.I)).first
+            if pay_btn.count():
                 pay_btn.click()
-                page.wait_for_timeout(250)
+                page.wait_for_timeout(300)
                 snap(page, out_dir, mode, "09b-thu-tien-popup", report)
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(200)
@@ -201,13 +204,18 @@ def run_g3():
             # 11. Công nợ đối tác (/tai-chinh/cong-no-doi-tac) + Payment sheet popup
             nav_sidebar(page, "Công nợ đối tác", mobile=is_mobile)
             snap(page, out_dir, mode, "11-cong-no-doi-tac", report)
-            partner_pay_btn = page.locator('button:has-text("Trả đối tác"), button:has-text("TRẢ ĐỐI TÁC")').first
-            if partner_pay_btn.count() and partner_pay_btn.is_visible():
+            partner_pay_btn = page.locator("button:visible", has_text=re.compile(r"trả đối tác", re.I)).first
+            if partner_pay_btn.count():
                 partner_pay_btn.click()
                 page.wait_for_timeout(250)
                 snap(page, out_dir, mode, "11b-cong-no-popup", report)
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(200)
+            else:
+                report[mode]["11b-cong-no-popup"] = {
+                    "status": "NOT_RUN",
+                    "reason": "Fixture staging không có dòng công nợ đối tác đã xác nhận (0 dòng — giữ đúng invariant UNKNOWN != 0), nên nút mở popup Trả đối tác không hiển thị.",
+                }
 
             # 12. Báo cáo CEO (/bao-cao-ceo)
             nav_sidebar(page, "Báo cáo CEO", mobile=is_mobile)
@@ -265,8 +273,8 @@ def run_g4():
                     close_notif.click()
                     page.wait_for_timeout(200)
 
-            add_btn = page.locator('button:has-text("Thêm")').first
-            if add_btn.count() and add_btn.is_visible():
+            add_btn = page.locator('nav button:has-text("Thêm")').first if is_mobile else page.locator("button:visible", has_text="Thêm").first
+            if add_btn.count():
                 add_btn.click()
                 page.wait_for_timeout(250)
                 snap(page, out_dir, mode, "10-quick-add-sheet", report)
@@ -281,6 +289,97 @@ def run_g4():
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
+def run_gaps():
+    g3_dir = ROOT / "evidence/logi-199-g3"
+    g4_dir = ROOT / "evidence/logi-199-g4"
+    g3_report = json.loads((g3_dir / "g3_report.json").read_text(encoding="utf-8"))
+    g4_report = json.loads((g4_dir / "g4_report.json").read_text(encoding="utf-8"))
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=CHROMIUM, args=LAUNCH_ARGS, env=LAUNCH_ENV)
+        ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        page = ctx.new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)))
+        page.goto(URL, wait_until="networkidle", timeout=60000)
+        page.locator(".logi-shell").first.wait_for(state="visible", timeout=30000)
+        page.wait_for_timeout(600)
+
+        # Desktop 08b contract detail + 11b NOT_RUN record
+        page.set_viewport_size({"width": 1440, "height": 900})
+        page.wait_for_timeout(250)
+        nav_sidebar(page, "Hợp đồng", mobile=False)
+        ct_detail = page.locator('a[href^="/hop-dong/HD"]').first
+        if ct_detail.count():
+            ct_detail.dispatch_event("click")
+            page.wait_for_timeout(350)
+            page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
+            snap(page, g3_dir, "desktop", "08b-hop-dong-chi-tiet", g3_report)
+        g3_report["desktop"]["11b-cong-no-popup"] = {
+            "status": "NOT_RUN",
+            "reason": "Fixture staging không có dòng công nợ đối tác đã xác nhận (0 dòng — giữ đúng invariant UNKNOWN != 0), nên nút mở popup Trả đối tác không hiển thị.",
+        }
+
+        # Mobile gaps: 05b-customer-playbook, 08b-hop-dong-chi-tiet, 08c-hop-dong-moi, 09b-thu-tien-popup, 10-quick-add-sheet
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(300)
+
+        nav_sidebar(page, "Khách Hàng", mobile=True)
+        playbook_link = page.locator('[data-testid="customer-open-playbook"]').first
+        if playbook_link.count():
+            playbook_link.dispatch_event("click")
+            page.wait_for_timeout(350)
+            page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
+            snap(page, g3_dir, "mobile", "05b-customer-playbook", g3_report)
+
+        nav_sidebar(page, "Hợp đồng", mobile=True)
+        ct_detail_m = page.locator('a[href^="/hop-dong/HD"]').first
+        if ct_detail_m.count():
+            ct_detail_m.dispatch_event("click")
+            page.wait_for_timeout(350)
+            page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
+            snap(page, g3_dir, "mobile", "08b-hop-dong-chi-tiet", g3_report)
+
+        nav_sidebar(page, "Hợp đồng", mobile=True)
+        new_ct_m = page.locator('a[href="/hop-dong/moi"]').first
+        if new_ct_m.count():
+            new_ct_m.dispatch_event("click")
+            page.wait_for_timeout(350)
+            page.locator(".logi-shell").first.evaluate("el => { el.scrollTop = 0; }")
+            snap(page, g3_dir, "mobile", "08c-hop-dong-moi", g3_report)
+
+        nav_sidebar(page, "Thu tiền", mobile=True)
+        pay_btn_m = page.locator("button:visible", has_text=re.compile(r"thu tiền", re.I)).first
+        if pay_btn_m.count():
+            pay_btn_m.click()
+            page.wait_for_timeout(300)
+            snap(page, g3_dir, "mobile", "09b-thu-tien-popup", g3_report)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(200)
+
+        g3_report["mobile"]["11b-cong-no-popup"] = {
+            "status": "NOT_RUN",
+            "reason": "Fixture staging không có dòng công nợ đối tác đã xác nhận (0 dòng — giữ đúng invariant UNKNOWN != 0), nên nút mở popup Trả đối tác không hiển thị.",
+        }
+
+        nav_sidebar(page, "/nguoi-dung", mobile=True)
+        add_btn_m = page.locator('nav button:has-text("Thêm")').first
+        if add_btn_m.count():
+            add_btn_m.click()
+            page.wait_for_timeout(300)
+            snap(page, g4_dir, "mobile", "10-quick-add-sheet", g4_report)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(200)
+
+        g3_report["mobile"]["errors"] = list(errs)
+        g4_report["mobile"]["errors"] = list(errs)
+        browser.close()
+
+    (g3_dir / "g3_report.json").write_text(json.dumps(g3_report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (g4_dir / "g4_report.json").write_text(json.dumps(g4_report, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"g3_mobile_keys": list(g3_report["mobile"].keys()), "g4_mobile_keys": list(g4_report["mobile"].keys()), "errors": errs}, ensure_ascii=False, indent=2))
+
+
 if __name__ == "__main__":
     stage = sys.argv[1] if len(sys.argv) > 1 else "g1"
     if stage == "g1":
@@ -289,3 +388,5 @@ if __name__ == "__main__":
         run_g3()
     elif stage == "g4":
         run_g4()
+    elif stage == "gaps":
+        run_gaps()

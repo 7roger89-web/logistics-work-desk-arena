@@ -1,0 +1,72 @@
+{
+  "mobile_overflow_px": 0,
+  "mobile_map_top_y": 253.9,
+  "mobile_map_height_px": 549,
+  "mobile_bubble_visible": 1,
+  "mobile_modal_open": 1,
+  "mobile_overflow_modal_px": 0,
+  "mobile_touch_pan": {
+    "map_top_y": 253.9,
+    "map_height": 549,
+    "onboard_box_after_pan": {
+      "x": 137,
+      "y": 615.9375,
+      "width": 116,
+      "height": 66
+    }
+  },
+  "mobile_touch_save_tapped": true,
+  "mobile_readback_value": "2026-10-04",
+  "mobile_touch_flow_verdict": "PASS",
+  "mobile_errors": [],
+  "fonts": {
+    "faces": [
+      "Be Vietnam Pro 400 loaded",
+      "Be Vietnam Pro 400 loaded",
+      "Be Vietnam Pro 500 loaded",
+      "Be Vietnam Pro 500 loaded",
+      "Be Vietnam Pro 600 loaded",
+      "Be Vietnam Pro 600 loaded",
+      "Be Vietnam Pro 700 loaded",
+      "Be Vietnam Pro 700 loaded",
+      "Be Vietnam Pro 800 loaded",
+      "Be Vietnam Pro 800 loaded",
+      "IBM Plex Mono 400 loaded",
+      "IBM Plex Mono 400 loaded",
+      "IBM Plex Mono 500 loaded",
+      "IBM Plex Mono 500 loaded",
+      "IBM Plex Mono 600 loaded",
+      "IBM Plex Mono 600 loaded",
+      "IBM Plex Mono 700 loaded",
+      "IBM Plex Mono 700 loaded"
+    ],
+    "beLoaded": true,
+    "plexLoaded": true
+  },
+  "desktop_overflow_px": 0,
+  "legend_visible": true,
+  "utility_trigger_visible": true,
+  "zoom_initial": "95%",
+  "nodes": [
+    "booking:UPCOMING",
+    "pickup:UPCOMING",
+    "customs-export:UPCOMING",
+    "si-vgm:UPCOMING",
+    "gate-in:UPCOMING",
+    "etd:UPCOMING",
+    "on-board:UPCOMING",
+    "transit:UPCOMING",
+    "arrival:PROBLEM",
+    "customs-import:PROBLEM",
+    "delivery:PROBLEM"
+  ],
+  "bubble_visible": 1,
+  "bubble_tasks": [
+    "Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn. | CHƯA GHI NHẬN HẠN · 0 CHỨNG TỪ | · Chưa bắt đầu",
+    "Chứng từ đính kèm công đoạn | 0 TỆP ĐÃ GHI NHẬN · 1 LOẠI YÊU CẦU | ◷ Chờ thông tin"
+  ],
+  "modal_open": 1,
+  "onboard_input_visible": 1,
+  "readback_value": "2026-10-03",
+  "desktop_errors": []
+}

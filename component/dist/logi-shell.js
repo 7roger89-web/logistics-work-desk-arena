@@ -13556,13 +13556,13 @@ function Es({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 				"data-testid": "attention-empty",
 				children: n
 			}) : /* @__PURE__ */ (0, H.jsxs)("div", {
-				className: "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:gap-y-1.5 sm:py-1",
+				className: "flex flex-wrap items-center gap-x-2 gap-y-1 px-2.5 py-1.5 sm:gap-x-3 sm:gap-y-1.5 sm:px-3 sm:py-1",
 				children: [
 					/* @__PURE__ */ (0, H.jsxs)("span", {
-						className: "inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#C0392B] px-2.5 py-1.5 text-[12px] font-extrabold text-white",
+						className: "inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#C0392B] px-2 py-0.5 sm:px-2.5 sm:py-1.5 text-[12px] font-extrabold text-white",
 						children: [
 							/* @__PURE__ */ (0, H.jsx)(Jr, {
-								size: 14,
+								size: 13,
 								"aria-hidden": "true"
 							}),
 							" CẦN XỬ LÝ (",
@@ -13587,22 +13587,21 @@ function Es({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 							}),
 							/* @__PURE__ */ (0, H.jsx)("p", {
 								"data-testid": "attention-primary-action",
-								className: "break-words text-[14px] font-extrabold leading-snug text-[#8E2F22] sm:truncate",
+								className: "break-words text-[13px] sm:text-[14px] font-extrabold leading-tight sm:leading-snug text-[#8E2F22] sm:truncate",
 								children: t.action
 							}),
 							t.reason && /* @__PURE__ */ (0, H.jsx)("p", {
-								className: "break-words text-[12.5px] text-[#8E2F22]/90 sm:truncate",
+								className: "hidden sm:block break-words text-[12.5px] text-[#8E2F22]/90 sm:truncate",
 								children: t.reason
 							})
 						]
 					}),
 					/* @__PURE__ */ (0, H.jsxs)(V, {
 						to: t.route,
-						className: "btn-press touch-target order-1 ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#C0392B] hover:bg-[#8E2F22] px-3.5 text-[13px] font-extrabold text-white sm:order-none sm:ml-0",
-						style: { minHeight: 38 },
+						className: "btn-press order-1 ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#C0392B] hover:bg-[#8E2F22] px-2.5 py-0.5 min-h-[28px] sm:min-h-[38px] sm:px-3.5 text-[12px] sm:text-[13px] font-extrabold text-white sm:order-none sm:ml-0",
 						children: [
 							"XỬ LÝ ",
-							/* @__PURE__ */ (0, H.jsx)(gr, { size: 14 }),
+							/* @__PURE__ */ (0, H.jsx)(gr, { size: 13 }),
 							/* @__PURE__ */ (0, H.jsxs)("span", {
 								className: "sr-only",
 								children: [" — ", Ts(t)]
@@ -22447,20 +22446,20 @@ function Ou() {
 		]
 	});
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
-		className: "space-y-2.5 min-w-0",
+		className: "space-y-1.5 sm:space-y-2.5 min-w-0",
 		children: [
 			/* @__PURE__ */ (0, H.jsx)("div", {
-				className: "rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5",
+				className: "rounded-2xl bg-white border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2.5 md:px-5",
 				"data-testid": "shipment-identity-bar",
 				children: /* @__PURE__ */ (0, H.jsxs)("div", {
-					className: "grid grid-cols-[40px_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:flex sm:items-center sm:gap-3",
+					className: "grid grid-cols-[32px_minmax(0,1fr)] gap-x-2.5 gap-y-1 sm:flex sm:items-center sm:gap-3",
 					children: [
 						/* @__PURE__ */ (0, H.jsxs)(V, {
 							to: "/",
 							className: "flex items-center gap-2.5 shrink-0",
 							"aria-label": "Về trang chủ",
 							children: [/* @__PURE__ */ (0, H.jsx)("span", {
-								className: "w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow",
+								className: "w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[15px] sm:text-[18px] shadow",
 								children: "T"
 							}), /* @__PURE__ */ (0, H.jsxs)("span", {
 								className: "leading-tight hidden sm:block",
@@ -22481,10 +22480,10 @@ function Ou() {
 							className: "col-start-2 min-w-0 sm:col-auto sm:flex-1",
 							"data-testid": "shipment-identity-info",
 							children: [/* @__PURE__ */ (0, H.jsxs)("div", {
-								className: "flex flex-wrap items-center gap-x-2 gap-y-1",
+								className: "flex flex-wrap items-center gap-x-2 gap-y-0.5",
 								children: [/* @__PURE__ */ (0, H.jsxs)("h1", {
 									"data-testid": "shipment-identity-title",
-									className: "min-w-0 break-words text-[19px] font-extrabold text-[#0f2a4a] sm:whitespace-nowrap",
+									className: "min-w-0 break-words text-[16px] sm:text-[19px] leading-tight font-extrabold text-[#0f2a4a] sm:whitespace-nowrap",
 									title: Cn || void 0,
 									children: ["Lô hàng ", v.id]
 								}), Tn && /* @__PURE__ */ (0, H.jsx)("span", {
@@ -22492,7 +22491,7 @@ function Ou() {
 									children: Tn
 								})]
 							}), /* @__PURE__ */ (0, H.jsxs)("p", {
-								className: "mt-0.5 min-w-0 text-[12.5px] leading-snug text-slate-600 sm:truncate",
+								className: "mt-0.5 min-w-0 text-[12px] sm:text-[12.5px] leading-snug text-slate-600 sm:truncate",
 								children: [
 									/* @__PURE__ */ (0, H.jsx)("span", {
 										"data-testid": "shipment-identity-customer",
@@ -22500,11 +22499,11 @@ function Ou() {
 										children: v.customer
 									}),
 									/* @__PURE__ */ (0, H.jsx)("span", {
-										className: "hidden text-slate-400 sm:inline",
-										children: " → "
+										className: "text-slate-400",
+										children: " · "
 									}),
 									/* @__PURE__ */ (0, H.jsx)("span", {
-										className: "block break-words sm:inline",
+										className: "break-words",
 										children: v.route
 									})
 								]
@@ -22512,15 +22511,15 @@ function Ou() {
 						}),
 						/* @__PURE__ */ (0, H.jsxs)("div", {
 							"data-testid": "shipment-identity-actions",
-							className: "col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5",
+							className: "col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5",
 							children: [/* @__PURE__ */ (0, H.jsx)("button", {
 								type: "button",
 								onClick: () => O((e) => e + 1),
 								"data-testid": "journey-global-page",
-								className: "touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4",
+								className: " inline-flex items-center rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2.5 py-0.5 min-h-[28px] sm:min-h-[44px] text-[12px] sm:text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4",
 								children: "Toàn bộ lô hàng"
 							}), /* @__PURE__ */ (0, H.jsx)("span", {
-								className: "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold",
+								className: "grid h-7 w-7 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[12px] sm:text-[13px] font-extrabold",
 								title: kn,
 								"aria-label": kn,
 								children: On
@@ -30314,7 +30313,7 @@ function Ld() {
 								children: f.client || "—"
 							}),
 							/* @__PURE__ */ (0, H.jsxs)("div", {
-								className: "grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3",
+								className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 mt-3",
 								children: [
 									/* @__PURE__ */ (0, H.jsx)(vs, {
 										label: "Công ty bên mua",
@@ -30335,7 +30334,7 @@ function Ld() {
 								]
 							}),
 							/* @__PURE__ */ (0, H.jsxs)("div", {
-								className: "grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-1",
+								className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 mt-1",
 								children: [
 									/* @__PURE__ */ (0, H.jsx)(vs, {
 										label: "Khách hàng / đối tác",

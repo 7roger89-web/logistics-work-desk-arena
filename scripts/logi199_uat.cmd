@@ -16,6 +16,11 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+if not exist component\dist\logi-shell.js (
+  echo STOP: Thieu goi giao dien component\dist\logi-shell.js. Hay giai nen day du ZIP nhanh thu nghiem.
+  pause
+  exit /b 1
+)
 if not exist .venv\Scripts\python.exe python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt pytest
 if errorlevel 1 (

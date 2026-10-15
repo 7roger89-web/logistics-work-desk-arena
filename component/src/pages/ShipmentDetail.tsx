@@ -1470,17 +1470,17 @@ export default function ShipmentDetail() {
   );
 
   return (
-    <div className="space-y-2.5 min-w-0">
+    <div className="space-y-1.5 sm:space-y-2.5 min-w-0">
       {/* HEADER — Issue #190 CONTINUE: ONE top white header bar per the Owner
           reference. LEFT: brand identity + shipment title + mode chip +
           customer/route line. RIGHT: Toàn bộ lô hàng + operator avatar.
           The permanent tab row is gone from the default first screen (tabs
           live in Global Workspace); the secondary identity facts moved into
           the HỒ SƠ & PHẠM VI card. Nothing is deleted. */}
-      <div className="rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5" data-testid="shipment-identity-bar">
-        <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:flex sm:items-center sm:gap-3">
+      <div className="rounded-2xl bg-white border border-slate-200 px-3 py-1.5 sm:px-4 sm:py-2.5 md:px-5" data-testid="shipment-identity-bar">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2.5 gap-y-1 sm:flex sm:items-center sm:gap-3">
           <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Về trang chủ">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
+            <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[15px] sm:text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
               <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
               <span className="block text-[12px] text-slate-500 font-medium">{brandSub}</span>
@@ -1491,19 +1491,19 @@ export default function ShipmentDetail() {
               The old one-row flex gave the shipment title ~60px and obscured
               known customer facts behind "Toàn bộ lô hàng" + avatar. */}
           <div className="col-start-2 min-w-0 sm:col-auto sm:flex-1" data-testid="shipment-identity-info">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 data-testid="shipment-identity-title" className="min-w-0 break-words text-[19px] font-extrabold text-[#0f2a4a] sm:whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <h1 data-testid="shipment-identity-title" className="min-w-0 break-words text-[16px] sm:text-[19px] leading-tight font-extrabold text-[#0f2a4a] sm:whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
               {modeLabel && <span className="max-w-full break-words rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 sm:whitespace-nowrap">{modeLabel}</span>}
             </div>
-            <p className="mt-0.5 min-w-0 text-[12.5px] leading-snug text-slate-600 sm:truncate">
+            <p className="mt-0.5 min-w-0 text-[12px] sm:text-[12.5px] leading-snug text-slate-600 sm:truncate">
               <span data-testid="shipment-identity-customer" className="font-semibold text-slate-800">{s.customer}</span>
-              <span className="hidden text-slate-400 sm:inline"> → </span>
-              <span className="block break-words sm:inline">{s.route}</span>
+              <span className="text-slate-400"> · </span>
+              <span className="break-words">{s.route}</span>
             </p>
           </div>
-          <div data-testid="shipment-identity-actions" className="col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5">
-            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4">Toàn bộ lô hàng</button>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
+          <div data-testid="shipment-identity-actions" className="col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5">
+            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className=" inline-flex items-center rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2.5 py-0.5 min-h-[28px] sm:min-h-[44px] text-[12px] sm:text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4">Toàn bộ lô hàng</button>
+            <span className="grid h-7 w-7 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[12px] sm:text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
           </div>
         </div>
       </div>

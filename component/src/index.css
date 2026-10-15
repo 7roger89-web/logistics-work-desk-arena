@@ -236,13 +236,20 @@ body {
 @media (max-width: 720px) {
   /* Hide redundant global mobile topbar inside focus-shell (/lo-hang/:id) since shipment-identity-bar already provides home + identity. */
   .focus-shell .global-topbar { display: none !important; }
+  .focus-shell .focus-main { padding-top: 6px; padding-left: 8px; padding-right: 8px; }
+  /* Compact mobile toolbar: AttentionNow above already displays the primary action & CTA,
+     so keep position/blocker chips + quick actions in a single compact strip matching ref-04 rhythm. */
+  .journey-toolbar { padding: 4px 8px; gap: 4px 6px; margin-bottom: 6px; }
+  .journey-toolbar-chip { padding: 2px 7px; font-size: 12px; }
+  .journey-toolbar-btn { height: 26px; padding: 0 8px; font-size: 12px; }
+  .journey-toolbar-next, .journey-toolbar-btn-primary { display: none; }
   /* Phone: show full Vietnam East Sea chart without aspect distortion or side cropping in the upper half,
      and position active route nodes in the lower half above the bottom navigation bar. */
   .journey-split.journey-map-first .journey-canvas {
-    height: clamp(410px, calc(100vh - 405px), 445px); min-height: 410px;
+    height: clamp(500px, calc(100vh - 295px), 555px); min-height: 500px;
     background-color: #dce8f3;
     background-size: 100% auto, 100% 100%;
-    background-position: center 46px, center center;
+    background-position: center 48px, center center;
     background-repeat: no-repeat, no-repeat;
   }
   /* Phone: zoom bar sits at top-left of canvas above the Vietnam chart. */
@@ -251,7 +258,6 @@ body {
   .journey-node { width: 112px; height: 64px; }
   .journey-modal-layer { place-items: end stretch; padding: 0; }
   .journey-side.journey-modal-card { width: 100%; max-width: none; max-height: 88vh; border-radius: 16px 16px 0 0; }
-  .journey-toolbar-next { white-space: normal; }
 }
 
 
