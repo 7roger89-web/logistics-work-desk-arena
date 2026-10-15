@@ -7,9 +7,9 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "ct/logi-app-renewal-01-t0-air-truth",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "T0_FOUNDATION_ACTIVE",
+  "stage": "T0_SOURCE_AND_BUILD_VERIFIED__RUNTIME_VISUAL_PENDING",
   "progress": {
-    "T0": "SOURCE_COMMITTED__VALIDATION_PENDING",
+    "T0": "FOCUSED_CI_PASS__COMMITTED_DIST__BROWSER_PENDING",
     "T1": "NOT_STARTED",
     "T2": "NOT_STARTED",
     "T3": "NOT_STARTED",
@@ -28,9 +28,9 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "No authenticated clone of full repo or npm/Streamlit runtime from current container (github.com DNS blocked).",
-    "No GitHub Actions workflow exists on main for this branch; code tests and real UI still require a connected executor/CI lane.",
-    "Owner UAT and production-linked merge explicitly gated."
+    "Actual rendered Streamlit browser UI not verified at 1440x900 and 390x844.",
+    "Owner UAT and production-linked merge remain gated.",
+    "External Codex sandbox lacked repo access; GitHub Actions CI bypassed that limitation for source/build verification."
   ],
   "existing_issue_dependencies": [
     197,
@@ -41,7 +41,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Run Python focused regression and React build on GitHub-authenticated executor, then independent review and representative real-app browser checks. If tests fail, patch PR #200; otherwise proceed T1 without rewriting old #197.",
+  "next": "Run representative read-only staged Streamlit browser checks at desktop/mobile against PR #200 committed dist; then independent UI review/Owner UAT. Keep PR draft, no production merge. Continue T1/T2 as scoped by goal #199 after T0 visual evidence.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -60,15 +60,22 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": 200,
   "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/200",
-  "current_subtask": "T0 first source slice committed: design baseline, shadow-shell typography, AIR_DOCUMENTS evidence predicate and focused regression tests.",
+  "current_subtask": "T0 Python (138) + official Vite typecheck/build/scan PASS; generated dist committed to PR #200. Await staging browser evidence.",
   "source_receipt": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
     "source_review": "PR patch inspected, no file outside bounded scope",
-    "pytest": "NOT_RUN",
-    "typecheck": "NOT_RUN",
-    "build": "NOT_RUN",
+    "pytest": "PASS_138",
+    "typecheck": "PASS",
+    "build": "PASS_OFFICIAL_VITE_8",
     "chromium_real_app": "NOT_RUN",
-    "production": "UNTOUCHED"
+    "production": "UNTOUCHED",
+    "verified_source_sha": "101732e2e759d85021b72e93252b88a420fe19d8",
+    "compiled_dist_commit": "6e00a7289552ad00f3b2bbf2df73102399a2451d",
+    "ci_run_id": 38661430897,
+    "ci_run_url": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38661430897",
+    "npm_ci": "PASS",
+    "scan": "PASS_0_EXECUTABLE_PROCESS_REFERENCES",
+    "compiled_css_confirmed": true
   }
 }
