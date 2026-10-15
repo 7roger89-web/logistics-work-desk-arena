@@ -1,0 +1,54 @@
+name: LOGI-199 G2 verified Vietnam map background build
+
+on:
+  push:
+    branches:
+      - arena/9e611b96-logistics-work-desk-arena
+
+permissions:
+  contents: write
+
+concurrency:
+  group: logi199-g2-map-bg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  official-component-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Checkout bounded Arena branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: component/package-lock.json
+      - name: Verify selected Owner image and official component build
+        run: |
+          test -s component/src/assets/journey/vietnam-east-sea-chart.webp
+          cd component
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          npm run scan
+          grep -q 'data:image/webp;base64' dist/logi-shell.js
+      - name: Sync only compiled dist to same nonproduction branch
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          git add component/dist/logi-shell.js component/dist/logi-shell.css
+          if git diff --cached --quiet; then
+            echo DIST_SYNC=ALREADY_CURRENT
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(LOGI-199 G2): embed selected Vietnam background in Streamlit bundle [skip ci]"
+            auth_header=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth_header" push origin HEAD:arena/9e611b96-logistics-work-desk-arena
+            echo DIST_SYNC=COMMITTED
+          fi
