@@ -3,8 +3,8 @@
  * (same isolated launcher as T6). For every current route at 1440x900 and
  * 390x844 it records: page/shell horizontal overflow, the mounted UI font,
  * whether IBM Plex Mono is available for codes, and visible body text smaller
- * than 12px (GOAL #199 inv. 8). It FAILS only on horizontal page overflow at
- * 390px or a JavaScript page error; small-text counts are reported as findings.
+ * than 12px (GOAL #199 inv. 8). Fonts must LOAD, not just occur in CSS.
+ * Fails on overflow, clipped controls/titles, tiny body text or page errors.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -33,6 +33,13 @@ for (let i = 0; i < 300; i++) { try { if ((await fetch(url + '/_stcore/health'))
 const measure = page => page.evaluate(() => {
   const roots = [document, ...[...document.querySelectorAll('*')].filter(e => e.shadowRoot).map(e => e.shadowRoot)];
   const shell = roots.map(r => r.querySelector('.logi-shell')).find(Boolean);
+  const sourceTitles = [...(shell?.querySelectorAll('[data-testid="policy-source-title"]') || [])].map(el => {
+    const card = el.closest('button'), icon = card.querySelector('svg:last-child');
+    const c = card.getBoundingClientRect(), i = icon.getBoundingClientRect();
+    return { text: el.textContent.trim(), whiteSpace: getComputedStyle(el).whiteSpace,
+      fits: el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1,
+      iconInside: i.left >= c.left && i.right <= c.right };
+  });
   const small = []; let monoUsed = 0;
   for (const r of roots) for (const el of r.querySelectorAll('p,span,td,th,li,a,button,label,div,dd,dt,h1,h2,h3,h4')) {
     const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1);
@@ -64,14 +71,14 @@ const measure = page => page.evaluate(() => {
     }
     if (!scroller) clipped.push(`${Math.round(b.left)}..${Math.round(b.right)}:${(el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30)}`);
   }
-  return { clippedControls: clipped.slice(0, 8), clippedCount: clipped.length, docOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+  return { sourceTitles, fonts: [...document.fonts].map(f => ({ family: f.family.replace(/["']/g, ''), weight: f.weight, status: f.status })), clippedControls: clipped.slice(0, 8), clippedCount: clipped.length, docOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
     shellOverflow: shell ? Math.max(0, shell.scrollWidth - shell.clientWidth) : null,
     font: shell ? getComputedStyle(shell).fontFamily.split(',')[0] : '', monoUsed, smallCount: small.length, smallSample: small.slice(0, 6) };
 });
 const results = { commit: process.env.GITHUB_SHA || '', routes: {} };
 let browser, failures = [];
 try {
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   for (const [label, vp] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport: vp }); const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -89,6 +96,7 @@ try {
       const link = page.locator(`a[href="${route}"]`).first();
       if (await link.count()) { await link.dispatchEvent('click'); reached = true; }
       await sleep(1200);
+      await page.evaluate(() => document.fonts.ready);
       const m = await measure(page);
       m.reachedViaAppLink = reached;
       m.textDigest = await page.evaluate(() => { const r = [...document.querySelectorAll('*')].find(e => e.shadowRoot)?.shadowRoot; return (r?.querySelector('main')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80); });
@@ -98,6 +106,12 @@ try {
       if (!reached) failures.push(`${label} ${route}: not reached through an app link`);
       if (m.docOverflow > 1) failures.push(`${label} ${route}: page overflow ${m.docOverflow}px`);
       if ((m.shellOverflow || 0) > 1) failures.push(`${label} ${route}: shell overflow ${m.shellOverflow}px`);
+      if (m.smallCount) failures.push(`${label} ${route}: small body text ${m.smallSample.join(' | ')}`);
+      for (const family of ['Be Vietnam Pro', 'IBM Plex Mono']) {
+        if (!m.fonts.some(f => f.family === family && f.status === 'loaded')) failures.push(`${label} ${route}: ${family} not loaded`);
+      }
+      for (const title of m.sourceTitles) if (!title.fits || !title.iconInside || title.whiteSpace === 'nowrap') failures.push(`${label} ${route}: source title/icon clipped: ${title.text}`);
+      if (route === '/tra-cuu-chinh-sach' && !m.sourceTitles.length) failures.push(`${label}: no policy cards audited`);
       if (m.clippedCount) failures.push(`${label} ${route}: clipped controls ${m.clippedControls.join(' | ')}`);
       if (previousDigest !== null && m.textDigest === previousDigest && route !== '/lo-hang/T6-FCL') failures.push(`${label} ${route}: content did not change (route not rendered)`);
       previousDigest = m.textDigest;

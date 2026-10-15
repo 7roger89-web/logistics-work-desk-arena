@@ -1,7 +1,7 @@
 """Issue #186 — Journey Cockpit V3 terminal integration source contracts.
 
-These tests pin the bounded UI architecture: six beginner phases overlay the
-existing detailed Journey, Completion Goals stay read-only/non-scoring, and the
+These tests preserve business invariants. The six-phase display is superseded
+by #197 and Owner 2026-10-13 persistent split (see reconciliation evidence). Completion Goals stay read-only/non-scoring, and the
 validated Customs Import panel remains the specialized truth surface.
 """
 from pathlib import Path
@@ -16,10 +16,18 @@ MAP = (ROOT / "component/src/components/JourneyMap.tsx").read_text(encoding="utf
 
 class SixPhaseContract(unittest.TestCase):
     def test_exact_beginner_phase_labels_exist(self):
-        labels = ["HỒ SƠ", "ĐẦU ĐI", "CHẶNG CHÍNH", "NHẬP KHẨU", "GIAO HÀNG", "HOÀN TẤT"]
-        positions = [JOURNEY.index(f"label: '{label}'") for label in labels]
-        self.assertEqual(positions, sorted(positions))
-        self.assertIn('data-testid="journey-phase-strip"', JOURNEY)
+        # SUPERSEDED: #186 six phases -> #197 -> Owner 13/10 persistent split.
+        populated = JOURNEY.split("export default function ShipmentJourney", 1)[1]
+        self.assertIn('data-testid="journey-split-view"', populated)
+        self.assertIn('journey-split-small-map', populated)
+        self.assertIn('collapsed={false}', populated)
+        self.assertNotIn('data-testid="journey-phase-strip"', populated)
+        self.assertNotIn('data-testid="journey-summary-cards"', populated)
+        # The mode-neutral region/document scope and stage work still exist.
+        for region in ['origin', 'main', 'import', 'delivery']:
+            self.assertIn(f"{region}:", JOURNEY)
+        for label in ['Công việc', 'Chứng từ']:
+            self.assertIn(f"label: '{label}'", JOURNEY)
 
     def test_detailed_nodes_are_not_replaced(self):
         for node in ["booking", "customs-export", "si-vgm", "gate-in", "etd",

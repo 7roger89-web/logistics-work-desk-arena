@@ -5,17 +5,17 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "ct/logi199-t6-integration",
+  "active_branch": "arena/d8927583-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "T1_T4_CODE_AND_T6_STAGING_BROWSER_PASS__T5_APPWIDE_AND_OWNER_UAT_PENDING",
+  "stage": "INT198_REPAIRED_LOCAL_VERIFIED_CI_PENDING",
   "progress": {
     "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
     "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
     "T2": "PR #203: LCL CFS receipt/count/kg/CBM, consolidation fact, SI-only (no VGM/gate-in/container), deconsolidation CODE+REGRESSION+CI PASS",
     "T3": "PR #203: AIR chain AWB+flight / warehouse acceptance+weights+screening / uplift (ATD != flown) / transit / ATA CODE+REGRESSION+CI PASS",
     "T4": "PR #203: ROAD vehicle plate+driver, LTL receipt/consolidation, border only for cross-border scope, handover+POD; RAIL read-only CODE+REGRESSION+CI PASS",
-    "T5": "PARTIAL: PR #204 shell chrome >=12px (audit run 38675998967: tiny-text per route-view avg 8 -> 1.3, 0 overflow on 24 routes x 1440/390, Be Vietnam Pro everywhere). Remaining: IBM Plex Mono for codes, page-specific 11-11.5px labels (CEO report/dieu-hanh/finance KPIs), Journey stepper 10.5px (#198), 3 routes without nav link unaudited, popup 2-5 field review.",
-    "T6": "Integration branch ct/logi199-t6-integration (#200 + #201..#203): real Streamlit staging browser PASS run 38674861674 (FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board UI write->readback, 1440x900 + 390x844 no overflow). Owner UAT pending | Re-run with T5 on cbdb10f: run 38675998967 PASS."
+    "T5": "LOCAL PASS: merged f0aec79 popup/labels; policy titles wrap fully + icon contained; fonts locally bundled/loaded in real document FontFaceSet; 21 distinct routes x desktop/mobile, no tiny body text/overflow/clipped controls. Independent review pending.",
+    "T6": "LOCAL PASS on integration-with-198: six mode variants incl ROAD-FTL/AIR consolidated, on-board UI write/reopen readback, map default100%/Fit/pan/zoom A/B screenshots, current bundle DOM #197 + hook transition. Local full-suite parity: 31 failed+1 collection error on both sides, zero new IDs. CI pending on fixed Arena branch."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -28,10 +28,9 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Owner UAT and explicit production approval (main merge == production deploy).",
-    "Independent reviewer not available in this executor session; evidence is CI+browser only.",
-    "31 pre-existing failing tests on main@5c6642a (e.g. test_partner_reconciliation_desk_write_oracle import ROUTES, primary_action_unify, login bootstrap) — unchanged by this work, not fixed (out of #199 scope).",
-    "tests/component/dom_acceptance_visual_shipment_workspace.mjs already fails on main (expects 11 nodes before compact journey)."
+    "Independent reviewer challenge and Owner UAT/explicit production permission remain required. No independent actor available in this host.",
+    "31 baseline failing tests + 1 collection error persist; parity is NOT release acceptance (auth/bootstrap/UI oracles and finance snapshot coverage gaps). See evidence/logi-199-t6/RECONCILIATION.md.",
+    "Existing ct preview branch intentionally unchanged: this Arena session may push only its fixed arena/d8927583-logistics-work-desk-arena branch."
   ],
   "existing_issue_dependencies": [
     197,
@@ -42,7 +41,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "1) Independent reviewer re-review of #200,#202,#203. 2) T5 route-by-route audit using evidence/logi-199-t6 runner pattern (add routes). 3) Rebase #202/#203 UI lines onto #198 when #198 is ready. 4) Owner UAT on staging; no main merge/deploy without Owner.",
+  "next": "Verify T6 CI at pushed source HEAD, publish exact evidence and independent-review request on #199/#198; Owner UAT only after preview verification. No merge/deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -59,9 +58,9 @@
   ],
   "status": "IN_PROGRESS",
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
-  "active_pr": 204,
-  "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/200",
-  "current_subtask": "Checkpoint after T1-T4 + T6 staging browser; next: T5 app-wide visual audit per route, then integrate with #198 once its draft lands.",
+  "active_pr": null,
+  "active_pr_url": null,
+  "current_subtask": "Push repaired integration-with-198 on fixed Arena branch, run T6 at exact HEAD, then independent reviewer gate; no production actions.",
   "source_receipt": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -101,6 +100,18 @@
       203,
       204
     ],
+    "production": "UNTOUCHED"
+  },
+  "continuation_receipt": {
+    "restored_preview": "d96d95125b41b97078d42278a7e1fee30d3bf7b7",
+    "integrated": "f0aec797ce20286aff541985299b4765cd74ffba",
+    "local_patch_recovered": "No local unpushed patch in this fresh clean worktree; reconstructed readable view on existing zoom/pan/Fit.",
+    "law_source": "LOCAL_PORTABLE",
+    "law_source_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "focused_python": "281 passed locally; no blanket deletion of tests",
+    "ci": "PENDING",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_REQUESTED_YET",
     "production": "UNTOUCHED"
   }
 }

@@ -39,6 +39,8 @@ const EXPECT = {
   'T6-FCL': { present: ['booking', 'customs-export', 'si-vgm', 'gate-in', 'on-board', 'arrival', 'delivery'], absent: ['cfs-receipt', 'uplift', 'road-ltl'] },
   'T6-LCL': { present: ['booking', 'si-vgm', 'cfs-receipt', 'delivery'], absent: ['gate-in', 'uplift', 'road-ltl'] },
   'T6-AIR': { present: ['air-booking', 'air-acceptance', 'uplift', 'air-arrival', 'delivery'], absent: ['booking', 'si-vgm', 'gate-in', 'on-board', 'cfs-receipt'] },
+  'T6-ROAD-FTL': { present: ['road-vehicle', 'delivery'], absent: ['road-ltl', 'booking', 'si-vgm', 'gate-in', 'uplift', 'road-border'] },
+  'T6-AIR-CONSOLIDATED': { present: ['air-booking', 'air-acceptance', 'uplift', 'air-arrival', 'delivery'], absent: ['booking', 'si-vgm', 'gate-in', 'on-board', 'cfs-receipt'] },
   'T6-ROAD-LTL': { present: ['road-ltl', 'delivery'], absent: ['booking', 'si-vgm', 'gate-in', 'uplift', 'customs-export', 'customs-import', 'road-border'] },
 };
 
@@ -46,7 +48,7 @@ let browser;
 const results = { runtime: 'REAL_STREAMLIT_COMPONENTS_V2', launcher: 'scripts/logi199_t6_staging_app.py', commit: process.env.GITHUB_SHA || '', lots: {}, checks: [] };
 try {
   await ready();
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -78,10 +80,65 @@ try {
     await page.screenshot({ path: path.join(output, `desktop-${id}.png`) });
   }
 
+  async function mapComparison(label) {
+    await openLot('T6-FCL');
+    const viewport = page.getByTestId('journey-map-viewport');
+    await viewport.scrollIntoViewIfNeeded();
+    await viewport.evaluate(el => {
+      const shell = el.closest('.logi-shell');
+      shell.scrollTop += el.getBoundingClientRect().top - (innerWidth < 1100 ? 106 : 70);
+    });
+    await page.getByRole('button', { name: '↺ Đọc rõ', exact: true }).click();
+    const transform = page.getByTestId('journey-map-transform');
+    const initial = await transform.getAttribute('style');
+    assert.equal(await page.getByTestId('journey-zoom-level').innerText(), '100%');
+    const typography = await transform.locator('button').first().evaluate(el => {
+      const title = el.querySelector('.font-extrabold');
+      return { scale: new DOMMatrix(getComputedStyle(el.parentElement).transform).a, titlePx: parseFloat(getComputedStyle(title).fontSize) };
+    });
+    assert.ok(typography.scale * typography.titlePx >= 14, 'default node labels must be readable, not just overflow-free');
+    await page.screenshot({ path: path.join(output, `${label}-map-B-readable.png`) });
+    // Real drag must move the canvas without selecting a node (pointer events).
+    const b = await viewport.boundingBox();
+    await page.mouse.move(b.x + 20, b.y + b.height * 0.65);
+    await page.mouse.down(); await page.mouse.move(b.x + 90, b.y + b.height * 0.65 + 30, { steps: 8 }); await page.mouse.up();
+    assert.notEqual(await transform.getAttribute('style'), initial, 'pan must change transform');
+    await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
+    const fit = await transform.evaluate(el => {
+      const v = el.parentElement.getBoundingClientRect(), c = el.getBoundingClientRect();
+      return { scale: new DOMMatrix(getComputedStyle(el).transform).a, inside: c.left >= v.left && c.right <= v.right && c.top >= v.top && c.bottom <= v.bottom };
+    });
+    assert.ok(fit.scale < 1 && fit.inside, 'Fit must include whole canvas');
+    await page.screenshot({ path: path.join(output, `${label}-map-A-fit.png`) });
+    await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
+    assert.ok(await transform.evaluate(el => new DOMMatrix(getComputedStyle(el).transform).a) > fit.scale);
+    await page.getByRole('button', { name: '↺ Đọc rõ', exact: true }).click();
+    assert.equal(await page.getByTestId('journey-zoom-level').innerText(), '100%');
+    results.checks.push({ label: `${label}-map-fit-readable-pan-zoom`, typography, fit });
+  }
+  await mapComparison('desktop');
+  // T5: extra evidence fields are folded, not removed or made uneditable.
+  await openLot('T6-LCL');
+  await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
+  await page.getByTestId('journey-node-cfs-receipt').click();
+  await page.getByTestId('journey-open-workspace').first().click();
+  await page.getByTestId('journey-stage-workspace').getByRole('button', { name: 'Công việc', exact: true }).click();
+  const facts = page.getByTestId('sea-export-facts');
+  await facts.locator('input,select').first().waitFor({ state: 'visible' });
+  const primaryCount = await facts.locator('input:visible,select:visible').count();
+  assert.ok(primaryCount >= 1 && primaryCount <= 5);
+  const extra = page.getByTestId('fact-fields-secondary');
+  await extra.locator('summary').click();
+  assert.ok(await extra.locator('input:visible,select:visible').count() > 0);
+  assert.equal(await extra.locator('input:disabled,select:disabled').count(), 0);
+  results.checks.push({ label: 'popup-primary-fields-and-editable-extras', primaryCount, extraCount: await extra.locator('input,select').count() });
+  await page.screenshot({ path: path.join(output, 'desktop-popup-LCL-extra-fields.png') });
+
   // Real UI write -> canonical writer -> readback: FCL on-board evidence.
   await openLot('T6-FCL');
   const onboard = page.locator('[data-testid="journey-map-viewport"] [data-testid="journey-node-on-board"]');
   assert.notEqual(await onboard.getAttribute('data-state'), 'COMPLETED');
+  await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
   await onboard.click();
   await page.getByTestId('journey-open-workspace').first().click();
   // #198 renames the stage work tab "Thông tin" -> "Công việc"; same panel.
@@ -100,6 +157,7 @@ try {
   // Mobile 390x844: readable, no horizontal page overflow.
   await page.setViewportSize({ width: 390, height: 844 });
   await sleep(300);
+  await mapComparison('mobile');
   for (const id of ['T6-FCL', 'T6-AIR']) {
     await openLot(id);
     const o = await overflow(page);
@@ -107,6 +165,14 @@ try {
     assert.ok(o <= 1, `${id}: mobile overflow ${o}px`);
     await page.screenshot({ path: path.join(output, `mobile-${id}.png`) });
   }
+  // Navigate away and reopen: a stale local green state cannot satisfy this.
+  await openLot('T6-AIR'); await openLot('T6-FCL');
+  assert.equal(await onboard.getAttribute('data-state'), 'COMPLETED');
+  await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
+  await onboard.click(); await page.getByTestId('journey-open-workspace').first().click();
+  await page.getByTestId('journey-stage-workspace').getByRole('button', { name: /^(Thông tin|Công việc)$/ }).first().click();
+  assert.equal(await page.getByLabel('Ngày xếp hàng lên tàu (on-board)', { exact: true }).inputValue(), '2026-10-03');
+  results.checks.push({ label: 'persisted-on-board-after-reopen', value: '2026-10-03' });
   assert.deepEqual(errors, [], 'page errors: ' + errors.join(' | '));
   results.verdict = 'T6_MODES_STAGING_PASS';
   console.log('T6_BROWSER=PASS FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board write/readback, desktop+mobile no overflow');

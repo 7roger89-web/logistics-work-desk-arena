@@ -81,7 +81,7 @@ function ModuleCard({ module: m, nodes, expanded, onToggle, onPick, selectedId }
   return <article className="rounded-xl border border-slate-200 bg-white p-3" data-testid={`journey-module-${m.instanceId}`} data-module-status={m.status}>
     <div className="flex flex-wrap items-start gap-2">
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold tracking-wide text-slate-500">QUY TRÌNH PHÁT SINH · V{m.templateVersion}</p>
+        <p className="text-[12px] font-bold tracking-wide text-slate-500">QUY TRÌNH PHÁT SINH · V{m.templateVersion}</p>
         <h4 className="font-extrabold text-[15px] text-[#0f2a4a]">{m.name}</h4>
       </div>
       <span className={cx('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold', meta.cls)} data-testid={`journey-module-status-${m.instanceId}`}>
@@ -135,9 +135,9 @@ function ModuleStepButton({ node, onPick, selectedId }: {
   return <button type="button" data-testid={`journey-node-${id}`} data-state={node.state}
     aria-pressed={selectedId === id} onClick={() => onPick(id)}
     className={cx('flex min-w-[168px] flex-col rounded-xl border-2 p-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700', m.cls, selectedId === id && 'ring-2 ring-[#0f2a4a] ring-offset-2')}>
-    <span className="inline-flex items-center gap-1 text-[11px] font-bold"><Icon size={13} aria-hidden="true" />{m.label}</span>
+    <span className="inline-flex items-center gap-1 text-[12px] font-bold"><Icon size={13} aria-hidden="true" />{m.label}</span>
     <span className="mt-0.5 text-sm font-extrabold">{node.label}</span>
-    <span className="text-[11px]">{node.evidence || 'Chưa có bằng chứng thực tế'}</span>
+    <span className="text-[12px]">{node.evidence || 'Chưa có bằng chứng thực tế'}</span>
   </button>;
 }
 
@@ -213,7 +213,7 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white" aria-hidden="true"><Info size={16} /></span>
         <h3 className="text-xl font-extrabold tracking-tight text-[#0f2a4a]">NHẬP KHẨU</h3>
         {(selected.state === 'PROBLEM' || selected.blockers.length > 0) && (
-          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700">
+          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[12px] font-extrabold text-red-700">
             <CircleAlert size={12} aria-hidden="true" /> Cần xử lý
           </span>
         )}
@@ -496,17 +496,17 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
-          <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
+          <div className="border-b bg-white px-4 py-3"><p className="text-[12px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
           <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
             {problem && <button type="button" onClick={() => pick(problem.id)} className="w-full rounded-lg border-2 border-red-600 bg-red-50 p-3 text-left"><p className="text-xs font-bold text-red-700">⚠ Attention</p><p className="text-lg font-extrabold text-red-800">{problem.blockers[0]}</p><p className="text-xs text-red-700">{problem.label} → Xử lý ngay</p></button>}
-            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey?.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
+            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[12px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey?.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
             <div className="grid grid-cols-2 gap-3"><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Current</p><p className="text-sm font-bold text-blue-700">{baseNodes.find(n => n.current)?.label || 'Chưa xác định'}</p></div><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Owner lô hàng</p><p className="text-sm font-bold">{journey?.owner || 'Chưa phân công'}</p></div><button type="button" onClick={() => openGlobal('chung-tu')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Documents</p><p className="font-bold">{s.attachments?.length ?? 0} tệp đã ghi nhận</p></button><button type="button" onClick={() => openGlobal('tai-chinh')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Finance</p><p className="text-sm font-bold">Xem tài chính toàn lô →</p></button></div>
             <button type="button" onClick={() => openGlobal()} className="touch-target w-full rounded-lg border border-slate-800 px-3 text-sm font-bold">Mở Global Workspace →</button>
           </div>
         </div>}
         {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col" data-testid="journey-stage-workspace">
           <div className="border-b border-slate-300 bg-slate-100 px-4 py-3" data-testid="journey-quick-panel">
-            <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-widest text-slate-500">CÔNG ĐOẠN · {s.id}<button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded border bg-white px-2 normal-case tracking-normal">← Hành trình</button></div>
+            <div className="flex flex-wrap items-center gap-2 text-[12px] font-extrabold uppercase tracking-widest text-slate-500">CÔNG ĐOẠN · {s.id}<button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded border bg-white px-2 normal-case tracking-normal">← Hành trình</button></div>
             <div className="mt-1 flex flex-wrap items-center gap-3"><h3 className="text-xl font-black tracking-tight text-slate-900">{stage.label}</h3><JourneyStatus node={stage} solid /></div>
             <div className={cx('mt-1.5 rounded px-2 py-1 text-[13px]', stage.state === 'PROBLEM' ? 'bg-red-600 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200')}><b>Cần làm: </b>{stageAction(stage)}{stage.evidence && <span className="mt-1 block text-xs">Bằng chứng: {stage.evidence}</span>}</div>
           </div>
@@ -565,7 +565,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
               className="touch-target flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left">
               <Layers size={14} className="shrink-0 text-slate-500" aria-hidden="true" />
               <span className="truncate text-xs font-extrabold tracking-wide text-slate-600">QUY TRÌNH ĐANG GẮN ({modules.length})</span>
-              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">Đang chặn</span>}
+              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold text-white">Đang chặn</span>}
               <ChevronDown size={15} className={cx('ml-auto shrink-0 text-slate-500 transition-transform', modulesOpen && 'rotate-180')} aria-hidden="true" />
             </button>
           : <span className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-xs font-extrabold tracking-wide text-slate-400">
@@ -695,11 +695,16 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   return <section className="rounded-2xl border bg-white p-4 space-y-3" data-testid="sea-export-facts">
     <h3 className="font-extrabold text-[#0f2a4a]">{TITLES[stageId] ?? 'Ghi nhận bằng chứng'}</h3>
     <p className="text-sm text-slate-500">Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.</p>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{fields.map(f => <Field key={f.key} label={f.label}>
+    {(() => { const renderField = (f: typeof fields[number]) => <Field key={f.key} label={f.label}>
       {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
         {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> :
         <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : f.kind === 'number' ? 'Để trống nếu chưa biết' : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
-    </Field>)}</div>
+    </Field>;
+      const primary = fields.filter(f => !f.secondary), extra = fields.filter(f => f.secondary);
+      return <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{primary.map(renderField)}</div>
+        {extra.length > 0 && <details className="rounded-lg border border-slate-200 p-3" data-testid="fact-fields-secondary"><summary className="cursor-pointer text-sm font-bold text-slate-600">Chi tiết phụ ({extra.length})</summary><div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">{extra.map(renderField)}</div></details>}
+      </>; })()}
     <button type="button" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu mốc có bằng chứng'}</button>
     {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
     {(error || outcome?.error) && <p role="alert" className="text-sm text-red-700">{error || outcome?.error}</p>}

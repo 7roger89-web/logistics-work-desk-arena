@@ -21,7 +21,7 @@ if os.environ.get("MONGO_URI"):
 
 from views import logi_sandbox  # noqa: E402
 
-FIXTURE_IDS = ("T6-FCL", "T6-LCL", "T6-AIR", "T6-ROAD-LTL")
+FIXTURE_IDS = ("T6-FCL", "T6-LCL", "T6-AIR", "T6-ROAD-LTL", "T6-ROAD-FTL", "T6-AIR-CONSOLIDATED")
 
 
 def _fixtures() -> list[dict]:
@@ -29,6 +29,9 @@ def _fixtures() -> list[dict]:
     from tests.test_visual_shipment_workspace import document
     docs = [document(), lcl_doc(), air_doc(), road_doc(load="LTL", units=[],
             scope=["ORIGIN_PICKUP", "MAIN_CARRIAGE", "FINAL_DELIVERY"])]
+    consolidated = air_doc()
+    consolidated['data']['0.0']['execution_profile']['load_model'] = 'CONSOLIDATED'
+    docs.extend([road_doc(load='FTL'), consolidated])
     out = []
     for sid, doc in zip(FIXTURE_IDS, docs):
         doc = deepcopy(doc)

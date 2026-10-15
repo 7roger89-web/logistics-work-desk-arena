@@ -77,7 +77,7 @@ let browser;
 const results = { runtime: 'REAL_STREAMLIT_COMPONENTS_V2', app: 'app.py', mode: 'isolated-mongomock-no-production-db', commit: process.env.GITHUB_SHA || '', checks: [] };
 try {
   await serverReady();
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
@@ -137,6 +137,7 @@ try {
   assert.ok(results.nodeCount >= 2, 'detailed map must contain actual LO-0306 nodes');
   const selectedNode = nodes.nth(1);
   const selectedId = await selectedNode.getAttribute('data-testid');
+  await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
   await selectedNode.click({ timeout: 15000 });
   await page.locator('[data-testid="' + selectedId + '"][aria-pressed="true"]').waitFor({ state: 'attached' });
   await page.getByTestId('journey-quick-panel').waitFor({ state: 'visible' });

@@ -261,7 +261,7 @@ function SourceBadge({ source }: { source: Source }) {
     MANUAL: "bg-blue-50 text-blue-800 border-blue-200",
   };
   return (
-    <span data-source-badge={source} className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold whitespace-nowrap", map[source])}>
+    <span data-source-badge={source} className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-extrabold whitespace-nowrap", map[source])}>
       {source === "DEFAULT" ? "PHÍ CHUẨN" : source}
     </span>
   );

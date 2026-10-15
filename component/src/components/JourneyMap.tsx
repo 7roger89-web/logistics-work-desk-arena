@@ -58,7 +58,7 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
 }) {
   const [tf, setTf] = useState({ x: 0, y: 0, k: 1 });
   const tfRef = useRef(tf); tfRef.current = tf;
-  const vp = useRef<HTMLDivElement>(null), autoFit = useRef(true), moved = useRef(false);
+  const vp = useRef<HTMLDivElement>(null), viewMode = useRef<'readable' | 'fit' | 'manual'>('readable'), moved = useRef(false);
   const cleanupDrag = useRef<(() => void) | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   const sea = nodes.some(n => n.id === 'booking');
@@ -72,21 +72,29 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;
-    // Owner 2026-10-13 (#198): the 340px left-column map must fit the complete
-    // Journey, so zoom out to 0.25. LOGI-199 T5: non-sea grids size the canvas
-    // (canvasWidth) to their real nodes so they stay readable.
-    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), 0.25, 1.15);
+    // Explicit overview fits the real canvas, including narrow mobile columns.
+    // Initial reading scale is handled separately below.
+    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), 0.1, 1.15);
     setTf({ k, x: (w - canvasWidth * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
   }, [canvasHeight, canvasWidth]);
+  // Fit remains an explicit overview, not the initial reading scale. Focus
+  // only on a real selected/problem/current node; never manufacture a state.
+  const focusId = selectedId || nodes.find(n => n.state === 'PROBLEM')?.id || nodes.find(n => n.current)?.id || nodes[0]?.id;
+  const focus = positions.get(focusId);
+  const readable = useCallback(() => {
+    const el = vp.current; if (!el?.clientWidth || !focus) return;
+    setTf({ k: 1, x: el.clientWidth / 2 - focus.x - focus.w / 2, y: Math.max(96, el.clientHeight * 0.32) - focus.y });
+  }, [focus?.x, focus?.y, focus?.w]);
   useEffect(() => {
     const el = vp.current; if (!el) return;
-    if (typeof ResizeObserver === 'undefined') { fit(); return; }
-    const ro = new ResizeObserver(() => { if (autoFit.current) fit(); });
-    ro.observe(el); fit(); return () => ro.disconnect();
-  }, [fit, collapsed]);
+    const layout = () => { if (viewMode.current === 'fit') fit(); else if (viewMode.current === 'readable') readable(); };
+    if (typeof ResizeObserver === 'undefined') { layout(); return; }
+    const ro = new ResizeObserver(layout);
+    ro.observe(el); layout(); return () => ro.disconnect();
+  }, [fit, readable, collapsed]);
   const zoomAt = useCallback((f: number, px: number, py: number) => {
-    autoFit.current = false;
-    setTf(t => { const k = clamp(t.k * f, 0.3, 2), r = k / t.k; return { k, x: px - (px - t.x) * r, y: py - (py - t.y) * r }; });
+    viewMode.current = 'manual';
+    setTf(t => { const k = clamp(t.k * f, 0.1, 2), r = k / t.k; return { k, x: px - (px - t.x) * r, y: py - (py - t.y) * r }; });
   }, []);
   useEffect(() => {
     const el = vp.current; if (!el) return;
@@ -102,7 +110,7 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!moved.current && Math.hypot(dx, dy) < 4) return;
-      moved.current = true; autoFit.current = false; setDragging(true);
+      moved.current = true; viewMode.current = 'manual'; setDragging(true);
       setTf({ ...origin, x: origin.x + dx, y: origin.y + dy });
     };
     const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); setDragging(false); };
@@ -121,8 +129,8 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
   return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom">
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: canvasWidth, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
-      {positions.has('si-vgm') && positions.has('gate-in') && <div className="absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30" style={{ left: DEMO_POS['si-vgm'].x - 14, top: DEMO_POS['si-vgm'].y - 36, width: W + 28, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 50 }} data-testid="journey-parallel-branch"><span className="absolute -top-2.5 left-3 rounded bg-slate-200 px-1.5 text-[10px] font-extrabold tracking-wider text-slate-600">NHÁNH SONG SONG</span></div>}
-      {positions.has('si-vgm') && positions.has('gate-in') && <div className="pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600" style={{ left: DEMO_POS.etd.x - 4, top: DEMO_POS.etd.y - 30, width: W + 8 }}>⛓ Phụ thuộc SI/VGM + Gate-in</div>}
+      {positions.has('si-vgm') && positions.has('gate-in') && <div className="absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30" style={{ left: DEMO_POS['si-vgm'].x - 14, top: DEMO_POS['si-vgm'].y - 36, width: W + 28, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 50 }} data-testid="journey-parallel-branch"><span className="absolute -top-2.5 left-3 rounded bg-slate-200 px-1.5 text-[12px] font-extrabold tracking-wider text-slate-600">NHÁNH SONG SONG</span></div>}
+      {positions.has('si-vgm') && positions.has('gate-in') && <div className="pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[12px] font-bold text-slate-600" style={{ left: DEMO_POS.etd.x - 4, top: DEMO_POS.etd.y - 30, width: W + 8 }}>⛓ Phụ thuộc SI/VGM + Gate-in</div>}
       <svg width={canvasWidth} height={canvasHeight} className="pointer-events-none absolute left-0 top-0 z-[1]" aria-hidden="true">
         <defs>{[['g', '#059669'], ['s', '#94a3b8'], ['r', '#dc2626']].map(([k, c]) => <marker key={k} id={`journey-arr-${k}`} markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0.5 L10,5 L0,9.5 z" fill={c} /></marker>)}</defs>
         {edges.map(e => { const n = nodes.find(n => n.id === e.from)!; const k = n.state === 'PROBLEM' ? 'r' : n.completed ? 'g' : 's'; return <path key={e.from + e.to} data-from={e.from} data-to={e.to} d={journeyEdgePath(positions.get(e.from)!, positions.get(e.to)!)} fill="none" stroke={k === 'g' ? '#059669' : k === 'r' ? '#dc2626' : '#94a3b8'} strokeWidth={k === 'g' ? 3 : 2.5} strokeDasharray={k === 'g' ? undefined : '7 5'} markerEnd={`url(#journey-arr-${k})`} />; })}
@@ -131,20 +139,23 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
       </svg>
       {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
       {nodes.map((n, i) => { const p = positions.get(n.id)!, m = JOURNEY_META[n.state]; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('absolute z-10 flex flex-col rounded-xl p-2.5 text-left transition-shadow hover:shadow-lg', m.cls, selectedId === n.id && 'outline outline-[3px] outline-offset-4 outline-slate-900')}>
-        {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
-        {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
-        <div className="flex items-center justify-between gap-1"><JourneyStatus node={n} /><span className="rounded bg-slate-900/10 px-1 text-[10px] font-bold text-slate-600">{i + 1}</span></div>
-        <div className="mt-1 text-[14px] font-extrabold leading-tight tracking-tight text-slate-900">{n.label}</div>
+        {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[12px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
+        {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
+        <div className="flex items-center justify-between gap-1"><JourneyStatus node={n} /><span className="rounded bg-slate-900/10 px-1 text-[12px] font-bold text-slate-600">{i + 1}</span></div>
+        <div className="mt-1 text-[16px] font-extrabold leading-tight tracking-tight text-slate-900">{n.label}</div>
         <div className={cx('mt-0.5 line-clamp-2 text-[12px] leading-snug', n.state === 'PROBLEM' ? 'font-bold text-red-700' : 'font-medium text-slate-700')}>{n.blockers[0] || n.evidence || 'Chưa có bằng chứng thực tế'}</div>
-        <div className="text-[11.5px] font-semibold text-slate-500">{n.deadline ? `⏱ ${n.deadline}` : ''}</div>
-        <div className="mt-auto flex items-center gap-1 text-[10.5px] font-bold"><span className="rounded bg-slate-900/[0.07] px-1 py-px">📄 {n.documentIds.length}</span>{n.blockers.length > 0 && <span className="rounded bg-red-600 px-1 py-px text-white">⚠ {n.blockers.length}</span>}{s.finance.actual?.filter(l => l.journeyStage === n.id).length ? <span className="rounded bg-slate-900/[0.07] px-1 py-px">₫ {s.finance.actual.filter(l => l.journeyStage === n.id).length}</span> : null}</div>
+        <div className="text-[12px] font-semibold text-slate-500">{n.deadline ? `⏱ ${n.deadline}` : ''}</div>
+        <div className="mt-auto flex items-center gap-1 text-[12px] font-bold"><span className="rounded bg-slate-900/[0.07] px-1 py-px">📄 {n.documentIds.length}</span>{n.blockers.length > 0 && <span className="rounded bg-red-600 px-1 py-px text-white">⚠ {n.blockers.length}</span>}{s.finance.actual?.filter(l => l.journeyStage === n.id).length ? <span className="rounded bg-slate-900/[0.07] px-1 py-px">₫ {s.finance.actual.filter(l => l.journeyStage === n.id).length}</span> : null}</div>
       </button>; })}
     </div>
-    <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-slate-300 bg-white p-1 shadow-md" onPointerDown={e => e.stopPropagation()}>
-      <button type="button" onClick={() => center(1.2)} aria-label="Zoom In" className="touch-target rounded text-lg font-bold text-slate-700">+</button><button type="button" onClick={() => center(1 / 1.2)} aria-label="Zoom Out" className="touch-target rounded text-lg font-bold text-slate-700">−</button><span className="w-11 text-center text-[11px] font-semibold tabular-nums text-slate-500">{Math.round(tf.k * 100)}%</span>
-      <button type="button" onClick={() => { autoFit.current = true; fit(); }} className="touch-target rounded px-2.5 text-xs font-bold">⤢ Fit Journey</button><button type="button" onClick={() => { autoFit.current = false; setTf({ k: 1, x: 24, y: 20 }); }} className="touch-target rounded px-2.5 text-xs font-semibold">↺ Reset View</button>
+    <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-wrap items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white p-1 shadow-md" onPointerDown={e => e.stopPropagation()}>
+      <button type="button" onClick={() => center(1.2)} aria-label="Zoom In" className="touch-target rounded text-lg font-bold text-slate-700">+</button><button type="button" onClick={() => center(1 / 1.2)} aria-label="Zoom Out" className="touch-target rounded text-lg font-bold text-slate-700">−</button><span className="w-11 text-center text-xs font-semibold tabular-nums text-slate-500" data-testid="journey-zoom-level">{Math.round(tf.k * 100)}%</span>
+      <button type="button" onClick={() => { viewMode.current = 'fit'; fit(); }} className="touch-target rounded px-2 text-xs font-bold">⤢ Fit Journey</button><button type="button" onClick={() => { viewMode.current = 'readable'; readable(); }} className="touch-target rounded px-2 text-xs font-semibold">↺ Đọc rõ</button>
     </div>
-    <div className="pointer-events-none absolute bottom-16 right-3 z-20 flex flex-col gap-1 rounded-lg border border-slate-300 bg-white/95 px-2.5 py-2 text-[11px] font-semibold text-slate-600 shadow">{Object.entries(JOURNEY_META).map(([state, m]) => { const Icon = m.icon; return <span key={state} className="flex items-center gap-1.5"><Icon size={12} className={m.text} />{m.label}</span>; })}</div>
-    <div className="pointer-events-none absolute right-3 top-3 z-20 rounded bg-white/80 px-2 py-1 text-[10.5px] text-slate-500">Kéo để di chuyển · Cuộn để zoom · Click node để xem</div>
+    <details className="absolute right-3 top-3 z-20 rounded-lg border border-slate-300 bg-white/95 px-2 py-2 text-xs font-semibold text-slate-600 shadow" onPointerDown={e => e.stopPropagation()}>
+      <summary className="cursor-pointer">Trạng thái</summary>
+      <div className="mt-2 flex flex-col gap-1">{Object.entries(JOURNEY_META).map(([state, m]) => { const Icon = m.icon; return <span key={state} className="flex items-center gap-1.5"><Icon size={12} className={m.text} />{m.label}</span>; })}</div>
+    </details>
+    <div className="pointer-events-none absolute left-3 top-3 z-20 rounded bg-white/90 px-2 py-1 text-xs text-slate-600">Kéo để xem · Cuộn để zoom</div>
   </div>;
 }

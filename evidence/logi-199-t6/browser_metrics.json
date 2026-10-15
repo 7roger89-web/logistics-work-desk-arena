@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "a78c20e6d082bc04a05a56f1d2dbfa414328c847",
+  "commit": "",
   "lots": {
     "T6-FCL": {
       "nodes": [
@@ -47,6 +47,27 @@
       ],
       "overflowPx": 0
     },
+    "T6-ROAD-FTL": {
+      "nodes": [
+        "pickup",
+        "MAIN_CARRIAGE",
+        "road-vehicle",
+        "delivery"
+      ],
+      "overflowPx": 0
+    },
+    "T6-AIR-CONSOLIDATED": {
+      "nodes": [
+        "customs-export",
+        "air-booking",
+        "air-acceptance",
+        "uplift",
+        "air-arrival",
+        "customs-import",
+        "delivery"
+      ],
+      "overflowPx": 0
+    },
     "T6-ROAD-LTL": {
       "nodes": [
         "pickup",
@@ -59,8 +80,35 @@
   },
   "checks": [
     {
+      "label": "desktop-map-fit-readable-pan-zoom",
+      "typography": {
+        "scale": 1,
+        "titlePx": 16
+      },
+      "fit": {
+        "scale": 0.276173,
+        "inside": true
+      }
+    },
+    {
+      "label": "popup-primary-fields-and-editable-extras",
+      "primaryCount": 4,
+      "extraCount": 2
+    },
+    {
       "label": "fcl-on-board-write-readback",
       "state": "COMPLETED"
+    },
+    {
+      "label": "mobile-map-fit-readable-pan-zoom",
+      "typography": {
+        "scale": 1,
+        "titlePx": 16
+      },
+      "fit": {
+        "scale": 0.270758,
+        "inside": true
+      }
     },
     {
       "label": "mobile-T6-FCL",
@@ -69,6 +117,10 @@
     {
       "label": "mobile-T6-AIR",
       "overflowPx": 0
+    },
+    {
+      "label": "persisted-on-board-after-reopen",
+      "value": "2026-10-03"
     }
   ],
   "verdict": "T6_MODES_STAGING_PASS"

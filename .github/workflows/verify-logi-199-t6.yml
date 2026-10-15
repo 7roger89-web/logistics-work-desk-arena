@@ -5,6 +5,7 @@ on:
     branches:
       - ct/logi199-t6-integration
       - ct/logi199-int198-preview
+      - arena/d8927583-logistics-work-desk-arena
 
 permissions:
   contents: write
@@ -31,10 +32,10 @@ jobs:
       - name: LOGI-199 business-truth regressions (T0 AIR docs, T1 FCL, T2-T4 modes, journey, profile)
         if: ${{ !cancelled() }}
         run: |
-          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py tests/test_logi199_t5_redirects.py \
+          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py tests/test_logi199_t5_redirects.py tests/test_logi199_t5_popup_fields.py \
             tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t2_t4_mode_truth.py \
             tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py \
-            tests/test_journey_super_goal_186.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
+            tests/test_journey_super_goal_186.py tests/test_journey_visual_fidelity_190.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
       - name: FULL suite parity — main@5c6642a vs this integration SHA, same runner
         if: ${{ !cancelled() }}
         run: |
@@ -49,6 +50,8 @@ jobs:
             echo "--- NEW on branch (not on main):"; comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt;
             echo "--- FIXED on branch:"; comm -23 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt; } > evidence/logi-199-t6/full_suite_parity.txt
           cat evidence/logi-199-t6/full_suite_parity.txt
+          grep -Eq '[0-9]+ passed' /tmp/main.log
+          grep -Eq '[0-9]+ passed' /tmp/branch.log
           test -z "$(comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt)"
       - if: ${{ !cancelled() }}
         uses: actions/setup-node@v4
@@ -63,6 +66,13 @@ jobs:
           npm run build
           npm run scan
           git diff --exit-code -- dist
+      - name: LOGI-197 DOM acceptance and hook transitions (current official bundle)
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/gen_logi195_dom_fixture.py --fixture /tmp/logi197-dom.json
+          node tests/component/dom_acceptance_logi197_journey_clarity.mjs /tmp/logi197-dom.json
+          (cd component && npx vite build --config ../tests/component/vite.hook-test.config.cjs)
+          node tests/component/dom_hook_transition_197.mjs
       - name: Isolated Playwright Chromium
         if: ${{ !cancelled() }}
         run: |

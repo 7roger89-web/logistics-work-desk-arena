@@ -1,46 +1,31 @@
-# LOGI-199 — Owner UAT (staging, không production)
+# LOGI-199 — UAT local đơn giản (chưa phải nghiệm thu/cho phép release)
 
-Bản UAT này chạy **app thật** (`views.web_app.main`, React build `component/dist`) trên
-**sandbox mongomock trong bộ nhớ**. Không có `MONGO_URI`, không đọc `.streamlit/secrets.toml`, không ghi DB thật.
-Launcher `scripts/logi199_t6_staging_app.py` tự từ chối chạy nếu có `MONGO_URI`.
+Chỉ dùng bản tích hợp có #198 trên `arena/d8927583-logistics-work-desk-arena`.
+Independent review và Owner UAT vẫn **PENDING**. Không cần chọn phương án hay cấp quyền deploy.
 
-## Phương án A — chạy trên máy Owner (khuyến nghị, không cần cấp quyền mới)
+## Khi reviewer cho phép bắt đầu UAT
 
-Máy Owner đang có 2 instance production (8501, 8510). Dùng **port riêng 9501**, thư mục clone riêng:
+1. [Tải ZIP nhánh thử nghiệm](https://github.com/7roger89-web/logistics-work-desk-arena/archive/refs/heads/arena/d8927583-logistics-work-desk-arena.zip), giải nén vào **thư mục mới**, không dùng thư mục app production. Không cần Git hay sửa code.
+2. Trên Windows có Python 3.11+, mở thư mục `scripts`, nhấp đúp **`logi199_uat.cmd`**. Lần đầu chờ tải thư viện. Nếu báo lỗi, giữ nguyên cửa sổ gửi người hỗ trợ; không tự sửa cấu hình DB.
+3. Mở **http://localhost:9501**. App chạy dữ liệu mẫu trong bộ nhớ; port 8501/8510 không đổi. Không copy `secrets.toml`, `.env` hoặc URI production vào thư mục này. Nếu launcher từ chối cấu hình, dừng, không bỏ guard.
+4. Xong thì Ctrl+C trong cửa sổ chạy. Dữ liệu thử sẽ mất khi dừng server (đúng thiết kế staging). Ghi PASS/FAIL và ảnh, không cần lập trình.
 
-```powershell
-git clone https://github.com/7roger89-web/logistics-work-desk-arena.git logi-uat
-cd logi-uat
-git checkout ct/logi199-t6-integration        # hoặc ct/logi199-int198-preview (có #198)
-python -m venv .venv; .venv\Scripts\activate
-pip install -r requirements.txt pytest
-$env:MONGO_URI=""; $env:AUTH_REQUIRED="false"
-python -m streamlit run scripts/logi199_t6_staging_app.py --server.port 9501
-```
+Không cài app public, không đăng nhập bằng tài khoản production. Chưa tạo staging cloud/deploy mới.
 
-Mở `http://localhost:9501`. Dữ liệu là bộ staging seed + 4 lô thử: `T6-FCL`, `T6-LCL`, `T6-AIR`, `T6-ROAD-LTL`.
-Tắt bằng Ctrl+C khi xong. Không copy `secrets.toml` vào thư mục này.
+## Checklist ngắn
 
-## Phương án B — preview công khai (Streamlit Cloud từ nhánh) — **OWNER GATE**
+| Màn hình / lô mẫu | Thao tác | Kỳ vọng |
+|---|---|---|
+| T6-FCL / bản đồ | Xem mặc định; kéo; +/−; Fit Journey; Đọc rõ | Mặc định 100%, đọc tên node rõ. Fit chỉ để xem toàn cảnh. Desktop: map trái / việc phải; mobile: xếp dọc, không tràn. |
+| T6-FCL / ON BOARD | Fit → chọn node → Mở công đoạn → Công việc; nhập 2026-10-03 rồi Lưu; sang lô khác, quay lại | Hiện Hoàn thành và ngày đã lưu sau backend readback; ATD đơn thuần không tự chứng minh on-board. |
+| T6-FCL / DELIVERY | Nhập POD khi chưa xác nhận giao | Bị từ chối; không tự hoàn thành toàn lô. |
+| T6-LCL | Xem CFS / GHÉP HÀNG; mở Công việc và Chi tiết phụ | Không GATE-IN/VGM bắt buộc; trường phụ còn sửa được, không bị xóa. |
+| T6-AIR và T6-AIR-CONSOLIDATED | Xem AWB/chuyến, kho, uplift, đến | Không có SI/VGM/GATE-IN tàu. Chọn loại consolidated không tự chứng minh đã bay. |
+| T6-ROAD-LTL và T6-ROAD-FTL | Xem nhận/ghép hàng hoặc xe/tài xế | Không áp maritime; fixture nội địa không cửa khẩu/hải quan. |
+| Công đoạn bất kỳ / Chứng từ | Mở và đối chiếu phạm vi | Chỉ chứng từ thuộc công đoạn; không hỏi lại khách đã biết. UNKNOWN không biến thành hoàn thành. |
+| Báo giá 390px | Xem tab/bộ lọc | Giữ kết quả sửa mobile: đọc được, không cắt ngang. |
+| Tra cứu chính sách 390px | Xem tên nguồn | Đọc đủ “Bộ Thông Tin Truyền Thông”, biểu tượng mở vẫn trong thẻ. |
 
-Cần Owner tự quyết: tạo app preview riêng từ nhánh, **không** gắn secrets production,
-`AUTH_REQUIRED` phải bật (hoặc app private) vì link công khai. Executor không tự tạo.
-
-## Checklist UAT (đánh dấu PASS/FAIL)
-
-| # | Màn hình | Thao tác | Kỳ vọng |
-|---|---|---|---|
-| 1 | Lô hàng → `T6-FCL` → bản đồ | Xem node | Booking chưa xong dù có số BK-160; ON BOARD chưa xong khi chỉ có ATD |
-| 2 | `T6-FCL` → ON BOARD → mở bàn làm việc → Thông tin/Công việc | Nhập `2026-10-03`, Lưu | Node chuyển Hoàn thành sau khi đọc lại |
-| 3 | `T6-FCL` → GATE-IN | Nhập cấp rỗng/đóng hàng/EIR | Node **vẫn chưa** hoàn thành cho tới khi nhập gate-in thực tế |
-| 4 | `T6-FCL` → DELIVERY | Nhập POD khi chưa giao | Bị từ chối "POD chỉ ghi sau khi lô đã xác nhận giao" |
-| 5 | `T6-LCL` | Xem node | Có "CFS / GHÉP HÀNG", **không** có GATE-IN; SI không có VGM |
-| 6 | `T6-AIR` | Xem node | AWB/chuyến bay, kho/soi chiếu, uplift, hạ cánh; không có booking tàu/SI/VGM |
-| 7 | `T6-ROAD-LTL` | Xem node | Nhận & ghép hàng (LTL); không có hải quan/cửa khẩu |
-| 8 | Báo giá (điện thoại 390px) | Xem 3 tab + bộ lọc | Đọc được hết, không bị cắt |
-| 9 | Tra cứu chính sách (390px) | Xem danh sách | Biểu tượng mở nằm trong thẻ |
-| 10 | (bản `int198-preview`) lô bất kỳ | Journey 5 bước | Chứng từ đúng bước; chi phí chỉ ở bước cuối; không bắt chọn lại khách |
-
-## Ảnh trước / sau
-- Trước: `evidence/logi-199-uat/before/` (chụp tại `cbdb10f`/`d0a1b55`).
-- Sau: `evidence/logi-199-t5/` và `evidence/logi-199-t6/` (do CI chụp lại trên SHA mới nhất của nhánh).
+Ảnh so sánh: `evidence/logi-199-t6/{desktop,mobile}-map-A-fit.png` và `*-map-B-readable.png`.
+Audit 21 màn hình độc lập: `evidence/logi-199-t5/route_audit.json`; 3 redirect legacy được kiểm tra đích riêng, không tính là màn hình.
+Ảnh/CI không thay thế Independent review, Owner UAT hoặc quyền merge production.

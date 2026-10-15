@@ -2,7 +2,7 @@
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "app": "app.py",
   "mode": "isolated-mongomock-no-production-db",
-  "commit": "a78c20e6d082bc04a05a56f1d2dbfa414328c847",
+  "commit": "",
   "checks": [
     {
       "label": "desktop-home",
@@ -36,7 +36,7 @@
       "journey": {
         "font": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
         "testid": "shipment-journey",
-        "text": "📍 Đang ở: Chưa xác địnhChưa xác định / sắp tới1Chặng chínhChưa có bằng chứng thực tế📄 0Chưa xác định / sắp tới2Giao hàngChưa có bằng chứng thực tế📄 0+−65%⤢ Fit Journey↺ Reset ViewHoàn thànhHiện tạiĐang chờCần xử lýChưa xác định / sắp tớiKéo để di chuyển · Cuộn để zoom · Click node để xemShipment overviewTổng quan lô hàngChọn một công đoạn ở trên để xem việc cần làm.Next Action — toàn lôQuá free timeXỬ LÝ NGAYCurrentChưa xác địnhOwner lô hàngCh"
+        "text": "📍 Đang ở: Chưa xác địnhChưa xác định / sắp tới1Chặng chínhChưa có bằng chứng thực tế📄 0Chưa xác định / sắp tới2Giao hàngChưa có bằng chứng thực tế📄 0+−100%⤢ Fit Journey↺ Đọc rõTrạng tháiHoàn thànhHiện tạiĐang chờCần xử lýChưa xác định / sắp tớiKéo để xem · Cuộn để zoomShipment overviewTổng quan lô hàngChọn một công đoạn ở trên để xem việc cần làm.Next Action — toàn lôQuá free timeXỬ LÝ NGAYCurrentChưa xác địnhOwner lô hàngChưa phân côngDocumen"
       }
     },
     {

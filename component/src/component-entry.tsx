@@ -13,6 +13,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { applyViewModel, type ViewModel } from "./lib/viewmodel";
 import { bindTransport } from "./lib/dispatcher";
 import App from "./App";
+import { ensureFonts } from "./fonts";
 import "./index.css";
 import "./shell.css";
 
@@ -73,6 +74,7 @@ export default function mountLogiShell(api: ComponentApi): () => void {
   // (Re)bind the v2 trigger transport for this invocation.
   bindTransport(api.setTriggerValue ?? null);
 
+  ensureFonts();
   const h = ensureHost(api.parentElement);
   if (!root) {
     root = createRoot(h);
