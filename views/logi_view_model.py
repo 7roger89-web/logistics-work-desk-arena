@@ -2954,6 +2954,24 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
     if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
         return out(False, "Tờ khai xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    # LOGI-199 T1 — SEA FCL lifecycle facts, each gated by the confirmed scope
+    # that owns it. Nothing is derived from the Incoterm alone.
+    if ({"booking_status", "on_board_at"} & set(fields)) and "MAIN_CARRIAGE" not in scope:
+        return out(False, "Booking/on-board không thuộc phạm vi chặng chính đã xác nhận.")
+    if ({"empty_pickup_at", "stuffing_at", "eir_no"} & set(fields)) and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
+        return out(False, "Cấp rỗng/đóng hàng/EIR chỉ áp dụng cho lô FCL có phạm vi bàn giao container.")
+    if "export_clearance_at" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
+        return out(False, "Thông quan xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    delivery_scope = {"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope
+    if "do_released_at" in fields and not (delivery_scope or "IMPORT_CUSTOMS" in scope):
+        return out(False, "D/O không thuộc phạm vi đầu nhập đã xác nhận.")
+    if ({"pod_received_at", "empty_return_at"} & set(fields)) and not delivery_scope:
+        return out(False, "POD/trả rỗng không thuộc phạm vi giao hàng đã xác nhận.")
+    if "empty_return_at" in fields and profile.get("loadModel") != "FCL":
+        return out(False, "Trả container rỗng chỉ áp dụng cho lô FCL.")
+    delivered = bool(((shipment.get("data") or {}).get("2.7") or {}).get("is_delivered"))
+    if rd.text(fields.get("pod_received_at")) and not delivered:
+        return out(False, "POD chỉ ghi sau khi lô đã xác nhận giao hàng thực tế.")
     try: normalized = normalize_sea_facts(fields)
     except ValueError as exc: return out(False, str(exc))
     block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault("sea_export", {})

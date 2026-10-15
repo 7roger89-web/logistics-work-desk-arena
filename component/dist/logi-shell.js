@@ -21092,37 +21092,21 @@ function Hl({ shipment: e, node: t }) {
 	});
 }
 function Ul({ shipment: e, stageId: t }) {
-	let { dispatch: n } = Kn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)({}), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u] = (0, _.useState)(e.version ?? 0), d = r?.userAccess?.currentUser, f = !!(d?.wildcard || d?.permissions.includes("shipment_edit")), p = e.journey?.nodes.find((e) => e.id === t), m = r?.lastWrites?.find((e) => e.event === "shipment_sea_facts_save" && e.requestId === o), h = !(!o || m), g = !!m?.ok, v = t === "customs-export" ? [{
-		key: "export_declaration_no",
-		label: "Số tờ khai xuất (đã đăng ký)"
-	}] : t === "gate-in" ? [{
-		key: "gate_in_at",
-		label: "Gate-in thực tế"
-	}] : [
-		{
-			key: "si_status",
-			label: "Trạng thái SI"
-		},
-		{
-			key: "vgm_status",
-			label: "Trạng thái VGM"
-		},
-		{
-			key: "si_cutoff",
-			label: "SI cutoff"
-		},
-		{
-			key: "vgm_cutoff",
-			label: "VGM cutoff"
-		}
-	];
+	let { dispatch: n } = Kn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)({}), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u] = (0, _.useState)(e.version ?? 0), d = r?.userAccess?.currentUser, f = !!(d?.wildcard || d?.permissions.includes("shipment_edit")), p = e.journey?.nodes.find((e) => e.id === t), m = r?.lastWrites?.find((e) => e.event === "shipment_sea_facts_save" && e.requestId === o), h = !(!o || m), g = !!m?.ok, v = p?.factFields ?? [];
 	return /* @__PURE__ */ (0, H.jsxs)("section", {
 		className: "rounded-2xl border bg-white p-4 space-y-3",
 		"data-testid": "sea-export-facts",
 		children: [
 			/* @__PURE__ */ (0, H.jsx)("h3", {
 				className: "font-extrabold text-[#0f2a4a]",
-				children: t === "customs-export" ? "Tờ khai xuất — dữ liệu hiện có" : t === "gate-in" ? "Mốc vào bãi container" : "SI / VGM — ghi nhận bằng chứng"
+				children: {
+					booking: "Booking — xác nhận của hãng tàu",
+					"customs-export": "Hải quan xuất — tờ khai và thông quan",
+					"gate-in": "Container — cấp rỗng, đóng hàng, EIR, gate-in",
+					"on-board": "Xếp hàng lên tàu — bằng chứng on-board",
+					delivery: "Đầu nhận — D/O, POD, trả rỗng",
+					"si-vgm": "SI / VGM — ghi nhận bằng chứng"
+				}[t] ?? "Ghi nhận bằng chứng"
 			}),
 			/* @__PURE__ */ (0, H.jsx)("p", {
 				className: "text-sm text-slate-500",
@@ -21132,7 +21116,7 @@ function Ul({ shipment: e, stageId: t }) {
 				className: "grid grid-cols-1 md:grid-cols-2 gap-3",
 				children: v.map((t) => /* @__PURE__ */ (0, H.jsx)(Q, {
 					label: t.label,
-					children: t.key.endsWith("_status") ? /* @__PURE__ */ (0, H.jsx)("select", {
+					children: t.kind === "status" ? /* @__PURE__ */ (0, H.jsx)("select", {
 						"aria-label": t.label,
 						disabled: !f || h || !p?.owned,
 						className: $(),
@@ -21141,24 +21125,14 @@ function Ul({ shipment: e, stageId: t }) {
 							...n,
 							[t.key]: e.target.value
 						})),
-						children: [
-							"UNKNOWN",
-							"RECEIVED",
-							"SUBMITTED",
-							"ACCEPTED"
-						].map((e, t) => /* @__PURE__ */ (0, H.jsx)("option", {
-							value: e,
-							children: [
-								"Chưa biết",
-								"Đã nhận hồ sơ",
-								"Đã gửi hãng tàu",
-								"Hãng tàu đã chấp nhận"
-							][t]
-						}, e))
+						children: (t.options ?? []).map((e) => /* @__PURE__ */ (0, H.jsx)("option", {
+							value: e.value,
+							children: e.label
+						}, e.value))
 					}) : /* @__PURE__ */ (0, H.jsx)("input", {
 						"aria-label": t.label,
 						type: "text",
-						placeholder: t.key === "export_declaration_no" ? "Số tờ khai" : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
+						placeholder: t.kind === "text" ? t.label : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
 						disabled: !f || h || !p?.owned,
 						className: $(),
 						value: i[t.key] ?? e.journey?.seaFacts[t.key] ?? "",
@@ -22492,11 +22466,7 @@ function mu() {
 				globalActive: !!r.get("tab") && !Xe,
 				globalTab: a,
 				children: [
-					Xe && Ze === "info" && !Qe && [
-						"si-vgm",
-						"gate-in",
-						"customs-export"
-					].includes(Xe.id) && /* @__PURE__ */ (0, H.jsx)(Ul, {
+					Xe && Ze === "info" && !Qe && !!Xe.factFields?.length && /* @__PURE__ */ (0, H.jsx)(Ul, {
 						shipment: v,
 						stageId: Xe.id
 					}, `${v.id}-${Xe.id}-${v.version}`),
