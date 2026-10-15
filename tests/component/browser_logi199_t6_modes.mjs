@@ -53,7 +53,10 @@ try {
   await page.locator('.logi-shell').first().waitFor({ state: 'visible', timeout: 90000 });
 
   async function openLot(id) {
-    await page.locator('a[href="/lo-hang"]').first().click({ timeout: 15000 });
+    // The shell nav can be collapsed/hidden on detail pages; dispatch a real DOM
+    // click to the router link (same handler a user tap reaches).
+    const nav = page.locator('a[href="/lo-hang"]').first();
+    await nav.waitFor({ state: 'attached', timeout: 15000 }); await nav.dispatchEvent('click');
     const all = page.getByTestId('shipment-period-tat-ca').first();
     await all.waitFor({ state: 'visible', timeout: 30000 }); await all.click();
     const link = page.locator(`a[href="/lo-hang/${id}"]`).first();
