@@ -1,0 +1,697 @@
+{
+  "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 zero-node and current-browser replay",
+  "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
+  "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
+  "source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+  "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a",
+  "dist_sha256": {
+    "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+    "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
+  },
+  "staging_url": "http://127.0.0.1:9501",
+  "capture_output_directory": "evidence/logi-199-g2/current-source",
+  "runtime": {
+    "available": true,
+    "browser": "153.0.8010.0",
+    "chromium_executable": "/tmp/chromium"
+  },
+  "touch_pan": {
+    "verdict": "PASS",
+    "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+    "viewport_box": {
+      "x": 8.0,
+      "y": 269.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "start": [
+      60,
+      527
+    ],
+    "end": [
+      329,
+      527
+    ],
+    "observed_event_types": [
+      "pointerdown",
+      "pointermove",
+      "pointerup",
+      "touchend",
+      "touchmove",
+      "touchstart"
+    ],
+    "pointer_type_values": [
+      "touch"
+    ],
+    "pointerdown_count": 1,
+    "pointermove_count": 12,
+    "pointerup_count": 1,
+    "transform_before": {
+      "raw": "translate(-894px, 121px) scale(1)",
+      "x": -894,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_after": {
+      "raw": "translate(-625px, 121px) scale(1)",
+      "x": -625,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_delta_x": 269.0,
+    "node_box_before": {
+      "x": -143.0,
+      "y": 631.94,
+      "width": 116.0,
+      "height": 66.0
+    },
+    "node_box_after": {
+      "x": 126.0,
+      "y": 631.94,
+      "width": 116.0,
+      "height": 66.0
+    },
+    "node_delta_x": 269.0,
+    "selected_nodes_before": [],
+    "selected_nodes_after": [],
+    "bubble_count_after": 0,
+    "checks": {
+      "touch_pointer_events": true,
+      "map_transform_moved_in_drag_direction": true,
+      "no_accidental_node_selection": true
+    }
+  },
+  "TOUCH_PAN_VERDICT": "PASS",
+  "TAP_SAVE_READBACK_VERDICT": "PASS",
+  "zero_node_desktop": {
+    "fixture": "SEA-188",
+    "journey_shape": "canonical shipment with journey.nodes=[]",
+    "viewport": [
+      1440,
+      900
+    ],
+    "zero_shell_box": {
+      "x": 17.0,
+      "y": 143.22,
+      "width": 1406.0,
+      "height": 780.0
+    },
+    "map_viewport_box": {
+      "x": 17.0,
+      "y": 143.22,
+      "width": 1406.0,
+      "height": 780.0
+    },
+    "map_width_matches_zero_shell": true,
+    "notice_box": {
+      "x": 505.0,
+      "y": 403.77,
+      "width": 430.0,
+      "height": 258.89
+    },
+    "computed_style": {
+      "cursor": "default",
+      "touchAction": "auto",
+      "pointerEvents": "auto",
+      "approved_vietnam_chart_data_image_loaded": true
+    },
+    "transform_before_pointer": {
+      "raw": "translate(602px, 216px) scale(1)",
+      "x": 602,
+      "y": 216,
+      "scale": 1
+    },
+    "node_count": 0,
+    "edge_count": 0,
+    "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (Incoterm).\n\nBỔ SUNG HỒ SƠ →",
+    "profile_state_label": "Hồ sơ lô còn thiếu",
+    "profile_status_visible": true,
+    "server_projected_primary_action": "Bổ sung hồ sơ thực hiện lô",
+    "toolbar_text": "📍 Đang ở: Chưa xác định\nChưa đủ hồ sơ để xác định công đoạn chi tiết.",
+    "unknown_phase_stays_unconfirmed": true,
+    "cta_count": 1,
+    "labelled_cta_count": 1,
+    "cta_text": "BỔ SUNG HỒ SƠ →",
+    "horizontal_overflow": 0,
+    "document_dimensions": {
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "horizontalOverflow": 0,
+      "documentHeight": 900,
+      "viewportHeight": 900
+    },
+    "page_errors": [],
+    "pointer_test": {
+      "input": "Playwright mouse drag dispatching browser pointer events over decorative empty chart",
+      "pointer_types": [
+        "mouse"
+      ],
+      "observed_event_types": [
+        "pointerdown",
+        "pointermove",
+        "pointerup"
+      ],
+      "transform_after_pointer": {
+        "raw": "translate(602px, 216px) scale(1)",
+        "x": 602,
+        "y": 216,
+        "scale": 1
+      },
+      "transform_unchanged": true,
+      "no_pan_verdict": "PASS"
+    },
+    "cta_editor_test": {
+      "opens_existing_execution_profile_editor": true,
+      "workspace_visible": true,
+      "url_after_cta": "/",
+      "non_read_http_requests_during_cta": [],
+      "no_non_read_http_request": true,
+      "no_business_write_proof": "DOM acceptance asserts zero non-navigation write triggers for this CTA"
+    },
+    "verdict": "PASS"
+  },
+  "zero_node_mobile": {
+    "fixture": "SEA-188",
+    "journey_shape": "canonical shipment with journey.nodes=[]",
+    "viewport": [
+      390,
+      844
+    ],
+    "zero_shell_box": {
+      "x": 8.0,
+      "y": 235.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "map_viewport_box": {
+      "x": 8.0,
+      "y": 235.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "map_width_matches_zero_shell": true,
+    "notice_box": {
+      "x": 22.0,
+      "y": 380.99,
+      "width": 346.0,
+      "height": 258.89
+    },
+    "computed_style": {
+      "cursor": "default",
+      "touchAction": "auto",
+      "pointerEvents": "auto",
+      "approved_vietnam_chart_data_image_loaded": true
+    },
+    "transform_before_pointer": {
+      "raw": "translate(0px, 0px) scale(1)",
+      "x": 0,
+      "y": 0,
+      "scale": 1
+    },
+    "node_count": 0,
+    "edge_count": 0,
+    "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (Incoterm).\n\nBỔ SUNG HỒ SƠ →",
+    "profile_state_label": "Hồ sơ lô còn thiếu",
+    "profile_status_visible": true,
+    "server_projected_primary_action": "Bổ sung hồ sơ thực hiện lô",
+    "toolbar_text": "📍 Đang ở: Chưa xác định",
+    "unknown_phase_stays_unconfirmed": true,
+    "cta_count": 1,
+    "labelled_cta_count": 1,
+    "cta_text": "BỔ SUNG HỒ SƠ →",
+    "horizontal_overflow": 0,
+    "document_dimensions": {
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": 0,
+      "documentHeight": 844,
+      "viewportHeight": 844
+    },
+    "page_errors": [],
+    "pointer_test": {
+      "input": "Playwright mouse drag dispatching browser pointer events over decorative empty chart",
+      "pointer_types": [
+        "mouse"
+      ],
+      "observed_event_types": [
+        "pointerdown",
+        "pointermove",
+        "pointerup"
+      ],
+      "transform_after_pointer": {
+        "raw": "translate(0px, 0px) scale(1)",
+        "x": 0,
+        "y": 0,
+        "scale": 1
+      },
+      "transform_unchanged": true,
+      "no_pan_verdict": "PASS"
+    },
+    "cta_editor_test": {
+      "opens_existing_execution_profile_editor": true,
+      "workspace_visible": true,
+      "url_after_cta": "/",
+      "non_read_http_requests_during_cta": [],
+      "no_non_read_http_request": true,
+      "no_business_write_proof": "DOM acceptance asserts zero non-navigation write triggers for this CTA"
+    },
+    "verdict": "PASS"
+  },
+  "CAPTURE_VERDICT": "PASS",
+  "before": {
+    "source_sha": "2bf16eabe7e8c75d9be3f90a40e5c99208235416",
+    "dist_js_sha256": "25c814494819f55bedf29d578b87706d62b0bd064577c03d7b5fd2150dd74009",
+    "dist_css_sha256": "79cdda525561ab85fbac5187c90562595b2402755bae09b9ed989abe1c02751c",
+    "captures": {
+      "desktop": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "identity_box": {
+          "x": 17,
+          "y": 24,
+          "width": 1406,
+          "height": 64
+        },
+        "attention_box": {
+          "x": 17,
+          "y": 98,
+          "width": 1406,
+          "height": 46.625
+        },
+        "toolbar_box": {
+          "x": 17,
+          "y": 154.625,
+          "width": 1406,
+          "height": 46
+        },
+        "map_box": {
+          "x": 17,
+          "y": 208.625,
+          "width": 1406,
+          "height": 635
+        },
+        "completion_review_box": {
+          "x": 17,
+          "y": 853.625,
+          "width": 1406,
+          "height": 60.734375
+        },
+        "page_errors": []
+      },
+      "mobile_journey": {
+        "viewport": [
+          390,
+          844
+        ],
+        "map_box": {
+          "x": 8,
+          "y": 253.9375,
+          "width": 374,
+          "height": 549
+        },
+        "page_errors": []
+      },
+      "mobile_receivables_before": {
+        "viewport": [
+          390,
+          844
+        ],
+        "row_count": 5,
+        "sheet_box": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 828
+        },
+        "save_box": {
+          "x": 200,
+          "y": 759.96875,
+          "width": 170,
+          "height": 48.03125
+        },
+        "cancel_box": {
+          "x": 20,
+          "y": 759.96875,
+          "width": 170,
+          "height": 48.03125
+        },
+        "save_text": "💾 LƯU KHOẢN THU",
+        "save_line_box_count": 2,
+        "page_errors": []
+      }
+    }
+  },
+  "desktop": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "identity_box": {
+      "x": 17.0,
+      "y": 8.0,
+      "width": 1406.0,
+      "height": 48.0
+    },
+    "attention_box": {
+      "x": 17.0,
+      "y": 60.0,
+      "width": 552.0,
+      "height": 46.62
+    },
+    "attention_primary_text": "XỬ LÝ\n— Mở xử lý",
+    "attention_primary_box": {
+      "x": 473.0,
+      "y": 64.31,
+      "width": 84.0,
+      "height": 38.0
+    },
+    "toolbar_box": {
+      "x": 577.0,
+      "y": 60.0,
+      "width": 846.0,
+      "height": 46.62
+    },
+    "map_box": {
+      "x": 17.0,
+      "y": 106.62,
+      "width": 1406.0,
+      "height": 780.0
+    },
+    "map_height_px": 780.0,
+    "map_height_target_780_810": true,
+    "completion_review_box": {
+      "x": 17.0,
+      "y": 890.62,
+      "width": 1406.0,
+      "height": 60.73
+    },
+    "completion_review_collapsed": true,
+    "completion_review_below_map": true,
+    "edge_count": 20,
+    "node_count": 11,
+    "initial_transform": {
+      "raw": "translate(12px, 131px) scale(0.945205)",
+      "x": 12,
+      "y": 131,
+      "scale": 0.945205
+    },
+    "horizontal_overflow": 0,
+    "business_attention_visible": true,
+    "primary_cta_visible": true,
+    "page_errors": [],
+    "map_height_delta_px_vs_before": 145.0,
+    "map_top_y_delta_px_vs_before": -102.0,
+    "attention_text": "CẦN XỬ LÝ (1)\nCần làm · Mở xử lý:\n\nBổ sung số tờ khai nhập khẩu.\n\nPhạm vi Trường Thành gồm khai báo hải quan nhập.\n\nXỬ LÝ\n— Mở xử lý",
+    "toolbar_text": "Đang ở: Chưa xác định\n⚠ Thiếu ETA\nViệc tiếp: Bổ sung số tờ khai nhập khẩu.\n+ Quy trình (0)\nXử lý →\n▤ Hồ sơ & Tài chính",
+    "on_board_node_box": {
+      "x": 731.34,
+      "y": 465.47,
+      "width": 109.64,
+      "height": 62.38
+    },
+    "node_bubble_box": {
+      "x": 631.15,
+      "y": 200.61,
+      "width": 310.03,
+      "height": 251.63
+    },
+    "node_bubble_within_map": true,
+    "task_modal_box": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1440.0,
+      "height": 900.0
+    },
+    "task_modal_center_error_px": 0.0
+  },
+  "mobile_journey": {
+    "viewport": [
+      390,
+      844
+    ],
+    "map_box": {
+      "x": 8.0,
+      "y": 269.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "node_count": 11,
+    "edge_count": 20,
+    "horizontal_overflow": 0,
+    "targets": {
+      "boxes": {
+        "journey-global-page": {
+          "x": 220.0,
+          "y": 73.09,
+          "width": 116.0,
+          "height": 36.0
+        },
+        "attention-primary-cta": {
+          "x": 299.0,
+          "y": 125.09,
+          "width": 73.0,
+          "height": 40.0
+        },
+        "journey-global-open": {
+          "x": 128.0,
+          "y": 222.94,
+          "width": 136.0,
+          "height": 36.0
+        },
+        "journey-attach-open": {
+          "x": 17.0,
+          "y": 222.94,
+          "width": 105.0,
+          "height": 36.0
+        },
+        "journey-zoom-in": {
+          "x": 22.0,
+          "y": 283.94,
+          "width": 40.0,
+          "height": 40.0
+        },
+        "journey-zoom-out": {
+          "x": 66.0,
+          "y": 283.94,
+          "width": 40.0,
+          "height": 40.0
+        },
+        "journey-zoom-fit": {
+          "x": 160.0,
+          "y": 283.94,
+          "width": 100.0,
+          "height": 40.0
+        },
+        "journey-zoom-readable": {
+          "x": 264.0,
+          "y": 283.94,
+          "width": 74.0,
+          "height": 40.0
+        }
+      },
+      "sizes": {
+        "journey-global-page": {
+          "width": 116.0,
+          "height": 36.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "attention-primary-cta": {
+          "width": 73.0,
+          "height": 40.0,
+          "target_class": "primary",
+          "minimum_px": 40,
+          "passes": true
+        },
+        "journey-global-open": {
+          "width": 136.0,
+          "height": 36.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "journey-attach-open": {
+          "width": 105.0,
+          "height": 36.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "journey-zoom-in": {
+          "width": 40.0,
+          "height": 40.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "journey-zoom-out": {
+          "width": 40.0,
+          "height": 40.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "journey-zoom-fit": {
+          "width": 100.0,
+          "height": 40.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        },
+        "journey-zoom-readable": {
+          "width": 74.0,
+          "height": 40.0,
+          "target_class": "secondary",
+          "minimum_px": 36,
+          "passes": true
+        }
+      },
+      "non_overlap_pairs": {
+        "toolbar_and_page": {
+          "journey-global-page__journey-global-open": true
+        },
+        "zoom_bar": {
+          "journey-zoom-in__journey-zoom-out": true,
+          "journey-zoom-in__journey-zoom-fit": true,
+          "journey-zoom-in__journey-zoom-readable": true,
+          "journey-zoom-out__journey-zoom-fit": true,
+          "journey-zoom-out__journey-zoom-readable": true,
+          "journey-zoom-fit__journey-zoom-readable": true
+        }
+      },
+      "all_target_heights_pass": true
+    },
+    "page_errors": [],
+    "adjacent_control_isolation": {
+      "zoom_in_changed_level": true,
+      "zoom_out_restored_level": true,
+      "global_workspace_stayed_closed": true,
+      "no_node_selected": true,
+      "no_bubble_opened": true,
+      "global_open_did_not_change_zoom": true,
+      "global_open_close_isolated": true
+    },
+    "arrival_node_box": {
+      "x": 137.0,
+      "y": 631.94,
+      "width": 116.0,
+      "height": 66.0
+    },
+    "arrival_bubble_box": {
+      "x": 31.0,
+      "y": 368.61,
+      "width": 328.0,
+      "height": 249.33
+    },
+    "bubble_close_target_box": {
+      "x": 308.0,
+      "y": 379.61,
+      "width": 36.0,
+      "height": 36.0
+    },
+    "bubble_close_target_height_at_least_36": true,
+    "bubble_task_target_box": {
+      "x": 32.0,
+      "y": 432.89,
+      "width": 326.0,
+      "height": 58.48
+    },
+    "bubble_task_primary_height_at_least_40": true,
+    "bubble_close_isolated": true,
+    "horizontal_overflow_after_reload": 0
+  },
+  "mobile_stage_save": {
+    "environment": "isolated staging / Mongomock",
+    "lot": "T6-FCL",
+    "stage": "ON BOARD",
+    "date": "2026-10-04",
+    "prior_date_value_before_edit": "",
+    "save_tapped": true,
+    "backend_confirmation_visible": false,
+    "save_button_text_after_tap": "Lưu mốc có bằng chứng",
+    "stage_alerts_after_save": [],
+    "no_payment_flow_used": true
+  },
+  "readback_touch_pan": {
+    "verdict": "PASS",
+    "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+    "viewport_box": {
+      "x": 8.0,
+      "y": 269.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "start": [
+      60,
+      527
+    ],
+    "end": [
+      329,
+      527
+    ],
+    "observed_event_types": [
+      "pointerdown",
+      "pointermove",
+      "pointerup",
+      "touchend",
+      "touchmove",
+      "touchstart"
+    ],
+    "pointer_type_values": [
+      "touch"
+    ],
+    "pointerdown_count": 1,
+    "pointermove_count": 12,
+    "pointerup_count": 1,
+    "transform_before": {
+      "raw": "translate(-894px, 121px) scale(1)",
+      "x": -894,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_after": {
+      "raw": "translate(-625px, 121px) scale(1)",
+      "x": -625,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_delta_x": 269.0,
+    "node_box_before": {
+      "x": -143.0,
+      "y": 631.94,
+      "width": 116.0,
+      "height": 66.0
+    },
+    "node_box_after": {
+      "x": 126.0,
+      "y": 631.94,
+      "width": 116.0,
+      "height": 66.0
+    },
+    "node_delta_x": 269.0,
+    "selected_nodes_before": [],
+    "selected_nodes_after": [],
+    "bubble_count_after": 0,
+    "checks": {
+      "touch_pointer_events": true,
+      "map_transform_moved_in_drag_direction": true,
+      "no_accidental_node_selection": true
+    }
+  },
+  "mobile_readback": {
+    "after_reload": true,
+    "date": "2026-10-04",
+    "expected_date": "2026-10-04"
+  },
+  "acceptance_checks": {
+    "desktop_populated_11_nodes": true,
+    "mobile_populated_11_nodes": true,
+    "mobile_touch_pan": true,
+    "mobile_save_reload_readback": true,
+    "desktop_zero_node_empty_map": true,
+    "mobile_zero_node_empty_map": true
+  }
+}

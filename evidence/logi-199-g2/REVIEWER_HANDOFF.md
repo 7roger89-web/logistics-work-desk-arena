@@ -1,34 +1,40 @@
-# Independent Review handoff — LOGI-APP-RENEWAL-01 / G2 repair
+# Independent Review handoff — LOGI-APP-RENEWAL-01 / Issue #199 G2
 
-**Status:** request independent review of this exact source/dist checkpoint and evidence limitations. This is not a review verdict, Supervisor PASS, Owner UAT, or release approval.
+**Review status: PENDING.** This is a request for independent assessment, not a verdict, Supervisor PASS, Owner UAT, or release approval.
 
 - Fixed branch: `arena/bb243332-logistics-work-desk-arena`
-- Current product-source commit: `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7`
-- Current dist JS SHA-256: `19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3`
-- Current dist CSS SHA-256: `6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f`
-- Sole visual authority: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
-- Main evidence: `evidence/logi-199-g2/README.md`, `metrics.json`, `capture_journey_flow.py`, screenshots under this directory, and `evidence/logi-199-t6/RECONCILIATION.md`.
+- Published source candidate: `1e899553cc1ad7dbd720eb805e061ec61ae0871a`
+- Raw current-source capture SHA recorded in metrics: `751f64f5129637eef4fb74515afdf7fa15ca9deb`
+- Sole visual authority: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`
+- Evidence index: `evidence/logi-199-g2/README.md`, `metrics.json`, `current-source/metrics.json`, screenshots under `current-source/`, `capture_journey_flow.py`, and this handoff.
 
-## A–C — visual evidence (historical capture)
+## Important source/evidence reconciliation
 
-The before/after screenshots and measurements were captured in the previous workspace snapshot at source `d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba`, JS `19674586…`, CSS `1b87f972…`. The current source commit is `2bcbf90…`; a fresh replay was not completed. Current source-built JS is byte-identical to that capture. The stable CSS is now `6973bae4…`; the rebuild removed a generated `.sm:space-y-2.5` rule absent from the current source, and not used on Journey/Receivables. Treat visual measurements below as previous-capture evidence, not a new current-source browser verdict.
+The resumed clone did not contain raw capture commit `751f64f5129637eef4fb74515afdf7fa15ca9deb`; GitHub lookup returned HTTP 422, “No commit found for SHA.” The source changes were recovered from the preserved stash, rebuilt, and committed on the expected remote base as candidate `1e899553cc1ad7dbd720eb805e061ec61ae0871a`. Its official dist JS/CSS hashes exactly match the raw browser capture, and its capture-script SHA matches the raw metrics. The raw JSON and screenshot bytes remain unmodified. **Commit-ID identity equivalence is not independently verified.** Review the accessible candidate and hash/provenance record; do not relabel the original capture as captured at `1e89955` or silently replace `751f64f`.
 
-- **Desktop G2, 1440×900:** old map `635px` → `780px` (`+145px`); top `208.63px` → `106.62px`; zero horizontal overflow; 11 nodes/20 edges; warning and primary CTA visible; bubble inside map; popup centered; completion review retained, collapsed below map.
-- **Mobile, 390×844:** map `549px`, zero overflow; primary attention CTA `40px`; secondary controls `36–40px`; zoom/Fit/Readable `40px`; bubble close `36px`; task action `58.48px`; measured adjacent targets did not overlap.
-- **Receivables:** prior capture showed no emoji, “LƯU KHOẢN THU” on one line, Save/Cancel `44px`, sheet `828px`; blank validation kept the sheet open and Cancel closed it. No `payment_record` or real transaction was created.
+## Requested bounded review
 
-## D — touch pan and isolated ON BOARD write/readback
+1. Inspect candidate `1e899553cc1ad7dbd720eb805e061ec61ae0871a` and the built bundle hashes against the Owner oracle. Decide whether the disclosed source-SHA reconciliation and matching bundle/harness hashes are sufficient to accept the current-source browser evidence, or whether a fresh capture is required before Owner UAT.
+2. Verify zero-node and missing-Journey behavior: the map-first canvas is full width, has zero fabricated nodes/edges/phases/statuses, no pan/zoom transform on an empty map, and one truthful “BỔ SUNG HỒ SƠ” CTA reaches the existing Execution Profile path without business writes.
+3. Confirm the accepted populated Journey path is preserved (T6-FCL: 11 nodes/20 edges), and that the focused same-instance hook transition checks are adequate for this slice.
+4. Review the real-browser desktop/mobile measurements, screenshots, touch-pan, isolated save/reload/readback, staging guard, and known limitations below. Explicitly state PASS/FAIL for this bounded acceptance and any remaining blocker; do not self-sign Owner UAT or production readiness.
 
-The previous successful capture used CDP `touchStart` + 12 multi-step `touchMove` + `touchEnd`; it observed `pointerType="touch"`, transform and ON BOARD node each moved `+269px`, and no node selection. It separately used isolated Mongomock to write a blank ON BOARD date as `2026-10-04`, reload, then read back the exact date. Historical results: `TOUCH_PAN_VERDICT=PASS`; `TAP_SAVE_READBACK_VERDICT=PASS`.
+## Evidence and verification
 
-**Current verdicts:** `TOUCH_PAN_VERDICT=NOT_VERIFIED`; `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`. After workspace resume, the fresh staging app showed the auth/login gate before the component rendered. The prior venv/Chromium executable was absent after the snapshot resumed. No auth fixture, auth bypass in product code, new framework, fresh write, or real payment was added. The original raw metrics JSON was lost during the snapshot restore attempt; `metrics.json` explicitly marks the previous run transcribed from its preserved summary and screenshots. Do not promote the prior PASS to current-source proof.
+- Raw current-source browser capture: Chromium `153.0.8010.0`; `CAPTURE_VERDICT=PASS`; desktop 1440×900 and mobile 390×844 T6-FCL plus SEA-188 zero-node screenshots and metrics are in `current-source/`.
+- Current raw source SHA: `751f64f5129637eef4fb74515afdf7fa15ca9deb` (unavailable commit object; see reconciliation above).
+- Published candidate official dist hashes: JS `3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c`; CSS `412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb`. Both match raw metrics exactly. Capture harness SHA-256 `c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a` also matches.
+- Desktop/mobile current raw capture: 11-node/20-edge T6-FCL; zero-node SEA-188 has zero nodes/edges, full-width loaded chart, one truthful CTA and no horizontal overflow. Actual map-viewport pointerdown/move/up left the zero-node map transform unchanged.
+- Mobile touch-pan: PASS in raw capture using CDP touch events; map and ON BOARD node each moved `+269px`; no accidental selection.
+- Save/readback: PASS in raw capture using isolated in-process Mongomock only; ON BOARD test date `2026-10-04` was read after page reload. No real database/payment write. Immediate post-tap confirmation text was not visible in the brief wait; reload/readback is the persisted proof.
+- Focused local checks on published candidate: TypeScript typecheck, Vite build, distribution scan, dist hash sync, both official-dist DOM acceptance variants (`nodes=[]` and Journey absent), and `dom_hook_transition_197.mjs` all PASS. The hook test covers zero→populated and populated→zero on the same mounted instance.
+- Focused Python regressions previously reported 27 passed against the raw capture candidate. No full pytest, 21-route audit, broad historical payment/finance rerun, or post-restore Chromium recapture was performed.
+- Staging proof logged before fixture creation: Mongomock in-process, empty real `MONGO_URI`/secrets path, no production client. Test-only `AUTH_REQUIRED=false` exists only in the fail-closed isolated staging launcher; production auth was not altered.
+- Missing-Journey variant has official-dist DOM acceptance but no separate browser screenshot. Browser screenshots use canonical SEA-188 with `journey.nodes=[]`.
+- Windows batch launcher was statically checked only; Windows runtime was not run in this Linux host. `npm ci` reported one high-severity audit advisory; it was not triaged or remediated in this bounded slice.
 
-## Verification and limits
+## Release boundary
 
-- Evidence/dist commit `754a619f30affd1c18753b50f78d917bb2db5944`; post-commit `npm run typecheck`, Vite build (1936 modules), scan and clean dist sync all PASS. Exact hashes are above.
-- Current-bundle hook transition and zero-node DOM regressions PASS. C2C steps 1–3 PASS; its Step 4 finance-tab assertion fails as on pre-repair dist. Payment-trust/amount-integrity fail before payment at missing `LO-0308` fixture/navigation preconditions, likewise reproduced on pre-repair dist. The LOGI-197 clarity fixture did not run because the generator requires missing system-Python Streamlit. No payment logic changed. Exact outcomes are in `metrics.json`.
-- `GITHUB_ACTIONS_CI=NOT_TRIGGERED`: no checked-in push-workflow filter includes the fixed Arena branch. Historical run `38683678222` at source `1889d2a…` is not current CI.
-- Preserve the separate auth/bootstrap/finance-coverage gaps and reproduced snapshot retry-idempotency defect; this visual repair does not waive or repair them.
-- No full pytest or 21-route audit was run. `FULL_GOAL_199=IN_PROGRESS`.
+`INDEPENDENT_REVIEW=PENDING`; `SUPERVISOR_PASS=NOT_CLAIMED`; `OWNER_UAT=NOT_RUN`; `OWNER_UAT_READY=NO`; `PRODUCTION_READY=NO`; `FULL_GOAL_199=IN_PROGRESS`. Preserve unrelated auth/bootstrap/finance coverage and snapshot retry-idempotency blockers. CI is not triggered because the checked-in push workflow omits the fixed Arena branch. The prior issue-comment permission error is not a release gate; no Owner permission repair is requested.
 
-**Requested reviewer action:** assess A–E against the Owner oracle and exact current source/dist. Explicitly decide whether historical visual/runtime evidence is sufficient or current touch/save evidence must be recaptured. State any remaining failure. Do not treat this handoff as Owner UAT. `INDEPENDENT_REVIEW=PENDING`; `SUPERVISOR_PASS=NOT_CLAIMED`; `OWNER_UAT=NOT_RUN`; `NO_MERGE_MAIN=YES`; `NO_DEPLOY_PRODUCTION=YES`.
+`NO_MERGE_MAIN=YES`; `NO_PRODUCTION_DEPLOY_WITHOUT_OWNER_APPROVAL=YES`.

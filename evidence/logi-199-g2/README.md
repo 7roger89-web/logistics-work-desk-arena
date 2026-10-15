@@ -1,20 +1,36 @@
 # LOGI-APP-RENEWAL-01 — LOGI-199 G2 review repair evidence
 
 ## Current evidence boundary
+This packet covers only the bounded LOGI #199 empty-map pointer correction and current-source G2 replay. It does not redo G0–G5, certify the full goal, self-sign Supervisor PASS, or replace Owner UAT. The visual authority remains `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
 
-This packet covers only the latest bounded repair on the fixed branch `arena/bb243332-logistics-work-desk-arena`. It does not redo G0–G5, certify the whole goal, self-sign Supervisor PASS, or replace Owner UAT. The only visual authority is `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
+- Published source candidate on the fixed branch: `1e899553cc1ad7dbd720eb805e061ec61ae0871a`.
+- **Raw browser-capture SHA:** `751f64f5129637eef4fb74515afdf7fa15ca9deb` (from `current-source/metrics.json`). This commit object was absent from the resumed local clone and GitHub returned HTTP 422 “No commit found”. Preserve this raw value; do not rewrite the raw capture.
+- Current official dist rebuilt from the published candidate: JS SHA-256 `3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c`; CSS SHA-256 `412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb`. Both match the raw browser metrics. The capture-harness SHA also matches (`c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a`). Commit-ID identity mapping remains **NOT_VERIFIED** and is disclosed for Independent Review; no Chromium replay was repeated after the workspace restore.
+- Current-source raw browser metrics and screenshots are in `current-source/`; the raw JSON SHA-256 is `8d0f8e4a0fbe8746c72e4d3f79d2d19b223d83e76415cec5eee3c65c46887193`. The raw file records `CAPTURE_VERDICT=PASS`, Chromium 153.0.8010.0, and the capture source SHA above.
+- Staging proof: `STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO` appeared before fixture creation. Mongo URI/database/secrets inputs were empty; test-only `AUTH_REQUIRED=false` was used only by the fail-closed staging launcher. Production auth/app code, production credentials, and production data were untouched.
+- Current local checks on published candidate `1e89955`: typecheck/build/scan pass; dist hashes match; focused official-dist DOM acceptance and same-instance hook-transition checks pass. A prior focused Python slice reported 27 passed; no full-suite or 21-route rerun.
+- `npm ci` installed the locked dependencies and reported one high-severity audit advisory. It was not independently triaged or remediated in this bounded task.
+- `INDEPENDENT_REVIEW=PENDING`; `OWNER_UAT_READY=NO`; no Owner UAT, merge, or production deploy is claimed. The previous issue-comment permission failure is not a product/release blocker; no permission repair is requested.
 
-- Latest zero-node follow-up source/dist commit: `1ecffa0a4dc3eff0141554a808e39e7fba109ebe`.
-- Prior G2 evidence checkpoint commit (historical baseline): `754a619f30affd1c18753b50f78d917bb2db5944`.
-- Latest official source-built UI: `component/dist/logi-shell.js` SHA-256 `2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc`; `component/dist/logi-shell.css` SHA-256 `bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a`.
-- **Prior G2 evidence provenance:** the displayed before/after screenshots and successful touch/save-readback run are from the previous workspace snapshot at source `d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba` and CSS hash `1b87f972…`. The resumed workspace's earlier source build was `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7` with CSS `6973bae4…`. The 2026-10-15 zero-node follow-up is a separate current source/dist build at `1ecffa0a4dc3eff0141554a808e39e7fba109ebe`, documented below. The earlier fresh replay hit the login gate before the component loaded. Do not present prior runtime PASS measurements as current-source verification.
-- Current capture runtime: no usable Chromium executable/venv is present after workspace resume. No fresh mock write or real payment occurred in the failed replay. No auth bypass fixture or extra framework was added.
-- Full reconciled metrics and provenance: `metrics.json`; reproducible flow: `capture_journey_flow.py`; reviewer packet: `REVIEWER_HANDOFF.md`.
-- The source/dist/evidence commits are pushed to the fixed branch. The attempted GitHub issue #199 handoff comment was blocked with `Resource not accessible by integration`; the Independent Reviewer has not received a posted comment.
+## P2P preflight receipts for this continuation
+
+`P2P_LAW_SOURCE=LOCAL_PORTABLE`
+
+`LAW_CHECK=PASS | SOURCE=LOCAL_PORTABLE | SOURCE_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b`
+
+`EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE | IDS=shared-exp-b2611df4c9393f0017f07dcb` (advisory/non-authoritative portable ACTIVE record).
+
+`p2p-skill-consumption-receipt/1`
+
+```json
+{"schema":"p2p-skill-consumption-receipt/1","skills":[{"id":"p2p-uiux","path":".agents/skills/p2p-uiux/SKILL.md","sha256":"98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2","consumption":"READ_AND_APPLIED"}]}
+```
+
+`INITIAL_PLANNING_CLASSIFICATION=UIUX`; `FINAL_ROUTING_CLASSIFICATION=UIUX`.
 
 ## A — Desktop G2 layout (1440×900)
 
-The pre-repair screenshot and measurements are under `before/`. In the **previous successful capture** (source `d77446e7…`), at the same 1440×900 viewport, map viewport height increased from `635px` to `780px` (`+145px`) and its top moved from `y=208.63px` to `y=106.62px` (`−102px`). The 780px height is viewport-relative CSS, not a fixed 780px rule. Identity, business attention, CTA and toolbar share compact chrome; the map reaches `y=886.62px`. “Rà soát trước khi kết thúc lô” remains present, collapsed, and below the map. Horizontal overflow is `0px`; 11 nodes and 20 edges remain. These geometry results are historical capture evidence, not a fresh browser measurement on the zero-node follow-up source `1ecffa0`.
+The pre-repair screenshot and measurements are under `before/`. In the **previous successful capture** (source `d77446e7…`), at the same 1440×900 viewport, map viewport height increased from `635px` to `780px` (`+145px`) and its top moved from `y=208.63px` to `y=106.62px` (`−102px`). The 780px height is viewport-relative CSS, not a fixed 780px rule. Identity, business attention, CTA and toolbar share compact chrome; the map reaches `y=886.62px`. “Rà soát trước khi kết thúc lô” remains present, collapsed, and below the map. Horizontal overflow is `0px`; 11 nodes and 20 edges remain. These are the earlier G2 comparison measurements; the current 2026-10-15 T6-FCL and zero-node geometry is captured separately in `current-source/metrics.json` and summarized in the final follow-up below.
 
 | State | Screenshot |
 |---|---|
@@ -27,7 +43,7 @@ The business warning (“Bổ sung số tờ khai nhập khẩu.”), reason, pr
 
 ## B/C — Mobile layout, targets, and Receivables (390×844)
 
-The previous successful 390×844 capture measured the map at `549px` high with `0px` horizontal overflow and top `y=269.94px` (16px lower than its immediate pre-repair capture). Primary CTA height was `40px`; secondary identity/toolbar buttons `36px`; zoom and Fit/Readable controls `40px`; bubble close `36px`; stage-task action `58.48px`. Adjacent toolbar/zoom hitboxes did not overlap. Touch taps changed/restored zoom; opening/closing Global Workspace did not change zoom or select a node. These measurements are historical until replayed on current source.
+The previous successful 390×844 capture measured the map at `549px` high with `0px` horizontal overflow and top `y=269.94px` (16px lower than its immediate pre-repair capture). Primary CTA height was `40px`; secondary identity/toolbar buttons `36px`; zoom and Fit/Readable controls `40px`; bubble close `36px`; stage-task action `58.48px`. Adjacent toolbar/zoom hitboxes did not overlap. Touch taps changed/restored zoom; opening/closing Global Workspace did not change zoom or select a node. The fine-grained control-target measurements above remain from the earlier G2 capture; current 390×844 map geometry, horizontal overflow, real touch-pan and save/readback are captured in the final current-source follow-up below.
 
 Receivables at 390×844 (previous successful capture, source `d77446e7…`):
 
@@ -38,9 +54,9 @@ Receivables at 390×844 (previous successful capture, source `d77446e7…`):
 
 ## D — Touch-pan and isolated save/readback
 
-`capture_journey_flow.py` uses CDP `Input.dispatchTouchEvent` (`touchStart`, 12 multi-step `touchMove`s, `touchEnd`), not mouse drag. In the **previous successful capture** on source `d77446e7…`, Chromium observed touch events and pointer events with `pointerType="touch"`; transform `x` and the ON BOARD node each moved `+269px`, and selection stayed empty. That run's `TOUCH_PAN_VERDICT=PASS` is historical. On the latest source `1ecffa0`, `TOUCH_PAN_VERDICT=NOT_VERIFIED`; the earlier fresh replay stopped at the login gate before the shell rendered, and this zero-node follow-up could not start staging. No current-source touch interaction occurred.
+`capture_journey_flow.py` uses CDP `Input.dispatchTouchEvent` (`touchStart`, 12 multi-step `touchMove`s, `touchEnd`), not mouse drag. In the **previous successful capture** on source `d77446e7…`, Chromium observed touch events and pointer events with `pointerType="touch"`; transform `x` and the ON BOARD node each moved `+269px`, and selection stayed empty. That earlier run's `TOUCH_PAN_VERDICT=PASS` is historical. The later raw current-source capture at SHA `751f64f5129637eef4fb74515afdf7fa15ca9deb` separately records a fresh CDP touch-pan PASS; its metrics and screenshots are summarized in the final follow-up below. The raw commit object is not fetchable, and the published candidate's commit-ID mapping is disclosed for review.
 
-The prior separate Mongomock run started with an empty ON BOARD date, tapped node/task/Save, reloaded, and read back `2026-10-04`. Its `TAP_SAVE_READBACK_VERDICT=PASS` is historical. On latest source `1ecffa0`, `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`; no fresh mock write happened after the workspace resumed. No real backend or payment write occurred. The earlier Save button did not display backend confirmation during the short post-tap window; the post-reload readback matched. The current branch did not add an auth fixture or disable auth in product code.
+The prior separate Mongomock run started with an empty ON BOARD date, tapped node/task/Save, reloaded, and read back `2026-10-04`. Its `TAP_SAVE_READBACK_VERDICT=PASS` is historical. The later raw current-source capture separately records an isolated Mongomock ON BOARD save/reload/readback PASS for `2026-10-04`, as summarized below. No real backend or payment write occurred. The earlier Save button did not display backend confirmation during the short post-tap window; the post-reload readback matched. The current branch did not add an auth fixture or disable auth in product code.
 
 ## Prior focused verification and known pre-existing test oracles (source 2bcbf90)
 
@@ -50,67 +66,59 @@ The prior separate Mongomock run started with an empty ON BOARD date, tapped nod
 - `dom_acceptance_c2c.mjs`: Steps 1–3 PASS (receivables/totals, request identity, duplicate absorption, visible pending, refusal/retry and authoritative readback); Step 4 fails on the legacy finance-tab assertion after “Mở lô”. The exact same assertion failed against pre-repair dist.
 - `dom_acceptance_payment_trust.mjs` and `dom_acceptance_amount_integrity.mjs`: fail before payment at the `LO-0308` fixture/navigation preconditions; both were reproduced identically against pre-repair dist. These are not reported as passes; payment logic was not changed.
 - `dom_acceptance_logi197_journey_clarity.mjs` did not run: its fixture generator requires `streamlit`, which is not installed in the system Python after workspace resume. No product assertion ran.
-- Current `TOUCH_PAN_VERDICT=NOT_VERIFIED` and `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`. Previous successful capture results remain explicitly historical; the fresh capture stopped at the auth gate before the shell, and no fresh touch/write occurred.
+- This prior verification subsection describes the pre-restore candidate only. Its touch/save statuses were superseded by the preserved raw current-source capture below, which records `TOUCH_PAN_VERDICT=PASS` and `TAP_SAVE_READBACK_VERDICT=PASS`; those raw statuses remain tied to the unavailable recorded SHA `751f64f…`, with the published-candidate mapping disclosed for review.
 - `GITHUB_ACTIONS_CI=NOT_TRIGGERED` because no checked-in push workflow includes the fixed branch. Historical T6 run `38683678222` at source `1889d2a…` is not current-source verification.
 - No full pytest, 21-route run, merge to main, or production deploy. The system Python has no pytest; the user’s bounded slice excludes a full-suite rerun.
 
 ## Historical artifacts and gates
 
-Screenshots moved under `before/legacy-g2/` and `before/legacy-metrics-pre-199-repair.json` are explicitly pre-repair. The old mobile “touch” claim is not valid proof because its script used `page.mouse`. The prior `d774…` CDP touch PASS is separately marked historical; the current top-level `TOUCH_PAN_VERDICT` is `NOT_VERIFIED`.
+Screenshots moved under `before/legacy-g2/` and `before/legacy-metrics-pre-199-repair.json` are explicitly pre-repair. The old mobile “touch” claim is not valid proof because its script used `page.mouse`. The prior `d774…` CDP touch PASS is historical and separate from the later raw current-source CDP touch PASS documented below. The current-source raw touch/save verdicts are `PASS`; the captured commit SHA is unavailable remotely and the identity mapping is disclosed above.
 
 `NO_MERGE_MAIN=YES`; `NO_DEPLOY_PRODUCTION=YES`; `FULL_GOAL_199=IN_PROGRESS`. Independent review remains pending; Owner visual UAT is not claimed and follows only after Independent Review PASS. Authentication/bootstrap/finance coverage gaps and the reproduced snapshot retry-idempotency blocker remain separate release blockers.
 
-## LOGI #199 zero-node Journey split-layout follow-up — 2026-10-15
+## LOGI #199 zero-node pointer repair and current-source replay — 2026-10-15
 
-This is the **remaining zero-node exception only**, on fixed branch `arena/bb243332-logistics-work-desk-arena`. It does not roll back G0–G5, change the populated Journey layout, or re-open previously accepted G2 map-first, Vietnam chart, mobile CTA, Receivables, or gesture behavior. Product/source/dist/test commit: `1ecffa0a4dc3eff0141554a808e39e7fba109ebe`.
+This is a bounded continuation of existing G2 work, not a redesign or G0–G5 rerun. Published source candidate: `1e899553cc1ad7dbd720eb805e061ec61ae0871a`. The current-source capture is preserved with its original recorded SHA `751f64f5129637eef4fb74515afdf7fa15ca9deb`. That old commit object is unavailable in the restored clone and GitHub; the source-equivalent changes were re-committed on top of remote HEAD `2ce7d92` and the official bundle rebuilt to the exact raw capture hashes. The raw source SHA is left unchanged, and commit-ID equivalence is **NOT_VERIFIED** for independent review. Do not claim the browser was recaptured on `1e89955`.
 
-### Layout and acceptance status
+### Current browser evidence (real Streamlit + built component)
 
-| Required status | Result | Evidence boundary |
+| Scenario | Result | Rendered/computed evidence |
 |---|---|---|
-| `POPULATED_MAP_FIRST` | **PASS — preserved** | Existing populated branch is unchanged; same-instance hook DOM transitions into the populated map-first workspace and renders its real fixture nodes. Exact `T6-FCL` 11-node browser replay is **NOT_VERIFIED**. |
-| `ZERO_NODE_FULL_WIDTH` | **PASS** | Current official-dist JSDOM acceptance passes for both `journey.nodes=[]` and a missing Journey. It asserts the full-width map-first canvas, truthful “Chưa có sơ đồ Journey” / “Chưa xác định” / missing-profile status, no fake nodes or phase cards, one “BỔ SUNG HỒ SƠ” CTA, existing editor inside Global Workspace, and zero business writes. JSDOM proves behavior/DOM contracts, not viewport geometry. |
-| `OLD_SPLIT_LAYOUT_ACTIVE` | **NO** | Old small-map split CSS and zero-state right panel/root are absent; DOM acceptance asserts no old class or split root. |
-| Browser desktop `1440×900` | **NOT_CAPTURED / BLOCKED** | No current-source screenshots or geometry measurements. |
-| Browser mobile `390×844` | **NOT_CAPTURED / BLOCKED** | No current-source screenshots or geometry measurements. |
-| `T6-FCL` (11 nodes) browser result | **NOT_VERIFIED** | Do not substitute prior G2 screenshots/captures; they are historical. |
+| T6-FCL desktop 1440×900 | **PASS in raw capture** | 11 nodes/20 edges; map 1406×780 at y=106.62px; 0px horizontal overflow; no page errors. |
+| T6-FCL mobile 390×844 | **PASS in raw capture** | 11 nodes/20 edges; map 374×549px; 0px horizontal overflow. |
+| Real mobile touch-pan | **PASS in raw capture** | CDP `touchStart` + 12 `touchMove` + `touchEnd`; `pointerType=touch`; map and ON BOARD node each moved +269px; no accidental node selection/bubble. |
+| T6-FCL ON BOARD save/reload/readback | **PASS in raw capture** | Tap node → task bubble → task editor; enter test date `2026-10-04`; explicitly tap Save; reload; read the date back. Post-reload stage and evidence are visible. No payment flow. Immediate backend-confirmation text was not visible in the short post-tap window; persisted readback is the proof. |
+| SEA-188 zero-node desktop 1440×900 | **PASS in raw capture** | 0 nodes/edges; actual chart viewport fills 1406×780 map-first shell; chart data image loaded; computed cursor `default`, touch action `auto`; 0px overflow. Browser-observed pointerdown/move/up left transform unchanged. Exactly one truthful CTA opens the existing profile path; no non-read HTTP request. |
+| SEA-188 zero-node mobile 390×844 | **PASS in raw capture** | 0 nodes/edges; viewport fills 374×549 shell; pointer transform unchanged, one CTA/editor/no-write checks pass; 0px overflow. |
+| Missing-Journey property variant | **PASS official-dist DOM acceptance** | `journey.nodes=[]` and absent `journey` both pass truthful empty state, zero fabricated nodes/phases/statuses, one CTA, existing Global Workspace/Execution Profile path, no business write, and no empty-map pan. No separate real-browser screenshot for absent `journey`; browser screenshots use canonical `SEA-188` with `nodes=[]`. |
 
-### Current focused verification and hashes
+Raw values, viewport boxes, event counts, transforms, and screenshot provenance are in `current-source/metrics.json`. Current screenshots:
 
-- `npm run typecheck` — **PASS**.
-- `npm run build` — **PASS**, Vite 8.2.2, 1936 modules.
-- `npm run scan` — **PASS**, `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`.
-- Post-commit rebuild was deterministic; `git diff --exit-code -- component/dist` was clean (**dist sync PASS**).
-- `tests.test_journey_super_goal_186` + `tests.test_journey_visual_fidelity_190` — **18/18 PASS**.
-- `dom_acceptance_journey_fresh_188.mjs` — **PASS** for both `nodes=[]` and `journey absent`; JSDOM emits only a benign unimplemented `scrollTo()` warning.
-- Hook-test bundle build + `dom_hook_transition_197.mjs` — **PASS** for zero→populated and populated→zero on the same mounted instance; no hook-ordering error.
-- No full pytest or 21-route audit was run.
+- Desktop: `current-source/desktop-t6-fcl-journey-initial.png`, `desktop-zero-node-initial.png`, `desktop-zero-node-execution-profile-editor.png`.
+- Mobile: `current-source/mobile-t6-fcl-journey-initial.png`, `mobile-zero-node-initial.png`, `mobile-zero-node-execution-profile-editor.png`, `mobile-04-touch-pan-after.png`, `mobile-04-onboard-touch-editor.png`, `mobile-t6-fcl-onboard-touch-readback.png`.
+- Node/bubble/task states: `current-source/desktop-t6-fcl-node-bubble.png`, `desktop-t6-fcl-task-popup.png`, `mobile-02-node-bubble.png`, `mobile-03-task-sheet.png`.
 
-| File | SHA-256 |
-|---|---|
-| `component/src/components/ShipmentJourney.tsx` | `86b85d344614eb5524c814f605e77fb2926f10ff962ba044f53c14ebf77acf9d` |
-| `component/src/index.css` | `aa8537c64ca6ed3e55f60475cae11ac37aa2a502e57274fa18d388c0a891bdcb` |
-| `tests/component/dom_acceptance_journey_fresh_188.mjs` | `8fcadbf558e6b187bd9cc38951825ce2bd29a2858bcec91fb422026bb26e2c01` |
-| `tests/component/dom_hook_transition_197.mjs` | `2be31388a5acb0e692a07d3def5a64f89a469a476ce19b1c569c40176b198f61` |
-| `component/dist/logi-shell.js` | `2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc` |
-| `component/dist/logi-shell.css` | `bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a` |
+The selected Vietnam/Biển Đông/Hoàng Sa/Trường Sa asset was loaded as a data image in the capture. `SEA-188` was created through the canonical `shipment_create` path in isolated Mongomock with no mode, Incoterm, confirmed service scope, transport legs, or fabricated Journey stage. The UI shows the real missing-profile state and keeps current phase unconfirmed.
 
-### Browser/staging blocker
+### Current verification and provenance
 
-The exact T6 staging launcher was attempted with `MONGO_URI` unset. It stopped before staging seed/app start at `ModuleNotFoundError: mongomock`; system Python also lacks `streamlit` and `pymongo`. No staging write occurred. Node Playwright/Playwright Core and a Chromium/Chrome executable are not installed/present in the checked runtime paths. The existing T6 browser runner requires `AUTH_REQUIRED=false`, so it was **not used**. The real app defaults to fail-closed `AUTH_REQUIRED=true`; additionally, the launcher sets `staging.support` while the sandbox seed's users are `admin`, `thuhang`, and `minhtu`, so existing revalidation can keep the real app at its login gate. No production auth was changed, no auth bypass or new fixture/framework was added, and no production data was used. Browser screenshots were not generated.
+- Rebuilt the official dist from published source candidate `1e89955`; Vite 8.2.2, 1936 modules, JS/CSS hashes exactly match the raw browser capture (`3b650f8…` / `412f27a…`). Typecheck and scan pass; scan reports `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`.
+- Re-ran the two focused official-dist DOM acceptance variants (`nodes=[]`, `journey absent`) and `dom_hook_transition_197.mjs`; all pass. JSDOM emits a benign `Window.scrollTo()` not-implemented warning. The hook test passes zero→populated and populated→zero on the same mounted instance.
+- Focused Python regressions previously reported **27 passed** against the raw capture candidate. Full pytest, 21-route audit, broad historic finance/payment oracles, and G0–G5 recertification were not run.
+- Runtime log proved in-process Mongomock isolation before fixture creation; the only deliberate write was the disposable T6-FCL ON BOARD test date. No real DB/payment write occurred.
+- Windows batch launcher was statically checked only; **Windows runtime NOT_RUN**.
+- `npm ci` reported one high-severity audit advisory; no broad audit or dependency remediation was in scope.
 
-### Gesture/readback and release gates
+### Review and release boundary
 
-`TOUCH_PAN_VERDICT=NOT_VERIFIED`; `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`. Neither was replayed on this source; no write occurred in the failed staging attempt. `Independent Review=PENDING`; `Owner UAT=NOT_RUN`. `NO_MERGE_MAIN=YES`; `NO_DEPLOY=YES`; unrelated auth/bootstrap/finance/snapshot-idempotency blockers remain intact.
+`INDEPENDENT_REVIEW=PENDING`; `SUPERVISOR_PASS=NOT_CLAIMED`; `OWNER_UAT=NOT_RUN`; `OWNER_UAT_READY=NO`; `FULL_GOAL_199=IN_PROGRESS`. The source candidate for review is `1e899553cc1ad7dbd720eb805e061ec61ae0871a`; reviewers should explicitly evaluate the raw-capture SHA reconciliation above. Existing auth/bootstrap/finance coverage and snapshot retry-idempotency blockers remain separate and unwaived. `NO_MERGE_MAIN=YES`; `NO_DEPLOY_PRODUCTION=YES`.
+
+OE gate: `SIMPLER_PATH=YES` (reuse existing map/launcher/tests); `MATERIAL_PROGRESS=YES`; `NECESSITY=YES`; `CORE_BEFORE_SUPPORT=YES`; `SMALLER_VERIFIABLE_SLICE=YES`; `OE_VERDICT=DO_IT` for this bounded fix. Broader redesign/framework/21-route ceremony is `SKIP_IT`.
 
 ### GOAL / PROGRESS / CURRENT / NEXT / BLOCKERS
 
-- **GOAL:** close only the LOGI #199 zero-node Journey split-layout exception while preserving the accepted populated path and G2 work.
-- **PROGRESS:** zero-node full-width map-first UI and acceptance assertions are implemented; source, official dist, typecheck, build, scan, fresh DOM, hook-transition DOM, and dist sync pass.
-- **CURRENT:** `POPULATED_MAP_FIRST=PASS` (source/DOM preservation); `ZERO_NODE_FULL_WIDTH=PASS` (JSDOM); `OLD_SPLIT_LAYOUT_ACTIVE=NO`. T6-FCL and zero-node desktop/mobile browser evidence remain **NOT_VERIFIED**, not claimed.
-- **NEXT:** restore an authorized isolated staging/browser runtime without weakening auth; capture `T6-FCL` 11 nodes and the zero-node state at `1440×900` and `390×844`, then request Independent Review. Owner UAT remains gated on review.
-- **BLOCKERS:** missing Streamlit/Mongomock/PyMongo and Playwright/Chromium; existing staging actor/auth revalidation mismatch; Independent Review pending; Owner UAT not run. Previously tracked unrelated release blockers are unchanged.
-
-### OE gate for this bounded slice
-
-`SIMPLER_PATH=YES`; `MATERIAL_PROGRESS=YES`; `NECESSITY=YES`; `CORE_BEFORE_SUPPORT=YES`; `SMALLER_VERIFIABLE_SLICE=YES`; `OE_VERDICT=DO_IT` for this zero-node-specific layout/test change only. No framework, module, design system, or workflow was added.
+- **GOAL:** finish the open LOGI #199 empty-map pointer and exact-source evidence handoff.
+- **PROGRESS:** current raw desktop/mobile capture, rebuilt official dist, focused DOM tests and hook transitions are available and passing; the zero CTA opens the real profile path without a write.
+- **CURRENT:** capture records source SHA `751f64f…`; published candidate is `1e89955…`; dist and capture-harness hashes match. Commit-ID equivalence remains **NOT_VERIFIED**, disclosed for review.
+- **NEXT:** non-force push and verify the source/evidence/docs on the fixed branch; request Independent Review of only the open findings. Owner UAT stays closed until review PASS.
+- **BLOCKERS:** independent review pending; GitHub remote push/readback pending; raw capture commit object unavailable (mapping disclosed); Windows runtime not run; unrelated release blockers remain unchanged.

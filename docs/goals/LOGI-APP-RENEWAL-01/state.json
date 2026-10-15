@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/bb243332-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "PUSHED__INDEPENDENT_REVIEW_COMMENT_BLOCKED__WAITING_FOR_GITHUB_PERMISSION",
+  "stage": "CURRENT_G2_CAPTURE_AVAILABLE__PUBLISH_PENDING__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -16,7 +16,7 @@
     "T4": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T5": "HISTORICAL: successful T5 audit/CI claims remain bound to tested source 1889d2a… and Actions 38683678222; not current-source verification.",
     "T6": "HISTORICAL PRE-REPAIR: Actions 38683678222 PASS at exact tested 1889d2a…; preserved as historical CI only.",
-    "G2_REPAIR": "Product source 2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7 and evidence/dist 754a619f30affd1c18753b50f78d917bb2db5944 committed on the fixed branch. Post-commit typecheck/build/scan/dist-sync and selected hook/zero-node DOM pass; C2C Steps 1–3 pass with a baseline-matching Step 4 finance-tab failure, and payment fixture oracles fail before payment as on old dist. Current live touch/save-readback NOT_VERIFIED; previous d774… PASS is historical. Independent Review pending."
+    "G2_REPAIR": "Exact current-source browser capture is available in evidence/logi-199-g2/current-source/; raw capture records source 751f64f5129637eef4fb74515afdf7fa15ca9deb, with current dist hashes {'logi-shell.js': '3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c', 'logi-shell.css': '412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb'}. The old 751f64 commit object is absent from this resumed clone and GitHub; source-equivalent changes have been recovered, rebuilt to the matching dist, and committed locally as 1e899553cc1ad7dbd720eb805e061ec61ae0871a. Pointer/empty-state capture, touch-pan, save/reload readback, DOM acceptance and hook transitions pass; Independent Review and Owner UAT remain pending."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -29,14 +29,13 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Independent reviewer gate PENDING; no independent reviewer/subagent capability in this executor host.",
-    "Owner UAT and explicit production authorization remain closed. main merge is a production deploy trigger.",
-    "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver.",
-    "Fixed branch arena/bb243332-logistics-work-desk-arena is not included in existing push-workflow branch filters; current GitHub Actions CI is NOT_TRIGGERED. Historical run 38683678222 at 1889d2a… must not be presented as current.",
-    "Relevant legacy payment DOM oracles retain reproduced pre-repair failures: C2C Step 4 finance-tab assertion; payment-trust/amount-integrity LO-0308 fixture navigation preconditions. Their exact old-dist comparison is in evidence/logi-199-g2/metrics.json; payment logic was not changed.",
-    "Current touch-pan/save-readback NOT_VERIFIED; historical successful capture is at d774… and is not current-source proof. Fresh staging replay stopped at auth gate before the shell; no write occurred.",
-    "Raw metrics JSON from the prior successful capture was lost during workspace-resume restore; metrics.json clearly labels historical values transcribed from preserved summary/screenshots and separates current verification.",
-    "Current GitHub issue-comment write blocked: gh issue comment 199 returned Resource not accessible by integration. Evidence commits are pushed, but Independent Reviewer has not received a posted comment. Reconnect/restore GitHub issue-comment permission in Arena; no token or password requested."
+    "Independent reviewer gate PENDING; review only the opened zero-map pointer/CTA/current-source evidence findings.",
+    "Owner UAT and production authorization remain closed until Independent Review PASS; main merge/deploy are not authorized.",
+    "Preserve unrelated auth/bootstrap/finance coverage gaps and reproduced snapshot retry-idempotency blocker; this slice does not waive them.",
+    "GitHub Actions CI is NOT_TRIGGERED because checked-in push-workflow branch filters omit the fixed Arena branch.",
+    "Legacy payment DOM oracles retain previously reproduced pre-payment fixture/navigation failures; payment logic was not changed and broad historical QA was not rerun.",
+    "Windows launcher was statically checked but not executed on Windows.",
+    "Raw capture records source SHA 751f64f5129637eef4fb74515afdf7fa15ca9deb, but that commit object is unavailable locally and GitHub API returned 422. Published source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a rebuilds to the exact captured dist hashes; commit-identity equivalence remains disclosed for reviewer validation."
   ],
   "existing_issue_dependencies": [
     197,
@@ -47,7 +46,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "The source/dist/evidence commits are pushed. GitHub issue-comment mutation for #199 is blocked by Resource not accessible by integration; ask the Owner to reconnect/restore GitHub issue-comment permission in Arena, then publish evidence/logi-199-g2/REVIEWER_HANDOFF.md and await Independent Review. Keep current touch/save verdicts NOT_VERIFIED; no Supervisor PASS. Owner UAT only after Independent Review PASS; NO_MERGE_MAIN=YES; NO_DEPLOY_PRODUCTION=YES.",
+  "next": "Commit and non-force push the restored source-equivalent commit plus current-source G2 screenshots/metrics/docs to the fixed branch; verify GitHub remote refs and file content, then hand the exact published source candidate and raw capture provenance to Independent Review. Owner UAT remains NOT_READY until Independent Review PASS; no merge/deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -66,7 +65,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Current source/dist/evidence are committed and pushed on the fixed branch. Post-commit typecheck/build/scan/dist-sync and focused DOM results are recorded. Current live touch/save replay is NOT_VERIFIED; prior PASS is historical. gh issue comment 199 failed with Resource not accessible by integration, so evidence is pushed but not posted to the Independent Reviewer. GitHub comment permission needs attention; no merge/deploy/UAT.",
+  "current_subtask": "Current-source G2 evidence exists and passes: raw browser metrics captured at 751f64f5129637eef4fb74515afdf7fa15ca9deb; dist rebuilt locally to the same JS/CSS hashes and a source-equivalent candidate is committed as 1e899553cc1ad7dbd720eb805e061ec61ae0871a. Current evidence/docs still need non-force push and remote readback. Independent Review pending; Owner UAT not ready.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -103,7 +102,7 @@
     "receipt_status": "HISTORICAL_PRE_REPAIR_NOT_CURRENT_SOURCE_VERIFICATION",
     "current_repair_note": "See g2_repair_20261015 and evidence/logi-199-g2/metrics.json."
   },
-  "branch_constraint": "All current work stays on fixed Arena branch arena/bb243332-logistics-work-desk-arena; no other branch is created or pushed. No merge to main; no production deploy.",
+  "branch_constraint": "All current work stays on fixed Arena branch arena/bb243332-logistics-work-desk-arena; no other branch. No main merge; no production deploy.",
   "source_receipt_t0_historical": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -146,92 +145,90 @@
     "production": "UNTOUCHED"
   },
   "source_receipt": {
-    "receipt_status": "CURRENT_SOURCE_AND_DIST_VERIFIED__LIVE_BROWSER_REPLAY_NOT_VERIFIED",
-    "tested_source_sha": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
-    "product_source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "receipt_status": "CURRENT_BROWSER_CAPTURE_AVAILABLE__PUBLISHED_SOURCE_EQUIVALENT_LOCAL__PUSH_PENDING__REVIEW_PENDING",
+    "tested_source_sha_recorded_by_capture": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
     "fixed_branch": "arena/bb243332-logistics-work-desk-arena",
-    "dist_sha256": {
-      "component/dist/logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
-      "component/dist/logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+    "source_sha_identity_reconciliation": {
+      "captured_commit_object_available_locally": false,
+      "captured_commit_object_available_on_github": false,
+      "github_lookup_result": "No commit found for SHA (HTTP 422).",
+      "published_candidate_dist_sha256_matches_raw_capture": true,
+      "published_candidate_capture_script_sha256_matches_raw_capture": true,
+      "commit_identity_equivalence": "NOT_VERIFIED; preserve both SHAs and let the independent reviewer inspect source/dist/evidence.",
+      "raw_metrics_preserved_unchanged": "evidence/logi-199-g2/current-source/metrics.json"
     },
+    "dist_sha256": {
+      "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+      "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
+    },
+    "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a",
+    "raw_metrics_sha256": "8d0f8e4a0fbe8746c72e4d3f79d2d19b223d83e76415cec5eee3c65c46887193",
     "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
     "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
-    "evidence": "evidence/logi-199-g2/metrics.json",
-    "typecheck": "PASS (npm run typecheck after source commit)",
-    "build": "PASS (Vite 8.2.2, 1936 modules; stable CSS output after rebuilding against source-built dist)",
-    "scan": "PASS (0 executable process references; rerun post-dist-commit)",
-    "dist_sync": "PASS after evidence/dist commit; post-commit Vite build left component/dist clean",
-    "current_touch_pan_verdict": "NOT_VERIFIED",
-    "current_tap_save_readback_verdict": "NOT_VERIFIED",
-    "historical_capture": {
-      "source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba",
-      "TOUCH_PAN_VERDICT": "PASS",
-      "TAP_SAVE_READBACK_VERDICT": "PASS",
-      "current_source_claim": false
-    },
-    "github_actions_ci": "NOT_TRIGGERED; gh run list for fixed branch returned no runs and checked-in push-workflow filters omit the branch",
+    "evidence": "evidence/logi-199-g2/current-source/",
+    "typecheck": "PASS on published source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "build": "PASS (Vite 8.2.2; 1936 modules; exact JS/CSS hashes match raw capture)",
+    "scan": "PASS (FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0)",
+    "dist_sync": "PASS — rebuilt dist hashes match the captured and committed hashes",
+    "focused_python_regressions": "27 passed on the raw capture source candidate 751f64f5129637eef4fb74515afdf7fa15ca9deb; no full suite rerun",
+    "dom_acceptance_journey_fresh_188_nodes_empty": "PASS on published candidate; official-dist DOM acceptance, zero CTA writes",
+    "dom_acceptance_journey_fresh_188_journey_absent": "PASS on published candidate; official-dist DOM acceptance, zero CTA writes",
+    "dom_hook_transition_197": "PASS on published candidate; zero→populated and populated→zero on same instance",
+    "current_browser_capture_verdict": "PASS — raw capture `CAPTURE_VERDICT=PASS`; current source identity caveat above",
+    "current_touch_pan_verdict": "PASS — real CDP touch; +269px map/node delta, no accidental selection",
+    "current_tap_save_readback_verdict": "PASS — isolated Mongomock only; test date 2026-10-04 read back after page reload. Immediate post-tap confirmation was not visible; readback is the proof.",
+    "current_zero_node_pointer_verdict": "PASS at desktop and mobile; pointerdown/move/up observed in actual map viewport and transform unchanged",
+    "current_zero_node_desktop_mobile": "PASS — full-width map, zero nodes/edges, one truthful CTA, editor path, no non-read HTTP request, no overflow",
+    "current_missing_journey_variant": "PASS official-dist DOM; no separate real-browser screenshot",
+    "github_actions_ci": "NOT_TRIGGERED; branch omitted from workflow filters",
     "ci_run_id": null,
     "independent_review": "PENDING",
     "supervisor_pass": "NOT_CLAIMED",
-    "owner_uat": "NOT_RUN",
+    "owner_uat": "NOT_READY; NOT_RUN",
+    "owner_uat_ready": "NO",
+    "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST; static check only",
     "production": "UNTOUCHED",
     "no_merge_main": "YES",
-    "no_deploy_production": "YES",
-    "focused_dom_regressions": {
-      "dom_hook_transition_197": "PASS (zero→populated and populated→zero on same instance)",
-      "dom_acceptance_journey_fresh_188": "PASS (zero-node truthful view, one CTA, zero writes; benign JSDOM scrollTo warning)",
-      "dom_acceptance_c2c": "PARTIAL PASS — steps 1–3 pass; Step 4 finance-tab assertion after Mở lô fails; baseline failure was previously reproduced",
-      "dom_acceptance_payment_trust": "FAILS before payment at missing LO-0308 fixture; same as pre-repair baseline",
-      "dom_acceptance_amount_integrity": "FAILS before payment at missing/clickable LO-0308 navigation precondition; same as pre-repair baseline",
-      "dom_acceptance_logi197_journey_clarity": "NOT RUN — fixture generator requires missing system-Python streamlit; no product assertion ran"
-    },
-    "touch_pan_verdict": "NOT_VERIFIED on current source; previous d774… CDP PASS is historical only",
-    "tap_save_readback_verdict": "NOT_VERIFIED on current source; previous d774… isolated Mongomock PASS is historical only",
-    "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-    "post_commit_verification": {
-      "typecheck": "PASS",
-      "build": "PASS (Vite 8.2.2; 1936 modules)",
-      "scan": "PASS (0 executable hits)",
-      "dist_sync": "PASS",
-      "hook_transition_197": "PASS",
-      "journey_fresh_188": "PASS",
-      "dom_acceptance_c2c": "Steps 1–3 PASS; Step 4 finance-tab assertion fails as on pre-repair dist",
-      "payment_trust": "Fails before payment at missing LO-0308 fixture, same pre-repair baseline",
-      "amount_integrity": "Fails before payment at LO-0308 navigation precondition, same pre-repair baseline",
-      "logi197_journey_clarity": "NOT_RUN; fixture generator requires system-Python streamlit"
-    },
-    "branch_push": "PASS to origin/arena/bb243332-logistics-work-desk-arena"
+    "no_deploy_production": "YES"
   },
   "preview": {
     "port": 9501,
-    "type": "ephemeral Arena sandbox, isolated mongomock fixtures",
+    "type": "ephemeral Arena sandbox; isolated in-process Mongomock only",
     "owner_uat_acceptance": false,
-    "persistence": "memory only; resets when process stops",
+    "persistence": "memory only; test data resets when process stops",
     "local_uat": "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
     "windows_launcher": "scripts/logi199_uat.cmd",
-    "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST"
+    "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST",
+    "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "capture_recorded_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "test_data": {
+      "T6-FCL": "11-node populated fixture; test-only ON BOARD date 2026-10-04",
+      "SEA-188": "canonical shipment_create; nodes=[]; missing profile/Incoterm"
+    },
+    "auth": "test-only AUTH_REQUIRED=false in fail-closed staging launcher after isolation validation; production auth unchanged"
   },
   "publication_receipt": {
     "historical_issue_199_comment": "BLOCKED_PERMISSION (previous integration-preview attempt)",
     "historical_pr_198_comment": "NOT_ATTEMPTED_AFTER_HISTORICAL_ISSUE_DENIAL",
-    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md (committed and pushed)",
-    "current_issue_199_comment": "BLOCKED_PERMISSION — gh issue comment 199 returned Resource not accessible by integration",
-    "current_independent_review": "PENDING; evidence not posted as issue comment",
+    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md (bounded findings; commit push pending)",
+    "current_issue_199_comment": "NOT_REQUIRED for release; prior integration permission failure is not a product blocker and no Owner permission fix is requested.",
+    "current_independent_review": "PENDING; reviewer should inspect published source candidate and raw capture SHA reconciliation.",
     "review_closed": false,
-    "branch_push": "PASS — source/dist/evidence commits pushed to fixed branch",
+    "branch_push": "PENDING — source-equivalent commit and current-source evidence/docs must be pushed non-force, then remote-verified.",
     "issue_comment_error": "Resource not accessible by integration",
-    "owner_action_needed": "Reconnect/restore GitHub issue-comment permission in Arena; no credential/token requested."
+    "owner_action_needed": "No action until Independent Review result; Owner UAT remains closed."
   },
   "session_branch": "arena/bb243332-logistics-work-desk-arena",
   "goal_state": {
     "G0": "G0_COMPLETE_ORACLE_CAPTURED",
     "G1": "G1_SHARED_VISUAL_SYSTEM_EVIDENCED",
-    "G2": "G2_MAP_FIRST_REPAIR_SOURCE_DIST_CHECKED__HISTORICAL_BROWSER_EVIDENCE_RETAINED__CURRENT_LIVE_REPLAY_NOT_VERIFIED",
+    "G2": "G2_EMPTY_MAP_POINTER_AND_CURRENT_DESKTOP_MOBILE_CAPTURE_PASS__INDEPENDENT_REVIEW_PENDING",
     "G3": "G3_BUSINESS_OPERATIONS_ROUTES_EVIDENCED",
     "G4": "G4_TOOLS_ADMIN_ROUTES_EVIDENCED",
     "G5": "G5_HISTORICAL_T6_CI_RECEIPT_RETAINED__CURRENT_REPAIR_REVIEW_PENDING",
-    "VISUAL_FIDELITY": "SOURCE_DIST_AND_FOCUSED_DOM_CHECKS_PASS__HISTORICAL_BROWSER_MEASUREMENTS__CURRENT_TOUCH_READBACK_NOT_VERIFIED",
-    "BUSINESS_PASS": "HISTORICAL_T6_CI_ONLY; current focused source/build checks are in g2_repair_20261015",
+    "VISUAL_FIDELITY": "CURRENT_G2_RENDERED_EVIDENCE_AVAILABLE__SOURCE_SHA_RECONCILIATION_DISCLOSED__INDEPENDENT_REVIEW_PENDING__NO_OWNER_UAT",
+    "BUSINESS_PASS": "Historical T6 CI remains historical; current bounded Mongomock ON BOARD save/reload/readback PASS; full business matrix not recertified.",
     "FULL_GOAL_199": "IN_PROGRESS"
   },
   "g2_journey_map_first": {
@@ -240,21 +237,31 @@
       "tsc_noEmit": "PASS",
       "vite_build": "PASS (component/dist rebuilt and synced)",
       "scan_executable_process_refs": "0",
-      "fonts_loaded_runtime": "Be Vietnam Pro (400-800) and IBM Plex Mono (400-700) FontFace loaded (beLoaded: true, plexLoaded: true)",
+      "fonts_loaded_runtime": "HISTORICAL prior G2 runtime observation; not separately asserted by the current-source raw metrics.",
       "desktop_1440x900_overflow_px": 0,
       "mobile_390x844_overflow_px": 0,
-      "node_bubble_popup_desktop": "PASS (centered ROW_MAIN, legend, floating Hồ sơ & Tài chính trigger + utility bubble + whole-lot overlay)",
-      "node_bubble_popup_mobile": "PASS (compact top chrome y=253.9px, map height=549px; vietnam-east-sea-chart.webp rendered at 100% auto in upper half without cropping/distortion; active nodes below; z-30 bubble; bottom sheet)",
-      "save_and_reopen_readback_desktop": "PASS (on-board date 2026-10-03 written and read back after reload)",
-      "save_and_reopen_readback_mobile_touch": "HISTORICAL PRIOR CAPTURE ONLY: former capture passed CDP touch and readback at source d774…; current-source verdicts are NOT_VERIFIED."
+      "node_bubble_popup_desktop": "PASS in current raw T6-FCL browser capture; screenshot and metrics are under evidence/logi-199-g2/current-source/; raw source SHA mapping caveat applies.",
+      "node_bubble_popup_mobile": "PASS in current raw T6-FCL browser capture; screenshot and metrics are under evidence/logi-199-g2/current-source/; raw source SHA mapping caveat applies.",
+      "save_and_reopen_readback_desktop": "HISTORICAL prior G2 result only (test date 2026-10-03); current desktop browser evidence is visual/layout, not a separate desktop save/write test.",
+      "save_and_reopen_readback_mobile_touch": "PASS in raw current-source browser capture: CDP touch-pan moved map and ON BOARD node +269px with no accidental selection; ON BOARD date 2026-10-04 saved in isolated Mongomock and read back after reload. Raw capture SHA 751f64f… is unavailable remotely; source mapping is disclosed.",
+      "current_source_capture_verdict": "PASS raw capture; browser Chromium 153.0.8010.0; see current-source/metrics.json.",
+      "desktop_1440x900_current": "T6-FCL 11 nodes/20 edges; map 1406×780; 0px overflow; zero-node map 1406×780; pointer does not pan.",
+      "mobile_390x844_current": "T6-FCL 11 nodes/20 edges; map 374×549; 0px overflow; zero-node map 374×549; pointer does not pan.",
+      "mobile_touch_pan_current": "PASS CDP touch; transform and ON BOARD node each +269px; no accidental selection.",
+      "mobile_save_reload_readback_current": "PASS Mongomock-only ON BOARD test date 2026-10-04 read back after reload; no payment flow.",
+      "zero_node_cta_current": "PASS exactly one truthful BỔ SUNG HỒ SƠ CTA; existing editor path; no non-read HTTP request; DOM confirms zero write triggers.",
+      "missing_journey_variant_current": "PASS official-dist DOM acceptance; separate real-browser screenshot NOT_CAPTURED.",
+      "source_sha_caveat": "Raw capture records 751f64f5129637eef4fb74515afdf7fa15ca9deb; published source candidate is 1e899553cc1ad7dbd720eb805e061ec61ae0871a; original capture commit object unavailable, dist hashes match; identity mapping disclosed for reviewer."
     },
     "not_verified": [
-      "Full OS process restart of mongomock staging resets in-memory DB by design (verified page reload readback within running staging process)",
-      "scripts/logi199_uat.cmd Windows batch runtime NOT_RUN in Linux sandbox (statically audited and underlying streamlit command verified)",
-      "11b-cong-no-popup (Trả đối tác modal) NOT_RUN in G3 staging fixture because fixture has 0 confirmed partner payable rows (UNKNOWN != 0)",
-      "Independent visual review and Owner UAT sign-off PENDING"
+      "Full OS process restart of Mongomock resets in-memory DB by design; readback was verified after page reload within the running isolated process.",
+      "scripts/logi199_uat.cmd Windows batch runtime NOT_RUN in Linux host; static review only.",
+      "11b-cong-no-popup not run because isolated fixture has zero confirmed partner payable rows (UNKNOWN != 0).",
+      "Independent Review and Owner UAT sign-off remain pending; no self-sign.",
+      "Missing-Journey variant has official-dist DOM proof but no separate browser screenshot; browser metrics/screenshots use canonical SEA-188 with journey.nodes=[].",
+      "Capture raw source SHA 751f64f5129637eef4fb74515afdf7fa15ca9deb cannot be fetched; published source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a has matching dist/script hashes but commit identity equivalence remains for independent validation."
     ],
-    "evidence": "evidence/logi-199-g2/ (including metrics.json), evidence/logi-199-g1/, evidence/logi-199-g3/, evidence/logi-199-g4/, evidence/logi-199-g5/",
+    "evidence": "evidence/logi-199-g2/current-source/metrics.json and current-source/*.png; reconciled index evidence/logi-199-g2/metrics.json; bounded review evidence README.md and REVIEWER_HANDOFF.md.",
     "production": "UNTOUCHED (isolated staging only)",
     "owner_gate": "Independent Review PASS required before Owner visual UAT; no self-sign.",
     "background_asset": {
@@ -265,8 +272,8 @@
       "git_blob_sha1": "fe29a19f24b3a56f25536e3b06e631fbbbd14fb5",
       "real_browser_after_background": "PASS_DESKTOP_1440x900_AND_MOBILE_390x844"
     },
-    "owner_direction": "Completed N1 + N2 (G2) and G1 -> G3 -> G4 -> G5 on isolated staging; awaiting Owner UAT.",
-    "receipt_status": "HISTORICAL_PRE-REPAIR_G2_PACKET; current source receipt is g2_repair_20261015."
+    "owner_direction": "Current zero-node pointer and desktop/mobile browser replay pass; exact published candidate is 1e899553cc1ad7dbd720eb805e061ec61ae0871a; await Independent Review before Owner UAT.",
+    "receipt_status": "CURRENT G2 BROWSER/DIST EVIDENCE AVAILABLE; source SHA reconciliation disclosed; Independent Review pending; Owner UAT not ready."
   },
   "source_receipt_pre_repair": {
     "tested_source_sha": "1889d2a874365bf59265b721503a0538f90586b0",
@@ -289,70 +296,184 @@
     "historical_source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba"
   },
   "g2_repair_20261015": {
-    "status": "SOURCE_DIST_FOCUSED_LOCAL_CHECKS_PASS__PUSHED__REVIEW_COMMENT_BLOCKED__LIVE_TOUCH_READBACK_NOT_VERIFIED",
-    "scope": "Bounded A–E repair only; no G0–G5 redo, no product auth/payment/backend change.",
-    "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+    "status": "CURRENT_CAPTURE_PASS__SOURCE_SHA_RECONCILIATION_DISCLOSED__PUSH_PENDING__INDEPENDENT_REVIEW_PENDING",
+    "scope": "Bounded empty-map selector/pointer correction and exact-source G2 replay only; no G0–G5 redo, no auth/payment/backend redesign.",
+    "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
     "dist_sha256": {
-      "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
-      "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+      "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+      "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
     },
+    "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a",
+    "raw_metrics_sha256": "8d0f8e4a0fbe8746c72e4d3f79d2d19b223d83e76415cec5eee3c65c46887193",
     "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
-    "desktop_1440x900_historical_capture": {
-      "before_map_height_px": 635,
-      "after_map_height_px": 780,
-      "delta_px": 145,
-      "after_map_top_y_px": 106.62,
-      "completion_review": "retained, collapsed, below map",
-      "horizontal_overflow_px": 0
+    "capture_verdict": "PASS",
+    "browser": {
+      "available": true,
+      "browser": "153.0.8010.0",
+      "chromium_executable": "/tmp/chromium"
     },
-    "mobile_390x844_historical_capture": {
-      "journey_map_top_y_px": 269.94,
-      "journey_map_height_px": 549,
-      "horizontal_overflow_px": 0,
-      "primary_cta_height_px": 40,
-      "secondary_controls_height_px": [
-        36,
-        40
+    "desktop_1440x900": {
+      "t6_fcl_nodes": 11,
+      "t6_fcl_edges": 20,
+      "t6_fcl_map_box": {
+        "x": 17.0,
+        "y": 106.62,
+        "width": 1406.0,
+        "height": 780.0
+      },
+      "zero_node_map_box": {
+        "x": 17.0,
+        "y": 143.22,
+        "width": 1406.0,
+        "height": 780.0
+      },
+      "zero_node_transform_unchanged": true,
+      "zero_node_cta_editor_no_write": true
+    },
+    "mobile_390x844": {
+      "t6_fcl_nodes": 11,
+      "t6_fcl_edges": 20,
+      "map_box": {
+        "x": 8.0,
+        "y": 269.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "zero_node_map_box": {
+        "x": 8.0,
+        "y": 235.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "zero_node_transform_unchanged": true,
+      "zero_node_cta_editor_no_write": true
+    },
+    "touch_pan": {
+      "verdict": "PASS",
+      "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+      "viewport_box": {
+        "x": 8.0,
+        "y": 269.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "start": [
+        60,
+        527
       ],
-      "zoom_controls_height_px": 40,
-      "receivables_save_height_px": 44,
-      "receivables_cancel_height_px": 44,
-      "save_label": "one line; no emoji",
-      "blank_validation": "PASS historically; no payment intent; Cancel closes sheet"
+      "end": [
+        329,
+        527
+      ],
+      "observed_event_types": [
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "touchend",
+        "touchmove",
+        "touchstart"
+      ],
+      "pointer_type_values": [
+        "touch"
+      ],
+      "pointerdown_count": 1,
+      "pointermove_count": 12,
+      "pointerup_count": 1,
+      "transform_before": {
+        "raw": "translate(-894px, 121px) scale(1)",
+        "x": -894,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_after": {
+        "raw": "translate(-625px, 121px) scale(1)",
+        "x": -625,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_delta_x": 269.0,
+      "node_box_before": {
+        "x": -143.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_box_after": {
+        "x": 126.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_delta_x": 269.0,
+      "selected_nodes_before": [],
+      "selected_nodes_after": [],
+      "bubble_count_after": 0,
+      "checks": {
+        "touch_pointer_events": true,
+        "map_transform_moved_in_drag_direction": true,
+        "no_accidental_node_selection": true
+      }
     },
-    "current_TOUCH_PAN_VERDICT": "NOT_VERIFIED",
-    "current_TAP_SAVE_READBACK_VERDICT": "NOT_VERIFIED",
-    "historical_TOUCH_PAN_VERDICT": "PASS at source d774… (CDP touch; not current-source proof)",
-    "historical_TAP_SAVE_READBACK_VERDICT": "PASS at source d774… (isolated Mongomock; not current-source proof)",
-    "current_replay": "Fresh staging rendered auth/login before the shell; no event or write. Temporary venv/browser absent after workspace resume. No auth fixture, auth bypass in product code, or new framework added.",
-    "metrics_provenance": "Raw previous metrics JSON was truncated during failed workspace restore. Current metrics distinguishes historical values transcribed from preserved summary/screenshots from current-source verification.",
-    "github_actions_ci": "NOT_TRIGGERED on fixed branch; historical CI remains explicitly historical",
+    "tap_save_readback": {
+      "save": {
+        "environment": "isolated staging / Mongomock",
+        "lot": "T6-FCL",
+        "stage": "ON BOARD",
+        "date": "2026-10-04",
+        "prior_date_value_before_edit": "",
+        "save_tapped": true,
+        "backend_confirmation_visible": false,
+        "save_button_text_after_tap": "Lưu mốc có bằng chứng",
+        "stage_alerts_after_save": [],
+        "no_payment_flow_used": true
+      },
+      "readback": {
+        "after_reload": true,
+        "date": "2026-10-04",
+        "expected_date": "2026-10-04"
+      },
+      "verdict": "PASS"
+    },
+    "missing_journey_dom_acceptance": "PASS for journey absent and nodes=[]; no separate browser screenshot.",
+    "staging_isolation": "PASS — Mongomock in-process, empty real URI/secrets, no production client; proof logged before fixture creation.",
+    "windows_launcher": "STATICALLY_CHECKED; NOT_RUN_ON_WINDOWS",
     "independent_review": "PENDING",
-    "owner_uat": "NOT_RUN; only after independent PASS",
-    "NO_MERGE_MAIN": "YES",
-    "NO_DEPLOY_PRODUCTION": "YES",
-    "FULL_GOAL_199": "IN_PROGRESS",
-    "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-    "post_commit_verification": {
-      "typecheck": "PASS",
-      "build": "PASS (Vite 8.2.2; 1936 modules)",
-      "scan": "PASS (0 executable hits)",
-      "dist_sync": "PASS",
-      "hook_transition_197": "PASS",
-      "journey_fresh_188": "PASS",
-      "dom_acceptance_c2c": "Steps 1–3 PASS; Step 4 finance-tab assertion fails as on pre-repair dist",
-      "payment_trust": "Fails before payment at missing LO-0308 fixture, same pre-repair baseline",
-      "amount_integrity": "Fails before payment at LO-0308 navigation precondition, same pre-repair baseline",
-      "logi197_journey_clarity": "NOT_RUN; fixture generator requires system-Python streamlit"
-    },
-    "publication_status": "PUSHED_TO_FIXED_BRANCH; gh issue comment blocked by integration permissions"
+    "owner_uat_ready": "NO",
+    "no_merge_main": "YES",
+    "no_deploy_production": "YES"
   },
   "overengineering_evaluation": {
-    "SIMPLER_PATH": "Reuse existing component, capture script, and focused DOM checks; no auth fixture or new test framework.",
-    "MATERIAL_PROGRESS": "Yes: compact desktop map and mobile Receivables/touch-target fixes directly address the rejection.",
-    "NECESSITY": "Yes: bounded A–E repair is explicitly requested.",
-    "CORE_BEFORE_SUPPORT": "Yes: core product surfaces only; no new support platform.",
-    "SMALLER_VERIFIABLE_SLICE": "Yes: focused build/scan/DOM regressions only; no 21-route audit or full pytest.",
-    "OE_VERDICT": "DO_IT for the bounded repair; SKIP_IT for new frameworks, auth fixtures, rewrites, or broad QA."
-  }
+    "SIMPLER_PATH": "YES — reuse current Journey map, isolated launcher, existing capture and focused DOM tests.",
+    "MATERIAL_PROGRESS": "YES — fixes decorative empty-map gesture behavior and verifies required current-source interactions.",
+    "NECESSITY": "YES — explicit open acceptance criterion.",
+    "CORE_BEFORE_SUPPORT": "YES — core map/CTA behavior first; no new framework or QA platform.",
+    "SMALLER_VERIFIABLE_SLICE": "YES — focused source/dist, DOM/hook, and existing browser evidence; no G0–G5/full-suite rerun.",
+    "OE_VERDICT": "DO_IT for the bounded current-work completion; SKIP_IT for redesign/framework/full-suite ceremony."
+  },
+  "preflight_receipts": {
+    "P2P_LAW_SOURCE": "LOCAL_PORTABLE",
+    "LAW_CHECK": "PASS | SOURCE=LOCAL_PORTABLE | SOURCE_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "EXPERIENCE_CHECK": "USE_ACTIVE_EXPERIENCE | IDS=shared-exp-b2611df4c9393f0017f07dcb",
+    "skill_consumption": {
+      "schema": "p2p-skill-consumption-receipt/1",
+      "skills": [
+        {
+          "id": "p2p-uiux",
+          "path": ".agents/skills/p2p-uiux/SKILL.md",
+          "sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+          "consumption": "READ_AND_APPLIED"
+        }
+      ]
+    },
+    "classification": {
+      "INITIAL_PLANNING_CLASSIFICATION": "UIUX",
+      "FINAL_ROUTING_CLASSIFICATION": "UIUX"
+    }
+  },
+  "owner_uat_ready": "NO",
+  "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+  "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+  "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw source capture SHA unavailable remotely; published candidate has matching built dist and capture-harness hashes.",
+  "production_ready": "NO"
 }

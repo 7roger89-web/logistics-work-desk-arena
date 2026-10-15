@@ -1,37 +1,43 @@
-# LOGI-199 — UAT local đơn giản (chưa phải nghiệm thu/cho phép release)
+# LOGI #199 — bounded G2 Owner UAT guide (not currently ready)
 
-Chỉ dùng bản tích hợp trên nhánh hiện tại `arena/818a2d0a-logistics-work-desk-arena`.
-Independent review và Owner UAT vẫn **PENDING**. Không tự động merge `main` hay deploy production.
+**Current gate:** `INDEPENDENT_REVIEW=PENDING`; `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`; `PRODUCTION_READY=NO`. Do not start this Owner UAT until Independent Review explicitly returns PASS for the exact candidate and its disclosed source/evidence reconciliation. This file is a focused LOGI #199 follow-up, not a restart of accepted G0–G5 work.
 
-## Khi reviewer cho phép bắt đầu UAT
+## Exact review candidate and evidence
 
-1. [Tải ZIP nhánh thử nghiệm](https://github.com/7roger89-web/logistics-work-desk-arena/archive/refs/heads/arena/818a2d0a-logistics-work-desk-arena.zip), giải nén vào **thư mục mới**, không dùng thư mục app production. Không cần Git hay sửa code (gói giao diện `component/dist` đã được biên dịch sẵn trong nhánh).
-2. Trên Windows có Python 3.11+, mở thư mục `scripts`, nhấp đúp **`logi199_uat.cmd`**. Lần đầu chờ tải thư viện. Nếu báo lỗi, giữ nguyên cửa sổ gửi người hỗ trợ; không tự sửa cấu hình DB. *(Lưu ý: `scripts/logi199_uat.cmd` là batch launcher cho Windows; trên môi trường Linux sandbox chỉ kiểm tra tĩnh và kiểm chứng trực tiếp lệnh `streamlit run scripts/logi199_t6_staging_app.py`, trạng thái chạy thực tế trên máy Windows là `NOT_RUN` cho tới khi chạy trên Windows thật).*
-3. Mở **http://localhost:9501**. App chạy dữ liệu mẫu trong bộ nhớ (`mongomock` cô lập); port 8501/8510 của production không đổi. Không copy `secrets.toml`, `.env` hoặc URI production vào thư mục này. Nếu launcher từ chối cấu hình, dừng, không bỏ guard.
-4. Xong thì Ctrl+C trong cửa sổ chạy. Dữ liệu thử sẽ mất khi dừng server (đúng thiết kế staging trong bộ nhớ). Ghi PASS/FAIL và ảnh, không cần lập trình.
+- Fixed branch: `arena/bb243332-logistics-work-desk-arena`
+- Source candidate commit: [`1e899553cc1ad7dbd720eb805e061ec61ae0871a`](https://github.com/7roger89-web/logistics-work-desk-arena/commit/1e899553cc1ad7dbd720eb805e061ec61ae0871a)
+- [Download the exact candidate ZIP](https://github.com/7roger89-web/logistics-work-desk-arena/archive/1e899553cc1ad7dbd720eb805e061ec61ae0871a.zip) only after the reviewer authorizes UAT.
+- Sole visual reference: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html` (SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`).
+- Current browser evidence: `evidence/logi-199-g2/current-source/` and `evidence/logi-199-g2/metrics.json`.
+- **Evidence identity note:** raw metrics record capture source SHA `751f64f5129637eef4fb74515afdf7fa15ca9deb`. GitHub returned 422 and the resumed clone did not contain that commit object. The published candidate rebuilds to the exact recorded JS/CSS and capture-script hashes, but commit-ID identity equivalence is **NOT_VERIFIED**. Independent Review must accept this provenance or request a fresh capture before Owner UAT; the raw metrics are not to be relabeled.
 
-Không cài app public, không đăng nhập bằng tài khoản production. Chưa tạo staging cloud/deploy mới.
+## When authorized by Independent Review
 
-## Checklist ngắn
+1. Use a **new, isolated folder** for the exact candidate ZIP. Do not copy any app-production configuration, `.env`, `secrets.toml`, Mongo URI, cookies, or credentials.
+2. On Windows with Python 3.11+, run `scripts/logi199_uat.cmd`. It is a Windows batch launcher. Its runtime was not executed in the Linux sandbox; a real Windows launch is part of the Owner check. If the isolation guard fails, stop and preserve the log—do not disable or edit the guard.
+3. Verify the launcher reports isolated in-process Mongomock, empty real `MONGO_URI`/secrets, and no production client before fixture creation. Open `http://localhost:9501`. Do not use production login, production data, or production ports.
+4. Use only the supplied disposable fixtures: `SEA-188` for no Journey nodes, and `T6-FCL` for the populated Journey/touch/save check. The Mongomock store is in-memory and disappears when the launcher stops.
+5. Stop the launcher with Ctrl+C when finished. Record only the checklist below, screenshots, and the test result; do not create real transactions or alter production data.
 
-| Màn hình / lô mẫu | Thao tác | Kỳ vọng |
+## Focused Owner checklist
+
+| Check | Action | Expected result / record |
 |---|---|---|
-| T6-FCL / bản đồ Journey map-first | Xem mặc định; kéo (pan); +/−; `⤢ Fit Journey`; `↺ Đọc rõ`; nút nổi `▤ Hồ sơ & Tài chính` | Desktop (`1440×900`): mặc định `95%` (Fit) hiển thị trọn vẹn 11 node căn giữa theo chiều dọc trên nền hải đồ Việt Nam / Biển Đông / Hoàng Sa / Trường Sa (`vietnam-east-sea-chart.webp`); góc trái dưới có `CHÚ GIẢI TRẠNG THÁI`; góc phải trên có nút nổi `▤ Hồ sơ & Tài chính`. Mobile (`390×844`): phần thông tin đầu trang gọn, nửa trên khung bản đồ hiển thị rõ hải đồ Việt Nam / Hoàng Sa / Trường Sa không bị cắt ngang hay méo tỷ lệ, nửa dưới hiển thị các node công đoạn, không tràn ngang (`0px`). |
-| T6-FCL / ON BOARD | Chọn node `07 ON BOARD / ATD` (trên mobile: kéo bản đồ sang phải tới node `ON BOARD` rồi chạm chọn) → bubble công việc → mở công đoạn → tab `Công việc`; nhập ngày `2026-10-03` rồi nhấn Lưu; tải lại hoặc chuyển lô rồi quay lại | Hiện `Hoàn thành` (`CÓ BẰNG CHỨNG`) và giữ nguyên ngày đã lưu sau khi đọc lại từ backend; ATD đơn thuần không tự chứng minh on-board. Trên mobile trình sửa mở dạng bottom sheet, nút Lưu bấm được bằng thao tác chạm. |
-| T6-FCL / DELIVERY | Nhập POD khi chưa xác nhận giao | Bị từ chối; không tự hoàn thành toàn lô. |
-| T6-LCL | Xem CFS / GHÉP HÀNG; mở Công việc và `Xem thêm chi tiết` | Không bắt buộc GATE-IN/VGM; hiển thị tối đa 2–5 trường chính, các trường phụ nằm trong `Xem thêm chi tiết` và vẫn chỉnh sửa được. |
-| T6-AIR và T6-AIR-CONSOLIDATED | Xem AWB/chuyến, kho, uplift, đến | Không có SI/VGM/GATE-IN tàu. Chọn loại consolidated không tự chứng minh đã bay. |
-| T6-ROAD-LTL và T6-ROAD-FTL | Xem nhận/ghép hàng hoặc xe/tài xế | Không áp maritime; fixture nội địa không cửa khẩu/hải quan. |
-| Công đoạn bất kỳ / Chứng từ | Mở và đối chiếu phạm vi | Chỉ chứng từ thuộc công đoạn; không hỏi lại khách đã biết. UNKNOWN không biến thành hoàn thành. |
-| Báo giá 390px | Xem tab/bộ lọc | Đọc được, không cắt ngang (`overflowPx = 0`). |
-| Tra cứu chính sách 390px | Xem tên nguồn | Đọc đủ “Bộ Thông Tin Truyền Thông”, biểu tượng mở vẫn trong thẻ. |
+| SEA-188 empty map, desktop 1440×900 | Open the no-node Journey view and try drag/wheel input inside the map. | Full-width map-first canvas; zero nodes/edges and no fabricated stages/statuses; truthful missing-profile state; one “BỔ SUNG HỒ SƠ” CTA; map transform does not pan/zoom while there are no nodes; no horizontal overflow. Record PASS/FAIL and screenshot. |
+| SEA-188 empty map, mobile 390×844 | Repeat on a phone-sized viewport; tap the CTA. | Full-width map; no overflow; exactly one truthful CTA reaches the existing Execution Profile editor; no business write occurs merely by opening the editor. Record PASS/FAIL and screenshot. |
+| T6-FCL populated Journey, desktop/mobile | Confirm 11 real fixture nodes and 20 edges; on mobile, use touch drag to pan to ON BOARD. | Existing map-first populated Journey remains intact; touch pan moves the map and does not accidentally select a node until tapped. Record whether touch-pan works. |
+| T6-FCL ON BOARD save/readback | Open the existing task editor, enter disposable test date `2026-10-04`, save, reload, and read it back. | The Mongomock fixture returns the exact saved date after reload. No real payment/transaction. Record save and readback separately; if the immediate confirmation label is absent, do not infer failure or success—use the reload/readback result. |
+| Isolation and shutdown | Review the launcher preflight log and stop it. | Isolation proof precedes fixture creation; no production DB/client/credentials; in-memory data is gone when stopped. |
 
-Ảnh bằng chứng theo từng cổng:
-- Oracle tham chiếu Owner HTML: `evidence/logi-199-g0/reference-html/`
-- G1 (Hệ màu & font Mimo–Sonnet): `evidence/logi-199-g1/`
-- G2 (Journey map-first, nền Việt Nam / Hoàng Sa / Trường Sa, touch save/readback): `evidence/logi-199-g2/` và `evidence/logi-199-g2/metrics.json`
-- G3 (Các màn hình Nghiệp vụ & Điều hành desktop/mobile): `evidence/logi-199-g3/`
-- G4 (Các màn hình Công cụ & Quản trị desktop/mobile): `evidence/logi-199-g4/`
-- G5 & T5/T6 tổng hợp: `evidence/logi-199-g5/`, `evidence/logi-199-t5/route_audit.json`, `evidence/logi-199-t6/browser_metrics.json`
+The reviewer's source-SHA reconciliation decision is a prerequisite. The Owner's result does not replace Independent Review, and screenshots do not authorize merge or deployment.
 
-Ảnh/CI không thay thế Independent review, Owner UAT hoặc quyền merge production.
+## Current release boundary
+
+- `INDEPENDENT_REVIEW=PENDING`
+- `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`
+- `SUPERVISOR_PASS=NOT_CLAIMED`
+- `PRODUCTION_READY=NO`
+- `NO_MERGE_MAIN_WITHOUT_OWNER_APPROVAL=YES`
+- `NO_PRODUCTION_DEPLOY_WITHOUT_OWNER_APPROVAL=YES`
+
+Existing auth/bootstrap/finance coverage and snapshot retry-idempotency blockers remain separate and unwaived. GitHub issue-comment permission is not a release gate; no permission fix is requested.

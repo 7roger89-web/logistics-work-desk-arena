@@ -1,36 +1,37 @@
 {
   "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 bounded review repair",
   "branch": "arena/bb243332-logistics-work-desk-arena",
-  "source_sha": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
-  "source_commit": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
+  "source_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+  "source_commit": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
   "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
   "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
   "current_dist_sha256": {
-    "logi-shell.js": "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
-    "logi-shell.css": "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
+    "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+    "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
   },
-  "capture_script_sha256": "ae4272e65bbb2ef5c9157cdf7304646cd24b6416facc9bdc04a6f15ec4e318a2",
+  "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a",
   "evidence_provenance": {
-    "status": "HISTORICAL_CAPTURE_RECONCILED__CURRENT_REPLAY_NOT_VERIFIED",
-    "note": "The last successful live capture and its metrics were from the previous workspace snapshot (source d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba, CSS 1b87f972...). After the Arena workspace resumed from the pinned base with the saved changes uncommitted, a fresh capture did not reach the app (AUTH_REQUIRED login gate) and the old raw metrics JSON was truncated during a failed restore attempt. Screenshots remain; exact preserved run outcomes are transcribed below and explicitly marked historical. Do not claim those runtime PASS verdicts as current-source verification.",
-    "screenshots_from_previous_successful_capture": [
-      "evidence/logi-199-g2/desktop-01-journey-initial.png",
-      "evidence/logi-199-g2/desktop-02-node-bubble.png",
-      "evidence/logi-199-g2/desktop-03-task-popup.png",
-      "evidence/logi-199-g2/mobile-01-journey-initial.png",
-      "evidence/logi-199-g2/mobile-02-node-bubble.png",
-      "evidence/logi-199-g2/mobile-03-task-sheet.png",
-      "evidence/logi-199-g2/mobile-04-onboard-touch-editor.png",
-      "evidence/logi-199-g2/mobile-04-touch-pan-after.png",
-      "evidence/logi-199-g2/mobile-05-onboard-touch-readback.png",
-      "evidence/logi-199-g2/mobile-receivables-pay-sheet.png",
-      "evidence/logi-199-g2/mobile-receivables-validation.png"
+    "status": "CURRENT_SOURCE_CAPTURE_PASS__RAW_METRICS_PRESERVED__COMMIT_ID_MAPPING_DISCLOSED",
+    "note": "Current-source screenshots and metrics are from the real Streamlit app and current official dist. The raw capture records 751f64f5129637eef4fb74515afdf7fa15ca9deb; that commit object is not available locally or on GitHub. The restored source changes were committed as 1e899553cc1ad7dbd720eb805e061ec61ae0871a and rebuilt to the exact recorded JS/CSS hashes; dist/capture-script hashes match, but commit-ID identity equivalence is explicitly left for Independent Review.",
+    "current_screenshots": [
+      "evidence/logi-199-g2/current-source/desktop-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/desktop-zero-node-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-zero-node-initial.png",
+      "evidence/logi-199-g2/current-source/desktop-zero-node-execution-profile-editor.png",
+      "evidence/logi-199-g2/current-source/mobile-zero-node-execution-profile-editor.png",
+      "evidence/logi-199-g2/current-source/mobile-04-touch-pan-after.png",
+      "evidence/logi-199-g2/current-source/mobile-04-onboard-touch-editor.png",
+      "evidence/logi-199-g2/current-source/mobile-t6-fcl-onboard-touch-readback.png"
     ],
-    "current_replay_attempt": {
-      "status": "NOT_VERIFIED",
-      "result": "Fresh Mongomock staging served the auth/login screen with default AUTH_REQUIRED=true; capture timed out before .logi-shell rendered. No touch pan, Save, or business write occurred in that attempt.",
-      "environment_after_workspace_resume": "The earlier .venv and /tmp/chromium runtime were not present after the workspace snapshot resumed; no new auth fixture, auth bypass code, browser framework, or broad QA was added."
-    }
+    "runtime": {
+      "available": true,
+      "browser": "153.0.8010.0",
+      "chromium_executable": "/tmp/chromium"
+    },
+    "staging_isolation": "PASS; Mongomock in-process, empty MONGO_URI/secrets path, no production client; guard log preceded fixture creation.",
+    "owner_uat": "NOT_READY; Independent Review pending.",
+    "previous_historical_capture": "Earlier d774... screenshot metrics remain historical and are not used as current evidence."
   },
   "historical_successful_capture": {
     "source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba",
@@ -227,67 +228,26 @@
       "payment_flow_used": false
     }
   },
-  "TOUCH_PAN_VERDICT": "NOT_VERIFIED",
-  "TAP_SAVE_READBACK_VERDICT": "NOT_VERIFIED",
+  "TOUCH_PAN_VERDICT": "PASS — raw current-source capture; CDP touch at mobile 390×844; source SHA recorded as 751f64f5129637eef4fb74515afdf7fa15ca9deb.",
+  "TAP_SAVE_READBACK_VERDICT": "PASS — raw current-source capture; Mongomock-only ON BOARD date 2026-10-04 read back after page reload; no payment flow.",
   "focused_verification": {
-    "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
-    "component_typecheck": "PASS (npm run typecheck after source commit)",
-    "component_build": "PASS (Vite 8.2.2; 1936 modules; final stable CSS hash 6973bae4...)",
-    "component_scan": "PASS (0 executable process references)",
-    "dist_sync": "PASS: post-commit Vite rebuild left component/dist byte-identical to evidence commit 754a619f30affd1c18753b50f78d917bb2db5944",
-    "dom_hook_transition_197": "PASS (same mounted instance; zero→populated and populated→zero)",
-    "dom_acceptance_journey_fresh_188": "PASS (zero-node split view, one CTA, zero writes; JSDOM emitted a benign scrollTo-not-implemented warning)",
-    "dom_acceptance_c2c": {
-      "status": "PARTIAL_PASS_WITH_PREEXISTING_FAILURE",
-      "steps_1_to_3": "PASS: route/totals/currency separation; stable request identity; double-click absorption; unrelated writes cannot fake success; refusal/retry; correlated readback; pending state",
-      "failure": "Step 4 finance-tab assertion after Mở lô",
-      "baseline_comparison": "Same assertion failure was reproduced against pre-repair dist in the previous source snapshot",
-      "exit_code": 1
-    },
-    "dom_acceptance_payment_trust": {
-      "status": "PREEXISTING_FIXTURE_ORACLE_FAILURE",
-      "failure": "Step 0: fixture does not list LO-0308",
-      "baseline_comparison": "Identical failure was reproduced against pre-repair dist in the previous source snapshot"
-    },
-    "dom_acceptance_amount_integrity": {
-      "status": "PREEXISTING_FIXTURE_ORACLE_FAILURE",
-      "failure": "Step 1 cannot find/click LO-0308 before payment flow",
-      "baseline_comparison": "Identical failure was reproduced against pre-repair dist in the previous source snapshot"
-    },
-    "pytest": "NOT_RUN; full pytest was explicitly out of scope and system Python lacked pytest",
-    "github_actions_ci": {
-      "status": "NOT_TRIGGERED",
-      "reason": "No checked-in push-workflow branch filter includes arena/bb243332-logistics-work-desk-arena",
-      "historical_run": "38683678222 at 1889d2a… is not current-source verification"
-    },
-    "dom_acceptance_logi197_journey_clarity": "NOT_RUN: fixture generator stopped before test because system Python has no streamlit module; no product assertion ran",
-    "dist_hashes_after_source_build": {
-      "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
-      "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
-    },
-    "evidence_only_comment": "The 390/1440 browser capture is historical and not current-source verification. Current live touch/readback verdicts remain NOT_VERIFIED.",
-    "dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-    "post_evidence_commit_verification": {
-      "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
-      "evidence_and_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-      "npm_run_typecheck": "PASS",
-      "npm_run_build": "PASS (Vite 8.2.2; 1936 modules)",
-      "npm_run_scan": "PASS (FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0)",
-      "dist_sync": "PASS (git diff --exit-code component/dist returned clean)",
-      "dist_sha256": {
-        "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
-        "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
-      },
-      "dom_hook_transition_197": "PASS (zero→populated and populated→zero on same instance)",
-      "dom_acceptance_journey_fresh_188": "PASS (zero-node split view, one CTA, zero writes; benign JSDOM scrollTo warning)",
-      "dom_acceptance_c2c": "PARTIAL PASS: Steps 1–3 passed; Step 4 failed on finance-tab assertion after Mở lô, same as pre-repair baseline",
-      "dom_acceptance_payment_trust": "FAILED before payment at missing LO-0308 fixture precondition, same as pre-repair baseline",
-      "dom_acceptance_amount_integrity": "FAILED before payment at missing/clickable LO-0308 precondition, same as pre-repair baseline",
-      "dom_acceptance_logi197_journey_clarity": "NOT_RUN: fixture generator stopped because system Python lacks streamlit; no product assertion executed",
-      "full_pytest": "NOT_RUN by scope; no pytest runner in system Python",
-      "capture_replay": "NOT_VERIFIED for exact current source; fresh staging rendered auth gate before shell and no current browser runtime was available after workspace resume",
-      "github_actions_ci": "NOT_TRIGGERED (gh run list returned no runs for fixed branch)"
-    }
+    "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "raw_capture_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "component_typecheck": "PASS (Vite/TypeScript; exact source candidate before commit).",
+    "component_build": "PASS (Vite 8.2.2; 1936 modules).",
+    "component_scan": "PASS (FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0).",
+    "dist_sync": "PASS — rebuilt JS/CSS hashes exactly match the current-source raw capture and committed dist.",
+    "focused_python_regressions": "27 passed on the prior local capture candidate; no full pytest rerun.",
+    "dom_acceptance_journey_fresh_188_nodes_empty": "PASS on published candidate; official-dist DOM, one CTA, zero writes, no empty-map pan.",
+    "dom_acceptance_journey_fresh_188_journey_absent": "PASS on published candidate; official-dist DOM, same empty-state/CTA/no-write/pointer contract.",
+    "dom_hook_transition_197": "PASS on published candidate: zero→populated and populated→zero on same instance.",
+    "capture_replay": "PASS in preserved raw current-source capture; no Chromium rerun after restoration.",
+    "npm_ci": "PASS; npm reported one high-severity audit advisory. Not remediated or independently triaged in this bounded slice.",
+    "github_actions_ci": "NOT_TRIGGERED; fixed branch omitted from checked-in push filters.",
+    "windows_launcher": "Static check only; Windows runtime NOT_RUN.",
+    "full_pytest": "NOT_RUN by scope.",
+    "21_route_audit": "NOT_RUN by scope.",
+    "production": "UNTOUCHED"
   },
   "overengineering_evaluation": {
     "SIMPLER_PATH": "Reuse current component, capture script, and focused DOM checks; do not add an auth fixture or new test framework.",
@@ -299,102 +259,796 @@
   },
   "release_gates": {
     "FULL_GOAL_199": "IN_PROGRESS",
-    "INDEPENDENT_REVIEW": "PENDING",
+    "INDEPENDENT_REVIEW": "PENDING; review only opened findings.",
     "SUPERVISOR_PASS": "NOT_CLAIMED",
-    "OWNER_UAT": "NOT_RUN; only after Independent Review PASS",
+    "OWNER_UAT": "NOT_RUN; OWNER_UAT_READY=NO until Independent Review PASS",
     "NO_MERGE_MAIN": "YES",
     "NO_DEPLOY_PRODUCTION": "YES",
+    "PRODUCTION_READY": "NO",
     "auth_bootstrap_finance_snapshot_retry_blockers": "PRESERVED; not waived or repaired by this UI slice"
   },
-  "current_source_verification_status": "POST_COMMIT_TYPECHECK_BUILD_SCAN_DIST_SYNC_AND_ZERO_NODE_DOM_PASS__BROWSER_T6_FCL_DESKTOP_MOBILE_BLOCKED__TOUCH_PAN_AND_SAVE_READBACK_NOT_VERIFIED",
-  "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-  "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from all checked-in push filters",
+  "current_source_verification_status": "CURRENT_CAPTURE_AVAILABLE__DIST_MATCHES__SOURCE_SHA_RECONCILIATION_DISCLOSED__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
+  "evidence_dist_commit": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+  "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from workflow filters.",
   "publication_status": {
-    "branch_push": "PASS — source/dist/evidence commits pushed only to arena/bb243332-logistics-work-desk-arena.",
-    "github_actions_ci": "NOT_TRIGGERED — gh run list for the fixed branch returned no runs; checked-in workflow filters omit it",
-    "independent_reviewer_comment": "BLOCKED_PERMISSION — gh issue comment 199 returned Resource not accessible by integration; packet is pushed but not posted",
-    "review_status": "PENDING; no Independent Review PASS or Supervisor PASS."
+    "branch_push": "PENDING — source candidate and evidence/docs commit not yet pushed.",
+    "expected_branch": "arena/bb243332-logistics-work-desk-arena",
+    "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "current_evidence": "AVAILABLE locally; current-source screenshots/raw metrics present.",
+    "remote_verification": "PENDING",
+    "issue_comment": "NOT_REQUIRED; prior permission error is not a release gate."
   },
   "latest_zero_node_layout_followup": {
     "date_local": "2026-10-15",
     "branch": "arena/bb243332-logistics-work-desk-arena",
-    "source_dist_test_commit": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
-    "scope": "LOGI #199 zero-node Journey split-layout exception only; populated Journey and prior G2 work preserved; not a G0-G5 rollback.",
+    "raw_capture_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "scope": "LOGI #199 empty-map selector/pointer repair and current-source G2 evidence handoff only; no G0–G5 redo.",
     "layout_verdicts": {
-      "POPULATED_MAP_FIRST": "PASS source-preservation + same-instance populated map-first transition DOM; exact T6-FCL 11-node browser replay NOT_VERIFIED.",
-      "ZERO_NODE_FULL_WIDTH": "PASS official-dist JSDOM acceptance for journey.nodes=[] and missing Journey; full-width map-first surface, truthful notice/profile status, one CTA to the existing Execution Profile editor through Global Workspace, zero business writes.",
-      "OLD_SPLIT_LAYOUT_ACTIVE": "NO — legacy small-map CSS rule removed; zero-node DOM has no legacy split class/root/right action panel.",
-      "fake_nodes_or_stages": "NONE — zero-node acceptance asserts zero detailed nodes and zero phase-card substitutes.",
-      "global_workspace_and_transitions": "PASS — existing Global Workspace/editor path preserved; same-instance zero→populated→zero hook-transition DOM passes."
-    },
-    "focused_verification": {
-      "component_typecheck": "PASS (`npm run typecheck`).",
-      "component_build": "PASS (Vite 8.2.2; 1936 modules).",
-      "component_scan": "PASS (`FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`).",
-      "dist_sync": "PASS — post-commit rebuild was deterministic and `git diff --exit-code -- component/dist` was clean.",
-      "dist_rebuild_stability": {
-        "logi-shell.js_before_after": [
-          "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
-          "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc"
-        ],
-        "logi-shell.css_before_after": [
-          "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a",
-          "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
-        ]
-      },
-      "dom_acceptance_journey_fresh_188_nodes_empty": "PASS — one CTA, no fake nodes, truthful missing-profile status, editor reached through Global Workspace, zero business writes; benign JSDOM `scrollTo` warning only.",
-      "dom_acceptance_journey_fresh_188_journey_absent": "PASS — same assertions for missing-Journey variant; benign JSDOM `scrollTo` warning only.",
-      "dom_hook_transition_197": "PASS — zero→populated and populated→zero on the same mounted instance; no hook-ordering errors; populated path still renders its factual nodes/map-first workspace.",
-      "targeted_python_contracts": "PASS — 18 tests across tests.test_journey_super_goal_186 and tests.test_journey_visual_fidelity_190.",
-      "full_pytest": "NOT_RUN by explicit scope; no full-suite or 21-route audit."
+      "POPULATED_MAP_FIRST": "PASS — T6-FCL 11-node browser capture at desktop/mobile; exact rendered/computed metrics in current-source/metrics.json.",
+      "ZERO_NODE_FULL_WIDTH": "PASS — SEA-188 zero-node browser capture at desktop/mobile; full map width, zero nodes/edges, chart loaded, no overflow.",
+      "EMPTY_MAP_POINTER_WHEEL": "PASS — actual map viewport observed pointerdown/move/up with unchanged transform; wheel handler is a no-op when no nodes.",
+      "TRUTHFUL_EMPTY_STATE": "PASS — missing-profile status and server-projected action; current phase remains unconfirmed; no fabricated nodes/stages/statuses.",
+      "CTA_AND_NO_WRITE": "PASS — exactly one BỔ SUNG HỒ SƠ CTA opens the existing Execution Profile path; no non-read HTTP request; DOM trigger lane records zero business writes.",
+      "MISSING_JOURNEY_VARIANT": "PASS in official-dist DOM acceptance; no separate real-browser screenshot.",
+      "SELECTED_CHART_ASSET": "PASS — current browser computed background is a loaded data:image/webp with Vietnam/Biển Đông/Hoàng Sa/Trường Sa asset."
     },
     "browser_staging": {
-      "desktop_1440x900": "NOT_CAPTURED / BLOCKED",
-      "mobile_390x844": "NOT_CAPTURED / BLOCKED",
+      "runtime": {
+        "available": true,
+        "browser": "153.0.8010.0",
+        "chromium_executable": "/tmp/chromium"
+      },
+      "desktop_1440x900": "PASS — T6-FCL and zero-node screenshots/metrics present.",
+      "mobile_390x844": "PASS — T6-FCL and zero-node screenshots/metrics present.",
       "T6_FCL_expected_nodes": 11,
-      "T6_FCL_browser_verdict": "NOT_VERIFIED",
-      "zero_node_browser_verdict": "NOT_VERIFIED",
-      "screenshots_created": [],
-      "blockers": [
-        "System Python does not have streamlit, mongomock, or pymongo; direct `python3 scripts/logi199_t6_staging_app.py` stopped at `ModuleNotFoundError: mongomock` before staging seeding or app start. MONGO_URI was unset; no database write occurred.",
-        "Node Playwright and Playwright Core are not installed; no Chromium/Chrome executable was found in the checked system/browser-cache paths.",
-        "The existing T6 browser runner sets AUTH_REQUIRED=false and was not used. The real app defaults AUTH_REQUIRED=true; the T6 launcher session username `staging.support` is not among the seeded users (`admin`, `thuhang`, `minhtu`), so its fail-closed session revalidation can show the login gate. No auth bypass, production auth edit, new auth fixture, or production data was used."
-      ]
+      "T6_FCL_browser_verdict": "PASS",
+      "zero_node_browser_verdict": "PASS desktop/mobile",
+      "TOUCH_PAN_VERDICT": "PASS",
+      "TAP_SAVE_READBACK_VERDICT": "PASS",
+      "screenshots_directory": "evidence/logi-199-g2/current-source/",
+      "staging_isolation": "Mongomock only; empty real Mongo URI and secrets path; production client not present."
     },
-    "touch_pan_verdict": "NOT_VERIFIED — no current-source replay.",
-    "tap_save_readback_verdict": "NOT_VERIFIED — no current-source replay; no write occurred.",
+    "source_dist": {
+      "published_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+      "raw_capture_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+      "dist_sha256": {
+        "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+        "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
+      },
+      "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a"
+    },
     "independent_review": "PENDING",
-    "owner_uat": "NOT_RUN",
+    "owner_uat_ready": "NO",
     "release_constraints": {
       "NO_MERGE_MAIN": "YES",
       "NO_DEPLOY_PRODUCTION": "YES"
+    }
+  },
+  "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+  "capture_recorded_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+  "current_source_capture": {
+    "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 zero-node and current-browser replay",
+    "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
+    "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
+    "source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "capture_script_sha256": "c93ea253ad71dc6c0524bb6945e4e1e1a7a0c6cf638993db7fdac27547cfa06a",
+    "dist_sha256": {
+      "logi-shell.js": "3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c",
+      "logi-shell.css": "412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb"
     },
-    "goal_progress": {
-      "GOAL": "Fix only the remaining LOGI #199 zero-node Journey split-layout exception while preserving the accepted populated/G2 path.",
-      "PROGRESS": "Source/dist repair, truthful zero-state CTA, fresh acceptance and hook-transition assertions updated; bounded checks pass.",
-      "CURRENT": "Zero-node full-width DOM is PASS. Populated map-first source/hook DOM is preserved. T6-FCL/zero-node desktop/mobile browser evidence remains blocked, not claimed.",
-      "NEXT": "Restore an authorized isolated staging/browser environment without weakening auth; capture T6-FCL 11-node and zero-node at 1440×900 and 390×844, then request Independent Review.",
-      "BLOCKERS": "Missing staging dependencies and Chromium/Playwright; default auth gate/staging actor mismatch; Independent Review pending; Owner UAT not run. Existing unrelated auth/bootstrap/finance/snapshot-idempotency blockers remain unchanged."
+    "staging_url": "http://127.0.0.1:9501",
+    "capture_output_directory": "evidence/logi-199-g2/current-source",
+    "runtime": {
+      "available": true,
+      "browser": "153.0.8010.0",
+      "chromium_executable": "/tmp/chromium"
     },
-    "overengineering_gate": {
-      "SIMPLER_PATH": "YES",
-      "MATERIAL_PROGRESS": "YES",
-      "NECESSITY": "YES",
-      "CORE_BEFORE_SUPPORT": "YES",
-      "SMALLER_VERIFIABLE_SLICE": "YES",
-      "OE_VERDICT": "DO_IT for the bounded zero-node layout/test change only."
+    "touch_pan": {
+      "verdict": "PASS",
+      "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+      "viewport_box": {
+        "x": 8.0,
+        "y": 269.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "start": [
+        60,
+        527
+      ],
+      "end": [
+        329,
+        527
+      ],
+      "observed_event_types": [
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "touchend",
+        "touchmove",
+        "touchstart"
+      ],
+      "pointer_type_values": [
+        "touch"
+      ],
+      "pointerdown_count": 1,
+      "pointermove_count": 12,
+      "pointerup_count": 1,
+      "transform_before": {
+        "raw": "translate(-894px, 121px) scale(1)",
+        "x": -894,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_after": {
+        "raw": "translate(-625px, 121px) scale(1)",
+        "x": -625,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_delta_x": 269.0,
+      "node_box_before": {
+        "x": -143.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_box_after": {
+        "x": 126.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_delta_x": 269.0,
+      "selected_nodes_before": [],
+      "selected_nodes_after": [],
+      "bubble_count_after": 0,
+      "checks": {
+        "touch_pointer_events": true,
+        "map_transform_moved_in_drag_direction": true,
+        "no_accidental_node_selection": true
+      }
     },
-    "source_and_dist_sha256": {
-      "component/src/components/ShipmentJourney.tsx": "86b85d344614eb5524c814f605e77fb2926f10ff962ba044f53c14ebf77acf9d",
-      "component/src/index.css": "aa8537c64ca6ed3e55f60475cae11ac37aa2a502e57274fa18d388c0a891bdcb",
-      "tests/component/dom_acceptance_journey_fresh_188.mjs": "8fcadbf558e6b187bd9cc38951825ce2bd29a2858bcec91fb422026bb26e2c01",
-      "tests/component/dom_hook_transition_197.mjs": "2be31388a5acb0e692a07d3def5a64f89a469a476ce19b1c569c40176b198f61",
-      "tests/test_journey_super_goal_186.py": "23129c2f0a1fe724653358b56aa99f1fc9843ba2d3d3ef4fba4017200aff8474",
-      "tests/test_journey_visual_fidelity_190.py": "21fa96d2f6b60032d9fd11c9ac725d136c6113cf598ba3fd4524965468e80081",
-      "component/dist/logi-shell.js": "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
-      "component/dist/logi-shell.css": "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
+    "TOUCH_PAN_VERDICT": "PASS",
+    "TAP_SAVE_READBACK_VERDICT": "PASS",
+    "zero_node_desktop": {
+      "fixture": "SEA-188",
+      "journey_shape": "canonical shipment with journey.nodes=[]",
+      "viewport": [
+        1440,
+        900
+      ],
+      "zero_shell_box": {
+        "x": 17.0,
+        "y": 143.22,
+        "width": 1406.0,
+        "height": 780.0
+      },
+      "map_viewport_box": {
+        "x": 17.0,
+        "y": 143.22,
+        "width": 1406.0,
+        "height": 780.0
+      },
+      "map_width_matches_zero_shell": true,
+      "notice_box": {
+        "x": 505.0,
+        "y": 403.77,
+        "width": 430.0,
+        "height": 258.89
+      },
+      "computed_style": {
+        "cursor": "default",
+        "touchAction": "auto",
+        "pointerEvents": "auto",
+        "approved_vietnam_chart_data_image_loaded": true
+      },
+      "transform_before_pointer": {
+        "raw": "translate(602px, 216px) scale(1)",
+        "x": 602,
+        "y": 216,
+        "scale": 1
+      },
+      "node_count": 0,
+      "edge_count": 0,
+      "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (Incoterm).\n\nBỔ SUNG HỒ SƠ →",
+      "profile_state_label": "Hồ sơ lô còn thiếu",
+      "profile_status_visible": true,
+      "server_projected_primary_action": "Bổ sung hồ sơ thực hiện lô",
+      "toolbar_text": "📍 Đang ở: Chưa xác định\nChưa đủ hồ sơ để xác định công đoạn chi tiết.",
+      "unknown_phase_stays_unconfirmed": true,
+      "cta_count": 1,
+      "labelled_cta_count": 1,
+      "cta_text": "BỔ SUNG HỒ SƠ →",
+      "horizontal_overflow": 0,
+      "document_dimensions": {
+        "documentWidth": 1440,
+        "viewportWidth": 1440,
+        "horizontalOverflow": 0,
+        "documentHeight": 900,
+        "viewportHeight": 900
+      },
+      "page_errors": [],
+      "pointer_test": {
+        "input": "Playwright mouse drag dispatching browser pointer events over decorative empty chart",
+        "pointer_types": [
+          "mouse"
+        ],
+        "observed_event_types": [
+          "pointerdown",
+          "pointermove",
+          "pointerup"
+        ],
+        "transform_after_pointer": {
+          "raw": "translate(602px, 216px) scale(1)",
+          "x": 602,
+          "y": 216,
+          "scale": 1
+        },
+        "transform_unchanged": true,
+        "no_pan_verdict": "PASS"
+      },
+      "cta_editor_test": {
+        "opens_existing_execution_profile_editor": true,
+        "workspace_visible": true,
+        "url_after_cta": "/",
+        "non_read_http_requests_during_cta": [],
+        "no_non_read_http_request": true,
+        "no_business_write_proof": "DOM acceptance asserts zero non-navigation write triggers for this CTA"
+      },
+      "verdict": "PASS"
     },
-    "canonical_law_freshness": "CURRENT",
-    "canonical_law_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b"
+    "zero_node_mobile": {
+      "fixture": "SEA-188",
+      "journey_shape": "canonical shipment with journey.nodes=[]",
+      "viewport": [
+        390,
+        844
+      ],
+      "zero_shell_box": {
+        "x": 8.0,
+        "y": 235.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "map_viewport_box": {
+        "x": 8.0,
+        "y": 235.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "map_width_matches_zero_shell": true,
+      "notice_box": {
+        "x": 22.0,
+        "y": 380.99,
+        "width": 346.0,
+        "height": 258.89
+      },
+      "computed_style": {
+        "cursor": "default",
+        "touchAction": "auto",
+        "pointerEvents": "auto",
+        "approved_vietnam_chart_data_image_loaded": true
+      },
+      "transform_before_pointer": {
+        "raw": "translate(0px, 0px) scale(1)",
+        "x": 0,
+        "y": 0,
+        "scale": 1
+      },
+      "node_count": 0,
+      "edge_count": 0,
+      "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (Incoterm).\n\nBỔ SUNG HỒ SƠ →",
+      "profile_state_label": "Hồ sơ lô còn thiếu",
+      "profile_status_visible": true,
+      "server_projected_primary_action": "Bổ sung hồ sơ thực hiện lô",
+      "toolbar_text": "📍 Đang ở: Chưa xác định",
+      "unknown_phase_stays_unconfirmed": true,
+      "cta_count": 1,
+      "labelled_cta_count": 1,
+      "cta_text": "BỔ SUNG HỒ SƠ →",
+      "horizontal_overflow": 0,
+      "document_dimensions": {
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "horizontalOverflow": 0,
+        "documentHeight": 844,
+        "viewportHeight": 844
+      },
+      "page_errors": [],
+      "pointer_test": {
+        "input": "Playwright mouse drag dispatching browser pointer events over decorative empty chart",
+        "pointer_types": [
+          "mouse"
+        ],
+        "observed_event_types": [
+          "pointerdown",
+          "pointermove",
+          "pointerup"
+        ],
+        "transform_after_pointer": {
+          "raw": "translate(0px, 0px) scale(1)",
+          "x": 0,
+          "y": 0,
+          "scale": 1
+        },
+        "transform_unchanged": true,
+        "no_pan_verdict": "PASS"
+      },
+      "cta_editor_test": {
+        "opens_existing_execution_profile_editor": true,
+        "workspace_visible": true,
+        "url_after_cta": "/",
+        "non_read_http_requests_during_cta": [],
+        "no_non_read_http_request": true,
+        "no_business_write_proof": "DOM acceptance asserts zero non-navigation write triggers for this CTA"
+      },
+      "verdict": "PASS"
+    },
+    "CAPTURE_VERDICT": "PASS",
+    "before": {
+      "source_sha": "2bf16eabe7e8c75d9be3f90a40e5c99208235416",
+      "dist_js_sha256": "25c814494819f55bedf29d578b87706d62b0bd064577c03d7b5fd2150dd74009",
+      "dist_css_sha256": "79cdda525561ab85fbac5187c90562595b2402755bae09b9ed989abe1c02751c",
+      "captures": {
+        "desktop": {
+          "viewport": [
+            1440,
+            900
+          ],
+          "identity_box": {
+            "x": 17,
+            "y": 24,
+            "width": 1406,
+            "height": 64
+          },
+          "attention_box": {
+            "x": 17,
+            "y": 98,
+            "width": 1406,
+            "height": 46.625
+          },
+          "toolbar_box": {
+            "x": 17,
+            "y": 154.625,
+            "width": 1406,
+            "height": 46
+          },
+          "map_box": {
+            "x": 17,
+            "y": 208.625,
+            "width": 1406,
+            "height": 635
+          },
+          "completion_review_box": {
+            "x": 17,
+            "y": 853.625,
+            "width": 1406,
+            "height": 60.734375
+          },
+          "page_errors": []
+        },
+        "mobile_journey": {
+          "viewport": [
+            390,
+            844
+          ],
+          "map_box": {
+            "x": 8,
+            "y": 253.9375,
+            "width": 374,
+            "height": 549
+          },
+          "page_errors": []
+        },
+        "mobile_receivables_before": {
+          "viewport": [
+            390,
+            844
+          ],
+          "row_count": 5,
+          "sheet_box": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 828
+          },
+          "save_box": {
+            "x": 200,
+            "y": 759.96875,
+            "width": 170,
+            "height": 48.03125
+          },
+          "cancel_box": {
+            "x": 20,
+            "y": 759.96875,
+            "width": 170,
+            "height": 48.03125
+          },
+          "save_text": "💾 LƯU KHOẢN THU",
+          "save_line_box_count": 2,
+          "page_errors": []
+        }
+      }
+    },
+    "desktop": {
+      "viewport": [
+        1440,
+        900
+      ],
+      "identity_box": {
+        "x": 17.0,
+        "y": 8.0,
+        "width": 1406.0,
+        "height": 48.0
+      },
+      "attention_box": {
+        "x": 17.0,
+        "y": 60.0,
+        "width": 552.0,
+        "height": 46.62
+      },
+      "attention_primary_text": "XỬ LÝ\n— Mở xử lý",
+      "attention_primary_box": {
+        "x": 473.0,
+        "y": 64.31,
+        "width": 84.0,
+        "height": 38.0
+      },
+      "toolbar_box": {
+        "x": 577.0,
+        "y": 60.0,
+        "width": 846.0,
+        "height": 46.62
+      },
+      "map_box": {
+        "x": 17.0,
+        "y": 106.62,
+        "width": 1406.0,
+        "height": 780.0
+      },
+      "map_height_px": 780.0,
+      "map_height_target_780_810": true,
+      "completion_review_box": {
+        "x": 17.0,
+        "y": 890.62,
+        "width": 1406.0,
+        "height": 60.73
+      },
+      "completion_review_collapsed": true,
+      "completion_review_below_map": true,
+      "edge_count": 20,
+      "node_count": 11,
+      "initial_transform": {
+        "raw": "translate(12px, 131px) scale(0.945205)",
+        "x": 12,
+        "y": 131,
+        "scale": 0.945205
+      },
+      "horizontal_overflow": 0,
+      "business_attention_visible": true,
+      "primary_cta_visible": true,
+      "page_errors": [],
+      "map_height_delta_px_vs_before": 145.0,
+      "map_top_y_delta_px_vs_before": -102.0,
+      "attention_text": "CẦN XỬ LÝ (1)\nCần làm · Mở xử lý:\n\nBổ sung số tờ khai nhập khẩu.\n\nPhạm vi Trường Thành gồm khai báo hải quan nhập.\n\nXỬ LÝ\n— Mở xử lý",
+      "toolbar_text": "Đang ở: Chưa xác định\n⚠ Thiếu ETA\nViệc tiếp: Bổ sung số tờ khai nhập khẩu.\n+ Quy trình (0)\nXử lý →\n▤ Hồ sơ & Tài chính",
+      "on_board_node_box": {
+        "x": 731.34,
+        "y": 465.47,
+        "width": 109.64,
+        "height": 62.38
+      },
+      "node_bubble_box": {
+        "x": 631.15,
+        "y": 200.61,
+        "width": 310.03,
+        "height": 251.63
+      },
+      "node_bubble_within_map": true,
+      "task_modal_box": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1440.0,
+        "height": 900.0
+      },
+      "task_modal_center_error_px": 0.0
+    },
+    "mobile_journey": {
+      "viewport": [
+        390,
+        844
+      ],
+      "map_box": {
+        "x": 8.0,
+        "y": 269.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "node_count": 11,
+      "edge_count": 20,
+      "horizontal_overflow": 0,
+      "targets": {
+        "boxes": {
+          "journey-global-page": {
+            "x": 220.0,
+            "y": 73.09,
+            "width": 116.0,
+            "height": 36.0
+          },
+          "attention-primary-cta": {
+            "x": 299.0,
+            "y": 125.09,
+            "width": 73.0,
+            "height": 40.0
+          },
+          "journey-global-open": {
+            "x": 128.0,
+            "y": 222.94,
+            "width": 136.0,
+            "height": 36.0
+          },
+          "journey-attach-open": {
+            "x": 17.0,
+            "y": 222.94,
+            "width": 105.0,
+            "height": 36.0
+          },
+          "journey-zoom-in": {
+            "x": 22.0,
+            "y": 283.94,
+            "width": 40.0,
+            "height": 40.0
+          },
+          "journey-zoom-out": {
+            "x": 66.0,
+            "y": 283.94,
+            "width": 40.0,
+            "height": 40.0
+          },
+          "journey-zoom-fit": {
+            "x": 160.0,
+            "y": 283.94,
+            "width": 100.0,
+            "height": 40.0
+          },
+          "journey-zoom-readable": {
+            "x": 264.0,
+            "y": 283.94,
+            "width": 74.0,
+            "height": 40.0
+          }
+        },
+        "sizes": {
+          "journey-global-page": {
+            "width": 116.0,
+            "height": 36.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "attention-primary-cta": {
+            "width": 73.0,
+            "height": 40.0,
+            "target_class": "primary",
+            "minimum_px": 40,
+            "passes": true
+          },
+          "journey-global-open": {
+            "width": 136.0,
+            "height": 36.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "journey-attach-open": {
+            "width": 105.0,
+            "height": 36.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "journey-zoom-in": {
+            "width": 40.0,
+            "height": 40.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "journey-zoom-out": {
+            "width": 40.0,
+            "height": 40.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "journey-zoom-fit": {
+            "width": 100.0,
+            "height": 40.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          },
+          "journey-zoom-readable": {
+            "width": 74.0,
+            "height": 40.0,
+            "target_class": "secondary",
+            "minimum_px": 36,
+            "passes": true
+          }
+        },
+        "non_overlap_pairs": {
+          "toolbar_and_page": {
+            "journey-global-page__journey-global-open": true
+          },
+          "zoom_bar": {
+            "journey-zoom-in__journey-zoom-out": true,
+            "journey-zoom-in__journey-zoom-fit": true,
+            "journey-zoom-in__journey-zoom-readable": true,
+            "journey-zoom-out__journey-zoom-fit": true,
+            "journey-zoom-out__journey-zoom-readable": true,
+            "journey-zoom-fit__journey-zoom-readable": true
+          }
+        },
+        "all_target_heights_pass": true
+      },
+      "page_errors": [],
+      "adjacent_control_isolation": {
+        "zoom_in_changed_level": true,
+        "zoom_out_restored_level": true,
+        "global_workspace_stayed_closed": true,
+        "no_node_selected": true,
+        "no_bubble_opened": true,
+        "global_open_did_not_change_zoom": true,
+        "global_open_close_isolated": true
+      },
+      "arrival_node_box": {
+        "x": 137.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "arrival_bubble_box": {
+        "x": 31.0,
+        "y": 368.61,
+        "width": 328.0,
+        "height": 249.33
+      },
+      "bubble_close_target_box": {
+        "x": 308.0,
+        "y": 379.61,
+        "width": 36.0,
+        "height": 36.0
+      },
+      "bubble_close_target_height_at_least_36": true,
+      "bubble_task_target_box": {
+        "x": 32.0,
+        "y": 432.89,
+        "width": 326.0,
+        "height": 58.48
+      },
+      "bubble_task_primary_height_at_least_40": true,
+      "bubble_close_isolated": true,
+      "horizontal_overflow_after_reload": 0
+    },
+    "mobile_stage_save": {
+      "environment": "isolated staging / Mongomock",
+      "lot": "T6-FCL",
+      "stage": "ON BOARD",
+      "date": "2026-10-04",
+      "prior_date_value_before_edit": "",
+      "save_tapped": true,
+      "backend_confirmation_visible": false,
+      "save_button_text_after_tap": "Lưu mốc có bằng chứng",
+      "stage_alerts_after_save": [],
+      "no_payment_flow_used": true
+    },
+    "readback_touch_pan": {
+      "verdict": "PASS",
+      "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+      "viewport_box": {
+        "x": 8.0,
+        "y": 269.94,
+        "width": 374.0,
+        "height": 549.0
+      },
+      "start": [
+        60,
+        527
+      ],
+      "end": [
+        329,
+        527
+      ],
+      "observed_event_types": [
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "touchend",
+        "touchmove",
+        "touchstart"
+      ],
+      "pointer_type_values": [
+        "touch"
+      ],
+      "pointerdown_count": 1,
+      "pointermove_count": 12,
+      "pointerup_count": 1,
+      "transform_before": {
+        "raw": "translate(-894px, 121px) scale(1)",
+        "x": -894,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_after": {
+        "raw": "translate(-625px, 121px) scale(1)",
+        "x": -625,
+        "y": 121,
+        "scale": 1
+      },
+      "transform_delta_x": 269.0,
+      "node_box_before": {
+        "x": -143.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_box_after": {
+        "x": 126.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "node_delta_x": 269.0,
+      "selected_nodes_before": [],
+      "selected_nodes_after": [],
+      "bubble_count_after": 0,
+      "checks": {
+        "touch_pointer_events": true,
+        "map_transform_moved_in_drag_direction": true,
+        "no_accidental_node_selection": true
+      }
+    },
+    "mobile_readback": {
+      "after_reload": true,
+      "date": "2026-10-04",
+      "expected_date": "2026-10-04"
+    },
+    "acceptance_checks": {
+      "desktop_populated_11_nodes": true,
+      "mobile_populated_11_nodes": true,
+      "mobile_touch_pan": true,
+      "mobile_save_reload_readback": true,
+      "desktop_zero_node_empty_map": true,
+      "mobile_zero_node_empty_map": true
+    }
+  },
+  "current_source_capture_file": "evidence/logi-199-g2/current-source/metrics.json",
+  "current_source_capture_sha256": "8d0f8e4a0fbe8746c72e4d3f79d2d19b223d83e76415cec5eee3c65c46887193",
+  "source_commit_reconciliation": {
+    "raw_capture_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
+    "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "captured_source_commit_lookup": "GitHub API returned 422 No commit found; current clone did not contain the object.",
+    "dist_hashes_match_raw_capture": true,
+    "capture_script_hash_matches_raw_capture": true,
+    "commit_identity_equivalence": "NOT_VERIFIED at commit-ID level; keep the raw capture SHA unchanged and have the independent reviewer inspect the published candidate/source/dist mapping.",
+    "raw_metrics_were_rewritten": false
+  },
+  "task_preflight_receipts": {
+    "P2P_LAW_SOURCE": "LOCAL_PORTABLE",
+    "LAW_CHECK": "PASS | SOURCE=LOCAL_PORTABLE | SOURCE_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "EXPERIENCE_CHECK": "USE_ACTIVE_EXPERIENCE | IDS=shared-exp-b2611df4c9393f0017f07dcb",
+    "p2p-skill-consumption-receipt/1": {
+      "schema": "p2p-skill-consumption-receipt/1",
+      "skills": [
+        {
+          "id": "p2p-uiux",
+          "path": ".agents/skills/p2p-uiux/SKILL.md",
+          "sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+          "consumption": "READ_AND_APPLIED"
+        }
+      ]
+    }
   }
 }
