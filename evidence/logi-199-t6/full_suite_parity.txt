@@ -1,0 +1,9 @@
+main@5c6642a: 31 failed, 1807 passed, 45 skipped, 1 error, 10 subtests passed in 108.20s (0:01:48)
+branch@9f8d9eac10b766a39da5704c9eef12a22eaf114f: 36 failed, 1866 passed, 45 skipped, 1 error, 10 subtests passed in 107.07s (0:01:47)
+--- NEW on branch (not on main):
+FAILED tests/test_journey_super_goal_186.py::SixPhaseContract::test_exact_beginner_phase_labels_exist
+FAILED tests/test_journey_visual_fidelity_190.py::JourneyDensity::test_focus_shell_geometry_is_bound_to_scrollbar_free_reference_width
+FAILED tests/test_journey_visual_fidelity_190.py::JourneyDensity::test_fresh_zero_node_shell_is_compact
+FAILED tests/test_journey_visual_fidelity_190.py::JourneyDensity::test_global_workspace_reuses_collapsed_map_rail
+FAILED tests/test_journey_visual_fidelity_190.py::JourneyDensity::test_populated_default_restores_original_composition
+--- FIXED on branch:
