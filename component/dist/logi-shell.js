@@ -13603,7 +13603,7 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 					r.length > 0 && /* @__PURE__ */ (0, H.jsxs)("div", {
 						className: "order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:order-none sm:w-auto",
 						children: [/* @__PURE__ */ (0, H.jsx)("span", {
-							className: "shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500",
+							className: "shrink-0 text-[12px] font-extrabold tracking-wide text-slate-500",
 							children: "ĐIỂM CHÚ Ý KHÁC"
 						}), r.map((e) => /* @__PURE__ */ (0, H.jsxs)(V, {
 							to: e.route,
@@ -13663,7 +13663,7 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 						className: "flex flex-wrap items-start gap-2",
 						children: [
 							/* @__PURE__ */ (0, H.jsxs)("span", {
-								className: K("inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px] font-extrabold shrink-0", t.cls),
+								className: K("inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[12px] font-extrabold shrink-0", t.cls),
 								children: [
 									/* @__PURE__ */ (0, H.jsx)(n, {
 										size: 13,
@@ -21133,9 +21133,8 @@ function Ul({ shipment: e, stageId: t }) {
 				className: "text-sm text-slate-500",
 				children: "Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng."
 			}),
-			/* @__PURE__ */ (0, H.jsx)("div", {
-				className: "grid grid-cols-1 md:grid-cols-2 gap-3",
-				children: v.map((t) => /* @__PURE__ */ (0, H.jsx)(Q, {
+			(() => {
+				let t = (t) => /* @__PURE__ */ (0, H.jsx)(Q, {
 					label: t.label,
 					children: t.kind === "status" ? /* @__PURE__ */ (0, H.jsx)("select", {
 						"aria-label": t.label,
@@ -21162,8 +21161,26 @@ function Ul({ shipment: e, stageId: t }) {
 							[t.key]: e.target.value
 						}))
 					})
-				}, t.key))
-			}),
+				}, t.key), n = v.filter((e) => !e.secondary), r = v.filter((e) => e.secondary);
+				return /* @__PURE__ */ (0, H.jsxs)(H.Fragment, { children: [/* @__PURE__ */ (0, H.jsx)("div", {
+					className: "grid grid-cols-1 md:grid-cols-2 gap-3",
+					children: n.map(t)
+				}), r.length > 0 && /* @__PURE__ */ (0, H.jsxs)("details", {
+					className: "rounded-lg border border-slate-200 p-3",
+					"data-testid": "fact-fields-secondary",
+					children: [/* @__PURE__ */ (0, H.jsxs)("summary", {
+						className: "cursor-pointer text-sm font-bold text-slate-600",
+						children: [
+							"Chi tiết phụ (",
+							r.length,
+							")"
+						]
+					}), /* @__PURE__ */ (0, H.jsx)("div", {
+						className: "mt-3 grid grid-cols-1 md:grid-cols-2 gap-3",
+						children: r.map(t)
+					})]
+				})] });
+			})(),
 			/* @__PURE__ */ (0, H.jsx)("button", {
 				type: "button",
 				disabled: !f || h || !p?.owned || g,
@@ -22393,7 +22410,7 @@ function mu() {
 									className: "block font-extrabold text-[14.5px] text-[#0f2a4a]",
 									children: "TRƯỜNG THÀNH"
 								}), /* @__PURE__ */ (0, H.jsx)("span", {
-									className: "block text-[11.5px] text-slate-500 font-medium",
+									className: "block text-[12px] text-slate-500 font-medium",
 									children: wn
 								})]
 							})]
@@ -25324,7 +25341,7 @@ function gu() {
 									className: "text-[12px] font-extrabold uppercase tracking-wider text-slate-500",
 									children: ["Tổng phải thu · ", e]
 								}), /* @__PURE__ */ (0, H.jsx)("span", {
-									className: "text-[11px] text-slate-400",
+									className: "text-[12px] text-slate-400",
 									children: "không quy đổi sang đồng tiền khác"
 								})]
 							}), /* @__PURE__ */ (0, H.jsxs)("div", {
@@ -25569,7 +25586,7 @@ function gu() {
 									/* @__PURE__ */ (0, H.jsxs)("div", {
 										className: "rounded-xl bg-slate-50 border p-2.5",
 										children: [/* @__PURE__ */ (0, H.jsx)("p", {
-											className: "text-[11px] text-slate-500 font-semibold",
+											className: "text-[12px] text-slate-500 font-semibold",
 											children: "Phải thu"
 										}), /* @__PURE__ */ (0, H.jsx)("p", {
 											className: "font-extrabold text-[14px]",
@@ -25579,7 +25596,7 @@ function gu() {
 									/* @__PURE__ */ (0, H.jsxs)("div", {
 										className: "rounded-xl bg-emerald-50 border border-emerald-200 p-2.5",
 										children: [/* @__PURE__ */ (0, H.jsx)("p", {
-											className: "text-[11px] text-emerald-700 font-semibold",
+											className: "text-[12px] text-emerald-700 font-semibold",
 											children: "Đã thu"
 										}), /* @__PURE__ */ (0, H.jsx)("p", {
 											className: "font-extrabold text-[14px] text-emerald-700",
@@ -25589,7 +25606,7 @@ function gu() {
 									/* @__PURE__ */ (0, H.jsxs)("div", {
 										className: "rounded-xl bg-red-50 border border-red-200 p-2.5",
 										children: [/* @__PURE__ */ (0, H.jsx)("p", {
-											className: "text-[11px] text-red-600 font-semibold",
+											className: "text-[12px] text-red-600 font-semibold",
 											children: "Còn lại"
 										}), /* @__PURE__ */ (0, H.jsx)("p", {
 											className: "font-extrabold text-[14px] text-red-700",
@@ -33449,7 +33466,7 @@ function of({ label: e, value: t, mono: n }) {
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		className: "rounded-xl bg-slate-50 border border-slate-200 p-3",
 		children: [/* @__PURE__ */ (0, H.jsx)("p", {
-			className: "text-[11.5px] font-bold uppercase tracking-wide text-slate-500",
+			className: "text-[12px] font-bold uppercase tracking-wide text-slate-500",
 			children: e
 		}), /* @__PURE__ */ (0, H.jsx)("p", {
 			className: K("mt-0.5 font-semibold text-[14.5px] break-words", n && "font-mono"),
@@ -33461,7 +33478,7 @@ function sf({ label: e, value: t, ccy: n, strong: r }) {
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		className: K("rounded-xl border p-2.5 text-center", r ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"),
 		children: [/* @__PURE__ */ (0, H.jsx)("p", {
-			className: K("text-[11px] font-semibold", r ? "text-amber-700" : "text-slate-500"),
+			className: K("text-[12px] font-semibold", r ? "text-amber-700" : "text-slate-500"),
 			children: e
 		}), /* @__PURE__ */ (0, H.jsx)("p", {
 			className: K("font-extrabold text-[14px]", r ? "text-amber-800" : "text-[#0f2a4a]"),
@@ -33701,7 +33718,7 @@ function lf() {
 											children: e.label
 										}),
 										/* @__PURE__ */ (0, H.jsx)("span", {
-											className: K("text-[11.5px] font-semibold", e.key === T ? "text-white/70" : "text-slate-400"),
+											className: K("text-[12px] font-semibold", e.key === T ? "text-white/70" : "text-slate-400"),
 											children: e.master ? "có master" : "chưa có master"
 										})
 									]
@@ -33861,7 +33878,7 @@ function lf() {
 								className: "min-w-0",
 								children: [
 									/* @__PURE__ */ (0, H.jsx)("p", {
-										className: "text-[11.5px] font-extrabold uppercase tracking-wider text-[#1e5aa8]",
+										className: "text-[12px] font-extrabold uppercase tracking-wider text-[#1e5aa8]",
 										children: "Hồ sơ pháp lý · danh tính"
 									}),
 									/* @__PURE__ */ (0, H.jsx)("h2", {
@@ -33924,7 +33941,7 @@ function lf() {
 								/* @__PURE__ */ (0, H.jsxs)("div", {
 									className: "rounded-xl bg-slate-50 border border-slate-200 p-3 sm:col-span-2 lg:col-span-2",
 									children: [/* @__PURE__ */ (0, H.jsx)("p", {
-										className: "text-[11.5px] font-bold uppercase tracking-wide text-slate-500",
+										className: "text-[12px] font-bold uppercase tracking-wide text-slate-500",
 										children: "Địa chỉ pháp lý"
 									}), /* @__PURE__ */ (0, H.jsx)("p", {
 										className: "mt-0.5 font-semibold text-[14.5px] break-words",
@@ -33936,7 +33953,7 @@ function lf() {
 						/* @__PURE__ */ (0, H.jsxs)("div", {
 							className: "mt-3 rounded-xl border-2 border-slate-100 bg-slate-50/60 p-3",
 							children: [/* @__PURE__ */ (0, H.jsx)("p", {
-								className: "text-[11.5px] font-extrabold uppercase tracking-wider text-slate-500",
+								className: "text-[12px] font-extrabold uppercase tracking-wider text-slate-500",
 								children: "Tài khoản thanh toán (nguyên văn từ master)"
 							}), /* @__PURE__ */ (0, H.jsxs)("div", {
 								className: "grid gap-2 mt-2 sm:grid-cols-2 lg:grid-cols-4",
@@ -34100,7 +34117,7 @@ function lf() {
 												children: Y(e.status)
 											}),
 											/* @__PURE__ */ (0, H.jsxs)("span", {
-												className: "ml-auto text-[11.5px] text-slate-400",
+												className: "ml-auto text-[12px] text-slate-400",
 												children: [e.obligationIds.length, " nghĩa vụ"]
 											})
 										]
@@ -34127,7 +34144,7 @@ function lf() {
 										]
 									}),
 									/* @__PURE__ */ (0, H.jsxs)("p", {
-										className: "text-[11.5px] text-slate-400 mt-1.5 break-words",
+										className: "text-[12px] text-slate-400 mt-1.5 break-words",
 										children: ["nguồn: ", Y(e.source)]
 									})
 								]
@@ -34178,7 +34195,7 @@ function lf() {
 									]
 								}),
 								/* @__PURE__ */ (0, H.jsxs)("p", {
-									className: "text-[11.5px] text-slate-400 mt-1 break-words",
+									className: "text-[12px] text-slate-400 mt-1 break-words",
 									children: ["nguồn: ", Y(e.source)]
 								})
 							]
@@ -34191,7 +34208,7 @@ function lf() {
 						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 						children: [
 							/* @__PURE__ */ (0, H.jsx)("p", {
-								className: "text-[11.5px] font-extrabold uppercase tracking-wider text-amber-700",
+								className: "text-[12px] font-extrabold uppercase tracking-wider text-amber-700",
 								children: "Context còn thiếu / chưa xác định"
 							}),
 							/* @__PURE__ */ (0, H.jsxs)("ul", {
@@ -34223,7 +34240,7 @@ function lf() {
 						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 						children: [
 							/* @__PURE__ */ (0, H.jsx)("p", {
-								className: "text-[11.5px] font-extrabold uppercase tracking-wider text-slate-500",
+								className: "text-[12px] font-extrabold uppercase tracking-wider text-slate-500",
 								children: "Context không khả dụng trong hệ thống"
 							}),
 							/* @__PURE__ */ (0, H.jsx)("ul", {
@@ -35662,7 +35679,7 @@ function Pf({ item: e }) {
 			className: "flex flex-wrap items-start gap-2.5",
 			children: [
 				/* @__PURE__ */ (0, H.jsx)("span", {
-					className: K("shrink-0 rounded-lg border px-2 py-1 text-[11.5px] font-extrabold", t.cls),
+					className: K("shrink-0 rounded-lg border px-2 py-1 text-[12px] font-extrabold", t.cls),
 					children: t.label
 				}),
 				/* @__PURE__ */ (0, H.jsxs)("div", {
@@ -35750,7 +35767,7 @@ function Ff({ title: e, rows: t, onSelect: n, testId: r }) {
 						children: e.count
 					})]
 				}), /* @__PURE__ */ (0, H.jsxs)("span", {
-					className: "mt-0.5 block text-[11.5px] text-slate-500",
+					className: "mt-0.5 block text-[12px] text-slate-500",
 					children: [
 						e.blocking ? `${e.blocking} chặn` : "0 chặn",
 						e.overdue ? ` · ${e.overdue} quá hạn` : "",
@@ -35810,7 +35827,7 @@ function If({ row: e, selectOwner: t, selectBand: n }) {
 					onClick: () => n(e.ownerKey, t),
 					className: "touch-target rounded-lg bg-slate-50 px-2 py-1.5 text-left hover:bg-blue-50",
 					children: [/* @__PURE__ */ (0, H.jsx)("span", {
-						className: "block text-[11px] font-semibold text-slate-500",
+						className: "block text-[12px] font-semibold text-slate-500",
 						children: r
 					}), /* @__PURE__ */ (0, H.jsx)("span", {
 						className: "text-[16px] font-extrabold text-[#0f2a4a]",
@@ -35819,7 +35836,7 @@ function If({ row: e, selectOwner: t, selectBand: n }) {
 				}, t))
 			}),
 			/* @__PURE__ */ (0, H.jsx)("p", {
-				className: "mt-1.5 text-[11.5px] text-slate-400",
+				className: "mt-1.5 text-[12px] text-slate-400",
 				children: "Các cột có thể chồng lấn; không cộng thành “điểm tải”."
 			})
 		]
@@ -35915,7 +35932,7 @@ function Lf() {
 					].map(([e, t, n]) => /* @__PURE__ */ (0, H.jsxs)("div", {
 						className: K("rounded-xl border p-3", String(n)),
 						children: [/* @__PURE__ */ (0, H.jsx)("p", {
-							className: "text-[11.5px] font-bold text-slate-500",
+							className: "text-[12px] font-bold text-slate-500",
 							children: e
 						}), /* @__PURE__ */ (0, H.jsx)("p", {
 							className: "mt-0.5 text-[24px] font-extrabold text-[#0f2a4a]",
@@ -36175,7 +36192,7 @@ function Vf({ table: e }) {
 					children: t.map((t, r) => /* @__PURE__ */ (0, H.jsxs)("div", {
 						className: "py-0.5 text-[13.5px] leading-relaxed",
 						children: [/* @__PURE__ */ (0, H.jsx)("span", {
-							className: "mr-1.5 text-[11.5px] font-bold uppercase tracking-wide text-slate-500",
+							className: "mr-1.5 text-[12px] font-bold uppercase tracking-wide text-slate-500",
 							children: e.columns[r] ?? ""
 						}), n(t)]
 					}, `c-${r}`))
@@ -36187,7 +36204,7 @@ function Vf({ table: e }) {
 					className: "bg-slate-50",
 					children: e.columns.map((e, t) => /* @__PURE__ */ (0, H.jsx)("th", {
 						scope: "col",
-						className: "border-b border-slate-200 px-2.5 py-2 text-left text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500",
+						className: "border-b border-slate-200 px-2.5 py-2 text-left text-[12px] font-extrabold uppercase tracking-wide text-slate-500",
 						children: e
 					}, `h-${t}`))
 				}) }), /* @__PURE__ */ (0, H.jsx)("tbody", { children: e.rows.map((e, t) => /* @__PURE__ */ (0, H.jsx)("tr", {
@@ -36321,15 +36338,15 @@ function Uf({ section: e, entry: t, onOpen: n }) {
 				className: "mt-2.5 flex flex-wrap items-center gap-2",
 				children: [
 					/* @__PURE__ */ (0, H.jsx)("span", {
-						className: "rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] font-bold text-slate-600",
+						className: "rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-600",
 						children: e.label
 					}),
 					t.table ? /* @__PURE__ */ (0, H.jsxs)("span", {
-						className: "rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-bold text-blue-800",
+						className: "rounded-md bg-blue-50 px-2 py-0.5 text-[12px] font-bold text-blue-800",
 						children: [t.table.rows.length, " dòng"]
 					}) : null,
 					/* @__PURE__ */ (0, H.jsx)("span", {
-						className: "text-[11.5px] font-semibold text-slate-400",
+						className: "text-[12px] font-semibold text-slate-400",
 						children: t.tags.slice(0, 3).map((e) => `#${e}`).join(" ")
 					})
 				]
@@ -36465,7 +36482,7 @@ function Gf() {
 						className: K("min-h-[44px] rounded-xl border px-3 py-2 text-[13px] font-bold transition-colors", e.id === t ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a] hover:border-blue-300"),
 						"data-testid": `handbook-category-${e.id}`,
 						children: [e.label, /* @__PURE__ */ (0, H.jsx)("span", {
-							className: "ml-1.5 text-[11.5px] font-extrabold opacity-70",
+							className: "ml-1.5 text-[12px] font-extrabold opacity-70",
 							children: e.entries.length
 						})]
 					}, e.id))]
@@ -36564,7 +36581,7 @@ function Yf(e) {
 }
 function Xf({ name: e }) {
 	return /* @__PURE__ */ (0, H.jsx)("span", {
-		className: "break-all rounded-md bg-slate-100 px-2 py-1 font-mono text-[11.5px] font-semibold text-slate-700",
+		className: "break-all rounded-md bg-slate-100 px-2 py-1 font-mono text-[12px] font-semibold text-slate-700",
 		"data-testid": "user-access-permission",
 		children: e
 	});
@@ -37023,11 +37040,11 @@ function tp({ account: e, canManage: t, onManageRole: n, onManageActive: r, onMa
 								children: Kf(e.role)
 							}),
 							e.active ? /* @__PURE__ */ (0, H.jsxs)("span", {
-								className: "inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11.5px] font-bold text-emerald-800",
+								className: "inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[12px] font-bold text-emerald-800",
 								"data-testid": "user-access-account-active",
 								children: [/* @__PURE__ */ (0, H.jsx)(br, { size: 12 }), " Hoạt động"]
 							}) : /* @__PURE__ */ (0, H.jsxs)("span", {
-								className: "inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] font-bold text-slate-500",
+								className: "inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-500",
 								"data-testid": "user-access-account-inactive",
 								children: [/* @__PURE__ */ (0, H.jsx)(pa, { size: 12 }), " Đã vô hiệu hóa"]
 							})
@@ -37042,7 +37059,7 @@ function tp({ account: e, canManage: t, onManageRole: n, onManageActive: r, onMa
 						children: e.email
 					}) : null,
 					e.user_id ? /* @__PURE__ */ (0, H.jsxs)("p", {
-						className: "mt-1 break-all font-mono text-[11px] text-slate-400",
+						className: "mt-1 break-all font-mono text-[12px] text-slate-400",
 						children: ["ID: ", e.user_id]
 					}) : null,
 					t && /* @__PURE__ */ (0, H.jsxs)("div", {
@@ -37086,18 +37103,18 @@ function np({ row: e, assignable: t }) {
 					children: Kf(e.role)
 				}),
 				e.wildcard ? /* @__PURE__ */ (0, H.jsxs)("span", {
-					className: "inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11.5px] font-bold text-violet-800",
+					className: "inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[12px] font-bold text-violet-800",
 					children: [/* @__PURE__ */ (0, H.jsx)(Yi, { size: 12 }), " * = toàn quyền"]
 				}) : null,
 				t ? /* @__PURE__ */ (0, H.jsx)("span", {
-					className: "rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500",
+					className: "rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-500",
 					children: "vai trò gán được"
 				}) : /* @__PURE__ */ (0, H.jsx)("span", {
-					className: "rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700",
+					className: "rounded-md bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-700",
 					children: "vai trò tương thích cũ"
 				}),
 				/* @__PURE__ */ (0, H.jsxs)("span", {
-					className: "ml-auto text-[11.5px] font-bold text-slate-400",
+					className: "ml-auto text-[12px] font-bold text-slate-400",
 					children: [e.permissionCount, " quyền"]
 				})
 			]
@@ -37304,7 +37321,7 @@ function ip() {
 							children: [
 								"Mọi thao tác ghi trong ứng dụng vẫn được kiểm tra bởi",
 								/* @__PURE__ */ (0, H.jsx)("span", {
-									className: "font-mono text-[11.5px] font-semibold",
+									className: "font-mono text-[12px] font-semibold",
 									children: " core.auth "
 								}),
 								"trên máy chủ theo đúng ma trận trên. Trang này chỉ hiển thị quy tắc, không tự nới quyền."
@@ -37585,7 +37602,7 @@ var Dp = (e) => K("w-full rounded-xl border-2 bg-white px-3.5 min-h-[48px] py-2.
 function Op({ source: e }) {
 	return /* @__PURE__ */ (0, H.jsx)("span", {
 		"data-source-badge": e,
-		className: K("inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold whitespace-nowrap", {
+		className: K("inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-extrabold whitespace-nowrap", {
 			LIVE: "bg-emerald-50 text-emerald-800 border-emerald-200",
 			UNAVAILABLE: "bg-red-50 text-red-700 border-red-200",
 			DEFAULT: "bg-slate-100 text-slate-700 border-slate-200",

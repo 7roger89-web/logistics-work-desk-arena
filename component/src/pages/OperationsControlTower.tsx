@@ -62,7 +62,7 @@ function InterventionRow({ item }: { item: OperationsControlQueueItem }) {
       className="btn-press block rounded-xl border-2 border-slate-200 bg-white p-3 hover:border-[#1e5aa8]"
     >
       <div className="flex flex-wrap items-start gap-2.5">
-        <span className={cx("shrink-0 rounded-lg border px-2 py-1 text-[11.5px] font-extrabold", meta.cls)}>
+        <span className={cx("shrink-0 rounded-lg border px-2 py-1 text-[12px] font-extrabold", meta.cls)}>
           {meta.label}
         </span>
         <div className="min-w-[220px] flex-1">
@@ -117,7 +117,7 @@ function ConcentrationColumn({
               <b className="min-w-0 truncate text-[12.5px] text-slate-700">{row.label}</b>
               <span className="shrink-0 text-[12px] font-extrabold text-[#1e5aa8]">{row.count}</span>
             </span>
-            <span className="mt-0.5 block text-[11.5px] text-slate-500">
+            <span className="mt-0.5 block text-[12px] text-slate-500">
               {row.blocking ? `${row.blocking} chặn` : "0 chặn"}
               {row.overdue ? ` · ${row.overdue} quá hạn` : ""}
               {row.dueSoon ? ` · ${row.dueSoon} sắp hạn` : ""}
@@ -159,12 +159,12 @@ function WorkloadRow({
             onClick={() => selectBand(row.ownerKey, band)}
             className="touch-target rounded-lg bg-slate-50 px-2 py-1.5 text-left hover:bg-blue-50"
           >
-            <span className="block text-[11px] font-semibold text-slate-500">{label}</span>
+            <span className="block text-[12px] font-semibold text-slate-500">{label}</span>
             <span className="text-[16px] font-extrabold text-[#0f2a4a]">{value}</span>
           </button>
         ))}
       </div>
-      <p className="mt-1.5 text-[11.5px] text-slate-400">Các cột có thể chồng lấn; không cộng thành “điểm tải”.</p>
+      <p className="mt-1.5 text-[12px] text-slate-400">Các cột có thể chồng lấn; không cộng thành “điểm tải”.</p>
     </div>
   );
 }
@@ -243,7 +243,7 @@ export default function OperationsControlTower() {
             ["Chưa rõ", scope.unknownShipmentCount, "bg-violet-50 border-violet-200"],
           ].map(([label, value, cls]) => (
             <div key={String(label)} className={cx("rounded-xl border p-3", String(cls))}>
-              <p className="text-[11.5px] font-bold text-slate-500">{label}</p>
+              <p className="text-[12px] font-bold text-slate-500">{label}</p>
               <p className="mt-0.5 text-[24px] font-extrabold text-[#0f2a4a]">{value}</p>
             </div>
           ))}

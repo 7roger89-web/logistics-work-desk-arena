@@ -75,7 +75,7 @@ export default function AttentionNow({
             </Link>
             {rest.length > 0 && (
               <div className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:order-none sm:w-auto">
-                <span className="shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500">
+                <span className="shrink-0 text-[12px] font-extrabold tracking-wide text-slate-500">
                   ĐIỂM CHÚ Ý KHÁC
                 </span>
                 {rest.map((item) => (
@@ -137,7 +137,7 @@ export default function AttentionNow({
               >
                 <div className="flex flex-wrap items-start gap-2">
                   <span className={cx(
-                    "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px] font-extrabold shrink-0",
+                    "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[12px] font-extrabold shrink-0",
                     meta.cls
                   )}>
                     <Icon size={13} aria-hidden="true" /> {meta.label}

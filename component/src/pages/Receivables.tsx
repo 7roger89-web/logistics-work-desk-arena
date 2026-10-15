@@ -175,7 +175,7 @@ export default function Receivables() {
             <div key={ccy} className="rounded-2xl border-2 border-slate-100 bg-slate-50/60 p-3 md:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500">Tổng phải thu · {ccy}</span>
-                <span className="text-[11px] text-slate-400">không quy đổi sang đồng tiền khác</span>
+                <span className="text-[12px] text-slate-400">không quy đổi sang đồng tiền khác</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-xl bg-white border p-3">
@@ -287,9 +287,9 @@ export default function Receivables() {
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{fmtText(r.customer)}</p>
               <div className="grid grid-cols-3 gap-2 mt-2.5 text-center">
-                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[11px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[14px]">{fmtCcy(r.receivable, r.currency)}</p></div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5"><p className="text-[11px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[14px] text-emerald-700">{fmtCcy(r.received, r.currency)}</p></div>
-                <div className="rounded-xl bg-red-50 border border-red-200 p-2.5"><p className="text-[11px] text-red-600 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-red-700">{fmtCcy(r.outstanding, r.currency)}</p></div>
+                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[14px]">{fmtCcy(r.receivable, r.currency)}</p></div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[14px] text-emerald-700">{fmtCcy(r.received, r.currency)}</p></div>
+                <div className="rounded-xl bg-red-50 border border-red-200 p-2.5"><p className="text-[12px] text-red-600 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-red-700">{fmtCcy(r.outstanding, r.currency)}</p></div>
               </div>
               <p className="text-[12.5px] text-slate-400 mt-2">Sale {fmtText(r.sale)} · cập nhật bởi {fmtText(r.support)}</p>
             </div>
