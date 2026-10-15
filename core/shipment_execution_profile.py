@@ -1021,7 +1021,7 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
             detail="FCL: container dành riêng cho lô này — ghi nhận đủ từng container/thiết bị.",
             prompt=(f"Bổ sung loại container cho {equipment['missingTypeCount']} container chưa xác nhận (20GP / 40GP / 40HC / khác)."
                     if equipment.get("missingTypeCount") else
-                    "Bổ sung loại container (20GP / 40GP / 40HC / khác)."))
+                    "Bổ sung loại container (20GP / 40GP / 40HC / khác).")))
     elif mode == MODE_SEA and load_model == LOADMODEL_LCL:
         stages.append(_stage(
             "SEA_CONSOLIDATION", "Hàng lẻ ghép container (LCL)", REASON_LOAD_MODEL_REQUIREMENT,
