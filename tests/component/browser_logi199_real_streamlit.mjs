@@ -146,6 +146,28 @@ try {
   assert.equal(journeyMobile, true, 'Journey not visible on mobile');
   assert.ok(mobile.documentOverflowPx <= 1 && mobile.shell.overflowPx <= 1, 'mobile shipment horizontal overflow');
   assert.match(mobile.shell.font, /Be Vietnam Pro/, 'mobile font drift');
+  const mobileIdentity = await page.getByTestId('shipment-identity-bar').evaluate(card => {
+    const info = card.querySelector('[data-testid="shipment-identity-info"]');
+    const title = card.querySelector('[data-testid="shipment-identity-title"]');
+    const customer = card.querySelector('[data-testid="shipment-identity-customer"]');
+    const actions = card.querySelector('[data-testid="shipment-identity-actions"]');
+    if (!info || !title || !customer || !actions) return null;
+    return {
+      title: title.textContent || '', customer: customer.textContent || '',
+      noOverlap: info.getBoundingClientRect().bottom <= actions.getBoundingClientRect().top + 1,
+      titleOverflow: title.scrollWidth - title.clientWidth,
+      actionsOverflow: actions.scrollWidth - actions.clientWidth,
+      headerOverflow: card.scrollWidth - card.clientWidth,
+      customerEllipsized: getComputedStyle(customer.parentElement).textOverflow === 'ellipsis',
+    };
+  });
+  assert.ok(mobileIdentity, 'mobile shipment identity DOM missing');
+  assert.match(mobileIdentity.title, /LO-0306/);
+  assert.equal(mobileIdentity.noOverlap, true, 'mobile identity and actions overlap');
+  assert.ok(mobileIdentity.titleOverflow <= 1 && mobileIdentity.actionsOverflow <= 1 && mobileIdentity.headerOverflow <= 1,
+    'mobile identity title/actions content is clipped');
+  assert.equal(mobileIdentity.customerEllipsized, false, 'mobile customer is truncated');
+  mobile.identityReadability = mobileIdentity;
   results.checks.push(mobile);
   await page.screenshot({ path: path.join(output, 'mobile-journey.png'), fullPage: false });
   assert.deepEqual(errors, [], 'browser JavaScript page errors: ' + errors.join(' | '));
