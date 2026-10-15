@@ -933,7 +933,7 @@ export interface JourneyNode {
   factFields?: JourneyFactField[];
 }
 
-export interface JourneyFactField { key: string; label: string; kind: 'status' | 'text' | 'datetime'; options?: { value: string; label: string }[] }
+export interface JourneyFactField { key: string; label: string; kind: 'status' | 'text' | 'datetime' | 'number'; options?: { value: string; label: string }[] }
 
 /** Issue #162 — plain-text guidance a template may carry (all optional). */
 export interface WorkModuleGuidance {

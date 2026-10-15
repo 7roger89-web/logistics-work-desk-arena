@@ -14,10 +14,29 @@ SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff
                              # clearance, ATD is not on-board proof, delivery is not POD.
                              'booking_status', 'empty_pickup_at', 'stuffing_at', 'eir_no',
                              'export_clearance_at', 'on_board_at', 'do_released_at',
-                             'pod_received_at', 'empty_return_at'})
+                             'pod_received_at', 'empty_return_at',
+                             # LOGI-199 T2 — SEA LCL: CFS receipt (count/weight/CBM),
+                             # consolidation and destination deconsolidation. Choosing
+                             # LCL is never evidence that cargo was received/consolidated.
+                             'cfs_received_at', 'cfs_receipt_no', 'cfs_package_count',
+                             'cfs_weight_kg', 'cfs_cbm', 'consolidated_at', 'deconsolidated_at'})
+# LOGI-199 T3/T4 — AIR and ROAD evidence live in their own existing-style
+# blocks next to ``sea_export`` (``data.1.2.air_facts`` / ``data.1.2.road_facts``)
+# and go through the SAME writer. No sea field can complete an air/road node.
+AIR_FACT_FIELDS = frozenset({'export_declaration_no', 'export_clearance_at', 'air_acceptance_at', 'air_gross_kg',
+                             'air_chargeable_kg', 'air_screened_at', 'air_uplifted_at', 'do_released_at', 'pod_received_at'})
+ROAD_FACT_FIELDS = frozenset({'export_declaration_no', 'export_clearance_at', 'ltl_received_at', 'ltl_package_count',
+                              'ltl_weight_kg', 'ltl_consolidated_at', 'border_crossed_at', 'handover_doc_no', 'pod_received_at'})
+MODE_FACT_FIELDS = {'SEA': SEA_FACT_FIELDS, 'AIR': AIR_FACT_FIELDS, 'ROAD': ROAD_FACT_FIELDS}
+MODE_FACT_BLOCK = {'SEA': 'sea_export', 'AIR': 'air_facts', 'ROAD': 'road_facts'}
+_NUMBER_FACTS = {'air_gross_kg': ('Trọng lượng cân tại kho (kg)', False), 'air_chargeable_kg': ('Trọng lượng tính cước (kg)', False),
+                 'ltl_package_count': ('Số kiện nhận (LTL)', True), 'ltl_weight_kg': ('Trọng lượng nhận (kg)', False),
+                 'cfs_package_count': ('Số kiện nhận tại CFS', True), 'cfs_weight_kg': ('Trọng lượng nhận (kg)', False),
+                 'cfs_cbm': ('Thể tích nhận (CBM)', False)}
 SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
 BOOKING_STATES = ('UNKNOWN', 'REQUESTED', 'CONFIRMED')
-_TEXT_FACTS = {'export_declaration_no': ('Số tờ khai xuất', 120), 'eir_no': ('Số EIR', 120)}
+_TEXT_FACTS = {'export_declaration_no': ('Số tờ khai xuất', 120), 'eir_no': ('Số EIR', 120),
+               'cfs_receipt_no': ('Số phiếu nhận hàng CFS', 120), 'handover_doc_no': ('Số biên bản giao nhận', 120)}
 _STATUS_OPTIONS = [{'value': k, 'label': v} for k, v in zip(SUBMISSION_STATES, ('Chưa biết', 'Đã nhận hồ sơ', 'Đã gửi hãng tàu', 'Hãng tàu đã chấp nhận'))]
 _BOOKING_OPTIONS = [{'value': k, 'label': v} for k, v in zip(BOOKING_STATES, ('Chưa biết', 'Đã gửi yêu cầu booking', 'Hãng tàu đã xác nhận booking'))]
 
@@ -27,17 +46,36 @@ def _fact_field(key: str, label: str) -> dict[str, Any]:
         return {'key': key, 'label': label, 'kind': 'status', 'options': _BOOKING_OPTIONS}
     if key.endswith('_status'):
         return {'key': key, 'label': label, 'kind': 'status', 'options': _STATUS_OPTIONS}
+    if key in _NUMBER_FACTS:
+        return {'key': key, 'label': label, 'kind': 'number'}
     return {'key': key, 'label': label, 'kind': 'text' if key in _TEXT_FACTS else 'datetime'}
-JOURNEY_STAGE_IDS = frozenset({'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
+JOURNEY_STAGE_IDS = frozenset({'cfs-receipt', 'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
 
 
 def normalize_sea_facts(fields: Mapping[str, Any]) -> dict[str, str]:
-    if not fields or set(fields) - SEA_FACT_FIELDS:
-        raise ValueError('Trường Sea Export không được phép ghi.')
+    return normalize_mode_facts(fields, 'SEA')
+
+
+def normalize_mode_facts(fields: Mapping[str, Any], mode: str) -> dict[str, str]:
+    allowed = MODE_FACT_FIELDS.get(mode)
+    if allowed is None:
+        raise ValueError('Phương thức này chưa có mốc bằng chứng được phép ghi.')
+    if not fields or set(fields) - allowed:
+        raise ValueError('Trường Sea Export không được phép ghi.' if mode == 'SEA' else 'Trường không thuộc phương thức của lô.')
     out = {}
     for key, value in fields.items():
         raw = str(value or '').strip()
-        if key in _TEXT_FACTS:
+        if key in _NUMBER_FACTS:
+            label, integer = _NUMBER_FACTS[key]
+            if raw:  # blank stays UNKNOWN — never coerced to 0
+                try:
+                    number = float(raw.replace(',', ''))
+                except ValueError as exc:
+                    raise ValueError(f'{label} phải là số không âm hoặc để trống.') from exc
+                if number < 0 or number != number or number in (float('inf'),) or (integer and number != int(number)):
+                    raise ValueError(f'{label} phải là số {"nguyên " if integer else ""}không âm hoặc để trống.')
+                raw = str(int(number)) if integer else (f'{number:g}')
+        elif key in _TEXT_FACTS:
             label, maximum = _TEXT_FACTS[key]
             if len(raw) > maximum: raise ValueError(f'{label} dài quá {maximum} ký tự.')
         elif key == 'booking_status':
@@ -73,6 +111,10 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     data = shipment.get('data') or {}
     transport = data.get('1.2') or {}
     sea = transport.get('sea_export') or {}
+    mode = str(profile.get('mode') or '')
+    # The evidence block of THIS shipment's mode (sea_export / air_facts /
+    # road_facts). An AIR or ROAD node never reads the sea block.
+    mf = (transport.get(MODE_FACT_BLOCK[mode]) or {}) if mode in MODE_FACT_BLOCK else {}
     customs = data.get('2.4') or {}
     delivery = data.get('2.7') or {}
     main = operational.get('main_leg') or {}
@@ -112,15 +154,23 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     if 'EXPORT_HANDLING' in codes:
         decl = shipment.get('china_export_decl_no')
         # A declaration number proves registration, not clearance completion.
-        cleared = sea.get('export_clearance_at') if is_sea else ''
+        cleared = mf.get('export_clearance_at')
         add('customs-export', 'CUSTOMS EXPORT' if is_sea else 'Hải quan xuất', 'EXPORT_HANDLING', 'lay-hang',
             done=bool(cleared),
             evidence=' · '.join(x for x in (f"Tờ khai: {decl}" if decl else '', f"Thông quan: {cleared}" if cleared else '') if x),
             categories=('customs',), owned=bool({'EXPORT_HANDLING', 'EXPORT_CUSTOMS'} & scope),
-            fields=(('export_declaration_no', 'Số tờ khai xuất (đã đăng ký)'), ('export_clearance_at', 'Thông quan xuất thực tế')) if is_sea else ())
+            fields=(('export_declaration_no', 'Số tờ khai xuất (đã đăng ký)'), ('export_clearance_at', 'Thông quan xuất thực tế')) if mode in MODE_FACT_BLOCK else ())
     has_main = is_sea and 'booking' in {n['id'] for n in nodes}
     if has_main:
-        if 'MAIN_CARRIAGE' in scope:
+        lcl = profile.get('loadModel') == 'LCL'
+        if 'MAIN_CARRIAGE' in scope and lcl:
+            # LCL: the consolidator owns the container VGM; only the SI for
+            # this shipment is Trường Thành's evidence.
+            si = sea.get('si_status', 'UNKNOWN')
+            add('si-vgm', 'SI', 'SEA_DOCUMENTS', 'van-tai', done=si == 'ACCEPTED',
+                evidence=f'SI: {si}' if si != 'UNKNOWN' else '', deadline=sea.get('si_cutoff') or '',
+                categories=('si',), owned=True, fields=(('si_status', 'Trạng thái SI'), ('si_cutoff', 'SI cutoff')))
+        elif 'MAIN_CARRIAGE' in scope:
             si, vgm = sea.get('si_status', 'UNKNOWN'), sea.get('vgm_status', 'UNKNOWN')
             add('si-vgm', 'SI / VGM', 'SEA_DOCUMENTS', 'van-tai',
                 done=si == vgm == 'ACCEPTED', evidence=f'SI: {si} · VGM: {vgm}' if si != 'UNKNOWN' or vgm != 'UNKNOWN' else '',
@@ -144,6 +194,24 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                 evidence=gate_evidence, categories=('transport',), owned='ORIGIN_TERMINAL_OR_BORDER' in scope,
                 fields=(('empty_pickup_at', 'Cấp container rỗng'), ('stuffing_at', 'Đóng hàng xong'),
                         ('eir_no', 'Số EIR'), ('gate_in_at', 'Gate-in thực tế')))
+        cfs_keys = ('cfs_received_at', 'cfs_receipt_no', 'cfs_package_count', 'cfs_weight_kg', 'cfs_cbm', 'consolidated_at')
+        if lcl and ({'MAIN_CARRIAGE', 'ORIGIN_TERMINAL_OR_BORDER'} & scope or any(sea.get(k) for k in cfs_keys)):
+            # CFS receipt and consolidation are separate facts; receipt alone
+            # never completes the node and blank quantities stay UNKNOWN.
+            qty = ' / '.join(x for x in (
+                f"{sea['cfs_package_count']} kiện" if sea.get('cfs_package_count') else '',
+                f"{sea['cfs_weight_kg']} kg" if sea.get('cfs_weight_kg') else '',
+                f"{sea['cfs_cbm']} CBM" if sea.get('cfs_cbm') else '') if x)
+            cfs_evidence = ' · '.join(x for x in (
+                f"Nhận CFS: {sea['cfs_received_at']}" if sea.get('cfs_received_at') else '',
+                f"Phiếu: {sea['cfs_receipt_no']}" if sea.get('cfs_receipt_no') else '', qty,
+                f"Đã ghép: {sea['consolidated_at']}" if sea.get('consolidated_at') else '') if x)
+            add('cfs-receipt', 'CFS / GHÉP HÀNG', 'SEA_CONSOLIDATION', 'van-tai', done=bool(sea.get('consolidated_at')),
+                evidence=cfs_evidence, categories=('transport',),
+                owned=bool({'MAIN_CARRIAGE', 'ORIGIN_TERMINAL_OR_BORDER'} & scope),
+                fields=(('cfs_received_at', 'Nhận hàng tại CFS'), ('cfs_receipt_no', 'Số phiếu nhận hàng'),
+                        ('cfs_package_count', 'Số kiện'), ('cfs_weight_kg', 'Trọng lượng (kg)'), ('cfs_cbm', 'CBM'),
+                        ('consolidated_at', 'Đã ghép vào container')))
         atd, ata = main.get('atd'), main.get('ata')
         add('etd', 'ETD', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd),
             evidence=f"ATD: {atd}" if atd else '', deadline=main.get('etd'), owned='MAIN_CARRIAGE' in scope)
@@ -163,12 +231,88 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         current = 'arrival' if ata else 'transit' if atd else ''
     else:
         current = ''
+        legs = [l for l in (transport.get('transport_legs') or []) if isinstance(l, Mapping)]
+        air_legs = sorted((l for l in legs if l.get('mode') == 'Air'), key=lambda l: int(l.get('sequence') or 0))
+        truck_legs = [l for l in legs if l.get('mode') == 'Truck']
+        replaced: set[str] = set()
+        chain_after: list = []
+        if mode == 'AIR' and ({'MAIN_CARRIAGE', 'AIR_DOCUMENTS'} & codes):
+            # LOGI-199 T3 — AIR occurrence chain from AIR facts only.
+            owns_main = 'MAIN_CARRIAGE' in scope
+            first, last = (air_legs[0] if air_legs else {}), (air_legs[-1] if air_legs else {})
+            awb = ' / '.join(x for x in (f"MAWB {first.get('mawb')}" if first.get('mawb') else '',
+                                         f"HAWB {first.get('hawb')}" if first.get('hawb') else '') if x)
+            flights = ', '.join(str(l.get('flight_no')) for l in air_legs if l.get('flight_no'))
+            replaced |= {'MAIN_CARRIAGE', 'AIR_DOCUMENTS'}
+            chain_after = [
+                ('air-booking', 'AWB / CHUYẾN BAY', 'AIR_DOCUMENTS', dict(
+                    done=bool(awb and flights), evidence=' · '.join(x for x in (awb, f"Chuyến: {flights}" if flights else '') if x),
+                    categories=('booking', 'transport'), owned=owns_main)),
+                ('air-acceptance', 'NHẬN HÀNG KHO / SOI CHIẾU', 'AIR_DOCUMENTS', dict(
+                    done=bool(mf.get('air_acceptance_at')),
+                    evidence=' · '.join(x for x in (
+                        f"Kho nhận: {mf['air_acceptance_at']}" if mf.get('air_acceptance_at') else '',
+                        f"GW {mf['air_gross_kg']} kg" if mf.get('air_gross_kg') else '',
+                        f"CW {mf['air_chargeable_kg']} kg" if mf.get('air_chargeable_kg') else '',
+                        f"Soi chiếu: {mf['air_screened_at']}" if mf.get('air_screened_at') else '') if x),
+                    categories=('transport',), owned=owns_main or bool({'EXPORT_HANDLING', 'ORIGIN_TERMINAL_OR_BORDER'} & scope),
+                    fields=(('air_acceptance_at', 'Kho hàng không nhận hàng'), ('air_gross_kg', 'Cân thực tế (kg)'),
+                            ('air_chargeable_kg', 'Trọng lượng tính cước (kg)'), ('air_screened_at', 'Soi chiếu an ninh (nếu áp dụng)')))),
+                # Flight ATD is not proof THIS cargo flew (offload happens):
+                # only an uplift confirmation completes the node.
+                ('uplift', 'CẤT CÁNH / UPLIFT', 'MAIN_CARRIAGE', dict(
+                    done=bool(mf.get('air_uplifted_at')),
+                    evidence=' · '.join(x for x in (f"ATD: {first.get('atd')}" if first.get('atd') else '',
+                                                    f"Uplift: {mf['air_uplifted_at']}" if mf.get('air_uplifted_at') else '') if x),
+                    deadline=first.get('etd') or '', owned=owns_main,
+                    fields=(('air_uplifted_at', 'Xác nhận hàng đã bay (uplift)'),))),
+            ]
+            if len(air_legs) > 1:
+                chain_after.append(('air-transit', 'TRUNG CHUYỂN', 'MAIN_CARRIAGE', dict(
+                    done=bool(last.get('atd')), evidence=f"Chặng cuối ATD: {last.get('atd')}" if last.get('atd') else '',
+                    deadline=last.get('etd') or '', owned=owns_main)))
+            chain_after.append(('air-arrival', 'HẠ CÁNH / ATA', 'MAIN_CARRIAGE', dict(
+                done=bool(last.get('ata')), evidence=f"ATA: {last.get('ata')}" if last.get('ata') else '',
+                deadline=last.get('eta') or '', categories=('transport',), owned=owns_main)))
+            current = 'air-arrival' if last.get('ata') else ('uplift' if mf.get('air_uplifted_at') else '')
+        if mode == 'ROAD':
+            # LOGI-199 T4 — ROAD: vehicle/driver, LTL receipt+consolidation,
+            # border only for cross-border scope. Maritime fields never apply.
+            trucks = [u for l in truck_legs for u in (l.get('units') or []) if isinstance(u, Mapping) and u.get('kind') == 'truck']
+            if 'ROAD_TRUCK_PROFILE' in codes or trucks:
+                ready = [u for u in trucks if str(u.get('number') or '').strip() and str(u.get('driver_name') or '').strip()]
+                replaced.add('ROAD_TRUCK_PROFILE')
+                chain_after.append(('road-vehicle', 'XE / TÀI XẾ', 'ROAD_TRUCK_PROFILE', dict(
+                    done=bool(trucks) and len(ready) == len(trucks),
+                    evidence=' · '.join(' '.join(x for x in (str(u.get('number') or ''), str(u.get('type_size') or ''), str(u.get('driver_name') or '')) if x) for u in trucks),
+                    categories=('transport',), owned=bool({'ORIGIN_PICKUP', 'MAIN_CARRIAGE'} & scope))))
+            if 'ROAD_CONSOLIDATION' in codes:
+                replaced.add('ROAD_CONSOLIDATION')
+                chain_after.append(('road-ltl', 'NHẬN & GHÉP HÀNG (LTL)', 'ROAD_CONSOLIDATION', dict(
+                    done=bool(mf.get('ltl_consolidated_at')),
+                    evidence=' · '.join(x for x in (
+                        f"Nhận: {mf['ltl_received_at']}" if mf.get('ltl_received_at') else '',
+                        f"{mf['ltl_package_count']} kiện" if mf.get('ltl_package_count') else '',
+                        f"{mf['ltl_weight_kg']} kg" if mf.get('ltl_weight_kg') else '',
+                        f"Đã ghép xe: {mf['ltl_consolidated_at']}" if mf.get('ltl_consolidated_at') else '') if x),
+                    categories=('transport',), owned=bool({'ORIGIN_PICKUP', 'MAIN_CARRIAGE'} & scope),
+                    fields=(('ltl_received_at', 'Nhận hàng lẻ'), ('ltl_package_count', 'Số kiện'),
+                            ('ltl_weight_kg', 'Trọng lượng (kg)'), ('ltl_consolidated_at', 'Đã ghép lên xe')))))
+            if 'CROSS_BORDER' in codes:
+                replaced.add('CROSS_BORDER')
+                chain_after.append(('road-border', 'QUA CỬA KHẨU', 'CROSS_BORDER', dict(
+                    done=bool(mf.get('border_crossed_at')),
+                    evidence=f"Qua cửa khẩu: {mf['border_crossed_at']}" if mf.get('border_crossed_at') else '',
+                    categories=('customs', 'transport'), owned='CROSS_BORDER_COORDINATION' in scope,
+                    fields=(('border_crossed_at', 'Thời điểm qua cửa khẩu'),))))
         for stage in profile.get('stages') or []:
             code = stage['code']
-            if code in {'ORIGIN_PICKUP', 'EXPORT_HANDLING', 'IMPORT_CUSTOMS', 'DELIVERY'}:
+            if code in {'ORIGIN_PICKUP', 'EXPORT_HANDLING', 'IMPORT_CUSTOMS', 'DELIVERY'} | replaced:
                 continue
             add(code, stage['label'], code, 'van-tai',
                 owned=stage.get('reason') == 'SERVICE_SCOPE')
+        for node_id, label, family, kwargs in chain_after:
+            add(node_id, label, family, 'van-tai', **kwargs)
     if 'IMPORT_CUSTOMS' in codes:
         add('customs-import', 'CUSTOMS IMPORT' if is_sea else 'Hải quan nhập', 'IMPORT_CUSTOMS', 'nhap',
             done=bool(customs.get('customs_status')), evidence=customs.get('clearance_date') if customs.get('customs_status') else customs.get('tk_no'),
@@ -177,32 +321,39 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         delivered = bool(delivery.get('is_delivered'))
         delivery_fields: tuple = ()
         delivery_evidence = delivery.get('delivered_at') if delivered else ''
-        pod_before_delivery = False
-        if is_sea:
-            # D/O release, actual delivery, POD and empty return are separate
-            # facts. Delivery occurrence stays the 2.7 truth; POD never
+        if mode in MODE_FACT_BLOCK:
+            # D/O release, actual delivery, POD and (FCL) empty return are
+            # separate facts. Delivery occurrence stays the 2.7 truth; POD never
             # substitutes for it and a POD recorded before delivery is flagged.
-            delivery_fields = (('do_released_at', 'D/O / EDO đã phát hành'), ('pod_received_at', 'POD đã nhận'))
-            if profile.get('loadModel') == 'FCL':
-                delivery_fields += (('empty_return_at', 'Trả container rỗng'),)
-            pod_before_delivery = bool(sea.get('pod_received_at')) and not delivered
+            load = profile.get('loadModel')
+            if mode == 'SEA':
+                delivery_fields = ((('deconsolidated_at', 'Tách hàng tại CFS đích'),) if load == 'LCL' else ()) + (
+                    ('do_released_at', 'D/O / EDO đã phát hành'), ('pod_received_at', 'POD đã nhận')) + (
+                    (('empty_return_at', 'Trả container rỗng'),) if load == 'FCL' else ())
+            elif mode == 'AIR':
+                delivery_fields = (('do_released_at', 'Lệnh giao hàng sân bay (D/O)'), ('pod_received_at', 'POD đã nhận'))
+            else:
+                delivery_fields = (('handover_doc_no', 'Số biên bản giao nhận'), ('pod_received_at', 'POD đã nhận'))
+            keys = {k for k, _ in delivery_fields}
             delivery_evidence = ' · '.join(x for x in (
-                f"D/O: {sea['do_released_at']}" if sea.get('do_released_at') else '',
+                f"Tách hàng: {mf['deconsolidated_at']}" if 'deconsolidated_at' in keys and mf.get('deconsolidated_at') else '',
+                f"D/O: {mf['do_released_at']}" if 'do_released_at' in keys and mf.get('do_released_at') else '',
+                f"Biên bản: {mf['handover_doc_no']}" if 'handover_doc_no' in keys and mf.get('handover_doc_no') else '',
                 f"Đã giao: {delivery.get('delivered_at') or 'có'}" if delivered else '',
-                f"POD: {sea['pod_received_at']}" if sea.get('pod_received_at') else '',
-                f"Trả rỗng: {sea['empty_return_at']}" if sea.get('empty_return_at') and profile.get('loadModel') == 'FCL' else '') if x)
+                f"POD: {mf['pod_received_at']}" if mf.get('pod_received_at') else '',
+                f"Trả rỗng: {mf['empty_return_at']}" if 'empty_return_at' in keys and mf.get('empty_return_at') else '') if x)
         add('delivery', 'DELIVERY' if is_sea else 'Giao hàng', 'DELIVERY', 'nhap',
             done=delivered, evidence=delivery_evidence,
             deadline=delivery.get('delivery_date'), categories=('transport',),
             owned=bool({'DESTINATION_TRUCKING', 'FINAL_DELIVERY'} & scope), fields=delivery_fields)
-        if pod_before_delivery:
+        if mf.get('pod_received_at') and not delivered and mode in MODE_FACT_BLOCK:
             nodes[-1]['blockers'].append('POD đã ghi nhưng lô chưa xác nhận giao thực tế — kiểm tra lại mốc giao hàng.')
     by_id = {n['id']: n for n in nodes}
     edges = []
     previous = None
     branch = []
     for n in nodes:
-        if n['id'] in {'si-vgm', 'gate-in'}:
+        if n['id'] in {'si-vgm', 'gate-in', 'cfs-receipt'}:
             if previous: edges.append({'from': previous, 'to': n['id']})
             branch.append(n['id'])
             continue
@@ -248,7 +399,10 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         n['current'] = n['id'] == current
     journey = {'nodes': nodes, 'edges': edges, 'currentStageId': current,
             'owner': str(dashboard.get('owner') or ''),
-            'primaryAction': dict(primary), 'seaFacts': {k: (shipment.get('china_export_decl_no') or '') if k == 'export_declaration_no' else sea.get(k, 'UNKNOWN' if k.endswith('_status') else '') for k in SEA_FACT_FIELDS},
+            'primaryAction': dict(primary),
+            # Name kept for client compatibility: the CURRENT mode's evidence values.
+            'seaFacts': {k: (shipment.get('china_export_decl_no') or '') if k == 'export_declaration_no' else mf.get(k, 'UNKNOWN' if k.endswith('_status') else '')
+                         for k in MODE_FACT_FIELDS.get(mode, SEA_FACT_FIELDS)},
             'positionNote': '' if current else 'Chưa đủ mốc thực tế để xác định vị trí vận hành.'}
     # Rollups exist only when modules do: a shipment without modules keeps the
     # exact pre-#162 payload shape.
@@ -265,7 +419,8 @@ def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> 
     if profile.get('mode') != 'SEA' or 'MAIN_CARRIAGE' not in scope:
         return None
     facts = ((shipment.get('data') or {}).get('1.2') or {}).get('sea_export') or {}
-    for key, label in (('si_status', 'SI'), ('vgm_status', 'VGM')):
+    required = (('si_status', 'SI'),) if profile.get('loadModel') == 'LCL' else (('si_status', 'SI'), ('vgm_status', 'VGM'))
+    for key, label in required:
         if facts.get(key) != 'ACCEPTED':
             return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
     if 'ORIGIN_TERMINAL_OR_BORDER' in scope and profile.get('loadModel') == 'FCL' and not facts.get('gate_in_at'):

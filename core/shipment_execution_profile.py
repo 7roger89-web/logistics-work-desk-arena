@@ -680,6 +680,12 @@ def persisted_facts(shipment: Mapping[str, Any], *,
         "customsDeclarationNo": _text(customs.get("tk_no")),
         "customsDeclarationDate": _text(customs.get("tk_date")),
         "customsStatus": customs.get("customs_status"),
+        # LOGI-199 T2/T4 — consolidation is an occurrence fact, never implied
+        # by choosing LCL/LTL as the load model.
+        "seaConsolidatedAt": _text((transport.get("sea_export") or {}).get("consolidated_at")
+                                   if isinstance(transport.get("sea_export"), Mapping) else ""),
+        "roadConsolidatedAt": _text((transport.get("road_facts") or {}).get("ltl_consolidated_at")
+                                    if isinstance(transport.get("road_facts"), Mapping) else ""),
         "delivered": bool(delivery.get("is_delivered")),
         "deliveredAt": _text(delivery.get("delivered_at") or delivery.get("delivery_date")),
         "deliveryLocation": _text(delivery.get("delivery_location") or delivery.get("addr")),
@@ -1025,9 +1031,12 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
     elif mode == MODE_SEA and load_model == LOADMODEL_LCL:
         stages.append(_stage(
             "SEA_CONSOLIDATION", "Hàng lẻ ghép container (LCL)", REASON_LOAD_MODEL_REQUIREMENT,
-            done=True,
+            # Selecting LCL is NOT evidence that the cargo was consolidated.
+            # The CFS/consolidation work lives on the Journey node; no next
+            # action is invented here (prompt stays empty).
+            done=bool(facts.get("seaConsolidatedAt")),
             detail="LCL: hàng ghép chung với hàng khác — lô không sở hữu nguyên container, "
-                   "nên không yêu cầu số container riêng."))
+                   "nên không yêu cầu số container/seal/VGM riêng. Ghép hàng chỉ hoàn thành khi có mốc thực tế."))
 
     if mode == MODE_ROAD and load_model == LOADMODEL_FTL:
         truck = profile.get("truck") or {}
@@ -1039,7 +1048,9 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
     elif mode == MODE_ROAD and load_model == LOADMODEL_LTL:
         stages.append(_stage(
             "ROAD_CONSOLIDATION", "Hàng lẻ ghép xe (LTL)", REASON_LOAD_MODEL_REQUIREMENT,
-            done=True,
+            # Selecting LTL is NOT evidence that the cargo was received and
+            # consolidated; the Journey node owns that work (no invented prompt).
+            done=bool(facts.get("roadConsolidatedAt")),
             detail="LTL: hàng ghép xe — không yêu cầu loại xe riêng cho đến khi có xe cụ thể."))
 
     # --- import side -------------------------------------------------------

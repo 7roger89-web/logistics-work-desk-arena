@@ -18494,6 +18494,12 @@ var pl = 164, ml = 136, hl = 212, gl = 48, _l = (e) => gl + e * hl, vl = {
 		w: pl,
 		h: ml
 	},
+	"cfs-receipt": {
+		x: _l(3),
+		y: 224,
+		w: pl,
+		h: ml
+	},
 	etd: {
 		x: _l(4),
 		y: 140,
@@ -18596,34 +18602,34 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 		k: 1
 	}), c = (0, _.useRef)(o);
 	c.current = o;
-	let l = (0, _.useRef)(null), u = (0, _.useRef)(!0), d = (0, _.useRef)(!1), f = (0, _.useRef)(void 0), [p, m] = (0, _.useState)(!1), h = t.some((e) => e.id === "booking"), g = new Map(t.map((e, t) => [e.id, h && vl[e.id] ? vl[e.id] : {
+	let l = (0, _.useRef)(null), u = (0, _.useRef)(!0), d = (0, _.useRef)(!1), f = (0, _.useRef)(void 0), [p, m] = (0, _.useState)(!1), h = t.some((e) => e.id === "booking"), g = Math.max(1, Math.min(5, t.length)), v = Math.max(1, Math.ceil(t.length / 5)), y = new Map(t.map((e, t) => [e.id, h && vl[e.id] ? vl[e.id] : {
 		x: _l(t % 5),
-		y: 140 + Math.floor(t / 5) * 212,
+		y: 40 + Math.floor(t / 5) * hl,
 		w: pl,
 		h: ml
-	}])), v = h ? bl : Math.max(bl, 140 + Math.ceil(t.length / 5) * 212), y = (0, _.useCallback)(() => {
+	}])), b = h ? yl : _l(g - 1) + pl + gl, x = h ? bl : 40 + (v - 1) * hl + ml + 40, S = (0, _.useCallback)(() => {
 		let e = l.current;
 		if (!e?.clientWidth || !e.clientHeight) return;
-		let t = e.clientWidth, n = e.clientHeight, r = wl(Math.min((t - 32) / yl, (n - 32) / v), t < 600 ? .65 : .3, 1.15);
+		let t = e.clientWidth, n = e.clientHeight, r = wl(Math.min((t - 32) / b, (n - 32) / x), t < 600 ? .65 : .3, 1.15);
 		s({
 			k: r,
-			x: (t - yl * r) / 2,
-			y: Math.max(12, (n - v * r) / 2)
+			x: (t - b * r) / 2,
+			y: Math.max(12, (n - x * r) / 2)
 		});
-	}, [v]);
+	}, [x, b]);
 	(0, _.useEffect)(() => {
 		let e = l.current;
 		if (!e) return;
 		if (typeof ResizeObserver > "u") {
-			y();
+			S();
 			return;
 		}
 		let t = new ResizeObserver(() => {
-			u.current && y();
+			u.current && S();
 		});
-		return t.observe(e), y(), () => t.disconnect();
-	}, [y, i]);
-	let b = (0, _.useCallback)((e, t, n) => {
+		return t.observe(e), S(), () => t.disconnect();
+	}, [S, i]);
+	let C = (0, _.useCallback)((e, t, n) => {
 		u.current = !1, s((r) => {
 			let i = wl(r.k * e, .3, 2), a = i / r.k;
 			return {
@@ -18639,11 +18645,11 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 		let t = (t) => {
 			t.preventDefault();
 			let n = e.getBoundingClientRect();
-			b(t.deltaY < 0 ? 1.1 : 1 / 1.1, t.clientX - n.left, t.clientY - n.top);
+			C(t.deltaY < 0 ? 1.1 : 1 / 1.1, t.clientX - n.left, t.clientY - n.top);
 		};
 		return e.addEventListener("wheel", t, { passive: !1 }), () => e.removeEventListener("wheel", t);
-	}, [b, i]), (0, _.useEffect)(() => () => f.current?.(), []);
-	let x = (e) => {
+	}, [C, i]), (0, _.useEffect)(() => () => f.current?.(), []);
+	let w = (e) => {
 		if (e.button !== 0) return;
 		f.current?.();
 		let t = e.clientX, n = e.clientY, r = c.current;
@@ -18659,9 +18665,9 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			window.removeEventListener("pointermove", i), window.removeEventListener("pointerup", a), window.removeEventListener("pointercancel", a), m(!1);
 		};
 		f.current = a, window.addEventListener("pointermove", i), window.addEventListener("pointerup", a), window.addEventListener("pointercancel", a);
-	}, S = (e) => {
+	}, T = (e) => {
 		let t = l.current;
-		t && b(e, t.clientWidth / 2, t.clientHeight / 2);
+		t && C(e, t.clientWidth / 2, t.clientHeight / 2);
 	};
 	if (i) return /* @__PURE__ */ (0, H.jsxs)("nav", {
 		className: "journey-rail",
@@ -18679,26 +18685,26 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			children: [/* @__PURE__ */ (0, H.jsx)(Sl, { node: e }), /* @__PURE__ */ (0, H.jsx)("span", { children: e.label })]
 		}, e.id))]
 	});
-	let C = t[0], w = t[t.length - 1], T = (e.journey?.edges ?? []).filter((e) => g.has(e.from) && g.has(e.to)), E = (e, t) => {
+	let E = t[0], D = t[t.length - 1], O = (e.journey?.edges ?? []).filter((e) => y.has(e.from) && y.has(e.to)), k = (e, t) => {
 		(t.detail === 0 || !d.current) && r(e);
 	};
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		ref: l,
 		className: K("journey-canvas relative min-w-0 flex-1 select-none overflow-hidden", p ? "cursor-grabbing" : "cursor-grab"),
-		onPointerDown: x,
+		onPointerDown: w,
 		"data-testid": "journey-map-viewport",
 		"aria-label": "Journey Map, kéo để di chuyển, cuộn để zoom",
 		children: [
 			/* @__PURE__ */ (0, H.jsxs)("div", {
 				className: "absolute left-0 top-0 origin-top-left",
 				style: {
-					width: yl,
-					height: v,
+					width: b,
+					height: x,
 					transform: `translate(${o.x}px, ${o.y}px) scale(${o.k})`
 				},
 				"data-testid": "journey-map-transform",
 				children: [
-					g.has("si-vgm") && g.has("gate-in") && /* @__PURE__ */ (0, H.jsx)("div", {
+					y.has("si-vgm") && y.has("gate-in") && /* @__PURE__ */ (0, H.jsx)("div", {
 						className: "absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30",
 						style: {
 							left: vl["si-vgm"].x - 14,
@@ -18712,7 +18718,7 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 							children: "NHÁNH SONG SONG"
 						})
 					}),
-					g.has("si-vgm") && g.has("gate-in") && /* @__PURE__ */ (0, H.jsx)("div", {
+					y.has("si-vgm") && y.has("gate-in") && /* @__PURE__ */ (0, H.jsx)("div", {
 						className: "pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600",
 						style: {
 							left: vl.etd.x - 4,
@@ -18722,8 +18728,8 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 						children: "⛓ Phụ thuộc SI/VGM + Gate-in"
 					}),
 					/* @__PURE__ */ (0, H.jsxs)("svg", {
-						width: yl,
-						height: v,
+						width: b,
+						height: x,
 						className: "pointer-events-none absolute left-0 top-0 z-[1]",
 						"aria-hidden": "true",
 						children: [
@@ -18744,12 +18750,12 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 									fill: t
 								})
 							}, e)) }),
-							T.map((e) => {
+							O.map((e) => {
 								let n = t.find((t) => t.id === e.from), r = n.state === "PROBLEM" ? "r" : n.completed ? "g" : "s";
 								return /* @__PURE__ */ (0, H.jsx)("path", {
 									"data-from": e.from,
 									"data-to": e.to,
-									d: Cl(g.get(e.from), g.get(e.to)),
+									d: Cl(y.get(e.from), y.get(e.to)),
 									fill: "none",
 									stroke: r === "g" ? "#059669" : r === "r" ? "#dc2626" : "#94a3b8",
 									strokeWidth: r === "g" ? 3 : 2.5,
@@ -18757,15 +18763,15 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 									markerEnd: `url(#journey-arr-${r})`
 								}, e.from + e.to);
 							}),
-							h && C && /* @__PURE__ */ (0, H.jsx)("path", {
-								d: Cl(vl.start, g.get(C.id)),
+							h && E && /* @__PURE__ */ (0, H.jsx)("path", {
+								d: Cl(vl.start, y.get(E.id)),
 								fill: "none",
 								stroke: "#94a3b8",
 								strokeWidth: "2.5",
 								markerEnd: "url(#journey-arr-s)"
 							}),
-							h && w && /* @__PURE__ */ (0, H.jsx)("path", {
-								d: Cl(g.get(w.id), vl.completed),
+							h && D && /* @__PURE__ */ (0, H.jsx)("path", {
+								d: Cl(y.get(D.id), vl.completed),
 								fill: "none",
 								stroke: "#94a3b8",
 								strokeWidth: "2.5",
@@ -18793,13 +18799,13 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 						children: "RÀ SOÁT HOÀN TẤT"
 					})] }),
 					t.map((t, r) => {
-						let i = g.get(t.id), a = xl[t.state];
+						let i = y.get(t.id), a = xl[t.state];
 						return /* @__PURE__ */ (0, H.jsxs)("button", {
 							type: "button",
 							"data-testid": `journey-node-${t.id}`,
 							"data-state": t.state,
 							"aria-pressed": n === t.id,
-							onClick: (e) => E(t.id, e),
+							onClick: (e) => k(t.id, e),
 							style: {
 								left: i.x,
 								top: i.y,
@@ -18863,14 +18869,14 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 				children: [
 					/* @__PURE__ */ (0, H.jsx)("button", {
 						type: "button",
-						onClick: () => S(1.2),
+						onClick: () => T(1.2),
 						"aria-label": "Zoom In",
 						className: "touch-target rounded text-lg font-bold text-slate-700",
 						children: "+"
 					}),
 					/* @__PURE__ */ (0, H.jsx)("button", {
 						type: "button",
-						onClick: () => S(1 / 1.2),
+						onClick: () => T(1 / 1.2),
 						"aria-label": "Zoom Out",
 						className: "touch-target rounded text-lg font-bold text-slate-700",
 						children: "−"
@@ -18882,7 +18888,7 @@ function Tl({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 					/* @__PURE__ */ (0, H.jsx)("button", {
 						type: "button",
 						onClick: () => {
-							u.current = !0, y();
+							u.current = !0, S();
 						},
 						className: "touch-target rounded px-2.5 text-xs font-bold",
 						children: "⤢ Fit Journey"
@@ -20791,13 +20797,22 @@ function Vl({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAtta
 			"pickup",
 			"customs-export",
 			"si-vgm",
-			"gate-in"
+			"gate-in",
+			"cfs-receipt",
+			"air-booking",
+			"air-acceptance",
+			"road-vehicle",
+			"road-ltl"
 		],
 		main: [
 			"etd",
 			"on-board",
 			"transit",
-			"arrival"
+			"arrival",
+			"uplift",
+			"air-transit",
+			"air-arrival",
+			"road-border"
 		],
 		import: ["customs-import"],
 		delivery: ["delivery"]
@@ -21105,7 +21120,12 @@ function Ul({ shipment: e, stageId: t }) {
 					"gate-in": "Container — cấp rỗng, đóng hàng, EIR, gate-in",
 					"on-board": "Xếp hàng lên tàu — bằng chứng on-board",
 					delivery: "Đầu nhận — D/O, POD, trả rỗng",
-					"si-vgm": "SI / VGM — ghi nhận bằng chứng"
+					"si-vgm": "SI / VGM — ghi nhận bằng chứng",
+					"cfs-receipt": "CFS — nhận hàng và ghép container",
+					"air-acceptance": "Kho hàng không — nhận, cân, soi chiếu",
+					uplift: "Uplift — xác nhận hàng đã bay",
+					"road-ltl": "Hàng lẻ — nhận và ghép xe",
+					"road-border": "Cửa khẩu — mốc qua biên giới"
 				}[t] ?? "Ghi nhận bằng chứng"
 			}),
 			/* @__PURE__ */ (0, H.jsx)("p", {
@@ -21132,7 +21152,7 @@ function Ul({ shipment: e, stageId: t }) {
 					}) : /* @__PURE__ */ (0, H.jsx)("input", {
 						"aria-label": t.label,
 						type: "text",
-						placeholder: t.kind === "text" ? t.label : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
+						placeholder: t.kind === "text" ? t.label : t.kind === "number" ? "Để trống nếu chưa biết" : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
 						disabled: !f || h || !p?.owned,
 						className: $(),
 						value: i[t.key] ?? e.journey?.seaFacts[t.key] ?? "",
@@ -21201,12 +21221,21 @@ function ql(e) {
 		"pickup",
 		"customs-export",
 		"si-vgm",
-		"gate-in"
+		"gate-in",
+		"cfs-receipt",
+		"air-booking",
+		"air-acceptance",
+		"road-vehicle",
+		"road-ltl"
 	]), r = Kl(e, [
 		"etd",
 		"on-board",
 		"transit",
-		"arrival"
+		"arrival",
+		"uplift",
+		"air-transit",
+		"air-arrival",
+		"road-border"
 	]), i = Kl(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = e.finance.outstanding, l = c != null, u = e.finance.partner, d = u?.partners ?? [], f = d.length > 0 || !!(u && !u.suggested && u.partnerName), p = d.length > 0 ? d.flatMap((e) => Object.values(e.totalsByCurrency).map((e) => e.remaining)) : u && !u.suggested && u.partnerName ? [u.remaining] : [], m = p.filter((e) => e != null), h = f && (p.length === 0 || m.length !== p.length), g = l && c !== 0 || m.some((e) => e !== 0), _ = l || f && !h && m.length > 0, v = e.journey?.modules ?? [], y = v.find((e) => e.status === "BLOCKING"), b = v.filter((e) => e.status === "DONE");
 	return [
 		{
