@@ -52,9 +52,20 @@ try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.locator('.logi-shell').first().waitFor({ state: 'visible', timeout: 90000 });
     for (const route of ROUTES) {
-      await page.evaluate(r => { history.pushState({}, '', r); dispatchEvent(new PopStateEvent('popstate')); }, route);
+      // The app uses MemoryRouter: navigate through the app's own router links
+      // (a real DOM click on <a href=route>), exactly what a user tap triggers.
+      let reached = false;
+      if (route === '/lo-hang/T6-FCL') {
+        const list = page.locator('a[href="/lo-hang"]').first();
+        if (await list.count()) { await list.dispatchEvent('click'); await sleep(800);
+          const all = page.getByTestId('shipment-period-tat-ca').first(); if (await all.count()) { await all.dispatchEvent('click'); await sleep(500); } }
+      }
+      const link = page.locator(`a[href="${route}"]`).first();
+      if (await link.count()) { await link.dispatchEvent('click'); reached = true; }
       await sleep(1200);
       const m = await measure(page);
+      m.reachedViaAppLink = reached;
+      m.textDigest = await page.evaluate(() => { const r = [...document.querySelectorAll('*')].find(e => e.shadowRoot)?.shadowRoot; return (r?.querySelector('main')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80); });
       (results.routes[route] ||= {})[label] = m;
       const name = `${label}${route.replace(/\//g, '_') || '_home'}.png`;
       await page.screenshot({ path: path.join(output, name) });
