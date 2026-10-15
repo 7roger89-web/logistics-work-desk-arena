@@ -15,6 +15,8 @@ from views.logi_real_data import compose_primary_action
 
 ROOT = Path(__file__).resolve().parent.parent
 JOURNEY = (ROOT / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
+JOURNEY_MAP = (ROOT / "component/src/components/JourneyMap.tsx").read_text(encoding="utf-8")
+CSS = (ROOT / "component/src/index.css").read_text(encoding="utf-8")
 DETAIL = (ROOT / "component/src/pages/ShipmentDetail.tsx").read_text(encoding="utf-8")
 FRESH_FIXTURE = ROOT / "tests/component/fixtures/view_model_journey_fresh_188.json"
 FRESH_DOM_LANE = ROOT / "tests/component/dom_acceptance_journey_fresh_188.mjs"
@@ -22,19 +24,17 @@ DIST = ROOT / "component/dist/logi-shell.js"
 
 
 class FreshShipmentCockpitContract(unittest.TestCase):
-    """Issue #197 follow-up — owner correction 2026-10-13: no compact
-    five-phase cards anywhere. The zero-node view uses the split language —
-    a slim empty-map placeholder left, the unchanged action content right —
-    never an invented current phase."""
+    """Issue #199 zero-node state stays full-width/map-first and factually empty."""
 
-    def test_zero_nodes_render_the_split_empty_shell(self):
+    def test_zero_nodes_render_the_full_width_map_first_shell(self):
         self.assertIn("function ZeroNodeJourney", JOURNEY)
         self.assertNotIn("function FreshShipmentCockpit", JOURNEY)
         self.assertNotIn("const EMPTY_PHASES", JOURNEY)
         self.assertNotIn("function JourneyStageSummaryCards", JOURNEY)
         self.assertIn('data-empty-journey="true"', JOURNEY)
         self.assertIn('data-testid="journey-empty-map"', JOURNEY)
-        self.assertIn('data-testid="journey-split-view"', JOURNEY)
+        self.assertIn('data-testid="journey-zero-map-first"', JOURNEY)
+        self.assertIn('data-layout="full-width"', JOURNEY)
         self.assertIn("📍 Đang ở: Chưa xác định", JOURNEY)
         self.assertNotIn("Đang ở: HỒ SƠ", JOURNEY)
 
@@ -54,12 +54,33 @@ class FreshShipmentCockpitContract(unittest.TestCase):
         for detailed in ["booking", "si-vgm", "gate-in", "customs-import", "on-board"]:
             self.assertNotIn(f"id: '{detailed}'", zero)
 
-    def test_cockpit_precedes_completion_review_on_the_page(self):
-        attention = DETAIL.index("<AttentionNow")
-        journey = DETAIL.index("<ShipmentJourney")
+    def test_empty_cockpit_keeps_attention_then_journey_before_completion_review(self):
+        journey_mount = DETAIL.index("<ShipmentJourney")
         goals = DETAIL.index("<ShipmentCompletionGoals")
-        self.assertLess(attention, journey)
-        self.assertLess(journey, goals)
+        zero_branch = JOURNEY.index("if (!hasNodes) return")
+        attention = JOURNEY.index("<AttentionNow", zero_branch)
+        zero_journey = JOURNEY.index("<ZeroNodeJourney", zero_branch)
+        self.assertLess(attention, zero_journey)
+        self.assertLess(journey_mount, goals)
+
+
+class EmptyMapPointerContract(unittest.TestCase):
+    """A zero-node chart stays decorative; the selector must hit its real canvas."""
+
+    def test_zero_node_css_targets_the_real_canvas_and_overrides_map_gesture_style(self):
+        self.assertIn(
+            ".journey-zero-map-first.journey-map-first .journey-canvas",
+            CSS,
+        )
+        self.assertNotIn(".journey-zero-map-first .journey-map-viewport", CSS)
+        self.assertIn("touch-action: auto", CSS)
+        self.assertIn('data-testid="journey-map-viewport"', JOURNEY_MAP)
+
+    def test_zero_node_map_does_not_capture_pointer_or_wheel_gestures(self):
+        self.assertIn("if (!nodes.length || e.button !== 0) return;", JOURNEY_MAP)
+        self.assertIn("if (!nodes.length) return;", JOURNEY_MAP)
+        self.assertIn("onPointerDown={nodes.length ? pan : undefined}", JOURNEY_MAP)
+        self.assertIn("Journey Map trống, không có công đoạn để di chuyển", JOURNEY_MAP)
 
 
 class ProfileActionRouting(unittest.TestCase):

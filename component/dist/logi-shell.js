@@ -18671,29 +18671,34 @@ function Ml({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 	(0, _.useEffect)(() => {
 		let e = f.current;
 		if (!e) return;
-		let t = (t) => {
-			t.preventDefault();
-			let n = e.getBoundingClientRect();
-			A(t.deltaY < 0 ? 1.1 : 1 / 1.1, t.clientX - n.left, t.clientY - n.top);
+		let n = (n) => {
+			if (!t.length) return;
+			n.preventDefault();
+			let r = e.getBoundingClientRect();
+			A(n.deltaY < 0 ? 1.1 : 1 / 1.1, n.clientX - r.left, n.clientY - r.top);
 		};
-		return e.addEventListener("wheel", t, { passive: !1 }), () => e.removeEventListener("wheel", t);
-	}, [A, i]), (0, _.useEffect)(() => () => h.current?.(), []);
+		return e.addEventListener("wheel", n, { passive: !1 }), () => e.removeEventListener("wheel", n);
+	}, [
+		A,
+		i,
+		t.length
+	]), (0, _.useEffect)(() => () => h.current?.(), []);
 	let j = (e) => {
-		if (e.button !== 0 || e.target.closest("[data-no-pan]")) return;
+		if (!t.length || e.button !== 0 || e.target.closest("[data-no-pan]")) return;
 		h.current?.();
-		let t = e.clientX, n = e.clientY, r = d.current;
+		let n = e.clientX, r = e.clientY, i = d.current;
 		m.current = !1;
-		let i = (e) => {
-			let i = e.clientX - t, a = e.clientY - n;
-			!m.current && Math.hypot(i, a) < 4 || (m.current = !0, p.current = "manual", v(!0), u({
-				...r,
-				x: r.x + i,
-				y: r.y + a
+		let a = (e) => {
+			let t = e.clientX - n, a = e.clientY - r;
+			!m.current && Math.hypot(t, a) < 4 || (m.current = !0, p.current = "manual", v(!0), u({
+				...i,
+				x: i.x + t,
+				y: i.y + a
 			}));
-		}, a = () => {
-			window.removeEventListener("pointermove", i), window.removeEventListener("pointerup", a), window.removeEventListener("pointercancel", a), v(!1);
+		}, o = () => {
+			window.removeEventListener("pointermove", a), window.removeEventListener("pointerup", o), window.removeEventListener("pointercancel", o), v(!1);
 		};
-		h.current = a, window.addEventListener("pointermove", i), window.addEventListener("pointerup", a), window.addEventListener("pointercancel", a);
+		h.current = o, window.addEventListener("pointermove", a), window.addEventListener("pointerup", o), window.addEventListener("pointercancel", o);
 	}, M = (e) => {
 		let t = f.current;
 		t && A(e, t.clientWidth / 2, t.clientHeight / 2);
@@ -18719,10 +18724,10 @@ function Ml({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 	}, F = s ? t.find((e) => e.id === s) : void 0, I = F ? S.get(F.id) : void 0, L = (f.current?.clientWidth ?? 1440) < 720, R = I ? !L && l.y + I.y * l.k < 290 : !1;
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		ref: f,
-		className: K("journey-canvas relative min-w-0 flex-1 select-none overflow-hidden", g ? "cursor-grabbing" : "cursor-grab"),
-		onPointerDown: j,
+		className: K("journey-canvas relative min-w-0 flex-1 select-none overflow-hidden", t.length ? g ? "cursor-grabbing" : "cursor-grab" : "cursor-default"),
+		onPointerDown: t.length ? j : void 0,
 		"data-testid": "journey-map-viewport",
-		"aria-label": "Journey Map, kéo để di chuyển, cuộn để zoom",
+		"aria-label": t.length ? "Journey Map, kéo để di chuyển, cuộn để zoom" : "Journey Map trống, không có công đoạn để di chuyển",
 		style: { backgroundImage: `url(${hl}), linear-gradient(180deg, #cfdfec 0%, #e4ebf4 48%, #c4d7e3 100%)` },
 		children: [
 			c,

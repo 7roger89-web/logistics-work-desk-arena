@@ -8,11 +8,19 @@ if exist .streamlit\secrets.toml (
 )
 set "MONGO_URI="
 set "MONGO_DB_NAME="
+set "LOGISTICS_PRO_SECRETS_FILE="
+rem Test-only auth setting: the Python staging launcher verifies Mongomock/db identity before rendering.
 set "AUTH_REQUIRED=false"
 set "STREAMLIT_BROWSER_GATHER_USAGE_STATS=false"
 python --version >nul 2>&1
 if errorlevel 1 (
   echo Can Python 3.11+ tren may. Khong thay doi app production.
+  pause
+  exit /b 1
+)
+python -c "import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)" >nul 2>&1
+if errorlevel 1 (
+  echo Can Python 3.11 tro len. Khong thay doi app production.
   pause
   exit /b 1
 )

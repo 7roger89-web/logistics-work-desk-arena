@@ -75,6 +75,21 @@ const label = variant === 'absent' ? 'journey absent' : 'nodes=[]';
   assert.equal(byId('journey-map-viewport').closest('[data-testid="journey-zero-map-first"]'), zeroMap,
     `[${label}] chart canvas fills the zero-node map-first surface`);
   assert.ok(byId('journey-empty-map'), `[${label}] floating empty-state notice renders`);
+  const viewport = byId('journey-map-viewport');
+  const transform = byId('journey-map-transform');
+  const transformBeforePointer = transform.style.transform;
+  viewport.dispatchEvent(new dom.window.MouseEvent('pointerdown', {
+    bubbles: true, cancelable: true, button: 0, clientX: 20, clientY: 20,
+  }));
+  dom.window.dispatchEvent(new dom.window.MouseEvent('pointermove', {
+    bubbles: true, cancelable: true, button: 0, clientX: 140, clientY: 90,
+  }));
+  dom.window.dispatchEvent(new dom.window.MouseEvent('pointerup', {
+    bubbles: true, cancelable: true, button: 0, clientX: 140, clientY: 90,
+  }));
+  await tick();
+  assert.equal(transform.style.transform, transformBeforePointer,
+    `[${label}] pointer-down/move over the decorative empty canvas must not pan`);
   assert.ok(text(byId('journey-empty-map')).includes('Chưa có sơ đồ Journey'), `[${label}] empty-state is honest`);
   assert.ok(text(byId('journey-empty-map')).includes('Chưa đủ hồ sơ để xác định công đoạn chi tiết.'),
     `[${label}] explains why the Journey cannot yet be determined`);

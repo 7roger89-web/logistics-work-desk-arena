@@ -127,13 +127,20 @@ export default function JourneyMap({
   }, []);
   useEffect(() => {
     const el = vp.current; if (!el) return;
-    const wheel = (e: WheelEvent) => { e.preventDefault(); const r = el.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - r.left, e.clientY - r.top); };
+    const wheel = (e: WheelEvent) => {
+      // An empty Journey is a decorative chart, not an interactive canvas.
+      // Let the page scroll normally instead of zooming an invisible layer.
+      if (!nodes.length) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - r.left, e.clientY - r.top);
+    };
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
-  }, [zoomAt, collapsed]);
+  }, [zoomAt, collapsed, nodes.length]);
   useEffect(() => () => cleanupDrag.current?.(), []);
   const pan = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (!nodes.length || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[data-no-pan]')) return;
     cleanupDrag.current?.();
     const sx = e.clientX, sy = e.clientY, origin = tfRef.current; moved.current = false;
@@ -163,10 +170,10 @@ export default function JourneyMap({
   return (
     <div
       ref={vp}
-      className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')}
-      onPointerDown={pan}
+      className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', !nodes.length ? 'cursor-default' : dragging ? 'cursor-grabbing' : 'cursor-grab')}
+      onPointerDown={nodes.length ? pan : undefined}
       data-testid="journey-map-viewport"
-      aria-label="Journey Map, kéo để di chuyển, cuộn để zoom"
+      aria-label={nodes.length ? 'Journey Map, kéo để di chuyển, cuộn để zoom' : 'Journey Map trống, không có công đoạn để di chuyển'}
       style={{ backgroundImage: `url(${chartPaperUrl}), linear-gradient(180deg, #cfdfec 0%, #e4ebf4 48%, #c4d7e3 100%)` }}
     >
       {topRightOverlay}

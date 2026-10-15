@@ -158,7 +158,7 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); touch-action: none;
 }
 .journey-zero-map-first { position: relative; width: 100%; }
-.journey-zero-map-first .journey-map-viewport { cursor: default; touch-action: auto; }
+.journey-zero-map-first.journey-map-first .journey-canvas { cursor: default; touch-action: auto; }
 .journey-zero-map-first .journey-map-hint,
 .journey-zero-map-first .journey-zoom-bar { display: none; }
 .journey-zero-notice {

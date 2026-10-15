@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Focused LOGI-APP-RENEWAL-01 repair evidence against isolated staging.
+"""Focused LOGI-APP-RENEWAL-01 zero-node/pointer and T6 browser evidence.
 
 Run after rebuilding component/dist and starting scripts/logi199_t6_staging_app.py
-on port 9501. The only write is an isolated Mongomock on-board-date save/readback;
-Receivables validation uses an empty amount and never creates a payment.
+on port 9501. The only business write is the required isolated Mongomock
+T6-FCL on-board-date save/readback. Zero-node CTA testing is read-only; no
+Receivables/payment flow runs in this bounded capture.
 """
 from __future__ import annotations
 
@@ -18,12 +19,14 @@ from typing import Any
 from playwright.sync_api import Browser, Locator, Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = Path(__file__).resolve().parent
-BEFORE = OUT / "before" / "baseline_metrics.json"
+EVIDENCE_ROOT = Path(__file__).resolve().parent
+OUT = EVIDENCE_ROOT / "current-source"
+BEFORE = EVIDENCE_ROOT / "before" / "baseline_metrics.json"
 URL = os.environ.get("LOGI_STAGING_URL", "http://127.0.0.1:9501")
 DATE_VALUE = "2026-10-04"
 CHROMIUM = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE", "/tmp/chromium")
 CHROMIUM_ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--single-process", "--no-zygote"]
+ZERO_SHIPMENT_ID = "SEA-188"
 
 
 def sha256(path: Path) -> str | None:
@@ -57,7 +60,7 @@ def map_transform(page: Page) -> dict[str, Any]:
     )
 
 
-def open_lot(page: Page) -> None:
+def open_shipment(page: Page, shipment_id: str) -> None:
     page.goto(URL, wait_until="domcontentloaded", timeout=60000)
     page.locator(".logi-shell").first.wait_for(state="visible", timeout=120000)
     page.wait_for_timeout(1000)
@@ -69,13 +72,17 @@ def open_lot(page: Page) -> None:
         page.get_by_test_id("shipment-period-tat-ca").first.click(timeout=7000)
     except Exception:
         pass
-    lot_link = page.locator('a[href="/lo-hang/T6-FCL"]').first
+    lot_link = page.locator(f'a[href="/lo-hang/{shipment_id}"]').first
     lot_link.wait_for(state="attached", timeout=25000)
     lot_link.dispatch_event("click")
     page.get_by_test_id("shipment-journey").wait_for(state="visible", timeout=45000)
     page.wait_for_timeout(500)
     page.evaluate("window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0")
     page.wait_for_timeout(200)
+
+
+def open_lot(page: Page) -> None:
+    open_shipment(page, "T6-FCL")
 
 
 def open_receivables(page: Page) -> None:
@@ -153,7 +160,9 @@ def capture_desktop(browser: Browser, report: dict[str, Any]) -> None:
         record["map_top_y_delta_px_vs_before"] = round(map_box["y"] - before_map["y"], 2)
     record["attention_text"] = attention.inner_text().strip()
     record["toolbar_text"] = toolbar.inner_text().strip()
-    page.screenshot(path=str(OUT / "desktop-01-journey-initial.png"))
+    if record["node_count"] != 11:
+        raise AssertionError(f"T6-FCL expected 11 Journey nodes, got {record['node_count']}.")
+    page.screenshot(path=str(OUT / "desktop-t6-fcl-journey-initial.png"))
 
     node = page.get_by_test_id("journey-node-on-board")
     node.click(timeout=12000)
@@ -166,7 +175,7 @@ def capture_desktop(browser: Browser, report: dict[str, Any]) -> None:
         and box(bubble)["x"] >= map_box["x"] - 1
         and box(bubble)["x"] + box(bubble)["width"] <= map_box["x"] + map_box["width"] + 1
     )
-    page.screenshot(path=str(OUT / "desktop-02-node-bubble.png"))
+    page.screenshot(path=str(OUT / "desktop-t6-fcl-node-bubble.png"))
     page.get_by_test_id("journey-bubble-task-stage").click(timeout=10000)
     modal = page.get_by_test_id("journey-modal")
     modal.wait_for(state="visible", timeout=10000)
@@ -175,7 +184,7 @@ def capture_desktop(browser: Browser, report: dict[str, Any]) -> None:
     record["task_modal_center_error_px"] = round(
         abs((modal_box["x"] + modal_box["width"] / 2) - 720), 2
     ) if modal_box else None
-    page.screenshot(path=str(OUT / "desktop-03-task-popup.png"))
+    page.screenshot(path=str(OUT / "desktop-t6-fcl-task-popup.png"))
     record["page_errors"] = errors
     report["desktop"] = record
     # Keep the page open until the shared single-process Chromium browser is closed.
@@ -319,12 +328,16 @@ def capture_mobile(browser: Browser, report: dict[str, Any]) -> None:
     record: dict[str, Any] = {
         "viewport": [390, 844],
         "map_box": map_box,
+        "node_count": page.locator('[data-testid^="journey-node-"]').count(),
+        "edge_count": page.locator('[data-testid="journey-map-transform"] svg path').count(),
         "horizontal_overflow": viewport_overflow(page)["horizontalOverflow"],
         "targets": mobile_targets(page),
         "page_errors": errors,
     }
+    if record["node_count"] != 11:
+        raise AssertionError(f"T6-FCL expected 11 mobile Journey nodes, got {record['node_count']}.")
     report["mobile_journey"] = record
-    page.screenshot(path=str(OUT / "mobile-01-journey-initial.png"))
+    page.screenshot(path=str(OUT / "mobile-t6-fcl-journey-initial.png"))
 
     # Exercise adjacent controls with actual touch taps and make sure each stays in its lane.
     zoom_level = page.get_by_test_id("journey-zoom-level")
@@ -427,10 +440,185 @@ def capture_mobile(browser: Browser, report: dict[str, Any]) -> None:
     readback_value = readback.input_value()
     report["mobile_readback"] = {"after_reload": True, "date": readback_value, "expected_date": DATE_VALUE}
     report["TAP_SAVE_READBACK_VERDICT"] = "PASS" if report["mobile_stage_save"]["save_tapped"] and readback_value == DATE_VALUE else "FAILED"
-    page.screenshot(path=str(OUT / "mobile-05-onboard-touch-readback.png"))
+    page.screenshot(path=str(OUT / "mobile-t6-fcl-onboard-touch-readback.png"))
     record["page_errors"] = errors
     record["horizontal_overflow_after_reload"] = viewport_overflow(page)["horizontalOverflow"]
     report["mobile_journey"] = record
+
+
+def capture_zero_node(
+    browser: Browser,
+    report: dict[str, Any],
+    *,
+    label: str,
+    width: int,
+    height: int,
+    mobile: bool,
+) -> None:
+    """Capture the real canonical SEA-188 zero-node projection at one viewport."""
+    page = browser.new_page(
+        viewport={"width": width, "height": height},
+        is_mobile=mobile,
+        has_touch=mobile,
+        device_scale_factor=1,
+    )
+    errors: list[str] = []
+    requests: list[dict[str, str]] = []
+    page.on("pageerror", lambda error: errors.append(str(error)[:240]))
+    page.on("request", lambda request: requests.append({"method": request.method, "url": request.url}))
+    open_shipment(page, ZERO_SHIPMENT_ID)
+
+    shell = page.get_by_test_id("journey-zero-map-first")
+    viewport = page.get_by_test_id("journey-map-viewport")
+    notice = page.get_by_test_id("journey-empty-map")
+    profile = page.get_by_test_id("journey-zero-profile")
+    profile_state = page.get_by_test_id("journey-zero-profile-state")
+    next_action = page.get_by_test_id("journey-zero-next-action")
+    cta = page.get_by_test_id("journey-zero-primary-cta")
+    shell_box = box(shell)
+    viewport_box = box(viewport)
+    notice_box = box(notice)
+    node_count = page.locator('[data-testid^="journey-node-"]').count()
+    cta_count = page.locator('[data-testid="journey-zero-primary-cta"]').count()
+    labelled_cta_count = page.locator("button").evaluate_all(
+        "els => els.filter(el => el.textContent.includes('BỔ SUNG HỒ SƠ')).length"
+    )
+    style = viewport.evaluate(
+        """el => {
+          const css = getComputedStyle(el);
+          return {cursor: css.cursor, touchAction: css.touchAction,
+            pointerEvents: css.pointerEvents, backgroundImage: css.backgroundImage};
+        }"""
+    )
+    background_image = str(style.get("backgroundImage") or "")
+    transform_before = map_transform(page)
+    overflow = viewport_overflow(page)
+    route_text = page.get_by_test_id("journey-compact-toolbar").inner_text().strip()
+
+    record: dict[str, Any] = {
+        "fixture": ZERO_SHIPMENT_ID,
+        "journey_shape": "canonical shipment with journey.nodes=[]",
+        "viewport": [width, height],
+        "zero_shell_box": shell_box,
+        "map_viewport_box": viewport_box,
+        "map_width_matches_zero_shell": bool(
+            shell_box and viewport_box and abs(shell_box["width"] - viewport_box["width"]) <= 1
+        ),
+        "notice_box": notice_box,
+        "computed_style": {
+            "cursor": style["cursor"],
+            "touchAction": style["touchAction"],
+            "pointerEvents": style["pointerEvents"],
+            "approved_vietnam_chart_data_image_loaded": "data:image/webp" in background_image,
+        },
+        "transform_before_pointer": transform_before,
+        "node_count": node_count,
+        "edge_count": page.locator('[data-testid="journey-map-transform"] svg path').count(),
+        "empty_state_text": notice.inner_text().strip(),
+        "profile_state_label": profile_state.inner_text().strip(),
+        "profile_status_visible": profile.is_visible(),
+        "server_projected_primary_action": next_action.inner_text().strip(),
+        "toolbar_text": route_text,
+        "unknown_phase_stays_unconfirmed": "Đang ở: Chưa xác định" in route_text,
+        "cta_count": cta_count,
+        "labelled_cta_count": labelled_cta_count,
+        "cta_text": cta.inner_text().strip(),
+        "horizontal_overflow": overflow["horizontalOverflow"],
+        "document_dimensions": overflow,
+        "page_errors": errors,
+    }
+    report[f"zero_node_{label}"] = record
+    if node_count != 0:
+        raise AssertionError(f"{ZERO_SHIPMENT_ID} expected zero Journey nodes, got {node_count}.")
+    if cta_count != 1 or labelled_cta_count != 1 or not record["cta_text"].startswith("BỔ SUNG HỒ SƠ"):
+        raise AssertionError(f"{ZERO_SHIPMENT_ID} must render exactly one truthful BỔ SUNG HỒ SƠ CTA.")
+    if not record["profile_status_visible"] or not record["profile_state_label"] or not record["server_projected_primary_action"]:
+        raise AssertionError("Fresh-shipment profile status/primary action is missing from the zero state.")
+    if "Chưa có sơ đồ Journey" not in record["empty_state_text"] or node_count != 0:
+        raise AssertionError("Zero-state must be truthful and must not fabricate Journey nodes.")
+    if not record["map_width_matches_zero_shell"]:
+        raise AssertionError("Zero-node Journey map viewport must fill its map-first shell.")
+    if record["computed_style"]["cursor"] != "default" or record["computed_style"]["touchAction"] != "auto":
+        raise AssertionError(f"Empty chart viewport is still gesture-styled: {record['computed_style']!r}.")
+    if not record["computed_style"]["approved_vietnam_chart_data_image_loaded"]:
+        raise AssertionError("Owner-selected Vietnam chart data-image is not rendered on the zero-node map.")
+    if not record["unknown_phase_stays_unconfirmed"]:
+        raise AssertionError("Zero-node toolbar must keep the current Journey phase unconfirmed.")
+
+    page.screenshot(path=str(OUT / f"{label}-zero-node-initial.png"))
+
+    # Exercise real pointer events on a blank chart corner, away from the status card.
+    page.evaluate(
+        """() => {
+          window.__logiZeroPointerEvents = [];
+          const collect = event => {
+            const inMap = event.composedPath().some(node =>
+              node instanceof Element && node.getAttribute('data-testid') === 'journey-map-viewport');
+            if (inMap) window.__logiZeroPointerEvents.push({type: event.type, pointerType: event.pointerType || null});
+          };
+          ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'].forEach(type =>
+            window.addEventListener(type, collect, true));
+        }"""
+    )
+    if not viewport_box:
+        raise AssertionError("Zero-node map viewport has no rendered box.")
+    start_x = int(viewport_box["x"] + 12)
+    start_y = int(viewport_box["y"] + 12)
+    page.mouse.move(start_x, start_y)
+    page.mouse.down()
+    page.mouse.move(start_x + 80, start_y + 48, steps=6)
+    page.mouse.up()
+    page.wait_for_timeout(180)
+    pointer_events = page.evaluate("window.__logiZeroPointerEvents || []")
+    transform_after = map_transform(page)
+    pointer_types = sorted({event["pointerType"] for event in pointer_events if event["pointerType"]})
+    pointer_no_pan = bool(
+        any(event["type"] == "pointerdown" for event in pointer_events)
+        and any(event["type"] == "pointermove" for event in pointer_events)
+        and any(event["type"] == "pointerup" for event in pointer_events)
+        and transform_after["raw"] == transform_before["raw"]
+    )
+    record["pointer_test"] = {
+        "input": "Playwright mouse drag dispatching browser pointer events over decorative empty chart",
+        "pointer_types": pointer_types,
+        "observed_event_types": sorted({event["type"] for event in pointer_events}),
+        "transform_after_pointer": transform_after,
+        "transform_unchanged": transform_after["raw"] == transform_before["raw"],
+        "no_pan_verdict": "PASS" if pointer_no_pan else "FAILED",
+    }
+    report[f"zero_node_{label}"] = record
+    if not pointer_no_pan:
+        raise AssertionError(f"Pointer-down changed empty Journey map state: {record['pointer_test']!r}.")
+
+    request_start = len(requests)
+    if mobile:
+        cta.tap()
+    else:
+        cta.click()
+    workspace = page.get_by_test_id("journey-global-workspace")
+    editor = page.get_by_test_id("shipment-execution-profile")
+    workspace.wait_for(state="visible", timeout=15000)
+    editor.wait_for(state="visible", timeout=15000)
+    page.wait_for_timeout(300)
+    cta_requests = requests[request_start:]
+    non_read_http = [request for request in cta_requests if request["method"] not in ("GET", "HEAD", "OPTIONS")]
+    editor_in_workspace = workspace.locator('[data-testid="shipment-execution-profile"]').count() == 1
+    record["cta_editor_test"] = {
+        "opens_existing_execution_profile_editor": editor.is_visible() and editor_in_workspace,
+        "workspace_visible": workspace.is_visible(),
+        "url_after_cta": page.evaluate("location.pathname + location.search + location.hash"),
+        "non_read_http_requests_during_cta": non_read_http,
+        "no_non_read_http_request": not non_read_http,
+        "no_business_write_proof": "DOM acceptance asserts zero non-navigation write triggers for this CTA",
+    }
+    report[f"zero_node_{label}"] = record
+    if not record["cta_editor_test"]["opens_existing_execution_profile_editor"]:
+        raise AssertionError("Zero-node CTA did not open the existing Execution Profile editor.")
+    if non_read_http:
+        raise AssertionError(f"Zero-node CTA caused a non-read HTTP request: {non_read_http!r}.")
+    page.screenshot(path=str(OUT / f"{label}-zero-node-execution-profile-editor.png"))
+    record["page_errors"] = errors
+    report[f"zero_node_{label}"] = record
 
 
 def capture_receivables(browser: Browser, report: dict[str, Any]) -> None:
@@ -503,18 +691,24 @@ def capture_receivables(browser: Browser, report: dict[str, Any]) -> None:
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {
-        "goal": "LOGI-APP-RENEWAL-01 / LOGI-199-G2 bounded repair",
+        "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 zero-node and current-browser replay",
         "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
         "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
         "source_sha": source_sha(),
+        "capture_script_sha256": sha256(Path(__file__).resolve()),
         "dist_sha256": {
             "logi-shell.js": sha256(ROOT / "component/dist/logi-shell.js"),
             "logi-shell.css": sha256(ROOT / "component/dist/logi-shell.css"),
         },
         "staging_url": URL,
+        "capture_output_directory": str(OUT.relative_to(ROOT)),
+        "runtime": {"available": False},
         "touch_pan": {"verdict": "NOT_VERIFIED", "reason": "runtime not yet started"},
         "TOUCH_PAN_VERDICT": "NOT_VERIFIED",
         "TAP_SAVE_READBACK_VERDICT": "NOT_RUN",
+        "zero_node_desktop": {"verdict": "NOT_RUN"},
+        "zero_node_mobile": {"verdict": "NOT_RUN"},
+        "CAPTURE_VERDICT": "NOT_RUN",
     }
     if BEFORE.is_file():
         report["before"] = json.loads(BEFORE.read_text(encoding="utf-8"))
@@ -529,7 +723,8 @@ def main() -> int:
             try:
                 capture_desktop(browser, report)
                 capture_mobile(browser, report)
-                capture_receivables(browser, report)
+                capture_zero_node(browser, report, label="desktop", width=1440, height=900, mobile=False)
+                capture_zero_node(browser, report, label="mobile", width=390, height=844, mobile=True)
             finally:
                 browser.close()
     except Exception as error:
@@ -539,9 +734,33 @@ def main() -> int:
             report["touch_pan"]["reason"] = "capture failed before touch evidence" if runtime_available else "no usable browser runtime"
         if report["TAP_SAVE_READBACK_VERDICT"] == "NOT_RUN":
             report["TAP_SAVE_READBACK_VERDICT"] = "FAILED" if runtime_available else "NOT_VERIFIED"
+        for key in ("zero_node_desktop", "zero_node_mobile"):
+            if report.get(key, {}).get("verdict") == "NOT_RUN":
+                report[key]["verdict"] = "FAILED" if runtime_available else "NOT_VERIFIED"
+    checks = {
+        "desktop_populated_11_nodes": report.get("desktop", {}).get("node_count") == 11,
+        "mobile_populated_11_nodes": report.get("mobile_journey", {}).get("node_count") == 11,
+        "mobile_touch_pan": report.get("TOUCH_PAN_VERDICT") == "PASS",
+        "mobile_save_reload_readback": report.get("TAP_SAVE_READBACK_VERDICT") == "PASS",
+    }
+    for label in ("desktop", "mobile"):
+        zero = report.get(f"zero_node_{label}", {})
+        checks[f"{label}_zero_node_empty_map"] = (
+            zero.get("node_count") == 0
+            and zero.get("computed_style", {}).get("cursor") == "default"
+            and zero.get("computed_style", {}).get("touchAction") == "auto"
+            and zero.get("pointer_test", {}).get("no_pan_verdict") == "PASS"
+            and zero.get("cta_editor_test", {}).get("opens_existing_execution_profile_editor") is True
+            and zero.get("cta_editor_test", {}).get("no_non_read_http_request") is True
+        )
+    report["acceptance_checks"] = checks
+    report["CAPTURE_VERDICT"] = "PASS" if checks and all(checks.values()) and not report.get("runtime_error") else "FAILED"
+    for label in ("desktop", "mobile"):
+        if f"zero_node_{label}" in report and "verdict" not in report[f"zero_node_{label}"]:
+            report[f"zero_node_{label}"]["verdict"] = "PASS" if checks.get(f"{label}_zero_node_empty_map") else "FAILED"
     (OUT / "metrics.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 1 if report.get("TOUCH_PAN_VERDICT") == "FAILED" or report.get("TAP_SAVE_READBACK_VERDICT") == "FAILED" else 0
+    return 0 if report["CAPTURE_VERDICT"] == "PASS" else 1
 
 
 if __name__ == "__main__":
