@@ -1,12 +1,10 @@
 {
-  "commit": "acc13d6accdb22309e9387a2b2a0a237a8fb4cc4",
+  "commit": "299461b1cb23a3e0ca8c0d42662fda1d82123b0b",
   "routes": {
     "/": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -19,12 +17,8 @@
         "textDigest": "Thứ Năm, 15/10/2026 · Preview / StagingƯu tiên bây giờ: LO-0306 — Khai tờ khai n"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -39,10 +33,8 @@
     },
     "/dieu-hanh": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -60,12 +52,8 @@
         "textDigest": "Điều hành vận hànhChọn đúng việc cần quản lý can thiệp từ cùng nguồn việc của Su"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -84,10 +72,8 @@
     },
     "/lo-hang": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -98,12 +84,8 @@
         "textDigest": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiế"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -116,10 +98,8 @@
     },
     "/lo-hang/T6-FCL": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -137,12 +117,8 @@
         "textDigest": "TTRƯỜNG THÀNHTrường Thành Logistics · Nội bộLô hàng T6-FCLChưa xác nhận hình thứ"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -162,10 +138,8 @@
     },
     "/tao-lo-moi": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -176,12 +150,8 @@
         "textDigest": "Về danh sách lôTạo Lô Hàng MớiBắt đầu từ báo giá đã chốt để tự điền, rồi chỉ bổ "
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -194,10 +164,8 @@
     },
     "/khach-hang": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -208,12 +176,8 @@
         "textDigest": "Khách HàngTìm theo mã · tên · MST · SĐT · email — tạo, sửa, lưu trữ và import qu"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -226,10 +190,8 @@
     },
     "/ngu-canh-doi-tac": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -242,12 +204,8 @@
         "textDigest": "Đại Lý Trường ThànhQuản lý hồ sơ đại lý của Trường Thành và xem các lô hàng, chứ"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -262,10 +220,8 @@
     },
     "/kinh-doanh-bao-gia": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -276,12 +232,8 @@
         "textDigest": "Báo GiáBáo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -294,10 +246,8 @@
     },
     "/hop-dong": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -308,12 +258,8 @@
         "textDigest": "Hợp đồngHDMB · HDNT · PL — tìm theo số hợp đồng, khách, công ty, đại lý Tạo hợp "
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -326,10 +272,8 @@
     },
     "/tai-chinh/thu-tien": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -342,12 +286,8 @@
         "textDigest": "Thu tiền khách · Phải thuToàn bộ phải thu khách hàng theo lô — đọc từ sổ tài chí"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -365,10 +305,8 @@
     },
     "/tai-chinh/cong-no-doi-tac": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -379,12 +317,8 @@
         "textDigest": "Thanh toán đối tác · Phải trảToàn bộ phải trả đối tác theo lô — đọc từ sổ tài ch"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -397,10 +331,8 @@
     },
     "/tai-chinh/doi-soat": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -411,12 +343,8 @@
         "textDigest": "Đối soátNghĩa vụ đã được phân bổ tới đâu, và khoản tiền nào chưa được phân bổ — "
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -429,10 +357,8 @@
     },
     "/bao-cao-ceo": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -443,12 +369,8 @@
         "textDigest": "Báo cáo CEOTóm tắt vị thế hiện tại từ dữ liệu Logistics đã có. Chỉ đọc; tiền tệ "
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -461,10 +383,8 @@
     },
     "/tra-cuu-thue": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -475,12 +395,8 @@
         "textDigest": "BIỂU THUẾGõ mã HS hoặc tên hàng; app chỉ query các dòng khớp từ SQLite có chỉ mụ"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -493,10 +409,8 @@
     },
     "/tra-cuu-chinh-sach": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -507,12 +421,8 @@
         "textDigest": "Tra cứu chính sáchCác bộ NotebookLM chính sách dùng chung của công ty. Chọn một "
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -525,10 +435,8 @@
     },
     "/thanh-toan-quoc-te": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -544,12 +452,8 @@
         "textDigest": "Thanh toán quốc tếCông cụ tính tham khảo. Không thực hiện chuyển tiền và không l"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -562,10 +466,8 @@
     },
     "/dich-thuat": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -576,12 +478,8 @@
         "textDigest": "Dịch ThuậtCông cụ dịch nhanh các cụm từ nghiệp vụ thường dùng khi trao đổi với n"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -594,10 +492,8 @@
     },
     "/so-tay": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -612,12 +508,8 @@
         "textDigest": "Sổ tay vận hànhTra cứu quy trình, chứng từ, mã dịch vụ và phân quyền — đúng theo"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -630,10 +522,8 @@
     },
     "/bieu-mau": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -644,12 +534,8 @@
         "textDigest": "Biểu mẫu Office do Admin tải lênTải một tệp .docx/.xlsx thông thường, xác nhận v"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -662,10 +548,8 @@
     },
     "/quy-trinh": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -676,12 +560,8 @@
         "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -694,10 +574,8 @@
     },
     "/nguoi-dung": {
       "desktop": {
-        "clippedControls": [
-          "-1..0:Skip to main content"
-        ],
-        "clippedCount": 1,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -714,12 +592,8 @@
         "textDigest": "Người dùng & Vai tròQuản lý tài khoản, vai trò và trạng thái hoạt động — đúng va"
       },
       "mobile": {
-        "clippedControls": [
-          "-1..0:Skip to main content",
-          "0..78:Tổng quan",
-          "312..390:Thêm"
-        ],
-        "clippedCount": 3,
+        "clippedControls": [],
+        "clippedCount": 0,
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
@@ -731,55 +605,12 @@
       }
     }
   },
-  "failures": [
-    "desktop /: clipped controls -1..0:Skip to main content",
-    "desktop /dieu-hanh: clipped controls -1..0:Skip to main content",
-    "desktop /lo-hang: clipped controls -1..0:Skip to main content",
-    "desktop /lo-hang/T6-FCL: clipped controls -1..0:Skip to main content",
-    "desktop /tao-lo-moi: clipped controls -1..0:Skip to main content",
-    "desktop /khach-hang: clipped controls -1..0:Skip to main content",
-    "desktop /ngu-canh-doi-tac: clipped controls -1..0:Skip to main content",
-    "desktop /kinh-doanh-bao-gia: clipped controls -1..0:Skip to main content",
-    "desktop /hop-dong: clipped controls -1..0:Skip to main content",
-    "desktop /tai-chinh/thu-tien: clipped controls -1..0:Skip to main content",
-    "desktop /tai-chinh/cong-no-doi-tac: clipped controls -1..0:Skip to main content",
-    "desktop /tai-chinh/doi-soat: clipped controls -1..0:Skip to main content",
-    "desktop /bao-cao-ceo: clipped controls -1..0:Skip to main content",
-    "desktop /tra-cuu-thue: clipped controls -1..0:Skip to main content",
-    "desktop /tra-cuu-chinh-sach: clipped controls -1..0:Skip to main content",
-    "desktop /thanh-toan-quoc-te: clipped controls -1..0:Skip to main content",
-    "desktop /dich-thuat: clipped controls -1..0:Skip to main content",
-    "desktop /so-tay: clipped controls -1..0:Skip to main content",
-    "desktop /bieu-mau: clipped controls -1..0:Skip to main content",
-    "desktop /quy-trinh: clipped controls -1..0:Skip to main content",
-    "desktop /nguoi-dung: clipped controls -1..0:Skip to main content",
-    "mobile /: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /dieu-hanh: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /lo-hang: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /lo-hang/T6-FCL: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tao-lo-moi: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /khach-hang: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /ngu-canh-doi-tac: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /kinh-doanh-bao-gia: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /hop-dong: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tai-chinh/thu-tien: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tai-chinh/cong-no-doi-tac: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tai-chinh/doi-soat: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /bao-cao-ceo: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tra-cuu-thue: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /tra-cuu-chinh-sach: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /thanh-toan-quoc-te: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /dich-thuat: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /so-tay: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /bieu-mau: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /quy-trinh: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm",
-    "mobile /nguoi-dung: clipped controls -1..0:Skip to main content | 0..78:Tổng quan | 312..390:Thêm"
-  ],
+  "failures": [],
   "redirects": {
     "/viec-can-xu-ly": "/lo-hang",
     "/theo-doi": "/lo-hang",
     "/thoa-thuan-ban-giao": "/kinh-doanh-bao-gia"
   },
   "distinctSurfaces": 21,
-  "verdict": "T5_AUDIT_FAIL"
+  "verdict": "T5_AUDIT_PASS"
 }
