@@ -166,11 +166,16 @@ export default function ShipmentAttachments({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [category, setCategory] = useState(effective.categories[0]?.id ?? "other");
-  const [showAllContext, setShowAllContext] = useState(false);
   const categoryContext = contextCategories?.join("|") || "";
+  // Issue #197 — undefined means the whole-lot surface. An explicit [] means
+  // "this stage has no document category", which must stay scoped-empty rather
+  // than silently falling back to every file in the shipment.
+  const scopedContext = Array.isArray(contextCategories);
+  const categoryOptions = scopedContext
+    ? effective.categories.filter((item) => (contextCategories ?? []).includes(item.id))
+    : effective.categories;
   useEffect(() => {
-    setShowAllContext(false);
-    if (contextCategories?.length) setCategory(contextCategories[0]);
+    setCategory(categoryOptions[0]?.id ?? "");
   }, [shipmentId, categoryContext]);
   const [file, setFile] = useState<File | null>(null);
   const [pendingUpload, setPendingUpload] = useState("");
@@ -205,11 +210,12 @@ export default function ShipmentAttachments({
     setSelected([]);
     setPendingReview("");
     setReviewError("");
-  }, [shipmentId]);
+  }, [shipmentId, categoryContext]);
 
   const reviewableRows = useMemo(
-    () => (Array.isArray(attachments) ? attachments : []).filter((item) => item.reviewSelectable === true),
-    [attachments]
+    () => scopedContext ? [] : (Array.isArray(attachments) ? attachments : [])
+      .filter((item) => item.reviewSelectable === true),
+    [attachments, scopedContext]
   );
 
   // The pending review settles ONLY on the outcome carrying the requestId this
@@ -401,18 +407,19 @@ export default function ShipmentAttachments({
   };
 
   const allRows = Array.isArray(attachments) ? attachments : [];
-  const rows = contextCategories && !showAllContext ? allRows.filter(item => contextCategories.includes(item.category)) : allRows;
+  const rows = scopedContext
+    ? allRows.filter(item => (contextCategories ?? []).includes(item.category))
+    : allRows;
 
   return (
     <section className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5" data-testid="shipment-attachments">
-      {contextCategories && <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-        <span>{showAllContext ? "Tất cả tệp của lô" : "Tệp liên quan công đoạn"}</span>
-        <button type="button" onClick={() => setShowAllContext(v => !v)} className="touch-target rounded-lg border px-3 py-2 font-bold">{showAllContext ? "Về công đoạn" : `Xem toàn bộ tệp (${allRows.length})`}</button>
-      </div>}
+      {scopedContext ? <div className="mb-2 text-[12.5px] font-bold text-slate-600">
+        Chứng từ công đoạn
+      </div> : null}
       <SectionTitle
         icon={<Paperclip size={19} className="text-[#1e5aa8]" />}
-        title="Tệp đính kèm lô hàng"
-        sub={`Tệp thật của lô: nội dung tệp được lưu trong ${storageLabel}; thông tin mô tả được lưu cùng hồ sơ lô.`}
+        title={scopedContext ? "Chứng từ liên quan" : "Tệp đính kèm lô hàng"}
+        sub={scopedContext ? "Chỉ hiện tệp thuộc công đoạn đang mở." : `Tệp thật của lô được lưu trong ${storageLabel}.`}
         right={
           <ToneBadge tone={rows.length > 0 ? "green" : "gray"} size="sm">
             {rows.length} tệp
@@ -420,7 +427,7 @@ export default function ShipmentAttachments({
         }
       />
 
-      {effective.allowUpload ? (
+      {effective.allowUpload && (!scopedContext || categoryOptions.length > 0) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
           <label className="block min-w-0">
             <span className="block text-[13px] font-bold text-slate-600 mb-1">Loại chứng từ</span>
@@ -431,7 +438,7 @@ export default function ShipmentAttachments({
               onChange={(event) => setCategory(event.target.value)}
               className={inputCls()}
             >
-              {effective.categories.map((item) => (
+              {categoryOptions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
                 </option>
@@ -459,7 +466,7 @@ export default function ShipmentAttachments({
               )}
             />
           </label>
-          <div
+          {!scopedContext && <div
             tabIndex={0}
             role="group"
             aria-label="Dán ảnh JPEG hoặc PNG từ clipboard vào tệp đính kèm"
@@ -475,15 +482,19 @@ export default function ShipmentAttachments({
             <p className="mt-0.5 break-words">
               Bấm vào khung này rồi nhấn Ctrl+V/Cmd+V với ảnh JPEG/PNG. Hệ thống chỉ chọn tệp, không tự tải lên.
             </p>
-          </div>
+          </div>}
         </div>
+      ) : effective.allowUpload && scopedContext ? (
+        <p className="text-[13.5px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5" data-testid="attachment-no-context-category">
+          Công đoạn này chưa có loại chứng từ để tải lên.
+        </p>
       ) : (
         <p className="text-[13.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5" data-testid="attachment-readonly">
-          Vai trò hiện tại chỉ được xem và tải tệp đính kèm — không được tải lên. Cần quyền sales_write.
+          Tài khoản hiện tại chỉ được xem và tải tệp.
         </p>
       )}
 
-      {effective.allowUpload && (
+      {effective.allowUpload && (!scopedContext || categoryOptions.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -496,7 +507,9 @@ export default function ShipmentAttachments({
             )}
           >
             {pendingUpload ? <LoaderCircle size={17} className="animate-spin" /> : <CloudUpload size={17} />}
-            {pendingUpload ? `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…` : `LƯU VÀO ${storageLabel.toUpperCase()}`}
+            {pendingUpload
+              ? (scopedContext ? "ĐANG LƯU…" : `ĐANG LƯU VÀO ${storageLabel.toUpperCase()}…`)
+              : (scopedContext ? "TẢI LÊN CHỨNG TỪ" : `LƯU VÀO ${storageLabel.toUpperCase()}`)}
           </button>
           {file && (
             <span data-testid="attachment-selected-file" className="text-[13px] text-slate-600 min-w-0 break-words">
@@ -530,7 +543,7 @@ export default function ShipmentAttachments({
 
       {rows.length === 0 ? (
         <p className="mt-3 text-slate-500 text-[14px]" data-testid="attachment-empty">
-          Lô chưa có tệp đính kèm nào.
+          {scopedContext ? "Chưa có chứng từ thuộc công đoạn này." : "Lô chưa có tệp đính kèm nào."}
         </p>
       ) : (
         <ul className="mt-3 space-y-2" data-testid="attachment-list">
@@ -546,7 +559,7 @@ export default function ShipmentAttachments({
                   finger-sized affordance for the files this run can read. A
                   non-selectable file stays visible with its honest reason and
                   is never implied to be damaged. */}
-              {item.reviewSelectable === true ? (
+              {!scopedContext && item.reviewSelectable === true ? (
                 <label
                   className="inline-flex items-center gap-2 shrink-0 cursor-pointer touch-target min-h-[44px] px-1"
                   data-testid="attachment-review-toggle"
@@ -609,18 +622,18 @@ export default function ShipmentAttachments({
         </ul>
       )}
 
-      <DocumentReviewPanel
+      {!scopedContext && <DocumentReviewPanel
         pendingReview={pendingReview}
         selectedCount={selected.length}
         reviewableCount={reviewableRows.length}
         reviewError={reviewError}
         review={review}
         onReview={startDocumentReview}
-      />
+      />}
 
-      <p className="mt-3 text-[12.5px] text-slate-500">
+      {!scopedContext && <p className="mt-3 text-[12.5px] text-slate-500">
         Tệp trùng trong cùng lô không được lưu bản sao lần hai. Tệp giữ nguyên quyền riêng tư trong kho chứng từ — hệ thống không tạo liên kết công khai.
-      </p>
+      </p>}
     </section>
   );
 }

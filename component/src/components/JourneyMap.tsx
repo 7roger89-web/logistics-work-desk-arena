@@ -72,9 +72,10 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;
-    // The demo's desktop fit is exact; small screens retain readable cards and
-    // use pan rather than scaling eleven labels down to illegible text.
-    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), w < 600 ? 0.65 : 0.3, 1.15);
+    // Owner 2026-10-13 (#198): the 340px left-column map must fit the complete
+    // Journey, so zoom out to 0.25. LOGI-199 T5: non-sea grids size the canvas
+    // (canvasWidth) to their real nodes so they stay readable.
+    const k = clamp(Math.min((w - 32) / canvasWidth, (h - 32) / canvasHeight), 0.25, 1.15);
     setTf({ k, x: (w - canvasWidth * k) / 2, y: Math.max(12, (h - canvasHeight * k) / 2) });
   }, [canvasHeight, canvasWidth]);
   useEffect(() => {

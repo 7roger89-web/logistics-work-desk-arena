@@ -113,6 +113,10 @@ body {
    strip instead of the 451px right rail: full width, natural height. */
 .journey-side.journey-compact-side { flex: none; width: 100%; min-width: 0; max-width: none; height: auto; }
 .journey-split-wide .journey-side { width: 44%; min-width: 600px; max-width: 860px; }
+/* Owner correction 2026-10-13 — persistent split: small Journey map left,
+   big business content right. No toggle, no compact default. */
+.journey-split-small-map .journey-canvas { flex: none; width: 340px; }
+.journey-split-small-map .journey-side { flex: 1; width: auto; min-width: 0; max-width: none; }
 .journey-rail { width: 208px; flex-shrink: 0; overflow: auto; border-right: 1px solid #cbd5e1; background: white; }
 .journey-split-collapsed .journey-side { flex: 1; width: auto; max-width: none; }
 .journey-canvas { background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 22px 22px; touch-action: none; border-radius: 12px; border: 1px solid #e2e8f0; }

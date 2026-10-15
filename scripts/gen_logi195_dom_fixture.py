@@ -7,8 +7,9 @@ persistence and the real bounded projections).
 
 Two shipments are baked in:
   SEA-160  — the canonical populated Journey (11 nodes), WITH customer_id.
-  SEA-195  — the same shape but WITHOUT customer_id, so the CUSTOMER_SELF
-             recovery path is exercised against real backend truth.
+  SEA-195  — the same shape but WITHOUT customer_id while keeping the exact
+             master customer name, so Issue #197 proves one-click legacy
+             identity repair instead of asking for the same customer twice.
 
 The picker catalog is recomputed with the REAL server function
 ``core.shipment_document_catalog.project_catalog`` with
@@ -53,14 +54,15 @@ def main() -> int:
     doc.pop("version", None)
     assert save_shipment_atomic(doc, actor="issue195-browser-fixture")
 
-    # The customer-less twin: identical journey shape, but only a typed name
-    # with NO canonical customer_id — the real reachable state the CUSTOMER_SELF
-    # identity gate guards (a typed name never becomes a legal identity).
+    # Legacy name-only twin: the canonical id is missing, but the stored name
+    # still exactly identifies ONE customer master. Issue #197 must reuse that
+    # identity on the commercial-flow save instead of forcing a second picker.
     doc2 = helper["document"]()
     doc2["id"] = "SEA-195"
     doc2.pop("version", None)
     doc2.pop("customer_id", None)
-    doc2["customer"] = "Khách lẻ chưa vào danh bạ"
+    doc2["customer"] = "An Phát JSC"
+    doc2["client"] = "An Phát JSC"
     assert save_shipment_atomic(doc2, actor="issue195-browser-fixture")
     st.session_state[vm.LAST_WRITES_KEY] = []
 
