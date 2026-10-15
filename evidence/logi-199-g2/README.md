@@ -10,6 +10,7 @@ This packet covers only the latest bounded repair on the fixed branch `arena/bb2
 - **Evidence provenance:** the displayed before/after screenshots and successful touch/save-readback run are from the previous workspace snapshot at source `d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba` and CSS hash `1b87f972…`. After resuming on the pinned branch, the new source commit was built and the final CSS stabilized at `6973bae4…`; its only difference from the immediately prior bundle is a generated utility selector absent from the current Journey/Receivables source. A fresh replay after workspace resume hit the login gate before the component loaded; current `TOUCH_PAN_VERDICT=NOT_VERIFIED` and `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`. Do not present the previous runtime PASS as current-source verification.
 - Current capture runtime: no usable Chromium executable/venv is present after workspace resume. No fresh mock write or real payment occurred in the failed replay. No auth bypass fixture or extra framework was added.
 - Full reconciled metrics and provenance: `metrics.json`; reproducible flow: `capture_journey_flow.py`; reviewer packet: `REVIEWER_HANDOFF.md`.
+- The source/dist/evidence commits are pushed to the fixed branch. The attempted GitHub issue #199 handoff comment was blocked with `Resource not accessible by integration`; the Independent Reviewer has not received a posted comment.
 
 ## A — Desktop G2 layout (1440×900)
 

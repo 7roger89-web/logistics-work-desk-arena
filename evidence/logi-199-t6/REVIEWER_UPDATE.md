@@ -1,6 +1,6 @@
 # LOGI-APP-RENEWAL-01 — current G2 repair reviewer handoff
 
-**Status:** prepared for Independent Review; not a verdict, Supervisor PASS, Owner UAT, or release approval. Historical integration preview notes are preserved at `evidence/logi-199-t6/historical/REVIEWER_UPDATE-pre-G2-repair-20261015.md`; their old branch/source/CI must not be treated as current.
+**Status:** evidence/dist packet is committed and pushed, but the Independent Reviewer has not received a GitHub issue comment. `gh issue comment 199` returned `Resource not accessible by integration`; restore/reconnect GitHub issue-comment permission in Arena. This is not a verdict, Supervisor PASS, Owner UAT, or release approval. Historical integration preview notes are preserved at `evidence/logi-199-t6/historical/REVIEWER_UPDATE-pre-G2-repair-20261015.md`; their old branch/source/CI must not be treated as current.
 
 - Fixed branch: `arena/bb243332-logistics-work-desk-arena`
 - Current source commit: `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7`

@@ -286,7 +286,7 @@
       "dom_acceptance_logi197_journey_clarity": "NOT_RUN: fixture generator stopped because system Python lacks streamlit; no product assertion executed",
       "full_pytest": "NOT_RUN by scope; no pytest runner in system Python",
       "capture_replay": "NOT_VERIFIED for exact current source; fresh staging rendered auth gate before shell and no current browser runtime was available after workspace resume",
-      "github_actions_ci": "NOT_TRIGGERED (no matching branch workflow)"
+      "github_actions_ci": "NOT_TRIGGERED (gh run list returned no runs for fixed branch)"
     }
   },
   "overengineering_evaluation": {
@@ -299,7 +299,7 @@
   },
   "release_gates": {
     "FULL_GOAL_199": "IN_PROGRESS",
-    "INDEPENDENT_REVIEW": "PENDING",
+    "INDEPENDENT_REVIEW": "PENDING; evidence packet committed/pushed, GitHub issue comment blocked",
     "SUPERVISOR_PASS": "NOT_CLAIMED",
     "OWNER_UAT": "NOT_RUN; only after Independent Review PASS",
     "NO_MERGE_MAIN": "YES",
@@ -308,5 +308,11 @@
   },
   "current_source_verification_status": "POST_COMMIT_TYPECHECK_BUILD_SCAN_DIST_SYNC_AND_FOCUSED_DOM_DONE__LIVE_TOUCH_AND_SAVE_READBACK_NOT_VERIFIED",
   "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
-  "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from all checked-in push filters"
+  "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from all checked-in push filters",
+  "publication_status": {
+    "branch_push": "PASS — current source/dist/evidence commits pushed to arena/bb243332-logistics-work-desk-arena",
+    "github_actions_ci": "NOT_TRIGGERED — gh run list for the fixed branch returned no runs; checked-in workflow filters omit it",
+    "independent_reviewer_comment": "BLOCKED_PERMISSION — gh issue comment 199 returned Resource not accessible by integration; packet is pushed but not posted",
+    "review_status": "PENDING; no Independent Review PASS or Supervisor PASS"
+  }
 }

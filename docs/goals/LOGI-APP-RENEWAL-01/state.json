@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/bb243332-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "POST_COMMIT_LOCAL_CHECKS_PASS__INDEPENDENT_REVIEW_HANDOFF_PENDING__CURRENT_TOUCH_NOT_VERIFIED",
+  "stage": "PUSHED__INDEPENDENT_REVIEW_COMMENT_BLOCKED__WAITING_FOR_GITHUB_PERMISSION",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -32,11 +32,11 @@
     "Independent reviewer gate PENDING; no independent reviewer/subagent capability in this executor host.",
     "Owner UAT and explicit production authorization remain closed. main merge is a production deploy trigger.",
     "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver.",
-    "Historical comment attempt: Resource not accessible by integration. Issue #199 update not published; chained PR #198 comment not attempted. Read/fetch/push still work. current handoff publication pending after push.",
     "Fixed branch arena/bb243332-logistics-work-desk-arena is not included in existing push-workflow branch filters; current GitHub Actions CI is NOT_TRIGGERED. Historical run 38683678222 at 1889d2a… must not be presented as current.",
     "Relevant legacy payment DOM oracles retain reproduced pre-repair failures: C2C Step 4 finance-tab assertion; payment-trust/amount-integrity LO-0308 fixture navigation preconditions. Their exact old-dist comparison is in evidence/logi-199-g2/metrics.json; payment logic was not changed.",
     "Current touch-pan/save-readback NOT_VERIFIED; historical successful capture is at d774… and is not current-source proof. Fresh staging replay stopped at auth gate before the shell; no write occurred.",
-    "Raw metrics JSON from the prior successful capture was lost during workspace-resume restore; metrics.json clearly labels historical values transcribed from preserved summary/screenshots and separates current verification."
+    "Raw metrics JSON from the prior successful capture was lost during workspace-resume restore; metrics.json clearly labels historical values transcribed from preserved summary/screenshots and separates current verification.",
+    "Current GitHub issue-comment write blocked: gh issue comment 199 returned Resource not accessible by integration. Evidence commits are pushed, but Independent Reviewer has not received a posted comment. Reconnect/restore GitHub issue-comment permission in Arena; no token or password requested."
   ],
   "existing_issue_dependencies": [
     197,
@@ -47,7 +47,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Push only arena/bb243332-logistics-work-desk-arena; query the fixed branch Actions status and send the exact evidence/hashes to the Independent Reviewer (record comment permission result). Keep current touch/save verdicts NOT_VERIFIED and prior PASS historical. Do not self-sign Supervisor PASS. Owner UAT only after Independent Review PASS; no merge to main or production deployment.",
+  "next": "The source/dist/evidence commits are pushed. GitHub issue-comment mutation for #199 is blocked by Resource not accessible by integration; ask the Owner to reconnect/restore GitHub issue-comment permission in Arena, then publish evidence/logi-199-g2/REVIEWER_HANDOFF.md and await Independent Review. Keep current touch/save verdicts NOT_VERIFIED; no Supervisor PASS. Owner UAT only after Independent Review PASS; NO_MERGE_MAIN=YES; NO_DEPLOY_PRODUCTION=YES.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -66,7 +66,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Bounded LOGI-199 G2 source 2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7 and evidence/dist 754a619f30affd1c18753b50f78d917bb2db5944 are committed on arena/bb243332-logistics-work-desk-arena. Post-commit typecheck/build/scan/dist-sync, hook transition, and zero-node DOM pass. C2C steps 1–3 pass; known baseline failures remain. Current touch-pan and staging save/readback are NOT_VERIFIED; prior d774… PASS is historical. Current GitHub Actions CI is NOT_TRIGGERED. Ready to submit the exact packet for Independent Review; no Supervisor PASS/Owner UAT.",
+  "current_subtask": "Current source/dist/evidence are committed and pushed on the fixed branch. Post-commit typecheck/build/scan/dist-sync and focused DOM results are recorded. Current live touch/save replay is NOT_VERIFIED; prior PASS is historical. gh issue comment 199 failed with Resource not accessible by integration, so evidence is pushed but not posted to the Independent Reviewer. GitHub comment permission needs attention; no merge/deploy/UAT.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -169,7 +169,7 @@
       "TAP_SAVE_READBACK_VERDICT": "PASS",
       "current_source_claim": false
     },
-    "github_actions_ci": "NOT_TRIGGERED — fixed Arena branch is not included in push-workflow branch filters; do not cite historical #38683678222 as current",
+    "github_actions_ci": "NOT_TRIGGERED; gh run list for fixed branch returned no runs and checked-in push-workflow filters omit the branch",
     "ci_run_id": null,
     "independent_review": "PENDING",
     "supervisor_pass": "NOT_CLAIMED",
@@ -199,7 +199,8 @@
       "payment_trust": "Fails before payment at missing LO-0308 fixture, same pre-repair baseline",
       "amount_integrity": "Fails before payment at LO-0308 navigation precondition, same pre-repair baseline",
       "logi197_journey_clarity": "NOT_RUN; fixture generator requires system-Python streamlit"
-    }
+    },
+    "branch_push": "PASS to origin/arena/bb243332-logistics-work-desk-arena"
   },
   "preview": {
     "port": 9501,
@@ -211,12 +212,15 @@
     "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST"
   },
   "publication_receipt": {
-    "historical_issue_199_comment": "BLOCKED_PERMISSION (previous integration-preview attempt; Resource not accessible by integration)",
+    "historical_issue_199_comment": "BLOCKED_PERMISSION (previous integration-preview attempt)",
     "historical_pr_198_comment": "NOT_ATTEMPTED_AFTER_HISTORICAL_ISSUE_DENIAL",
-    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md",
-    "current_issue_199_comment": "NOT_ATTEMPTED_YET; branch push and reviewer handoff pending",
-    "current_independent_review": "PENDING",
-    "review_closed": false
+    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md (committed and pushed)",
+    "current_issue_199_comment": "BLOCKED_PERMISSION — gh issue comment 199 returned Resource not accessible by integration",
+    "current_independent_review": "PENDING; evidence not posted as issue comment",
+    "review_closed": false,
+    "branch_push": "PASS — source/dist/evidence commits pushed to fixed branch",
+    "issue_comment_error": "Resource not accessible by integration",
+    "owner_action_needed": "Reconnect/restore GitHub issue-comment permission in Arena; no credential/token requested."
   },
   "session_branch": "arena/bb243332-logistics-work-desk-arena",
   "goal_state": {
@@ -285,7 +289,7 @@
     "historical_source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba"
   },
   "g2_repair_20261015": {
-    "status": "SOURCE_DIST_AND_FOCUSED_LOCAL_CHECKS_PASS__INDEPENDENT_REVIEW_PENDING__CURRENT_TOUCH_READBACK_NOT_VERIFIED",
+    "status": "SOURCE_DIST_FOCUSED_LOCAL_CHECKS_PASS__PUSHED__REVIEW_COMMENT_BLOCKED__LIVE_TOUCH_READBACK_NOT_VERIFIED",
     "scope": "Bounded A–E repair only; no G0–G5 redo, no product auth/payment/backend change.",
     "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
     "dist_sha256": {
@@ -340,7 +344,8 @@
       "payment_trust": "Fails before payment at missing LO-0308 fixture, same pre-repair baseline",
       "amount_integrity": "Fails before payment at LO-0308 navigation precondition, same pre-repair baseline",
       "logi197_journey_clarity": "NOT_RUN; fixture generator requires system-Python streamlit"
-    }
+    },
+    "publication_status": "PUSHED_TO_FIXED_BRANCH; gh issue comment blocked by integration permissions"
   },
   "overengineering_evaluation": {
     "SIMPLER_PATH": "Reuse existing component, capture script, and focused DOM checks; no auth fixture or new test framework.",
