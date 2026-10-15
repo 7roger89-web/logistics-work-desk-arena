@@ -14,8 +14,8 @@
     "T2": "PR #203: LCL CFS receipt/count/kg/CBM, consolidation fact, SI-only (no VGM/gate-in/container), deconsolidation CODE+REGRESSION+CI PASS",
     "T3": "PR #203: AIR chain AWB+flight / warehouse acceptance+weights+screening / uplift (ATD != flown) / transit / ATA CODE+REGRESSION+CI PASS",
     "T4": "PR #203: ROAD vehicle plate+driver, LTL receipt/consolidation, border only for cross-border scope, handover+POD; RAIL read-only CODE+REGRESSION+CI PASS",
-    "T5": "PARTIAL: shell font/palette from #200; non-sea map canvas sizing fix (#203). App-wide route audit (Home/Customers/Quotes/Contracts/Finance/Reports/Tariff/Tools/Admin) NOT_STARTED; compact 5-phase stepper belongs to #198",
-    "T6": "Integration branch ct/logi199-t6-integration (#200 + #201..#203): real Streamlit staging browser PASS run 38674861674 (FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board UI write->readback, 1440x900 + 390x844 no overflow). Owner UAT pending"
+    "T5": "PARTIAL: PR #204 shell chrome >=12px (audit run 38675998967: tiny-text per route-view avg 8 -> 1.3, 0 overflow on 24 routes x 1440/390, Be Vietnam Pro everywhere). Remaining: IBM Plex Mono for codes, page-specific 11-11.5px labels (CEO report/dieu-hanh/finance KPIs), Journey stepper 10.5px (#198), 3 routes without nav link unaudited, popup 2-5 field review.",
+    "T6": "Integration branch ct/logi199-t6-integration (#200 + #201..#203): real Streamlit staging browser PASS run 38674861674 (FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board UI write->readback, 1440x900 + 390x844 no overflow). Owner UAT pending | Re-run with T5 on cbdb10f: run 38675998967 PASS."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -59,7 +59,7 @@
   ],
   "status": "IN_PROGRESS",
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
-  "active_pr": 203,
+  "active_pr": 204,
   "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/200",
   "current_subtask": "Checkpoint after T1-T4 + T6 staging browser; next: T5 app-wide visual audit per route, then integrate with #198 once its draft lands.",
   "source_receipt": {
@@ -90,15 +90,16 @@
     ]
   },
   "source_receipt_t6": {
-    "ci_run_id": 38674861674,
-    "integration_head": "181eddb",
-    "evidence_commit": "d50488e",
+    "ci_run_id": 38675998967,
+    "integration_head": "cbdb10f",
+    "evidence_commit": "b413c7a",
     "evidence": "evidence/logi-199-t6/",
     "prs": [
       200,
       201,
       202,
-      203
+      203,
+      204
     ],
     "production": "UNTOUCHED"
   }
