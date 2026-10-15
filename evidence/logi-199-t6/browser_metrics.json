@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "fe6ed4afb6c2a7fc76b174d0d7735a45843a131e",
+  "commit": "1889d2a874365bf59265b721503a0538f90586b0",
   "lots": {
     "T6-FCL": {
       "nodes": [
@@ -115,7 +115,23 @@
       "overflowPx": 0
     },
     {
+      "label": "mobile-T6-LCL",
+      "overflowPx": 0
+    },
+    {
       "label": "mobile-T6-AIR",
+      "overflowPx": 0
+    },
+    {
+      "label": "mobile-T6-ROAD-FTL",
+      "overflowPx": 0
+    },
+    {
+      "label": "mobile-T6-AIR-CONSOLIDATED",
+      "overflowPx": 0
+    },
+    {
+      "label": "mobile-T6-ROAD-LTL",
       "overflowPx": 0
     },
     {

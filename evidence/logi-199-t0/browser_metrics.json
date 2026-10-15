@@ -2,7 +2,7 @@
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "app": "app.py",
   "mode": "isolated-mongomock-no-production-db",
-  "commit": "fe6ed4afb6c2a7fc76b174d0d7735a45843a131e",
+  "commit": "1889d2a874365bf59265b721503a0538f90586b0",
   "checks": [
     {
       "label": "desktop-home",
