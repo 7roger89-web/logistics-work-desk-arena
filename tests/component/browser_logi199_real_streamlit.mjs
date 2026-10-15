@@ -121,11 +121,17 @@ try {
   results.checks.push(detail);
   await page.screenshot({ path: path.join(output, 'desktop-journey.png'), fullPage: false });
 
+  // #198 (Issue #197) replaces the collapsible map with a persistent split
+  // view: no toggle exists there. Exercise the toggle only when present.
   const mapToggle = page.getByTestId('journey-detail-map-toggle');
-  assert.equal(await mapToggle.getAttribute('aria-expanded'), 'false');
-  await mapToggle.click();
-  await page.getByTestId('journey-map-viewport').waitFor({ state: 'visible' });
-  assert.equal(await mapToggle.getAttribute('aria-expanded'), 'true');
+  const hasToggle = (await mapToggle.count()) > 0;
+  results.persistentMap = !hasToggle;
+  if (hasToggle) {
+    assert.equal(await mapToggle.getAttribute('aria-expanded'), 'false');
+    await mapToggle.click();
+    assert.equal(await mapToggle.getAttribute('aria-expanded'), 'true');
+  }
+  await page.getByTestId('journey-map-viewport').first().waitFor({ state: 'visible' });
   const nodes = page.locator('[data-testid^="journey-node-"]');
   results.nodeCount = await nodes.count();
   assert.ok(results.nodeCount >= 2, 'detailed map must contain actual LO-0306 nodes');
@@ -136,8 +142,10 @@ try {
   await page.getByTestId('journey-quick-panel').waitFor({ state: 'visible' });
   results.checks.push({ label: 'journey-detail-map-node', clicked: selectedId, count: results.nodeCount });
   await page.screenshot({ path: path.join(output, 'desktop-journey-node-open.png'), fullPage: false });
-  await mapToggle.click();
-  await page.getByTestId('journey-compact-overview').waitFor({ state: 'visible' });
+  if (hasToggle) {
+    await mapToggle.click();
+    await page.getByTestId('journey-compact-overview').waitFor({ state: 'visible' });
+  }
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(250);

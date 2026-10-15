@@ -22280,12 +22280,7 @@ function _u() {
 				onOpen: tt,
 				onGlobal: (e = "van-tai") => e === "lay-hang" && bn ? (L(!0), !1) : (i({ tab: e }), !0),
 				runPrimary: An,
-				hasStageContent: !!(Xe && (Ze === "docs" || Ze === "info" && (Qe || [
-					"si-vgm",
-					"gate-in",
-					"customs-export",
-					"customs-import"
-				].includes(Xe.id)))),
+				hasStageContent: !!(Xe && (Ze === "docs" || Ze === "info" && (Qe || Xe.factFields?.length || Xe.id === "customs-import"))),
 				globalActive: !!r.get("tab") && !Xe,
 				globalTab: a,
 				children: [

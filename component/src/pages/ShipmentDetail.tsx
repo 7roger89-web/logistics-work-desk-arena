@@ -1538,7 +1538,7 @@ export default function ShipmentDetail() {
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         hasStageContent={Boolean(workspaceNode && (
           workspaceWork === "docs"
-          || (workspaceWork === "info" && (Boolean(moduleStepNode) || ["si-vgm", "gate-in", "customs-export", "customs-import"].includes(workspaceNode.id)))
+          || (workspaceWork === "info" && (Boolean(moduleStepNode) || Boolean(workspaceNode.factFields?.length) || workspaceNode.id === "customs-import"))
         ))}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && Boolean(workspaceNode.factFields?.length) &&
