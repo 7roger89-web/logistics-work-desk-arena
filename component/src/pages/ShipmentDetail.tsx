@@ -1311,7 +1311,7 @@ export default function ShipmentDetail() {
           live in Global Workspace); the secondary identity facts moved into
           the HỒ SƠ & PHẠM VI card. Nothing is deleted. */}
       <div className="rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5" data-testid="shipment-identity-bar">
-        <div className="flex items-center gap-3">
+        <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:flex sm:items-center sm:gap-3">
           <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Về trang chủ">
             <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
@@ -1320,20 +1320,23 @@ export default function ShipmentDetail() {
             </span>
           </Link>
           <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />
-          <div className="min-w-0">
+          {/* At phone width, identity gets the entire first row; actions move below.
+              The old one-row flex gave the shipment title ~60px and obscured
+              known customer facts behind "Toàn bộ lô hàng" + avatar. */}
+          <div className="col-start-2 min-w-0 sm:col-auto sm:flex-1" data-testid="shipment-identity-info">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="text-[19px] font-extrabold text-[#0f2a4a] whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
-              {modeLabel && <span className="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 whitespace-nowrap">{modeLabel}</span>}
+              <h1 data-testid="shipment-identity-title" className="min-w-0 break-words text-[19px] font-extrabold text-[#0f2a4a] sm:whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
+              {modeLabel && <span className="max-w-full break-words rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 sm:whitespace-nowrap">{modeLabel}</span>}
             </div>
-            <p className="mt-0.5 truncate text-[12.5px] text-slate-600">
-              <span className="font-semibold text-slate-800">{s.customer}</span>
-              <span className="text-slate-400"> → </span>
-              <span>{s.route}</span>
+            <p className="mt-0.5 min-w-0 text-[12.5px] leading-snug text-slate-600 sm:truncate">
+              <span data-testid="shipment-identity-customer" className="font-semibold text-slate-800">{s.customer}</span>
+              <span className="hidden text-slate-400 sm:inline"> → </span>
+              <span className="block break-words sm:inline">{s.route}</span>
             </p>
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2.5">
-            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]">Toàn bộ lô hàng</button>
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
+          <div data-testid="shipment-identity-actions" className="col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5">
+            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4">Toàn bộ lô hàng</button>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
           </div>
         </div>
       </div>
