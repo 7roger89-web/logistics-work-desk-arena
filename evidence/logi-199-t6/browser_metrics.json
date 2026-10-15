@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "9f9588fc47448774390b7db23ad5eea9174273a5",
+  "commit": "b620b34a0b3a402b7e5934bd89367e5da6608cee",
   "lots": {
     "T6-FCL": {
       "nodes": [

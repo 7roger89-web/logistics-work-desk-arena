@@ -1,5 +1,5 @@
 {
-  "commit": "9f9588fc47448774390b7db23ad5eea9174273a5",
+  "commit": "b620b34a0b3a402b7e5934bd89367e5da6608cee",
   "routes": {
     "/": {
       "desktop": {
@@ -15,7 +15,9 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thứ Năm, 15/10/2026 · Preview / StagingƯu tiên bây giờ: LO-0306 — Khai tờ khai n"
       },
       "mobile": {
         "docOverflow": 0,
@@ -30,7 +32,9 @@
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
           "11.5px:Tài chính"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thứ Năm, 15/10/2026 · Preview / StagingƯu tiên bây giờ: LO-0306 — Khai tờ khai n"
       }
     },
     "/viec-can-xu-ly": {
@@ -47,7 +51,9 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thứ Năm, 15/10/2026 · Preview / StagingƯu tiên bây giờ: LO-0306 — Khai tờ khai n"
       },
       "mobile": {
         "docOverflow": 0,
@@ -62,7 +68,9 @@
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
           "11.5px:Tài chính"
-        ]
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thứ Năm, 15/10/2026 · Preview / StagingƯu tiên bây giờ: LO-0306 — Khai tờ khai n"
       }
     },
     "/dieu-hanh": {
@@ -71,7 +79,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 16,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -79,22 +87,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Điều hành vận hànhChọn đúng việc cần quản lý can thiệp từ cùng nguồn việc của Su"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 11,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
-          "11.5px:Tổng quan",
-          "11.5px:Lô hàng",
-          "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Lô trong phạm vi",
+          "11.5px:Lô có tín hiệu xử lý",
+          "11.5px:Mục cần quản lý chú ý",
+          "11.5px:Chưa có tín hiệu",
+          "11.5px:Chưa rõ"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Điều hành vận hànhChọn đúng việc cần quản lý can thiệp từ cùng nguồn việc của Su"
       }
     },
     "/lo-hang": {
@@ -103,7 +115,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -111,22 +123,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiế"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiế"
       }
     },
     "/lo-hang/T6-FCL": {
@@ -135,30 +151,34 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 18,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
-          "11px:PROTOTYPE",
-          "11.5px:Quản trị · ADMIN",
-          "10px:Xem trước",
-          "11.5px:VẬN HÀNH",
-          "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "TTRƯỜNG THÀNHTrường Thành Logistics · Nội bộLô hàng T6-FCLChưa xác nhận hình thứ"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 14,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
-          "11.5px:Tổng quan",
-          "11.5px:Lô hàng",
-          "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới",
+          "10.5px:Chưa xác định / sắp tới"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "TTRƯỜNG THÀNHTrường Thành Logistics · Nội bộLô hàng T6-FCLChưa xác nhận hình thứ"
       }
     },
     "/tao-lo-moi": {
@@ -167,7 +187,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -175,22 +195,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Về danh sách lôTạo Lô Hàng MớiBắt đầu từ báo giá đã chốt để tự điền, rồi chỉ bổ "
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Về danh sách lôTạo Lô Hàng MớiBắt đầu từ báo giá đã chốt để tự điền, rồi chỉ bổ "
       }
     },
     "/khach-hang": {
@@ -199,7 +223,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -207,22 +231,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Khách HàngTìm theo mã · tên · MST · SĐT · email — tạo, sửa, lưu trữ và import qu"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Khách HàngTìm theo mã · tên · MST · SĐT · email — tạo, sửa, lưu trữ và import qu"
       }
     },
     "/ngu-canh-doi-tac": {
@@ -239,7 +267,9 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Đại Lý Trường ThànhQuản lý hồ sơ đại lý của Trường Thành và xem các lô hàng, chứ"
       },
       "mobile": {
         "docOverflow": 0,
@@ -249,12 +279,14 @@
         "smallCount": 7,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:có master",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
           "11.5px:Tài chính"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Đại Lý Trường ThànhQuản lý hồ sơ đại lý của Trường Thành và xem các lô hàng, chứ"
       }
     },
     "/kinh-doanh-bao-gia": {
@@ -263,7 +295,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -271,22 +303,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Báo GiáBáo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/"
       },
       "mobile": {
         "docOverflow": 0,
-        "shellOverflow": 0,
+        "shellOverflow": 81,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Báo GiáBáo giá (estimate) là dự toán LOG-C12 — tách bạch với tài chính thực thu/"
       }
     },
     "/hop-dong": {
@@ -295,7 +331,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -303,22 +339,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Hợp đồngHDMB · HDNT · PL — tìm theo số hợp đồng, khách, công ty, đại lý Tạo hợp "
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Hợp đồngHDMB · HDNT · PL — tìm theo số hợp đồng, khách, công ty, đại lý Tạo hợp "
       }
     },
     "/tai-chinh/thu-tien": {
@@ -335,22 +375,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thu tiền khách · Phải thuToàn bộ phải thu khách hàng theo lô — đọc từ sổ tài chí"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 10,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
-          "11.5px:Tổng quan",
-          "11.5px:Lô hàng",
-          "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11px:không quy đổi sang đồng tiền khác",
+          "11px:Phải thu",
+          "11px:Đã thu",
+          "11px:Còn lại",
+          "11.5px:Tổng quan"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thu tiền khách · Phải thuToàn bộ phải thu khách hàng theo lô — đọc từ sổ tài chí"
       }
     },
     "/tai-chinh/cong-no-doi-tac": {
@@ -359,7 +403,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -367,22 +411,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thanh toán đối tác · Phải trảToàn bộ phải trả đối tác theo lô — đọc từ sổ tài ch"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thanh toán đối tác · Phải trảToàn bộ phải trả đối tác theo lô — đọc từ sổ tài ch"
       }
     },
     "/tai-chinh/doi-soat": {
@@ -391,7 +439,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -399,22 +447,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Đối soátNghĩa vụ đã được phân bổ tới đâu, và khoản tiền nào chưa được phân bổ — "
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Đối soátNghĩa vụ đã được phân bổ tới đâu, và khoản tiền nào chưa được phân bổ — "
       }
     },
     "/bao-cao-ceo": {
@@ -423,7 +475,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -431,22 +483,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Báo cáo CEOTóm tắt vị thế hiện tại từ dữ liệu Logistics đã có. Chỉ đọc; tiền tệ "
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Báo cáo CEOTóm tắt vị thế hiện tại từ dữ liệu Logistics đã có. Chỉ đọc; tiền tệ "
       }
     },
     "/tra-cuu-thue": {
@@ -455,7 +511,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -463,22 +519,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "BIỂU THUẾGõ mã HS hoặc tên hàng; app chỉ query các dòng khớp từ SQLite có chỉ mụ"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "BIỂU THUẾGõ mã HS hoặc tên hàng; app chỉ query các dòng khớp từ SQLite có chỉ mụ"
       }
     },
     "/tra-cuu-chinh-sach": {
@@ -487,7 +547,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -495,22 +555,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Tra cứu chính sáchCác bộ NotebookLM chính sách dùng chung của công ty. Chọn một "
       },
       "mobile": {
         "docOverflow": 0,
-        "shellOverflow": 0,
+        "shellOverflow": 18,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Tra cứu chính sáchCác bộ NotebookLM chính sách dùng chung của công ty. Chọn một "
       }
     },
     "/thanh-toan-quoc-te": {
@@ -519,7 +583,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 12,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -527,22 +591,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thanh toán quốc tếCông cụ tính tham khảo. Không thực hiện chuyển tiền và không l"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thanh toán quốc tếCông cụ tính tham khảo. Không thực hiện chuyển tiền và không l"
       }
     },
     "/dich-thuat": {
@@ -551,7 +619,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -559,22 +627,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Dịch ThuậtCông cụ dịch nhanh các cụm từ nghiệp vụ thường dùng khi trao đổi với n"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Dịch ThuậtCông cụ dịch nhanh các cụm từ nghiệp vụ thường dùng khi trao đổi với n"
       }
     },
     "/so-tay": {
@@ -582,8 +654,8 @@
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
-        "monoUsed": 0,
-        "smallCount": 9,
+        "monoUsed": 4,
+        "smallCount": 11,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -591,22 +663,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Sổ tay vận hànhTra cứu quy trình, chứng từ, mã dịch vụ và phân quyền — đúng theo"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Sổ tay vận hànhTra cứu quy trình, chứng từ, mã dịch vụ và phân quyền — đúng theo"
       }
     },
     "/bieu-mau": {
@@ -615,7 +691,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -623,22 +699,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Biểu mẫu Office do Admin tải lênTải một tệp .docx/.xlsx thông thường, xác nhận v"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Biểu mẫu Office do Admin tải lênTải một tệp .docx/.xlsx thông thường, xác nhận v"
       }
     },
     "/quy-trinh": {
@@ -647,7 +727,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -655,22 +735,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       }
     },
     "/theo-doi": {
@@ -679,7 +763,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -687,22 +771,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       }
     },
     "/thoa-thuan-ban-giao": {
@@ -711,7 +799,7 @@
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 9,
+        "smallCount": 8,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -719,22 +807,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
         "monoUsed": 0,
-        "smallCount": 7,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": false,
+        "textDigest": "Thư viện quy trình phát sinhQuy trình tái sử dụng để gắn thêm vào một lô hàng. M"
       }
     },
     "/nguoi-dung": {
@@ -742,8 +834,8 @@
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
-        "monoUsed": 0,
-        "smallCount": 9,
+        "monoUsed": 6,
+        "smallCount": 13,
         "smallSample": [
           "11.5px:Trường Thành Logistics · Nội bộ",
           "11px:PROTOTYPE",
@@ -751,22 +843,26 @@
           "10px:Xem trước",
           "11.5px:VẬN HÀNH",
           "11.5px:KINH DOANH & ĐỐI TÁC"
-        ]
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Người dùng & Vai tròQuản lý tài khoản, vai trò và trạng thái hoạt động — đúng va"
       },
       "mobile": {
         "docOverflow": 0,
         "shellOverflow": 0,
         "font": "\"Be Vietnam Pro\"",
-        "monoUsed": 0,
-        "smallCount": 7,
+        "monoUsed": 1,
+        "smallCount": 6,
         "smallSample": [
           "11px:PROTOTYPE",
-          "11px:ĐIỂM CHÚ Ý KHÁC",
           "11.5px:Tổng quan",
           "11.5px:Lô hàng",
           "11.5px:Hợp đồng",
-          "11.5px:Tài chính"
-        ]
+          "11.5px:Tài chính",
+          "11.5px:Thêm"
+        ],
+        "reachedViaAppLink": true,
+        "textDigest": "Người dùng & Vai tròQuản lý tài khoản, vai trò và trạng thái hoạt động — đúng va"
       }
     }
   },
