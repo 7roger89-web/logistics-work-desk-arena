@@ -3,7 +3,7 @@
 **STATUS=OWNER_CORRECTION / DESIGN_AUTHORITY**. This supersedes incompatible *visual and default-layout* decisions in Issue #199, prior master-design contract, Issue #197, PR #198, and any earlier inspector PASS. It does not supersede authenticated business/data/security invariants or Owner release gates.
 
 ## Exact Owner-approved source
-- Reference file (bytes saved unmodified): [logi-journey-mimo-sonnet-fusion.html](../../reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html) — actual repository root path `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`.
+- Reference file (bytes saved unmodified): [logi-journey-mimo-sonnet-fusion.html](../../../reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html) — actual repository root path `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`.
 - Uploaded source size = **866,917 bytes**; uploaded SHA-256 = **26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f**. This is the **new, exact** Owner file (not the prior donor with a different hash).
 - The reference is **visual + interaction authority only**, not canonical business state, not a production component bundle. Embedded chart-paper JPEG is part of this HTML. Standalone HTML declares Be Vietnam Pro and IBM Plex Mono in CSS but has **no @font-face/import**: the executor must load actual legitimate assets and verify rendered font faces in the real app, not copy a fallback screenshot or claim style declaration equals font loaded.
 
