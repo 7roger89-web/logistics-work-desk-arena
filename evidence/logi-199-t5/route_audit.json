@@ -1,0 +1,775 @@
+{
+  "commit": "9f9588fc47448774390b7db23ad5eea9174273a5",
+  "routes": {
+    "/": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/viec-can-xu-ly": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/dieu-hanh": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/lo-hang": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/lo-hang/T6-FCL": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tao-lo-moi": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/khach-hang": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/ngu-canh-doi-tac": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/kinh-doanh-bao-gia": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/hop-dong": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tai-chinh/thu-tien": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tai-chinh/cong-no-doi-tac": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tai-chinh/doi-soat": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/bao-cao-ceo": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tra-cuu-thue": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/tra-cuu-chinh-sach": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/thanh-toan-quoc-te": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/dich-thuat": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/so-tay": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/bieu-mau": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/quy-trinh": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/theo-doi": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/thoa-thuan-ban-giao": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    },
+    "/nguoi-dung": {
+      "desktop": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 9,
+        "smallSample": [
+          "11.5px:Trường Thành Logistics · Nội bộ",
+          "11px:PROTOTYPE",
+          "11.5px:Quản trị · ADMIN",
+          "10px:Xem trước",
+          "11.5px:VẬN HÀNH",
+          "11.5px:KINH DOANH & ĐỐI TÁC"
+        ]
+      },
+      "mobile": {
+        "docOverflow": 0,
+        "shellOverflow": 0,
+        "font": "\"Be Vietnam Pro\"",
+        "monoUsed": 0,
+        "smallCount": 7,
+        "smallSample": [
+          "11px:PROTOTYPE",
+          "11px:ĐIỂM CHÚ Ý KHÁC",
+          "11.5px:Tổng quan",
+          "11.5px:Lô hàng",
+          "11.5px:Hợp đồng",
+          "11.5px:Tài chính"
+        ]
+      }
+    }
+  },
+  "failures": [],
+  "verdict": "T5_AUDIT_PASS_WITH_FINDINGS"
+}
