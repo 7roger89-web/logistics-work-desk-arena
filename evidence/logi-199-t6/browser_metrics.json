@@ -1,7 +1,7 @@
 {
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "launcher": "scripts/logi199_t6_staging_app.py",
-  "commit": "9f8d9eac10b766a39da5704c9eef12a22eaf114f",
+  "commit": "a78c20e6d082bc04a05a56f1d2dbfa414328c847",
   "lots": {
     "T6-FCL": {
       "nodes": [
@@ -57,8 +57,19 @@
       "overflowPx": 0
     }
   },
-  "checks": [],
-  "verdict": "T6_MODES_STAGING_FAIL",
-  "failure": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByLabel('Ngày xếp hàng lên tàu (on-board)', { exact: true }) to be visible\n\n    at /home/runner/work/logistics-work-desk-arena/logistics-work-desk-arena/tests/component/browser_logi199_t6_modes.mjs:90:15",
-  "serverLogTail": "2026-10-15 04:01:08.323 Uvicorn server started on 127.0.0.1:9521\n\n  You can now view your Streamlit app in your browser.\n\n  URL: http://127.0.0.1:9521\n\n"
+  "checks": [
+    {
+      "label": "fcl-on-board-write-readback",
+      "state": "COMPLETED"
+    },
+    {
+      "label": "mobile-T6-FCL",
+      "overflowPx": 0
+    },
+    {
+      "label": "mobile-T6-AIR",
+      "overflowPx": 0
+    }
+  ],
+  "verdict": "T6_MODES_STAGING_PASS"
 }

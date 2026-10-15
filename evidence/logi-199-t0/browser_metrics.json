@@ -2,7 +2,7 @@
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "app": "app.py",
   "mode": "isolated-mongomock-no-production-db",
-  "commit": "9f8d9eac10b766a39da5704c9eef12a22eaf114f",
+  "commit": "a78c20e6d082bc04a05a56f1d2dbfa414328c847",
   "checks": [
     {
       "label": "desktop-home",
@@ -38,9 +38,45 @@
         "testid": "shipment-journey",
         "text": "📍 Đang ở: Chưa xác địnhChưa xác định / sắp tới1Chặng chínhChưa có bằng chứng thực tế📄 0Chưa xác định / sắp tới2Giao hàngChưa có bằng chứng thực tế📄 0+−65%⤢ Fit Journey↺ Reset ViewHoàn thànhHiện tạiĐang chờCần xử lýChưa xác định / sắp tớiKéo để di chuyển · Cuộn để zoom · Click node để xemShipment overviewTổng quan lô hàngChọn một công đoạn ở trên để xem việc cần làm.Next Action — toàn lôQuá free timeXỬ LÝ NGAYCurrentChưa xác địnhOwner lô hàngCh"
       }
+    },
+    {
+      "label": "journey-detail-map-node",
+      "clicked": "journey-node-delivery",
+      "count": 2
+    },
+    {
+      "label": "mobile-journey",
+      "width": 390,
+      "height": 844,
+      "documentOverflowPx": 0,
+      "streamlitApp": true,
+      "hasShadowShellAtTopLevel": true,
+      "shell": {
+        "font": "\"Be Vietnam Pro\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Noto Sans\", Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif",
+        "ink": "rgb(16, 38, 60)",
+        "background": "rgb(237, 241, 245)",
+        "overflowPx": 0,
+        "clientWidth": 358
+      },
+      "journeyVisible": true,
+      "identityReadability": {
+        "title": "Lô hàng LO-0306",
+        "customer": "An Phát JSC",
+        "noOverlap": true,
+        "titleOverflow": 0,
+        "actionsOverflow": 0,
+        "headerOverflow": 0,
+        "customerEllipsized": false
+      },
+      "primaryAttention": {
+        "text": "Khai tờ khai nhập khẩu LO-0306 + nộp thuế",
+        "overflow": 0,
+        "whiteSpace": "normal",
+        "textOverflow": "clip"
+      }
     }
   ],
-  "verdict": "RUNTIME_SMOKE_FAIL",
-  "failure": "locator.getAttribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('journey-detail-map-toggle')\n\n    at /home/runner/work/logistics-work-desk-arena/logistics-work-desk-arena/tests/component/browser_logi199_real_streamlit.mjs:125:32",
-  "serverLogTail": "2026-10-15 04:00:30.867 Uvicorn server started on 127.0.0.1:9519\n\n  You can now view your Streamlit app in your browser.\n\n  URL: http://127.0.0.1:9519\n\n"
+  "persistentMap": true,
+  "nodeCount": 2,
+  "verdict": "RUNTIME_SMOKE_PASS"
 }

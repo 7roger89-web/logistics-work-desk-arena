@@ -1,5 +1,5 @@
-main@5c6642a: 31 failed, 1807 passed, 45 skipped, 1 error, 10 subtests passed in 108.20s (0:01:48)
-branch@9f8d9eac10b766a39da5704c9eef12a22eaf114f: 36 failed, 1866 passed, 45 skipped, 1 error, 10 subtests passed in 107.07s (0:01:47)
+main@5c6642a: 31 failed, 1807 passed, 45 skipped, 1 error, 10 subtests passed in 107.19s (0:01:47)
+branch@a78c20e6d082bc04a05a56f1d2dbfa414328c847: 36 failed, 1866 passed, 45 skipped, 1 error, 10 subtests passed in 105.91s (0:01:45)
 --- NEW on branch (not on main):
 FAILED tests/test_journey_super_goal_186.py::SixPhaseContract::test_exact_beginner_phase_labels_exist
 FAILED tests/test_journey_visual_fidelity_190.py::JourneyDensity::test_focus_shell_geometry_is_bound_to_scrollbar_free_reference_width
