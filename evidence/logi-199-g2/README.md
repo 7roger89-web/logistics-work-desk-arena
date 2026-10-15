@@ -10,7 +10,7 @@ This packet covers only the bounded LOGI #199 empty-map pointer correction and c
 - Staging proof: `STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO` appeared before fixture creation. Mongo URI/database/secrets inputs were empty; test-only `AUTH_REQUIRED=false` was used only by the fail-closed staging launcher. Production auth/app code, production credentials, and production data were untouched.
 - Current local checks on published candidate `1e89955`: typecheck/build/scan pass; dist hashes match; focused official-dist DOM acceptance and same-instance hook-transition checks pass. A prior focused Python slice reported 27 passed; no full-suite or 21-route rerun.
 - `npm ci` installed the locked dependencies and reported one high-severity audit advisory. It was not independently triaged or remediated in this bounded task.
-- `INDEPENDENT_REVIEW=PENDING`; `OWNER_UAT_READY=NO`; no Owner UAT, merge, or production deploy is claimed. The previous issue-comment permission failure is not a product/release blocker; no permission repair is requested.
+- Source/evidence/docs checkpoint `5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d` was pushed non-force and its GitHub commit, dist, metrics, four primary screenshots, state, UAT, README, and reviewer handoff were read back successfully. A subsequent status checkpoint records that verification. `INDEPENDENT_REVIEW=PENDING`; `OWNER_UAT_READY=NO`; no Owner UAT, merge, or production deploy is claimed. The previous issue-comment permission failure is not a product/release blocker; no permission repair is requested.
 
 ## P2P preflight receipts for this continuation
 
@@ -120,5 +120,5 @@ OE gate: `SIMPLER_PATH=YES` (reuse existing map/launcher/tests); `MATERIAL_PROGR
 - **GOAL:** finish the open LOGI #199 empty-map pointer and exact-source evidence handoff.
 - **PROGRESS:** current raw desktop/mobile capture, rebuilt official dist, focused DOM tests and hook transitions are available and passing; the zero CTA opens the real profile path without a write.
 - **CURRENT:** capture records source SHA `751f64f…`; published candidate is `1e89955…`; dist and capture-harness hashes match. Commit-ID equivalence remains **NOT_VERIFIED**, disclosed for review.
-- **NEXT:** non-force push and verify the source/evidence/docs on the fixed branch; request Independent Review of only the open findings. Owner UAT stays closed until review PASS.
-- **BLOCKERS:** independent review pending; GitHub remote push/readback pending; raw capture commit object unavailable (mapping disclosed); Windows runtime not run; unrelated release blockers remain unchanged.
+- **NEXT:** request Independent Review of only the open findings and the disclosed capture-source SHA reconciliation. Owner UAT stays closed until review PASS.
+- **BLOCKERS:** independent review pending; raw capture commit object unavailable (mapping disclosed); Windows runtime not run; unrelated release blockers remain unchanged. Remote push/readback passed for checkpoint `5de5f36`; current status commit is separately verified.

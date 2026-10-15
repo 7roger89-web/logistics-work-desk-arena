@@ -267,15 +267,31 @@
     "PRODUCTION_READY": "NO",
     "auth_bootstrap_finance_snapshot_retry_blockers": "PRESERVED; not waived or repaired by this UI slice"
   },
-  "current_source_verification_status": "CURRENT_CAPTURE_AVAILABLE__DIST_MATCHES__SOURCE_SHA_RECONCILIATION_DISCLOSED__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
+  "current_source_verification_status": "CURRENT_CAPTURE_AVAILABLE__DIST_MATCHES__EVIDENCE_PUSHED_AND_READABLE__SOURCE_SHA_CAVEAT_DISCLOSED__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
   "evidence_dist_commit": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
   "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from workflow filters.",
   "publication_status": {
-    "branch_push": "PENDING — source candidate and evidence/docs commit not yet pushed.",
-    "expected_branch": "arena/bb243332-logistics-work-desk-arena",
+    "branch": "arena/bb243332-logistics-work-desk-arena",
+    "branch_push": "PASS — non-force fast-forward from 2ce7d9291c570bff974e182b67fde087d6ff044a.",
     "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
-    "current_evidence": "AVAILABLE locally; current-source screenshots/raw metrics present.",
-    "remote_verification": "PENDING",
+    "evidence_docs_checkpoint_sha": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+    "remote_head_at_source_evidence_readback": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+    "remote_verification": "PASS — git ls-remote matched; GitHub API commit and contents endpoints returned expected objects.",
+    "readback_paths": [
+      "evidence/logi-199-g2/README.md",
+      "evidence/logi-199-g2/REVIEWER_HANDOFF.md",
+      "evidence/logi-199-g2/metrics.json",
+      "evidence/logi-199-g2/current-source/metrics.json",
+      "evidence/logi-199-g2/current-source/desktop-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/desktop-zero-node-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-zero-node-initial.png",
+      "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
+      "docs/goals/LOGI-APP-RENEWAL-01/state.json",
+      "component/dist/logi-shell.js",
+      "component/dist/logi-shell.css"
+    ],
+    "final_status_checkpoint": "This verified remote receipt is committed in the subsequent status checkpoint; its final ref is verified separately.",
     "issue_comment": "NOT_REQUIRED; prior permission error is not a release gate."
   },
   "latest_zero_node_layout_followup": {
@@ -323,6 +339,13 @@
     "release_constraints": {
       "NO_MERGE_MAIN": "YES",
       "NO_DEPLOY_PRODUCTION": "YES"
+    },
+    "remote_verification": {
+      "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+      "evidence_docs_checkpoint_sha": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+      "remote_head_at_source_evidence_readback": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+      "push_mode": "non-force fast-forward",
+      "readback": "PASS for source, dist, metrics, screenshots, state, UAT, README, and reviewer handoff."
     }
   },
   "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",

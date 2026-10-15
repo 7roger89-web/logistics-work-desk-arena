@@ -7,6 +7,7 @@
 - Raw current-source capture SHA recorded in metrics: `751f64f5129637eef4fb74515afdf7fa15ca9deb`
 - Sole visual authority: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`
 - Evidence index: `evidence/logi-199-g2/README.md`, `metrics.json`, `current-source/metrics.json`, screenshots under `current-source/`, `capture_journey_flow.py`, and this handoff.
+- Non-force publication/readback: source candidate `1e899553cc1ad7dbd720eb805e061ec61ae0871a` and evidence/docs checkpoint `5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d` are on the fixed branch; GitHub API commit/content reads for source, bundle, raw metrics, four primary screenshots, state, UAT, README, and handoff all succeeded. The separate status checkpoint records this receipt.
 
 ## Important source/evidence reconciliation
 

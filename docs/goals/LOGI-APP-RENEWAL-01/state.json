@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/bb243332-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "CURRENT_G2_CAPTURE_AVAILABLE__PUBLISH_PENDING__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
+  "stage": "SOURCE_AND_CURRENT_EVIDENCE_PUSHED__GITHUB_READBACK_PASS__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -16,7 +16,7 @@
     "T4": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T5": "HISTORICAL: successful T5 audit/CI claims remain bound to tested source 1889d2a… and Actions 38683678222; not current-source verification.",
     "T6": "HISTORICAL PRE-REPAIR: Actions 38683678222 PASS at exact tested 1889d2a…; preserved as historical CI only.",
-    "G2_REPAIR": "Exact current-source browser capture is available in evidence/logi-199-g2/current-source/; raw capture records source 751f64f5129637eef4fb74515afdf7fa15ca9deb, with current dist hashes {'logi-shell.js': '3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c', 'logi-shell.css': '412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb'}. The old 751f64 commit object is absent from this resumed clone and GitHub; source-equivalent changes have been recovered, rebuilt to the matching dist, and committed locally as 1e899553cc1ad7dbd720eb805e061ec61ae0871a. Pointer/empty-state capture, touch-pan, save/reload readback, DOM acceptance and hook transitions pass; Independent Review and Owner UAT remain pending."
+    "G2_REPAIR": "Current-source G2 evidence is committed and pushed. Source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d are reachable on the fixed branch; GitHub API returned readable commit objects and content metadata for source, dist, raw metrics, four requested screenshots, state, UAT, README, and reviewer handoff. Raw browser capture source SHA remains 751f64f… and its commit-ID mapping is disclosed as NOT_VERIFIED. Independent Review and Owner UAT remain pending."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -46,7 +46,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Commit and non-force push the restored source-equivalent commit plus current-source G2 screenshots/metrics/docs to the fixed branch; verify GitHub remote refs and file content, then hand the exact published source candidate and raw capture provenance to Independent Review. Owner UAT remains NOT_READY until Independent Review PASS; no merge/deploy.",
+  "next": "Request Independent Review of the bounded pointer/CTA findings and disclosed raw-capture source-SHA reconciliation. Owner UAT remains NOT_READY until Independent Review PASS; do not merge main or deploy production.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -65,7 +65,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Current-source G2 evidence exists and passes: raw browser metrics captured at 751f64f5129637eef4fb74515afdf7fa15ca9deb; dist rebuilt locally to the same JS/CSS hashes and a source-equivalent candidate is committed as 1e899553cc1ad7dbd720eb805e061ec61ae0871a. Current evidence/docs still need non-force push and remote readback. Independent Review pending; Owner UAT not ready.",
+  "current_subtask": "Non-force push and GitHub readback PASS for source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d; remote contents are readable. This status checkpoint records that verification. Independent Review pending; Owner UAT not ready.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -145,7 +145,7 @@
     "production": "UNTOUCHED"
   },
   "source_receipt": {
-    "receipt_status": "CURRENT_BROWSER_CAPTURE_AVAILABLE__PUBLISHED_SOURCE_EQUIVALENT_LOCAL__PUSH_PENDING__REVIEW_PENDING",
+    "receipt_status": "CURRENT_CAPTURE_AVAILABLE__SOURCE_DIST_EVIDENCE_PUSHED__GITHUB_READBACK_PASS__SOURCE_IDENTITY_CAVEAT_DISCLOSED",
     "tested_source_sha_recorded_by_capture": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
     "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
     "fixed_branch": "arena/bb243332-logistics-work-desk-arena",
@@ -190,7 +190,15 @@
     "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST; static check only",
     "production": "UNTOUCHED",
     "no_merge_main": "YES",
-    "no_deploy_production": "YES"
+    "no_deploy_production": "YES",
+    "remote_verification": {
+      "branch": "arena/bb243332-logistics-work-desk-arena",
+      "remote_head_at_source_evidence_readback": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+      "source_candidate_commit_readable": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+      "evidence_docs_commit_readable": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+      "source_and_evidence_readback": "PASS via GitHub API for source, official dist, raw metrics, all four required screenshots, root metrics, README, reviewer handoff, UAT, and state.",
+      "push_mode": "non-force fast-forward from 2ce7d9291c570bff974e182b67fde087d6ff044a"
+    }
   },
   "preview": {
     "port": 9501,
@@ -211,11 +219,11 @@
   "publication_receipt": {
     "historical_issue_199_comment": "BLOCKED_PERMISSION (previous integration-preview attempt)",
     "historical_pr_198_comment": "NOT_ATTEMPTED_AFTER_HISTORICAL_ISSUE_DENIAL",
-    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md (bounded findings; commit push pending)",
+    "current_repair_handoff": "evidence/logi-199-g2/REVIEWER_HANDOFF.md; pushed and readable at 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d; Independent Review not yet performed.",
     "current_issue_199_comment": "NOT_REQUIRED for release; prior integration permission failure is not a product blocker and no Owner permission fix is requested.",
     "current_independent_review": "PENDING; reviewer should inspect published source candidate and raw capture SHA reconciliation.",
     "review_closed": false,
-    "branch_push": "PENDING — source-equivalent commit and current-source evidence/docs must be pushed non-force, then remote-verified.",
+    "branch_push": "PASS — source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d were pushed non-force; GitHub remote ref and required content reads passed. This follow-up status is included in a subsequent checkpoint; its final branch ref is separately verified.",
     "issue_comment_error": "Resource not accessible by integration",
     "owner_action_needed": "No action until Independent Review result; Owner UAT remains closed."
   },
@@ -296,7 +304,7 @@
     "historical_source_sha": "d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba"
   },
   "g2_repair_20261015": {
-    "status": "CURRENT_CAPTURE_PASS__SOURCE_SHA_RECONCILIATION_DISCLOSED__PUSH_PENDING__INDEPENDENT_REVIEW_PENDING",
+    "status": "CURRENT_CAPTURE_PASS__SOURCE_SHA_RECONCILIATION_DISCLOSED__SOURCE_EVIDENCE_PUSHED_AND_READABLE__INDEPENDENT_REVIEW_PENDING",
     "scope": "Bounded empty-map selector/pointer correction and exact-source G2 replay only; no G0–G5 redo, no auth/payment/backend redesign.",
     "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
     "published_source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
@@ -474,6 +482,29 @@
   "owner_uat_ready": "NO",
   "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
   "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
-  "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw source capture SHA unavailable remotely; published candidate has matching built dist and capture-harness hashes.",
-  "production_ready": "NO"
+  "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw capture commit is not fetchable, published candidate hashes match capture dist/harness.",
+  "production_ready": "NO",
+  "publication_status": {
+    "branch": "arena/bb243332-logistics-work-desk-arena",
+    "branch_push": "PASS — non-force fast-forward; source and evidence/docs checkpoint pushed.",
+    "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+    "evidence_docs_commit_sha": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+    "remote_head_at_evidence_readback": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
+    "remote_verification": "PASS via git ls-remote and GitHub API commit/content reads.",
+    "readable_remote_paths": [
+      "evidence/logi-199-g2/README.md",
+      "evidence/logi-199-g2/REVIEWER_HANDOFF.md",
+      "evidence/logi-199-g2/metrics.json",
+      "evidence/logi-199-g2/current-source/metrics.json",
+      "evidence/logi-199-g2/current-source/desktop-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-t6-fcl-journey-initial.png",
+      "evidence/logi-199-g2/current-source/desktop-zero-node-initial.png",
+      "evidence/logi-199-g2/current-source/mobile-zero-node-initial.png",
+      "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
+      "docs/goals/LOGI-APP-RENEWAL-01/state.json",
+      "component/dist/logi-shell.js",
+      "component/dist/logi-shell.css"
+    ],
+    "issue_comment": "NOT_REQUIRED; prior permission error is not a release gate."
+  }
 }
