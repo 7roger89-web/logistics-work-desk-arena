@@ -320,7 +320,7 @@ export function ExecutionProfileFields({
       )}
       {/* Small read-only historical note — not dominant, never a selector. */}
       {(historicalVersion === "2010" || historicalVersion === "2000_LEGACY") && (
-        <p className="text-[11px] text-slate-400" data-testid={`${idPrefix}-historical-version-note`}>
+        <p className="text-[12px] text-slate-400" data-testid={`${idPrefix}-historical-version-note`}>
           {historicalVersion === "2010"
             ? "Dữ liệu cũ · Incoterms 2010"
             : `Điều kiện legacy · ${historicalCode || "—"} (Incoterms 2000)`}

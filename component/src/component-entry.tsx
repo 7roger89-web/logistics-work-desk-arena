@@ -13,6 +13,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { applyViewModel, type ViewModel } from "./lib/viewmodel";
 import { bindTransport } from "./lib/dispatcher";
 import App from "./App";
+import { ensureFonts } from "./fonts";
 import "./index.css";
 import "./shell.css";
 
@@ -61,6 +62,40 @@ class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
 let root: Root | null = null;
 let host: HTMLElement | null = null;
 
+function ensureHostBleedStyle(): void {
+  if (typeof document === "undefined" || !document.head) return;
+  if (document.getElementById("logi-host-bleed")) return;
+  const style = document.createElement("style");
+  style.id = "logi-host-bleed";
+  style.textContent = `
+    header[data-testid="stHeader"],
+    div[data-testid="stToolbar"],
+    div[data-testid="stDecoration"],
+    div[data-testid="stStatusWidget"],
+    #MainMenu,
+    footer {
+      display: none !important;
+    }
+    .stApp {
+      background: #EDF1F5 !important;
+    }
+    .stMainBlockContainer,
+    div[data-testid="stAppViewBlockContainer"],
+    div[data-testid="stMainBlockContainer"],
+    .block-container {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      max-width: 100% !important;
+    }
+    div[data-testid="stVerticalBlock"] > div {
+      gap: 0 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function ensureHost(parent: ParentNode & Node): HTMLElement {
   if (host && parent.contains(host)) return host;
   host = document.createElement("div");
@@ -73,6 +108,8 @@ export default function mountLogiShell(api: ComponentApi): () => void {
   // (Re)bind the v2 trigger transport for this invocation.
   bindTransport(api.setTriggerValue ?? null);
 
+  ensureFonts();
+  ensureHostBleedStyle();
   const h = ensureHost(api.parentElement);
   if (!root) {
     root = createRoot(h);

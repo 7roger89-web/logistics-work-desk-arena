@@ -20,7 +20,7 @@ const ACTION_STYLE = {
   COMPLETED: { box: 'border-emerald-300 bg-emerald-50 text-emerald-900', label: 'BẰNG CHỨNG HOÀN THÀNH' },
   UPCOMING: { box: 'border-slate-300 bg-slate-100 text-slate-700', label: 'CHƯA XÁC ĐỊNH / SẮP TỚI' },
 };
-function Label({ children }: { children: React.ReactNode }) { return <div className="mb-1 text-[10.5px] font-bold uppercase tracking-widest text-slate-500">{children}</div>; }
+function Label({ children }: { children: React.ReactNode }) { return <div className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-500">{children}</div>; }
 export function stageAction(node: JourneyNode) {
   return node.blockers.join(' · ') || (node.completed ? 'Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.' : node.owned ? 'Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.' : 'Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.');
 }
@@ -41,12 +41,12 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
   const deps = n.dependencies.map(id => nodes.find(x => x.id === id)?.label).filter(Boolean).join(' + ');
   return <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-quick-panel">
     <div className={cx('border-b-4 bg-white px-4 pb-3 pt-3', n.state === 'PROBLEM' ? 'border-red-600' : 'border-slate-300')}>
-      <div className="flex items-start justify-between"><div className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Quick panel · {s.id}</div><button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target -mr-1 -mt-1 rounded text-lg text-slate-400">✕</button></div>
+      <div className="flex items-start justify-between"><div className="text-[12px] font-bold uppercase tracking-widest text-slate-500">Quick panel · {s.id}</div><button type="button" onClick={onClose} aria-label="Đóng Quick Panel" className="touch-target -mr-1 -mt-1 rounded text-lg text-slate-400">✕</button></div>
       <div className="flex flex-wrap items-center gap-3"><h3 className="text-2xl font-black tracking-tight text-slate-900">{n.label}</h3><JourneyStatus node={n} solid /></div>
       <div className={cx('mt-0.5 text-sm font-bold', m.text)}>{n.evidence || 'Chưa có bằng chứng thực tế'}</div>
     </div>
     <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3">
-      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[11px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
+      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[12px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
       <section><Label>Thông tin chính</Label></section>
       <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-[13px]" data-testid="journey-quick-facts">
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI NHẬP KHẨU</dt><dd className="text-right font-bold">{s.importInfo.receiver || s.customer || 'Chưa có thông tin'}</dd></div>
@@ -76,6 +76,6 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
         <section><Label>Customer update</Label><div className="rounded-md border border-slate-300 bg-slate-50 p-2.5"><p className="text-[13px] italic leading-snug">“{update}”</p><button type="button" onClick={copy} className="touch-target mt-2 rounded border bg-white px-2 text-xs font-bold">COPY UPDATE</button>{copyState && <p role="status" className="text-xs text-slate-600">{copyState}</p>}</div></section>
       </div>}
     </div>
-    <div className="border-t border-slate-300 bg-white p-3"><button type="button" onClick={() => onOpen(n, 'overview')} data-testid="journey-open-workspace" className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-[15px] font-extrabold tracking-wider text-white shadow">MỞ CÔNG ĐOẠN <ArrowRight size={16} /></button><div className="mt-1 text-center text-[11px] text-slate-500">Thông tin · Chứng từ · Chi phí · Lịch sử của {n.label}</div></div>
+    <div className="border-t border-slate-300 bg-white p-3"><button type="button" onClick={() => onOpen(n, 'overview')} data-testid="journey-open-workspace" className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 text-[15px] font-extrabold tracking-wider text-white shadow">MỞ CÔNG ĐOẠN <ArrowRight size={16} /></button><div className="mt-1 text-center text-[12px] text-slate-500">Thông tin · Chứng từ · Chi phí · Lịch sử của {n.label}</div></div>
   </div>;
 }

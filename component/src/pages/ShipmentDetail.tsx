@@ -9,8 +9,7 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
-import AttentionNow from "../components/AttentionNow";
+import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel, journeyRegionNodeIds } from "../components/ShipmentJourney";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
 import type {
   UploadedTemplateShipmentState, JourneyNode } from "../lib/viewmodel";
@@ -38,6 +37,10 @@ const TAB_IDS = new Set(TABS.map((t) => t.id));
 /** One fresh request identity per write intent — never derived from content. */
 function mintRequestId(prefix: string): string {
   return `${prefix}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function normalizeIdentityName(value: string): string {
+  return String(value || "").normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
 }
 
 function workflowStateClass(state: string): string {
@@ -178,8 +181,6 @@ export default function ShipmentDetail() {
   // second writer, no fuzzy name guessing; the flow confirm stays locked
   // until the authoritative readback brings the customer_id back.
   const [flowCustomerDraft, setFlowCustomerDraft] = useState("");
-  const [flowCustomerPending, setFlowCustomerPending] = useState("");
-  const [flowCustomerError, setFlowCustomerError] = useState("");
   const [documentSelectionOpen, setDocumentSelectionOpen] = useState(false);
   const [documentSelectionDraftIds, setDocumentSelectionDraftIds] = useState<string[]>([]);
   const [documentSelectionPending, setDocumentSelectionPending] = useState("");
@@ -194,6 +195,7 @@ export default function ShipmentDetail() {
     setFlowAgentDraft(flow?.subAgentId || "");
     const companies = vm?.authority?.companies ?? [];
     setFlowCompanyDraft(flow?.companyId || (companies.length === 1 ? companies[0].id : ""));
+    setFlowCustomerDraft("");
     setFlowError("");
   }, [
     id,
@@ -220,28 +222,6 @@ export default function ShipmentDetail() {
     }
   }, [vm?.lastWrites, flowPending, toast]);
 
-  useEffect(() => {
-    if (!flowCustomerPending) return;
-    const outcome = vm?.lastWrites?.find(
-      (row) => row.event === "shipment_customer_save" && row.requestId === flowCustomerPending
-    );
-    if (!outcome) return;
-    setFlowCustomerPending("");
-    if (outcome.ok) {
-      setFlowCustomerDraft("");
-      setFlowCustomerError("");
-      toast(
-        "Đã gắn khách hàng cho lô",
-        "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.",
-        "green"
-      );
-    } else {
-      const message = String(outcome.error || "Backend từ chối gán khách hàng.");
-      setFlowCustomerError(message);
-      toast("Chưa gán được khách hàng", message, "red");
-    }
-  }, [vm?.lastWrites, flowCustomerPending, toast]);
-
   const persistedDocumentIds = s?.selectedDocumentTemplateIds ?? [];
   const persistedDocumentKey = persistedDocumentIds.join("\u0000");
   useEffect(() => {
@@ -252,6 +232,15 @@ export default function ShipmentDetail() {
     setDocumentSelectionPending("");
     setDocumentSelectionError("");
     setDocumentDownloadPending("");
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      for (const sel of ['[data-testid="stAppViewContainer"]', 'section.main', '.stApp']) {
+        const el = document.querySelector(sel);
+        if (el instanceof HTMLElement) el.scrollTop = 0;
+      }
+    }
   }, [id]);
   useEffect(() => {
     if (!documentSelectionPending) return;
@@ -369,6 +358,17 @@ export default function ShipmentDetail() {
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
+  const flowCustomerMatches = useMemo(() => {
+    if (!s || s.customerId) return [];
+    const wanted = normalizeIdentityName(s.customer);
+    if (!wanted) return [];
+    return customers.filter((customer) => normalizeIdentityName(customer.name || "") === wanted);
+  }, [customers, s?.customer, s?.customerId]);
+  const autoFlowCustomer = flowCustomerMatches.length === 1 ? flowCustomerMatches[0] : undefined;
+  const flowCustomerChoiceId = s?.customerId || autoFlowCustomer?.id || flowCustomerDraft.trim();
+  const flowNeedsCustomerChoice = flowModeDraft === "CUSTOMER_SELF"
+    && !s?.customerId
+    && !autoFlowCustomer;
   const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
@@ -380,10 +380,22 @@ export default function ShipmentDetail() {
   const ccy = s.finance.currency || "VND";
   const workspaceNode = s.journey?.nodes.find(n => n.id === sp.get("stage"));
   const workspaceWork = sp.get("work") || "info";
-  // Issue #162 — a Work Module step owns its own bounded "Thông tin" panel (like
-  // the Sea facts panel above), so the generic work blurbs stay hidden for it.
+  // Issue #197 — when a Journey phase is open, its Stage Workspace owns the
+  // screen. Do not pour the whole global tab into every phase. Global surfaces
+  // remain reachable from phase 5 / "Toàn bộ lô hàng".
   const moduleStepNode = workspaceNode?.moduleId ? workspaceNode : undefined;
-  const showExistingWork = !workspaceNode || (workspaceWork !== "overview" && !(workspaceWork === "info" && (["si-vgm", "gate-in"].includes(workspaceNode.id) || Boolean(moduleStepNode))));
+  // Boolean() breaks TS 7.0.2's aliased-negation narrowing: `!workspaceNode`
+  // narrows workspaceNode to `never` inside the showExistingWork guards, which
+  // breaks the pre-existing optional accesses below. Runtime semantics are
+  // identical (workspaceNode is only ever an object or undefined).
+  const showExistingWork = !Boolean(workspaceNode);
+  const workspaceDocumentCategories = workspaceNode && s.journey
+    ? Array.from(new Set(
+        journeyRegionNodeIds(workspaceNode.id).flatMap((nodeId) =>
+          s.journey?.nodes.find((row) => row.id === nodeId)?.documentCategories ?? []
+        )
+      ))
+    : undefined;
   const openStageWorkspace = (node: JourneyNode, work: string) => {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
@@ -393,37 +405,16 @@ export default function ShipmentDetail() {
     return true;
   };
 
-  const saveFlowCustomer = () => {
-    if (!s) return;
-    const picked = flowCustomerDraft.trim();
-    if (!picked) {
-      setFlowCustomerError("Chọn một khách hàng trong danh bạ trước khi gán — hệ thống không đoán theo tên.");
-      return;
-    }
-    const requestId = mintRequestId("FLOWC");
-    setFlowCustomerError("");
-    setFlowCustomerPending(requestId);
-    const sent = dispatch("shipment_customer_save", {
-      shipmentId: s.id,
-      customerId: picked,
-      requestId,
-    });
-    if (!sent) {
-      setFlowCustomerPending("");
-      setFlowCustomerError("Component chưa kết nối backend.");
-    }
-  };
-
   const saveCommercialFlow = () => {
     if (!flowModeDraft) {
       setFlowError("Chọn một hình thức nhập khẩu trước khi lưu.");
       return;
     }
-    // Issue #195 — belt and suspenders: the button above is already locked,
-    // but CUSTOMER_SELF must never dispatch without the canonical customer_id
-    // the backend identity gate requires; the recovery panel above is the way.
-    if (flowModeDraft === "CUSTOMER_SELF" && !s?.customerId) {
-      setFlowError("Gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.");
+    // Issue #197 — a modern shipment already carries customerId. A legacy
+    // name-only shipment may be exact-unique matched by the backend in the same
+    // save; only unresolved/ambiguous rows need one explicit master choice.
+    if (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId) {
+      setFlowError("Chọn đúng khách hàng trong danh bạ để xác nhận hình thức nhập khẩu.");
       return;
     }
     if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowAgentDraft) {
@@ -449,6 +440,7 @@ export default function ShipmentDetail() {
       mode: flowModeDraft,
       companyId,
       subAgentId: flowModeDraft === "TT_ENTRUSTED_SUB" ? flowAgentDraft : "",
+      customerId: flowModeDraft === "CUSTOMER_SELF" && !s.customerId ? flowCustomerChoiceId : "",
     });
     if (!sent) {
       setFlowPending("");
@@ -1302,38 +1294,215 @@ export default function ShipmentDetail() {
     }
   };
 
+  // Issue #197 — the import identity/model belongs to the Nhập khẩu phase.
+  // Keep one render authority and reuse it in the stage workspace; step 5 is
+  // reserved for whole-lot documents/finance rather than duplicating this form.
+  const commercialFlowPanel = (
+    <section
+      className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
+      data-testid="shipment-commercial-flow"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
+          <p className="text-[13px] text-slate-500 mt-0.5">
+            Chọn pháp nhân đứng nhập khẩu cho lô này.
+          </p>
+        </div>
+        {s.commercialFlow?.confirmed && (
+          <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
+            ✓ ĐÃ XÁC NHẬN
+          </span>
+        )}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-2.5 mt-4">
+        {[
+          ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
+          ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
+          ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
+        ].map(([mode, title, desc]) => (
+          <label
+            key={mode}
+            className={cx(
+              "cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5",
+              flowModeDraft === mode ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"
+            )}
+          >
+            <input
+              type="radio"
+              name="commercial-flow"
+              value={mode}
+              checked={flowModeDraft === mode}
+              disabled={!!flowPending}
+              onChange={() => {
+                setFlowModeDraft(mode);
+                setFlowError("");
+                if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
+              }}
+              className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
+            />
+            <span>
+              <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">{title}</span>
+              <span className="block text-[12.5px] text-slate-500 mt-1">{desc}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      {/* Issue #197 — reuse shipment customer identity. Normal rows do
+          not ask the operator to choose the same customer twice.
+          Name-only legacy rows auto-link only on ONE exact master match;
+          ambiguous/missing rows show a compact chooser. */}
+      {flowModeDraft === "CUSTOMER_SELF" && !flowNeedsCustomerChoice && (
+        <div
+          className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5"
+          data-testid="commercial-flow-customer-identity"
+        >
+          <span className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người nhập khẩu</span>
+          <span className="font-extrabold text-[14.5px] text-emerald-950">
+            {s.customer || autoFlowCustomer?.name || "Khách hàng của lô"}
+          </span>
+          <span className="ml-auto text-[12px] font-bold text-emerald-700">✓ Đã xác định</span>
+        </div>
+      )}
+
+      {flowNeedsCustomerChoice && (
+        <div
+          className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3"
+          data-testid="commercial-flow-customer-recovery"
+        >
+          <p className="font-extrabold text-[14px] text-amber-900">Chưa xác định đúng khách hàng</p>
+          <p className="mt-0.5 text-[12.5px] text-amber-800">Chọn đúng pháp nhân một lần rồi xác nhận.</p>
+          <div className="mt-2">
+            <SearchPicker
+              label="Khách hàng"
+              testId="commercial-flow-customer-picker"
+              options={customers.map((x) => ({
+                id: x.id,
+                label: x.name || x.id,
+                sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
+              }))}
+              selectedId={flowCustomerDraft}
+              selectedLabel={customers.find((x) => x.id === flowCustomerDraft)?.name || ""}
+              placeholder="Gõ tên, mã khách hoặc MST…"
+              emptyHint="Danh bạ khách hàng đang trống."
+              onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowError(""); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {flowModeDraft === "TT_ENTRUSTED_SUB" && (
+        <div className="mt-3 grid md:grid-cols-2 gap-3">
+          <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
+            <select
+              value={flowAgentDraft}
+              disabled={!!flowPending}
+              onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
+              className={inputCls(!flowAgentDraft ? "missing" : "ok")}
+            >
+              <option value="">— Chọn đối tác —</option>
+              {authorityAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
+            <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
+            <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
+          </div>
+        </div>
+      )}
+
+      {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
+        <div className="mt-3 max-w-[560px]">
+          <Field
+            label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
+            required={!flowCompanyDraft}
+          >
+            <select
+              value={flowCompanyDraft}
+              disabled={!!flowPending}
+              onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
+              className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
+            >
+              <option value="">— Chọn pháp nhân —</option>
+              {authorityCompanies.map((company) => (
+                <option key={company.id} value={company.id}>{company.legalName || company.id}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+
+      {s.commercialFlow?.confirmed && (
+        <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+          <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
+          <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
+            {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
+          </p>
+          <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
+          {(s.commercialFlow.missing ?? []).length > 0 && (
+            <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
+              Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
+        <p className="mt-2 text-[12.5px] text-slate-500">
+          Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
+        </p>
+      )}
+      {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
+      <PrimaryBtn
+        onClick={saveCommercialFlow}
+        disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !flowCustomerChoiceId)}
+        className="mt-3 min-w-[220px]"
+      >
+        {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
+      </PrimaryBtn>
+    </section>
+  );
+
   return (
-    <div className="space-y-2.5 min-w-0">
+    <div className="shipment-focus-page flex min-w-0 flex-col gap-1.5 sm:gap-2.5 lg:gap-1">
       {/* HEADER — Issue #190 CONTINUE: ONE top white header bar per the Owner
           reference. LEFT: brand identity + shipment title + mode chip +
           customer/route line. RIGHT: Toàn bộ lô hàng + operator avatar.
           The permanent tab row is gone from the default first screen (tabs
           live in Global Workspace); the secondary identity facts moved into
           the HỒ SƠ & PHẠM VI card. Nothing is deleted. */}
-      <div className="rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5" data-testid="shipment-identity-bar">
-        <div className="flex items-center gap-3">
+      <div className="rounded-2xl bg-white border border-slate-200 px-3 py-1 sm:px-4 sm:py-2.5 md:px-5 lg:py-1" data-testid="shipment-identity-bar">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 sm:flex sm:items-center sm:gap-3">
           <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Về trang chủ">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
+            <span className="w-8 h-8 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[15px] sm:text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
               <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-              <span className="block text-[11.5px] text-slate-500 font-medium">{brandSub}</span>
+              <span className="block text-[12px] text-slate-500 font-medium">{brandSub}</span>
             </span>
           </Link>
           <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="text-[19px] font-extrabold text-[#0f2a4a] whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
-              {modeLabel && <span className="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 whitespace-nowrap">{modeLabel}</span>}
+          {/* At phone width, identity gets the entire first row; actions move below.
+              The old one-row flex gave the shipment title ~60px and obscured
+              known customer facts behind "Toàn bộ lô hàng" + avatar. */}
+          <div className="col-start-2 min-w-0 sm:col-auto sm:flex-1" data-testid="shipment-identity-info">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <h1 data-testid="shipment-identity-title" className="min-w-0 break-words text-[16px] sm:text-[19px] lg:text-[18px] leading-tight font-extrabold text-[#0f2a4a] sm:whitespace-nowrap" title={positionNote || undefined}>Lô hàng {s.id}</h1>
+              {modeLabel && <span className="max-w-full break-words rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 sm:whitespace-nowrap">{modeLabel}</span>}
             </div>
-            <p className="mt-0.5 truncate text-[12.5px] text-slate-600">
-              <span className="font-semibold text-slate-800">{s.customer}</span>
-              <span className="text-slate-400"> → </span>
-              <span>{s.route}</span>
+            <p className="mt-0 min-w-0 text-[12px] sm:text-[12.5px] leading-snug text-slate-600 sm:truncate">
+              <span data-testid="shipment-identity-customer" className="font-semibold text-slate-800">{s.customer}</span>
+              <span className="text-slate-400"> · </span>
+              <span className="break-words">{s.route}</span>
             </p>
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2.5">
-            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]">Toàn bộ lô hàng</button>
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
+          <div data-testid="shipment-identity-actions" className="col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5">
+            <button type="button" onClick={() => setGlobalReq((v) => v + 1)} data-testid="journey-global-page" className="inline-flex items-center rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2.5 py-0.5 min-h-[36px] sm:min-h-[44px] lg:min-h-[36px] text-[12px] sm:text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4">Toàn bộ lô hàng</button>
+            <span className="grid h-7 w-7 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[12px] sm:text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
           </div>
         </div>
       </div>
@@ -1371,18 +1540,25 @@ export default function ShipmentDetail() {
           </div>
         )}
 
-      <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />
-
-      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} globalRequest={globalReq} attachRequest={attachReq}
+      <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} attentionItems={shipmentAttention} globalRequest={globalReq} attachRequest={attachReq}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
+        hasStageContent={Boolean(workspaceNode && (
+          workspaceWork === "docs"
+          || (workspaceWork === "info" && (Boolean(moduleStepNode) || Boolean(workspaceNode.factFields?.length) || workspaceNode.id === "customs-import"))
+        ))}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
-      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
+      {workspaceNode && workspaceWork === "info" && !moduleStepNode && Boolean(workspaceNode.factFields?.length) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
-      {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
-        {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
-      </p>}
+      {workspaceNode?.id === "customs-import" && workspaceWork === "info" && commercialFlowPanel}
+      {workspaceNode && workspaceWork === "docs" &&
+        <ShipmentAttachments
+          contextCategories={workspaceDocumentCategories}
+          shipmentId={s.id}
+          attachments={s.attachments ?? []}
+          policy={vm?.attachmentPolicy}
+        />}
 
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
           LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
@@ -1496,7 +1672,7 @@ export default function ShipmentDetail() {
                 : "border-slate-200 bg-white"
           )}
         >
-          <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Hồ sơ thực hiện lô</span>
+          <span className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0">Hồ sơ thực hiện lô</span>
           <span className="text-[13.5px] font-bold text-[#0f2a4a] min-w-0">
             {s.executionProfile?.stateLabel || "Chưa có dữ liệu hồ sơ"}
           </span>
@@ -1736,19 +1912,19 @@ export default function ShipmentDetail() {
               {/* Read-only summary of declaration & taxes */}
               <div className="grid sm:grid-cols-2 gap-2 text-[13px]">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Số tờ khai</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Số tờ khai</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.declarationNo || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Ngày tờ khai</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Ngày tờ khai</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.regDate || <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">Thuế nhập khẩu</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">Thuế nhập khẩu</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.tax != null ? fmtVND(s.importInfo.tax) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-500 block text-[11.5px] font-medium">VAT hàng nhập khẩu</span>
+                  <span className="text-slate-500 block text-[12px] font-medium">VAT hàng nhập khẩu</span>
                   <span className="font-bold text-[#0f2a4a]">{s.importInfo.vat != null ? fmtVND(s.importInfo.vat) : <span className="text-amber-600 italic font-normal">Chưa có</span>}</span>
                 </div>
               </div>
@@ -1758,7 +1934,7 @@ export default function ShipmentDetail() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[13.5px] text-[#0f2a4a]">Thông tin Người nộp thuế (Pháp nhân chịu thuế)</span>
                   {s.importInfo.gnt?.customerHint && (
-                    <span className="text-[11.5px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
+                    <span className="text-[12px] text-slate-500 italic">Gợi ý khách hàng: <b>{s.importInfo.gnt.customerHint}</b></span>
                   )}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-2.5">
@@ -1970,8 +2146,8 @@ export default function ShipmentDetail() {
                       {partnerName ? (
                         <span className="inline-flex items-center gap-1.5 text-[13.5px] font-extrabold text-[#0f2a4a]">
                           <Building2 size={15} className="text-[#1e5aa8]" /> {partnerName}
-                          <span className="text-[11.5px] font-bold text-slate-400">{partnerId}</span>
-                          {suggested && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">đề xuất từ danh mục</span>}
+                          <span className="text-[12px] font-bold text-slate-400">{partnerId}</span>
+                          {suggested && <span className="text-[12px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">đề xuất từ danh mục</span>}
                         </span>
                       ) : (
                         <span className="text-[13.5px] font-bold text-slate-400">—</span>
@@ -1999,7 +2175,7 @@ export default function ShipmentDetail() {
                       <div key={p.id || i} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5">
                         <span className="text-[12px] font-bold text-slate-400 w-[80px]">{p.date || "—"}</span>
                         <span className="flex-1 min-w-[140px] text-[12.5px] text-slate-600">{p.note || p.kind}{p.requestId ? ` · ${p.requestId}` : ""}</span>
-                        <span className="font-extrabold text-[14.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[11px] text-slate-400">{p.ccy}</span></span>
+                        <span className="font-extrabold text-[14.5px]">{fmtMoney(p.amount, p.ccy)} <span className="text-[12px] text-slate-400">{p.ccy}</span></span>
                       </div>
                     ))}
                   </div>
@@ -2041,10 +2217,10 @@ export default function ShipmentDetail() {
                 <div key={p.id || i} data-payment-row={p.id || undefined} className={cx("flex flex-wrap items-center gap-2 rounded-xl border p-3", p.reversed ? "border-slate-200 bg-slate-50/80" : "border-slate-200")}>
                   <span className="text-[12.5px] font-bold text-slate-400 w-[92px]">{p.date}</span>
                   <span className="flex-1 min-w-[160px]">
-                    <span className="block font-bold text-[14.5px]">{p.kind}{p.reversed && <span className="ml-2 align-middle rounded-full bg-slate-200 text-slate-600 text-[11px] font-extrabold px-2 py-0.5">Đã hoàn tác</span>}</span>
+                    <span className="block font-bold text-[14.5px]">{p.kind}{p.reversed && <span className="ml-2 align-middle rounded-full bg-slate-200 text-slate-600 text-[12px] font-extrabold px-2 py-0.5">Đã hoàn tác</span>}</span>
                     <span className="block text-[12.5px] text-slate-500">{p.by}{p.note ? " · " + p.note : ""}{p.id ? " · " + p.id : ""}</span>
                   </span>
-                  <span className={cx("font-extrabold text-[15.5px]", p.reversed && "text-slate-400 line-through")}>{fmtMoney(p.amount, p.ccy)} <span className="text-[11.5px] text-slate-400">{p.ccy}</span></span>
+                  <span className={cx("font-extrabold text-[15.5px]", p.reversed && "text-slate-400 line-through")}>{fmtMoney(p.amount, p.ccy)} <span className="text-[12px] text-slate-400">{p.ccy}</span></span>
                   {p.reversed
                     ? <span className="text-[12.5px] font-semibold text-slate-400 px-3">Đã điều chỉnh — khóa</span>
                     : p.id
@@ -2061,7 +2237,7 @@ export default function ShipmentDetail() {
               already projected — only the visual weight and position changed. */}
           <details className="rounded-xl border border-dashed border-violet-300 bg-violet-50/40 px-3.5 py-2.5" data-testid="quote-estimate-compact">
             <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-md px-2 py-0.5">
+              <span className="text-[12px] font-extrabold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-md px-2 py-0.5">
                 Báo giá / Dự kiến — chưa phải số thực thu/chi
               </span>
               <span className="text-[12.5px] font-bold text-slate-600">Chi phí dự kiến theo báo giá</span>
@@ -2074,7 +2250,7 @@ export default function ShipmentDetail() {
                 <p className="text-[13px] text-slate-500">Chưa gắn báo giá. <Link to="/kinh-doanh-bao-gia" className="font-bold text-[#1e5aa8]">Mở báo giá →</Link></p>
               )}
               {s.finance.quote.map((c) => (
-                <StateRow key={c.label} label={c.label} value={<span className="font-bold text-[14px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[11.5px] font-bold text-violet-600">{c.ccy}</span></span>} />
+                <StateRow key={c.label} label={c.label} value={<span className="font-bold text-[14px]">{fmtMoney(c.amount, c.ccy)} <span className="text-[12px] font-bold text-violet-600">{c.ccy}</span></span>} />
               ))}
               <p className="text-[12px] text-slate-400 mt-1.5">Mỗi đồng tiền ghi rõ VND / USD / CNY — không gộp chung. Đây là ESTIMATE, không phải Finance Actual.</p>
             </div>
@@ -2085,194 +2261,6 @@ export default function ShipmentDetail() {
       {/* ============ TAB: DOCS ============ */}
       {showExistingWork && tab === "chung-tu" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <section
-            className="xl:col-span-2 rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5"
-            data-testid="shipment-commercial-flow"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="font-extrabold text-[17px] text-[#0f2a4a]">Hình thức nhập khẩu</h3>
-                <p className="text-[13px] text-slate-500 mt-0.5">
-                  Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán.
-                </p>
-              </div>
-              {s.commercialFlow?.confirmed && (
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
-                  ✓ ĐÃ XÁC NHẬN
-                </span>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-2.5 mt-4">
-              {[
-                ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
-                ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
-                ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
-              ].map(([mode, title, desc]) => (
-                <label
-                  key={mode}
-                  className={cx(
-                    "cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5",
-                    flowModeDraft === mode ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="commercial-flow"
-                    value={mode}
-                    checked={flowModeDraft === mode}
-                    disabled={!!flowPending}
-                    onChange={() => {
-                      setFlowModeDraft(mode);
-                      setFlowError("");
-                      if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
-                    }}
-                    className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
-                  />
-                  <span>
-                    <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">{title}</span>
-                    <span className="block text-[12.5px] text-slate-500 mt-1">{desc}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {/* Issue #195 — CUSTOMER_SELF requires a canonical customer_id and the
-                backend gate stays. Instead of a dead-end error, the operator
-                gets the guided path: pick the real customer from the EXISTING
-                master, save through the EXISTING shipment_customer_save
-                writer, then confirm the flow after the authoritative
-                readback. */}
-            {flowModeDraft === "CUSTOMER_SELF" && !s.customerId && (
-              <div
-                className="mt-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3.5"
-                data-testid="commercial-flow-customer-recovery"
-              >
-                <p className="font-extrabold text-[14.5px] text-amber-900">
-                  Lô chưa gắn mã khách hàng
-                </p>
-                <p className="mt-1 text-[13px] text-amber-800">
-                  “Khách hàng tự nhập” yêu cầu xác định đúng pháp nhân đứng nhập khẩu.
-                  Chọn khách hàng thật trong danh bạ rồi bấm <b>Gán cho lô này</b>;
-                  hệ thống không đoán theo tên. Sau khi backend đọc lại, nút xác nhận
-                  hình thức bên dưới sẽ mở.
-                </p>
-                <div className="mt-2.5">
-                  <SearchPicker
-                    label="Khách hàng đứng nhập khẩu"
-                    testId="commercial-flow-customer-picker"
-                    options={customers.map((x) => ({
-                      id: x.id,
-                      label: x.name || x.id,
-                      sub: x.mst || x.taxCode ? `MST ${x.mst || x.taxCode} · ${x.id}` : x.id,
-                    }))}
-                    selectedId={flowCustomerDraft}
-                    selectedLabel={
-                      customers.find((x) => x.id === flowCustomerDraft)?.name || ""
-                    }
-                    placeholder="Gõ tên khách hoặc mã khách để tìm…"
-                    emptyHint="Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước."
-                    onSelect={(idValue) => { setFlowCustomerDraft(idValue); setFlowCustomerError(""); }}
-                  />
-                </div>
-                {flowCustomerError && (
-                  <p role="alert" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">
-                    {flowCustomerError}
-                  </p>
-                )}
-                <PrimaryBtn
-                  onClick={saveFlowCustomer}
-                  disabled={!!flowCustomerPending || !flowCustomerDraft}
-                  className="mt-2.5 min-w-[220px]"
-                  testId="commercial-flow-customer-save"
-                >
-                  {flowCustomerPending ? "ĐANG GÁN…" : "GÁN KHÁCH HÀNG CHO LÔ NÀY"}
-                </PrimaryBtn>
-                {flowCustomerPending && (
-                  <p className="mt-1.5 text-[12.5px] text-amber-800">Đang chờ backend xác nhận qua đọc lại…</p>
-                )}
-              </div>
-            )}
-
-            {flowModeDraft === "TT_ENTRUSTED_SUB" && (
-              <div className="mt-3 grid md:grid-cols-2 gap-3">
-                <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
-                  <select
-                    value={flowAgentDraft}
-                    disabled={!!flowPending}
-                    onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
-                    className={inputCls(!flowAgentDraft ? "missing" : "ok")}
-                  >
-                    <option value="">— Chọn đối tác —</option>
-                    {authorityAgents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
-                    ))}
-                  </select>
-                </Field>
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
-                  <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
-                  <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
-                </div>
-              </div>
-            )}
-
-            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
-              <div className="mt-3 max-w-[560px]">
-                <Field
-                  label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
-                  required={!flowCompanyDraft}
-                >
-                  <select
-                    value={flowCompanyDraft}
-                    disabled={!!flowPending}
-                    onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
-                    className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
-                  >
-                    <option value="">— Chọn pháp nhân —</option>
-                    {authorityCompanies.map((company) => (
-                      <option key={company.id} value={company.id}>{company.legalName || company.id}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-            )}
-
-            {s.commercialFlow?.confirmed && (
-              <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
-                <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
-                  {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
-                </p>
-                <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
-                {(s.commercialFlow.missing ?? []).length > 0 && (
-                  <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
-                    Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
-              <p className="mt-2 text-[12.5px] text-slate-500">
-                Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
-              </p>
-            )}
-            {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
-            {flowModeDraft === "CUSTOMER_SELF" && !s.customerId && (
-              <p className="mt-2 text-[12.5px] font-semibold text-amber-800">
-                Hãy gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.
-              </p>
-            )}
-            <PrimaryBtn
-              onClick={saveCommercialFlow}
-              disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !s.customerId)}
-              className="mt-3 min-w-[220px]"
-            >
-              {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}
-            </PrimaryBtn>
-          </section>
-
           {pickerPolicy && (
             <ShipmentDocumentPicker
               shipmentId={s.id}
@@ -2329,7 +2317,7 @@ export default function ShipmentDetail() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-extrabold text-[14.5px] text-[#0f2a4a]">{step.label}</p>
-                        <span className={cx("rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold", workflowStateClass(step.state))}>
+                        <span className={cx("rounded-full border px-2 py-0.5 text-[12px] font-extrabold", workflowStateClass(step.state))}>
                           {step.stateLabel}
                         </span>
                       </div>
@@ -2568,7 +2556,7 @@ export default function ShipmentDetail() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-extrabold text-[14.5px] text-[#0f2a4a] break-words">{row.label}</p>
-                        <p className="text-[11.5px] text-slate-500 mt-0.5">
+                        <p className="text-[12px] text-slate-500 mt-0.5">
                           {state.kind} · bản v{state.version} · {row.category}
                         </p>
                       </div>

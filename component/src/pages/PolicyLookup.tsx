@@ -109,16 +109,17 @@ export default function PolicyLookup() {
             {notebooks.map((notebook) => (
               <button
                 key={notebook.url}
+                data-testid="policy-source-card"
                 type="button"
                 onClick={() => openNotebookLM(notebook.url)}
-                className="group flex min-h-[86px] items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:border-[#1e5aa8] hover:bg-slate-50"
+                className="group flex w-full min-w-0 min-h-[86px] items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:border-[#1e5aa8] hover:bg-slate-50"
               >
-                <span className="flex min-w-0 items-center gap-3">
+                <span className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-[#1e5aa8]">
                     <BookOpen size={20} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[15px] font-extrabold text-[#0f2a4a]">
+                    <span data-testid="policy-source-title" className="block whitespace-normal break-words text-[15px] font-extrabold text-[#0f2a4a]">
                       {notebook.label}
                     </span>
                     <span className="mt-0.5 block text-[12.5px] text-slate-500">

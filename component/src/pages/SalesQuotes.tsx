@@ -512,7 +512,7 @@ export default function SalesQuotes() {
         />
         {/* LOGI_QUOTE_COST_WORKFLOW_UX_01 — inner segmented view: the cost check
             lives INSIDE the Báo Giá workspace, not in a new sidebar group. */}
-        <div className="flex gap-2 mb-3" role="tablist" aria-label="Khu làm việc báo giá" data-testid="quote-workspace-tabs">
+        <div className="grid grid-cols-3 gap-2 mb-3" role="tablist" aria-label="Khu làm việc báo giá" data-testid="quote-workspace-tabs">
           {([
             { id: "bao-gia", label: "BÁO GIÁ" },
             { id: "check-chi-phi", label: "CHECK CHI PHÍ" },
@@ -525,7 +525,7 @@ export default function SalesQuotes() {
               onClick={() => setWorkspace(t.id)}
               data-testid={`quote-workspace-${t.id}`}
               className={cx(
-                "touch-target shrink-0 rounded-xl border-2 px-4 min-h-[48px] text-[14.5px] font-extrabold",
+                "touch-target min-w-0 rounded-xl border-2 px-2 sm:px-4 min-h-[48px] text-[13px] sm:text-[14.5px] font-extrabold leading-tight",
                 workspace === t.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"
               )}
             >
@@ -545,7 +545,7 @@ export default function SalesQuotes() {
         </div>
         )}
         {workspace === "bao-gia" && (
-        <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex flex-wrap gap-2 mt-2.5 pb-1" data-testid="quote-status-filters">
           {statuses.map((s) => (
             <button key={s} onClick={() => setStatus(s)} className={cx("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", status === s ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}>
               {s === "ALL" ? "Tất cả" : STATUS_LABEL[s] ?? s}
@@ -579,13 +579,13 @@ export default function SalesQuotes() {
             <tbody>
               {list.map((x) => (
                 <tr key={x.id} className="hover:bg-slate-50">
-                  <td><span className="font-extrabold text-[#1e5aa8] text-[15px]">{x.id}</span><span className="block text-[12px] text-slate-400">{x.quoteNo}</span></td>
+                  <td><span className="font-mono font-bold text-[#1e5aa8] text-[15px]">{x.id}</span><span className="block font-mono text-[12px] text-slate-500">{x.quoteNo}</span></td>
                   <td className="font-semibold max-w-[180px]">{x.customer}</td>
                   <td className="max-w-[220px] text-[13px] text-slate-600">{fmtText(x.origin)} → {fmtText(x.destination)}</td>
                   <td>{fmtText(x.salesOwner)}</td>
                   <td className="font-bold">{fmtMoney(x.sellingPriceTotalVnd ?? x.total, "VND")}
                     {/* A converted total is never shown without the rate behind it. */}
-                    {fxNote(x) && <span className="block text-[11.5px] font-semibold text-slate-400">{fxNote(x)}</span>}
+                    {fxNote(x) && <span className="block text-[12px] font-semibold text-slate-400">{fxNote(x)}</span>}
                   </td>
                   <td><ToneBadge tone={STATUS_TONE[x.status] ?? "gray"} size="sm">{x.statusLabel || x.status}</ToneBadge></td>
                   <td>
@@ -618,7 +618,7 @@ export default function SalesQuotes() {
           <div key={x.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-[16px] text-[#0f2a4a]">{x.id}</span>
+                <span className="font-mono font-bold text-[16px] text-[#0f2a4a]">{x.id}</span>
                 <ToneBadge tone={STATUS_TONE[x.status] ?? "gray"} size="sm">{x.statusLabel || x.status}</ToneBadge>
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{x.customer}</p>

@@ -12,18 +12,18 @@
 
 .logi-shell {
   font-family: "Be Vietnam Pro", system-ui, sans-serif;
-  background: #eef1f6;
-  color: #1a2433;
+  background: #edf1f5;
+  color: #10263c;
   font-size: 15.5px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   min-width: 0;
 }
 
-/* The shell is its own scrollport so the donor sticky header pins exactly
-   where it does in the standalone app (directly under the Streamlit toolbar). */
+/* The shell is its own scrollport so the donor sticky header pins at the top
+   of the viewport. */
 .logi-shell {
-  height: calc(100vh - var(--logi-toolbar-gap, 57px));
+  height: calc(100vh - var(--logi-toolbar-gap, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
 }

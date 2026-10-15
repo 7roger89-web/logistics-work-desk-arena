@@ -128,7 +128,7 @@ export default function Shipments() {
     const urgent = signal?.band === "BLOCKING" || signal?.band === "OVERDUE";
     const dueSoon = signal?.band === "DUE_SOON";
     return <div className={cx("rounded-lg px-2 py-1.5 -mx-2 -my-1.5", urgent && "bg-red-50", dueSoon && "bg-amber-50")}>
-      {signal && <span className={cx("mb-1 inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide",
+      {signal && <span className={cx("mb-1 inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide",
         urgent ? "text-red-700" : "text-amber-700")}>
         <span className={cx("h-2 w-2 rounded-full", urgent ? "bg-red-600 pulse-dot" : "bg-amber-500")} aria-hidden="true" />
         {signal.band === "BLOCKING" ? "Đang chặn" : signal.band === "OVERDUE" ? "Quá hạn" : "Sắp tới hạn"}
@@ -140,14 +140,14 @@ export default function Shipments() {
   return (
     <div className="space-y-4 max-w-[1300px]">
       <GetFlyImport />
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-        <SectionTitle title="Lô Hàng" sub="Tìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu" right={<Link to="/tao-lo-moi" className="btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[48px]">＋ Tạo lô mới</Link>} />
+      <div className="rounded-2xl bg-white border border-[#D6DEE7] p-4 md:p-5 shadow-[0_1px_3px_rgba(16,38,60,.04)]">
+        <SectionTitle title="Lô Hàng" sub="Tìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu" right={<Link to="/tao-lo-moi" className="btn-press touch-target hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#10263C] hover:bg-[#123A5E] text-white font-bold text-[14.5px] px-4 min-h-[48px]">＋ Tạo lô mới</Link>} />
         <div className="flex gap-2">
-          <div className="flex items-center flex-1 rounded-xl border-2 border-slate-200 focus-within:border-[#1e5aa8] bg-slate-50 overflow-hidden">
-            <Search size={19} className="ml-3.5 text-slate-400 shrink-0" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập mã lô (LO-0306), khách (An Phát), hợp đồng…" className="w-full bg-transparent px-3 py-3 text-[15px] outline-none" />
+          <div className="flex items-center flex-1 rounded-xl border-2 border-[#D6DEE7] focus-within:border-[#1D6FA8] bg-[#F8FAFC] overflow-hidden">
+            <Search size={19} className="ml-3.5 text-[#5B6875] shrink-0" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập mã lô (LO-0306), khách (An Phát), hợp đồng…" className="w-full bg-transparent px-3 py-3 text-[15px] text-[#10263C] outline-none" />
           </div>
-          <button onClick={() => setShowFilter((v) => !v)} className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", showFilter ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white")}><SlidersHorizontal size={18} /> <span className="hidden sm:inline">Lọc</span></button>
+          <button onClick={() => setShowFilter((v) => !v)} className={cx("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", showFilter ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-[#D6DEE7] bg-white text-[#10263C]")}><SlidersHorizontal size={18} /> <span className="hidden sm:inline">Lọc</span></button>
         </div>
         {/* Period + archive: derived views only. No DB flag, no delete. */}
         <div className="flex flex-wrap gap-2 mt-2.5" data-testid="shipment-period-controls">
@@ -158,7 +158,7 @@ export default function Shipments() {
               aria-pressed={period === p.id}
               data-testid={`shipment-period-${p.id}`}
               className={cx("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap",
-                period === p.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600")}
+                period === p.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-[#D6DEE7] bg-white text-[#5B6875]")}
             >
               {p.label}
             </button>
@@ -223,30 +223,30 @@ export default function Shipments() {
           Nothing here re-reads or re-derives anything: `executionProfile` and
           `transportLegs` are already on the row the backend projected once
           (EXECUTION_PROFILE_BUILDS_PER_ROW=1, PRIMARY_LIST_DB_READS_ADDED=0). */}
-      <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
+      <div className="hidden md:block rounded-2xl bg-white border border-[#D6DEE7] overflow-hidden shadow-[0_1px_3px_rgba(16,38,60,.04)]">
         <div className="overflow-x-auto"><table className="tbl w-full text-[14px] min-w-[1000px]">
           <thead><tr><th>Lô · Khách hàng · Tuyến</th><th>Nhận dạng nhanh</th><th>Việc tiếp theo</th><th>Trách nhiệm</th><th>Hành động</th></tr></thead>
           <tbody>
             {list.map((s) => (
-              <tr key={s.id} data-testid="shipment-row" data-shipment-id={s.id} className="hover:bg-slate-50 align-top">
+              <tr key={s.id} data-testid="shipment-row" data-shipment-id={s.id} className="hover:bg-[#F8FAFC] align-top">
                 {/* 1 — IDENTITY: what this lot is and where it stands. */}
                 <td className="max-w-[300px]">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <Link to={shipmentPath(s.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
+                    <Link to={shipmentPath(s.id)} className="font-mono font-bold text-[#1D6FA8] hover:underline text-[15px]">{s.id}</Link>
                     <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
                   </div>
-                  <span className="block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]">{s.customer}</span>
-                  <span className="block text-[12.5px] text-slate-500 mt-0.5">{s.route}</span>
-                  <span className="block text-[12px] text-slate-400 mt-0.5">{s.contract} · cập nhật {s.updated}</span>
+                  <span className="block text-[14px] font-semibold text-[#10263C] mt-1 max-w-[280px]">{s.customer}</span>
+                  <span className="block text-[12.5px] text-[#5B6875] mt-0.5">{s.route}</span>
+                  <span className="block text-[12px] font-mono text-[#5B6875] mt-0.5">{s.contract} · cập nhật {s.updated}</span>
                 </td>
                 {/* 2 — QUICK FACTS (missing facts stay visible as amber "—"). */}
                 <td className="max-w-[320px]"><ShipmentQuickFacts shipment={s} dense /></td>
                 {/* 3 — the ONE primary action the backend composed (s.nextAction). */}
                 <td className="max-w-[240px]" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>{nextActionCell(s)}</td>
                 {/* 4 — responsibility: `support` is `updated_by`, labelled truthfully. */}
-                <td className="text-[13px] whitespace-nowrap"><span className="block">Phụ trách: <b>{s.sale}</b></span><span className="block whitespace-nowrap text-slate-500">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
+                <td className="text-[13px] whitespace-nowrap"><span className="block">Phụ trách: <b>{s.sale}</b></span><span className="block whitespace-nowrap text-[#5B6875]">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
                 {/* 5 — actions: the same XỬ LÝ route and the same 360° entry. */}
-                <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
+                <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#10263C] hover:bg-[#123A5E] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-[#D6DEE7] text-[#10263C] hover:border-[#1D6FA8] text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
               </tr>
             ))}
           </tbody>
@@ -259,7 +259,7 @@ export default function Shipments() {
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <StatusDot tone={s.statusTone} />
-                <span className="font-extrabold text-[17px] text-[#0f2a4a]">{s.id}</span>
+                <span className="font-mono font-bold text-[17px] text-[#0f2a4a]">{s.id}</span>
                 <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{s.customer}</p>
@@ -269,7 +269,7 @@ export default function Shipments() {
                   overflow, and no need to open the lot to read it. */}
               <div className="mt-2.5"><ShipmentQuickFacts shipment={s} dense /></div>
               <div className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">Việc tiếp theo</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Việc tiếp theo</p>
                 <div className="mt-1">{nextActionCell(s)}</div>
               </div>
               <p className="text-[12.5px] text-slate-400 mt-2">Phụ trách <b className="text-slate-600">{s.sale}</b> · cập nhật bởi {s.support || "—"} · {s.updated}</p>

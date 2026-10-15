@@ -112,20 +112,20 @@ export default function PartnerPayables() {
             <div key={ccy} className="rounded-2xl border-2 border-slate-100 bg-slate-50/60 p-3 md:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500">Tổng phải trả · {ccy}</span>
-                <span className="text-[11px] text-slate-400">không quy đổi sang đồng tiền khác</span>
+                <span className="text-[12px] text-slate-400">không quy đổi sang đồng tiền khác</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-white border p-3">
+                <div className="rounded-xl bg-white border border-[#D6DEE7] px-1.5 py-2 sm:p-3">
                   <p className="text-[12px] text-slate-500 font-semibold">Phải trả</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-[#0f2a4a]">{fmtCcy(t.payable, ccy)}</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#0f2a4a]">{fmtCcy(t.payable, ccy)}</p>
                 </div>
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3">
-                  <p className="text-[12px] text-blue-700 font-semibold">Đã trả</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-blue-700">{fmtCcy(t.paid, ccy)}</p>
+                <div className="rounded-xl bg-[#DCEBFA]/65 border border-[#1D6FA8]/25 px-1.5 py-2 sm:p-3">
+                  <p className="text-[12px] text-[#154C79] font-semibold">Đã trả</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#154C79]">{fmtCcy(t.paid, ccy)}</p>
                 </div>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
-                  <p className="text-[12px] text-amber-700 font-semibold">Còn lại</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-amber-800">{fmtCcy(t.remaining, ccy)}</p>
+                <div className="rounded-xl bg-[#FBEBD3]/65 border border-[#D97706]/25 px-1.5 py-2 sm:p-3">
+                  <p className="text-[12px] text-[#8A5209] font-semibold">Còn lại</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#8A5209]">{fmtCcy(t.remaining, ccy)}</p>
                 </div>
               </div>
             </div>
@@ -171,9 +171,9 @@ export default function PartnerPayables() {
       </div>
 
       {/* DESKTOP TABLE */}
-      <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
+      <div className="hidden md:block rounded-2xl bg-white border border-[#D6DEE7] overflow-hidden shadow-[0_1px_3px_rgba(16,38,60,.04)]">
         <div className="overflow-x-auto">
-          <table className="tbl w-full text-[14px] min-w-[1080px]">
+          <table className="tbl w-full text-[13.5px]">
             <thead>
               <tr>
                 <th>Lô</th><th>Đối tác</th><th>Phải trả</th><th>Đã trả</th><th>Còn lại</th><th>Đồng tiền</th><th>Trạng thái</th><th>Hành động</th>
@@ -182,21 +182,21 @@ export default function PartnerPayables() {
             <tbody>
               {list.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
-                  <td><Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.shipmentId}</Link></td>
-                  <td className="font-semibold max-w-[220px]">
+                  <td className="whitespace-nowrap"><Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="font-mono font-extrabold text-[#1e5aa8] hover:underline text-[14.5px]">{r.shipmentId}</Link></td>
+                  <td className="font-semibold max-w-[200px]">
                     <span className="inline-flex items-center gap-1.5"><Building2 size={15} className="text-[#1e5aa8] shrink-0" /> {fmtText(r.partnerName)}</span>
-                    <span className="block text-[12px] text-slate-400 font-normal">{r.partnerId}</span>
+                    <span className="block font-mono text-[12px] text-slate-400 font-normal">{r.partnerId}</span>
                   </td>
-                  <td className="font-semibold">{fmtCcy(r.payable, r.currency)}</td>
-                  <td className="text-blue-700 font-semibold">{fmtCcy(r.paid, r.currency)}</td>
-                  <td className={cx("font-extrabold", !isUnknown(r.remaining) && (r.remaining ?? 0) > 0 ? "text-amber-800" : "text-slate-500")}>{fmtCcy(r.remaining, r.currency)}</td>
-                  <td><span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold">{r.currency}</span></td>
+                  <td className="font-mono font-semibold whitespace-nowrap">{fmtCcy(r.payable, r.currency)}</td>
+                  <td className="font-mono text-[#154C79] font-semibold whitespace-nowrap">{fmtCcy(r.paid, r.currency)}</td>
+                  <td className={cx("font-mono font-extrabold whitespace-nowrap", !isUnknown(r.remaining) && (r.remaining ?? 0) > 0 ? "text-[#8A5209]" : "text-slate-500")}>{fmtCcy(r.remaining, r.currency)}</td>
+                  <td><span className="font-mono rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold">{r.currency}</span></td>
                   <td><ToneBadge tone={toneFor(r.status)} size="sm">{r.status}</ToneBadge></td>
-                  <td>
+                  <td className="whitespace-nowrap">
                     <div className="flex gap-1.5">
-                      <Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
+                      <Link to={shipmentPath(r.shipmentId) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-[#D6DEE7] text-[12.5px] font-bold px-2.5 min-h-[40px] whitespace-nowrap"><Eye size={14} /> Mở lô</Link>
                       {(r.remaining ?? 0) > 0 && (
-                        <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]"><Wallet size={15} /> Trả đối tác</button>
+                        <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[40px] whitespace-nowrap"><Wallet size={14} /> Trả đối tác</button>
                       )}
                     </div>
                   </td>
@@ -220,9 +220,9 @@ export default function PartnerPayables() {
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{fmtText(r.partnerName)} <span className="text-slate-400 font-normal text-[12.5px]">{r.partnerId}</span></p>
               <div className="grid grid-cols-3 gap-2 mt-2.5 text-center">
-                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[11px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[14px]">{fmtCcy(r.payable, r.currency)}</p></div>
-                <div className="rounded-xl bg-blue-50 border border-blue-200 p-2.5"><p className="text-[11px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[14px] text-blue-700">{fmtCcy(r.paid, r.currency)}</p></div>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5"><p className="text-[11px] text-amber-700 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-amber-800">{fmtCcy(r.remaining, r.currency)}</p></div>
+                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[12px] text-slate-500 font-semibold">Phải trả</p><p className="font-extrabold text-[14px]">{fmtCcy(r.payable, r.currency)}</p></div>
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-2.5"><p className="text-[12px] text-blue-700 font-semibold">Đã trả</p><p className="font-extrabold text-[14px] text-blue-700">{fmtCcy(r.paid, r.currency)}</p></div>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5"><p className="text-[12px] text-amber-700 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-amber-800">{fmtCcy(r.remaining, r.currency)}</p></div>
               </div>
             </div>
             <div className="grid grid-cols-2 border-t">

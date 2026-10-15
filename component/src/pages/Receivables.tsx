@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CircleAlert, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock3, Eye, Search, SlidersHorizontal, Wallet } from "lucide-react";
 import { Field, GhostBtn, SectionTitle, SheetDialog, StatusDot, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import { useStore } from "../lib/store";
 import { useQueryParam, useQueryFlag } from "../lib/queryParam";
@@ -175,20 +175,20 @@ export default function Receivables() {
             <div key={ccy} className="rounded-2xl border-2 border-slate-100 bg-slate-50/60 p-3 md:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500">Tổng phải thu · {ccy}</span>
-                <span className="text-[11px] text-slate-400">không quy đổi sang đồng tiền khác</span>
+                <span className="text-[12px] text-slate-400">không quy đổi sang đồng tiền khác</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-white border p-3">
+                <div className="rounded-xl bg-white border border-[#D6DEE7] px-1.5 py-2 sm:p-3">
                   <p className="text-[12px] text-slate-500 font-semibold">Phải thu</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-[#0f2a4a]">{fmtCcy(t.receivable, ccy)}</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#0f2a4a]">{fmtCcy(t.receivable, ccy)}</p>
                 </div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                  <p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-emerald-700">{fmtCcy(t.received, ccy)}</p>
+                <div className="rounded-xl bg-[#DCEDE4]/65 border border-[#2E7D32]/25 px-1.5 py-2 sm:p-3">
+                  <p className="text-[12px] text-[#22614A] font-semibold">Đã thu</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#22614A]">{fmtCcy(t.received, ccy)}</p>
                 </div>
-                <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-                  <p className="text-[12px] text-red-600 font-semibold">Còn lại</p>
-                  <p className="font-extrabold text-[16px] md:text-[18px] text-red-700">{fmtCcy(t.outstanding, ccy)}</p>
+                <div className="rounded-xl bg-[#F6DFDB]/65 border border-[#C0392B]/25 px-1.5 py-2 sm:p-3">
+                  <p className="text-[12px] text-[#8E2F22] font-semibold">Còn lại</p>
+                  <p className="tnum font-extrabold text-[12.5px] sm:text-[16px] md:text-[18px] text-[#8E2F22]">{fmtCcy(t.outstanding, ccy)}</p>
                 </div>
               </div>
             </div>
@@ -240,9 +240,9 @@ export default function Receivables() {
       </div>
 
       {/* DESKTOP TABLE */}
-      <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
+      <div className="hidden md:block rounded-2xl bg-white border border-[#D6DEE7] overflow-hidden shadow-[0_1px_3px_rgba(16,38,60,.04)]">
         <div className="overflow-x-auto">
-          <table className="tbl w-full text-[14px] min-w-[1080px]">
+          <table className="tbl w-full text-[13.5px]">
             <thead>
               <tr>
                 <th>Lô</th><th>Khách hàng</th><th>Phải thu</th><th>Đã thu</th><th>Còn lại</th><th>Đồng tiền</th><th>Sale · Support</th><th>Trạng thái</th><th>Hành động</th>
@@ -251,19 +251,19 @@ export default function Receivables() {
             <tbody>
               {list.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
-                  <td><Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{r.id}</Link></td>
-                  <td className="font-semibold max-w-[180px]">{fmtText(r.customer)}</td>
-                  <td className="font-semibold">{fmtCcy(r.receivable, r.currency)}</td>
-                  <td className="text-emerald-700 font-semibold">{fmtCcy(r.received, r.currency)}</td>
-                  <td className={cx("font-extrabold", !isUnknown(r.outstanding) && (r.outstanding ?? 0) > 0 ? "text-red-700" : "text-slate-500")}>{fmtCcy(r.outstanding, r.currency)}</td>
-                  <td><span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold">{r.currency}</span></td>
-                  <td className="text-[13px]"><span className="block whitespace-nowrap">Sale: <b>{fmtText(r.sale)}</b></span><span className="block whitespace-nowrap">Cập nhật bởi: <b>{fmtText(r.support)}</b></span></td>
+                  <td className="whitespace-nowrap"><Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="font-mono font-extrabold text-[#1e5aa8] hover:underline text-[14px]">{r.id}</Link></td>
+                  <td className="font-semibold max-w-[130px]">{fmtText(r.customer)}</td>
+                  <td className="font-mono font-semibold text-[13px]">{fmtCcy(r.receivable, r.currency)}</td>
+                  <td className="font-mono text-[#22614A] font-semibold text-[13px]">{fmtCcy(r.received, r.currency)}</td>
+                  <td className={cx("font-mono font-extrabold text-[13px]", !isUnknown(r.outstanding) && (r.outstanding ?? 0) > 0 ? "text-[#8E2F22]" : "text-slate-500")}>{fmtCcy(r.outstanding, r.currency)}</td>
+                  <td><span className="font-mono rounded-md bg-slate-100 px-1.5 py-0.5 text-[12px] font-bold">{r.currency}</span></td>
+                  <td className="text-[12px] max-w-[155px]"><span className="block">Sale: <b>{fmtText(r.sale)}</b></span><span className="block">Cập nhật bởi: <b>{fmtText(r.support)}</b></span></td>
                   <td><ToneBadge tone={r.statusTone} size="sm">{fmtText(r.status)}</ToneBadge></td>
-                  <td>
-                    <div className="flex gap-1.5">
-                      <Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> Mở lô</Link>
+                  <td className="whitespace-nowrap">
+                    <div className="flex gap-1">
+                      <Link to={shipmentPath(r.id) + "?tab=tai-chinh"} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border border-[#D6DEE7] text-[12px] font-bold px-2 min-h-[38px] min-w-0 whitespace-nowrap"><Eye size={13} /> Mở lô</Link>
                       {(r.outstanding ?? 0) > 0 && (
-                        <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white text-[13px] font-bold px-3 min-h-[44px]"><Wallet size={15} /> Thu tiền</button>
+                        <button onClick={() => openPay(r)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#2E7D32] hover:bg-[#22614A] text-white text-[12px] font-bold px-2 min-h-[38px] min-w-0 whitespace-nowrap"><Wallet size={13} /> Thu tiền</button>
                       )}
                     </div>
                   </td>
@@ -287,9 +287,9 @@ export default function Receivables() {
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{fmtText(r.customer)}</p>
               <div className="grid grid-cols-3 gap-2 mt-2.5 text-center">
-                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[11px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[14px]">{fmtCcy(r.receivable, r.currency)}</p></div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5"><p className="text-[11px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[14px] text-emerald-700">{fmtCcy(r.received, r.currency)}</p></div>
-                <div className="rounded-xl bg-red-50 border border-red-200 p-2.5"><p className="text-[11px] text-red-600 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-red-700">{fmtCcy(r.outstanding, r.currency)}</p></div>
+                <div className="rounded-xl bg-slate-50 border p-2.5"><p className="text-[12px] text-slate-500 font-semibold">Phải thu</p><p className="font-extrabold text-[14px]">{fmtCcy(r.receivable, r.currency)}</p></div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5"><p className="text-[12px] text-emerald-700 font-semibold">Đã thu</p><p className="font-extrabold text-[14px] text-emerald-700">{fmtCcy(r.received, r.currency)}</p></div>
+                <div className="rounded-xl bg-red-50 border border-red-200 p-2.5"><p className="text-[12px] text-red-600 font-semibold">Còn lại</p><p className="font-extrabold text-[14px] text-red-700">{fmtCcy(r.outstanding, r.currency)}</p></div>
               </div>
               <p className="text-[12.5px] text-slate-400 mt-2">Sale {fmtText(r.sale)} · cập nhật bởi {fmtText(r.support)}</p>
             </div>
@@ -320,7 +320,7 @@ export default function Receivables() {
             </div>
             {payPending ? (
               <p role="status" data-testid="receivable-pay-pending" className="mt-2.5 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13.5px] font-semibold text-blue-800">
-                ⏳ ĐANG CHỜ BACKEND XÁC NHẬN… Không gửi lại và không đóng trang.
+                <Clock3 size={15} className="mr-1 inline-block align-[-2px]" aria-hidden="true" />ĐANG CHỜ BACKEND XÁC NHẬN… Không gửi lại và không đóng trang.
               </p>
             ) : (
               <p className="text-[12.5px] text-slate-400 mt-2">Ghi theo đồng tiền của lô ({paying.currency}) — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai.</p>
@@ -330,9 +330,12 @@ export default function Receivables() {
             )}
             <p className="text-[12.5px] text-slate-400 mt-2">Mã yêu cầu: <b className="font-mono">{payRequestRef.current}</b></p>
             <div className="grid grid-cols-2 gap-2.5 mt-4">
-              <GhostBtn onClick={() => setPaying(null)} disabled={!!payPending}>Hủy</GhostBtn>
-              <SuccessBtn onClick={recordPay} testId="receivable-pay-submit" disabled={!!payPending}>
-                {payPending ? "⏳ ĐANG CHỜ BACKEND XÁC NHẬN…" : "💾 LƯU KHOẢN THU"}
+              <GhostBtn onClick={() => setPaying(null)} testId="receivable-pay-cancel" disabled={!!payPending}>Hủy</GhostBtn>
+              <SuccessBtn onClick={recordPay} testId="receivable-pay-submit" disabled={!!payPending}
+                className="min-h-[44px] min-w-0 whitespace-nowrap px-2 gap-1.5 text-[13px]">
+                {payPending
+                  ? <><Clock3 size={15} aria-hidden="true" />ĐANG CHỜ BACKEND XÁC NHẬN…</>
+                  : <><Wallet size={16} aria-hidden="true" />LƯU KHOẢN THU</>}
               </SuccessBtn>
             </div>
         </SheetDialog>

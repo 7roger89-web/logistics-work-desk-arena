@@ -176,12 +176,12 @@ function RowEditor({
             </span>
           )}
           {row.approximate && (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-800">
               ≈ GIÁ GẦN ĐÚNG (KHOẢNG) — XÁC NHẬN LẠI
             </span>
           )}
           {row.conditionalAmounts && row.conditionalAmounts.length > 0 && (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-800">
               Phụ phí có điều kiện: {row.conditionalAmounts.join(" · ")}
             </span>
           )}
@@ -201,9 +201,9 @@ function RowEditor({
             <Pencil size={13} /> Sửa
           </button>
         </div>
-        <p className="mt-1 text-[11.5px] text-slate-400 break-words">{row.rawLine}</p>
+        <p className="mt-1 text-[12px] text-slate-400 break-words">{row.rawLine}</p>
         {row.reviewNote && (
-          <p className="mt-1 text-[11.5px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
+          <p className="mt-1 text-[12px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
         )}
       </div>
     );
@@ -320,10 +320,10 @@ function RowEditor({
         )}
       </div>
       {row.reviewNote && (
-        <p className="mt-2 text-[11.5px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
+        <p className="mt-2 text-[12px] font-semibold text-amber-700 break-words">{row.reviewNote}</p>
       )}
       <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="text-[11.5px] text-slate-500 break-words">
+        <p className="text-[12px] text-slate-500 break-words">
           Gốc: {row.rawLine}
         </p>
         <GhostBtn onClick={() => setEditing(false)} className="min-h-[36px] px-3 text-[12.5px]">
@@ -501,7 +501,7 @@ function CatalogEditor() {
               >
                 <span className="font-extrabold text-[13.5px] text-[#0f2a4a]">{CATALOG_KIND_LABEL[entry.kind] || entry.kind} · {entry.code || "—"}</span>
                 <span className="block text-[13px] text-slate-600">{entry.name}</span>
-                {entry.aliases?.length > 0 && <span className="block text-[11.5px] text-slate-400">Alias: {entry.aliases.join(", ")}</span>}
+                {entry.aliases?.length > 0 && <span className="block text-[12px] text-slate-400">Alias: {entry.aliases.join(", ")}</span>}
               </button>
             ))}
           </div>
@@ -879,7 +879,7 @@ export default function CostIntelligencePanel() {
                         data-testid={"cost-internal-row-" + key}
                         className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
                       >
-                        <p className="text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500">
+                        <p className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500">
                           Giá vốn nội bộ
                         </p>
                         <p className="mt-1 break-words font-bold text-[13.5px] text-[#0f2a4a]">
@@ -941,7 +941,7 @@ export default function CostIntelligencePanel() {
                             >
                               <ExternalLink size={13} /> Nguồn: Freightos marketplace
                             </a>
-                            <p className="mt-2 break-words text-[11.5px] font-semibold text-slate-600">
+                            <p className="mt-2 break-words text-[12px] font-semibold text-slate-600">
                               Không phải giá buy cùng hãng / cùng phụ phí với snapshot nội bộ.
                             </p>
                           </div>
@@ -949,7 +949,7 @@ export default function CostIntelligencePanel() {
                       </div>
                     );
                   })}
-                  <pre className="whitespace-pre-wrap break-words text-[11.5px] text-slate-500">{rate.raw_text}</pre>
+                  <pre className="whitespace-pre-wrap break-words text-[12px] text-slate-500">{rate.raw_text}</pre>
                 </div>
               </details>
             ))}

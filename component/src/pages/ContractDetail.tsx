@@ -232,13 +232,13 @@ export default function ContractDetail() {
             <ToneBadge tone={c.statusTone} size="sm">{c.status}</ToneBadge>
           </div>
           <p className="font-semibold text-[15.5px] mt-1">{c.client || "—"}</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 mt-3">
             <StateRow label="Công ty bên mua" value={fmtText(c.company)} />
             <StateRow label="Đại lý (bán)" value={fmtText(c.agent)} />
             <StateRow label="Giá trị" value={fmtVND(c.value)} />
             <StateRow label="Số lô liên kết" value={String(c.linkedShipments.length)} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 mt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 mt-1">
             <StateRow label="Khách hàng / đối tác" value={fmtText(c.client)} />
             <StateRow label="Ngày hợp đồng" value={fmtText(c.contractDate)} />
             <StateRow

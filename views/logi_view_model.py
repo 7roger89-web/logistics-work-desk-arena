@@ -2930,7 +2930,7 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
     from core.database import get_last_db_error, save_shipment_atomic
-    from core.shipment_journey import normalize_sea_facts
+    from core.shipment_journey import MODE_FACT_BLOCK, normalize_mode_facts
     from core.shipment_execution_profile import build_execution_profile
     sid, request_id = rd.text(payload.get("shipmentId")), rd.text(payload.get("requestId"))
     def out(ok, error="", **extra):
@@ -2946,17 +2946,59 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.")
     profile = build_execution_profile(shipment)
     scope = set(profile.get("serviceScope") or []) if profile.get("serviceScopeConfirmed") else set()
-    if profile.get("mode") != "SEA": return out(False, "Mốc này chỉ dành cho lô đường biển.")
+    mode = profile.get("mode")
+    if mode not in MODE_FACT_BLOCK: return out(False, "Phương thức của lô chưa có mốc bằng chứng được phép ghi.")
     fields = payload["fields"]
+    # LOGI-199 T3/T4 — AIR/ROAD facts: same writer, own block, own scope gates.
+    if mode == "AIR":
+        if ({"air_acceptance_at", "air_gross_kg", "air_chargeable_kg", "air_screened_at"} & set(fields)) and not (
+                {"MAIN_CARRIAGE", "EXPORT_HANDLING", "ORIGIN_TERMINAL_OR_BORDER"} & scope):
+            return out(False, "Nhận hàng kho hàng không không thuộc phạm vi đã xác nhận.")
+        if "air_uplifted_at" in fields and "MAIN_CARRIAGE" not in scope:
+            return out(False, "Uplift không thuộc phạm vi chặng bay đã xác nhận.")
+    if mode == "ROAD":
+        if ({"ltl_received_at", "ltl_package_count", "ltl_weight_kg", "ltl_consolidated_at"} & set(fields)) and (
+                profile.get("loadModel") != "LTL" or not ({"ORIGIN_PICKUP", "MAIN_CARRIAGE"} & scope)):
+            return out(False, "Nhận/ghép hàng lẻ chỉ áp dụng cho lô LTL thuộc phạm vi đã xác nhận.")
+        if "border_crossed_at" in fields and "CROSS_BORDER_COORDINATION" not in scope:
+            return out(False, "Lô nội địa / không có phạm vi qua biên giới: không ghi mốc cửa khẩu.")
+        if "handover_doc_no" in fields and not ({"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope):
+            return out(False, "Biên bản giao nhận không thuộc phạm vi giao hàng đã xác nhận.")
     if any(k.startswith(('si_', 'vgm_')) for k in fields) and "MAIN_CARRIAGE" not in scope:
         return out(False, "SI/VGM không thuộc phạm vi chặng chính đã xác nhận.")
     if "gate_in_at" in fields and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
         return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
     if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
         return out(False, "Tờ khai xuất không thuộc phạm vi dịch vụ đã xác nhận.")
-    try: normalized = normalize_sea_facts(fields)
+    # LOGI-199 T1 — SEA FCL lifecycle facts, each gated by the confirmed scope
+    # that owns it. Nothing is derived from the Incoterm alone.
+    if ({"booking_status", "on_board_at"} & set(fields)) and "MAIN_CARRIAGE" not in scope:
+        return out(False, "Booking/on-board không thuộc phạm vi chặng chính đã xác nhận.")
+    if ({"empty_pickup_at", "stuffing_at", "eir_no"} & set(fields)) and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
+        return out(False, "Cấp rỗng/đóng hàng/EIR chỉ áp dụng cho lô FCL có phạm vi bàn giao container.")
+    if "export_clearance_at" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
+        return out(False, "Thông quan xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    delivery_scope = {"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope
+    if "do_released_at" in fields and not (delivery_scope or "IMPORT_CUSTOMS" in scope):
+        return out(False, "D/O không thuộc phạm vi đầu nhập đã xác nhận.")
+    if ({"pod_received_at", "empty_return_at"} & set(fields)) and not delivery_scope:
+        return out(False, "POD/trả rỗng không thuộc phạm vi giao hàng đã xác nhận.")
+    if "empty_return_at" in fields and profile.get("loadModel") != "FCL":
+        return out(False, "Trả container rỗng chỉ áp dụng cho lô FCL.")
+    lcl = profile.get("loadModel") == "LCL"
+    if lcl and any(k.startswith("vgm_") for k in fields):
+        return out(False, "LCL: VGM thuộc container ghép của người gom hàng, không ghi riêng cho lô.")
+    cfs_keys = {"cfs_received_at", "cfs_receipt_no", "cfs_package_count", "cfs_weight_kg", "cfs_cbm", "consolidated_at"}
+    if (cfs_keys & set(fields)) and (not lcl or not ({"MAIN_CARRIAGE", "ORIGIN_TERMINAL_OR_BORDER"} & scope)):
+        return out(False, "Nhận hàng CFS/ghép hàng chỉ áp dụng cho lô LCL thuộc phạm vi đã xác nhận.")
+    if "deconsolidated_at" in fields and (not lcl or not (delivery_scope or "IMPORT_CUSTOMS" in scope)):
+        return out(False, "Tách hàng CFS đích chỉ áp dụng cho lô LCL có phạm vi đầu nhập.")
+    delivered = bool(((shipment.get("data") or {}).get("2.7") or {}).get("is_delivered"))
+    if rd.text(fields.get("pod_received_at")) and not delivered:
+        return out(False, "POD chỉ ghi sau khi lô đã xác nhận giao hàng thực tế.")
+    try: normalized = normalize_mode_facts(fields, mode)
     except ValueError as exc: return out(False, str(exc))
-    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault("sea_export", {})
+    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault(MODE_FACT_BLOCK[mode], {})
     if "export_declaration_no" in normalized:
         shipment["china_export_decl_no"] = normalized.pop("export_declaration_no")
     block.update(normalized)
@@ -2964,7 +3006,7 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, get_last_db_error() or "Không lưu được.")
     fresh = read_shipment(sid)
     if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
-    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get(MODE_FACT_BLOCK[mode]), audit=_audit_trail(sid))
 
 
 # ---------------------------------------------------------------------------
@@ -3509,10 +3551,18 @@ def factual_equal(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
 def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Persist the shipment's operator-confirmed import/entrustment model.
 
-    The write owns exactly one block: ``data.0.0.commercial_flow``.
-    It never generates a contract, GNT, PXK or payment request by itself; those
-    remain separate capabilities whose readiness is re-derived by
-    core.shipment_document_workflow on the next fresh read.
+    Issue #197: CUSTOMER_SELF reuses the shipment customer identity instead
+    of making the operator select the same customer twice. A modern shipment
+    already carries customer_id from Create Shipment. For legacy rows that
+    only carry the customer name, this handler may repair the missing link
+    INSIDE THE SAME atomic shipment save, but only when the name has exactly
+    one exact master match (or when the operator explicitly supplies one
+    master customer id after an ambiguous/missing match). No fuzzy legal-
+    identity matching is allowed.
+
+    The write still owns one shipment mutation. It never generates a contract,
+    GNT, PXK or payment request by itself; those remain separate capabilities
+    whose readiness is re-derived on the next fresh read.
     """
 
     from core.auth import can_operate_business
@@ -3520,13 +3570,15 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         get_last_db_error,
         load_authority_agents,
         load_authority_companies,
+        load_customers,
         save_shipment_atomic,
     )
     from core.logic import apply_financial_snapshot
-    from core.shipment_document_workflow import validate_flow_write
+    from core.shipment_document_workflow import FLOW_CUSTOMER_SELF, validate_flow_write
 
     sid = rd.text(payload.get("shipmentId"))
     request_id = rd.text(payload.get("requestId"))
+    mode = rd.text(payload.get("mode")).upper()
 
     def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
         return _result(
@@ -3547,11 +3599,77 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
     if shipment is None:
         return _res(False, f"Không tìm thấy lô {sid}.")
 
+    # Issue #197 — legacy identity repair happens only for CUSTOMER_SELF and is
+    # persisted together with commercial_flow in the SAME save_shipment_atomic
+    # call below. Modern rows already have customer_id and skip this block.
+    customer_link_changed = False
+    if mode == FLOW_CUSTOMER_SELF and not rd.text(shipment.get("customer_id")):
+        customers = load_customers() or {}
+        requested_customer_id = rd.text(payload.get("customerId")).upper()
+        resolved_customer_id = ""
+        resolved_customer: Mapping[str, Any] | None = None
+
+        if requested_customer_id:
+            row = customers.get(requested_customer_id)
+            if not isinstance(row, Mapping):
+                message = f"Không có khách hàng {requested_customer_id} trong danh bạ."
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+            resolved_customer_id = requested_customer_id
+            resolved_customer = row
+        else:
+            # Reuse the module's existing exact normalized customer-name
+            # key (NFKC + whitespace + casefold). This is equality, never fuzzy
+            # similarity, and is already used by the GetFly customer matcher.
+            wanted = _getfly_customer_key(shipment.get("customer") or shipment.get("client"))
+            matches: list[tuple[str, Mapping[str, Any]]] = []
+            if wanted:
+                for key, row in customers.items():
+                    if not isinstance(row, Mapping):
+                        continue
+                    if _getfly_customer_key(row.get("name")) != wanted:
+                        continue
+                    candidate_id = rd.text(
+                        row.get("id") or row.get("customer_id") or key
+                    ).upper()
+                    if candidate_id:
+                        matches.append((candidate_id, row))
+
+            if len(matches) == 1:
+                resolved_customer_id, resolved_customer = matches[0]
+            elif len(matches) > 1:
+                message = (
+                    "Có nhiều khách hàng trùng tên trong danh bạ. "
+                    "Chọn đúng pháp nhân một lần để xác nhận hình thức nhập khẩu."
+                )
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+            else:
+                message = (
+                    "Chưa xác định được đúng khách hàng trong danh bạ. "
+                    "Chọn đúng pháp nhân một lần để xác nhận hình thức nhập khẩu."
+                )
+                return _res(
+                    False, message, gate="COMMERCIAL_FLOW_REFUSED",
+                    issues=[message], needsCustomerChoice=True,
+                )
+
+        shipment["customer_id"] = resolved_customer_id
+        canonical_name = rd.text((resolved_customer or {}).get("name"))
+        if canonical_name:
+            shipment["customer"] = canonical_name
+            shipment["client"] = canonical_name
+        customer_link_changed = True
+
     companies = load_authority_companies() or {}
     agents = load_authority_agents() or {}
     document, errors = validate_flow_write(
         shipment=shipment,
-        mode=payload.get("mode"),
+        mode=mode,
         companies=companies,
         agents=agents,
         company_id=payload.get("companyId"),
@@ -3559,7 +3677,7 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
     )
     rejected = [
         key for key in payload
-        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId"}
+        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId", "customerId"}
     ]
     if errors or document is None:
         return _res(
@@ -3572,13 +3690,16 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
 
     head = shipment.setdefault("data", {}).setdefault("0.0", {})
     previous = head.get("commercial_flow") if isinstance(head.get("commercial_flow"), Mapping) else {}
-    if factual_equal(previous, document):
+    if factual_equal(previous, document) and not customer_link_changed:
         return _res(
             True,
             "Không có thay đổi để lưu.",
             noop=True,
             rejected=rejected,
-            persisted={"commercialFlow": dict(previous)},
+            persisted={
+                "commercialFlow": dict(previous),
+                "customerId": rd.text(shipment.get("customer_id")),
+            },
         )
 
     head["commercial_flow"] = document
@@ -3597,10 +3718,13 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         readback=_projection_for(fresh),
         rejected=rejected,
         version=int(fresh.get("version") or 0),
-        persisted={"commercialFlow": dict(fresh_head.get("commercial_flow") or {})},
+        persisted={
+            "commercialFlow": dict(fresh_head.get("commercial_flow") or {}),
+            "customer": rd.text(fresh.get("customer") or fresh.get("client")),
+            "customerId": rd.text(fresh.get("customer_id")),
+        },
         audit=_audit_trail(sid),
     )
-
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
     """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""

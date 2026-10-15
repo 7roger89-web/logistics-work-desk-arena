@@ -38,8 +38,8 @@ function nodeGroup(s: Shipment, ids: string[]) {
 
 export function composeShipmentCompletionGoals(s: Shipment): CompletionGoal[] {
   const profile = s.executionProfile;
-  const origin = nodeGroup(s, ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in']);
-  const main = nodeGroup(s, ['etd', 'on-board', 'transit', 'arrival']);
+  const origin = nodeGroup(s, ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'cfs-receipt', 'air-booking', 'air-acceptance', 'road-vehicle', 'road-ltl']);
+  const main = nodeGroup(s, ['etd', 'on-board', 'transit', 'arrival', 'uplift', 'air-transit', 'air-arrival', 'road-border']);
   const importDelivery = nodeGroup(s, ['customs-import', 'delivery']);
   const steps = s.documentWorkflow?.steps ?? [];
   const applicableDocs = steps.filter(x => x.state !== 'NOT_APPLICABLE');
@@ -162,7 +162,7 @@ export default function ShipmentCompletionGoals({ shipment: s, onOpenTab }: {
     <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
       className="touch-target flex w-full items-center gap-3 px-3 py-2.5 text-left" data-testid="completion-goal-toggle">
       <div className="min-w-0 flex-1">
-        <p className="text-[10.5px] font-extrabold uppercase tracking-widest text-slate-500">Rà soát trước khi kết thúc lô · read-only</p>
+        <p className="text-[12px] font-extrabold uppercase tracking-widest text-slate-500">Rà soát trước khi kết thúc lô · read-only</p>
         <p className="mt-0.5 text-[13px] font-semibold text-slate-600">Tự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.</p>
       </div>
       <span className={cx('shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-extrabold',
@@ -176,7 +176,7 @@ export default function ShipmentCompletionGoals({ shipment: s, onOpenTab }: {
       <p className="mb-2 text-xs text-slate-500">Rà soát read-only: đây không phải % hoàn thành hay trạng thái CLOSED toàn lô — mỗi mục chỉ phản ánh bằng chứng đang có.</p>
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
         {goals.map(g => <article key={g.id} className={cx('rounded-xl border p-3', STYLE[g.state])} data-testid={`completion-goal-${g.id}`} data-state={g.state}>
-          <div className="flex items-center gap-2"><Icon state={g.state} /><h3 className="font-extrabold">{g.title}</h3><span className="ml-auto text-[11px] font-bold">{LABEL[g.state]}</span></div>
+          <div className="flex items-center gap-2"><Icon state={g.state} /><h3 className="font-extrabold">{g.title}</h3><span className="ml-auto text-[12px] font-bold">{LABEL[g.state]}</span></div>
           <dl className="mt-2 space-y-1 text-xs">
             <div><dt className="font-bold opacity-70">Bằng chứng hiện có</dt><dd>{g.evidence}</dd></div>
             <div><dt className="font-bold opacity-70">Còn thiếu / cần kiểm tra</dt><dd>{g.missing}</dd></div>

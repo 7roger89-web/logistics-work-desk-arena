@@ -1,0 +1,117 @@
+name: LOGI-199 T6 integration (real Streamlit browser, isolated staging)
+
+on:
+  push:
+    branches:
+      - ct/logi199-t6-integration
+      - ct/logi199-int198-preview
+      - arena/d8927583-logistics-work-desk-arena
+      - arena/818a2d0a-logistics-work-desk-arena
+
+permissions:
+  contents: write
+
+concurrency:
+  group: logi199-t6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  t6:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python requirements
+        run: python -m pip install -r requirements.txt pytest
+      - name: LOGI-199 business-truth regressions (T0 AIR docs, T1 FCL, T2-T4 modes, journey, profile)
+        if: ${{ !cancelled() }}
+        run: |
+          python -m pytest tests/test_logi_goal199_air_documents.py tests/test_logi_goal199_visual_source.py tests/test_logi199_t5_redirects.py tests/test_logi199_t5_popup_fields.py \
+            tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t2_t4_mode_truth.py \
+            tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py \
+            tests/test_journey_super_goal_186.py tests/test_journey_visual_fidelity_190.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
+      - name: FULL suite parity — main@5c6642a vs this integration SHA, same runner
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p evidence/logi-199-t6
+          git worktree add -q /tmp/main-baseline 5c6642a339ec53fe4cc300b15f665e2cd5384bca
+          run_suite() { (cd "$1" && python -m pytest tests -q -p no:cacheprovider --continue-on-collection-errors -rfE 2>&1 | tee "$2" | tail -3) || true; }
+          run_suite /tmp/main-baseline /tmp/main.log
+          run_suite "$PWD" /tmp/branch.log
+          grep -E '^(FAILED|ERROR) ' /tmp/main.log | sed 's/ - .*//' | sort -u > evidence/logi-199-t6/full_suite_main_failures.txt
+          grep -E '^(FAILED|ERROR) ' /tmp/branch.log | sed 's/ - .*//' | sort -u > evidence/logi-199-t6/full_suite_branch_failures.txt
+          { echo "main@5c6642a: $(tail -1 /tmp/main.log)"; echo "branch@$GITHUB_SHA: $(tail -1 /tmp/branch.log)";
+            echo "--- NEW on branch (not on main):"; comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt;
+            echo "--- FIXED on branch:"; comm -23 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt; } > evidence/logi-199-t6/full_suite_parity.txt
+          cat evidence/logi-199-t6/full_suite_parity.txt
+          grep -Eq '[0-9]+ passed' /tmp/main.log
+          grep -Eq '[0-9]+ passed' /tmp/branch.log
+          test -z "$(comm -13 evidence/logi-199-t6/full_suite_main_failures.txt evidence/logi-199-t6/full_suite_branch_failures.txt)"
+      - if: ${{ !cancelled() }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Official build; committed dist must equal the build Streamlit loads
+        if: ${{ !cancelled() }}
+        working-directory: component
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          npm run scan
+          git diff --exit-code -- dist
+      - name: LOGI-197 DOM acceptance and hook transitions (current official bundle)
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/gen_logi195_dom_fixture.py --fixture /tmp/logi197-dom.json
+          node tests/component/dom_acceptance_logi197_journey_clarity.mjs /tmp/logi197-dom.json
+          (cd component && npx vite build --config ../tests/component/vite.hook-test.config.cjs)
+          node tests/component/dom_hook_transition_197.mjs
+      - name: Isolated Playwright Chromium
+        if: ${{ !cancelled() }}
+        run: |
+          npm install --prefix /tmp/pw --package-lock=false playwright@1.56.1
+          PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers /tmp/pw/node_modules/.bin/playwright install --with-deps chromium
+      - name: T0 smoke (existing) + T6 modes on REAL Streamlit staging
+        if: ${{ !cancelled() }}
+        env:
+          AUTH_REQUIRED: "false"
+          MONGO_URI: ""
+          MONGO_DB_NAME: ""
+          PLAYWRIGHT_MODULE: /tmp/pw/node_modules/playwright/index.mjs
+          PLAYWRIGHT_BROWSERS_PATH: /tmp/pw-browsers
+        run: |
+          test ! -e .streamlit/secrets.toml
+          rc=0
+          node tests/component/browser_logi199_real_streamlit.mjs || rc=1
+          node tests/component/browser_logi199_t6_modes.mjs || rc=1
+          exit $rc
+      - name: T5 app-wide route audit (FAILS on page/shell overflow, clipped controls, unreached route, page error)
+        if: ${{ !cancelled() }}
+        id: t5audit
+        env:
+          AUTH_REQUIRED: "false"
+          MONGO_URI: ""
+          MONGO_DB_NAME: ""
+          PLAYWRIGHT_MODULE: /tmp/pw/node_modules/playwright/index.mjs
+          PLAYWRIGHT_BROWSERS_PATH: /tmp/pw-browsers
+        run: node tests/component/browser_logi199_t5_route_audit.mjs
+      - name: Commit browser evidence to the integration branch (also on failure)
+        if: always()
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          git add -f evidence/logi-199-t6/ evidence/logi-199-t0/ evidence/logi-199-t5/ 2>/dev/null || true
+          if git diff --cached --quiet; then echo NO_EVIDENCE_CHANGE; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(LOGI-199 T6): real Streamlit staging browser evidence [skip ci]"
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:${GITHUB_REF_NAME}

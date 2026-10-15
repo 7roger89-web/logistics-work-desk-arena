@@ -70,7 +70,7 @@ export default function CustomerPlaybook() {
           <div className="flex min-w-0 items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0f2a4a] text-white" aria-hidden="true"><Users size={19} /></span>
             <div className="min-w-0">
-              <p className="text-[11px] font-extrabold text-slate-500">HỒ SƠ KHÁCH HÀNG</p>
+              <p className="text-[12px] font-extrabold text-slate-500">HỒ SƠ KHÁCH HÀNG</p>
               <h1 id="customer-playbook-title" className="mt-0.5 break-words text-balance text-[20px] font-extrabold leading-tight text-[#0f2a4a] md:text-[23px]">{customer.name}</h1>
               <p className="mt-1 break-all text-[13px] font-semibold text-slate-600">Mã khách hàng · {customer.id}</p>
             </div>
@@ -93,7 +93,7 @@ export default function CustomerPlaybook() {
             { label: "Địa chỉ", value: fmtText(customer.address) },
           ].map((fact) => (
             <div key={fact.label} className="min-w-0">
-              <dt className="text-[11px] font-bold text-slate-500">{fact.label}</dt>
+              <dt className="text-[12px] font-bold text-slate-500">{fact.label}</dt>
               <dd className={`mt-0.5 text-[13.5px] font-semibold text-slate-800 ${fact.breakAll ? "break-all" : "break-words"}`}>{fact.value}</dd>
             </div>
           ))}
@@ -156,13 +156,13 @@ export default function CustomerPlaybook() {
                   <dl className="mt-2 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                     {position && (
                       <div className="min-w-0">
-                        <dt className="text-[11px] font-bold text-slate-500">Vị trí Journey</dt>
+                        <dt className="text-[12px] font-bold text-slate-500">Vị trí Journey</dt>
                         <dd className="break-words text-[13px] font-semibold text-slate-800" data-testid="customer-playbook-journey-position">{position}</dd>
                       </div>
                     )}
                     {action && (
                       <div className="min-w-0">
-                        <dt className="text-[11px] font-bold text-slate-500">Hành động chính hiện có</dt>
+                        <dt className="text-[12px] font-bold text-slate-500">Hành động chính hiện có</dt>
                         <dd className="mt-0.5 min-w-0">
                           {action.route
                             ? <Link to={action.route} className="touch-target inline-flex max-w-full items-center gap-1 break-words text-[13px] font-bold text-[#1e5aa8] underline-offset-2 hover:underline" data-testid="customer-playbook-primary-action">{action.label} <ArrowRight size={14} className="shrink-0" aria-hidden="true" /></Link>

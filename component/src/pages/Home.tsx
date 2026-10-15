@@ -21,14 +21,14 @@ import { cx, fmtMillions, fmtText } from "../lib/format";
 // removed from view, only de-duplicated. FUNCTION > DECORATION: no hero
 // artwork, no duplicated KPI shells.
 const TILE_ICON: Record<string, { icon: typeof Truck; bar: string }> = {
-  "Lô đang chạy": { icon: Truck, bar: "bg-slate-500" },
-  "Chờ lấy hàng": { icon: PackageCheck, bar: "bg-slate-500" },
-  "Đang vận chuyển": { icon: Truck, bar: "bg-blue-500" },
-  "Chờ thông quan": { icon: FileCheck2, bar: "bg-amber-500" },
-  "Chờ giao": { icon: PackageCheck, bar: "bg-blue-500" },
-  "Đã giao": { icon: FileCheck2, bar: "bg-emerald-500" },
+  "Lô đang chạy": { icon: Truck, bar: "bg-[#5B6875]" },
+  "Chờ lấy hàng": { icon: PackageCheck, bar: "bg-[#5B6875]" },
+  "Đang vận chuyển": { icon: Truck, bar: "bg-[#1D6FA8]" },
+  "Chờ thông quan": { icon: FileCheck2, bar: "bg-[#D97706]" },
+  "Chờ giao": { icon: PackageCheck, bar: "bg-[#1D6FA8]" },
+  "Đã giao": { icon: FileCheck2, bar: "bg-[#2E7D32]" },
 };
-const FALLBACK_TILE = { icon: FileWarning, bar: "bg-red-500" };
+const FALLBACK_TILE = { icon: FileWarning, bar: "bg-[#C0392B]" };
 
 export default function Home() {
   const { shipments, home, attention, environment } = useStore();
@@ -44,18 +44,18 @@ export default function Home() {
   return (
     <div className="space-y-4 max-w-[1200px]">
       {/* 1 — PRIORITY: what matters most now, with the direct way in */}
-      <section className="rounded-2xl bg-gradient-to-br from-[#0a1f3a] via-[#0f2a4a] to-[#1e5aa8] text-white p-4 md:p-5">
-        <p className="text-[12.5px] font-semibold text-blue-200 uppercase tracking-wider">{today}{environment?.isSandbox ? ` · ${environment.label}` : ""}</p>
+      <section className="rounded-2xl bg-gradient-to-br from-[#0a1f3a] via-[#0f2a4a] to-[#1e5aa8] text-white p-4 md:p-5 border border-[#123A5E] shadow-sm">
+        <p className="text-[12.5px] font-mono font-semibold text-[#DCEBFA] uppercase tracking-wider">{today}{environment?.isSandbox ? ` · ${environment.label}` : ""}</p>
         {focus ? (
           <>
             <h1 className="text-[19px] md:text-[23px] font-extrabold leading-snug mt-1">
               Ưu tiên bây giờ: <span className="text-white">{focus.id} — {focus.nextAction}</span>
             </h1>
-            <p className="text-[13.5px] md:text-[14.5px] text-blue-100 mt-1 max-w-[760px]">
+            <p className="text-[13.5px] md:text-[14.5px] text-[#DCEBFA] mt-1 max-w-[760px]">
               {home?.urgentCount ?? 0} mục cần ưu tiên · {fmtText(focus.nextActionDetail)}
             </p>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
-              <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">XỬ LÝ NGAY <ArrowRight size={18} /></button>
+              <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#10263C] font-extrabold text-[15px] px-5 min-h-[48px] shadow-sm">XỬ LÝ NGAY <ArrowRight size={18} /></button>
               <button onClick={() => nav(shipmentPath(focus.id))} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]">Mở {focus.id}</button>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center rounded-xl text-white/90 font-bold text-[14px] px-4 min-h-[48px] underline decoration-white/40 underline-offset-4">Xem tất cả lô hàng</Link>
             </div>
@@ -64,7 +64,7 @@ export default function Home() {
           <>
             <h1 className="text-[19px] md:text-[23px] font-extrabold leading-snug mt-1">Chưa có việc cần xử lý theo dữ liệu hiện có.</h1>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
-              <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">Mở danh sách lô <ArrowRight size={18} /></Link>
+              <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#10263C] font-extrabold text-[15px] px-5 min-h-[48px]">Mở danh sách lô <ArrowRight size={18} /></Link>
             </div>
           </>
         )}
@@ -77,19 +77,19 @@ export default function Home() {
           title="Cần xử lý tiếp"
           compact
         />
-        <section className="rounded-2xl bg-white border border-slate-200 p-4">
+        <section className="rounded-2xl bg-white border border-[#D6DEE7] p-4 shadow-[0_1px_3px_rgba(16,38,60,.04)]">
           <div className="flex items-center justify-between mb-2.5">
-            <h3 className="font-extrabold text-[16px] text-[#0f2a4a]">Trạng thái các lô đang chạy</h3>
-            <Link to="/lo-hang" className="text-[13px] font-bold text-[#1e5aa8] inline-flex items-center gap-1">Tất cả lô <ArrowRight size={14} /></Link>
+            <h3 className="font-extrabold text-[16px] text-[#10263C]">Trạng thái các lô đang chạy</h3>
+            <Link to="/lo-hang" className="text-[13px] font-bold text-[#1D6FA8] inline-flex items-center gap-1">Tất cả lô <ArrowRight size={14} /></Link>
           </div>
           <div className="space-y-2">
-            {running.length === 0 && <p className="text-[14px] text-slate-500 py-2">Không có lô nào đang chạy.</p>}
+            {running.length === 0 && <p className="text-[14px] text-[#5B6875] py-2">Không có lô nào đang chạy.</p>}
             {running.map((s) => {
               const row = shipments.find((x) => x.id === s.id);
               return (
-                <Link key={s.id} to={s.to} className="flex items-center gap-3 rounded-xl border border-slate-200 hover:border-[#1e5aa8] p-2.5 lift">
+                <Link key={s.id} to={s.to} className="flex items-center gap-3 rounded-xl border border-[#D6DEE7] hover:border-[#1D6FA8] p-2.5 lift bg-[#FFFFFF]">
                   <StatusDot tone={row?.statusTone ?? "gray"} />
-                  <span className="flex-1 min-w-0"><span className="block font-bold text-[14px] text-[#0f2a4a]">{s.id} · {s.customer}</span><span className="block text-[12.5px] text-slate-500 truncate">Tiếp theo: {s.nextAction}</span></span>
+                  <span className="flex-1 min-w-0"><span className="block font-bold text-[14px] text-[#10263C]"><span className="font-mono">{s.id}</span> · {s.customer}</span><span className="block text-[12.5px] text-[#5B6875] truncate">Tiếp theo: {s.nextAction}</span></span>
                   <ToneBadge tone={row?.statusTone ?? "gray"} size="sm">{s.status}</ToneBadge>
                 </Link>
               );
@@ -106,10 +106,10 @@ export default function Home() {
             const visual = TILE_ICON[k.label] ?? FALLBACK_TILE;
             const Icon = visual.icon;
             return (
-              <Link key={k.label} to={k.to} className="lift btn-press rounded-2xl bg-white border border-slate-200 p-3 flex flex-col gap-1.5" title={k.sub}>
-                <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-500 truncate"><span className={cx("w-1.5 h-4 rounded-full shrink-0", visual.bar)} /><Icon size={15} className="shrink-0 text-slate-400" />{k.label}</span>
-                <span className="tnum text-[22px] md:text-[24px] font-extrabold text-[#0f2a4a] leading-none">{k.value}</span>
-                <span className="text-[12px] text-slate-400 leading-snug line-clamp-2 min-h-[2em]">{k.sub}</span>
+              <Link key={k.label} to={k.to} className="lift btn-press rounded-2xl bg-white border border-[#D6DEE7] p-3 flex flex-col gap-1.5 shadow-[0_1px_3px_rgba(16,38,60,.04)]" title={k.sub}>
+                <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#5B6875] truncate"><span className={cx("w-1.5 h-4 rounded-full shrink-0", visual.bar)} /><Icon size={15} className="shrink-0 text-[#5B6875]" />{k.label}</span>
+                <span className="tnum font-mono text-[22px] md:text-[24px] font-extrabold text-[#10263C] leading-none">{k.value}</span>
+                <span className="text-[12px] text-[#5B6875] leading-snug line-clamp-2 min-h-[2em]">{k.sub}</span>
               </Link>
             );
           })}
@@ -120,25 +120,25 @@ export default function Home() {
       <section>
         <SectionTitle title="Tiền & hồ sơ cần chú ý" sub="Hiện trạng → việc thiếu → bấm để xử lý ngay" />
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 flex flex-col">
-            <p className="text-[12.5px] font-semibold text-emerald-800 flex items-center gap-1.5"><Wallet size={15} /> Còn phải thu · <span className="tnum font-extrabold">{fmtMillions(home?.outstandingTotal)} ₫</span></p>
-            <p className="text-[13px] text-emerald-900 mt-1 flex-1">{home?.outstandingCount ?? 0} lô còn công nợ theo core.logic</p>
-            <Link to="/tai-chinh/thu-tien" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[14px] px-4 min-h-[44px]">GHI NHẬN THANH TOÁN</Link>
+          <div className="rounded-xl bg-[#DCEDE4]/65 border border-[#2E7D32]/25 p-3.5 flex flex-col">
+            <p className="text-[12.5px] font-semibold text-[#22614A] flex items-center gap-1.5"><Wallet size={15} /> Còn phải thu · <span className="tnum font-mono font-extrabold">{fmtMillions(home?.outstandingTotal)} ₫</span></p>
+            <p className="text-[13px] text-[#22614A] mt-1 flex-1">{home?.outstandingCount ?? 0} lô còn công nợ theo core.logic</p>
+            <Link to="/tai-chinh/thu-tien" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#2E7D32] hover:bg-[#22614A] text-white font-bold text-[14px] px-4 min-h-[44px]">GHI NHẬN THANH TOÁN</Link>
           </div>
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 flex flex-col">
-            <p className="text-[12.5px] font-semibold text-amber-800 flex items-center gap-1.5"><Scale size={15} /> Cần đối soát · <span className="tnum font-extrabold">{summary?.financialAttention ?? 0} lô</span></p>
-            <p className="text-[13px] text-amber-900 mt-1 flex-1">Quote Estimate ≠ Finance Actual — đối soát từng lô</p>
-            <Link to="/tai-chinh/doi-soat" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-[14px] px-4 min-h-[44px]">ĐỐI SOÁT NGAY</Link>
+          <div className="rounded-xl bg-[#FBEBD3]/65 border border-[#D97706]/25 p-3.5 flex flex-col">
+            <p className="text-[12.5px] font-semibold text-[#8A5209] flex items-center gap-1.5"><Scale size={15} /> Cần đối soát · <span className="tnum font-mono font-extrabold">{summary?.financialAttention ?? 0} lô</span></p>
+            <p className="text-[13px] text-[#8A5209] mt-1 flex-1">Quote Estimate ≠ Finance Actual — đối soát từng lô</p>
+            <Link to="/tai-chinh/doi-soat" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#D97706] hover:bg-[#8A5209] text-white font-bold text-[14px] px-4 min-h-[44px]">ĐỐI SOÁT NGAY</Link>
           </div>
-          <div className="rounded-xl bg-blue-50 border border-blue-200 p-3.5 flex flex-col">
-            <p className="text-[12.5px] font-semibold text-blue-800 flex items-center gap-1.5"><FolderX size={15} /> Hồ sơ thiếu thông tin · <span className="tnum font-extrabold">{home?.missingDocsTotal ?? 0}</span></p>
-            <p className="text-[13px] text-blue-900 mt-1 flex-1">{summary?.missingInfo ?? 0} lô thiếu dữ liệu bắt buộc</p>
-            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#0f2a4a] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ DANH SÁCH LÔ</Link>
+          <div className="rounded-xl bg-[#DCEBFA]/65 border border-[#1D6FA8]/25 p-3.5 flex flex-col">
+            <p className="text-[12.5px] font-semibold text-[#154C79] flex items-center gap-1.5"><FolderX size={15} /> Hồ sơ thiếu thông tin · <span className="tnum font-mono font-extrabold">{home?.missingDocsTotal ?? 0}</span></p>
+            <p className="text-[13px] text-[#154C79] mt-1 flex-1">{summary?.missingInfo ?? 0} lô thiếu dữ liệu bắt buộc</p>
+            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#10263C] hover:bg-[#123A5E] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ DANH SÁCH LÔ</Link>
           </div>
-          <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex flex-col">
-            <p className="text-[12.5px] font-semibold text-red-800 flex items-center gap-1.5"><ListTodo size={15} /> Việc cần ưu tiên · <span className="tnum font-extrabold">{urgentTotal} việc</span></p>
-            <p className="text-[13px] text-red-900 mt-1 flex-1">{summary?.deadlineSoon ?? 0} lô sắp tới hạn khách</p>
-            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-red-600 text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ LÔ HÀNG</Link>
+          <div className="rounded-xl bg-[#F6DFDB]/65 border border-[#C0392B]/25 p-3.5 flex flex-col">
+            <p className="text-[12.5px] font-semibold text-[#8E2F22] flex items-center gap-1.5"><ListTodo size={15} /> Việc cần ưu tiên · <span className="tnum font-mono font-extrabold">{urgentTotal} việc</span></p>
+            <p className="text-[13px] text-[#8E2F22] mt-1 flex-1">{summary?.deadlineSoon ?? 0} lô sắp tới hạn khách</p>
+            <Link to="/lo-hang" className="btn-press touch-target mt-2.5 flex items-center justify-center rounded-lg bg-[#C0392B] hover:bg-[#8E2F22] text-white font-bold text-[14px] px-4 min-h-[44px]">MỞ LÔ HÀNG</Link>
           </div>
         </div>
       </section>

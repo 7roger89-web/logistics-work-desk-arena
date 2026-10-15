@@ -126,7 +126,7 @@ function TableBlock({ table }: { table: NonNullable<HandbookEntry["table"]> }) {
           >
             {row.map((cell, cellIndex) => (
               <div key={`c-${cellIndex}`} className="py-0.5 text-[13.5px] leading-relaxed">
-                <span className="mr-1.5 text-[11.5px] font-bold uppercase tracking-wide text-slate-500">
+                <span className="mr-1.5 text-[12px] font-bold uppercase tracking-wide text-slate-500">
                   {table.columns[cellIndex] ?? ""}
                 </span>
                 {render(cell)}
@@ -143,7 +143,7 @@ function TableBlock({ table }: { table: NonNullable<HandbookEntry["table"]> }) {
               <th
                 key={`h-${index}`}
                 scope="col"
-                className="border-b border-slate-200 px-2.5 py-2 text-left text-[11.5px] font-extrabold uppercase tracking-wide text-slate-500"
+                className="border-b border-slate-200 px-2.5 py-2 text-left text-[12px] font-extrabold uppercase tracking-wide text-slate-500"
               >
                 {col}
               </th>
@@ -293,15 +293,15 @@ function EntryCard({
         </div>
       ) : null}
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] font-bold text-slate-600">
+        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-600">
           {section.label}
         </span>
         {entry.table ? (
-          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-bold text-blue-800">
+          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[12px] font-bold text-blue-800">
             {entry.table.rows.length} dòng
           </span>
         ) : null}
-        <span className="text-[11.5px] font-semibold text-slate-400">
+        <span className="text-[12px] font-semibold text-slate-400">
           {entry.tags.slice(0, 3).map((tag) => `#${tag}`).join(" ")}
         </span>
       </div>
@@ -453,7 +453,7 @@ export default function Notebook() {
               data-testid={`handbook-category-${section.id}`}
             >
               {section.label}
-              <span className="ml-1.5 text-[11.5px] font-extrabold opacity-70">
+              <span className="ml-1.5 text-[12px] font-extrabold opacity-70">
                 {section.entries.length}
               </span>
             </button>

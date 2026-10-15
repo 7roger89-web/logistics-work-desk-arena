@@ -4,7 +4,7 @@ These source-contract checks pin the Owner's production review:
 - urgency is driven by canonical Attention bands, never text heuristics;
 - canonical shipment owner is shown as responsibility, updated_by stays secondary;
 - fresh zero-node Journey is compact;
-- full-lot workspace collapses the map before embedding existing forms;
+- full-lot workspace keeps the map beside existing forms (Owner 13/10);
 - completion review is compact by default and explicitly not create-lot input.
 Real Chromium comparison against PR177 remains mandatory before acceptance.
 """
@@ -44,32 +44,48 @@ class JourneyDensity(unittest.TestCase):
         self.assertNotIn('className="h-full overflow-auto p-4" data-testid="journey-customs-import-panel"', JOURNEY)
 
     def test_focus_shell_geometry_is_bound_to_scrollbar_free_reference_width(self):
-        self.assertIn('.journey-side { flex-shrink: 0; width: 451px;', CSS)
-        self.assertIn('.focus-shell { min-height: 100%; }', CSS)
-        self.assertIn('padding-left: 17px; padding-right: 17px;', CSS)
-        # Empty optional module setup stays accessible on demand, but no longer
-        # consumes a permanent first-screen row.
+        # REPAIRED: old 451px summary composition is no longer authority.
+        self.assertIn('.journey-split-small-map .journey-canvas', CSS)
+        self.assertIn('.journey-split-small-map .journey-side { flex: 1;', CSS)
+        self.assertIn('min-width: 0', CSS)
+        self.assertIn('@media (max-width: 1100px)', CSS)
+        # Existing attached modules and optional attachment stay reachable.
         self.assertIn('(modules.length > 0 || attachOpen)', JOURNEY)
-        self.assertIn('data-testid="journey-add-module-page"', JOURNEY)
+        self.assertIn('data-testid="journey-add-module"', JOURNEY)
+        self.assertIn('setAttachOpen(true)', JOURNEY)
 
     def test_fresh_zero_node_shell_is_compact(self):
-        self.assertIn("journey-split journey-split-fresh", JOURNEY)
-        self.assertIn(".journey-split-fresh { height: 500px; }", CSS)
-        self.assertIn(".journey-split-fresh .journey-canvas { height: 430px; }", CSS)
+        # SUPERSEDED geometry; preserve truthful unknown + one next action.
+        zero = JOURNEY.split('function ZeroNodeJourney', 1)[1].split('export default function ShipmentJourney', 1)[0]
+        self.assertIn('data-testid="journey-empty-map"', zero)
+        self.assertIn('Đang ở: Chưa xác định', zero)
+        self.assertEqual(zero.count('data-testid="journey-zero-primary-cta"'), 1)
+        self.assertNotIn('<JourneyMap', zero)
+        self.assertNotIn('journey-phase-strip', zero)
+        self.assertIn('{children}', zero)  # profile editor remains reachable
 
     def test_global_workspace_reuses_collapsed_map_rail(self):
-        self.assertIn("setPanelMode('global');", JOURNEY)
-        self.assertIn("setMapCollapsed(true);", JOURNEY)
-        self.assertIn("journey-split-collapsed", JOURNEY)
+        # SUPERSEDED: Owner explicitly rejected collapsing to a list rail.
+        global_open = JOURNEY.split('const openGlobal =', 1)[1].split('// Issue #190', 1)[0]
+        self.assertIn("setPanelMode('global');", global_open)
+        self.assertNotIn('setMapCollapsed', global_open)
+        self.assertIn('collapsed={false}', JOURNEY)
+        self.assertIn('data-testid="journey-global-workspace"', JOURNEY)
+        self.assertIn("label:'Nhập & Giao'", JOURNEY)
+        self.assertIn('{children}', JOURNEY)
 
     def test_populated_default_restores_original_composition(self):
+        # SUPERSEDED summary cards; persistent map + overview, then stage panels.
         populated = JOURNEY.split("export default function ShipmentJourney", 1)[1]
         self.assertNotIn('data-testid="journey-phase-strip"', populated)
-        self.assertNotIn('data-testid="journey-map-toolbar"', populated)
-        self.assertIn("globalActive ? 'global' : 'quick'", populated)
-        self.assertIn('data-testid="journey-summary-cards"', populated)
-        for idx in range(1, 6):
-            self.assertIn(f'journey-summary-card-{idx}', populated)
+        self.assertNotIn('data-testid="journey-summary-cards"', populated)
+        self.assertIn("globalActive ? 'global' : 'overview'", populated)
+        self.assertIn('data-testid="journey-overview-panel"', populated)
+        self.assertIn('data-testid="journey-stage-workspace"', populated)
+        self.assertIn("setPanelMode('quick')", populated)
+        # Canonical facts drive status/action, not summary card position.
+        self.assertIn('journey?.primaryAction.text', populated)
+        self.assertIn("n.state === 'PROBLEM'", populated)
 
 
 class CompletionReviewDensity(unittest.TestCase):

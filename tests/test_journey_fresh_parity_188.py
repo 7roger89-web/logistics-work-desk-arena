@@ -22,28 +22,37 @@ DIST = ROOT / "component/dist/logi-shell.js"
 
 
 class FreshShipmentCockpitContract(unittest.TestCase):
-    def test_zero_nodes_keep_the_cockpit_shell(self):
-        self.assertIn("function FreshShipmentCockpit", JOURNEY)
+    """Issue #197 follow-up — owner correction 2026-10-13: no compact
+    five-phase cards anywhere. The zero-node view uses the split language —
+    a slim empty-map placeholder left, the unchanged action content right —
+    never an invented current phase."""
+
+    def test_zero_nodes_render_the_split_empty_shell(self):
+        self.assertIn("function ZeroNodeJourney", JOURNEY)
+        self.assertNotIn("function FreshShipmentCockpit", JOURNEY)
+        self.assertNotIn("const EMPTY_PHASES", JOURNEY)
+        self.assertNotIn("function JourneyStageSummaryCards", JOURNEY)
         self.assertIn('data-empty-journey="true"', JOURNEY)
-        self.assertIn('data-testid="journey-empty-canvas"', JOURNEY)
-        self.assertIn('data-testid="journey-phase-strip"', JOURNEY)
-        self.assertIn('data-testid="journey-side-panel"', JOURNEY)
-        self.assertNotIn("Chưa có công đoạn phù hợp. Bổ sung phạm vi dịch vụ", JOURNEY)
+        self.assertIn('data-testid="journey-empty-map"', JOURNEY)
+        self.assertIn('data-testid="journey-split-view"', JOURNEY)
+        self.assertIn("📍 Đang ở: Chưa xác định", JOURNEY)
+        self.assertNotIn("Đang ở: HỒ SƠ", JOURNEY)
 
-    def test_empty_state_has_six_universal_phases_and_one_profile_action(self):
-        for label in ["HỒ SƠ", "ĐẦU ĐI", "CHẶNG CHÍNH", "NHẬP KHẨU", "GIAO HÀNG", "HOÀN TẤT"]:
-            self.assertIn(f"label: '{label}'", JOURNEY)
-        self.assertIn('data-testid="journey-empty-primary-cta"', JOURNEY)
+    def test_zero_node_view_has_one_profile_action(self):
+        self.assertIn('data-testid="journey-zero-primary-cta"', JOURNEY)
         self.assertIn("onClick={runPrimary}", JOURNEY)
-        self.assertIn("data-state={actionable ? 'ACTION' : 'UNKNOWN'}", JOURNEY)
-        self.assertIn("disabled={!actionable}", JOURNEY)
+        self.assertIn("BỔ SUNG HỒ SƠ", JOURNEY)
+        self.assertIn('data-testid="journey-zero-profile"', JOURNEY)
 
-    def test_empty_state_does_not_fabricate_mode_specific_detailed_nodes(self):
-        start = JOURNEY.index("function FreshShipmentCockpit")
+    def test_zero_node_view_has_no_six_phase_canvas_or_quick_panel(self):
+        start = JOURNEY.index("function ZeroNodeJourney")
         end = JOURNEY.index("export default function ShipmentJourney")
-        empty = JOURNEY[start:end]
+        zero = JOURNEY[start:end]
+        self.assertNotIn("journey-empty-canvas", zero)
+        self.assertNotIn("journey-phase-strip", zero)
+        self.assertNotIn("journey-quick-panel", zero)
         for detailed in ["booking", "si-vgm", "gate-in", "customs-import", "on-board"]:
-            self.assertNotIn(f"id: '{detailed}'", empty)
+            self.assertNotIn(f"id: '{detailed}'", zero)
 
     def test_cockpit_precedes_completion_review_on_the_page(self):
         attention = DETAIL.index("<AttentionNow")
@@ -117,12 +126,13 @@ class ZeroNodeRenderLane(unittest.TestCase):
             self.skipTest("component dev dependencies not installed (run npm ci in component/)")
         if not DIST.exists():  # pragma: no cover
             self.skipTest("component dist not built")
-        proc = subprocess.run(
-            [node, str(FRESH_DOM_LANE), str(FRESH_FIXTURE), str(DIST)],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=300,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        self.assertIn("PASS journey fresh 188", proc.stdout)
+        for variant in ("nodes", "absent"):
+            proc = subprocess.run(
+                [node, str(FRESH_DOM_LANE), str(FRESH_FIXTURE), str(DIST), variant],
+                cwd=str(ROOT), capture_output=True, text=True, timeout=300,
+            )
+            self.assertEqual(proc.returncode, 0, f"variant={variant}\n" + proc.stdout + proc.stderr)
+            self.assertIn("PASS journey fresh 188", proc.stdout)
 
 
 if __name__ == "__main__":
