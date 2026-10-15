@@ -234,7 +234,7 @@
     "component_typecheck": "PASS (npm run typecheck after source commit)",
     "component_build": "PASS (Vite 8.2.2; 1936 modules; final stable CSS hash 6973bae4...)",
     "component_scan": "PASS (0 executable process references)",
-    "dist_sync": "PENDING: final hashes below are from a stable build; commit dist then rerun npm run build/scan and verify a clean diff",
+    "dist_sync": "PASS: post-commit Vite rebuild left component/dist byte-identical to evidence commit 754a619f30affd1c18753b50f78d917bb2db5944",
     "dom_hook_transition_197": "PASS (same mounted instance; zero→populated and populated→zero)",
     "dom_acceptance_journey_fresh_188": "PASS (zero-node split view, one CTA, zero writes; JSDOM emitted a benign scrollTo-not-implemented warning)",
     "dom_acceptance_c2c": {
@@ -265,7 +265,29 @@
       "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
       "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
     },
-    "evidence_only_comment": "The 390/1440 browser capture is historical and not current-source verification. Current live touch/readback verdicts remain NOT_VERIFIED."
+    "evidence_only_comment": "The 390/1440 browser capture is historical and not current-source verification. Current live touch/readback verdicts remain NOT_VERIFIED.",
+    "dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
+    "post_evidence_commit_verification": {
+      "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+      "evidence_and_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
+      "npm_run_typecheck": "PASS",
+      "npm_run_build": "PASS (Vite 8.2.2; 1936 modules)",
+      "npm_run_scan": "PASS (FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0)",
+      "dist_sync": "PASS (git diff --exit-code component/dist returned clean)",
+      "dist_sha256": {
+        "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
+        "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+      },
+      "dom_hook_transition_197": "PASS (zero→populated and populated→zero on same instance)",
+      "dom_acceptance_journey_fresh_188": "PASS (zero-node split view, one CTA, zero writes; benign JSDOM scrollTo warning)",
+      "dom_acceptance_c2c": "PARTIAL PASS: Steps 1–3 passed; Step 4 failed on finance-tab assertion after Mở lô, same as pre-repair baseline",
+      "dom_acceptance_payment_trust": "FAILED before payment at missing LO-0308 fixture precondition, same as pre-repair baseline",
+      "dom_acceptance_amount_integrity": "FAILED before payment at missing/clickable LO-0308 precondition, same as pre-repair baseline",
+      "dom_acceptance_logi197_journey_clarity": "NOT_RUN: fixture generator stopped because system Python lacks streamlit; no product assertion executed",
+      "full_pytest": "NOT_RUN by scope; no pytest runner in system Python",
+      "capture_replay": "NOT_VERIFIED for exact current source; fresh staging rendered auth gate before shell and no current browser runtime was available after workspace resume",
+      "github_actions_ci": "NOT_TRIGGERED (no matching branch workflow)"
+    }
   },
   "overengineering_evaluation": {
     "SIMPLER_PATH": "Reuse current component, capture script, and focused DOM checks; do not add an auth fixture or new test framework.",
@@ -284,5 +306,7 @@
     "NO_DEPLOY_PRODUCTION": "YES",
     "auth_bootstrap_finance_snapshot_retry_blockers": "PRESERVED; not waived or repaired by this UI slice"
   },
-  "current_source_verification_status": "FOCUSED_BUILD_AND_DOM_REGRESSIONS_DONE__DIST_COMMIT_AND_SYNC_PENDING"
+  "current_source_verification_status": "POST_COMMIT_TYPECHECK_BUILD_SCAN_DIST_SYNC_AND_FOCUSED_DOM_DONE__LIVE_TOUCH_AND_SAVE_READBACK_NOT_VERIFIED",
+  "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
+  "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from all checked-in push filters"
 }

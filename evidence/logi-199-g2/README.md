@@ -5,6 +5,7 @@
 This packet covers only the latest bounded repair on the fixed branch `arena/bb243332-logistics-work-desk-arena`. It does not redo G0–G5, certify the whole goal, self-sign Supervisor PASS, or replace Owner UAT. The only visual authority is `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`, SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
 
 - Current product source commit: `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7`.
+- Evidence/dist checkpoint commit: `754a619f30affd1c18753b50f78d917bb2db5944`.
 - Current source-built UI: `component/dist/logi-shell.js` SHA-256 `19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3`; `component/dist/logi-shell.css` SHA-256 `6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f`.
 - **Evidence provenance:** the displayed before/after screenshots and successful touch/save-readback run are from the previous workspace snapshot at source `d77446e7b5ff03cfde9c79c6013d12a4b0a9c3ba` and CSS hash `1b87f972…`. After resuming on the pinned branch, the new source commit was built and the final CSS stabilized at `6973bae4…`; its only difference from the immediately prior bundle is a generated utility selector absent from the current Journey/Receivables source. A fresh replay after workspace resume hit the login gate before the component loaded; current `TOUCH_PAN_VERDICT=NOT_VERIFIED` and `TAP_SAVE_READBACK_VERDICT=NOT_VERIFIED`. Do not present the previous runtime PASS as current-source verification.
 - Current capture runtime: no usable Chromium executable/venv is present after workspace resume. No fresh mock write or real payment occurred in the failed replay. No auth bypass fixture or extra framework was added.
@@ -42,7 +43,7 @@ The prior separate Mongomock run started with an empty ON BOARD date, tapped nod
 
 ## Focused verification and known pre-existing test oracles
 
-- Current source commit `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7`: `npm run typecheck` PASS; Vite 8.2.2 build PASS (1936 modules); `npm run scan` PASS with `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`. Repeated clean builds stabilized at the current CSS hash `6973bae4…`. The dist/evidence commit and post-commit clean dist-sync are pending.
+- Current source commit `2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7`; dist/evidence commit `754a619f30affd1c18753b50f78d917bb2db5944`: post-commit `npm run typecheck`, Vite 8.2.2 build (1936 modules), `npm run scan` and clean dist sync all PASS. `FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`; built JS/CSS hashes match the committed dist exactly (`19674586…` / `6973bae4…`).
 - `dom_hook_transition_197.mjs`: PASS on the current source-built bundle in both zero→populated and populated→zero directions.
 - `dom_acceptance_journey_fresh_188.mjs`: PASS on the current source-built bundle (zero-node split view, one CTA, zero writes). JSDOM prints a non-fatal `scrollTo` warning.
 - `dom_acceptance_c2c.mjs`: Steps 1–3 PASS (receivables/totals, request identity, duplicate absorption, visible pending, refusal/retry and authoritative readback); Step 4 fails on the legacy finance-tab assertion after “Mở lô”. The exact same assertion failed against pre-repair dist.

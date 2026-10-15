@@ -25,8 +25,8 @@ The previous successful capture used CDP `touchStart` + 12 multi-step `touchMove
 
 ## Verification and limits
 
-- Current-source `npm run typecheck`, Vite build (1936 modules), and process scan pass. Exact final dist hashes are above; dist-sync and focused DOM results are recorded in `metrics.json` after the post-commit check.
-- Historical C2C DOM Steps 1–3 passed; Step 4 finance-tab assertion failed identically on pre-repair dist. Historical payment-trust/amount-integrity scripts fail at missing `LO-0308` fixture/navigation preconditions, likewise reproduced on pre-repair dist. No payment logic was changed. Current re-run results are in `metrics.json`.
+- Evidence/dist commit `754a619f30affd1c18753b50f78d917bb2db5944`; post-commit `npm run typecheck`, Vite build (1936 modules), scan and clean dist sync all PASS. Exact hashes are above.
+- Current-bundle hook transition and zero-node DOM regressions PASS. C2C steps 1–3 PASS; its Step 4 finance-tab assertion fails as on pre-repair dist. Payment-trust/amount-integrity fail before payment at missing `LO-0308` fixture/navigation preconditions, likewise reproduced on pre-repair dist. The LOGI-197 clarity fixture did not run because the generator requires missing system-Python Streamlit. No payment logic changed. Exact outcomes are in `metrics.json`.
 - `GITHUB_ACTIONS_CI=NOT_TRIGGERED`: no checked-in push-workflow filter includes the fixed Arena branch. Historical run `38683678222` at source `1889d2a…` is not current CI.
 - Preserve the separate auth/bootstrap/finance-coverage gaps and reproduced snapshot retry-idempotency defect; this visual repair does not waive or repair them.
 - No full pytest or 21-route audit was run. `FULL_GOAL_199=IN_PROGRESS`.
