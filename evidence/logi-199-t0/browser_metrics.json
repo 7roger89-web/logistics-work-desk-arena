@@ -2,7 +2,7 @@
   "runtime": "REAL_STREAMLIT_COMPONENTS_V2",
   "app": "app.py",
   "mode": "isolated-mongomock-no-production-db",
-  "commit": "4e70feadb5a30012a12ddfc1c015a049ff17eaa9",
+  "commit": "4d6959fb502e75d8cdd943d15aa7ba7183bd0b7c",
   "checks": [
     {
       "label": "desktop-home",
@@ -40,6 +40,11 @@
       }
     },
     {
+      "label": "journey-detail-map-node",
+      "clicked": "journey-node-delivery",
+      "count": 2
+    },
+    {
       "label": "mobile-journey",
       "width": 390,
       "height": 844,
@@ -53,9 +58,24 @@
         "overflowPx": 0,
         "clientWidth": 358
       },
-      "journeyVisible": true
+      "journeyVisible": true,
+      "identityReadability": {
+        "title": "Lô hàng LO-0306",
+        "customer": "An Phát JSC",
+        "noOverlap": true,
+        "titleOverflow": 0,
+        "actionsOverflow": 0,
+        "headerOverflow": 0,
+        "customerEllipsized": false
+      },
+      "primaryAttention": {
+        "text": "Khai tờ khai nhập khẩu LO-0306 + nộp thuế",
+        "overflow": 0,
+        "whiteSpace": "normal",
+        "textOverflow": "clip"
+      }
     }
   ],
-  "nodeCount": 0,
+  "nodeCount": 2,
   "verdict": "RUNTIME_SMOKE_PASS"
 }

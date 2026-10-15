@@ -13547,7 +13547,7 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 				"data-testid": "attention-empty",
 				children: n
 			}) : /* @__PURE__ */ (0, H.jsxs)("div", {
-				className: "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-1",
+				className: "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:gap-y-1.5 sm:py-1",
 				children: [
 					/* @__PURE__ */ (0, H.jsxs)("span", {
 						className: "inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1.5 text-[12px] font-extrabold text-white",
@@ -13562,7 +13562,7 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 						]
 					}),
 					/* @__PURE__ */ (0, H.jsxs)("div", {
-						className: "min-w-0 flex-1",
+						className: "order-2 w-full min-w-0 sm:order-none sm:w-auto sm:flex-1",
 						"data-testid": `attention-item-${t.id}`,
 						"data-attention-band": t.band,
 						"data-attention-source": t.sourceType,
@@ -13577,18 +13577,19 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 								]
 							}),
 							/* @__PURE__ */ (0, H.jsx)("p", {
-								className: "truncate text-[14px] font-extrabold text-red-700",
+								"data-testid": "attention-primary-action",
+								className: "break-words text-[14px] font-extrabold leading-snug text-red-700 sm:truncate",
 								children: t.action
 							}),
 							t.reason && /* @__PURE__ */ (0, H.jsx)("p", {
-								className: "truncate text-[12.5px] text-red-600",
+								className: "break-words text-[12.5px] text-red-600 sm:truncate",
 								children: t.reason
 							})
 						]
 					}),
 					/* @__PURE__ */ (0, H.jsxs)(V, {
 						to: t.route,
-						className: "btn-press touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-[13px] font-extrabold text-white",
+						className: "btn-press touch-target order-1 ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-[13px] font-extrabold text-white sm:order-none sm:ml-0",
 						style: { minHeight: 38 },
 						children: [
 							"XỬ LÝ ",
@@ -13600,7 +13601,7 @@ function ws({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 						]
 					}),
 					r.length > 0 && /* @__PURE__ */ (0, H.jsxs)("div", {
-						className: "flex min-w-0 flex-wrap items-center gap-2",
+						className: "order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:order-none sm:w-auto",
 						children: [/* @__PURE__ */ (0, H.jsx)("span", {
 							className: "shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500",
 							children: "ĐIỂM CHÚ Ý KHÁC"
@@ -22374,7 +22375,7 @@ function mu() {
 				className: "rounded-2xl bg-white border border-slate-200 px-4 py-2.5 md:px-5",
 				"data-testid": "shipment-identity-bar",
 				children: /* @__PURE__ */ (0, H.jsxs)("div", {
-					className: "flex items-center gap-3",
+					className: "grid grid-cols-[40px_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:flex sm:items-center sm:gap-3",
 					children: [
 						/* @__PURE__ */ (0, H.jsxs)(V, {
 							to: "/",
@@ -22399,42 +22400,49 @@ function mu() {
 							"aria-hidden": "true"
 						}),
 						/* @__PURE__ */ (0, H.jsxs)("div", {
-							className: "min-w-0",
+							className: "col-start-2 min-w-0 sm:col-auto sm:flex-1",
+							"data-testid": "shipment-identity-info",
 							children: [/* @__PURE__ */ (0, H.jsxs)("div", {
 								className: "flex flex-wrap items-center gap-x-2 gap-y-1",
 								children: [/* @__PURE__ */ (0, H.jsxs)("h1", {
-									className: "text-[19px] font-extrabold text-[#0f2a4a] whitespace-nowrap",
+									"data-testid": "shipment-identity-title",
+									className: "min-w-0 break-words text-[19px] font-extrabold text-[#0f2a4a] sm:whitespace-nowrap",
 									title: Cn || void 0,
 									children: ["Lô hàng ", v.id]
 								}), Tn && /* @__PURE__ */ (0, H.jsx)("span", {
-									className: "rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 whitespace-nowrap",
+									className: "max-w-full break-words rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 sm:whitespace-nowrap",
 									children: Tn
 								})]
 							}), /* @__PURE__ */ (0, H.jsxs)("p", {
-								className: "mt-0.5 truncate text-[12.5px] text-slate-600",
+								className: "mt-0.5 min-w-0 text-[12.5px] leading-snug text-slate-600 sm:truncate",
 								children: [
 									/* @__PURE__ */ (0, H.jsx)("span", {
+										"data-testid": "shipment-identity-customer",
 										className: "font-semibold text-slate-800",
 										children: v.customer
 									}),
 									/* @__PURE__ */ (0, H.jsx)("span", {
-										className: "text-slate-400",
+										className: "hidden text-slate-400 sm:inline",
 										children: " → "
 									}),
-									/* @__PURE__ */ (0, H.jsx)("span", { children: v.route })
+									/* @__PURE__ */ (0, H.jsx)("span", {
+										className: "block break-words sm:inline",
+										children: v.route
+									})
 								]
 							})]
 						}),
 						/* @__PURE__ */ (0, H.jsxs)("div", {
-							className: "ml-auto flex shrink-0 items-center gap-2.5",
+							"data-testid": "shipment-identity-actions",
+							className: "col-span-2 flex min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:shrink-0 sm:flex-nowrap sm:gap-2.5",
 							children: [/* @__PURE__ */ (0, H.jsx)("button", {
 								type: "button",
 								onClick: () => O((e) => e + 1),
 								"data-testid": "journey-global-page",
-								className: "touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]",
+								className: "touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8] sm:px-4",
 								children: "Toàn bộ lô hàng"
 							}), /* @__PURE__ */ (0, H.jsx)("span", {
-								className: "grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold",
+								className: "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold",
 								title: kn,
 								"aria-label": kn,
 								children: On
