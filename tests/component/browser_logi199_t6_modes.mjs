@@ -159,7 +159,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await sleep(300);
   await mapComparison('mobile');
-  for (const id of ['T6-FCL', 'T6-AIR']) {
+  for (const id of Object.keys(EXPECT)) {
     await openLot(id);
     const o = await overflow(page);
     results.checks.push({ label: `mobile-${id}`, overflowPx: o });
@@ -176,7 +176,7 @@ try {
   results.checks.push({ label: 'persisted-on-board-after-reopen', value: '2026-10-03' });
   assert.deepEqual(errors, [], 'page errors: ' + errors.join(' | '));
   results.verdict = 'T6_MODES_STAGING_PASS';
-  console.log('T6_BROWSER=PASS FCL/LCL/AIR/ROAD-LTL nodes, FCL on-board write/readback, desktop+mobile no overflow');
+  console.log('T6_BROWSER=PASS all six SEA/AIR/ROAD variants, FCL on-board write/reopen readback, desktop+mobile no overflow');
 } catch (err) {
   results.verdict = 'T6_MODES_STAGING_FAIL';
   results.failure = String(err && err.stack || err);

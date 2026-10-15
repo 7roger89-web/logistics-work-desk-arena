@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/d8927583-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "INT198_REPAIRED_LOCAL_VERIFIED_CI_PENDING",
+  "stage": "INT198_TECHNICAL_PASS_EXTEND_ALL_SIX_MOBILE_MATRIX",
   "progress": {
     "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
     "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
@@ -60,7 +60,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Push repaired integration-with-198 on fixed Arena branch, run T6 at exact HEAD, then independent reviewer gate; no production actions.",
+  "current_subtask": "Final exact-HEAD T6 with all six modes on both viewports (previous CI PASS; closes remaining mobile matrix gap). Then independent reviewer gate.",
   "source_receipt": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -109,9 +109,11 @@
     "law_source": "LOCAL_PORTABLE",
     "law_source_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
     "focused_python": "281 passed locally; no blanket deletion of tests",
-    "ci": "PENDING",
+    "ci": "SUCCESS on 246d199 (38682438037) and fe6ed4a (38683078774); final all-six-mobile runner extension queued on next push",
     "independent_review": "PENDING",
     "owner_uat": "NOT_REQUESTED_YET",
-    "production": "UNTOUCHED"
+    "production": "UNTOUCHED",
+    "tested_source_sha": "fe6ed4afb6c2a7fc76b174d0d7735a45843a131e",
+    "ci_run_id": 38683078774
   }
 }
