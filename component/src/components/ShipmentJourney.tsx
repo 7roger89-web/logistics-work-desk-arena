@@ -885,11 +885,16 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   return <section className="rounded-2xl border bg-white p-4 space-y-3" data-testid="sea-export-facts">
     <h3 className="font-extrabold text-[#0f2a4a]">{TITLES[stageId] ?? 'Ghi nhận bằng chứng'}</h3>
     <p className="text-sm text-slate-500">Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.</p>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{fields.map(f => <Field key={f.key} label={f.label}>
+    {(() => { const renderField = (f: typeof fields[number]) => <Field key={f.key} label={f.label}>
       {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
         {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> :
         <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : f.kind === 'number' ? 'Để trống nếu chưa biết' : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
-    </Field>)}</div>
+    </Field>;
+      const primary = fields.filter(f => !f.secondary), extra = fields.filter(f => f.secondary);
+      return <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{primary.map(renderField)}</div>
+        {extra.length > 0 && <details className="rounded-lg border border-slate-200 p-3" data-testid="fact-fields-secondary"><summary className="cursor-pointer text-sm font-bold text-slate-600">Chi tiết phụ ({extra.length})</summary><div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">{extra.map(renderField)}</div></details>}
+      </>; })()}
     <button type="button" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu mốc có bằng chứng'}</button>
     {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
     {(error || outcome?.error) && <p role="alert" className="text-sm text-red-700">{error || outcome?.error}</p>}

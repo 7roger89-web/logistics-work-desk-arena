@@ -18,11 +18,11 @@ function Logo({ sandbox, displayName }: { sandbox: boolean; displayName?: string
         {/* DISPLAY brand from the view-model (core.config.DISPLAY_COMPANY_NAME).
             No hard-coded brand string in the bundle: without the vm value the
             subtitle stays a truthful unbranded "Nội bộ". */}
-        <span className="block text-[11.5px] text-slate-500 font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
+        <span className="block text-[12px] text-slate-500 font-medium">{displayName ? `${displayName} · Nội bộ` : "Nội bộ"}</span>
       </span>
       {/* P2 — the PROTOTYPE chip marks the sandbox/prototype surface; a
           production-like runtime does not carry prototype residue. */}
-      {sandbox && <span className="text-[11px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
+      {sandbox && <span className="text-[12px] font-extrabold tracking-wider bg-violet-100 text-violet-800 border border-violet-300 rounded-md px-1.5 py-0.5 ml-1">PROTOTYPE</span>}
     </Link>
   );
 }
@@ -134,8 +134,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="relative hidden sm:block" data-testid="role-preview-switcher">
             <button onClick={() => setRoleMenu((v) => !v)} aria-haspopup="menu" aria-expanded={roleMenu} className="flex items-center gap-2 rounded-xl border-2 border-slate-200 pl-1.5 pr-2.5 py-1 hover:border-[#1e5aa8]">
               <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
-              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[11.5px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
-              <span className="text-[10px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5">Xem trước</span>
+              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[12px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
+              <span className="text-[12px] font-extrabold tracking-wider uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-300 px-1.5 py-0.5">Xem trước</span>
             </button>
             {roleMenu && (
               <div className="absolute right-0 top-[52px] w-[260px] bg-white rounded-2xl border shadow-2xl p-2 z-50 anim-slide-up" role="menu" data-testid="role-preview-menu">
@@ -153,14 +153,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="hidden sm:block" data-testid="actual-role-badge" title="Vai trò của tài khoản đăng nhập">
             <div className="flex items-center gap-2 rounded-xl border-2 border-transparent pl-1.5 pr-2.5 py-1">
               <span className={cx("w-8 h-8 rounded-lg grid place-items-center text-white text-[13px] font-extrabold", role === "ADMIN" ? "bg-violet-600" : role === "SUPPORT" ? "bg-[#1e5aa8]" : "bg-emerald-600")}>{userName.charAt(0)}</span>
-              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[11.5px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
+              <span className="text-left leading-tight"><span className="block text-[13px] font-bold text-[#0f2a4a]">{userName}</span><span className="block text-[12px] text-slate-500">{ROLE_LABEL[role]} · {role}</span></span>
             </div>
           </div>
           )}
           {/* notif */}
           <button onClick={() => setNotifOpen(true)} className="relative touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100" aria-label="Thông báo">
             <Bell size={21} className="text-[#0f2a4a]" />
-            {notifCount > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold grid place-items-center">{notifCount}</span>}
+            {notifCount > 0 && <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[12px] font-extrabold grid place-items-center">{notifCount}</span>}
           </button>
           <button onClick={() => setQuickAddOpen(true)} className="hidden md:inline-flex touch-target items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] px-4 min-h-[44px] hover:bg-[#14365e]">
             <Plus size={18} /> Thêm
@@ -216,14 +216,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <nav className="p-3 pb-10">
             {NAV.map((g) => (
               <div key={g.group} className="mb-4">
-                <p className="px-3 mb-1.5 text-[11.5px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
+                <p className="px-3 mb-1.5 text-[12px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
                 {g.items.map((it) => {
                   const Icon = ICONS[it.icon] ?? Package;
                   return (
                     <NavLink key={it.to} to={it.to} className={({ isActive }) => cx("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14.5px] font-medium mb-0.5 transition-colors", isActive || (it.to !== "/" && loc.pathname.startsWith(it.to)) ? "bg-[#0f2a4a] text-white shadow-md" : "text-slate-700 hover:bg-slate-100")}>
                       <Icon size={19} className="shrink-0" />
                       <span className="flex-1">{it.label}</span>
-                      {it.soon && <span className="text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
+                      {it.soon && <span className="text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                     </NavLink>
                   );
                 })}
@@ -260,14 +260,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <p className="px-2 text-[12px] text-slate-500 mb-2">Đang dùng: <b>{userName}</b> · {ROLE_LABEL[role]}{environment?.isSandbox ? " (xem trước giao diện)" : ""}</p>
                 {NAV.map((g) => (
                   <div key={g.group} className="mb-3">
-                    <p className="px-2 mb-1 text-[11px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
+                    <p className="px-2 mb-1 text-[12px] font-extrabold tracking-wider text-slate-400">{g.group}</p>
                     {g.items.map((it) => {
                       const Icon = ICONS[it.icon] ?? Package;
                       const active = it.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(it.to);
                       return (
                         <NavLink key={it.to} to={it.to} onClick={() => setNavOpen(false)} className={cx("flex items-center gap-3 px-3 py-3 rounded-xl text-[15px] font-medium mb-0.5", active ? "bg-[#0f2a4a] text-white" : "text-slate-700 hover:bg-slate-100")}>
                           <Icon size={20} className="shrink-0" />{it.label}
-                          {it.soon && <span className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
+                          {it.soon && <span className="ml-auto text-[12px] font-extrabold uppercase tracking-wide rounded-full border border-slate-300 bg-slate-100 text-slate-500 px-2 py-0.5">Sắp có</span>}
                         </NavLink>
                       );
                     })}
@@ -307,14 +307,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             const active = b.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(b.to);
             const Icon = b.icon;
             return (
-              <NavLink key={b.to} to={b.to} className={cx("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[11.5px] font-semibold", active ? "text-[#0f2a4a]" : "text-slate-400")}>
+              <NavLink key={b.to} to={b.to} className={cx("touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-semibold", active ? "text-[#0f2a4a]" : "text-slate-400")}>
                 <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
                 {b.label}
                 {active && <span className="w-8 h-1 rounded-full bg-[#0f2a4a]" />}
               </NavLink>
             );
           })}
-          <button onClick={() => setQuickAddOpen(true)} className="touch-target flex flex-col items-center justify-center gap-0.5 py-1.5 text-[11.5px] font-semibold text-slate-500">
+          <button onClick={() => setQuickAddOpen(true)} className="touch-target flex flex-col items-center justify-center gap-0.5 py-1.5 text-[12px] font-semibold text-slate-500">
             <span className="w-11 h-8 -mt-3 rounded-2xl bg-[#0f2a4a] text-white grid place-items-center shadow-lg"><Plus size={22} /></span>
             Thêm
           </button>

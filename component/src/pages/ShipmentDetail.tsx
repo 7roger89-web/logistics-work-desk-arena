@@ -1316,7 +1316,7 @@ export default function ShipmentDetail() {
             <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
               <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-              <span className="block text-[11.5px] text-slate-500 font-medium">{brandSub}</span>
+              <span className="block text-[12px] text-slate-500 font-medium">{brandSub}</span>
             </span>
           </Link>
           <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />

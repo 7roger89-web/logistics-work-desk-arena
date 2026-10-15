@@ -105,7 +105,7 @@ const toneFor = (status: string | null | undefined) =>
 function InfoCell({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-      <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
       <p className={cx("mt-0.5 font-semibold text-[14.5px] break-words", mono && "font-mono")}>{fmtText(value)}</p>
     </div>
   );
@@ -114,7 +114,7 @@ function InfoCell({ label, value, mono }: { label: string; value: string | null 
 function MoneyCell({ label, value, ccy, strong }: { label: string; value: number | null; ccy: string | null; strong?: boolean }) {
   return (
     <div className={cx("rounded-xl border p-2.5 text-center", strong ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200")}>
-      <p className={cx("text-[11px] font-semibold", strong ? "text-amber-700" : "text-slate-500")}>{label}</p>
+      <p className={cx("text-[12px] font-semibold", strong ? "text-amber-700" : "text-slate-500")}>{label}</p>
       {/* isUnknown keeps a genuine 0 visible as 0 while null stays "—" */}
       <p className={cx("font-extrabold text-[14px]", strong ? "text-amber-800" : "text-[#0f2a4a]")}>
         {isUnknown(value) ? `${UNKNOWN} ${ccy ?? ""}`.trim() : fmtCcy(value, ccy)}
@@ -381,7 +381,7 @@ export default function PartnerContext() {
                   >
                     <Building2 size={16} className="shrink-0" />
                     <span className="break-words">{o.label}</span>
-                    <span className={cx("text-[11.5px] font-semibold", o.key === selectedKey ? "text-white/70" : "text-slate-400")}>
+                    <span className={cx("text-[12px] font-semibold", o.key === selectedKey ? "text-white/70" : "text-slate-400")}>
                       {o.master ? "có master" : "chưa có master"}
                     </span>
                   </button>
@@ -510,7 +510,7 @@ export default function PartnerContext() {
           <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
             <div className="flex items-start gap-2 flex-wrap">
               <div className="min-w-0">
-                <p className="text-[11.5px] font-extrabold uppercase tracking-wider text-[#1e5aa8]">Hồ sơ pháp lý · danh tính</p>
+                <p className="text-[12px] font-extrabold uppercase tracking-wider text-[#1e5aa8]">Hồ sơ pháp lý · danh tính</p>
                 <h2 className="text-[19px] md:text-[21px] font-extrabold text-[#0f2a4a] break-words mt-0.5">{fmtText(identity?.displayName)}</h2>
                 <p className="text-[13px] text-slate-500 mt-0.5 break-all">
                   Mã: {fmtText(identity?.displayId)} · {(slice.matchedSources ?? []).join(" · ") || UNKNOWN}
@@ -542,13 +542,13 @@ export default function PartnerContext() {
               <InfoCell label="Email" value={party?.email} />
               <InfoCell label="Người đại diện" value={party ? `${party.representative}${party.representativeTitle ? ` — ${party.representativeTitle}` : ""}` : null} />
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 sm:col-span-2 lg:col-span-2">
-                <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">Địa chỉ pháp lý</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Địa chỉ pháp lý</p>
                 <p className="mt-0.5 font-semibold text-[14.5px] break-words">{fmtText(party?.legalAddress)}</p>
               </div>
             </div>
 
             <div className="mt-3 rounded-xl border-2 border-slate-100 bg-slate-50/60 p-3">
-              <p className="text-[11.5px] font-extrabold uppercase tracking-wider text-slate-500">Tài khoản thanh toán (nguyên văn từ master)</p>
+              <p className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500">Tài khoản thanh toán (nguyên văn từ master)</p>
               <div className="grid gap-2 mt-2 sm:grid-cols-2 lg:grid-cols-4">
                 <InfoCell label="Chủ tài khoản" value={party?.bankAccountHolder} />
                 <InfoCell label="Số tài khoản" value={party?.bankAccountNumber} mono />
@@ -649,14 +649,14 @@ export default function PartnerContext() {
                       )}
                       <span className="rounded-md bg-white border px-2 py-0.5 text-[12px] font-bold">{fmtText(r.currency)}</span>
                       <ToneBadge tone={toneFor(r.status)} size="sm">{fmtText(r.status)}</ToneBadge>
-                      <span className="ml-auto text-[11.5px] text-slate-400">{r.obligationIds.length} nghĩa vụ</span>
+                      <span className="ml-auto text-[12px] text-slate-400">{r.obligationIds.length} nghĩa vụ</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       <MoneyCell label="Phải trả" value={r.payable} ccy={r.currency} />
                       <MoneyCell label="Đã trả" value={r.paid} ccy={r.currency} />
                       <MoneyCell label="Còn lại" value={r.remaining} ccy={r.currency} strong />
                     </div>
-                    <p className="text-[11.5px] text-slate-400 mt-1.5 break-words">nguồn: {fmtText(r.source)}</p>
+                    <p className="text-[12px] text-slate-400 mt-1.5 break-words">nguồn: {fmtText(r.source)}</p>
                   </div>
                 ))}
                 <p className="text-[12.5px] text-slate-500">
@@ -685,7 +685,7 @@ export default function PartnerContext() {
                   <div key={`${d.shipmentId}-${d.document}-${i}`} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                     <p className="text-[13px] font-extrabold text-[#0f2a4a] break-all">{fmtText(d.document)}</p>
                     <p className="text-[12.5px] text-slate-500 mt-0.5 break-all">{fmtText(d.shipmentId)} · {fmtText(d.status)}</p>
-                    <p className="text-[11.5px] text-slate-400 mt-1 break-words">nguồn: {fmtText(d.source)}</p>
+                    <p className="text-[12px] text-slate-400 mt-1 break-words">nguồn: {fmtText(d.source)}</p>
                   </div>
                 ))}
               </div>
@@ -695,7 +695,7 @@ export default function PartnerContext() {
           {/* MISSING + UNAVAILABLE — available vs unavailable context */}
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <p className="text-[11.5px] font-extrabold uppercase tracking-wider text-amber-700">Context còn thiếu / chưa xác định</p>
+              <p className="text-[12px] font-extrabold uppercase tracking-wider text-amber-700">Context còn thiếu / chưa xác định</p>
               <ul className="mt-2 space-y-1.5">
                 {gaps.map((gap) => (
                   <li key={gap} className="text-[13.5px] text-slate-600 flex items-start gap-2">
@@ -709,7 +709,7 @@ export default function PartnerContext() {
               </p>
             </div>
             <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-              <p className="text-[11.5px] font-extrabold uppercase tracking-wider text-slate-500">Context không khả dụng trong hệ thống</p>
+              <p className="text-[12px] font-extrabold uppercase tracking-wider text-slate-500">Context không khả dụng trong hệ thống</p>
               <ul className="mt-2 space-y-1.5">
                 {unavailable.map((item) => (
                   <li key={item} className="text-[13.5px] text-slate-600 flex items-start gap-2">

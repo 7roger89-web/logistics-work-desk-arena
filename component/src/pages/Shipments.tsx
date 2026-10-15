@@ -232,7 +232,7 @@ export default function Shipments() {
                 {/* 1 — IDENTITY: what this lot is and where it stands. */}
                 <td className="max-w-[300px]">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <Link to={shipmentPath(s.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
+                    <Link to={shipmentPath(s.id)} className="font-mono font-bold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
                     <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
                   </div>
                   <span className="block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]">{s.customer}</span>
@@ -259,7 +259,7 @@ export default function Shipments() {
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <StatusDot tone={s.statusTone} />
-                <span className="font-extrabold text-[17px] text-[#0f2a4a]">{s.id}</span>
+                <span className="font-mono font-bold text-[17px] text-[#0f2a4a]">{s.id}</span>
                 <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{s.customer}</p>
