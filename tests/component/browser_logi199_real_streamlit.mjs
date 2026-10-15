@@ -119,13 +119,23 @@ try {
   results.checks.push(detail);
   await page.screenshot({ path: path.join(output, 'desktop-journey.png'), fullPage: false });
 
+  const mapToggle = page.getByTestId('journey-detail-map-toggle');
+  assert.equal(await mapToggle.getAttribute('aria-expanded'), 'false');
+  await mapToggle.click();
+  await page.getByTestId('journey-map-viewport').waitFor({ state: 'visible' });
+  assert.equal(await mapToggle.getAttribute('aria-expanded'), 'true');
   const nodes = page.locator('[data-testid^="journey-node-"]');
   results.nodeCount = await nodes.count();
-  if (results.nodeCount > 0) {
-    await nodes.first().click({ timeout: 15000 });
-    results.checks.push({ label: 'journey-node-interaction', clicked: true, nodeCount: results.nodeCount });
-    await page.screenshot({ path: path.join(output, 'desktop-journey-node-open.png'), fullPage: false });
-  }
+  assert.ok(results.nodeCount >= 2, 'detailed map must contain actual LO-0306 nodes');
+  const selectedNode = nodes.nth(1);
+  const selectedId = await selectedNode.getAttribute('data-testid');
+  await selectedNode.click({ timeout: 15000 });
+  await page.locator('[data-testid="' + selectedId + '"][aria-pressed="true"]').waitFor({ state: 'attached' });
+  await page.getByTestId('journey-quick-panel').waitFor({ state: 'visible' });
+  results.checks.push({ label: 'journey-detail-map-node', clicked: selectedId, count: results.nodeCount });
+  await page.screenshot({ path: path.join(output, 'desktop-journey-node-open.png'), fullPage: false });
+  await mapToggle.click();
+  await page.getByTestId('journey-compact-overview').waitFor({ state: 'visible' });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(250);
