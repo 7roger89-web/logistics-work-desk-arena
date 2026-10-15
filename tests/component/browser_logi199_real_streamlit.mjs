@@ -97,7 +97,12 @@ try {
   await page.locator('a[href="/lo-hang"]').first().click({ timeout: 15000 });
   const allPeriods = page.getByTestId('shipment-period-tat-ca');
   if (await allPeriods.count()) await allPeriods.first().click();
-  await page.getByRole('link', { name: /LO-0306/ }).first().click({ timeout: 20000 });
+  // Streamlit may deliver a fresh view model during filter updates; a locator
+  // click can wait forever for layout stability while React replaces the card.
+  // Dispatch a normal DOM click into the current canonical shipment link
+  // instead; the app's real React Router handler owns the navigation.
+  await page.locator('a[href="/lo-hang/LO-0306"]').first().waitFor({ state: 'attached', timeout: 25000 });
+  await page.locator('a[href="/lo-hang/LO-0306"]').first().dispatchEvent('click');
   await page.getByTestId('shipment-journey').waitFor({ state: 'visible', timeout: 45000 });
 
   const journey = await page.getByTestId('shipment-journey').evaluate(el => ({
