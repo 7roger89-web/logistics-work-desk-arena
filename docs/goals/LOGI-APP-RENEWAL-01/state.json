@@ -5,9 +5,9 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "arena/d8927583-logistics-work-desk-arena",
+  "active_branch": "arena/9e611b96-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "INT198_TECHNICAL_VERIFIED_AWAITING_INDEPENDENT_REVIEW_AND_OWNER_GATE",
+  "stage": "G2_OWNER_MAP_FIRST_ASSET_BUILT__VISUAL_REVIEW_PENDING",
   "progress": {
     "T0": "PR #200: source/build/real-staging mobile+map smoke PASS; re-verified on integration run 38674861674 (T0 smoke re-run PASS). Independent re-review + Owner UAT pending",
     "T1": "PR #201 (multi-container type) + PR #202 (booking confirm, export clearance, on-board != ATD, empty pickup/stuffing/seal/EIR, D/O, POD after delivery, FCL empty return) CODE+REGRESSION+CI PASS",
@@ -42,7 +42,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Control Tower independent re-review at tested source 1889d2a + immutable CI evidence; only then Owner local UAT via ZIP/double-click instructions. Do not merge/deploy or mutate production. Resolve or explicitly gate baseline auth/bootstrap/finance risks; parity alone is not release approval.",
+  "next": "Use official dist at current Arena HEAD. Capture real desktop 1440x900/mobile 390x844 with selected Vietnam map wallpaper and compare G0 reference: center main route vertically, node bubble/task modal, legends and floating financial entry. Preserve T1-T4; continue app-wide G1/G3/G4/G5 after G2. No main merge/deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -61,7 +61,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Independent reviewer challenge of tested integration and baseline release risks. Executor cannot supply an independent actor and does not close the review.",
+  "current_subtask": "G2 completed bounded source change for exact Owner-selected Vietnam/Hoang Sa/Truong Sa WebP. Official Vite build and dist synchronized on Arena branch. Real Streamlit screenshot after asset change NOT YET RUN; next validate visual orientation/readability then continue G1-G5.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -174,11 +174,11 @@
   "goal_state": {
     "G0": "G0_PARTIAL_EVIDENCE_CAPTURED",
     "G1": "NOT_COMPLETE",
-    "G2": "SLICE_CODED_AND_SMOKE_CAPTURED_NOT_OWNER_ACCEPTED",
+    "G2": "G2_MAP_FIRST_COMPILED__VIETNAM_BG_BUNDLE_PASS__NEW_SCREENSHOT_PENDING",
     "G3": "NOT_COMPLETE",
     "G4": "NOT_COMPLETE",
     "G5": "NOT_COMPLETE",
-    "VISUAL_FIDELITY": "FAIL",
+    "VISUAL_FIDELITY": "FAIL_PENDING_OWNER_DESIGN_REVIEW",
     "BUSINESS_PASS": "NOT_RE_CLAIMED",
     "FULL_GOAL_199": "INCOMPLETE"
   },
@@ -204,6 +204,17 @@
     ],
     "evidence": "evidence/logi-199-g2/",
     "production": "UNTOUCHED (isolated staging only)",
-    "owner_gate": "Send first comparison to Owner; no VISUAL_PASS claim"
+    "owner_gate": "Send first comparison to Owner; no VISUAL_PASS claim",
+    "background_asset": {
+      "source": "Owner-uploaded Vietnam/Hoang Sa/Truong Sa nautical image (2026-10-15)",
+      "path": "component/src/assets/journey/vietnam-east-sea-chart.webp",
+      "sha256": "f83d42167dffcb1ac629f261923408a2c6d5d6d7564cf63083aa869bababdef9",
+      "webp_bytes": 107956,
+      "git_blob_sha1": "fe29a19f24b3a56f25536e3b06e631fbbbd14fb5",
+      "ci_run": "https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/38698740525",
+      "ci": "SUCCESS_TYPECHECK_VITE_BUILD_PROCESS_SCAN_AND_DIST_SYNC",
+      "real_browser_after_background": "NOT_RUN"
+    },
+    "owner_direction": "Proceed with map-first, replace previous dirty paper with Owner selected Vietnam East Sea map, improve centering and retain legend/popup/finance. G2 not visual accepted."
   }
 }
