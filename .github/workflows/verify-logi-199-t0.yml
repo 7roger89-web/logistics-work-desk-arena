@@ -6,7 +6,7 @@ on:
       - ct/logi-app-renewal-01-t0-air-truth
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: logi-199-t0-${{ github.ref }}
@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout PR 200 branch without production secrets
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Python 3.12
         uses: actions/setup-python@v5
@@ -47,38 +49,9 @@ jobs:
           npm run build
           npm run scan
 
-      - name: Hand off only verified build assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: logi-199-t0-dist
-          path: |
-            component/dist/logi-shell.js
-            component/dist/logi-shell.css
-          if-no-files-found: error
-          retention-days: 1
-
-  commit-dist:
-    name: Sync reviewed build onto draft PR branch
-    needs: t0
-    if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 7
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout exact bounded PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ct/logi-app-renewal-01-t0-air-truth
-          fetch-depth: 1
-
-      - name: Download build artifacts from successful read-only verification
-        uses: actions/download-artifact@v4
-        with:
-          name: logi-199-t0-dist
-          path: component/dist
-
-      - name: Commit only the two production-loaded bundle files
+      - name: Sync only successful source-built files to draft PR branch
+        env:
+          PUSH_TOKEN: ${{ github.token }}
         run: |
           git add component/dist/logi-shell.js component/dist/logi-shell.css
           if git diff --cached --quiet; then
@@ -87,6 +60,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "build(LOGI-199): sync verified T0 dist [skip ci]"
-            git push origin HEAD:ct/logi-app-renewal-01-t0-air-truth
+            auth_header=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth_header" push origin HEAD:ct/logi-app-renewal-01-t0-air-truth
             echo "DIST_SYNC=COMMITTED"
           fi
