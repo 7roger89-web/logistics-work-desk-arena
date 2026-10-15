@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { CheckCircle2, Circle, Clock, CircleAlert, MapPin, FileText, TriangleAlert } from 'lucide-react';
 import type { JourneyNode, Shipment } from '../lib/viewmodel';
 import { cx } from '../lib/format';
-import chartPaperUrl from '../assets/journey/chart-paper.jpg?url';
+// Owner-approved pale Vietnam / Bien Dong nautical wallpaper (2026-10-15).
+// Vite library build inlines this local WebP; no external image URL or separate runtime asset request.
+import chartPaperUrl from '../assets/journey/vietnam-east-sea-chart.webp?url';
 
 // G2 (LOGI-199 Owner Visual Fidelity Override, 15/10/2026): the map is the
 // primary canvas. Geometry follows the Owner-approved HTML (node 102×58,
