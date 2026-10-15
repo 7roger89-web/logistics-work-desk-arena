@@ -6,6 +6,7 @@ on:
       - ct/logi199-t1-fcl-multi-container-truth
       - ct/logi199-t1-fcl-lifecycle-truth
       - ct/logi199-t2-t4-mode-truth
+      - ct/logi199-t5-app-identity
 
 permissions:
   contents: read
