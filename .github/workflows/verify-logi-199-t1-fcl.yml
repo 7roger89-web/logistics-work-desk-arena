@@ -5,6 +5,7 @@ on:
     branches:
       - ct/logi199-t1-fcl-multi-container-truth
       - ct/logi199-t1-fcl-lifecycle-truth
+      - ct/logi199-t2-t4-mode-truth
 
 permissions:
   contents: read
@@ -27,7 +28,7 @@ jobs:
         run: python -m pip install -r requirements.txt pytest
       - name: FCL multi-container regression and existing execution profile
         run: |
-          python -m pytest tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py tests/test_journey_super_goal_186.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
+          python -m pytest tests/test_logi199_t1_sea_fcl_equipment.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t2_t4_mode_truth.py tests/test_visual_shipment_workspace.py tests/test_journey_v3_customs_import_184.py tests/test_journey_fresh_parity_188.py tests/test_journey_super_goal_186.py tests/test_work_module_library_162.py tests/test_logi_shipment_execution_profile_01.py -q
       - name: Reject any generated writer or production secrets
         run: |
           test ! -e .streamlit/secrets.toml

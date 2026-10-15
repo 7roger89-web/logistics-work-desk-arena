@@ -38,8 +38,8 @@ function nodeGroup(s: Shipment, ids: string[]) {
 
 export function composeShipmentCompletionGoals(s: Shipment): CompletionGoal[] {
   const profile = s.executionProfile;
-  const origin = nodeGroup(s, ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in']);
-  const main = nodeGroup(s, ['etd', 'on-board', 'transit', 'arrival']);
+  const origin = nodeGroup(s, ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'cfs-receipt', 'air-booking', 'air-acceptance', 'road-vehicle', 'road-ltl']);
+  const main = nodeGroup(s, ['etd', 'on-board', 'transit', 'arrival', 'uplift', 'air-transit', 'air-arrival', 'road-border']);
   const importDelivery = nodeGroup(s, ['customs-import', 'delivery']);
   const steps = s.documentWorkflow?.steps ?? [];
   const applicableDocs = steps.filter(x => x.state !== 'NOT_APPLICABLE');

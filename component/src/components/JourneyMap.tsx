@@ -16,6 +16,8 @@ export const DEMO_POS: Record<string, JourneyPosition> = {
   'customs-export': { x: col(2), y: 140, w: W, h: H },
   'si-vgm': { x: col(3), y: 56, w: W, h: H },
   'gate-in': { x: col(3), y: 224, w: W, h: H },
+  // LOGI-199 T2 — LCL CFS/consolidation occupies the FCL gate-in slot (never both).
+  'cfs-receipt': { x: col(3), y: 224, w: W, h: H },
   etd: { x: col(4), y: 140, w: W, h: H },
   'on-board': { x: col(4), y: 400, w: W, h: H },
   transit: { x: col(3), y: 400, w: W, h: H },

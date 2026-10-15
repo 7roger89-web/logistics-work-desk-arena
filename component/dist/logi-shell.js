@@ -18494,6 +18494,12 @@ var pl = 164, ml = 136, hl = 212, gl = 48, _l = (e) => gl + e * hl, vl = {
 		w: pl,
 		h: ml
 	},
+	"cfs-receipt": {
+		x: _l(3),
+		y: 224,
+		w: pl,
+		h: ml
+	},
 	etd: {
 		x: _l(4),
 		y: 140,
@@ -20791,13 +20797,22 @@ function Vl({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAtta
 			"pickup",
 			"customs-export",
 			"si-vgm",
-			"gate-in"
+			"gate-in",
+			"cfs-receipt",
+			"air-booking",
+			"air-acceptance",
+			"road-vehicle",
+			"road-ltl"
 		],
 		main: [
 			"etd",
 			"on-board",
 			"transit",
-			"arrival"
+			"arrival",
+			"uplift",
+			"air-transit",
+			"air-arrival",
+			"road-border"
 		],
 		import: ["customs-import"],
 		delivery: ["delivery"]
@@ -21105,7 +21120,12 @@ function Ul({ shipment: e, stageId: t }) {
 					"gate-in": "Container — cấp rỗng, đóng hàng, EIR, gate-in",
 					"on-board": "Xếp hàng lên tàu — bằng chứng on-board",
 					delivery: "Đầu nhận — D/O, POD, trả rỗng",
-					"si-vgm": "SI / VGM — ghi nhận bằng chứng"
+					"si-vgm": "SI / VGM — ghi nhận bằng chứng",
+					"cfs-receipt": "CFS — nhận hàng và ghép container",
+					"air-acceptance": "Kho hàng không — nhận, cân, soi chiếu",
+					uplift: "Uplift — xác nhận hàng đã bay",
+					"road-ltl": "Hàng lẻ — nhận và ghép xe",
+					"road-border": "Cửa khẩu — mốc qua biên giới"
 				}[t] ?? "Ghi nhận bằng chứng"
 			}),
 			/* @__PURE__ */ (0, H.jsx)("p", {
@@ -21132,7 +21152,7 @@ function Ul({ shipment: e, stageId: t }) {
 					}) : /* @__PURE__ */ (0, H.jsx)("input", {
 						"aria-label": t.label,
 						type: "text",
-						placeholder: t.kind === "text" ? t.label : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
+						placeholder: t.kind === "text" ? t.label : t.kind === "number" ? "Để trống nếu chưa biết" : "YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm",
 						disabled: !f || h || !p?.owned,
 						className: $(),
 						value: i[t.key] ?? e.journey?.seaFacts[t.key] ?? "",
@@ -21201,12 +21221,21 @@ function ql(e) {
 		"pickup",
 		"customs-export",
 		"si-vgm",
-		"gate-in"
+		"gate-in",
+		"cfs-receipt",
+		"air-booking",
+		"air-acceptance",
+		"road-vehicle",
+		"road-ltl"
 	]), r = Kl(e, [
 		"etd",
 		"on-board",
 		"transit",
-		"arrival"
+		"arrival",
+		"uplift",
+		"air-transit",
+		"air-arrival",
+		"road-border"
 	]), i = Kl(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = e.finance.outstanding, l = c != null, u = e.finance.partner, d = u?.partners ?? [], f = d.length > 0 || !!(u && !u.suggested && u.partnerName), p = d.length > 0 ? d.flatMap((e) => Object.values(e.totalsByCurrency).map((e) => e.remaining)) : u && !u.suggested && u.partnerName ? [u.remaining] : [], m = p.filter((e) => e != null), h = f && (p.length === 0 || m.length !== p.length), g = l && c !== 0 || m.some((e) => e !== 0), _ = l || f && !h && m.length > 0, v = e.journey?.modules ?? [], y = v.find((e) => e.status === "BLOCKING"), b = v.filter((e) => e.status === "DONE");
 	return [
 		{

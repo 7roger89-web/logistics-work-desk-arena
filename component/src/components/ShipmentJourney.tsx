@@ -653,8 +653,8 @@ function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule,
   // anchor = the region's problem node when one exists, else the region's
   // primary node. The detailed 11-node model is never replaced.
   const REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', string[]> = {
-    origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'],
-    main: ['etd', 'on-board', 'transit', 'arrival'],
+    origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'cfs-receipt', 'air-booking', 'air-acceptance', 'road-vehicle', 'road-ltl'],
+    main: ['etd', 'on-board', 'transit', 'arrival', 'uplift', 'air-transit', 'air-arrival', 'road-border'],
     import: ['customs-import'],
     delivery: ['delivery'],
   };
@@ -873,7 +873,7 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   // LOGI-199 T1 — the backend declares which evidence facts belong to this
   // node (scope/load-model aware); the panel never invents its own field list.
   const fields = node?.factFields ?? [];
-  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': 'SI / VGM — ghi nhận bằng chứng' };
+  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
   const save = () => {
     if (!Object.keys(draft).length) { setError('Chưa thay đổi trường nào.'); return; }
     const requestId = `SEA-${crypto.randomUUID()}`;
@@ -888,7 +888,7 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{fields.map(f => <Field key={f.key} label={f.label}>
       {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
         {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> :
-        <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
+        <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : f.kind === 'number' ? 'Để trống nếu chưa biết' : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
     </Field>)}</div>
     <button type="button" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu mốc có bằng chứng'}</button>
     {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
