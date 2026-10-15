@@ -168,6 +168,17 @@ try {
     'mobile identity title/actions content is clipped');
   assert.equal(mobileIdentity.customerEllipsized, false, 'mobile customer is truncated');
   mobile.identityReadability = mobileIdentity;
+  const mobileAttention = await page.getByTestId('attention-primary-action').evaluate(el => ({
+    text: el.textContent || '',
+    overflow: el.scrollWidth - el.clientWidth,
+    whiteSpace: getComputedStyle(el).whiteSpace,
+    textOverflow: getComputedStyle(el).textOverflow,
+  }));
+  assert.match(mobileAttention.text, /Khai tờ khai nhập khẩu LO-0306/);
+  assert.ok(mobileAttention.overflow <= 1, 'attention summary exceeds mobile width');
+  assert.notEqual(mobileAttention.whiteSpace, 'nowrap', 'mobile attention text cannot wrap');
+  assert.notEqual(mobileAttention.textOverflow, 'ellipsis', 'mobile attention summary is truncated');
+  mobile.primaryAttention = mobileAttention;
   results.checks.push(mobile);
   await page.screenshot({ path: path.join(output, 'mobile-journey.png'), fullPage: false });
   assert.deepEqual(errors, [], 'browser JavaScript page errors: ' + errors.join(' | '));
