@@ -1,13 +1,13 @@
 {
   "goal": "LOGI-APP-RENEWAL-01 / LOGI-199 G2 bounded review repair",
   "branch": "arena/bb243332-logistics-work-desk-arena",
-  "source_sha": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
-  "source_commit": "2bcbf90f9ef1ff665c8f1bfe2d09f1706cce51f7",
+  "source_sha": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
+  "source_commit": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
   "owner_reference": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
   "owner_reference_sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f",
   "current_dist_sha256": {
-    "logi-shell.js": "19674586f24fa2f66484c26640519a489e94b8656dcccdc21faa9f96b30909a3",
-    "logi-shell.css": "6973bae48887aefea59f09557f35922feafda5118a9a4875ae676c3ca86c7c4f"
+    "logi-shell.js": "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
+    "logi-shell.css": "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
   },
   "capture_script_sha256": "ae4272e65bbb2ef5c9157cdf7304646cd24b6416facc9bdc04a6f15ec4e318a2",
   "evidence_provenance": {
@@ -299,20 +299,102 @@
   },
   "release_gates": {
     "FULL_GOAL_199": "IN_PROGRESS",
-    "INDEPENDENT_REVIEW": "PENDING; evidence packet committed/pushed, GitHub issue comment blocked",
+    "INDEPENDENT_REVIEW": "PENDING",
     "SUPERVISOR_PASS": "NOT_CLAIMED",
     "OWNER_UAT": "NOT_RUN; only after Independent Review PASS",
     "NO_MERGE_MAIN": "YES",
     "NO_DEPLOY_PRODUCTION": "YES",
     "auth_bootstrap_finance_snapshot_retry_blockers": "PRESERVED; not waived or repaired by this UI slice"
   },
-  "current_source_verification_status": "POST_COMMIT_TYPECHECK_BUILD_SCAN_DIST_SYNC_AND_FOCUSED_DOM_DONE__LIVE_TOUCH_AND_SAVE_READBACK_NOT_VERIFIED",
+  "current_source_verification_status": "POST_COMMIT_TYPECHECK_BUILD_SCAN_DIST_SYNC_AND_ZERO_NODE_DOM_PASS__BROWSER_T6_FCL_DESKTOP_MOBILE_BLOCKED__TOUCH_PAN_AND_SAVE_READBACK_NOT_VERIFIED",
   "evidence_dist_commit": "754a619f30affd1c18753b50f78d917bb2db5944",
   "ci_current_status": "NOT_TRIGGERED; fixed branch omitted from all checked-in push filters",
   "publication_status": {
-    "branch_push": "PASS — current source/dist/evidence commits pushed to arena/bb243332-logistics-work-desk-arena",
+    "branch_push": "PASS — source/dist/evidence commits pushed only to arena/bb243332-logistics-work-desk-arena.",
     "github_actions_ci": "NOT_TRIGGERED — gh run list for the fixed branch returned no runs; checked-in workflow filters omit it",
     "independent_reviewer_comment": "BLOCKED_PERMISSION — gh issue comment 199 returned Resource not accessible by integration; packet is pushed but not posted",
-    "review_status": "PENDING; no Independent Review PASS or Supervisor PASS"
+    "review_status": "PENDING; no Independent Review PASS or Supervisor PASS."
+  },
+  "latest_zero_node_layout_followup": {
+    "date_local": "2026-10-15",
+    "branch": "arena/bb243332-logistics-work-desk-arena",
+    "source_dist_test_commit": "1ecffa0a4dc3eff0141554a808e39e7fba109ebe",
+    "scope": "LOGI #199 zero-node Journey split-layout exception only; populated Journey and prior G2 work preserved; not a G0-G5 rollback.",
+    "layout_verdicts": {
+      "POPULATED_MAP_FIRST": "PASS source-preservation + same-instance populated map-first transition DOM; exact T6-FCL 11-node browser replay NOT_VERIFIED.",
+      "ZERO_NODE_FULL_WIDTH": "PASS official-dist JSDOM acceptance for journey.nodes=[] and missing Journey; full-width map-first surface, truthful notice/profile status, one CTA to the existing Execution Profile editor through Global Workspace, zero business writes.",
+      "OLD_SPLIT_LAYOUT_ACTIVE": "NO — legacy small-map CSS rule removed; zero-node DOM has no legacy split class/root/right action panel.",
+      "fake_nodes_or_stages": "NONE — zero-node acceptance asserts zero detailed nodes and zero phase-card substitutes.",
+      "global_workspace_and_transitions": "PASS — existing Global Workspace/editor path preserved; same-instance zero→populated→zero hook-transition DOM passes."
+    },
+    "focused_verification": {
+      "component_typecheck": "PASS (`npm run typecheck`).",
+      "component_build": "PASS (Vite 8.2.2; 1936 modules).",
+      "component_scan": "PASS (`FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0`).",
+      "dist_sync": "PASS — post-commit rebuild was deterministic and `git diff --exit-code -- component/dist` was clean.",
+      "dist_rebuild_stability": {
+        "logi-shell.js_before_after": [
+          "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
+          "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc"
+        ],
+        "logi-shell.css_before_after": [
+          "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a",
+          "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
+        ]
+      },
+      "dom_acceptance_journey_fresh_188_nodes_empty": "PASS — one CTA, no fake nodes, truthful missing-profile status, editor reached through Global Workspace, zero business writes; benign JSDOM `scrollTo` warning only.",
+      "dom_acceptance_journey_fresh_188_journey_absent": "PASS — same assertions for missing-Journey variant; benign JSDOM `scrollTo` warning only.",
+      "dom_hook_transition_197": "PASS — zero→populated and populated→zero on the same mounted instance; no hook-ordering errors; populated path still renders its factual nodes/map-first workspace.",
+      "targeted_python_contracts": "PASS — 18 tests across tests.test_journey_super_goal_186 and tests.test_journey_visual_fidelity_190.",
+      "full_pytest": "NOT_RUN by explicit scope; no full-suite or 21-route audit."
+    },
+    "browser_staging": {
+      "desktop_1440x900": "NOT_CAPTURED / BLOCKED",
+      "mobile_390x844": "NOT_CAPTURED / BLOCKED",
+      "T6_FCL_expected_nodes": 11,
+      "T6_FCL_browser_verdict": "NOT_VERIFIED",
+      "zero_node_browser_verdict": "NOT_VERIFIED",
+      "screenshots_created": [],
+      "blockers": [
+        "System Python does not have streamlit, mongomock, or pymongo; direct `python3 scripts/logi199_t6_staging_app.py` stopped at `ModuleNotFoundError: mongomock` before staging seeding or app start. MONGO_URI was unset; no database write occurred.",
+        "Node Playwright and Playwright Core are not installed; no Chromium/Chrome executable was found in the checked system/browser-cache paths.",
+        "The existing T6 browser runner sets AUTH_REQUIRED=false and was not used. The real app defaults AUTH_REQUIRED=true; the T6 launcher session username `staging.support` is not among the seeded users (`admin`, `thuhang`, `minhtu`), so its fail-closed session revalidation can show the login gate. No auth bypass, production auth edit, new auth fixture, or production data was used."
+      ]
+    },
+    "touch_pan_verdict": "NOT_VERIFIED — no current-source replay.",
+    "tap_save_readback_verdict": "NOT_VERIFIED — no current-source replay; no write occurred.",
+    "independent_review": "PENDING",
+    "owner_uat": "NOT_RUN",
+    "release_constraints": {
+      "NO_MERGE_MAIN": "YES",
+      "NO_DEPLOY_PRODUCTION": "YES"
+    },
+    "goal_progress": {
+      "GOAL": "Fix only the remaining LOGI #199 zero-node Journey split-layout exception while preserving the accepted populated/G2 path.",
+      "PROGRESS": "Source/dist repair, truthful zero-state CTA, fresh acceptance and hook-transition assertions updated; bounded checks pass.",
+      "CURRENT": "Zero-node full-width DOM is PASS. Populated map-first source/hook DOM is preserved. T6-FCL/zero-node desktop/mobile browser evidence remains blocked, not claimed.",
+      "NEXT": "Restore an authorized isolated staging/browser environment without weakening auth; capture T6-FCL 11-node and zero-node at 1440×900 and 390×844, then request Independent Review.",
+      "BLOCKERS": "Missing staging dependencies and Chromium/Playwright; default auth gate/staging actor mismatch; Independent Review pending; Owner UAT not run. Existing unrelated auth/bootstrap/finance/snapshot-idempotency blockers remain unchanged."
+    },
+    "overengineering_gate": {
+      "SIMPLER_PATH": "YES",
+      "MATERIAL_PROGRESS": "YES",
+      "NECESSITY": "YES",
+      "CORE_BEFORE_SUPPORT": "YES",
+      "SMALLER_VERIFIABLE_SLICE": "YES",
+      "OE_VERDICT": "DO_IT for the bounded zero-node layout/test change only."
+    },
+    "source_and_dist_sha256": {
+      "component/src/components/ShipmentJourney.tsx": "86b85d344614eb5524c814f605e77fb2926f10ff962ba044f53c14ebf77acf9d",
+      "component/src/index.css": "aa8537c64ca6ed3e55f60475cae11ac37aa2a502e57274fa18d388c0a891bdcb",
+      "tests/component/dom_acceptance_journey_fresh_188.mjs": "8fcadbf558e6b187bd9cc38951825ce2bd29a2858bcec91fb422026bb26e2c01",
+      "tests/component/dom_hook_transition_197.mjs": "2be31388a5acb0e692a07d3def5a64f89a469a476ce19b1c569c40176b198f61",
+      "tests/test_journey_super_goal_186.py": "23129c2f0a1fe724653358b56aa99f1fc9843ba2d3d3ef4fba4017200aff8474",
+      "tests/test_journey_visual_fidelity_190.py": "21fa96d2f6b60032d9fd11c9ac725d136c6113cf598ba3fd4524965468e80081",
+      "component/dist/logi-shell.js": "2143711b22a9aad6aeed902457e450432902a8ce178dd561a2890e48870a4adc",
+      "component/dist/logi-shell.css": "bcf51682b4bdf799f1267364259f95d3f8417184afc3a3b90875679fa8ddb65a"
+    },
+    "canonical_law_freshness": "CURRENT",
+    "canonical_law_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b"
   }
 }
