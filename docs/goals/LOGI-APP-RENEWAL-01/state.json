@@ -30,7 +30,8 @@
   "blockers": [
     "Independent reviewer gate PENDING; no independent reviewer/subagent capability in this executor host.",
     "Owner UAT and explicit production authorization remain closed. main merge is a production deploy trigger.",
-    "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver."
+    "Baseline auth/bootstrap/finance oracle coverage gaps and reproduced snapshot retry-idempotency defect: see evidence/logi-199-t6/RECONCILIATION.md. No out-of-scope auth/finance repair or risk waiver.",
+    "GitHub issue-comment write denied: Resource not accessible by integration. Issue #199 update not published; chained PR #198 comment not attempted. Read/fetch/push still work. Draft saved in evidence/logi-199-t6/REVIEWER_UPDATE.md; connection comment permissions need attention."
   ],
   "existing_issue_dependencies": [
     197,
@@ -161,5 +162,12 @@
     "local_uat": "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
     "windows_launcher": "scripts/logi199_uat.cmd",
     "windows_launcher_runtime": "NOT_RUN_IN_LINUX_HOST"
+  },
+  "publication_receipt": {
+    "issue_199_comment": "BLOCKED_PERMISSION",
+    "pr_198_comment": "NOT_ATTEMPTED_AFTER_ISSUE_DENIAL",
+    "error": "Resource not accessible by integration",
+    "draft": "evidence/logi-199-t6/REVIEWER_UPDATE.md",
+    "review_closed": false
   }
 }
