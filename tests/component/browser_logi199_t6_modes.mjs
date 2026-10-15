@@ -88,7 +88,7 @@ try {
       const shell = el.closest('.logi-shell');
       shell.scrollTop += el.getBoundingClientRect().top - (innerWidth < 1100 ? 106 : 70);
     });
-    await page.getByRole('button', { name: '↺ Đọc rõ', exact: true }).click();
+    // Challenge the initial view before invoking either Fit or Đọc rõ.
     const transform = page.getByTestId('journey-map-transform');
     const initial = await transform.getAttribute('style');
     assert.equal(await page.getByTestId('journey-zoom-level').innerText(), '100%');
@@ -103,6 +103,7 @@ try {
     await page.mouse.move(b.x + 20, b.y + b.height * 0.65);
     await page.mouse.down(); await page.mouse.move(b.x + 90, b.y + b.height * 0.65 + 30, { steps: 8 }); await page.mouse.up();
     assert.notEqual(await transform.getAttribute('style'), initial, 'pan must change transform');
+    assert.equal(await page.getByTestId('journey-overview-panel').count(), 1, 'drag must not accidentally pick a node');
     await page.getByRole('button', { name: '⤢ Fit Journey', exact: true }).click();
     const fit = await transform.evaluate(el => {
       const v = el.parentElement.getBoundingClientRect(), c = el.getBoundingClientRect();
