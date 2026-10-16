@@ -1,0 +1,87 @@
+{
+  "browser": "141.0.7390.0",
+  "authRequired": true,
+  "isolation": "MONGOMOCK_PROCESS_LOCAL",
+  "flow": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "homeOverflow": 0,
+      "route": "/lo-hang/FLOW199-FCL?tab=van-tai&stage=si-vgm&work=info",
+      "homeLayout": {
+        "height": 132.625,
+        "gridAlign": "flex-start",
+        "siblingHeight": 473.171875
+      },
+      "nodes": 9,
+      "mapTexture": {
+        "hasImage": true,
+        "size": "760px"
+      },
+      "parallelBranch": 1,
+      "siDocumentCategories": [
+        "si",
+        "vgm"
+      ],
+      "save": {
+        "oldDate": "2026-10-04",
+        "newDate": "2026-10-05",
+        "beforeVersion": 1,
+        "afterVersion": 2,
+        "actor": "flow199.sale",
+        "auditDelta": 1,
+        "customerUnchanged": true,
+        "reloadUiReadback": true,
+        "reloadDbReadback": true
+      },
+      "popupOverflow": 0
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "homeOverflow": 0,
+      "route": "/lo-hang/FLOW199-FCL?tab=van-tai&stage=si-vgm&work=info",
+      "homeLayout": {
+        "height": 239,
+        "gridAlign": "normal",
+        "siblingHeight": 559.921875
+      },
+      "nodes": 9,
+      "mapTexture": {
+        "hasImage": true,
+        "size": "760px"
+      },
+      "parallelBranch": 1,
+      "siDocumentCategories": [
+        "si",
+        "vgm"
+      ],
+      "save": {
+        "oldDate": "2026-10-05",
+        "newDate": "2026-10-06",
+        "beforeVersion": 2,
+        "afterVersion": 3,
+        "actor": "flow199.sale",
+        "auditDelta": 1,
+        "customerUnchanged": true,
+        "reloadUiReadback": true,
+        "reloadDbReadback": true
+      },
+      "popupOverflow": 0
+    }
+  ],
+  "pageErrors": [],
+  "verdict": "PASS",
+  "fullScopeGuard": {
+    "nodes": 11,
+    "globalMissingInfo": 3,
+    "stageMissingInfo": 0,
+    "stageGlobalStickyActions": 0,
+    "unknownDate": "",
+    "writes": 0
+  }
+}

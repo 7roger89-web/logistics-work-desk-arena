@@ -1,0 +1,51 @@
+{
+  "captured_utc": "2026-10-16T11:24:33.047762+00:00",
+  "repository": "7roger89-web/logistics-work-desk-arena",
+  "branch": "arena/7d8e8372-logistics-work-desk-arena",
+  "base_commit": "7a73e484446bf8ab79f405125d6ba0589e8ab56a",
+  "capture_basis": "Exact source/dist/runner hashes below are in the published product commit. Source, dist and raw result GitHub blob IDs were independently read back and matched local files. Follow-up checkpoint changes docs/state only.",
+  "law_source": "LOCAL_PORTABLE",
+  "law_canonical_body_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+  "uiux_skill_sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+  "browser": "Chromium 141.0.7390.0",
+  "playwright": "1.56.1 (temporary external runner only)",
+  "browser_runtime_repair": "Bundled AL2023 NSS/NSPR libraries extracted locally; LD_LIBRARY_PATH for test process only. No product/OS dependency change, --disable-web-security, or origin/auth bypass.",
+  "isolation": "MONGOMOCK_PROCESS_LOCAL; no real Mongo URI, secrets file, production client or data",
+  "auth": "AUTH_REQUIRED=true; genuine Sale UI login; zero .logi-shell before login; unchanged auth/RBAC",
+  "persistence_boundary": "Canonical writer + DB version/audit readback and UI readback after page reload in the SAME process; no process-restart/Atlas durability claim.",
+  "source_sha256": {
+    "component/src/components/AttentionNow.tsx": "95e5930656aa100d15cd1ab90f8d28e4e0a7df19cbaba7d1b3843946f2b4bb29",
+    "component/src/pages/ShipmentDetail.tsx": "ecb561b5bd7acc256819eb2f59910dba9b1be1224ca072e17a3b2fb53a466782",
+    "views/support_attention.py": "24e1b2c46321b0c446bcc14dab65864c329f9e1596576f902329dc3963e859d8",
+    "views/logi_view_model.py": "9db3efac28aed48a79487c6ea4e89f5a18a4258fbc83eb508b6f18c0900aa850",
+    "component/dist/logi-shell.js": "e66fa5c7b82bb0ef3a9a0edda7c13254a17039705bc1d513137ec51afa090b5d",
+    "component/dist/logi-shell.css": "b4daa029d83577946a469f03f981a9d12ef58b103336b507d9d5d1be43114e71",
+    "scripts/logi199_authenticated_flow_app.py": "18c36ce852ef1a008693056128986c125b0eceb5a64fecde766535c12b79c8f6",
+    "tests/test_sale_home_journey_flow_199.py": "57f4f42b37739d85d396b53dd7e0bd0e2f98b2bacc0454a868170a7e21375b86",
+    "tests/test_support_attention_now_166.py": "e295ea7d1180e0caa6f013b292245c51d2b3211ffaff9d996e4027dfd4d45421",
+    "tests/component/browser_sale_home_journey_flow_199.mjs": "99c57067a3800cbc85b04f4f9165ecfb9aba526f5471784bd553020ae78b9acf",
+    "tests/component/dom_sale_home_journey_flow_199.mjs": "c540750c5d544e03567dc669a0eca90c4a20cb5afc34fa2e6d9292a9b59d648d",
+    "tests/component/dom_home_attention_layout.mjs": "35b59cbcc0ceeee99341f4c29daa82757f235346cdf3324030c5229b48e4317a",
+    "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f"
+  },
+  "python": "3.11.2",
+  "python_packages": {
+    "streamlit": "1.66.0",
+    "mongomock": "4.3.0",
+    "pymongo": "4.19.0",
+    "pytest": "9.1.1"
+  },
+  "log_normalization": {
+    "operation": "Trailing spaces/tabs removed from .txt log lines only; no message/result changes",
+    "files": [
+      "baseline-python.txt",
+      "regression-before-python.txt",
+      "after-focused-python.txt"
+    ],
+    "browser_result_and_db_snapshots": "UNMODIFIED"
+  },
+  "published_product_commit": "ecf6c88da6523028195918e1440cc3b413bfad7c",
+  "published_pr": 208,
+  "published_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/208",
+  "test_server": "STOPPED via process tool after final capture; process-local samples discarded."
+}

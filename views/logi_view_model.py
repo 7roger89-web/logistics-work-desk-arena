@@ -635,7 +635,9 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "dueNote": "Đã hoàn thành" if done else "Việc được giao",
             "status": "Đã xong" if done else "Chưa làm",
             "statusTone": "green" if done else "amber",
-            "route": (logi_route.shipment_path(sid) + "?tab=lay-hang") if sid else "/lo-hang",
+            # Same honest fallback as Home Attention: manual tasks do not
+            # carry a canonical stage, so never invent an export destination.
+            "route": logi_route.shipment_path(sid) if sid else "/lo-hang",
             "source": "core.database.load_tasks",
         })
 

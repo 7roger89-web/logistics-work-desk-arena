@@ -86,7 +86,8 @@ class Attention166Tests(unittest.TestCase):
         primary = next(item for item in items if item["sourceType"] == "PRIMARY_ACTION")
         task = next(item for item in items if item["sourceRef"] == "TASK:T-ACT")
         self.assertEqual(primary["route"], shipment["nextRoute"])
-        self.assertEqual(task["route"], "/lo-hang/S1?tab=lay-hang")
+        self.assertEqual(task["route"], "/lo-hang/S1")
+        self.assertIn("Chưa gắn công đoạn", task["reason"])
 
     def test_task_owner_and_deadline_are_authoritative(self):
         tasks = [

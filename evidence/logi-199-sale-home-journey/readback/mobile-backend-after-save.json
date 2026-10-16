@@ -1,0 +1,40 @@
+{
+  "id": "FLOW199-FCL",
+  "version": 3,
+  "customerId": "CUST-ANPHAT",
+  "sea_export": {
+    "on_board_at": "2026-10-06"
+  },
+  "updated_by": "flow199.sale",
+  "updated_by_role": "sale",
+  "audit_count": 3,
+  "audit": [
+    {
+      "action": "create",
+      "actor": "staging.support",
+      "actor_role": "support",
+      "before_version": null,
+      "after_version": 1,
+      "before_on_board_at": null,
+      "after_on_board_at": "2026-10-04"
+    },
+    {
+      "action": "update",
+      "actor": "flow199.sale",
+      "actor_role": "sale",
+      "before_version": 1,
+      "after_version": 2,
+      "before_on_board_at": "2026-10-04",
+      "after_on_board_at": "2026-10-05"
+    },
+    {
+      "action": "update",
+      "actor": "flow199.sale",
+      "actor_role": "sale",
+      "before_version": 2,
+      "after_version": 3,
+      "before_on_board_at": "2026-10-05",
+      "after_on_board_at": "2026-10-06"
+    }
+  ]
+}

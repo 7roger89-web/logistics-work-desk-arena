@@ -1,0 +1,25 @@
+
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+
+
+> logi-shell-component@0.1.0 build
+> vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1936 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css    102.10 kB │ gzip:    20.34 kB
+dist/logi-shell.js   2,339.54 kB │ gzip: 1,000.23 kB
+
+✓ built in 740ms
+
+> logi-shell-component@0.1.0 scan
+> python3 ../scripts/scan_process.py dist
+
+INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)
+scanned logi-shell.js: 2310859 chars, 0 executable hits
+scanned logi-shell.css: 102102 chars, 0 executable hits
+FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0

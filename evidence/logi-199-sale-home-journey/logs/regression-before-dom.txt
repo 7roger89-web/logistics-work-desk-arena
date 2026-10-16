@@ -1,0 +1,26 @@
+Not implemented: Window's scrollTo() method
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   'booking',
++   'customs',
+    'si',
++   'transport',
+    'vgm'
+  ]
+
+    at file:///home/user/logistics-work-desk-arena/tests/component/dom_sale_home_journey_flow_199.mjs:51:8 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [ 'booking', 'customs', 'si', 'transport', 'vgm' ],
+  expected: [ 'si', 'vgm' ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.22.3

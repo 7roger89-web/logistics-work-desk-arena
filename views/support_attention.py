@@ -208,10 +208,13 @@ def build_attention_projection(
             "sourceType": "TASK",
             "sourceRef": f"TASK:{source_ref}",
             "band": band,
-            "reason": "Việc được giao",
+            "reason": "Việc được giao · Chưa gắn công đoạn; mở lô để kiểm tra.",
             "action": _text(task.get("content")),
             "context": _text(by_shipment[sid].get("customer")),
-            "route": logi_route.shipment_path(sid) + "?tab=lay-hang",
+            # Manual tasks have a shipment binding, but no canonical stage
+            # binding. Do not guess from free text or force every task into
+            # export (including finance/import tasks). Keep the map-first lot.
+            "route": logi_route.shipment_path(sid),
             "owner": owner,
             "deadline": parsed.strftime("%d/%m/%Y") if parsed else "",
             "deadlineDate": parsed.isoformat() if parsed else "",
