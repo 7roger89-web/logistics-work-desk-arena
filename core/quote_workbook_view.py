@@ -27,10 +27,13 @@ Safety
 * openpyxl never evaluates a formula: a cell shows its formula string plus the
   cached result when the file has one. A cached value that does not exist is
   reported as UNKNOWN — never as 0.
-* Costs live in internal sheets. Their content is only serialized for a caller
-  that already passed the business permission check; otherwise the sheet is
-  returned locked, with its name, order and dimensions still visible so the user
-  knows it exists.
+* SOURCE CELLS ARE GRANT-GATED, NOT CLASSIFICATION-GATED. Cell content is only
+  serialized for a caller that already passed the business permission check
+  (``commercial_write``) — on EVERY sheet, the customer sheet included, because a
+  one-tab supplier file routinely keeps its cost figure inside that same tab.
+  Every other caller gets the sheet locked, with its name, order and dimensions
+  still visible so the user knows it exists. The customer-facing quotation is not
+  affected: Bước 3 renders the published customer snapshot, not this raw view.
 """
 from __future__ import annotations
 
@@ -362,7 +365,13 @@ def _not_rendered(sheet, workbook) -> dict[str, int]:
 def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | None = None,
                can_view_internal: bool = False, max_rows: int = MAX_ROWS,
                max_cols: int = MAX_COLS) -> dict[str, Any]:
-    """One sheet, bounded. Internal sheets are locked without permission."""
+    """One sheet, bounded.
+
+    ``can_view_internal`` is the SOURCE-CELL grant and it defaults to deny for
+    every sheet: it means "this caller may read the supplier's original cells at
+    all", not "this caller may read the sheets we happened to call internal".
+    Callers must pass ``can_operate_business("commercial_write")``.
+    """
     workbook, values = open_workbook(data)
     classification = classify_sheets(workbook, proposal)
     if sheet_name not in workbook.sheetnames:
@@ -378,14 +387,22 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
         "column_count": int(sheet.max_column or 0),
         "read_only": True,
     }
-    # Every sheet that is not the ONE customer sheet stays locked without the
-    # business grant — an INTERNAL cost sheet, and equally an UNCLASSIFIED sheet
-    # whose content nobody has validated as publishable.
-    if sheet_class != SHEET_CUSTOMER and not can_view_internal:
+    # RAW SOURCE CELLS REQUIRE THE BUSINESS GRANT — on EVERY sheet, INCLUDING the
+    # one customer sheet. A customer tab is not proof that its cells are
+    # customer-facing: a single-tab supplier file routinely keeps the cost figure
+    # in a cell of that same tab (J20/K20 beside the goods table). The gate is
+    # therefore the GRANT, never the classification, so a cost the parser did not
+    # recognise cannot leak out through a sheet called "customer".
+    #
+    # Name, index, size, state and classification metadata stay visible, so a
+    # lower role still learns that the sheet exists and why it is closed. The
+    # customer-facing quotation itself is unaffected: Bước 3 reads the published
+    # customer snapshot, not this raw view.
+    if not can_view_internal:
         return {**base, "locked": True, "cells": [], "merges": [],
-                "reason": ("Sheet nội bộ có giá vốn: cần quyền thao tác báo giá (commercial_write) để xem nội dung."
-                           if sheet_class == SHEET_INTERNAL else
-                           "Sheet chưa phân loại được là bản khách: cần quyền thao tác báo giá (commercial_write) để xem nội dung.")}
+                "reason": "Ô nguồn của workbook gốc chỉ mở với quyền thao tác báo giá (commercial_write): "
+                          "sheet khách cũng có thể chứa chi phí nội bộ ngay trong chính các ô của nó. "
+                          "Bản báo giá khách vẫn xem được ở Bước 3."}
     row_limit = max(1, min(int(max_rows or MAX_ROWS), MAX_ROWS))
     col_limit = max(1, min(int(max_cols or MAX_COLS), MAX_COLS))
     value_sheet = values[sheet_name]

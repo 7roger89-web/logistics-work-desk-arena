@@ -1,9 +1,21 @@
-== LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — new suites (2026-10-16, finding-repair commit) ==
+== LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — new/updated suites (2026-10-16, authorization-boundary commit) ==
 
-$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py tests/test_excel_text_edit_v1.py tests/test_quote_workbook_view_v1.py tests/test_excel_quote_import_v1.py -q
-........................................................................ [100%]
-72 passed in 3.96s
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py tests/test_quote_workbook_view_v1.py tests/test_excel_text_edit_v1.py tests/test_excel_quote_import_v1.py -q
+......                                                                   [100%]
+78 passed in 4.62s
 
-$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py -q   # detail
-..................                                                       [100%]
-18 passed in 2.03s
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py -q   # 23 tests, incl. the 7-point negative
+.......................                                                  [100%]
+23 passed in 2.72s
+
+== stability: the pair that used to be flaky, 10 consecutive runs ==
+run1: 54 passed in 3.39s
+run2: 54 passed in 3.65s
+run3: 54 passed in 3.65s
+run4: 54 passed in 3.48s
+run5: 54 passed in 3.42s
+run6: 54 passed in 3.70s
+run7: 54 passed in 3.66s
+run8: 54 passed in 3.74s
+run9: 54 passed in 3.68s
+run10: 54 passed in 3.91s

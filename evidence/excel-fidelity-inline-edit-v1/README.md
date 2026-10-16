@@ -4,15 +4,16 @@
 
 [Implementation / scope / verification report](../../docs/LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1.md)
 
-- [33 real-bundle DOM checks](dom-acceptance.txt) ([machine-readable](dom-checks.json)) — acceptance A/B/C/D/E/F/G/I at the UI seam, plus the four findings repaired below.
+- [34 real-bundle DOM checks](dom-acceptance.txt) ([machine-readable](dom-checks.json)) — acceptance A/B/C/D/E/F/G/I at the UI seam, plus the four findings repaired below.
 - [Static DOM snapshot](preview-snapshot.html) — the Step-3 customer paper and the read-only original-workbook viewer, rendered from the real bundle markup + real CSS. **Open it in a browser at any width.** It is *not* a screenshot.
 - [Preview ↔ XLSX cross-check](xlsx-vs-preview.json) + [the actual exported file](customer-quote-SYNTHETIC-edited.xlsx) — every edited sentence with the exact cell it landed in (`A5`, `A11`, `B21`, `B33`, `A46`, `A50`), the full region-by-region presence list, internal-string leaks, formula cells.
 - [Source immutability](source-immutability.json) — the customer's original file is byte-identical (same SHA256, same GridFS object) after all editing.
 - [Declared fidelity](fidelity-declared.json) — what the viewer supports and what it explicitly does NOT render.
-- [New suites: 72 passed](python-new-suites.txt); [quote/Excel/RBAC regression: 198 passed, 6 skipped, 0 failures in this task's files](python-quote-regression.txt) — the file also shows the one RBAC failure that is *pre-existing cross-file state pollution* (it fails with no test from this task loaded).
+- [New suites: 78 passed](python-new-suites.txt); [quote/Excel/RBAC regression: 198 passed, 6 skipped, 0 failures in this task's files](python-quote-regression.txt) — the file also shows the one RBAC failure that is *pre-existing cross-file state pollution* (it fails with no test from this task loaded).
 - [Typecheck / build / zero-executable-process scan](component-build.txt).
 - [Existing jsdom component lanes](component-dom-regression.txt) and [proof the four failures there are pre-existing](component-dom-preexisting.txt) — the same four lanes fail identically against the pristine `e7ac601` bundle.
-- [Permission matrix](permission-matrix.json) — the raw-workbook download refused for a reader-only role, *and* refused for a ONE-sheet workbook whose cost row sits inside the customer tab.
+- [Permission matrix](permission-matrix.json) — the raw-workbook download refused for a reader-only role, *and* refused for a ONE-sheet workbook whose cost row sits inside the customer tab; *and* `quote_source_workbook_view` returning `locked: true`, `cellsReturned: 0`, `leakedJ20/K20: false` for that same role.
+- [Mutation check](mutation-check.txt) — reverting the source-cell gate to `sheet_class != SHEET_CUSTOMER` fails 5 tests and hands a `viewer` 242 cells including `J20 = "Vận chuyển nội bộ đại lý"`, `K20 = 12500000`.
 - [Tool versions and open gates](environment.json).
 
 ## Repair of the four review findings (2026-10-16)
@@ -20,6 +21,7 @@
 | # | Finding | Fix | Evidence |
 |---|---|---|---|
 | 1 | `LG nhập - Đại lý TT L Xuất` / `Dự kiến Chi phí` were reachable as raw bytes, and an UNCLASSIFIED sheet was shown as public | one rule, `protected_sheet_names()` = every sheet except the single customer sheet; both the read-only viewer's content lock and the raw download use the existing `commercial_write` grant; a partial workbook is refused, never trimmed; SHA256 mismatch refused; a ONE-sheet workbook with a cost row on the customer tab is refused too | `tests/test_excel_fidelity_repair_v1.py` (real dispatcher, per-role matrix), `permission-matrix.json`, DOM checks "Finding 1 (UI) …" |
+| 1b | follow-up: the CUSTOMER sheet still bypassed that gate — its cells went to a `commercial_view`-only role (a one-tab file keeps its cost in that tab, at `J20`/`K20`) | `sheet_page()` now requires the grant for cell content on EVERY sheet; the gate is the GRANT, never the parser's classification, so an unrecognised cost cannot leak; metadata stays visible; the customer quotation is unaffected | `mutation-check.txt` (5 tests fail and a viewer gets 242 cells if reverted), `test_source_workbook_view_needs_the_grant_on_every_sheet`, DOM check "the customer tab of the source workbook stays locked for a reader-only role" |
 | 2 | the edited `dịch vụ` summary was overwritten by the option line | summary → `A15`, option line → `A16`, scope → `A17`, rows from `19` | `sec.service_summary` → `A15` in `xlsx-vs-preview.json`, DOM "A data-backed label edits through the same in-place seam" |
 | 3 | the customer name shown on the paper did not reach the `To` cell | exporter and `CustomerPaper` both read the published `doc.customer_name`; `label.attn` (default `To` for legacy quotes) prints the greeting | `doc.customer_name` → `G7`, `identityUntouched` keeps `customer_id` `CUST-LUCGIAC-EVIDENCE` and the directory record `Công ty Lục Giác` |
 | 4 | `Kính gửi`, `Cảng / điểm`, `Nơi lấy hàng` … were hardcoded on the paper and absent from the map | every label is a region on BOTH the preview and the XLSX; `sec.no_services` and `doc.disclaimer` are published regions too; customs labels print even when the figure is unconfirmed (`Chưa xác định`) | `label.attn` → `F7`, `label.ports` → `A19`, `label.pickup` → `A20`; `regionsMissingFromXlsx: []`, `unmappedRegions: []` |

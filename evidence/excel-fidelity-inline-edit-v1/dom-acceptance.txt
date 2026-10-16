@@ -1,4 +1,4 @@
-DOM_FIXTURE: /home/user/logistics-work-desk-arena/.tmp/excel-inline-text-edit/dom_fixture.json (132070 bytes); regions=77; sheets=['BÁO GIÁ', 'LG nhập - Đại lý TT L Xuất', 'Dự kiến Chi phí']
+DOM_FIXTURE: /home/user/logistics-work-desk-arena/.tmp/excel-inline-text-edit/dom_fixture.json (134988 bytes); regions=77; sheets=['BÁO GIÁ', 'LG nhập - Đại lý TT L Xuất', 'Dự kiến Chi phí']
 BOOT — real bundle, real Python-produced excel quote fixture
   ✓ Real bundle opened the Excel quote workspace on a Python-produced SYNTHETIC quote (Q-20261016-DOMFIX1)
   ✓ Acceptance C: the backend read-back carries 5 rows / 27 pcs / 607,180 CNY and no invented total
@@ -32,6 +32,7 @@ BOOT — real bundle, real Python-produced excel quote fixture
   ✓ Acceptance D: a formula with a cached result shows it; an uncached one is UNKNOWN, never 0
   ✓ The viewer states what it does NOT reproduce instead of claiming 100% fidelity
   ✓ Internal cost sheet: name visible, content withheld and never rendered as customer data
+  ✓ Finding 1 (UI): the customer tab of the source workbook stays locked for a reader-only role
   ✓ Responsive guard present: wide tables scroll inside their container, not the page
 
-DOM ACCEPTANCE PASS — 33 checks (SYNTHETIC fixture; no viewport claim made)
+DOM ACCEPTANCE PASS — 34 checks (SYNTHETIC fixture; no viewport claim made)

@@ -34,9 +34,10 @@
     "Acceptance D: a formula with a cached result shows it; an uncached one is UNKNOWN, never 0",
     "The viewer states what it does NOT reproduce instead of claiming 100% fidelity",
     "Internal cost sheet: name visible, content withheld and never rendered as customer data",
+    "Finding 1 (UI): the customer tab of the source workbook stays locked for a reader-only role",
     "Responsive guard present: wide tables scroll inside their container, not the page"
   ],
-  "passed": 33,
+  "passed": 34,
   "regions": 77,
   "viewportClaim": "NONE — jsdom performs no layout; 1440x900 / 390x844 were not measured here"
 }

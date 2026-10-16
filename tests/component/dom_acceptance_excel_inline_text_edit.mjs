@@ -542,6 +542,31 @@ assert.ok(byTestId("workbook-locked"), "internal cost sheet stays locked for a l
 assert.ok(!text(byTestId("excel-source-workbook")).includes("12500000"));
 note("Internal cost sheet: name visible, content withheld and never rendered as customer data");
 
+// A reader-only role opens the CUSTOMER tab of the original workbook. The answer
+// below is REAL backend output (sheet_page(can_view_internal=False) on that very
+// sheet) — the Python dispatcher tests own the authorization; this check owns the
+// rendering claim: no source cell reaches the page for that role.
+ROLE_PERMISSIONS = ["dashboard", "sales", "commercial_view"];   // the viewer matrix
+// The panel is already open from the check above; this role now clicks the
+// CUSTOMER tab. The answer below is REAL backend output — sheet_page() with
+// can_view_internal=False on that very sheet — so this lane proves the rendering
+// claim (no source cell reaches the page), while the Python dispatcher tests own
+// the authorization claim.
+await click($('[data-testid^="workbook-tab-"]')[0], "customer sheet tab");
+const viewerWbRequest = lastPayload("quote_source_workbook_view");
+assert.equal(viewerWbRequest.sheet, "BÁO GIÁ");
+mount(vmWith({ customer: FIX.customer, lastWrites: [...answered, ...waitingReadbacks,
+  { event: "quote_source_workbook_view", ok: true, requestId: viewerWbRequest.requestId, readback: FIX.workbookViewLockedCustomer }] }));
+await tick(180);
+assert.ok(byTestId("workbook-locked"), "the customer tab is locked too, not just the internal sheets");
+assert.match(text(byTestId("workbook-locked")), /commercial_write/);
+assert.equal($('[data-testid^="workbook-cell-"]').length, 0, "no source cell is rendered for this role");
+assert.ok(!text(byTestId("excel-source-workbook")).includes("BÁO GIÁ DỊCH VỤ LOGISTICS"));
+assert.ok(!text(byTestId("excel-source-workbook")).includes("607"));
+assert.ok($('[data-testid^="workbook-tab-"]').length === 3, "the sheet inventory itself is still disclosed");
+note("Finding 1 (UI): the customer tab of the source workbook stays locked for a reader-only role");
+ROLE_PERMISSIONS = ["dashboard", "sales", "sales_write", "commercial_view", "commercial_write"];
+
 // ---------------------------------------------------------------- responsive guard
 assert.ok(paper && $(".eq-paper-table-wrap", paper).length >= 2, "customer tables sit in their own scroll container");
 assert.ok($(".eq-wb-scroll").length === 0 || $(".eq-wb-scroll").length === 1, "no stray grid outside its container");

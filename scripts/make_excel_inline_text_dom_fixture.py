@@ -69,6 +69,10 @@ def build() -> dict:
     # The same sheet as a caller WITHOUT the business grant: the DOM acceptance
     # proves an internal cost sheet is locked, never rendered for a lower role.
     locked_page = sheet_page(data, SHEET_INTERNAL_COST, proposal=proposal, can_view_internal=False)
+    # The same CUSTOMER sheet as a caller without the business grant. The grant is
+    # the boundary, not the classification: a "customer" tab can carry the cost
+    # figures in its own cells, so it is locked for a reader-only role too.
+    locked_customer_page = sheet_page(data, SHEET_CUSTOMER, proposal=proposal, can_view_internal=False)
     return {
         "synthetic": True,
         "note": "SYNTHETIC fixture — NOT the Owner's original Lục Giác workbook.",
@@ -82,6 +86,11 @@ def build() -> dict:
             "read_only": True, "sha256": proposal["source"]["sha256"],
             "file_name": proposal["source"]["file_name"], "overview": info, "page": page,
             "note": "Bản xem workbook gốc chỉ để đối chiếu.",
+        },
+        "workbookViewLockedCustomer": {
+            "read_only": True, "sha256": proposal["source"]["sha256"],
+            "file_name": proposal["source"]["file_name"], "overview": info, "page": locked_customer_page,
+            "note": "Chỉ có metadata: nội dung ô nguồn cần quyền thao tác báo giá.",
         },
         "workbookViewInternal": {
             "read_only": True, "sha256": proposal["source"]["sha256"],

@@ -51,10 +51,16 @@ Sheet classification comes from evidence, not from a sheet name: a sheet is inte
 
 **No presentational edit moves a number:** the new tests compare numeric cells before and after the label edits, and a forged region id is rejected.
 
+### Follow-up: the source-cell boundary is the GRANT, not the classification
+
+The first repair still let the CUSTOMER sheet bypass the gate: `sheet_page()` only locked `sheet_class != SHEET_CUSTOMER`, so a one-tab supplier file whose cost sits in that tab (`J20`/`K20`) handed its cells to a role holding only `commercial_view`. `sheet_page()` now requires the `commercial_write` grant for cell content on **every** sheet; the rule no longer depends on the parser recognising a cost — which is why a cost it fails to recognise can no longer leak. Name/index/size/state/classification metadata is still returned so the reader knows the sheet exists and why it is closed, and the customer-facing quotation is untouched (Bước 3 renders the published customer snapshot, not this raw view). Same grant, no new permission, no new role.
+
+The old behaviour was invisible because a test asserted it as the contract ("commercial_view is enough for the customer sheet"); that assertion is now the opposite, and `evidence/excel-fidelity-inline-edit-v1/mutation-check.txt` records that reverting the rule makes 5 tests fail and hands a `viewer` 242 cells including `J20 = "Vận chuyển nội bộ đại lý"` and `K20 = 12500000`.
+
 ## Verification (see `evidence/excel-fidelity-inline-edit-v1/`)
 
-- 33 real-bundle DOM checks (`dom-acceptance.txt`): click-to-edit title, product name, column label, payment term, multi-line note; the data-backed summary and the 16 label regions; the identity warning; per-region restore; global undo; read-only mode; the save payload; the reload-and-reopen round-trip; both download roles; sheet tabs/order; merged cell span + fill; cached vs uncached formulas; locked internal sheet; no amounts editable; no internal string on the paper.
-- 72 Python tests across the new/updated suites (18 in `tests/test_excel_fidelity_repair_v1.py`) and a 198-test quote/Excel/RBAC regression with zero failures in this task's files; the one RBAC failure elsewhere is pre-existing cross-file state pollution, shown to fail with no file from this task loaded.
+- 34 real-bundle DOM checks (`dom-acceptance.txt`): click-to-edit title, product name, column label, payment term, multi-line note; the data-backed summary and the 16 label regions; the identity warning; per-region restore; global undo; read-only mode; the save payload; the reload-and-reopen round-trip; both download roles; sheet tabs/order; merged cell span + fill; cached vs uncached formulas; locked internal sheet; no amounts editable; no internal string on the paper.
+- 78 Python tests across the new/updated suites (23 in `tests/test_excel_fidelity_repair_v1.py`, including the 7-point negative for the source-cell boundary) and a 204-test quote/Excel/RBAC regression with zero failures in this task's files; the one RBAC failure elsewhere is pre-existing cross-file state pollution, shown to fail with no file from this task loaded.
 - Preview ↔ XLSX cross-check: `xlsx-vs-preview.json` plus the exported file, listing every edited sentence and the exact cell it landed in, the export rule per region, and the untouched identity.
 - Source immutability: `source-immutability.json`; permissions: `permission-matrix.json`.
 

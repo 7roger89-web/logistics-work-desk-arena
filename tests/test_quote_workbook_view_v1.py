@@ -116,7 +116,8 @@ def test_original_workbook_keeps_real_sheet_names_and_order(source, proposal):
 
 
 def test_customer_sheet_view_keeps_position_merges_sizes_and_styles(source, proposal):
-    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal)
+    # Rendering under the grant: the raw view path always passes it explicitly.
+    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal, can_view_internal=True)
     assert page["read_only"] is True and page["locked"] is False
     assert page["classification"] == SHEET_CUSTOMER
     assert {"min_row": 2, "min_col": 1, "max_row": 2, "max_col": 8, "ref": "A2:H2"} in page["merges"]
@@ -134,7 +135,7 @@ def test_customer_sheet_view_keeps_position_merges_sizes_and_styles(source, prop
 
 
 def test_source_formulas_keep_their_cached_results(source, proposal):
-    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal)
+    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal, can_view_internal=True)
     formula = cell(page, 13, 6)
     assert formula["kind"] == "formula" and formula["f"] == "=SUM(F8:F12)"
     assert formula["value"] == 27 and "unknown" not in formula
@@ -144,7 +145,7 @@ def test_source_formulas_keep_their_cached_results(source, proposal):
 
 
 def test_formula_without_cache_is_unknown_never_zero(source, proposal):
-    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal)
+    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal, can_view_internal=True)
     unknown = cell(page, 22, 2)
     assert unknown["f"] == "=SUM(F8:F12)*500" and unknown["unknown"] is True
     assert unknown["value"] == "" and unknown["value"] != 0
@@ -160,6 +161,15 @@ def test_internal_cost_sheet_locked_without_grant_and_readable_with_it(source, p
     assert granted["locked"] is False
     labels = [c["value"] for c in granted["cells"] if c.get("kind") == "value"]
     assert "LCC Hải Phòng" in labels and 12500000 in labels
+
+
+def test_source_cells_are_default_deny_on_the_customer_sheet_too(source, proposal):
+    """The module default must be deny: content costs a grant, for every sheet."""
+    page = sheet_page(source, FIX_CUSTOMER, proposal=proposal)          # default can_view_internal=False
+    assert page["locked"] is True and page["cells"] == []
+    assert page["classification"] == SHEET_CUSTOMER
+    assert "commercial_write" in page["reason"]
+    assert sheet_page(source, FIX_CUSTOMER, proposal=proposal, can_view_internal=True)["locked"] is False
 
 
 def test_viewer_reports_what_it_does_not_render(tmp_path, proposal):
@@ -242,8 +252,17 @@ def test_view_event_locks_internal_sheet_for_read_only_role(staging, source):
     assert created["ok"], created
     qid = created["id"]
     st.session_state["current_user"] = {"username": "viewer-test", "role": "viewer"}
+    # `commercial_view` is enough to ASK, never to receive source cells — not even
+    # from the sheet the parser called "customer". This assertion used to read
+    # "commercial_view is enough for the customer sheet", which is exactly the
+    # hole: a one-tab supplier file keeps its cost figures inside that sheet.
     customer_sheet = dispatch("quote_source_workbook_view", {"id": qid, "sheet": FIX_CUSTOMER})
-    assert customer_sheet["ok"] is True  # commercial_view is enough for the customer sheet
+    assert customer_sheet["ok"] is True                       # metadata, not content
+    assert customer_sheet["readback"]["overview"]["sheet_names"] == [FIX_CUSTOMER, SHEET_INTERNAL_DUP, SHEET_INTERNAL_COST]
+    customer_page = customer_sheet["readback"]["page"]
+    assert customer_page["locked"] is True and customer_page["cells"] == [] and customer_page["merges"] == []
+    assert customer_page["row_count"] > 0                     # the sheet is still disclosed as existing
+    assert "commercial_write" in customer_page["reason"]
     internal = dispatch("quote_source_workbook_view", {"id": qid, "sheet": SHEET_INTERNAL_COST})
     assert internal["ok"] is True and internal["readback"]["page"]["locked"] is True
     assert internal["readback"]["page"]["cells"] == []

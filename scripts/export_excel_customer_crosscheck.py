@@ -248,13 +248,34 @@ def main() -> None:
         embedded = {"error": f"{type(exc).__name__}: {exc}"}
     finally:
         st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+    # ...and the READ path is gated by the same grant: a viewer must receive no
+    # source CELL content, on any sheet — including the "customer" tab of that
+    # one-sheet file, where the cost row sits at J20/K20.
+    view_as_viewer = "not-run"
+    try:
+        st.session_state["current_user"] = {"username": "evidence-viewer", "role": "viewer"}
+        view = dispatch("quote_source_workbook_view", {"id": one_qid, "sheet": imported["readback"]["source"]["goods_sheet"]})
+        page = (view.get("readback") or {}).get("page") or {}
+        view_as_viewer = {"ok": view["ok"], "sheet": page.get("sheet"), "locked": page.get("locked"),
+                          "cellsReturned": len(page.get("cells") or []),
+                          "mergesReturned": len(page.get("merges") or []),
+                          "metadataStillShown": {"sheetIndex": page.get("sheet_index"), "rowCount": page.get("row_count")},
+                          "leakedJ20": any(c.get("r") == 20 and c.get("c") == 10 for c in page.get("cells") or []),
+                          "leakedK20": any(c.get("r") == 20 and c.get("c") == 11 for c in page.get("cells") or []),
+                          "reason": page.get("reason")}
+    except Exception as exc:   # noqa: BLE001 — evidence script: report, never mask
+        view_as_viewer = {"error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
     json.dump({"syntheticFixture": True, "sourceDownloadAsSupport": True, "sourceDownloadAsViewer": viewer_download,
-               "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded},
+               "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded,
+               "sourceWorkbookViewAsViewer": view_as_viewer},
               open(EVIDENCE / "permission-matrix.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
     print(json.dumps({"quoteId": qid, "regionsMissingFromXlsx": missing, "unmappedRegions": unmapped,
                       "internalStringLeaks": leaks, "sourceDownloadAsViewer": viewer_download,
                       "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded,
+                      "sourceWorkbookViewAsViewer": view_as_viewer,
                       "formulaCells": formulas, "sheetNames": workbook.sheetnames,
                       "sourceByteIdentical": stored_bytes == source, "xlsx": str(xlsx_path)}, ensure_ascii=False, indent=2))
 

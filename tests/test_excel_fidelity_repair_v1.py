@@ -18,6 +18,7 @@ through a disabled button: a UI hint is never proof of an authorization rule.
 from __future__ import annotations
 
 import base64
+import hashlib
 from copy import deepcopy
 from datetime import date
 from io import BytesIO
@@ -26,6 +27,7 @@ from openpyxl import load_workbook
 import pytest
 
 from core.quote_customer_text import export_rule, unmapped_regions
+from core.quote_workbook_view import SHEET_CUSTOMER as CLASS_CUSTOMER
 from core.quote_excel_import import parse_luc_giac_workbook
 from scripts.make_luc_giac_three_sheet_fixture import (
     SHEET_CUSTOMER,
@@ -222,35 +224,132 @@ def test_unclassified_sheet_is_not_public(staging, source):
     assert any("GHI CHÚ SOẠN THẢO" in str(c.get("value")) for c in unlocked["readback"]["page"]["cells"])
 
 
-def test_cost_data_embedded_in_the_customer_sheet_still_protects_the_file(staging, source):
-    """A one-sheet workbook is not automatically publishable."""
+COST_LABEL = "Vận chuyển nội bộ đại lý"
+COST_AMOUNT = 12500000
+
+
+def workbook_with_cost_embedded_in_the_customer_sheet(source) -> bytes:
+    """ONE sheet ("BÁO GIÁ") carrying the internal cost at J20/K20.
+
+    Exactly the shape the finding describes, and the shape a supplier really
+    sends: a single tab, with the cost scratched in beside the goods table. The
+    parser DOES notice this one — but no gate may depend on it noticing.
+    """
     from openpyxl import load_workbook as open_workbook
 
     workbook = open_workbook(BytesIO(source))
     del workbook[SHEET_INTERNAL_COST]
     del workbook[SHEET_INTERNAL_DUP]
     sheet = workbook[SHEET_CUSTOMER]
-    sheet.cell(20, 10, "Vận chuyển nội bộ đại lý")
-    sheet.cell(20, 11, 12500000)
+    sheet.cell(20, 10, COST_LABEL)      # J20
+    sheet.cell(20, 11, COST_AMOUNT)     # K20
     buffer = BytesIO()
     workbook.save(buffer)
-    one_sheet = buffer.getvalue()
+    return buffer.getvalue()
 
-    imported_one = dispatch("quote_import_excel", {"customerId": "CUST-LUCGIAC-REPAIR", "fileName": FIXTURE_NAME,
-                                                  "base64": base64.b64encode(one_sheet).decode()})
-    assert imported_one["ok"], imported_one
-    readback = imported_one["readback"]
-    assert readback["source"]["sheet_names"] == [SHEET_CUSTOMER]
-    assert 12500000 in [c["amount"] for c in readback["source_costs"]]
+
+def import_embedded(one_sheet: bytes) -> dict:
+    """Import EXACTLY these bytes — never a re-render of them.
+
+    openpyxl writes fresh zip timestamps on every save, so two builds of the
+    same logical workbook are not byte-identical. Comparing a download against a
+    rebuilt copy would be flaky (and would prove the wrong thing), so the bytes
+    that were uploaded are the bytes the assertions use.
+    """
+    out = dispatch("quote_import_excel", {"customerId": "CUST-LUCGIAC-REPAIR", "fileName": FIXTURE_NAME,
+                                          "base64": base64.b64encode(one_sheet).decode()})
+    assert out["ok"], out
+    return out["readback"]
+
+
+def source_cell_text(page) -> str:
+    """Every piece of CELL content the page hands back — the thing under test."""
+    chunks = [str(page.get("reason") or "")] if page.get("locked") is False else [""]
+    for cell in page.get("cells") or []:
+        for key in ("value", "display", "f", "nf"):
+            if cell.get(key) not in (None, ""):
+                chunks.append(str(cell[key]))
+    return "\n".join(chunks)
+
+
+def test_cost_data_embedded_in_the_customer_sheet_still_protects_the_file(staging, source):
+    """A one-sheet workbook is not automatically publishable.
+
+    (2) the raw download is refused, and (3) the raw workbook VIEW must not hand
+    back J20/K20 either. Before this test the view was only checked on internal
+    sheets — a cost inside the customer sheet walked straight out.
+    """
+    one_sheet = workbook_with_cost_embedded_in_the_customer_sheet(source)
+    readback = import_embedded(one_sheet)
+    assert readback["source"]["sheet_names"] == [SHEET_CUSTOMER]      # (1) one sheet only
+    assert readback["source"]["goods_sheet"] == SHEET_CUSTOMER
+    assert COST_AMOUNT in [c["amount"] for c in readback["source_costs"]]
     assert all(c["source_sheet"] == SHEET_CUSTOMER for c in readback["source_costs"])
 
     qid = save(readback)
+
+    # (2) the bytes are refused for a read-only role …
     as_role("viewer")
     refused = dispatch("quote_source_download", {"id": qid})
     assert refused["ok"] is False and "RBAC" in refused["error"]
     assert "dòng chi phí nằm ngay trong sheet khách" in refused["error"]
+
+    # … (3) and so is the CELL CONTENT, through the view, on the customer sheet.
+    view = dispatch("quote_source_workbook_view", {"id": qid, "sheet": SHEET_CUSTOMER})
+    assert view["ok"] is True, view                                     # metadata is allowed
+    page = view["readback"]["page"]
+    assert page["sheet"] == SHEET_CUSTOMER and page["classification"] == CLASS_CUSTOMER
+    assert page["locked"] is True, "the customer tab must not bypass the grant"
+    assert page["cells"] == [] and page["merges"] == []
+    assert page["row_count"] > 0 and page["sheet_index"] == 1          # it still discloses that the sheet exists
+    assert "commercial_write" in page["reason"]
+    assert COST_LABEL not in source_cell_text(page)
+    assert str(COST_AMOUNT) not in source_cell_text(page)
+
+    # (4) the ordinary CUSTOMER quotation is untouched for the same role.
+    customer_doc = dispatch("quote_export_xlsx", {"id": qid})
+    assert customer_doc["ok"] is True, customer_doc
+    customer_bytes = base64.b64decode(customer_doc["document"]["downloadBase64"])
+    customer_text = "\n".join(str(c.value) for row in load_workbook(BytesIO(customer_bytes))["Bao gia"] for c in row if c.value is not None)
+    assert "BÁO GIÁ" in customer_text.upper()
+    assert COST_LABEL not in customer_text and str(COST_AMOUNT) not in customer_text
+
+    # (5)(6) a role that holds the grant reads the source AND still gets the ORIGINAL bytes.
     as_role("support")
-    assert dispatch("quote_source_download", {"id": qid})["ok"] is True
+    granted = dispatch("quote_source_workbook_view", {"id": qid, "sheet": SHEET_CUSTOMER})
+    assert granted["ok"] is True and granted["readback"]["page"]["locked"] is False
+    assert COST_LABEL in source_cell_text(granted["readback"]["page"])
+    download = dispatch("quote_source_download", {"id": qid})
+    assert download["ok"] is True, download
+    payload = download["document"]
+    assert base64.b64decode(payload["downloadBase64"]) == one_sheet   # the file as uploaded, byte for byte
+    assert payload["byteSize"] == len(one_sheet)
+    assert readback["source"]["sha256"] == hashlib.sha256(one_sheet).hexdigest()
+
+
+@pytest.mark.parametrize("role,granted", [("viewer", False), ("sales", False), ("sale", True),
+                                          ("support", True), ("admin", True)])
+def test_source_workbook_view_needs_the_grant_on_every_sheet(staging, source, role, granted):
+    """The rule is the GRANT, on every sheet — never the parser's classification.
+
+    `sales` is the legacy role: it holds `commercial_view` + `sales_write` but not
+    `commercial_write`, so it must be treated exactly like a reader.
+    """
+    readback = imported(source)
+    qid = save(repair_draft(source))
+    as_role(role)
+    for sheet in readback["source"]["sheet_names"]:                    # (7) the three-sheet file too
+        view = dispatch("quote_source_workbook_view", {"id": qid, "sheet": sheet})
+        assert view["ok"] is True, (role, sheet, view)
+        page = view["readback"]["page"]
+        if granted:
+            assert page["locked"] is False and page["cells"], (role, sheet)
+        else:
+            assert page["locked"] is True and page["cells"] == [], (role, sheet)
+            assert "commercial_write" in page["reason"]
+    # No caller loses the sheet inventory itself.
+    assert dispatch("quote_source_workbook_view", {"id": qid})["readback"]["overview"]["sheet_names"] == \
+        readback["source"]["sheet_names"]
 
 
 def test_download_refuses_bytes_that_no_longer_match_the_stored_sha256(staging, source, monkeypatch):

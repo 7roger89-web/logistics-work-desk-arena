@@ -180,9 +180,10 @@ def handle_source_workbook(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _result(event, qid, True, requestId=str(payload.get("requestId") or ""),
                    readback={"read_only": True, "sha256": source["sha256"], "file_name": source.get("file_name"),
                              "overview": info, "page": page,
-                             # The raw workbook carries internal sheets, so it needs the
-                             # SAME grant as the internal-sheet viewer. Reported here so the
-                             # UI can say why the download is unavailable instead of
+                             # The raw workbook carries internal data — internal sheets,
+                             # and often a cost row inside the customer tab itself — so it
+                             # needs the SAME grant that opens source cells. Reported here so
+                             # the UI can say why the download is unavailable instead of
                              # silently hiding the button.
                              "can_download_source": can_operate_business("commercial_write"),
                              "note": "Bản xem workbook gốc chỉ để đối chiếu; số liệu nghiệp vụ vẫn sửa ở bảng Bước 1/2."})

@@ -1,0 +1,16 @@
+== MUTATION CHECK — the gate reverted to the reported rule ==
+
+Restored:  if sheet_class != SHEET_CUSTOMER and not can_view_internal:
+
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py tests/test_quote_workbook_view_v1.py -q
+FAILED tests/test_excel_fidelity_repair_v1.py::test_cost_data_embedded_in_the_customer_sheet_still_protects_the_file
+FAILED tests/test_excel_fidelity_repair_v1.py::test_source_workbook_view_needs_the_grant_on_every_sheet[viewer-False]
+FAILED tests/test_excel_fidelity_repair_v1.py::test_source_workbook_view_needs_the_grant_on_every_sheet[sales-False]
+FAILED tests/test_quote_workbook_view_v1.py::test_source_cells_are_default_deny_on_the_customer_sheet_too
+FAILED tests/test_quote_workbook_view_v1.py::test_view_event_locks_internal_sheet_for_read_only_role
+5 failed, 31 passed in 3.36s
+
+-- and what a viewer actually RECEIVED under that rule --
+viewer role=viewer | page locked: False | cells returned: 242
+  J20 = "Vận chuyển nội bộ đại lý"
+  K20 = 12500000
