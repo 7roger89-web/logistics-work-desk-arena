@@ -13832,7 +13832,7 @@ function ks() {
 				})] })]
 			}),
 			/* @__PURE__ */ (0, V.jsxs)("div", {
-				className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
+				className: "grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-start",
 				children: [/* @__PURE__ */ (0, V.jsx)(Es, {
 					items: (n ?? []).slice(+!!t?.focus, t?.focus ? 5 : 4),
 					title: "Cần xử lý tiếp",
