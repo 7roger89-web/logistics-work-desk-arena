@@ -1,0 +1,19 @@
+{
+  "source_commit": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
+  "status": "SOURCE_CANDIDATE_NOT_UAT_APPROVED",
+  "independent_review": "INCOMPLETE",
+  "windows_runtime": "NOT_RUN",
+  "archive": "logi199-8932fcb-source-candidate.zip",
+  "sha256": "04bade45872e4793a231e7f2fc53c19c8aa5ade1679f2885f9947143a9e54a0f",
+  "bytes": 75236991,
+  "tracked_file_count": 1564,
+  "all_files_match_exact_commit": true,
+  "no_credentials_or_local_runtime_state": true,
+  "critical_files": {
+    "scripts/logi199_uat.cmd": "59b5311da6acd1d01539b7eb87361353c3ab43d82e314c69dd7d66223626f569",
+    "scripts/logi199_t6_staging_app.py": "e83da3707f8f5ca6fa30b3fa765e461320d6c0111eb52a32cc4ea80bf174f89e",
+    "component/dist/logi-shell.js": "121bbc3c6090b4cdd0aa576a6e9b29a0976f0bf6f6c35360512b5ee6cac5ca9b",
+    "component/dist/logi-shell.css": "cd690366fbc18ed63db3b4af8ffe0b75b971e0bcfffac3c03cc0729cfa43a4ab",
+    "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f"
+  }
+}

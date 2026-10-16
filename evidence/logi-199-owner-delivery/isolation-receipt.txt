@@ -1,0 +1,3 @@
+Actual launcher log on extracted archive, Linux only:
+Uvicorn server started on 127.0.0.1:9502
+STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO

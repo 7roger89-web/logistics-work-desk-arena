@@ -1,43 +1,92 @@
-# LOGI #199 — bounded G2 Owner UAT guide (not currently ready)
+# LOGI #199 — Owner delivery candidate 8932fcb (NOT YET UAT-APPROVED)
 
-**Current gate:** `INDEPENDENT_REVIEW=PENDING`; `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`; `PRODUCTION_READY=NO`. Do not start this Owner UAT until Independent Review explicitly returns PASS for the exact candidate and its disclosed source/evidence reconciliation. This file is a focused LOGI #199 follow-up, not a restart of accepted G0–G5 work.
+`INDEPENDENT_REVIEW=INCOMPLETE`; `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`;
+`WINDOWS_RUNTIME=NOT_RUN`; `PRODUCTION_READY=NO`.
 
-## Exact review candidate and evidence
+This corrects stale candidate links in the old guide. It does NOT authorize
+Owner UAT or waive the independent-review gate. Final approved-trial promotion
+is blocked until a genuinely separate reviewer returns PASS on the frozen SHA.
+No G0–G5 recertification, product redesign, main merge or production deployment.
 
-- Fixed branch: `arena/bb243332-logistics-work-desk-arena`
-- Source candidate commit: [`1e899553cc1ad7dbd720eb805e061ec61ae0871a`](https://github.com/7roger89-web/logistics-work-desk-arena/commit/1e899553cc1ad7dbd720eb805e061ec61ae0871a)
-- [Download the exact candidate ZIP](https://github.com/7roger89-web/logistics-work-desk-arena/archive/1e899553cc1ad7dbd720eb805e061ec61ae0871a.zip) only after the reviewer authorizes UAT.
-- Sole visual reference: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html` (SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`).
-- Current browser evidence: `evidence/logi-199-g2/current-source/` and `evidence/logi-199-g2/metrics.json`.
-- **Evidence identity note:** raw metrics record capture source SHA `751f64f5129637eef4fb74515afdf7fa15ca9deb`. GitHub returned 422 and the resumed clone did not contain that commit object. The published candidate rebuilds to the exact recorded JS/CSS and capture-script hashes, but commit-ID identity equivalence is **NOT_VERIFIED**. Independent Review must accept this provenance or request a fresh capture before Owner UAT; the raw metrics are not to be relabeled.
+## Frozen app version
 
-## When authorized by Independent Review
+- Branch: `arena/d657fb56-logistics-work-desk-arena`.
+- Exact app source/dist: **8932fcb4aa2e7705b1e0963a830758bd3d9849ae**.
+- [Exact source archive (GitHub login may be required)](https://github.com/7roger89-web/logistics-work-desk-arena/archive/8932fcb4aa2e7705b1e0963a830758bd3d9849ae.zip).
+- Do NOT use `logi199-owner-trial`: annotated tag currently resolves to
+  `353314484fc52b5d706a90e84d9bbb514e1cfa33`, not this candidate. No retagging or
+  release was performed.
+- Only evidence at `evidence/logi-199-final-fix/` in **8932fcb** is the A/B review
+  input. Documentation commits after that SHA do not change the frozen app.
+- Original offline HTML: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`,
+  SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
 
-1. Use a **new, isolated folder** for the exact candidate ZIP. Do not copy any app-production configuration, `.env`, `secrets.toml`, Mongo URI, cookies, or credentials.
-2. On Windows with Python 3.11+, run `scripts/logi199_uat.cmd`. It is a Windows batch launcher. Its runtime was not executed in the Linux sandbox; a real Windows launch is part of the Owner check. If the isolation guard fails, stop and preserve the log—do not disable or edit the guard.
-3. Verify the launcher reports isolated in-process Mongomock, empty real `MONGO_URI`/secrets, and no production client before fixture creation. Open `http://localhost:9501`. Do not use production login, production data, or production ports.
-4. Use only the supplied disposable fixtures: `SEA-188` for no Journey nodes, and `T6-FCL` for the populated Journey/touch/save check. The Mongomock store is in-memory and disappears when the launcher stops.
-5. Stop the launcher with Ctrl+C when finished. Record only the checklist below, screenshots, and the test result; do not create real transactions or alter production data.
+## Review dispatch and web-link status
 
-## Focused Owner checklist
+No independent agent/tool is exposed in this session; native reviewer CLIs are
+absent. GitHub collaborator list contains only Owner. A handoff was prepared in
+`evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_REQUEST.md`. Attempt to post
+it to issue #199 failed (`Resource not accessible by integration`, exit 1).
+**No reviewer was actually assigned/notified; no independent PASS exists.**
+Owner/Control Tower must send that handoff to an available separate reviewer.
+This is a permissions/delegation blocker, not a request for credentials.
 
-| Check | Action | Expected result / record |
-|---|---|---|
-| SEA-188 empty map, desktop 1440×900 | Open the no-node Journey view and try drag/wheel input inside the map. | Full-width map-first canvas; zero nodes/edges and no fabricated stages/statuses; truthful missing-profile state; one “BỔ SUNG HỒ SƠ” CTA; map transform does not pan/zoom while there are no nodes; no horizontal overflow. Record PASS/FAIL and screenshot. |
-| SEA-188 empty map, mobile 390×844 | Repeat on a phone-sized viewport; tap the CTA. | Full-width map; no overflow; exactly one truthful CTA reaches the existing Execution Profile editor; no business write occurs merely by opening the editor. Record PASS/FAIL and screenshot. |
-| T6-FCL populated Journey, desktop/mobile | Confirm 11 real fixture nodes and 20 edges; on mobile, use touch drag to pan to ON BOARD. | Existing map-first populated Journey remains intact; touch pan moves the map and does not accidentally select a node until tapped. Record whether touch-pan works. |
-| T6-FCL ON BOARD save/readback | Open the existing task editor, enter disposable test date `2026-10-04`, save, reload, and read it back. | The Mongomock fixture returns the exact saved date after reload. No real payment/transaction. Record save and readback separately; if the immediate confirmation label is absent, do not infer failure or success—use the reload/readback result. |
-| Isolation and shutdown | Review the launcher preflight log and stop it. | Isolation proof precedes fixture creation; no production DB/client/credentials; in-memory data is gone when stopped. |
+No authenticated private web app with outside-sandbox verification is available.
+No e2b trial link is being offered, no auth-disabled public app was published,
+and no hosting or paid service was created. A new host would need Owner approval
+and real authenticated/external-access verification before it could be offered.
 
-The reviewer's source-SHA reconciliation decision is a prerequisite. The Owner's result does not replace Independent Review, and screenshots do not authorize merge or deployment.
+## Windows instructions — maximum three steps (gated draft)
 
-## Current release boundary
+Target selected by Owner: **Windows**. Requirements: Windows x64, working
+CPython **3.11 x64** on PATH, venv/pip, Internet access to install dependencies,
+ability to execute a `.cmd`, and free local port **9501**. Node/npm and MongoDB
+installation are not needed (official dist included, in-memory Mongomock).
+Direct dependency wheels were checked for CPython 3.11 / Windows amd64 from
+Linux; a full Windows dependency installation and Windows browser launch remain
+**NOT_RUN**. Do not interpret this as Windows PASS.
 
-- `INDEPENDENT_REVIEW=PENDING`
-- `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`
-- `SUPERVISOR_PASS=NOT_CLAIMED`
-- `PRODUCTION_READY=NO`
-- `NO_MERGE_MAIN_WITHOUT_OWNER_APPROVAL=YES`
-- `NO_PRODUCTION_DEPLOY_WITHOUT_OWNER_APPROVAL=YES`
+Once Independent Review PASS is recorded for exactly 8932fcb:
 
-Existing auth/bootstrap/finance coverage and snapshot retry-idempotency blockers remain separate and unwaived. GitHub issue-comment permission is not a release gate; no permission fix is requested.
+1. Ensure Python 3.11 x64 is installed with **Add python.exe to PATH**, and
+   Internet access is available for the initial dependency installation.
+2. Extract `logi199-8932fcb-source-candidate.zip` (or the exact GitHub archive
+   above) into a **new writable folder**. Do not add `.env`, secrets,
+   production configuration or credentials. Do not run directly inside the ZIP.
+3. Double-click **`scripts\logi199_uat.cmd`** inside that folder. Keep its
+   console open; after startup open **http://localhost:9501** in your browser.
+   It must report `STAGING_ISOLATION_PROOF=PASS ... client=Mongomock ...
+   real_uri=NO production_client=NO`. If it stops or this proof is absent,
+   stop and retain the error; do not bypass the guard. Ctrl+C stops the local
+   server; all test edits disappear on shutdown.
+
+The auth bypass is the unchanged test-only launcher setting and is bound to
+**127.0.0.1 only**. Never rebind it publicly, tunnel it, or use production data.
+This is a local single-user trial, not an authenticated hosted environment.
+
+## Focused Owner checklist after review + Windows launch succeed
+
+- T6-FCL at 390×844: initial BOOKING → PICKUP → CUSTOMS EXPORT, 11 nodes / 20
+  edges; paper/grid unchanged; pan/zoom/Fit; `Đọc rõ` reaches a real problem;
+  select node → bubble → editor.
+- ON BOARD: record current OLD date, enter a valid different NEW, Save, reload,
+  reopen editor, verify persisted NEW and OLD != NEW. Same-value save is not PASS.
+- Record Windows/Python version, startup/isolation log and screenshots. This is
+  Owner UAT evidence, separate from reviewer and Linux evidence.
+
+## Actual checks completed / remaining blockers
+
+Author ran the **new ZIP after extraction**, not just the live checkout, on
+Linux x86_64 / Python 3.11.2 / real Streamlit / Chromium / loopback / Mongomock.
+A PASS: mobile begins booking/pickup/customs-export, focus and pan/zoom/Fit.
+B PASS: isolated `2026-10-04 → 2026-10-11`, Save → reload → readback NEW.
+Archive: 1,564 tracked files matched blobs at exact 8932fcb, dist/HTML/JPEG hashes
+verified. This is author smoke evidence, NOT independent review or Windows PASS.
+See `evidence/logi-199-owner-delivery/`.
+
+Blocking final Owner delivery: independent review not dispatched/completed;
+Windows runtime/Owner launch unverified; no safe externally verified web link.
+Final approved-trial package/release is deliberately not promoted.
+Production additionally needs explicit Owner authorization and resolution of the
+existing, unwaived release blockers; this bounded review does not certify the
+whole app, auth/bootstrap, finance or retry-idempotency.

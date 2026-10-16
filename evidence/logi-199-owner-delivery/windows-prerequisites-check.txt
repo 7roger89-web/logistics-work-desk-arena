@@ -1,0 +1,27 @@
+TARGET=Windows x64 with CPython 3.11
+WINDOWS_RUNTIME=NOT_RUN
+No Windows host, Wine or PowerShell available in this session.
+Static launcher: Python>=3.11, venv, pip requirements+pytest, included dist, secrets guard, loopback 127.0.0.1:9501.
+Command run ON LINUX:
+python3 -m pip download --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --only-binary=:all: --no-deps -r requirements.txt pytest
+Verdict: direct requirement wheels AVAILABLE (no transitive dependency install / no Windows execution claim).
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pytest-9.1.1-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/streamlit-1.66.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/streamlit_option_menu-0.4.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pandas-2.3.3-cp311-cp311-win_amd64.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/openpyxl-3.1.5-py2.py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/python_calamine-0.8.3-cp311-cp311-win_amd64.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/xlrd-2.0.2-py2.py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pypdf-6.20.1-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/plotly-6.9.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/requests-2.34.2-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/google_genai-1.75.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/docxtpl-0.20.2-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/num2words-0.5.14-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pydantic-2.14.1-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pytelegrambotapi-4.37.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/google_auth-2.62.0-py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pillow-12.3.0-cp311-cp311-win_amd64.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/mongomock-4.3.0-py2.py3-none-any.whl
+Saved /home/user/.cache/logi199-owner-delivery/windows-wheels/pymongo-4.19.0-cp311-cp311-win_amd64.whl
+Successfully downloaded pytest streamlit streamlit-option-menu pandas openpyxl python-calamine xlrd pypdf plotly requests google-genai docxtpl num2words pydantic pyTelegramBotAPI google-auth Pillow mongomock pymongo
