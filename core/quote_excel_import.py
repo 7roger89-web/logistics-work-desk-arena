@@ -64,7 +64,7 @@ def _table(sheet) -> tuple[int, dict[str, int]] | None:
         cols: dict[str, int] = {}
         for cell in row:
             text = folded(cell.value)
-            if "kich thuoc" in text:
+            if "kich thuoc" in text or "kt san pham" in text:
                 cols["dimensions"] = cell.column
             elif text in {"so luong", "sl", "quantity", "qty"}:
                 cols["qty"] = cell.column
@@ -72,7 +72,7 @@ def _table(sheet) -> tuple[int, dict[str, int]] | None:
                 cols["unit_price"] = cell.column
             elif text in {"model", "ma san pham", "ma hang"}:
                 cols["model"] = cell.column
-            elif "vat lieu" in text:
+            elif "vat lieu" in text or "chat lieu" in text:
                 cols["material"] = cell.column
             elif text in {"ten hang", "hang hoa", "san pham", "mo ta"}:
                 cols["description"] = cell.column
