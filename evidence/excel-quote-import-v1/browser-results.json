@@ -1,0 +1,41 @@
+{
+  "environment": "actual app.py / Streamlit Components v2 / SANDBOX_STAGING (mongomock + GridFS)",
+  "productionVerified": false,
+  "fixture": "SYNTHETIC three-sheet workbook, NOT original Lục Giác",
+  "qid": "Q-20261016-D30A4D48",
+  "sentVersion": 4,
+  "url": "http://127.0.0.1:9501",
+  "desktopMetrics": {
+    "viewport": 1440,
+    "document": 1440,
+    "shell": 0,
+    "workspace": 968
+  },
+  "mobileMetrics": {
+    "viewport": 390,
+    "document": 390,
+    "shell": 0,
+    "workspace": 334
+  },
+  "errors": [],
+  "checks": [
+    "Existing Cost Intelligence parse/review/save populated rate_cards through the real UI",
+    "Real XLSX upload/review: 5 rows / 27 pcs / 607180 RMB; sparse model stays blank; expiry/conflicts remain",
+    "Quantity edit recomputed by Python: 15 → 26 pcs / 594125 RMB, restored 16 → 27 / 607180",
+    "Backend draft Q-20261016-D30A4D48 saved/read back with blank sell; reference cost is NOT sell",
+    "A/B switching keeps independently entered costs/selling prices; B did not inherit A",
+    "Missing FX and unconfirmed customs produce no determined VND grand total",
+    "Conflicting direct/cross FX rejected explicitly, never silently overwrites an entered rate",
+    "Confirmed independent customs basis: 321600000 VND, unchanged when Sale raises sell; invalid 31/02/2027 rejected",
+    "desktop 1440×900: no horizontal page/shell overflow {\"viewport\":1440,\"document\":1440,\"shell\":0,\"workspace\":968}",
+    "Actual downloaded XLSX opened with openpyxl: chosen disclosures/multiline notes present; internal cost/profit/source/notes absent; no formulas",
+    "Explicit DRAFT → READY_FOR_REVIEW → SENT persisted immutable customer version v4; no email/deploy",
+    "Browser refresh/reopen restored customer, disclosures, notes and sent history from backend (existing in-memory staging transport only)",
+    "Saving a new DRAFT leaves historical sent XLSX content unchanged",
+    "Original XLSX source downloaded after refresh has byte-identical SHA256",
+    "mobile 390×844 step1: no horizontal page/shell overflow {\"viewport\":390,\"document\":390,\"shell\":0,\"workspace\":334}",
+    "mobile 390×844 step2 A/B interaction: no horizontal page/shell overflow {\"viewport\":390,\"document\":390,\"shell\":0,\"workspace\":334}",
+    "mobile 390×844 step3 disclosure interaction: no horizontal page/shell overflow {\"viewport\":390,\"document\":390,\"shell\":0,\"workspace\":334}",
+    "Actual responsive app interaction and screenshots at 1440×900 / 390×844; no page errors"
+  ]
+}

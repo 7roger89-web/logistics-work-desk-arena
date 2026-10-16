@@ -1094,6 +1094,7 @@ def _save_document(
     *,
     db=None,
     session=None,
+    expected_version: int | None = None,
 ) -> bool:
     db = db if db is not None else get_db()
     if db is None or not document.get(key):
@@ -1116,7 +1117,13 @@ def _save_document(
         update = {"$set": payload}
         if set_on_insert:
             update["$setOnInsert"] = set_on_insert
-        db[collection].update_one({key: payload[key]}, update, upsert=True, session=session)
+        query = {key: payload[key]}
+        if expected_version is not None:
+            query["version"] = expected_version
+        outcome = db[collection].update_one(query, update, upsert=expected_version is None, session=session)
+        if expected_version is not None and outcome.matched_count != 1:
+            _set_last_error("Báo giá đã thay đổi ở phiên khác; tải lại trước khi lưu.")
+            return False
         return True
     except PyMongoError as exc:
         _set_last_error(str(exc))
@@ -1422,7 +1429,7 @@ def load_quotes(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     return _load_dict("quotes", query={"is_deleted": {"$ne": True}}, db=db)
 
 
-def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
+def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]], *, expected_versions: Mapping[str, int] | None = None) -> bool:
     if not _require_business_permission("sales_write", "Bạn không có quyền lưu báo giá."):
         return False
     db = get_db()
@@ -1433,7 +1440,7 @@ def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
         if not quote_id:
             return False
         old = db["quotes"].find_one({"id": quote_id}, {"_id": 0})
-        if not _save_document("quotes", document):
+        if not _save_document("quotes", document, expected_version=(expected_versions or {}).get(quote_id)):
             return False
         _audit(db, "quote", quote_id, "create" if old is None else "update", before=old, after=document)
     return True

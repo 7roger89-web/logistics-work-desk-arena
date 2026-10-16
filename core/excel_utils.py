@@ -365,6 +365,10 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
       * no Owner-local PC and no Office automation: pure openpyxl.
     """
     quote = dict(quote or {})
+    excel_customer = bool(quote.get("excel_quote") or "goods" in quote)
+    if quote.get("excel_quote"):
+        from core.quotations import customer_quote_snapshot
+        quote = customer_quote_snapshot(quote)
     company = dict(company or {})
     customer = dict(customer or {})
     details = _quote_lines(quote)
@@ -464,6 +468,45 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     headers = ["STT", "Chi tiết", "Đơn giá", "Số lượng", "Thành tiền", "VAT",
                "thành tiền", "Đơn vị tiền", "Phát sinh (nếu có)"]
     header_row = 17
+    if excel_customer:
+        ws["A15"] = f"Phương án {quote.get('option', '')}: " + ("Khách tự đứng tên nhập khẩu" if quote.get("option") == "A" else "Dịch vụ nhập khẩu ủy thác")
+        ws["A16"] = "Phạm vi dịch vụ đã xác nhận: " + str(quote.get("scope") or "Chưa xác nhận")
+        row = 18
+        shipment = quote.get("shipment") or {}
+        public_route = " → ".join(str(shipment.get(k) or "Chưa xác nhận") for k in ("pol", "pod"))
+        transport = " / ".join(str(v) for v in (quote.get("transport_mode"), shipment.get("load_model"), shipment.get("equipment")) if v)
+        for text in (f"Cảng / điểm: {public_route} · {transport}",
+                     "Nơi lấy hàng: " + str(shipment["pickup"]) if shipment.get("pickup") else "",
+                     "Giao tại: " + str(shipment["delivery"]) if shipment.get("delivery") else "",
+                     "Ngày giao dự kiến: " + str(quote["expected_delivery_date"]) if quote.get("expected_delivery_date") else ""):
+            if text:
+                ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+                ws.cell(row, 1, text).alignment = Alignment(wrap_text=True, vertical="top")
+                ws.row_dimensions[row].height = 30
+                row += 1
+        ws.cell(row, 1, "DANH MỤC HÀNG HÓA — giá theo bảng khách gửi").font = FONT_BOLD
+        row += 1
+        for col, title in enumerate(["STT", "Hàng hóa / Model / Vật liệu", "Dài mm", "Rộng mm", "Cao mm", "Số lượng", "Đơn giá", "Tiền tệ", "Thành tiền"], 1):
+            apply_header_style(ws.cell(row, col, title))
+        for i, goods in enumerate(quote.get("goods") or [], 1):
+            row += 1
+            values = [i, " · ".join(str(goods.get(k)) for k in ("description", "model", "material") if goods.get(k)),
+                      goods.get("length_mm"), goods.get("width_mm"), goods.get("height_mm"), goods.get("qty"),
+                      goods.get("unit_price"), goods.get("currency"), goods.get("line_total")]
+            for col, value in enumerate(values, 1):
+                ws.cell(row, col, "Chưa biết" if value is None else value).border = BORDER_THIN
+            # Goods notes are the reviewed customer goods description; source
+            # provenance and internal warning notes never enter this allowlist.
+            if goods.get("note"):
+                row += 1
+                ws.cell(row, 2, "Ghi chú hàng: " + str(goods["note"]))
+        for total in quote.get("goods_calculation", {}).get("goods_totals") or []:
+            row += 1
+            ws.cell(row, 2, "Tổng tiền hàng " + total["currency"]).font = FONT_BOLD
+            ws.cell(row, 9, total["amount"] if total["amount"] is not None else "Chưa xác định")
+        row += 2
+        ws.cell(row, 1, "PHÍ DỊCH VỤ — chỉ giá bán đã xác nhận").font = FONT_BOLD
+        header_row = row + 1
     for idx, header in enumerate(headers, 1):
         apply_header_style(ws.cell(row=header_row, column=idx, value=header))
 
@@ -482,8 +525,9 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         vat_known = raw_vat is not None
         vat_pct = safe_float(raw_vat) if vat_known else None
         currency = str(_line_field(item, "currency", "ccy", default="VND")).upper()
-        pre_tax = unit_price * qty
-        with_tax = pre_tax * (1 + vat_pct / 100) if vat_known else None
+        pre_tax = item.get("sell_total") if excel_customer else unit_price * qty
+        with_tax = ((pre_tax + item["tax_total"]) if item.get("tax_total") is not None and pre_tax is not None else None) if excel_customer else (pre_tax * (1 + vat_pct / 100) if vat_known else None)
+        vat_known = with_tax is not None if excel_customer else vat_known
         bucket = totals_by_currency.setdefault(currency, {"total": 0.0, "known": True})
         if vat_known:
             bucket["total"] += with_tax
@@ -492,7 +536,7 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
             # the pre-tax amount is still a real fact of this currency
             bucket["total"] += pre_tax
 
-        note = str(item.get("note") or "")
+        note = str(item.get("public_note") or "") if excel_customer else str(item.get("note") or "")
         condition = str(item.get("condition") or "")
         status = str(item.get("status") or "")
         contingent = []
@@ -559,6 +603,33 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
                 value="Báo giá có dòng ngoại tệ nhưng chưa có tỷ giá báo giá — không quy đổi VND.").font = FONT_BOLD
         row += 1
 
+    if excel_customer:
+        row += 1
+        customs = quote.get("customs") or {}
+        ws.cell(row, 2, "THUẾ NHẬP KHẨU DỰ KIẾN (không phải kết luận pháp lý)").font = FONT_BOLD
+        row += 1
+        if customs.get("calculable"):
+            ws.cell(row, 2, f"Cơ sở hải quan xác nhận riêng (VND); Thuế NK {customs.get('duty_pct')}% / VAT NK {customs.get('vat_pct')}%")
+            ws.cell(row, 7, customs.get("basis_vnd"))
+            row += 1
+            for text, field in (("Thuế NK dự kiến", "duty_vnd"), ("VAT NK dự kiến", "vat_vnd")):
+                ws.cell(row, 2, text)
+                ws.cell(row, 7, customs.get(field))
+                ws.cell(row, 8, "VND")
+                row += 1
+        else:
+            ws.cell(row, 2, "Chưa xác định — trị giá hải quan / thuế suất chưa được xác nhận.")
+            row += 1
+        calculation = quote.get("goods_calculation") or {}
+        for text, field in (("Tạm tính hàng + dịch vụ trước mọi thuế (VND)", "before_tax_vnd"),
+                            ("TỔNG DỰ TOÁN gồm thuế đã xác định (VND)", "estimate_vnd")):
+            ws.cell(row, 2, text).font = FONT_BOLD
+            amount = calculation.get(field)
+            ws.cell(row, 7, amount if amount is not None else "Chưa xác định")
+            row += 1
+        ws.cell(row, 2, "Đây là dự toán; không phải hóa đơn, khoản công nợ hay chứng từ xác nhận thuế.")
+        row += 1
+
     # ---- Ghi chú / closing / signature ------------------------------------
     row += 1
     ws.cell(row=row, column=1, value="Ghi chú:").font = FONT_BOLD
@@ -582,6 +653,10 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     row += 2
     ws.cell(row=row, column=6, value=company_name).font = FONT_BOLD
 
+    for cells in ws:
+        for cell in cells:
+            if cell.data_type == "f":
+                cell.data_type = "s"  # customer text beginning '=' is literal, never executable
     auto_fit_columns(ws)
     wb.save(output)
     output.seek(0)

@@ -46,6 +46,11 @@ export interface CostMatchLine {
   vat: number | null;
   ccy: string;
   note: string;
+  rateSnapshotId?: string;
+  rateRowId?: string;
+  validUntil?: string;
+  validityStatus?: string;
+  condition?: string;
 }
 
 export interface CostMatch {
@@ -457,6 +462,8 @@ function inputRateMatches(
           reasons.push("còn hiệu lực theo nguồn");
         }
       }
+      if (!group.validUntil) differences.push("chưa rõ hiệu lực — cần xác nhận");
+      if ((snapshot.status || "").toUpperCase() === "SUPERSEDED") differences.push("snapshot đã được thay thế, không phải giá hiện hành");
       if ((snapshot.status || "").toUpperCase() === "EXPIRED") {
         expired = true;
         score -= 25;
@@ -466,6 +473,11 @@ function inputRateMatches(
       if (score <= 0 || reasons.length === 0) continue;
       const lines: CostMatchLine[] = group.rows.map((row) => ({
         label: row.chargeLabel || (row.kind === "CREDIT" ? "Refund/Credit" : "Dòng giá đầu vào"),
+        rateSnapshotId: snapshot.id,
+        rateRowId: row.id,
+        validUntil: row.validUntil || "",
+        validityStatus: expired ? "EXPIRED" : snapshot.status === "SUPERSEDED" ? "SUPERSEDED" : row.validUntil ? "SOURCE_VALID" : "UNKNOWN",
+        condition: row.conditionalAmounts?.length ? "IF_APPLICABLE" : "UNCONFIRMED",
         unit: row.equipment || row.unit || "",
         qty: 1,
         price: row.kind === "CREDIT" ? -(row.amount || 0) : row.amount ?? null,
@@ -476,6 +488,8 @@ function inputRateMatches(
           row.etd ? `ETD ${row.etd}` : "",
           row.taxQualifier === "PLUS_TAX" ? "+ TAX" : "",
           row.rawLine,
+          row.reviewNote,
+          row.conditionalAmounts?.length ? `Phụ phí có điều kiện: ${row.conditionalAmounts.join(" · ")}` : "",
         ].filter(Boolean).join(" · "),
       }));
 

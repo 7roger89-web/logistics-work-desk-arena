@@ -1,0 +1,27 @@
+{
+  "repository": "7roger89-web/logistics-work-desk-arena",
+  "branch": "arena/63b3ec32-logistics-work-desk-arena",
+  "base": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
+  "verified_at_utc": "2026-10-16T05:46:47.637736+00:00",
+  "boundary": "working-tree product/test files used in bounded sandbox verification, before first commit",
+  "sha256": {
+    "component/dist/logi-shell.css": "9c4e379b513cc5778976c16edfd6f5d92eb94aa0fd0bac7a056b57330e77af79",
+    "component/dist/logi-shell.js": "d57843ebbd10de80dfe114fbe2961c02e5eabebec038663cc8a00426a851dc7c",
+    "component/src/components/ExcelQuoteWorkspace.tsx": "7751de18102294ed3bde05bf934fa71bf5354b70a12c06c03bc30026e3c3324c",
+    "component/src/components/excelQuote.css": "3e81c7c12332c1302c6a530dcc7429058a85098a739a5903d1944a308e8efa81",
+    "component/src/lib/costHistory.ts": "018894e810ede6f79dd9163c6e57346f06d3cb3c9d45b96bf7a4b4f932ab4b7b",
+    "component/src/lib/dispatcher.ts": "8c72dcb7dc137302ea7bcee7dbe34e840cb495125ddef0be676796b3d57343ba",
+    "component/src/lib/excelQuote.ts": "03ba3e83dddaa902c360c62db83c29c9b4f26510bb04ec1b80646bc67c7f929a",
+    "component/src/lib/viewmodel.ts": "c5af5eb3310addca90d9949542b1cf5e59bd1eda365496bc3306a3007fa1f9b2",
+    "component/src/pages/SalesQuotes.tsx": "72d4f5e43c83a4ded6be38599e5e829b0c521bb3b6868600f9b0cd96676241af",
+    "core/database.py": "0b18d68017c22d84a56d4546bb776d3f5ae34ad5d24f4b297bb665c48716e43f",
+    "core/excel_utils.py": "81dc70a0d4320f1833b1c7b0b26df01c117b25ee8f1b81775857c7501c088655",
+    "core/quotations.py": "cf4c76a7ed486376cdf9f5ff925e2fcc793daace6a0df5696849225cf9dd7c46",
+    "core/quote_excel_import.py": "214b69d8aeeb886dbf9531326131266f0b917a24c38aa3f6f889f0c8c929312c",
+    "scripts/make_luc_giac_quote_fixture.py": "814f6a5a6f2a57fb27f31fffcd48335cd444e98963b7554b73a3b9447858b7b3",
+    "tests/component/browser_excel_quote_import_v1.mjs": "c168c2eca148cd12d03fd83a306616d9159ba8ec69fff439b9a539539fe979b3",
+    "tests/test_excel_quote_import_v1.py": "1fcee11eddf6f0082c758b7860e236e7cd54e0c2fd6aef247a3d6817fac95b91",
+    "views/logi_c1.py": "2a43999adf2ba8a072757c9220fae5754f78cb93cc5b96226a5d70d782f9cbe6",
+    "views/logi_quote_import.py": "8e41b623cb6a758ca1edb8db0b4d5027253d9a221e15a8984044d7080f9a8c6d"
+  }
+}

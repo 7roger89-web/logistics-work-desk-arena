@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date, datetime, timezone
+import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Mapping
 from uuid import uuid4
@@ -77,7 +78,7 @@ def new_quote_identity(now: date | None = None) -> tuple[str, str]:
 
 def normalize_fx_snapshot(snapshot: Mapping[str, Any] | None) -> dict[str, Any]:
     raw = dict(snapshot or {})
-    rates = {str(code).upper(): _money(_decimal(rate), "VND") for code, rate in dict(raw.get("rates_to_vnd") or {}).items() if _decimal(rate) > 0}
+    rates = {str(code).upper(): float(_decimal(rate).quantize(Decimal("0.00000001"))) for code, rate in dict(raw.get("rates_to_vnd") or {}).items() if _decimal(rate).is_finite() and _decimal(rate) > 0}
     rates["VND"] = 1.0
     return {
         "base_currency": "VND",
@@ -137,7 +138,7 @@ def calculate_remittance_estimate(remittance: Mapping[str, Any] | None, fx_snaps
     }
 
 
-def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
+def calculate_quote(quote: Mapping[str, Any], *, allow_incomplete: bool = False) -> dict[str, Any]:
     """Price a quotation, keeping UNKNOWN facts UNKNOWN.
 
     LOGI_QUOTE_COST_WORKFLOW_UX_01_REPAIR_02 — a DRAFT quotation is savable from
@@ -154,7 +155,11 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     though an unknown cost were 0, and a VND grand total never appears without
     the rate it would need. An explicitly typed ``0`` stays a real zero.
     """
+    if isinstance(quote.get("excel_quote"), Mapping):
+        return _calculate_excel_quote(quote)
     result = deepcopy(dict(quote))
+    validate_quote_date(result.get("expected_delivery_date"))
+    incomplete_draft = allow_incomplete and str(result.get("status") or "DRAFT") == "DRAFT"
     fx = normalize_fx_snapshot(result.get("fx_snapshot"))
     result["fx_snapshot"] = fx
     line_results: list[dict[str, Any]] = []
@@ -172,7 +177,7 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
         currency = str(line.get("currency") or "VND").upper()
         # REQUIRED: the customer-facing amount and how many of them.
         sell_unit = _optional_decimal(line.get("sell_unit"))
-        if sell_unit is None:
+        if sell_unit is None and not incomplete_draft:
             raise ValueError(
                 f"Dòng dịch vụ {index}: chưa có giá bán. "
                 "Giá bán là con số báo cho khách nên bắt buộc phải có."
@@ -180,16 +185,18 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
         # OPTIONAL: may be unknown without making the quotation untruthful.
         cost_unit = _optional_decimal(line.get("cost_unit"))
         tax_pct = _optional_decimal(line.get("tax_pct"))
-        if qty <= 0 or sell_unit < 0:
+        if qty <= 0 or (sell_unit is not None and sell_unit < 0):
             raise ValueError(f"Dòng dịch vụ {index}: số lượng/giá bán không hợp lệ.")
         if cost_unit is not None and cost_unit < 0:
             raise ValueError(f"Dòng dịch vụ {index}: giá vốn không hợp lệ.")
         if tax_pct is not None and (tax_pct < 0 or tax_pct > 100):
             raise ValueError(f"Dòng dịch vụ {index}: thuế phải trong khoảng 0–100%.")
 
-        sell = sell_unit * qty
+        # An Excel draft can retain a proposed price without confirming it.
+        confirmed = line.get("sell_confirmed", True) is True
+        sell = None if sell_unit is None or not confirmed else sell_unit * qty
         cost = None if cost_unit is None else cost_unit * qty
-        tax = None if tax_pct is None else sell * tax_pct / Decimal("100")
+        tax = None if tax_pct is None or sell is None else sell * tax_pct / Decimal("100")
 
         # VND figures need BOTH the amount and a stored rate for this currency.
         sell_vnd = _convert_or_none(sell, currency, fx)
@@ -197,6 +204,8 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
         tax_vnd = _convert_or_none(tax, currency, fx)
 
         unknown_bits = []
+        if sell is None:
+            unknown_bits.append("chưa có giá bán được xác nhận")
         if cost_unit is None:
             unknown_bits.append("chưa biết giá vốn")
         if tax_pct is None:
@@ -213,12 +222,12 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
             basis += " (" + ", ".join(unknown_bits) + ")"
 
         line.update({
-            "line_no": index, "currency": currency, "qty": _money(qty, currency),
+            "line_no": index, "currency": currency, "qty": float(qty),
             "cost_unit": _money_or_none(cost_unit, currency),
-            "sell_unit": _money(sell_unit, currency),
+            "sell_unit": _money_or_none(sell_unit, currency),
             "tax_pct": _money_or_none(tax_pct, currency),
             "cost_total": _money_or_none(cost, currency),
-            "sell_total": _money(sell, currency),
+            "sell_total": _money_or_none(sell, currency),
             "tax_total": _money_or_none(tax, currency),
             "cost_vnd": _money_or_none(cost_vnd, "VND"),
             "sell_vnd": _money_or_none(sell_vnd, "VND"),
@@ -282,8 +291,11 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     for line in line_results:
         code = str(line.get("currency") or "VND").upper()
         bucket = per_currency.setdefault(
-            code, {"sell_total": Decimal("0"), "tax_known": True, "tax_total": Decimal("0")})
-        bucket["sell_total"] += _decimal(line.get("sell_total"))
+            code, {"sell_total": Decimal("0"), "sell_known": True, "tax_known": True, "tax_total": Decimal("0")})
+        if line.get("sell_total") is None:
+            bucket["sell_known"] = False
+        else:
+            bucket["sell_total"] += _decimal(line.get("sell_total"))
         if line.get("tax_total") is None:
             bucket["tax_known"] = False
         else:
@@ -291,10 +303,10 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     totals_by_currency = [
         {
             "currency": code,
-            "sell_total": _money(data["sell_total"], code),
+            "sell_total": _money(data["sell_total"], code) if data["sell_known"] else None,
             "tax_total": _money(data["tax_total"], code) if data["tax_known"] else None,
             "sell_total_with_tax": (_money(data["sell_total"] + data["tax_total"], code)
-                                    if data["tax_known"] else None),
+                                    if data["tax_known"] and data["sell_known"] else None),
         }
         for code, data in sorted(per_currency.items())
     ]
@@ -312,7 +324,7 @@ def calculate_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
 
     unknown_reasons: list[str] = []
     if not sell_vnd_known:
-        unknown_reasons.append("Chưa quy đổi được tổng VND: thiếu tỷ giá báo giá cho dòng ngoại tệ.")
+        unknown_reasons.append("Chưa xác định tổng VND: còn giá bán chưa xác nhận hoặc thiếu tỷ giá báo giá.")
     if not cost_vnd_known:
         unknown_reasons.append("Chưa biết tổng chi phí: có dòng chưa nhập giá vốn (hoặc thiếu tỷ giá).")
     if not tax_vnd_known:
@@ -350,10 +362,17 @@ def transition_quote(quote: Mapping[str, Any], next_status: str, actor: str = "s
     current = str(quote.get("status") or "DRAFT").upper(); target = str(next_status or "").upper()
     if target not in QUOTE_STATUSES or (target != current and target not in _ALLOWED_TRANSITIONS.get(current, set())):
         raise ValueError(f"Không thể chuyển báo giá từ {current} sang {target}.")
+    if quote.get("excel_quote") and target not in {"DRAFT", "REJECTED"}:
+        quote = calculate_quote({**dict(quote), "status": target})
     updated = deepcopy(dict(quote)); updated["status"] = target; updated["version"] = int(updated.get("version") or 1) + (1 if target != current else 0); updated["updated_at"] = _now()
     history = list(updated.get("status_history") or [])
     if target != current: history.append({"from": current, "to": target, "at": _now(), "actor": actor})
     updated["status_history"] = history
+    if target == "SENT" and target != current:
+        versions = deepcopy(updated.get("sent_versions") or [])
+        versions.append({"version": updated["version"], "sent_at": _now(), "sent_by": actor,
+                         "customer_snapshot": customer_quote_snapshot(updated)})
+        updated["sent_versions"] = versions
     return updated
 
 
@@ -430,3 +449,192 @@ def prepare_quote_for_persistence(quote: Mapping[str, Any], actor: str = "system
     candidate["is_estimate"] = True
     candidate["ledger_posted"] = False
     return candidate
+
+
+# Excel quote is an extension of this authority, not a second price engine.
+def validate_quote_date(value: Any) -> None:
+    if value in (None, ""):
+        return
+    raw = str(value).strip()
+    for pattern, fmt in ((r"\d{4}-\d{2}-\d{2}", "%Y-%m-%d"), (r"\d{2}/\d{2}/\d{4}", "%d/%m/%Y")):
+        if re.fullmatch(pattern, raw):
+            try:
+                datetime.strptime(raw, fmt)
+                return
+            except ValueError:
+                break
+    raise ValueError("Ngày giao dự kiến không hợp lệ; dùng ngày thực YYYY-MM-DD hoặc DD/MM/YYYY.")
+
+
+def _excel_number(value: Any, label: str, *, maximum: Decimal = Decimal("100000000000000")) -> Decimal | None:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    number = _optional_decimal(value)
+    if isinstance(value, bool) or number is None or not number.is_finite() or number < 0 or number > maximum:
+        raise ValueError(f"{label}: phải là số không âm hợp lệ (ô trống là chưa biết).")
+    return number
+
+
+def _nullable_sum(values: list[Decimal | None]) -> Decimal | None:
+    return None if any(v is None for v in values) else sum(values, Decimal("0"))
+
+
+def _calculate_excel_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
+    """Goods/customs context composed with the existing service-line engine.
+
+    A and B are independently priced with calculate_quote. No fee is inserted,
+    copied between options, or inferred from Incoterm. Customs uses a separately
+    confirmed VND basis, never a selling-price-derived basis.
+    """
+    from core.quote_excel_import import DISCLOSURES, PARSER_VERSION
+
+    result = deepcopy(dict(quote))
+    details = deepcopy(dict(result.pop("excel_quote")))
+    if details.get("schema") != PARSER_VERSION:
+        raise ValueError("Phiên bản bảng Excel không được hỗ trợ.")
+    validate_quote_date(result.get("expected_delivery_date"))
+    fx = normalize_fx_snapshot(result.get("fx_snapshot"))
+    result["fx_snapshot"] = fx
+    goods = details.get("goods")
+    if not isinstance(goods, list) or not 1 <= len(goods) <= 200:
+        raise ValueError("Bảng hàng hóa cần từ 1 đến 200 dòng.")
+    goods_out, qty_values, goods_vnd = [], [], []
+    buckets: dict[str, list[Decimal | None]] = {}
+    for i, raw in enumerate(goods, 1):
+        if not isinstance(raw, Mapping):
+            raise ValueError("Dòng hàng hóa không hợp lệ.")
+        currency = str(raw.get("currency") or "CNY").upper().replace("RMB", "CNY")
+        if currency not in {"CNY", "USD", "VND"}:
+            raise ValueError("Tiền hàng chỉ hỗ trợ CNY (RMB), USD, VND.")
+        item = {k: str(raw.get(k) or "")[:2000] for k in ("id", "description", "model", "material", "note", "source_sheet")}
+        item["source_row"] = raw.get("source_row") if isinstance(raw.get("source_row"), int) else None
+        for field in ("length_mm", "width_mm", "height_mm", "qty", "unit_price"):
+            n = _excel_number(raw.get(field), f"Hàng {i} · {field}")
+            item[field] = float(n) if n is not None else None
+        qty = _optional_decimal(item["qty"])
+        price = _optional_decimal(item["unit_price"])
+        amount = None if qty is None or price is None else qty * price
+        item.update({"currency": currency, "line_total": _money_or_none(amount, currency)})
+        goods_out.append(item)
+        qty_values.append(qty)
+        goods_vnd.append(_convert_or_none(amount, currency, fx))
+        buckets.setdefault(currency, []).append(amount)
+    details["goods"] = goods_out
+    active = details.get("active_option", "A")
+    if active not in {"A", "B"}:
+        raise ValueError("Chọn phương án A hoặc B.")
+    details["active_option"] = active
+    options, priced_options = {}, {}
+    for key in ("A", "B"):
+        option = dict((details.get("options") or {}).get(key) or {})
+        raw_lines = option.get("service_lines") or []
+        if not isinstance(raw_lines, list) or len(raw_lines) > 100:
+            raise ValueError("Mỗi phương án tối đa 100 dòng phí.")
+        lines = []
+        for i, raw in enumerate(raw_lines, 1):
+            name = str(raw.get("service_name") or "").strip()
+            if not name:
+                raise ValueError(f"Phương án {key}, dòng {i}: thiếu tên dịch vụ.")
+            line = {k: str(raw.get(k) or "")[:2000] for k in ("id", "code", "unit", "internal_note", "public_note", "cost_source", "valid_until", "condition", "rate_snapshot_id", "rate_row_id", "validity_status", "source_warning")}
+            line.update({"service_name": name[:500], "currency": str(raw.get("currency") or "VND").upper(),
+                         "sell_confirmed": raw.get("sell_confirmed") is True})
+            if line["currency"] not in {"CNY", "USD", "VND"}:
+                raise ValueError("Tiền dịch vụ chỉ hỗ trợ CNY, USD, VND.")
+            for field in ("qty", "cost_unit", "sell_unit", "tax_pct"):
+                n = _excel_number(raw.get(field), f"Phương án {key} · dòng {i} · {field}")
+                line[field] = float(n) if n is not None else None
+            if line["qty"] is None or line["qty"] <= 0:
+                raise ValueError(f"Phương án {key}, dòng {i}: số lượng phải lớn hơn 0; không tự đổi 0 thành 1.")
+            lines.append(line)
+        # The existing arithmetic handles unknown sell, VAT, cost and FX.
+        priced = calculate_quote({**result, "status": "DRAFT", "service_lines": lines}, allow_incomplete=True)
+        priced_options[key] = priced
+        options[key] = {"scope": str(option.get("scope") or "")[:4000], "service_lines": priced["service_lines"], "calculation": priced["calculation"]}
+    details["options"] = options
+    selected = priced_options[active]
+    # Preserve the quote's actual status/identity, not the internal draft used
+    # to compute inactive option B. This is not a status transition.
+    selected["status"] = str(result.get("status") or "DRAFT")
+
+    customs = dict(details.get("customs") or {})
+    c = {k: str(customs.get(k) or "")[:4000] for k in ("basis_note", "hs_code")}
+    c["confirmed"] = customs.get("confirmed") is True
+    for key in ("basis_vnd", "duty_pct", "vat_pct"):
+        n = _excel_number(customs.get(key), key, maximum=Decimal("100") if key.endswith("pct") else Decimal("100000000000000"))
+        c[key] = float(n) if n is not None else None
+    tax_known = c["confirmed"] and bool(c["basis_note"].strip()) and all(c[k] is not None for k in ("basis_vnd", "duty_pct", "vat_pct"))
+    basis, duty, vat = None, None, None
+    if tax_known:
+        basis = _decimal(c["basis_vnd"])
+        duty = basis * _decimal(c["duty_pct"]) / 100
+        vat = (basis + duty) * _decimal(c["vat_pct"]) / 100
+    c.update({"duty_vnd": _money_or_none(duty), "vat_vnd": _money_or_none(vat),
+              "total_vnd": _money_or_none(None if duty is None or vat is None else duty + vat), "calculable": bool(tax_known)})
+    details["customs"] = c
+    disclosure_map = {x.get("id"): x for x in details.get("disclosures") or [] if isinstance(x, Mapping)}
+    details["disclosures"] = [{"id": k, "text": text, "selected": disclosure_map.get(k, {}).get("selected") is True} for k, text in DISCLOSURES]
+    details["additional_public_notes"] = str(details.get("additional_public_notes") or "")[:12000]
+    details["supplier"] = str(details.get("supplier") or "")[:2000]
+    shipment = dict(details.get("shipment") or {})
+    details["shipment"] = {k: str(shipment.get(k) or "")[:2000] for k in ("pol", "pod", "pickup", "delivery", "load_model", "equipment")}
+    for key in ("cbm", "weight_kg"):
+        n = _excel_number(shipment.get(key), key)
+        details["shipment"][key] = float(n) if n is not None else None
+    details["warning_notes"] = {str(k): {"status": str(v.get("status") or "UNRESOLVED")[:30], "note": str(v.get("note") or "")[:2000]}
+                                for k, v in dict(details.get("warning_notes") or {}).items() if isinstance(v, Mapping)}
+    goods_total_vnd = _nullable_sum(goods_vnd)
+    services = selected["calculation"]
+    before_tax = _nullable_sum([goods_total_vnd, _optional_decimal(services["selling_price_before_tax_vnd"])])
+    estimate = _nullable_sum([goods_total_vnd, _optional_decimal(services["selling_price_total_vnd"]), _optional_decimal(c["total_vnd"])])
+    reasons = []
+    if goods_total_vnd is None:
+        reasons.append("Tiền hàng chưa đủ dữ liệu hoặc thiếu tỷ giá → không có tổng VND xác định.")
+    if any(l.get("sell_total") is None for l in selected["service_lines"]):
+        reasons.append("Còn phí chưa có giá bán xác nhận; chưa công bố các dòng này.")
+    if services["selling_price_total_vnd"] is None:
+        reasons.append("Phí dịch vụ chưa đủ giá bán, VAT dịch vụ hoặc tỷ giá.")
+    if not tax_known:
+        reasons.append("Thuế NK / VAT NK chưa xác định: cần trị giá hải quan, thuế suất và căn cứ riêng được xác nhận.")
+    count = _nullable_sum(qty_values)
+    details["calculation"] = {
+        "row_count": len(goods_out), "quantity": float(count) if count is not None else None,
+        "goods_totals": [{"currency": code, "amount": _money_or_none(_nullable_sum(amounts), code)} for code, amounts in sorted(buckets.items())],
+        "goods_total_vnd": _money_or_none(goods_total_vnd), "before_tax_vnd": _money_or_none(before_tax),
+        "estimate_vnd": _money_or_none(estimate), "unknown_reasons": reasons,
+    }
+    if selected["status"] not in {"DRAFT", "REJECTED", "EXPIRED"}:
+        if any(g[k] is None for g in goods_out for k in ("qty", "unit_price", "length_mm", "width_mm", "height_mm")):
+            raise ValueError("Cần bổ sung dữ liệu hàng hóa trước khi chuyển khỏi nháp.")
+        if any(l["sell_total"] is None for l in selected["service_lines"]):
+            raise ValueError("Phương án đang chọn còn dòng chưa xác nhận giá bán; chỉ bản nháp được lưu thiếu giá.")
+        if not options[active]["scope"].strip():
+            raise ValueError("Cần xác nhận phạm vi dịch vụ; Incoterm không tự phân trách nhiệm.")
+    selected["excel_quote"] = details
+    selected["customer_notes"] = [d["text"] for d in details["disclosures"] if d["selected"]]
+    if details["additional_public_notes"].strip():
+        selected["customer_notes"].append(details["additional_public_notes"])
+    return selected
+
+
+def customer_quote_snapshot(quote: Mapping[str, Any]) -> dict[str, Any]:
+    """Single customer allowlist used by live preview, sent history and XLSX.
+
+    Never copy an internal quote wholesale: cost, profit, source, warning notes,
+    provenance and Sale audit/status history have no path to this object.
+    """
+    details = dict(quote.get("excel_quote") or {})
+    active = str(details.get("active_option") or "A")
+    out = {k: deepcopy(quote.get(k)) for k in ("id", "quote_no", "version", "status", "created_at", "customer_id", "customer_name", "customer_contact", "customer_email", "customer_phone", "goods_description", "origin", "destination", "route", "incoterm", "transport_mode", "expected_delivery_date")}
+    out["fx_snapshot"] = {"base_currency": "VND", "rates_to_vnd": deepcopy((quote.get("fx_snapshot") or {}).get("rates_to_vnd") or {})}
+    out["service_lines"] = [{k: deepcopy(l.get(k)) for k in ("service_name", "unit", "qty", "currency", "sell_unit", "sell_total", "tax_pct", "tax_total", "public_note", "condition")}
+                            for l in quote.get("service_lines") or [] if l.get("sell_unit") is not None and l.get("sell_confirmed", True) is True]
+    out["customer_notes"] = list(quote.get("customer_notes") or [])
+    if details:
+        out["goods"] = [{k: g.get(k) for k in ("description", "model", "material", "length_mm", "width_mm", "height_mm", "qty", "unit_price", "currency", "line_total", "note")} for g in details.get("goods") or []]
+        out["option"] = active
+        out["scope"] = str((details.get("options") or {}).get(active, {}).get("scope") or "")
+        out["shipment"] = deepcopy(details.get("shipment") or {})
+        out["customs"] = {k: details.get("customs", {}).get(k) for k in ("calculable", "basis_vnd", "duty_pct", "vat_pct", "duty_vnd", "vat_vnd", "total_vnd")}
+        out["goods_calculation"] = deepcopy(details.get("calculation") or {})
+        out["services_calculation"] = {k: quote.get("calculation", {}).get(k) for k in ("totals_by_currency", "selling_price_before_tax_vnd", "estimated_output_tax_vnd", "selling_price_total_vnd")}
+    return out

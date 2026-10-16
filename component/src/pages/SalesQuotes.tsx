@@ -24,6 +24,7 @@ import {
 import QuickQuotePaste from "../components/QuickQuotePaste";
 import CostCheck from "../components/CostCheck";
 import CostIntelligencePanel from "../components/CostIntelligence";
+import ExcelQuoteWorkspace from "../components/ExcelQuoteWorkspace";
 import type { ParsedQuote } from "../lib/quoteTextParser";
 import type { CostMatch } from "../lib/costHistory";
 import { useStore } from "../lib/store";
@@ -172,6 +173,8 @@ export default function SalesQuotes() {
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [creating, setCreating] = useState(false);
+  const [excelOpen, setExcelOpen] = useState(false);
+  const [excelEditing, setExcelEditing] = useState<Quote | null>(null);
   const [editing, setEditing] = useState<Quote | null>(null);
   const [form, setForm] = useState<QuoteForm>(EMPTY_FORM);
   /**
@@ -271,6 +274,7 @@ export default function SalesQuotes() {
   };
 
   const openEdit = (x: Quote) => {
+    if (x.excelQuote) { setExcelEditing(x); setExcelOpen(true); return; }
     // Restore what the customer was shown: reopening a saved quote must not
     // silently drop its general notes.
     setCustomerNotes([...(x.customerNotes ?? [])]);
@@ -501,8 +505,14 @@ export default function SalesQuotes() {
     toast("Đã gửi chuyển trạng thái " + x.id, `→ ${STATUS_LABEL[next] ?? next}. Backend kiểm tra đúng luồng.`, "blue");
   };
 
+  if (excelOpen) return <ExcelQuoteWorkspace initialQuote={excelEditing} onClose={() => { setExcelOpen(false); setExcelEditing(null); }} />;
+
   return (
     <div className="space-y-4 max-w-[1300px]">
+      {workspace === "bao-gia" && <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div><h2 className="font-extrabold text-[17px] text-[#0f2a4a]">Báo giá từ Excel khách gửi</h2><p className="text-[13px] text-slate-600 mt-1">1. Xem lại hàng hóa → 2. Tính giá nội bộ → 3. Chọn nội dung gửi khách</p></div>
+        <PrimaryBtn testId="quote-excel-open" onClick={() => { setExcelEditing(null); setExcelOpen(true); }}>Nhập Excel khách gửi</PrimaryBtn>
+      </section>}
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <SectionTitle
           icon={<Calculator size={18} />}

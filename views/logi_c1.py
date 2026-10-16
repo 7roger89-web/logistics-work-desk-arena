@@ -74,6 +74,9 @@ C1_EVENTS = {
     # download already uses. No second exporter, no API server, no Office
     # automation, no Owner-local PC.
     "quote_export_xlsx",
+    "quote_import_excel",
+    "quote_preview",
+    "quote_source_download",
     # LOGI_COST_INTELLIGENCE_01 — parse is read-only; the other two are bounded writes.
     "cost_rate_parse",
     "cost_rate_save",
@@ -208,11 +211,13 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
     from core.quotations import allowed_transitions
 
     calc = q.get("calculation") if isinstance(q.get("calculation"), Mapping) else {}
+    if q.get("excel_quote"):
+        calc = {**calc, "selling_price_total_vnd": q["excel_quote"].get("calculation", {}).get("estimate_vnd")}
     status = _text(q.get("status")) or "DRAFT"
     service_lines = q.get("service_lines") if isinstance(q.get("service_lines"), list) else []
     # Legacy staging quote shape (estimate summary) falls back to `total`/`lines`.
     total = _num(calc.get("selling_price_total_vnd"))
-    if total is None:
+    if total is None and not q.get("excel_quote"):
         total = _num(q.get("total"))
     lines_out: list[dict[str, Any]] = []
     for line in service_lines:
@@ -265,6 +270,8 @@ def quote_projection(q: Mapping[str, Any]) -> dict[str, Any]:
         "fxRatesToVnd": fx_rates,
         "fxSource": _text(fx.get("source")),
         "fxNeededFor": [code for code in line_currencies if code != "VND"],
+        "excelQuote": q.get("excel_quote"),
+        "sentVersions": [{"version": v.get("version"), "sentAt": v.get("sent_at")} for v in q.get("sent_versions") or []],
         "serviceLines": lines_out,
         "assumptions": list(q.get("assumptions") or []),
         # Customer-facing notes round trip so reopening a quote restores exactly
@@ -1112,6 +1119,10 @@ def _customer_notes(payload: Mapping[str, Any]) -> list[str]:
 def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.quotations import calculate_quote
 
+    if isinstance(payload.get("excelQuote"), Mapping):
+        from views.logi_quote_import import excel_quote_payload
+        return calculate_quote(excel_quote_payload(customer_doc, payload))
+
     service_lines: list[dict[str, Any]] = []
     for line in (payload.get("serviceLines") if isinstance(payload.get("serviceLines"), list) else []):
         if not isinstance(line, Mapping):
@@ -1175,7 +1186,7 @@ def _quote_payload(customer_doc: Mapping[str, Any], payload: Mapping[str, Any]) 
 
 def _handle_quote_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, save_quotes_to_cloud
+    from core.database import get_last_db_error, save_quotes_to_cloud
     from core.quotations import new_quote_document, prepare_quote_for_persistence
 
     customer_id = _text(payload.get("customerId"))
@@ -1183,8 +1194,10 @@ def _handle_quote_create(payload: Mapping[str, Any]) -> dict[str, Any]:
         return _result("quote_create", "", False, "Vui lòng chọn khách hàng.")
     if not can_operate_business("sales_write"):
         return _result("quote_create", "", False, "RBAC: không có quyền sales_write.")
-    customers = load_customers() or {}
-    customer = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
+    # A just-created customer is already selectable via C1's fresh readback.
+    # Never validate writes against the 30-second Streamlit render cache (nor
+    # accept a customer deleted since that cache was populated).
+    customer = read_customer(customer_id)
     if not customer:
         return _result("quote_create", "", False, f"Không tìm thấy khách hàng {customer_id}.")
     try:
@@ -1196,8 +1209,11 @@ def _handle_quote_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not save_quotes_to_cloud({_text(stamped.get("id")): stamped}):
         return _result("quote_create", "", False, get_last_db_error() or "Không lưu được báo giá.")
     fresh = read_quote(_text(stamped.get("id")))
+    if not fresh or fresh.get("version") != stamped.get("version"):
+        return _result("quote_create", _text(stamped.get("id")), False,
+                       "Đã gửi lưu nhưng chưa xác minh được bản đã lưu; tải lại trước khi thử tiếp.")
     return _result("quote_create", _text(stamped.get("id")), True,
-                   readback=quote_projection(fresh or {}),
+                   readback=quote_projection(fresh),
                    persisted={"id": _text(stamped.get("id")), "quoteNo": _text(stamped.get("quote_no")),
                               "status": _text(stamped.get("status"))},
                    audit=_audit("quote", _text(stamped.get("id"))))
@@ -1216,6 +1232,9 @@ def _handle_quote_edit(payload: Mapping[str, Any]) -> dict[str, Any]:
     quote = read_quote(qid)
     if quote is None:
         return _result("quote_edit", qid, False, f"Không tìm thấy báo giá {qid}.")
+    if quote.get("excel_quote"):
+        from views.logi_quote_import import edit_excel_quote
+        return edit_excel_quote(quote, payload)
     for key in ("sales_owner", "origin", "destination", "route", "incoterm",
                 "goods_description", "expected_delivery_date"):
         if key in payload:
@@ -1284,10 +1303,17 @@ def _handle_quote_transition(payload: Mapping[str, Any]) -> dict[str, Any]:
         return _result("quote_transition", qid, False, f"Không tìm thấy báo giá {qid}.")
     try:
         updated = transition_quote(quote, target, actor=_actor())
+        if target == "SENT" and quote.get("status") != "SENT" and updated.get("sent_versions"):
+            from core.database import load_authority_companies
+            companies = load_authority_companies() or {}
+            company = next(iter(companies.values()), {})
+            updated["sent_versions"][-1]["customer_snapshot"]["company"] = {
+                key: company.get(key) for key in ("legal_name", "name", "legal_address", "address", "phone", "email", "website", "legal_representative", "representative_title", "contact_name", "mobile")
+            }
         stamped = prepare_quote_for_persistence(updated, actor=_actor())
     except ValueError as exc:
         return _result("quote_transition", qid, False, str(exc))
-    if not save_quotes_to_cloud({qid: stamped}):
+    if not save_quotes_to_cloud({qid: stamped}, **({"expected_versions": {qid: int(quote.get("version") or 1)}} if quote.get("excel_quote") else {})):
         return _result("quote_transition", qid, False, get_last_db_error() or "Không lưu được trạng thái.")
     fresh = read_quote(qid)
     return _result("quote_transition", qid, True, readback=quote_projection(fresh or {}),
@@ -1970,6 +1996,17 @@ def _handle_quote_export_xlsx(payload: Mapping[str, Any]) -> dict[str, Any]:
         return _result("quote_export_xlsx", qid, False,
                        f"Không tìm thấy báo giá {qid}.", requestId=request_id)
 
+    # Explicit historical export always uses the immutable sent customer
+    # allowlist, never the mutable current draft or customer master.
+    sent_version = payload.get("sentVersion")
+    snapshot = None
+    if sent_version is not None:
+        snapshot = next((v.get("customer_snapshot") for v in quote.get("sent_versions") or [] if str(v.get("version")) == str(sent_version)), None)
+        if snapshot is None:
+            return _result("quote_export_xlsx", qid, False, "Không tìm thấy phiên bản đã gửi.", requestId=request_id)
+    elif quote.get("status") == "SENT" and quote.get("sent_versions"):
+        snapshot = quote["sent_versions"][-1]["customer_snapshot"]
+
     # Company authority: the EXISTING legal master. Never a hard-coded brand,
     # and never the sample customer from the Owner's reference workbook.
     companies = load_authority_companies() or {}
@@ -1979,6 +2016,10 @@ def _handle_quote_export_xlsx(payload: Mapping[str, Any]) -> dict[str, Any]:
     # quote's canonical customer_id. Read-only: the customer is never mutated,
     # and a customer the master does not hold simply contributes nothing.
     customer = read_customer(_text(quote.get("customer_id"))) or {}
+    if snapshot is not None:
+        quote = snapshot
+        company = snapshot.get("company") or {}
+        customer = {}
 
     # The quotation's own date authority lives in core.excel_utils
     # (_quote_display_date): explicit quote date → canonical created_at → today.
@@ -2028,6 +2069,9 @@ _HANDLERS = {
     "contract_intl_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
     "contract_payment_snapshot_save": lambda p: __import__("views.logi_intl_snapshot", fromlist=["handle_contract_intl_snapshot_save"]).handle_contract_intl_snapshot_save(p, {"read_contract": read_contract, "contract_projection": contract_projection, "_result": _result, "_audit": _audit}),
     "quote_export_xlsx": _handle_quote_export_xlsx,
+    "quote_import_excel": lambda p: __import__("views.logi_quote_import", fromlist=["handle_import"]).handle_import(p),
+    "quote_preview": lambda p: __import__("views.logi_quote_import", fromlist=["handle_preview"]).handle_preview(p),
+    "quote_source_download": lambda p: __import__("views.logi_quote_import", fromlist=["handle_source_download"]).handle_source_download(p),
     "cost_rate_parse": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_parse"]).handle_cost_rate_parse(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_rate_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_save"]).handle_cost_rate_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_rate_status_set": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_status_set"]).handle_cost_rate_status_set(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
@@ -2066,7 +2110,7 @@ def consume_c1_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
             outcomes.append(_result(event_name, _text(data.get("id")), False,
                                     f"{type(exc).__name__}: {exc}"))
         # Correlate every create result, including caught writer exceptions.
-        if event_name == "contract_create":
+        if event_name == "contract_create" or event_name.startswith("quote_"):
             outcomes[-1]["requestId"] = _text(data.get("requestId"))
     if outcomes:
         session["writes"] = outcomes
