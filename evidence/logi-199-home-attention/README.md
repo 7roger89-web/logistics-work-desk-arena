@@ -17,6 +17,15 @@
 - `component/dist/logi-shell.js` and `component/dist/logi-shell.css` — rebuilt from the source with the official Vite build.
 - `tests/component/dom_home_attention_layout.mjs` — focused regression over the existing compiled React bundle and canonical Home fixture.
 
+## Open-PR overlap audit (#198, #200–206)
+
+Compared the full changed-path lists and submitted reviews/conversation findings for open drafts #198 and #200–206 before treating #207 as an incremental slice:
+
+- No PR in that set changes `component/src/pages/Home.tsx` or the focused Home layout test. #198 is Journey/ShipmentDetail work; #201–203 are shipment-mode/Journey truth; #205–206 are quotation/workbook flows.
+- #200 and #204 do change the child `AttentionNow.tsx` used by Home (mobile text behavior/typography); this slice only adjusts the parent Home grid alignment. They are adjacent, composable scopes, not a duplicate. Their broader reviews still reject the respective whole-runtime/integration claims; this PR does not claim to close those findings.
+- The generated `component/dist/logi-shell.js` and `.css` paths are shared build outputs across #198/#200/#202–206. This PR was built from its stated checkpoint; when branches are integrated, regenerate dist from the selected combined sources and rerun the relevant checks rather than taking one branch's compiled bundle as authoritative.
+- No files or branches from #198–206 were changed. #207 remains a draft on the verified checkpoint base.
+
 ## Verification
 
 - `cd component && npm run typecheck` — **PASS**.

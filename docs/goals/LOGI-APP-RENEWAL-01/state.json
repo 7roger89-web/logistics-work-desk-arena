@@ -609,6 +609,22 @@
     "owner_uat": "NOT_RUN; deferred by the 2026-10-16 Owner direction.",
     "production_or_main_mutation": "NONE",
     "upload_required": "NO",
-    "learning_reconciliation": "NONE — one environment-specific missing shared library blocked browser launch; no reusable product correction is justified."
+    "learning_reconciliation": "NONE — one environment-specific missing shared library blocked browser launch; no reusable product correction is justified.",
+    "pr_overlap_audit": {
+      "reviewed_open_prs": [
+        198,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206
+      ],
+      "changed_path_and_review_comparison": "PASS; full file lists and available submitted reviews/conversation notes compared; no duplicate Home source change or focused test.",
+      "adjacent_scope": "#200/#204 modify the child AttentionNow component used on Home; this slice changes only Home grid alignment, so their typography/text behavior is distinct and composable.",
+      "generated_artifact_overlap": "component/dist/logi-shell.js and component/dist/logi-shell.css are shared generated paths across several open drafts; rebuild from selected integrated sources when branches are combined.",
+      "other_scope_summary": "#198 Journey/ShipmentDetail; #201-203 mode/Journey truth; #205-206 quotation/workbook flows. No branches or files from those PRs modified."
+    }
   }
 }
