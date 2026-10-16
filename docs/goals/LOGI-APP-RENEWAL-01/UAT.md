@@ -6,7 +6,7 @@
 
 Independent ChatGPT Control Tower review of the frozen source/build and archived
 Chromium evidence is published at
-[`INDEPENDENT_REVIEW_RESULT-8932fcb.md`](../../evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_RESULT-8932fcb.md).
+[`INDEPENDENT_REVIEW_RESULT-8932fcb.md`](../../../evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_RESULT-8932fcb.md).
 The reviewer is a separate actor from the Arena code writer; no new live browser
 was executed by that reviewer. The PASS covers only camera A, save/readback B and
 Owner paper preservation, NOT Windows OS, full-UI parity or production readiness.
