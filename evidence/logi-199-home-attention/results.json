@@ -1,0 +1,75 @@
+{
+  "goal_id": "LOGI-APP-RENEWAL-01",
+  "issue": 199,
+  "checkpoint_head": "1fe2ff56c9214293d5318f1eb33798ddb3d81f93",
+  "reviewed_app_source": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
+  "session_branch": "arena/18ef00cf-logistics-work-desk-arena",
+  "product_source_commit": "6391b1d78a376df9117afe7876c9e2c8f5c4736d",
+  "pull_request": {
+    "number": 207,
+    "url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/207",
+    "state": "OPEN_DRAFT",
+    "base_branch": "arena/d657fb56-logistics-work-desk-arena"
+  },
+  "scope": "Prevent the Home urgent-work panel from stretching to the adjacent running-shipment list height at the xl breakpoint.",
+  "changed_files": [
+    "component/src/pages/Home.tsx",
+    "component/dist/logi-shell.js",
+    "component/dist/logi-shell.css",
+    "tests/component/dom_home_attention_layout.mjs"
+  ],
+  "sha256": {
+    "component/src/pages/Home.tsx": "d66de4fd1b0ef008c1c8933735bcc3c582adeda1d0c9c6b15ed53ed33c8f0bd1",
+    "component/dist/logi-shell.js": "21aaced093d955cbdaf360e1ceaf72dffa6fba34b3ce10d2cdb05be50bba0282",
+    "component/dist/logi-shell.css": "b4daa029d83577946a469f03f981a9d12ef58b103336b507d9d5d1be43114e71",
+    "tests/component/dom_home_attention_layout.mjs": "35b59cbcc0ceeee99341f4c29daa82757f235346cdf3324030c5229b48e4317a"
+  },
+  "toolchain": {
+    "node": "v22.22.3",
+    "npm": "10.9.8",
+    "vite": "8.2.2",
+    "python": "3.11.2",
+    "streamlit": "1.66.0"
+  },
+  "checks": {
+    "typecheck": "PASS",
+    "production_build": "PASS; 1936 modules; dist rebuilt from current source",
+    "process_reference_scan": "PASS; FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0",
+    "home_layout_dom_regression": "PASS; source class and generated responsive CSS verified against production bundle",
+    "streamlit_apptest": "PASS; APPTEST_EXCEPTION_COUNT=0; Mongomock-only staging isolation proof; Components v2 not browser-rendered by AppTest",
+    "loopback_http_smoke": "PASS; Streamlit health and root returned HTTP 200 on 127.0.0.1:9537; server stopped after smoke",
+    "runtime_browser_visual": "NOT_RUN; VISUAL_VERDICT=NEEDS_EVIDENCE",
+    "browser_blocker": "No system Chromium; temporary Playwright/Chromium launch exited 127 because libnspr4.so is missing. No screenshot captured."
+  },
+  "unrelated_existing_failures": [
+    {
+      "test": "tests/component/dom_acceptance_home_hierarchy.mjs",
+      "result": "FAILED_BEFORE_THIS_CHANGE",
+      "reason": "Old expected UI label 'Quá hạn và sắp tới hạn' is absent from current Home projection."
+    },
+    {
+      "test": "tests/component/dom_acceptance_support_attention_166.mjs",
+      "result": "FAILED_BEFORE_THIS_CHANGE",
+      "reason": "Stale expectation that Journey remains in that test's current route/context."
+    },
+    {
+      "test": "tests/test_logi_shipment_primary_action_unify_01.py",
+      "result": "26_PASSED_5_FAILED",
+      "reason": "Existing test cases expect profile action route tab lay-hang; current canonical route is van-tai. No routing or business code changed in this slice; older LOGI-199 reconciliation already records stale anchor targets."
+    }
+  ],
+  "p2p": {
+    "law_source": "LOCAL_PORTABLE",
+    "law_source_content_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "experience_check": "USE_ACTIVE_EXPERIENCE",
+    "experience_id": "shared-exp-b2611df4c9393f0017f07dcb",
+    "initial_planning_classification": "UIUX",
+    "final_routing_classification": "UIUX",
+    "oe_verdict": "DO_IT"
+  },
+  "full_goal_199": "IN_PROGRESS",
+  "production_ready": "NO",
+  "owner_uat": "NOT_RUN_DEFERRED_BY_OWNER",
+  "upload_required": "NO",
+  "production_or_main_mutation": "NONE"
+}

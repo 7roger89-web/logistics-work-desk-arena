@@ -1,0 +1,5 @@
+2026-10-16 10:20:50.269 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO
+LOGI199_ZERO_FIXTURE={"customer": "Khách hàng mới 188", "firstMode": "", "fixture": "FRESH_SHIPMENT_188", "fixture_creation": "canonical shipment_create; isolated Mongomock only", "incoterm": "", "journeyNodes": 0, "nextAction": "Bổ sung hồ sơ thực hiện lô", "nextActionDetail": "Chưa có điều kiện giao hàng (Incoterm).", "nextRoute": "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile", "persisted": true, "primaryAction": "Bổ sung hồ sơ thực hiện lô", "profileState": "PROFILE_INCOMPLETE", "profileStateLabel": "Hồ sơ lô còn thiếu", "projectedPrimaryRoute": "/lo-hang/SEA-188?tab=van-tai#shipment-execution-profile", "serviceScope": [], "serviceScopeConfirmed": false, "shipmentId": "SEA-188", "transportLegs": 0, "version": 1}
+APPTEST_EXCEPTION_COUNT=0
+UI_COMPONENT_RENDERED_BY_APPTEST=NO (Streamlit Components v2 needs a real browser)
