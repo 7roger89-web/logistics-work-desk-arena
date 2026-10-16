@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/d657fb56-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "INDEPENDENT_REVIEW_PASS_BOUNDED_A_B_PAPER__OWNER_UAT_READY_ISOLATED_WINDOWS__WINDOWS_NOT_RUN",
+  "stage": "FULL_GOAL_199_IN_PROGRESS__OWNER_WINDOWS_TRIAL_UNSUCCESSFUL_REPORTED__LOCAL_UAT_DEFERRED",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -29,11 +29,11 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Windows x64 runtime not yet exercised; Python 3.11+/PATH and Internet are required for initial local dependency install. Trial only after test-only Mongomock isolation proof.",
-    "OWNER_UAT=NOT_RUN; Owner must open the exact frozen 8932fcb source on Windows and report the real outcome. No claim of Windows PASS or full-app visual parity.",
     "No outside-sandbox authenticated private preview URL has been verified; older e2b URL died/token-gated. No public auth-disabled staging or new paid hosting.",
     "Production release blockers remain: auth/bootstrap, finance coverage, snapshot retry-idempotency, npm audit advisory triage and other applicable security/business gates; no merge/deploy authorization.",
-    "GitHub Actions CI was not triggered on this Arena branch; bounded independent A/B/paper review PASS does not certify broad release."
+    "GitHub Actions CI was not triggered on this Arena branch; bounded independent A/B/paper review PASS does not certify broad release.",
+    "Owner could not run the local Windows candidate, exact failure unobserved; local trial is DEFERRED by Owner (not a blocker to continuing app renovation).",
+    "Need safe, one-click, representative Owner-accessible app preview for UAT; avoid requiring Owner Python/ZIP/.cmd startup."
   ],
   "existing_issue_dependencies": [
     197,
@@ -44,7 +44,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Owner: on Windows x64, install Python 3.11+ with PATH, download exact 8932fcb GitHub ZIP to fresh folder, double-click scripts/logi199_uat.cmd, verify STAGING_ISOLATION_PROOF=PASS, then open http://localhost:9501; report actual Windows outcome and screenshots. No real customer data.",
+  "next": "Executor continues actual app-wide LOGI #199 UI/business correction on GitHub from authoritative branch/Owner design file. Do not demand Owner Windows Python/ZIP/.cmd setup. Keep owner UAT deferred until safe simple representative app preview exists. No merge/deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -63,7 +63,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Frozen app 8932fcb independent source/hash/screenshot review PASS for A/B/paper (reviewer did NOT run new browser). Linux extracted-ZIP smoke PASS. Remaining: owner Windows startup and isolated UAT NOT_RUN; production remains blocked.",
+  "current_subtask": "Owner rejected local Windows startup as premature to whole-app renewal. A/B/paper bounded review preserved. Actual app-wide integration and visual parity remain uncompleted and take priority. Owner Windows error unclassified; no Windows PASS/FAIL diagnosis.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -323,16 +323,16 @@
       "t6_fcl_nodes": 11,
       "t6_fcl_edges": 20,
       "t6_fcl_map_box": {
-        "x": 17.0,
+        "x": 17,
         "y": 106.62,
-        "width": 1406.0,
-        "height": 780.0
+        "width": 1406,
+        "height": 780
       },
       "zero_node_map_box": {
-        "x": 17.0,
+        "x": 17,
         "y": 143.22,
-        "width": 1406.0,
-        "height": 780.0
+        "width": 1406,
+        "height": 780
       },
       "zero_node_transform_unchanged": true,
       "zero_node_cta_editor_no_write": true
@@ -341,16 +341,16 @@
       "t6_fcl_nodes": 11,
       "t6_fcl_edges": 20,
       "map_box": {
-        "x": 8.0,
+        "x": 8,
         "y": 269.94,
-        "width": 374.0,
-        "height": 549.0
+        "width": 374,
+        "height": 549
       },
       "zero_node_map_box": {
-        "x": 8.0,
+        "x": 8,
         "y": 235.94,
-        "width": 374.0,
-        "height": 549.0
+        "width": 374,
+        "height": 549
       },
       "zero_node_transform_unchanged": true,
       "zero_node_cta_editor_no_write": true
@@ -359,10 +359,10 @@
       "verdict": "PASS",
       "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
       "viewport_box": {
-        "x": 8.0,
+        "x": 8,
         "y": 269.94,
-        "width": 374.0,
-        "height": 549.0
+        "width": 374,
+        "height": 549
       },
       "start": [
         60,
@@ -398,20 +398,20 @@
         "y": 121,
         "scale": 1
       },
-      "transform_delta_x": 269.0,
+      "transform_delta_x": 269,
       "node_box_before": {
-        "x": -143.0,
+        "x": -143,
         "y": 631.94,
-        "width": 116.0,
-        "height": 66.0
+        "width": 116,
+        "height": 66
       },
       "node_box_after": {
-        "x": 126.0,
+        "x": 126,
         "y": 631.94,
-        "width": 116.0,
-        "height": 66.0
+        "width": 116,
+        "height": 66
       },
-      "node_delta_x": 269.0,
+      "node_delta_x": 269,
       "selected_nodes_before": [],
       "selected_nodes_after": [],
       "bubble_count_after": 0,
@@ -527,5 +527,16 @@
     "no_production_deploy": true,
     "exact_download": "https://github.com/7roger89-web/logistics-work-desk-arena/archive/8932fcb4aa2e7705b1e0963a830758bd3d9849ae.zip",
     "caveat": "Historical G2 receipt fields remain verbatim as historical evidence; this latest_checkpoint supersedes older PENDING labels for present-tense status."
+  },
+  "latest_owner_direction_20261016": {
+    "as_of": "2026-10-16",
+    "source": "Owner correction in current continuation chat",
+    "primary_goal": "Continue correcting the entire Logistics Work Desk app per LOGI-APP-RENEWAL-01 and Owner visual override, not isolated Windows startup",
+    "owner_windows_observation": "Owner reports local candidate did not run; exact error not provided, so root cause is UNKNOWN (not certified Windows failure)",
+    "decision": "STOP requesting local Windows ZIP/Python/.cmd trial now; defer Owner UAT until a representative application version can be opened simply and safely",
+    "current_app_status": "FULL_GOAL_199_IN_PROGRESS; scoped G2 A/B/paper review does not certify whole app or production",
+    "next_executor_action": "Continue bounded actual app renovation from current GitHub source/branches; reconcile overlapping draft changes (#198,#200-#206) without overwriting or merging; prioritize representative app-wide route/workflow and design-fidelity work using Owner HTML oracle; perform technical verification in executor environment before Owner preview",
+    "owner_action_now": "NONE",
+    "release_guards": "NO_MAIN_MERGE_NO_PRODUCTION_DEPLOY_NO_PUBLIC_AUTH_BYPASS_NO_NEW_PAID_HOSTING"
   }
 }
