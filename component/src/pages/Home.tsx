@@ -71,7 +71,7 @@ export default function Home() {
       </section>
 
       {/* 2 — EXCEPTIONS + OPERATIONAL VISIBILITY: deadlines first, running lots beside */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-start">
         <AttentionNow
           items={(attention ?? []).slice(home?.focus ? 1 : 0, home?.focus ? 5 : 4)}
           title="Cần xử lý tiếp"

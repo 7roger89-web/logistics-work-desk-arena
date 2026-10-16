@@ -5,7 +5,7 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "arena/d657fb56-logistics-work-desk-arena",
+  "active_branch": "arena/18ef00cf-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
   "stage": "FULL_GOAL_199_IN_PROGRESS__OWNER_WINDOWS_TRIAL_UNSUCCESSFUL_REPORTED__LOCAL_UAT_DEFERRED",
   "progress": {
@@ -44,7 +44,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Executor continues actual app-wide LOGI #199 UI/business correction on GitHub from authoritative branch/Owner design file. Do not demand Owner Windows Python/ZIP/.cmd setup. Keep owner UAT deferred until safe simple representative app preview exists. No merge/deploy.",
+  "next": "After independent review of draft PR #207, continue one bounded app-wide route/workflow slice from the current source. Preserve the map-first Journey; do not request Windows/ZIP/Python/.cmd trial. No main merge or production deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -61,9 +61,9 @@
   ],
   "status": "IN_PROGRESS",
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
-  "active_pr": null,
-  "active_pr_url": null,
-  "current_subtask": "Owner rejected local Windows startup as premature to whole-app renewal. A/B/paper bounded review preserved. Actual app-wide integration and visual parity remain uncompleted and take priority. Owner Windows error unclassified; no Windows PASS/FAIL diagnosis.",
+  "active_pr": 207,
+  "active_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/207",
+  "current_subtask": "Implemented one Home work-desk layout correction: the urgent-work panel now aligns to its own content at xl width, instead of stretching beside the running-shipment list. Product source commit 6391b1d78a376df9117afe7876c9e2c8f5c4736d; draft incremental PR #207. Build, focused DOM regression and isolated AppTest passed. Browser visual review remains unverified because Chromium cannot start in this host (missing libnspr4.so). FULL_GOAL_199 remains IN_PROGRESS.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -100,7 +100,7 @@
     "receipt_status": "HISTORICAL_PRE_REPAIR_NOT_CURRENT_SOURCE_VERIFICATION",
     "current_repair_note": "See g2_repair_20261015 and evidence/logi-199-g2/metrics.json."
   },
-  "branch_constraint": "All current work stays on fixed Arena branch arena/bb243332-logistics-work-desk-arena; no other branch. No main merge; no production deploy.",
+  "branch_constraint": "All current work stays on fixed Arena branch arena/18ef00cf-logistics-work-desk-arena; the verified checkpoint arena/d657fb56-logistics-work-desk-arena@1fe2ff56 was preserved by fast-forward. No main merge; no production deploy.",
   "source_receipt_t0_historical": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -225,7 +225,7 @@
     "issue_comment_error": "Resource not accessible by integration",
     "owner_action_needed": "No action until Independent Review result; Owner UAT remains closed."
   },
-  "session_branch": "arena/bb243332-logistics-work-desk-arena",
+  "session_branch": "arena/18ef00cf-logistics-work-desk-arena",
   "goal_state": {
     "G0": "G0_COMPLETE_ORACLE_CAPTURED",
     "G1": "G1_SHARED_VISUAL_SYSTEM_EVIDENCED",
@@ -477,7 +477,7 @@
       "FINAL_ROUTING_CLASSIFICATION": "UIUX"
     }
   },
-  "owner_uat_ready": "YES_FOR_ISOLATED_WINDOWS_STARTUP_AND_UAT",
+  "owner_uat_ready": "DEFERRED_BY_OWNER__SAFE_SIMPLE_REPRESENTATIVE_APP_PREVIEW_REQUIRED",
   "review_candidate_sha": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
   "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
   "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw capture commit is not fetchable, published candidate hashes match capture dist/harness.",
@@ -538,5 +538,94 @@
     "next_executor_action": "Continue bounded actual app renovation from current GitHub source/branches; reconcile overlapping draft changes (#198,#200-#206) without overwriting or merging; prioritize representative app-wide route/workflow and design-fidelity work using Owner HTML oracle; perform technical verification in executor environment before Owner preview",
     "owner_action_now": "NONE",
     "release_guards": "NO_MAIN_MERGE_NO_PRODUCTION_DEPLOY_NO_PUBLIC_AUTH_BYPASS_NO_NEW_PAID_HOSTING"
+  },
+  "latest_execution_20261016": {
+    "as_of": "2026-10-16",
+    "session_branch": "arena/18ef00cf-logistics-work-desk-arena",
+    "checkpoint_branch": "arena/d657fb56-logistics-work-desk-arena",
+    "checkpoint_head": "1fe2ff56c9214293d5318f1eb33798ddb3d81f93",
+    "reviewed_app_source": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
+    "product_source_commit": "6391b1d78a376df9117afe7876c9e2c8f5c4736d",
+    "pr": 207,
+    "pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/207",
+    "scope": "Home two-column worklist layout only; no Journey or business data/workflow change.",
+    "changed_paths": [
+      "component/src/pages/Home.tsx",
+      "component/dist/logi-shell.js",
+      "component/dist/logi-shell.css",
+      "tests/component/dom_home_attention_layout.mjs"
+    ],
+    "p2p_preflight": {
+      "P2P_LAW_SOURCE": "LOCAL_PORTABLE",
+      "LAW_CHECK": "PASS | SOURCE=.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md | SOURCE_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+      "EXPERIENCE_CHECK": "USE_ACTIVE_EXPERIENCE | IDS=shared-exp-b2611df4c9393f0017f07dcb",
+      "INITIAL_PLANNING_CLASSIFICATION": "UIUX",
+      "FINAL_ROUTING_CLASSIFICATION": "UIUX",
+      "skill_receipt": {
+        "schema": "p2p-skill-consumption-receipt/1",
+        "skills": [
+          {
+            "id": "p2p-uiux",
+            "path": ".agents/skills/p2p-uiux/SKILL.md",
+            "sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+            "consumption": "READ_AND_APPLIED"
+          },
+          {
+            "id": "frontend-development",
+            "path": ".agents/skills/frontend-development/SKILL.md",
+            "sha256": "95b93f5c4209db5ffbc54f807e54ced080a7d53ec9fcc981ee5570c2502db956",
+            "consumption": "READ_AND_APPLIED"
+          },
+          {
+            "id": "react-best-practices",
+            "path": ".agents/skills/react-best-practices/SKILL.md",
+            "sha256": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355",
+            "consumption": "READ_AND_APPLIED"
+          }
+        ]
+      }
+    },
+    "oe_gate": {
+      "question": "Không bị over engineering chứ?",
+      "SIMPLER_PATH": "YES — one existing Tailwind responsive utility.",
+      "MATERIAL_PROGRESS": "YES — removes the falsely large alert-colored blank area on the Home desk.",
+      "NECESSITY": "YES — current grid stretch visually overstates short urgent content beside the taller shipment list.",
+      "CORE_BEFORE_SUPPORT": "YES — fixes the main operator entry screen; no infrastructure added.",
+      "SMALLER_VERIFIABLE_SLICE": "YES — one class, one focused DOM regression, build and app smoke.",
+      "OE_VERDICT": "DO_IT — exact rationale recorded in evidence/logi-199-home-attention/README.md."
+    },
+    "verification": {
+      "typecheck": "PASS",
+      "vite_build": "PASS; Vite 8.2.2, 1936 modules; committed dist rebuilt.",
+      "process_scan": "PASS; zero executable process references.",
+      "focused_dom_regression": "PASS; tests/component/dom_home_attention_layout.mjs",
+      "isolated_streamlit_apptest": "PASS; zero exceptions; Mongomock-only; Components v2 not rendered by AppTest.",
+      "loopback_http_smoke": "PASS; health and root HTTP 200 on 127.0.0.1:9537; stopped after test.",
+      "browser_visual": "NOT_VERIFIED; VISUAL_VERDICT=NEEDS_EVIDENCE; temporary Chromium launch blocked by missing libnspr4.so.",
+      "evidence": "evidence/logi-199-home-attention/"
+    },
+    "full_goal_199": "IN_PROGRESS",
+    "production_ready": "NO",
+    "owner_uat": "NOT_RUN; deferred by the 2026-10-16 Owner direction.",
+    "production_or_main_mutation": "NONE",
+    "upload_required": "NO",
+    "learning_reconciliation": "NONE — one environment-specific missing shared library blocked browser launch; no reusable product correction is justified.",
+    "pr_overlap_audit": {
+      "reviewed_open_prs": [
+        198,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206
+      ],
+      "changed_path_and_review_comparison": "PASS; full file lists and available submitted reviews/conversation notes compared; no duplicate Home source change or focused test.",
+      "adjacent_scope": "#200/#204 modify the child AttentionNow component used on Home; this slice changes only Home grid alignment, so their typography/text behavior is distinct and composable.",
+      "generated_artifact_overlap": "component/dist/logi-shell.js and component/dist/logi-shell.css are shared generated paths across several open drafts; rebuild from selected integrated sources when branches are combined.",
+      "other_scope_summary": "#198 Journey/ShipmentDetail; #201-203 mode/Journey truth; #205-206 quotation/workbook flows. No branches or files from those PRs modified.",
+      "timing": "Completed after draft PR #207 was opened, because the prior checkpoint identified the full comparison as outstanding; no duplicate Home source/test was found."
+    }
   }
 }
