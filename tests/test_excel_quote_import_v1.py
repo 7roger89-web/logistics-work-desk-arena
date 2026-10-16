@@ -331,3 +331,49 @@ def test_writer_success_without_fresh_readback_is_not_reported_as_saved(staging,
 def test_direct_and_cross_fx_cannot_silently_overwrite_each_other(staging, source):
     out = dispatch("quote_preview", payload(imported(source), fx={"CNY": 4000, "USD": 26500, "CNY_PER_USD": 6.78}))
     assert not out["ok"] and "không tự ghi đè" in out["error"]
+
+
+# Regression: the OWNER's actual workbook uses these header labels, not the
+# earlier synthetic fixture's "Kích thước" / "Vật liệu" labels. The customer
+# workbook itself is confidential and must not be checked into this repository.
+def test_uploaded_original_luc_giac_column_headings_are_accepted():
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BÁO GIÁ"
+    ws["B1"] = "BÁO GIÁ BÀN HỌP - NHẬP KHẨU TQ"
+    for col, label in {
+        "A": "STT", "B": "NSX", "C": "CHẤT LIỆU",
+        "D": "KT SẢN PHẨM (mm)", "E": "SỐ LƯỢNG",
+        "F": "ĐƠN VỊ", "G": "ĐƠN GIÁ RMB",
+        "H": "THÀNH TIỀN RMB", "K": "GHI CHÚ",
+    }.items():
+        ws[f"{col}2"] = label
+    for i, (dim, qty, unit_price) in enumerate((
+        ("5200×1500×760", 16, 13055),
+        ("7500×1600×760", 1, 18850),
+        ("12000×1600×760", 3, 30150),
+        ("16000×1600×760", 6, 40200),
+        ("19000×1600×760", 1, 47800),
+    ), start=3):
+        ws[f"A{i}"] = i - 2
+        ws[f"D{i}"] = dim
+        ws[f"E{i}"] = qty
+        ws[f"G{i}"] = unit_price
+        ws[f"H{i}"] = f"=E{i}*G{i}"
+    ws["C3"] = "Mã sp: MS-C0242S\nKhung: MDF\nBề mặt hoàn thiện: veneer"
+    ws["K3"] = "kèm 4 ổ điện"
+
+    stream = BytesIO()
+    wb.save(stream)
+    parsed = parse_luc_giac_workbook(
+        stream.getvalue(), "BAO GIA BAN HOP.xlsx", today=date(2026, 10, 16)
+    )
+    calc = calculate_quote({"excel_quote": parsed})["excel_quote"]
+    assert parsed["source"]["goods_sheet"] == "BÁO GIÁ"
+    assert calc["calculation"]["row_count"] == 5
+    assert calc["calculation"]["quantity"] == 27
+    assert calc["calculation"]["goods_totals"] == [{"currency": "CNY", "amount": 607180}]
+    assert "MS-C0242S" in parsed["goods"][0]["material"]
+    assert parsed["goods"][0]["note"] == "kèm 4 ổ điện"
