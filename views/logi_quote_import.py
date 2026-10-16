@@ -122,6 +122,67 @@ def edit_excel_quote(quote: Mapping[str, Any], payload: Mapping[str, Any]) -> di
     return _result("quote_edit", qid, True, readback=quote_projection(fresh), audit=_audit("quote", qid))
 
 
+def handle_source_workbook(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """READ-ONLY: sheet tabs and ONE sheet of the ORIGINAL stored workbook.
+
+    LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — this is the "keep the original workbook"
+    half of the task. It reads the SAME GridFS bytes that were uploaded, verifies
+    their SHA256 against the recorded source, and renders one sheet with explicit
+    fidelity reporting. It never writes, never re-imports into the quote, and
+    never becomes an export path for the original file.
+
+    The workbook is addressable both before the quote is saved (ownership of the
+    stored source is re-validated through ``validated_source``) and afterwards
+    (through the saved quote's own source reference).
+    """
+    import hashlib
+
+    from core.auth import can_operate_business
+    from core.database import get_db
+    from core.gridfs_client import GridFSAttachmentStore
+    from core.quote_excel_import import validated_source
+    from core.quote_workbook_view import overview, sheet_page
+    from views.logi_c1 import _result, read_quote
+
+    event = "quote_source_workbook_view"
+    qid = str(payload.get("id") or "")
+    if not can_operate_business("commercial_view"):
+        return _result(event, qid, False, "RBAC: không có quyền xem báo giá.", requestId=str(payload.get("requestId") or ""))
+    details: dict[str, Any] = {}
+    if qid:
+        quote = read_quote(qid)
+        details = dict((quote or {}).get("excel_quote") or {})
+    if not details:
+        cid = str(payload.get("customerId") or "")
+        if not cid or not isinstance(payload.get("source"), Mapping):
+            return _result(event, qid, False, "Mở báo giá hoặc nhập Excel trước khi xem workbook gốc.",
+                           requestId=str(payload.get("requestId") or ""))
+        try:
+            details = dict(validated_source(dict(payload.get("source") or {}), cid))
+        except (ValueError, TypeError) as exc:
+            return _result(event, qid, False, str(exc), requestId=str(payload.get("requestId") or ""))
+    source = dict(details.get("source") or {})
+    if not source.get("storage_file_id"):
+        return _result(event, qid, False, "Báo giá này không có tệp nguồn để đối chiếu.",
+                       requestId=str(payload.get("requestId") or ""))
+    data = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
+    if hashlib.sha256(data).hexdigest() != str(source.get("sha256") or ""):
+        return _result(event, qid, False, "Bytes tệp nguồn không khớp SHA256 đã lưu; không hiển thị.",
+                       requestId=str(payload.get("requestId") or ""))
+    proposal = {"source": source, "source_costs": details.get("source_costs") or []}
+    try:
+        info = overview(data, proposal)
+        sheet_name = str(payload.get("sheet") or "")
+        page = sheet_page(data, sheet_name, proposal=proposal,
+                          can_view_internal=can_operate_business("commercial_write")) if sheet_name else None
+    except ValueError as exc:
+        return _result(event, qid, False, str(exc), requestId=str(payload.get("requestId") or ""))
+    return _result(event, qid, True, requestId=str(payload.get("requestId") or ""),
+                   readback={"read_only": True, "sha256": source["sha256"], "file_name": source.get("file_name"),
+                             "overview": info, "page": page,
+                             "note": "Bản xem workbook gốc chỉ để đối chiếu; số liệu nghiệp vụ vẫn sửa ở bảng Bước 1/2."})
+
+
 def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
     from core.database import get_db

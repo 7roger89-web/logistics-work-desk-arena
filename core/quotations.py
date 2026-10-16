@@ -574,6 +574,13 @@ def _calculate_excel_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     disclosure_map = {x.get("id"): x for x in details.get("disclosures") or [] if isinstance(x, Mapping)}
     details["disclosures"] = [{"id": k, "text": text, "selected": disclosure_map.get(k, {}).get("selected") is True} for k, text in DISCLOSURES]
     details["additional_public_notes"] = str(details.get("additional_public_notes") or "")[:12000]
+    # LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — the ONLY accepted customer-presentation
+    # payload is a bounded map of plain-text overrides. Unknown ids, ids that own
+    # a canonical field, and markup-shaped values are dropped here, so nothing a
+    # browser sends can become arbitrary document content.
+    from core.quote_customer_text import sanitize_customer_text
+
+    details["customer_text"] = sanitize_customer_text(details.get("customer_text"))
     details["supplier"] = str(details.get("supplier") or "")[:2000]
     shipment = dict(details.get("shipment") or {})
     details["shipment"] = {k: str(shipment.get(k) or "")[:2000] for k in ("pol", "pod", "pickup", "delivery", "load_model", "equipment")}
@@ -621,12 +628,21 @@ def customer_quote_snapshot(quote: Mapping[str, Any]) -> dict[str, Any]:
 
     Never copy an internal quote wholesale: cost, profit, source, warning notes,
     provenance and Sale audit/status history have no path to this object.
+
+    LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — the snapshot also carries the resolved
+    customer text map (``text``): the Sale's edited wording for every text region
+    the customer document shows. The Step-3 preview and
+    ``core.excel_utils.generate_quote_excel`` read that SAME map, so an edited
+    title can never be visible on screen while the XLSX still prints the
+    default. Amounts stay backend-computed numbers outside the map.
     """
+    from core.quote_customer_text import build_customer_text, published_notes
+
     details = dict(quote.get("excel_quote") or {})
     active = str(details.get("active_option") or "A")
     out = {k: deepcopy(quote.get(k)) for k in ("id", "quote_no", "version", "status", "created_at", "customer_id", "customer_name", "customer_contact", "customer_email", "customer_phone", "goods_description", "origin", "destination", "route", "incoterm", "transport_mode", "expected_delivery_date")}
     out["fx_snapshot"] = {"base_currency": "VND", "rates_to_vnd": deepcopy((quote.get("fx_snapshot") or {}).get("rates_to_vnd") or {})}
-    out["service_lines"] = [{k: deepcopy(l.get(k)) for k in ("service_name", "unit", "qty", "currency", "sell_unit", "sell_total", "tax_pct", "tax_total", "public_note", "condition")}
+    out["service_lines"] = [{k: deepcopy(l.get(k)) for k in ("id", "service_name", "unit", "qty", "currency", "sell_unit", "sell_total", "tax_pct", "tax_total", "public_note", "condition")}
                             for l in quote.get("service_lines") or [] if l.get("sell_unit") is not None and l.get("sell_confirmed", True) is True]
     out["customer_notes"] = list(quote.get("customer_notes") or [])
     if details:
@@ -637,4 +653,15 @@ def customer_quote_snapshot(quote: Mapping[str, Any]) -> dict[str, Any]:
         out["customs"] = {k: details.get("customs", {}).get(k) for k in ("calculable", "basis_vnd", "duty_pct", "vat_pct", "duty_vnd", "vat_vnd", "total_vnd")}
         out["goods_calculation"] = deepcopy(details.get("calculation") or {})
         out["services_calculation"] = {k: quote.get("calculation", {}).get(k) for k in ("totals_by_currency", "selling_price_before_tax_vnd", "estimated_output_tax_vnd", "selling_price_total_vnd")}
+        out["text"] = build_customer_text(out, details)
+        # The published wording is what the customer document prints, so the
+        # canonical customer_notes list is the RESOLVED one here. The ids travel
+        # too, because the Step-3 preview edits each published line through its
+        # own stable region ("note.<id>"), not by list position.
+        out["published_notes"] = [
+            {"id": str(d.get("id") or ""), "text": str(d.get("text") or "")}
+            for d in details.get("disclosures") or []
+            if isinstance(d, Mapping) and d.get("selected")
+        ]
+        out["customer_notes"] = published_notes(quote, details)
     return out

@@ -1,0 +1,18 @@
+== Quote/Excel/RBAC regression against this branch (2026-10-16) ==
+
+$ .venv/bin/python -m pytest <14 quote/excel/c1/auth suites> -q
+
+tests/test_logc15_auth_rbac.py:257: AssertionError
+----------------------------- Captured stderr call -----------------------------
+=========================== short test summary info ============================
+FAILED tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_viewer
+1 failed, 207 passed, 6 skipped in 7.05s
+
+-- Isolation check: the auth/RBAC suite on its own --
+............................                                             [100%]
+28 passed in 2.45s
+
+NOTE: the single failure above is PRE-EXISTING cross-file session_state pollution:
+it reproduces WITHOUT this task's two new test files (184 passed, same failure):
+$ .venv/bin/python -m pytest <12 suites, no new files> -q  ->  1 failed, 184 passed, 6 skipped
+and the same suite passes alone (28 passed).

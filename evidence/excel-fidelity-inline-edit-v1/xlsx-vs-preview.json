@@ -1,0 +1,59 @@
+{
+  "syntheticFixture": true,
+  "quoteId": "Q-20261016-09FF609E",
+  "status": "DRAFT",
+  "version": 1,
+  "exportedFile": "customer-quote-SYNTHETIC-edited.xlsx",
+  "exportedBytes": 29717,
+  "sheetNames": [
+    "Bao gia"
+  ],
+  "previewRegionCount": 60,
+  "regionsMissingFromXlsx": [],
+  "previewOnlyRegions": [
+    "sec.service_summary"
+  ],
+  "internalStringLeaks": [],
+  "formulaCells": [],
+  "internalSheetNamesInFile": [],
+  "definedNames": [],
+  "sampleCells": {
+    "A5": "BÁO GIÁ NHẬP KHẨU BÀN HỌP",
+    "A11": "Subject: BÁO GIÁ NHẬP KHẨU BÀN HỌP — Nansha - Hải Phòng"
+  },
+  "whereEachEditLanded": {
+    "doc.title": [
+      "Bao gia!A5",
+      "Bao gia!A11"
+    ],
+    "goods.row-8.name": [
+      "Bao gia!B21"
+    ],
+    "col.service.name": [
+      "Bao gia!B33"
+    ],
+    "note.payment": [
+      "Bao gia!A46"
+    ],
+    "notes.additional": [
+      "Bao gia!A50"
+    ]
+  },
+  "editedRegions": {
+    "doc.title": "BÁO GIÁ NHẬP KHẨU BÀN HỌP",
+    "goods.row-8.name": "Bàn họp nhập khẩu cao cấp",
+    "col.service.name": "Nội dung dịch vụ",
+    "note.payment": "Thanh toán 70% trước khi giao hàng, 30% sau khi nhận hàng.",
+    "notes.additional": "Giao hàng tại kho khách\nKiểm tra và ký biên bản bàn giao\nBảo hành theo nhà sản xuất"
+  },
+  "goodsTotalRows": 5,
+  "goodsTotalQuantity": 27.0,
+  "goodsTotals": [
+    {
+      "currency": "CNY",
+      "amount": 607180.0
+    }
+  ],
+  "estimateVnd": null,
+  "note": "Preview text vs the exported XLSX. Every mismatch is listed, never smoothed over."
+}

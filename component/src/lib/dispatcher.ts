@@ -102,6 +102,11 @@ export type LogiEventName =
   | "quote_import_excel"
   | "quote_preview"
   | "quote_source_download"
+  // LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — bounded READ-ONLY view of the ORIGINAL
+  // uploaded workbook stored in GridFS: sheet tab names/order plus ONE sheet's
+  // values, formulas, merges and common styles. It mutates nothing and is not an
+  // export path for the source file.
+  | "quote_source_workbook_view"
   | "agreement_create"
   | "agreement_edit"
   | "agreement_transition"
@@ -225,6 +230,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "quote_import_excel",
   "quote_preview",
   "quote_source_download",
+  "quote_source_workbook_view",
   "agreement_create",
   "agreement_edit",
   "agreement_transition",

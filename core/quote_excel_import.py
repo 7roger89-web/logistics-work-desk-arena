@@ -192,7 +192,12 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
     return {
         "schema": PARSER_VERSION, "goods": goods, "supplier": supplier,
         "source": {"file_name": file_name, "byte_size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
-                   "sheet_names": wb.sheetnames, "goods_sheet": sheet_name, "parser_version": PARSER_VERSION},
+                   "sheet_names": wb.sheetnames, "goods_sheet": sheet_name, "parser_version": PARSER_VERSION,
+                   # Evidence for the read-only original-workbook viewer: every
+                   # sheet that contained a recognised goods table. A second such
+                   # sheet is a duplicated internal calculation, not a customer
+                   # presentation.
+                   "table_sheets": [name for name, _ in tables]},
         "source_warnings": warnings, "source_facts": source_facts, "source_costs": source_costs,
         "disclosures": [{"id": k, "text": text, "selected": selected[i]} for i, (k, text) in enumerate(DISCLOSURES)],
         "additional_public_notes": "", "active_option": "A",

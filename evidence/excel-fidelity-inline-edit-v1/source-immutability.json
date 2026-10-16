@@ -1,0 +1,23 @@
+{
+  "syntheticFixture": true,
+  "sourceSha256BeforeEdits": "a3c6b58910f26ebae85ec58cb981040087277b71034e2ec5b24b101afbc68b1b",
+  "sourceSha256AfterEdits": "a3c6b58910f26ebae85ec58cb981040087277b71034e2ec5b24b101afbc68b1b",
+  "byteIdentical": true,
+  "gridfsFileId": "6ad1dd2a4a137e9b41e3f104",
+  "customerXlsxPackageEntries": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "docProps/app.xml",
+    "docProps/core.xml",
+    "xl/_rels/workbook.xml.rels",
+    "xl/drawings/_rels/drawing1.xml.rels",
+    "xl/drawings/drawing1.xml",
+    "xl/media/image1.png",
+    "xl/styles.xml",
+    "xl/theme/theme1.xml",
+    "xl/workbook.xml",
+    "xl/worksheets/_rels/sheet1.xml.rels",
+    "xl/worksheets/sheet1.xml"
+  ],
+  "note": "Editing the quotation never rewrites the customer's original file."
+}

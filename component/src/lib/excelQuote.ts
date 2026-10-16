@@ -54,8 +54,83 @@ export interface ExcelQuoteCalculation {
   estimate_vnd: number | null;
   unknown_reasons: string[];
 }
+/**
+ * LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — one text region of the customer document.
+ *
+ * `binding` is present only for a region whose text already owns a canonical
+ * quote field (goods name/model/material/note, service name, published note,
+ * scope, extra public notes, route/mặt hàng). Editing such a region writes that
+ * field. A region without a binding is presentation wording and is stored as a
+ * small override next to the quote. Amounts are never regions.
+ */
+export interface TextRegionBinding { scope: "header" | "goods" | "service" | "option"; field: string; key?: string; index?: number }
+export interface CustomerTextRegion {
+  id: string;
+  kind: "SHORT" | "LONG";
+  group: string;
+  label: string;
+  value: string;
+  default: string;
+  source: "SOURCE" | "SYSTEM_DEFAULT" | "SALE_EDITED" | "UNKNOWN";
+  editable: boolean;
+  bound: boolean;
+  binding: TextRegionBinding | null;
+  /** Legal entity / customer identity: formatting may change, a mismatch is warned. */
+  guarded: boolean;
+  mismatch: boolean;
+  multiline: boolean;
+}
+export interface CustomerTextMap {
+  schema: string;
+  regions: CustomerTextRegion[];
+  values: Record<string, string>;
+  overridden: string[];
+  mismatches: string[];
+  editable_region_count: number;
+}
+/** READ-ONLY view of the ORIGINAL uploaded workbook (sheet tabs + one sheet). */
+export interface WorkbookSheetInfo {
+  name: string; index: number; classification: "CUSTOMER" | "INTERNAL" | "UNCLASSIFIED";
+  state: string; row_count: number; column_count: number; merged_count: number;
+  not_rendered: Record<string, number>;
+}
+export interface WorkbookOverview {
+  sheet_names: string[];
+  sheets: WorkbookSheetInfo[];
+  customer_sheet: string;
+  fidelity: { supported: string[]; not_rendered: string[]; claim: string };
+}
+export interface WorkbookCell {
+  r: number; c: number;
+  value?: string | number | boolean;
+  display?: string;
+  kind?: "value" | "formula";
+  f?: string;
+  unknown?: boolean;
+  nf?: string;
+  font?: { bold?: boolean; italic?: boolean; size?: number; name?: string; color?: string };
+  fill?: string;
+  border?: string;
+  align?: { h?: string; v?: string; wrap?: boolean };
+}
+export interface WorkbookMerge { min_row: number; min_col: number; max_row: number; max_col: number; ref: string }
+export interface WorkbookPage {
+  sheet: string; sheet_index: number; classification: string; sheet_state: string;
+  row_count: number; column_count: number; read_only: boolean; locked: boolean;
+  cells: WorkbookCell[]; merges: WorkbookMerge[];
+  column_widths: Record<string, number>; row_heights: Record<string, number>;
+  hidden_rows: number[]; hidden_columns: string[]; frozen_panes: string;
+  truncated: boolean; limits: { max_rows: number; max_cols: number; max_cells: number };
+  reason?: string;
+}
+export interface WorkbookView {
+  read_only: boolean; sha256: string; file_name?: string;
+  overview: WorkbookOverview; page: WorkbookPage | null; note: string;
+}
 export interface ExcelQuoteDraft {
   schema: string;
+  /** Presentation-only customer wording, keyed by stable region id. */
+  customer_text?: { schema: string; overrides: Record<string, string> };
   goods: ExcelGoods[];
   supplier: string;
   source: { file_name: string; byte_size: number; sha256: string; sheet_names: string[]; goods_sheet: string; parser_version: string; storage_file_id?: string };
@@ -72,6 +147,8 @@ export interface ExcelQuoteDraft {
   calculation?: ExcelQuoteCalculation;
 }
 export interface CustomerQuotePreview {
+  /** Assigned when the quote is saved; the paper shows it when present. */
+  quote_no?: string;
   customer_name: string;
   goods_description: string;
   incoterm: string;
@@ -82,12 +159,16 @@ export interface CustomerQuotePreview {
   shipment: ExcelQuoteDraft["shipment"];
   expected_delivery_date?: string;
   goods: Omit<ExcelGoods, "id" | "source_sheet" | "source_row">[];
-  service_lines: Pick<ExcelService, "service_name" | "unit" | "qty" | "currency" | "sell_unit" | "sell_total" | "tax_pct" | "tax_total" | "public_note" | "condition">[];
+  service_lines: Pick<ExcelService, "id" | "service_name" | "unit" | "qty" | "currency" | "sell_unit" | "sell_total" | "tax_pct" | "tax_total" | "public_note" | "condition">[];
   customer_notes: string[];
   goods_calculation: ExcelQuoteCalculation;
   services_calculation: ServiceCalculation;
   customs: { calculable: boolean; basis_vnd: number | null; duty_pct: number | null; vat_pct: number | null; duty_vnd: number | null; vat_vnd: number | null; total_vnd: number | null };
   fx_snapshot: { rates_to_vnd: Record<string, number> };
+  /** Resolved customer text map — the SAME map the XLSX exporter reads. */
+  text?: CustomerTextMap;
+  /** Ids of the published disclosure lines, so each has its own text region. */
+  published_notes?: Array<{ id: string; text: string }>;
 }
 export const quoteRequestId = () => `excel-quote-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export const emptyExcelService = (): ExcelService => ({
