@@ -1,15 +1,17 @@
 # Mở đúng bản LOGI #199 — 8932fcb
 
-**Trạng thái: CHƯA NGHIỆM THU. Independent Review INCOMPLETE; Windows chưa chạy thử thật.**
-Đây là snapshot nguồn đúng commit để chuẩn bị chạy thử, không phải bản release
-đã được reviewer phê duyệt. Chưa bắt đầu Owner UAT chính thức trước review PASS.
+**Trạng thái: INDEPENDENT_REVIEW=PASS_BOUNDED_A_B_PAPER. Owner được bắt đầu thử bản cô lập trên Windows; Windows chưa có PASS.**
+Review độc lập của ChatGPT Control Tower (không phải Writer) đã kiểm mã nguồn,
+ảnh Chromium và 4 SHA-256 trên đúng commit; reviewer KHÔNG chạy trình duyệt mới.
+Kết quả có tại [biên bản review](INDEPENDENT_REVIEW_RESULT-8932fcb.md).
+Bản này dành cho dùng thử bằng dữ liệu mẫu, chưa phải ứng dụng sản xuất.
 
 File: **logi199-8932fcb-source-candidate.zip** (75,236,991 bytes).
 App commit: **8932fcb4aa2e7705b1e0963a830758bd3d9849ae**.
 SHA-256 ZIP: `04bade45872e4793a231e7f2fc53c19c8aa5ade1679f2885f9947143a9e54a0f`.
 Không dùng ZIP/tag cũ `logi199-owner-trial` (3533144).
 
-## Windows — ba bước sau khi reviewer PASS
+## Windows — ba bước bắt đầu thử bản đã review
 
 1. Chuẩn bị **Python 3.11 x64**, chọn **Add python.exe to PATH**, có Internet
    để cài thư viện. Không cần Node/npm hoặc MongoDB. Đây là điều kiện cần,
@@ -44,14 +46,18 @@ hướng dẫn này và UAT guide mới tại nhánh bàn giao. Source/dist khô
   với target CPython 3.11 / win_amd64. Chưa cài dependency đầy đủ trên Windows,
   chưa chạy `.cmd`, chưa mở app trên Windows. **Windows/Mac PASS không được tuyên bố.**
 
-## Blocker còn lại
+## Việc còn phải kiểm
 
-Independent Reviewer chưa được giao thành công: phiên không có công cụ gọi
-reviewer độc lập; đăng handoff lên issue #199 bị từ chối quyền
-`Resource not accessible by integration`. Không có independent PASS.
-Owner/Control Tower cần chuyển file `INDEPENDENT_REVIEW_REQUEST.md` cho reviewer
-riêng. Không tự ký PASS thay reviewer.
+Writer trước đây không gửi được Issue #199 vì thiếu quyền comment; việc đó
+không còn là blocker của phép review A/B/paper: một actor ChatGPT Control Tower
+khác Writer đã ghi review PASS có giới hạn trên chính nhánh GitHub.
+**WINDOWS_RUNTIME=NOT_RUN**, **OWNER_UAT=NOT_RUN**, nên Owner vẫn phải mở thử trên
+máy Windows và phản hồi lỗi nếu có. Không có Windows PASS trước khi thực sự chạy.
 
 Chưa có link web riêng tư/an toàn được kiểm từ ngoài sandbox. Không phát sinh
 hosting/chi phí, không public app bỏ auth, không merge main/deploy production.
+
+Nếu dùng link GitHub archive từ UAT.md thay vì ZIP mà Writer tải xuống máy Arena,
+tên và SHA-256 **container ZIP** có thể khác; source phải ở đúng commit `8932fcb`.
+Không so hash ZIP GitHub với hash file git-archive riêng của Writer.
 Gói này chỉ là **candidate**, không phải thông báo DONE hay cam kết Owner đã mở được.
