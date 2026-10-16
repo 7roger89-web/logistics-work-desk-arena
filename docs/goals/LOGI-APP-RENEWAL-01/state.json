@@ -5,9 +5,9 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "arena/bb243332-logistics-work-desk-arena",
+  "active_branch": "arena/3851e3be-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "SOURCE_AND_CURRENT_EVIDENCE_PUSHED__GITHUB_READBACK_PASS__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
+  "stage": "INDEPENDENT_REVIEW_PASS_G2_JOURNEY_UI__OWNER_TRIAL_PACKAGE_READY__OWNER_UAT_NOT_RUN",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -16,7 +16,9 @@
     "T4": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T5": "HISTORICAL: successful T5 audit/CI claims remain bound to tested source 1889d2a… and Actions 38683678222; not current-source verification.",
     "T6": "HISTORICAL PRE-REPAIR: Actions 38683678222 PASS at exact tested 1889d2a…; preserved as historical CI only.",
-    "G2_REPAIR": "Current-source G2 evidence is committed and pushed. Source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d are reachable on the fixed branch; GitHub API returned readable commit objects and content metadata for source, dist, raw metrics, four requested screenshots, state, UAT, README, and reviewer handoff. Raw browser capture source SHA remains 751f64f… and its commit-ID mapping is disclosed as NOT_VERIFIED. Independent Review and Owner UAT remain pending."
+    "G2_REPAIR": "Current-source G2 evidence is committed and pushed. Source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d are reachable on the fixed branch; GitHub API returned readable commit objects and content metadata for source, dist, raw metrics, four requested screenshots, state, UAT, README, and reviewer handoff. Raw browser capture source SHA remains 751f64f… and its commit-ID mapping is disclosed as NOT_VERIFIED. Independent Review and Owner UAT remain pending.",
+    "G2_REVIEW": "Owner-provided gate: Independent Supervisor PASS for the bounded Journey G2 interface (Vietnam map, 11 nodes, zero-node, touch-pan, save/readback on sample data) at reviewed HEAD 7ef144c22081d64806fde6e3149c4d69afd1552a. This continuation verified that exact HEAD existed and reset its worktree to it; component/dist hashes were re-derived and match the recorded values (JS 3b650f8f…, CSS 412f27aa…). Independent review of the FULL goal is not claimed.",
+    "OWNER_TRIAL_DELIVERY": "Delivered the smallest safe way for the Owner to open the app: private platform preview of the isolated trial app on port 9501 plus a new macOS double-click launcher (MO-APP-DUNG-THU-MAC.command) that reuses the reviewed fail-closed staging launcher scripts/logi199_t6_staging_app.py. Receipt: evidence/logi-199-uat/OWNER_TRIAL_READINESS.md. No cloud service, no cost, no new access, no production data."
   },
   "verified_before_work": [
     "Main React/Streamlit architecture and current execution-profile authorities inspected",
@@ -29,8 +31,8 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Independent reviewer gate PENDING; review only the opened zero-map pointer/CTA/current-source evidence findings.",
-    "Owner UAT and production authorization remain closed until Independent Review PASS; main merge/deploy are not authorized.",
+    "Owner UAT is now OPEN and awaiting the Owner's own use and feedback; the trial app runs on isolated Mongomock sample data only.",
+    "Pre-handover limits (not blockers): macOS launcher runtime and Windows launcher runtime were not executed (macOS/Windows hosts unavailable); no browser binary in this host, so no new pixel capture — visual evidence of record remains the reviewed G2 capture.",
     "Preserve unrelated auth/bootstrap/finance coverage gaps and reproduced snapshot retry-idempotency blocker; this slice does not waive them.",
     "GitHub Actions CI is NOT_TRIGGERED because checked-in push-workflow branch filters omit the fixed Arena branch.",
     "Legacy payment DOM oracles retain previously reproduced pre-payment fixture/navigation failures; payment logic was not changed and broad historical QA was not rerun.",
@@ -46,7 +48,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Request Independent Review of the bounded pointer/CTA findings and disclosed raw-capture source-SHA reconciliation. Owner UAT remains NOT_READY until Independent Review PASS; do not merge main or deploy production.",
+  "next": "Owner opens the trial app (preview link, or MO-APP-DUNG-THU-MAC.command on macOS / scripts/logi199_uat.cmd on Windows) and reports PASS/FAIL with screenshots. Owner UAT stays open until then. Do not merge main or deploy production.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -65,7 +67,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Non-force push and GitHub readback PASS for source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d; remote contents are readable. This status checkpoint records that verification. Independent Review pending; Owner UAT not ready.",
+  "current_subtask": "Owner trial delivery: private preview + macOS double-click launcher + 3-step Owner guide; pre-handover checks recorded in evidence/logi-199-uat/OWNER_TRIAL_READINESS.md. Owner UAT open, not run.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -102,7 +104,7 @@
     "receipt_status": "HISTORICAL_PRE_REPAIR_NOT_CURRENT_SOURCE_VERIFICATION",
     "current_repair_note": "See g2_repair_20261015 and evidence/logi-199-g2/metrics.json."
   },
-  "branch_constraint": "All current work stays on fixed Arena branch arena/bb243332-logistics-work-desk-arena; no other branch. No main merge; no production deploy.",
+  "branch_constraint": "All current work stays on arena/3851e3be-logistics-work-desk-arena (branched from reviewed HEAD 7ef144c on arena/bb243332-logistics-work-desk-arena); no other branch. No main merge; no production deploy.",
   "source_receipt_t0_historical": {
     "branch_head_before_state_update": "e6faa36a74817a12487d37b9324e948da3a6e704",
     "changed_files": 8,
@@ -452,12 +454,12 @@
     "no_deploy_production": "YES"
   },
   "overengineering_evaluation": {
-    "SIMPLER_PATH": "YES — reuse current Journey map, isolated launcher, existing capture and focused DOM tests.",
-    "MATERIAL_PROGRESS": "YES — fixes decorative empty-map gesture behavior and verifies required current-source interactions.",
-    "NECESSITY": "YES — explicit open acceptance criterion.",
-    "CORE_BEFORE_SUPPORT": "YES — core map/CTA behavior first; no new framework or QA platform.",
-    "SMALLER_VERIFIABLE_SLICE": "YES — focused source/dist, DOM/hook, and existing browser evidence; no G0–G5/full-suite rerun.",
-    "OE_VERDICT": "DO_IT for the bounded current-work completion; SKIP_IT for redesign/framework/full-suite ceremony."
+    "SIMPLER_PATH": "YES — reuse the reviewed launcher, bundle, isolated Mongomock transport and existing platform preview",
+    "MATERIAL_PROGRESS": "YES — the Owner can open and use the app now",
+    "NECESSITY": "YES — the Owner's single stated goal",
+    "CORE_BEFORE_SUPPORT": "YES — app open first; documentation minimal and after",
+    "SMALLER_VERIFIABLE_SLICE": "YES — health + real dispatcher readback + map/data presence; no full-suite or G0–G5 ceremony",
+    "OE_VERDICT": "DO_IT for the bounded delivery; SKIP_IT for new tunnel/deploy/UI change"
   },
   "preflight_receipts": {
     "P2P_LAW_SOURCE": "LOCAL_PORTABLE",
@@ -477,34 +479,53 @@
     "classification": {
       "INITIAL_PLANNING_CLASSIFICATION": "UIUX",
       "FINAL_ROUTING_CLASSIFICATION": "UIUX"
-    }
+    },
+    "reviewed_head": "7ef144c22081d64806fde6e3149c4d69afd1552a (verified present via git fetch; worktree clean before and after)",
+    "review_gate_source": "INDEPENDENT_REVIEW=PASS for the bounded Journey G2 interface scope, provided by the Owner's order for this task; not self-signed by this session.",
+    "oe_gate": "SIMPLER_PATH=YES; MATERIAL_PROGRESS=YES; NECESSITY=YES; CORE_BEFORE_SUPPORT=YES; SMALLER_VERIFIABLE_SLICE=YES; OE_VERDICT=DO_IT (reuse the reviewed launcher/bundle/transport; SKIP_IT for any new tunnel, deployment, or UI change).",
+    "learning_reconciliation": "NONE (routine delivery/handoff; no reusable correction)"
   },
-  "owner_uat_ready": "NO",
+  "owner_uat_ready": "YES",
   "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
   "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
   "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw capture commit is not fetchable, published candidate hashes match capture dist/harness.",
   "production_ready": "NO",
   "publication_status": {
-    "branch": "arena/bb243332-logistics-work-desk-arena",
-    "branch_push": "PASS — non-force fast-forward; source and evidence/docs checkpoint pushed.",
-    "source_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
-    "evidence_docs_commit_sha": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
-    "remote_head_at_evidence_readback": "5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d",
-    "remote_verification": "PASS via git ls-remote and GitHub API commit/content reads.",
-    "readable_remote_paths": [
-      "evidence/logi-199-g2/README.md",
-      "evidence/logi-199-g2/REVIEWER_HANDOFF.md",
-      "evidence/logi-199-g2/metrics.json",
-      "evidence/logi-199-g2/current-source/metrics.json",
-      "evidence/logi-199-g2/current-source/desktop-t6-fcl-journey-initial.png",
-      "evidence/logi-199-g2/current-source/mobile-t6-fcl-journey-initial.png",
-      "evidence/logi-199-g2/current-source/desktop-zero-node-initial.png",
-      "evidence/logi-199-g2/current-source/mobile-zero-node-initial.png",
-      "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
-      "docs/goals/LOGI-APP-RENEWAL-01/state.json",
-      "component/dist/logi-shell.js",
-      "component/dist/logi-shell.css"
-    ],
+    "branch": "arena/3851e3be-logistics-work-desk-arena",
+    "parent_reviewed_head": "7ef144c22081d64806fde6e3149c4d69afd1552a",
+    "reviewed_artifact_zip": "https://github.com/7roger89-web/logistics-work-desk-arena/archive/7ef144c22081d64806fde6e3149c4d69afd1552a.zip",
+    "trial_package_zip": "https://github.com/7roger89-web/logistics-work-desk-arena/archive/refs/heads/arena/3851e3be-logistics-work-desk-arena.zip",
     "issue_comment": "NOT_REQUIRED; prior permission error is not a release gate."
+  },
+  "parent_reviewed_branch": "arena/bb243332-logistics-work-desk-arena",
+  "reviewed_head": "7ef144c22081d64806fde6e3149c4d69afd1552a",
+  "owner_uat": "NOT_RUN — Owner UAT completes only after the Owner actually uses the trial app and reports back",
+  "trial_delivery_receipt": {
+    "delivered_by_session_branch": "arena/3851e3be-logistics-work-desk-arena",
+    "surfaces": [
+      "private platform preview bound to the isolated trial app (0.0.0.0:9501, /_stcore/health = 200 ok)",
+      "MO-APP-DUNG-THU-MAC.command (macOS double-click trial launcher; reuses scripts/logi199_t6_staging_app.py)",
+      "scripts/logi199_uat.cmd (existing Windows launcher, unchanged)"
+    ],
+    "pre_handover_checks": {
+      "app_boot": "PASS — AppTest of the exact launcher: APP_BOOT_EXCEPTIONS=0 after STAGING_ISOLATION_PROOF=PASS; live server healthy on :9501",
+      "vietnam_map_background": "PASS (asset + wiring) — vietnam-east-sea-chart.webp shows VIỆT NAM / BIỂN ĐÔNG / Quần đảo Hoàng Sa (Việt Nam) / Quần đảo Trường Sa (Việt Nam); referenced as the Journey map background and inlined in the reviewed bundle. No new pixel capture possible in this host.",
+      "T6_FCL_full_journey": "PASS — canonical view model over trial fixtures: 11 nodes / 11 edges, populated map-first Journey (no split/full-rail fallback)",
+      "SEA_188_zero_node": "PASS — created via canonical shipment_create: journeyNodes=0, PROFILE_INCOMPLETE, no service scope/mode/incoterm/legs; one truthful CTA",
+      "node_click_bubble_form": "PASS (component contract on the reviewed bundle) — zero-node nodes=[] and missing-journey DOM acceptance PASS; same-instance hook transition PASS both directions",
+      "save_readback_test_data": "PASS — shipment_sea_facts_save on isolated Mongomock: T6-FCL ON BOARD on_board_at=2026-10-04, ok=true, version 1→2, readback matches, no production write",
+      "stop_app": "PASS — Control + C / close window; in-memory sample data disappears"
+    },
+    "not_verified": [
+      "macOS launcher runtime (executed on Linux only; logic and guards verified, macOS/Gatekeeper not run)",
+      "Windows launcher runtime (unchanged, still NOT_RUN)",
+      "external reachability of the platform preview URL from outside the sandbox (inside: healthy 0.0.0.0:9501 server)",
+      "no new real-browser capture in this host (BROWSER_CAPABILITY=UNAVAILABLE)"
+    ],
+    "artifacts": [
+      "evidence/logi-199-uat/OWNER_TRIAL_READINESS.md (this session's preflight + pre-handover receipt)",
+      "docs/goals/LOGI-APP-RENEWAL-01/UAT.md (Owner 3-step guide; reviewed-artifact ZIP bound to 7ef144c)",
+      "MO-APP-DUNG-THU-MAC.command"
+    ]
   }
 }
