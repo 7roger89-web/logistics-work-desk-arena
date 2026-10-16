@@ -153,8 +153,7 @@ body {
 .journey-split.journey-map-first { display: block; height: auto; min-height: 0; gap: 0; }
 .journey-split.journey-map-first .journey-canvas {
   display: block; width: 100%; height: clamp(500px, calc(100vh - 265px), 635px); min-height: 500px; border-radius: 12px;
-  border: 1px solid #D6DEE7; background-color: #dce8f3;
-  background-size: cover, 100% 100%; background-position: center 46%, center center; background-repeat: no-repeat, no-repeat;
+  border: 1px solid #D6DEE7; background-color: #EDF1F5; background-image: none;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); touch-action: none;
 }
 .journey-zero-map-first { position: relative; width: 100%; }

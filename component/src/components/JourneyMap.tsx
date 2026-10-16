@@ -2,13 +2,12 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { CheckCircle2, Circle, Clock, CircleAlert, MapPin, FileText, TriangleAlert } from 'lucide-react';
 import type { JourneyNode, Shipment } from '../lib/viewmodel';
 import { cx } from '../lib/format';
-// Owner-approved pale Vietnam / Bien Dong nautical wallpaper (2026-10-15).
-// Vite library build inlines this local WebP; no external image URL or separate runtime asset request.
-import chartPaperUrl from '../assets/journey/vietnam-east-sea-chart.webp?url';
+// Owner-approved paper chart texture extracted verbatim from the approved HTML oracle.
+// Vite library build inlines this local JPEG; no external image URL or separate runtime asset request.
+import chartPaperUrl from '../assets/journey/chart-paper.jpg?url';
 
 // G2 (LOGI-199 Owner Visual Fidelity Override, 15/10/2026) + N2 refinement:
-// the map is the primary canvas over the Vietnam / Biển Đông / Hoàng Sa /
-// Trường Sa decorative chart (`vietnam-east-sea-chart.webp`).
+// the map is the primary canvas over the Owner-approved paper chart texture.
 // Main node row (ROW_MAIN) is vertically symmetric between ROW_TOP and
 // ROW_BOTTOM so auto-fit places the main route at the vertical center (50%)
 // of the desktop canvas, matching the Owner HTML oracle (`ref-01`).
@@ -174,8 +173,22 @@ export default function JourneyMap({
       onPointerDown={nodes.length ? pan : undefined}
       data-testid="journey-map-viewport"
       aria-label={nodes.length ? 'Journey Map, kéo để di chuyển, cuộn để zoom' : 'Journey Map trống, không có công đoạn để di chuyển'}
-      style={{ backgroundImage: `url(${chartPaperUrl}), linear-gradient(180deg, #cfdfec 0%, #e4ebf4 48%, #c4d7e3 100%)` }}
+      style={{ backgroundColor: '#EDF1F5' }}
     >
+      {/* Owner-approved paper chart texture (extracted verbatim from the approved HTML oracle). */}
+      <div
+        aria-hidden="true"
+        data-testid="journey-map-texture"
+        className="pointer-events-none absolute inset-0 opacity-[0.34] mix-blend-multiply"
+        style={{ backgroundImage: `url(${chartPaperUrl})`, backgroundSize: '760px', backgroundRepeat: 'repeat' }}
+      />
+      {/* Owner-approved coordinate grid (52 x 52 px). */}
+      <div
+        aria-hidden="true"
+        data-testid="journey-map-grid"
+        className="pointer-events-none absolute inset-0"
+        style={{ backgroundImage: 'linear-gradient(rgba(120,146,170,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(120,146,170,0.16) 1px, transparent 1px)', backgroundSize: '52px 52px' }}
+      />
       {topRightOverlay}
 
       <div className={cx("absolute left-0 top-0 origin-top-left", bubbleNode && "z-30")} style={{ width: canvasWidth, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">

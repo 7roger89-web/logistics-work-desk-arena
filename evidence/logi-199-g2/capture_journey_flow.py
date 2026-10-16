@@ -490,7 +490,11 @@ def capture_zero_node(
             pointerEvents: css.pointerEvents, backgroundImage: css.backgroundImage};
         }"""
     )
-    background_image = str(style.get("backgroundImage") or "")
+    texture = page.locator('[data-testid="journey-map-texture"]')
+    texture_image = ""
+    if texture.count():
+        texture_image = str(texture.evaluate("el => getComputedStyle(el).backgroundImage") or "")
+    background_image = texture_image or str(style.get("backgroundImage") or "")
     transform_before = map_transform(page)
     overflow = viewport_overflow(page)
     route_text = page.get_by_test_id("journey-compact-toolbar").inner_text().strip()
@@ -509,7 +513,7 @@ def capture_zero_node(
             "cursor": style["cursor"],
             "touchAction": style["touchAction"],
             "pointerEvents": style["pointerEvents"],
-            "approved_vietnam_chart_data_image_loaded": "data:image/webp" in background_image,
+            "approved_owner_chart_paper_loaded": "data:image/jpeg" in background_image,
         },
         "transform_before_pointer": transform_before,
         "node_count": node_count,
@@ -540,8 +544,8 @@ def capture_zero_node(
         raise AssertionError("Zero-node Journey map viewport must fill its map-first shell.")
     if record["computed_style"]["cursor"] != "default" or record["computed_style"]["touchAction"] != "auto":
         raise AssertionError(f"Empty chart viewport is still gesture-styled: {record['computed_style']!r}.")
-    if not record["computed_style"]["approved_vietnam_chart_data_image_loaded"]:
-        raise AssertionError("Owner-selected Vietnam chart data-image is not rendered on the zero-node map.")
+    if not record["computed_style"]["approved_owner_chart_paper_loaded"]:
+        raise AssertionError("Owner-approved paper chart texture is not rendered on the zero-node map.")
     if not record["unknown_phase_stays_unconfirmed"]:
         raise AssertionError("Zero-node toolbar must keep the current Journey phase unconfirmed.")
 
