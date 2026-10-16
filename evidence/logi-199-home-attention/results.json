@@ -86,6 +86,7 @@
     "changed_path_and_review_comparison": "PASS; full file lists and available submitted reviews/conversation notes compared; no duplicate Home source change or focused test.",
     "adjacent_scope": "#200/#204 modify the child AttentionNow component used on Home; this slice changes only Home grid alignment, so their typography/text behavior is distinct and composable.",
     "generated_artifact_overlap": "component/dist/logi-shell.js and component/dist/logi-shell.css are shared generated paths across several open drafts; rebuild from selected integrated sources when branches are combined.",
-    "other_scope_summary": "#198 Journey/ShipmentDetail; #201-203 mode/Journey truth; #205-206 quotation/workbook flows. No branches or files from those PRs modified."
+    "other_scope_summary": "#198 Journey/ShipmentDetail; #201-203 mode/Journey truth; #205-206 quotation/workbook flows. No branches or files from those PRs modified.",
+    "timing": "Completed after draft PR #207 was opened, because the prior checkpoint identified the full comparison as outstanding; no duplicate Home source/test was found."
   }
 }

@@ -19,7 +19,7 @@
 
 ## Open-PR overlap audit (#198, #200–206)
 
-Compared the full changed-path lists and submitted reviews/conversation findings for open drafts #198 and #200–206 before treating #207 as an incremental slice:
+After opening draft #207, completed the full changed-path and available submitted review/conversation audit for open drafts #198 and #200–206 to close the outstanding pre-PR check; no duplicate Home source or focused test was found:
 
 - No PR in that set changes `component/src/pages/Home.tsx` or the focused Home layout test. #198 is Journey/ShipmentDetail work; #201–203 are shipment-mode/Journey truth; #205–206 are quotation/workbook flows.
 - #200 and #204 do change the child `AttentionNow.tsx` used by Home (mobile text behavior/typography); this slice only adjusts the parent Home grid alignment. They are adjacent, composable scopes, not a duplicate. Their broader reviews still reject the respective whole-runtime/integration claims; this PR does not claim to close those findings.
