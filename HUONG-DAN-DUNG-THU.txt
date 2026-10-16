@@ -1,0 +1,62 @@
+===========================================================
+LOGISTICS WORK DESK - GOI DUNG THU (du lieu mau, khong phai du lieu that)
+===========================================================
+
+Goi nay da co san phan giao dien da dong goi. Khong can GitHub, khong can
+go lenh. Chi can bam chuot.
+
+-----------------------------------------------------------
+CACH MO (lam 1 lan moi khi dung)
+-----------------------------------------------------------
+1. Giai nen goi ZIP nay ra mot thu muc MOI (vi du: Desktop).
+   - Dung giai nen vao thu muc dang chua ung dung that cua cong ty.
+
+2. Neu dung MAY MAC:
+   Nhap dup vao tep:  MO-APP-DUNG-THU-MAC.command
+   - Neu macOS hien canh bao: nhap CHUOT PHAI vao tep -> chon "Open"
+     -> bam "Open" lan nua.
+   - Neu nhap dup ma tep mo ra bang trinh soan thao (thay vi chay):
+     nhap CHUOT PHAI vao tep -> "Open With" -> chon "Terminal".
+   - Lan chay dau tien mat 1-3 phut de tu cai thu vien (can Internet).
+   - Trinh duyet se tu mo ung dung. Neu chua mo, bam vao:
+     http://localhost:9501
+
+3. Neu dung WINDOWS:
+   Nhap dup vao tep:  MO-APP-DUNG-THU-WINDOWS.cmd
+   (May can co Python 3.11 tro len. Neu chua co, Windows se bao va mo trang
+   tai Python mien phi.)
+
+-----------------------------------------------------------
+TAT UNG DUNG
+-----------------------------------------------------------
+Dong cua so den vua hien ra (hoac bam Control + C trong cua so do).
+Du lieu mau trong bo nho se tu bien mat - khong con gi tren may.
+
+-----------------------------------------------------------
+THU NHUNG GI (khoang 5 phut)
+-----------------------------------------------------------
+1. Mo lo T6-FCL  -> phai thay so do Journey day du 11 cong doan tren nen
+   ban do bien Viet Nam (co chu VIET NAM, BIEN DONG, Hoang Sa, Truong Sa).
+2. Bam vao mot node tren ban do (vi du ON BOARD) -> bong bong thong tin va
+   form cong viec mo ra ben phai.
+3. Mo lo SEA-188 -> phai bao dung "chua co so do Journey", khong bia cong doan.
+4. Trong form ON BOARD: go ngay thu 2026-10-04 -> bam "Luu moc co bang chung"
+   -> tai lai trang (F5) -> ngay do van con. (Day chi la du lieu thu.)
+5. Tren dien thoai: dung ngon tay keo ban do de di chuyen.
+
+-----------------------------------------------------------
+CAN GIUP HOAC MUON PHAN HOI
+-----------------------------------------------------------
+Chup anh man hinh cho dung / cho chua dung, ghi PASS hay FAIL cho tung muc,
+roi gui lai cho nguoi phu trach. Khong can tu sua gi trong goi nay.
+
+-----------------------------------------------------------
+GHI CHU KY THUAT (khong can doc neu chi muon dung thu)
+-----------------------------------------------------------
+Ung dung chay bang du lieu mau trong bo nho tam (Mongomock), khong ket noi
+co so du lieu that, khong ghi vao he thong that, khong can tai khoan that.
+Giao dien da duoc dong goi san (component/dist) va khop voi ban da duoc
+nghiem thu: logi-shell.js SHA-256
+3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c
+logi-shell.css SHA-256
+412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb

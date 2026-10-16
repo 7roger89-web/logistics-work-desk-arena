@@ -54,3 +54,6 @@ docs/goals/LOG-LG02/backups/
 component/node_modules/
 # Hook-transition test build output (rebuildable; see dom_hook_transition_197.mjs)
 tests/component/dist-test/
+
+# Owner trial package (generated, distributed outside Git)
+LOGI199-GOI-DUNG-THU.zip

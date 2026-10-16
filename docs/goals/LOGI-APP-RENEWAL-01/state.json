@@ -7,7 +7,7 @@
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
   "active_branch": "arena/3851e3be-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "INDEPENDENT_REVIEW_PASS_G2_JOURNEY_UI__OWNER_TRIAL_PACKAGE_READY__OWNER_UAT_NOT_RUN",
+  "stage": "OWNER_PREVIEW_ACCESS_RAW_URL_BLOCKED_403_TOKEN_GATED__SELF_CONTAINED_TRIAL_PACKAGE_VERIFIED__OWNER_UAT_OPEN_NOT_RUN",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -32,7 +32,8 @@
   ],
   "blockers": [
     "Owner UAT is now OPEN and awaiting the Owner's own use and feedback; the trial app runs on isolated Mongomock sample data only.",
-    "Pre-handover limits (not blockers): macOS launcher runtime and Windows launcher runtime were not executed (macOS/Windows hosts unavailable); no browser binary in this host, so no new pixel capture — visual evidence of record remains the reviewed G2 capture.",
+    "Raw preview URL is blocked by platform token-gated private access (403 e2b-traffic-access-token); Owner access therefore relies on the arena LIVE PREVIEW panel (NOT_VERIFIED here) or the downloaded trial package (verified). No new hosting/tunnel was created.",
+    "macOS launcher runtime and Windows launcher runtime remain NOT_RUN (no macOS/Windows host in this sandbox); the launcher was executed end-to-end on Linux from a fresh extraction of the delivered ZIP.",
     "Preserve unrelated auth/bootstrap/finance coverage gaps and reproduced snapshot retry-idempotency blocker; this slice does not waive them.",
     "GitHub Actions CI is NOT_TRIGGERED because checked-in push-workflow branch filters omit the fixed Arena branch.",
     "Legacy payment DOM oracles retain previously reproduced pre-payment fixture/navigation failures; payment logic was not changed and broad historical QA was not rerun.",
@@ -48,7 +49,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Owner opens the trial app (preview link, or MO-APP-DUNG-THU-MAC.command on macOS / scripts/logi199_uat.cmd on Windows) and reports PASS/FAIL with screenshots. Owner UAT stays open until then. Do not merge main or deploy production.",
+  "next": "Owner downloads LOGI199-GOI-DUNG-THU.zip from this session's file viewer, unzips into a NEW folder and double-clicks MO-APP-DUNG-THU-MAC.command (Windows: MO-APP-DUNG-THU-WINDOWS.cmd). Alternatively try the arena LIVE PREVIEW panel while this session is alive. Owner UAT stays open until the Owner reports PASS/FAIL. No main merge, no production deploy.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -499,7 +500,7 @@
   },
   "parent_reviewed_branch": "arena/bb243332-logistics-work-desk-arena",
   "reviewed_head": "7ef144c22081d64806fde6e3149c4d69afd1552a",
-  "owner_uat": "NOT_RUN — Owner UAT completes only after the Owner actually uses the trial app and reports back",
+  "owner_uat": "NOT_RUN — awaiting the Owner's own use and feedback (Mac/Windows package or the in-session preview panel)",
   "trial_delivery_receipt": {
     "delivered_by_session_branch": "arena/3851e3be-logistics-work-desk-arena",
     "surfaces": [
@@ -527,5 +528,17 @@
       "docs/goals/LOGI-APP-RENEWAL-01/UAT.md (Owner 3-step guide; reviewed-artifact ZIP bound to 7ef144c)",
       "MO-APP-DUNG-THU-MAC.command"
     ]
+  },
+  "owner_access_receipt": {
+    "diagnosis_method": "External fetch through the platform harness (outside the sandbox) plus in-sandbox probes; no localhost-only claim was accepted.",
+    "previous_link_https_9501_iy8u55letdgw3pj2zik7m_e2b_app": "502 Bad Gateway — 'Sandbox not found. The sandbox iy8u55letdgw3pj2zik7m wasn't found.' The previous sandbox was destroyed; the link died with it. Not a Streamlit, WebSocket, DNS or app defect.",
+    "current_sandbox": "itob6xjzlw38yfqeywv27 (this session). E2B_SANDBOX_ID changed between turns; the preview host embeds the sandbox id, so every sandbox replacement invalidates the old host.",
+    "raw_url_access_verdict": "BLOCKED — the sandbox is created with restricted public traffic. External fetch of https://9501-itob6xjzlw38yfqeywv27.e2b.app/ returned 403 'Missing traffic access token ... requires a traffic access token'. The gate is the e2b-traffic-access-token HTTP header (E2B docs: restrict-public-access); a phone/desktop address bar cannot send that header, so a bare link can never work. No token is exposed inside the sandbox and creating hosting/tunnels or flipping public access was NOT done (Owner consent required).",
+    "platform_preview_panel": "NOT_VERIFIED from this session — the Arena LIVE PREVIEW panel is the platform's own token-aware surface and cannot be exercised from inside the sandbox (no browser binary, egress allowlist excludes the preview host TLS path). The app side is proven: bound to 0.0.0.0:9501, GET /_stcore/health = 200 ok, no frame-blocking headers, preview-Host/Origin request = 200.",
+    "delivered_durable_path": "LOGI199-GOI-DUNG-THU.zip (5.2 MB, 382 entries) built from this branch and verified by fresh extraction: launcher created .venv, installed requirements, started the app on a free port; APP_BOOT_EXCEPTIONS=0 after STAGING_ISOLATION_PROOF=PASS (Mongomock, db=logistics_staging, real_uri=NO); T6-FCL nodes=11/edges=11 PROFILE_READY; SEA-188 nodes=0 PROFILE_INCOMPLETE. component/dist hashes inside the package match the reviewed artifact exactly.",
+    "owner_facing_verdicts": {
+      "OWNER_PREVIEW_ACCESS": "BLOCKED for a bare URL (proved externally by 403 token gate); NOT_VERIFIED for the platform preview panel; PASS for the self-contained package on Linux (macOS runtime NOT_RUN).",
+      "no_false_link_claim": "The dead link is withdrawn; no replacement raw link is offered because none can pass the token gate."
+    }
   }
 }

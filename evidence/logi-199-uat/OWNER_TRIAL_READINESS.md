@@ -64,9 +64,11 @@ REVIEWED_HEAD=7ef144c22081d64806fde6e3149c4d69afd1552a
 
 | # | Surface | Verified how |
 |---|---|---|
-| 1 | Private platform preview of this sandbox (`https://<port>-<sandboxId>.e2b.app`) bound to the running app | Real process: `.venv/bin/python -m streamlit run scripts/logi199_t6_staging_app.py --server.port 9501 --server.address 0.0.0.0`; `GET /_stcore/health` → `200 ok`; `GET /` → `200` with no `X-Frame-Options`/CSP frame-ancestors (checked by response headers: neither header present), so the platform preview can embed it; a request carrying the preview `Host` + `Origin` headers also returned `200`, i.e. no host/origin allowlist rejects the preview. Reachability of the proxied URL itself is platform-provided and cannot be re-verified from inside this sandbox, so the platform's own preview panel remains the primary surface. |
-| 2 | `MO-APP-DUNG-THU-MAC.command` (double-click trial launcher for macOS) | New file, no app logic rewritten. `bash -n` syntax OK; real end-to-end run on this Linux host: created/reused `.venv`, installed requirements, refused when `.streamlit/secrets.toml` was present (tested in `/tmp`), picked a free port (9501 busy → 9502), started the app, `GET :9502/_stcore/health` → `200`. The macOS-only `open` call is guarded and not part of the pass/fail path. **macOS runtime itself: NOT_RUN** (no macOS host available). |
-| 3 | Existing Windows launcher `scripts/logi199_uat.cmd` (from reviewed HEAD) | Reused unchanged; not rewritten. Windows runtime was already recorded as NOT_RUN in the reviewed evidence and remains so. |
+| 1 | **`LOGI199-GOI-DUNG-THU.zip`** (self-contained trial package, offered in this session's file viewer) | Built with `tar` excludes + `zipfile` (launcher stored `0755`). Verified by fresh extraction in a clean directory: `bash MO-APP-DUNG-THU-MAC.command` created `.venv`, installed `requirements.txt`, picked a free port (9501 busy → 9502) and served `GET /_stcore/health` → `200`; then `AppTest` boot of the extracted package: `APP_BOOT_EXCEPTIONS=0` after `STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO`, `T6-FCL : 11 nodes / 11 edges / PROFILE_READY`, `SEA-188 : 0 nodes / PROFILE_INCOMPLETE`. macOS-only `open` call is guarded and not part of the pass/fail path. **macOS runtime itself: NOT_RUN** (no macOS host). Windows: shim `MO-APP-DUNG-THU-WINDOWS.cmd` → existing `scripts/logi199_uat.cmd`, unchanged. |
+| 2 | In-session **LIVE PREVIEW** panel of the running app | App side proven: `.venv/bin/python -m streamlit run scripts/logi199_t6_staging_app.py --server.port 9501 --server.address 0.0.0.0`; `GET /_stcore/health` → `200 ok`; `GET /` → `200`, no `X-Frame-Options`/CSP `frame-ancestors`, and a request carrying preview `Host` + `Origin` returns `200`. The panel itself (platform-mediated, token-aware) could **not** be exercised from this sandbox → `NOT_VERIFIED`. |
+| 3 | Direct raw URL `https://<port>-<sandboxId>.e2b.app` | **BLOCKED — do not give this to the Owner.** Verified from outside the sandbox through the platform harness: the previous session's host `9501-iy8u55letdgw3pj2zik7m.e2b.app` returned `502 Bad Gateway — Sandbox not found. The sandbox iy8u55letdgw3pj2zik7m wasn't found.` (sandbox destroyed; link died with it, not an app/WS/DNS defect), and the current host `9501-itob6xjzlw38yfqeywv27.e2b.app` returned `403 Forbidden — Missing traffic access token. The sandbox itob6xjzlw38yfqeywv27 requires a traffic access token.` The gate is the `e2b-traffic-access-token` HTTP header (E2B restrict-public-access), which a phone/desktop address bar cannot send. No token exists in the sandbox env; no hosting/tunnel was created and public access was not flipped (Owner consent required). |
+
+In-sandbox egress check (diagnostic): `registry.npmjs.org`, `pypi.org`, `github.com` reachable; `cdn.playwright.dev`, `playwright.download.prss.microsoft.com`, `storage.googleapis.com`, `deb.debian.org` unreachable → **no browser binary can be installed here**, so no new pixel-level visual capture was possible in this session either.
 
 Isolation and data: the app runs on **in-process Mongomock only**, database `logistics_staging`,
 with `MONGO_URI` blanked; `STAGING_ISOLATION_PROOF=PASS transport=SANDBOX_STAGING client=Mongomock db=logistics_staging real_uri=NO production_client=NO`
@@ -111,3 +113,48 @@ readback + data/map presence; no full-suite ceremony, no G0–G5 rerun, no new b
 
 `LEARNING_RECONCILIATION=NONE` — routine delivery/handoff work; no repeated or material failure and no
 newly reusable correction beyond the already-ACTIVE record consumed above.
+
+## 8. Access repair (Owner report: "link không mở được")
+
+Owner-reported failure was reproduced and explained from **outside** the sandbox, not from `localhost`:
+
+| Probe (external, via the platform harness) | Result |
+|---|---|
+| `https://9501-iy8u55letdgw3pj2zik7m.e2b.app/` (the link handed over previously) | `502 Bad Gateway — "Sandbox not found. The sandbox iy8u55letdgw3pj2zik7m wasn't found."` |
+| `https://9501-itob6xjzlw38yfqeywv27.e2b.app/` (this session's sandbox) | `403 Forbidden — "Missing traffic access token. The sandbox itob6xjzlw38yfqeywv27 requires a traffic access token."` |
+
+Failure classification (the Owner's question 2):
+
+- **Sandbox expired / replaced** — PRIMARY CAUSE of the reported failure. `E2B_SANDBOX_ID` changed from
+  `iy8u55letdgw3pj2zik7m` to `itob6xjzlw38yfqeywv27`; the preview host embeds the sandbox id, so the old
+  host is permanently gone. The old app process and `.venv` were gone with it.
+- **Access control (private, token-gated)** — SECONDARY, permanent for this environment: the sandbox is
+  created with restricted public traffic. Every request must carry the `e2b-traffic-access-token` header.
+  A URL opened by a phone/desktop browser cannot send that header → a bare link can never work, regardless
+  of the app being healthy.
+- **Not the causes:** Streamlit health (`/_stcore/health` = `200 ok`), DNS (both hosts resolve; the
+  platform answers with typed 502/403 pages), TLS, and the app itself (`APP_BOOT_EXCEPTIONS=0`).
+  WebSocket/React rendering could not be blamed or cleared because no browser can exist in this sandbox
+  (browser-download hosts are unreachable); this is stated as a limit, not as a pass.
+
+Actions taken (in the Owner's preferred order — "smallest path that works", no new hosting, no cost, no
+new access): withdraw the dead link, rebuild the environment from the exact reviewed revision, and deliver
+a **self-contained one-click trial package** that does not depend on any sandbox or token:
+
+1. Restored the trial branch to the reviewed revision: fetched `origin`, hard-reset
+   `arena/3851e3be-logistics-work-desk-arena` to the pushed trial HEAD `07f90d4`
+   (= reviewed HEAD `7ef144c` + launchers + docs), worktree clean, and re-derived the reviewed bundle
+   identity (`logi-shell.js` `3b650f8f…`, `logi-shell.css` `412f27aa…` — match).
+2. Re-ran the trial app on the current sandbox for the in-session preview panel
+   (`0.0.0.0:9501`, Mongomock only, `AUTH_REQUIRED=false` for this staging launcher only).
+3. Built `LOGI199-GOI-DUNG-THU.zip` (5.2 MB, 382 entries) and proved it by fresh extraction →
+   launcher → `.venv` install → app up on a free port → `APP_BOOT_EXCEPTIONS=0` →
+   `T6-FCL` 11/11 `PROFILE_READY`, `SEA-188` 0 nodes `PROFILE_INCOMPLETE`.
+4. Added `HUONG-DAN-DUNG-THU.txt` (Vietnamese, in-package) and `MO-APP-DUNG-THU-WINDOWS.cmd` (thin shim
+   onto the existing `scripts/logi199_uat.cmd`); no application, component, auth, or production code changed.
+
+Owner-facing access verdicts: `OWNER_PREVIEW_ACCESS=BLOCKED` for a bare URL (proved externally by the 403
+token gate), `NOT_VERIFIED` for the platform preview panel, `PASS` for the self-contained package on
+Linux (macOS runtime `NOT_RUN`). Lifetime note recorded for the Owner: the preview link lives only while
+this session's sandbox lives (and only through the platform panel); the downloaded package has no such
+expiry.

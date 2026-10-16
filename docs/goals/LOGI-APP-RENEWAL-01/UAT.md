@@ -12,26 +12,30 @@ production readiness.
 
 ## Owner: how to open the app (3 steps)
 
-**BƯỚC 1 — Mở app.** Chọn một trong hai cách:
+**BƯỚC 1 — Mở app.** Cách chắc chắn nhất: **tải gói dùng thử trong khung xem tệp của phiên này**
+(`LOGI199-GOI-DUNG-THU.zip`), giải nén ra một thư mục **mới**, rồi:
 
-1. **Xem ngay trên trình duyệt (không cần cài gì):** mở link
-   `https://9501-iy8u55letdgw3pj2zik7m.e2b.app` — link này mở thẳng bản dùng thử đang chạy trong
-   môi trường tạm với **dữ liệu mẫu**. Mở được trên cả điện thoại và máy tính. Đây là môi trường
-   riêng tư, không phải production, không dùng dữ liệu khách hàng.
-2. **Chạy trên máy Mac (khi link không mở được):** tải gói dùng thử, giải nén ra một thư mục **mới**,
-   rồi **nhấp đúp** vào tệp `MO-APP-DUNG-THU-MAC.command`. Lần đầu Mac có thể hỏi — chọn **“Mở”/“Open”**
-   (hoặc nhấp chuột phải vào tệp → **Open**). Chờ khoảng 1–3 phút cho lần chạy đầu, rồi Safari tự mở app.
-   - Trên Windows: nhấp đúp `scripts\logi199_uat.cmd` (launcher đã có sẵn, không đổi).
+- **Mac:** nhấp đúp `MO-APP-DUNG-THU-MAC.command` (lần đầu chạy 1–3 phút để tự cài thư viện; macOS hỏi thì nhấp chuột phải → **Open**).
+- **Windows:** nhấp đúp `MO-APP-DUNG-THU-WINDOWS.cmd` (cần Python 3.11 trở lên).
+
+Hướng dẫn đầy đủ bằng tiếng Việt nằm trong gói: `HUONG-DAN-DUNG-THU.txt`.
+Không cần GitHub, không cần gõ lệnh. Trình duyệt sẽ tự mở (hoặc mở `http://localhost:9501`).
+
+*Phương án không cần tải gì:* bấm khung **LIVE PREVIEW** của phiên đang chạy này. Lưu ý đã kiểm chứng
+bên ngoài: địa chỉ dạng `https://<cổng>-<sandbox-id>.e2b.app` **không dùng trực tiếp được** bằng
+trình duyệt điện thoại/máy tính — nền tảng chặn bằng token riêng tư (`403 Missing traffic access token`),
+và mỗi lần sandbox được tạo lại thì địa chỉ cũ chết (`502 Sandbox not found`, đúng lỗi của link cũ).
+Vì vậy đừng dùng lại link cũ; chỉ dùng khung preview của phiên đang chạy hoặc gói tải về.
 
 **BƯỚC 2 — Thử các chức năng:** xem checklist bên dưới (lô `T6-FCL` có sơ đồ Journey đầy đủ,
 lô `SEA-188` là lô mới chưa có Journey; bấm vào một node trên bản đồ để mở bong bóng và form;
 nhập một mốc ngày thử rồi lưu, tải lại trang để đọc lại).
 
 **BƯỚC 3 — Tắt và phản hồi:**
-- Xem trên trình duyệt qua link: bấm **Control + C** ở cửa sổ môi trường tạm (hoặc nút dừng của nền tảng).
-- Chạy trên Mac: **đóng cửa sổ** đen đó, hoặc bấm **Control + C**.
-- Sau đó gửi phản hồi cho người phụ trách (ảnh chụp màn hình càng tốt): chỗ nào đúng, chỗ nào sai,
-  chỗ nào khó hiểu. Owner UAT chỉ được coi là hoàn thành khi có phản hồi này.
+- Gói tải về: **đóng cửa sổ đen** vừa hiện (hoặc **Control + C** trong cửa sổ đó).
+- Khung preview của phiên: bấm **Control + C** ở cửa sổ môi trường tạm (hoặc nút dừng của nền tảng).
+- Gửi phản hồi cho người phụ trách (ảnh chụp màn hình càng tốt): chỗ nào đúng, chỗ nào sai, chỗ nào khó hiểu.
+  Owner UAT chỉ được coi là hoàn thành khi có phản hồi này.
 
 Dữ liệu là **mẫu trong bộ nhớ tạm**: tắt app là dữ liệu biến mất. Không có gì được ghi vào
 production và không cần tài khoản thật.
@@ -40,10 +44,7 @@ production và không cần tài khoản thật.
 
 - Reviewed HEAD (source of the acceptance record): [`7ef144c22081d64806fde6e3149c4d69afd1552a`](https://github.com/7roger89-web/logistics-work-desk-arena/commit/7ef144c22081d64806fde6e3149c4d69afd1552a)
 - **[Download the exact reviewed artifact ZIP](https://github.com/7roger89-web/logistics-work-desk-arena/archive/7ef144c22081d64806fde6e3149c4d69afd1552a.zip)** — the reviewed acceptance package (requires GitHub sign-in; the repository is private). Its bundle identity was re-derived in this session: `component/dist/logi-shell.js` sha256 `3b650f8f2d7171113ddcd927f885133898d60d5cd22dece16a95dfc092089e5c`, `component/dist/logi-shell.css` sha256 `412f27aa81d65b5c0a3bafadd98f3c3123ee6a2d5ec5ea4957ca3084409917fb` — identical to the recorded values.
-- Trial package ZIP (reviewed HEAD + the macOS double-click launcher + this UAT update; no application or component source change):
-  [`arena/3851e3be-logistics-work-desk-arena` archive](https://github.com/7roger89-web/logistics-work-desk-arena/archive/refs/heads/arena/3851e3be-logistics-work-desk-arena.zip).
-  `MO-APP-DUNG-THU-MAC.command` re-uses the existing fail-closed staging launcher
-  (`scripts/logi199_t6_staging_app.py`); the app code, bundle, and `scripts/logi199_uat.cmd` are unchanged.
+- **Owner trial package (no GitHub account needed):** `LOGI199-GOI-DUNG-THU.zip`, offered directly in this session's file viewer. Built from this branch (reviewed HEAD `7ef144c` + launchers + guide) with the heavy evidence/docs/testing-mock folders excluded; 5.2 MB, 382 entries; the Mac launcher keeps mode `0755` in the ZIP; `component/dist` hashes inside the package match the reviewed artifact exactly. Verified by fresh extraction: launcher created `.venv`, installed requirements, started the app on a free port, `APP_BOOT_EXCEPTIONS=0` after `STAGING_ISOLATION_PROOF=PASS` (Mongomock, `db=logistics_staging`, `real_uri=NO`), `T6-FCL` 11 nodes/11 edges `PROFILE_READY`, `SEA-188` 0 nodes `PROFILE_INCOMPLETE`.
 - Reviewed source candidate of the G2 evidence: `1e899553cc1ad7dbd720eb805e061ec61ae0871a`. Its disclosed
   raw-capture SHA reconciliation (`751f64f…` unavailable; dist/harness hashes matched) is not re-litigated
   here and remains recorded in `state.json`; the Supervisor PASS for G2 accepted this candidate and its
