@@ -26,6 +26,10 @@ After opening draft #207, completed the full changed-path and available submitte
 - The generated `component/dist/logi-shell.js` and `.css` paths are shared build outputs across #198/#200/#202–206. This PR was built from its stated checkpoint; when branches are integrated, regenerate dist from the selected combined sources and rerun the relevant checks rather than taking one branch's compiled bundle as authoritative.
 - No files or branches from #198–206 were changed. #207 remains a draft on the verified checkpoint base.
 
+## Integrity manifest
+
+`manifest.sha256` covers this README, the raw AppTest output, the JSON result record, changed Home source, rebuilt dist, regression test, and durable goal state. The manifest does not hash itself.
+
 ## Verification
 
 - `cd component && npm run typecheck` — **PASS**.
