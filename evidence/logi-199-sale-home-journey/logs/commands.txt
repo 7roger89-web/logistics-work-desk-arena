@@ -1,0 +1,33 @@
+# Local executor commands (2026-10-16); no credentials or private password values.
+# Commands ran from the repository root except the component build.
+
+cd component && npm run typecheck && npm run build && npm run scan
+
+.venv/bin/python -m pytest tests/test_sale_home_journey_flow_199.py tests/test_support_attention_now_166.py tests/test_operations_control_tower_170.py -q --tb=short
+# 23 passed
+
+.venv/bin/python -m pytest tests/test_sale_home_journey_flow_199.py tests/test_support_attention_now_166.py tests/test_operations_control_tower_170.py tests/test_logi199_t1_sea_fcl_lifecycle.py tests/test_logi199_t5_popup_fields.py tests/test_logi199_t5_redirects.py tests/test_visual_shipment_workspace.py tests/test_journey_fresh_parity_188.py tests/test_logi_shipment_primary_action_unify_01.py -q --tb=short
+# 95 passed / 6 pre-existing failures; not a clean suite
+
+.venv/bin/python scripts/gen_logi195_dom_fixture.py --fixture .tmp/logi199-flow/dom-fixture.json
+node tests/component/dom_sale_home_journey_flow_199.mjs .tmp/logi199-flow/dom-fixture.json
+node tests/component/dom_home_attention_layout.mjs
+# Both compiled-bundle DOM checks PASS
+
+# Server was started via the process tool, with AUTH_REQUIRED=true, empty MONGO_URI/MONGODB_URI,
+# LOGI199_TEST_CREDENTIALS_FILE and LOGI199_TEST_READBACK_FILE pointing into ignored .tmp/:
+.venv/bin/python -m streamlit run scripts/logi199_authenticated_flow_app.py --server.address 0.0.0.0 --server.port 9501 --server.headless true --browser.gatherUsageStats false
+
+# Runner environment: external Playwright module / verified Chromium executable;
+# LD_LIBRARY_PATH=.tmp/browser-env/runtime-libs/lib:/tmp (absolute first path in actual call),
+# private credentials/readback paths passed as environment variables, never in app payloads.
+node tests/component/browser_sale_home_journey_flow_199.mjs
+# PASS: both viewports, genuine distinct saves, full reload, DB/audit readback, 11-node guard
+
+# Exact unchanged Owner HTML was additionally opened via file:// in Chromium at both
+# requested viewports. Read-only T6 navigation cross-checked the global missing-info
+# disclosure and the scoped on-board popup (supplement-result.json).
+
+git diff --check
+node --check tests/component/browser_sale_home_journey_flow_199.mjs
+.venv/bin/python -m py_compile scripts/logi199_authenticated_flow_app.py tests/test_sale_home_journey_flow_199.py

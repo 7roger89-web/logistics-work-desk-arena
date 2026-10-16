@@ -1,0 +1,141 @@
+MOBILE_HOME_OVERFLOW=0
+FCL_TEXT=T
+TRƯỜNG THÀNH
+Trường Thành Logistics · Nội bộ
+Lô hàng T6-FCL
+Chưa xác nhận hình thức nhập khẩu
+
+An Phát JSC · Factory → Singapore
+
+Toàn bộ lô hàng
+CP
+CẦN XỬ LÝ (1)
+Cần làm · Mở xử lý:
+
+Bổ sung số tờ khai nhập khẩu.
+
+Phạm vi Trường Thành gồm khai báo hải quan nhập.
+
+XỬ LÝ
+— Mở xử lý
+Đang ở: Chưa xác định
+⚠ Thiếu ETA
+Việc tiếp: Bổ sung số tờ khai nhập khẩu.
++ Quy trình (0)
+Xử lý →
+▤ Hồ sơ & Tài chính
+Hồ sơ lô
+· Mở Global Workspace
+|
+Chứng từ (0)
+· Documents
+|
+Tài chính
+▤
+HỒ SƠ & TÀI CHÍNH
+Báo giá · Chứng từ · Công nợ · Lịch sử
+NHÁNH SONG SONG
+01
+BOOKING
+CHƯA BẮT ĐẦU
+02
+PICKUP
+CHƯA BẮT ĐẦU
+03
+CUSTOMS EXPORT
+CHƯA BẮT ĐẦU
+04
+SI / VGM
+CHƯA BẮT ĐẦU
+05
+GATE-IN
+CHƯA BẮT ĐẦU
+06
+ETD
+CHƯA BẮT ĐẦU
+07
+ON BOARD / ATD
+CHƯA BẮT ĐẦU
+08
+TRANSIT
+CHƯA BẮT ĐẦU
+09
+ARRIVAL
+CẦN XỬ LÝ
+1
+10
+CUSTOMS IMPORT
+CẦN XỬ LÝ
+1
+11
+DELIVERY
+CẦN XỬ LÝ
+1
+CHÚ GIẢI TRẠNG THÁI
+95%
+✓ Có bằng chứng
+◐ Đang xử lý
+◷ Chờ thông tin
+! Cần xử lý
+· Chưa bắt đầu
+Bấm vào một node trên bản đồ → chọn bong bóng công việc → mở popup ngắn gọn theo đúng việc đó.
++
+−
+95%
+⤢ Fit Journey
+↺ Đọc rõ
+
+RÀ SOÁT TRƯỚC KHI KẾT THÚC LÔ · READ-ONLY
+
+Tự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.
+
+3 việc cần xử lý
+FCL_ATTENTION=[{"text":"XỬ LÝ  — Mở xử lý","href":"/lo-hang/T6-FCL?tab=nhap#fld-tk"}]
+SI_BUBBLE=SI / VGM
+CHƯA BẮT ĐẦU
+Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.
+CHƯA GHI NHẬN HẠN · 0 CHỨNG TỪ
+· Chưa bắt đầu
+Chứng từ đính kèm công đoạn
+0 TỆP ĐÃ GHI NHẬN · 2 LOẠI YÊU CẦU
+◷ Chờ thông tin
+MỞ CÔNG ĐOẠN →
+Xem thông tin công đoạn
+SI_DOC_POPUP=CÔNG ĐOẠN · T6-FCL
+Đóng ✕
+SI / VGM
+Chưa xác định / sắp tới
+Cần làm: Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.
+Công việc
+Chứng từ
+Chứng từ công đoạn
+Chứng từ liên quan
+
+Chỉ hiện tệp thuộc công đoạn đang mở.
+
+0 tệp
+Loại chứng từ
+Hải quan
+Vận chuyển
+Booking
+Shipping Instruction (SI)
+VGM
+Chọn file (tối đa 20 MB)
+TẢI LÊN CHỨNG TỪ
+
+Chưa có chứng từ thuộc công đoạn này.
+SI_DOC_OPTIONS=[{"id":"customs","text":"Hải quan"},{"id":"transport","text":"Vận chuyển"},{"id":"booking","text":"Booking"},{"id":"si","text":"Shipping Instruction (SI)"},{"id":"vgm","text":"VGM"}]
+ONBOARD_POPUP=CÔNG ĐOẠN · T6-FCL
+Đóng ✕
+ON BOARD / ATD
+Chưa xác định / sắp tới
+Cần làm: Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.
+Công việc
+Chứng từ
+Xếp hàng lên tàu — bằng chứng on-board
+
+Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.
+
+Ngày xếp hàng lên tàu (on-board)
+Lưu mốc có bằng chứng
+Thiếu 3 thông tin

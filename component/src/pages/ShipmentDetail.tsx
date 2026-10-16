@@ -9,7 +9,7 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel, journeyRegionNodeIds } from "../components/ShipmentJourney";
+import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
 import type {
   UploadedTemplateShipmentState, JourneyNode } from "../lib/viewmodel";
@@ -389,13 +389,10 @@ export default function ShipmentDetail() {
   // breaks the pre-existing optional accesses below. Runtime semantics are
   // identical (workspaceNode is only ever an object or undefined).
   const showExistingWork = !Boolean(workspaceNode);
-  const workspaceDocumentCategories = workspaceNode && s.journey
-    ? Array.from(new Set(
-        journeyRegionNodeIds(workspaceNode.id).flatMap((nodeId) =>
-          s.journey?.nodes.find((row) => row.id === nodeId)?.documentCategories ?? []
-        )
-      ))
-    : undefined;
+  // The popup belongs to ONE node, not its entire macro-region. In
+  // particular SI/VGM must not inherit booking/customs/pickup documents.
+  // Preserve [] for nodes with no categories; undefined is whole-lot only.
+  const workspaceDocumentCategories = workspaceNode?.documentCategories;
   const openStageWorkspace = (node: JourneyNode, work: string) => {
     const targetTab = work === "docs" ? "chung-tu" : work === "costs" ? "tai-chinh" : work === "history" ? "lich-su" : node.targetTab;
     // The existing advisory gate still governs origin navigation. Authoritative
@@ -1696,7 +1693,7 @@ export default function ShipmentDetail() {
           (the same `s.missingDocs.length` the header chip reports — no second
           counter), and expanding reveals the EXISTING rows with their EXISTING
           Issue #84 routing, untouched below. */}
-      {missingCount > 0 && tab !== "chung-tu" && (
+      {showExistingWork && missingCount > 0 && tab !== "chung-tu" && (
         <div className="rounded-2xl bg-white border-2 border-red-200 p-3 md:p-3.5" data-testid="missing-info">
           <button
             type="button"
@@ -2650,11 +2647,11 @@ export default function ShipmentDetail() {
       )}
 
       {/* sticky mobile primary */}
-      <div className="xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2">
+      {showExistingWork && <div className="xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2">
         {tab === "nhap" && !s.importInfo.delivered && <button onClick={() => setShowDeliver(true)} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">✅ XÁC NHẬN ĐÃ GIAO</button>}
         {tab === "chung-tu" && s.commercialFlow?.confirmed && s.commercialFlow?.mode !== "CUSTOMER_SELF" && <button onClick={exportPXK} className="btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]">🖨 XUẤT PHIẾU XUẤT KHO</button>}
         {tab === "tai-chinh" && <button onClick={openPay} className="btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]">＋ GHI NHẬN THANH TOÁN</button>}
-      </div>
+      </div>}
 
       </ShipmentJourney>
 

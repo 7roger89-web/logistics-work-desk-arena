@@ -1,0 +1,2 @@
+SALE_HOME_JOURNEY_DOM=PASS: exact node categories/files; empty category stays empty; no global checklist/actions/finance in node popup; whole-lot finance retained
+HOME_ATTENTION_LAYOUT_DOM=PASS: urgent-work panel keeps its own content height; running-shipment list and production responsive CSS remain present

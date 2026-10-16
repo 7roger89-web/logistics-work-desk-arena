@@ -1,0 +1,86 @@
+.............................................F.......................... [ 52%]
+.....................................F...F....................FFF        [100%]
+=================================== FAILURES ===================================
+_____ ZeroNodeRenderLane.test_zero_node_render_keeps_the_cockpit_in_a_dom ______
+tests/test_journey_fresh_parity_188.py:155: in test_zero_node_render_keeps_the_cockpit_in_a_dom
+    self.assertEqual(proc.returncode, 0, f"variant={variant}\n" + proc.stdout + proc.stderr)
+E   AssertionError: 1 != 0 : variant=nodes
+E   node:internal/modules/run_main:123
+E       triggerUncaughtException(
+E       ^
+E
+E   AssertionError [ERR_ASSERTION]: [nodes=[]] journey shell must exist
+E       at file:///home/user/logistics-work-desk-arena/tests/component/dom_acceptance_journey_fresh_188.mjs:63:10 {
+E     generatedMessage: false,
+E     code: 'ERR_ASSERTION',
+E     actual: null,
+E     expected: true,
+E     operator: '==',
+E     diff: 'simple'
+E   }
+E
+E   Node.js v22.22.3
+_______ test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning _______
+tests/test_logi_shipment_primary_action_unify_01.py:184: in test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning
+    assert "?tab=nhap" in row["nextRoute"], "the existing status tab is kept, only the anchor is added"
+E   AssertionError: the existing status tab is kept, only the anchor is added
+E   assert '?tab=nhap' in '/lo-hang/LO-CIF-NO?tab=van-tai#shipment-execution-profile'
+----------------------------- Captured stderr call -----------------------------
+2026-10-16 10:57:52.820 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-16 10:57:52.820 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+------------------------------ Captured log call -------------------------------
+WARNING  streamlit.runtime.scriptrunner_utils.script_run_context:script_run_context.py:508 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+WARNING  streamlit.runtime.scriptrunner_utils.script_run_context:script_run_context.py:508 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+________ test_profile_incomplete_routes_to_the_existing_profile_section ________
+tests/test_logi_shipment_primary_action_unify_01.py:247: in test_profile_incomplete_routes_to_the_existing_profile_section
+    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=lay-hang#shipment-execution-profile"
+E   AssertionError: assert '/lo-hang/LO-...ution-profile' == '/lo-hang/LO-...ution-profile'
+E
+E     - /lo-hang/LO-LEGACY?tab=lay-hang#shipment-execution-profile
+E     ?                        ^^^^^  ^
+E     + /lo-hang/LO-LEGACY?tab=van-tai#shipment-execution-profile
+E     ?                        ^  ^^^^
+----------------------------- Captured stderr call -----------------------------
+2026-10-16 10:57:52.835 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-16 10:57:52.835 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+------------------------------ Captured log call -------------------------------
+WARNING  streamlit.runtime.scriptrunner_utils.script_run_context:script_run_context.py:508 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+WARNING  streamlit.runtime.scriptrunner_utils.script_run_context:script_run_context.py:508 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+_ test_every_profile_code_routes_to_an_existing_surface[PROFILE_INCOMPLETE-lay-hang-#shipment-execution-profile] _
+tests/test_logi_shipment_primary_action_unify_01.py:399: in test_every_profile_code_routes_to_an_existing_surface
+    assert composed["route"] == f"/lo-hang/LO-X?tab={expected_tab}{expected_anchor}", code
+E   AssertionError: PROFILE_INCOMPLETE
+E   assert '/lo-hang/LO-...ution-profile' == '/lo-hang/LO-...ution-profile'
+E
+E     - /lo-hang/LO-X?tab=lay-hang#shipment-execution-profile
+E     ?                   ^^^^^  ^
+E     + /lo-hang/LO-X?tab=van-tai#shipment-execution-profile
+E     ?                   ^  ^^^^
+_ test_every_profile_code_routes_to_an_existing_surface[CONFIG_CHECK-lay-hang-#shipment-execution-profile] _
+tests/test_logi_shipment_primary_action_unify_01.py:399: in test_every_profile_code_routes_to_an_existing_surface
+    assert composed["route"] == f"/lo-hang/LO-X?tab={expected_tab}{expected_anchor}", code
+E   AssertionError: CONFIG_CHECK
+E   assert '/lo-hang/LO-...ution-profile' == '/lo-hang/LO-...ution-profile'
+E
+E     - /lo-hang/LO-X?tab=lay-hang#shipment-execution-profile
+E     ?                   ^^^^^  ^
+E     + /lo-hang/LO-X?tab=van-tai#shipment-execution-profile
+E     ?                   ^  ^^^^
+_ test_every_profile_code_routes_to_an_existing_surface[INSURANCE_EVIDENCE-lay-hang-#shipment-execution-profile] _
+tests/test_logi_shipment_primary_action_unify_01.py:399: in test_every_profile_code_routes_to_an_existing_surface
+    assert composed["route"] == f"/lo-hang/LO-X?tab={expected_tab}{expected_anchor}", code
+E   AssertionError: INSURANCE_EVIDENCE
+E   assert '/lo-hang/LO-...ution-profile' == '/lo-hang/LO-...ution-profile'
+E
+E     - /lo-hang/LO-X?tab=lay-hang#shipment-execution-profile
+E     ?                   ^^^^^  ^
+E     + /lo-hang/LO-X?tab=van-tai#shipment-execution-profile
+E     ?                   ^  ^^^^
+=========================== short test summary info ============================
+FAILED tests/test_journey_fresh_parity_188.py::ZeroNodeRenderLane::test_zero_node_render_keeps_the_cockpit_in_a_dom
+FAILED tests/test_logi_shipment_primary_action_unify_01.py::test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning
+FAILED tests/test_logi_shipment_primary_action_unify_01.py::test_profile_incomplete_routes_to_the_existing_profile_section
+FAILED tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[PROFILE_INCOMPLETE-lay-hang-#shipment-execution-profile]
+FAILED tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[CONFIG_CHECK-lay-hang-#shipment-execution-profile]
+FAILED tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[INSURANCE_EVIDENCE-lay-hang-#shipment-execution-profile]
+6 failed, 131 passed in 5.83s

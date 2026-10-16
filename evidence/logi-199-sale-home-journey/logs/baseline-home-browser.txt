@@ -1,0 +1,269 @@
+HOME_TEXT=T
+TRƯỜNG THÀNH
+Trường Thành Logistics · Nội bộ
+PROTOTYPE
+f
+flow199.sale
+Kinh doanh · SALE
+XEM TRƯỚC
+12
+Thêm
+
+VẬN HÀNH
+
+Tổng Quan Công Việc
+Điều hành
+Lô Hàng
+Tạo Lô Mới
+
+KINH DOANH & ĐỐI TÁC
+
+Khách Hàng
+Đại Lý Trường Thành
+Báo Giá
+Hợp đồng
+
+TÀI CHÍNH & ĐỐI SOÁT
+
+Thu tiền
+Đối soát
+Công nợ đối tác
+Báo cáo CEO
+
+CÔNG CỤ
+
+BIỂU THUẾ
+Tra cứu chính sách
+Sổ tay
+Dịch thuật
+Thanh toán quốc tế
+
+QUẢN TRỊ
+
+Người dùng & Vai trò
+Thư viện quy trình
+Biểu mẫu Office
+
+Cần hỗ trợ thao tác?
+
+Sổ tay tra cứu quy trình, chứng từ và phân quyền cho Sale & Support.
+
+Mở sổ tay
+
+THỨ SÁU, 16/10/2026 · PREVIEW / STAGING
+
+Ưu tiên bây giờ: LO-0306 — Khai tờ khai nhập khẩu LO-0306 + nộp thuế
+
+7 mục cần ưu tiên · Việc được giao
+
+XỬ LÝ NGAY
+Mở LO-0306
+Xem tất cả lô hàng
+CẦN XỬ LÝ (4)
+Quá hạn · Mở việc:
+
+Chốt xe TQ và giờ lấy hàng LO-0308
+
+Việc được giao
+
+XỬ LÝ
+— Mở việc
+ĐIỂM CHÚ Ý KHÁC
+Thu nốt công nợ lô LO-0295
+· Quá hạn · Mở việc
+Bổ sung hồ sơ thực hiện lô
+· Cần làm · Mở xử lý
+Quá hạn khách
+· Cần làm · Mở xử lý
+Trạng thái các lô đang chạy
+Tất cả lô
+LO-0299 · Hồng Hà Co.
+Tiếp theo: Quá hạn khách
+Chờ giao
+LO-0306 · An Phát JSC
+Tiếp theo: Quá free time
+Chờ thông quan
+LO-0307 · Đức Long Co.
+Tiếp theo: Quá free time
+Chờ thông quan
+LO-0308 · Minh Đức JSC
+Tiếp theo: Quá hạn khách
+Chờ thông quan
+SEA-188 · Khách hàng mới 188
+Tiếp theo: Bổ sung hồ sơ thực hiện lô
+Chờ lấy hàng
+T6-AIR · An Phát JSC
+Tiếp theo: Bổ sung số tờ khai nhập khẩu.
+Đang vận chuyển
+Ảnh vận hành hôm nay
+
+Số liệu thật từ Logistics — bấm một ô để mở đúng danh sách lô
+
+Lô đang chạy
+11
+LO-0299, LO-0306, LO-0307, LO-0308
+Chờ lấy hàng
+3
+SEA-188, T6-ROAD-FTL, T6-ROAD-LTL
+Đang vận chuyển
+4
+T6-AIR, T6-AIR-CONSOLIDATED, T6-FCL, T6-LCL
+Chờ thông quan
+3
+LO-0306, LO-0307, LO-0308
+Chờ giao
+1
+LO-0299
+Đã giao
+1
+LO-0295
+Tiền & hồ sơ cần chú ý
+
+Hiện trạng → việc thiếu → bấm để xử lý ngay
+
+Còn phải thu ·
+260,588 tr ₫
+
+5 lô còn công nợ theo core.logic
+
+GHI NHẬN THANH TOÁN
+
+Cần đối soát ·
+12 lô
+
+Quote Estimate ≠ Finance Actual — đối soát từng lô
+
+ĐỐI SOÁT NGAY
+
+Hồ sơ thiếu thông tin ·
+30
+
+7 lô thiếu dữ liệu bắt buộc
+
+MỞ DANH SÁCH LÔ
+
+Việc cần ưu tiên ·
+7 việc
+
+2 lô sắp tới hạn khách
+
+MỞ LÔ HÀNG
+Trường Thành Logistics · Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật
+ATTENTION_LINKS=[
+  {
+    "text": "XỬ LÝ  — Mở việc",
+    "href": "/lo-hang/LO-0308?tab=lay-hang"
+  },
+  {
+    "text": "Thu nốt công nợ lô LO-0295 · Quá hạn · Mở việc",
+    "href": "/lo-hang/LO-0295?tab=lay-hang"
+  },
+  {
+    "text": "Bổ sung hồ sơ thực hiện lô · Cần làm · Mở xử lý",
+    "href": "/lo-hang/LO-0295?tab=van-tai#shipment-execution-profile"
+  },
+  {
+    "text": "Quá hạn khách · Cần làm · Mở xử lý",
+    "href": "/lo-hang/LO-0299?tab=nhap"
+  }
+]
+HOME_LAYOUT={
+  "height": 132.625,
+  "gridAlign": "flex-start",
+  "siblingHeight": 473.171875
+}
+DETAIL_URL=http://127.0.0.1:9501/
+DETAIL_TEXT=T
+TRƯỜNG THÀNH
+Trường Thành Logistics · Nội bộ
+Lô hàng LO-0308
+Chưa xác nhận hình thức nhập khẩu
+
+Minh Đức JSC · Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)
+
+Toàn bộ lô hàng
+CP
+CẦN XỬ LÝ (2)
+Quá hạn · Mở việc:
+
+Chốt xe TQ và giờ lấy hàng LO-0308
+
+Việc được giao
+
+XỬ LÝ
+— Mở việc
+ĐIỂM CHÚ Ý KHÁC
+Quá hạn khách
+· Cần làm · Mở xử lý
+Đang ở: Chưa xác định
+Việc tiếp: Quá hạn khách
++ Quy trình (0)
+Xử lý →
+▤ Hồ sơ & Tài chính
+Hồ sơ lô
+· Mở Global Workspace
+|
+Chứng từ (0)
+· Documents
+|
+Tài chính
+▤
+HỒ SƠ & TÀI CHÍNH
+Báo giá · Chứng từ · Công nợ · Lịch sử
+01
+GIAO HÀNG
+CHƯA BẮT ĐẦU
+CHÚ GIẢI TRẠNG THÁI
+100%
+✓ Có bằng chứng
+◐ Đang xử lý
+◷ Chờ thông tin
+! Cần xử lý
+· Chưa bắt đầu
+Bấm vào một node trên bản đồ → chọn bong bóng công việc → mở popup ngắn gọn theo đúng việc đó.
++
+−
+100%
+⤢ Fit Journey
+↺ Đọc rõ
+TIỆN ÍCH TOÀN LÔ · MÃ LÔ LO-0308
+Tổng quan lô hàng · LO-0308
+Đóng ✕
+Thông tin
+Xuất khẩu
+Nhập & Giao
+Chứng từ
+Tài chính
+Lịch sử
+Sửa thông tin lô
+Tên lô = LO-0308 · Minh Đức JSC · tạo 06/09/2026
+HỒ SƠ THỰC HIỆN LÔ
+Hồ sơ lô còn thiếu
+DAP
+Sửa hồ sơ thực hiện
+Thiếu 4 thông tin
+Nhà máy & xuất khẩu
+
+Chưa có nhà máy
+
+Đông Bằng (Quảng Tây)
+
+Chưa có liên hệ · —
+
+Xe/container và lịch chặng được quản lý tại “Vận chuyển & Hàng hóa”.
+
+Không nhập biển số TQ và xe giao VN vào cùng một trường.
+
+MỞ CÁC CHẶNG VẬN CHUYỂN
+Xuất khẩu — Đông Bằng (Quảng Tây)
+Đơn vị khai
+Ngày dự kiến / thực tế
+12/09/2026 / chưa có
+Trạng thái
+
+RÀ SOÁT TRƯỚC KHI KẾT THÚC LÔ · READ-ONLY
+
+Tự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.
+
+3 việc cần xử lý
+SELECTED=[]

@@ -1,0 +1,49 @@
+FFFFF.                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Thu n\u1ed1t c\xf4ng n\u1ee3] _
+tests/test_sale_home_journey_flow_199.py:26: in test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage
+    assert attention["route"] == expected_route
+E   AssertionError: assert '/lo-hang/FCL...?tab=lay-hang' == '/lo-hang/FCL%2F199%3FA%26B'
+E
+E     - /lo-hang/FCL%2F199%3FA%26B
+E     + /lo-hang/FCL%2F199%3FA%26B?tab=lay-hang
+E     ?                           +++++++++++++
+_ test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Ch\u1ed1t xe v\xe0 gi\u1edd l\u1ea5y h\xe0ng] _
+tests/test_sale_home_journey_flow_199.py:26: in test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage
+    assert attention["route"] == expected_route
+E   AssertionError: assert '/lo-hang/FCL...?tab=lay-hang' == '/lo-hang/FCL%2F199%3FA%26B'
+E
+E     - /lo-hang/FCL%2F199%3FA%26B
+E     + /lo-hang/FCL%2F199%3FA%26B?tab=lay-hang
+E     ?                           +++++++++++++
+_ test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Khai t\u1edd khai nh\u1eadp kh\u1ea9u] _
+tests/test_sale_home_journey_flow_199.py:26: in test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage
+    assert attention["route"] == expected_route
+E   AssertionError: assert '/lo-hang/FCL...?tab=lay-hang' == '/lo-hang/FCL%2F199%3FA%26B'
+E
+E     - /lo-hang/FCL%2F199%3FA%26B
+E     + /lo-hang/FCL%2F199%3FA%26B?tab=lay-hang
+E     ?                           +++++++++++++
+_ test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[SI / VGM] _
+tests/test_sale_home_journey_flow_199.py:26: in test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage
+    assert attention["route"] == expected_route
+E   AssertionError: assert '/lo-hang/FCL...?tab=lay-hang' == '/lo-hang/FCL%2F199%3FA%26B'
+E
+E     - /lo-hang/FCL%2F199%3FA%26B
+E     + /lo-hang/FCL%2F199%3FA%26B?tab=lay-hang
+E     ?                           +++++++++++++
+_ test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Vi\u1ec7c kh\xf4ng c\xf3 c\xf4ng \u0111o\u1ea1n \u0111\xe3 x\xe1c nh\u1eadn] _
+tests/test_sale_home_journey_flow_199.py:26: in test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage
+    assert attention["route"] == expected_route
+E   AssertionError: assert '/lo-hang/FCL...?tab=lay-hang' == '/lo-hang/FCL%2F199%3FA%26B'
+E
+E     - /lo-hang/FCL%2F199%3FA%26B
+E     + /lo-hang/FCL%2F199%3FA%26B?tab=lay-hang
+E     ?                           +++++++++++++
+=========================== short test summary info ============================
+FAILED tests/test_sale_home_journey_flow_199.py::test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Thu n\u1ed1t c\xf4ng n\u1ee3]
+FAILED tests/test_sale_home_journey_flow_199.py::test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Ch\u1ed1t xe v\xe0 gi\u1edd l\u1ea5y h\xe0ng]
+FAILED tests/test_sale_home_journey_flow_199.py::test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Khai t\u1edd khai nh\u1eadp kh\u1ea9u]
+FAILED tests/test_sale_home_journey_flow_199.py::test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[SI / VGM]
+FAILED tests/test_sale_home_journey_flow_199.py::test_unbound_manual_task_opens_its_shipment_without_inventing_export_stage[Vi\u1ec7c kh\xf4ng c\xf3 c\xf4ng \u0111o\u1ea1n \u0111\xe3 x\xe1c nh\u1eadn]
+5 failed, 1 passed in 0.99s

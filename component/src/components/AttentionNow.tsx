@@ -16,7 +16,7 @@ const BAND_META: Record<
 
 function actionLabel(item: AttentionItem): string {
   if (item.sourceType === "WORK_MODULE") return "Mở quy trình";
-  if (item.sourceType === "TASK") return "Mở việc";
+  if (item.sourceType === "TASK") return "Mở lô";
   return "Mở xử lý";
 }
 
@@ -64,7 +64,7 @@ export default function AttentionNow({
             >
               <span className="sr-only">{BAND_META[primary.band].label} · {actionLabel(primary)}: </span>
               <p data-testid="attention-primary-action" className="break-words text-[13px] sm:text-[14px] font-extrabold leading-tight sm:leading-snug text-[#8E2F22] sm:truncate">{primary.action}</p>
-              {primary.reason && <p className="hidden sm:block break-words text-[12.5px] text-[#8E2F22]/90 sm:truncate">{primary.reason}</p>}
+              {primary.reason && <p className={cx("break-words text-[12.5px] text-[#8E2F22]/90 sm:truncate", primary.sourceType !== "TASK" && !primary.unknown && "hidden sm:block")}>{primary.reason}</p>}
             </div>
             <Link
               to={primary.route}

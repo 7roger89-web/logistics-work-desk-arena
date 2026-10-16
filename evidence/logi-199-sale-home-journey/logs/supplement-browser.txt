@@ -1,0 +1,19 @@
+{
+  "reference-desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "physicalText": "Chưa xác định — chưa có mốc vận hành thực tế (Pickup / Gate-in / ATD / ATA)"
+  },
+  "reference-mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "physicalText": "Chưa xác định — chưa có mốc vận hành thực tế (Pickup / Gate-in / ATD / ATA)"
+  },
+  "globalMissingInfo": "Thiếu 3 thông tin",
+  "mobileT6StageText": "CÔNG ĐOẠN · T6-FCL\nĐóng ✕\nON BOARD / ATD\nChưa xác định / sắp tới\nCần làm: Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.\nCông việc\nChứng từ\nXếp hàng lên tàu — bằng chứng on-board\n\nTệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.\n\nNgày xếp hàng lên tàu (on-board)\nLưu mốc có bằng chứng",
+  "verdict": "PASS"
+}

@@ -1,0 +1,159 @@
+MOBILE_HOME_OVERFLOW=0
+HOME_FCL_ROUTE=/lo-hang/FLOW199-FCL?tab=van-tai&stage=si-vgm&work=info
+HOME_TARGET_STAGE=CÔNG ĐOẠN · FLOW199-FCL
+Đóng ✕
+SI / VGM
+Cần xử lý
+Cần làm: Kiểm tra và ghi nhận trạng thái SI
+Công việc
+Chứng từ
+SI / VGM — ghi nhận bằng chứng
+
+Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.
+
+Trạng thái SI
+Chưa biết
+Đã nhận hồ sơ
+Đã gửi hãng tàu
+Hãng tàu đã chấp nhận
+Trạng thái VGM
+Chưa biết
+Đã nhận hồ sơ
+Đã gửi hãng tàu
+Hãng tàu đã chấp nhận
+SI cutoff
+VGM cutoff
+Lưu mốc có bằng chứng
+FCL_TEXT=T
+TRƯỜNG THÀNH
+Trường Thành Logistics · Nội bộ
+Lô hàng FLOW199-FCL
+Chưa xác nhận hình thức nhập khẩu
+
+An Phát JSC · Factory → Singapore
+
+Toàn bộ lô hàng
+CP
+CẦN XỬ LÝ (1)
+Cần làm · Mở xử lý:
+
+Kiểm tra và ghi nhận trạng thái SI
+
+Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.
+
+XỬ LÝ
+— Mở xử lý
+Đang ở: Chặng chính · TRANSIT
+⚠ Kiểm tra và ghi nhận trạng thái SI
+Việc tiếp: Kiểm tra và ghi nhận trạng thái SI
++ Quy trình (0)
+Xử lý →
+▤ Hồ sơ & Tài chính
+Hồ sơ lô
+· Mở Global Workspace
+|
+Chứng từ (0)
+· Documents
+|
+Tài chính
+▤
+HỒ SƠ & TÀI CHÍNH
+Báo giá · Chứng từ · Công nợ · Lịch sử
+NHÁNH SONG SONG
+01
+BOOKING
+CHƯA BẮT ĐẦU
+02
+PICKUP
+CHƯA BẮT ĐẦU
+03
+CUSTOMS EXPORT
+CHƯA BẮT ĐẦU
+04
+SI / VGM
+CẦN XỬ LÝ
+1
+05
+GATE-IN
+CHƯA BẮT ĐẦU
+06
+ETD
+CÓ BẰNG CHỨNG
+07
+ON BOARD / ATD
+CÓ BẰNG CHỨNG
+08
+TRANSIT
+ĐANG XỬ LÝ
+09
+ARRIVAL
+CẦN XỬ LÝ
+1
+CHÚ GIẢI TRẠNG THÁI
+95%
+✓ Có bằng chứng
+◐ Đang xử lý
+◷ Chờ thông tin
+! Cần xử lý
+· Chưa bắt đầu
+Bấm vào một node trên bản đồ → chọn bong bóng công việc → mở popup ngắn gọn theo đúng việc đó.
++
+−
+95%
+⤢ Fit Journey
+↺ Đọc rõ
+
+RÀ SOÁT TRƯỚC KHI KẾT THÚC LÔ · READ-ONLY
+
+Tự tổng hợp từ dữ liệu đang có — không phải các trường bắt buộc phải điền khi tạo lô, và không phải trạng thái CLOSED.
+
+3 việc cần xử lý
+FCL_ATTENTION=[{"text":"XỬ LÝ  — Mở xử lý","href":"/lo-hang/FLOW199-FCL?tab=van-tai&stage=si-vgm&work=info"}]
+SI_BUBBLE=SI / VGM
+CẦN XỬ LÝ
+Kiểm tra và ghi nhận trạng thái SI
+CHƯA GHI NHẬN HẠN · 0 CHỨNG TỪ
+! Cần xử lý
+Chứng từ đính kèm công đoạn
+0 TỆP ĐÃ GHI NHẬN · 2 LOẠI YÊU CẦU
+◷ Chờ thông tin
+MỞ CÔNG ĐOẠN →
+Xem thông tin công đoạn
+SI_DOC_POPUP=CÔNG ĐOẠN · FLOW199-FCL
+Đóng ✕
+SI / VGM
+Cần xử lý
+Cần làm: Kiểm tra và ghi nhận trạng thái SI
+Công việc
+Chứng từ
+Chứng từ công đoạn
+Chứng từ liên quan
+
+Chỉ hiện tệp thuộc công đoạn đang mở.
+
+0 tệp
+Loại chứng từ
+Hải quan
+Vận chuyển
+Booking
+Shipping Instruction (SI)
+VGM
+Chọn file (tối đa 20 MB)
+TẢI LÊN CHỨNG TỪ
+
+Chưa có chứng từ thuộc công đoạn này.
+SI_DOC_OPTIONS=[{"id":"customs","text":"Hải quan"},{"id":"transport","text":"Vận chuyển"},{"id":"booking","text":"Booking"},{"id":"si","text":"Shipping Instruction (SI)"},{"id":"vgm","text":"VGM"}]
+ONBOARD_POPUP=CÔNG ĐOẠN · FLOW199-FCL
+Đóng ✕
+ON BOARD / ATD
+Hoàn thành
+Cần làm: Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.
+Bằng chứng: Xếp lên tàu: 2026-10-04
+Công việc
+Chứng từ
+Xếp hàng lên tàu — bằng chứng on-board
+
+Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.
+
+Ngày xếp hàng lên tàu (on-board)
+Lưu mốc có bằng chứng

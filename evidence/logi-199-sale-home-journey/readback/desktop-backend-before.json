@@ -1,0 +1,22 @@
+{
+  "id": "FLOW199-FCL",
+  "version": 1,
+  "customerId": "CUST-ANPHAT",
+  "sea_export": {
+    "on_board_at": "2026-10-04"
+  },
+  "updated_by": "staging.support",
+  "updated_by_role": "support",
+  "audit_count": 1,
+  "audit": [
+    {
+      "action": "create",
+      "actor": "staging.support",
+      "actor_role": "support",
+      "before_version": null,
+      "after_version": 1,
+      "before_on_board_at": null,
+      "after_on_board_at": "2026-10-04"
+    }
+  ]
+}
