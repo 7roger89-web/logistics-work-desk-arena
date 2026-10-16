@@ -2,7 +2,9 @@ b4daa029d83577946a469f03f981a9d12ef58b103336b507d9d5d1be43114e71  component/dist
 e66fa5c7b82bb0ef3a9a0edda7c13254a17039705bc1d513137ec51afa090b5d  component/dist/logi-shell.js
 95e5930656aa100d15cd1ab90f8d28e4e0a7df19cbaba7d1b3843946f2b4bb29  component/src/components/AttentionNow.tsx
 ecb561b5bd7acc256819eb2f59910dba9b1be1224ca072e17a3b2fb53a466782  component/src/pages/ShipmentDetail.tsx
-e31e2a26df69b3846f97c3b1cf6961a92512959db12e1d3eb3e843a4603ef2e2  evidence/logi-199-sale-home-journey/README.md
+611fdcfc169cba28b9beb4949ae648e19d53e33a230bf1fd9b22f90ca95b1651  docs/goals/LOGI-APP-RENEWAL-01/state.json
+14f193399773ec697c79408ceaa83706e5c39be04fb59595d11965d495a9e1f9  evidence/logi-199-sale-home-journey/CONTROL_TOWER_RETURN_PACKET.md
+1a1990188e5b79e5bfd0aa909d3ae3a10248ca885d2afc35874e74426ee14521  evidence/logi-199-sale-home-journey/README.md
 cab7a1947082a294563e86228f4c6ec363750404ac7edd7442fc208926ed589d  evidence/logi-199-sale-home-journey/after/desktop-fcl-initial.png
 9a40797e04efa2d9cac9d3e69a53daacdc4ec9c124b7fcef19da705024c3bada  evidence/logi-199-sale-home-journey/after/desktop-home-fcl-target.png
 9ffb4de3873e51ff616891d472eecbf1ff5523c03878c5ae25eedd932b4f66d3  evidence/logi-199-sale-home-journey/after/desktop-home.png
@@ -29,6 +31,7 @@ e434a6b01655598a8c5e5ec76b86ffc33aa3fc60bfdc26b10ee70e1dd8e5d1bc  evidence/logi-
 37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570  evidence/logi-199-sale-home-journey/github-preflight-own-prs.json
 bb8585fe12acdbaf85e49ee1d50083517c458a812a09cbd9a8468522f3055231  evidence/logi-199-sale-home-journey/github-preflight-prs.json
 81eb5cb2d254577f65f7025f9f6ac697667b786a0479f12db0af1161237e8e42  evidence/logi-199-sale-home-journey/github-preflight-repo.json
+b6b28085e4c69ccf2ed7e85b71b6e3a286d5f7a977a0eb74f3c7648658643939  evidence/logi-199-sale-home-journey/github-published-readback.json
 5994235a8e112ca412366fb62f78ac9052ca96d89d91c838c9e16a1162c25080  evidence/logi-199-sale-home-journey/logs/after-browser.txt
 6b556903ad87ecbe35779a2a524dfed46094dce07a0e8ffb58c44b143f993f1e  evidence/logi-199-sale-home-journey/logs/after-build.txt
 919fadf1992ae66b05b9941c75969c6ee95b3d450103c8f82eb44dd1c1a395c3  evidence/logi-199-sale-home-journey/logs/after-dom.txt
@@ -43,7 +46,7 @@ ef20a9e20d1a0c1ff716d4fca7ad875aa3bf20c43b7898995d486c83972b940d  evidence/logi-
 48079d447b229c3066a7c194208583d59620b58b19b07467aed11e91cfecd104  evidence/logi-199-sale-home-journey/logs/regression-before-dom.txt
 aead445603da6a035517558eccd153828ebc309871170266f645a07a36e6432e  evidence/logi-199-sale-home-journey/logs/regression-before-python.txt
 95fa9328e4d4f5e896e8fe99d2550d14cedf22bc07ff440d497f4094bd464ceb  evidence/logi-199-sale-home-journey/logs/supplement-browser.txt
-610d5a8b4091d7f7d11997c898fccb9a047c7609ab9c438d1c0c0436aadfd0ec  evidence/logi-199-sale-home-journey/provenance.json
+fed28bbbd9f195d27712bf8cc553376fc6b157c7b39839281bdb4691e1a85d81  evidence/logi-199-sale-home-journey/provenance.json
 69f44215945a6a30e64e9dbe532d08315d23a7b68a06f681db5dc43491cb138f  evidence/logi-199-sale-home-journey/readback/desktop-backend-after-reload.json
 69f44215945a6a30e64e9dbe532d08315d23a7b68a06f681db5dc43491cb138f  evidence/logi-199-sale-home-journey/readback/desktop-backend-after-save.json
 1110a768b9584528a646286d73a5278625f08f577e81c98efff99be886712b55  evidence/logi-199-sale-home-journey/readback/desktop-backend-before.json

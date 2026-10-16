@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-16 UTC. **Repo:** `7roger89-web/logistics-work-desk-arena`.
 **Session branch:** `arena/7d8e8372-logistics-work-desk-arena`.
-**Verified base:** `7a73e484446bf8ab79f405125d6ba0589e8ab56a`, the unchanged Draft [#207](https://github.com/7roger89-web/logistics-work-desk-arena/pull/207) source (`arena/18ef00cf-logistics-work-desk-arena`). The new flow PR is stacked on that source, not on `main`. See the checkpoint packet for the published commit/PR identity.
+**Verified base:** `7a73e484446bf8ab79f405125d6ba0589e8ab56a`, the unchanged Draft [#207](https://github.com/7roger89-web/logistics-work-desk-arena/pull/207) source (`arena/18ef00cf-logistics-work-desk-arena`). New Draft [#208](https://github.com/7roger89-web/logistics-work-desk-arena/pull/208) is stacked on that source, not on `main`. Tested product/evidence commit: `ecf6c88da6523028195918e1440cc3b413bfad7c`; see [CONTROL_TOWER_RETURN_PACKET](CONTROL_TOWER_RETURN_PACKET.md) for the complete checkpoint and limitations.
 
 `INITIAL_PLANNING_CLASSIFICATION=UIUX` · `FINAL_ROUTING_CLASSIFICATION=UIUX`
 `EVIDENCE_VERDICT=PROVEN_FOR_BOUNDED_FLOW` · `VISUAL_VERDICT=BOUNDED_RENDERED_PASS`

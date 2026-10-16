@@ -3,7 +3,7 @@
   "repository": "7roger89-web/logistics-work-desk-arena",
   "branch": "arena/7d8e8372-logistics-work-desk-arena",
   "base_commit": "7a73e484446bf8ab79f405125d6ba0589e8ab56a",
-  "capture_basis": "Base plus the exact file SHA-256 values below; published code commit pinned in the checkpoint.",
+  "capture_basis": "Exact source/dist/runner hashes below are in the published product commit. Source, dist and raw result GitHub blob IDs were independently read back and matched local files. Follow-up checkpoint changes docs/state only.",
   "law_source": "LOCAL_PORTABLE",
   "law_canonical_body_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
   "uiux_skill_sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
@@ -43,5 +43,9 @@
       "after-focused-python.txt"
     ],
     "browser_result_and_db_snapshots": "UNMODIFIED"
-  }
+  },
+  "published_product_commit": "ecf6c88da6523028195918e1440cc3b413bfad7c",
+  "published_pr": 208,
+  "published_pr_url": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/208",
+  "test_server": "STOPPED via process tool after final capture; process-local samples discarded."
 }
