@@ -383,7 +383,9 @@ def load_shipments(*, db: Any = _UNSET_DB) -> dict[str, Any]:
     ``core.database.load_data`` is cached for performance in the Streamlit
     runtime. The Logi-good work desk must show a write the moment it lands, so
     it calls the same module's uncached implementation directly — the same
-    query, the same ``repair_data`` normalisation, no second source of truth.
+    query and canonical normalisation, with UNKNOWN cost/source currency
+    retained for read-only cost references. Writer defaults and financial
+    arithmetic are unchanged; no second source of truth.
 
     ``db`` is the optional explicit handle a STREAMLIT-FREE read worker was
     handed (see ``_read_concurrently``); standalone callers resolve it as
@@ -391,7 +393,7 @@ def load_shipments(*, db: Any = _UNSET_DB) -> dict[str, Any]:
     """
     from core.database import _load_data_impl
 
-    return _load_data_impl(db=_resolve_db(db)) or {}
+    return _load_data_impl(db=_resolve_db(db), preserve_unknown_cost=True) or {}
 
 
 def _load_references(*, db: Any = _UNSET_DB) -> dict[str, Any]:

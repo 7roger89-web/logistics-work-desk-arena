@@ -1,0 +1,26 @@
+PASS Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI
+PASS QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended
+PASS ACTUAL SELL 40000000 / COST UNKNOWN: unknown displayed, disabled action, no selling fallback
+PASS ACTUAL SELL 40000000 / COST 32000000: only 32000000 selected, provenance retained, new sell blank after backend preview
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /rows\.amount/. Input:
+
+'Nguồn giá nội bộ: PR205-INPUT-VALID — SYNTHETIC · RATE-SAVE-1792132970802-4mm7ka · line-1\n' +
+  '\n' +
+  '⚠ Theo hiệu lực nguồn — vẫn cần xác nhận · 2027-12-31'
+
+    at file:///home/user/logistics-work-desk-arena/tests/component/browser_quote_cost_provenance.mjs:120:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'Nguồn giá nội bộ: PR205-INPUT-VALID — SYNTHETIC · RATE-SAVE-1792132970802-4mm7ka · line-1\n' +
+    '\n' +
+    '⚠ Theo hiệu lực nguồn — vẫn cần xác nhận · 2027-12-31',
+  expected: /rows\.amount/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.22.3

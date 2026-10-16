@@ -1,0 +1,7 @@
+PASS ACTUAL sell 40000000 / cost UNKNOWN → no cost; never fallback to selling
+PASS QUOTE SELL 40000000 remains comparison-only, ineligible as cost
+PASS ACTUAL sell 40000000 / cost 32000000 → only 32000000 with source field/currency/unit provenance
+PASS INPUT_RATE supplier BUY 31800000 is eligible with supplier row provenance
+PASS expired/unknown validity warnings retained, not promoted to current
+PASS currency/unit/finite-cost prerequisites; explicit zero preserved; unknown/QUOTE metadata cannot bypass guard
+PASS historical selling/cost/profit and supplier snapshots unchanged (deep-frozen inputs)

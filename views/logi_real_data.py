@@ -607,7 +607,7 @@ def finance_projection(
             "cost": num(line.get("cost", line.get("price_in"))),
             "qty": num(line.get("qty")),
             "vat": num(line.get("vat_line", line.get("vat"))),
-            "ccy": currency,
+            "ccy": text(finance.get("_cost_reference_currency")) if "_cost_reference_currency" in finance else currency,
             "kind": "actual",
         }
         for line in details

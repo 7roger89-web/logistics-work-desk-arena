@@ -42,7 +42,11 @@ export interface CostMatchLine {
   label: string;
   unit: string;
   qty: number | null;
+  /** Comparison value; only ACTUAL_COST / SUPPLIER_RATE may seed buy cost. */
   price: number | null;
+  priceBasis: "ACTUAL_COST" | "SUPPLIER_RATE" | "HISTORICAL_SELL";
+  /** Original record/row + field; never inferred from a selling amount. */
+  priceProvenance: string;
   vat: number | null;
   ccy: string;
   note: string;
@@ -78,6 +82,29 @@ export interface CostMatch {
   expired?: boolean;
   lines: CostMatchLine[];
   totalsByCurrency: Array<{ ccy: string; amount: number }>;
+}
+
+/** Selection guard, not a ranking/filter rule: non-cost history stays visible. */
+export function costReferenceIssue(match: CostMatch, line: CostMatchLine): string {
+  if (match.source === "QUOTE" || line.priceBasis === "HISTORICAL_SELL") {
+    return "Giá đã báo/dự kiến — không phải giá vốn";
+  }
+  const expectedBasis = match.source === "ACTUAL" ? "ACTUAL_COST" : "SUPPLIER_RATE";
+  if (line.priceBasis !== expectedBasis || !line.priceProvenance?.trim()) {
+    return "Chưa có căn cứ nguồn giá vốn — chỉ xem tham khảo";
+  }
+  if (line.price == null || !Number.isFinite(line.price) || line.price < 0) {
+    return match.source === "ACTUAL"
+      ? "Chưa biết giá vốn thực tế — không dùng giá bán thay thế"
+      : "Chưa có giá đầu vào hợp lệ";
+  }
+  if (!line.unit.trim()) return "Chưa rõ đơn vị giá vốn — cần xác nhận nguồn";
+  // Both quote editors support these currencies; never guess VND or convert.
+  if (!["VND", "USD", "CNY"].includes(line.ccy)) return "Chưa có loại tiền giá vốn được hỗ trợ (VND/USD/CNY)";
+  if (match.source === "INPUT_RATE" && (!line.rateSnapshotId || !line.rateRowId)) {
+    return "Thiếu snapshot/dòng nguồn giá đầu vào";
+  }
+  return "";
 }
 
 export function loose(text: string | null | undefined): string {
@@ -117,23 +144,30 @@ export function createdTs(createdAt: string | undefined): number {
 }
 
 function actualLines(s: Shipment): CostMatchLine[] {
-  return (s.finance?.actual ?? []).map((l) => ({
+  return (s.finance?.actual ?? []).map((l, index) => ({
     label: l.label || l.name || "Dịch vụ",
-    unit: l.unit || "",
+    unit: (l.unit || "").trim(),
     qty: l.qty ?? null,
-    price: l.cost ?? l.price ?? l.amount ?? null,
+    // FinanceActualLine.price / amount are SELL, not a missing-cost fallback.
+    price: l.cost ?? null,
+    priceBasis: "ACTUAL_COST",
+    priceProvenance: `${s.id} · dòng ${l.id || index + 1} · finance.actual.cost`,
     vat: l.vat ?? null,
-    ccy: l.ccy || s.finance?.currency || "VND",
+    // This per-line currency preserves source provenance. The summary currency
+    // may be a default VND, so it must not fill an explicitly unknown basis.
+    ccy: (l.ccy || "").trim().toUpperCase(),
     note: l.note || "",
   }));
 }
 
 function quoteLines(s: Shipment): CostMatchLine[] {
-  return (s.finance?.quote ?? []).map((l: MoneyLine) => ({
+  return (s.finance?.quote ?? []).map((l: MoneyLine, index) => ({
     label: l.label || "Dịch vụ (báo giá)",
     unit: "",
     qty: l.qty ?? null,
     price: l.amount ?? null,
+    priceBasis: "HISTORICAL_SELL",
+    priceProvenance: `${s.id} · dòng ${index + 1} · finance.quote.amount (SELL)`,
     vat: l.vat ?? null,
     ccy: l.ccy || s.finance?.currency || "VND",
     note: "",
@@ -143,9 +177,9 @@ function quoteLines(s: Shipment): CostMatchLine[] {
 function totalsByCurrency(lines: CostMatchLine[]): Array<{ ccy: string; amount: number }> {
   const buckets = new Map<string, number>();
   for (const l of lines) {
-    if (l.price == null) continue;
+    if (l.price == null || !l.ccy) continue;
     const qty = l.qty == null ? 1 : l.qty;
-    const code = (l.ccy || "VND").toUpperCase();
+    const code = l.ccy.toUpperCase();
     buckets.set(code, (buckets.get(code) ?? 0) + l.price * qty);
   }
   return [...buckets.entries()].map(([ccy, amount]) => ({ ccy, amount }));
@@ -481,8 +515,10 @@ function inputRateMatches(
         unit: row.equipment || row.unit || "",
         qty: 1,
         price: row.kind === "CREDIT" ? -(row.amount || 0) : row.amount ?? null,
+        priceBasis: "SUPPLIER_RATE",
+        priceProvenance: `${snapshot.id} · dòng ${row.id} · rows.amount`,
         vat: null,
-        ccy: row.currency || "",
+        ccy: (row.currency || "").trim().toUpperCase(),
         note: [
           row.carrier?.name,
           row.etd ? `ETD ${row.etd}` : "",

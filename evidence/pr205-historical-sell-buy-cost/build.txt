@@ -1,0 +1,13 @@
+
+> logi-shell-component@0.1.0 build
+> vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1918 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css     89.67 kB │ gzip:  17.65 kB
+dist/logi-shell.js   1,484.55 kB │ gzip: 318.34 kB
+
+✓ built in 889ms

@@ -26,7 +26,7 @@ import CostCheck from "../components/CostCheck";
 import CostIntelligencePanel from "../components/CostIntelligence";
 import ExcelQuoteWorkspace from "../components/ExcelQuoteWorkspace";
 import type { ParsedQuote } from "../lib/quoteTextParser";
-import type { CostMatch } from "../lib/costHistory";
+import { costReferenceIssue, type CostMatch } from "../lib/costHistory";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -229,27 +229,22 @@ export default function SalesQuotes() {
     setCreating(true);
   };
   const useCostReference = (match: CostMatch) => {
-    const usable = match.lines.filter((line) => line.price != null);
-    const lines: LineForm[] = usable.length
-      ? usable.map((line) => ({
+    const usable = match.lines.filter((line) => !costReferenceIssue(match, line));
+    if (!usable.length) {
+      toast("Chỉ xem tham chiếu", "Nguồn này không có giá vốn đủ căn cứ; không nạp giá bán lịch sử làm giá vốn.", "blue");
+      return;
+    }
+    const lines: LineForm[] = usable.map((line) => ({
           code: "",
           serviceName: line.label,
-          unit: line.unit || "Lần",
+          unit: line.unit,
           qty: line.qty == null ? "1" : String(line.qty),
-          currency: line.ccy || "VND",
-          // Negative input-rate credits/refunds are evidence, not a normal quote
-          // cost field. Keep them visible in the note and ask the operator to
-          // decide how to apply them instead of writing an invalid negative cost.
-          costUnit: line.price != null && line.price >= 0 ? String(line.price) : "",
+          currency: line.ccy,
+          costUnit: String(line.price),
           sellUnit: "",
           taxPct: "",
-          note:
-            (line.price != null && line.price < 0
-              ? "Credit/refund tham chiếu " + String(line.price) + " " + line.ccy + ". "
-              : "") +
-            "Nguồn giá vốn: " + match.sourceLabel + " · " + match.referenceId,
-        }))
-      : [{ ...EMPTY_LINE }];
+          note: "Nguồn giá vốn: " + match.sourceLabel + " · " + line.priceProvenance,
+        }));
 
     setCustomerNotes([]);
     setForm({

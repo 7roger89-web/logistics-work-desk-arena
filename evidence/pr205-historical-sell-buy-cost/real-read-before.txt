@@ -1,0 +1,18 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ test_unknown_cost_survives_real_component_read_without_zero_or_sell_fallback[None] _
+
+unknown = None
+
+    @pytest.mark.parametrize("unknown", [None, "", "  ", "UNKNOWN", False, "NaN"])
+    def test_unknown_cost_survives_real_component_read_without_zero_or_sell_fallback(unknown):
+        doc = source(unknown)
+        before = deepcopy(doc)
+        loaded, projected = read(doc)
+>       assert loaded["data"]["3.4"]["details"][0]["cost"] is None
+E       assert 0.0 is None
+
+tests/test_quote_cost_reference_truth.py:47: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_quote_cost_reference_truth.py::test_unknown_cost_survives_real_component_read_without_zero_or_sell_fallback[None]
+1 failed, 14 deselected in 0.82s

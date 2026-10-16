@@ -5,7 +5,7 @@ import CostIntelligencePanel from "./CostIntelligence";
 import { useStore } from "../lib/store";
 import { getViewModel, subscribeViewModel, type Quote } from "../lib/viewmodel";
 import { cx, downloadBinaryFile, fmtMoney } from "../lib/format";
-import { findComparableCosts, loose, type CostCriteria, type CostMatch, type CostMatchLine } from "../lib/costHistory";
+import { costReferenceIssue, findComparableCosts, loose, type CostCriteria, type CostMatch, type CostMatchLine } from "../lib/costHistory";
 import { emptyExcelService, quoteRequestId, type CustomerQuotePreview, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
 import type { LogiEventName } from "../lib/dispatcher";
 import "./excelQuote.css";
@@ -166,10 +166,11 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
   };
   const appendLine = (line: ExcelService) => working && patch({ options: { ...working.options, [working.active_option]: { ...working.options[working.active_option], service_lines: [...working.options[working.active_option].service_lines, line] } } });
   const pickCost = (match: CostMatch, line: CostMatchLine) => {
-    if (line.price == null || line.price < 0) return;
-    appendLine({ ...emptyExcelService(), service_name: line.label, unit: line.unit || "Lần", qty: line.qty ?? 1,
-      cost_unit: line.price, currency: line.ccy || "VND", sell_unit: "", sell_confirmed: false, tax_pct: "",
-      cost_source: `${match.sourceLabel} · ${match.supplier || match.referenceId}`,
+    const issue = costReferenceIssue(match, line);
+    if (issue) { toast("Không thể dùng làm giá vốn", issue, "blue"); return; }
+    appendLine({ ...emptyExcelService(), service_name: line.label, unit: line.unit, qty: line.qty ?? 1,
+      cost_unit: line.price, currency: line.ccy, sell_unit: "", sell_confirmed: false, tax_pct: "",
+      cost_source: `${match.sourceLabel} · ${match.supplier || match.referenceId} · ${line.priceProvenance} · ${line.ccy}/${line.unit}`,
       internal_note: line.note, valid_until: line.validUntil || "", validity_status: line.validityStatus || "UNKNOWN",
       condition: line.condition || "UNCONFIRMED", rate_snapshot_id: line.rateSnapshotId, rate_row_id: line.rateRowId,
     });
@@ -293,7 +294,33 @@ function CostPicker({ criteria, onPick, onManage }: { criteria: CostCriteria; on
   useEffect(() => () => onManage(false), [onManage]);
   const needle = loose(query);
   const filtered = matches.filter((m) => !needle || loose([m.supplier, m.referenceId, m.origin, m.destination, ...m.lines.map((l) => l.label)].join(' ')).includes(needle)).slice(0, 12);
-  return <div className="eq-cost-picker" data-testid="excel-cost-picker"><Field label="Tìm trong Kho giá vốn" hint="Cùng dữ liệu rate_cards / cost_catalog và bộ đối chiếu Cost Intelligence của app."><input className={inputCls()} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tên phí, nhà cung cấp, cảng…" data-testid="excel-cost-search" /></Field>{filtered.length ? <div className="space-y-3 mt-3">{filtered.map((match) => <div key={match.referenceId} className="rounded-xl border border-slate-200 bg-white p-3"><p className="font-bold text-[14px]">{match.sourceLabel} · {match.supplier || match.referenceId}</p><p className="eq-muted">{match.origin} → {match.destination} · {match.equipment || 'Thiết bị chưa rõ'}</p>{match.differences?.length ? <p className="text-[13px] text-amber-900 mt-1">⚠ {match.differences.join(' · ')}</p> : null}<div className="mt-2 space-y-2">{match.lines.map((line, i) => <div key={i} className="eq-cost-result"><div><b>{line.label} · {money(line.price, line.ccy)} / {line.unit}</b><p className="text-[12px] text-amber-900">{line.validityStatus === 'EXPIRED' || match.expired ? '⚠ ĐÃ HẾT HẠN' : line.validityStatus === 'SUPERSEDED' ? '⚠ ĐÃ CÓ GIÁ THAY THẾ' : line.validUntil ? `Hiệu lực nguồn: ${line.validUntil} — cần xác nhận` : '⚠ CHƯA RÕ HIỆU LỰC'}{line.condition === 'IF_APPLICABLE' ? ' · CÓ ĐIỀU KIỆN' : ''}</p>{line.note && <p className="eq-muted break-words">{line.note}</p>}</div><GhostBtn onClick={() => onPick(match, line)} disabled={line.price == null || line.price < 0} testId={`excel-pick-cost-${i + 1}`}>Dùng giá vốn</GhostBtn></div>)}</div></div>)}</div> : <p className="eq-empty">Không có giá phù hợp với tiêu chí hiện tại. App không bịa giá; có thể bổ sung bảng giá thật vào Kho hiện có bên dưới.</p>}<details className="mt-3" onToggle={(e) => onManage(e.currentTarget.open)}><summary className="cursor-pointer font-bold py-3 text-[14px]">Bổ sung giá vào Kho hiện có</summary><p className="eq-muted mb-3">Đóng khung này sau khi lưu giá để tiếp tục tính báo giá.</p><CostIntelligencePanel /></details></div>;
+  return <div className="eq-cost-picker" data-testid="excel-cost-picker">
+    <Field label="Tìm trong Kho giá vốn" hint="Cùng dữ liệu rate_cards / cost_catalog và bộ đối chiếu Cost Intelligence của app.">
+      <input className={inputCls()} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tên phí, nhà cung cấp, cảng…" data-testid="excel-cost-search" />
+    </Field>
+    {filtered.length ? <div className="space-y-3 mt-3">{filtered.map((match) => <div key={match.referenceId} className="rounded-xl border border-slate-200 bg-white p-3" data-testid="excel-cost-reference" data-reference-id={match.referenceId} data-source={match.source}>
+      <p className="font-bold text-[14px]">{match.sourceLabel} · {match.supplier || match.referenceId}</p>
+      <p className="eq-muted">{match.origin} → {match.destination} · {match.equipment || 'Thiết bị chưa rõ'}</p>
+      {match.differences?.length ? <p className="text-[13px] text-amber-900 mt-1">⚠ {match.differences.join(' · ')}</p> : null}
+      <div className="mt-2 space-y-2">{match.lines.map((line, i) => {
+        const issue = costReferenceIssue(match, line);
+        return <div key={i} className="eq-cost-result" data-cost-basis={line.priceBasis}>
+          <div>
+            <b>{line.label} · {money(line.price, line.ccy)}{line.unit ? ` / ${line.unit}` : ''}</b>
+            {issue && <p className="text-[13px] font-semibold text-amber-900" data-testid="excel-cost-ineligible">{issue}</p>}
+            <p className="eq-muted break-words">{line.priceProvenance}</p>
+            <p className="text-[12px] text-amber-900">{line.validityStatus === 'EXPIRED' || match.expired ? '⚠ ĐÃ HẾT HẠN' : line.validityStatus === 'SUPERSEDED' ? '⚠ ĐÃ CÓ GIÁ THAY THẾ' : line.validUntil ? `Hiệu lực nguồn: ${line.validUntil} — cần xác nhận` : '⚠ CHƯA RÕ HIỆU LỰC'}{line.condition === 'IF_APPLICABLE' ? ' · CÓ ĐIỀU KIỆN' : ''}</p>
+            {line.note && <p className="eq-muted break-words">{line.note}</p>}
+          </div>
+          <GhostBtn onClick={() => onPick(match, line)} disabled={!!issue} testId={`excel-pick-cost-${i + 1}`}>Dùng giá vốn</GhostBtn>
+        </div>;
+      })}</div>
+    </div>)}</div> : <p className="eq-empty">Không có giá phù hợp với tiêu chí hiện tại. App không bịa giá; có thể bổ sung bảng giá thật vào Kho hiện có bên dưới.</p>}
+    <details className="mt-3" onToggle={(e) => onManage(e.currentTarget.open)}>
+      <summary className="cursor-pointer font-bold py-3 text-[14px]">Bổ sung giá vào Kho hiện có</summary>
+      <p className="eq-muted mb-3">Đóng khung này sau khi lưu giá để tiếp tục tính báo giá.</p><CostIntelligencePanel />
+    </details>
+  </div>;
 }
 
 function ServiceEditor({ line, computed, index, onChange, onRemove }: { line: ExcelService; computed?: ExcelService; index: number; onChange: (change: Partial<ExcelService>) => void; onRemove: () => void }) {
