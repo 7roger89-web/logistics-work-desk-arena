@@ -527,7 +527,22 @@
       "evidence/logi-199-uat/OWNER_TRIAL_READINESS.md (this session's preflight + pre-handover receipt)",
       "docs/goals/LOGI-APP-RENEWAL-01/UAT.md (Owner 3-step guide; reviewed-artifact ZIP bound to 7ef144c)",
       "MO-APP-DUNG-THU-MAC.command"
-    ]
+    ],
+    "github_publication": {
+      "file": "LOGI199-GOI-DUNG-THU.zip",
+      "delivery_form": "tracked repository blob (not a gitignored artifact) + pinned annotated tag",
+      "branch": "arena/3851e3be-logistics-work-desk-arena @ 3533144",
+      "tag": "logi199-owner-trial (annotated 3ce9c0b4 -> commit 3533144)",
+      "git_blob_sha": "3652985db13f8dc51dd4a73daeb7697eee7e6f81",
+      "bytes": 5284685,
+      "zip_sha256": "8558e13596d44fb69906b2351d42cbca8b359157aae7485a7bad699f59804f3d",
+      "download_links": [
+        "https://github.com/7roger89-web/logistics-work-desk-arena/blob/logi199-owner-trial/LOGI199-GOI-DUNG-THU.zip",
+        "https://github.com/7roger89-web/logistics-work-desk-arena/raw/logi199-owner-trial/LOGI199-GOI-DUNG-THU.zip"
+      ],
+      "verification": "Remote blob sha and size equal the local file; GitHub contents API resolves the file at both the branch and the tag ref; a real download of the tagged archive from codeload (71171734 bytes) contained the nested ZIP with SHA-256 8558e135…804f3d — exact match. Release-asset upload is impossible from this sandbox: uploads.github.com refuses TLS/cannot be reached by the sandbox network allowlist.",
+      "login_requirement": "Repository is private, so the browser download requires the Owner's signed-in GitHub session; that session cannot be exercised from the sandbox (NOT_VERIFIED here)."
+    }
   },
   "owner_access_receipt": {
     "diagnosis_method": "External fetch through the platform harness (outside the sandbox) plus in-sandbox probes; no localhost-only claim was accepted.",
