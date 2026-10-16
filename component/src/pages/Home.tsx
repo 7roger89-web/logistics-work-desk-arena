@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Truck, FileCheck2, PackageCheck, FileWarning, ArrowRight, Wallet, Scale, FolderX, ListTodo } from "lucide-react";
 import { ToneBadge, SectionTitle, StatusDot } from "../components/ui";
@@ -40,6 +41,17 @@ export default function Home() {
   const running = (home?.runningSummary ?? []);
   const today = new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
   const urgentTotal = home?.urgentCount ?? 0;
+  // Remove the focus lot's PRIMARY_ACTION by source identity, not by slicing
+  // off the first row: a newly due task may sort ahead of that action and must
+  // remain visible on Home after the canonical task writer succeeds.
+  const homeAttention = useMemo(() => {
+    const rows = attention ?? [];
+    const focusId = home?.focus?.id;
+    const other = focusId
+      ? rows.filter((item) => !(item.sourceType === "PRIMARY_ACTION" && item.shipmentId === focusId))
+      : rows;
+    return other.slice(0, 4);
+  }, [attention, home?.focus?.id]);
 
   return (
     <div className="space-y-4 max-w-[1200px]">
@@ -58,6 +70,7 @@ export default function Home() {
               <button onClick={() => nav(focus.to)} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">XỬ LÝ NGAY <ArrowRight size={18} /></button>
               <button onClick={() => nav(shipmentPath(focus.id))} className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]">Mở {focus.id}</button>
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center rounded-xl text-white/90 font-bold text-[14px] px-4 min-h-[48px] underline decoration-white/40 underline-offset-4">Xem tất cả lô hàng</Link>
+              <Link to="/viec-can-xu-ly" data-testid="home-task-desk" className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-white/30 px-4 min-h-[48px] text-[14px] font-bold text-white">Việc & giao việc <ArrowRight size={15} /></Link>
             </div>
           </>
         ) : (
@@ -65,6 +78,7 @@ export default function Home() {
             <h1 className="text-[19px] md:text-[23px] font-extrabold leading-snug mt-1">Chưa có việc cần xử lý theo dữ liệu hiện có.</h1>
             <div className="flex flex-wrap gap-2.5 mt-3.5">
               <Link to="/lo-hang" className="btn-press touch-target inline-flex items-center gap-2 rounded-xl bg-white text-[#0f2a4a] font-extrabold text-[15px] px-5 min-h-[48px]">Mở danh sách lô <ArrowRight size={18} /></Link>
+              <Link to="/viec-can-xu-ly" data-testid="home-task-desk" className="btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 px-5 min-h-[48px] font-bold text-[15px] text-white">Việc & giao việc <ArrowRight size={18} /></Link>
             </div>
           </>
         )}
@@ -73,7 +87,7 @@ export default function Home() {
       {/* 2 — EXCEPTIONS + OPERATIONAL VISIBILITY: deadlines first, running lots beside */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <AttentionNow
-          items={(attention ?? []).slice(home?.focus ? 1 : 0, home?.focus ? 5 : 4)}
+          items={homeAttention}
           title="Cần xử lý tiếp"
           compact
         />

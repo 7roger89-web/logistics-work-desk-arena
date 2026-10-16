@@ -625,21 +625,22 @@ console.log("STEP 14 — Create Shipment");
 // STEP 15 — Phase B: Tracking (real transport facts, no fabricated GPS)
 // ---------------------------------------------------------------------------
 
-console.log("STEP 15 — removed tracking desk: former entries land on /lo-hang");
+console.log("STEP 15 — removed tracking desk: operational entries land on /lo-hang");
 {
   // LOGI_INTERNAL_UX_SIMPLIFY_01 — the standalone tracking desk left the nav;
-  // operational value stays reachable through Lô Hàng / shipment detail.
+  // operational value stays reachable through Lô Hàng / shipment detail. The
+  // task desk has its own active Home entry under LOGI-APP-RENEWAL-01.
   await click("Tổng Quan Công Việc", "a", $("aside")[0]);
   await click("Tất cả lô", "a");
   assert.ok(bodyText().includes("Tìm theo mã lô"), "home exception link must open Lô Hàng");
   await click("Tổng Quan Công Việc", "a", $("aside")[0]);
   await click("MỞ DANH SÁCH LÔ", "a");
   assert.ok(bodyText().includes("Tìm theo mã lô"), "home docs card must open Lô Hàng");
-  const dead = ["viec-can-xu-ly", "theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
+  const dead = ["theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
     $(`a[href*="${slug}"]`).map((a) => a.getAttribute("href"))
   );
   assert.equal(dead.length, 0, `visible links still route to removed desks: ${dead.join(", ")}`);
-  ok("former tracking/task entries open Lô Hàng; zero dead links");
+  ok("former tracking entries open Lô Hàng; task desk is a separate live Home route; zero dead links");
 }
 
 console.log("STEP 16 — import tax clear semantics");

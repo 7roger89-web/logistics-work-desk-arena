@@ -4,9 +4,9 @@
 // Representative flows (real bundle, real MemoryRouter navigation):
 //   A. Shipments: search + status filter → open shipment → Quay lại
 //      → search input + status chip restored.
-//   B. (LOGI_INTERNAL_UX_SIMPLIFY_01) Removed tasks desk: former task entry
-//      points land on the surviving work surface (/lo-hang); no visible
-//      link still routes to /viec-can-xu-ly.
+//   B. (LOGI_INTERNAL_UX_SIMPLIFY_01 + LOGI-APP-RENEWAL-01) Task desk remains
+//      out of the normal nav but is live from Home; other removed desk links
+//      still land on the surviving work surface (/lo-hang).
 //   C. Contracts: search → open contract → back → search restored.
 //   D. Receivables: search + outstanding filter → open shipment → back
 //      → both restored.
@@ -152,10 +152,14 @@ console.log("FLOW A — Shipments: search + status → open → back → context
   await tick();
 }
 
-console.log("FLOW B — removed tasks desk: entry points land on /lo-hang");
+console.log("FLOW B — Home task desk remains live; removed tracking/agreements entries land on /lo-hang");
 {
   await goto("Tổng Quan Công Việc");
   await tick();
+  await clickEl($('[data-testid="home-task-desk"]')[0]);
+  assert.ok(bodyText().includes("Việc Cần Xử Lý"), "Home task desk should open the active Tasks page");
+  assert.equal($("aside a[href=\"/viec-can-xu-ly\"]").length, 0, "task desk remains out of normal nav");
+  await goto("Tổng Quan Công Việc");
   await clickText("Tất cả lô", "a");
   await tick(120);
   assert.ok(bodyText().includes("Tìm theo mã lô"), "home exception link must open Lô Hàng");
@@ -169,11 +173,11 @@ console.log("FLOW B — removed tasks desk: entry points land on /lo-hang");
   await clickText("MỞ LÔ HÀNG", "a");
   await tick(120);
   assert.ok(bodyText().includes("Tìm theo mã lô"), "home urgent card must open Lô Hàng");
-  const dead = ["viec-can-xu-ly", "theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
+  const dead = ["theo-doi", "thoa-thuan-ban-giao"].flatMap((slug) =>
     $(`a[href*="${slug}"]`).map((a) => a.getAttribute("href"))
   );
   assert.equal(dead.length, 0, `visible links still route to removed desks: ${dead.join(", ")}`);
-  ok("former task entries land on the surviving work surface; zero dead links");
+  ok("Home task desk is live; former tracking/agreement links use /lo-hang; zero dead links");
 }
 
 console.log("FLOW C — Contracts: search → open → back → search restored");

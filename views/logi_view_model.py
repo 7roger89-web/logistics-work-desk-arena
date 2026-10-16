@@ -39,6 +39,7 @@ from views import handbook as logi_handbook
 from views import logi_c1
 from views import logi_real_data as rd
 from views import logi_route
+from views.logi_task_navigation import task_destination
 import time
 import threading
 
@@ -404,7 +405,8 @@ def _load_references(*, db: Any = _UNSET_DB) -> dict[str, Any]:
 
     db = _resolve_db(db)
     # Four independent reference reads, issued together (same readers, same
-    # results — see _read_concurrently).
+    # results — see _read_concurrently). The already-loaded canonical user
+    # snapshot is shared through _read_sources rather than queried twice.
     loaded = _read_concurrently({
         "customers": lambda: _load_customers_impl(db=db),
         "contracts": lambda: _load_contracts_impl(db=db),
@@ -579,6 +581,42 @@ def _home_projection(rows: list[dict[str, Any]], summary: Mapping[str, Any],
     }
 
 
+def _task_assignment_projection(users: Any) -> dict[str, Any]:
+    """Public active-user choices for the active task form."""
+    from core.auth import can_operate_business, current_user
+
+    actor = current_user() or {}
+    actor_id = rd.text(actor.get("user_id") or actor.get("username"))
+    is_admin = rd.text(actor.get("role")).lower() == "admin"
+    options = [{"userId": "", "label": "Tất cả (Team)"}]
+    if isinstance(users, Mapping):
+        candidates = [user for user in users.values() if isinstance(user, Mapping)]
+    elif isinstance(users, (list, tuple)):
+        candidates = [user for user in users if isinstance(user, Mapping)]
+    else:
+        candidates = []
+    candidates.sort(key=lambda user: (
+        rd.text(user.get("display_name") or user.get("username")).casefold(),
+        rd.text(user.get("user_id") or user.get("username")),
+    ))
+    seen: set[str] = set()
+    for user in candidates:
+        if not user.get("active", True):
+            continue
+        user_id = rd.text(user.get("user_id") or user.get("username"))
+        if not user_id or user_id in seen or (not is_admin and user_id == actor_id):
+            continue
+        seen.add(user_id)
+        options.append({
+            "userId": user_id,
+            "label": rd.text(user.get("display_name") or user.get("username")) or user_id,
+        })
+    return {
+        "canCreate": bool(can_operate_business("shipment_edit")),
+        "assignees": options,
+    }
+
+
 def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Tasks from real readiness/dashboard evidence + the real tasks collection.
 
@@ -623,6 +661,7 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             continue
         sid = rd.text(task.get("shipment_id"))
         row = by_id.get(sid)
+        destination = task_destination(task, row)
         done = bool(task.get("done"))
         out.append({
             "id": rd.text(task.get("task_id")),
@@ -632,10 +671,10 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "job": rd.text(task.get("content")),
             "assignee": rd.text(task.get("assignee")) or rd.UNKNOWN_LABEL,
             "due": rd._ddmmyyyy(task.get("deadline")),
-            "dueNote": "Đã hoàn thành" if done else "Việc được giao",
+            "dueNote": "Đã hoàn thành" if done else destination["notice"] or "Việc được giao",
             "status": "Đã xong" if done else "Chưa làm",
             "statusTone": "green" if done else "amber",
-            "route": (logi_route.shipment_path(sid) + "?tab=lay-hang") if sid else "/lo-hang",
+            "route": destination["route"],
             "source": "core.database.load_tasks",
         })
 
@@ -1015,6 +1054,7 @@ def build_view_model() -> dict:
         "shipments": rows,
         "home": home,
         "tasks": tasks,
+        "taskAssignment": _task_assignment_projection(sources["users"]),
         "attention": attention,
         "operationsControl": operations_control,
         "contracts": c1["contracts"],
@@ -1224,6 +1264,9 @@ PHASE_B_EVENTS = {
     "payment_record",
     "payment_correction",
     "shipment_create",
+    # LOGI-APP-RENEWAL-01 — task creation uses the existing task collection,
+    # writer, shipment_edit authority, audit and fresh task projection.
+    "task_create",
     "pxk_generate",
     "gnt_generate",
     # Issue #168 — FORM_07 Biên bản giao nhận pilot: ONE bounded generation
@@ -2965,6 +3008,102 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     fresh = read_shipment(sid)
     if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
     return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+
+
+# ---------------------------------------------------------------------------
+# LOGI-APP-RENEWAL-01 — create a task through the existing canonical task writer.
+# ---------------------------------------------------------------------------
+
+
+def _handle_task_create(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Create ONE task via core.database.add_task and read it back exactly.
+
+    Destination fields are optional and are validated against the current
+    shipment/Journey by the writer. The UI supplies identities only; the server
+    resolves assignee labels and creator provenance from canonical users/auth.
+    """
+    from core.auth import can_operate_business, current_user
+    from core.database import add_task, get_db, get_last_db_error, load_tasks, load_users
+
+    request_id = rd.text(payload.get("requestId"))
+    sid = rd.text(payload.get("shipmentId"))
+    scope = rd.text(payload.get("taskScope")).upper()
+    stage_id = rd.text(payload.get("stageId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result("task_create", sid, ok, error, requestId=request_id, **extra)
+
+    if not request_id or len(request_id) > 100:
+        return out(False, "Thiếu requestId hợp lệ.")
+    if not can_operate_business("shipment_edit"):
+        return out(False, "RBAC: không có quyền shipment_edit để giao việc.")
+
+    content = rd.text(payload.get("content"))
+    if not content or len(content) > 500:
+        return out(False, "Nội dung công việc cần từ 1 đến 500 ký tự.")
+
+    raw_deadline = rd.text(payload.get("deadline"))
+    deadline = ""
+    if raw_deadline:
+        try:
+            parsed_deadline = datetime.strptime(raw_deadline, "%Y-%m-%d")
+        except ValueError:
+            try:
+                parsed_deadline = datetime.strptime(raw_deadline, "%d/%m/%Y")
+            except ValueError:
+                return out(False, "Hạn chót phải là ngày hợp lệ.")
+        deadline = parsed_deadline.strftime("%d/%m/%Y")
+
+    db = get_db()
+    if db is None:
+        return out(False, get_last_db_error() or "Chưa kết nối được dữ liệu công việc.")
+
+    assignee_user_id = rd.text(payload.get("assigneeUserId"))
+    assignee = "Tất cả (Team)"
+    if assignee_user_id:
+        users = load_users(db=db)
+        target = next((user for user in users.values()
+                       if user.get("active", True)
+                       and rd.text(user.get("user_id") or user.get("username")) == assignee_user_id), None)
+        if target is None:
+            return out(False, "Người được giao không còn hoạt động hoặc không hợp lệ.")
+        assignee = rd.text(target.get("display_name") or target.get("username"))
+
+    actor = current_user() or {}
+    actor_user_id = rd.text(actor.get("user_id") or actor.get("username"))
+    task_id = str(uuid4())
+    saved = add_task(
+        content,
+        assignee,
+        deadline,
+        assignee_user_id=assignee_user_id,
+        assigned_by_user_id=actor_user_id,
+        shipment_id=sid,
+        task_scope=scope,
+        stage_id=stage_id,
+        task_id=task_id,
+    )
+    if not saved:
+        return out(False, get_last_db_error() or "Không lưu được công việc.")
+
+    fresh = next((task for task in load_tasks(db=db)
+                  if rd.text(task.get("task_id")) == task_id), None)
+    if fresh is None:
+        return out(False, "Công việc đã gửi nhưng chưa đọc lại được bản ghi vừa lưu.")
+    return out(
+        True,
+        readback={
+            "taskId": task_id,
+            "shipmentId": rd.text(fresh.get("shipment_id")),
+            "taskScope": rd.text(fresh.get("task_scope")),
+            "stageId": rd.text(fresh.get("stage_id")),
+            "assignee": rd.text(fresh.get("assignee")),
+            "assigneeUserId": rd.text(fresh.get("assignee_user_id")),
+            "deadline": rd.text(fresh.get("deadline")),
+            "createdBy": rd.text(fresh.get("created_by")),
+            "createdByUserId": rd.text(fresh.get("created_by_user_id")),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -5853,6 +5992,7 @@ _HANDLERS = {
     "payment_record": _handle_payment_record,
     "payment_correction": _handle_payment_correction,
     "shipment_create": _handle_shipment_create,
+    "task_create": _handle_task_create,
     "pxk_generate": _handle_pxk_generate,
     "gnt_generate": _handle_gnt_generate,
     "form07_generate": _handle_form07_generate,

@@ -1072,6 +1072,12 @@ export interface Task {
   source?: string;
 }
 
+/** Server-projected task assignment choices; backend writer re-checks access. */
+export interface TaskAssignmentPolicy {
+  canCreate: boolean;
+  assignees: { userId: string; label: string }[];
+}
+
 export type AttentionBand = "BLOCKING" | "OVERDUE" | "DUE_SOON" | "ACTION" | "INFO";
 export type AttentionSourceType = "TASK" | "PRIMARY_ACTION" | "ALERT" | "WORK_MODULE";
 
@@ -1089,6 +1095,8 @@ export interface AttentionItem {
   deadline: string;
   /** Canonical structured task date (YYYY-MM-DD); absent for free-text/unknown deadlines. */
   deadlineDate?: string;
+  /** How this task's existing route was resolved; separate from business UNKNOWN facts. */
+  navigationStatus?: "GENERAL" | "STAGE" | "FINANCE" | "SHIPMENT" | "UNKNOWN_STAGE";
   blockedGate: string;
   primary: boolean;
   sourcePriority?: Priority;
@@ -2420,6 +2428,8 @@ export interface ViewModel {
   shipments: Shipment[];
   home?: Home;
   tasks: Task[];
+  /** Active Home task form capability + canonical active assignees. */
+  taskAssignment?: TaskAssignmentPolicy;
   /** Issue #166 — ONE read-only action projection shared by Shipment + Home. */
   attention?: AttentionItem[];
   /** Issue #170 — manager read-only aggregation over the SAME Attention truth. */

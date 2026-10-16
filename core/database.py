@@ -1788,15 +1788,101 @@ def load_tasks(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
         return []
 
 
-def add_task(content: str, assignee: str = "All", deadline_str: str = "", assignee_user_id: str = "", assigned_by_user_id: str = "") -> bool:
+def _task_binding_error(db: Any, shipment_id: str, task_scope: str, stage_id: str) -> str:
+    """Validate optional task destination metadata against current shipment facts."""
+    sid = str(shipment_id or "").strip()
+    scope = str(task_scope or "").strip().upper()
+    stage = str(stage_id or "").strip()
+    allowed_scopes = {"STAGE", "FINANCE", "SHIPMENT"}
+
+    if scope and scope not in allowed_scopes:
+        return "Phạm vi điều hướng của công việc không hợp lệ."
+    if len(sid) > 200 or len(stage) > 200:
+        return "Mã lô hoặc mã công đoạn quá dài."
+    if not sid:
+        return "" if not scope and not stage else "Công việc gắn phạm vi xử lý phải có mã lô."
+    if scope == "STAGE" and not stage:
+        return "Chọn công đoạn trong Journey của lô trước khi giao việc."
+    if scope != "STAGE" and stage:
+        return "Chỉ công việc gắn công đoạn mới được có mã công đoạn."
+
+    try:
+        shipment = db.shipments.find_one(
+            {"id": sid, "is_deleted": {"$ne": True}, "is_archived": {"$ne": True}},
+            {"_id": 0},
+        )
+    except PyMongoError as exc:
+        return f"Không thể xác minh lô để giao việc: {_sanitize_error(str(exc))}"
+    if not isinstance(shipment, Mapping):
+        return "Không tìm thấy lô đang hoạt động để gắn công việc."
+
+    if scope == "STAGE":
+        try:
+            from core.shipment_journey import task_stage_nodes
+
+            valid_stage_ids = {
+                str(node.get("id") or "").strip()
+                for node in task_stage_nodes(shipment)
+                if isinstance(node, Mapping)
+            }
+        except Exception:  # fail closed if the authoritative Journey cannot be built
+            return "Không thể xác minh công đoạn trong Journey hiện tại của lô."
+        if stage not in valid_stage_ids:
+            return "Công đoạn không hợp lệ với Journey hiện tại của lô."
+    return ""
+
+
+def add_task(
+    content: str,
+    assignee: str = "All",
+    deadline_str: str = "",
+    assignee_user_id: str = "",
+    assigned_by_user_id: str = "",
+    *,
+    shipment_id: str = "",
+    task_scope: str = "",
+    stage_id: str = "",
+    task_id: str = "",
+) -> bool:
+    """Create an existing task, optionally bound to an existing shipment Journey.
+
+    Empty destination metadata preserves legacy general tasks. A shipment_id
+    without scope/stage is an honest unknown-stage binding for old and new
+    records; explicit scopes distinguish Journey stage, finance, and whole-lot
+    work without migrating existing task documents. ``task_id`` is an optional
+    server-generated identity for dispatcher readback; old callers still get
+    the existing random UUID behavior.
+    """
     if not _require_business_permission("shipment_edit", "Bạn không có quyền giao việc."):
         return False
     db = get_db()
     if db is None:
         return False
+
+    shipment_id = str(shipment_id or "").strip()
+    task_scope = str(task_scope or "").strip().upper()
+    stage_id = str(stage_id or "").strip()
+    binding_error = _task_binding_error(db, shipment_id, task_scope, stage_id)
+    if binding_error:
+        _set_last_error(binding_error)
+        return False
+
+    requested_task_id = str(task_id or "").strip()
+    if len(requested_task_id) > 100:
+        _set_last_error("Mã công việc quá dài.")
+        return False
+    task_id = requested_task_id or str(uuid4())
+    try:
+        if db.tasks.find_one({"task_id": task_id}, {"_id": 0}):
+            _set_last_error("Mã công việc đã tồn tại.")
+            return False
+    except PyMongoError as exc:
+        _set_last_error(_sanitize_error(str(exc)))
+        return False
+
     actor_context = _actor_context()
     doc = {
-        "task_id": str(uuid4()),
+        "task_id": task_id,
         "content": content,
         "assignee": assignee,
         "deadline": deadline_str,
@@ -1810,6 +1896,12 @@ def add_task(content: str, assignee: str = "All", deadline_str: str = "", assign
         doc["assignee_user_id"] = assignee_user_id
     if assigned_by_user_id:
         doc["assigned_by_user_id"] = assigned_by_user_id
+    if shipment_id:
+        doc["shipment_id"] = shipment_id
+    if task_scope:
+        doc["task_scope"] = task_scope
+    if stage_id:
+        doc["stage_id"] = stage_id
     db.tasks.insert_one(doc)
     _audit(db, "task", doc["task_id"], "create", after=doc)
     return True

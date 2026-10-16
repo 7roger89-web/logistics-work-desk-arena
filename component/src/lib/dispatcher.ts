@@ -57,6 +57,8 @@ export type LogiEventName =
   | "partner_payable_record"
   | "partner_payment_record"
   | "shipment_create"
+  // LOGI-APP-RENEWAL-01 — existing manual task writer with optional exact destination metadata.
+  | "task_create"
   | "pxk_generate"
   | "gnt_generate"
   // Issue #168 — FORM_07 Biên bản giao nhận generation (typed manual identity).
@@ -196,6 +198,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "partner_payable_record",
   "partner_payment_record",
   "shipment_create",
+  "task_create",
   "pxk_generate",
   "gnt_generate",
   "form07_generate",

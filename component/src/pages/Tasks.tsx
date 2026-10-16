@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { useQueryParam } from "../lib/queryParam";
-import { ArrowRight, ListFilter } from "lucide-react";
-import { SectionTitle, ToneBadge } from "../components/ui";
-import { TASKS } from "../lib/data";
+import { ArrowRight, ListFilter, Plus } from "lucide-react";
+import { PrimaryBtn, SectionTitle, ToneBadge } from "../components/ui";
+import TaskCreateSheet from "../components/TaskCreateSheet";
+import { useStore } from "../lib/store";
+import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
 import { cx } from "../lib/format";
 
 const LEVEL = {
@@ -13,25 +15,37 @@ const LEVEL = {
 } as const;
 
 export default function Tasks() {
+  const { tasks } = useStore();
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
+  const canCreate = Boolean(vm?.taskAssignment?.canCreate);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [success, setSuccess] = useState("");
+  const onTaskCreated = useCallback(() => setSuccess("Đã giao việc và đọc lại từ danh sách công việc."), []);
   // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — filter/query survive opening a task
   // target and coming back (route search params, no global store).
   const [levelRaw, setLevelRaw] = useQueryParam("level");
   const filter = (levelRaw || "ALL") as "ALL" | "Khan" | "CanXuLy" | "BinhThuong";
   const setFilter = (f: "ALL" | "Khan" | "CanXuLy" | "BinhThuong") => setLevelRaw(f === "ALL" ? "" : f);
   const [q, setQ] = useQueryParam("q");
-  const list = useMemo(() => TASKS.filter((t) => (filter === "ALL" || t.level === filter) && (!q || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(q.toLowerCase()))), [filter, q]);
-  // Real counts from the readiness/task evidence — never a hardcoded KPI.
+  const list = useMemo(() => tasks.filter((t) => (filter === "ALL" || t.level === filter) && (!q || (t.lot + t.customer + t.job + t.assignee).toLowerCase().includes(q.toLowerCase()))), [tasks, filter, q]);
+  // Real counts from the view-model task projection — never a hardcoded KPI.
   const counts = useMemo(() => ({
-    ALL: TASKS.length,
-    Khan: TASKS.filter((t) => t.level === "Khan").length,
-    CanXuLy: TASKS.filter((t) => t.level === "CanXuLy").length,
-    BinhThuong: TASKS.filter((t) => t.level === "BinhThuong").length,
-  }), [TASKS.length, TASKS]);
+    ALL: tasks.length,
+    Khan: tasks.filter((t) => t.level === "Khan").length,
+    CanXuLy: tasks.filter((t) => t.level === "CanXuLy").length,
+    BinhThuong: tasks.filter((t) => t.level === "BinhThuong").length,
+  }), [tasks]);
 
   return (
     <div className="space-y-4 max-w-[1300px]">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
-        <SectionTitle title="Việc Cần Xử Lý" sub="Hiện trạng → việc thiếu → bấm XỬ LÝ NGAY để tới đúng ô cần nhập. Làm mục Khẩn trước 17:00." />
+        <SectionTitle
+          title="Việc Cần Xử Lý"
+          sub="Hiện trạng → việc thiếu → bấm XỬ LÝ NGAY để tới đúng ô cần nhập. Làm mục Khẩn trước 17:00."
+          right={canCreate ? <PrimaryBtn testId="task-create-open" onClick={() => { setSuccess(""); setCreateOpen(true); }}><Plus size={17} /> Giao việc</PrimaryBtn> : undefined}
+        />
+        {!canCreate && <p data-testid="task-create-readonly" className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-600">Tài khoản hiện tại chỉ xem được công việc; quyền giao việc được kiểm tra lại ở backend.</p>}
+        {success && <p role="status" data-testid="task-create-success" className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[13.5px] font-semibold text-emerald-800">{success}</p>}
         <div className="flex flex-col md:flex-row gap-2.5">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Lọc theo mã lô, khách hàng, người phụ trách…" className="flex-1 rounded-xl border-2 border-slate-200 px-4 min-h-[48px] text-[15px] focus:border-[#1e5aa8] outline-none" />
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -89,6 +103,7 @@ export default function Tasks() {
         <ListFilter size={19} className="shrink-0 mt-0.5" />
         <p>Mẹo cho người mới: xử lý theo thứ tự <b>Khẩn → Cần xử lý → Bình thường</b>. Mỗi dòng đều có nút XỬ LÝ NGAY dẫn tới đúng ô nhập liệu.</p>
       </div>
+      <TaskCreateSheet open={createOpen} onClose={() => setCreateOpen(false)} onSuccess={onTaskCreated} />
     </div>
   );
 }

@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from views import logi_route
+from views.logi_task_navigation import task_destination
 
 BAND_ORDER = {"BLOCKING": 0, "OVERDUE": 1, "DUE_SOON": 2, "ACTION": 3, "INFO": 4}
 
@@ -202,16 +203,18 @@ def build_attention_projection(
         owner = _text(task.get("assignee"))
         if owner == unknown_label:
             owner = ""
+        destination = task_destination(task, by_shipment[sid])
         add({
             "id": _attention_id("TASK", sid, source_ref),
             "shipmentId": sid,
             "sourceType": "TASK",
             "sourceRef": f"TASK:{source_ref}",
             "band": band,
-            "reason": "Việc được giao",
+            "reason": destination["notice"] or "Việc được giao",
             "action": _text(task.get("content")),
             "context": _text(by_shipment[sid].get("customer")),
-            "route": logi_route.shipment_path(sid) + "?tab=lay-hang",
+            "route": destination["route"],
+            "navigationStatus": destination["navigationStatus"],
             "owner": owner,
             "deadline": parsed.strftime("%d/%m/%Y") if parsed else "",
             "deadlineDate": parsed.isoformat() if parsed else "",

@@ -3,7 +3,8 @@
 //
 //   1. Simplified nav: "Việc Cần Xử Lý" / "Theo Dõi Vận Chuyển" /
 //      "Thỏa thuận mua bán" are absent from the desktop sidebar AND the mobile
-//      drawer; "Báo Giá" is the visible quote label; surviving entries stay.
+//      drawer; the explicitly requested task desk remains reachable from Home;
+//      "Báo Giá" is the visible quote label; surviving entries stay.
 //   2. Customer runtime search: the input is present and enabled; toneless
 //      typing ("An Phat") filters by name, code and MST; the literal string
 //      "undefined" never matches a partial record; ?q= deep-links from the
@@ -13,7 +14,8 @@
 //      customerId); each service line has an optional Ghi chú input whose
 //      text travels in the quote_create payload; edit keeps the customer
 //      read-only and re-opens the persisted note.
-//   4. Dead-route audit: no visible link anywhere routes to a removed module.
+//   4. Dead-route audit: no visible link routes to removed tracking/agreement
+//      modules; the Home task-desk link is an intentional live destination.
 //   5. Translation donor parity: "Dịch Thuật" header, donor-shape sample
 //      pills, 15-item donor-shape glossary; real-provider states untouched.
 //
@@ -121,7 +123,7 @@ let cleanup = mod.default({
 });
 await tick(150);
 
-const REMOVED_SLUGS = ["viec-can-xu-ly", "theo-doi", "thoa-thuan-ban-giao"];
+const REMOVED_SLUGS = ["theo-doi", "thoa-thuan-ban-giao"];
 function deadLinks(root = window.document) {
   return REMOVED_SLUGS.flatMap((slug) =>
     $(`a[href*="${slug}"]`, root).map((a) => a.getAttribute("href"))
@@ -131,8 +133,14 @@ const customerCountLine = () =>
   $("p", $("main")[0]).map(text).find((t) => t.startsWith("Tìm thấy")) ?? "(no count line)";
 
 // ---------------------------------------------------------------------------
-console.log("STEP 1 — simplified nav (sidebar + drawer) + Báo Giá label");
+console.log("STEP 1 — simplified nav + Home task desk + Báo Giá label");
 {
+  const taskDeskEntry = $('[data-testid="home-task-desk"]')[0];
+  assert.ok(taskDeskEntry, "Home task-desk entry is missing");
+  await clickSelector('[data-testid="home-task-desk"]');
+  assert.ok(mainText().includes("Việc Cần Xử Lý"), "the live task route did not mount Tasks");
+  await click("Tổng Quan Công Việc", "a", aside());
+
   const at = text(aside());
   for (const gone of ["Việc Cần Xử Lý", "Theo Dõi Vận Chuyển", "Thỏa thuận mua bán", "Kinh doanh · Báo giá"]) {
     assert.ok(!at.includes(gone), `sidebar still shows "${gone}"`);
@@ -152,7 +160,7 @@ console.log("STEP 1 — simplified nav (sidebar + drawer) + Báo Giá label");
   assert.ok(dt.includes("Báo Giá"), "drawer lost Báo Giá");
   assert.equal(deadLinks(drawer).length, 0, "drawer links to a removed desk");
   await click("Lô Hàng", "a", drawer);
-  ok("sidebar + drawer drop the 3 desks, keep Báo Giá + survivors");
+  ok("sidebar + drawer omit the 3 desks; Home keeps the task entry; Báo Giá + survivors remain");
 }
 
 // ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import { StoreProvider } from "./lib/store";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
+import Tasks from "./pages/Tasks";
 import Shipments from "./pages/Shipments";
 import ShipmentDetail from "./pages/ShipmentDetail";
 import CreateShipment from "./pages/CreateShipment";
@@ -57,12 +58,10 @@ export default function App() {
         <Layout>{!vm ? <Loading /> : (
           <Routes>
             <Route path="/" element={<Home />} />
-            {/* LOGI_INTERNAL_UX_SIMPLIFY_01 — compatibility redirects for the
-                modules that left the normal nav. Old/bookmarked links land on
-                a surviving surface instead of a dead page; the page components
-                (Tasks/Tracking/Agreements) stay in the repo, unmounted, with
-                their backend data untouched. */}
-            <Route path="/viec-can-xu-ly" element={<Navigate to="/lo-hang" replace />} />
+            {/* LOGI-APP-RENEWAL-01 — keep the existing bounded task desk reachable
+                for task read/create; Home links here without restoring a broad nav. */}
+            <Route path="/viec-can-xu-ly" element={<Tasks />} />
+            {/* Other modules left the normal nav and keep honest compatibility redirects. */}
             <Route path="/lo-hang" element={<Shipments />} />
             <Route path="/lo-hang/:id" element={<ShipmentDetail />} />
             <Route path="/tao-lo-moi" element={<CreateShipment />} />

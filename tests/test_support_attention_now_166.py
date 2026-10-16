@@ -86,7 +86,57 @@ class Attention166Tests(unittest.TestCase):
         primary = next(item for item in items if item["sourceType"] == "PRIMARY_ACTION")
         task = next(item for item in items if item["sourceRef"] == "TASK:T-ACT")
         self.assertEqual(primary["route"], shipment["nextRoute"])
-        self.assertEqual(task["route"], "/lo-hang/S1?tab=lay-hang")
+        self.assertEqual(task["route"], "/lo-hang/S1")
+        self.assertEqual(task["navigationStatus"], "UNKNOWN_STAGE")
+        self.assertIn("Chưa gắn công đoạn", task["reason"])
+
+    def test_explicit_task_scope_controls_stage_finance_and_whole_lot_routes(self):
+        shipment = row(journey={
+            "currentStageId": "transit",
+            "nodes": [
+                {"id": "si-vgm", "label": "SI / VGM", "targetTab": "van-tai"},
+                {"id": "customs-import", "label": "Customs import", "targetTab": "nhap"},
+            ],
+            "modules": [],
+        })
+        tasks = [
+            {"task_id": "T-STAGE", "shipment_id": "S1", "content": "Anything",
+             "task_scope": "STAGE", "stage_id": "si-vgm", "done": False},
+            # Route follows explicit finance metadata, not the words in content.
+            {"task_id": "T-FINANCE", "shipment_id": "S1", "content": "Khai tờ khai nhập",
+             "task_scope": "FINANCE", "done": False},
+            # Route follows explicit lot-wide metadata, even with finance-like text.
+            {"task_id": "T-LOT", "shipment_id": "S1", "content": "Thu nốt công nợ",
+             "task_scope": "SHIPMENT", "done": False},
+            {"task_id": "T-UNKNOWN", "shipment_id": "S1", "content": "Thu công nợ",
+             "done": False},
+            {"task_id": "T-STALE", "shipment_id": "S1", "content": "SI / VGM",
+             "task_scope": "STAGE", "stage_id": "not-a-current-node", "done": False},
+        ]
+
+        items = build_attention_projection([shipment], tasks, today=date(2026, 10, 2))
+        by_task = {item["sourceRef"]: item for item in items if item["sourceType"] == "TASK"}
+        self.assertEqual(by_task["TASK:T-STAGE"]["route"], "/lo-hang/S1?tab=van-tai&stage=si-vgm&work=info")
+        self.assertEqual(by_task["TASK:T-STAGE"]["navigationStatus"], "STAGE")
+        self.assertEqual(by_task["TASK:T-FINANCE"]["route"], "/lo-hang/S1?tab=tai-chinh")
+        self.assertEqual(by_task["TASK:T-FINANCE"]["navigationStatus"], "FINANCE")
+        self.assertEqual(by_task["TASK:T-LOT"]["route"], "/lo-hang/S1")
+        self.assertEqual(by_task["TASK:T-LOT"]["navigationStatus"], "SHIPMENT")
+        for task_id in ("T-UNKNOWN", "T-STALE"):
+            self.assertEqual(by_task[f"TASK:{task_id}"]["route"], "/lo-hang/S1")
+            self.assertEqual(by_task[f"TASK:{task_id}"]["navigationStatus"], "UNKNOWN_STAGE")
+            self.assertIn("mở", by_task[f"TASK:{task_id}"]["reason"].lower())
+
+    def test_general_task_keeps_existing_unlinked_route(self):
+        from views.logi_view_model import _task_projection
+
+        task = {"task_id": "T-GENERAL", "content": "Việc chung", "assignee": "Sale A",
+                "deadline": "", "done": False}
+        projected = _task_projection([row()], {"tasks": [task]})
+        task_row = next(item for item in projected if item["id"] == "T-GENERAL")
+        self.assertEqual(task_row["lot"], "—")
+        self.assertEqual(task_row["route"], "/lo-hang")
+        self.assertEqual(task_row["dueNote"], "Việc được giao")
 
     def test_task_owner_and_deadline_are_authoritative(self):
         tasks = [

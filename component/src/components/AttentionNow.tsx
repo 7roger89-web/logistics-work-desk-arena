@@ -16,7 +16,11 @@ const BAND_META: Record<
 
 function actionLabel(item: AttentionItem): string {
   if (item.sourceType === "WORK_MODULE") return "Mở quy trình";
-  if (item.sourceType === "TASK") return "Mở việc";
+  if (item.sourceType === "TASK") {
+    if (item.navigationStatus === "STAGE") return "Mở công đoạn";
+    if (item.navigationStatus === "FINANCE") return "Mở tài chính";
+    return "Mở lô";
+  }
   return "Mở xử lý";
 }
 
@@ -64,7 +68,7 @@ export default function AttentionNow({
             >
               <span className="sr-only">{BAND_META[primary.band].label} · {actionLabel(primary)}: </span>
               <p className="truncate text-[14px] font-extrabold text-red-700">{primary.action}</p>
-              {primary.reason && <p className="truncate text-[12.5px] text-red-600">{primary.reason}</p>}
+              {primary.reason && <p className={cx("break-words text-[12.5px] text-red-600 sm:truncate", primary.sourceType !== "TASK" && !primary.unknown && "hidden sm:block")}>{primary.reason}</p>}
             </div>
             <Link
               to={primary.route}
@@ -87,10 +91,23 @@ export default function AttentionNow({
                     data-attention-source={item.sourceType}
                     className={cx(
                       "inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-bold",
-                      BAND_META[item.band].cls
+                      BAND_META[item.band].cls,
+                      item.navigationStatus === "UNKNOWN_STAGE" && "max-w-full min-w-0 items-start whitespace-normal text-left"
                     )}
+                    aria-label={item.navigationStatus === "UNKNOWN_STAGE" ? `${item.action}. ${item.reason} ${actionLabel(item)}` : undefined}
                   >
-                    {item.action}<span className="sr-only"> · {BAND_META[item.band].label} · {actionLabel(item)}</span>
+                    {item.navigationStatus === "UNKNOWN_STAGE" ? (
+                      <span className="flex min-w-0 flex-col items-start gap-0.5">
+                        <span className="break-words">{item.action}</span>
+                        <span
+                          data-testid={`attention-task-navigation-warning-${item.id}`}
+                          className="break-words text-[11px] leading-snug font-semibold"
+                        >
+                          {item.reason || "Chưa gắn công đoạn — mở lô để xác định nơi xử lý."}
+                        </span>
+                      </span>
+                    ) : item.action}
+                    <span className="sr-only"> · {BAND_META[item.band].label} · {actionLabel(item)}</span>
                   </Link>
                 ))}
               </div>

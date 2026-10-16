@@ -11,6 +11,7 @@ from typing import Any, Mapping
 SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no'})
 SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
 JOURNEY_STAGE_IDS = frozenset({'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
+_TASK_STAGE_TARGET_TABS = frozenset({'lay-hang', 'van-tai', 'nhap'})
 
 
 def normalize_sea_facts(fields: Mapping[str, Any]) -> dict[str, str]:
@@ -183,6 +184,40 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     if modules:
         journey['modules'] = modules
     return journey
+
+
+def task_stage_nodes(shipment: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Return directly navigable base nodes for task binding in this shipment.
+
+    This deliberately reuses the same execution-profile, operational-fact and
+    Journey authorities as the rendered shipment workspace. It is read-only,
+    adds no stage vocabulary or persistence, and excludes attached Work Module
+    steps and nodes without an existing task destination tab.
+    """
+    if not isinstance(shipment, Mapping):
+        return []
+
+    from core.shipment_execution_profile import build_execution_profile
+    from core.shipment_operations import compatibility_facts, transport_legs_for_read
+
+    legs, _structured = transport_legs_for_read(shipment)
+    profile = build_execution_profile(shipment, legs=legs)
+    journey = build_journey(
+        shipment,
+        profile=profile,
+        operational=compatibility_facts(shipment),
+        primary={},
+        dashboard={},
+        attachments=[],
+    )
+    return [
+        dict(node)
+        for node in journey.get("nodes", [])
+        if isinstance(node, Mapping)
+        and str(node.get("id") or "").strip()
+        and str(node.get("targetTab") or "").strip() in _TASK_STAGE_TARGET_TABS
+        and not node.get("moduleId")
+    ]
 
 
 def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> dict[str, str] | None:
