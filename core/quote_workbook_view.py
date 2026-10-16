@@ -145,6 +145,11 @@ def classify_sheet_names(sheet_names: Sequence[str], proposal: Mapping[str, Any]
 def internal_rows_on_customer_sheet(proposal: Mapping[str, Any] | None) -> list[str]:
     """Cost figures the parser found ON the customer sheet itself.
 
+    NOT a gate. The raw workbook download requires ``commercial_write`` for every
+    file, unconditionally, precisely because this function can only report what
+    the parser recognised. Kept as the classification/diagnostic rule (see
+    ``classify_sheet_names``); never reintroduce it as an authorization input.
+
     A supplier workbook often keeps one tab, with the internal cost scratched in
     beside the customer table. Then "the customer sheet" is not by itself proof
     that the FILE is publishable: the original bytes still contain the cost. The
@@ -165,6 +170,9 @@ def classify_sheets(workbook, proposal: Mapping[str, Any] | None) -> dict[str, s
 
 def protected_sheet_names(sheet_names: Sequence[str], proposal: Mapping[str, Any] | None) -> list[str]:
     """Sheets that may not be handed to a customer-view-only role.
+
+    Classification evidence, NOT the download gate: the original file is refused
+    without ``commercial_write`` whatever this returns.
 
     Everything except the single customer sheet. An UNCLASSIFIED sheet is
     protected too: "we could not name it" is not evidence that it is public.

@@ -1,14 +1,8 @@
-== Quote/Excel/RBAC regression (2026-10-16, authorization-boundary commit) ==
+== Quote/Excel/RBAC regression (2026-10-16, unconditional-download-gate commit) ==
 
 $ .venv/bin/python -m pytest <14 quote/excel/c1 suites> -q
-..................................................................       [100%]
-204 passed, 6 skipped in 6.19s
+....................................................................     [100%]
+206 passed, 6 skipped in 6.82s
 
--- Mutation check: restore the OLD rule (sheet_class != SHEET_CUSTOMER and not can_view_internal) --
-   5 tests fail, including the viewer reading J20/K20 from the customer sheet:
-     FAILED test_cost_data_embedded_in_the_customer_sheet_still_protects_the_file
-     FAILED test_source_workbook_view_needs_the_grant_on_every_sheet[viewer-False]
-     FAILED test_source_workbook_view_needs_the_grant_on_every_sheet[sales-False]
-     FAILED test_source_cells_are_default_deny_on_the_customer_sheet_too
-     FAILED test_view_event_locks_internal_sheet_for_read_only_role
-   (recorded from the actual run; see the PR comment for the raw output)
+Note: the source-cell mutation check from the previous commit is in mutation-check.txt;
+the download-gate mutation check for THIS commit is in mutation-check-download.txt.

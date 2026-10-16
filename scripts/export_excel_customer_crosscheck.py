@@ -248,6 +248,51 @@ def main() -> None:
         embedded = {"error": f"{type(exc).__name__}: {exc}"}
     finally:
         st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+    # ...and the download must not depend on the parser at all. Two files that the
+    # OLD conditional gate could not see: one carries a cost whose label matches no
+    # parser rule, the other carries no cost at all. A `commercial_view`-only role
+    # may take NEITHER.
+    parser_blind = "not-run"
+    try:
+        blinds = {}
+        for label, amount, case in (("Giá mua thực trả", 12500000, "costLabelNoRuleKnows"),
+                                    (None, None, "customerOnlyFileNoCostAtAll")):
+            buffered = load_workbook(BytesIO(source))
+            for name in list(buffered.sheetnames):
+                if name != buffered.sheetnames[0]:
+                    del buffered[name]
+            sheet = buffered[buffered.sheetnames[0]]
+            if label is not None:
+                sheet.cell(20, 10, label)      # J20
+                sheet.cell(20, 11, amount)     # K20
+            raw = BytesIO()
+            buffered.save(raw)
+            imported_blind = dispatch("quote_import_excel", {
+                "customerId": "CUST-LUCGIAC-EVIDENCE", "fileName": f"{case}.xlsx",
+                "base64": base64.b64encode(raw.getvalue()).decode()})
+            assert imported_blind["ok"], imported_blind
+            created_blind = dispatch("quote_create", {
+                "customerId": "CUST-LUCGIAC-EVIDENCE", "salesOwner": "staging.support",
+                "goodsDescription": "Bàn họp văn phòng", "incoterm": "EXW", "transportMode": "Sea",
+                "route": "Nansha - Hải Phòng", "excelQuote": imported_blind["readback"], "fx": {"CNY": 3900}})
+            assert created_blind["ok"], created_blind
+            st.session_state["current_user"] = {"username": "evidence-viewer", "role": "viewer"}
+            refused_blind = dispatch("quote_source_download", {"id": created_blind["id"]})
+            st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+            allowed_blind = dispatch("quote_source_download", {"id": created_blind["id"]})
+            blinds[case] = {
+                "costRowsTheParserRecognised": len(imported_blind["readback"]["source_costs"]),
+                "viewerRefused": refused_blind["ok"] is False,
+                "viewerError": str(refused_blind.get("error") or ""),
+                "supportedRoleGotTheExactBytes": bool(allowed_blind.get("document")) and
+                    base64.b64decode(allowed_blind["document"]["downloadBase64"]) == raw.getvalue(),
+            }
+        parser_blind = blinds
+    except Exception as exc:   # noqa: BLE001 — evidence script: report, never mask
+        parser_blind = {"error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+
     # ...and the READ path is gated by the same grant: a viewer must receive no
     # source CELL content, on any sheet — including the "customer" tab of that
     # one-sheet file, where the cost row sits at J20/K20.
@@ -269,13 +314,15 @@ def main() -> None:
         st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
     json.dump({"syntheticFixture": True, "sourceDownloadAsSupport": True, "sourceDownloadAsViewer": viewer_download,
                "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded,
-               "sourceWorkbookViewAsViewer": view_as_viewer},
+               "sourceWorkbookViewAsViewer": view_as_viewer,
+               "sourceDownloadWhenTheParserRecognisedNothing": parser_blind},
               open(EVIDENCE / "permission-matrix.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
     print(json.dumps({"quoteId": qid, "regionsMissingFromXlsx": missing, "unmappedRegions": unmapped,
                       "internalStringLeaks": leaks, "sourceDownloadAsViewer": viewer_download,
                       "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded,
                       "sourceWorkbookViewAsViewer": view_as_viewer,
+                      "sourceDownloadWhenTheParserRecognisedNothing": parser_blind,
                       "formulaCells": formulas, "sheetNames": workbook.sheetnames,
                       "sourceByteIdentical": stored_bytes == source, "xlsx": str(xlsx_path)}, ensure_ascii=False, indent=2))
 

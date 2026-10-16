@@ -44,6 +44,11 @@ DISPLAY_NAME_EDIT = "Công ty Lục Giác — Chi nhánh Hà Nội"
 ATTN_EDIT = "Kính gửi Quý công ty"
 PORTS_EDIT = "Cảng đi / cảng đến"
 PICKUP_EDIT = "Nơi nhận hàng tại xưởng"
+# A real cost label with NO prefix the parser knows: the file is then invisible to
+# any gate that asks "did we detect internal data?".
+BLIND_COST_LABEL = "Giá mua thực trả"
+COST_LABEL = "Vận chuyển nội bộ đại lý"
+COST_AMOUNT = 12500000
 
 
 @pytest.fixture
@@ -169,6 +174,47 @@ def test_viewer_may_read_the_customer_quote_but_not_the_supplier_workbook(stagin
 
 
 @pytest.mark.parametrize(
+    ("label", "amount", "what"),
+    [(BLIND_COST_LABEL, COST_AMOUNT, "a cost the parser has no rule for"),
+     (None, None, "a clean customer-only file with no cost anywhere")],
+)
+def test_raw_download_needs_the_grant_whatever_the_parser_recognised(staging, source, label, amount, what):
+    """The grant is required for EVERY raw download — {what}.
+
+    Both files below are invisible to a gate that asks "did we detect internal
+    data?": the parser recognises neither, and neither has a protected sheet. The
+    old rule therefore handed the whole supplier workbook to a `commercial_view`
+    reader. Read access to the quotation is not read access to the file.
+    """
+    one_sheet = workbook_with_cost_embedded_in_the_customer_sheet(source, label=label, amount=amount)
+    readback = import_embedded(one_sheet)
+    assert readback["source_costs"] == [], "this scenario only counts when the parser recognised NOTHING"
+    assert readback["source"]["sheet_names"] == [SHEET_CUSTOMER]
+
+    qid = save(readback)
+
+    # Roles that hold commercial_view but not commercial_write cannot take it.
+    for role in ("viewer", "sales"):
+        as_role(role)
+        out = dispatch("quote_source_download", {"id": qid})
+        assert out["ok"] is False, (role, out)
+        assert "commercial_write" in out["error"] and "RBAC" in out["error"]
+        assert not out.get("document"), f"{role} received the raw workbook"
+
+    # …while the customer quotation is still theirs to read and export.
+    as_role("viewer")
+    assert dispatch("quote_export_xlsx", {"id": qid})["ok"] is True
+
+    # A role that holds the grant takes the file EXACTLY as uploaded.
+    for role in ("sale", "support", "admin"):
+        as_role(role)
+        out = dispatch("quote_source_download", {"id": qid})
+        assert out["ok"] is True, (role, out)
+        assert base64.b64decode(out["document"]["downloadBase64"]) == one_sheet
+        assert out["document"]["byteSize"] == len(one_sheet)
+
+
+@pytest.mark.parametrize(
     ("role", "may_take_the_original_file"),
     # The legacy "sales"/"viewer" aliases hold commercial_view only; the current
     # "sale", "support" and "admin" roles hold commercial_write. The two paths
@@ -224,16 +270,13 @@ def test_unclassified_sheet_is_not_public(staging, source):
     assert any("GHI CHÚ SOẠN THẢO" in str(c.get("value")) for c in unlocked["readback"]["page"]["cells"])
 
 
-COST_LABEL = "Vận chuyển nội bộ đại lý"
-COST_AMOUNT = 12500000
-
-
-def workbook_with_cost_embedded_in_the_customer_sheet(source) -> bytes:
-    """ONE sheet ("BÁO GIÁ") carrying the internal cost at J20/K20.
+def workbook_with_cost_embedded_in_the_customer_sheet(source, label=COST_LABEL, amount=COST_AMOUNT) -> bytes:
+    """ONE sheet ("BÁO GIÁ") carrying an internal cost at J20/K20.
 
     Exactly the shape the finding describes, and the shape a supplier really
-    sends: a single tab, with the cost scratched in beside the goods table. The
-    parser DOES notice this one — but no gate may depend on it noticing.
+    sends: a single tab, with the cost scratched in beside the goods table.
+    ``label=BLIND_COST_LABEL`` writes a cost the parser has no rule for;
+    ``label=None`` writes no cost at all — the customer table only.
     """
     from openpyxl import load_workbook as open_workbook
 
@@ -241,8 +284,9 @@ def workbook_with_cost_embedded_in_the_customer_sheet(source) -> bytes:
     del workbook[SHEET_INTERNAL_COST]
     del workbook[SHEET_INTERNAL_DUP]
     sheet = workbook[SHEET_CUSTOMER]
-    sheet.cell(20, 10, COST_LABEL)      # J20
-    sheet.cell(20, 11, COST_AMOUNT)     # K20
+    if label is not None:
+        sheet.cell(20, 10, label)       # J20
+        sheet.cell(20, 11, amount)      # K20
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
@@ -292,7 +336,7 @@ def test_cost_data_embedded_in_the_customer_sheet_still_protects_the_file(stagin
     as_role("viewer")
     refused = dispatch("quote_source_download", {"id": qid})
     assert refused["ok"] is False and "RBAC" in refused["error"]
-    assert "dòng chi phí nằm ngay trong sheet khách" in refused["error"]
+    assert "commercial_write" in refused["error"]
 
     # … (3) and so is the CELL CONTENT, through the view, on the customer sheet.
     view = dispatch("quote_source_workbook_view", {"id": qid, "sheet": SHEET_CUSTOMER})

@@ -200,6 +200,10 @@ def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     the customer quotation. A role holding only ``commercial_view`` still reads
     every customer-facing part of the quote; it simply does not receive the
     supplier's own file. No role and no permission is added here.
+
+    The check is UNCONDITIONAL. It must not depend on the parser having detected
+    a cost figure, because an undetected cost is exactly the case that matters —
+    and a file that looks clean today is still the supplier's raw workbook.
     """
     import hashlib
 
@@ -207,7 +211,6 @@ def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.database import get_db
     from core.gridfs_client import GridFSAttachmentStore
     from core.quote_excel_import import MIME_XLSX
-    from core.quote_workbook_view import internal_rows_on_customer_sheet, protected_sheet_names
     from views.logi_c1 import _result, read_quote
 
     qid = str(payload.get("id") or "")
@@ -217,21 +220,18 @@ def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     source = (quote or {}).get("excel_quote", {}).get("source", {})
     if not source:
         return _result("quote_source_download", qid, False, "Không có tệp nguồn của báo giá.")
-    # The workbook as a whole may carry internal data. The permission is decided
-    # from the file's own sheet layout, using the SAME classification rule the
-    # viewer uses, and the read is refused rather than silently trimmed: a
-    # partial workbook would be a different document than the one on record.
-    proposal = {"source": source, "source_costs": (quote or {}).get("excel_quote", {}).get("source_costs") or []}
-    protected = protected_sheet_names(list(source.get("sheet_names") or []), proposal)
-    # Cost figures found ON the customer sheet count too: a one-sheet workbook can
-    # still carry the supplier's internal figures, so "no internal sheets" is not
-    # the same thing as "nothing internal in this file".
-    embedded = internal_rows_on_customer_sheet(proposal)
-    if (protected or embedded) and not can_operate_business("commercial_write"):
-        evidence = ", ".join(protected[:3]) if protected else f"{len(embedded)} dòng chi phí nằm ngay trong sheet khách"
+    # THE GRANT IS REQUIRED FOR EVERY RAW DOWNLOAD — not only for files whose
+    # internal data somebody already recognised. This file is the supplier's own
+    # workbook, and the cost can sit in ANY cell of ANY tab (a single-tab file
+    # often keeps it beside the goods table, under a label no cost rule knows).
+    # A gate conditioned on the parser's findings therefore leaks every file the
+    # parser does not understand — and every clean-looking file too. Read access
+    # to the QUOTATION is not read access to the supplier's FILE.
+    if not can_operate_business("commercial_write"):
         return _result("quote_source_download", qid, False,
-                       "RBAC: workbook gốc chứa dữ liệu nội bộ/chưa phân loại "
-                       f"({evidence}); cần quyền thao tác báo giá (commercial_write) để tải toàn bộ tệp nguồn.")
+                       "RBAC: tệp nguồn gốc là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào; "
+                       "cần quyền thao tác báo giá (commercial_write) để tải. "
+                       "Bản báo giá khách vẫn xem được ở Bước 3.")
     data = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
     # Same integrity rule as the viewer: bytes that no longer match the recorded
     # hash are not handed out as if they were the archived file.

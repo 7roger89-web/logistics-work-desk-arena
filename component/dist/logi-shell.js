@@ -30108,7 +30108,7 @@ function Od({ initialQuote: e, onClose: t }) {
 							l && !s && /* @__PURE__ */ (0, W.jsx)("p", {
 								className: "mt-2 text-[12.5px] text-amber-900",
 								"data-testid": "excel-source-download-blocked",
-								children: "Workbook gốc chứa dữ liệu nội bộ (sheet giá vốn / chi phí, kể cả dòng chi phí nằm ngay trong sheet khách), nên cần quyền thao tác báo giá (commercial_write) mới tải được toàn bộ tệp nguồn. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này."
+								children: "Tệp nguồn là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào, nên mọi lượt tải đều cần quyền thao tác báo giá (commercial_write) — không phụ thuộc việc đã nhận diện được chi phí hay chưa. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này."
 							})
 						]
 					}),
