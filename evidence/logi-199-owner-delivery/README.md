@@ -1,3 +1,15 @@
+# LOGI #199 — Current Owner handoff status (16/10/2026)
+
+**CURRENT: INDEPENDENT_REVIEW=PASS_BOUNDED_A_B_PAPER at exact app `8932fcb4aa2e7705b1e0963a830758bd3d9849ae`.** Reviewer was an independent ChatGPT Control Tower actor, not the Arena writer; review used source, GitHub SHA-256 and archived Chromium screenshots, not a new live-browser execution. **OWNER_UAT_READY=YES_FOR_ISOLATED_WINDOWS_STARTUP_AND_UAT; WINDOWS_RUNTIME=NOT_RUN; OWNER_UAT=NOT_RUN; PRODUCTION_READY=NO.**
+
+Current authoritative references: [Independent Review](INDEPENDENT_REVIEW_RESULT-8932fcb.md) · [Beginner Windows guide](OWNER-OPEN-8932fcb.md) · [Updated UAT](../../docs/goals/LOGI-APP-RENEWAL-01/UAT.md). Frozen app download: https://github.com/7roger89-web/logistics-work-desk-arena/archive/8932fcb4aa2e7705b1e0963a830758bd3d9849ae.zip.
+
+**The section below is the historical Arena-writer packaging handoff from `58f7c9c`. Its PENDING / INCOMPLETE wording was accurate at that earlier checkpoint but is SUPERSEDED now; do not re-request independent review based on that historical snapshot. The Writer's failed Issue #199 comment is NOT an acceptance blocker.**
+
+---
+
+## Historical author packet (as captured before review PASS)
+
 # LOGI #199 — final review / Owner delivery checkpoint
 
 ## Verdict, not DONE

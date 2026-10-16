@@ -5,9 +5,9 @@
   "primary_lane": "UIUX",
   "secondary_lane": "LOGISTICS_DOMAIN_INVARIANTS",
   "baseline_main": "5c6642a339ec53fe4cc300b15f665e2cd5384bca",
-  "active_branch": "arena/bb243332-logistics-work-desk-arena",
+  "active_branch": "arena/d657fb56-logistics-work-desk-arena",
   "objective": "Unify existing Logistics Work Desk visuals around the approved Journey demo while making SEA FCL/LCL, AIR and ROAD FTL/LTL journeys genuinely mode/direction/evidence-aware.",
-  "stage": "SOURCE_AND_CURRENT_EVIDENCE_PUSHED__GITHUB_READBACK_PASS__INDEPENDENT_REVIEW_PENDING__OWNER_UAT_NOT_READY",
+  "stage": "INDEPENDENT_REVIEW_PASS_BOUNDED_A_B_PAPER__OWNER_UAT_READY_ISOLATED_WINDOWS__WINDOWS_NOT_RUN",
   "progress": {
     "T0": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
     "T1": "HISTORICAL prior source/PR receipt; this continuation did not rerun or re-certify it on current source 2bcbf90….",
@@ -29,13 +29,11 @@
     "Regression and repair of AIR_DOCUMENTS using canonical Air transport facts"
   ],
   "blockers": [
-    "Independent reviewer gate PENDING; review only the opened zero-map pointer/CTA/current-source evidence findings.",
-    "Owner UAT and production authorization remain closed until Independent Review PASS; main merge/deploy are not authorized.",
-    "Preserve unrelated auth/bootstrap/finance coverage gaps and reproduced snapshot retry-idempotency blocker; this slice does not waive them.",
-    "GitHub Actions CI is NOT_TRIGGERED because checked-in push-workflow branch filters omit the fixed Arena branch.",
-    "Legacy payment DOM oracles retain previously reproduced pre-payment fixture/navigation failures; payment logic was not changed and broad historical QA was not rerun.",
-    "Windows launcher was statically checked but not executed on Windows.",
-    "Raw capture records source SHA 751f64f5129637eef4fb74515afdf7fa15ca9deb, but that commit object is unavailable locally and GitHub API returned 422. Published source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a rebuilds to the exact captured dist hashes; commit-identity equivalence remains disclosed for reviewer validation."
+    "Windows x64 runtime not yet exercised; Python 3.11+/PATH and Internet are required for initial local dependency install. Trial only after test-only Mongomock isolation proof.",
+    "OWNER_UAT=NOT_RUN; Owner must open the exact frozen 8932fcb source on Windows and report the real outcome. No claim of Windows PASS or full-app visual parity.",
+    "No outside-sandbox authenticated private preview URL has been verified; older e2b URL died/token-gated. No public auth-disabled staging or new paid hosting.",
+    "Production release blockers remain: auth/bootstrap, finance coverage, snapshot retry-idempotency, npm audit advisory triage and other applicable security/business gates; no merge/deploy authorization.",
+    "GitHub Actions CI was not triggered on this Arena branch; bounded independent A/B/paper review PASS does not certify broad release."
   ],
   "existing_issue_dependencies": [
     197,
@@ -46,7 +44,7 @@
     198
   ],
   "mandatory_acceptance": "Goal #199 detailed checklist; business truth, UI responsive evidence, RBAC/finance regressions, owner UAT",
-  "next": "Request Independent Review of the bounded pointer/CTA findings and disclosed raw-capture source-SHA reconciliation. Owner UAT remains NOT_READY until Independent Review PASS; do not merge main or deploy production.",
+  "next": "Owner: on Windows x64, install Python 3.11+ with PATH, download exact 8932fcb GitHub ZIP to fresh folder, double-click scripts/logi199_uat.cmd, verify STAGING_ISOLATION_PROOF=PASS, then open http://localhost:9501; report actual Windows outcome and screenshots. No real customer data.",
   "scope_out": [
     "new_workflow_engine",
     "new_frontend_library",
@@ -65,7 +63,7 @@
   "time_guard": "One bounded task at a time, stop/replan after evidence-relevant blocker; never loop on offline npm.",
   "active_pr": null,
   "active_pr_url": null,
-  "current_subtask": "Non-force push and GitHub readback PASS for source candidate 1e899553cc1ad7dbd720eb805e061ec61ae0871a and evidence/docs checkpoint 5de5f36e686c353dd6caa3c50d6d2ac6cac0ac3d; remote contents are readable. This status checkpoint records that verification. Independent Review pending; Owner UAT not ready.",
+  "current_subtask": "Frozen app 8932fcb independent source/hash/screenshot review PASS for A/B/paper (reviewer did NOT run new browser). Linux extracted-ZIP smoke PASS. Remaining: owner Windows startup and isolated UAT NOT_RUN; production remains blocked.",
   "source_receipt_t6": {
     "integration_head": "1889d2a874365bf59265b721503a0538f90586b0",
     "evidence_commit": "ae6787852f0ed762241dfb07ed631e67d4e3dd36",
@@ -479,8 +477,8 @@
       "FINAL_ROUTING_CLASSIFICATION": "UIUX"
     }
   },
-  "owner_uat_ready": "NO",
-  "review_candidate_sha": "1e899553cc1ad7dbd720eb805e061ec61ae0871a",
+  "owner_uat_ready": "YES_FOR_ISOLATED_WINDOWS_STARTUP_AND_UAT",
+  "review_candidate_sha": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
   "captured_source_sha": "751f64f5129637eef4fb74515afdf7fa15ca9deb",
   "source_identity_equivalence": "NOT_VERIFIED at commit-ID level; raw capture commit is not fetchable, published candidate hashes match capture dist/harness.",
   "production_ready": "NO",
@@ -506,5 +504,28 @@
       "component/dist/logi-shell.css"
     ],
     "issue_comment": "NOT_REQUIRED; prior permission error is not a release gate."
+  },
+  "latest_checkpoint_20261016": {
+    "as_of": "2026-10-16",
+    "authoritative_scope": "LOGI-199 Owner-paper Journey bounded A/B acceptance; not full-app release",
+    "frozen_app_sha": "8932fcb4aa2e7705b1e0963a830758bd3d9849ae",
+    "delivery_branch": "arena/d657fb56-logistics-work-desk-arena",
+    "independent_review": "PASS_BOUNDED_A_B_PAPER",
+    "reviewer": "ChatGPT Control Tower, separate actor from Arena writer; independent source/hash and archived screenshot review; no reviewer browser execution",
+    "independent_review_file": "evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_RESULT-8932fcb.md",
+    "owner_guide": "evidence/logi-199-owner-delivery/OWNER-OPEN-8932fcb.md",
+    "current_uat_guide": "docs/goals/LOGI-APP-RENEWAL-01/UAT.md",
+    "app_runtime_linux": "PASS_EXTRACTED_ARCHIVE_ISOLATED_MONGOMOCK_CHROMIUM",
+    "mobile_initial": "PASS_BOOKING_PICKUP_CUSTOMS_EXPORT_11_NODES_20_EDGES",
+    "persistent_changed_value": "PASS_OLD_NE_NEW_AFTER_RELOAD_MONGOMOCK",
+    "paper_asset": "PASS_IDENTICAL_TO_OWNER_HTML",
+    "windows_runtime": "NOT_RUN",
+    "owner_uat_ready": "YES_FOR_ISOLATED_WINDOWS_STARTUP_AND_UAT",
+    "owner_uat": "NOT_RUN",
+    "production_ready": "NO",
+    "no_main_merge": true,
+    "no_production_deploy": true,
+    "exact_download": "https://github.com/7roger89-web/logistics-work-desk-arena/archive/8932fcb4aa2e7705b1e0963a830758bd3d9849ae.zip",
+    "caveat": "Historical G2 receipt fields remain verbatim as historical evidence; this latest_checkpoint supersedes older PENDING labels for present-tense status."
   }
 }
