@@ -1,0 +1,319 @@
+{
+  "task": "LOGI-199 restore Owner-approved paper chart background",
+  "source_sha": "48582bb8f7810e37c10986496ad49858ce6cbc5b",
+  "dist": {
+    "logi-shell.js": "918a5a78a64ea041fd6643aa948d408039f0b8e82b4d00c0f1b0b3c2b67e76ef",
+    "logi-shell.css": "cd690366fbc18ed63db3b4af8ffe0b75b971e0bcfffac3c03cc0729cfa43a4ab"
+  },
+  "owner_reference": {
+    "path": "reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html",
+    "sha256": "26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f"
+  },
+  "chromium": "/tmp/chromium",
+  "owner_texture": {
+    "wrapBackground": "rgb(237, 241, 245)",
+    "texture": {
+      "opacity": "0.34",
+      "mixBlendMode": "multiply",
+      "backgroundSize": "760px auto",
+      "backgroundRepeat": "repeat",
+      "dataImageMime": "jpeg",
+      "dataImageSha256": null
+    },
+    "grid": {
+      "backgroundSize": "52px 52px, 52px 52px",
+      "backgroundImage": "linear-gradient(rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px), linear-gradient(90deg, rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px)"
+    }
+  },
+  "owner_data_nodes": [
+    "BOOKING",
+    "PICKUP",
+    "CUSTOMS_EXPORT",
+    "SI_VGM",
+    "GATE_IN",
+    "ETD",
+    "ON_BOARD",
+    "TRANSIT",
+    "ARRIVAL",
+    "CUSTOMS_IMPORT",
+    "DELIVERY"
+  ],
+  "owner_desktop": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "bubble_dialog_count": 2,
+    "popup_visible": true
+  },
+  "owner_mobile": {
+    "viewport": [
+      390,
+      844
+    ],
+    "sheet_box": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 390.0,
+      "height": 844.0
+    },
+    "sheet_bottom_anchored": true,
+    "pan_verdict": "PASS"
+  },
+  "owner_mobile_pan": {
+    "verdict": "PASS",
+    "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+    "observed_event_types": [
+      "pointerdown",
+      "pointermove",
+      "pointerup",
+      "touchend",
+      "touchmove",
+      "touchstart"
+    ],
+    "transform_before": {
+      "raw": "translate(-13.12px, 72.18px) scale(0.58)",
+      "x": -13.12,
+      "y": 72.18,
+      "scale": 0.58
+    },
+    "transform_after": {
+      "raw": "translate(267.88px, 72.18px) scale(0.58)",
+      "x": 267.88,
+      "y": 72.18,
+      "scale": 0.58
+    },
+    "transform_delta_x": 281.0,
+    "selected_before": [],
+    "selected_after": [],
+    "overlays_after": {
+      "roleDialogs": 0,
+      "appBubbles": 0,
+      "appModals": 0
+    },
+    "dialogs_open_after_pan": 0
+  },
+  "app_texture": {
+    "viewportBackground": "rgb(237, 241, 245)",
+    "texture": {
+      "opacity": "0.34",
+      "mixBlendMode": "multiply",
+      "backgroundSize": "760px auto",
+      "backgroundRepeat": "repeat",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "dataImageMime": "jpeg",
+      "backgroundImage": "url(\"data:image/jpeg;base64,/9j/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAAR"
+    },
+    "grid": {
+      "opacity": "1",
+      "mixBlendMode": "normal",
+      "backgroundSize": "52px 52px, 52px 52px",
+      "backgroundRepeat": "repeat, repeat",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "dataImageMime": null,
+      "backgroundImage": "linear-gradient(rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px), linear-gradient(90deg, rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px)"
+    }
+  },
+  "app_desktop": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "node_count": 11,
+    "edge_count": 20,
+    "map_box": {
+      "x": 17.0,
+      "y": 111.19,
+      "width": 1406.0,
+      "height": 780.0
+    },
+    "node_bubble_box": {
+      "x": 631.15,
+      "y": 205.17,
+      "width": 310.03,
+      "height": 251.63
+    },
+    "task_modal_box": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1440.0,
+      "height": 900.0
+    },
+    "task_modal_center_error_px": 0.0,
+    "page_errors": []
+  },
+  "app_mobile_pan": {
+    "verdict": "PASS",
+    "input_method": "CDP Input.dispatchTouchEvent; touchStart + 12 touchMove + touchEnd",
+    "observed_event_types": [
+      "pointerdown",
+      "pointermove",
+      "pointerup",
+      "touchend",
+      "touchmove",
+      "touchstart"
+    ],
+    "transform_before": {
+      "raw": "translate(-894px, 121px) scale(1)",
+      "x": -894,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_after": {
+      "raw": "translate(-613px, 121px) scale(1)",
+      "x": -613,
+      "y": 121,
+      "scale": 1
+    },
+    "transform_delta_x": 281.0,
+    "selected_before": [],
+    "selected_after": [],
+    "overlays_after": {
+      "roleDialogs": 0,
+      "appBubbles": 0,
+      "appModals": 0
+    }
+  },
+  "app_mobile_save": {
+    "environment": "isolated staging / Mongomock",
+    "lot": "T6-FCL",
+    "stage": "ON BOARD",
+    "date": "2026-10-04",
+    "prior_date_value_before_edit": "2026-10-04",
+    "save_tapped": true,
+    "open_method": "dispatch_event",
+    "no_payment_flow_used": true
+  },
+  "app_mobile_readback": {
+    "after_reload": true,
+    "date": "2026-10-04",
+    "expected_date": "2026-10-04",
+    "open_method": "dispatch_event"
+  },
+  "TAP_SAVE_READBACK_VERDICT": "PASS",
+  "app_mobile": {
+    "viewport": [
+      390,
+      844
+    ],
+    "node_count": 11,
+    "edge_count": 20,
+    "map_box": {
+      "x": 8.0,
+      "y": 269.94,
+      "width": 374.0,
+      "height": 549.0
+    },
+    "node_bubble_box": {
+      "x": 31.0,
+      "y": 368.61,
+      "width": 328.0,
+      "height": 249.33
+    },
+    "sheet_box": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 390.0,
+      "height": 844.0
+    },
+    "sheet_bottom_anchored": true,
+    "page_errors": []
+  },
+  "zero_node_app-desktop-1440x900": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "node_count": 0,
+    "edge_count": 0,
+    "cta_count": 1,
+    "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (",
+    "toolbar_text": "📍 Đang ở: Chưa xác định\nChưa đủ hồ sơ để xác định công đoạn chi tiết.",
+    "texture": {
+      "viewportBackground": "rgb(237, 241, 245)",
+      "texture": {
+        "opacity": "0.34",
+        "mixBlendMode": "multiply",
+        "backgroundSize": "760px auto",
+        "backgroundRepeat": "repeat",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "dataImageMime": "jpeg",
+        "backgroundImage": "url(\"data:image/jpeg;base64,/9j/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAAR"
+      },
+      "grid": {
+        "opacity": "1",
+        "mixBlendMode": "normal",
+        "backgroundSize": "52px 52px, 52px 52px",
+        "backgroundRepeat": "repeat, repeat",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "dataImageMime": null,
+        "backgroundImage": "linear-gradient(rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px), linear-gradient(90deg, rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px)"
+      }
+    },
+    "page_errors": []
+  },
+  "zero_node_app-mobile-390x844": {
+    "viewport": [
+      390,
+      844
+    ],
+    "node_count": 0,
+    "edge_count": 0,
+    "cta_count": 1,
+    "empty_state_text": "CẦN LÀM NGAY\n\nHồ sơ lô còn thiếu\nChưa có sơ đồ Journey\n\nChưa đủ hồ sơ để xác định công đoạn chi tiết.\n\nBổ sung hồ sơ thực hiện lô\n\nChưa có điều kiện giao hàng (",
+    "toolbar_text": "📍 Đang ở: Chưa xác định",
+    "texture": {
+      "viewportBackground": "rgb(237, 241, 245)",
+      "texture": {
+        "opacity": "0.34",
+        "mixBlendMode": "multiply",
+        "backgroundSize": "760px auto",
+        "backgroundRepeat": "repeat",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "dataImageMime": "jpeg",
+        "backgroundImage": "url(\"data:image/jpeg;base64,/9j/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAAR"
+      },
+      "grid": {
+        "opacity": "1",
+        "mixBlendMode": "normal",
+        "backgroundSize": "52px 52px, 52px 52px",
+        "backgroundRepeat": "repeat, repeat",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "dataImageMime": null,
+        "backgroundImage": "linear-gradient(rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px), linear-gradient(90deg, rgba(120, 146, 170, 0.16) 1px, rgba(0, 0, 0, 0) 1px)"
+      }
+    },
+    "page_errors": []
+  },
+  "texture_identity": {
+    "owner_data_image_sha256": "e3cb46df825b3a9d5427aa734113f2975ca7c25cd52a2ff1eeb780008d040627",
+    "app_data_image_sha256": "e3cb46df825b3a9d5427aa734113f2975ca7c25cd52a2ff1eeb780008d040627",
+    "bytes_identical_to_donor": true,
+    "donor_expected_sha256": "e3cb46df825b3a9d5427aa734113f2975ca7c25cd52a2ff1eeb780008d040627",
+    "app_matches_owner_embedded_jpeg": true
+  },
+  "donor_param_checks": {
+    "base_#EDF1F5_owner": true,
+    "base_#EDF1F5_app": true,
+    "texture_size_760_owner": true,
+    "texture_size_760_app": true,
+    "texture_repeat_owner": true,
+    "texture_repeat_app": true,
+    "texture_opacity_0.34_owner": true,
+    "texture_opacity_0.34_app": true,
+    "texture_multiply_owner": true,
+    "texture_multiply_app": true,
+    "texture_is_jpeg_owner": true,
+    "texture_is_jpeg_app": true,
+    "grid_52px_owner": true,
+    "grid_52px_app": true,
+    "grid_color_owner": true,
+    "grid_color_app": true
+  },
+  "DONOR_PARAMS_VERDICT": "PASS",
+  "pan_verdicts": {
+    "owner_mobile_pan": "PASS",
+    "app_mobile_pan": "PASS"
+  },
+  "COMPARISON_VERDICT": "PASS"
+}
