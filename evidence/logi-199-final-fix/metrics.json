@@ -1,0 +1,261 @@
+{
+  "capture_base_head": "abf3c0edca0e0c24e7cba840ca2923623454653e",
+  "captured_file_sha256": {
+    "component/src/components/JourneyMap.tsx": "f3b3d51be38afa623fd649bb91aa3f57e4e28b130e907ac9fa9c857d717b3a88",
+    "component/dist/logi-shell.js": "121bbc3c6090b4cdd0aa576a6e9b29a0976f0bf6f6c35360512b5ee6cac5ca9b",
+    "component/dist/logi-shell.css": "cd690366fbc18ed63db3b4af8ffe0b75b971e0bcfffac3c03cc0729cfa43a4ab",
+    "evidence/logi-199-final-fix/capture_fix_ab.py": "cf57703e0d4c7b89680d3eafa16b9576ebf65c16b7b4341ddd34637b336ecca5"
+  },
+  "task": "LOGI-199 final bounded fix A (mobile initial camera) + B (save/readback OLD->NEW)",
+  "before_image_provenance": "evidence/logi-199-restore/app-mobile-390x844-initial.png captured at HEAD abf3c0edca0e0c24e7cba840ca2923623454653e",
+  "A_mobile_initial": {
+    "viewport": [
+      390,
+      844
+    ],
+    "node_count": 11,
+    "edge_count": 20,
+    "zoom_level_text": "100%",
+    "transform": {
+      "raw": "translate(-18px, 121px) scale(1)",
+      "x": -18,
+      "y": 121,
+      "scale": 1
+    },
+    "scale_x_title_px": 11,
+    "visible_nodes_left_to_right": [
+      {
+        "id": "booking",
+        "box": {
+          "x": 33.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 116.0,
+        "in_view": true,
+        "left_gap_in_map": 25.0
+      },
+      {
+        "id": "pickup",
+        "box": {
+          "x": 173.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 116.0,
+        "in_view": true,
+        "left_gap_in_map": 165.0
+      },
+      {
+        "id": "customs-export",
+        "box": {
+          "x": 313.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 69.0,
+        "in_view": true,
+        "left_gap_in_map": 305.0
+      },
+      {
+        "id": "si-vgm",
+        "box": {
+          "x": 453.0,
+          "y": 507.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 445.0
+      },
+      {
+        "id": "gate-in",
+        "box": {
+          "x": 453.0,
+          "y": 755.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 445.0
+      },
+      {
+        "id": "etd",
+        "box": {
+          "x": 593.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 585.0
+      },
+      {
+        "id": "on-board",
+        "box": {
+          "x": 733.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 725.0
+      },
+      {
+        "id": "transit",
+        "box": {
+          "x": 873.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 865.0
+      },
+      {
+        "id": "arrival",
+        "box": {
+          "x": 1013.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 1005.0
+      },
+      {
+        "id": "customs-import",
+        "box": {
+          "x": 1153.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 1145.0
+      },
+      {
+        "id": "delivery",
+        "box": {
+          "x": 1293.0,
+          "y": 631.94,
+          "width": 116.0,
+          "height": 66.0
+        },
+        "visible_px": 0.0,
+        "in_view": false,
+        "left_gap_in_map": 1285.0
+      }
+    ],
+    "visible_ids": [
+      "booking",
+      "pickup",
+      "customs-export"
+    ],
+    "page_errors": [],
+    "initial_camera_starts_at_journey_beginning": true,
+    "problem_ids": [
+      "arrival",
+      "customs-import",
+      "delivery"
+    ]
+  },
+  "A_doc_ro_focus": {
+    "zoom_level_text": "100%",
+    "centered_node": {
+      "id": "arrival",
+      "box": {
+        "x": 137.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "visible_px": 116.0,
+      "in_view": true,
+      "left_gap_in_map": 129.0
+    }
+  },
+  "A_select_focus": {
+    "selected": [
+      "journey-node-delivery"
+    ],
+    "centered_node": {
+      "id": "delivery",
+      "box": {
+        "x": 137.0,
+        "y": 631.94,
+        "width": 116.0,
+        "height": 66.0
+      },
+      "visible_px": 116.0,
+      "in_view": true,
+      "left_gap_in_map": 129.0
+    }
+  },
+  "A_pan_zoom_fit": {
+    "input": "CDP touchStart/touchMove/touchEnd",
+    "delta_x": 240,
+    "zoom_before": 1,
+    "zoom_after": 1.2,
+    "fit_scale": 0.238356,
+    "pass": true
+  },
+  "A_desktop_initial": {
+    "viewport": [
+      1440,
+      900
+    ],
+    "zoom_level_text": "95%",
+    "transform": {
+      "raw": "translate(12px, 131px) scale(0.945205)",
+      "x": 12,
+      "y": 131,
+      "scale": 0.945205
+    },
+    "visible": [
+      "booking",
+      "pickup",
+      "customs-export",
+      "si-vgm",
+      "gate-in",
+      "etd",
+      "on-board",
+      "transit",
+      "arrival",
+      "customs-import",
+      "delivery"
+    ]
+  },
+  "A_VERDICT": "PASS",
+  "B_save_readback": {
+    "environment": "isolated staging / Mongomock",
+    "lot": "T6-FCL",
+    "stage": "ON BOARD",
+    "field": "Ngày xếp hàng lên tàu (on-board)",
+    "seeded_old_first": false,
+    "old_value_before_save": "2026-10-11",
+    "new_value_filled": "2026-10-04",
+    "save_tapped": true,
+    "readback_after_reload": "2026-10-04",
+    "state_change": "2026-10-11 -> 2026-10-04",
+    "changed": true,
+    "verdict": "PASS"
+  },
+  "B_OLD_TO_NEW": {
+    "old": "2026-10-11",
+    "new": "2026-10-04",
+    "readback": "2026-10-04",
+    "evidence": "before-shot shows OLD in the field; filled-shot shows NEW; readback-shot shows the persisted NEW after reload"
+  },
+  "B_VERDICT": "PASS"
+}

@@ -94,6 +94,20 @@ class JourneyDensity(unittest.TestCase):
         self.assertIn("n.state === 'PROBLEM'", populated)
 
 
+class MobileInitialCamera(unittest.TestCase):
+    """LOGI-199 final owner-fidelity fix A: a fresh mobile view starts at the
+    beginning of the route (Owner oracle framing); focus-on-selection and the
+    selected/problem/current "Đọc rõ" focus stay intact; scale stays 1."""
+
+    def test_mobile_auto_starts_at_journey_beginning_when_unselected(self):
+        MAP = (ROOT / "component/src/components/JourneyMap.tsx").read_text(encoding="utf-8")
+        self.assertIn("if (selectedId) readable(); else start();", MAP)
+        self.assertIn("x: Math.round(24 - startNode.x)", MAP)
+        self.assertIn("setTf({ k: 1, x: Math.round(24 - startNode.x)", MAP)
+        # "Đọc rõ" keeps the stage-needing-handling focus (PROBLEM/current first).
+        self.assertIn("nodes.find(n => n.state === 'PROBLEM')?.id", MAP)
+
+
 class CompletionReviewDensity(unittest.TestCase):
     def test_completion_review_is_collapsed_by_default(self):
         self.assertIn("const [open, setOpen] = useState(false);", GOALS)

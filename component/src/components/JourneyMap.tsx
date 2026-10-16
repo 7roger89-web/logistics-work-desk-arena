@@ -100,15 +100,29 @@ export default function JourneyMap({
   const readable = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !focus) return;
     const isNarrow = el.clientWidth < 720;
-    // On mobile, place the focused node row in the lower half (72%) so the
-    // full uncropped Vietnam / Biển Đông / Hoàng Sa / Trường Sa map is clear in the upper half.
+    // Keep the focused node row in the lower half (72%) on mobile so the
+    // node-attached task bubble still fits above its node inside the map.
     const anchorRatio = isNarrow ? 0.72 : 0.48;
     setTf({ k: 1, x: Math.round(el.clientWidth / 2 - focus.x - focus.w / 2), y: Math.round(el.clientHeight * anchorRatio - focus.y - focus.h / 2) });
   }, [focus?.x, focus?.y, focus?.w, focus?.h]);
+  // LOGI-199 final owner-fidelity fix (A): a fresh mobile view starts at the
+  // BEGINNING of the route (BOOKING side, left margin 24px like the Owner HTML
+  // oracle) instead of jumping to the PROBLEM/current stage. Scale stays 1 so
+  // card size, readability and tap targets are unchanged; pan/zoom/Fit are
+  // untouched. The stage needing handling stays one tap away ("Đọc rõ" keeps
+  // its selected/problem/current focus) and selecting a node still focuses it.
+  const startNode = nodes[0] ? positions.get(nodes[0].id) : undefined;
+  const start = useCallback(() => {
+    const el = vp.current; if (!el?.clientWidth || !startNode) return;
+    const isNarrow = el.clientWidth < 720;
+    const anchorRatio = isNarrow ? 0.72 : 0.48;
+    setTf({ k: 1, x: Math.round(24 - startNode.x), y: Math.round(el.clientHeight * anchorRatio - startNode.y - startNode.h / 2) });
+  }, [startNode?.x, startNode?.y, startNode?.w, startNode?.h]);
   const auto = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth) return;
-    if (el.clientWidth < 720) readable(); else fit();
-  }, [fit, readable]);
+    if (el.clientWidth >= 720) { fit(); return; }
+    if (selectedId) readable(); else start();
+  }, [fit, readable, start, selectedId]);
   useEffect(() => {
     const el = vp.current; if (!el) return;
     const layout = () => {
@@ -119,7 +133,7 @@ export default function JourneyMap({
     if (typeof ResizeObserver === 'undefined') { layout(); return; }
     const ro = new ResizeObserver(layout);
     ro.observe(el); layout(); return () => ro.disconnect();
-  }, [auto, fit, readable, collapsed]);
+  }, [auto, fit, readable, start, collapsed]);
   const zoomAt = useCallback((f: number, px: number, py: number) => {
     viewMode.current = 'manual';
     setTf(t => { const k = clamp(t.k * f, 0.1, 2), r = k / t.k; return { k, x: px - (px - t.x) * r, y: py - (py - t.y) * r }; });
