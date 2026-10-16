@@ -1,12 +1,19 @@
-# LOGI #199 — Owner delivery candidate 8932fcb (NOT YET UAT-APPROVED)
+# LOGI #199 — Frozen 8932fcb — isolated Windows Owner trial
 
-`INDEPENDENT_REVIEW=INCOMPLETE`; `OWNER_UAT_READY=NO`; `OWNER_UAT=NOT_RUN`;
-`WINDOWS_RUNTIME=NOT_RUN`; `PRODUCTION_READY=NO`.
+`INDEPENDENT_REVIEW=PASS_BOUNDED_A_B_PAPER`;
+`OWNER_UAT_READY=YES_FOR_ISOLATED_WINDOWS_STARTUP_AND_UAT`;
+`OWNER_UAT=NOT_RUN`; `WINDOWS_RUNTIME=NOT_RUN`; `PRODUCTION_READY=NO`.
 
-This corrects stale candidate links in the old guide. It does NOT authorize
-Owner UAT or waive the independent-review gate. Final approved-trial promotion
-is blocked until a genuinely separate reviewer returns PASS on the frozen SHA.
-No G0–G5 recertification, product redesign, main merge or production deployment.
+Independent ChatGPT Control Tower review of the frozen source/build and archived
+Chromium evidence is published at
+[`INDEPENDENT_REVIEW_RESULT-8932fcb.md`](../../evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_RESULT-8932fcb.md).
+The reviewer is a separate actor from the Arena code writer; no new live browser
+was executed by that reviewer. The PASS covers only camera A, save/readback B and
+Owner paper preservation, NOT Windows OS, full-UI parity or production readiness.
+
+This guide authorizes starting an isolated **local Windows trial** using only
+disposable sample data. Do NOT merge main, deploy, use real customer data, or
+waive other business/security release gates.
 
 ## Frozen app version
 
@@ -21,22 +28,21 @@ No G0–G5 recertification, product redesign, main merge or production deploymen
 - Original offline HTML: `reference/owner-2026-10-15/logi-journey-mimo-sonnet-fusion.html`,
   SHA-256 `26e2e5cf81db1d991a9442872cfde1b7b6a7726e8f0832c76e23a52189c3647f`.
 
-## Review dispatch and web-link status
+## Independent review and web-link status
 
-No independent agent/tool is exposed in this session; native reviewer CLIs are
-absent. GitHub collaborator list contains only Owner. A handoff was prepared in
-`evidence/logi-199-owner-delivery/INDEPENDENT_REVIEW_REQUEST.md`. Attempt to post
-it to issue #199 failed (`Resource not accessible by integration`, exit 1).
-**No reviewer was actually assigned/notified; no independent PASS exists.**
-Owner/Control Tower must send that handoff to an available separate reviewer.
-This is a permissions/delegation blocker, not a request for credentials.
+Historical writer state: no independent reviewer available in the Arena session;
+GitHub Issue #199 comment write failed with `Resource not accessible by integration`.
+This is **superseded for A/B/paper** by the separate, immutable-SHA ChatGPT
+Control Tower review file linked above. Its evidence review is source/artifact
+based, not a new live-browser run; no Owner Windows run has occurred.
+The failed Issue comment is NOT a release or trial blocker.
 
 No authenticated private web app with outside-sandbox verification is available.
 No e2b trial link is being offered, no auth-disabled public app was published,
 and no hosting or paid service was created. A new host would need Owner approval
 and real authenticated/external-access verification before it could be offered.
 
-## Windows instructions — maximum three steps (gated draft)
+## Windows instructions — maximum three steps (pilot permitted; Windows NOT_RUN)
 
 Target selected by Owner: **Windows**. Requirements: Windows x64, working
 CPython **3.11 x64** on PATH, venv/pip, Internet access to install dependencies,
@@ -46,7 +52,7 @@ Direct dependency wheels were checked for CPython 3.11 / Windows amd64 from
 Linux; a full Windows dependency installation and Windows browser launch remain
 **NOT_RUN**. Do not interpret this as Windows PASS.
 
-Once Independent Review PASS is recorded for exactly 8932fcb:
+Independent scoped review PASS is now recorded for exact `8932fcb`; to START local Windows UAT:
 
 1. Ensure Python 3.11 x64 is installed with **Add python.exe to PATH**, and
    Internet access is available for the initial dependency installation.
@@ -64,7 +70,7 @@ The auth bypass is the unchanged test-only launcher setting and is bound to
 **127.0.0.1 only**. Never rebind it publicly, tunnel it, or use production data.
 This is a local single-user trial, not an authenticated hosted environment.
 
-## Focused Owner checklist after review + Windows launch succeed
+## Focused Owner checklist — after successful local Windows start
 
 - T6-FCL at 390×844: initial BOOKING → PICKUP → CUSTOMS EXPORT, 11 nodes / 20
   edges; paper/grid unchanged; pan/zoom/Fit; `Đọc rõ` reaches a real problem;
@@ -84,9 +90,11 @@ Archive: 1,564 tracked files matched blobs at exact 8932fcb, dist/HTML/JPEG hash
 verified. This is author smoke evidence, NOT independent review or Windows PASS.
 See `evidence/logi-199-owner-delivery/`.
 
-Blocking final Owner delivery: independent review not dispatched/completed;
-Windows runtime/Owner launch unverified; no safe externally verified web link.
-Final approved-trial package/release is deliberately not promoted.
+Independent scoped review has now PASSED; remaining Owner trial tasks are
+Windows launcher execution, seeing `STAGING_ISOLATION_PROOF=PASS`, and actual
+Owner interaction/feedback. No external private browser URL was verified.
+This candidate is authorized for **local isolated Owner trial only** and is
+NOT a full-app/production release. The official production release remains blocked.
 Production additionally needs explicit Owner authorization and resolution of the
 existing, unwaived release blockers; this bounded review does not certify the
 whole app, auth/bootstrap, finance or retry-idempotency.
