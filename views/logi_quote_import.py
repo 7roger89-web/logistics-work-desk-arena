@@ -180,14 +180,33 @@ def handle_source_workbook(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _result(event, qid, True, requestId=str(payload.get("requestId") or ""),
                    readback={"read_only": True, "sha256": source["sha256"], "file_name": source.get("file_name"),
                              "overview": info, "page": page,
+                             # The raw workbook carries internal sheets, so it needs the
+                             # SAME grant as the internal-sheet viewer. Reported here so the
+                             # UI can say why the download is unavailable instead of
+                             # silently hiding the button.
+                             "can_download_source": can_operate_business("commercial_write"),
                              "note": "Bản xem workbook gốc chỉ để đối chiếu; số liệu nghiệp vụ vẫn sửa ở bảng Bước 1/2."})
 
 
 def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Download the ORIGINAL uploaded workbook — bytes and all.
+
+    LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 Finding 1 — the original file is not a
+    customer document: it is the raw workbook the customer sent, and it normally
+    carries the supplier's cost sheets, internal notes and scratch tabs. Handing
+    it out needs the SAME business grant the internal-sheet viewer needs
+    (``commercial_write``), never the plain read permission that is enough to read
+    the customer quotation. A role holding only ``commercial_view`` still reads
+    every customer-facing part of the quote; it simply does not receive the
+    supplier's own file. No role and no permission is added here.
+    """
+    import hashlib
+
     from core.auth import can_operate_business
     from core.database import get_db
     from core.gridfs_client import GridFSAttachmentStore
     from core.quote_excel_import import MIME_XLSX
+    from core.quote_workbook_view import internal_rows_on_customer_sheet, protected_sheet_names
     from views.logi_c1 import _result, read_quote
 
     qid = str(payload.get("id") or "")
@@ -197,7 +216,26 @@ def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
     source = (quote or {}).get("excel_quote", {}).get("source", {})
     if not source:
         return _result("quote_source_download", qid, False, "Không có tệp nguồn của báo giá.")
+    # The workbook as a whole may carry internal data. The permission is decided
+    # from the file's own sheet layout, using the SAME classification rule the
+    # viewer uses, and the read is refused rather than silently trimmed: a
+    # partial workbook would be a different document than the one on record.
+    proposal = {"source": source, "source_costs": (quote or {}).get("excel_quote", {}).get("source_costs") or []}
+    protected = protected_sheet_names(list(source.get("sheet_names") or []), proposal)
+    # Cost figures found ON the customer sheet count too: a one-sheet workbook can
+    # still carry the supplier's internal figures, so "no internal sheets" is not
+    # the same thing as "nothing internal in this file".
+    embedded = internal_rows_on_customer_sheet(proposal)
+    if (protected or embedded) and not can_operate_business("commercial_write"):
+        evidence = ", ".join(protected[:3]) if protected else f"{len(embedded)} dòng chi phí nằm ngay trong sheet khách"
+        return _result("quote_source_download", qid, False,
+                       "RBAC: workbook gốc chứa dữ liệu nội bộ/chưa phân loại "
+                       f"({evidence}); cần quyền thao tác báo giá (commercial_write) để tải toàn bộ tệp nguồn.")
     data = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
+    # Same integrity rule as the viewer: bytes that no longer match the recorded
+    # hash are not handed out as if they were the archived file.
+    if hashlib.sha256(data).hexdigest() != str(source.get("sha256") or ""):
+        return _result("quote_source_download", qid, False, "Bytes tệp nguồn không khớp SHA256 đã lưu; không tải.")
     return _result("quote_source_download", qid, True, document={"fileName": source["file_name"], "mime": MIME_XLSX,
                    "downloadBase64": base64.b64encode(data).decode("ascii"), "byteSize": len(data)})
 

@@ -40,12 +40,23 @@ A formula with **no** cached value renders as `→ chưa có giá trị cache` a
 
 Sheet classification comes from evidence, not from a sheet name: a sheet is internal when it matched an internal-cost name marker **or** its rows matched the cost shape of a sheet already classified as internal **or** it duplicates another parse table (recorded in `source.table_sheets`). For the expected Lục Giác file, `Dự kiến Chi phí` is classified internal and never treated as the customer quote.
 
+## Repair of the four findings from the independent source review (2026-10-16)
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `LG nhập - Đại lý TT L Xuất` / `Dự kiến Chi phí` were reachable as raw bytes, and an UNCLASSIFIED sheet was shown as public | One rule — `protected_sheet_names()` = every sheet except the single customer sheet — drives both the read-only viewer's content lock and the raw download, gated on the **existing** `commercial_write` grant no new role. A partial workbook is REFUSED, never trimmed; a SHA256 mismatch is refused; and a ONE-sheet workbook whose cost row sits inside the customer tab is refused as well, because the sheet count is not the test. |
+| 2 | the edited `dịch vụ` summary on the preview never reached the file — the option line overwrote it | The exporter now prints the summary at `A15`, the option line at `A16`, the confirmed scope at `A17`, and the service rows from row `19`. |
+| 3 | the customer name shown on the paper never reached the `To` cell | The exporter and `CustomerPaper` both read the published `doc.customer_name`; the greeting uses `label.attn` (default `To`, so legacy quotes keep their exact bytes). `customer_id` and the directory record are untouched — asserted, not assumed. |
+| 4 | `Kính gửi`, `Cảng / điểm`, `Nơi lấy hàng` … were hardcoded on the paper and absent from the text map | Every label is now a region on BOTH the preview and the XLSX, together with `sec.no_services` and `doc.disclaimer`. Each label is published only when its line is published, and every published region must declare the cell it prints in (`export_rule()`), surfaced in the UI as `eq-text-status[data-unmapped-regions]`. Customs labels print even when the figure is unconfirmed (`Chưa xác định`). |
+
+**No presentational edit moves a number:** the new tests compare numeric cells before and after the label edits, and a forged region id is rejected.
+
 ## Verification (see `evidence/excel-fidelity-inline-edit-v1/`)
 
-- 26 real-bundle DOM checks (`dom-acceptance.txt`): click-to-edit title, product name, column label, payment term, multi-line note; per-region restore; global undo; read-only mode; the save payload; the reload-and-reopen round-trip; sheet tabs/order; merged cell span + fill; cached vs uncached formulas; locked internal sheet; no amounts editable; no internal string on the paper.
-- 54 Python tests (new/updated suites) and a 207-test quote/Excel/RBAC regression, with the one pre-existing cross-file failure identified and isolated.
-- Preview ↔ XLSX cross-check: `xlsx-vs-preview.json` plus the exported file, listing every edited sentence and the exact cell it landed in.
-- Source immutability: `source-immutability.json`.
+- 33 real-bundle DOM checks (`dom-acceptance.txt`): click-to-edit title, product name, column label, payment term, multi-line note; the data-backed summary and the 16 label regions; the identity warning; per-region restore; global undo; read-only mode; the save payload; the reload-and-reopen round-trip; both download roles; sheet tabs/order; merged cell span + fill; cached vs uncached formulas; locked internal sheet; no amounts editable; no internal string on the paper.
+- 72 Python tests across the new/updated suites (18 in `tests/test_excel_fidelity_repair_v1.py`) and a 198-test quote/Excel/RBAC regression with zero failures in this task's files; the one RBAC failure elsewhere is pre-existing cross-file state pollution, shown to fail with no file from this task loaded.
+- Preview ↔ XLSX cross-check: `xlsx-vs-preview.json` plus the exported file, listing every edited sentence and the exact cell it landed in, the export rule per region, and the untouched identity.
+- Source immutability: `source-immutability.json`; permissions: `permission-matrix.json`.
 
 ## Open gates (honest)
 

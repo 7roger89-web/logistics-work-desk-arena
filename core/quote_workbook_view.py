@@ -37,7 +37,7 @@ from __future__ import annotations
 import io
 import re
 from datetime import date, datetime, time
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from zipfile import BadZipFile, ZipFile
 
 MAX_ROWS = 200
@@ -107,23 +107,29 @@ def open_workbook(data: bytes):
     return workbook, values
 
 
-def classify_sheets(workbook, proposal: Mapping[str, Any] | None) -> dict[str, str]:
-    """CUSTOMER vs INTERNAL vs UNCLASSIFIED, from the parser's own evidence.
+def classify_sheet_names(sheet_names: Sequence[str], proposal: Mapping[str, Any] | None) -> dict[str, str]:
+    """THE single sheet-classification rule, from names + the parser's own evidence.
 
     The customer sheet is the sheet the goods table was actually read from. A
-    sheet is INTERNAL when the parser found cost figures in it, or when its name
-    carries an internal marker. Nothing is assumed about "sheet 3".
+    sheet is INTERNAL when the parser found cost figures in it, when it holds a
+    duplicate goods table, or when its name carries an internal marker.
+    Everything else is UNCLASSIFIED — and UNCLASSIFIED is **not** public: only
+    the one customer sheet is treated as customer-facing. Nothing is assumed
+    about "sheet 3".
+
+    Both the viewer and the original-file download gate use THIS function, so the
+    two paths cannot drift apart into two different notions of "internal".
     """
     source = (proposal or {}).get("source") or {}
     customer_sheet = str(source.get("goods_sheet") or "")
     cost_sheets = {str(c.get("source_sheet") or "") for c in (proposal or {}).get("source_costs") or []}
     # A sheet that also contained a goods table but was NOT chosen as the
     # customer table is the duplicated internal calculation, whatever it is
-    # named. "Sheet 3" is never assumed to be the customer sheet.
+    # named.
     table_sheets = {str(name) for name in source.get("table_sheets") or []}
     out: dict[str, str] = {}
-    for sheet in workbook.worksheets:
-        name = sheet.title
+    for name in sheet_names:
+        name = str(name)
         if name and name == customer_sheet:
             out[name] = SHEET_CUSTOMER
         elif name in cost_sheets or name in table_sheets or any(marker in folded(name) for marker in INTERNAL_MARKERS):
@@ -131,6 +137,37 @@ def classify_sheets(workbook, proposal: Mapping[str, Any] | None) -> dict[str, s
         else:
             out[name] = SHEET_UNCLASSIFIED
     return out
+
+
+def internal_rows_on_customer_sheet(proposal: Mapping[str, Any] | None) -> list[str]:
+    """Cost figures the parser found ON the customer sheet itself.
+
+    A supplier workbook often keeps one tab, with the internal cost scratched in
+    beside the customer table. Then "the customer sheet" is not by itself proof
+    that the FILE is publishable: the original bytes still contain the cost. The
+    download gate uses this, not the sheet count.
+    """
+    source = (proposal or {}).get("source") or {}
+    customer_sheet = str(source.get("goods_sheet") or "")
+    if not customer_sheet:
+        return []
+    return [str(c.get("label") or "") for c in (proposal or {}).get("source_costs") or []
+            if str(c.get("source_sheet") or "") == customer_sheet]
+
+
+def classify_sheets(workbook, proposal: Mapping[str, Any] | None) -> dict[str, str]:
+    """Same rule, applied to an open workbook."""
+    return classify_sheet_names([sheet.title for sheet in workbook.worksheets], proposal)
+
+
+def protected_sheet_names(sheet_names: Sequence[str], proposal: Mapping[str, Any] | None) -> list[str]:
+    """Sheets that may not be handed to a customer-view-only role.
+
+    Everything except the single customer sheet. An UNCLASSIFIED sheet is
+    protected too: "we could not name it" is not evidence that it is public.
+    """
+    classification = classify_sheet_names(sheet_names, proposal)
+    return [name for name, kind in classification.items() if kind != SHEET_CUSTOMER]
 
 
 def _font(cell) -> dict[str, Any]:
@@ -341,10 +378,14 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
         "column_count": int(sheet.max_column or 0),
         "read_only": True,
     }
-    # Cost-bearing internal sheets: no cell content without the business grant.
-    if sheet_class == SHEET_INTERNAL and not can_view_internal:
+    # Every sheet that is not the ONE customer sheet stays locked without the
+    # business grant — an INTERNAL cost sheet, and equally an UNCLASSIFIED sheet
+    # whose content nobody has validated as publishable.
+    if sheet_class != SHEET_CUSTOMER and not can_view_internal:
         return {**base, "locked": True, "cells": [], "merges": [],
-                "reason": "Sheet nội bộ có giá vốn: cần quyền thao tác báo giá (commercial_write) để xem nội dung."}
+                "reason": ("Sheet nội bộ có giá vốn: cần quyền thao tác báo giá (commercial_write) để xem nội dung."
+                           if sheet_class == SHEET_INTERNAL else
+                           "Sheet chưa phân loại được là bản khách: cần quyền thao tác báo giá (commercial_write) để xem nội dung.")}
     row_limit = max(1, min(int(max_rows or MAX_ROWS), MAX_ROWS))
     col_limit = max(1, min(int(max_cols or MAX_COLS), MAX_COLS))
     value_sheet = values[sheet_name]

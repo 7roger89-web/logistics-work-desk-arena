@@ -1,0 +1,16 @@
+{
+  "syntheticFixture": true,
+  "sourceDownloadAsSupport": true,
+  "sourceDownloadAsViewer": {
+    "ok": false,
+    "error": "RBAC: workbook gốc chứa dữ liệu nội bộ/chưa phân loại (LG nhập - Đại lý TT L Xuất, Dự kiến Chi phí); cần quyền thao tác báo giá (commercial_write) để tải toàn bộ tệp nguồn."
+  },
+  "sourceDownloadWhenCostsSitOnTheCustomerSheet": {
+    "sheetsInFile": [
+      "BÁO GIÁ"
+    ],
+    "costRowsOnCustomerSheet": 1,
+    "ok": false,
+    "error": "RBAC: workbook gốc chứa dữ liệu nội bộ/chưa phân loại (1 dòng chi phí nằm ngay trong sheet khách); cần quyền thao tác báo giá (commercial_write) để tải toàn bộ tệp nguồn."
+  }
+}

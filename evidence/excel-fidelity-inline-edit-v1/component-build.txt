@@ -1,16 +1,14 @@
-== Component gates (2026-10-16) ==
+== Component gates (2026-10-16, finding-repair commit) ==
 
 $ cd component && npx tsc --noEmit
 tsc exit: 0
 
 $ cd component && npm run build
-computing gzip size...
 dist/logi-shell.css     93.62 kB │ gzip:  18.35 kB
-dist/logi-shell.js   1,514.77 kB │ gzip: 325.28 kB
+dist/logi-shell.js   1,517.07 kB │ gzip: 325.68 kB
 
-✓ built in 603ms
+✓ built in 734ms
 
 $ cd component && npm run scan   # Streamlit Components v2: no executable process reference
-scanned logi-shell.js: 1482703 chars, 0 executable hits
 scanned logi-shell.css: 93624 chars, 0 executable hits
 FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0

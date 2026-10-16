@@ -5,7 +5,7 @@ import ExcelSourceWorkbook from "./ExcelSourceWorkbook";
 import { Field, GhostBtn, PrimaryBtn, SearchPicker, SectionTitle, SuccessBtn, ToneBadge, inputCls } from "./ui";
 import CostIntelligencePanel from "./CostIntelligence";
 import { useStore } from "../lib/store";
-import { getViewModel, subscribeViewModel, type Quote } from "../lib/viewmodel";
+import { getViewModel, subscribeViewModel, userAccessWorkspace, type Quote } from "../lib/viewmodel";
 import { cx, downloadBinaryFile, fmtMoney } from "../lib/format";
 import { costReferenceIssue, findComparableCosts, loose, type CostCriteria, type CostMatch, type CostMatchLine } from "../lib/costHistory";
 import { emptyExcelService, quoteRequestId, type CustomerQuotePreview, type CustomerTextRegion, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
@@ -94,6 +94,11 @@ function captureTextBaseline(draft: ExcelQuoteDraft | null | undefined, headerTe
 
 export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initialQuote?: Quote | null; onClose: () => void }) {
   const { customers, dispatch, toast, userName } = useStore();
+  // Display-only hint derived from the EXISTING /nguoi-dung projection: the
+  // backend re-checks the same permission on every request, so a role that may
+  // not take the supplier's original workbook simply sees why.
+  const permissions = new Set(userAccessWorkspace()?.currentUser.permissions ?? []);
+  const canDownloadSource = permissions.has("*") || permissions.has("commercial_write");
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const [currentQuote, setCurrentQuote] = useState(initialQuote ?? null);
   const [step, setStep] = useState(1);
@@ -341,6 +346,10 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
     });
   };
   const changedRegionIds = regions.filter((region) => shownText(region) !== (region.bound ? baselineValue(region) : region.default)).map((region) => region.id);
+  // Finding 6 — machine-checked export contract: every published region names
+  // where the XLSX prints it, and the count of unmapped ones is shown, never
+  // silently ignored.
+  const unmappedRegions = preview?.customer.text?.unmapped ?? [];
   const mismatchRegions = regions.filter((region) => region.guarded && shownText(region) !== region.default);
   const pickCost = (match: CostMatch, line: CostMatchLine) => {
     const issue = costReferenceIssue(match, line);
@@ -391,7 +400,7 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
             <input type="file" accept=".xlsx" aria-label="Nhập Excel khách gửi" data-testid="excel-upload" ref={fileInput} className="sr-only" onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ""; }} />
             <span className="text-[13px] text-slate-500">V1 · bố cục Lục Giác · .xlsx tối đa 5 MB</span>
           </div>
-          {working && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] break-words" data-testid="excel-source"><p className="font-semibold">📄 {working.source.file_name} · {working.source.sheet_names.length} sheet · bảng hàng: {working.source.goods_sheet}</p><p className="mt-1 text-slate-500">File gốc giữ nguyên trong kho chứng từ · SHA256 {working.source.sha256.slice(0, 16)}…</p><Field label="Nhà cung cấp tham khảo"><input className={inputCls()} value={working.supplier} onChange={(e) => patch({ supplier: e.target.value })} /></Field>{currentQuote && <GhostBtn className="mt-2" onClick={() => send("quote_source_download", { id: currentQuote.id })} disabled={!canAct}><FileDown size={16} /> Tải file nguồn đã lưu</GhostBtn>}</div>}
+          {working && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] break-words" data-testid="excel-source"><p className="font-semibold">📄 {working.source.file_name} · {working.source.sheet_names.length} sheet · bảng hàng: {working.source.goods_sheet}</p><p className="mt-1 text-slate-500">File gốc giữ nguyên trong kho chứng từ · SHA256 {working.source.sha256.slice(0, 16)}…</p><Field label="Nhà cung cấp tham khảo"><input className={inputCls()} value={working.supplier} onChange={(e) => patch({ supplier: e.target.value })} /></Field>{currentQuote && <GhostBtn className="mt-2" testId="excel-source-download" onClick={() => send("quote_source_download", { id: currentQuote.id })} disabled={!canAct || !canDownloadSource}><FileDown size={16} /> Tải file nguồn đã lưu</GhostBtn>}{currentQuote && !canDownloadSource && <p className="mt-2 text-[12.5px] text-amber-900" data-testid="excel-source-download-blocked">Workbook gốc chứa dữ liệu nội bộ (sheet giá vốn / chi phí, kể cả dòng chi phí nằm ngay trong sheet khách), nên cần quyền thao tác báo giá (commercial_write) mới tải được toàn bộ tệp nguồn. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này.</p>}</div>}
           {working && <ExcelSourceWorkbook quoteId={currentQuote?.id} customerId={header.customerId} source={working.source} />}
         </section>
         {working && <>
@@ -450,7 +459,8 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
               <h3 className="eq-title mb-1">Sửa nội dung trực tiếp trong bản báo giá khách</h3>
               <p className="eq-muted">
                 Nhấp vào bất kỳ đoạn chữ nào bên dưới để sửa ngay tại chỗ: tiêu đề, lời giới thiệu, tên khách hiển thị, mặt hàng, tên hàng / model / vật liệu,
-                nhãn cột, tiêu đề nhóm phí, tên &amp; mô tả dịch vụ, phạm vi, điều kiện thanh toán, ghi chú công bố và câu kết. Enter để áp dụng
+                nhãn cột, tiêu đề nhóm phí, tên &amp; mô tả dịch vụ, phạm vi, điều kiện thanh toán, ghi chú công bố và câu kết — kể cả các nhãn dòng
+                (“Kính gửi”, “Mặt hàng”, “Tuyến”, “Cảng / điểm”, “Nơi lấy hàng”, “Giao tại”, “Thuế NK dự kiến”…). Enter để áp dụng
                 (đoạn nhiều dòng: Ctrl/⌘ + Enter), Esc để bỏ. Số tiền, tỷ giá, thuế và tổng tiền do backend tính — không sửa như văn bản tự do.
               </p>
             </div>
@@ -463,11 +473,15 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
           </div>
           <div className="eq-text-status mt-3" data-testid="eq-text-status" data-editing={editingText ? "true" : "false"}
             data-editable-regions={preview?.customer.text?.editable_region_count ?? 0} data-changed-regions={changedRegionIds.length}
-            data-mismatch-regions={mismatchRegions.length}>
+            data-mismatch-regions={mismatchRegions.length} data-unmapped-regions={unmappedRegions.length}>
             <span>Vùng chữ sửa được: <b>{preview?.customer.text?.editable_region_count ?? 0}</b></span>
             <span>Đang khác bản đã lưu: <b>{changedRegionIds.length}</b></span>
             <span>Số tiền/tỷ giá/thuế: <b>chỉ đọc</b></span>
+            <span>Vùng chữ không có quy tắc xuất XLSX: <b>{unmappedRegions.length}</b></span>
           </div>
+          {unmappedRegions.length > 0 && <p role="alert" data-testid="eq-text-unmapped" className="eq-alert border-red-300 bg-red-50 text-red-900 mt-3">
+            ⚠ {unmappedRegions.join(", ")} chưa có quy tắc in vào XLSX khách. Đây là lỗi cấu hình, không phải lựa chọn: chữ hiển thị ở bản xem trước thì phải có trong file.
+          </p>}
           {mismatchRegions.length > 0 && <p role="status" data-testid="eq-text-mismatch" className="eq-alert border-amber-300 bg-amber-50 text-amber-900 mt-3">
             ⚠ Nội dung hiển thị của {mismatchRegions.map((r) => r.label).join(", ")} đang khác dữ liệu đã xác nhận/danh bạ.
             Bản báo giá vẫn hiển thị đúng câu bạn gõ, nhưng hồ sơ khách hàng, mã khách và dữ liệu danh bạ KHÔNG tự đổi.
@@ -580,14 +594,19 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
       <Text id="doc.title" tag="h3" className="eq-paper-title" />
       <p className="mt-1 text-[14px] text-slate-600">{value.quote_no || "Mã báo giá được cấp khi lưu"}</p>
     </div>
-    <p className="mt-4"><b>Kính gửi: </b><Text id="doc.customer_name" tag="span" className="font-bold" /></p>
-    <p className="mt-1">Mặt hàng: <Text id="doc.goods_description" /> · {value.incoterm} · {value.transport_mode}</p>
-    <p className="mt-1">Tuyến: <Text id="doc.route" /></p>
-    <p className="mt-1">Cảng / điểm: {value.shipment.pol || "Chưa xác nhận"} → {value.shipment.pod || "Chưa xác nhận"} · {value.shipment.load_model || "Chưa rõ hình thức tải"}{value.shipment.equipment ? ` / ${value.shipment.equipment}` : ""}</p>
-    {value.shipment.pickup && <p>Nơi lấy hàng: {value.shipment.pickup}</p>}
-    {value.shipment.delivery && <p>Giao tại: {value.shipment.delivery}</p>}
-    {(value.shipment.cbm != null || value.shipment.weight_kg != null) && <p>Đóng hàng đã xác nhận: {value.shipment.cbm ?? "—"} CBM · {value.shipment.weight_kg ?? "—"} kg</p>}
-    {value.expected_delivery_date && <p>Ngày giao dự kiến: {value.expected_delivery_date}</p>}
+    {/* Every label a customer reads is a region too: "Kính gửi", "Mặt hàng",
+        "Cảng / điểm" … are wording, and wording is edited HERE, not in a form.
+        A region is only rendered when its line is on the document, which is the
+        same condition the XLSX exporter uses — so nothing editable can be
+        missing from the file. */}
+    <p className="mt-4"><b><Text id="label.attn" />: </b><Text id="doc.customer_name" tag="span" className="font-bold" /></p>
+    <p className="mt-1"><Text id="label.goods" />: <Text id="doc.goods_description" /> · {value.incoterm} · {value.transport_mode}</p>
+    <p className="mt-1"><Text id="label.route" />: <Text id="doc.route" /></p>
+    <p className="mt-1"><Text id="label.ports" />: {value.shipment.pol || "Chưa xác nhận"} → {value.shipment.pod || "Chưa xác nhận"} · {value.shipment.load_model || "Chưa rõ hình thức tải"}{value.shipment.equipment ? ` / ${value.shipment.equipment}` : ""}</p>
+    {value.shipment.pickup && <p><Text id="label.pickup" />: {value.shipment.pickup}</p>}
+    {value.shipment.delivery && <p><Text id="label.delivery" />: {value.shipment.delivery}</p>}
+    {(value.shipment.cbm != null || value.shipment.weight_kg != null) && <p><Text id="label.cbm" />: {value.shipment.cbm ?? "—"} CBM · {value.shipment.weight_kg ?? "—"} kg</p>}
+    {value.expected_delivery_date && <p><Text id="label.delivery_date" />: {value.expected_delivery_date}</p>}
     <p className="mt-2"><Text id="doc.greeting" tag="span" /></p>
     <p className="mt-2"><Text id="sec.service_summary" tag="span" /></p>
     <Text id="sec.goods" tag="h4" className="eq-public-heading" />
@@ -611,7 +630,7 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
               <Text field={{ scope: "goods", field: "description", index }} tag="span" className="font-semibold" />
               <span className="eq-muted"> · </span><Text field={{ scope: "goods", field: "model", index }} />
               <span className="eq-muted"> · </span><Text field={{ scope: "goods", field: "material", index }} />
-              <span className="block mt-1 eq-muted">Ghi chú: <Text field={{ scope: "goods", field: "note", index }} /></span>
+              <span className="block mt-1 eq-muted"><Text id="label.goods_note" />: <Text field={{ scope: "goods", field: "note", index }} /></span>
             </td>
             <td className="num">{goods.length_mm ?? "—"}</td>
             <td className="num">{goods.width_mm ?? "—"}</td>
@@ -626,7 +645,7 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
     </div>
     <div className="eq-totals"><span>{calc.row_count} dòng · {calc.quantity ?? "—"} chiếc</span>{calc.goods_totals.map((total) => <strong key={total.currency}>{money(total.amount, total.currency)}</strong>)}</div>
     <Text id="doc.option_line" tag="h4" className="eq-public-heading" />
-    <p className="whitespace-pre-wrap"><Text id="scope" tag="span" /></p>
+    <p className="whitespace-pre-wrap"><Text id="label.scope" />: <Text id="scope" tag="span" /></p>
     <Text id="sec.services" tag="h4" className="eq-public-heading" />
     <div className="eq-paper-table-wrap">
       <table className="eq-paper-table" data-testid="customer-service-table">
@@ -656,25 +675,25 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
             <td>{line.currency}</td>
             <td>{line.condition === "IF_APPLICABLE" ? "Phát sinh — chỉ thực hiện sau khi thống nhất." : ""}</td>
           </tr>)}
-          {(value.service_lines || []).length === 0 && <tr><td colSpan={9} className="eq-muted">Chưa có phí dịch vụ có giá bán được xác nhận để công bố.</td></tr>}
+          {(value.service_lines || []).length === 0 && <tr><td colSpan={9} className="eq-muted"><Text id="sec.no_services" /></td></tr>}
         </tbody>
       </table>
     </div>
     <Text id="sec.totals" tag="h4" className="eq-public-heading" />
-    <p>Thuế NK dự kiến: {money(value.customs.duty_vnd, "VND")} · VAT NK dự kiến: {money(value.customs.vat_vnd, "VND")}</p>
-    <p className="mt-1">Tạm tính hàng + dịch vụ trước mọi thuế: <b>{money(calc.before_tax_vnd, "VND")}</b></p>
-    <p className="mt-1 text-[18px] font-extrabold" data-testid="excel-public-total">Tổng dự toán gồm thuế đã xác định: {money(calc.estimate_vnd, "VND")}</p>
+    <p><Text id="label.duty" />: {money(value.customs.duty_vnd, "VND")} · <Text id="label.vat" />: {money(value.customs.vat_vnd, "VND")}</p>
+    <p className="mt-1"><Text id="label.before_tax" />: <b>{money(calc.before_tax_vnd, "VND")}</b></p>
+    <p className="mt-1 text-[18px] font-extrabold"><Text id="label.estimate_total" />: <span data-testid="excel-public-total">{money(calc.estimate_vnd, "VND")}</span></p>
     {calc.unknown_reasons.map((reason) => <p key={reason} className="text-[13px] text-amber-900 mt-1">• {reason}</p>)}
     <Text id="sec.customs" tag="h4" className="eq-public-heading" />
-    <p className="eq-muted">Cơ sở hải quan riêng đã xác nhận: {value.customs.calculable ? money(value.customs.basis_vnd, "VND") : "chưa xác nhận"} · Thuế NK {value.customs.duty_pct ?? "—"}% · VAT NK {value.customs.vat_pct ?? "—"}%</p>
+    <p className="eq-muted"><Text id="label.customs_basis" />: {value.customs.calculable ? money(value.customs.basis_vnd, "VND") : "chưa xác nhận"} · <Text id="label.duty_rate" /> {value.customs.duty_pct ?? "—"}% · <Text id="label.vat_rate" /> {value.customs.vat_pct ?? "—"}%</p>
     <Text id="sec.notes" tag="h4" className="eq-public-heading" />
     <div className="space-y-1" data-testid="excel-public-disclosures">
       {(value.published_notes || []).map((note) => <p key={note.id || note.text}>• <Text id={`note.${note.id}`} tag="span" /></p>)}
       {(value.published_notes || []).length === 0 && value.customer_notes.map((note, index) => <p key={index}>• {note}</p>)}
     </div>
     <p className="mt-2 whitespace-pre-wrap"><Text id="notes.additional" tag="span" /></p>
-    <p className="mt-4"><Text id="doc.closing" tag="span" /></p>
     <p className="mt-2 whitespace-pre-wrap"><Text id="doc.addendum" tag="span" /></p>
-    <p className="eq-muted border-t border-slate-200 pt-4 mt-5">Báo giá là dự toán, chưa phải hóa đơn hoặc nghĩa vụ thanh toán. Thuế dự kiến không thay thế kết luận pháp lý / hải quan.</p>
+    <p className="mt-4"><Text id="doc.closing" tag="span" /></p>
+    <p className="eq-muted border-t border-slate-200 pt-4 mt-5"><Text id="doc.disclaimer" tag="span" /></p>
   </>;
 }

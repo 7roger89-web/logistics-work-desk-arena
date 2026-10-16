@@ -87,6 +87,10 @@ export interface CustomerTextMap {
   overridden: string[];
   mismatches: string[];
   editable_region_count: number;
+  /** Where the customer XLSX prints each published region (Finding 6). */
+  export_rules?: Record<string, string | null>;
+  /** Published regions with NO XLSX rule. Must stay empty. */
+  unmapped?: string[];
 }
 /** READ-ONLY view of the ORIGINAL uploaded workbook (sheet tabs + one sheet). */
 export interface WorkbookSheetInfo {
@@ -167,6 +171,10 @@ export interface CustomerQuotePreview {
   fx_snapshot: { rates_to_vnd: Record<string, number> };
   /** Resolved customer text map — the SAME map the XLSX exporter reads. */
   text?: CustomerTextMap;
+  /** Where each published region is printed in the customer XLSX (Finding 6). */
+  export_rules?: Record<string, string | null>;
+  /** Published regions with no XLSX rule. Must stay empty. */
+  unmapped?: string[];
   /** Ids of the published disclosure lines, so each has its own text region. */
   published_notes?: Array<{ id: string; text: string }>;
 }

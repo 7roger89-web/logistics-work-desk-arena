@@ -28,7 +28,12 @@ from zipfile import ZipFile
 from openpyxl import load_workbook
 import pytest
 
-from core.quote_customer_text import CUSTOMER_TEXT_SCHEMA, sanitize_customer_text
+from core.quote_customer_text import (
+    CUSTOMER_TEXT_SCHEMA,
+    export_rule,
+    sanitize_customer_text,
+    unmapped_regions,
+)
 from core.quote_excel_import import parse_luc_giac_workbook
 from core.quotations import calculate_quote, customer_quote_snapshot, new_quote_document, transition_quote
 from scripts.make_luc_giac_three_sheet_fixture import build_luc_giac_three_sheet_fixture
@@ -49,9 +54,15 @@ ROUNDTRIP_REGIONS = (
     "doc.option_line", "scope", "notes.additional", "doc.closing", "doc.addendum",
     "col.goods.name", "col.goods.qty", "col.service.name", "col.service.amount",
     "sec.goods", "sec.services", "sec.totals", "sec.customs", "sec.notes",
+    # Finding 4 — the descriptive labels that used to be hardcoded on the paper.
+    "label.attn", "label.goods", "label.route", "label.ports", "label.scope",
+    "label.before_tax", "label.estimate_total", "label.customs_basis",
+    "label.duty", "label.vat", "label.duty_rate", "label.vat_rate",
+    "doc.disclaimer",
 )
-# Documented as preview-only: the XLSX prints the option line instead of it.
-PREVIEW_ONLY_REGIONS = ("sec.service_summary",)
+# NOTHING is excused any more: a published region that the preview shows and the
+# XLSX omits is a defect (Finding 2/6), so this list must stay EMPTY.
+PREVIEW_ONLY_REGIONS: tuple[str, ...] = ()
 
 
 @pytest.fixture
@@ -275,17 +286,16 @@ def test_inline_text_edits_round_trip_to_preview_and_xlsx(staging, source):
     # region value the preview shows is really printed in the XLSX.
     ids = {region["id"] for region in customer["text"]["regions"]}
     assert set(ROUNDTRIP_REGIONS) <= ids
-    assert set(PREVIEW_ONLY_REGIONS) <= ids
+    assert PREVIEW_ONLY_REGIONS == ()
+    # No published region may be silently skipped: every one names where it is
+    # printed, and an unmapped id is a hard failure.
+    assert unmapped_regions(customer["text"]) == []
     missing = []
     for region in customer["text"]["regions"]:
-        if region["id"] in PREVIEW_ONLY_REGIONS or not region["value"].strip():
+        if not region["value"].strip():
             continue
-        if region["id"].startswith("col.") or region["id"].startswith("sec."):
-            haystack = text
-        else:
-            haystack = text
         for part in str(region["value"]).split("\n"):
-            if part.strip() and part not in haystack:
+            if part.strip() and part not in text:
                 missing.append((region["id"], part))
     assert missing == []
 

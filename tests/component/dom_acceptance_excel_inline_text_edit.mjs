@@ -118,6 +118,7 @@ function quoteRow({ excelQuote = FIX.excelQuote, version = 1, status = "DRAFT", 
   };
 }
 
+let ROLE_PERMISSIONS = ["dashboard", "sales", "sales_write", "commercial_view", "commercial_write"];
 let vmSeq = 0;
 function vmWith({ lastWrites = [], customer = FIX.customer, excelQuote = FIX.excelQuote, version = 1, status = "DRAFT" } = {}) {
   const vm = structuredClone(BASE);
@@ -125,6 +126,15 @@ function vmWith({ lastWrites = [], customer = FIX.customer, excelQuote = FIX.exc
   // mount that reuses the previous version string would be ignored as "no change".
   vm.version = `${BASE.version}-${(vmSeq += 1)}`;
   vm.customers = [...(vm.customers || []), { id: FIX.customerId, name: FIX.customerName, short: FIX.customerName, mst: "0109999999" }];
+  // The bounded /nguoi-dung projection the workspace reads for its display-only
+  // permission hint. The backend still re-checks the same permission.
+  vm.userAccess = {
+    ...(vm.userAccess || {}), classification: "READ_ONLY_READY", readOnly: false, canManage: false,
+    authMode: vm.userAccess?.authMode || { required: false, mode: "local_admin", label: "", note: "" },
+    currentUser: { present: true, username: "staging.support", displayName: "Thu Hằng", role: "support",
+      permissions: [...ROLE_PERMISSIONS], wildcard: false },
+    users: [], roles: { assignable: [], legacy: [], matrix: [] },
+  };
   vm.quotes = [quoteRow({ excelQuote, version, status })];
   vm.lastWrites = lastWrites;
   return vm;
@@ -159,6 +169,9 @@ function echoSnapshot(payload, extra = {}) {
   const echoed = structuredClone(FIX.customer);
   echoed.text = structuredClone(FIX.customer.text);
   echoed.text.values = values;
+  // The export contract travels with the map: a region with no rule is a defect.
+  echoed.text.unmapped = Object.keys(values).filter((id) => !(id in (FIX.customer.text.export_rules || {}))
+    || !FIX.customer.text.export_rules[id]);
   echoed.text.regions = echoed.text.regions.map((region) => values[region.id] === undefined ? region
     : { ...region, value: values[region.id], source: overrides[region.id] ? "SALE_EDITED" : region.source });
   // The paper renders one bullet per PUBLISHED note; its region id is note.<disclosure id>.
@@ -309,7 +322,40 @@ note("Acceptance F(4): multi-line note written to the canonical additional_publi
 await settle();
 assert.ok(text(byTestId("excel-customer-preview")).includes("Dòng ghi chú một"));
 
-// ---------------------------------------------------------------- numbers
+// ------------------------------- Finding 4: the descriptive labels are editable
+const labelIds = ["label.attn", "label.goods", "label.route", "label.ports", "label.pickup", "label.delivery",
+  "label.delivery_date", "label.scope", "label.before_tax", "label.estimate_total", "label.customs_basis",
+  "label.duty", "label.vat", "label.duty_rate", "label.vat_rate", "doc.disclaimer"];
+for (const id of labelIds) {
+  assert.ok(byRegion(id), `label region missing on the customer paper: ${id}`);
+  assert.equal(FIX.textMap.export_rules[id] !== undefined && FIX.textMap.export_rules[id] !== null, true,
+    `${id} must declare where the XLSX prints it`);
+}
+assert.equal(byRegion("label.attn").querySelector(".eq-inline-value").textContent, "Kính gửi");
+assert.equal(byRegion("label.ports").querySelector(".eq-inline-value").textContent, "Cảng / điểm");
+assert.equal(byRegion("label.pickup").querySelector(".eq-inline-value").textContent, "Nơi lấy hàng");
+note("Acceptance 5: “Kính gửi”, “Cảng / điểm”, “Nơi lấy hàng” and 13 more labels are inline-editable");
+
+await click(byRegion("label.ports"), "ports label");
+setValue(inputFor("label.ports"), "Cảng đi / cảng đến");
+await press(inputFor("label.ports"), "Enter");
+assert.equal((await waitForPreview()).excelQuote.customer_text.overrides["label.ports"], "Cảng đi / cảng đến");
+note("A label edit is sent to Python like any other wording (presentation override)");
+
+await settle();   // the paper is only editable while no echo is in flight
+await click(byRegion("label.pickup"), "pickup label");
+setValue(inputFor("label.pickup"), "Nơi nhận hàng tại xưởng");
+await press(inputFor("label.pickup"), "Enter");
+assert.equal((await waitForPreview()).excelQuote.customer_text.overrides["label.pickup"], "Nơi nhận hàng tại xưởng");
+note("A data-backed label edits through the same in-place seam");
+await settle();
+
+assert.equal(byTestId("eq-text-status").dataset.unmappedRegions, "0");
+assert.ok(!byTestId("eq-text-unmapped"), "no region is published without an XLSX rule");
+assert.equal(FIX.textMap.unmapped.length, 0);
+note("Acceptance 6: every published region names where the XLSX prints it (0 unmapped, no exception list)");
+
+// ------------------------------------------------------------------ numbers
 const paper = byTestId("excel-customer-preview");
 const editableTexts = $("[data-region]", paper).map((el) => text(el));
 assert.ok(editableTexts.length >= 40, "the whole customer document is region-driven");
@@ -333,6 +379,20 @@ note("Acceptance I: no cost price, cost source, internal note or margin in the c
 
 paperSnapshot = byTestId("excel-customer-preview").outerHTML;
 
+// --------------------------- Finding 3: the displayed customer name is editable
+await click(byRegion("doc.customer_name"), "customer display name");
+setValue(inputFor("doc.customer_name"), "Công ty Lục Giác — Chi nhánh Hà Nội");
+await press(inputFor("doc.customer_name"), "Enter");
+assert.equal((await waitForPreview()).excelQuote.customer_text.overrides["doc.customer_name"],
+  "Công ty Lục Giác — Chi nhánh Hà Nội");
+assert.equal(byTestId("eq-text-mismatch").dataset.mismatchRegions !== undefined
+  || byTestId("eq-text-status").dataset.mismatchRegions, "1");
+assert.match(text(byTestId("eq-text-mismatch")), /KHÔNG tự đổi/);
+await settle();
+assert.equal(text(byRegion("doc.customer_name").querySelector(".eq-inline-value")), "Công ty Lục Giác — Chi nhánh Hà Nội");
+note("Acceptance 4: the customer display name is edited in place and WARNS that identity data did not change");
+await settle();
+
 // ---------------------------------------------------------------- undo/restore
 const changedBeforeRestore = Number(byTestId("eq-text-status").dataset.changedRegions);
 assert.ok(changedBeforeRestore >= 3, "the title, the label and two notes are still unsaved edits");
@@ -340,6 +400,7 @@ await click(byTestId("eq-text-restore-doc.title"), "restore title");
 assert.equal(text(byRegion("doc.title").querySelector(".eq-inline-value")), "BÁO GIÁ DỊCH VỤ LOGISTICS");
 assert.ok(!byTestId("eq-text-restore-doc.title"), "the restore control disappears once the region is back to its default");
 assert.equal(Number(byTestId("eq-text-status").dataset.changedRegions), changedBeforeRestore - 1);
+assert.equal(text(byRegion("doc.customer_name").querySelector(".eq-inline-value")), "Công ty Lục Giác — Chi nhánh Hà Nội");
 note("Per-region restore returns ONE region to its saved default and leaves the others alone");
 
 await click(byTestId("eq-inline-undo"), "undo unsaved text");
@@ -396,6 +457,26 @@ for (let i = 0; i < 2 && !byRegion("doc.title"); i += 1) {
 assert.equal(text(byRegion("doc.title").querySelector(".eq-inline-value")), TITLE_EDIT);
 assert.equal(text(byRegion("goods.row-8.name").querySelector(".eq-inline-value")), PRODUCT_EDIT);
 note("Acceptance G: after a reload the reopened quote shows the SAVED wording from the backend draft");
+
+// ---------------- Finding 1: the raw workbook is not offered to a reader-only role
+await click(byTestId("excel-step-1"), "step 1");   // both controls live in step 1
+await tick(120);
+assert.ok(byTestId("excel-source-workbook-open"), "the READ-ONLY workbook view stays available");
+const supportDownload = byTestId("excel-source-download");
+assert.ok(supportDownload && !supportDownload.disabled, "a role with commercial_write can download the source");
+assert.ok(!byTestId("excel-source-download-blocked"));
+note("Finding 1 (UI): a role holding commercial_write sees an enabled source-workbook download");
+
+ROLE_PERMISSIONS = ["dashboard", "sales", "commercial_view"];   // the viewer matrix
+mount(vmWith());
+await tick(160);
+await openWorkspace("viewer role");
+await click(byTestId("excel-step-1"), "step 1");
+assert.ok(byTestId("excel-source-download").disabled, "the download is not offered to a reader-only role");
+assert.match(text(byTestId("excel-source-download-blocked")), /commercial_write/);
+assert.match(text(byTestId("excel-source-download-blocked")), /backend từ chối/);
+note("Finding 1 (UI): a reader-only role is told WHY, and the note names the backend as the authority");
+ROLE_PERMISSIONS = ["dashboard", "sales", "sales_write", "commercial_view", "commercial_write"];
 
 // ---------------------------------------------------------------- workbook view
 // Re-mount the bundle (a fresh Streamlit render) and open the SAME saved quote

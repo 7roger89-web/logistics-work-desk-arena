@@ -451,7 +451,12 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     # The "To" block is enriched from the EXISTING customer master (resolved by
     # the quote's canonical customer_id by the caller). A field the master does
     # not hold stays blank — nothing is fabricated and no customer is mutated.
-    customer_name = (quote.get("customer_name") or quote.get("customer")
+    # A Sale may restyle the DISPLAYED customer name on the Step-3 preview
+    # ("Công ty Lục Giác — Chi nhánh Hà Nội"). That published wording is what the
+    # customer document must print; the canonical customer_id, the master record
+    # and the directory entry are never touched by it.
+    customer_name = (ctext.get("doc.customer_name", "")
+                     or quote.get("customer_name") or quote.get("customer")
                      or customer.get("name") or quote.get("client", ""))
     customer_contact = (quote.get("attn") or quote.get("customer_contact")
                         or customer.get("contact_person") or "")
@@ -468,7 +473,10 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         ("Mobile", company.get("mobile") or company_phone),
     ]
     right = [
-        ("To", customer_name),
+        # "Kính gửi" on the Step-3 preview and the recipient label here are the
+        # SAME editable region. A legacy quote has no map, so it still prints the
+        # historical "To" byte-for-byte.
+        (ctext.get("label.attn", "To"), customer_name),
         ("Email", customer_email),
         ("Mobile", customer_phone),
         ("Date", _quote_display_date(quote)),
@@ -490,8 +498,8 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     ws["A11"] = "Subject: " + subject_title + (f" — {route_text}" if route_text else "")
     ws["A11"].font = label
     ws["A12"] = ctext.get("doc.greeting", "Trân trọng cảm ơn Quý khách đã quan tâm dịch vụ của chúng tôi. Chúng tôi xin gửi báo giá như sau:")
-    ws["A13"] = "Mặt hàng: " + (ctext.get("doc.goods_description", str(quote.get("goods_description") or "")) or "—")
-    ws["A14"] = "Tuyến: " + (ctext.get("doc.route", route_text) or "—") + (f" · Điều kiện giao hàng: {incoterm}" if incoterm else "")
+    ws["A13"] = ctext.get("label.goods", "Mặt hàng") + ": " + (ctext.get("doc.goods_description", str(quote.get("goods_description") or "")) or "—")
+    ws["A14"] = ctext.get("label.route", "Tuyến") + ": " + (ctext.get("doc.route", route_text) or "—") + (f" · Điều kiện giao hàng: {incoterm}" if incoterm else "")
     ws["A15"] = ctext.get("sec.service_summary", "Dịch vụ: giao nhận / vận chuyển / thủ tục theo các khoản mục dưới đây.")
 
     # ---- row 17: table headers -------------------------------------------
@@ -500,17 +508,17 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     headers = [ctext.get(f"col.service.{key}", default) for key, default in SERVICE_COLUMNS]
     header_row = 17
     if excel_customer:
-        ws["A15"] = ctext.get("doc.option_line",
+        ws["A16"] = ctext.get("doc.option_line",
                             f"Phương án {quote.get('option', '')}: " + ("Khách tự đứng tên nhập khẩu" if quote.get("option") == "A" else "Dịch vụ nhập khẩu ủy thác"))
-        ws["A16"] = "Phạm vi dịch vụ đã xác nhận: " + (ctext.get("scope", str(quote.get("scope") or "")) or "Chưa xác nhận")
-        row = 18
+        ws["A17"] = ctext.get("label.scope", "Phạm vi dịch vụ đã xác nhận") + ": " + (ctext.get("scope", str(quote.get("scope") or "")) or "Chưa xác nhận")
+        row = 19
         shipment = quote.get("shipment") or {}
         public_route = " → ".join(str(shipment.get(k) or "Chưa xác nhận") for k in ("pol", "pod"))
         transport = " / ".join(str(v) for v in (quote.get("transport_mode"), shipment.get("load_model"), shipment.get("equipment")) if v)
-        for text in (f"Cảng / điểm: {public_route} · {transport}",
-                     "Nơi lấy hàng: " + str(shipment["pickup"]) if shipment.get("pickup") else "",
-                     "Giao tại: " + str(shipment["delivery"]) if shipment.get("delivery") else "",
-                     "Ngày giao dự kiến: " + str(quote["expected_delivery_date"]) if quote.get("expected_delivery_date") else ""):
+        for text in (ctext.get("label.ports", "Cảng / điểm") + f": {public_route} · {transport}",
+                     ctext.get("label.pickup", "Nơi lấy hàng") + ": " + str(shipment["pickup"]) if shipment.get("pickup") else "",
+                     ctext.get("label.delivery", "Giao tại") + ": " + str(shipment["delivery"]) if shipment.get("delivery") else "",
+                     ctext.get("label.delivery_date", "Ngày giao dự kiến") + ": " + str(quote["expected_delivery_date"]) if quote.get("expected_delivery_date") else ""):
             if text:
                 ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
                 ws.cell(row, 1, text).alignment = Alignment(wrap_text=True, vertical="top")
@@ -542,7 +550,7 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
             goods_note = ctext.get(f"goods.{key}.note", str(goods.get("note") or ""))
             if goods_note:
                 row += 1
-                ws.cell(row, 2, "Ghi chú hàng: " + goods_note)
+                ws.cell(row, 2, ctext.get("label.goods_note", "Ghi chú") + " hàng: " + goods_note)
         for total in quote.get("goods_calculation", {}).get("goods_totals") or []:
             row += 1
             ws.cell(row, 2, "Tổng tiền hàng " + total["currency"]).font = FONT_BOLD
@@ -555,6 +563,9 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
 
     totals_by_currency = {}
     row = header_row + 1
+    if excel_customer and not details:
+        ws.cell(row, 1, ctext.get("sec.no_services", "Chưa có phí dịch vụ có giá bán được xác nhận để công bố."))
+        row += 1
     for index, item in enumerate(details, 1):
         item = dict(item)
         name = _line_field(item, "service_name", "name_full", "name", "label", default="")
@@ -659,20 +670,27 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         ws.cell(row, 2, ctext.get("sec.customs", "THUẾ NHẬP KHẨU DỰ KIẾN (không phải kết luận pháp lý)")).font = FONT_BOLD
         row += 1
         if customs.get("calculable"):
-            ws.cell(row, 2, f"Cơ sở hải quan xác nhận riêng (VND); Thuế NK {customs.get('duty_pct')}% / VAT NK {customs.get('vat_pct')}%")
+            ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
+                    + f" (VND); {ctext.get('label.duty_rate', 'Thuế NK')} {customs.get('duty_pct')}% / {ctext.get('label.vat_rate', 'VAT NK')} {customs.get('vat_pct')}%")
             ws.cell(row, 7, customs.get("basis_vnd"))
             row += 1
-            for text, field in (("Thuế NK dự kiến", "duty_vnd"), ("VAT NK dự kiến", "vat_vnd")):
-                ws.cell(row, 2, text)
-                ws.cell(row, 7, customs.get(field))
-                ws.cell(row, 8, "VND")
-                row += 1
         else:
-            ws.cell(row, 2, "Chưa xác định — trị giá hải quan / thuế suất chưa được xác nhận.")
+            ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
+                    + ": Chưa xác định — trị giá hải quan / thuế suất chưa được xác nhận.")
+            row += 1
+        # The duty/VAT labels are always part of the customer document, so they
+        # print even while their amounts are UNKNOWN. An unknown amount is
+        # "Chưa xác định" — never 0.
+        for text, field in ((ctext.get("label.duty", "Thuế NK dự kiến"), "duty_vnd"),
+                            (ctext.get("label.vat", "VAT NK dự kiến"), "vat_vnd")):
+            ws.cell(row, 2, text)
+            ws.cell(row, 7, customs.get(field) if customs.get("calculable") else "Chưa xác định")
+            if customs.get("calculable"):
+                ws.cell(row, 8, "VND")
             row += 1
         calculation = quote.get("goods_calculation") or {}
-        for text, field in (("Tạm tính hàng + dịch vụ trước mọi thuế (VND)", "before_tax_vnd"),
-                            ("TỔNG DỰ TOÁN gồm thuế đã xác định (VND)", "estimate_vnd")):
+        for text, field in ((ctext.get("label.before_tax", "Tạm tính hàng + dịch vụ trước mọi thuế") + " (VND)", "before_tax_vnd"),
+                            (ctext.get("label.estimate_total", "Tổng dự toán gồm thuế đã xác định") + " (VND)", "estimate_vnd")):
             ws.cell(row, 2, text).font = FONT_BOLD
             amount = calculation.get(field)
             ws.cell(row, 7, amount if amount is not None else "Chưa xác định")
@@ -706,8 +724,17 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         for line_text in str(addendum).split("\n"):
             ws.cell(row=row, column=1, value=line_text)
             row += 1
-    row += 2
+    row += 1
     ws.cell(row=row, column=1, value=ctext.get("doc.closing", "Rất mong được hợp tác cùng Quý khách."))
+    row += 1
+    # The published disclaimer is an editable region too: customer-facing wording
+    # with a real legal nuance. It is printed only when the quote HAS the text
+    # map, so a legacy quote still exports exactly the historical template.
+    disclaimer = ctext.get("doc.disclaimer", "")
+    if disclaimer:
+        for line_text in str(disclaimer).split("\n"):
+            ws.cell(row=row, column=1, value=line_text)
+            row += 1
     row += 2
     ws.cell(row=row, column=6, value=company_name).font = FONT_BOLD
 

@@ -48,7 +48,7 @@ def build() -> dict:
         }],
     })
     proposal["shipment"].update({"pol": "NANSHA", "pod": "HAI PHONG", "load_model": "FCL", "equipment": "20GP",
-                                 "delivery": "Thanh Trì, Hà Nội"})
+                                 "pickup": "Xưởng Nansha", "delivery": "Thanh Trì, Hà Nội"})
     quote = calculate_quote({
         "id": QUOTE_ID, "quote_no": "BG-2026-DOMFIX1", "status": "DRAFT", "version": 1,
         "customer_id": CUSTOMER_ID, "customer_name": CUSTOMER_NAME, "customer_contact": "Nguyễn Văn A",

@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.quote_customer_text import CUSTOMER_TEXT_SCHEMA
+from core.quote_customer_text import CUSTOMER_TEXT_SCHEMA, unmapped_regions
 from core.quote_excel_import import parse_luc_giac_workbook
 from core.quote_workbook_view import overview
 from core.quotations import customer_quote_snapshot
@@ -47,6 +47,11 @@ PRODUCT_EDIT = "Bàn họp nhập khẩu cao cấp"
 COLUMN_EDIT = "Nội dung dịch vụ"
 PAYMENT_EDIT = "Thanh toán 70% trước khi giao hàng, 30% sau khi nhận hàng."
 MULTILINE_NOTE = "Giao hàng tại kho khách\nKiểm tra và ký biên bản bàn giao\nBảo hành theo nhà sản xuất"
+SUMMARY_EDIT = "Dịch vụ trọn gói: vận chuyển biển + thủ tục nhập khẩu + giao tận kho."
+DISPLAY_NAME_EDIT = "Công ty Lục Giác — Chi nhánh Hà Nội"
+ATTN_EDIT = "Kính gửi Quý công ty"
+PORTS_EDIT = "Cảng đi / cảng đến"
+PICKUP_EDIT = "Nơi nhận hàng tại xưởng"
 # Text that must NEVER reach the customer file.
 INTERNAL_STRINGS = ["PRIVATE-SALE-NOTE", "PRIVATE-RATE-SUPPLIER", "31800000", "31.800.000",
                     "LG nhập - Đại lý TT L Xuất", "Dự kiến Chi phí", "PRIVATE-INTERNAL-NOTE"]
@@ -75,6 +80,7 @@ def main() -> None:
                                               "base64": base64.b64encode(source).decode()})
     assert imported["ok"], imported
     draft = imported["readback"]
+    draft["shipment"] = {**dict(draft.get("shipment") or {}), "pickup": "Xưởng Nansha", "delivery": "Thanh Trì, Hà Nội"}
     draft["options"]["A"].update({
         "scope": "Phạm vi đã thống nhất: vận chuyển và thủ tục nhập khẩu.",
         "service_lines": [{"id": "fee-a", "service_name": "Vận chuyển Nansha → Hải Phòng", "qty": 1, "unit": "Lần",
@@ -86,6 +92,12 @@ def main() -> None:
     draft["additional_public_notes"] = MULTILINE_NOTE
     draft["customer_text"] = {"schema": CUSTOMER_TEXT_SCHEMA, "overrides": {
         "doc.title": TITLE_EDIT, "col.service.name": COLUMN_EDIT, "note.payment": PAYMENT_EDIT,
+        # Finding 2 — the summary that used to be overwritten by the option line.
+        "sec.service_summary": SUMMARY_EDIT,
+        # Finding 3 — the published (restyled) customer name.
+        "doc.customer_name": DISPLAY_NAME_EDIT,
+        # Finding 4 — descriptive labels that used to be hardcoded on the paper.
+        "label.attn": ATTN_EDIT, "label.ports": PORTS_EDIT, "label.pickup": PICKUP_EDIT,
     }}
 
     created = dispatch("quote_create", {
@@ -118,11 +130,12 @@ def main() -> None:
              for sheet in workbook for row in sheet for cell in row if cell.value not in (None, "")]
     flat = "\n".join(str(cell.value) for cell in [c for s in workbook for row in s for c in row] if cell.value is not None)
 
-    # Every region the preview shows must be findable in the file, unless the UI
-    # documents it as preview-only (the exporter prints the option line instead).
-    preview_only = {"sec.service_summary"}
+    # Finding 2/6 — NO exceptions any more. Every region the preview shows must be
+    # findable in the file, and a region with no declared XLSX rule fails this
+    # script instead of being quietly skipped.
+    unmapped = unmapped_regions(customer["text"])
     missing = [rid for rid, value in values.items()
-               if rid not in preview_only and str(value).strip() and str(value).strip() not in flat]
+               if str(value).strip() and str(value).strip() not in flat]
     leaks = [needle for needle in INTERNAL_STRINGS if needle in flat]
     formulas = [(sheet, coord) for sheet, coord, _v, kind in cells if kind == "f"]
     numbers = {rid: value for rid, value in values.items()
@@ -134,7 +147,8 @@ def main() -> None:
         "sheetNames": workbook.sheetnames,
         "previewRegionCount": customer["text"]["editable_region_count"],
         "regionsMissingFromXlsx": missing,
-        "previewOnlyRegions": sorted(preview_only),
+        "regionsWithoutExportRule": unmapped,
+        "exportRules": customer["text"].get("export_rules", {}),
         "internalStringLeaks": leaks,
         "formulaCells": formulas,
         "internalSheetNamesInFile": [n for n in workbook.sheetnames if n != "Bao gia"],
@@ -148,10 +162,21 @@ def main() -> None:
                                                         "goods.row-8.name": values["goods.row-8.name"],
                                                         "col.service.name": values["col.service.name"],
                                                         "note.payment": values["note.payment"],
-                                                        "notes.additional": values["notes.additional"]}.items()},
-        "editedRegions": {"doc.title": values["doc.title"], "goods.row-8.name": values["goods.row-8.name"],
-                          "col.service.name": values["col.service.name"], "note.payment": values["note.payment"],
-                          "notes.additional": values["notes.additional"]},
+                                                        "notes.additional": values["notes.additional"],
+                                                        "sec.service_summary": values["sec.service_summary"],
+                                                        "doc.customer_name": values["doc.customer_name"],
+                                                        "label.attn": values["label.attn"],
+                                                        "label.ports": values["label.ports"],
+                                                        "label.pickup": values["label.pickup"]}.items()},
+        "identityUntouched": {"quoteCustomerId": fresh["customer_id"],
+                              "directoryName": (get_db().customers.find_one({"id": fresh["customer_id"]}) or {}).get("name")},
+        # Finding 1 — the raw workbook needs the business grant; the customer quote does not.
+        "sourceDownloadAsSupport": bool(dispatch("quote_source_download", {"id": qid}).get("ok")),
+        "editedRegions": {rid: values[rid] for rid in ("doc.title", "goods.row-8.name", "col.service.name",
+                                                       "note.payment", "notes.additional", "sec.service_summary",
+                                                       "doc.customer_name", "label.attn", "label.ports", "label.pickup")},
+        "optionLineRow": {coord: value for _sheet, coord, value, _kind in cells
+                          if str(coord).startswith(("A16", "A17"))},
         "goodsTotalRows": customer["goods_calculation"]["row_count"],
         "goodsTotalQuantity": customer["goods_calculation"]["quantity"],
         "goodsTotals": customer["goods_calculation"]["goods_totals"],
@@ -184,7 +209,52 @@ def main() -> None:
                 "rich text/pivots/sparklines/named ranges/print settings are NOT rendered — no 100% claim.",
     }, open(EVIDENCE / "fidelity-declared.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
-    print(json.dumps({"quoteId": qid, "regionsMissingFromXlsx": missing, "internalStringLeaks": leaks,
+    # Finding 1 — the SAME workbook download as a role that only holds
+    # commercial_view must be refused by the backend.
+    viewer_download = "not-run"
+    try:
+        st.session_state["current_user"] = {"username": "evidence-viewer", "role": "viewer"}
+        refused = dispatch("quote_source_download", {"id": qid})
+        viewer_download = {"ok": refused["ok"], "error": str(refused.get("error") or "")}
+    finally:
+        st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+    # ...and the same gate must hold for a ONE-sheet workbook that carries the cost
+    # figures inside the customer tab: the count of internal sheets is not the test.
+    embedded = "not-run"
+    try:
+        buffered = load_workbook(BytesIO(source))   # module-level import; do not shadow it here
+        for name in list(buffered.sheetnames):
+            if name != buffered.sheetnames[0]:
+                del buffered[name]
+        sheet = buffered[buffered.sheetnames[0]]
+        sheet.cell(sheet.max_row + 2, 1, "Vận chuyển nội bộ đại lý")
+        sheet.cell(sheet.max_row, 2, 12500000)
+        one_sheet = BytesIO()
+        buffered.save(one_sheet)
+        imported = dispatch("quote_import_excel", {"customerId": "CUST-LUCGIAC-EVIDENCE", "fileName": "one-sheet.xlsx",
+                                                   "base64": base64.b64encode(one_sheet.getvalue()).decode()})
+        created_one = dispatch("quote_create", {
+            "customerId": "CUST-LUCGIAC-EVIDENCE", "salesOwner": "staging.support", "goodsDescription": "Bàn họp văn phòng",
+            "incoterm": "EXW", "transportMode": "Sea", "route": "Nansha - Hải Phòng",
+            "excelQuote": imported["readback"], "fx": {"CNY": 3900}})
+        assert created_one["ok"], created_one
+        one_qid = created_one["id"]
+        st.session_state["current_user"] = {"username": "evidence-viewer", "role": "viewer"}
+        refused = dispatch("quote_source_download", {"id": one_qid})
+        embedded = {"sheetsInFile": imported["readback"]["source"]["sheet_names"] if imported["ok"] else [],
+                    "costRowsOnCustomerSheet": len(imported["readback"]["source_costs"]) if imported["ok"] else None,
+                    "ok": refused["ok"], "error": str(refused.get("error") or "")}
+    except Exception as exc:   # noqa: BLE001 — evidence script: report, never mask
+        embedded = {"error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+    json.dump({"syntheticFixture": True, "sourceDownloadAsSupport": True, "sourceDownloadAsViewer": viewer_download,
+               "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded},
+              open(EVIDENCE / "permission-matrix.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+    print(json.dumps({"quoteId": qid, "regionsMissingFromXlsx": missing, "unmappedRegions": unmapped,
+                      "internalStringLeaks": leaks, "sourceDownloadAsViewer": viewer_download,
+                      "sourceDownloadWhenCostsSitOnTheCustomerSheet": embedded,
                       "formulaCells": formulas, "sheetNames": workbook.sheetnames,
                       "sourceByteIdentical": stored_bytes == source, "xlsx": str(xlsx_path)}, ensure_ascii=False, indent=2))
 

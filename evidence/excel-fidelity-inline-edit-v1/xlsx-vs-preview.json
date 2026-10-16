@@ -1,18 +1,94 @@
 {
   "syntheticFixture": true,
-  "quoteId": "Q-20261016-09FF609E",
+  "quoteId": "Q-20261016-8C71D443",
   "status": "DRAFT",
   "version": 1,
   "exportedFile": "customer-quote-SYNTHETIC-edited.xlsx",
-  "exportedBytes": 29717,
+  "exportedBytes": 29973,
   "sheetNames": [
     "Bao gia"
   ],
-  "previewRegionCount": 60,
+  "previewRegionCount": 76,
   "regionsMissingFromXlsx": [],
-  "previewOnlyRegions": [
-    "sec.service_summary"
-  ],
+  "regionsWithoutExportRule": [],
+  "exportRules": {
+    "doc.title": "narrative · tiêu đề A5/A11",
+    "doc.greeting": "narrative · lời giới thiệu",
+    "doc.customer_name": "khối From/To · ô To và dòng Kính gửi",
+    "doc.goods_description": "narrative · dòng Mặt hàng",
+    "doc.route": "narrative · dòng Tuyến",
+    "doc.option_line": "narrative · dòng phương án",
+    "scope": "narrative · dòng phạm vi dịch vụ",
+    "goods.row-8.name": "dòng hàng hóa trong bảng hàng",
+    "goods.row-8.model": "dòng hàng hóa trong bảng hàng",
+    "goods.row-8.material": "dòng hàng hóa trong bảng hàng",
+    "goods.row-8.note": "dòng hàng hóa trong bảng hàng",
+    "goods.row-9.name": "dòng hàng hóa trong bảng hàng",
+    "goods.row-9.model": "dòng hàng hóa trong bảng hàng",
+    "goods.row-9.material": "dòng hàng hóa trong bảng hàng",
+    "goods.row-9.note": "dòng hàng hóa trong bảng hàng",
+    "goods.row-10.name": "dòng hàng hóa trong bảng hàng",
+    "goods.row-10.model": "dòng hàng hóa trong bảng hàng",
+    "goods.row-10.material": "dòng hàng hóa trong bảng hàng",
+    "goods.row-10.note": "dòng hàng hóa trong bảng hàng",
+    "goods.row-11.name": "dòng hàng hóa trong bảng hàng",
+    "goods.row-11.model": "dòng hàng hóa trong bảng hàng",
+    "goods.row-11.material": "dòng hàng hóa trong bảng hàng",
+    "goods.row-11.note": "dòng hàng hóa trong bảng hàng",
+    "goods.row-12.name": "dòng hàng hóa trong bảng hàng",
+    "goods.row-12.model": "dòng hàng hóa trong bảng hàng",
+    "goods.row-12.material": "dòng hàng hóa trong bảng hàng",
+    "goods.row-12.note": "dòng hàng hóa trong bảng hàng",
+    "service.fee-a.name": "dòng phí trong bảng phí dịch vụ",
+    "service.fee-a.public_note": "dòng phí trong bảng phí dịch vụ",
+    "note.payment": "dòng nội dung công bố",
+    "note.production": "dòng nội dung công bố",
+    "note.import": "dòng nội dung công bố",
+    "note.drawing": "dòng nội dung công bố",
+    "notes.additional": "khối ghi chú công bố",
+    "col.goods.stt": "nhãn cột trong bảng",
+    "col.goods.name": "nhãn cột trong bảng",
+    "col.goods.length": "nhãn cột trong bảng",
+    "col.goods.width": "nhãn cột trong bảng",
+    "col.goods.height": "nhãn cột trong bảng",
+    "col.goods.qty": "nhãn cột trong bảng",
+    "col.goods.unit_price": "nhãn cột trong bảng",
+    "col.goods.currency": "nhãn cột trong bảng",
+    "col.goods.line_total": "nhãn cột trong bảng",
+    "col.service.stt": "nhãn cột trong bảng",
+    "col.service.name": "nhãn cột trong bảng",
+    "col.service.unit_price": "nhãn cột trong bảng",
+    "col.service.qty": "nhãn cột trong bảng",
+    "col.service.amount": "nhãn cột trong bảng",
+    "col.service.vat_pct": "nhãn cột trong bảng",
+    "col.service.amount_with_vat": "nhãn cột trong bảng",
+    "col.service.currency": "nhãn cột trong bảng",
+    "col.service.contingent": "nhãn cột trong bảng",
+    "sec.goods": "tiêu đề nhóm · bảng hàng hóa",
+    "sec.services": "tiêu đề nhóm · bảng phí dịch vụ",
+    "sec.totals": "tiêu đề nhóm · tổng cộng",
+    "sec.customs": "tiêu đề nhóm · thuế nhập khẩu",
+    "sec.notes": "tiêu đề nhóm · ghi chú",
+    "sec.service_summary": "narrative · dòng tóm tắt dịch vụ",
+    "label.attn": "nhãn dòng trong narrative / khối tổng",
+    "label.goods": "nhãn dòng trong narrative / khối tổng",
+    "label.route": "nhãn dòng trong narrative / khối tổng",
+    "label.ports": "nhãn dòng trong narrative / khối tổng",
+    "label.pickup": "nhãn dòng trong narrative / khối tổng",
+    "label.delivery": "nhãn dòng trong narrative / khối tổng",
+    "label.goods_note": "nhãn dòng trong narrative / khối tổng",
+    "label.scope": "nhãn dòng trong narrative / khối tổng",
+    "label.duty": "nhãn dòng trong narrative / khối tổng",
+    "label.vat": "nhãn dòng trong narrative / khối tổng",
+    "label.before_tax": "nhãn dòng trong narrative / khối tổng",
+    "label.estimate_total": "nhãn dòng trong narrative / khối tổng",
+    "label.customs_basis": "nhãn dòng trong narrative / khối tổng",
+    "label.duty_rate": "nhãn dòng trong narrative / khối tổng",
+    "label.vat_rate": "nhãn dòng trong narrative / khối tổng",
+    "doc.closing": "kết báo giá",
+    "doc.disclaimer": "cuối trang · dòng miễn trừ",
+    "doc.addendum": "đoạn bổ sung"
+  },
   "internalStringLeaks": [],
   "formulaCells": [],
   "internalSheetNamesInFile": [],
@@ -27,24 +103,53 @@
       "Bao gia!A11"
     ],
     "goods.row-8.name": [
-      "Bao gia!B21"
+      "Bao gia!B24"
     ],
     "col.service.name": [
-      "Bao gia!B33"
+      "Bao gia!B36"
     ],
     "note.payment": [
-      "Bao gia!A46"
+      "Bao gia!A51"
     ],
     "notes.additional": [
-      "Bao gia!A50"
+      "Bao gia!A55"
+    ],
+    "sec.service_summary": [
+      "Bao gia!A15"
+    ],
+    "doc.customer_name": [
+      "Bao gia!G7"
+    ],
+    "label.attn": [
+      "Bao gia!F7"
+    ],
+    "label.ports": [
+      "Bao gia!A19"
+    ],
+    "label.pickup": [
+      "Bao gia!A20"
     ]
   },
+  "identityUntouched": {
+    "quoteCustomerId": "CUST-LUCGIAC-EVIDENCE",
+    "directoryName": "Công ty Lục Giác"
+  },
+  "sourceDownloadAsSupport": true,
   "editedRegions": {
     "doc.title": "BÁO GIÁ NHẬP KHẨU BÀN HỌP",
     "goods.row-8.name": "Bàn họp nhập khẩu cao cấp",
     "col.service.name": "Nội dung dịch vụ",
     "note.payment": "Thanh toán 70% trước khi giao hàng, 30% sau khi nhận hàng.",
-    "notes.additional": "Giao hàng tại kho khách\nKiểm tra và ký biên bản bàn giao\nBảo hành theo nhà sản xuất"
+    "notes.additional": "Giao hàng tại kho khách\nKiểm tra và ký biên bản bàn giao\nBảo hành theo nhà sản xuất",
+    "sec.service_summary": "Dịch vụ trọn gói: vận chuyển biển + thủ tục nhập khẩu + giao tận kho.",
+    "doc.customer_name": "Công ty Lục Giác — Chi nhánh Hà Nội",
+    "label.attn": "Kính gửi Quý công ty",
+    "label.ports": "Cảng đi / cảng đến",
+    "label.pickup": "Nơi nhận hàng tại xưởng"
+  },
+  "optionLineRow": {
+    "A16": "Phương án A: Khách tự đứng tên nhập khẩu",
+    "A17": "Phạm vi dịch vụ đã xác nhận: Phạm vi đã thống nhất: vận chuyển và thủ tục nhập khẩu."
   },
   "goodsTotalRows": 5,
   "goodsTotalQuantity": 27.0,

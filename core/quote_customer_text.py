@@ -92,6 +92,85 @@ SERVICE_COLUMNS = (
 )
 PUBLISHED_OPTION_LABEL = {"A": "Khách tự đứng tên nhập khẩu", "B": "Dịch vụ nhập khẩu ủy thác"}
 
+# Commercial LABELS that sit in front of a value on the customer document. They
+# never carry a trailing colon in their stored value: the preview and the XLSX
+# both add ": " themselves, so one region reads the same in both places.
+LABEL_DEFAULTS: dict[str, str] = {
+    "label.attn": "Kính gửi",
+    "label.goods": "Mặt hàng",
+    "label.route": "Tuyến",
+    "label.ports": "Cảng / điểm",
+    "label.pickup": "Nơi lấy hàng",
+    "label.delivery": "Giao tại",
+    "label.delivery_date": "Ngày giao dự kiến",
+    "label.cbm": "Đóng hàng đã xác nhận",
+    "label.goods_note": "Ghi chú",
+    "label.scope": "Phạm vi dịch vụ đã xác nhận",
+    "label.duty": "Thuế NK dự kiến",
+    "label.vat": "VAT NK dự kiến",
+    "label.before_tax": "Tạm tính hàng + dịch vụ trước mọi thuế",
+    "label.estimate_total": "Tổng dự toán gồm thuế đã xác định",
+    "label.customs_basis": "Cơ sở hải quan riêng đã xác nhận",
+    "label.duty_rate": "Thuế NK",
+    "label.vat_rate": "VAT NK",
+}
+NO_SERVICES_DEFAULT = "Chưa có phí dịch vụ có giá bán được xác nhận để công bố."
+DOC_DISCLAIMER_DEFAULT = ("Báo giá là dự toán, chưa phải hóa đơn hoặc nghĩa vụ thanh toán. "
+                          "Thuế dự kiến không thay thế kết luận pháp lý / hải quan.")
+
+# ---- XLSX mapping contract -------------------------------------------------
+# Every published region must name WHERE in the customer XLSX its wording is
+# printed. A region with no rule is a silent omission, which is exactly what this
+# task forbids — ``unmapped_regions()`` makes that state machine-checkable and
+# the cross-check script refuses to pass while it is non-empty.
+EXPORT_STATIC_RULES: dict[str, str] = {
+    "doc.title": "narrative · tiêu đề A5/A11",
+    "doc.greeting": "narrative · lời giới thiệu",
+    "doc.customer_name": "khối From/To · ô To và dòng Kính gửi",
+    "doc.goods_description": "narrative · dòng Mặt hàng",
+    "doc.route": "narrative · dòng Tuyến",
+    "doc.option_line": "narrative · dòng phương án",
+    "doc.closing": "kết báo giá",
+    "doc.addendum": "đoạn bổ sung",
+    "doc.disclaimer": "cuối trang · dòng miễn trừ",
+    "scope": "narrative · dòng phạm vi dịch vụ",
+    "notes.additional": "khối ghi chú công bố",
+    "sec.goods": "tiêu đề nhóm · bảng hàng hóa",
+    "sec.services": "tiêu đề nhóm · bảng phí dịch vụ",
+    "sec.totals": "tiêu đề nhóm · tổng cộng",
+    "sec.customs": "tiêu đề nhóm · thuế nhập khẩu",
+    "sec.notes": "tiêu đề nhóm · ghi chú",
+    "sec.service_summary": "narrative · dòng tóm tắt dịch vụ",
+    "sec.no_services": "bảng phí dịch vụ · dòng chưa có phí",
+}
+EXPORT_PREFIX_RULES: tuple[tuple[str, str], ...] = (
+    ("col.", "nhãn cột trong bảng"),
+    ("label.", "nhãn dòng trong narrative / khối tổng"),
+    ("goods.", "dòng hàng hóa trong bảng hàng"),
+    ("service.", "dòng phí trong bảng phí dịch vụ"),
+    ("note.", "dòng nội dung công bố"),
+)
+
+
+def export_rule(region_id: str) -> str | None:
+    """WHERE the customer XLSX prints this region, or ``None`` if nowhere.
+
+    ``None`` is a defect, not a policy: the XLSX and the Step-3 preview must show
+    the same customer document.
+    """
+    if region_id in EXPORT_STATIC_RULES:
+        return EXPORT_STATIC_RULES[region_id]
+    for prefix, where in EXPORT_PREFIX_RULES:
+        if region_id.startswith(prefix):
+            return where
+    return None
+
+
+def unmapped_regions(text: Mapping[str, Any] | None) -> list[str]:
+    """Published region ids with no declared XLSX rule (must stay empty)."""
+    regions = (text or {}).get("regions") if isinstance(text, Mapping) else None
+    return sorted(str(r.get("id")) for r in regions or [] if not export_rule(str(r.get("id"))))
+
 
 def folded(value: Any) -> str:
     text = unicodedata.normalize("NFD", str(value or "")).lower().replace("đ", "d")
@@ -285,20 +364,60 @@ def build_customer_text(quote: Mapping[str, Any], details: Mapping[str, Any]) ->
                          ("sec.totals", TOTALS_HEADING_DEFAULT), ("sec.customs", CUSTOMS_HEADING_DEFAULT),
                          ("sec.notes", NOTES_HEADING_DEFAULT), ("sec.service_summary", SERVICE_SUMMARY_DEFAULT)):
         add(rid, SHORT, GROUP_LABEL, f"Tiêu đề nhóm · {default[:40]}", default)
+    # Descriptive labels printed in front of a value. Without them the Owner had
+    # to leave the Step-3 preview to change a single word of the document.
+    #
+    # A label is published ONLY when its line is really on the customer document
+    # (same condition the paper renders with). Otherwise the label would be an
+    # editable region that can never appear in the XLSX — the silent omission
+    # this task forbids. Each published label is also checked against the export
+    # contract below.
+    shipment = dict(quote.get("shipment") or {})
+    label_lines = {
+        "label.goods": True,
+        "label.route": True,
+        "label.ports": True,
+        "label.scope": True,
+        "label.attn": True,
+        "label.duty": True,
+        "label.vat": True,
+        "label.duty_rate": True,
+        "label.vat_rate": True,
+        "label.before_tax": True,
+        "label.estimate_total": True,
+        "label.customs_basis": True,
+        "label.pickup": bool(str(shipment.get("pickup") or "").strip()),
+        "label.delivery": bool(str(shipment.get("delivery") or "").strip()),
+        "label.delivery_date": bool(str(quote.get("expected_delivery_date") or "").strip()),
+        "label.cbm": shipment.get("cbm") is not None or shipment.get("weight_kg") is not None,
+        "label.goods_note": any(str(g.get("note") or "").strip() for g in goods),
+    }
+    for rid, default in LABEL_DEFAULTS.items():
+        if label_lines.get(rid):
+            add(rid, SHORT, GROUP_LABEL, f"Nhãn dòng · {default}", default)
+    if not services:
+        add("sec.no_services", LONG, GROUP_LABEL, "Dòng báo chưa có phí dịch vụ", NO_SERVICES_DEFAULT)
 
     # ---- closing and an optional extra paragraph --------------------------
     add("doc.closing", LONG, GROUP_CLOSING, "Câu kết báo giá", CLOSING_DEFAULT)
+    add("doc.disclaimer", LONG, GROUP_CLOSING, "Dòng miễn trừ cuối báo giá", DOC_DISCLAIMER_DEFAULT)
     add("doc.addendum", LONG, GROUP_CLOSING, "Đoạn văn bổ sung (ẩn khi để trống)", "")
 
     values = {r["id"]: r["value"] for r in regions}
-    return {
+    out = {
         "schema": CUSTOMER_TEXT_SCHEMA,
         "regions": regions,
         "values": values,
         "overridden": sorted(r["id"] for r in regions if r["id"] in overrides),
         "mismatches": sorted(r["id"] for r in regions if r["mismatch"]),
         "editable_region_count": len(regions),
+        # Every published region names where the customer XLSX prints it. The
+        # list is machine-checkable so "we forgot to export this region" can
+        # never pass silently.
+        "export_rules": {r["id"]: export_rule(r["id"]) for r in regions},
+        "unmapped": unmapped_regions({"regions": regions}),
     }
+    return out
 
 
 def text_values(quote: Mapping[str, Any]) -> dict[str, str]:

@@ -1,5 +1,9 @@
-== LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — new suites (2026-10-16) ==
+== LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1 — new suites (2026-10-16, finding-repair commit) ==
 
-$ .venv/bin/python -m pytest tests/test_excel_text_edit_v1.py tests/test_quote_workbook_view_v1.py tests/test_excel_quote_import_v1.py -q
-......................................................                   [100%]
-54 passed in 2.94s
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py tests/test_excel_text_edit_v1.py tests/test_quote_workbook_view_v1.py tests/test_excel_quote_import_v1.py -q
+........................................................................ [100%]
+72 passed in 3.96s
+
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py -q   # detail
+..................                                                       [100%]
+18 passed in 2.03s
