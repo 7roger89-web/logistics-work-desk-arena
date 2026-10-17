@@ -124,18 +124,24 @@ export interface WorkbookPage {
   cells: WorkbookCell[]; merges: WorkbookMerge[];
   column_widths: Record<string, number>; row_heights: Record<string, number>;
   hidden_rows: number[]; hidden_columns: string[]; frozen_panes: string;
-  truncated: boolean; limits: { max_rows: number; max_cols: number; max_cells: number };
+  start_row?: number; start_col?: number; end_row?: number; end_col?: number;
+  truncated: boolean; limits: { max_rows: number; max_cols: number; max_cells: number; start_row?: number; start_col?: number };
   reason?: string;
 }
+export interface WorkbookDraftState { saved: boolean; version: number; sha256: string; updated_at?: string }
+export interface WorkbookCellEdit { sheet: string; r: number; c: number; type: "text" | "number" | "formula" | "blank"; value: string }
 export interface WorkbookView {
   read_only: boolean; sha256: string; file_name?: string;
-  overview: WorkbookOverview; page: WorkbookPage | null; note: string;
+  overview: WorkbookOverview; page: WorkbookPage | null; draft?: WorkbookDraftState | null; note: string;
+  can_download_source?: boolean;
 }
 export interface ExcelQuoteDraft {
   schema: string;
   /** Presentation-only customer wording, keyed by stable region id. */
   customer_text?: { schema: string; overrides: Record<string, string> };
   goods: ExcelGoods[];
+  /** Explicit user choice required for service-only quote drafts. */
+  goods_mode?: "GOODS" | "SERVICE_ONLY";
   supplier: string;
   source: { file_name: string; byte_size: number; sha256: string; sheet_names: string[]; goods_sheet: string; parser_version: string; storage_file_id?: string };
   source_warnings: Array<{ id: string; text: string }>;
@@ -151,6 +157,7 @@ export interface ExcelQuoteDraft {
   calculation?: ExcelQuoteCalculation;
 }
 export interface CustomerQuotePreview {
+  goods_mode?: "GOODS" | "SERVICE_ONLY";
   /** Assigned when the quote is saved; the paper shows it when present. */
   quote_no?: string;
   customer_name: string;

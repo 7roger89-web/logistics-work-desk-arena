@@ -62,6 +62,8 @@ for (const key of ["HTMLElement", "HTMLInputElement", "HTMLTextAreaElement", "HT
 }
 if (!globalThis.MessageChannel) globalThis.MessageChannel = window.MessageChannel;
 window.HTMLElement.prototype.scrollIntoView = () => {};
+const confirmPrompts = [];
+window.confirm = (message) => { confirmPrompts.push(String(message)); return false; };
 
 const tick = (ms = 60) => new Promise((resolve) => setTimeout(resolve, ms));
 const $ = (selector, root = window.document) => [...root.querySelectorAll(selector)];
@@ -527,6 +529,72 @@ assert.equal(uncached.dataset.unknown, "true");
 assert.match(text(uncached), /chưa có giá trị cache/);
 assert.ok(!/^0/.test(text(uncached)), "a formula without a cached value is never shown as 0");
 note("Acceptance D: a formula with a cached result shows it; an uncached one is UNKNOWN, never 0");
+
+// Cell edits are local until the backend confirms a separately stored workbook draft.
+const draftCell = byTestId("workbook-cell-8:2");
+await click(draftCell, "select workbook cell B8");
+const workbookValue = byTestId("workbook-cell-value");
+assert.ok(workbookValue, "selected cell opens its typed editor");
+setValue(workbookValue, "Bàn họp · edited workbook draft");
+await click(byTestId("workbook-cell-8:6"), "select numeric workbook cell F8");
+setValue(byTestId("workbook-cell-value"), "17");
+await tick(120);
+assert.equal(byTestId("workbook-draft-save").disabled, false, "cell edits enable save-draft");
+assert.ok(byTestId("excel-workbook-dirty-status"), "the parent workspace knows the workbook has unsaved cell edits");
+await click(find("Danh sách báo giá", "button"), "attempt to leave with workbook edits");
+assert.ok(byTestId("excel-quote-workspace"), "cancel keeps the quote workspace open");
+assert.match(confirmPrompts.at(-1), /workbook.*chưa lưu/i);
+await click(byTestId("excel-source-workbook-close"), "attempt to close workbook with unsaved cells");
+assert.ok(byTestId("excel-source-workbook"), "cancel keeps the workbook editor open");
+assert.match(confirmPrompts.at(-1), /workbook.*chưa lưu/i);
+note("Unsaved workbook cell edits warn on both viewer-close and quote-workspace exit; cancel preserves them");
+
+await click(byTestId("workbook-draft-save"), "save editable workbook draft");
+const draftSave = lastPayload("quote_workbook_draft_save");
+assert.ok(draftSave, "cell edits use the bounded workbook-draft event");
+assert.equal(draftSave.id, FIX.quote_id);
+assert.equal(draftSave.expectedVersion, 0);
+assert.deepEqual(draftSave.edits.map(({ sheet, r, c, type, value }) => ({ sheet, r, c, type, value })), [
+  { sheet: "BÁO GIÁ", r: 8, c: 2, type: "text", value: "Bàn họp · edited workbook draft" },
+  { sheet: "BÁO GIÁ", r: 8, c: 6, type: "number", value: "17" },
+]);
+note("Two selected cells (one text, one number) are sent in one bounded, versioned draft save; source identity remains original SHA");
+const savedPage = structuredClone(FIX.workbookView.page);
+const savedCell = savedPage.cells.find((cell) => cell.r === 8 && cell.c === 2);
+if (savedCell) { savedCell.value = "Bàn họp · edited workbook draft"; savedCell.display = savedCell.value; }
+const savedNumber = savedPage.cells.find((cell) => cell.r === 8 && cell.c === 6);
+if (savedNumber) { savedNumber.value = 17; savedNumber.display = "17"; }
+const savedWorkbookView = { ...FIX.workbookView, draft: { saved: true, version: 1, sha256: "edited-draft-sha" }, page: savedPage };
+mount(vmWith({ customer: FIX.customer, lastWrites: [...answered, ...waitingReadbacks,
+  { event: "quote_workbook_draft_save", ok: true, requestId: draftSave.requestId, readback: savedWorkbookView }] }));
+await tick(180);
+assert.equal(text(byTestId("workbook-cell-8:2")), "Bàn họp · edited workbook draft");
+assert.equal(text(byTestId("workbook-cell-8:6")), "17");
+assert.match(text(byTestId("excel-source-workbook")), /Bản sửa riêng v1/);
+assert.ok(!byTestId("excel-workbook-dirty-status"), "backend readback clears the parent's unsaved-workbook warning");
+note("Workbook text and number edits both render from the saved backend readback; the dirty warning clears only after confirmation");
+
+setValue(byTestId("workbook-start-row"), "340");
+setValue(byTestId("workbook-start-column"), "AV");
+await click(byTestId("workbook-go-to-range"), "open a distant workbook region");
+const rangeRequest = lastPayload("quote_source_workbook_view");
+assert.equal(rangeRequest.startRow, 340);
+assert.equal(rangeRequest.startCol, 48);
+const farPage = {
+  ...FIX.workbookView.page, sheet: "BÁO GIÁ", row_count: 351, column_count: 52,
+  start_row: 340, start_col: 48, end_row: 539, end_col: 87,
+  limits: { max_rows: 200, max_cols: 40, max_cells: 4000, start_row: 340, start_col: 48 },
+  cells: [{ r: 350, c: 52, kind: "value", value: "Far table data", display: "Far table data" }],
+  merges: [], column_widths: {}, row_heights: {}, hidden_rows: [], hidden_columns: [], truncated: true,
+};
+const farView = { ...FIX.workbookView, page: farPage, can_download_source: true,
+  draft: { saved: true, version: 1, sha256: "edited-draft-sha" } };
+mount(vmWith({ customer: FIX.customer, lastWrites: [...answered, ...waitingReadbacks,
+  { event: "quote_source_workbook_view", ok: true, requestId: rangeRequest.requestId, readback: farView }] }));
+await tick(180);
+assert.equal(text(byTestId("workbook-cell-350:52")), "Far table data");
+assert.match(text(byTestId("workbook-range-controls")), /mở vùng|Mở vùng/i);
+note("Workbook editor navigates to rows and columns beyond the first viewport instead of requiring a fixed table position");
 
 assert.ok(text(byTestId("workbook-fidelity")).includes("CHƯA render"));
 assert.ok(text(byTestId("excel-source-workbook")).includes("KHÔNG tuyên bố giữ nguyên 100%"));

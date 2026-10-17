@@ -46,6 +46,11 @@ from zipfile import BadZipFile, ZipFile
 MAX_ROWS = 200
 MAX_COLS = 40
 MAX_CELLS = 4000
+MAX_WORKBOOK_SHEETS = 100
+EXCEL_MAX_ROWS = 1_048_576
+EXCEL_MAX_COLS = 16_384
+MAX_EDIT_CELLS = 4000
+MAX_EDIT_TEXT = 2000
 
 SHEET_CUSTOMER = "CUSTOMER"
 SHEET_INTERNAL = "INTERNAL"
@@ -90,23 +95,37 @@ def _zip_guard(data: bytes) -> None:
         raise ValueError("Tệp nguồn vượt giới hạn đọc an toàn.")
     try:
         with ZipFile(io.BytesIO(data)) as archive:
-            if sum(x.file_size for x in archive.infolist()) > MAX_EXPANDED_BYTES or len(archive.infolist()) > 300:
+            entries = archive.infolist()
+            names = [entry.filename for entry in entries]
+            if (sum(entry.file_size for entry in entries) > MAX_EXPANDED_BYTES or len(entries) > 300
+                    or any(entry.flag_bits & 0x1 for entry in entries)):
                 raise ValueError("Workbook vượt giới hạn đọc an toàn.")
-            if any("vbaproject" in x.filename.lower() for x in archive.infolist()):
-                raise ValueError("Không đọc workbook chứa macro.")
+            if ("[Content_Types].xml" not in names or "xl/workbook.xml" not in names
+                    or any(name.startswith("/") or ".." in name.split("/") for name in names)):
+                raise ValueError("Tệp nguồn không phải XLSX hợp lệ.")
+            if any("vbaproject" in name.lower()
+                   or (name.lower().startswith("xl/embeddings/") and name.lower().endswith((".bin", ".ole")))
+                   for name in names):
+                raise ValueError("Không đọc workbook chứa macro hoặc đối tượng nhúng dạng nhị phân.")
+            if archive.testzip() is not None:
+                raise ValueError("Gói XLSX bị lỗi kiểm tra dữ liệu.")
     except BadZipFile as exc:
         raise ValueError("Tệp nguồn không phải XLSX hợp lệ.") from exc
 
 
 def open_workbook(data: bytes):
-    """(workbook with formulas, workbook with cached values). Read-only."""
+    """(workbook with formulas, workbook with cached values), bounded by OOXML safety."""
     from openpyxl import load_workbook
 
     _zip_guard(data)
-    workbook = load_workbook(io.BytesIO(data), data_only=False, keep_links=False)
-    values = load_workbook(io.BytesIO(data), data_only=True, keep_links=False)
-    if len(workbook.worksheets) > 8 or any(s.max_row > 2500 or s.max_column > 40 for s in workbook):
-        raise ValueError("V1 chỉ xem được workbook nhỏ (≤8 sheet, 2500 dòng, 40 cột).")
+    try:
+        workbook = load_workbook(io.BytesIO(data), data_only=False, keep_links=False)
+        values = load_workbook(io.BytesIO(data), data_only=True, keep_links=False)
+    except Exception as exc:
+        raise ValueError("Workbook không thể mở bằng openpyxl.") from exc
+    if (not workbook.worksheets or len(workbook.worksheets) > MAX_WORKBOOK_SHEETS
+            or any(s.max_row > EXCEL_MAX_ROWS or s.max_column > EXCEL_MAX_COLS for s in workbook)):
+        raise ValueError("Workbook vượt giới hạn đọc an toàn (tối đa 100 sheet và giới hạn ô Excel).")
     return workbook, values
 
 
@@ -286,6 +305,10 @@ def _cell_payload(cell, cached, *, shared_formula: bool = False) -> dict[str, An
     """One bounded, honest cell record. A missing cache is UNKNOWN, never 0."""
     formula = cell.value if cell.data_type == "f" else None
     raw = cell.value
+    # openpyxl gives every visited blank cell the default Calibri font object;
+    # do not serialize those implementation defaults as if they were user data.
+    if formula is None and raw in (None, "") and int(getattr(cell, "style_id", 0) or 0) == 0:
+        return None
     payload: dict[str, Any] = {"r": cell.row, "c": cell.column}
     style = _font(cell)
     fill = _fill(cell)
@@ -352,13 +375,20 @@ def _not_rendered(sheet, workbook) -> dict[str, int]:
     except Exception:  # noqa: BLE001 - an unreadable drawing must not break the view
         pass
     for key, attribute in (("charts", "_charts"), ("conditional_formatting", "conditional_formatting"),
-                           ("data_validation", "data_validations"), ("comments", "_comments")):
+                           ("data_validation", "data_validations")):
         try:
             count = len(getattr(sheet, attribute, []) or [])
         except Exception:  # noqa: BLE001
             count = 0
         if count:
             out[key] = count
+    try:
+        # openpyxl stores comments on cells rather than in Worksheet._comments.
+        comment_count = sum(1 for cell in getattr(sheet, "_cells", {}).values() if getattr(cell, "comment", None))
+        if comment_count:
+            out["comments"] = comment_count
+    except Exception:  # noqa: BLE001 - diagnostics must not break a safe view
+        pass
     if getattr(sheet, "sheet_state", "visible") != "visible":
         out["sheet_hidden"] = 1
     try:
@@ -370,9 +400,173 @@ def _not_rendered(sheet, workbook) -> dict[str, int]:
     return out
 
 
+def apply_cell_edits(data: bytes, edits: Sequence[Mapping[str, Any]]) -> bytes:
+    """Apply bounded operator edits to a copy; formulas are stored, never evaluated."""
+    from decimal import Decimal, InvalidOperation
+    import math
+    from openpyxl import load_workbook
+
+    if not isinstance(edits, Sequence) or isinstance(edits, (str, bytes)) or len(edits) > MAX_EDIT_CELLS:
+        raise ValueError(f"Tối đa {MAX_EDIT_CELLS} ô thay đổi trong một lần lưu.")
+    workbook, _values = open_workbook(data)
+    seen: set[tuple[str, int, int]] = set()
+    try:
+        for raw in edits:
+            if not isinstance(raw, Mapping):
+                raise ValueError("Danh sách ô sửa không hợp lệ.")
+            sheet_name = str(raw.get("sheet") or "")
+            row, column = raw.get("r"), raw.get("c")
+            if (not isinstance(row, int) or isinstance(row, bool) or not isinstance(column, int)
+                    or isinstance(column, bool) or not 1 <= row <= EXCEL_MAX_ROWS or not 1 <= column <= EXCEL_MAX_COLS):
+                raise ValueError("Vị trí ô sửa nằm ngoài giới hạn Excel.")
+            if sheet_name not in workbook.sheetnames:
+                raise ValueError("Sheet sửa không tồn tại trong workbook.")
+            key = (sheet_name, row, column)
+            if key in seen:
+                raise ValueError("Một ô bị gửi sửa nhiều lần.")
+            seen.add(key)
+            sheet = workbook[sheet_name]
+            coordinate = sheet.cell(row, column).coordinate
+            for merged in sheet.merged_cells.ranges:
+                if coordinate in merged and coordinate != merged.start_cell.coordinate:
+                    raise ValueError("Chỉ có thể sửa ô góc trên-trái của vùng ô gộp.")
+            kind = str(raw.get("type") or "text")
+            value = raw.get("value")
+            if kind == "blank":
+                parsed = None
+            elif kind == "text":
+                if not isinstance(value, str) or len(value) > MAX_EDIT_TEXT:
+                    raise ValueError(f"Nội dung ô tối đa {MAX_EDIT_TEXT} ký tự.")
+                if value.lstrip().startswith("="):
+                    raise ValueError("Giá trị bắt đầu bằng '=' cần chọn loại Công thức; không tự biến chữ thành công thức.")
+                if any(not (ch.isprintable() or ch in "\\t\\n\\r") for ch in value):
+                    raise ValueError("Nội dung ô chứa ký tự điều khiển không được hỗ trợ.")
+                parsed = value
+            elif kind == "number":
+                if not isinstance(value, str) or not value.strip() or len(value) > 80:
+                    raise ValueError("Số cần nhập dưới dạng chữ số hợp lệ.")
+                try:
+                    number = Decimal(value.strip())
+                except (InvalidOperation, ValueError) as exc:
+                    raise ValueError("Giá trị số không hợp lệ.") from exc
+                numeric_float = float(number) if number.is_finite() else float("inf")
+                if (not number.is_finite() or len(number.as_tuple().digits) > 15
+                        or not math.isfinite(numeric_float) or (number != 0 and numeric_float == 0)):
+                    raise ValueError("Số Excel phải hữu hạn, không bị tràn và không vượt quá 15 chữ số có nghĩa.")
+                parsed = int(number) if number == number.to_integral_value() else numeric_float
+            elif kind == "formula":
+                if not isinstance(value, str) or not value.startswith("=") or len(value) > 500:
+                    raise ValueError("Công thức phải bắt đầu bằng '=' và tối đa 500 ký tự.")
+                if any(ord(ch) < 32 and ch not in "\\t\\n\\r" for ch in value):
+                    raise ValueError("Công thức chứa ký tự điều khiển không được hỗ trợ.")
+                parsed = value
+            else:
+                raise ValueError("Loại ô sửa không được hỗ trợ.")
+            sheet.cell(row, column).value = parsed
+        output = io.BytesIO()
+        workbook.save(output)
+        edited = output.getvalue()
+    finally:
+        workbook.close()
+    _zip_guard(edited)
+    return edited
+
+
+def _matching_drafts(store, source_file_id: str, customer_id: str, source_sha256: str):
+    query = {"metadata.owner_type": "QUOTE_EXCEL_DRAFT", "metadata.source_file_id": source_file_id,
+             "metadata.customer_id": customer_id, "metadata.source_sha256": source_sha256}
+    try:
+        return list(store.bucket.find(query))
+    except Exception as exc:
+        raise ValueError("Không đọc được bản nháp workbook trong kho chứng từ.") from exc
+
+
+def load_workbook_draft(source: Mapping[str, Any], customer_id: str, *, db=None) -> tuple[bytes, dict[str, Any]]:
+    """Return the latest user draft or the immutable original, after ownership/hash checks."""
+    import hashlib
+    from core.database import get_db
+    from core.gridfs_client import GridFSAttachmentStore
+    from core.quote_excel_import import validated_source
+
+    db = get_db() if db is None else db
+    trusted = validated_source(dict(source), customer_id, db=db)["source"]
+    store = GridFSAttachmentStore(db)
+    original = store.download_file(trusted["storage_file_id"])
+    if hashlib.sha256(original).hexdigest() != str(trusted.get("sha256") or ""):
+        raise ValueError("Bytes tệp nguồn không khớp SHA256 đã lưu; không hiển thị.")
+    drafts = _matching_drafts(store, trusted["storage_file_id"], customer_id, trusted["sha256"])
+    if not drafts:
+        return original, {"saved": False, "version": 0, "sha256": trusted["sha256"]}
+    latest = max(drafts, key=lambda item: (getattr(item, "upload_date", None).timestamp()
+                                           if isinstance(getattr(item, "upload_date", None), datetime) else 0))
+    metadata = dict(latest.metadata or {})
+    draft_bytes = store.download_file(str(latest._id))
+    if hashlib.sha256(draft_bytes).hexdigest() != str(metadata.get("sha256") or ""):
+        raise ValueError("Bytes bản nháp workbook không khớp SHA256 đã lưu; không hiển thị.")
+    # Reopen before reporting a successful saved draft; never trust GridFS metadata alone.
+    workbook, _values = open_workbook(draft_bytes)
+    workbook.close()
+    return draft_bytes, {"saved": True, "version": int(metadata.get("version") or 0),
+                         "sha256": metadata["sha256"], "updated_at": str(metadata.get("updated_at") or "")}
+
+
+def save_workbook_draft(source: Mapping[str, Any], customer_id: str, edits: Sequence[Mapping[str, Any]],
+                        actor: str, expected_version: int, *, restore_original: bool = False, db=None) -> dict[str, Any]:
+    """Persist an editable workbook separately from its immutable original."""
+    import hashlib
+    from core.database import get_db
+    from core.gridfs_client import GridFSAttachmentStore
+    from core.quote_excel_import import validated_source
+    from core.quotations import _now
+
+    if not isinstance(expected_version, int) or isinstance(expected_version, bool) or expected_version < 0:
+        raise ValueError("Phiên bản bản nháp không hợp lệ; tải lại workbook trước khi lưu.")
+    db = get_db() if db is None else db
+    trusted = validated_source(dict(source), customer_id, db=db)["source"]
+    store = GridFSAttachmentStore(db)
+    original = store.download_file(trusted["storage_file_id"])
+    source_sha = str(trusted.get("sha256") or "")
+    if hashlib.sha256(original).hexdigest() != source_sha:
+        raise ValueError("Bytes tệp nguồn không khớp SHA256 đã lưu; không lưu bản nháp.")
+    drafts = _matching_drafts(store, trusted["storage_file_id"], customer_id, source_sha)
+    latest = max(drafts, key=lambda item: (getattr(item, "upload_date", None).timestamp()
+                                           if isinstance(getattr(item, "upload_date", None), datetime) else 0)) if drafts else None
+    current_version = int((latest.metadata or {}).get("version") or 0) if latest else 0
+    if current_version != expected_version:
+        raise ValueError("Bản workbook đã đổi phiên bản; tải lại trước khi lưu.")
+    base = original
+    if latest and not restore_original:
+        previous = store.download_file(str(latest._id))
+        if hashlib.sha256(previous).hexdigest() != str((latest.metadata or {}).get("sha256") or ""):
+            raise ValueError("Bản nháp hiện tại không khớp SHA256; tải lại workbook trước khi sửa.")
+        base = previous
+    edited = apply_cell_edits(base, edits) if edits else base
+    draft_sha = hashlib.sha256(edited).hexdigest()
+    version = current_version + 1
+    uploaded = store.upload_file(name=trusted["file_name"], mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                 data=edited, metadata={"owner_type": "QUOTE_EXCEL_DRAFT", "customer_id": customer_id,
+                                                        "source_file_id": trusted["storage_file_id"], "source_sha256": source_sha,
+                                                        "sha256": draft_sha, "version": version, "updated_by": str(actor or ""),
+                                                        "updated_at": _now()})
+    saved_id = uploaded["storage_file_id"]
+    if hashlib.sha256(store.download_file(saved_id)).hexdigest() != draft_sha:
+        store.delete_file(saved_id)
+        raise ValueError("Không xác minh được bytes bản workbook chỉnh sửa sau khi lưu.")
+    # Verify that the independently stored draft remains a readable XLSX.
+    check, _values = open_workbook(edited)
+    check.close()
+    # Retain only the just-verified draft to bound GridFS growth. The original is
+    # in a different owner_type and is never deleted or overwritten here.
+    for old in drafts:
+        if str(old._id) != saved_id:
+            store.delete_file(str(old._id))
+    return {"storage_file_id": saved_id, "source_sha256": source_sha, "sha256": draft_sha,
+            "version": version, "byte_size": len(edited), "restored_original": bool(restore_original)}
+
+
 def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | None = None,
                can_view_internal: bool = False, max_rows: int = MAX_ROWS,
-               max_cols: int = MAX_COLS) -> dict[str, Any]:
+               max_cols: int = MAX_COLS, start_row: int = 1, start_col: int = 1) -> dict[str, Any]:
     """One sheet, bounded.
 
     ``can_view_internal`` is the SOURCE-CELL grant and it defaults to deny for
@@ -411,33 +605,70 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
                 "reason": "Ô nguồn của workbook gốc chỉ mở với quyền thao tác báo giá (commercial_write): "
                           "sheet khách cũng có thể chứa chi phí nội bộ ngay trong chính các ô của nó. "
                           "Bản báo giá khách vẫn xem được ở Bước 3."}
-    row_limit = max(1, min(int(max_rows or MAX_ROWS), MAX_ROWS))
-    col_limit = max(1, min(int(max_cols or MAX_COLS), MAX_COLS))
+    if (not isinstance(start_row, int) or isinstance(start_row, bool)
+            or not isinstance(start_col, int) or isinstance(start_col, bool)
+            or not 1 <= start_row <= EXCEL_MAX_ROWS or not 1 <= start_col <= EXCEL_MAX_COLS):
+        raise ValueError("Vùng xem nằm ngoài giới hạn Excel.")
+    row_limit = max(1, min(int(max_rows or MAX_ROWS), MAX_ROWS, EXCEL_MAX_ROWS - start_row + 1))
+    col_limit = max(1, min(int(max_cols or MAX_COLS), MAX_COLS, EXCEL_MAX_COLS - start_col + 1))
+    end_row, end_col = start_row + row_limit - 1, start_col + col_limit - 1
     value_sheet = values[sheet_name]
     cells: list[dict[str, Any]] = []
-    truncated = False
-    for row in sheet.iter_rows(min_row=1, max_row=min(sheet.max_row or 1, row_limit),
-                               max_col=min(sheet.max_column or 1, col_limit)):
-        for cell in row:
-            if len(cells) >= MAX_CELLS:
-                truncated = True
+    truncated = (int(sheet.max_row or 0) > end_row or int(sheet.max_column or 0) > end_col
+                 or start_row > 1 or start_col > 1)
+    cell_limit_hit = False
+    if start_row <= int(sheet.max_row or 0) and start_col <= int(sheet.max_column or 0):
+        visible_max_row = min(int(sheet.max_row or 0), end_row)
+        visible_max_col = min(int(sheet.max_column or 0), end_col)
+        for row in sheet.iter_rows(min_row=start_row, max_row=visible_max_row,
+                                   min_col=start_col, max_col=visible_max_col):
+            for cell in row:
+                if len(cells) >= MAX_CELLS:
+                    truncated = True
+                    cell_limit_hit = True
+                    break
+                payload = _cell_payload(cell, value_sheet[cell.coordinate].value)
+                if payload is not None:
+                    cells.append(payload)
+            if cell_limit_hit:
                 break
-            payload = _cell_payload(cell, value_sheet[cell.coordinate].value)
-            if payload is not None:
-                cells.append(payload)
-        if truncated:
-            break
     merges = []
+    merge_cells_remaining = MAX_CELLS
     for merged in list(sheet.merged_cells.ranges)[:400]:
+        intersects = not (merged.max_row < start_row or merged.max_col < start_col
+                          or merged.min_row > end_row or merged.min_col > end_col)
+        if not intersects:
+            continue
+        # Do not invent a new anchor for a merge crossing the view boundary.
+        if (merged.min_row < start_row or merged.min_col < start_col
+                or merged.max_row > end_row or merged.max_col > end_col):
+            truncated = True
+            continue
+        area = (merged.max_row - merged.min_row + 1) * (merged.max_col - merged.min_col + 1)
+        if area > merge_cells_remaining:
+            truncated = True
+            continue
+        merge_cells_remaining -= area
         merges.append({"min_row": merged.min_row, "min_col": merged.min_col,
                        "max_row": merged.max_row, "max_col": merged.max_col,
                        "ref": str(merged)})
-    column_widths = {str(key): round(float(dim.width), 2) for key, dim in list(sheet.column_dimensions.items())[:col_limit]
-                     if dim.width}
-    row_heights = {str(key): round(float(dim.height), 2) for key, dim in list(sheet.row_dimensions.items())[:row_limit]
-                   if dim.height}
-    hidden_rows = [int(key) for key, dim in list(sheet.row_dimensions.items())[:row_limit] if dim.hidden]
-    hidden_columns = [str(key) for key, dim in list(sheet.column_dimensions.items())[:col_limit] if dim.hidden]
+    from openpyxl.utils.cell import column_index_from_string
+    column_widths = {}
+    hidden_columns = []
+    for key, dim in list(sheet.column_dimensions.items())[:EXCEL_MAX_COLS]:
+        try:
+            column_index = column_index_from_string(str(key))
+        except ValueError:
+            continue
+        if start_col <= column_index <= end_col:
+            if dim.width:
+                column_widths[str(key)] = round(float(dim.width), 2)
+            if dim.hidden:
+                hidden_columns.append(str(key))
+    row_heights = {str(key): round(float(dim.height), 2) for key, dim in sheet.row_dimensions.items()
+                   if start_row <= int(key) <= end_row and dim.height}
+    hidden_rows = [int(key) for key, dim in sheet.row_dimensions.items()
+                   if start_row <= int(key) <= end_row and dim.hidden]
     return {
         **base,
         "locked": False,
@@ -449,7 +680,10 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
         "hidden_columns": hidden_columns,
         "frozen_panes": str(sheet.freeze_panes or ""),
         "truncated": truncated,
-        "limits": {"max_rows": row_limit, "max_cols": col_limit, "max_cells": MAX_CELLS},
+        "start_row": start_row, "start_col": start_col,
+        "end_row": end_row, "end_col": end_col,
+        "limits": {"max_rows": row_limit, "max_cols": col_limit, "max_cells": MAX_CELLS,
+                   "start_row": start_row, "start_col": start_col},
     }
 
 

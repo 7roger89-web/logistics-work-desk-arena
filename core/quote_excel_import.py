@@ -166,7 +166,7 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
         if goods:
             tables.append((sheet.title, goods))
     if not tables:
-        raise ValueError("Không tìm thấy bảng Lục Giác: cần cột Kích thước (mm), Số lượng, Đơn giá (RMB). V1 không tự đoán bố cục khác.")
+        raise ValueError("Bộ đọc Lục Giác chuyên biệt không nhận diện được bảng hàng trong workbook này.")
     # Prefer the explicit customer sheet, not internal duplicated calculations.
     tables.sort(key=lambda t: 0 if "khach" in folded(t[0]) else 1)
     sheet_name, goods = tables[0]
@@ -209,33 +209,122 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
     }
 
 
-def store_source(data: bytes, proposal: dict[str, Any], customer_id: str, actor: str, *, db=None) -> dict[str, Any]:
-    """Same GridFS bucket/connection as current attachments; immutable bytes.
+def validate_xlsx_upload(data: bytes, file_name: str) -> dict[str, Any]:
+    """Validate a generic, macro-free XLSX without requiring business columns.
 
-    GridFS files.metadata is already durable metadata storage. A cancelled
-    import may remain an unlinked source; it is never represented as a quote.
+    This is the upload boundary: package safety and workbook readability are
+    checked before the immutable source is written to GridFS. A later business
+    parser may recognise zero tables without making this a failed upload.
     """
+    if not file_name.lower().endswith(".xlsx") or PurePath(file_name).name != file_name or "\\" in file_name:
+        raise ValueError("Chỉ nhận tệp .xlsx có tên hợp lệ (không nhận .xls/.xlsm).")
+    if not data or len(data) > MAX_BYTES:
+        raise ValueError("Tệp Excel phải có dữ liệu và không vượt quá 5 MB.")
+    try:
+        with ZipFile(io.BytesIO(data)) as archive:
+            entries = archive.infolist()
+            names = [entry.filename for entry in entries]
+            if (len(entries) > 300 or sum(entry.file_size for entry in entries) > MAX_EXPANDED_BYTES
+                    or any(entry.flag_bits & 0x1 for entry in entries)):
+                raise ValueError("Workbook vượt giới hạn đọc an toàn.")
+            if any(name.startswith("/") or ".." in PurePath(name).parts for name in names):
+                raise ValueError("Gói XLSX chứa đường dẫn không an toàn.")
+            if any("vbaproject" in name.lower()
+                   or (name.lower().startswith("xl/embeddings/") and name.lower().endswith((".bin", ".ole")))
+                   for name in names):
+                raise ValueError("Không nhận workbook chứa macro hoặc đối tượng nhúng dạng nhị phân.")
+            if "[Content_Types].xml" not in names or "xl/workbook.xml" not in names:
+                raise ValueError("Tệp không phải workbook XLSX hợp lệ.")
+            if archive.testzip() is not None:
+                raise ValueError("Gói XLSX bị lỗi kiểm tra dữ liệu.")
+        workbook = load_workbook(io.BytesIO(data), data_only=False, keep_links=False, read_only=False)
+        if not workbook.worksheets or len(workbook.worksheets) > 100:
+            raise ValueError("Workbook phải có từ 1 đến 100 sheet.")
+        for sheet in workbook.worksheets:
+            if sheet.max_row > 1_048_576 or sheet.max_column > 16_384:
+                raise ValueError("Workbook có vùng dữ liệu vượt giới hạn an toàn của Excel.")
+        sheet_names = list(workbook.sheetnames)
+        dimensions = {sheet.title: {"rows": int(sheet.max_row or 0), "columns": int(sheet.max_column or 0)}
+                      for sheet in workbook.worksheets}
+        workbook.close()
+    except ValueError:
+        raise
+    except Exception as exc:  # malformed OOXML/XML, unsupported or corrupt workbook
+        raise ValueError("Tệp XLSX không hợp lệ hoặc vượt giới hạn đọc an toàn.") from exc
+    return {"file_name": file_name, "byte_size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+            "sheet_names": sheet_names, "dimensions": dimensions}
+
+
+def store_source_workbook(data: bytes, file_name: str, customer_id: str, actor: str, *,
+                          workbook_info: dict[str, Any] | None = None, db=None) -> dict[str, Any]:
+    """Store an immutable original XLSX before optional semantic extraction."""
     from core.database import get_db
     from core.gridfs_client import GridFSAttachmentStore
     from core.quotations import _now
 
-    db = get_db() if db is None else db
-    store = GridFSAttachmentStore(db)
-    source = dict(proposal["source"])
-    metadata = {"owner_type": "QUOTE_EXCEL_SOURCE", "customer_id": customer_id, "sha256": source["sha256"], "uploaded_by": actor}
-    previous = store.bucket.find_one({"metadata.owner_type": metadata["owner_type"], "metadata.customer_id": customer_id, "metadata.sha256": source["sha256"]})
+    info = dict(workbook_info or validate_xlsx_upload(data, file_name))
+    if info.get("sha256") != hashlib.sha256(data).hexdigest():
+        raise ValueError("SHA256 workbook không khớp sau bước kiểm tra.")
+    source = {"file_name": file_name, "byte_size": len(data), "sha256": info["sha256"],
+              "sheet_names": list(info["sheet_names"]), "goods_sheet": "", "parser_version": "unmapped/1"}
+    store = GridFSAttachmentStore(get_db() if db is None else db)
+    metadata = {"owner_type": "QUOTE_EXCEL_SOURCE", "customer_id": customer_id,
+                "sha256": source["sha256"], "uploaded_by": actor}
+    previous = store.bucket.find_one({"metadata.owner_type": metadata["owner_type"],
+                                      "metadata.customer_id": customer_id,
+                                      "metadata.sha256": source["sha256"]})
     if previous:
         file_id = str(previous._id)
+        stored_source = dict((previous.metadata or {}).get("source") or {})
+        # Older imports may already have richer parser provenance. Keep it.
+        source = {**source, **stored_source}
     else:
-        stored = store.upload_file(name=source["file_name"], mime=MIME_XLSX, data=data,
+        stored = store.upload_file(name=file_name, mime=MIME_XLSX, data=data,
                                    metadata={**metadata, "uploaded_at": _now(), "source": source,
-                                             "source_warnings": proposal["source_warnings"], "source_facts": proposal["source_facts"],
-                                             "source_costs": proposal["source_costs"], "disclosures": proposal["disclosures"]})
+                                             "workbook_dimensions": info.get("dimensions") or {}})
         file_id = stored["storage_file_id"]
-    # Read/hash back before claiming that the source was saved.
     if hashlib.sha256(store.download_file(file_id)).hexdigest() != source["sha256"]:
         raise ValueError("Không xác minh được bytes tệp nguồn sau khi lưu.")
     return {**source, "storage_backend": "gridfs", "storage_file_id": file_id}
+
+
+def enrich_source_metadata(source: dict[str, Any], proposal: dict[str, Any], customer_id: str, *, db=None) -> None:
+    """Attach parser evidence to GridFS metadata without changing original bytes."""
+    from core.database import get_db
+    from core.gridfs_client import GRIDFS_BUCKET, GridFSAttachmentStore
+
+    db = get_db() if db is None else db
+    store = GridFSAttachmentStore(db)
+    file_id = str(source.get("storage_file_id") or "")
+    stored = store.bucket.get(store._object_id(file_id))
+    metadata = dict(stored.metadata or {})
+    if (metadata.get("owner_type") != "QUOTE_EXCEL_SOURCE"
+            or metadata.get("customer_id") != customer_id
+            or metadata.get("sha256") != source.get("sha256")):
+        raise ValueError("Tệp nguồn không thuộc khách hàng hoặc SHA256 không khớp.")
+    parser_source = dict(proposal.get("source") or {})
+    # Source bytes are immutable; this only enriches server-owned provenance.
+    db[f"{GRIDFS_BUCKET}.files"].update_one(
+        {"_id": stored._id},
+        {"$set": {"metadata.source": parser_source,
+                   "metadata.source_warnings": proposal.get("source_warnings") or [],
+                   "metadata.source_facts": proposal.get("source_facts") or {},
+                   "metadata.source_costs": proposal.get("source_costs") or [],
+                   "metadata.disclosures": proposal.get("disclosures") or []}},
+    )
+
+
+def store_source(data: bytes, proposal: dict[str, Any], customer_id: str, actor: str, *, db=None) -> dict[str, Any]:
+    """Compatibility wrapper over the generic immutable-source store."""
+    from core.database import get_db
+
+    db = get_db() if db is None else db
+    source = dict(proposal["source"])
+    info = validate_xlsx_upload(data, str(source.get("file_name") or ""))
+    stored = store_source_workbook(data, str(source["file_name"]), customer_id, actor,
+                                   workbook_info=info, db=db)
+    enrich_source_metadata(stored, proposal, customer_id, db=db)
+    return {**source, "storage_backend": "gridfs", "storage_file_id": stored["storage_file_id"]}
 
 
 def validated_source(source: dict[str, Any], customer_id: str, *, db=None) -> dict[str, Any]:

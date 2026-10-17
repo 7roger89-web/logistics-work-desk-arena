@@ -107,6 +107,8 @@ export type LogiEventName =
   // values, formulas, merges and common styles. It mutates nothing and is not an
   // export path for the source file.
   | "quote_source_workbook_view"
+  | "quote_workbook_sources_list"
+  | "quote_workbook_draft_save"
   | "agreement_create"
   | "agreement_edit"
   | "agreement_transition"
@@ -231,6 +233,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "quote_preview",
   "quote_source_download",
   "quote_source_workbook_view",
+  "quote_workbook_sources_list",
+  "quote_workbook_draft_save",
   "agreement_create",
   "agreement_edit",
   "agreement_transition",

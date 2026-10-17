@@ -48,7 +48,8 @@ def excel_quote_payload(customer: Mapping[str, Any], payload: Mapping[str, Any])
 
 def handle_import(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
-    from core.quote_excel_import import MAX_BYTES, parse_luc_giac_workbook, store_source
+    from core.quote_excel_import import (MAX_BYTES, enrich_source_metadata, parse_luc_giac_workbook,
+                                         store_source_workbook, validate_xlsx_upload)
     from views.logi_c1 import _actor, _result, read_customer
 
     event = "quote_import_excel"
@@ -62,12 +63,49 @@ def handle_import(payload: Mapping[str, Any]) -> dict[str, Any]:
         return _result(event, "", False, "Tệp vượt giới hạn 5 MB.")
     try:
         data = base64.b64decode(encoded, validate=True)
-        proposal = parse_luc_giac_workbook(data, str(payload.get("fileName") or ""))
-        proposal["source"] = store_source(data, proposal, cid, _actor())
+        file_name = str(payload.get("fileName") or "")
+        workbook_info = validate_xlsx_upload(data, file_name)
+        # The immutable source is persisted after package/safety/customer checks,
+        # before optional semantic extraction. A parser miss is not an upload error.
+        source = store_source_workbook(data, file_name, cid, _actor(), workbook_info=workbook_info)
+        dimensions = workbook_info.get("dimensions") or {}
+        parser_shape_supported = (len(workbook_info.get("sheet_names") or []) <= 8
+                                 and all(int(item.get("rows") or 0) <= 2500 and int(item.get("columns") or 0) <= 40
+                                         for item in dimensions.values()))
+        if not parser_shape_supported:
+            return _result(event, "", True, readback={
+                "workbook_only": True,
+                "source": source,
+                "workbook_message": "Đã nhập Excel thành công. Chưa xác định được bảng để tính giá tự động; bạn có thể xem, sửa và chọn các cột cần dùng.",
+            })
+        try:
+            proposal = parse_luc_giac_workbook(data, file_name)
+        except Exception:  # semantic extraction is deliberately best-effort
+            return _result(event, "", True, readback={
+                "workbook_only": True,
+                "source": source,
+                "workbook_message": "Đã nhập Excel thành công. Chưa xác định được bảng để tính giá tự động; bạn có thể xem, sửa và chọn các cột cần dùng.",
+            })
+        try:
+            enrich_source_metadata(source, proposal, cid)
+        except Exception:  # parser provenance is optional after immutable bytes are durable
+            return _result(event, "", True, readback={
+                "workbook_only": True,
+                "source": source,
+                "workbook_message": "Đã nhập Excel thành công. Chưa thể chuẩn bị dữ liệu tính giá tự động; bạn có thể xem, sửa và chọn các cột cần dùng.",
+            })
+        proposal["source"].update({"storage_backend": "gridfs", "storage_file_id": source["storage_file_id"]})
         # Use canonical arithmetic even on the first review, not JS products.
         from core.quotations import calculate_quote
-        preview = calculate_quote({"excel_quote": proposal, "status": "DRAFT"})
-        return _result(event, "", True, readback=preview["excel_quote"])
+        try:
+            preview = calculate_quote({"excel_quote": proposal, "status": "DRAFT"})
+            return _result(event, "", True, readback=preview["excel_quote"])
+        except Exception:
+            return _result(event, "", True, readback={
+                "workbook_only": True,
+                "source": source,
+                "workbook_message": "Đã nhập Excel thành công. Chưa thể tính giá tự động cho dữ liệu này; bạn có thể xem, sửa và chọn các cột cần dùng.",
+            })
     except (ValueError, TypeError) as exc:
         return _result(event, "", False, str(exc))
 
@@ -141,7 +179,7 @@ def handle_source_workbook(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.database import get_db
     from core.gridfs_client import GridFSAttachmentStore
     from core.quote_excel_import import validated_source
-    from core.quote_workbook_view import overview, sheet_page
+    from core.quote_workbook_view import load_workbook_draft, overview, sheet_page
     from views.logi_c1 import _result, read_quote
 
     event = "quote_source_workbook_view"
@@ -149,44 +187,133 @@ def handle_source_workbook(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not can_operate_business("commercial_view"):
         return _result(event, qid, False, "RBAC: không có quyền xem báo giá.", requestId=str(payload.get("requestId") or ""))
     details: dict[str, Any] = {}
-    if qid:
-        quote = read_quote(qid)
-        details = dict((quote or {}).get("excel_quote") or {})
-    if not details:
-        cid = str(payload.get("customerId") or "")
-        if not cid or not isinstance(payload.get("source"), Mapping):
-            return _result(event, qid, False, "Mở báo giá hoặc nhập Excel trước khi xem workbook gốc.",
-                           requestId=str(payload.get("requestId") or ""))
-        try:
-            details = dict(validated_source(dict(payload.get("source") or {}), cid))
-        except (ValueError, TypeError) as exc:
-            return _result(event, qid, False, str(exc), requestId=str(payload.get("requestId") or ""))
-    source = dict(details.get("source") or {})
-    if not source.get("storage_file_id"):
+    quote = read_quote(qid) if qid else None
+    if qid and quote:
+        details = dict(quote.get("excel_quote") or {})
+    cid = str((quote or {}).get("customer_id") or payload.get("customerId") or "")
+    if not details and not isinstance(payload.get("source"), Mapping):
+        return _result(event, qid, False, "Mở báo giá hoặc nhập Excel trước khi xem workbook gốc.",
+                       requestId=str(payload.get("requestId") or ""))
+    candidate_source = dict((details.get("source") or payload.get("source") or {}))
+    if not cid or not candidate_source.get("storage_file_id"):
         return _result(event, qid, False, "Báo giá này không có tệp nguồn để đối chiếu.",
                        requestId=str(payload.get("requestId") or ""))
-    data = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
-    if hashlib.sha256(data).hexdigest() != str(source.get("sha256") or ""):
-        return _result(event, qid, False, "Bytes tệp nguồn không khớp SHA256 đã lưu; không hiển thị.",
-                       requestId=str(payload.get("requestId") or ""))
-    proposal = {"source": source, "source_costs": details.get("source_costs") or []}
     try:
+        trusted = validated_source(candidate_source, cid)
+        source = dict(trusted.get("source") or {})
+        data = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
+        if hashlib.sha256(data).hexdigest() != str(source.get("sha256") or ""):
+            return _result(event, qid, False, "Bytes tệp nguồn không khớp SHA256 đã lưu; không hiển thị.",
+                           requestId=str(payload.get("requestId") or ""))
+        proposal = {"source": source, "source_costs": trusted.get("source_costs") or details.get("source_costs") or []}
         info = overview(data, proposal)
+        can_edit_source = can_operate_business("commercial_write")
+        displayed_bytes = data
+        draft_state = {"saved": False, "version": 0, "sha256": source["sha256"]} if can_edit_source else None
+        if can_edit_source:
+            displayed_bytes, draft_state = load_workbook_draft(source, cid)
         sheet_name = str(payload.get("sheet") or "")
-        page = sheet_page(data, sheet_name, proposal=proposal,
-                          can_view_internal=can_operate_business("commercial_write")) if sheet_name else None
-    except ValueError as exc:
+        page = sheet_page(displayed_bytes, sheet_name, proposal=proposal,
+                          can_view_internal=can_edit_source,
+                          start_row=int(payload.get("startRow") or 1),
+                          start_col=int(payload.get("startCol") or 1)) if sheet_name else None
+    except (ValueError, TypeError, KeyError) as exc:
         return _result(event, qid, False, str(exc), requestId=str(payload.get("requestId") or ""))
     return _result(event, qid, True, requestId=str(payload.get("requestId") or ""),
                    readback={"read_only": True, "sha256": source["sha256"], "file_name": source.get("file_name"),
                              "overview": info, "page": page,
-                             # The raw workbook carries internal data — internal sheets,
-                             # and often a cost row inside the customer tab itself — so it
-                             # needs the SAME grant that opens source cells. Reported here so
-                             # the UI can say why the download is unavailable instead of
-                             # silently hiding the button.
-                             "can_download_source": can_operate_business("commercial_write"),
-                             "note": "Bản xem workbook gốc chỉ để đối chiếu; số liệu nghiệp vụ vẫn sửa ở bảng Bước 1/2."})
+                             "draft": draft_state,
+                             # Raw source access is always grant-gated; viewing a quote
+                             # does not grant access to supplier cells or its workbook draft.
+                             "can_download_source": can_edit_source,
+                             "note": "Bản gốc bất biến. Bản sửa được lưu riêng; openpyxl không tính lại công thức và không bảo đảm giữ mọi đối tượng Excel."})
+
+
+def handle_workbook_sources_list(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """List recent GridFS originals so an unlinked workbook draft can reopen after refresh."""
+    from core.auth import can_operate_business
+    from core.database import get_db
+    from core.gridfs_client import GRIDFS_BUCKET
+    from views.logi_c1 import _result, read_customer
+
+    event = "quote_workbook_sources_list"
+    request_id = str(payload.get("requestId") or "")
+    customer_id = str(payload.get("customerId") or "")
+    if not can_operate_business("commercial_write"):
+        return _result(event, "", False,
+                       "RBAC: danh sách workbook nguồn cần quyền thao tác báo giá (commercial_write).",
+                       requestId=request_id)
+    if not customer_id or not read_customer(customer_id):
+        return _result(event, "", False, "Khách hàng không tồn tại.", requestId=request_id)
+    db = get_db()
+    if db is None:
+        return _result(event, "", False, "Kho workbook chưa sẵn sàng.", requestId=request_id)
+    query = {"metadata.owner_type": "QUOTE_EXCEL_SOURCE", "metadata.customer_id": customer_id}
+    try:
+        documents = list(db[f"{GRIDFS_BUCKET}.files"].find(
+            query, {"metadata": 1, "filename": 1, "uploadDate": 1}
+        ).sort("uploadDate", -1).limit(25))
+    except Exception as exc:
+        return _result(event, "", False, f"Không đọc được danh sách workbook ({type(exc).__name__}).", requestId=request_id)
+    sources = []
+    for document in documents:
+        metadata = dict(document.get("metadata") or {})
+        source = dict(metadata.get("source") or {})
+        if not source.get("sha256") or not source.get("file_name"):
+            continue
+        sources.append({**source, "storage_backend": "gridfs", "storage_file_id": str(document.get("_id")),
+                        "uploaded_at": str(metadata.get("uploaded_at") or document.get("uploadDate") or "")})
+    return _result(event, "", True, requestId=request_id, readback={"customerId": customer_id, "sources": sources})
+
+
+def handle_workbook_draft_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Save edited workbook bytes as a separate, ownership-bound GridFS draft."""
+    import hashlib
+
+    from core.auth import can_operate_business
+    from core.database import get_db
+    from core.gridfs_client import GridFSAttachmentStore
+    from core.quote_excel_import import validated_source
+    from core.quote_workbook_view import load_workbook_draft, overview, save_workbook_draft, sheet_page
+    from views.logi_c1 import _actor, _result, read_quote
+
+    event = "quote_workbook_draft_save"
+    qid = str(payload.get("id") or "")
+    request_id = str(payload.get("requestId") or "")
+    if not can_operate_business("commercial_write"):
+        return _result(event, qid, False,
+                       "RBAC: chỉnh sửa workbook nguồn cần quyền thao tác báo giá (commercial_write).",
+                       requestId=request_id)
+    quote = read_quote(qid) if qid else None
+    if qid and not quote:
+        return _result(event, qid, False, "Không tìm thấy báo giá cần sửa workbook.", requestId=request_id)
+    cid = str((quote or {}).get("customer_id") or payload.get("customerId") or "")
+    candidate = dict((((quote or {}).get("excel_quote") or {}).get("source") or payload.get("source") or {}))
+    if not cid or not candidate:
+        return _result(event, qid, False, "Chọn workbook nguồn thuộc khách hàng trước khi lưu bản sửa.", requestId=request_id)
+    try:
+        trusted = validated_source(candidate, cid)
+        source = dict(trusted["source"])
+        version = payload.get("expectedVersion")
+        saved = save_workbook_draft(source, cid, payload.get("edits") or [], _actor(), version,
+                                    restore_original=payload.get("restoreOriginal") is True)
+        original = GridFSAttachmentStore(get_db()).download_file(source["storage_file_id"])
+        if hashlib.sha256(original).hexdigest() != str(source.get("sha256") or ""):
+            return _result(event, qid, False, "Bytes tệp nguồn không khớp SHA256 sau khi lưu bản sửa.", requestId=request_id)
+        draft_bytes, draft_state = load_workbook_draft(source, cid)
+        proposal = {"source": source, "source_costs": trusted.get("source_costs") or []}
+        sheet_name = str(payload.get("sheet") or "")
+        page = sheet_page(draft_bytes, sheet_name, proposal=proposal, can_view_internal=True,
+                          start_row=int(payload.get("startRow") or 1),
+                          start_col=int(payload.get("startCol") or 1)) if sheet_name else None
+        saved.pop("storage_file_id", None)
+        return _result(event, qid, True, requestId=request_id,
+                       readback={"read_only": True, "sha256": source["sha256"], "file_name": source.get("file_name"),
+                                 "overview": overview(original, proposal), "page": page, "draft": draft_state,
+                                 "save": saved, "can_download_source": True,
+                                 "note": "Bản gốc bất biến. Bản sửa được lưu riêng; openpyxl không tính lại công thức và không bảo đảm giữ mọi đối tượng Excel."})
+    except (ValueError, TypeError, KeyError) as exc:
+        return _result(event, qid, False, str(exc), requestId=request_id)
 
 
 def handle_source_download(payload: Mapping[str, Any]) -> dict[str, Any]:
