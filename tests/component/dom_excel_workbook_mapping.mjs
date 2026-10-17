@@ -168,6 +168,49 @@ try {
   assert.equal(multiSheetServices.options.A.service_lines.length, 3);
   console.log("  ✓ Ocean Freight + overlapping Port charges ranges merge to three service rows in one option");
 
+  const saleEdited = structuredClone(multiSheetServices);
+  Object.assign(saleEdited.options.A.service_lines[1], {
+    sell_unit: "300", sell_confirmed: true, tax_pct: "8", public_note: "Điều kiện báo giá",
+  });
+  const costReMap = structuredClone(portMapping);
+  costReMap.options.A.service_lines[0].cost_unit = "212";
+  const costReApplied = mergeMappedExcelQuoteDraft(saleEdited, costReMap);
+  const keptThc = costReApplied.options.A.service_lines[1];
+  assert.equal(costReApplied.options.A.service_lines.length, 3);
+  assert.equal(keptThc.cost_unit, "212");
+  assert.equal(keptThc.sell_unit, "300");
+  assert.equal(keptThc.sell_confirmed, true);
+  assert.equal(keptThc.tax_pct, "8");
+  assert.equal(keptThc.public_note, "Điều kiện báo giá");
+  assert.equal(costReApplied.options.A.service_lines[0].cost_unit, "1250");
+  assert.equal(costReApplied.options.A.service_lines[2].service_name, "D/O");
+  assert.deepEqual(costReApplied.options.B.service_lines, [alternateOptionLine]);
+  console.log("  ✓ COST re-map refreshes cost and preserves confirmed Sale price, VAT and public note");
+
+  const sellReMap = structuredClone(portMapping);
+  sellReMap.options.A.service_lines[0].cost_unit = null;
+  sellReMap.options.A.service_lines[0].sell_unit = "350";
+  const sellConflict = mergeMappedExcelQuoteDraft(costReApplied, sellReMap);
+  assert.equal(sellConflict.options.A.service_lines[1].cost_unit, "212");
+  assert.equal(sellConflict.options.A.service_lines[1].sell_unit, "300");
+  assert.equal(sellConflict.options.A.service_lines[1].sell_confirmed, true);
+  assert.equal(sellConflict.options.A.service_lines[1].tax_pct, "8");
+  assert.equal(sellConflict.options.A.service_lines[1].public_note, "Điều kiện báo giá");
+  console.log("  ✓ Conflicting SELL re-map retains the confirmed price and existing internal cost");
+
+  for (const [field, value] of [["qty", "2"], ["unit", "shipment"], ["currency", "CNY"]]) {
+    const changedBasisMap = structuredClone(portMapping);
+    changedBasisMap.options.A.service_lines[0][field] = value;
+    const basisChanged = mergeMappedExcelQuoteDraft(costReApplied, changedBasisMap);
+    const needsReconfirmation = basisChanged.options.A.service_lines[1];
+    assert.equal(needsReconfirmation[field], value);
+    assert.equal(needsReconfirmation.sell_unit, "300");
+    assert.equal(needsReconfirmation.sell_confirmed, false);
+    assert.equal(needsReconfirmation.tax_pct, "8");
+    assert.equal(needsReconfirmation.public_note, "Điều kiện báo giá");
+  }
+  console.log("  ✓ Qty, unit or currency changes each preserve the draft price but clear confirmation");
+
   await click("excel-workbook-map-apply");
   const repeatedPortMapping = applied[4];
   assert.deepEqual(repeatedPortMapping.options.A.service_lines.map((line) => line.id),
@@ -200,6 +243,19 @@ try {
   assert.equal(mixedDraft.goods[0].unit_price, null);
   assert.equal(mixedDraft.options.A.service_lines.length, 3);
   console.log("  ✓ Goods from another sheet coexist with services; quantity and sale price stay unknown");
+
+  const manualGoodsDraft = structuredClone(mixedDraft);
+  Object.assign(manualGoodsDraft.goods[0], { qty: "4", unit_price: "950", currency: "CNY" });
+  const goodsReMap = structuredClone(goodsMapping);
+  Object.assign(goodsReMap.goods[0], { qty: "6", unit_price: "1200", currency: "USD" });
+  const goodsReApplied = mergeMappedExcelQuoteDraft(manualGoodsDraft, goodsReMap);
+  assert.equal(goodsReApplied.goods.length, 1);
+  assert.equal(goodsReApplied.goods[0].qty, "4");
+  assert.equal(goodsReApplied.goods[0].unit_price, "950");
+  assert.equal(goodsReApplied.goods[0].currency, "CNY");
+  assert.equal(goodsReApplied.options.A.service_lines.length, 3);
+  assert.deepEqual(goodsReApplied.options.B.service_lines, [alternateOptionLine]);
+  console.log("  ✓ Goods re-map retains Sale quantity/unit price and their currency basis without duplication");
 
   await act(async () => root.unmount());
   console.log("DOM WORKBOOK MAPPING PASS — multi-sheet merge/upsert, GOODS/SERVICE_ONLY, opaque row ids and no automatic assumptions");

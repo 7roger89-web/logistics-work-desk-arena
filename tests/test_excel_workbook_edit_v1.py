@@ -161,7 +161,7 @@ def _upsert_mapped_rows(existing: list[dict], incoming: list[dict]) -> list[dict
 
 
 def merge_mapping_for_dispatch(current: dict | None, mapped: dict) -> dict:
-    """Mirror the UI row-upsert contract while exercising actual C1 writes below."""
+    """Build merged staging payloads; actual TypeScript merge is tested in the DOM lane."""
     if not current or (current.get("source") or {}).get("sha256") != mapped["source"]["sha256"]:
         return mapped
     goods_in = mapped.get("goods") or []
@@ -551,16 +551,46 @@ def test_multisheet_mapping_upserts_through_c1_staging_save_reopen_preview_and_x
     assert names == ["Sea freight 40HQ", "THC", "D/O"]
     assert len(names) == 3 and saved["excel_quote"]["goods_mode"] == "SERVICE_ONLY"
 
+    # Sale-owned fields are written through C1 before a cost-only remap.
+    sale_edited = deepcopy(saved["excel_quote"])
+    thc = sale_edited["options"]["A"]["service_lines"][1]
+    thc.update(sell_unit="300", sell_confirmed=True, tax_pct="8", public_note="Điều kiện báo giá")
+    payload = workbook_quote_payload(sale_edited)
+    payload.update(id=quote_id, expectedVersion=saved["version"])
+    edited = dispatch("quote_edit", payload)
+    assert edited["ok"], edited
+    c1_readback = edited["readback"]["excelQuote"]["options"]["A"]["service_lines"][1]
+    assert float(c1_readback["sell_unit"]) == 300
+    assert c1_readback["sell_confirmed"] is True
+    assert float(c1_readback["tax_pct"]) == 8
+    assert c1_readback["public_note"] == "Điều kiện báo giá"
+    saved = logi_c1.read_quote(quote_id)
+    assert saved and saved["version"] == 4
+
+    # The TypeScript helper is tested directly in the DOM lane. Here construct
+    # its expected merged payload (cost-owned fields only) and verify C1
+    # quote_edit/readback persists the Sale values unchanged.
     reapplied = deepcopy(port_full)
     reapplied["options"]["A"]["service_lines"][0]["cost_unit"] = "876543.22"
     reapplied["options"]["A"]["service_lines"][0]["cost_source"] = "INTERNAL-COST-SOURCE|Port charges|updated row 2"
-    combined = merge_mapping_for_dispatch(saved["excel_quote"], reapplied)
-    edited = dispatch("quote_edit", {
-        **workbook_quote_payload(combined), "id": quote_id, "expectedVersion": saved["version"],
-    })
+    combined = deepcopy(saved["excel_quote"])
+    saved_by_id = {line["id"]: line for line in combined["options"]["A"]["service_lines"]}
+    thc_map = reapplied["options"]["A"]["service_lines"][0]
+    saved_by_id[thc_map["id"]]["cost_unit"] = thc_map["cost_unit"]
+    saved_by_id[thc_map["id"]]["cost_source"] = thc_map["cost_source"]
+    payload = workbook_quote_payload(combined)
+    payload.update(id=quote_id, expectedVersion=saved["version"])
+    edited = dispatch("quote_edit", payload)
     assert edited["ok"], edited
+    c1_readback = edited["readback"]["excelQuote"]["options"]["A"]["service_lines"][1]
+    assert float(c1_readback["cost_unit"]) == 876543.22
+    assert float(c1_readback["sell_unit"]) == 300
+    assert c1_readback["sell_confirmed"] is True
+    assert float(c1_readback["tax_pct"]) == 8
+    assert c1_readback["public_note"] == "Điều kiện báo giá"
     saved = logi_c1.read_quote(quote_id)
     service_lines = saved["excel_quote"]["options"]["A"]["service_lines"]
+    assert saved["version"] == 5
     assert len(service_lines) == 3
     assert [line["cost_unit"] for line in service_lines] == [987654.32, 876543.22, 765432.1]
 
@@ -587,18 +617,21 @@ def test_multisheet_mapping_upserts_through_c1_staging_save_reopen_preview_and_x
     # Explicitly emulate the operator confirming three selling prices; no mapper
     # value becomes a customer price until this separate action is supplied.
     confirmed = deepcopy(saved["excel_quote"])
-    for line, sell in zip(confirmed["options"]["A"]["service_lines"], (3000, 350, 75)):
+    for line, sell in zip(confirmed["options"]["A"]["service_lines"], (3000, 300, 75)):
         line["sell_unit"] = sell
         line["sell_confirmed"] = True
-        line["tax_pct"] = None
+        if line["service_name"] != "THC":
+            line["tax_pct"] = None
         line["internal_note"] = f"PRIVATE-COST-NOTE|{line['service_name']}"
     payload = workbook_quote_payload(confirmed)
     payload.update(id=quote_id, expectedVersion=saved["version"])
     edited = dispatch("quote_edit", payload)
     assert edited["ok"], edited
     saved = logi_c1.read_quote(quote_id)
-    assert saved and saved["version"] == 6
+    assert saved and saved["version"] == 7
     assert saved["excel_quote"]["goods_mode"] == "GOODS"
+    assert saved["excel_quote"]["options"]["A"]["service_lines"][1]["public_note"] == "Điều kiện báo giá"
+    assert float(saved["excel_quote"]["options"]["A"]["service_lines"][1]["tax_pct"]) == 8
 
     public_preview = dispatch("quote_preview", workbook_quote_payload(saved["excel_quote"]))
     assert public_preview["ok"], public_preview
@@ -607,8 +640,11 @@ def test_multisheet_mapping_upserts_through_c1_staging_save_reopen_preview_and_x
     assert [line["service_name"] for line in customer["service_lines"]] == [
         "Sea freight 40HQ", "THC", "D/O",
     ]
-    assert [line["sell_unit"] for line in customer["service_lines"]] == [3000, 350, 75]
-    assert all(line["tax_pct"] is None and line["tax_total"] is None for line in customer["service_lines"])
+    assert [line["sell_unit"] for line in customer["service_lines"]] == [3000, 300, 75]
+    assert customer["service_lines"][1]["public_note"] == "Điều kiện báo giá"
+    assert customer["service_lines"][1]["tax_pct"] == 8
+    assert customer["service_lines"][1]["tax_total"] == 24
+    assert customer["service_lines"][0]["tax_pct"] is None and customer["service_lines"][2]["tax_pct"] is None
     assert customer["goods"][0]["qty"] is None
     assert customer["goods"][0]["unit_price"] is None
     assert customer["goods"][0]["line_total"] is None
@@ -639,7 +675,8 @@ def test_multisheet_mapping_upserts_through_c1_staging_save_reopen_preview_and_x
     values = [cell.value for sheet in customer_xlsx for row in sheet.iter_rows() for cell in row if cell.value is not None]
     all_text = "\n".join(str(value) for value in values)
     assert all(name in all_text for name in ("Sea freight 40HQ", "THC", "D/O"))
-    assert any(value == 3000 for value in values) and any(value == 350 for value in values) and any(value == 75 for value in values)
+    assert "Điều kiện báo giá" in all_text
+    assert any(value == 3000 for value in values) and any(value == 300 for value in values) and any(value == 75 for value in values)
     assert all(secret not in all_text for secret in (
         "987654.32", "876543.22", "765432.1", "654321.98", "PRIVATE-COST-NOTE",
         "INTERNAL-COST-SOURCE", "multi-sheet-mapping.xlsx", "Ocean Freight", "Port charges",

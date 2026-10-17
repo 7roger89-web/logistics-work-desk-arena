@@ -204,7 +204,7 @@ export default function ExcelWorkbookMapping({ page, source, onApply }: {
   return (
     <section className="eq-card" data-testid="excel-workbook-mapping">
       <h3 className="eq-title"><ListChecks size={18} className="inline mr-2" />Chọn dữ liệu để đưa vào báo giá</h3>
-      <p className="eq-muted">Không tự nhận diện hay mặc định số lượng, kích thước, tiền tệ hoặc vai trò giá. Chọn sheet/vùng/cột; chỉ dữ liệu bạn áp dụng mới vào báo giá. Ánh xạ dùng bản workbook đã lưu gần nhất. Trong cùng workbook, áp dụng lại vùng chồng lặp sẽ cập nhật từng dòng theo sheet/dòng nguồn, không tạo bản sao; các dòng ngoài vùng và phương án khác được giữ.</p>
+      <p className="eq-muted">Không tự nhận diện hay mặc định số lượng, kích thước, tiền tệ hoặc vai trò giá. Chọn sheet/vùng/cột; chỉ dữ liệu bạn áp dụng mới vào báo giá. Ánh xạ dùng bản workbook đã lưu gần nhất. Trong cùng workbook, vùng chồng lặp cập nhật theo sheet/dòng nguồn, không tạo bản sao; dòng và phương án khác được giữ. Dòng phí trùng giữ giá bán, VAT và ghi chú Sale đã nhập; mapping SELL không ghi đè giá bán đã xác nhận. Nếu số lượng, đơn vị hoặc tiền tệ phí đổi, cần xác nhận giá bán lại. Dòng hàng trùng giữ số lượng/đơn giá Sale đã nhập.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
         <Field label="Dùng dòng cho">
           <select className={inputCls()} data-testid="excel-map-target" value={form.target} onChange={(event) => update({ target: event.target.value as Target })}>

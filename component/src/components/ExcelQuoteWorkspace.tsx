@@ -471,12 +471,21 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
             page={workbookView.page} source={workbookSource}
             onApply={(draft) => {
               const existing = review ?? details ?? currentQuote?.excelQuote ?? null;
-              if (existing?.source?.sha256 && existing.source.sha256 !== draft.source.sha256
+              const sameSource = !!existing?.source?.sha256 && existing.source.sha256 === draft.source.sha256;
+              const replacingSource = !!existing?.source?.sha256 && !sameSource;
+              if (replacingSource
                   && !window.confirm("Workbook nguồn đã đổi. Áp dụng sẽ thay nội dung Excel của báo giá bằng bản nháp từ workbook mới; các dòng đã ánh xạ trước đây không được mang sang. Tiếp tục?")) return;
               setDetails((current) => mergeMappedExcelQuoteDraft(review ?? current ?? currentQuote?.excelQuote ?? null, draft));
               setReview(null); setWorkbookOnlyMessage("");
               setPreview(null); setPreviewFor(""); setConfirmedStructural(""); setSavedFingerprint("");
-              toast("Đã cập nhật dữ liệu báo giá", "Trong cùng workbook, dòng trùng nguồn được thay tại chỗ và dòng khác được giữ. Báo giá chưa lưu.", "blue");
+              const detail = replacingSource
+                ? "Workbook mới thay dữ liệu Excel cũ; hãy rà soát lại báo giá trước khi lưu."
+                : sameSource && draft.goods.length
+                  ? "Số lượng/đơn giá Sale đã nhập trên dòng hàng trùng được giữ; hãy sửa trực tiếp nếu muốn đổi. Báo giá chưa lưu."
+                  : sameSource
+                    ? "Giá bán, VAT và ghi chú Sale được giữ trên dòng trùng; giá đã xác nhận không bị mapping SELL ghi đè. Nếu số lượng, đơn vị hoặc tiền tệ đổi, cần xác nhận giá bán lại. Báo giá chưa lưu."
+                    : "Dữ liệu đã thêm vào bản nháp; kiểm tra các giá trị trước khi lưu.";
+              toast(replacingSource ? "Đã thay workbook nguồn" : "Đã cập nhật dữ liệu báo giá", detail, "blue");
             }} />}
         </section>
         {working && <>
