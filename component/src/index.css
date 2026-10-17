@@ -342,3 +342,107 @@ body {
     min-height: 0;
   }
 }
+
+
+/* LOGI Journey-only visual correction after verified 11e4 desktop/mobile render.
+   Hide only redundant empty attention banners and the nested duplicate.
+   The authoritative shipment AttentionNow with real action links remains intact. */
+.focus-shell [data-testid="shipment-identity-bar"] ~ [data-testid="attention-now"]:has([data-testid="attention-empty"]) {
+  display: none;
+}
+.focus-shell [data-testid="shipment-journey"] > .journey-focus-row > [data-testid="attention-now"],
+.focus-shell [data-testid="shipment-journey"] + [data-testid="attention-now"] {
+  display: none;
+}
+/* Slim top chrome; primary shipment identity, global workspace and all real data remain. */
+.focus-shell [data-testid="shipment-identity-bar"] { border-radius: 8px; padding: 5px 10px; }
+.focus-shell [data-testid="shipment-identity-bar"] h1 { font-size: 15px; line-height: 1.2; }
+.focus-shell [data-testid="shipment-identity-bar"] .touch-target { min-height: 32px; padding-inline: 10px; font-size: 12px; border-radius: 7px; }
+.focus-shell .journey-toolbar { border-radius: 6px; font-size: 11px; }
+.focus-shell .journey-toolbar-chip { font-size: 11px; }
+/* Vertical edge controls like the Owner-approved map, keep all four real actions. */
+.focus-shell .journey-split.journey-map-first .journey-zoom-bar {
+  display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center;
+  position: absolute; top: auto; bottom: 10px; left: auto; right: 10px;
+  padding: 0; border: 0; background: transparent; box-shadow: none; backdrop-filter: none; gap: 4px;
+}
+.focus-shell .journey-zoom-bar .journey-zoom-level { display: none; }
+.focus-shell .journey-zoom-bar .journey-zoom-btn,
+.focus-shell .journey-zoom-bar .journey-zoom-text { width: 36px; height: 36px; padding: 0; background: rgba(255,255,255,.97); border: 1px solid #d6dee7; box-shadow: 0 2px 7px rgba(16,38,60,.12); }
+.focus-shell .journey-zoom-bar .journey-zoom-text { font-size: 0; }
+.focus-shell .journey-zoom-bar [data-testid="journey-zoom-fit"]::after { content: '⤢'; font-size: 21px; line-height: 1; }
+.focus-shell .journey-zoom-bar [data-testid="journey-zoom-readable"]::after { content: '◎'; font-size: 20px; line-height: 1; }
+/* Small, light task-bubble header: visually same family as the Mimo list. */
+.focus-shell .journey-bubble-head { background: #fff; color: #10263c; border-color: #d6dee7; padding: 9px 12px; }
+.focus-shell .journey-bubble-kicker { color: #57718c; font-size: 10px; letter-spacing: .11em; }
+.focus-shell .journey-bubble-state { color: #10263c; font-size: 13px; }
+.focus-shell .journey-bubble-close { color: #5b6875; background: #fff; border-color: #d6dee7; }
+.focus-shell .journey-bubble-task { padding: 9px 11px; }
+.focus-shell .journey-bubble-task .journey-bubble-title { font-size: 12px; }
+.focus-shell .journey-bubble-task .journey-bubble-meta { font-size: 10px; }
+/* Task-specific modal styling: preserve existing canonical workspace controls/writers. */
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child {
+  background: #f8fafc; color: #10263c; padding: 11px 14px;
+  border-bottom: 1px solid #d6dee7;
+}
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child h3,
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child .text-white { color: #10263c; }
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child .text-\[\#9CCAF0\] { color: #58728c; }
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child button[aria-label="Đóng công đoạn"] {
+  background: white; color: #123a5e; border-color: #d6dee7;
+}
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child > div:last-child > div {
+  background: #eaf2fa; color: #123a5e; border-color: #c9d4df;
+}
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child > div:last-child > div span { color: #123a5e; }
+.focus-shell [data-testid="journey-stage-workspace"] [aria-label="Nội dung công đoạn"] { background: white; }
+.focus-shell [data-testid="journey-stage-workspace"] [data-testid="journey-workspace-content"] { padding: 12px 14px; }
+@media (min-width: 1024px) {
+  .focus-shell .focus-main { padding-top: 5px; }
+  .focus-shell .journey-split.journey-map-first .journey-canvas { height: max(480px, calc(100dvh - 6.1rem)); }
+  .focus-shell .journey-toolbar { margin-bottom: 4px; padding: 3px 8px; }
+}
+@media (max-width: 720px) {
+  .focus-shell [data-testid="shipment-identity-bar"] { padding: 6px 8px; }
+  .focus-shell [data-testid="shipment-identity-bar"] h1 { font-size: 15px; }
+  .focus-shell [data-testid="shipment-identity-bar"] .touch-target { min-height: 34px; padding-inline: 8px; }
+  .focus-shell .journey-focus-row .journey-toolbar {
+    display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none; white-space: nowrap;
+    padding: 4px 6px; min-height: 39px; max-height: 43px;
+  }
+  .focus-shell .journey-focus-row .journey-toolbar::-webkit-scrollbar { display: none; }
+  .focus-shell .journey-focus-row .journey-toolbar-chip,
+  .focus-shell .journey-focus-row .journey-toolbar-btn { flex-shrink: 0; }
+  .focus-shell .journey-focus-row .journey-toolbar-btn { height: 30px; padding: 0 7px; font-size: 11px; }
+  /* Global workspace is already accessible via the identity bar's top button. */
+  .focus-shell .journey-focus-row .journey-toolbar [data-testid="journey-global-open"] { display: none; }
+  .focus-shell .journey-split.journey-map-first .journey-canvas { height: clamp(500px, calc(100dvh - 220px), 575px); }
+  .focus-shell .journey-zoom-bar .journey-zoom-btn,
+  .focus-shell .journey-zoom-bar .journey-zoom-text { width: 38px; height: 38px; }
+  .focus-shell .journey-bubble { border-radius: 12px; }
+  .focus-shell .journey-bubble-head { padding: 10px 12px; }
+}
+/* Do not clutter the chart with duplicate links above the primary ship-document button. */
+.focus-shell [data-testid="journey-overview-panel"] > div:first-child,
+.focus-shell [data-testid="journey-utility-bar"] > div:first-child { display: none !important; }
+/* Keep the task context note legible against the now-light stage header. */
+.focus-shell [data-testid="journey-stage-workspace"] > div:first-child > div:nth-child(3) {
+  background: #edf4fa !important; color: #123a5e !important; border-color: #cad9e7 !important;
+}
+@media (max-width: 720px) {
+  /* The enlarged map places the real first nodes at the same useful touch height
+     as the approved mobile reference, with no need to hide any bottom navigation. */
+  .focus-shell .journey-split.journey-map-first .journey-canvas {
+    height: clamp(585px, calc(100dvh - 190px), 695px);
+  }
+  /* Controls remain above the persistent app navigation rather than behind it. */
+  .focus-shell .journey-split.journey-map-first .journey-zoom-bar { bottom: 78px; }
+  .focus-shell [data-testid="journey-map-texture"] { opacity: .26; }
+}
+/* On a narrow Journey, the 4 zoom actions must not cover the node tap targets. */
+@media (max-width: 720px) {
+  .focus-shell .journey-split.journey-map-first .journey-zoom-bar {
+    top: 10px; bottom: auto; right: 10px; left: auto;
+  }
+}

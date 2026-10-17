@@ -3,7 +3,6 @@ import { ArrowRight, CheckCircle2, Circle, Clock, CircleAlert, ChevronDown, Chev
 import type { AttentionItem, JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
 import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
 import { useStore } from '../lib/store';
-import AttentionNow from './AttentionNow';
 import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
 import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
@@ -464,10 +463,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [modalOpen]);
-  if (!hasNodes) return <>
-    <AttentionNow items={attentionItems} title="Cần xử lý" compact />
-    <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>
-  </>;
+  if (!hasNodes) return <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>;
   const nodes = journey?.nodes ?? [];
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
@@ -676,7 +672,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   return <section className="journey-demo min-w-0" data-testid="shipment-journey">
     {/* One compact desktop status row. On mobile these remain stacked to preserve the approved top-chrome rhythm. */}
     <div className="journey-focus-row" data-testid="journey-focus-row">
-      <AttentionNow items={attentionItems} title="Cần xử lý" compact />
       {/* Supersedes journey-split-small-map with journey-map-first (Owner Visual Fidelity Override 15/10/2026).
           Canonical action reference: journey?.primaryAction.text */}
       <div className="journey-toolbar" data-testid="journey-compact-toolbar">
