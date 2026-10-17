@@ -1,0 +1,10 @@
+81dce647e40ef5e0bc03f1fbf2d2c8ff62943019882f54c48beeeb98bf3a63e8  logi-shell.js
+3269a149161637cd2d5dd4efdd18c49991fdcd05a767f081c73a24cef5985cca  logi-shell.css
+# Git blob SHA-1 (git hash-object):
+# 6448c4c96c4803f5df73c86d80a875fc06de83cd  logi-shell.js
+# b538445c8f0770cf12a8a4de2215bdd35cbb099c  logi-shell.css
+# Source commit: 5266d2666f4cdbee2ba56782db86f19a7c20344c
+# Built: 2026-10-17T04:57:00Z via npm ci + vite build on isolated worktree /tmp/journey-isolated
+# Previous main dist (51422c9) for delta:
+# 61656dd5b4eff3dc0bf4c5f537cca8733e714e2429fe48ce9374463444fffd5f  component/dist/logi-shell.js (old)
+# 5cabd7574be9283e6afbd65e165c1241c4119d0b6c7327d72764b8ff2d3d135b  component/dist/logi-shell.css (old)

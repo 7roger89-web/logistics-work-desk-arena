@@ -1,0 +1,57 @@
+{
+  "build_source_commit": "5266d2666f4cdbee2ba56782db86f19a7c20344c",
+  "build_source_branch": "ct/logi199-journey-main-integration-20261017",
+  "build_source_message": "feat(journey): stage Mimo map-first integration on current app main",
+  "parent_main_commit": "51422c94ddac7d47e67bd87b11a6d6ac55b196d8",
+  "build_isolated_checkout": "/tmp/journey-isolated (git worktree detached HEAD 5266d26)",
+  "build_host": "Arena E2B sandbox",
+  "build_time_utc": "2026-10-17T04:57:00Z",
+  "node_version": "v22.22.3",
+  "npm_version": "10.9.8",
+  "vite_version": "8.2.2",
+  "react_version": "19.2.8",
+  "commands_executed": [
+    "npm ci",
+    "npm run typecheck",
+    "npm run build",
+    "npm run scan (python3 ../scripts/scan_process.py dist)"
+  ],
+  "artifacts": [
+    {
+      "filename": "logi-shell.js",
+      "evidence_path": "evidence/journey-main-build-5266/logi-shell.js",
+      "size_bytes": 2235983,
+      "sha256": "81dce647e40ef5e0bc03f1fbf2d2c8ff62943019882f54c48beeeb98bf3a63e8",
+      "git_blob_sha1": "6448c4c96c4803f5df73c86d80a875fc06de83cd",
+      "built_from": "component/dist/logi-shell.js (Vite lib ES build, minified, no sourcemap)"
+    },
+    {
+      "filename": "logi-shell.css",
+      "evidence_path": "evidence/journey-main-build-5266/logi-shell.css",
+      "size_bytes": 115742,
+      "sha256": "3269a149161637cd2d5dd4efdd18c49991fdcd05a767f081c73a24cef5985cca",
+      "git_blob_sha1": "b538445c8f0770cf12a8a4de2215bdd35cbb099c",
+      "built_from": "component/dist/logi-shell.css (Vite cssMinify, tailwindcss v4)"
+    }
+  ],
+  "previous_main_dist_for_comparison": {
+    "commit": "51422c94ddac7d47e67bd87b11a6d6ac55b196d8",
+    "logi_shell_js_sha256": "61656dd5b4eff3dc0bf4c5f537cca8733e714e2429fe48ce9374463444fffd5f",
+    "logi_shell_css_sha256": "5cabd7574be9283e6afbd65e165c1241c4119d0b6c7327d72764b8ff2d3d135b",
+    "note": "Main dist remains unchanged until this evidence bundle is promoted via a proper PR; this bundle is SOURCE_ONLY evidence, not yet deployed."
+  },
+  "assets_inlined": {
+    "chart_paper_jpg": "component/src/assets/journey/chart-paper.jpg (432516 bytes, inlined via Vite ?url into JS bundle)",
+    "vietnam_chart_webp": "component/src/assets/journey/vietnam-east-sea-chart.webp (107956 bytes, inlined)",
+    "evidence_size_delta": "+718798 bytes JS (+47%), +23016 bytes CSS (+25%) vs main 51422c9"
+  },
+  "scan_result": {
+    "script": "scripts/scan_process.py dist",
+    "final_executable_process_reference_count": 0,
+    "log": "INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)\nscanned logi-shell.js: 2203962 chars, 0 executable hits\nscanned logi-shell.css: 115724 chars, 0 executable hits\nFINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0"
+  },
+  "typecheck": "PASS (tsc --noEmit, zero errors)",
+  "push_branch_allowed": "arena/adbc6593-logistics-work-desk-arena",
+  "evidence_dir": "evidence/journey-main-build-5266/",
+  "zip": "evidence/journey-main-build-5266/journey-main-build-5266.zip (optional ChatGPT attachment)"
+}

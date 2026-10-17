@@ -1,0 +1,43 @@
+$ git worktree add /tmp/journey-isolated 5266d2666f4cdbee2ba56782db86f19a7c20344c
+Preparing worktree (detached HEAD 5266d26)
+HEAD is now at 5266d26 feat(journey): stage Mimo map-first integration on current app main
+
+$ cd /tmp/journey-isolated/component && npm ci
+added 87 packages, and audited 88 packages in 5s
+22 packages are looking for funding
+1 high severity vulnerability (npm audit)
+
+$ npm run typecheck
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+(no errors)
+
+$ npm run build
+> logi-shell-component@0.1.0 build
+> vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1923 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css    115.74 kB │ gzip:  22.60 kB
+dist/logi-shell.js   2,235.98 kB │ gzip: 871.29 kB
+✓ built in 767ms
+
+$ npm run scan
+> logi-shell-component@0.1.0 scan
+> python3 ../scripts/scan_process.py dist
+INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)
+scanned logi-shell.js: 2203962 chars, 0 executable hits
+scanned logi-shell.css: 115724 chars, 0 executable hits
+FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0
+
+$ sha256sum dist/*
+3269a149161637cd2d5dd4efdd18c49991fdcd05a767f081c73a24cef5985cca  dist/logi-shell.css
+81dce647e40ef5e0bc03f1fbf2d2c8ff62943019882f54c48beeeb98bf3a63e8  dist/logi-shell.js
+
+$ git hash-object dist/logi-shell.js dist/logi-shell.css
+6448c4c96c4803f5df73c86d80a875fc06de83cd  (logi-shell.js)
+b538445c8f0770cf12a8a4de2215bdd35cbb099c  (logi-shell.css)
+
+$ cp dist/logi-shell.* /home/user/logistics-work-desk-arena/evidence/journey-main-build-5266/
