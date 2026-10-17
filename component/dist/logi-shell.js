@@ -20331,18 +20331,14 @@ function eu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 			e.key === "Escape" && x("overview");
 		};
 		return window.addEventListener("keydown", e), () => window.removeEventListener("keydown", e);
-	}, [ce]), !I) return /* @__PURE__ */ (0, V.jsxs)(V.Fragment, { children: [/* @__PURE__ */ (0, V.jsx)(Es, {
-		items: u,
-		title: "Cần xử lý",
-		compact: !0
-	}), /* @__PURE__ */ (0, V.jsx)($l, {
+	}, [ce]), !I) return /* @__PURE__ */ (0, V.jsx)($l, {
 		shipment: e,
 		onGlobal: i,
 		runPrimary: a,
 		globalActive: c,
 		globalTab: l,
 		children: o
-	})] });
+	});
 	let le = F?.nodes ?? [], ue = le.filter((e) => !e.moduleId), de = ue.find((e) => e.state === "PROBLEM" || e.blockers.length), fe = de, pe = le.find((e) => e.id === p) ?? le.find((e) => e.id === t) ?? de ?? ue.find((e) => e.current) ?? ue[0] ?? le[0], me = le.find((e) => e.id === t), he = ee?.workModules, ge = he?.templates ?? [], _e = !!he?.canAttach, ve = () => {
 		if (!O) {
 			N("Chọn một quy trình đang dùng (ACTIVE).");
@@ -20721,14 +20717,10 @@ function eu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		className: "journey-demo min-w-0",
 		"data-testid": "shipment-journey",
 		children: [
-			/* @__PURE__ */ (0, V.jsxs)("div", {
+			/* @__PURE__ */ (0, V.jsx)("div", {
 				className: "journey-focus-row",
 				"data-testid": "journey-focus-row",
-				children: [/* @__PURE__ */ (0, V.jsx)(Es, {
-					items: u,
-					title: "Cần xử lý",
-					compact: !0
-				}), /* @__PURE__ */ (0, V.jsxs)("div", {
+				children: /* @__PURE__ */ (0, V.jsxs)("div", {
 					className: "journey-toolbar",
 					"data-testid": "journey-compact-toolbar",
 					children: [
@@ -20776,7 +20768,7 @@ function eu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 							children: "▤ Hồ sơ & Tài chính"
 						})
 					]
-				})]
+				})
 			}),
 			/* @__PURE__ */ (0, V.jsx)("div", {
 				className: "journey-split journey-map-first",
@@ -21730,7 +21722,12 @@ function Eu(e) {
 	}), e === "fld-tk" && n instanceof HTMLElement && n.focus({ preventScroll: !0 });
 }
 function Du() {
-	let { id: e } = yt(), { pathname: t } = mt(), n = Xn(t, e), [r, i] = Ln(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = qn(), h = (0, _.useSyncExternalStore)(C, S, S), g = _t(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(0), [k, A] = (0, _.useState)(0), [j, M] = (0, _.useState)(!1), [N, P] = (0, _.useState)(!1), [ee, F] = (0, _.useState)(!1), [I, L] = (0, _.useState)(!1), [te, ne] = (0, _.useState)(""), [re, R] = (0, _.useState)("Thu tiền khách"), [ie, ae] = (0, _.useState)(""), [oe, se] = (0, _.useState)({}), [ce, le] = (0, _.useState)(0), [ue, de] = (0, _.useState)(""), [fe, pe] = (0, _.useState)(""), [me, he] = (0, _.useState)(""), [ge, _e] = (0, _.useState)(""), [ve, ye] = (0, _.useState)(""), [be, xe] = (0, _.useState)(""), [Se, Ce] = (0, _.useState)(""), [we, Te] = (0, _.useState)(""), [Ee, De] = (0, _.useState)(!1), [Oe, ke] = (0, _.useState)([]), [Ae, je] = (0, _.useState)(""), [Me, Ne] = (0, _.useState)(""), [Pe, Fe] = (0, _.useState)("");
+	let { id: e } = yt(), { pathname: t } = mt(), n = Xn(t, e);
+	(0, _.useEffect)(() => {
+		let e = document.querySelector(".logi-shell");
+		e && (e.scrollTop = 0);
+	}, [n]);
+	let [r, i] = Ln(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = qn(), h = (0, _.useSyncExternalStore)(C, S, S), g = _t(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(0), [k, A] = (0, _.useState)(0), [j, M] = (0, _.useState)(!1), [N, P] = (0, _.useState)(!1), [ee, F] = (0, _.useState)(!1), [I, L] = (0, _.useState)(!1), [te, ne] = (0, _.useState)(""), [re, R] = (0, _.useState)("Thu tiền khách"), [ie, ae] = (0, _.useState)(""), [oe, se] = (0, _.useState)({}), [ce, le] = (0, _.useState)(0), [ue, de] = (0, _.useState)(""), [fe, pe] = (0, _.useState)(""), [me, he] = (0, _.useState)(""), [ge, _e] = (0, _.useState)(""), [ve, ye] = (0, _.useState)(""), [be, xe] = (0, _.useState)(""), [Se, Ce] = (0, _.useState)(""), [we, Te] = (0, _.useState)(""), [Ee, De] = (0, _.useState)(!1), [Oe, ke] = (0, _.useState)([]), [Ae, je] = (0, _.useState)(""), [Me, Ne] = (0, _.useState)(""), [Pe, Fe] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
 		se({}), ae("");
 	}, [n, a]), (0, _.useEffect)(() => {
@@ -22428,7 +22425,7 @@ function Du() {
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, V.jsx)(Es, {
+			Ye.length > 0 && /* @__PURE__ */ (0, V.jsx)(Es, {
 				items: Ye,
 				title: "Cần xử lý",
 				compact: !0
@@ -22447,6 +22444,11 @@ function Du() {
 						e && r.set("tab", e), i(r), t ? setTimeout(() => Eu(t), 150) : Eu(null);
 					} else g(v.nextRoute);
 				},
+				hasStageContent: !!(Ze && Qe === "info" && ($e || [
+					"si-vgm",
+					"gate-in",
+					"customs-export"
+				].includes(Ze.id) && Ze.factFields?.length)),
 				globalActive: !!r.get("tab") && !Ze,
 				globalTab: a,
 				children: [
