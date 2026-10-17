@@ -930,7 +930,11 @@ export interface JourneyNode {
   moduleProvenance?: string;
   guidance?: WorkModuleGuidance;
   moduleSteps?: { id: string; label: string; completed: boolean }[];
+  /** LOGI-199 T1 — evidence facts this node owns, declared by the backend projection. */
+  factFields?: JourneyFactField[];
 }
+
+export interface JourneyFactField { key: string; label: string; kind: 'status' | 'text' | 'datetime' | 'number'; options?: { value: string; label: string }[]; secondary?: boolean }
 
 /** Issue #162 — plain-text guidance a template may carry (all optional). */
 export interface WorkModuleGuidance {

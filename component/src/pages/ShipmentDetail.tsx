@@ -119,6 +119,13 @@ export default function ShipmentDetail() {
   const { id: paramId } = useParams();
   const { pathname } = useLocation();
   const id = shipmentIdFromPath(pathname, paramId);
+  // Journey entry scroll only: routing from the long shipment list must show the
+  // top of the selected shipment instead of inheriting its previous scroll.
+  // The app's scroll owner is .logi-shell; no global router or data changes.
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>('.logi-shell');
+    if (shell) shell.scrollTop = 0;
+  }, [id]);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
   const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
@@ -1371,10 +1378,13 @@ export default function ShipmentDetail() {
           </div>
         )}
 
-      <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />
+      {shipmentAttention.length > 0 && <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />}
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} globalRequest={globalReq} attachRequest={attachReq}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
+        hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
+          (Boolean(moduleStepNode) ||
+           (['si-vgm', 'gate-in', 'customs-export'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
         globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
