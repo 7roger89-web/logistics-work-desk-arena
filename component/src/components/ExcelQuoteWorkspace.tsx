@@ -9,7 +9,7 @@ import { useStore } from "../lib/store";
 import { getViewModel, subscribeViewModel, userAccessWorkspace, type Quote } from "../lib/viewmodel";
 import { cx, downloadBinaryFile, fmtMoney } from "../lib/format";
 import { costReferenceIssue, findComparableCosts, loose, type CostCriteria, type CostMatch, type CostMatchLine } from "../lib/costHistory";
-import { emptyExcelService, quoteRequestId, type CustomerQuotePreview, type CustomerTextRegion, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
+import { emptyExcelService, mergeMappedExcelQuoteDraft, quoteRequestId, type CustomerQuotePreview, type CustomerTextRegion, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
 import type { LogiEventName } from "../lib/dispatcher";
 import "./excelQuote.css";
 
@@ -466,13 +466,17 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
           }}><option value="">Chọn workbook gần đây</option>{recentWorkbooks.map((item) => <option key={item.storage_file_id || item.sha256} value={item.storage_file_id || ""}>{item.file_name} · {item.sheet_names.length} sheet · {item.uploaded_at || item.sha256.slice(0, 10)}</option>)}</select></Field></div>}
           {working && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] break-words" data-testid="excel-source"><p className="font-semibold">📄 {working.source.file_name} · {working.source.sheet_names.length} sheet · bảng hàng: {working.source.goods_sheet || "chưa ánh xạ"}</p><p className="mt-1 text-slate-500">File gốc giữ nguyên trong kho chứng từ · SHA256 {working.source.sha256.slice(0, 16)}…</p><Field label="Nhà cung cấp tham khảo"><input className={inputCls()} value={working.supplier} onChange={(e) => patch({ supplier: e.target.value })} /></Field>{currentQuote && <GhostBtn className="mt-2" testId="excel-source-download" onClick={() => send("quote_source_download", { id: currentQuote.id })} disabled={!canAct || !canDownloadSource}><FileDown size={16} /> Tải file nguồn đã lưu</GhostBtn>}{currentQuote && !canDownloadSource && <p className="mt-2 text-[12.5px] text-amber-900" data-testid="excel-source-download-blocked">Tệp nguồn là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào, nên mọi lượt tải đều cần quyền thao tác báo giá (commercial_write) — không phụ thuộc việc đã nhận diện được chi phí hay chưa. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này.</p>}</div>}
           {workbookSource && <ExcelSourceWorkbook quoteId={workbookQuoteId} customerId={header.customerId} source={workbookSource} onView={setWorkbookView} onDirtyChange={setWorkbookDirty} autoOpen={workbookAutoOpen} />}
-          {!currentQuote && workbookSource?.parser_version === "unmapped/1" && workbookView?.page && !workbookView.page.locked && workbookView.can_download_source && <ExcelWorkbookMapping
+          {workbookSource?.parser_version === "unmapped/1" && workbookView?.page && !workbookView.page.locked && workbookView.can_download_source && <ExcelWorkbookMapping
             key={`${workbookSource.sha256}:${workbookView.page.sheet}:${workbookView.page.start_row || 1}:${workbookView.page.start_col || 1}`}
             page={workbookView.page} source={workbookSource}
             onApply={(draft) => {
-              setDetails(draft); setReview(null); setWorkbookOnlyMessage("");
+              const existing = review ?? details ?? currentQuote?.excelQuote ?? null;
+              if (existing?.source?.sha256 && existing.source.sha256 !== draft.source.sha256
+                  && !window.confirm("Workbook nguồn đã đổi. Áp dụng sẽ thay nội dung Excel của báo giá bằng bản nháp từ workbook mới; các dòng đã ánh xạ trước đây không được mang sang. Tiếp tục?")) return;
+              setDetails((current) => mergeMappedExcelQuoteDraft(review ?? current ?? currentQuote?.excelQuote ?? null, draft));
+              setReview(null); setWorkbookOnlyMessage("");
               setPreview(null); setPreviewFor(""); setConfirmedStructural(""); setSavedFingerprint("");
-              toast("Đã chọn dữ liệu cho báo giá", "Chưa lưu. Kiểm tra giá/vai trò tiền tệ, tỷ giá, thuế và các trường trước khi tạo bản nháp.", "blue");
+              toast("Đã cập nhật dữ liệu báo giá", "Trong cùng workbook, dòng trùng nguồn được thay tại chỗ và dòng khác được giữ. Báo giá chưa lưu.", "blue");
             }} />}
         </section>
         {working && <>

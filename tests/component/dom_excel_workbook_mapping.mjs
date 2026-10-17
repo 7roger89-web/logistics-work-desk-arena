@@ -26,8 +26,9 @@ const { createRoot } = require("react-dom/client");
 const vite = await createServer({ root: COMPONENT, server: { middlewareMode: true }, appType: "custom", logLevel: "error" });
 try {
   const { default: ExcelWorkbookMapping } = await vite.ssrLoadModule("/src/components/ExcelWorkbookMapping.tsx");
+  const { mergeMappedExcelQuoteDraft } = await vite.ssrLoadModule("/src/lib/excelQuote.ts");
   const page = {
-    sheet: "Freight schedule", sheet_index: 1, classification: "UNCLASSIFIED", sheet_state: "visible",
+    sheet: "Ocean Freight", sheet_index: 1, classification: "UNCLASSIFIED", sheet_state: "visible",
     row_count: 4, column_count: 7, read_only: true, locked: false, merges: [],
     cells: [
       { r: 3, c: 2, value: "Service" }, { r: 3, c: 3, value: "Qty" }, { r: 3, c: 4, value: "Unit" },
@@ -38,13 +39,39 @@ try {
     column_widths: {}, row_heights: {}, hidden_rows: [], hidden_columns: [], frozen_panes: "", truncated: false,
     limits: { max_rows: 200, max_cols: 40, max_cells: 4000 },
   };
-  const source = { file_name: "freight.xlsx", byte_size: 1234, sha256: "abc123", sheet_names: ["Freight schedule"],
+  const source = { file_name: "multi-sheet.xlsx", byte_size: 1234, sha256: "abc123", sheet_names: ["Ocean Freight", "Port charges", "Customer goods tab"],
     goods_sheet: "", parser_version: "unmapped/1", storage_file_id: "opaque-id" };
+  const pagePort = {
+    sheet: "Port charges", sheet_index: 1, classification: "UNCLASSIFIED", sheet_state: "visible",
+    row_count: 3, column_count: 5, read_only: true, locked: false, merges: [],
+    cells: [
+      { r: 1, c: 1, value: "Service" }, { r: 1, c: 2, value: "Qty" }, { r: 1, c: 3, value: "Unit" },
+      { r: 1, c: 4, value: "Cost" }, { r: 1, c: 5, value: "Currency" },
+      { r: 2, c: 1, value: "THC" }, { r: 2, c: 2, value: 1 }, { r: 2, c: 3, value: "container" },
+      { r: 2, c: 4, value: 210 }, { r: 2, c: 5, value: "USD" },
+      { r: 3, c: 1, value: "D/O" }, { r: 3, c: 2, value: 1 }, { r: 3, c: 3, value: "shipment" },
+      { r: 3, c: 4, value: 55 }, { r: 3, c: 5, value: "USD" },
+    ],
+    column_widths: {}, row_heights: {}, hidden_rows: [], hidden_columns: [], frozen_panes: "", truncated: false,
+    limits: { max_rows: 200, max_cols: 40, max_cells: 4000 },
+  };
+  const pageGoods = {
+    sheet: "Customer goods tab", sheet_index: 2, classification: "UNCLASSIFIED", sheet_state: "visible",
+    row_count: 2, column_count: 3, read_only: true, locked: false, merges: [],
+    cells: [
+      { r: 1, c: 1, value: "Item" }, { r: 1, c: 2, value: "Currency" }, { r: 1, c: 3, value: "Supplier cost" },
+      { r: 2, c: 1, value: "Cabinet" }, { r: 2, c: 2, value: "CNY" }, { r: 2, c: 3, value: 870 },
+    ],
+    column_widths: {}, row_heights: {}, hidden_rows: [], hidden_columns: [], frozen_panes: "", truncated: false,
+    limits: { max_rows: 200, max_cols: 40, max_cells: 4000 },
+  };
   let applied = [];
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
-  const render = async () => act(async () => root.render(React.createElement(ExcelWorkbookMapping, { page, source, onApply: (draft) => applied.push(draft) })));
+  const render = async (nextPage = page) => act(async () => root.render(React.createElement(ExcelWorkbookMapping, {
+    key: `${source.sha256}:${nextPage.sheet}`, page: nextPage, source, onApply: (draft) => applied.push(draft),
+  })));
   const setControl = async (testId, value) => act(async () => {
     const element = host.querySelector(`[data-testid="${testId}"]`);
     assert.ok(element, `missing ${testId}`);
@@ -102,8 +129,80 @@ try {
   assert.match(costLine.cost_source, /giá vốn/);
   console.log("  ✓ Explicit cost mapping remains internal and leaves customer selling price unknown");
 
+  await render(pagePort);
+  await setControl("excel-map-header-row", "1");
+  await setControl("excel-map-first-row", "2");
+  await setControl("excel-map-last-row", "2");
+  await setControl("excel-map-column-name", "1");
+  await setControl("excel-map-column-qty", "2");
+  await setControl("excel-map-column-unit", "3");
+  await setControl("excel-map-column-price", "4");
+  await setControl("excel-map-column-currency", "5");
+  await setControl("excel-map-price-role", "COST");
+  await click("excel-workbook-map-apply");
+  const portFirst = applied[2];
+  assert.deepEqual(portFirst.options.A.service_lines.map((line) => line.service_name), ["THC"]);
+
+  const serviceOnly = mergeMappedExcelQuoteDraft(null, applied[1]);
+  const alternateOptionLine = { ...serviceOnly.options.A.service_lines[0], id: "existing-option-b", service_name: "Alternate option service" };
+  const serviceOnlyWithAlternate = {
+    ...serviceOnly,
+    options: { ...serviceOnly.options, B: { ...serviceOnly.options.B, scope: "Alternate option", service_lines: [alternateOptionLine] } },
+  };
+  const afterPortFirst = mergeMappedExcelQuoteDraft(serviceOnlyWithAlternate, portFirst);
+  assert.deepEqual(afterPortFirst.options.A.service_lines.map((line) => line.service_name), ["Ocean freight 40HQ", "THC"]);
+  assert.deepEqual(afterPortFirst.options.B.service_lines, [alternateOptionLine]);
+  await setControl("excel-map-last-row", "3");
+  await click("excel-workbook-map-apply");
+  const portMapping = applied[3];
+  assert.deepEqual(portMapping.options.A.service_lines.map((line) => line.service_name), ["THC", "D/O"]);
+  assert.ok(portMapping.options.A.service_lines.every((line) => line.sell_unit === null && line.tax_pct === null));
+  assert.ok(portMapping.options.A.service_lines.every((line) => !line.id.includes("Port charges")));
+
+  const multiSheetServices = mergeMappedExcelQuoteDraft(afterPortFirst, portMapping);
+  assert.equal(multiSheetServices.goods_mode, "SERVICE_ONLY");
+  assert.equal(multiSheetServices.goods.length, 0);
+  assert.deepEqual(multiSheetServices.options.A.service_lines.map((line) => line.service_name), [
+    "Ocean freight 40HQ", "THC", "D/O",
+  ]);
+  assert.equal(multiSheetServices.options.A.service_lines.length, 3);
+  console.log("  ✓ Ocean Freight + overlapping Port charges ranges merge to three service rows in one option");
+
+  await click("excel-workbook-map-apply");
+  const repeatedPortMapping = applied[4];
+  assert.deepEqual(repeatedPortMapping.options.A.service_lines.map((line) => line.id),
+    portMapping.options.A.service_lines.map((line) => line.id));
+  const updatedPortMapping = structuredClone(repeatedPortMapping);
+  updatedPortMapping.options.A.service_lines[0].cost_unit = "212";
+  const upserted = mergeMappedExcelQuoteDraft(multiSheetServices, updatedPortMapping);
+  assert.equal(upserted.options.A.service_lines.length, 3);
+  assert.equal(upserted.options.A.service_lines[0].cost_unit, "1250");
+  assert.equal(upserted.options.A.service_lines[1].cost_unit, "212");
+  assert.equal(upserted.options.A.service_lines[2].service_name, "D/O");
+  console.log("  ✓ Reapplying an overlapping source row updates it without duplicating it or dropping other rows");
+
+  await render(pageGoods);
+  await setControl("excel-map-target", "GOODS");
+  await setControl("excel-map-header-row", "1");
+  await setControl("excel-map-first-row", "2");
+  await setControl("excel-map-last-row", "2");
+  await setControl("excel-map-column-name", "1");
+  await setControl("excel-map-column-currency", "2");
+  await click("excel-workbook-map-apply");
+  const goodsMapping = applied[5];
+  assert.equal(goodsMapping.goods[0].qty, null);
+  assert.equal(goodsMapping.goods[0].unit_price, null);
+  const mixedDraft = mergeMappedExcelQuoteDraft(upserted, goodsMapping);
+  assert.equal(mixedDraft.goods_mode, "GOODS");
+  assert.equal(mixedDraft.goods.length, 1);
+  assert.equal(mixedDraft.goods[0].description, "Cabinet");
+  assert.equal(mixedDraft.goods[0].qty, null);
+  assert.equal(mixedDraft.goods[0].unit_price, null);
+  assert.equal(mixedDraft.options.A.service_lines.length, 3);
+  console.log("  ✓ Goods from another sheet coexist with services; quantity and sale price stay unknown");
+
   await act(async () => root.unmount());
-  console.log("DOM WORKBOOK MAPPING PASS — explicit range/columns, currency and price role; no automatic assumptions");
+  console.log("DOM WORKBOOK MAPPING PASS — multi-sheet merge/upsert, GOODS/SERVICE_ONLY, opaque row ids and no automatic assumptions");
 } finally {
   await vite.close();
   dom.window.close();

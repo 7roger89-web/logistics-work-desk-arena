@@ -42,6 +42,20 @@ const allowedCurrency = (value: unknown): string => {
 };
 const textValue = (value: unknown): string => value == null ? "" : String(value).trim();
 
+// Opaque stable id for row-level upserts; customer previews must not reveal the
+// internal worksheet name or row coordinates through a service-line id.
+const mappedRowId = (sourceSha: string, sheet: string, row: number): string => {
+  const identity = `${sourceSha}\u0000${sheet}\u0000${row}`;
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+  for (let index = 0; index < identity.length; index += 1) {
+    const code = identity.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ (code + index), 0x85ebca6b);
+  }
+  return `map-${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
+};
+
 export default function ExcelWorkbookMapping({ page, source, onApply }: {
   page: WorkbookPage;
   source: ExcelQuoteDraft["source"];
@@ -129,7 +143,7 @@ export default function ExcelWorkbookMapping({ page, source, onApply }: {
     let serviceLines: ExcelService[] = [];
     if (form.target === "GOODS") {
       goods = mappedRows.map((row) => ({
-        id: `map-${page.sheet}-${row.row}`, description: row.name, model: row.model, material: row.material,
+        id: mappedRowId(source.sha256, page.sheet, row.row), description: row.name, model: row.model, material: row.material,
         length_mm: row.length == null ? null : String(row.length),
         width_mm: row.width == null ? null : String(row.width),
         height_mm: row.height == null ? null : String(row.height),
@@ -148,7 +162,7 @@ export default function ExcelWorkbookMapping({ page, source, onApply }: {
         }
         const sourcePrice = row.price == null ? "" : String(row.price);
         const service: ExcelService = {
-          id: `map-${page.sheet}-${row.row}`, service_name: row.name, code: "", unit: row.unit,
+          id: mappedRowId(source.sha256, page.sheet, row.row), service_name: row.name, code: "", unit: row.unit,
           qty: quantity, currency: row.currency,
           cost_unit: form.priceRole === "COST" && sourcePrice ? sourcePrice : null,
           sell_unit: form.priceRole === "SELL" && sourcePrice ? sourcePrice : null,
@@ -190,7 +204,7 @@ export default function ExcelWorkbookMapping({ page, source, onApply }: {
   return (
     <section className="eq-card" data-testid="excel-workbook-mapping">
       <h3 className="eq-title"><ListChecks size={18} className="inline mr-2" />Chọn dữ liệu để đưa vào báo giá</h3>
-      <p className="eq-muted">Không tự nhận diện hay mặc định số lượng, kích thước, tiền tệ hoặc vai trò giá. Chọn sheet/vùng/cột; chỉ dữ liệu bạn áp dụng mới vào báo giá. Ánh xạ dùng bản workbook đã lưu gần nhất.</p>
+      <p className="eq-muted">Không tự nhận diện hay mặc định số lượng, kích thước, tiền tệ hoặc vai trò giá. Chọn sheet/vùng/cột; chỉ dữ liệu bạn áp dụng mới vào báo giá. Ánh xạ dùng bản workbook đã lưu gần nhất. Trong cùng workbook, áp dụng lại vùng chồng lặp sẽ cập nhật từng dòng theo sheet/dòng nguồn, không tạo bản sao; các dòng ngoài vùng và phương án khác được giữ.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
         <Field label="Dùng dòng cho">
           <select className={inputCls()} data-testid="excel-map-target" value={form.target} onChange={(event) => update({ target: event.target.value as Target })}>

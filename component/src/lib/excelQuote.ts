@@ -190,3 +190,58 @@ export const emptyExcelService = (): ExcelService => ({
   id: quoteRequestId(), service_name: "", qty: "1", unit: "Lần", currency: "VND", cost_unit: "", sell_unit: "",
   sell_confirmed: false, tax_pct: "", internal_note: "", public_note: "", cost_source: "Nhập thủ công", valid_until: "", condition: "UNCONFIRMED",
 });
+
+/**
+ * Merge one explicit workbook mapping into the current Excel quote draft.
+ * Mapping ids are stable for a source workbook + sheet + source row, so a
+ * repeated/overlapping mapping is an upsert: that row is replaced in place and
+ * rows outside the mapped range are retained. Services go into the currently
+ * selected option; mapping goods/services for the same source row replaces its
+ * prior type. A different workbook is an explicit draft replacement, not a
+ * cross-workbook merge with misleading single-source provenance.
+ */
+export function mergeMappedExcelQuoteDraft(
+  current: ExcelQuoteDraft | null | undefined,
+  mapped: ExcelQuoteDraft,
+): ExcelQuoteDraft {
+  const sameSource = !!current?.source?.sha256 && current.source.sha256 === mapped.source.sha256;
+  if (!sameSource || !current) return mapped;
+
+  const mappedGoods = mapped.goods || [];
+  const mappedServices = mapped.options?.A?.service_lines || [];
+  if (!mappedGoods.length && !mappedServices.length) return current;
+
+  const incomingIds = new Set(
+    [...mappedGoods, ...mappedServices].map((row) => row.id).filter(Boolean),
+  );
+  const options = {} as ExcelQuoteDraft["options"];
+  const activeOption: OptionKey = current.active_option === "B" ? "B" : "A";
+  const upsert = <T extends { id: string }>(existing: T[], incoming: T[]): T[] => {
+    const rows = new Map<string, T>();
+    existing.forEach((row, index) => rows.set(row.id ? `id:${row.id}` : `existing:${index}`, row));
+    incoming.forEach((row, index) => rows.set(row.id ? `id:${row.id}` : `incoming:${index}`, row));
+    return [...rows.values()];
+  };
+
+  let goods = upsert(current.goods || [], mappedGoods);
+  if (mappedServices.length) goods = goods.filter((row) => !incomingIds.has(row.id));
+  for (const key of ["A", "B"] as const) {
+    const option = current.options?.[key] || { scope: "", service_lines: [] };
+    let serviceLines = option.service_lines || [];
+    if (mappedGoods.length) serviceLines = serviceLines.filter((line) => !incomingIds.has(line.id));
+    if (mappedServices.length && key === activeOption) {
+      serviceLines = upsert(serviceLines, mappedServices);
+    }
+    options[key] = { ...option, service_lines: serviceLines };
+  }
+
+  return {
+    ...current,
+    schema: mapped.schema,
+    source: mapped.source,
+    goods,
+    goods_mode: goods.length ? "GOODS" : "SERVICE_ONLY",
+    active_option: activeOption,
+    options,
+  };
+}
