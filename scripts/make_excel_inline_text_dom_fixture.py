@@ -85,6 +85,8 @@ def build() -> dict:
         "workbookView": {
             "read_only": True, "sha256": proposal["source"]["sha256"],
             "file_name": proposal["source"]["file_name"], "overview": info, "page": page,
+            "draft": {"saved": False, "version": 0, "sha256": proposal["source"]["sha256"]},
+            "can_download_source": True,
             "note": "Bản xem workbook gốc chỉ để đối chiếu.",
         },
         "workbookViewLockedCustomer": {

@@ -496,8 +496,14 @@ def _calculate_excel_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
     fx = normalize_fx_snapshot(result.get("fx_snapshot"))
     result["fx_snapshot"] = fx
     goods = details.get("goods")
-    if not isinstance(goods, list) or not 1 <= len(goods) <= 200:
-        raise ValueError("Bảng hàng hóa cần từ 1 đến 200 dòng.")
+    goods_mode = str(details.get("goods_mode") or "GOODS").upper()
+    if goods_mode not in {"GOODS", "SERVICE_ONLY"}:
+        raise ValueError("Chọn rõ báo giá có hàng hóa hay chỉ có dịch vụ.")
+    if not isinstance(goods, list) or len(goods) > 200 or (not goods and goods_mode != "SERVICE_ONLY"):
+        raise ValueError("Bảng hàng hóa cần từ 1 đến 200 dòng; chọn riêng chế độ chỉ dịch vụ nếu không có hàng hóa.")
+    if goods and goods_mode == "SERVICE_ONLY":
+        raise ValueError("Bản nháp chỉ dịch vụ không được chứa dòng hàng hóa.")
+    details["goods_mode"] = goods_mode
     goods_out, qty_values, goods_vnd = [], [], []
     buckets: dict[str, list[Decimal | None]] = {}
     for i, raw in enumerate(goods, 1):
@@ -589,20 +595,26 @@ def _calculate_excel_quote(quote: Mapping[str, Any]) -> dict[str, Any]:
         details["shipment"][key] = float(n) if n is not None else None
     details["warning_notes"] = {str(k): {"status": str(v.get("status") or "UNRESOLVED")[:30], "note": str(v.get("note") or "")[:2000]}
                                 for k, v in dict(details.get("warning_notes") or {}).items() if isinstance(v, Mapping)}
-    goods_total_vnd = _nullable_sum(goods_vnd)
+    goods_total_vnd = Decimal("0") if goods_mode == "SERVICE_ONLY" else _nullable_sum(goods_vnd)
     services = selected["calculation"]
-    before_tax = _nullable_sum([goods_total_vnd, _optional_decimal(services["selling_price_before_tax_vnd"])])
-    estimate = _nullable_sum([goods_total_vnd, _optional_decimal(services["selling_price_total_vnd"]), _optional_decimal(c["total_vnd"])])
+    has_service_lines = bool(selected["service_lines"])
+    before_tax = (_nullable_sum([goods_total_vnd, _optional_decimal(services["selling_price_before_tax_vnd"])])
+                  if (goods_mode != "SERVICE_ONLY" or has_service_lines) else None)
+    estimate_values = [goods_total_vnd, _optional_decimal(services["selling_price_total_vnd"])]
+    if goods_mode != "SERVICE_ONLY":
+        estimate_values.append(_optional_decimal(c["total_vnd"]))
+    estimate = (_nullable_sum(estimate_values)
+                if (goods_mode != "SERVICE_ONLY" or has_service_lines) else None)
     reasons = []
-    if goods_total_vnd is None:
+    if goods_mode != "SERVICE_ONLY" and goods_total_vnd is None:
         reasons.append("Tiền hàng chưa đủ dữ liệu hoặc thiếu tỷ giá → không có tổng VND xác định.")
     if any(l.get("sell_total") is None for l in selected["service_lines"]):
         reasons.append("Còn phí chưa có giá bán xác nhận; chưa công bố các dòng này.")
     if services["selling_price_total_vnd"] is None:
         reasons.append("Phí dịch vụ chưa đủ giá bán, VAT dịch vụ hoặc tỷ giá.")
-    if not tax_known:
+    if not tax_known and goods_mode != "SERVICE_ONLY":
         reasons.append("Thuế NK / VAT NK chưa xác định: cần trị giá hải quan, thuế suất và căn cứ riêng được xác nhận.")
-    count = _nullable_sum(qty_values)
+    count = None if goods_mode == "SERVICE_ONLY" else _nullable_sum(qty_values)
     details["calculation"] = {
         "row_count": len(goods_out), "quantity": float(count) if count is not None else None,
         "goods_totals": [{"currency": code, "amount": _money_or_none(_nullable_sum(amounts), code)} for code, amounts in sorted(buckets.items())],
@@ -646,6 +658,7 @@ def customer_quote_snapshot(quote: Mapping[str, Any]) -> dict[str, Any]:
                             for l in quote.get("service_lines") or [] if l.get("sell_unit") is not None and l.get("sell_confirmed", True) is True]
     out["customer_notes"] = list(quote.get("customer_notes") or [])
     if details:
+        out["goods_mode"] = str(details.get("goods_mode") or "GOODS")
         out["goods"] = [{k: g.get(k) for k in ("description", "model", "material", "length_mm", "width_mm", "height_mm", "qty", "unit_price", "currency", "line_total", "note")} for g in details.get("goods") or []]
         out["option"] = active
         out["scope"] = str((details.get("options") or {}).get(active, {}).get("scope") or "")

@@ -124,18 +124,24 @@ export interface WorkbookPage {
   cells: WorkbookCell[]; merges: WorkbookMerge[];
   column_widths: Record<string, number>; row_heights: Record<string, number>;
   hidden_rows: number[]; hidden_columns: string[]; frozen_panes: string;
-  truncated: boolean; limits: { max_rows: number; max_cols: number; max_cells: number };
+  start_row?: number; start_col?: number; end_row?: number; end_col?: number;
+  truncated: boolean; limits: { max_rows: number; max_cols: number; max_cells: number; start_row?: number; start_col?: number };
   reason?: string;
 }
+export interface WorkbookDraftState { saved: boolean; version: number; sha256: string; updated_at?: string }
+export interface WorkbookCellEdit { sheet: string; r: number; c: number; type: "text" | "number" | "formula" | "blank"; value: string }
 export interface WorkbookView {
   read_only: boolean; sha256: string; file_name?: string;
-  overview: WorkbookOverview; page: WorkbookPage | null; note: string;
+  overview: WorkbookOverview; page: WorkbookPage | null; draft?: WorkbookDraftState | null; note: string;
+  can_download_source?: boolean;
 }
 export interface ExcelQuoteDraft {
   schema: string;
   /** Presentation-only customer wording, keyed by stable region id. */
   customer_text?: { schema: string; overrides: Record<string, string> };
   goods: ExcelGoods[];
+  /** Explicit user choice required for service-only quote drafts. */
+  goods_mode?: "GOODS" | "SERVICE_ONLY";
   supplier: string;
   source: { file_name: string; byte_size: number; sha256: string; sheet_names: string[]; goods_sheet: string; parser_version: string; storage_file_id?: string };
   source_warnings: Array<{ id: string; text: string }>;
@@ -151,6 +157,7 @@ export interface ExcelQuoteDraft {
   calculation?: ExcelQuoteCalculation;
 }
 export interface CustomerQuotePreview {
+  goods_mode?: "GOODS" | "SERVICE_ONLY";
   /** Assigned when the quote is saved; the paper shows it when present. */
   quote_no?: string;
   customer_name: string;
@@ -183,3 +190,104 @@ export const emptyExcelService = (): ExcelService => ({
   id: quoteRequestId(), service_name: "", qty: "1", unit: "Lần", currency: "VND", cost_unit: "", sell_unit: "",
   sell_confirmed: false, tax_pct: "", internal_note: "", public_note: "", cost_source: "Nhập thủ công", valid_until: "", condition: "UNCONFIRMED",
 });
+
+const hasDraftValue = (value: DraftNumber): boolean => value != null && String(value).trim() !== "";
+const comparableDraftValue = (value: DraftNumber): string => {
+  const text = value == null ? "" : String(value).trim();
+  if (!text) return "";
+  const number = Number(text);
+  return Number.isFinite(number) ? String(number) : text;
+};
+const sameDraftValue = (left: DraftNumber, right: DraftNumber): boolean =>
+  comparableDraftValue(left) === comparableDraftValue(right);
+
+/**
+ * Merge one explicit workbook mapping into the current Excel quote draft.
+ * Mapping ids are stable for a source workbook + sheet + source row, so a
+ * repeated/overlapping mapping is an upsert and rows outside the range stay.
+ * For matching rows, workbook-owned costs/basis are refreshed while Sale-owned
+ * values are retained. A changed service quantity/unit/currency invalidates an
+ * old sale confirmation; an already-confirmed sale price is never overwritten
+ * by a later SELL mapping. A different workbook is an explicit replacement.
+ */
+export function mergeMappedExcelQuoteDraft(
+  current: ExcelQuoteDraft | null | undefined,
+  mapped: ExcelQuoteDraft,
+): ExcelQuoteDraft {
+  const sameSource = !!current?.source?.sha256 && current.source.sha256 === mapped.source.sha256;
+  if (!sameSource || !current) return mapped;
+
+  const mappedGoods = mapped.goods || [];
+  const mappedServices = mapped.options?.A?.service_lines || [];
+  if (!mappedGoods.length && !mappedServices.length) return current;
+
+  const incomingIds = new Set(
+    [...mappedGoods, ...mappedServices].map((row) => row.id).filter(Boolean),
+  );
+  const options = {} as ExcelQuoteDraft["options"];
+  const activeOption: OptionKey = current.active_option === "B" ? "B" : "A";
+  const upsert = <T extends { id: string }>(existing: T[], incoming: T[]): T[] => {
+    const rows = new Map<string, T>();
+    existing.forEach((row, index) => rows.set(row.id ? `id:${row.id}` : `existing:${index}`, row));
+    incoming.forEach((row, index) => rows.set(row.id ? `id:${row.id}` : `incoming:${index}`, row));
+    return [...rows.values()];
+  };
+  const existingGoodsById = new Map((current.goods || []).map((row) => [row.id, row]));
+  const goodsForUpsert = mappedGoods.map((incoming) => {
+    const prior = existingGoodsById.get(incoming.id);
+    if (!prior) return incoming;
+    const keepQty = hasDraftValue(prior.qty) && !sameDraftValue(prior.qty, incoming.qty);
+    const keepPrice = hasDraftValue(prior.unit_price)
+      && (!sameDraftValue(prior.unit_price, incoming.unit_price)
+        || prior.currency.trim().toUpperCase() !== incoming.currency.trim().toUpperCase());
+    return {
+      ...incoming,
+      qty: keepQty ? prior.qty : incoming.qty,
+      unit_price: keepPrice ? prior.unit_price : incoming.unit_price,
+      currency: keepPrice && hasDraftValue(prior.currency) ? prior.currency : incoming.currency,
+    };
+  });
+  let goods = upsert(current.goods || [], goodsForUpsert);
+  if (mappedServices.length) goods = goods.filter((row) => !incomingIds.has(row.id));
+
+  for (const key of ["A", "B"] as const) {
+    const option = current.options?.[key] || { scope: "", service_lines: [] };
+    let serviceLines = option.service_lines || [];
+    if (mappedGoods.length) serviceLines = serviceLines.filter((line) => !incomingIds.has(line.id));
+    if (mappedServices.length && key === activeOption) {
+      const existingById = new Map(serviceLines.map((line) => [line.id, line]));
+      const servicesForUpsert = mappedServices.map((incoming) => {
+        const prior = existingById.get(incoming.id);
+        if (!prior) return incoming;
+        const sameBasis = comparableDraftValue(prior.qty) === comparableDraftValue(incoming.qty)
+          && prior.unit.trim() === incoming.unit.trim()
+          && prior.currency.trim().toUpperCase() === incoming.currency.trim().toUpperCase();
+        const incomingHasSell = hasDraftValue(incoming.sell_unit);
+        const keepSale = hasDraftValue(prior.sell_unit) && (!incomingHasSell || prior.sell_confirmed);
+        const sellUnit = keepSale ? prior.sell_unit : incoming.sell_unit;
+        return {
+          ...prior,
+          ...incoming,
+          cost_unit: hasDraftValue(incoming.cost_unit) ? incoming.cost_unit : prior.cost_unit,
+          cost_source: hasDraftValue(incoming.cost_unit) ? incoming.cost_source : prior.cost_source,
+          sell_unit: sellUnit,
+          sell_confirmed: sameBasis && prior.sell_confirmed && hasDraftValue(sellUnit),
+          tax_pct: prior.tax_pct ?? incoming.tax_pct,
+          public_note: prior.public_note ?? incoming.public_note,
+        };
+      });
+      serviceLines = upsert(serviceLines, servicesForUpsert);
+    }
+    options[key] = { ...option, service_lines: serviceLines };
+  }
+
+  return {
+    ...current,
+    schema: mapped.schema,
+    source: mapped.source,
+    goods,
+    goods_mode: goods.length ? "GOODS" : "SERVICE_ONLY",
+    active_option: activeOption,
+    options,
+  };
+}

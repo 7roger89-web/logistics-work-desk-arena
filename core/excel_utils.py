@@ -498,12 +498,14 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
     ws["A11"] = "Subject: " + subject_title + (f" — {route_text}" if route_text else "")
     ws["A11"].font = label
     ws["A12"] = ctext.get("doc.greeting", "Trân trọng cảm ơn Quý khách đã quan tâm dịch vụ của chúng tôi. Chúng tôi xin gửi báo giá như sau:")
-    ws["A13"] = ctext.get("label.goods", "Mặt hàng") + ": " + (ctext.get("doc.goods_description", str(quote.get("goods_description") or "")) or "—")
+    ws["A13"] = ("Báo giá dịch vụ logistics · không có hàng hóa"
+                  if quote.get("goods_mode") == "SERVICE_ONLY" else
+                  ctext.get("label.goods", "Mặt hàng") + ": " + (ctext.get("doc.goods_description", str(quote.get("goods_description") or "")) or "—"))
     ws["A14"] = ctext.get("label.route", "Tuyến") + ": " + (ctext.get("doc.route", route_text) or "—") + (f" · Điều kiện giao hàng: {incoterm}" if incoterm else "")
     ws["A15"] = ctext.get("sec.service_summary", "Dịch vụ: giao nhận / vận chuyển / thủ tục theo các khoản mục dưới đây.")
 
     # ---- row 17: table headers -------------------------------------------
-    from core.quote_customer_text import SERVICE_COLUMNS
+    from core.quote_customer_text import SERVICE_COLUMNS, line_key
 
     headers = [ctext.get(f"col.service.{key}", default) for key, default in SERVICE_COLUMNS]
     header_row = 17
@@ -524,38 +526,41 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
                 ws.cell(row, 1, text).alignment = Alignment(wrap_text=True, vertical="top")
                 ws.row_dimensions[row].height = 30
                 row += 1
-        ws.cell(row, 1, ctext.get("sec.goods", "DANH MỤC HÀNG HÓA — giá theo bảng khách gửi")).font = FONT_BOLD
-        row += 1
-        goods_column_defaults = ("STT", "Hàng hóa / Model / Vật liệu", "Dài mm", "Rộng mm", "Cao mm", "Số lượng", "Đơn giá", "Tiền tệ", "Thành tiền")
-        goods_column_keys = ("stt", "name", "length", "width", "height", "qty", "unit_price", "currency", "line_total")
-        for col, (key, default) in enumerate(zip(goods_column_keys, goods_column_defaults), 1):
-            apply_header_style(ws.cell(row, col, ctext.get(f"col.goods.{key}", default)))
-        from core.quote_customer_text import line_key
-
-        for i, goods in enumerate(quote.get("goods") or [], 1):
+        if quote.get("goods_mode") == "SERVICE_ONLY":
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            ws.cell(row, 1, "Báo giá chỉ gồm phí dịch vụ; không có hàng hóa.").alignment = Alignment(wrap_text=True)
+            row += 2
+        else:
+            ws.cell(row, 1, ctext.get("sec.goods", "DANH MỤC HÀNG HÓA — giá theo bảng khách gửi")).font = FONT_BOLD
             row += 1
-            key = line_key("goods", goods, i - 1, fields=("description", "model", "material", "length_mm", "width_mm", "height_mm"))
-            goods_name = " · ".join(value for value in (
-                ctext.get(f"goods.{key}.name", str(goods.get("description") or "")),
-                ctext.get(f"goods.{key}.model", str(goods.get("model") or "")),
-                ctext.get(f"goods.{key}.material", str(goods.get("material") or "")),
-            ) if value)
-            values = [i, goods_name,
-                      goods.get("length_mm"), goods.get("width_mm"), goods.get("height_mm"), goods.get("qty"),
-                      goods.get("unit_price"), goods.get("currency"), goods.get("line_total")]
-            for col, value in enumerate(values, 1):
-                ws.cell(row, col, "Chưa biết" if value is None else value).border = BORDER_THIN
-            # Goods notes are the reviewed customer goods description; source
-            # provenance and internal warning notes never enter this allowlist.
-            goods_note = ctext.get(f"goods.{key}.note", str(goods.get("note") or ""))
-            if goods_note:
+            goods_column_defaults = ("STT", "Hàng hóa / Model / Vật liệu", "Dài mm", "Rộng mm", "Cao mm", "Số lượng", "Đơn giá", "Tiền tệ", "Thành tiền")
+            goods_column_keys = ("stt", "name", "length", "width", "height", "qty", "unit_price", "currency", "line_total")
+            for col, (key, default) in enumerate(zip(goods_column_keys, goods_column_defaults), 1):
+                apply_header_style(ws.cell(row, col, ctext.get(f"col.goods.{key}", default)))
+            for i, goods in enumerate(quote.get("goods") or [], 1):
                 row += 1
-                ws.cell(row, 2, ctext.get("label.goods_note", "Ghi chú") + " hàng: " + goods_note)
-        for total in quote.get("goods_calculation", {}).get("goods_totals") or []:
-            row += 1
-            ws.cell(row, 2, "Tổng tiền hàng " + total["currency"]).font = FONT_BOLD
-            ws.cell(row, 9, total["amount"] if total["amount"] is not None else "Chưa xác định")
-        row += 2
+                key = line_key("goods", goods, i - 1, fields=("description", "model", "material", "length_mm", "width_mm", "height_mm"))
+                goods_name = " · ".join(value for value in (
+                    ctext.get(f"goods.{key}.name", str(goods.get("description") or "")),
+                    ctext.get(f"goods.{key}.model", str(goods.get("model") or "")),
+                    ctext.get(f"goods.{key}.material", str(goods.get("material") or "")),
+                ) if value)
+                values = [i, goods_name,
+                          goods.get("length_mm"), goods.get("width_mm"), goods.get("height_mm"), goods.get("qty"),
+                          goods.get("unit_price"), goods.get("currency"), goods.get("line_total")]
+                for col, value in enumerate(values, 1):
+                    ws.cell(row, col, "Chưa biết" if value is None else value).border = BORDER_THIN
+                # Goods notes are the reviewed customer goods description; source
+                # provenance and internal warning notes never enter this allowlist.
+                goods_note = ctext.get(f"goods.{key}.note", str(goods.get("note") or ""))
+                if goods_note:
+                    row += 1
+                    ws.cell(row, 2, ctext.get("label.goods_note", "Ghi chú") + " hàng: " + goods_note)
+            for total in quote.get("goods_calculation", {}).get("goods_totals") or []:
+                row += 1
+                ws.cell(row, 2, "Tổng tiền hàng " + total["currency"]).font = FONT_BOLD
+                ws.cell(row, 9, total["amount"] if total["amount"] is not None else "Chưa xác định")
+            row += 2
         ws.cell(row, 1, ctext.get("sec.services", "PHÍ DỊCH VỤ — chỉ giá bán đã xác nhận")).font = FONT_BOLD
         header_row = row + 1
     for idx, header in enumerate(headers, 1):
@@ -665,29 +670,30 @@ def generate_quote_excel(quote, *, company=None, customer=None, logo_path=None):
         row += 1
 
     if excel_customer:
-        row += 1
-        customs = quote.get("customs") or {}
-        ws.cell(row, 2, ctext.get("sec.customs", "THUẾ NHẬP KHẨU DỰ KIẾN (không phải kết luận pháp lý)")).font = FONT_BOLD
-        row += 1
-        if customs.get("calculable"):
-            ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
-                    + f" (VND); {ctext.get('label.duty_rate', 'Thuế NK')} {customs.get('duty_pct')}% / {ctext.get('label.vat_rate', 'VAT NK')} {customs.get('vat_pct')}%")
-            ws.cell(row, 7, customs.get("basis_vnd"))
+        if quote.get("goods_mode") != "SERVICE_ONLY":
             row += 1
-        else:
-            ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
-                    + ": Chưa xác định — trị giá hải quan / thuế suất chưa được xác nhận.")
+            customs = quote.get("customs") or {}
+            ws.cell(row, 2, ctext.get("sec.customs", "THUẾ NHẬP KHẨU DỰ KIẾN (không phải kết luận pháp lý)")).font = FONT_BOLD
             row += 1
-        # The duty/VAT labels are always part of the customer document, so they
-        # print even while their amounts are UNKNOWN. An unknown amount is
-        # "Chưa xác định" — never 0.
-        for text, field in ((ctext.get("label.duty", "Thuế NK dự kiến"), "duty_vnd"),
-                            (ctext.get("label.vat", "VAT NK dự kiến"), "vat_vnd")):
-            ws.cell(row, 2, text)
-            ws.cell(row, 7, customs.get(field) if customs.get("calculable") else "Chưa xác định")
             if customs.get("calculable"):
-                ws.cell(row, 8, "VND")
-            row += 1
+                ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
+                        + f" (VND); {ctext.get('label.duty_rate', 'Thuế NK')} {customs.get('duty_pct')}% / {ctext.get('label.vat_rate', 'VAT NK')} {customs.get('vat_pct')}%")
+                ws.cell(row, 7, customs.get("basis_vnd"))
+                row += 1
+            else:
+                ws.cell(row, 2, ctext.get("label.customs_basis", "Cơ sở hải quan riêng đã xác nhận")
+                        + ": Chưa xác định — trị giá hải quan / thuế suất chưa được xác nhận.")
+                row += 1
+            # The duty/VAT labels are always part of a goods quotation, so they
+            # print even while their amounts are UNKNOWN. An unknown amount is
+            # "Chưa xác định" — never 0.
+            for text, field in ((ctext.get("label.duty", "Thuế NK dự kiến"), "duty_vnd"),
+                                (ctext.get("label.vat", "VAT NK dự kiến"), "vat_vnd")):
+                ws.cell(row, 2, text)
+                ws.cell(row, 7, customs.get(field) if customs.get("calculable") else "Chưa xác định")
+                if customs.get("calculable"):
+                    ws.cell(row, 8, "VND")
+                row += 1
         calculation = quote.get("goods_calculation") or {}
         for text, field in ((ctext.get("label.before_tax", "Tạm tính hàng + dịch vụ trước mọi thuế") + " (VND)", "before_tax_vnd"),
                             (ctext.get("label.estimate_total", "Tổng dự toán gồm thuế đã xác định") + " (VND)", "estimate_vnd")):

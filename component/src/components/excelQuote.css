@@ -100,6 +100,9 @@
 .excel-quote-workspace .eq-paper-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .excel-quote-workspace .eq-wb { margin-top: 12px; padding: 16px; border: 1px solid #c8d9ed; border-radius: 12px; background: #f7fafd; min-width: 0; }
 .excel-quote-workspace .eq-wb-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.excel-quote-workspace .eq-wb-range { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 12px; padding: 10px; border: 1px solid #dce4ee; border-radius: 9px; background: #fff; }
+.excel-quote-workspace .eq-wb-range label { display: grid; gap: 4px; min-width: 108px; color: #52637a; font-size: 12px; font-weight: 700; }
+.excel-quote-workspace .eq-wb-range input { min-height: 38px; max-width: 130px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #172b45; font-size: 13px; }
 .excel-quote-workspace .eq-wb-tab { display: flex; align-items: center; gap: 7px; max-width: 320px; padding: 9px 11px; border: 1px solid #cdd8e6; border-radius: 9px; background: #fff; font-size: 13px; color: #3d4f66; }
 .excel-quote-workspace .eq-wb-tab-active { border-color: #1e5aa8; box-shadow: 0 0 0 2px #d7e6f8 inset; color: #0f2a4a; font-weight: 700; }
 .excel-quote-workspace .eq-wb-tab-index { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: #e4ebf7; font-size: 11px; }
@@ -110,7 +113,20 @@
 .excel-quote-workspace .eq-wb-table { border-collapse: collapse; font-size: 12px; }
 .excel-quote-workspace .eq-wb-table td { border: 1px solid #e8edf4; padding: 3px 6px; color: #1a2433; }
 .excel-quote-workspace .eq-wb-table td.eq-wb-unknown { background: #fff7e6; color: #8a5209; }
+.excel-quote-workspace .eq-wb-table td.eq-wb-cell-editable { cursor: cell; }
+.excel-quote-workspace .eq-wb-table td.eq-wb-cell-editable:hover { outline: 1px solid #8eb1de; outline-offset: -1px; }
+.excel-quote-workspace .eq-wb-editor { margin-top: 12px; border: 1px solid #cdd8e6; border-radius: 10px; padding: 12px; background: #fff; }
+.excel-quote-workspace .eq-wb-edit-kind, .excel-quote-workspace .eq-wb-edit-value { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: #52637a; }
+.excel-quote-workspace .eq-wb-edit-kind select { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 8px; background: white; color: #172b45; font-size: 13px; }
+.excel-quote-workspace .eq-wb-edit-value { flex: 1 1 280px; min-width: min(100%, 240px); }
+.excel-quote-workspace .eq-wb-edit-value textarea { width: 100%; min-height: 42px; resize: vertical; border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 9px; color: #172b45; font: inherit; font-size: 13px; }
+.excel-quote-workspace .eq-wb-edit-value textarea:focus, .excel-quote-workspace .eq-wb-edit-kind select:focus { outline: 2px solid #8eb1de; outline-offset: 1px; }
+.excel-quote-workspace .eq-wb-save { min-height: 40px; display: inline-flex; align-items: center; gap: 7px; border-radius: 8px; padding: 7px 12px; background: #166534; color: #fff; font-size: 13px; font-weight: 700; }
+.excel-quote-workspace .eq-wb-save:hover:not(:disabled) { background: #14532d; }
+.excel-quote-workspace .eq-wb-save:disabled { cursor: not-allowed; opacity: .55; }
 .excel-quote-workspace .eq-wb-rownum { position: sticky; left: 0; z-index: 1; background: #f0f4f9; color: #7b8ca3; font-size: 11px; font-weight: 600; text-align: center; border: 1px solid #e8edf4; }
+.excel-quote-workspace .eq-wb-colhead, .excel-quote-workspace .eq-wb-colcorner { position: sticky; top: 0; z-index: 2; min-width: 58px; background: #f0f4f9; color: #52637a; font-size: 11px; font-weight: 700; text-align: center; border: 1px solid #e8edf4; }
+.excel-quote-workspace .eq-wb-colcorner { left: 0; z-index: 3; min-width: 44px; }
 .excel-quote-workspace .eq-wb-badge { margin-left: 5px; font-size: 9px; font-weight: 700; color: #7b8ca3; }
 .excel-quote-workspace .eq-wb-hidden { display: none; }
 .excel-quote-workspace .eq-wb-fidelity { margin-top: 12px; border-top: 1px solid #dce4ee; padding-top: 10px; }

@@ -81,6 +81,8 @@ C1_EVENTS = {
     # uploaded workbook (real sheet names/order, one sheet per call). It writes
     # nothing and is not an export of the source file.
     "quote_source_workbook_view",
+    "quote_workbook_sources_list",
+    "quote_workbook_draft_save",
     # LOGI_COST_INTELLIGENCE_01 — parse is read-only; the other two are bounded writes.
     "cost_rate_parse",
     "cost_rate_save",
@@ -2077,6 +2079,8 @@ _HANDLERS = {
     "quote_preview": lambda p: __import__("views.logi_quote_import", fromlist=["handle_preview"]).handle_preview(p),
     "quote_source_download": lambda p: __import__("views.logi_quote_import", fromlist=["handle_source_download"]).handle_source_download(p),
     "quote_source_workbook_view": lambda p: __import__("views.logi_quote_import", fromlist=["handle_source_workbook"]).handle_source_workbook(p),
+    "quote_workbook_sources_list": lambda p: __import__("views.logi_quote_import", fromlist=["handle_workbook_sources_list"]).handle_workbook_sources_list(p),
+    "quote_workbook_draft_save": lambda p: __import__("views.logi_quote_import", fromlist=["handle_workbook_draft_save"]).handle_workbook_draft_save(p),
     "cost_rate_parse": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_parse"]).handle_cost_rate_parse(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_rate_save": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_save"]).handle_cost_rate_save(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),
     "cost_rate_status_set": lambda p: __import__("views.logi_cost_intelligence", fromlist=["handle_cost_rate_status_set"]).handle_cost_rate_status_set(p, {"_result": _result, "_audit": _audit, "_actor": _actor}),

@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { ArrowLeft, ArrowRight, Check, FileDown, FileSpreadsheet, LockKeyhole, Plus, RotateCcw, Search, Trash2, TriangleAlert } from "lucide-react";
 import InlineText from "./InlineText";
 import ExcelSourceWorkbook from "./ExcelSourceWorkbook";
+import ExcelWorkbookMapping from "./ExcelWorkbookMapping";
 import { Field, GhostBtn, PrimaryBtn, SearchPicker, SectionTitle, SuccessBtn, ToneBadge, inputCls } from "./ui";
 import CostIntelligencePanel from "./CostIntelligence";
 import { useStore } from "../lib/store";
 import { getViewModel, subscribeViewModel, userAccessWorkspace, type Quote } from "../lib/viewmodel";
 import { cx, downloadBinaryFile, fmtMoney } from "../lib/format";
 import { costReferenceIssue, findComparableCosts, loose, type CostCriteria, type CostMatch, type CostMatchLine } from "../lib/costHistory";
-import { emptyExcelService, quoteRequestId, type CustomerQuotePreview, type CustomerTextRegion, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
+import { emptyExcelService, mergeMappedExcelQuoteDraft, quoteRequestId, type CustomerQuotePreview, type CustomerTextRegion, type DraftNumber, type ExcelGoods, type ExcelQuoteDraft, type ExcelService, type OptionKey } from "../lib/excelQuote";
 import type { LogiEventName } from "../lib/dispatcher";
 import "./excelQuote.css";
 
@@ -31,6 +32,7 @@ function editableDetails(d: ExcelQuoteDraft) {
 }
 
 interface Pending { event: LogiEventName; id: string; fingerprint?: string; structural?: string }
+type StoredWorkbookSource = ExcelQuoteDraft["source"] & { uploaded_at?: string };
 
 /**
  * The payload WITHOUT every editable text region.
@@ -104,6 +106,13 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
   const [step, setStep] = useState(1);
   const [details, setDetails] = useState<ExcelQuoteDraft | null>(initialQuote?.excelQuote ?? null);
   const [review, setReview] = useState<ExcelQuoteDraft | null>(null);
+  const [importedSource, setImportedSource] = useState(initialQuote?.excelQuote?.source ?? null);
+  const [workbookDirty, setWorkbookDirty] = useState(false);
+  const [workbookOnlyMessage, setWorkbookOnlyMessage] = useState("");
+  const [workbookAutoOpen, setWorkbookAutoOpen] = useState(false);
+  const [workbookView, setWorkbookView] = useState<import("../lib/excelQuote").WorkbookView | null>(null);
+  const [recentWorkbooks, setRecentWorkbooks] = useState<StoredWorkbookSource[]>([]);
+  const [workbookListRequest, setWorkbookListRequest] = useState("");
   const [header, setHeader] = useState(() => ({
     customerId: initialQuote?.customerId ?? "", salesOwner: initialQuote?.salesOwner || userName,
     goodsDescription: initialQuote?.goodsDescription ?? "", origin: initialQuote?.origin ?? "", destination: initialQuote?.destination ?? "",
@@ -126,6 +135,25 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
   const fileInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLDivElement>(null);
   const working = review ?? details;
+  const workbookSource = importedSource ?? working?.source ?? currentQuote?.excelQuote?.source;
+  const workbookQuoteId = currentQuote && currentQuote.excelQuote?.source?.sha256
+    && currentQuote.excelQuote.source.sha256 === workbookSource?.sha256 ? currentQuote.id : undefined;
+  useEffect(() => { setWorkbookView(null); }, [workbookSource?.sha256]);
+  useEffect(() => {
+    if (!header.customerId || !canDownloadSource) { setRecentWorkbooks([]); return; }
+    const id = quoteRequestId();
+    if (dispatch("quote_workbook_sources_list", { customerId: header.customerId, requestId: id })) setWorkbookListRequest(id);
+  }, [header.customerId, canDownloadSource, dispatch]);
+  useEffect(() => {
+    if (!workbookListRequest) return;
+    const outcome = vm?.lastWrites?.find((write) => write.event === "quote_workbook_sources_list" && write.requestId === workbookListRequest);
+    if (!outcome) return;
+    setWorkbookListRequest("");
+    if (outcome.ok) {
+      const readback = outcome.readback as { sources?: StoredWorkbookSource[] } | undefined;
+      setRecentWorkbooks(readback?.sources || []);
+    }
+  }, [vm, workbookListRequest]);
   const payload = useMemo(() => working ? { ...header, fx, excelQuote: editableDetails(working) } : null, [header, fx, working]);
   const fingerprint = payload ? JSON.stringify(payload) : "";
   const structuralFingerprint = payload ? JSON.stringify(withoutTextRegions(payload)) : "";
@@ -139,6 +167,16 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
   const customer = customers.find((c) => c.id === header.customerId);
   const locked = !!busy;
   const canAct = !busy && !previewPending && !managingRates;
+  const confirmWorkbookReplacement = (target: string) => {
+    const unsaved = [dirty && "bản báo giá", workbookDirty && "workbook"].filter(Boolean);
+    return !unsaved.length || window.confirm(
+      `Có thay đổi chưa lưu ở ${unsaved.join(" và ")}. ${target} sẽ bỏ các thay đổi chưa lưu; tiếp tục?`,
+    );
+  };
+  const leaveWorkspace = () => {
+    const unsaved = [dirty && "bản báo giá", workbookDirty && "workbook"].filter(Boolean);
+    if (!unsaved.length || window.confirm(`Có thay đổi chưa lưu ở ${unsaved.join(" và ")}. Rời khu làm việc và bỏ thay đổi chưa lưu?`)) onClose();
+  };
   const set = (key: keyof typeof header, value: string) => setHeader((old) => ({ ...old, [key]: value }));
   const patch = (change: Partial<ExcelQuoteDraft>) => {
     if (review) setReview({ ...review, ...change });
@@ -190,13 +228,29 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
     if (!outcome.ok) { setError(String(outcome.error || "Backend từ chối thao tác.")); return; }
     setError("");
     if (busy.event === "quote_import_excel") {
-      setReview(outcome.readback as unknown as ExcelQuoteDraft);
+      const imported = outcome.readback as unknown as ExcelQuoteDraft & { workbook_only?: boolean; workbook_message?: string; source?: typeof importedSource };
+      setImportedSource(imported.source ?? null);
+      if (imported.source) setRecentWorkbooks((old) => [imported.source as StoredWorkbookSource, ...old.filter((item) => item.sha256 !== imported.source?.sha256)].slice(0, 25));
+      setWorkbookView(null);
       setStep(1);
-      toast("Đã đọc Excel — chưa áp dụng", "Xem lại từng dòng. File nguồn đã lưu trong kho chứng từ hiện có.", "blue");
+      if (imported.workbook_only) {
+        setReview(null);
+        if (!currentQuote) { setDetails(null); setPreview(null); setPreviewFor(""); }
+        setWorkbookAutoOpen(true);
+        setWorkbookOnlyMessage(imported.workbook_message || "Đã nhập Excel thành công. Chưa xác định được bảng để tính giá tự động; bạn có thể xem, sửa và chọn các cột cần dùng.");
+        toast("Đã nhập Excel thành công", "Chưa tự xác định bảng tính giá. Workbook gốc đã lưu riêng; bạn có thể xem và sửa.", "blue");
+      } else {
+        setWorkbookAutoOpen(false);
+        setWorkbookOnlyMessage("");
+        setReview(imported);
+        toast("Đã đọc Excel — chưa áp dụng", "Xem lại từng dòng. File nguồn đã lưu trong kho chứng từ hiện có.", "blue");
+      }
     } else if (busy.event === "quote_create" || busy.event === "quote_edit" || busy.event === "quote_transition") {
       const q = outcome.readback as unknown as Quote;
       if (!q?.id || !q.excelQuote) { setError("Backend chưa trả về bản báo giá đã đọc lại; không coi là đã lưu."); return; }
       setCurrentQuote(q);
+      setImportedSource(q.excelQuote.source);
+      setWorkbookOnlyMessage("");
       if (busy.fingerprint) setSavedFingerprint(busy.fingerprint);
       // The saved wording becomes the new baseline for per-region restore and
       // for the global undo. Never derived from the browser's own optimistic copy.
@@ -225,11 +279,11 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
   }, [fresh, preview]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !workbookDirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, workbookDirty]);
 
   const send = (event: LogiEventName, data: Record<string, unknown>, bindForm = false) => {
     if (!canAct) return;
@@ -243,6 +297,7 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
     if (!file) return;
     if (!header.customerId) { setError("Chọn khách hàng trong danh bạ trước khi nhập Excel."); return; }
     if (file.size > 5 * 1024 * 1024 || !file.name.toLowerCase().endsWith(".xlsx")) { setError("Chỉ nhận .xlsx, tối đa 5 MB."); return; }
+    if (!confirmWorkbookReplacement("Tải một workbook khác")) return;
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -373,7 +428,7 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
     <div className="excel-quote-workspace space-y-4 max-w-[1300px]" data-testid="excel-quote-workspace" data-preview-current={fresh} data-saved-id={currentQuote?.id || ""} data-version={currentQuote?.version || 0} ref={heading}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <SectionTitle icon={<FileSpreadsheet size={20} />} title="Báo giá từ Excel" sub="Từ thông tin khách gửi đến bản báo giá đã kiểm tra · Dự toán, không phải công nợ." />
-        <GhostBtn onClick={() => { if (!dirty || window.confirm("Có thay đổi chưa lưu. Rời bản nháp này?")) onClose(); }} disabled={locked}><ArrowLeft size={16} /> Danh sách báo giá</GhostBtn>
+            <GhostBtn onClick={leaveWorkspace} disabled={locked}><ArrowLeft size={16} /> Danh sách báo giá</GhostBtn>
       </div>
       <nav className="eq-steps" aria-label="Ba bước báo giá">
         {STEPS.map((title, i) => <button key={title} type="button" aria-current={step === i + 1 ? "step" : undefined} disabled={i > 0 && (!details || !!review)} onClick={() => move(i + 1)} data-testid={`excel-step-${i + 1}`} className={cx("eq-step", step === i + 1 && "eq-step-active")}><span className="eq-step-number">{i + 1}</span><span>{title}</span></button>)}
@@ -381,7 +436,8 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
       <div className="flex flex-wrap items-center gap-2 text-[13px]">
         <ToneBadge tone={currentQuote?.status === "SENT" ? "green" : "gray"}>{currentQuote?.statusLabel || "Nháp chưa lưu"}</ToneBadge>
         <span>{currentQuote?.id ? `${currentQuote.id} · v${currentQuote.version}` : "Chưa có mã báo giá"}</span>
-        {dirty && <span className="font-semibold text-amber-800">● Có thay đổi chưa lưu</span>}
+        {dirty && <span className="font-semibold text-amber-800">● Có thay đổi báo giá chưa lưu</span>}
+        {workbookDirty && <span className="font-semibold text-amber-800" data-testid="excel-workbook-dirty-status">● Workbook có ô chưa lưu</span>}
         {working && !fresh && <span role="status" className="text-slate-500">{previewPending ? "Đang tính từ backend…" : previewFor === fingerprint && error ? "Dữ liệu cần sửa" : "Đang chờ backend tính lại…"}</span>}
       </div>
       {error && <div role="alert" className="eq-alert border-red-300 bg-red-50 text-red-900">⚠ {error}</div>}
@@ -398,10 +454,39 @@ export default function ExcelQuoteWorkspace({ initialQuote, onClose }: { initial
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <PrimaryBtn testId="excel-upload-button" onClick={() => fileInput.current?.click()} disabled={!header.customerId || !canAct}><FileSpreadsheet size={18} /> {busy?.event === "quote_import_excel" ? "Đang đọc Excel…" : "Nhập Excel khách gửi"}</PrimaryBtn>
             <input type="file" accept=".xlsx" aria-label="Nhập Excel khách gửi" data-testid="excel-upload" ref={fileInput} className="sr-only" onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ""; }} />
-            <span className="text-[13px] text-slate-500">V1 · bố cục Lục Giác · .xlsx tối đa 5 MB</span>
+            <span className="text-[13px] text-slate-500">Bố cục linh hoạt · .xlsx tối đa 5 MB</span>
           </div>
-          {working && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] break-words" data-testid="excel-source"><p className="font-semibold">📄 {working.source.file_name} · {working.source.sheet_names.length} sheet · bảng hàng: {working.source.goods_sheet}</p><p className="mt-1 text-slate-500">File gốc giữ nguyên trong kho chứng từ · SHA256 {working.source.sha256.slice(0, 16)}…</p><Field label="Nhà cung cấp tham khảo"><input className={inputCls()} value={working.supplier} onChange={(e) => patch({ supplier: e.target.value })} /></Field>{currentQuote && <GhostBtn className="mt-2" testId="excel-source-download" onClick={() => send("quote_source_download", { id: currentQuote.id })} disabled={!canAct || !canDownloadSource}><FileDown size={16} /> Tải file nguồn đã lưu</GhostBtn>}{currentQuote && !canDownloadSource && <p className="mt-2 text-[12.5px] text-amber-900" data-testid="excel-source-download-blocked">Tệp nguồn là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào, nên mọi lượt tải đều cần quyền thao tác báo giá (commercial_write) — không phụ thuộc việc đã nhận diện được chi phí hay chưa. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này.</p>}</div>}
-          {working && <ExcelSourceWorkbook quoteId={currentQuote?.id} customerId={header.customerId} source={working.source} />}
+          {workbookOnlyMessage && <p className="eq-alert border-blue-200 bg-blue-50 text-blue-900 mt-3" role="status" data-testid="excel-workbook-only-message">{workbookOnlyMessage}</p>}
+          {!currentQuote && recentWorkbooks.length > 0 && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="excel-recent-workbooks"><Field label="Mở workbook đã tải trước đây" hint="Danh sách lấy từ GridFS theo khách hàng; bản sửa gần nhất sẽ được tải lại."><select className={inputCls()} value={importedSource?.storage_file_id || ""} onChange={(event) => {
+            const selected = recentWorkbooks.find((item) => item.storage_file_id === event.target.value);
+            if (!selected || selected.storage_file_id === importedSource?.storage_file_id) return;
+            if (!confirmWorkbookReplacement("Mở workbook đã tải trước đây")) return;
+            setImportedSource(selected); setWorkbookAutoOpen(true); setReview(null); setDetails(null);
+            setPreview(null); setPreviewFor(""); setWorkbookOnlyMessage("Đã mở workbook đã lưu. Bản sửa trước đó được giữ riêng; file gốc không đổi.");
+          }}><option value="">Chọn workbook gần đây</option>{recentWorkbooks.map((item) => <option key={item.storage_file_id || item.sha256} value={item.storage_file_id || ""}>{item.file_name} · {item.sheet_names.length} sheet · {item.uploaded_at || item.sha256.slice(0, 10)}</option>)}</select></Field></div>}
+          {working && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[13px] break-words" data-testid="excel-source"><p className="font-semibold">📄 {working.source.file_name} · {working.source.sheet_names.length} sheet · bảng hàng: {working.source.goods_sheet || "chưa ánh xạ"}</p><p className="mt-1 text-slate-500">File gốc giữ nguyên trong kho chứng từ · SHA256 {working.source.sha256.slice(0, 16)}…</p><Field label="Nhà cung cấp tham khảo"><input className={inputCls()} value={working.supplier} onChange={(e) => patch({ supplier: e.target.value })} /></Field>{currentQuote && <GhostBtn className="mt-2" testId="excel-source-download" onClick={() => send("quote_source_download", { id: currentQuote.id })} disabled={!canAct || !canDownloadSource}><FileDown size={16} /> Tải file nguồn đã lưu</GhostBtn>}{currentQuote && !canDownloadSource && <p className="mt-2 text-[12.5px] text-amber-900" data-testid="excel-source-download-blocked">Tệp nguồn là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào, nên mọi lượt tải đều cần quyền thao tác báo giá (commercial_write) — không phụ thuộc việc đã nhận diện được chi phí hay chưa. Vai trò hiện tại chỉ đọc được bản báo giá khách; backend từ chối độc lập với nút này.</p>}</div>}
+          {workbookSource && <ExcelSourceWorkbook quoteId={workbookQuoteId} customerId={header.customerId} source={workbookSource} onView={setWorkbookView} onDirtyChange={setWorkbookDirty} autoOpen={workbookAutoOpen} />}
+          {workbookSource?.parser_version === "unmapped/1" && workbookView?.page && !workbookView.page.locked && workbookView.can_download_source && <ExcelWorkbookMapping
+            key={`${workbookSource.sha256}:${workbookView.page.sheet}:${workbookView.page.start_row || 1}:${workbookView.page.start_col || 1}`}
+            page={workbookView.page} source={workbookSource}
+            onApply={(draft) => {
+              const existing = review ?? details ?? currentQuote?.excelQuote ?? null;
+              const sameSource = !!existing?.source?.sha256 && existing.source.sha256 === draft.source.sha256;
+              const replacingSource = !!existing?.source?.sha256 && !sameSource;
+              if (replacingSource
+                  && !window.confirm("Workbook nguồn đã đổi. Áp dụng sẽ thay nội dung Excel của báo giá bằng bản nháp từ workbook mới; các dòng đã ánh xạ trước đây không được mang sang. Tiếp tục?")) return;
+              setDetails((current) => mergeMappedExcelQuoteDraft(review ?? current ?? currentQuote?.excelQuote ?? null, draft));
+              setReview(null); setWorkbookOnlyMessage("");
+              setPreview(null); setPreviewFor(""); setConfirmedStructural(""); setSavedFingerprint("");
+              const detail = replacingSource
+                ? "Workbook mới thay dữ liệu Excel cũ; hãy rà soát lại báo giá trước khi lưu."
+                : sameSource && draft.goods.length
+                  ? "Số lượng/đơn giá Sale đã nhập trên dòng hàng trùng được giữ; hãy sửa trực tiếp nếu muốn đổi. Báo giá chưa lưu."
+                  : sameSource
+                    ? "Giá bán, VAT và ghi chú Sale được giữ trên dòng trùng; giá đã xác nhận không bị mapping SELL ghi đè. Nếu số lượng, đơn vị hoặc tiền tệ đổi, cần xác nhận giá bán lại. Báo giá chưa lưu."
+                    : "Dữ liệu đã thêm vào bản nháp; kiểm tra các giá trị trước khi lưu.";
+              toast(replacingSource ? "Đã thay workbook nguồn" : "Đã cập nhật dữ liệu báo giá", detail, "blue");
+            }} />}
         </section>
         {working && <>
           <section className="eq-card" data-testid="excel-review">
@@ -600,7 +685,8 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
         same condition the XLSX exporter uses — so nothing editable can be
         missing from the file. */}
     <p className="mt-4"><b><Text id="label.attn" />: </b><Text id="doc.customer_name" tag="span" className="font-bold" /></p>
-    <p className="mt-1"><Text id="label.goods" />: <Text id="doc.goods_description" /> · {value.incoterm} · {value.transport_mode}</p>
+    {value.goods_mode === "SERVICE_ONLY" ? <p className="mt-1">Báo giá dịch vụ logistics · {value.incoterm} · {value.transport_mode}</p>
+      : <p className="mt-1"><Text id="label.goods" />: <Text id="doc.goods_description" /> · {value.incoterm} · {value.transport_mode}</p>}
     <p className="mt-1"><Text id="label.route" />: <Text id="doc.route" /></p>
     <p className="mt-1"><Text id="label.ports" />: {value.shipment.pol || "Chưa xác nhận"} → {value.shipment.pod || "Chưa xác nhận"} · {value.shipment.load_model || "Chưa rõ hình thức tải"}{value.shipment.equipment ? ` / ${value.shipment.equipment}` : ""}</p>
     {value.shipment.pickup && <p><Text id="label.pickup" />: {value.shipment.pickup}</p>}
@@ -609,6 +695,7 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
     {value.expected_delivery_date && <p><Text id="label.delivery_date" />: {value.expected_delivery_date}</p>}
     <p className="mt-2"><Text id="doc.greeting" tag="span" /></p>
     <p className="mt-2"><Text id="sec.service_summary" tag="span" /></p>
+    {value.goods_mode === "SERVICE_ONLY" ? <p className="eq-muted mt-2" data-testid="customer-service-only">Báo giá này chỉ gồm dịch vụ; không có hàng hóa để tính tiền.</p> : <>
     <Text id="sec.goods" tag="h4" className="eq-public-heading" />
     <div className="eq-paper-table-wrap">
       <table className="eq-paper-table" data-testid="customer-goods-table">
@@ -644,6 +731,7 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
       </table>
     </div>
     <div className="eq-totals"><span>{calc.row_count} dòng · {calc.quantity ?? "—"} chiếc</span>{calc.goods_totals.map((total) => <strong key={total.currency}>{money(total.amount, total.currency)}</strong>)}</div>
+    </>}
     <Text id="doc.option_line" tag="h4" className="eq-public-heading" />
     <p className="whitespace-pre-wrap"><Text id="label.scope" />: <Text id="scope" tag="span" /></p>
     <Text id="sec.services" tag="h4" className="eq-public-heading" />
@@ -680,12 +768,14 @@ function CustomerPaper({ value, enabled, shown, onEdit, onRestore }: {
       </table>
     </div>
     <Text id="sec.totals" tag="h4" className="eq-public-heading" />
-    <p><Text id="label.duty" />: {money(value.customs.duty_vnd, "VND")} · <Text id="label.vat" />: {money(value.customs.vat_vnd, "VND")}</p>
+    {value.goods_mode !== "SERVICE_ONLY" && <p><Text id="label.duty" />: {money(value.customs.duty_vnd, "VND")} · <Text id="label.vat" />: {money(value.customs.vat_vnd, "VND")}</p>}
     <p className="mt-1"><Text id="label.before_tax" />: <b>{money(calc.before_tax_vnd, "VND")}</b></p>
     <p className="mt-1 text-[18px] font-extrabold"><Text id="label.estimate_total" />: <span data-testid="excel-public-total">{money(calc.estimate_vnd, "VND")}</span></p>
     {calc.unknown_reasons.map((reason) => <p key={reason} className="text-[13px] text-amber-900 mt-1">• {reason}</p>)}
-    <Text id="sec.customs" tag="h4" className="eq-public-heading" />
-    <p className="eq-muted"><Text id="label.customs_basis" />: {value.customs.calculable ? money(value.customs.basis_vnd, "VND") : "chưa xác nhận"} · <Text id="label.duty_rate" /> {value.customs.duty_pct ?? "—"}% · <Text id="label.vat_rate" /> {value.customs.vat_pct ?? "—"}%</p>
+    {value.goods_mode !== "SERVICE_ONLY" && <>
+      <Text id="sec.customs" tag="h4" className="eq-public-heading" />
+      <p className="eq-muted"><Text id="label.customs_basis" />: {value.customs.calculable ? money(value.customs.basis_vnd, "VND") : "chưa xác nhận"} · <Text id="label.duty_rate" /> {value.customs.duty_pct ?? "—"}% · <Text id="label.vat_rate" /> {value.customs.vat_pct ?? "—"}%</p>
+    </>}
     <Text id="sec.notes" tag="h4" className="eq-public-heading" />
     <div className="space-y-1" data-testid="excel-public-disclosures">
       {(value.published_notes || []).map((note) => <p key={note.id || note.text}>• <Text id={`note.${note.id}`} tag="span" /></p>)}
