@@ -1,0 +1,8 @@
+
+> logi-shell-component@0.1.0 scan
+> python3 ../scripts/scan_process.py dist
+
+INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)
+scanned logi-shell.js: 1453045 chars, 0 executable hits
+scanned logi-shell.css: 89676 chars, 0 executable hits
+FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0

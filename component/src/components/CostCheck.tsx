@@ -6,7 +6,7 @@ import { Field, PrimaryBtn, inputCls } from "./ui";
 import { shipmentPath } from "../lib/shipmentRoute";
 import QuickQuotePaste from "./QuickQuotePaste";
 import { cx, fmtMoney } from "../lib/format";
-import { findComparableCosts, type CostCriteria, type CostMatch } from "../lib/costHistory";
+import { costReferenceIssue, findComparableCosts, type CostCriteria, type CostMatch } from "../lib/costHistory";
 import type { ParsedQuote } from "../lib/quoteTextParser";
 import type { Shipment } from "../lib/viewmodel";
 import { useStore } from "../lib/store";
@@ -187,7 +187,7 @@ function CostResultCard({ match, selected, onSelect }: { match: CostMatch; selec
 
       {match.differences && match.differences.length > 0 && <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[12.5px] text-amber-900"><b>Khác / cần lưu ý:</b> {match.differences.join(" · ")}</div>}
       {match.expired && <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[12.5px] font-bold text-red-800">Dữ liệu cũ/hết hiệu lực — chỉ tham khảo, không phải giá hiện tại.</p>}
-      {match.source === "QUOTE" && <p className="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[12.5px] font-semibold text-violet-900">Đây là BÁO GIÁ / DỰ KIẾN, không phải chi phí đã phát sinh thực tế.</p>}
+      {match.source === "QUOTE" && <p className="mt-2 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[12.5px] font-semibold text-violet-900">Giá đã báo/dự kiến — không phải giá vốn; không phải chi phí đã phát sinh thực tế.</p>}
 
       <div className="mt-2.5 space-y-1.5">
         {match.lines.map((line, i) => <div key={i} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2"><div className="flex flex-wrap items-baseline gap-x-2"><span className="font-bold text-[13.5px] text-slate-800">{line.label}</span><span className="font-extrabold text-[13.5px] text-[#0f2a4a]">{line.price == null ? "—" : fmtMoney(line.price)} {line.ccy}</span>{line.unit && <span className="text-[12.5px] text-slate-500">/ {line.unit}</span>}</div>{line.note && <p className="text-[12.5px] text-slate-600 mt-0.5">{line.note}</p>}</div>)}
@@ -196,7 +196,7 @@ function CostResultCard({ match, selected, onSelect }: { match: CostMatch; selec
       {match.totalsByCurrency.length > 0 ? <div className="mt-2.5 flex flex-wrap items-center gap-2" data-testid="cost-result-totals">{match.totalsByCurrency.map((total) => <span key={total.ccy} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[13px] font-bold text-slate-700">Tổng {total.ccy}: {fmtMoney(total.amount)}</span>)}<span className="text-[12px] text-slate-400">Mỗi đồng tiền tính riêng · không cộng gộp.</span></div> : match.source === "INPUT_RATE" ? <p className="mt-2 text-[12px] text-slate-400">Không tự cộng các phí /CONT, /SET, /BL khác đơn vị thành một “tổng” giả.</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={onSelect} className={cx("btn-press touch-target inline-flex items-center rounded-xl px-3.5 min-h-[44px] text-[13.5px] font-bold", selected ? "bg-emerald-700 text-white" : "border-2 border-emerald-700 bg-white text-emerald-800")}>{selected ? "ĐÃ CHỌN LÀM THAM CHIẾU" : "DÙNG LÀM GIÁ VỐN"}</button>
+        <button type="button" onClick={onSelect} disabled={!match.lines.some((line) => !costReferenceIssue(match, line))} className={cx("btn-press touch-target inline-flex items-center rounded-xl px-3.5 min-h-[44px] text-[13.5px] font-bold disabled:opacity-50 disabled:cursor-not-allowed", selected ? "bg-emerald-700 text-white" : "border-2 border-emerald-700 bg-white text-emerald-800")}>{selected ? "ĐÃ CHỌN LÀM THAM CHIẾU" : "DÙNG LÀM GIÁ VỐN"}</button>
         {match.shipmentId && <Link to={shipmentPath(match.shipmentId) + "?tab=tai-chinh"} data-testid="cost-result-open" className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] font-bold text-[13.5px] px-3.5 min-h-[44px]">XEM LÔ GỐC <ArrowRight size={15} /></Link>}
       </div>
     </article>

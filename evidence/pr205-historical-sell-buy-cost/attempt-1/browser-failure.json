@@ -1,0 +1,17 @@
+{
+  "status": "FAILED",
+  "error": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Chưa xác định/. Input:\n\n'SYNTHETIC actual cost UNKNOWN · 0 VND / CONT'\n\n    at file:///home/user/logistics-work-desk-arena/tests/component/browser_quote_cost_provenance.mjs:83:10",
+  "checks": [
+    "Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI",
+    "QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended"
+  ],
+  "observations": {
+    "quote": {
+      "sell": 40000000,
+      "displayedForComparison": true,
+      "costPickEnabled": false,
+      "addedFees": 0
+    }
+  },
+  "url": "http://127.0.0.1:9521"
+}

@@ -1,0 +1,10 @@
+== Pre-existing DOM lanes: same failure on the PRISTINE HEAD bundle ==
+
+Run with 'git checkout HEAD -- component/dist' (pristine e7ac601 bundle), then restored:
+
+dom_acceptance_c2b                             AssertionError: clickable "LO-0308" not found
+dom_acceptance_amount_integrity                AssertionError: clickable "LO-0308" not found
+dom_acceptance_quote_cost_workflow_ux_01       AssertionError: clickable "Quay lại" not found
+dom_acceptance_finance_actual_entry            AssertionError: clickable "LO-0308" not found
+
+Identical output on the finding-repair bundle and on the pristine bundle → NOT caused by this task.

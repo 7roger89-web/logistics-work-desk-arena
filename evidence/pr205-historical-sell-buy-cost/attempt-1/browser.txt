@@ -1,0 +1,20 @@
+PASS Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI
+PASS QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Chưa xác định/. Input:
+
+'SYNTHETIC actual cost UNKNOWN · 0 VND / CONT'
+
+    at file:///home/user/logistics-work-desk-arena/tests/component/browser_quote_cost_provenance.mjs:83:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'SYNTHETIC actual cost UNKNOWN · 0 VND / CONT',
+  expected: /Chưa xác định/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v22.22.3

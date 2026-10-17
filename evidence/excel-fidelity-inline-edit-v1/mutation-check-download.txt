@@ -1,0 +1,13 @@
+== MUTATION CHECK — the download gate restored to the reported condition ==
+
+Restored:  if (protected or embedded) and not can_operate_business("commercial_write"):
+
+$ .venv/bin/python -m pytest tests/test_excel_fidelity_repair_v1.py -q
+FAILED tests/test_excel_fidelity_repair_v1.py::test_raw_download_needs_the_grant_whatever_the_parser_recognised[Gi\xe1 mua th\u1ef1c tr\u1ea3-12500000-a cost the parser has no rule for]
+FAILED tests/test_excel_fidelity_repair_v1.py::test_raw_download_needs_the_grant_whatever_the_parser_recognised[None-None-a clean customer-only file with no cost anywhere]
+2 failed, 23 passed in 3.00s
+
+-- and what a commercial_view-only role actually RECEIVED under that rule --
+parser recognised cost rows: 0 | protected sheets: ['BÁO GIÁ']
+role=viewer  download ok: True | error: -
+  BYTES RELEASED: 6551 | J20 = "Giá mua thực trả" | K20 = 12500000

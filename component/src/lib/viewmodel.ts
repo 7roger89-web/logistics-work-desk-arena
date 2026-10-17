@@ -1,3 +1,4 @@
+import type { ExcelQuoteDraft } from "./excelQuote";
 // ============================================================================
 // View-model contract — LOGI-GOOD / Logistics Work Desk (Phase B)
 //
@@ -1190,6 +1191,8 @@ export interface QuoteServiceLine {
 }
 
 export interface Quote {
+  excelQuote?: ExcelQuoteDraft | null;
+  sentVersions?: Array<{ version: number; sentAt: string }>;
   id: string;
   quoteNo: string;
   customerId: string;

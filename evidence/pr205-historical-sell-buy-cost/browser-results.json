@@ -1,0 +1,60 @@
+{
+  "status": "PASS",
+  "checks": [
+    "Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI",
+    "QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended",
+    "ACTUAL SELL 40000000 / COST UNKNOWN: unknown displayed, disabled action, no selling fallback",
+    "ACTUAL SELL 40000000 / COST 32000000: only 32000000 selected, provenance retained, new sell blank after backend preview",
+    "INPUT_RATE 31800000: selectable genuine supplier rate, immutable cost source, new sell blank after backend preview",
+    "Expired and unknown-validity supplier warnings retained, never relabelled current",
+    "Cost selection only edits a new unsaved quote; no automatic create/send or old shipment write",
+    "Mobile 390×844: comparison-only QUOTE remains disabled and no horizontal page/shell overflow",
+    "Existing CostCheck still searches/compares and seeds true ACTUAL cost into legacy quote with sell blank; QUOTE/unknown cost disabled",
+    "No browser page errors",
+    "Server-side whole historical-record fingerprints unchanged; old sell 40000000 and actual costs UNKNOWN/32000000 retained"
+  ],
+  "observations": {
+    "quote": {
+      "sell": 40000000,
+      "displayedForComparison": true,
+      "costPickEnabled": false,
+      "addedFees": 0
+    },
+    "actualUnknown": {
+      "historicalSell": 40000000,
+      "cost": null,
+      "costPickEnabled": false,
+      "addedFees": 0
+    },
+    "actualCost": {
+      "historicalSell": 40000000,
+      "selectedCost": 32000000,
+      "newSell": "",
+      "newSellConfirmed": false,
+      "currency": "VND",
+      "unit": "CONT",
+      "sourceField": "finance.actual.cost"
+    },
+    "inputRate": {
+      "selectedCost": 31800000,
+      "newSell": "",
+      "newSellConfirmed": false,
+      "lockedSupplierCost": true
+    },
+    "mobile": {
+      "viewport": 390,
+      "documentWidth": 390,
+      "shellOverflow": 0
+    }
+  },
+  "url": "http://127.0.0.1:9521",
+  "browserProvider": "PLAYWRIGHT",
+  "transport": "SANDBOX_STAGING",
+  "viewModelInjection": false,
+  "mockedBrowserRoutes": false,
+  "supplierInputThroughExistingUI": true,
+  "bundle_sha256": "3629e1cc6514a3bf27d52ca18ad89304116d990703109864c8214df6c3e9a022",
+  "originalWorkbookAcceptance": "NOT_RUN",
+  "realMongoStagingAcceptance": "NOT_RUN",
+  "ownerDeviceUAT": "PENDING"
+}

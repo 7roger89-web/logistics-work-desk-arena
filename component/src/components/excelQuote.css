@@ -1,0 +1,122 @@
+/* Local quotation workspace only. Shared shell, primitives and tokens stay owned
+   by the current app / Goal #199; no new global design system. */
+.excel-quote-workspace { min-width: 0; color: #1a2433; }
+.excel-quote-workspace *, .excel-quote-workspace *::before, .excel-quote-workspace *::after { box-sizing: border-box; }
+/* Explicit border styles survive the existing Components-v2 shadow root;
+   Tailwind's @property border defaults are not inherited there in all browsers. */
+.excel-quote-workspace input:not([type=checkbox]):not([type=file]), .excel-quote-workspace textarea, .excel-quote-workspace select { border: 1px solid #cdd8e6; min-width: 0; }
+.excel-quote-workspace input[readonly], .excel-quote-workspace select:disabled { background: #f0f4f9; color: #52637a; }
+.excel-quote-workspace textarea { resize: vertical; }
+.excel-quote-workspace .eq-card { background: #fff; border: 1px solid #dce4ee; border-radius: 16px; padding: 22px; min-width: 0; }
+.excel-quote-workspace .eq-title { color: #0f2a4a; font-weight: 800; font-size: 16px; line-height: 1.5; margin-bottom: 9px; }
+.excel-quote-workspace .eq-muted { color: #52637a; font-size: 13px; line-height: 1.6; }
+.excel-quote-workspace .eq-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); background: #fff; border: 1px solid #dce4ee; border-radius: 14px; padding: 7px; gap: 6px; }
+.excel-quote-workspace .eq-step { display: flex; align-items: center; gap: 10px; padding: 13px 15px; min-height: 58px; border-radius: 10px; text-align: left; color: #52637a; font-size: 14px; font-weight: 700; }
+.excel-quote-workspace .eq-step:disabled { cursor: not-allowed; opacity: .65; }
+.excel-quote-workspace .eq-step-active { background: #0f2a4a; color: white; }
+.excel-quote-workspace .eq-step-number { display: grid; place-items: center; flex-shrink: 0; height: 29px; width: 29px; border: 1px solid #aabbd0; border-radius: 50%; font-size: 13px; }
+.excel-quote-workspace .eq-step-active .eq-step-number { background: #fff; color: #0f2a4a; border-color: white; }
+.excel-quote-workspace .eq-alert { padding: 12px 15px; border-width: 1px; border-style: solid; border-radius: 10px; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.excel-quote-workspace .eq-goods-table { width: 100%; table-layout: fixed; font-size: 13px; border-collapse: collapse; }
+.excel-quote-workspace .eq-goods-table th { text-align: left; padding: 10px 7px; background: #f0f4f9; color: #52637a; font-size: 12px; font-weight: 700; }
+.excel-quote-workspace .eq-goods-table th:nth-child(1) { width: 21%; }
+.excel-quote-workspace .eq-goods-table th:nth-child(2) { width: 25%; }
+.excel-quote-workspace .eq-goods-table th:nth-child(3) { width: 9%; }
+.excel-quote-workspace .eq-goods-table th:nth-child(4) { width: 14%; }
+.excel-quote-workspace .eq-goods-table th:nth-child(5) { width: 13%; }
+.excel-quote-workspace .eq-goods-table th:nth-child(6) { width: 18%; }
+.excel-quote-workspace .eq-goods-table td { vertical-align: top; padding: 12px 7px; border-bottom: 1px solid #e4eaf2; overflow-wrap: anywhere; }
+.excel-quote-workspace .eq-goods-table input, .excel-quote-workspace .eq-goods-table textarea { min-height: 42px; padding: 8px; border-width: 1px; font-size: 13px; border-radius: 7px; }
+.excel-quote-workspace .eq-goods-table td:first-child input { margin-top: 5px; }
+.excel-quote-workspace .eq-dimensions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+.excel-quote-workspace .eq-totals { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; border: 1px solid #c8d9ed; background: #eef4fb; border-radius: 10px; padding: 14px 16px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.excel-quote-workspace .eq-warning { border: 1px solid #e8d9ae; border-radius: 10px; background: #fffcf3; padding: 12px 14px; }
+.excel-quote-workspace .eq-warning summary { cursor: pointer; color: #754b08; font-size: 13px; font-weight: 600; min-height: 44px; line-height: 1.6; }
+.excel-quote-workspace .eq-option-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.excel-quote-workspace .eq-option { border: 2px solid #dce4ee; border-radius: 12px; padding: 15px; text-align: left; min-height: 105px; color: #52637a; }
+.excel-quote-workspace .eq-option b, .excel-quote-workspace .eq-option span, .excel-quote-workspace .eq-option small { display: block; }
+.excel-quote-workspace .eq-option b { font-size: 15px; }
+.excel-quote-workspace .eq-option span { font-size: 14px; margin-top: 3px; }
+.excel-quote-workspace .eq-option small { font-size: 12px; margin-top: 7px; }
+.excel-quote-workspace .eq-option-active { background: #eef4fb; border-color: #1e5aa8; color: #0f2a4a; }
+.excel-quote-workspace .eq-checkbox { display: flex; align-items: flex-start; gap: 10px; padding: 11px; min-height: 46px; font-size: 14px; line-height: 1.6; border-radius: 9px; border: 1px solid #dce4ee; background: #f8fafc; }
+.excel-quote-workspace input[type=checkbox] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; accent-color: #1e5aa8; }
+.excel-quote-workspace .eq-cost-picker { padding: 16px; border-radius: 12px; border: 1px solid #c8d9ed; background: #f4f8fc; min-width: 0; }
+.excel-quote-workspace .eq-cost-result { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e4eaf2; padding-top: 9px; font-size: 13px; }
+.excel-quote-workspace .eq-cost-result > div { min-width: 0; }
+.excel-quote-workspace .eq-cost-result button { flex-shrink: 0; font-size: 13px; }
+.excel-quote-workspace .eq-service { padding: 16px; border: 1px solid #dce4ee; border-left: 3px solid #1e5aa8; border-radius: 12px; min-width: 0; background: #fff; }
+.excel-quote-workspace .eq-empty { margin-top: 12px; padding: 20px; background: #f8fafc; border: 1px dashed #aabbd0; border-radius: 10px; color: #52637a; font-size: 14px; }
+.excel-quote-workspace .eq-customer-paper { margin: 0 auto; max-width: 1000px; border: 1px solid #cdd8e6; border-top: 4px solid #0f2a4a; background: white; padding: 36px 40px; border-radius: 5px; font-size: 14px; line-height: 1.75; box-shadow: 0 6px 22px #0f2a4a08; }
+.excel-quote-workspace .eq-public-heading { margin-top: 25px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #dce4ee; color: #0f2a4a; font-size: 15px; font-weight: 800; }
+.excel-quote-workspace .eq-public-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1px solid #e9eef5; padding: 10px 0; }
+.excel-quote-workspace .eq-public-row > strong { text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.excel-quote-workspace .eq-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #fffffff5; border: 1px solid #dce4ee; border-radius: 12px; padding: 12px; box-shadow: 0 -3px 15px #0f2a4a08; }
+@media(max-width: 767px) {
+  .excel-quote-workspace .eq-card { padding: 16px; }
+  .excel-quote-workspace .eq-step { flex-direction: column; align-items: flex-start; padding: 10px 7px; gap: 8px; font-size: 12px; min-height: 95px; }
+  .excel-quote-workspace .eq-goods-table, .excel-quote-workspace .eq-goods-table tbody { display: block; }
+  .excel-quote-workspace .eq-goods-table thead { display: none; }
+  .excel-quote-workspace .eq-goods-table tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 10px; border: 1px solid #dce4ee; border-radius: 12px; margin-top: 12px; gap: 8px; }
+  .excel-quote-workspace .eq-goods-table td { display: block; border: 0; padding: 2px; }
+  .excel-quote-workspace .eq-goods-table td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 700; color: #52637a; margin-bottom: 5px; }
+  .excel-quote-workspace .eq-goods-table td:nth-child(1), .excel-quote-workspace .eq-goods-table td:nth-child(2), .excel-quote-workspace .eq-goods-table td:nth-child(6) { grid-column: 1/-1; }
+  .excel-quote-workspace .eq-goods-table input, .excel-quote-workspace .eq-goods-table textarea { min-height: 44px; font-size: 14px; }
+  .excel-quote-workspace .eq-option-tabs { grid-template-columns: 1fr; }
+  .excel-quote-workspace .eq-cost-result { flex-direction: column; align-items: stretch; }
+  .excel-quote-workspace .eq-cost-picker { padding: 12px; }
+  .excel-quote-workspace .eq-customer-paper { padding: 22px 16px; width: 100%; }
+  .excel-quote-workspace .eq-public-row { flex-direction: column; gap: 4px; }
+  .excel-quote-workspace .eq-public-row > strong { text-align: left; }
+  .excel-quote-workspace .eq-footer { position: static; }
+  .excel-quote-workspace .eq-footer > button { width: 100%; }
+}
+
+/* ---------------------------------------------------------------------------
+   LOGI_EXCEL_FIDELITY_INLINE_EDIT_V1
+   * .eq-inline*    — SỬA NỘI DUNG TRỰC TIẾP: click a piece of text, type in place.
+   * .eq-paper-table — the customer document's own tables (labels editable,
+                     amounts read-only).
+   * .eq-wb*        — READ-ONLY view of the ORIGINAL uploaded workbook.
+   --------------------------------------------------------------------------- */
+.excel-quote-workspace .eq-text-status { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: #52637a; }
+.excel-quote-workspace .eq-paper-title { font-size: 24px; font-weight: 800; color: #0f2a4a; }
+.excel-quote-workspace .eq-inline { border-radius: 4px; cursor: text; }
+.excel-quote-workspace .eq-inline:hover, .excel-quote-workspace .eq-inline:focus-visible { background: #eef4fb; box-shadow: 0 0 0 2px #bdd4ef inset; outline: none; }
+.excel-quote-workspace .eq-inline-off { cursor: text; }
+.excel-quote-workspace .eq-inline-off:hover { background: transparent; box-shadow: none; }
+.excel-quote-workspace .eq-inline-mark { margin-left: 5px; color: #8aa2c0; vertical-align: -2px; }
+.excel-quote-workspace .eq-inline-changed { background: #fffaf0; box-shadow: 0 0 0 1px #ecd9ae inset; }
+.excel-quote-workspace .eq-inline-warn { background: #fff4f4; box-shadow: 0 0 0 1px #e7b4b4 inset; }
+.excel-quote-workspace .eq-inline-restore { margin-left: 6px; color: #1e5aa8; vertical-align: -2px; }
+.excel-quote-workspace .eq-inline-restore:hover { color: #0f2a4a; }
+.excel-quote-workspace .eq-inline-value:empty::before { content: "—"; color: #9fb0c6; }
+.excel-quote-workspace .eq-inline-input { width: 100%; max-width: 100%; padding: 4px 6px; border: 1px solid #1e5aa8; border-radius: 6px; font: inherit; color: inherit; background: #fff; }
+.excel-quote-workspace textarea.eq-inline-input { min-height: 62px; }
+.excel-quote-workspace .eq-paper-table-wrap { overflow-x: auto; margin-top: 6px; }
+.excel-quote-workspace .eq-paper-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px; }
+.excel-quote-workspace .eq-paper-table th { background: #f0f4f9; border: 1px solid #dce4ee; padding: 7px 9px; text-align: left; font-size: 12px; font-weight: 700; color: #3d4f66; vertical-align: top; }
+.excel-quote-workspace .eq-paper-table td { border: 1px solid #e4eaf2; padding: 8px 9px; vertical-align: top; }
+.excel-quote-workspace .eq-paper-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.excel-quote-workspace .eq-wb { margin-top: 12px; padding: 16px; border: 1px solid #c8d9ed; border-radius: 12px; background: #f7fafd; min-width: 0; }
+.excel-quote-workspace .eq-wb-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.excel-quote-workspace .eq-wb-tab { display: flex; align-items: center; gap: 7px; max-width: 320px; padding: 9px 11px; border: 1px solid #cdd8e6; border-radius: 9px; background: #fff; font-size: 13px; color: #3d4f66; }
+.excel-quote-workspace .eq-wb-tab-active { border-color: #1e5aa8; box-shadow: 0 0 0 2px #d7e6f8 inset; color: #0f2a4a; font-weight: 700; }
+.excel-quote-workspace .eq-wb-tab-index { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: #e4ebf7; font-size: 11px; }
+.excel-quote-workspace .eq-wb-tab-class { flex-shrink: 0; font-size: 11px; padding: 2px 6px; border-radius: 999px; background: #eef2f7; color: #52637a; }
+.excel-quote-workspace .eq-wb-class-customer { background: #e6f5ec; color: #1f6b40; }
+.excel-quote-workspace .eq-wb-class-internal { background: #fdf1e2; color: #8a5209; }
+.excel-quote-workspace .eq-wb-scroll { margin-top: 12px; max-height: 560px; overflow: auto; border: 1px solid #cdd8e6; border-radius: 8px; background: #fff; }
+.excel-quote-workspace .eq-wb-table { border-collapse: collapse; font-size: 12px; }
+.excel-quote-workspace .eq-wb-table td { border: 1px solid #e8edf4; padding: 3px 6px; color: #1a2433; }
+.excel-quote-workspace .eq-wb-table td.eq-wb-unknown { background: #fff7e6; color: #8a5209; }
+.excel-quote-workspace .eq-wb-rownum { position: sticky; left: 0; z-index: 1; background: #f0f4f9; color: #7b8ca3; font-size: 11px; font-weight: 600; text-align: center; border: 1px solid #e8edf4; }
+.excel-quote-workspace .eq-wb-badge { margin-left: 5px; font-size: 9px; font-weight: 700; color: #7b8ca3; }
+.excel-quote-workspace .eq-wb-hidden { display: none; }
+.excel-quote-workspace .eq-wb-fidelity { margin-top: 12px; border-top: 1px solid #dce4ee; padding-top: 10px; }
+.excel-quote-workspace .eq-wb-fidelity > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #3d4f66; }
+@media(max-width: 767px) {
+  .excel-quote-workspace .eq-paper-title { font-size: 19px; }
+  .excel-quote-workspace .eq-wb { padding: 12px; }
+  .excel-quote-workspace .eq-wb-tab { max-width: 100%; width: 100%; }
+}

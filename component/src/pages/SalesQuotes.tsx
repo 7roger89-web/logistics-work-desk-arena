@@ -24,8 +24,9 @@ import {
 import QuickQuotePaste from "../components/QuickQuotePaste";
 import CostCheck from "../components/CostCheck";
 import CostIntelligencePanel from "../components/CostIntelligence";
+import ExcelQuoteWorkspace from "../components/ExcelQuoteWorkspace";
 import type { ParsedQuote } from "../lib/quoteTextParser";
-import type { CostMatch } from "../lib/costHistory";
+import { costReferenceIssue, type CostMatch } from "../lib/costHistory";
 import { useStore } from "../lib/store";
 import { cx, downloadBinaryFile, fmtMoney, fmtText } from "../lib/format";
 import { getViewModel, subscribeViewModel } from "../lib/viewmodel";
@@ -172,6 +173,8 @@ export default function SalesQuotes() {
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [creating, setCreating] = useState(false);
+  const [excelOpen, setExcelOpen] = useState(false);
+  const [excelEditing, setExcelEditing] = useState<Quote | null>(null);
   const [editing, setEditing] = useState<Quote | null>(null);
   const [form, setForm] = useState<QuoteForm>(EMPTY_FORM);
   /**
@@ -226,27 +229,22 @@ export default function SalesQuotes() {
     setCreating(true);
   };
   const useCostReference = (match: CostMatch) => {
-    const usable = match.lines.filter((line) => line.price != null);
-    const lines: LineForm[] = usable.length
-      ? usable.map((line) => ({
+    const usable = match.lines.filter((line) => !costReferenceIssue(match, line));
+    if (!usable.length) {
+      toast("Chỉ xem tham chiếu", "Nguồn này không có giá vốn đủ căn cứ; không nạp giá bán lịch sử làm giá vốn.", "blue");
+      return;
+    }
+    const lines: LineForm[] = usable.map((line) => ({
           code: "",
           serviceName: line.label,
-          unit: line.unit || "Lần",
+          unit: line.unit,
           qty: line.qty == null ? "1" : String(line.qty),
-          currency: line.ccy || "VND",
-          // Negative input-rate credits/refunds are evidence, not a normal quote
-          // cost field. Keep them visible in the note and ask the operator to
-          // decide how to apply them instead of writing an invalid negative cost.
-          costUnit: line.price != null && line.price >= 0 ? String(line.price) : "",
+          currency: line.ccy,
+          costUnit: String(line.price),
           sellUnit: "",
           taxPct: "",
-          note:
-            (line.price != null && line.price < 0
-              ? "Credit/refund tham chiếu " + String(line.price) + " " + line.ccy + ". "
-              : "") +
-            "Nguồn giá vốn: " + match.sourceLabel + " · " + match.referenceId,
-        }))
-      : [{ ...EMPTY_LINE }];
+          note: "Nguồn giá vốn: " + match.sourceLabel + " · " + line.priceProvenance,
+        }));
 
     setCustomerNotes([]);
     setForm({
@@ -271,6 +269,7 @@ export default function SalesQuotes() {
   };
 
   const openEdit = (x: Quote) => {
+    if (x.excelQuote) { setExcelEditing(x); setExcelOpen(true); return; }
     // Restore what the customer was shown: reopening a saved quote must not
     // silently drop its general notes.
     setCustomerNotes([...(x.customerNotes ?? [])]);
@@ -501,8 +500,14 @@ export default function SalesQuotes() {
     toast("Đã gửi chuyển trạng thái " + x.id, `→ ${STATUS_LABEL[next] ?? next}. Backend kiểm tra đúng luồng.`, "blue");
   };
 
+  if (excelOpen) return <ExcelQuoteWorkspace initialQuote={excelEditing} onClose={() => { setExcelOpen(false); setExcelEditing(null); }} />;
+
   return (
     <div className="space-y-4 max-w-[1300px]">
+      {workspace === "bao-gia" && <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div><h2 className="font-extrabold text-[17px] text-[#0f2a4a]">Báo giá từ Excel khách gửi</h2><p className="text-[13px] text-slate-600 mt-1">1. Xem lại hàng hóa → 2. Tính giá nội bộ → 3. Chọn nội dung gửi khách</p></div>
+        <PrimaryBtn testId="quote-excel-open" onClick={() => { setExcelEditing(null); setExcelOpen(true); }}>Nhập Excel khách gửi</PrimaryBtn>
+      </section>}
       <div className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
         <SectionTitle
           icon={<Calculator size={18} />}

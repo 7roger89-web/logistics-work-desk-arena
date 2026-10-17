@@ -142,8 +142,9 @@ function costFixtureVm() {
     ...actual.finance,
     quote: [{ label: "Trọn gói (báo giá)", amount: 30000000, qty: 1, vat: 8, ccy: "VND", kind: "quote" }],
     actual: [
-      { label: "Cước vận chuyển", amount: 21500000, cost: 19000000, qty: 1, vat: 8, ccy: "VND", kind: "actual" },
-      { label: "Phí handling đầu TQ", amount: 1200, cost: 1100, qty: 1, vat: 0, ccy: "CNY", kind: "actual" },
+      // PR #205: a selectable actual cost must state its unit, never guess it.
+      { id: "actual-vnd", label: "Cước vận chuyển", unit: "Lần", amount: 21500000, cost: 19000000, qty: 1, vat: 8, ccy: "VND", kind: "actual" },
+      { id: "actual-cny", label: "Phí handling đầu TQ", unit: "Lần", amount: 1200, cost: 1100, qty: 1, vat: 0, ccy: "CNY", kind: "actual" },
     ],
   };
 
@@ -637,6 +638,13 @@ console.log("STEP 8c — Cost Intelligence: DÙNG LÀM GIÁ VỐN opens a draft,
     "using a reference must not auto-save the quotation"
   );
   ok("chosen ACTUAL reference seeds Giá vốn, leaves Giá bán blank, writes nothing");
+}
+
+// Bounded pricing regression only; default/full run and Journey checks unchanged.
+if (process.env.LOGI_COSTCHECK_ONLY === "1") {
+  cleanup?.();
+  console.log(`PASS — focused quote/CostCheck DOM steps 1–8c (${passed} checks); Journey steps not run`);
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------

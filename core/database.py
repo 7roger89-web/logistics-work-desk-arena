@@ -19,6 +19,7 @@ import threading
 from contextlib import contextmanager
 from functools import lru_cache
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Iterable, Iterator, Mapping
 from uuid import uuid4
 
@@ -365,7 +366,15 @@ def find_best_match_code(input_name: Any) -> str:
     return "DVK"
 
 
-def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
+def repair_data(db_data: dict[str, dict[str, Any]] | None, *, preserve_unknown_cost: bool = False) -> dict[str, dict[str, Any]]:
+    # Component reference reads must distinguish absent cost from explicit 0.
+    # Writers/other callers retain the existing default; arithmetic is unchanged.
+    def normalized_cost(value: Any) -> float | None:
+        if not preserve_unknown_cost:
+            return smart_money_parse(value)
+        amount = to_decimal(value, default=Decimal("NaN"))
+        return float(amount) if amount.is_finite() else None
+
     if not db_data:
         return {}
     repaired = copy.deepcopy(db_data)
@@ -392,6 +401,10 @@ def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str
         data["0.0"].setdefault("incoterm", "EXW")
 
         finance = data["3.4"]
+        if preserve_unknown_cost:
+            # Read-only provenance, captured BEFORE the financial snapshot's
+            # default VND can be mistaken for an explicitly stated cost currency.
+            finance["_cost_reference_currency"] = str(item.get("currency") or finance.get("currency") or "").strip()
         finance.setdefault("details", [])
         finance.setdefault("payments", [])
         commission = finance.setdefault("commission", {})
@@ -411,7 +424,9 @@ def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str
                 if not raw_name or not str(raw_name).strip():
                     continue
                 price = smart_money_parse(finance.get(f"Thu_{index}") or item.get(f"Thu_{index}"))
-                cost = smart_money_parse(finance.get(f"Chi_{index}") or item.get(f"Chi_{index}"))
+                raw_cost = (finance.get(f"Chi_{index}", item.get(f"Chi_{index}")) if preserve_unknown_cost
+                            else finance.get(f"Chi_{index}") or item.get(f"Chi_{index}"))
+                cost = normalized_cost(raw_cost)
                 details.append({
                     "id": str(uuid4()),
                     "name_full": str(raw_name).strip(),
@@ -428,7 +443,7 @@ def repair_data(db_data: dict[str, dict[str, Any]] | None) -> dict[str, dict[str
             line.setdefault("id", str(uuid4()))
             line["qty"] = smart_money_parse(line.get("qty", 1)) or 1.0
             line["price"] = smart_money_parse(line.get("price", line.get("price_out", 0)))
-            line["cost"] = smart_money_parse(line.get("cost", line.get("price_in", 0)))
+            line["cost"] = normalized_cost(line.get("cost", line.get("price_in")))
             line["vat_line"] = smart_money_parse(line.get("vat_line", line.get("vat", 0)))
             line["price_out"] = line["price"]
             line["price_in"] = line["cost"]
@@ -454,7 +469,7 @@ def load_data(limit: int = 2000, include_archived: bool = False, include_deleted
     return _load_data_impl(limit, include_archived, include_deleted)
 
 
-def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False, *, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
+def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_deleted: bool = False, *, db: Any = _UNSET_DB, preserve_unknown_cost: bool = False) -> dict[str, dict[str, Any]]:
     db = get_db() if db is _UNSET_DB else db
     if db is None:
         return {}
@@ -465,7 +480,7 @@ def _load_data_impl(limit: int = 2000, include_archived: bool = False, include_d
         query["is_archived"] = {"$ne": True}
     try:
         cursor = db.shipments.find(query, {"_id": 0}).sort([("updated_at", -1), ("created_at", -1)]).limit(int(limit))
-        return repair_data({doc["id"]: doc for doc in cursor if doc.get("id")})
+        return repair_data({doc["id"]: doc for doc in cursor if doc.get("id")}, preserve_unknown_cost=preserve_unknown_cost)
     except PyMongoError as exc:
         LOGGER.exception("load_data failed")
         _set_last_error(str(exc))
@@ -1094,6 +1109,7 @@ def _save_document(
     *,
     db=None,
     session=None,
+    expected_version: int | None = None,
 ) -> bool:
     db = db if db is not None else get_db()
     if db is None or not document.get(key):
@@ -1116,7 +1132,13 @@ def _save_document(
         update = {"$set": payload}
         if set_on_insert:
             update["$setOnInsert"] = set_on_insert
-        db[collection].update_one({key: payload[key]}, update, upsert=True, session=session)
+        query = {key: payload[key]}
+        if expected_version is not None:
+            query["version"] = expected_version
+        outcome = db[collection].update_one(query, update, upsert=expected_version is None, session=session)
+        if expected_version is not None and outcome.matched_count != 1:
+            _set_last_error("Báo giá đã thay đổi ở phiên khác; tải lại trước khi lưu.")
+            return False
         return True
     except PyMongoError as exc:
         _set_last_error(str(exc))
@@ -1422,7 +1444,7 @@ def load_quotes(*, db: Any = _UNSET_DB) -> dict[str, dict[str, Any]]:
     return _load_dict("quotes", query={"is_deleted": {"$ne": True}}, db=db)
 
 
-def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
+def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]], *, expected_versions: Mapping[str, int] | None = None) -> bool:
     if not _require_business_permission("sales_write", "Bạn không có quyền lưu báo giá."):
         return False
     db = get_db()
@@ -1433,7 +1455,7 @@ def save_quotes_to_cloud(quotes_dict: Mapping[str, dict[str, Any]]) -> bool:
         if not quote_id:
             return False
         old = db["quotes"].find_one({"id": quote_id}, {"_id": 0})
-        if not _save_document("quotes", document):
+        if not _save_document("quotes", document, expected_version=(expected_versions or {}).get(quote_id)):
             return False
         _audit(db, "quote", quote_id, "create" if old is None else "update", before=old, after=document)
     return True

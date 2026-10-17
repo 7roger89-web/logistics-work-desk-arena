@@ -1,0 +1,44 @@
+{
+  "syntheticFixture": true,
+  "sourceDownloadAsSupport": true,
+  "sourceDownloadAsViewer": {
+    "ok": false,
+    "error": "RBAC: tệp nguồn gốc là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào; cần quyền thao tác báo giá (commercial_write) để tải. Bản báo giá khách vẫn xem được ở Bước 3."
+  },
+  "sourceDownloadWhenCostsSitOnTheCustomerSheet": {
+    "sheetsInFile": [
+      "BÁO GIÁ"
+    ],
+    "costRowsOnCustomerSheet": 1,
+    "ok": false,
+    "error": "RBAC: tệp nguồn gốc là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào; cần quyền thao tác báo giá (commercial_write) để tải. Bản báo giá khách vẫn xem được ở Bước 3."
+  },
+  "sourceWorkbookViewAsViewer": {
+    "ok": true,
+    "sheet": "BÁO GIÁ",
+    "locked": true,
+    "cellsReturned": 0,
+    "mergesReturned": 0,
+    "metadataStillShown": {
+      "sheetIndex": 1,
+      "rowCount": 24
+    },
+    "leakedJ20": false,
+    "leakedK20": false,
+    "reason": "Ô nguồn của workbook gốc chỉ mở với quyền thao tác báo giá (commercial_write): sheet khách cũng có thể chứa chi phí nội bộ ngay trong chính các ô của nó. Bản báo giá khách vẫn xem được ở Bước 3."
+  },
+  "sourceDownloadWhenTheParserRecognisedNothing": {
+    "costLabelNoRuleKnows": {
+      "costRowsTheParserRecognised": 0,
+      "viewerRefused": true,
+      "viewerError": "RBAC: tệp nguồn gốc là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào; cần quyền thao tác báo giá (commercial_write) để tải. Bản báo giá khách vẫn xem được ở Bước 3.",
+      "supportedRoleGotTheExactBytes": true
+    },
+    "customerOnlyFileNoCostAtAll": {
+      "costRowsTheParserRecognised": 0,
+      "viewerRefused": true,
+      "viewerError": "RBAC: tệp nguồn gốc là workbook thô của nhà cung cấp và có thể chứa giá vốn ở bất kỳ ô nào; cần quyền thao tác báo giá (commercial_write) để tải. Bản báo giá khách vẫn xem được ở Bước 3.",
+      "supportedRoleGotTheExactBytes": true
+    }
+  }
+}

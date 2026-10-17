@@ -1,0 +1,57 @@
+{
+  "test_only": true,
+  "transport": "SANDBOX_STAGING",
+  "database": "logistics_staging",
+  "fixture_ids": [
+    "PR205-QUOTE-SELL40",
+    "PR205-ACTUAL-UNKNOWN",
+    "PR205-ACTUAL-COST32"
+  ],
+  "quote_id": "Q-PR205-SELL40",
+  "before_sha256": "9a812e90c5ed72d9c7b3be263ea3db93503fbb187ed56c06f26ca541ecb33b82",
+  "after_sha256": "9a812e90c5ed72d9c7b3be263ea3db93503fbb187ed56c06f26ca541ecb33b82",
+  "unchanged": true,
+  "actuals": [
+    {
+      "shipment_id": "PR205-QUOTE-SELL40",
+      "lines": []
+    },
+    {
+      "shipment_id": "PR205-ACTUAL-UNKNOWN",
+      "lines": [
+        {
+          "id": "PR205-ACTUAL-UNKNOWN-LINE",
+          "name_full": "SYNTHETIC actual cost UNKNOWN",
+          "display_name": "SYNTHETIC actual cost UNKNOWN",
+          "code": "",
+          "unit": "CONT",
+          "qty": 1,
+          "price": 40000000,
+          "cost": null,
+          "vat_line": 0,
+          "note": "PR205 test-only historical SELL 40m; not a current supplier quotation"
+        }
+      ]
+    },
+    {
+      "shipment_id": "PR205-ACTUAL-COST32",
+      "lines": [
+        {
+          "id": "PR205-ACTUAL-COST32-LINE",
+          "name_full": "SYNTHETIC actual cost 32m",
+          "display_name": "SYNTHETIC actual cost 32m",
+          "code": "",
+          "unit": "CONT",
+          "qty": 1,
+          "price": 40000000,
+          "cost": 32000000,
+          "vat_line": 0,
+          "note": "PR205 test-only historical SELL 40m; not a current supplier quotation"
+        }
+      ]
+    }
+  ],
+  "quote_sell": 40000000,
+  "real_mongodb_staging_acceptance": "NOT_RUN",
+  "original_workbook_acceptance": "NOT_RUN"
+}

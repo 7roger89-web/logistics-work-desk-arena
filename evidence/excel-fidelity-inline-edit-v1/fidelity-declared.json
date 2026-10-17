@@ -1,0 +1,60 @@
+{
+  "syntheticFixture": true,
+  "sheetNamesInFileOrder": [
+    "BÁO GIÁ",
+    "LG nhập - Đại lý TT L Xuất",
+    "Dự kiến Chi phí"
+  ],
+  "sheets": [
+    {
+      "name": "BÁO GIÁ",
+      "classification": "CUSTOMER",
+      "rows": 22,
+      "cols": 8,
+      "merges": 3,
+      "not_rendered": {}
+    },
+    {
+      "name": "LG nhập - Đại lý TT L Xuất",
+      "classification": "INTERNAL",
+      "rows": 12,
+      "cols": 8,
+      "merges": 0,
+      "not_rendered": {}
+    },
+    {
+      "name": "Dự kiến Chi phí",
+      "classification": "INTERNAL",
+      "rows": 17,
+      "cols": 3,
+      "merges": 0,
+      "not_rendered": {}
+    }
+  ],
+  "fidelity": {
+    "supported": [
+      "Giá trị ô theo đúng vị trí dòng/cột (chữ, số, ngày)",
+      "Công thức nguồn hiển thị dạng văn bản, không thực thi",
+      "Giá trị cache của công thức khi tệp có lưu",
+      "Ô gộp",
+      "Độ rộng cột, chiều cao hàng",
+      "Font, cỡ chữ, in đậm/nghiêng, màu chữ",
+      "Màu nền, đường viền, căn lề, xuống dòng",
+      "Định dạng số/thời gian thông dụng; mã định dạng lạ được hiển thị nguyên mã",
+      "Cờ ẩn của hàng/cột/sheet"
+    ],
+    "not_rendered": [
+      "Hình ảnh / logo trong sheet",
+      "Biểu đồ (chart)",
+      "Định dạng có điều kiện",
+      "Danh sách chọn (data validation)",
+      "Ghi chú / comment ô",
+      "Rich text trong một ô (nhiều định dạng trong cùng ô)",
+      "Pivot table, sparkline",
+      "Named range / liên kết ngoài (chỉ liệt kê tên, không render)",
+      "Bản in, tiêu đề lặp, ngắt trang"
+    ],
+    "claim": "Bản xem workbook gốc V1 KHÔNG tuyên bố giữ nguyên 100% định dạng."
+  },
+  "note": "Declared by the viewer itself. Images/charts/conditional formatting/data validation/comments/rich text/pivots/sparklines/named ranges/print settings are NOT rendered — no 100% claim."
+}

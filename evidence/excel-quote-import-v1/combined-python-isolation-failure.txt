@@ -1,0 +1,22 @@
+........................................................................ [ 44%]
+........................................................................ [ 88%]
+...............F..                                                       [100%]
+=================================== FAILURES ===================================
+____________ TestRoleMatrix.test_unknown_role_falls_back_to_viewer _____________
+
+self = <test_logc15_auth_rbac.TestRoleMatrix testMethod=test_unknown_role_falls_back_to_viewer>
+
+    def test_unknown_role_falls_back_to_viewer(self) -> None:
+        has_permission_cache_state = {}  # no cache exists; call directly
+>       self.assertFalse(has_permission("receivables"))  # unauthenticated -> viewer
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: True is not false
+
+tests/test_logc15_auth_rbac.py:257: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2026-10-16 05:36:17.617 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+------------------------------ Captured log call -------------------------------
+WARNING  streamlit.runtime.scriptrunner_utils.script_run_context:script_run_context.py:508 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+=========================== short test summary info ============================
+FAILED tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_viewer
+1 failed, 161 passed in 6.77s

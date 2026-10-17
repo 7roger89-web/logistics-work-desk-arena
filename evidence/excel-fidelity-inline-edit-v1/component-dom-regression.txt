@@ -1,0 +1,14 @@
+== Existing jsdom component lanes — finding-repair bundle vs the pristine HEAD bundle ==
+
+-- This branch --
+unit_quote_parser_calculator                   PASS — 20 checks
+unit_cost_intelligence                         PASS — Cost Intelligence deterministic matcher
+unit_quote_cost_provenance                     PASS ACTUAL sell 40000000 / cost UNKNOWN → no cost; never fallback to selling
+dom_acceptance_quote_line_note_clarity         PASS — 7 checks
+dom_acceptance_cost_market_benchmark           DOM_ACCEPTANCE_COST_MARKET_BENCHMARK=3 checks passed
+dom_acceptance_c2b                             AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_amount_integrity                AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_quote_cost_workflow_ux_01       AssertionError [ERR_ASSERTION]: clickable "Quay lại" not found
+dom_acceptance_finance_actual_entry            AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+dom_acceptance_company_identity                DOM ACCEPTANCE PASS — 6 checks
+dom_acceptance_excel_inline_text_edit          DOM ACCEPTANCE PASS — 33 checks (SYNTHETIC fixture; no viewport claim made)

@@ -1,0 +1,46 @@
+PASS — Cost Intelligence deterministic matcher
+PARSER — Owner quick-quote fixture
+  ✓ INCOTERM=FOB · ORIGIN=NINGBO · DESTINATION=Hải Phòng
+  ✓ 9 service lines extracted (the unpriced sentence is NOT one of them)
+  ✓ 1. Cước biển = 950 USD / cont 20' + both conditional notes
+  ✓ 2. Phụ phí hãng tàu = 9,500,000 VND / cont 20' (9.5 triệu)
+  ✓ 3. Nâng cont, hạ vỏ = 2,600,000 VND / cont 20'
+  ✓ 4. Hạ tầng = 250,000 VND (250k)
+  ✓ 5. Thủ tục hải quan = 2,000,000 VND / cont
+  ✓ 6. Vận tải Sơn Tây = 6,000,000 VND + Lạch Huyện +500.000 + fuel clause
+  ✓ 7. Kiểm hóa mở cont = 4,000,000 VND · IF_APPLICABLE · 'Có thể phát sinh (nếu có)'
+  ✓ 8. Kiểm hóa soi chiếu = 2,000,000 VND · IF_APPLICABLE
+  ✓ 9. Công bố hợp quy ≈10,000,000 VND · ESTIMATE_REQUIRES_CONFIRMATION with original wording preserved
+  ✓ general unpriced sentence → quote assumption, NOT a 0-price service line
+  ✓ no VAT / cost / FX / customer / validity invented anywhere
+PARSER — Check chi phí paste
+  ✓ EXW Guangdong → Hà Nội · 5 CBM · 800 kg prefilled from one paste
+PARSER — shorthand amounts
+  ✓ 10 triệu / 10tr / 9.5 triệu / 250k / 1.200.000 / 950 shorthand
+  ✓ RMB/CNY and $ explicit currencies, /cbm and /bill units
+CALCULATOR — required proofs
+  ✓ 370*8=2960 · 9.5tr*2=19.000.000 · 250k*4=1.000.000 · SUM(370,80)=450 · ROUND · parentheses
+  ✓ division by zero refused with a readable message
+  ✓ eval/Function/require/import/fetch/cell refs/file refs/arbitrary identifiers all REFUSED
+  ✓ malformed input never throws; blank stays blank (UNKNOWN != ZERO)
+
+PASS — 20 checks
+STEP 1 — one line: one card, one visible identity, one note inside it
+  ✓ line 1 card carries identity + its own 'Ghi chú dòng này' beside code/name/qty/cost/sell/tax/currency
+STEP 2 — 'Thêm dòng' creates a separate line with its own blank note
+  ✓ 2 cards / 2 independent note inputs; the new note starts blank
+STEP 3 — LINE 1 NOTE=A + LINE 2 NOTE=B travels on the right line
+    quote_create.serviceLines = [{"code":"","costUnit":26000000,"sellUnit":28500000,"note":"Giá đã gồm bốc xếp"},{"code":"","costUnit":2500000,"sellUnit":3000000,"note":"Chưa gồm kiểm hóa"}]
+  ✓ quote_create payload keeps [0].note="Giá đã gồm bốc xếp" / [1].note="Chưa gồm kiểm hóa"
+STEP 4 — fresh readback restores each note to its own line
+  ✓ fresh readback: line 1 = A, line 2 = B, each inside its own card
+STEP 5 — edit line 2 only: line 1 keeps A in DOM + payload + readback
+    quote_edit.serviceLines   = [{"code":"DV-VC-TQ","note":"Giá đã gồm bốc xếp"},{"code":"DV-TQ","note":"Chưa gồm kiểm hóa — khách tự làm"}]
+  ✓ line 1 STILL="Giá đã gồm bốc xếp", line 2="Chưa gồm kiểm hóa — khách tự làm" in DOM, payload and readback
+STEP 6 — removing line 1 removes only that line and its own note
+    after delete line 1       = [{"code":"DV-TQ","note":"Chưa gồm kiểm hóa — khách tự làm"}]
+  ✓ deleted line takes ONLY its own note; survivor keeps B2
+STEP 7 — per-line ownership is structurally visible (mobile + desktop)
+  ✓ badge + field grid + note block are all inside each card (mobile & desktop markup)
+
+PASS — 7 checks

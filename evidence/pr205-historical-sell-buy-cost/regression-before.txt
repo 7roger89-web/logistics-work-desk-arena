@@ -1,0 +1,18 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: ACTUAL cost UNKNOWN must stay UNKNOWN, never fall back to price/amount SELL 40000000
+
+40000000 !== null
+
+    at file:///home/user/logistics-work-desk-arena/tests/component/unit_quote_cost_provenance.mjs:32:8 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 40000000,
+  expected: null,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.22.3

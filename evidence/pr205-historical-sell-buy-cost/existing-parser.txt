@@ -1,0 +1,26 @@
+PARSER — Owner quick-quote fixture
+  ✓ INCOTERM=FOB · ORIGIN=NINGBO · DESTINATION=Hải Phòng
+  ✓ 9 service lines extracted (the unpriced sentence is NOT one of them)
+  ✓ 1. Cước biển = 950 USD / cont 20' + both conditional notes
+  ✓ 2. Phụ phí hãng tàu = 9,500,000 VND / cont 20' (9.5 triệu)
+  ✓ 3. Nâng cont, hạ vỏ = 2,600,000 VND / cont 20'
+  ✓ 4. Hạ tầng = 250,000 VND (250k)
+  ✓ 5. Thủ tục hải quan = 2,000,000 VND / cont
+  ✓ 6. Vận tải Sơn Tây = 6,000,000 VND + Lạch Huyện +500.000 + fuel clause
+  ✓ 7. Kiểm hóa mở cont = 4,000,000 VND · IF_APPLICABLE · 'Có thể phát sinh (nếu có)'
+  ✓ 8. Kiểm hóa soi chiếu = 2,000,000 VND · IF_APPLICABLE
+  ✓ 9. Công bố hợp quy ≈10,000,000 VND · ESTIMATE_REQUIRES_CONFIRMATION with original wording preserved
+  ✓ general unpriced sentence → quote assumption, NOT a 0-price service line
+  ✓ no VAT / cost / FX / customer / validity invented anywhere
+PARSER — Check chi phí paste
+  ✓ EXW Guangdong → Hà Nội · 5 CBM · 800 kg prefilled from one paste
+PARSER — shorthand amounts
+  ✓ 10 triệu / 10tr / 9.5 triệu / 250k / 1.200.000 / 950 shorthand
+  ✓ RMB/CNY and $ explicit currencies, /cbm and /bill units
+CALCULATOR — required proofs
+  ✓ 370*8=2960 · 9.5tr*2=19.000.000 · 250k*4=1.000.000 · SUM(370,80)=450 · ROUND · parentheses
+  ✓ division by zero refused with a readable message
+  ✓ eval/Function/require/import/fetch/cell refs/file refs/arbitrary identifiers all REFUSED
+  ✓ malformed input never throws; blank stays blank (UNKNOWN != ZERO)
+
+PASS — 20 checks

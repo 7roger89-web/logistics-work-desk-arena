@@ -1,0 +1,27 @@
+STEP 1 — A: the paste block lives ABOVE the service lines, empty and idle
+  ✓ paste block present above the lines, nothing parsed or applied yet
+STEP 2 — A: PHÂN TÍCH turns the Owner's real message into a reviewable preview
+  ✓ 9 lines + conditional/estimate flags + the general sentence as an assumption
+STEP 3 — A: nothing is written until ÁP DỤNG, then the lines are editable
+  ✓ APPLY fills 9 editable lines, invents no cost/VAT, dispatches nothing
+STEP 3b — REPAIR_01: the general note is a PERSISTED customer note
+  ✓ an Owner paste with no cost/VAT/FX saves, carrying UNKNOWN through as UNKNOWN
+STEP 3c — REPAIR_01: a saved quote reopens with its notes restored
+  ✓ customer notes round trip: stored on the quote, restored on reopen
+STEP 3d — REPAIR_02: blanking cost/VAT still saves, as UNKNOWN not 0
+  ✓ blank cost/VAT saves as UNKNOWN; missing Giá bán is refused; explicit 0 persists as 0
+STEP 4 — B: the mini-calculator resolves real Owner arithmetic on blur
+  ✓ 370*8 · 9.5tr*2 · 250k*4 · SUM · ROUND · parentheses all resolve to plain numbers
+STEP 5 — B: code, cell refs and division by zero are REFUSED, text kept
+  ✓ eval/Function/cell refs/identifiers/network/÷0 refused with a visible message
+STEP 6 — E: CHECK CHI PHÍ is an INNER tab of the SAME Báo Giá workspace
+  ✓ three inner tabs, Kho giá vốn parse event, no auto-save, URL-preserved
+STEP 7 — E: the SAME parser prefills the search from a pasted inquiry
+  ✓ one shared parser prefills Incoterm/route/CBM/weight, saving nothing
+STEP 8 — E: TÌM DỮ LIỆU CŨ prefers THỰC TẾ and labels the fallback honestly
+  ✓ actual-first ranking, honest estimate fallback, stated reason, split currencies
+STEP 8b — REPAIR_03: an unconverted quote keeps its OWN currency
+  ✓ an unconverted 950 USD estimate renders as 950 USD, never 950 VND
+STEP 8c — Cost Intelligence: DÙNG LÀM GIÁ VỐN opens a draft, never auto-saves
+  ✓ chosen ACTUAL reference seeds Giá vốn, leaves Giá bán blank, writes nothing
+PASS — focused quote/CostCheck DOM steps 1–8c (13 checks); Journey steps not run

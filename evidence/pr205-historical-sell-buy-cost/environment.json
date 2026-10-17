@@ -1,0 +1,83 @@
+{
+  "task": "PR205_HISTORICAL_SELL_MUST_NOT_BECOME_BUY_COST",
+  "recorded_at_utc": "2026-10-16T06:50:40.639680+00:00",
+  "reviewed_head": "2c77bee0d563c6c3481792a3b6e603cc0365a343",
+  "branch": "arena/63b3ec32-logistics-work-desk-arena",
+  "pr": 205,
+  "law": {
+    "source": "LOCAL_PORTABLE",
+    "body_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b"
+  },
+  "required_skill": {
+    "id": "p2p-uiux",
+    "sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+    "manifest_verified": true,
+    "read_and_applied": true
+  },
+  "experience_check": {
+    "status": "USE_ACTIVE_EXPERIENCE",
+    "ids": [
+      "shared-exp-b2611df4c9393f0017f07dcb"
+    ]
+  },
+  "learning_reconciliation": "CANDIDATE — read-path UNKNOWN coercion; bounded evidence in repair report; no promotion",
+  "python": "3.11.2",
+  "python_packages": {
+    "streamlit": "1.66.0",
+    "mongomock": "4.3.0",
+    "pymongo": "4.19.0",
+    "pytest": "9.1.1",
+    "openpyxl": "3.1.5"
+  },
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "frontend_packages": {
+    "react": "19.2.8",
+    "vite": "8.2.2",
+    "typescript": "7.0.2"
+  },
+  "playwright": "1.64.1",
+  "chromium": "153.0.8010.0",
+  "browser_provider": "PLAYWRIGHT",
+  "runtime": "existing app.py / native Streamlit React C1",
+  "transport": "SANDBOX_STAGING",
+  "database": "logistics_staging (in-process mongomock)",
+  "historical_fixtures": "synthetic raw canonical-schema documents; no view-model injection",
+  "supplier_rates": "synthetic values entered/reviewed/saved through existing Cost Intelligence UI",
+  "workbook": "scripts/make_luc_giac_quote_fixture.py SYNTHETIC ONLY; not original workbook",
+  "bundle_sha256": "3629e1cc6514a3bf27d52ca18ad89304116d990703109864c8214df6c3e9a022",
+  "dependency_manifests_unchanged": true,
+  "browser_checks_pass": 11,
+  "python_unique_pass": 104,
+  "python_groups_pass": [
+    73,
+    31
+  ],
+  "python_baseline_catalog_failures": 2,
+  "baseline_failures_reproduced_on": "2c77bee0d563c6c3481792a3b6e603cc0365a343",
+  "full_repository_suite": "NOT_CLAIMED",
+  "journey_dom_in_focused_run": "NOT_RUN",
+  "viewports": [
+    [
+      1440,
+      900
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "evidence_level": "RUNTIME_VISUAL_REVIEW",
+  "automation_internal_url": "http://127.0.0.1:9521",
+  "internal_url_is_owner_url": false,
+  "owner_uat": "UAT_PENDING",
+  "verified_owner_url": null,
+  "public_probe": "ERR_CONNECTION_CLOSED; see preview-reachability.json",
+  "acceptance_servers": "STOPPED (9501 and 9521 verified not listening)",
+  "original_workbook_acceptance": "NOT_RUN / UNACCEPTED",
+  "real_mongodb_staging_acceptance": "NOT_RUN / UNACCEPTED",
+  "production_db": "NOT_CONNECTED",
+  "main_merge": "NOT_PERFORMED",
+  "deployment": "NOT_PERFORMED",
+  "log_formatting": "Trailing whitespace/terminal blank lines trimmed for Git diff hygiene; substantive test output retained."
+}

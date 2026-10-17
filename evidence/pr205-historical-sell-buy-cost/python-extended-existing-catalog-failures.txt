@@ -1,0 +1,68 @@
+........................................................FF.............. [ 83%]
+..............                                                           [100%]
+=================================== FAILURES ===================================
+______________ test_service_catalog_is_projected_from_core_config ______________
+
+    def test_service_catalog_is_projected_from_core_config():
+        """The projection is exactly ``core.config.GETFLY_SERVICES_LIST`` re-shaped."""
+        from core.config import GETFLY_SERVICES_LIST
+
+        catalog = rd.finance_service_catalog()
+
+        assert catalog, "the canonical catalog must be projected, not emptied"
+        assert len(catalog) == len(GETFLY_SERVICES_LIST)
+        assert [entry["code"] for entry in catalog] == [item["code"] for item in GETFLY_SERVICES_LIST]
+>       assert catalog[0] == {
+            "code": GETFLY_SERVICES_LIST[0]["code"],
+            "name": GETFLY_SERVICES_LIST[0]["name"],
+            "unit": GETFLY_SERVICES_LIST[0]["unit"],
+            "group": GETFLY_SERVICES_LIST[0]["group"],
+        }
+E       AssertionError: assert {'id': 'LEGAC...': 'Lần', ...} == {'code': 'DVK...'DỊCH VỤ XNK'}
+E
+E         Omitting 4 identical items, use -vv to show
+E         Left contains 2 more items:
+E         {'id': 'LEGACY:DVK', 'source': 'LEGACY_CONFIG'}
+E         Use -v to get more diff
+
+tests/test_logi_finance_actual_entry_parity_01.py:112: AssertionError
+________________ test_service_catalog_is_not_hardcoded_in_react ________________
+
+    def test_service_catalog_is_not_hardcoded_in_react():
+        """React receives the catalog through the view-model; it owns no copy.
+
+        Checked on the component source with comments stripped (prose may name the
+        constant it must NOT copy): no service name, group label or code literal may
+        appear in the shipped TypeScript. The only legal path for that data is the
+        ``financeServiceCatalog`` slice delivered by the backend.
+        """
+        import re as _re
+
+        from core.config import GETFLY_SERVICES_LIST
+
+        sources = [
+            path for path in COMPONENT_SRC.rglob("*")
+            if path.suffix in {".ts", ".tsx"} and path.is_file()
+        ]
+        assert sources, "the component source tree must be inspectable"
+        raw = "\n".join(path.read_text(encoding="utf-8") for path in sources)
+        # Strip block and line comments so a documented reference to the canonical
+        # source is not mistaken for a copied list.
+        code = _re.sub(r"/\*.*?\*/", "", raw, flags=_re.S)
+        code = "\n".join(line.split("//", 1)[0] for line in code.splitlines())
+
+        # A copied catalog would show up as service-name and group-label string
+        # literals (codes like "EXW" double as Incoterms, so they prove nothing).
+        literals = set(_re.findall(r'"([^"\n]+)"', code)) | set(_re.findall(r"'([^'\n]+)'", code))
+        for item in GETFLY_SERVICES_LIST:
+            for field in ("name", "group"):
+                value = str(item.get(field) or "").strip()
+>               assert value not in literals, f"catalog {field} '{value}' is hard-coded in React"
+E               AssertionError: catalog group 'DỊCH VỤ XNK' is hard-coded in React
+E               assert 'DỊCH VỤ XNK' not in {' ', ' && (form.lotCustomer ?? ', ' && <p>Nếu phát sinh — chỉ thực hiện sau khi thống nhất.</p>}{line.public_note && ... riêng đã xác nhận: ${money(value.customs.basis_vnd, ', ' (cần 1 nguồn duy nhất)', ' (xem trước giao diện)', ' *', ...}
+
+tests/test_logi_finance_actual_entry_parity_01.py:152: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_projected_from_core_config
+FAILED tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_not_hardcoded_in_react
+2 failed, 84 passed in 5.34s

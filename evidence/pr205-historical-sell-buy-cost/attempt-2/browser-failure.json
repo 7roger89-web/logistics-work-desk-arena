@@ -1,0 +1,34 @@
+{
+  "status": "FAILED",
+  "error": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /rows\\.amount/. Input:\n\n'Nguồn giá nội bộ: PR205-INPUT-VALID — SYNTHETIC · RATE-SAVE-1792132970802-4mm7ka · line-1\\n' +\n  '\\n' +\n  '⚠ Theo hiệu lực nguồn — vẫn cần xác nhận · 2027-12-31'\n\n    at file:///home/user/logistics-work-desk-arena/tests/component/browser_quote_cost_provenance.mjs:120:10",
+  "checks": [
+    "Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI",
+    "QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended",
+    "ACTUAL SELL 40000000 / COST UNKNOWN: unknown displayed, disabled action, no selling fallback",
+    "ACTUAL SELL 40000000 / COST 32000000: only 32000000 selected, provenance retained, new sell blank after backend preview"
+  ],
+  "observations": {
+    "quote": {
+      "sell": 40000000,
+      "displayedForComparison": true,
+      "costPickEnabled": false,
+      "addedFees": 0
+    },
+    "actualUnknown": {
+      "historicalSell": 40000000,
+      "cost": null,
+      "costPickEnabled": false,
+      "addedFees": 0
+    },
+    "actualCost": {
+      "historicalSell": 40000000,
+      "selectedCost": 32000000,
+      "newSell": "",
+      "newSellConfirmed": false,
+      "currency": "VND",
+      "unit": "CONT",
+      "sourceField": "finance.actual.cost"
+    }
+  },
+  "url": "http://127.0.0.1:9521"
+}

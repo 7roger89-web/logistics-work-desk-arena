@@ -1,0 +1,7 @@
+{
+  "url": "https://9521-isks46bief8hjett5omso.e2b.app",
+  "externallyReachable": false,
+  "appLoaded": false,
+  "isolated": false,
+  "error": "page.goto: net::ERR_CONNECTION_CLOSED at https://9521-isks46bief8hjett5omso.e2b.app/\nCall log:\n  - navigating to \"https://9521-isks46bief8hjett5omso.e2b.app/\", waiting until \"load\"\n"
+}

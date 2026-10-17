@@ -1,0 +1,11 @@
+PASS Valid/expired/unknown supplier snapshots created via existing Cost Intelligence UI
+PASS QUOTE SELL 40000000: explicit non-cost label, disabled action, no fee appended
+PASS ACTUAL SELL 40000000 / COST UNKNOWN: unknown displayed, disabled action, no selling fallback
+PASS ACTUAL SELL 40000000 / COST 32000000: only 32000000 selected, provenance retained, new sell blank after backend preview
+PASS INPUT_RATE 31800000: selectable genuine supplier rate, immutable cost source, new sell blank after backend preview
+PASS Expired and unknown-validity supplier warnings retained, never relabelled current
+PASS Cost selection only edits a new unsaved quote; no automatic create/send or old shipment write
+PASS Mobile 390×844: comparison-only QUOTE remains disabled and no horizontal page/shell overflow
+PASS Existing CostCheck still searches/compares and seeds true ACTUAL cost into legacy quote with sell blank; QUOTE/unknown cost disabled
+PASS No browser page errors
+PASS Server-side whole historical-record fingerprints unchanged; old sell 40000000 and actual costs UNKNOWN/32000000 retained
