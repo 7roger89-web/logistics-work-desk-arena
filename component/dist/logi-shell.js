@@ -19094,7 +19094,7 @@ function Vl({ children: e }) {
 	});
 }
 function Hl(e) {
-	return e.blockers.join(" · ") || (e.completed ? "Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần." : e.owned ? "Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn." : "Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.");
+	return e.guidance?.what_to_do || e.blockers.join(" · ") || (e.completed ? "Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần." : e.owned ? "Chưa có hướng dẫn cho công đoạn này" : "Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.");
 }
 function Ul({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
 	let [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)(!1), l = Bl[t.state], u = Nl[t.state], d = e.journey.nodes, f = t.evidence ? `${t.label}: ${t.evidence}.${t.deadline ? ` Mốc dự kiến: ${t.deadline}.` : ""}` : "Chưa có bằng chứng để xác nhận tiến độ với khách.", p = e.attachments?.filter((e) => t.documentIds.includes(e.id)) ?? [], m = async () => {
@@ -19156,7 +19156,19 @@ function Ul({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 							}),
 							/* @__PURE__ */ (0, U.jsx)("div", {
 								className: "mt-0.5 text-[19px] font-extrabold leading-snug",
+								"data-testid": "journey-what-to-do",
 								children: Hl(t)
+							}),
+							/* @__PURE__ */ (0, U.jsxs)("div", {
+								className: "mt-2 rounded-md border border-slate-200 bg-white px-2.5 py-2",
+								"data-testid": "journey-done-when",
+								children: [/* @__PURE__ */ (0, U.jsx)("div", {
+									className: "text-[11px] font-bold uppercase tracking-widest text-slate-500",
+									children: "DONE WHEN — xong khi nào"
+								}), /* @__PURE__ */ (0, U.jsx)("div", {
+									className: "text-[13px] font-semibold text-slate-800",
+									children: t.guidance?.done_when || "Chưa có hướng dẫn cho công đoạn này"
+								})]
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("button", {
 								type: "button",
@@ -19179,7 +19191,7 @@ function Ul({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 									children: "NGƯỜI NHẬP KHẨU"
 								}), /* @__PURE__ */ (0, U.jsx)("dd", {
 									className: "text-right font-bold",
-									children: e.importInfo.receiver || e.customer || "Chưa có thông tin"
+									children: e.commercialFlow?.legalImporterName || "UNKNOWN"
 								})]
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -19457,8 +19469,12 @@ function Wl(e, t, n, r, i, a) {
 	})), (e.documentCategories.length > 0 || s > 0) && o.push({
 		key: "docs",
 		title: "Chứng từ đính kèm công đoạn",
-		meta: `${c} TỆP ĐÃ GHI NHẬN${e.documentCategories.length ? ` · ${e.documentCategories.length} LOẠI YÊU CẦU` : ""}`,
-		tone: c > 0 ? "COMPLETED" : "WAITING",
+		meta: `${c} TỆP ĐÃ GHI NHẬN${e.documentCategories.length ? ` · ${e.documentCategories.length} LOẠI YÊU CẦU` : ""}${c > 0 ? " · CHƯA XÁC NHẬN BẰNG CHỨNG" : ""}`,
+		tone: c > 0 ? "CURRENT" : "WAITING",
+		badge: c > 0 ? {
+			text: "✓ Tệp đã ghi nhận",
+			cls: "border-[#8EC0E8] bg-[#DCEBFA] text-[#154C79]"
+		} : void 0,
 		onOpen: () => r(e, "docs")
 	}), n.filter((t) => t.anchorStage === e.id).forEach((e) => {
 		let t = e.nextStepId ? `wm-${e.instanceId}-${e.nextStepId}` : "", n = !!(t && a.some((e) => e.id === t));
@@ -19547,7 +19563,7 @@ function ql({ node: e, pos: t, canvas: n, tasks: r, onClose: i, onQuick: a, plac
 						className: "journey-bubble-list",
 						"data-testid": "journey-bubble-tasks",
 						children: r.map((e) => {
-							let t = Kl[e.tone];
+							let t = e.badge ?? Kl[e.tone];
 							return /* @__PURE__ */ (0, U.jsx)("li", { children: /* @__PURE__ */ (0, U.jsxs)("button", {
 								type: "button",
 								onClick: e.onOpen,
@@ -22558,14 +22574,18 @@ function Mu() {
 					} else g(v.nextRoute);
 				},
 				hasStageContent: !!(Ye && Xe === "info" && (Ze || [
+					"booking",
 					"si-vgm",
 					"gate-in",
-					"customs-export"
+					"customs-export",
+					"on-board"
 				].includes(Ye.id) && Ye.factFields?.length)),
 				stageContent: /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [Ye && Xe === "info" && !Ze && [
+					"booking",
 					"si-vgm",
 					"gate-in",
-					"customs-export"
+					"customs-export",
+					"on-board"
 				].includes(Ye.id) && /* @__PURE__ */ (0, U.jsx)(su, {
 					shipment: v,
 					stageId: Ye.id
