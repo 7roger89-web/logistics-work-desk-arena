@@ -224,6 +224,23 @@ For a clear long-running task on a host that supports native `/goal`, use native
 
 This serialization requirement applies to NEW_CHAT and SAME_CHAT execution prompts, including Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. It does not require repeating the whole law body in every prompt.
 
+## Control Tower handoff — bắt buộc mọi task
+
+Repo này có một file bàn giao ca cho Control Tower: `docs/CONTROL-TOWER-HANDOFF.md`.
+
+Cuối MỌI task có thay đổi file, TRƯỚC khi báo cáo hoàn tất:
+
+1. Cập nhật `docs/CONTROL-TOWER-HANDOFF.md`:
+   - Mục 6 NHẬT KÝ PHIÊN: thêm mục mới LÊN TRÊN — ngày, commit SHA, đã làm, còn lại, cần Owner.
+   - Mục 3 TRẠNG THÁI: cập nhật cho khớp sự thật.
+   - Mục 1, 2, 5: GIỮ NGUYÊN, chỉ đổi khi prompt nói rõ.
+   - File chưa có thì tạo đúng cấu trúc mục 1→6.
+2. Commit cùng branch.
+3. Phát receipt trong báo cáo:
+   `HANDOFF_UPDATE=YES | PATH=docs/CONTROL-TOWER-HANDOFF.md | COMMIT=<sha>`
+   hoặc `HANDOFF_UPDATE=SKIPPED | REASON=<lý do>` nếu task chỉ đọc.
+
+Không cập nhật handoff = task CHƯA hoàn tất. Task chỉ đọc thì không bắt buộc.
 
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack
