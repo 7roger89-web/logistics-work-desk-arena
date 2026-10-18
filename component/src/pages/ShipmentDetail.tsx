@@ -1384,9 +1384,9 @@ export default function ShipmentDetail() {
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
           (Boolean(moduleStepNode) ||
-           (['si-vgm', 'gate-in', 'customs-export'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
+           (['booking', 'si-vgm', 'gate-in', 'customs-export', 'on-board'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
         stageContent={<>
-      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
+      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["booking", "si-vgm", "gate-in", "customs-export", "on-board"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}

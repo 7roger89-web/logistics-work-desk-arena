@@ -22,7 +22,11 @@ const ACTION_STYLE = {
 };
 function Label({ children }: { children: React.ReactNode }) { return <div className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-500">{children}</div>; }
 export function stageAction(node: JourneyNode) {
-  return node.blockers.join(' · ') || (node.completed ? 'Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.' : node.owned ? 'Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.' : 'Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.');
+  // Real guidance first: the screen must say what to do, never a generic
+  // filler that pretends guidance exists. When none is stored, say so.
+  return node.guidance?.what_to_do
+    || node.blockers.join(' · ')
+    || (node.completed ? 'Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.' : node.owned ? 'Chưa có hướng dẫn cho công đoạn này' : 'Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.');
 }
 export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, runPrimary, onClose }: {
   shipment: Shipment; selected: JourneyNode; onOpen: (node: JourneyNode, work: string) => void;
@@ -46,7 +50,7 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
       <div className={cx('mt-0.5 text-sm font-bold', m.text)}>{n.evidence || 'Chưa có bằng chứng thực tế'}</div>
     </div>
     <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3">
-      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[12px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
+      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[12px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug" data-testid="journey-what-to-do">{stageAction(n)}</div><div className="mt-2 rounded-md border border-slate-200 bg-white px-2.5 py-2" data-testid="journey-done-when"><div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">DONE WHEN — xong khi nào</div><div className="text-[13px] font-semibold text-slate-800">{n.guidance?.done_when || 'Chưa có hướng dẫn cho công đoạn này'}</div></div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
       <section><Label>Thông tin chính</Label></section>
       <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-[13px]" data-testid="journey-quick-facts">
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI NHẬP KHẨU</dt><dd className="text-right font-bold">{s.importInfo.receiver || s.customer || 'Chưa có thông tin'}</dd></div>

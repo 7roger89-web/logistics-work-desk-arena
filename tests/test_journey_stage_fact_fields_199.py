@@ -42,7 +42,14 @@ class SeaStageFields199(unittest.TestCase):
                       for field in node.get('factFields', [])}
         self.assertEqual(all_fields, SEA_FACT_FIELDS)
         self.assertNotIn('factFields', nodes['pickup'])
-        self.assertNotIn('factFields', nodes['on-board'])
+        # Node-truth round 2: booking/on-board completion facts now HAVE their
+        # input fields (previously pinned absent — that was the gap being fixed).
+        self.assertEqual([x['key'] for x in nodes['booking']['factFields']],
+                         ['booking_status'])
+        self.assertEqual(nodes['booking']['factFields'][0]['label'],
+                         'Trạng thái xác nhận hãng tàu')
+        self.assertEqual([x['key'] for x in nodes['on-board']['factFields']],
+                         ['on_board_at'])
 
     def test_status_options_are_whitelisted_without_silent_completion(self):
         nodes = {n['id']: n for n in _project(_profile())['nodes']}
@@ -59,7 +66,9 @@ class SeaStageFields199(unittest.TestCase):
         self.assertFalse(any(n.get('factFields') for n in air.values()))
         lcl = {n['id']: n for n in _project(_profile(load_model='LCL'))['nodes']}
         self.assertNotIn('gate-in', lcl)
-        self.assertNotIn('factFields', lcl['si-vgm'])  # no mandatory container VGM for LCL
+        # Node-truth round 1 (Owner rule: LCL has no shipment-level VGM): the
+        # si-vgm node itself is FCL-only, symmetric with gate-in.
+        self.assertNotIn('si-vgm', lcl)
 
     def test_unowned_export_cannot_offer_an_edit_form(self):
         nodes = {n['id']: n for n in

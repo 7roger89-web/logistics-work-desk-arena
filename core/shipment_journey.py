@@ -32,6 +32,15 @@ SEA_STAGE_FACT_FIELDS = {
     'customs-export': (
         {'key': 'export_declaration_no', 'label': 'Số tờ khai xuất (không đồng nghĩa thông quan)', 'kind': 'text'},
     ),
+    # Node-truth completion proofs (booking/on-board): the SAME existing
+    # shipment_sea_facts_save writer and SUBMISSION_STATES value set — the form
+    # only surfaces the facts build_journey already requires for completion.
+    'booking': (
+        {'key': 'booking_status', 'label': 'Trạng thái xác nhận hãng tàu', 'kind': 'status'},
+    ),
+    'on-board': (
+        {'key': 'on_board_at', 'label': 'Thời điểm hàng lên tàu (on-board)', 'kind': 'datetime'},
+    ),
 }
 SEA_STATUS_LABELS = {'UNKNOWN': 'Chưa xác nhận', 'RECEIVED': 'Đã nhận',
                      'SUBMITTED': 'Đã gửi', 'ACCEPTED': 'Đã được chấp nhận'}
