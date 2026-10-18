@@ -2932,7 +2932,7 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
     from core.database import get_last_db_error, save_shipment_atomic
-    from core.shipment_journey import normalize_sea_facts
+    from core.shipment_journey import MODE_FACT_BLOCK, normalize_mode_facts
     from core.shipment_execution_profile import build_execution_profile
     sid, request_id = rd.text(payload.get("shipmentId")), rd.text(payload.get("requestId"))
     def out(ok, error="", **extra):
@@ -2948,8 +2948,24 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.")
     profile = build_execution_profile(shipment)
     scope = set(profile.get("serviceScope") or []) if profile.get("serviceScopeConfirmed") else set()
-    if profile.get("mode") != "SEA": return out(False, "Mốc này chỉ dành cho lô đường biển.")
+    mode = profile.get("mode")
+    if mode not in MODE_FACT_BLOCK: return out(False, "Phương thức của lô chưa có mốc bằng chứng được phép ghi.")
     fields = payload["fields"]
+    # LOGI-199 T3/T4 — AIR/ROAD facts: same writer, own block, own scope gates.
+    if mode == "AIR":
+        if ({"air_acceptance_at", "air_gross_kg", "air_chargeable_kg", "air_screened_at"} & set(fields)) and not (
+                {"MAIN_CARRIAGE", "EXPORT_HANDLING", "ORIGIN_TERMINAL_OR_BORDER"} & scope):
+            return out(False, "Nhận hàng kho hàng không không thuộc phạm vi đã xác nhận.")
+        if "air_uplifted_at" in fields and "MAIN_CARRIAGE" not in scope:
+            return out(False, "Uplift không thuộc phạm vi chặng bay đã xác nhận.")
+    if mode == "ROAD":
+        if ({"ltl_received_at", "ltl_package_count", "ltl_weight_kg", "ltl_consolidated_at"} & set(fields)) and (
+                profile.get("loadModel") != "LTL" or not ({"ORIGIN_PICKUP", "MAIN_CARRIAGE"} & scope)):
+            return out(False, "Nhận/ghép hàng lẻ chỉ áp dụng cho lô LTL thuộc phạm vi đã xác nhận.")
+        if "border_crossed_at" in fields and "CROSS_BORDER_COORDINATION" not in scope:
+            return out(False, "Lô nội địa / không có phạm vi qua biên giới: không ghi mốc cửa khẩu.")
+        if "handover_doc_no" in fields and not ({"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope):
+            return out(False, "Biên bản giao nhận không thuộc phạm vi giao hàng đã xác nhận.")
     if any(k.startswith(('si_', 'vgm_')) for k in fields) and "MAIN_CARRIAGE" not in scope:
         return out(False, "SI/VGM không thuộc phạm vi chặng chính đã xác nhận.")
     if profile.get("loadModel") == "LCL" and any(k.startswith("vgm_") for k in fields):
@@ -2958,9 +2974,35 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
     if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
         return out(False, "Tờ khai xuất không thuộc phạm vi dịch vụ đã xác nhận.")
-    try: normalized = normalize_sea_facts(fields)
+    # LOGI-199 T1 — SEA FCL lifecycle facts, each gated by the confirmed scope
+    # that owns it. Nothing is derived from the Incoterm alone.
+    if ({"booking_status", "on_board_at"} & set(fields)) and "MAIN_CARRIAGE" not in scope:
+        return out(False, "Booking/on-board không thuộc phạm vi chặng chính đã xác nhận.")
+    if ({"empty_pickup_at", "stuffing_at", "eir_no"} & set(fields)) and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
+        return out(False, "Cấp rỗng/đóng hàng/EIR chỉ áp dụng cho lô FCL có phạm vi bàn giao container.")
+    if "export_clearance_at" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
+        return out(False, "Thông quan xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    delivery_scope = {"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope
+    if "do_released_at" in fields and not (delivery_scope or "IMPORT_CUSTOMS" in scope):
+        return out(False, "D/O không thuộc phạm vi đầu nhập đã xác nhận.")
+    if ({"pod_received_at", "empty_return_at"} & set(fields)) and not delivery_scope:
+        return out(False, "POD/trả rỗng không thuộc phạm vi giao hàng đã xác nhận.")
+    if "empty_return_at" in fields and profile.get("loadModel") != "FCL":
+        return out(False, "Trả container rỗng chỉ áp dụng cho lô FCL.")
+    lcl = profile.get("loadModel") == "LCL"
+    if lcl and any(k.startswith("vgm_") for k in fields):
+        return out(False, "LCL: VGM thuộc container ghép của người gom hàng, không ghi riêng cho lô.")
+    cfs_keys = {"cfs_received_at", "cfs_receipt_no", "cfs_package_count", "cfs_weight_kg", "cfs_cbm", "consolidated_at"}
+    if (cfs_keys & set(fields)) and (not lcl or not ({"MAIN_CARRIAGE", "ORIGIN_TERMINAL_OR_BORDER"} & scope)):
+        return out(False, "Nhận hàng CFS/ghép hàng chỉ áp dụng cho lô LCL thuộc phạm vi đã xác nhận.")
+    if "deconsolidated_at" in fields and (not lcl or not (delivery_scope or "IMPORT_CUSTOMS" in scope)):
+        return out(False, "Tách hàng CFS đích chỉ áp dụng cho lô LCL có phạm vi đầu nhập.")
+    delivered = bool(((shipment.get("data") or {}).get("2.7") or {}).get("is_delivered"))
+    if rd.text(fields.get("pod_received_at")) and not delivered:
+        return out(False, "POD chỉ ghi sau khi lô đã xác nhận giao hàng thực tế.")
+    try: normalized = normalize_mode_facts(fields, mode)
     except ValueError as exc: return out(False, str(exc))
-    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault("sea_export", {})
+    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault(MODE_FACT_BLOCK[mode], {})
     if "export_declaration_no" in normalized:
         shipment["china_export_decl_no"] = normalized.pop("export_declaration_no")
     block.update(normalized)
@@ -2968,7 +3010,7 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, get_last_db_error() or "Không lưu được.")
     fresh = read_shipment(sid)
     if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
-    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get(MODE_FACT_BLOCK[mode]), audit=_audit_trail(sid))
 
 
 # ---------------------------------------------------------------------------

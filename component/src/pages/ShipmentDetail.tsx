@@ -1323,7 +1323,7 @@ export default function ShipmentDetail() {
             <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
               <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-              <span className="block text-[11.5px] text-slate-500 font-medium">{brandSub}</span>
+              <span className="block text-[12px] text-slate-500 font-medium">{brandSub}</span>
             </span>
           </Link>
           <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />
@@ -1384,9 +1384,9 @@ export default function ShipmentDetail() {
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
           (Boolean(moduleStepNode) ||
-           (['booking', 'si-vgm', 'gate-in', 'customs-export', 'on-board'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
+           Boolean(workspaceNode.factFields?.length)))}
         stageContent={<>
-      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["booking", "si-vgm", "gate-in", "customs-export", "on-board"].includes(workspaceNode.id) &&
+      {workspaceNode && workspaceWork === "info" && !moduleStepNode && Boolean(workspaceNode.factFields?.length) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}

@@ -68,7 +68,7 @@ export default function Contracts() {
             <tbody>
               {list.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
-                  <td><Link to={contractPath(c.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{c.id}</Link></td>
+                  <td><Link to={contractPath(c.id)} className="font-mono font-bold text-[#1e5aa8] hover:underline text-[15px]">{c.id}</Link></td>
                   <td><ToneBadge tone="blue" size="sm">{c.kind || "—"}</ToneBadge></td>
                   <td className="font-semibold max-w-[180px]">{c.client || "—"}</td>
                   <td className="text-[13px] text-slate-600"><span className="block">{c.company || "—"}</span><span className="block text-slate-400">{c.agent || "—"}</span></td>
@@ -93,7 +93,7 @@ export default function Contracts() {
           <div key={c.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <div className="p-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-[17px] text-[#0f2a4a]">{c.id}</span>
+                <span className="font-mono font-bold text-[17px] text-[#0f2a4a]">{c.id}</span>
                 <ToneBadge tone="blue" size="sm">{c.kind || "—"}</ToneBadge>
               </div>
               <p className="font-semibold text-[14.5px] mt-1">{c.client || "—"}</p>

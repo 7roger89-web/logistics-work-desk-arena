@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from core.shipment_journey import SUBMISSION_STATES, build_journey
+from core.shipment_journey import BOOKING_STATES, build_journey
 
 ROOT = Path(__file__).resolve().parent.parent
 BUBBLE = (ROOT / 'component/src/components/JourneyBubble.tsx').read_text(encoding='utf-8')
@@ -75,17 +75,18 @@ def test_booking_and_on_board_expose_their_completion_fact_inputs():
     nodes = _project_facts_nodes()
     booking = [f for f in nodes['booking']['factFields'] if f['key'] == 'booking_status']
     on_board = [f for f in nodes['on-board']['factFields'] if f['key'] == 'on_board_at']
-    assert booking and booking[0]['label'] == 'Trạng thái xác nhận hãng tàu'
+    assert booking and booking[0]['label'] == 'Trạng thái booking'
     assert booking[0]['kind'] == 'status'
-    # đúng tập giá trị SUBMISSION_STATES hiện có — không tự đặt tập mới
-    assert tuple(o['value'] for o in booking[0]['options']) == SUBMISSION_STATES
+    # đã chốt tích hợp T1–T5: đúng BOOKING_STATES (UNKNOWN/REQUESTED/CONFIRMED)
+    assert tuple(o['value'] for o in booking[0]['options']) == BOOKING_STATES
     assert on_board and on_board[0]['kind'] == 'datetime'
 
 
 def test_stage_popup_mounts_the_form_for_booking_and_on_board():
-    # dương: both mount lists (hasStageContent + stageContent) include the nodes
-    assert "['booking', 'si-vgm', 'gate-in', 'customs-export', 'on-board']" in DETAIL
-    assert '["booking", "si-vgm", "gate-in", "customs-export", "on-board"]' in DETAIL
+    # đã chốt tích hợp T1–T5: cả hai mount (hasStageContent + stageContent)
+    # gate theo factFields của node do backend khai — KHÔNG còn list id hard-code.
+    assert DETAIL.count('Boolean(workspaceNode.factFields?.length)') == 2
+    assert "[\'booking\', \'si-vgm\', \'gate-in\', \'customs-export\', \'on-board\']" not in DETAIL
     # the panel renders the backend-declared field list (no hardcoded invention)
     assert 'const fields = node?.factFields ?? []' in JOURNEY
 
@@ -150,7 +151,7 @@ def test_write_booking_confirmation_then_readback_completes_only_booking(staging
     assert _nodes(before)['booking']['completed'] is False
     assert _nodes(before)['on-board']['completed'] is False
 
-    first = _write({'booking_status': 'ACCEPTED'})
+    first = _write({'booking_status': 'CONFIRMED'})
     assert first['ok'], first
     row = first['readback']
     assert _nodes(row)['booking']['completed'] is True

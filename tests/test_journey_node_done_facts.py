@@ -2,10 +2,11 @@
 
 Owner-confirmed business rules pinned here (negative + positive per rule):
 
-* Booking: CHỜ XÁC NHẬN khác với có số. A booking NUMBER is never proof the
-  carrier confirmed; the node completes only with the confirming fact.
-* On-board: ATD ≠ loaded-on-board. Actual departure time is never proof the
-  cargo was loaded; the node completes only with the separate on-board fact.
+* Booking (đã chốt tích hợp T1–T5): a booking NUMBER is never proof the
+  carrier confirmed; the node completes only with booking_status == 'CONFIRMED'
+  (BOOKING_STATES = UNKNOWN/REQUESTED/CONFIRMED — bỏ biến thể 'ACCEPTED').
+* On-board (đã chốt tích hợp T1–T5): ATD ≠ loaded-on-board; the node
+  completes from bool(on_board_at) alone — ATD neither required nor proof.
 * SI/VGM: hàng LCL có node si-vgm SI-only (label 'SI') — Owner đã chốt batch 2
   đúng (2026-10-19): LCL có SI, không có VGM cấp lô. FCL giữ SI/VGM đủ 4 fact.
 
@@ -61,20 +62,21 @@ def test_booking_number_without_any_confirmation_status_is_not_done():
 
 
 def test_booking_waiting_for_confirmation_is_not_done():
-    node = _node(_journey({'booking_status': 'SUBMITTED'}), 'booking')
+    node = _node(_journey({'booking_status': 'REQUESTED'}), 'booking')
     assert node['completed'] is False
     assert node['state'] != 'COMPLETED'
 
 
 def test_booking_confirmed_by_carrier_is_done():
-    node = _node(_journey({'booking_status': 'ACCEPTED'}), 'booking')
+    node = _node(_journey({'booking_status': 'CONFIRMED'}), 'booking')
     assert node['completed'] is True
     assert node['state'] == 'COMPLETED'
 
 
-def test_booking_confirmation_without_a_number_is_not_done():
-    # Completion needs BOTH facts: a number AND the carrier confirmation.
-    node = _node(_journey({'booking_status': 'ACCEPTED'}, booking_no=''), 'booking')
+def test_booking_request_with_a_number_is_not_done():
+    # Số booking + đã gửi yêu cầu KHÔNG đủ: chỉ booking_status == 'CONFIRMED'
+    # hoàn thành node (chuỗi T1 chốt — số booking không còn là điều kiện kèm).
+    node = _node(_journey({'booking_status': 'REQUESTED'}, booking_no='BK-77'), 'booking')
     assert node['completed'] is False
 
 
@@ -94,10 +96,11 @@ def test_on_board_fact_with_atd_is_done():
     assert node['state'] == 'COMPLETED'
 
 
-def test_on_board_fact_without_atd_is_not_done():
-    # Completion needs BOTH facts: the departure trigger AND the on-board proof.
+def test_on_board_fact_stands_without_atd():
+    # Đã chốt tích hợp T1–T5: done = bool(on_board_at) — bằng chứng lên tàu
+    # tự nó hoàn thành node; ATD không phải bằng chứng và không phải điều kiện.
     node = _node(_journey({'on_board_at': '2026-10-02T08:30'}, atd=''), 'on-board')
-    assert node['completed'] is False
+    assert node['completed'] is True
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +174,8 @@ def test_fcl_si_vgm_fact_fields_expose_all_four_inputs():
 # ---------------------------------------------------------------------------
 
 def test_completion_facts_flow_through_the_existing_normalize_writer():
-    normalized = normalize_sea_facts({'booking_status': 'ACCEPTED', 'on_board_at': '2026-10-02T08:30'})
-    assert normalized == {'booking_status': 'ACCEPTED', 'on_board_at': '2026-10-02T08:30'}
+    normalized = normalize_sea_facts({'booking_status': 'CONFIRMED', 'on_board_at': '2026-10-02T08:30'})
+    assert normalized == {'booking_status': 'CONFIRMED', 'on_board_at': '2026-10-02T08:30'}
     assert {'booking_status', 'on_board_at'} <= SEA_FACT_FIELDS
 
 

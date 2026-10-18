@@ -90,7 +90,7 @@ function newRequestId(prefix: string): string {
 function PermissionChip({ name }: { name: string }) {
   return (
     <span
-      className="break-all rounded-md bg-slate-100 px-2 py-1 font-mono text-[11.5px] font-semibold text-slate-700"
+      className="break-all rounded-md bg-slate-100 px-2 py-1 font-mono text-[12px] font-semibold text-slate-700"
       data-testid="user-access-permission"
     >
       {name}
@@ -597,14 +597,14 @@ function AccountCard({
             </ToneBadge>
             {account.active ? (
               <span
-                className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11.5px] font-bold text-emerald-800"
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[12px] font-bold text-emerald-800"
                 data-testid="user-access-account-active"
               >
                 <BadgeCheck size={12} /> Hoạt động
               </span>
             ) : (
               <span
-                className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] font-bold text-slate-500"
+                className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-500"
                 data-testid="user-access-account-inactive"
               >
                 <Lock size={12} /> Đã vô hiệu hóa
@@ -620,7 +620,7 @@ function AccountCard({
             </p>
           ) : null}
           {account.user_id ? (
-            <p className="mt-1 break-all font-mono text-[11px] text-slate-400">
+            <p className="mt-1 break-all font-mono text-[12px] text-slate-400">
               ID: {account.user_id}
             </p>
           ) : null}
@@ -657,20 +657,20 @@ function RoleMatrixRow({ row, assignable }: { row: UserAccessRoleRow; assignable
           {roleLabel(row.role)}
         </ToneBadge>
         {row.wildcard ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11.5px] font-bold text-violet-800">
+          <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[12px] font-bold text-violet-800">
             <KeyRound size={12} /> * = toàn quyền
           </span>
         ) : null}
         {assignable ? (
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold text-slate-500">
             vai trò gán được
           </span>
         ) : (
-          <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+          <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[12px] font-bold text-amber-700">
             vai trò tương thích cũ
           </span>
         )}
-        <span className="ml-auto text-[11.5px] font-bold text-slate-400">
+        <span className="ml-auto text-[12px] font-bold text-slate-400">
           {row.permissionCount} quyền
         </span>
       </div>
@@ -909,7 +909,7 @@ export default function UserAccess() {
             </p>
             <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">
               Mọi thao tác ghi trong ứng dụng vẫn được kiểm tra bởi
-              <span className="font-mono text-[11.5px] font-semibold"> core.auth </span>
+              <span className="font-mono text-[12px] font-semibold"> core.auth </span>
               trên máy chủ theo đúng ma trận trên. Trang này chỉ hiển thị quy
               tắc, không tự nới quyền.
             </p>
