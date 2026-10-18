@@ -101,13 +101,19 @@ def test_on_board_fact_without_atd_is_not_done():
 
 
 # ---------------------------------------------------------------------------
-# Lỗi 3 — si-vgm chặn FCL, đối xứng với gate-in
+# Lỗi 3 — VGM: LCL bỏ yêu cầu VGM, giữ node SI-only (giải conflict với
+# f51710b theo TASK 2 prompt "LCL chỉ cần SI, bỏ yêu cầu VGM"; quy tắc đợt 1
+# "LCL không có node si-vgm" được thay bằng refinement này — CẦN OWNER xác nhận)
 # ---------------------------------------------------------------------------
 
-def test_sea_lcl_has_no_si_vgm_node():
-    ids = {n['id'] for n in _journey({}, load='LCL')['nodes']}
-    assert 'si-vgm' not in ids
-    assert 'booking' in ids, 'the LCL gate must not remove unrelated stages'
+def test_sea_lcl_tracks_si_only_on_the_si_vgm_node():
+    nodes = {n['id']: n for n in _journey({'si_status': 'ACCEPTED'}, load='LCL')['nodes']}
+    node = nodes['si-vgm']
+    assert node['label'] == 'SI'
+    assert node['completed'] is True, 'LCL completes on SI alone — VGM is not a shipper obligation'
+    assert 'booking' in nodes, 'the LCL rule must not remove unrelated stages'
+    # dương ngược: thiếu SI thì CHƯA done
+    assert _node(_journey({}, load='LCL'), 'si-vgm')['completed'] is False
 
 
 def test_sea_fcl_keeps_si_vgm_node():
@@ -115,9 +121,14 @@ def test_sea_fcl_keeps_si_vgm_node():
     assert 'si-vgm' in ids
 
 
-def test_lcl_requirement_never_points_at_a_missing_si_vgm_node():
-    shipment = {'id': 'S-DONE-FACTS', 'data': {'1.2': {'sea_export': {}}, '2.4': {}, '2.7': {}}}
+def test_lcl_requirement_demands_only_si_not_vgm():
+    shipment = {'id': 'S-DONE-FACTS', 'data': {
+        '1.2': {'sea_export': {'si_status': 'ACCEPTED'}}, '2.4': {}, '2.7': {}}}
+    # VGM chưa ACCEPTED cũng KHÔNG tạo yêu cầu cho LCL
     assert sea_requirement(shipment, _profile(load='LCL')) is None
+    missing = {'id': 'S-DONE-FACTS', 'data': {'1.2': {'sea_export': {}}, '2.4': {}, '2.7': {}}}
+    requirement = sea_requirement(missing, _profile(load='LCL'))
+    assert requirement and 'SI' in requirement['text'] and 'VGM' not in requirement['text']
 
 
 def test_fcl_si_vgm_requirement_still_fires_before_carrier_acceptance():

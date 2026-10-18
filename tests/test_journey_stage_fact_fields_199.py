@@ -66,9 +66,11 @@ class SeaStageFields199(unittest.TestCase):
         self.assertFalse(any(n.get('factFields') for n in air.values()))
         lcl = {n['id']: n for n in _project(_profile(load_model='LCL'))['nodes']}
         self.assertNotIn('gate-in', lcl)
-        # Node-truth round 1 (Owner rule: LCL has no shipment-level VGM): the
-        # si-vgm node itself is FCL-only, symmetric with gate-in.
-        self.assertNotIn('si-vgm', lcl)
+        # False-done batch 2 (f51710b): the LCL node exists as SI-only — but it
+        # never gets the container VGM form (this test's original pin).
+        self.assertIn('si-vgm', lcl)
+        self.assertEqual(lcl['si-vgm']['label'], 'SI')
+        self.assertNotIn('factFields', lcl['si-vgm'])  # no mandatory container VGM for LCL
 
     def test_unowned_export_cannot_offer_an_edit_form(self):
         nodes = {n['id']: n for n in
