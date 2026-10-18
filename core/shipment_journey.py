@@ -8,7 +8,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping
 
-SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no'})
+SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no',
+                             # Completion proofs added with the node-truth fix:
+                             # 'booking_status' = hãng tàu đã xác nhận (not just a
+                             # booking number); 'on_board_at' = hàng đã lên tàu
+                             # (ATD != loaded-on-board). Both ride the existing
+                             # normalize_sea_facts + shipment_sea_facts_save writer.
+                             'booking_status', 'on_board_at'})
 SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
 JOURNEY_STAGE_IDS = frozenset({'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
 
@@ -73,8 +79,13 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     if is_sea and {'MAIN_CARRIAGE', 'SEA_DOCUMENTS'} & codes:
         owns_main = 'MAIN_CARRIAGE' in scope
         booking = main.get('booking_no')
-        add('booking', 'BOOKING', 'MAIN_CARRIAGE', 'van-tai', done=bool(booking),
-            evidence=f"Booking: {booking}" if booking else '', categories=('booking', 'transport'), owned=owns_main)
+        # CHỜ XÁC NHẬN khác với có số: a booking NUMBER is not a completion.
+        # Done only when a fact proves the carrier confirmed (booking_status).
+        booking_status = sea.get('booking_status') or 'UNKNOWN'
+        add('booking', 'BOOKING', 'MAIN_CARRIAGE', 'van-tai',
+            done=bool(booking) and booking_status == 'ACCEPTED',
+            evidence=f"Booking: {booking} · Xác nhận: {booking_status}" if booking else '',
+            categories=('booking', 'transport'), owned=owns_main)
     if 'ORIGIN_PICKUP' in codes:
         add('pickup', 'PICKUP' if is_sea else 'Lấy hàng', 'ORIGIN_PICKUP', 'lay-hang',
             done=bool(pickup.get('atd')), evidence=pickup.get('atd'), deadline=pickup.get('etd'),
@@ -87,7 +98,9 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
             owned=bool({'EXPORT_HANDLING', 'EXPORT_CUSTOMS'} & scope))
     has_main = is_sea and 'booking' in {n['id'] for n in nodes}
     if has_main:
-        if 'MAIN_CARRIAGE' in scope:
+        # LCL has no shipment-level VGM: the si-vgm node is FCL-only, exactly
+        # symmetric with the gate-in FCL gate below.
+        if 'MAIN_CARRIAGE' in scope and profile.get('loadModel') == 'FCL':
             si, vgm = sea.get('si_status', 'UNKNOWN'), sea.get('vgm_status', 'UNKNOWN')
             add('si-vgm', 'SI / VGM', 'SEA_DOCUMENTS', 'van-tai',
                 done=si == vgm == 'ACCEPTED', evidence=f'SI: {si} · VGM: {vgm}' if si != 'UNKNOWN' or vgm != 'UNKNOWN' else '',
@@ -99,8 +112,14 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         atd, ata = main.get('atd'), main.get('ata')
         add('etd', 'ETD', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd),
             evidence=f"ATD: {atd}" if atd else '', deadline=main.get('etd'), owned='MAIN_CARRIAGE' in scope)
-        add('on-board', 'ON BOARD / ATD', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd),
-            evidence=f"Khởi hành thực tế: {atd}" if atd else '', categories=('transport',), owned='MAIN_CARRIAGE' in scope)
+        # ATD != loaded-on-board: departure time is never proof the cargo was
+        # loaded. Done needs the separate on-board fact (on_board_at) as well.
+        on_board = sea.get('on_board_at')
+        add('on-board', 'ON BOARD / ATD', 'MAIN_CARRIAGE', 'van-tai',
+            done=bool(atd) and bool(on_board),
+            evidence=' · '.join(x for x in (f"Khởi hành thực tế: {atd}" if atd else '',
+                                            f"Lên tàu: {on_board}" if on_board else '') if x),
+            categories=('transport',), owned='MAIN_CARRIAGE' in scope)
         add('transit', 'TRANSIT', 'MAIN_CARRIAGE', 'van-tai', done=bool(atd and ata),
             evidence=f"ATD: {atd}" if atd else '', deadline=main.get('eta'), owned='MAIN_CARRIAGE' in scope)
         add('arrival', 'ARRIVAL', 'MAIN_CARRIAGE', 'van-tai', done=bool(ata),
@@ -193,9 +212,12 @@ def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> 
     if profile.get('mode') != 'SEA' or 'MAIN_CARRIAGE' not in scope:
         return None
     facts = ((shipment.get('data') or {}).get('1.2') or {}).get('sea_export') or {}
-    for key, label in (('si_status', 'SI'), ('vgm_status', 'VGM')):
-        if facts.get(key) != 'ACCEPTED':
-            return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
+    # LCL has no shipment-level VGM node (see build_journey): never point the
+    # action at a missing si-vgm node — FCL gate mirrors gate-in's below.
+    if profile.get('loadModel') == 'FCL':
+        for key, label in (('si_status', 'SI'), ('vgm_status', 'VGM')):
+            if facts.get(key) != 'ACCEPTED':
+                return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
     if 'ORIGIN_TERMINAL_OR_BORDER' in scope and profile.get('loadModel') == 'FCL' and not facts.get('gate_in_at'):
         return {'text': 'Ghi nhận gate-in thực tế', 'detail': 'Chưa có mốc container vào bãi.', 'stage': 'gate-in'}
     return None
