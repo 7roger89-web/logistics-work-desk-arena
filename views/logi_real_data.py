@@ -1183,6 +1183,12 @@ def _gnt_projection(
                 "history": history,
             }
 
+    # Tax payment evidence is SEPARATE from GNT generation.
+    # Persisted truth: gnt_customs.taxPaid / taxPaidAt / paidAt (operator confirms with proof).
+    tax_paid_raw = gnt_customs.get("taxPaid") or gnt_customs.get("tax_paid") or customs.get("taxPaid") or customs.get("tax_paid")
+    tax_paid_at_raw = gnt_customs.get("taxPaidAt") or gnt_customs.get("tax_paid_at") or customs.get("taxPaidAt") or customs.get("tax_paid_at") or gnt_customs.get("paidAt") or customs.get("paidAt")
+    tax_paid = bool(tax_paid_raw) or bool(text(tax_paid_at_raw))
+    tax_paid_at = text(tax_paid_at_raw)
     return {
         "payer": text(gnt_data.get("taxpayer_name") or gnt_customs.get("nguoi_nop")),
         "taxCode": text(gnt_data.get("taxpayer_tax_code") or gnt_customs.get("mst")),
@@ -1196,6 +1202,8 @@ def _gnt_projection(
         "done": bool(gnt_doc),
         "document": gnt_doc,
         "documentHistory": history,
+        "taxPaid": tax_paid,
+        "taxPaidAt": tax_paid_at,
         "readiness": {
             "state": readiness_state,
             "gate": readiness_gate,

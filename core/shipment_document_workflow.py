@@ -509,10 +509,18 @@ def build_document_workflow(
     ))
 
     gnt_gate = gnt_flow_gate(flow, gnt.get("taxCode"))
+    # Tax payment truth is SEPARATE from GNT generation.
+    # GNT generation (done/document) means a paper exists, not that customs received money.
+    # COMPLETE requires explicit taxPaid evidence (gnt.taxPaid / taxPaidAt).
+    tax_paid = bool(gnt.get("taxPaid") or gnt.get("taxPaidAt") or gnt.get("paidAt"))
+    has_gnt_doc = bool(gnt.get("done") or _mapping(gnt.get("document")))
     if not gnt_gate["allowed"]:
         gnt_state, gnt_reason = STATE_MISSING, gnt_gate["reason"]
-    elif gnt.get("done") or _mapping(gnt.get("document")):
-        gnt_state, gnt_reason = STATE_COMPLETE, "Giấy nộp thuế đã được tạo cho lô."
+    elif tax_paid:
+        gnt_state, gnt_reason = STATE_COMPLETE, "Đã nộp thuế nhập khẩu (có bằng chứng thanh toán)."
+    elif has_gnt_doc:
+        # GNT exists but no payment evidence — remain READY, not COMPLETE
+        gnt_state, gnt_reason = STATE_READY, "Đã tạo Giấy nộp thuế (GNT), chờ chứng từ nộp thuế — chưa có bằng chứng đã nộp."
     elif gnt.get("noPayable"):
         gnt_state, gnt_reason = STATE_NOT_APPLICABLE, "Thuế nhập khẩu và VAT nhập khẩu đều đã biết bằng 0."
     elif gnt.get("ready"):
