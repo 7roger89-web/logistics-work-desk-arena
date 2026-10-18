@@ -1,0 +1,65 @@
+{
+  "build_source_commit": "9aeb284d72554197057f37e7263023149e9f32b0",
+  "build_source_branch": "ct/logi199-journey-main-integration-20261017",
+  "build_source_message": "fix(journey): keep dedicated container VGM fields off LCL stage forms",
+  "parent_commits": [
+    "551d701bd9bd30533817de51121fbcbe3b3fad67 (expose only existing SEA fact writer fields)",
+    "b91f0d4167cf41ce056dbccceb521379dfbe5f85 (isolate stage popup from whole-lot workspace)",
+    "6974c66c0dcb8ff71af9fd901891eebce30475e2 (carry source-matched build from 5266)",
+    "5266d2666f4cdbee2ba56782db86f19a7c20344c (Jimo map-first)"
+  ],
+  "parent_main_commit": "51422c94ddac7d47e67bd87b11a6d6ac55b196d8",
+  "build_isolated_checkout": "/tmp/journey-9aeb (git worktree detached HEAD 9aeb284)",
+  "build_time_utc": "2026-10-18T13:46:00Z",
+  "node_version": "v22.22.3",
+  "npm_version": "10.9.8",
+  "vite_version": "8.2.2",
+  "react_version": "19.2.8",
+  "commands_executed": [
+    "npm ci",
+    "npm run typecheck",
+    "npm run build",
+    "npm run scan (python3 ../scripts/scan_process.py dist)",
+    "python3 -m unittest tests.test_journey_stage_fact_fields_199"
+  ],
+  "artifacts": [
+    {
+      "filename": "logi-shell.js",
+      "evidence_path": "evidence/journey-main-build-9aeb/logi-shell.js",
+      "size_bytes": 2238008,
+      "sha256": "f26c54f519336b44643f868be829d8ce21d02bf591c77e28f3116eb3ff2f4df8",
+      "git_blob_sha1": "57c035667466ff4c0f5b1eac59e7245be2d03396",
+      "built_from": "component/dist/logi-shell.js (Vite lib ES, minified, no sourcemap, 1923 modules)"
+    },
+    {
+      "filename": "logi-shell.css",
+      "evidence_path": "evidence/journey-main-build-9aeb/logi-shell.css",
+      "size_bytes": 112635,
+      "sha256": "a6a92ca5558e559a9f1c93046764328168f3cdccd84df4bdec70541a93043f0a",
+      "git_blob_sha1": "19ee3890b45390b8878313c1d6f6cb98d9546236",
+      "built_from": "component/dist/logi-shell.css (cssMinify, tailwindcss v4)"
+    }
+  ],
+  "previous_build_for_comparison": {
+    "commit": "5266d2666f4cdbee2ba56782db86f19a7c20344c",
+    "evidence": "evidence/journey-main-build-5266/",
+    "logi_shell_js_sha256": "81dce647e40ef5e0bc03f1fbf2d2c8ff62943019882f54c48beeeb98bf3a63e8",
+    "logi_shell_js_blob": "6448c4c96c4803f5df73c86d80a875fc06de83cd",
+    "logi_shell_css_sha256": "3269a149161637cd2d5dd4efdd18c49991fdcd05a767f081c73a24cef5985cca",
+    "logi_shell_css_blob": "b538445c8f0770cf12a8a4de2215bdd35cbb099c",
+    "delta": "JS +2025 bytes (+0.09%), CSS -3107 bytes (-2.7%) — small popup isolation + LCL guard"
+  },
+  "scan_result": {
+    "script": "scripts/scan_process.py dist",
+    "final_executable_process_reference_count": 0,
+    "log": "INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)\nscanned logi-shell.js: 2205972 chars, 0 executable hits\nscanned logi-shell.css: 112617 chars, 0 executable hits\nFINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0"
+  },
+  "typecheck": "PASS (tsc --noEmit, zero errors)",
+  "tests": {
+    "test_journey_stage_fact_fields_199": "PASS 4/4",
+    "details": "test_fcl_fields_match_the_existing_writer_and_belong_only_to_nodes, test_status_options_are_whitelisted_without_silent_completion, test_air_and_lcl_never_invent_fcl_forms, test_unowned_export_cannot_offer_an_edit_form"
+  },
+  "push_branch_allowed": "arena/adbc6593-logistics-work-desk-arena",
+  "evidence_dir": "evidence/journey-main-build-9aeb/",
+  "zip": "evidence/journey-main-build-9aeb.zip (optional ChatGPT attachment)"
+}

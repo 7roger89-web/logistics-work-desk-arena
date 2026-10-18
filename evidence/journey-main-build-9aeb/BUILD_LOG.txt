@@ -1,0 +1,47 @@
+$ git worktree add /tmp/journey-9aeb 9aeb284d72554197057f37e7263023149e9f32b0
+Preparing worktree (detached HEAD 9aeb284)
+HEAD is now at 9aeb284 fix(journey): keep dedicated container VGM fields off LCL stage forms
+
+$ cd /tmp/journey-9aeb && python3 -m unittest tests.test_journey_stage_fact_fields_199 -v
+test_air_and_lcl_never_invent_fcl_forms ... ok
+test_fcl_fields_match_the_existing_writer_and_belong_only_to_nodes ... ok
+test_status_options_are_whitelisted_without_silent_completion ... ok
+test_unowned_export_cannot_offer_an_edit_form ... ok
+Ran 4 tests in 0.001s OK
+
+$ cd /tmp/journey-9aeb/component && npm ci
+added 87 packages, and audited 88 packages in 6s
+
+$ npm run typecheck
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+(no errors)
+
+$ npm run build
+> logi-shell-component@0.1.0 build
+> vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1923 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css    112.63 kB │ gzip:  22.18 kB
+dist/logi-shell.js   2,238.00 kB │ gzip: 871.48 kB
+✓ built in 687ms
+
+$ npm run scan
+> python3 ../scripts/scan_process.py dist
+INFO: 'process' appears 1x inside string literals in logi-shell.js (inert)
+scanned logi-shell.js: 2205972 chars, 0 executable hits
+scanned logi-shell.css: 112617 chars, 0 executable hits
+FINAL_EXECUTABLE_PROCESS_REFERENCE_COUNT=0
+
+$ sha256sum dist/*
+a6a92ca5558e559a9f1c93046764328168f3cdccd84df4bdec70541a93043f0a  dist/logi-shell.css
+f26c54f519336b44643f868be829d8ce21d02bf591c77e28f3116eb3ff2f4df8  dist/logi-shell.js
+
+$ git hash-object dist/logi-shell.js dist/logi-shell.css
+57c035667466ff4c0f5b1eac59e7245be2d03396  (logi-shell.js)
+19ee3890b45390b8878313c1d6f6cb98d9546236  (logi-shell.css)
+
+$ cp dist/logi-shell.* /home/user/logistics-work-desk-arena/evidence/journey-main-build-9aeb/
