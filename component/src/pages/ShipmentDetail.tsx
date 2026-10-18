@@ -1385,15 +1385,13 @@ export default function ShipmentDetail() {
         hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
           (Boolean(moduleStepNode) ||
            (['si-vgm', 'gate-in', 'customs-export'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
-        globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
+        stageContent={<>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
-      {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
-        {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
-      </p>}
-
+        </>}
+        globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
           LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
           to sit permanently between the header+tabs and the operational tab

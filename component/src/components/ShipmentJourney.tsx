@@ -381,10 +381,10 @@ function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalAc
 }
 
 
-export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, hasStageContent = false, globalActive = false, globalTab = "van-tai", attentionItems = [], globalRequest = 0, attachRequest = 0 }: {
+export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, stageContent, hasStageContent = false, globalActive = false, globalTab = "van-tai", attentionItems = [], globalRequest = 0, attachRequest = 0 }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
-  children?: ReactNode; hasStageContent?: boolean; globalActive?: boolean; globalTab?: string;
+  children?: ReactNode; stageContent?: ReactNode; hasStageContent?: boolean; globalActive?: boolean; globalTab?: string;
   attentionItems?: AttentionItem[];
   /** Issue #190 — the reference composition has NO journey section header:
       the "Toàn bộ lô hàng" / "+ Quy trình" controls live in the page identity
@@ -537,7 +537,24 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
                   {stage.blockers.length > 0 && <p className="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-800">⚠ {stage.blockers[0]}</p>}
                   <button type="button" onClick={() => openGlobal(stage.targetTab)} className="touch-target w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-bold text-[#0f2a4a]">Mở khu vực cập nhật</button>
                 </div>
-              : children}
+              : work === 'docs' ? <section className="space-y-3 text-sm" data-testid="journey-stage-documents">
+                  <h4 className="font-extrabold text-[#10263C]">Chứng từ · {stage.label}</h4>
+                  <p className="text-slate-600">Chỉ hiển thị loại chứng từ và tệp đã được liên kết rõ với công đoạn này; không tự gán tệp toàn lô.</p>
+                  <div className="flex flex-wrap gap-2" data-testid="journey-stage-doc-categories">
+                    {stage.documentCategories.length
+                      ? stage.documentCategories.map(category => <span key={category} className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 font-semibold">{category}</span>)
+                      : <span className="text-slate-500">Chưa có loại chứng từ được chỉ định cho công đoạn.</span>}
+                  </div>
+                  <p className="font-semibold">Tệp đã gắn với công đoạn ({(s.attachments ?? []).filter(f => stage.documentIds.includes(f.id)).length})</p>
+                  {(s.attachments ?? []).some(f => stage.documentIds.includes(f.id))
+                    ? <ul className="space-y-2" data-testid="journey-stage-doc-files">
+                        {(s.attachments ?? []).filter(f => stage.documentIds.includes(f.id)).map(f =>
+                          <li key={f.id} className="rounded-lg border border-slate-200 p-2">{f.name} <span className="text-slate-500">· {f.categoryLabel}</span></li>)}
+                      </ul>
+                    : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-600">Chưa có tệp nào được ghi nhận riêng cho công đoạn này.</p>}
+                  <button type="button" onClick={() => openGlobal('chung-tu')} className="touch-target rounded-lg border border-[#123A5E] px-3 py-2 font-bold text-[#123A5E]">Mở kho chứng từ toàn lô →</button>
+                </section>
+              : stageContent}
           </div>
         </div>}
         {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-global-workspace">
