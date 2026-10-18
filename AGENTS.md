@@ -242,6 +242,67 @@ Cuối MỌI task có thay đổi file, TRƯỚC khi báo cáo hoàn tất:
 
 Không cập nhật handoff = task CHƯA hoàn tất. Task chỉ đọc thì không bắt buộc.
 
+## Hai vòng phát triển — không trộn
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §5A (bản rút gọn cho dự án này).
+
+PRODUCT FAST LOOP: Business/Owner Outcome → Minimum Product Truth → Product/UX Synthesis
+→ Interactive Prototype → Owner Review → Visual/Product Reference Lock → Real Implementation
+→ Targeted Tests → Human Outcome Test.
+
+ASSURANCE / RELEASE LOOP: Risk-Proportional Hardening → Independent Verification → Release.
+
+Trạng thái đi theo bậc, không nhảy:
+IDEA → PROTOTYPE → OWNER TRUTH → IMPLEMENTATION → SYSTEM TRUTH → VERIFICATION → RELEASE TRUTH.
+
+Luật:
+- "Xong kỹ thuật" KHÁC "được phát hành". Goal PASS, verify candidate, sẵn sàng phát hành,
+  và phát hành là bốn trạng thái riêng.
+- KHÔNG kéo một việc qua vòng assurance khi vòng product chưa xong.
+- Gia cố theo rủi ro, dùng đúng lane đã có: FAST | STANDARD | STRICT | CRITICAL.
+  Rủi ro thấp → kiểm hẹp sát chỗ đổi. Việc thường → bằng chứng acceptance/regression rõ.
+  Việc chặt → thêm kiểm độc lập khi có giá trị quyết định.
+  Việc nguy (auth, migration, xoá dữ liệu, phát hành) → verifier độc lập + bằng chứng
+  đường thật + Owner duyệt.
+- Chạy một agent tử tế từ đầu tới cuối trước; chỉ thêm verifier khi rủi ro đòi.
+- Tiêu chí người: Owner phải nhận ra việc cần xử lý trong 30 giây.
+
+## Thang chống over-engineering
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §5A.
+
+Trước khi thêm bất cứ gì, thử theo ĐÚNG thứ tự này và DỪNG ở bậc đầu tiên giải quyết được:
+1. Không code — trả lời hoặc ra quyết định
+2. Đổi cấu hình
+3. Sửa quy trình
+4. Sửa hẹp đúng chỗ
+5. Dùng helper/component đã có
+6. Thay skill/tool sẵn có
+7. Chỉ tạo abstraction mới khi chứng minh được là bắt buộc về mặt cơ học
+
+Câu hỏi bắt buộc kèm theo: `Không bị over engineering chứ?`
+
+## Owner Gate — chỉ hỏi Owner những việc này
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §4.
+
+Chỉ hỏi Owner khi thuộc một trong các loại: ý định sản phẩm/kinh doanh · dữ liệu nghiệp vụ
+thật · hành động xoá dữ liệu · cấp quyền secret/credential · chi tiêu đáng kể · deploy
+production · phát hành cần duyệt · mơ hồ không gỡ được bằng kỹ thuật và hậu quả lớn.
+
+KHÔNG hỏi Owner chọn cơ chế kỹ thuật mà tự xác định được từ bằng chứng.
+
+## Bất biến then chốt
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §3.
+
+- OUTPUT_NOT_EVIDENCE — output của executor là ĐỀ XUẤT cho tới khi được kiểm với bằng chứng.
+- INVENTORY_NOT_BEHAVIOR — file/class/registry tồn tại KHÔNG phải bằng chứng nó hoạt động.
+- UNKNOWN_IS_NOT_SUPPORTED — cái không kiểm được thì giữ UNKNOWN, không coi là đã hỗ trợ.
+- GOAL_PASS_NOT_PROMOTION — PASS mục tiêu ≠ đã phát hành.
+- PROJECT_STATE_NOT_CHAT_HISTORY — phiên mới hồi phục từ trạng thái dự án, không từ chat.
+- DETERMINISTIC_FIRST — kiểm được bằng máy thì kiểm trước, đừng suy luận.
+
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack
 
