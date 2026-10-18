@@ -86,7 +86,7 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                       'deadline': str(deadline or ''), 'owned': owned,
                       'current': False, 'blockers': [], 'dependencies': [],
                       'documentCategories': list(categories),
-                      'documentIds': [a['id'] for a in attachments if a.get('category') in categories]})
+                      'documentIds': []})
 
     is_sea = profile.get('mode') == 'SEA'
     if is_sea and {'MAIN_CARRIAGE', 'SEA_DOCUMENTS'} & codes:
@@ -163,6 +163,21 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
             node_fields.append(field)
         node['factFields'] = node_fields
 
+    # LOGI-199: category-only attachment metadata is NOT an explicit stage
+    # association. A transport record could be booking, pickup or delivery;
+    # a customs file could be import or export. Fail closed on shared categories
+    # so a stage popup never attributes a whole-lot file to the wrong node.
+    category_nodes: dict[str, set[str]] = {}
+    for node in nodes:
+        for category in node['documentCategories']:
+            category_nodes.setdefault(category, set()).add(node['id'])
+    for node in nodes:
+        uniquely_owned = {cat for cat in node['documentCategories']
+                          if len(category_nodes.get(cat, ())) == 1}
+        node['documentIds'] = [
+            a['id'] for a in attachments
+            if a.get('id') and a.get('category') in uniquely_owned
+        ]
     by_id = {n['id']: n for n in nodes}
     edges = []
     previous = None

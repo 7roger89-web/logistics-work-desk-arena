@@ -22,12 +22,12 @@ def _profile(mode='SEA', load_model='FCL', scope=None):
     }
 
 
-def _project(profile):
+def _project(profile, *, attachments=None):
     shipment = {'id': 'LOGI-199-SEA-FIELDS',
                 'data': {'1.2': {'sea_export': {}}, '2.4': {}, '2.7': {}}}
     return build_journey(shipment, profile=profile,
                          operational={'main_leg': {}, 'pickup_leg': {}},
-                         primary={}, dashboard={}, attachments=[])
+                         primary={}, dashboard={}, attachments=attachments or [])
 
 
 class SeaStageFields199(unittest.TestCase):
@@ -67,6 +67,28 @@ class SeaStageFields199(unittest.TestCase):
         self.assertFalse(nodes['customs-export']['owned'])
         self.assertNotIn('factFields', nodes['customs-export'])
         self.assertTrue(nodes['si-vgm']['owned'])
+
+
+    def test_documents_in_shared_categories_stay_whole_lot(self):
+        profile = _profile()
+        profile['stages'].append({'code': 'IMPORT_CUSTOMS', 'label': 'Import customs',
+                                  'reason': 'SERVICE_SCOPE'})
+        profile['serviceScope'].append('IMPORT_CUSTOMS')
+        attachments = [
+            {'id': 'TR-1', 'category': 'transport'},
+            {'id': 'CUS-1', 'category': 'customs'},
+            {'id': 'SI-1', 'category': 'si'},
+            {'id': 'BOOK-1', 'category': 'booking'},
+        ]
+        nodes = {n['id']: n for n in _project(profile, attachments=attachments)['nodes']}
+        # Transport belongs to many stages, customs to export AND import.
+        for node_id in ('booking', 'pickup', 'gate-in', 'on-board', 'arrival'):
+            self.assertNotIn('TR-1', nodes[node_id]['documentIds'])
+        self.assertNotIn('CUS-1', nodes['customs-export']['documentIds'])
+        self.assertNotIn('CUS-1', nodes['customs-import']['documentIds'])
+        # Category exclusive to one node may be safely scoped there.
+        self.assertEqual(nodes['booking']['documentIds'], ['BOOK-1'])
+        self.assertEqual(nodes['si-vgm']['documentIds'], ['SI-1'])
 
 
 if __name__ == '__main__':
