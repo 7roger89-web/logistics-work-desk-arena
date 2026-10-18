@@ -119,6 +119,13 @@ export default function ShipmentDetail() {
   const { id: paramId } = useParams();
   const { pathname } = useLocation();
   const id = shipmentIdFromPath(pathname, paramId);
+  // Journey entry scroll only: routing from the long shipment list must show the
+  // top of the selected shipment instead of inheriting its previous scroll.
+  // The app's scroll owner is .logi-shell; no global router or data changes.
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>('.logi-shell');
+    if (shell) shell.scrollTop = 0;
+  }, [id]);
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
   const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
@@ -1371,19 +1378,20 @@ export default function ShipmentDetail() {
           </div>
         )}
 
-      <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />
+      {shipmentAttention.length > 0 && <AttentionNow items={shipmentAttention} title="Cần xử lý" compact />}
 
       <ShipmentJourney key={s.id} shipment={s} activeStage={workspaceNode?.id || ""} work={workspaceWork} globalRequest={globalReq} attachRequest={attachReq}
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
-        globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
+        hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
+          (Boolean(moduleStepNode) ||
+           (['si-vgm', 'gate-in', 'customs-export'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
+        stageContent={<>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
         <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
-      {workspaceNode && ["docs", "costs", "history"].includes(workspaceWork) && <p className="rounded-xl bg-slate-50 border p-3 text-sm text-slate-600">
-        {workspaceWork === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : workspaceWork === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."}
-      </p>}
-
+        </>}
+        globalActive={Boolean(sp.get("tab")) && !workspaceNode} globalTab={tab}>
       {/* ============ LOT IDENTITY + MAINTENANCE DISCLOSURE ============
           LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — customer/date maintenance used
           to sit permanently between the header+tabs and the operational tab
