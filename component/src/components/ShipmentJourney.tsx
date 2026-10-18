@@ -1,16 +1,50 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ArrowRight, CheckCircle2, Circle, Clock, CircleAlert, ChevronDown, ChevronRight, Info, Layers, MapPin, Plus } from 'lucide-react';
-import type { JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
+import type { AttentionItem, JourneyNode, Shipment, WorkModuleGuidance, WorkModuleRollup } from '../lib/viewmodel';
 import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
 import { useStore } from '../lib/store';
 import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
 import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
+import JourneyBubble, { bubbleTasksFor } from './JourneyBubble';
+
+export const JOURNEY_REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', readonly string[]> = {
+  // Sea has detailed node ids; Air/Rail/Road may project canonical profile
+  // stage ids instead. Keep the five macro phases transport-mode neutral.
+  origin: [
+    'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in',
+    'ORIGIN_HANDOFF', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS',
+    'SEA_EQUIPMENT', 'SEA_CONSOLIDATION',
+    // LOGI-199 T2–T4 mode-specific origin nodes.
+    'cfs-receipt', 'air-booking', 'air-acceptance', 'road-vehicle', 'road-ltl',
+  ],
+  main: [
+    'etd', 'on-board', 'transit', 'arrival',
+    'CROSS_BORDER', 'MAIN_CARRIAGE', 'RAIL_CARRIAGE',
+    'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE',
+    'uplift', 'air-transit', 'air-arrival', 'road-border',
+  ],
+  import: ['customs-import'],
+  delivery: ['delivery'],
+} as const;
+
+export const JOURNEY_REGION_LABELS = {
+  origin: 'Đầu đi',
+  main: 'Chặng chính',
+  import: 'Nhập khẩu',
+  delivery: 'Giao hàng',
+} as const;
+
+export function journeyRegionNodeIds(nodeId: string): readonly string[] {
+  const match = (Object.values(JOURNEY_REGION_NODE_IDS) as readonly (readonly string[])[])
+    .find((ids) => ids.includes(nodeId));
+  return match ?? [nodeId];
+}
 
 export const JOURNEY_WORK = [
-  { id: 'overview', label: 'Tổng quan' }, { id: 'info', label: 'Thông tin' },
-  { id: 'docs', label: 'Chứng từ' }, { id: 'costs', label: 'Chi phí' }, { id: 'history', label: 'Lịch sử' },
+  { id: 'info', label: 'Công việc' },
+  { id: 'docs', label: 'Chứng từ' },
 ];
 // Issue #162 — the human half of a module: readable status + gate language.
 const MODULE_STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -48,7 +82,7 @@ function ModuleCard({ module: m, nodes, expanded, onToggle, onPick, selectedId }
   return <article className="rounded-xl border border-slate-200 bg-white p-3" data-testid={`journey-module-${m.instanceId}`} data-module-status={m.status}>
     <div className="flex flex-wrap items-start gap-2">
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold tracking-wide text-slate-500">QUY TRÌNH PHÁT SINH · V{m.templateVersion}</p>
+        <p className="text-[12px] font-bold tracking-wide text-slate-500">QUY TRÌNH PHÁT SINH · V{m.templateVersion}</p>
         <h4 className="font-extrabold text-[15px] text-[#0f2a4a]">{m.name}</h4>
       </div>
       <span className={cx('inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold', meta.cls)} data-testid={`journey-module-status-${m.instanceId}`}>
@@ -102,9 +136,9 @@ function ModuleStepButton({ node, onPick, selectedId }: {
   return <button type="button" data-testid={`journey-node-${id}`} data-state={node.state}
     aria-pressed={selectedId === id} onClick={() => onPick(id)}
     className={cx('flex min-w-[168px] flex-col rounded-xl border-2 p-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700', m.cls, selectedId === id && 'ring-2 ring-[#0f2a4a] ring-offset-2')}>
-    <span className="inline-flex items-center gap-1 text-[11px] font-bold"><Icon size={13} aria-hidden="true" />{m.label}</span>
+    <span className="inline-flex items-center gap-1 text-[12px] font-bold"><Icon size={13} aria-hidden="true" />{m.label}</span>
     <span className="mt-0.5 text-sm font-extrabold">{node.label}</span>
-    <span className="text-[11px]">{node.evidence || 'Chưa có bằng chứng thực tế'}</span>
+    <span className="text-[12px]">{node.evidence || 'Chưa có bằng chứng thực tế'}</span>
   </button>;
 }
 
@@ -180,7 +214,7 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#0f2a4a] text-white" aria-hidden="true"><Info size={16} /></span>
         <h3 className="text-xl font-extrabold tracking-tight text-[#0f2a4a]">NHẬP KHẨU</h3>
         {(selected.state === 'PROBLEM' || selected.blockers.length > 0) && (
-          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-extrabold text-red-700">
+          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[12px] font-extrabold text-red-700">
             <CircleAlert size={12} aria-hidden="true" /> Cần xử lý
           </span>
         )}
@@ -278,25 +312,16 @@ function CustomsImportQuickPanel({ s, selected, onOpen, runPrimary, onClose }: {
   </div>;
 }
 
-const EMPTY_PHASES = [
-  { id: 'profile', label: 'HỒ SƠ', hint: 'Bổ sung hồ sơ & phạm vi', tab: 'van-tai' },
-  { id: 'origin', label: 'ĐẦU ĐI', hint: 'Chưa xác định', tab: 'lay-hang' },
-  { id: 'main', label: 'CHẶNG CHÍNH', hint: 'Chưa xác định', tab: 'van-tai' },
-  { id: 'import', label: 'NHẬP KHẨU', hint: 'Chưa xác định', tab: 'nhap' },
-  { id: 'delivery', label: 'GIAO HÀNG', hint: 'Chưa xác định', tab: 'nhap' },
-  { id: 'finish', label: 'HOÀN TẤT', hint: 'Rà chứng từ / tài chính', tab: 'chung-tu' },
-] as const;
-
 /**
- * Issue #188 — a fresh shipment may truthfully have ZERO detailed Journey
- * nodes until mode/scope/profile facts are confirmed. Zero nodes must change
- * cockpit CONTENT, never make the approved cockpit shell disappear.
+ * Issue #199 follow-up — zero-node / missing-Journey exception only.
+ * Keep the same full-width paper-chart map family as the populated Journey,
+ * but show no invented nodes or stages. The truthful profile status and its
+ * single CTA remain visible; the CTA only navigates to the real editor.
  *
- * This surface renders only the universal six-phase mental model plus the
- * existing Execution Profile projection. It deliberately does NOT fabricate
- * SEA/ROAD/AIR detailed stages merely to make the map look populated.
+ * The global branch preserves the whole-lot tabs and their existing children,
+ * including the Execution Profile editor reached by the primary action.
  */
-function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, globalActive = false, globalTab = 'van-tai' }: {
+function ZeroNodeJourney({ shipment: s, onGlobal, runPrimary, children, globalActive = false, globalTab = 'van-tai' }: {
   shipment: Shipment;
   onGlobal: (tab?: string) => boolean;
   runPrimary: () => void;
@@ -304,9 +329,8 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   globalActive?: boolean;
   globalTab?: string;
 }) {
-  const profile = s.executionProfile;
-  const issues = profile?.issues ?? [];
-  const next = profile?.nextAction;
+  const next = s.executionProfile?.nextAction;
+  const profileState = s.executionProfile?.stateLabel || 'Hồ sơ lô còn thiếu';
   const tabs = [
     { id: 'van-tai', label: 'Thông tin' },
     { id: 'lay-hang', label: 'Xuất khẩu' },
@@ -315,119 +339,63 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
     { id: 'tai-chinh', label: 'Tài chính' },
     { id: 'lich-su', label: 'Lịch sử' },
   ];
-  return <section className="journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden" data-testid="shipment-journey" data-empty-journey="true">
-    <div className="flex flex-wrap items-center gap-3 border-b p-4">
-      <div className="min-w-0 flex-1">
-        <h2 className="font-extrabold text-lg text-[#0f2a4a]">Hành trình lô hàng</h2>
-        <p className="text-sm text-slate-500">Chưa đủ hồ sơ để xác định công đoạn chi tiết. Khung Journey vẫn giữ nguyên; UNKNOWN không được biến thành công đoạn giả.</p>
+  return <section className="journey-demo min-w-0" data-testid="shipment-journey" data-empty-journey="true">
+    {globalActive ? (
+      <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
+        <div className="border-b bg-slate-100 px-4 py-3">
+          <h3 className="text-xl font-black">Toàn bộ lô hàng · {s.id}</h3>
+          <p className="text-xs text-slate-500">Chưa có Journey chi tiết; UNKNOWN không được biến thành công đoạn giả.</p>
+        </div>
+        <div className="flex shrink-0 overflow-x-auto border-b px-2">
+          {tabs.map(t => <button type="button" key={t.id} onClick={() => onGlobal(t.id)} aria-pressed={globalTab === t.id}
+            className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}
+        </div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div>
       </div>
-      <button type="button" onClick={() => onGlobal()} className="touch-target rounded-lg border px-3 py-2 text-sm font-bold">Toàn bộ lô hàng</button>
-    </div>
-
-    <nav className="border-b border-slate-300 bg-slate-50 p-2" aria-label="6 giai đoạn hành trình" data-testid="journey-phase-strip">
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-6">
-        {EMPTY_PHASES.map((phase, index) => {
-          const actionable = phase.id === 'profile';
-          const Icon = actionable ? CircleAlert : Circle;
-          return <button key={phase.id} type="button" data-testid={`journey-phase-${phase.id}`}
-            data-state={actionable ? 'ACTION' : 'UNKNOWN'}
-            onClick={actionable ? runPrimary : undefined}
-            disabled={!actionable}
-            aria-disabled={!actionable}
-            className={cx('touch-target min-w-0 rounded-lg border-2 px-2 py-2 text-left',
-              actionable ? 'border-amber-500 bg-amber-50 text-amber-950' : 'border-dashed border-slate-300 bg-slate-50 text-slate-500')}>
-            <span className="flex items-center gap-1 text-[10px] font-extrabold tracking-wide"><Icon size={12} aria-hidden="true" />{index + 1}/6</span>
-            <span className="mt-0.5 block truncate text-xs font-black">{phase.label}</span>
-            <span className="mt-0.5 block text-[10px] font-medium opacity-80">{phase.hint}</span>
-          </button>;
-        })}
+    ) : (<>
+      <div className="journey-focus-row" data-testid="journey-zero-focus-row">
+        <div className="journey-toolbar" data-testid="journey-compact-toolbar">
+          <span className="journey-toolbar-chip journey-toolbar-here">📍 Đang ở: Chưa xác định</span>
+          <span className="journey-toolbar-next">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</span>
+          <span className="journey-toolbar-spacer" />
+        </div>
       </div>
-    </nav>
-
-    <div className="flex flex-wrap items-center gap-2 border-b border-slate-300 bg-white px-3 py-2" data-testid="journey-map-toolbar">
-      <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">📍 Đang ở: HỒ SƠ · cần bổ sung phạm vi</span>
-      <span className="text-xs text-slate-500">Công đoạn chi tiết sẽ xuất hiện khi có đủ authority để xác định phạm vi.</span>
-    </div>
-
-    <div className={cx('journey-split journey-split-fresh', globalActive && 'journey-split-wide')}>
-      <div className="journey-canvas relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-6" data-testid="journey-empty-canvas">
-        <div className="flex w-full max-w-[760px] flex-col items-center">
-          <div className="rounded-full border-2 border-slate-400 bg-white px-8 py-2 text-xs font-extrabold tracking-widest text-slate-600">START</div>
-          <div className="h-10 w-0.5 bg-slate-300" aria-hidden="true" />
-          <div className="w-full max-w-[420px] rounded-2xl border-[3px] border-amber-500 bg-white p-5 shadow-lg">
-            <div className="flex items-start gap-3">
-              <CircleAlert className="mt-0.5 shrink-0 text-amber-600" size={28} aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold tracking-wide text-amber-700">1/6 · HỒ SƠ</p>
-                <h3 className="mt-1 text-xl font-black text-slate-900">{profile?.stateLabel || 'Hồ sơ lô còn thiếu'}</h3>
-                <p className="mt-1 text-sm text-slate-600">{next?.detail || 'Bổ sung phương thức, Incoterm, loại hàng và phạm vi Trường Thành để dựng Journey đúng cho lô này.'}</p>
-              </div>
-            </div>
-            {issues.length > 0 && <ul className="mt-3 space-y-1 border-t pt-3 text-sm text-slate-700" data-testid="journey-empty-profile-issues">
-              {issues.slice(0, 4).map(issue => <li key={issue.code}>• {issue.message}</li>)}
-            </ul>}
-          </div>
-          <div className="mt-5 grid w-full grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Các giai đoạn chưa xác định">
-            {EMPTY_PHASES.slice(1).map(phase => <div key={phase.id} className="rounded-lg border-2 border-dashed border-slate-300 bg-white/80 px-2 py-3 text-center text-xs font-bold text-slate-500">{phase.label}<span className="mt-1 block text-[10px] font-medium">Chưa xác định</span></div>)}
+      <div className="journey-split journey-map-first journey-zero-map-first" data-testid="journey-zero-map-first"
+        data-layout="full-width" style={{ width: '100%' }}>
+        <JourneyMap shipment={s} nodes={[]} selectedId="" onPick={() => {}} collapsed={false} onExpand={() => {}} />
+        <div className="journey-zero-notice" data-testid="journey-empty-map" role="status" aria-labelledby="journey-zero-title">
+          <div className="journey-zero-profile" data-testid="journey-zero-profile">
+            <p className="journey-zero-kicker">CẦN LÀM NGAY</p>
+            <span className="journey-zero-profile-state" data-testid="journey-zero-profile-state">{profileState}</span>
+            <h2 id="journey-zero-title" className="journey-zero-title">Chưa có sơ đồ Journey</h2>
+            <p className="journey-zero-summary">Chưa đủ hồ sơ để xác định công đoạn chi tiết.</p>
+            <p className="journey-zero-next-action" data-testid="journey-zero-next-action">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
+            <p className="journey-zero-detail">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
+            <button type="button" onClick={runPrimary} data-testid="journey-zero-primary-cta"
+              className="touch-target journey-zero-cta">BỔ SUNG HỒ SƠ →</button>
           </div>
         </div>
       </div>
-
-      <aside className="journey-side" data-testid="journey-side-panel">
-        {globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
-          <div className="border-b bg-slate-100 px-4 py-3">
-            <h3 className="text-xl font-black">Toàn bộ lô hàng · {s.id}</h3>
-            <p className="text-xs text-slate-500">Dữ liệu hiện có vẫn dùng writer/authority cũ; Journey không tự sinh fact.</p>
-          </div>
-          <div className="flex shrink-0 overflow-x-auto border-b px-2">
-            {tabs.map(t => <button type="button" key={t.id} onClick={() => onGlobal(t.id)} aria-pressed={globalTab === t.id}
-              className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}
-          </div>
-          <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div>
-        </div> : <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
-          <div className="border-b bg-white px-4 py-3">
-            <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Fresh shipment · onboarding</p>
-            <h3 className="text-lg font-extrabold text-slate-900">HỒ SƠ & PHẠM VI</h3>
-            <p className="text-xs text-slate-500">Làm rõ phạm vi trước; sau đó hệ thống mới hiện công đoạn thật.</p>
-          </div>
-          <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
-            <div className="rounded-lg border-2 border-amber-500 bg-amber-50 p-3">
-              <p className="text-xs font-extrabold tracking-wide text-amber-800">CẦN LÀM NGAY</p>
-              <p className="mt-1 text-lg font-extrabold text-amber-950">{next?.label || 'Bổ sung hồ sơ thực hiện lô'}</p>
-              <p className="mt-1 text-sm text-amber-900">{next?.detail || 'Xác nhận dữ liệu hồ sơ và phạm vi dịch vụ của Trường Thành.'}</p>
-              <button type="button" onClick={runPrimary} data-testid="journey-empty-primary-cta"
-                className="touch-target mt-3 w-full rounded-lg bg-[#0f2a4a] px-4 py-3 font-extrabold text-white">BỔ SUNG HỒ SƠ →</button>
-            </div>
-            <div className="rounded-lg border bg-white p-3 text-sm">
-              <p className="font-bold text-slate-900">Tại sao chưa có node chi tiết?</p>
-              <p className="mt-1 text-slate-600">Mode/phạm vi chưa đủ authority. Hiển thị BOOKING, SI/VGM, Hải quan hay Giao hàng lúc này sẽ là đoán bừa.</p>
-            </div>
-            <button type="button" onClick={() => onGlobal('van-tai')} className="touch-target w-full rounded-lg border border-slate-800 px-3 text-sm font-bold">MỞ THÔNG TIN LÔ →</button>
-          </div>
-        </div>}
-      </aside>
-    </div>
+    </>)}
   </section>;
 }
 
-export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, globalActive = false, globalTab = "van-tai", globalRequest = 0, attachRequest = 0 }: {
+
+export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen, onGlobal, runPrimary, children, stageContent, hasStageContent = false, globalActive = false, globalTab = "van-tai", attentionItems = [], globalRequest = 0, attachRequest = 0 }: {
   shipment: Shipment; activeStage: string; work: string;
   onOpen: (node: JourneyNode, work: string) => boolean; onGlobal: (tab?: string) => boolean; runPrimary: () => void;
-  children?: ReactNode; globalActive?: boolean; globalTab?: string;
+  children?: ReactNode; stageContent?: ReactNode; hasStageContent?: boolean; globalActive?: boolean; globalTab?: string;
+  attentionItems?: AttentionItem[];
   /** Issue #190 — the reference composition has NO journey section header:
       the "Toàn bộ lô hàng" / "+ Quy trình" controls live in the page identity
       bar. The page forwards button presses through these counters. */
   globalRequest?: number; attachRequest?: number;
 }) {
   const [picked, setPicked] = useState('');
-  const [mapCollapsed, setMapCollapsed] = useState(false);
-  // Issue #195 — the operational overview is the default: whole journey +
-  // current/problem + next action visible at once. The detailed 11-node
-  // JourneyMap stays intact and mounts only when the operator explicitly asks
-  // for it. This is local UI state only: no second engine, no duplicated
-  // journey state — the same `nodes`, the same `pick`, the same panels.
-  const [detailMapOpen, setDetailMapOpen] = useState(false);
-  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'quick');
+  // G2 — node-attached task bubble (Owner HTML): separate from the popup state.
+  const [bubbleId, setBubbleId] = useState('');
+  const [utilityOpen, setUtilityOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<'overview' | 'quick' | 'stage' | 'global'>(activeStage ? 'stage' : globalActive ? 'global' : 'overview');
   const [expandedModule, setExpandedModule] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const [chosen, setChosen] = useState('');
@@ -435,8 +403,14 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const [attachError, setAttachError] = useState('');
   const { dispatch } = useStore();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'quick'); }, [activeStage, work, globalActive, globalTab]);
+  useEffect(() => { setPicked(activeStage || ''); setPanelMode(activeStage ? 'stage' : globalActive ? 'global' : 'overview'); }, [activeStage, work, globalActive, globalTab]);
   const journey = s.journey;
+  // Issue #197 hook-ordering repair — the zero-node early return MUST come
+  // after every Hook. A shipment that gains Journey nodes while mounted would
+  // otherwise render a different hook count and React throws "Rendered more
+  // hooks than during the previous render". The hasNodes guards keep the
+  // zero-node behavior identical: the request/module effects stay inert there.
+  const hasNodes = Boolean(journey?.nodes.length);
   const modules = useMemo(() => journey?.modules ?? [], [journey]);
   const attachOutcome = vm?.lastWrites?.find(w => w.event === 'work_module_attach' && w.requestId === attachPending);
   const attachLoading = Boolean(attachPending && !attachOutcome);
@@ -445,8 +419,52 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (attachOutcome.ok) { setAttachOpen(false); setChosen(''); setAttachPending(''); setAttachError(''); }
     else { setAttachError(String(attachOutcome.error || 'Backend từ chối gắn quy trình.')); setAttachPending(''); }
   }, [attachOutcome]);
-  if (!journey?.nodes.length) return <FreshShipmentCockpit shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</FreshShipmentCockpit>;
-  const nodes = journey.nodes;
+  const openGlobal = (tab = 'van-tai') => {
+    if (onGlobal(tab)) {
+      setPanelMode('global');
+      // Owner 2026-10-13: the 340px Journey map stays visible alongside the
+      // global workspace. Never collapse it to the rail.
+      return true;
+    }
+    return false;
+  };
+  // Issue #190 — the page identity bar owns the two journey-level controls in
+  // the reference composition; presses arrive as monotonic counters.
+  const seenGlobalReq = useRef(globalRequest);
+  const seenAttachReq = useRef(attachRequest);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (globalRequest === seenGlobalReq.current) return;
+    seenGlobalReq.current = globalRequest;
+    openGlobal();
+  }, [globalRequest, hasNodes]);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (attachRequest === seenAttachReq.current) return;
+    seenAttachReq.current = attachRequest;
+    setModulesOpen(true);
+    setAttachOpen(true);
+  }, [attachRequest, hasNodes]);
+  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
+  const prevModuleCount = useRef(modules.length);
+  useEffect(() => {
+    if (!hasNodes) return;
+    if (modules.length > prevModuleCount.current) setModulesOpen(true);
+    prevModuleCount.current = modules.length;
+  }, [modules, hasNodes]);
+  // LOGI #199 zero-node exception: render a full-width chart-paper empty state;
+  // populated Journeys continue through the unchanged map-first branch below.
+  // G2 — the popup is a modal over the map (desktop) / bottom sheet (mobile).
+  const modalOpen = panelMode !== 'overview';
+  // G2 — Escape closes the popup modal (keyboard parity with the backdrop).
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanelMode('overview'); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+  if (!hasNodes) return <ZeroNodeJourney shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</ZeroNodeJourney>;
+  const nodes = journey?.nodes ?? [];
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
@@ -454,6 +472,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
   // default: an explicit problem beats the positional current marker.
   const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const problem = problemNode;
   const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
@@ -468,120 +487,242 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       expectedVersion: s.version ?? 0, provenance: 'MANUAL_ADDITION',
     })) { setAttachPending(''); setAttachError('Chưa kết nối backend.'); }
   };
-  const pick = (id: string) => { setPicked(id); setPanelMode('quick'); };
-  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setPanelMode('stage'); return true; } return false; };
-  const openGlobal = (tab = 'van-tai') => {
-    if (onGlobal(tab)) {
-      setPanelMode('global');
-      // Issue #190 — full existing tab content is not designed for a 420px
-      // side pane. Reuse the approved PR177 collapsed-map rail so the real
-      // workspace gets readable width; the operator can reopen the map.
-      setMapCollapsed(true);
-      return true;
-    }
-    return false;
+  // G2 — a base node opens its task bubble on the map; a Work Module step (not
+  // drawn as a base node) keeps the direct quick-panel path.
+  const pick = (id: string) => {
+    const n = nodes.find(x => x.id === id);
+    setPicked(id);
+    setUtilityOpen(false);
+    if (n?.moduleId) { setBubbleId(''); setPanelMode('quick'); } else setBubbleId(id);
   };
-  const wide = panelMode === 'stage' || panelMode === 'global';
-  // Issue #190 — the page identity bar owns the two journey-level controls in
-  // the reference composition; presses arrive as monotonic counters.
-  const seenGlobalReq = useRef(globalRequest);
-  const seenAttachReq = useRef(attachRequest);
-  useEffect(() => {
-    if (globalRequest === seenGlobalReq.current) return;
-    seenGlobalReq.current = globalRequest;
-    openGlobal();
-  }, [globalRequest]);
-  useEffect(() => {
-    if (attachRequest === seenAttachReq.current) return;
-    seenAttachReq.current = attachRequest;
-    setModulesOpen(true);
-    setAttachOpen(true);
-  }, [attachRequest]);
-  const problem = problemNode;
-  const [modulesOpen, setModulesOpen] = useState(() => modules.some(m => m.status === 'BLOCKING'));
-  const prevModuleCount = useRef(modules.length);
-  useEffect(() => {
-    if (modules.length > prevModuleCount.current) setModulesOpen(true);
-    prevModuleCount.current = modules.length;
-  }, [modules]);
+  const open = (node: JourneyNode, targetWork: string) => { if (onOpen(node, targetWork)) { setPicked(node.id); setBubbleId(''); setUtilityOpen(false); setPanelMode('stage'); return true; } return false; };
+
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
-  // the 451px right rail, the compact overview stacks it below the step
-  // strip. Same nodes, same pick, same panels — no duplicated journey
-  // state, no second engine. A plain render function (not a component) so
-  // panel-local state survives parent re-renders in both layouts.
-  const currentLabel = baseNodes.find(n => n.current)?.label || 'Chưa xác định';
+  // the modal card over the map-first canvas (superseding journey-split-small-map).
+  const currentNode = baseNodes.find(n => n.current);
+  const currentRegion = (Object.entries(JOURNEY_REGION_NODE_IDS) as [keyof typeof JOURNEY_REGION_NODE_IDS, readonly string[]][])
+    .find(([, ids]) => currentNode ? ids.includes(currentNode.id) : false)?.[0];
+  const currentLabel = currentNode
+    ? `${currentRegion ? JOURNEY_REGION_LABELS[currentRegion] + ' · ' : ''}${currentNode.label}`
+    : 'Chưa xác định';
   const renderSidePanel = (extraClass: string) => (
-    <aside className={cx('journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]', extraClass)} data-testid="journey-side-panel">
+    <aside className={cx('journey-side journey-modal-card bg-white', extraClass)} data-testid="journey-side-panel">
         {panelMode === 'quick' && (selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
-        {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
-          <div className="border-b bg-white px-4 py-3"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-500">Shipment overview</p><h3 className="text-lg font-extrabold text-slate-900">Tổng quan lô hàng</h3><p className="text-xs text-slate-500">Chọn một công đoạn ở trên để xem việc cần làm.</p></div>
-          <div className="flex-1 space-y-3 overflow-auto p-4" data-testid="journey-quick-panel">
-            {problem && <button type="button" onClick={() => pick(problem.id)} className="w-full rounded-lg border-2 border-red-600 bg-red-50 p-3 text-left"><p className="text-xs font-bold text-red-700">⚠ Attention</p><p className="text-lg font-extrabold text-red-800">{problem.blockers[0]}</p><p className="text-xs text-red-700">{problem.label} → Xử lý ngay</p></button>}
-            <div className="rounded-lg bg-slate-900 p-3 text-white"><p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">Next Action — toàn lô</p><p className="mt-1 font-bold">{journey.primaryAction.text}</p><button type="button" onClick={runPrimary} className="touch-target mt-1 text-xs font-bold underline">{s.nextLabel || 'Xử lý ngay'}</button></div>
-            <div className="grid grid-cols-2 gap-3"><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Current</p><p className="text-sm font-bold text-blue-700">{baseNodes.find(n => n.current)?.label || 'Chưa xác định'}</p></div><div className="rounded-lg border bg-white p-3"><p className="text-xs text-slate-500">Owner lô hàng</p><p className="text-sm font-bold">{journey.owner || 'Chưa phân công'}</p></div><button type="button" onClick={() => openGlobal('chung-tu')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Documents</p><p className="font-bold">{s.attachments?.length ?? 0} tệp đã ghi nhận</p></button><button type="button" onClick={() => openGlobal('tai-chinh')} className="rounded-lg border bg-white p-3 text-left"><p className="text-xs text-slate-500">Finance</p><p className="text-sm font-bold">Xem tài chính toàn lô →</p></button></div>
-            <button type="button" onClick={() => openGlobal()} className="touch-target w-full rounded-lg border border-slate-800 px-3 text-sm font-bold">Mở Global Workspace →</button>
+        {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-stage-workspace">
+          <div className="border-b border-[#1E3E5C] bg-[#10263C] px-4 py-3 text-white" data-testid="journey-quick-panel">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">
+              <span>CÔNG ĐOẠN · {s.id}</span>
+              <button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng công đoạn" className="touch-target ml-auto rounded-lg border border-[#355577] bg-[#173754] px-2.5 py-1 font-sans text-[12px] font-semibold normal-case tracking-normal text-[#D6E6F5] hover:bg-[#1E466A]">Đóng ✕</button>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h3 className="text-[18px] font-extrabold tracking-tight text-white">{stage.label}</h3>
+              <JourneyStatus node={stage} solid />
+            </div>
+            <div className={cx('mt-2 rounded-lg px-3 py-1.5 text-[13px]', stage.state === 'PROBLEM' ? 'border border-[#E0A197] bg-[#F6DFDB] text-[#8E2F22]' : 'border border-[#2B4B6B] bg-[#173754] text-[#E6F0FA]')}>
+              <b>Cần làm: </b>{stageAction(stage)}
+              {stage.evidence && <span className="mt-0.5 block text-[12px] opacity-90">Bằng chứng: {stage.evidence}</span>}
+            </div>
           </div>
-        </div>}
-        {panelMode === 'stage' && stage && <div className="flex h-full min-h-0 flex-col" data-testid="journey-stage-workspace">
-          <div className="border-b border-slate-300 bg-slate-100 px-4 py-3" data-testid="journey-quick-panel">
-            <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-widest text-slate-500">Stage workspace · {s.id}<button type="button" onClick={() => { setPicked(stage.id); setPanelMode('quick'); }} className="touch-target ml-auto rounded border bg-white px-2 normal-case tracking-normal">← Quick panel</button><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng bàn làm việc" className="touch-target text-base">✕</button></div>
-            <div className="mt-1 flex flex-wrap items-center gap-3"><h3 className="text-2xl font-black tracking-tight text-slate-900">{stage.label}</h3><JourneyStatus node={stage} solid /></div>
-            <div className={cx('mt-1.5 rounded px-2 py-1 text-[13px]', stage.state === 'PROBLEM' ? 'bg-red-600 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200')}><b>Việc cần làm: </b>{stageAction(stage)}<span className="mt-1 block text-xs">{stage.evidence || 'Chưa có bằng chứng thực tế'} · Owner lô: {journey.owner || 'Chưa phân công'}</span></div>
-          </div>
-          <div className="flex shrink-0 overflow-x-auto border-b border-slate-300 bg-white px-2" aria-label="Nội dung công đoạn">{JOURNEY_WORK.map(w => <button type="button" key={w.id} aria-pressed={work === w.id} onClick={() => open(stage, w.id)} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2.5 text-xs font-extrabold tracking-wide', work === w.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500')}>{w.label}</button>)}</div>
+          <div className="flex shrink-0 overflow-x-auto border-b border-[#D6DEE7] bg-[#F4F7FA] px-3" aria-label="Nội dung công đoạn">{JOURNEY_WORK.map(w => <button type="button" key={w.id} aria-pressed={work === w.id} onClick={() => open(stage, w.id)} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-[12.5px] font-extrabold tracking-wide', work === w.id ? 'border-[#123A5E] text-[#10263C]' : 'border-transparent text-[#5B6875]')}>{w.label}</button>)}</div>
           <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4" data-testid="journey-workspace-content">
-            {work === 'overview' ? <div className="space-y-3 text-sm"><p>{stage.evidence || 'Chưa có bằng chứng hoàn thành.'}</p><p>{stage.blockers.join(' · ') || 'Chưa có blocker riêng được ghi nhận.'}</p><p>{stage.owned ? 'Công đoạn thuộc phạm vi đã xác nhận của Trường Thành.' : 'Thông tin tham chiếu, chưa xác nhận Trường Thành phụ trách.'}</p><button type="button" onClick={() => open(stage, 'info')} className="touch-target rounded-lg border px-3 font-bold">Mở thông tin công đoạn →</button></div> : children}
+            {work === 'overview' ? <div className="space-y-3 text-sm"><p>{stage.evidence || 'Chưa có bằng chứng hoàn thành.'}</p><p>{stage.blockers.join(' · ') || 'Chưa có việc chặn riêng.'}</p><button type="button" onClick={() => open(stage, 'info')} className="touch-target rounded-lg border px-3 font-bold">Mở công việc →</button></div>
+              : work === 'info' && !hasStageContent ? <div className="space-y-3 text-sm" data-testid="journey-stage-work-summary">
+                  <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+                    <div className="flex items-start justify-between gap-3 px-3 py-2"><dt className="text-slate-500">Trạng thái</dt><dd className="text-right font-bold"><Status node={stage} /></dd></div>
+                    <div className="flex items-start justify-between gap-3 px-3 py-2"><dt className="text-slate-500">Mốc</dt><dd className="text-right font-bold">{stage.deadline || 'Chưa ghi nhận'}</dd></div>
+                    <div className="flex items-start justify-between gap-3 px-3 py-2"><dt className="text-slate-500">Bằng chứng</dt><dd className="max-w-[70%] text-right font-bold">{stage.evidence || 'Chưa có'}</dd></div>
+                  </dl>
+                  {stage.blockers.length > 0 && <p className="rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-800">⚠ {stage.blockers[0]}</p>}
+                  <button type="button" onClick={() => openGlobal(stage.targetTab)} className="touch-target w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-bold text-[#0f2a4a]">Mở khu vực cập nhật</button>
+                </div>
+              : work === 'docs' ? <section className="space-y-3 text-sm" data-testid="journey-stage-documents">
+                  <h4 className="font-extrabold text-[#10263C]">Chứng từ · {stage.label}</h4>
+                  <p className="text-slate-600">Chỉ hiển thị loại chứng từ và tệp đã được liên kết rõ với công đoạn này; không tự gán tệp toàn lô.</p>
+                  <div className="flex flex-wrap gap-2" data-testid="journey-stage-doc-categories">
+                    {stage.documentCategories.length
+                      ? stage.documentCategories.map(category => <span key={category} className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 font-semibold">{category}</span>)
+                      : <span className="text-slate-500">Chưa có loại chứng từ được chỉ định cho công đoạn.</span>}
+                  </div>
+                  <p className="font-semibold">Tệp đã gắn với công đoạn ({(s.attachments ?? []).filter(f => stage.documentIds.includes(f.id)).length})</p>
+                  {(s.attachments ?? []).some(f => stage.documentIds.includes(f.id))
+                    ? <ul className="space-y-2" data-testid="journey-stage-doc-files">
+                        {(s.attachments ?? []).filter(f => stage.documentIds.includes(f.id)).map(f =>
+                          <li key={f.id} className="rounded-lg border border-slate-200 p-2">{f.name} <span className="text-slate-500">· {f.categoryLabel}</span></li>)}
+                      </ul>
+                    : <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-600">Chưa có tệp nào được ghi nhận riêng cho công đoạn này.</p>}
+                  <button type="button" onClick={() => openGlobal('chung-tu')} className="touch-target rounded-lg border border-[#123A5E] px-3 py-2 font-bold text-[#123A5E]">Mở kho chứng từ toàn lô →</button>
+                </section>
+              : stageContent}
           </div>
         </div>}
-        {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace"><div className="border-b bg-slate-100 px-4 py-3"><div className="flex items-center justify-between"><h3 className="text-xl font-black">Tổng quan lô hàng · {s.id}</h3><button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target">✕</button></div></div><div className="flex shrink-0 overflow-x-auto border-b px-2">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-xs font-extrabold', globalTab === t.id ? 'border-slate-900' : 'border-transparent text-slate-500')}>{t.label}</button>)}</div><div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div></div>}
+        {panelMode === 'global' && <div className="flex h-full min-h-0 flex-col bg-white" data-testid="journey-global-workspace">
+          <div className="border-b border-[#1E3E5C] bg-[#10263C] px-4 py-3 text-white">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">TIỆN ÍCH TOÀN LÔ · MÃ LÔ {s.id}</div>
+                <h3 className="text-[18px] font-extrabold text-white">Tổng quan lô hàng · {s.id}</h3>
+              </div>
+              <button type="button" onClick={() => setPanelMode('overview')} aria-label="Đóng Global Workspace" className="touch-target rounded-lg border border-[#355577] bg-[#173754] px-2.5 py-1 text-[12px] font-semibold text-[#D6E6F5] hover:bg-[#1E466A]">Đóng ✕</button>
+            </div>
+          </div>
+          <div className="flex shrink-0 overflow-x-auto border-b border-[#D6DEE7] bg-[#F4F7FA] px-3">{[{id:'van-tai',label:'Thông tin'},{id:'lay-hang',label:'Xuất khẩu'},{id:'nhap',label:'Nhập & Giao'},{id:'chung-tu',label:'Chứng từ'},{id:'tai-chinh',label:'Tài chính'},{id:'lich-su',label:'Lịch sử'}].map(t => <button type="button" key={t.id} onClick={() => openGlobal(t.id)} aria-pressed={globalTab === t.id} className={cx('touch-target shrink-0 border-b-[3px] px-3 py-2 text-[12.5px] font-extrabold', globalTab === t.id ? 'border-[#123A5E] text-[#10263C]' : 'border-transparent text-[#5B6875]')}>{t.label}</button>)}</div>
+          <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">{children}</div>
+        </div>}
     </aside>
   );
 
-  return <section className="journey-demo min-w-0" data-testid="shipment-journey">
-    {/* Issue #190 — the reference composition starts the Journey workspace
-        directly at the map+panel split: no section title row. Identity,
-        position note and the global-workspace button live in the page
-        identity bar (ShipmentDetail). */}
-    {/* Issue #190 CONTINUE — the map card and the right panel are separate
-        cards with a 12px gap (see .journey-split), matching the reference;
-        the modules strip is its own card above the split. */}
-    {/* Issue #190 CONTINUE — the identity bar's "+ Quy trình" button moved here:
-        the strip renders whenever attaching is allowed, even with zero
-        modules, so the capability is never orphaned. */}
-    {/* Issue #195 — operational overview is the default: whole journey +
-        current/problem + next action at a glance. The detailed 11-node map
-        stays intact behind the explicit "Bản đồ chi tiết" control; the same
-        toolbar closes it again. */}
-    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2" data-testid="journey-compact-toolbar">
-      <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">📍 Đang ở: {currentLabel}</span>
-      {problem && <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">⚠ Cần xử lý: {problem.label} — {problem.blockers[0]}</span>}
-      <button type="button" onClick={() => setDetailMapOpen(v => !v)} aria-expanded={detailMapOpen} data-testid="journey-detail-map-toggle" className="touch-target ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] px-3.5 py-2 text-sm font-extrabold text-white">{detailMapOpen ? 'Thu gọn bản đồ' : '🗺 Bản đồ chi tiết'}</button>
+  // N2 — Floating top-right Hồ sơ & Tài chính control + utility bubble (matching Owner HTML ref-01 & ref-05).
+  // Also hosts journey-overview-panel / journey-side-panel when no node bubble or modal is active.
+  const overviewActive = !bubbleId && !modalOpen;
+  const topRightUtility = (
+    <div
+      data-no-pan
+      onPointerDown={e => e.stopPropagation()}
+      data-testid={overviewActive ? 'journey-side-panel' : undefined}
+      className="absolute right-3 top-3 z-30 hidden sm:flex flex-col items-end gap-1.5"
+    >
+      <div
+        data-testid={overviewActive ? "journey-overview-panel" : "journey-utility-bar"}
+        className="flex flex-wrap items-center justify-end gap-1.5"
+      >
+        {/* data-testid="journey-overview-panel" is active in overview state */}
+        <div className="hidden md:flex items-center gap-1 rounded-xl border border-[#D6DEE7] bg-white/94 px-2 py-1 shadow-sm backdrop-blur-[2px]">
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('van-tai'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Hồ sơ lô<span className="sr-only"> · Mở Global Workspace</span>
+          </button>
+          <span className="text-slate-300" aria-hidden="true">|</span>
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('chung-tu'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Chứng từ ({(s.attachments ?? []).length})<span className="sr-only"> · Documents</span>
+          </button>
+          <span className="text-slate-300" aria-hidden="true">|</span>
+          <button
+            type="button"
+            onClick={() => { setUtilityOpen(false); openGlobal('tai-chinh'); }}
+            className="rounded-lg px-2 py-1 text-[12px] font-bold text-[#123A5E] hover:bg-[#EAF2FA]"
+          >
+            Tài chính
+          </button>
+        </div>
+        <button
+          type="button"
+          data-node="utility-trigger"
+          data-testid="journey-utility-trigger"
+          onClick={() => { setBubbleId(''); setUtilityOpen(v => !v); }}
+          className={cx(
+            'flex items-center gap-2 rounded-xl border px-3 py-2 text-left shadow-[0_8px_20px_-6px_rgba(16,38,60,0.22)] transition',
+            utilityOpen
+              ? 'border-[#1D6FA8] bg-[#10263C] text-white ring-2 ring-[#1D6FA8]/35'
+              : 'border-[#123A5E] bg-[#123A5E] text-white hover:bg-[#10263C]'
+          )}
+        >
+          <span className="font-mono text-[13px] font-bold text-[#9CCAF0]">▤</span>
+          <div>
+            <div className="text-[12px] font-bold uppercase tracking-wider leading-tight">
+              Hồ sơ &amp; Tài chính
+            </div>
+            <div className="hidden sm:block text-[12px] font-normal text-[#B9D6EE] leading-tight mt-0.5">
+              Báo giá · Chứng từ · Công nợ · Lịch sử
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {utilityOpen && (
+        <div
+          data-testid="journey-utility-bubble"
+          className="w-[336px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-[#C9D4DF] bg-white shadow-[0_18px_36px_-14px_rgba(16,38,60,0.38)]"
+        >
+          <div className="flex items-start justify-between gap-2 border-b border-[#1E3E5C] bg-[#10263C] px-3.5 py-2.5 text-white">
+            <div>
+              <div className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#9CCAF0]">Tiện ích toàn lô</div>
+              <div className="text-[14px] font-extrabold text-white">Hồ sơ &amp; Tài chính · {s.id}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUtilityOpen(false)}
+              aria-label="Đóng tiện ích hồ sơ"
+              className="rounded-md border border-[#2B4B6B] bg-[#173754] px-2 py-0.5 text-[12px] font-semibold text-[#C8D9EA]"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="divide-y divide-[#E6ECF2]">
+            {[
+              { id: 'van-tai', title: 'Hồ sơ thực hiện lô & vận tải', sub: `${s.mode || '—'} · ${s.incoterm || '—'} · ${s.route || '—'}`, badge: s.executionProfile?.serviceScopeConfirmed ? '✓ Đã xác nhận' : '◷ Cần rà soát' },
+              { id: 'chung-tu', title: 'Chứng từ & biểu mẫu (Documents)', sub: `${(s.attachments ?? []).length} tệp đính kèm · Kho biểu mẫu lô`, badge: s.missingDocs.length ? `! Thiếu ${s.missingDocs.length}` : '✓ Đủ danh mục' },
+              { id: 'tai-chinh', title: 'Tài chính & công nợ', sub: `Đồng tiền: ${s.finance.currency || 'VND'} · Tách biệt VND/USD`, badge: s.finance.outstanding ? '◐ Đang theo dõi' : '✓ Cân đối' },
+              { id: 'nhap', title: 'Nhập khẩu & giao hàng', sub: s.importInfo.declarationNo ? `TK ${s.importInfo.declarationNo}` : 'Chưa ghi nhận số tờ khai', badge: s.importInfo.delivered ? '✓ Đã giao' : '◐ Đang xử lý' },
+              { id: 'lich-su', title: 'Lịch sử xử lý & kiểm toán', sub: `${(s.timeline ?? []).length} bản ghi sự kiện`, badge: 'Tra cứu' },
+            ].map(item => (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={`journey-utility-item-${item.id}`}
+                onClick={() => { setUtilityOpen(false); openGlobal(item.id); }}
+                className="flex w-full items-center justify-between gap-2 bg-white px-3.5 py-2.5 text-left hover:bg-[#F4F8FC]"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-bold text-[#10263C]">{item.title}</span>
+                  <span className="block truncate font-mono text-[12px] text-[#5B6875]">{item.sub}</span>
+                </span>
+                <span className="shrink-0 rounded-md border border-[#C8D3DF] bg-[#F4F7FA] px-2 py-0.5 text-[12px] font-semibold text-[#123A5E]">
+                  {item.badge}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-    {detailMapOpen ? (
-      <div className={cx('journey-split', wide && 'journey-split-wide', wide && mapCollapsed && 'journey-split-collapsed')}>
-        <JourneyMap shipment={s} nodes={baseNodes} selectedId={panelMode === 'overview' || panelMode === 'global' ? '' : selected.id} onPick={pick} collapsed={wide && mapCollapsed} onExpand={() => setMapCollapsed(false)} />
-        {renderSidePanel('')}
+  );
+
+  return <section className="journey-demo min-w-0" data-testid="shipment-journey">
+    {/* One compact desktop status row. On mobile these remain stacked to preserve the approved top-chrome rhythm. */}
+    <div className="journey-focus-row" data-testid="journey-focus-row">
+      {/* Supersedes journey-split-small-map with journey-map-first (Owner Visual Fidelity Override 15/10/2026).
+          Canonical action reference: journey?.primaryAction.text */}
+      <div className="journey-toolbar" data-testid="journey-compact-toolbar">
+      <span className="journey-toolbar-chip journey-toolbar-here">Đang ở: {currentLabel}</span>
+      {problem && <span className="journey-toolbar-chip journey-toolbar-alert">⚠ {problem.blockers[0] || problem.label}</span>}
+      {journey?.primaryAction?.text && <span className="journey-toolbar-next"><b>Việc tiếp:</b> {journey.primaryAction.text}</span>}
+      <span className="journey-toolbar-spacer" />
+      {canAttach && (
+        <button
+          type="button"
+          onClick={() => { setModulesOpen(true); setAttachOpen(v => !v); setAttachError(''); }}
+          className="journey-toolbar-btn"
+          data-testid="journey-attach-open"
+        >
+          + Quy trình ({modules.length})
+        </button>
+      )}
+      <button type="button" onClick={runPrimary} className="journey-toolbar-btn journey-toolbar-btn-primary">Xử lý →</button>
+      <button type="button" onClick={() => openGlobal()} className="journey-toolbar-btn" data-testid="journey-global-open">▤ Hồ sơ &amp; Tài chính</button>
       </div>
-    ) : (
-      <div className="space-y-3" data-testid="journey-compact-overview">
-        <nav aria-label="Tóm tắt hành trình" data-testid="journey-compact-stepper" className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-4">
-          {baseNodes.map((n, idx) => {
-            const m = META[n.state]; const Icon = m.icon;
-            return <button key={n.id} type="button" data-testid={`journey-step-${n.id}`} data-state={n.state} aria-pressed={selected.id === n.id} onClick={() => pick(n.id)}
-              className={cx('touch-target flex min-w-0 items-center gap-2 rounded-lg border-2 px-2.5 py-2 text-left text-xs font-bold', m.cls, selected.id === n.id && 'ring-2 ring-[#0f2a4a] ring-offset-1')}>
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{idx + 1}</span>
-              <Icon size={13} className="shrink-0" aria-hidden="true" />
-              <span className="min-w-0"><span className="block truncate text-[12.5px] font-extrabold">{n.label}</span><span className="block truncate text-[10.5px] font-semibold opacity-80">{n.current ? '📍 Đang ở đây' : m.label}{n.blockers.length > 0 ? ` · ⚠ ${n.blockers.length}` : ''}</span></span>
-            </button>;
-          })}
-        </nav>
-        {renderSidePanel('journey-compact-side')}
-      </div>
-    )}
-    <JourneyStageSummaryCards s={s} nodes={baseNodes} onOpen={open} onGlobal={openGlobal}
-      canAttachModule={canAttach} onAttachModule={() => { setModulesOpen(true); setAttachOpen(true); setAttachError(''); }} />
+    </div>
+    <div className="journey-split journey-map-first" data-testid="journey-split-view">
+      <JourneyMap shipment={s} nodes={baseNodes} selectedId={bubbleId || (modalOpen && panelMode !== 'global' ? selected.id : '')} onPick={pick} collapsed={false} onExpand={() => {}}
+        bubbleNodeId={bubbleId}
+        topRightOverlay={topRightUtility}
+        renderBubble={(n, p, c, below) => <JourneyBubble node={n} pos={p} canvas={c} placeBelow={below}
+          tasks={bubbleTasksFor(n, s, modules, (node, work) => { open(node, work); }, (stepId) => pick(stepId), nodes)}
+          onClose={() => setBubbleId('')}
+          onQuick={() => { setBubbleId(''); setPicked(n.id); setPanelMode('quick'); }} />} />
+    </div>
+    {modalOpen && <div className="journey-modal-layer" data-testid="journey-modal">
+      <div className="journey-modal-backdrop" onClick={() => setPanelMode('overview')} aria-hidden="true" />
+      {renderSidePanel('')}
+    </div>}
 
     {/* Issue #190 repair — an EXISTING attached module remains below the five
         cards. The empty add-module affordance no longer creates an accidental
@@ -595,7 +736,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
               className="touch-target flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left">
               <Layers size={14} className="shrink-0 text-slate-500" aria-hidden="true" />
               <span className="truncate text-xs font-extrabold tracking-wide text-slate-600">QUY TRÌNH ĐANG GẮN ({modules.length})</span>
-              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">Đang chặn</span>}
+              {modules.some(m => m.status === 'BLOCKING') && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold text-white">Đang chặn</span>}
               <ChevronDown size={15} className={cx('ml-auto shrink-0 text-slate-500 transition-transform', modulesOpen && 'rotate-180')} aria-hidden="true" />
             </button>
           : <span className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1 text-xs font-extrabold tracking-wide text-slate-400">
@@ -635,166 +776,6 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
       </div>}
     </div>}
   </section>;
-}
-
-function JourneyStageSummaryCards({ s, nodes, onOpen, onGlobal, canAttachModule, onAttachModule }: {
-  s: Shipment;
-  nodes: JourneyNode[];
-  onOpen: (node: JourneyNode, work: string) => boolean;
-  onGlobal: (tab?: string) => boolean;
-  canAttachModule: boolean;
-  onAttachModule: () => void;
-}) {
-  const node = (id: string) => nodes.find(n => n.id === id);
-  const leg = s.transportLegs?.[0];
-  // Issue #190 — the six-phase STRIP is gone from populated view, but the
-  // phase → detailed-node mapping stays as each card's anchor. Cards project
-  // their region's detailed Journey nodes (never a second business state):
-  // anchor = the region's problem node when one exists, else the region's
-  // primary node. The detailed 11-node model is never replaced.
-  const REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'delivery', string[]> = {
-    origin: ['booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in'],
-    main: ['etd', 'on-board', 'transit', 'arrival'],
-    import: ['customs-import'],
-    delivery: ['delivery'],
-  };
-  const regionAnchor = (region: keyof typeof REGION_NODE_IDS, prefer: string) => {
-    const found = REGION_NODE_IDS[region].map(node).filter((n): n is JourneyNode => Boolean(n));
-    return found.find(n => n.state === 'PROBLEM' || n.blockers.length > 0) ?? node(prefer) ?? found[0];
-  };
-  const booking = regionAnchor('origin', 'booking');
-  const arrival = regionAnchor('main', 'arrival');
-  const customs = regionAnchor('import', 'customs-import');
-  const delivery = regionAnchor('delivery', 'delivery');
-  const profileReady = s.executionProfile?.state === 'PROFILE_READY';
-  const tabs = [
-    { id: 'info', label: 'Thông tin' },
-    { id: 'docs', label: 'Chứng từ' },
-    { id: 'costs', label: 'Chi phí' },
-    { id: 'history', label: 'Lịch sử' },
-  ] as const;
-  const statusLabel = (n?: JourneyNode) => n ? META[n.state].label : 'Chưa xác định';
-  const statusCls = (n?: JourneyNode) => n ? META[n.state].text : 'text-slate-500';
-  const openTab = (n: JourneyNode | undefined, tab: typeof tabs[number]['id'], fallback: string) => {
-    if (n) return onOpen(n, tab);
-    return onGlobal(tab === 'docs' ? 'chung-tu' : tab === 'costs' ? 'tai-chinh' : tab === 'history' ? 'lich-su' : fallback);
-  };
-  const rows = [
-    {
-      n: booking, num: 1, testid: 'journey-summary-card-1', title: 'BOOKING – ĐẦU ĐI', accent: 'blue',
-      lines: [
-        ['Số booking', s.transport?.bookingNo || leg?.bookingNo || 'Chưa có thông tin'],
-        ['Cut-off', booking?.deadline || 'Chưa ghi nhận'],
-        ['ETD', s.transport?.etd || leg?.etd || 'Chưa ghi nhận'],
-        ['Hãng tàu', s.transport?.carrier || leg?.carrier || 'Chưa có thông tin'],
-        ['Tàu / chuyến', [leg?.vessel || s.transport?.vessel, leg?.voyage].filter(Boolean).join(' ') || 'Chưa có thông tin'],
-      ],
-      footer: undefined,
-      fallback: 'lay-hang',
-    },
-    {
-      n: arrival, num: 2, testid: 'journey-summary-card-2', title: 'TÀU ĐẾN – CHẶNG CHÍNH', accent: 'amber',
-      lines: [
-        ['ETA', leg?.eta || arrival?.deadline || 'Chưa ghi nhận'],
-        ['ATA', leg?.ata || 'Chưa ghi nhận'],
-      ],
-      footer: undefined,
-      fallback: 'van-tai',
-    },
-    {
-      n: customs, num: 3, testid: 'journey-summary-card-3', title: 'NHẬP KHẨU – ỦY THÁC', accent: 'red',
-      lines: [
-        ['Tờ khai', s.importInfo.declarationNo ? `${s.importInfo.declarationNo} · đã đăng ký` : 'Chưa có thông tin'],
-        ['Thông quan', s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'],
-        ['Thuế NK', s.importInfo.tax == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.tax, 'VND')],
-        ['VAT', s.importInfo.vat == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.vat, 'VND')],
-      ],
-      footer: undefined,
-      fallback: 'nhap',
-    },
-    {
-      n: delivery, num: 4, testid: 'journey-summary-card-4', title: 'GIAO HÀNG', accent: 'slate',
-      lines: [
-        ['Xe', s.importInfo.truckVN || 'Chưa có thông tin'],
-        ['Biển số', s.importInfo.plateVN || 'Chưa có thông tin'],
-        ['Tài xế', s.importInfo.driverVN || 'Chưa có thông tin'],
-        ['Ngày giao dự kiến', s.importInfo.schedule || 'Chưa có thông tin'],
-        ['Địa điểm giao', s.importInfo.deliveryAddr || 'Chưa có thông tin'],
-        ['Người nhận', s.importInfo.receiver || 'Chưa có thông tin'],
-        ['SĐT người nhận', s.importInfo.receiverPhone || 'Chưa có thông tin'],
-        ['Trạng thái', s.importInfo.delivered ? 'Đã giao' : statusLabel(delivery)],
-      ],
-      footer: delivery ? { label: 'Mở thông tin giao hàng →', node: delivery } : undefined,
-      fallback: 'nhap',
-    },
-    {
-      n: undefined, num: 5, testid: 'journey-summary-card-5', title: 'HỒ SƠ & PHẠM VI', accent: 'blue',
-      lines: [
-        ['Khách hàng', s.customer || 'Chưa có thông tin'],
-        ['Hình thức', s.commercialFlow?.modeLabel || 'Chưa xác nhận'],
-        ['Incoterm', s.incoterm || 'Chưa xác định'],
-        ['Phạm vi TT', s.executionProfile?.serviceScopeSummary || 'Chưa xác nhận phạm vi'],
-      ],
-      footer: undefined,
-      fallback: 'van-tai',
-      // Issue #190 CONTINUE — the identity bar's secondary facts (Cửa khẩu ·
-      // Hợp đồng · Sale · Cập nhật bởi) moved here when the permanent tab row
-      // left the default first screen. Same projected fields, one click away,
-      // collapsed by default; nothing deleted or re-derived.
-      more: <details>
-        <summary className="cursor-pointer px-3 py-1 text-[11.5px] font-bold text-slate-500 hover:text-[#0f2a4a]">Thông tin thêm</summary>
-        <dl className="space-y-1 px-3 pb-1 text-[11.5px]">
-          {[['Cửa khẩu', s.borderVN || '—'], ['Hợp đồng', s.contract || '—'], ['Sale phụ trách', s.sale || '—'], ['Cập nhật bởi', s.support || '—']].map(([label, value]) => (
-            <div key={label} className="flex items-start justify-between gap-2">
-              <dt className="shrink-0 text-slate-500">{label}</dt>
-              <dd className="min-w-0 break-words text-right font-bold text-slate-800">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        {canAttachModule && <div className="px-3 pb-2 pt-1">
-          <button type="button" onClick={onAttachModule} data-testid="journey-add-module-page"
-            className="touch-target inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-[11.5px] font-bold text-slate-600">
-            <Plus size={13} aria-hidden="true" /> Thêm quy trình phát sinh
-          </button>
-        </div>}
-      </details>,
-    },
-  ];
-  const accentCls: Record<string, string> = {
-    blue: 'bg-blue-600 text-white',
-    amber: 'bg-amber-500 text-white',
-    red: 'bg-red-600 text-white',
-    slate: 'bg-slate-500 text-white',
-  };
-  return <div className="journey-summary-grid grid grid-cols-1 gap-3 border-t border-slate-300 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-5" data-testid="journey-summary-cards">
-    {rows.map(card => <article key={card.num} className="min-w-0 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm" data-testid={card.testid}>      <div className="flex min-h-[46px] items-start gap-2 border-b border-slate-200 px-3 py-2">
-        <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black', accentCls[card.accent])}>{card.num}</span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[13px] font-black leading-tight text-[#0f2a4a]">{card.title}</h3>
-        </div>
-        <span className={cx('shrink-0 rounded-md border border-current/25 px-1.5 py-0.5 text-[10px] font-extrabold', card.n ? statusCls(card.n) : profileReady ? 'text-emerald-700' : 'text-blue-700')}>
-          {card.n ? statusLabel(card.n) : profileReady ? 'Đủ hồ sơ' : 'Toàn lô'}
-        </span>
-      </div>
-      <div className="flex border-b border-slate-200 px-2">
-        {tabs.map((tab, idx) => <button type="button" key={tab.id} onClick={() => openTab(card.n, tab.id, card.fallback)}
-          className={cx('touch-target min-w-0 flex-1 border-b-2 px-1 py-1.5 text-[10.5px] font-bold', idx === 0 ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400')}>
-          {tab.label}
-        </button>)}
-      </div>
-      <dl className="space-y-1.5 px-3 py-2.5 text-[11.5px]">
-        {card.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[78px_minmax(0,1fr)] gap-2">
-          <dt className="text-slate-500">{label}</dt>
-          <dd className={cx('min-w-0 break-words text-right font-bold text-slate-800',
-            String(value).toLowerCase().includes('chưa') && 'text-red-700')}>{value}</dd>
-        </div>)}
-      </dl>
-      {card.footer && <div className="px-3 pb-2">
-        <button type="button" onClick={() => onOpen(card.footer!.node, 'info')} className="touch-target text-[12px] font-bold text-[#1e5aa8] hover:underline">{card.footer.label}</button>
-      </div>}
-      {'more' in card && card.more}
-    </article>)}
-  </div>;
 }
 
 /**
@@ -870,10 +851,10 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   const outcome = vm?.lastWrites?.find(w => w.event === 'shipment_sea_facts_save' && w.requestId === pending);
   const loading = Boolean(pending && !outcome);
   const saved = Boolean(outcome?.ok);
-  const fields = stageId === 'customs-export' ? [{ key: 'export_declaration_no', label: 'Số tờ khai xuất (đã đăng ký)' }] : stageId === 'gate-in' ? [{ key: 'gate_in_at', label: 'Gate-in thực tế' }] : [
-    { key: 'si_status', label: 'Trạng thái SI' }, { key: 'vgm_status', label: 'Trạng thái VGM' },
-    { key: 'si_cutoff', label: 'SI cutoff' }, { key: 'vgm_cutoff', label: 'VGM cutoff' },
-  ];
+  // LOGI-199 T1 — the backend declares which evidence facts belong to this
+  // node (scope/load-model aware); the panel never invents its own field list.
+  const fields = node?.factFields ?? [];
+  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
   const save = () => {
     if (!Object.keys(draft).length) { setError('Chưa thay đổi trường nào.'); return; }
     const requestId = `SEA-${crypto.randomUUID()}`;
@@ -883,14 +864,19 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
     }
   };
   return <section className="rounded-2xl border bg-white p-4 space-y-3" data-testid="sea-export-facts">
-    <h3 className="font-extrabold text-[#0f2a4a]">{stageId === 'customs-export' ? 'Tờ khai xuất — dữ liệu hiện có' : stageId === 'gate-in' ? 'Mốc vào bãi container' : 'SI / VGM — ghi nhận bằng chứng'}</h3>
+    <h3 className="font-extrabold text-[#0f2a4a]">{TITLES[stageId] ?? 'Ghi nhận bằng chứng'}</h3>
     <p className="text-sm text-slate-500">Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.</p>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{fields.map(f => <Field key={f.key} label={f.label}>
-      {f.key.endsWith('_status') ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
-        {['UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED'].map((k, i) => <option key={k} value={k}>{['Chưa biết', 'Đã nhận hồ sơ', 'Đã gửi hãng tàu', 'Hãng tàu đã chấp nhận'][i]}</option>)}</select> :
-        <input aria-label={f.label} type="text" placeholder={f.key === 'export_declaration_no' ? 'Số tờ khai' : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
-    </Field>)}</div>
-    <button type="button" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu mốc có bằng chứng'}</button>
+    {(() => { const renderField = (f: typeof fields[number]) => <Field key={f.key} label={f.label}>
+      {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
+        {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> :
+        <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : f.kind === 'number' ? 'Để trống nếu chưa biết' : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
+    </Field>;
+      const primary = fields.filter(f => !f.secondary), extra = fields.filter(f => f.secondary);
+      return <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{primary.map(renderField)}</div>
+        {extra.length > 0 && <details className="rounded-lg border border-slate-200 p-3" data-testid="fact-fields-secondary"><summary className="cursor-pointer text-sm font-bold text-slate-600">Chi tiết phụ ({extra.length})</summary><div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">{extra.map(renderField)}</div></details>}
+      </>; })()}
+    <button type="button" data-testid="sea-export-facts-save" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu mốc có bằng chứng'}</button>
     {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
     {(error || outcome?.error) && <p role="alert" className="text-sm text-red-700">{error || outcome?.error}</p>}
   </section>;

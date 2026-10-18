@@ -16,6 +16,25 @@ SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff
                              # normalize_sea_facts + shipment_sea_facts_save writer.
                              'booking_status', 'on_board_at'})
 SUBMISSION_STATES = ('UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED')
+# LOGI-199 — only project the fields supported by normalize_sea_facts and the
+# existing shipment_sea_facts_save writer. These labels describe facts, not
+# clearance/completion, and the per-node owned/scope gate remains authoritative.
+SEA_STAGE_FACT_FIELDS = {
+    'si-vgm': (
+        {'key': 'si_status', 'label': 'Trạng thái SI', 'kind': 'status'},
+        {'key': 'vgm_status', 'label': 'Trạng thái VGM', 'kind': 'status'},
+        {'key': 'si_cutoff', 'label': 'Hạn SI', 'kind': 'datetime', 'secondary': True},
+        {'key': 'vgm_cutoff', 'label': 'Hạn VGM', 'kind': 'datetime', 'secondary': True},
+    ),
+    'gate-in': (
+        {'key': 'gate_in_at', 'label': 'Thời điểm Gate-in thực tế', 'kind': 'datetime'},
+    ),
+    'customs-export': (
+        {'key': 'export_declaration_no', 'label': 'Số tờ khai xuất (không đồng nghĩa thông quan)', 'kind': 'text'},
+    ),
+}
+SEA_STATUS_LABELS = {'UNKNOWN': 'Chưa xác nhận', 'RECEIVED': 'Đã nhận',
+                     'SUBMITTED': 'Đã gửi', 'ACCEPTED': 'Đã được chấp nhận'}
 JOURNEY_STAGE_IDS = frozenset({'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
 
 
@@ -73,7 +92,7 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                       'deadline': str(deadline or ''), 'owned': owned,
                       'current': False, 'blockers': [], 'dependencies': [],
                       'documentCategories': list(categories),
-                      'documentIds': [a['id'] for a in attachments if a.get('category') in categories]})
+                      'documentIds': []})
 
     is_sea = profile.get('mode') == 'SEA'
     if is_sea and {'MAIN_CARRIAGE', 'SEA_DOCUMENTS'} & codes:
@@ -144,6 +163,40 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
             done=bool(delivery.get('is_delivered')), evidence=delivery.get('delivered_at') if delivery.get('is_delivered') else '',
             deadline=delivery.get('delivery_date'), categories=('transport',),
             owned=bool({'DESTINATION_TRUCKING', 'FINAL_DELIVERY'} & scope))
+    # Issue #199 — the UI already owns the typed short forms, but an absent
+    # factFields projection leaves the stage popup read-only. Send only fields
+    # from the existing server-side writer's strict whitelist; no fake values
+    # and no write permission granted by rendering this metadata.
+    for node in nodes:
+        if not is_sea or not node['owned'] or node['id'] not in SEA_STAGE_FACT_FIELDS:
+            continue
+        if node['id'] == 'si-vgm' and profile.get('loadModel') != 'FCL':
+            continue  # LCL has no mandatory shipment-level container VGM
+        node_fields = []
+        for spec in SEA_STAGE_FACT_FIELDS[node['id']]:
+            assert spec['key'] in SEA_FACT_FIELDS
+            field = dict(spec)
+            if field['kind'] == 'status':
+                field['options'] = [{'value': value, 'label': SEA_STATUS_LABELS[value]}
+                                    for value in SUBMISSION_STATES]
+            node_fields.append(field)
+        node['factFields'] = node_fields
+
+    # LOGI-199: category-only attachment metadata is NOT an explicit stage
+    # association. A transport record could be booking, pickup or delivery;
+    # a customs file could be import or export. Fail closed on shared categories
+    # so a stage popup never attributes a whole-lot file to the wrong node.
+    category_nodes: dict[str, set[str]] = {}
+    for node in nodes:
+        for category in node['documentCategories']:
+            category_nodes.setdefault(category, set()).add(node['id'])
+    for node in nodes:
+        uniquely_owned = {cat for cat in node['documentCategories']
+                          if len(category_nodes.get(cat, ())) == 1}
+        node['documentIds'] = [
+            a['id'] for a in attachments
+            if a.get('id') and a.get('category') in uniquely_owned
+        ]
     by_id = {n['id']: n for n in nodes}
     edges = []
     previous = None
