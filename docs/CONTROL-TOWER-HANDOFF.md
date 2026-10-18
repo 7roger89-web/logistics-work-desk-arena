@@ -35,7 +35,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
   - (3) commercial-flow + legal parties + 2 stage `entrustment-ready`/`tt-warehouse-handover` (CHỈ TT_ENTRUSTED_SUB) — **CHƯA**.
   - (4) nội dung công đoạn (guidance) — **CHƯA** (UI đã nhận `n.guidance`; hiện trống nên hiển thị "Chưa có hướng dẫn cho công đoạn này").
   - (5) E2E + UAT + merge — **CHƯA**.
-- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. **CI main**: `.github/workflows/ci.yml` (`0b0fe85`) — push/PR vào main, pytest so baseline (đỏ = hồi quy); workflow vào main khi Owner merge tích hợp (Arena KHÔNG merge). **AGENTS.md** đã có 4 mục charter (`be3a96b`), **README.md** đã có (`77febe5`). Suite tích hợp (đo 2026-10-19, sau `53ccddc`): **41 failed / 1940 passed / 44 skipped** — 41 = 31 failure main-baseline + 10 xung đột test-main × code-#210 (188 x4/186/190 x4, `test_visual_shipment_workspace::test_same_attachment...`); suite flaky ±1 skip/fail theo môi trường (record cũ 40/45 không tái hiện được tại cùng HEAD).
+- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. **CI main**: `.github/workflows/ci.yml` (`0b0fe85`) — push/PR vào main, pytest so baseline (đỏ = hồi quy); workflow vào main khi Owner merge tích hợp (Arena KHÔNG merge). **AGENTS.md** đã có 9 mục luật (4 charter `be3a96b` + 5 luật vận hành phiên `d57fab4`: bằng chứng trước kết luận, TASK 0, TASK CUỐI, xoay phiên, bài học tích lũy), **README.md** đã có (`77febe5`). Suite tích hợp (đo 2026-10-19, sau `53ccddc`): **41 failed / 1940 passed / 44 skipped** — 41 = 31 failure main-baseline + 10 xung đột test-main × code-#210 (188 x4/186/190 x4, `test_visual_shipment_workspace::test_same_attachment...`); suite flaky ±1 skip/fail theo môi trường (record cũ 40/45 không tái hiện được tại cùng HEAD).
 
 ### MỤC 3 — ĐANG CHỜ
 
@@ -57,6 +57,13 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Nội dung hướng dẫn công đoạn (Owner sửa từ bản nháp)
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-19 — thêm luật vận hành phiên vào AGENTS.md + phục hồi sandbox re-clone
+
+- **Commit**: `d57fab4` (AGENTS.md +5 mục luật nguyên văn) + commit handoff này.
+- **Đã làm**: (1) **Sự cố môi trường**: sandbox bị dựng lại (fresh clone) giữa phiên — nhánh local rơi về `51422c9`, worktree overlay giữ file nhưng 2 file `component/dist/logi-shell.*` là bundle CŨ (thiếu marker `Tệp đã ghi nhận`/`journey-what-to-do`/`Chưa có hướng dẫn…`, 1.52 MB). Đối chiếu blob từng file với `origin/arena/...@9a9d96c`: 24/26 khớp, 2 dist lệch → `git reset --hard` lấy lại cây đã push (dist đã verify 2.24 MB), worktree sạch, không mất thay đổi nào. (2) Chèn NGUYÊN VĂN 5 mục luật từ paste Owner vào AGENTS.md (ngoài managed blocks, 52+/0−): **Bằng chứng trước khi kết luận**, **Khảo sát bắt buộc trước khi sửa (TASK 0)**, **Tự kiểm trước khi báo xong (TASK CUỐI)**, **Xoay phiên Arena**, **Bài học tích lũy** (placeholder cho các dòng luật tích lũy). `SOURCE_SHA256=0eef325ec4d29f5cfb64fdcff52da970deb595fdc63d212bbfc41a565df5e126`.
+- **Còn lại**: các dòng ĐANG CHỜ ở MỤC 3; lộ trình (2)→(5).
+- **Cần Owner**: xem MỤC 3 ĐANG CHỜ + MỤC 5.
 
 ### 2026-10-19 — guard factFields LCL + CI main + charter AGENTS.md + README
 
