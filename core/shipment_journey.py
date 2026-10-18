@@ -126,14 +126,18 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
             owned=bool({'EXPORT_HANDLING', 'EXPORT_CUSTOMS'} & scope))
     has_main = is_sea and 'booking' in {n['id'] for n in nodes}
     if has_main:
-        # LCL has no shipment-level VGM: the si-vgm node is FCL-only, exactly
-        # symmetric with the gate-in FCL gate below.
-        if 'MAIN_CARRIAGE' in scope and profile.get('loadModel') == 'FCL':
+        if 'MAIN_CARRIAGE' in scope:
             si, vgm = sea.get('si_status', 'UNKNOWN'), sea.get('vgm_status', 'UNKNOWN')
-            add('si-vgm', 'SI / VGM', 'SEA_DOCUMENTS', 'van-tai',
-                done=si == vgm == 'ACCEPTED', evidence=f'SI: {si} · VGM: {vgm}' if si != 'UNKNOWN' or vgm != 'UNKNOWN' else '',
+            # LCL consolidated cargo: carrier owns container, VGM is not a shipper
+            # obligation — the node tracks SI only (false-done batch 2, f51710b).
+            is_lcl = profile.get('loadModel') == 'LCL'
+            done_si_vgm = (si == 'ACCEPTED') if is_lcl else (si == vgm == 'ACCEPTED')
+            label_si_vgm = 'SI' if is_lcl else 'SI / VGM'
+            evidence_si_vgm = f'SI: {si}' if is_lcl else (f'SI: {si} · VGM: {vgm}' if si != 'UNKNOWN' or vgm != 'UNKNOWN' else '')
+            add('si-vgm', label_si_vgm, 'SEA_DOCUMENTS', 'van-tai',
+                done=done_si_vgm, evidence=evidence_si_vgm,
                 deadline=' · '.join(x for x in (sea.get('si_cutoff'), sea.get('vgm_cutoff')) if x),
-                categories=('si', 'vgm'), owned=True)
+                categories=('si',) if is_lcl else ('si', 'vgm'), owned=True)
         if 'ORIGIN_HANDOFF' in codes and profile.get('loadModel') == 'FCL':
             add('gate-in', 'GATE-IN', 'ORIGIN_HANDOFF', 'van-tai', done=bool(sea.get('gate_in_at')),
                 evidence=sea.get('gate_in_at'), categories=('transport',), owned='ORIGIN_TERMINAL_OR_BORDER' in scope)
@@ -274,12 +278,13 @@ def sea_requirement(shipment: Mapping[str, Any], profile: Mapping[str, Any]) -> 
     if profile.get('mode') != 'SEA' or 'MAIN_CARRIAGE' not in scope:
         return None
     facts = ((shipment.get('data') or {}).get('1.2') or {}).get('sea_export') or {}
-    # LCL has no shipment-level VGM node (see build_journey): never point the
-    # action at a missing si-vgm node — FCL gate mirrors gate-in's below.
-    if profile.get('loadModel') == 'FCL':
-        for key, label in (('si_status', 'SI'), ('vgm_status', 'VGM')):
-            if facts.get(key) != 'ACCEPTED':
-                return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
+    # LCL does not require a dedicated container VGM — only SI matters.
+    # FCL and other sea load models require both SI and VGM acceptance.
+    load_model = profile.get('loadModel')
+    required = (('si_status', 'SI'),) if load_model == 'LCL' else (('si_status', 'SI'), ('vgm_status', 'VGM'))
+    for key, label in required:
+        if facts.get(key) != 'ACCEPTED':
+            return {'text': f'Kiểm tra và ghi nhận trạng thái {label}', 'detail': 'Chưa có bằng chứng hãng tàu chấp nhận; tệp đính kèm không tự xác nhận submission.', 'stage': 'si-vgm'}
     if 'ORIGIN_TERMINAL_OR_BORDER' in scope and profile.get('loadModel') == 'FCL' and not facts.get('gate_in_at'):
         return {'text': 'Ghi nhận gate-in thực tế', 'detail': 'Chưa có mốc container vào bãi.', 'stage': 'gate-in'}
     return None

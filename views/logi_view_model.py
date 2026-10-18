@@ -2952,6 +2952,8 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     fields = payload["fields"]
     if any(k.startswith(('si_', 'vgm_')) for k in fields) and "MAIN_CARRIAGE" not in scope:
         return out(False, "SI/VGM không thuộc phạm vi chặng chính đã xác nhận.")
+    if profile.get("loadModel") == "LCL" and any(k.startswith("vgm_") for k in fields):
+        return out(False, "LCL là hàng ghép — không yêu cầu VGM riêng, chỉ cần SI.")
     if "gate_in_at" in fields and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
         return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
     if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
