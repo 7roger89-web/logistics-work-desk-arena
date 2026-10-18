@@ -151,6 +151,8 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     for node in nodes:
         if not is_sea or not node['owned'] or node['id'] not in SEA_STAGE_FACT_FIELDS:
             continue
+        if node['id'] == 'si-vgm' and profile.get('loadModel') != 'FCL':
+            continue  # LCL has no mandatory shipment-level container VGM
         node_fields = []
         for spec in SEA_STAGE_FACT_FIELDS[node['id']]:
             assert spec['key'] in SEA_FACT_FIELDS

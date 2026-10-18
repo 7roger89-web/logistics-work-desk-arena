@@ -59,8 +59,7 @@ class SeaStageFields199(unittest.TestCase):
         self.assertFalse(any(n.get('factFields') for n in air.values()))
         lcl = {n['id']: n for n in _project(_profile(load_model='LCL'))['nodes']}
         self.assertNotIn('gate-in', lcl)
-        self.assertEqual([f['key'] for f in lcl['si-vgm']['factFields']],
-                         ['si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff'])
+        self.assertNotIn('factFields', lcl['si-vgm'])  # no mandatory container VGM for LCL
 
     def test_unowned_export_cannot_offer_an_edit_form(self):
         nodes = {n['id']: n for n in
