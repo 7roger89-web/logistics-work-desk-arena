@@ -303,6 +303,58 @@ Nguồn: P2P-DEVELOPMENT-CHARTER §3.
 - PROJECT_STATE_NOT_CHAT_HISTORY — phiên mới hồi phục từ trạng thái dự án, không từ chat.
 - DETERMINISTIC_FIRST — kiểm được bằng máy thì kiểm trước, đừng suy luận.
 
+## Bằng chứng trước khi kết luận
+
+Nguồn: bài học từ các phiên Arena — có phiên kết luận "KHÔNG phải lỗi" trên cây thiếu file.
+
+Trước khi kết luận bất cứ điều gì về code:
+- Đọc file THẬT ở ĐÚNG HEAD. Không suy từ trí nhớ, không suy từ mô tả.
+- Trích `file:line` làm căn cứ.
+
+Kết luận "KHÔNG phải lỗi" PHẢI kèm đoạn code thật làm căn cứ, không suy đoán.
+
+Nếu file không tồn tại ở cây đang xét, kiểm tra lại ở HEAD của nhánh/PR đích trước khi
+kết luận — file có thể chỉ tồn tại trên nhánh đó.
+
+Không có bằng chứng thì ghi `[KHÔNG CÓ BẰNG CHỨNG]`, đừng kết luận.
+
+## Khảo sát bắt buộc trước khi sửa (TASK 0)
+
+Mọi prompt có sửa file PHẢI mở đầu bằng TASK 0, làm TRƯỚC mọi thay đổi:
+
+- Nêu branch + HEAD SHA đang làm việc.
+- Với TỪNG file sẽ đụng: nó CÓ tồn tại ở HEAD đó không? Trích NGUYÊN đoạn dòng sẽ sửa.
+- Nêu sẽ đổi gì ở mỗi file.
+- Nêu chỗ CHƯA CHẮC → đánh dấu `[CHƯA CHẮC]`.
+- Nếu file KHÔNG tồn tại ở cây hiện tại: kiểm ở HEAD nhánh/PR đích rồi nói rõ.
+- Nếu phát hiện prompt của Control Tower SAI: NÓI RA, đừng im lặng làm theo.
+- Receipt: `PREFLIGHT_READ=PASS | HEAD=<sha> | FILES=<n> | MISSING=<n>`
+
+## Tự kiểm trước khi báo xong (TASK CUỐI)
+
+Mọi prompt có sửa file PHẢI kết thúc bằng TASK CUỐI, làm TRƯỚC khi báo hoàn tất:
+
+- Đọc lại diff của chính mình.
+- Với TỪNG tiêu chí acceptance: trích DÒNG CODE THẬT chứng minh đã đạt.
+- Tick checklist. Tiêu chí nào không đạt thì KHÔNG tick, ghi rõ lý do.
+- Receipt: `SELF_VERIFY=PASS | ACCEPTANCE=<đạt>/<tổng> | CHECKLIST=<tick>/<tổng>`
+
+Không có SELF_VERIFY tick đủ = task CHƯA hoàn tất.
+
+## Xoay phiên Arena
+
+Mở CHAT MỚI khi: PR vừa merge/đóng · xong một mục tiêu · Arena bắt đầu lặp lại ·
+phải giải thích lại điều đã nói. Chat dài làm chất lượng giảm.
+
+Một prompt chỉ nên chứa MỘT loại việc. Việc khác loại thì tách prompt.
+
+## Bài học tích lũy
+
+Mỗi lần một phiên làm sai và được Control Tower chỉ ra, thêm MỘT DÒNG luật vào mục này.
+Giữ mỗi dòng thật ngắn. Nếu dài quá thì chuyển sang `docs/LESSONS.md` và để link.
+
+- (rỗng — các phiên sau điền)
+
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack
 
