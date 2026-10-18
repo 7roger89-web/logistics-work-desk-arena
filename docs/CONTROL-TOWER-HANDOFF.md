@@ -24,14 +24,22 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
 - **Nhánh/PR**: `arena/a3117943-logistics-work-desk-arena` → PR **#211** OPEN/MERGEABLE, base `ct/logi199-journey-main-integration-20261017` (PR #210 OPEN, HEAD `408b980`). Chưa merge, chưa deploy, không backport.
+- **Batch 2 (false-done đợt 2) — TỪNG MẤT TÍCH, ĐÃ PHỤC HỒI**: `f51710b` bị push mồ côi vào nhánh `arena/da9aa3db-logistics-work-desk-arena` (không vào nhánh/PR nào). Đã tìm lại được (còn nguyên trên GitHub) và cherry-pick vào nhánh này — commit **`162036f`** (6 thay đổi: tách GNT khỏi TAX_PAID, `taxPaid` projection, writer chặn `vgm_*` khi LCL, importer `legalImporterName`, journey LCL chỉ SI, + docs/tests). Test đợt 1 khớp semantics mới: **`8a9d4f1`**. Giải conflict: LCL giữ node `si-vgm` SI-only (xem ĐANG CHỜ).
 - **Lộ trình**:
-  - (0) 3 bug node truth — **XONG** (`61f0714`): booking `done=bool(booking) and booking_status=='ACCEPTED'`; on-board `done=bool(atd) and bool(on_board_at)`; si-vgm chặn FCL đối xứng gate-in.
-  - (1) diệt false-done — **một phần XONG** (`d1340a5`): JourneyBubble docs (FILE_PRESENT ≠ DOCUMENT_ACCEPTED), ô nhập `booking_status`/`on_board_at`, "CẦN LÀM" ra mặt tiền + "Chưa có hướng dẫn cho công đoạn này". Kiểm tiếp các surface khác nếu có biểu thức false-done.
+  - (0) 3 bug node truth — **XONG** (`61f0714`): booking `done=bool(booking) and booking_status=='ACCEPTED'`; on-board `done=bool(atd) and bool(on_board_at)`. Riêng bug si-vgm/LCL: đã thay bằng semantics batch 2 (dưới).
+  - (1) diệt false-done — **một phần XONG**: `d1340a5` (JourneyBubble docs, ô nhập fact, CẦN LÀM ra mặt tiền) + batch 2 `162036f` (GNT ≠ TAX_PAID, importer, LCL SI-only). Kiểm tiếp các surface khác nếu có biểu thức false-done.
   - (2) backport #200/#204/#208 vào #210 — **CHƯA**.
   - (3) commercial-flow + legal parties + 2 stage `entrustment-ready`/`tt-warehouse-handover` (CHỈ TT_ENTRUSTED_SUB) — **CHƯA**.
   - (4) nội dung công đoạn (guidance) — **CHƯA** (UI đã nhận `n.guidance`; hiện trống nên hiển thị "Chưa có hướng dẫn cho công đoạn này").
   - (5) E2E + UAT + merge — **CHƯA**.
-- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven tại node booking/on-board. Bundle frontend `9aeb` giữ nguyên (chưa build lại). Trên cây tích hợp #210: **40 failed / 1920 passed / 45 skipped** — 40 failure còn lại là xung đột test-main × code-#210 có sẵn (188/186/190, `test_visual_shipment_workspace::test_same_attachment...`), cần mục riêng nếu Owner muốn #210 xanh full suite.
+- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. Suite tích hợp: **40 failed / 1937 passed / 45 skipped** — 40 failure còn lại là xung đột test-main × code-#210 có sẵn (188/186/190, `test_visual_shipment_workspace::test_same_attachment...`).
+
+### MỤC 3 — ĐANG CHỜ
+
+- **Owner xác nhận semantics LCL si-vgm**: theo TASK 2 của prompt hồi phục batch 2, node `si-vgm` cho LCL là **SI-only** (label 'SI', done theo SI, không VGM) — ĐẢO quy tắc đợt 1 "LCL KHÔNG có node si-vgm". Nếu Owner vẫn muốn rule đợt 1, báo lại để đảo trong 1 commit.
+- **Owner duyệt**: scope-guard 2 fact `booking_status`/`on_board_at` trong `views/logi_view_model.py` (đề xuất từ đợt 1, chưa đụng file ngoài phạm vi).
+- **Owner quyết định** hướng xử lý 40 failure test-main × code-#210 (mục riêng hay bỏ qua).
+- **Owner**: các mục MỤC 5 (danh sách pháp nhân `authority_companies`; nội dung hướng dẫn công đoạn).
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
 
@@ -49,6 +57,13 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 ## MỤC 6 — NHẬT KÝ PHIÊN
 
 *(mới nhất LÊN TRÊN — mỗi task: ngày, commit SHA, đã làm, còn lại, cần Owner)*
+
+### 2026-10-19 — hồi phục batch 2 mồ côi + build bundle
+
+- **Commit SHA**: `162036f` (cherry-pick `f51710b` — batch 2), `8a9d4f1` (căn test đợt 1 theo semantics mới), `b512822` (build lại bundle từ source HEAD).
+- **Đã làm**: (1) truy vết `f51710b` — CÒN trên GitHub, mồ côi ở nhánh `arena/da9aa3db-logistics-work-desk-arena`; cherry-pick + giải conflict `core/shipment_journey.py` theo TASK 2 prompt ("LCL chỉ cần SI, bỏ yêu cầu VGM"): LCL giữ node `si-vgm` SI-only, `sea_requirement` LCL chỉ SI — **đảo rule đợt 1** "LCL không có node si-vgm" (test đợt 1 cập nhật, âm+dương). (2) Build bundle `component/dist` từ đúng source HEAD: typecheck `tsc --noEmit` sạch, `scan_process.py` 0 executable, đối chiếu marker source↔dist (marker mới đủ, chuỗi cũ biến mất). (3) Ghi handoff (mục này + ĐANG CHỜ ở MỤC 3). (4) Sửa tiêu đề + body PR #211 khớp diff thật.
+- **Còn lại**: các dòng ĐANG CHỜ ở MỤC 3; lộ trình (2)→(5).
+- **Cần Owner**: xác nhận/đảo semantics LCL si-vgm; các mục MỤC 5.
 
 ### 2026-10-19
 
