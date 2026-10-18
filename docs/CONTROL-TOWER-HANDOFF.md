@@ -18,27 +18,29 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Support/Sale dùng cho MỌI luồng → Luồng B KHÔNG được hoãn
 - Journey là lớp trình bày từ facts, không phải kho trạng thái
 - Merge main = deploy production. Không đụng app `tienthanhlog`.
+- **Batch 2 semantics (LCL si-vgm) — CHỐT ĐÚNG (Owner, 2026-10-19)**: LCL CÓ node
+  `si-vgm` SI-only (label 'SI', done theo `si_status=='ACCEPTED'`, không VGM).
+  Rule đợt 1 "LCL không có node si-vgm" là SAI và đã bỏ.
 
 ## MỤC 3 — TRẠNG THÁI
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
 - **Nhánh/PR**: `arena/a3117943-logistics-work-desk-arena` → PR **#211** OPEN/MERGEABLE, base `ct/logi199-journey-main-integration-20261017` (PR #210 OPEN, HEAD `408b980`). Chưa merge, chưa deploy, không backport.
-- **Batch 2 (false-done đợt 2) — TỪNG MẤT TÍCH, ĐÃ PHỤC HỒI**: `f51710b` bị push mồ côi vào nhánh `arena/da9aa3db-logistics-work-desk-arena` (không vào nhánh/PR nào). Đã tìm lại được (còn nguyên trên GitHub) và cherry-pick vào nhánh này — commit **`162036f`** (6 thay đổi: tách GNT khỏi TAX_PAID, `taxPaid` projection, writer chặn `vgm_*` khi LCL, importer `legalImporterName`, journey LCL chỉ SI, + docs/tests). Test đợt 1 khớp semantics mới: **`8a9d4f1`**. Giải conflict: LCL giữ node `si-vgm` SI-only (xem ĐANG CHỜ).
+- **Batch 2 (false-done đợt 2) — TỪNG MẤT TÍCH, ĐÃ PHỤC HỒI**: `f51710b` bị push mồ côi vào nhánh `arena/da9aa3db-logistics-work-desk-arena` (không vào nhánh/PR nào). Đã tìm lại được (còn nguyên trên GitHub) và cherry-pick vào nhánh này — commit **`162036f`** (6 thay đổi: tách GNT khỏi TAX_PAID, `taxPaid` projection, writer chặn `vgm_*` khi LCL, importer `legalImporterName`, journey LCL chỉ SI, + docs/tests). Test đợt 1 khớp semantics mới: **`8a9d4f1`**. Giải conflict: LCL giữ node `si-vgm` SI-only — **Owner đã chốt 2026-10-19: batch 2 ĐÚNG** (xem MỤC 2), không còn chờ xác nhận.
 - **Lộ trình**:
   - (0) 3 bug node truth — **XONG** (`61f0714`): booking `done=bool(booking) and booking_status=='ACCEPTED'`; on-board `done=bool(atd) and bool(on_board_at)`. Riêng bug si-vgm/LCL: đã thay bằng semantics batch 2 (dưới).
-  - (1) diệt false-done — **một phần XONG**: `d1340a5` (JourneyBubble docs, ô nhập fact, CẦN LÀM ra mặt tiền) + batch 2 `162036f` (GNT ≠ TAX_PAID, importer, LCL SI-only). Kiểm tiếp các surface khác nếu có biểu thức false-done.
+  - (1) diệt false-done — **một phần XONG**: `d1340a5` (JourneyBubble docs, ô nhập fact, CẦN LÀM ra mặt tiền) + batch 2 `162036f` (GNT ≠ TAX_PAID, importer, LCL SI-only) + guard factFields LCL `53ccddc` (node SI-only của LCL giữ ô `si_status`/`si_cutoff`, chỉ bỏ ô `vgm_*` — guard `continue` cũ bỏ trắng form khiến node không bao giờ xong). Kiểm tiếp các surface khác nếu có biểu thức false-done.
   - (2) backport #200/#204/#208 vào #210 — **CHƯA**.
   - (3) commercial-flow + legal parties + 2 stage `entrustment-ready`/`tt-warehouse-handover` (CHỈ TT_ENTRUSTED_SUB) — **CHƯA**.
   - (4) nội dung công đoạn (guidance) — **CHƯA** (UI đã nhận `n.guidance`; hiện trống nên hiển thị "Chưa có hướng dẫn cho công đoạn này").
   - (5) E2E + UAT + merge — **CHƯA**.
-- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. Suite tích hợp: **40 failed / 1937 passed / 45 skipped** — 40 failure còn lại là xung đột test-main × code-#210 có sẵn (188/186/190, `test_visual_shipment_workspace::test_same_attachment...`).
+- **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. **CI main**: `.github/workflows/ci.yml` (`0b0fe85`) — push/PR vào main, pytest so baseline (đỏ = hồi quy); workflow vào main khi Owner merge tích hợp (Arena KHÔNG merge). **AGENTS.md** đã có 4 mục charter (`be3a96b`), **README.md** đã có (`77febe5`). Suite tích hợp (đo 2026-10-19, sau `53ccddc`): **41 failed / 1940 passed / 44 skipped** — 41 = 31 failure main-baseline + 10 xung đột test-main × code-#210 (188 x4/186/190 x4, `test_visual_shipment_workspace::test_same_attachment...`); suite flaky ±1 skip/fail theo môi trường (record cũ 40/45 không tái hiện được tại cùng HEAD).
 
 ### MỤC 3 — ĐANG CHỜ
 
-- **Owner xác nhận semantics LCL si-vgm**: theo TASK 2 của prompt hồi phục batch 2, node `si-vgm` cho LCL là **SI-only** (label 'SI', done theo SI, không VGM) — ĐẢO quy tắc đợt 1 "LCL KHÔNG có node si-vgm". Nếu Owner vẫn muốn rule đợt 1, báo lại để đảo trong 1 commit.
 - **Owner duyệt**: scope-guard 2 fact `booking_status`/`on_board_at` trong `views/logi_view_model.py` (đề xuất từ đợt 1, chưa đụng file ngoài phạm vi).
-- **Owner quyết định** hướng xử lý 40 failure test-main × code-#210 (mục riêng hay bỏ qua).
+- **Owner quyết định** hướng xử lý 10 failure xung đột test-main × code-#210 (mục riêng hay bỏ qua) — xem số liệu Suite ở trên.
 - **Owner**: các mục MỤC 5 (danh sách pháp nhân `authority_companies`; nội dung hướng dẫn công đoạn).
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
@@ -55,6 +57,14 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Nội dung hướng dẫn công đoạn (Owner sửa từ bản nháp)
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-19 — guard factFields LCL + CI main + charter AGENTS.md + README
+
+- **Commit**: `53ccddc` (guard factFields LCL + test âm/dương + căn pin 199) → `0b0fe85` (`.github/workflows/ci.yml` CI main) → `be3a96b` (AGENTS.md +4 mục charter nguyên văn, ngoài managed blocks) → `77febe5` (README.md) + commit handoff này.
+- **Đã làm**: (1) Sửa guard `build_journey` (`core/shipment_journey.py:186`): `continue` bỏ trắng factFields node `si-vgm` khi LCL → node SI-only cần SI nhưng không có ô nhập, không bao giờ xong. Guard giờ lọc spec: LCL giữ `si_status`/`si_cutoff`, bỏ `vgm_status`/`vgm_cutoff`; FCL đủ 4. Test âm+dương (3 mới trong `tests/test_journey_node_done_facts.py`, pin `test_air_and_lcl_never_invent_fcl_forms` trong `tests/test_journey_stage_fact_fields_199.py` sửa theo hành vi đúng — pin cũ phong ấn chính bug này). (2) CI chạy trên main: `push` + `pull_request` vào main, `pip install -r requirements.txt pytest`, `python -m pytest tests -q` so **baseline failure đã ghi nhận** (main chưa tích hợp #210: 31; tích hợp #210+#211: 41; flaky ±1) — đỏ = hồi quy; `--ignore` file write-oracle lỗi collection có sẵn trên main. Workflow trigger main; vào main khi Owner merge tích hợp (Arena KHÔNG merge/deploy/backport). (3) AGENTS.md thêm 4 mục NGUYÊN VĂN từ paste P2P-DEVELOPMENT-CHARTER (§5A hai vòng phát triển + thang OE, §4 Owner Gate, §3 bất biến) — ngoài mọi managed block, 61 insertions/0 deletions, `SOURCE_SHA256=8108b7a4856cd7d26438c49d62e5d6d540aaff42248a6fd6c7d439351cb7068c`. (4) README.md định hướng (đọc gì trước, trỏ trạng thái sang handoff, cách làm việc). (5) Handoff: **bỏ** mục chờ "Owner xác nhận semantics LCL si-vgm", ghi **Owner chốt batch 2 ĐÚNG** vào MỤC 2.
+- **Số liệu**: suite sau fix **41 failed / 1940 passed / 44 skipped**; failure set y hệt HEAD `949b089` (41/1937/44 — đã stash-diff đối chiếu, delta rỗng), +3 test mới xanh. 41 = 31 main-baseline + 10 xung đột test-main × code-#210.
+- **Còn lại**: các dòng ĐANG CHỜ ở MỤC 3; lộ trình (2)→(5).
+- **Cần Owner**: xem MỤC 3 ĐANG CHỜ + MỤC 5 (LCL semantics đã chốt, không còn chờ).
 
 *(mới nhất LÊN TRÊN — mỗi task: ngày, commit SHA, đã làm, còn lại, cần Owner)*
 
