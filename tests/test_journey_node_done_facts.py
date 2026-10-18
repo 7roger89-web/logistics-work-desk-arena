@@ -6,8 +6,8 @@ Owner-confirmed business rules pinned here (negative + positive per rule):
   carrier confirmed; the node completes only with the confirming fact.
 * On-board: ATD ≠ loaded-on-board. Actual departure time is never proof the
   cargo was loaded; the node completes only with the separate on-board fact.
-* SI/VGM: hàng LCL không có VGM cấp lô. The si-vgm node exists for SEA FCL
-  only, symmetric with the gate-in FCL gate.
+* SI/VGM: hàng LCL có node si-vgm SI-only (label 'SI') — Owner đã chốt batch 2
+  đúng (2026-10-19): LCL có SI, không có VGM cấp lô. FCL giữ SI/VGM đủ 4 fact.
 
 Pure-projection tests: no DB, no network, no Streamlit session.
 """
@@ -101,9 +101,8 @@ def test_on_board_fact_without_atd_is_not_done():
 
 
 # ---------------------------------------------------------------------------
-# Lỗi 3 — VGM: LCL bỏ yêu cầu VGM, giữ node SI-only (giải conflict với
-# f51710b theo TASK 2 prompt "LCL chỉ cần SI, bỏ yêu cầu VGM"; quy tắc đợt 1
-# "LCL không có node si-vgm" được thay bằng refinement này — CẦN OWNER xác nhận)
+# Lỗi 3 — VGM: LCL bỏ yêu cầu VGM, giữ node SI-only (f51710b). Owner đã chốt
+# 2026-10-19: batch 2 ĐÚNG — rule đợt 1 "LCL không có node si-vgm" là sai và đã bỏ.
 # ---------------------------------------------------------------------------
 
 def test_sea_lcl_tracks_si_only_on_the_si_vgm_node():
@@ -136,6 +135,35 @@ def test_fcl_si_vgm_requirement_still_fires_before_carrier_acceptance():
         '1.2': {'sea_export': {'si_status': 'SUBMITTED'}}, '2.4': {}, '2.7': {}}}
     requirement = sea_requirement(shipment, _profile(load='FCL'))
     assert requirement and requirement['stage'] == 'si-vgm'
+
+
+# ---------------------------------------------------------------------------
+# Guard factFields — LCL PHẢI có ô nhập SI (dương) và KHÔNG có ô nhập VGM (âm);
+# FCL có đủ 4 ô (dương). Regression: guard `continue` cũ bỏ trắng factFields
+# của node si-vgm LCL → node cần SI nhưng không có ô nhập → không bao giờ xong.
+# ---------------------------------------------------------------------------
+
+def test_lcl_si_vgm_fact_fields_expose_si_inputs():
+    # dương: LCL có ô nhập SI — thiếu chúng node không bao giờ xong được
+    node = _node(_journey({}, load='LCL'), 'si-vgm')
+    keys = [f['key'] for f in node.get('factFields') or []]
+    assert keys, 'LCL si-vgm node must not lose its factFields projection'
+    assert 'si_status' in keys and 'si_cutoff' in keys
+
+
+def test_lcl_si_vgm_fact_fields_drop_vgm_inputs():
+    # âm: LCL KHÔNG có ô nhập VGM cấp lô
+    node = _node(_journey({}, load='LCL'), 'si-vgm')
+    keys = [f['key'] for f in node.get('factFields') or []]
+    assert 'vgm_status' not in keys and 'vgm_cutoff' not in keys
+    assert not [k for k in keys if k.startswith('vgm_')]
+
+
+def test_fcl_si_vgm_fact_fields_expose_all_four_inputs():
+    # dương: FCL giữ đủ 4 ô nhập SI/VGM
+    node = _node(_journey({}, load='FCL'), 'si-vgm')
+    keys = {f['key'] for f in node.get('factFields') or []}
+    assert keys == {'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff'}
 
 
 # ---------------------------------------------------------------------------

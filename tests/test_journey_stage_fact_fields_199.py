@@ -66,11 +66,18 @@ class SeaStageFields199(unittest.TestCase):
         self.assertFalse(any(n.get('factFields') for n in air.values()))
         lcl = {n['id']: n for n in _project(_profile(load_model='LCL'))['nodes']}
         self.assertNotIn('gate-in', lcl)
-        # False-done batch 2 (f51710b): the LCL node exists as SI-only — but it
-        # never gets the container VGM form (this test's original pin).
+        # False-done batch 2 (f51710b) + guard fix: the LCL node exists as
+        # SI-only and KEEPS the SI inputs (si_status/si_cutoff) — without them
+        # the node needs SI but can never complete — while dropping ONLY the
+        # shipment-level VGM form (vgm_status/vgm_cutoff). The original pin
+        # `assertNotIn('factFields', ...)` froze the guard bug this fix removes.
         self.assertIn('si-vgm', lcl)
         self.assertEqual(lcl['si-vgm']['label'], 'SI')
-        self.assertNotIn('factFields', lcl['si-vgm'])  # no mandatory container VGM for LCL
+        lcl_keys = [x['key'] for x in lcl['si-vgm'].get('factFields', [])]
+        self.assertIn('si_status', lcl_keys)
+        self.assertIn('si_cutoff', lcl_keys)
+        self.assertNotIn('vgm_status', lcl_keys)
+        self.assertNotIn('vgm_cutoff', lcl_keys)
 
     def test_unowned_export_cannot_offer_an_edit_form(self):
         nodes = {n['id']: n for n in

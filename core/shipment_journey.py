@@ -183,10 +183,16 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     for node in nodes:
         if not is_sea or not node['owned'] or node['id'] not in SEA_STAGE_FACT_FIELDS:
             continue
+        specs = SEA_STAGE_FACT_FIELDS[node['id']]
         if node['id'] == 'si-vgm' and profile.get('loadModel') != 'FCL':
-            continue  # LCL has no mandatory shipment-level container VGM
+            # LCL: node SI-only nhưng VẪN cần ô nhập SI (done = si ACCEPTED).
+            # Chỉ bỏ VGM cấp lô (vgm_status/vgm_cutoff). TUYỆT ĐỐI không
+            # `continue` ở đây: continue bỏ trắng factFields của node → LCL
+            # có node, cần SI, mà không có ô nhập → không bao giờ xong.
+            specs = tuple(spec for spec in specs
+                          if not spec['key'].startswith('vgm_'))
         node_fields = []
-        for spec in SEA_STAGE_FACT_FIELDS[node['id']]:
+        for spec in specs:
             assert spec['key'] in SEA_FACT_FIELDS
             field = dict(spec)
             if field['kind'] == 'status':
