@@ -87,10 +87,102 @@ def test_fcl_lcl_si_text_and_cfs_gate_separated():
     fcl = _build("SEA", "FCL")["si-vgm"]["guidance"]
     lcl = _build("SEA", "LCL")["si-vgm"]["guidance"]
     assert "VGM" in fcl["what_to_do"] and "VGM" in fcl["done_when"]
+    assert "SI/VGM" in fcl["who"]
     assert "VGM" not in lcl["what_to_do"]
+    assert "VGM" not in lcl["who"] and "bên chịu trách nhiệm SI theo phạm vi" in lcl["who"]
     assert "không yêu cầu VGM" in lcl["done_when"]
     assert "gate_in_at" in _build("SEA", "FCL")["gate-in"]["guidance"]["done_when"]
     assert "consolidated_at" in _build("SEA", "LCL")["cfs-receipt"]["guidance"]["done_when"]
+
+
+def test_sea_export_facts_editor_title_separates_lcl_si_only_from_fcl_si_vgm():
+    import json
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    journey_tsx = (root / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
+    dist_js = (root / "component/dist/logi-shell.js").read_text(encoding="utf-8")
+
+    fcl_node = _build("SEA", "FCL")["si-vgm"]
+    lcl_node = _build("SEA", "LCL")["si-vgm"]
+    assert fcl_node["label"] == "SI / VGM"
+    assert any(f["key"].startswith("vgm_") for f in fcl_node["factFields"])
+    assert lcl_node["label"] == "SI"
+    assert not any(f["key"].startswith("vgm_") for f in lcl_node["factFields"])
+
+    assert "'si-vgm': siOnly ? 'SI — ghi nhận bằng chứng' : 'SI / VGM — ghi nhận bằng chứng'" in journey_tsx
+    assert "SI — ghi nhận bằng chứng" in dist_js
+    assert "SI / VGM — ghi nhận bằng chứng" in dist_js
+
+    node = shutil.which("node")
+    if node and (root / "component/node_modules/jsdom").exists():
+        payload = {
+            "fclNodes": list(_build("SEA", "FCL").values()),
+            "lclNodes": list(_build("SEA", "LCL").values()),
+        }
+        script = """
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+const root = process.cwd();
+const require = createRequire(path.join(root, "component/package.json"));
+const { JSDOM } = require("jsdom");
+const payload = JSON.parse(process.env.NODES_JSON);
+const base = JSON.parse(readFileSync("tests/component/fixtures/view_model_journey_fresh_188.json", "utf8")).before;
+const dom = new JSDOM("<!doctype html><body><div id=\\"host\\"></div>", { url: "http://localhost:9502", pretendToBeVisual: true });
+globalThis.window = dom.window; globalThis.document = dom.window.document;
+Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator, configurable: true });
+for (const k of ["HTMLElement", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "Event", "MouseEvent", "Node", "MutationObserver", "getComputedStyle"]) globalThis[k] = dom.window[k];
+dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+const mount = (await import(pathToFileURL(path.resolve("component/dist/logi-shell.js")))).default;
+const tick = (ms = 120) => new Promise((r) => setTimeout(r, ms));
+const waitFor = async (fn, ms = 4000) => {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { const v = fn(); if (v) return v; await tick(50); }
+  return fn();
+};
+const click = async (el) => { el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); await tick(); };
+const text = (el) => el.textContent.replace(/\\s+/g, " ").trim();
+const byId = (id) => document.querySelector(`[data-testid="${id}"]`);
+
+const fclVm = structuredClone(base);
+fclVm.shipments.find(s => s.id === "SEA-188").journey.nodes = payload.fclNodes;
+mount({ name: "logi_shell", data: fclVm, parentElement: document.getElementById("host"), setTriggerValue: () => {} });
+await tick(250);
+await click([...document.querySelectorAll("a")].find(a => text(a) === "Lô Hàng"));
+await click(await waitFor(() => byId("shipment-period-tat-ca")));
+await click(await waitFor(() => [...document.querySelectorAll("main a")].find(a => text(a) === "SEA-188")));
+await waitFor(() => byId("journey-node-si-vgm"));
+await click(byId("journey-node-si-vgm"));
+const bubble = await waitFor(() => byId("journey-bubble"));
+await click(bubble.querySelector("button[data-testid^=\\"journey-bubble-task-\\"]"));
+const fclForm = await waitFor(() => byId("sea-export-facts"));
+const fclTitle = text(fclForm.querySelector("h3"));
+const fclLabels = [...fclForm.querySelectorAll("select, input")].map(e => e.getAttribute("aria-label")).filter(Boolean);
+
+const lclVm = structuredClone(base);
+lclVm.shipments.find(s => s.id === "SEA-188").journey.nodes = payload.lclNodes;
+mount({ name: "logi_shell", data: lclVm, parentElement: document.getElementById("host"), setTriggerValue: () => {} });
+await tick(250);
+const lclForm = await waitFor(() => byId("sea-export-facts"));
+const lclTitle = text(lclForm.querySelector("h3"));
+const lclLabels = [...lclForm.querySelectorAll("select, input")].map(e => e.getAttribute("aria-label")).filter(Boolean);
+console.log(JSON.stringify({ fclTitle, fclLabels, lclTitle, lclLabels }));
+"""
+        res = subprocess.run(
+            [node, "--input-type=module", "-e", script],
+            cwd=str(root),
+            env=dict(os.environ, NODES_JSON=json.dumps(payload)),
+            capture_output=True, text=True, check=True, timeout=60,
+        )
+        out = json.loads(res.stdout.strip().splitlines()[-1])
+        assert out["fclTitle"] == "SI / VGM — ghi nhận bằng chứng"
+        assert out["fclLabels"] == ["Trạng thái SI", "Trạng thái VGM", "SI cutoff", "VGM cutoff"]
+        assert out["lclTitle"] == "SI — ghi nhận bằng chứng"
+        assert out["lclLabels"] == ["Trạng thái SI", "SI cutoff"]
 
 
 def test_unowned_guidance_is_follow_up_not_fake_assignment():

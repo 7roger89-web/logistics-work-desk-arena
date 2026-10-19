@@ -854,7 +854,8 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   // LOGI-199 T1 — the backend declares which evidence facts belong to this
   // node (scope/load-model aware); the panel never invents its own field list.
   const fields = node?.factFields ?? [];
-  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
+  const siOnly = stageId === 'si-vgm' && (node?.label === 'SI' || (fields.length > 0 && !fields.some(f => f.key.startsWith('vgm_'))));
+  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': siOnly ? 'SI — ghi nhận bằng chứng' : 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
   const save = () => {
     if (!Object.keys(draft).length) { setError('Chưa thay đổi trường nào.'); return; }
     const requestId = `SEA-${crypto.randomUUID()}`;

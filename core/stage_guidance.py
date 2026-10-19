@@ -119,6 +119,7 @@ STAGE_GUIDANCE: dict[str, dict[str, str]] = {
 _LCL_SI_GUIDANCE: dict[str, str] = {
     "why": "LCL chỉ cần SI của lô; không đòi VGM container riêng của shipper.",
     "what_to_do": "Gửi SI cho bên gom hàng/đơn vị nhận SI và theo dõi chấp nhận.",
+    "who": "Chứng từ hoặc bên chịu trách nhiệm SI theo phạm vi.",
     "when": "Trước cutoff SI đã được bên nhận thông báo.",
     "needs": "Chi tiết lô và hướng dẫn SI của bên gom hàng.",
     "done_when": "SI có trạng thái ACCEPTED; không yêu cầu VGM riêng cho LCL.",
