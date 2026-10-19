@@ -96,10 +96,6 @@ def test_fcl_lcl_si_text_and_cfs_gate_separated():
 
 
 def test_sea_export_facts_editor_title_separates_lcl_si_only_from_fcl_si_vgm():
-    import json
-    import os
-    import shutil
-    import subprocess
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     journey_tsx = (root / "component/src/components/ShipmentJourney.tsx").read_text(encoding="utf-8")
@@ -116,13 +112,23 @@ def test_sea_export_facts_editor_title_separates_lcl_si_only_from_fcl_si_vgm():
     assert "SI — ghi nhận bằng chứng" in dist_js
     assert "SI / VGM — ghi nhận bằng chứng" in dist_js
 
+
+def test_sea_export_facts_editor_runtime_dom_separates_lcl_si_only_from_fcl_si_vgm():
+    import json
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
     node = shutil.which("node")
-    if node and (root / "component/node_modules/jsdom").exists():
-        payload = {
-            "fclNodes": list(_build("SEA", "FCL").values()),
-            "lclNodes": list(_build("SEA", "LCL").values()),
-        }
-        script = """
+    if not node or not (root / "component/node_modules/jsdom").exists():
+        pytest.skip("node + component/node_modules/jsdom required for deterministic SeaExportFacts DOM render")
+
+    payload = {
+        "fclNodes": list(_build("SEA", "FCL").values()),
+        "lclNodes": list(_build("SEA", "LCL").values()),
+    }
+    script = """
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
@@ -172,17 +178,17 @@ const lclTitle = text(lclForm.querySelector("h3"));
 const lclLabels = [...lclForm.querySelectorAll("select, input")].map(e => e.getAttribute("aria-label")).filter(Boolean);
 console.log(JSON.stringify({ fclTitle, fclLabels, lclTitle, lclLabels }));
 """
-        res = subprocess.run(
-            [node, "--input-type=module", "-e", script],
-            cwd=str(root),
-            env=dict(os.environ, NODES_JSON=json.dumps(payload)),
-            capture_output=True, text=True, check=True, timeout=60,
-        )
-        out = json.loads(res.stdout.strip().splitlines()[-1])
-        assert out["fclTitle"] == "SI / VGM — ghi nhận bằng chứng"
-        assert out["fclLabels"] == ["Trạng thái SI", "Trạng thái VGM", "SI cutoff", "VGM cutoff"]
-        assert out["lclTitle"] == "SI — ghi nhận bằng chứng"
-        assert out["lclLabels"] == ["Trạng thái SI", "SI cutoff"]
+    res = subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        cwd=str(root),
+        env=dict(os.environ, NODES_JSON=json.dumps(payload)),
+        capture_output=True, text=True, check=True, timeout=60,
+    )
+    out = json.loads(res.stdout.strip().splitlines()[-1])
+    assert out["fclTitle"] == "SI / VGM — ghi nhận bằng chứng"
+    assert out["fclLabels"] == ["Trạng thái SI", "Trạng thái VGM", "SI cutoff", "VGM cutoff"]
+    assert out["lclTitle"] == "SI — ghi nhận bằng chứng"
+    assert out["lclLabels"] == ["Trạng thái SI", "SI cutoff"]
 
 
 def test_unowned_guidance_is_follow_up_not_fake_assignment():
