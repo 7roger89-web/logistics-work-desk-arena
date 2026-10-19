@@ -3621,10 +3621,13 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         agents=agents,
         company_id=payload.get("companyId"),
         sub_agent_id=payload.get("subAgentId"),
+        importer_company_id=payload.get("importerCompanyId"),
     )
     rejected = [
         key for key in payload
-        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId"}
+        if key not in {
+            "shipmentId", "requestId", "mode", "companyId", "subAgentId", "importerCompanyId",
+        }
     ]
     if errors or document is None:
         return _res(

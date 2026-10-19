@@ -97,6 +97,12 @@ def stored_flow(shipment: Mapping[str, Any]) -> dict[str, Any]:
         "confirmed": bool(raw.get("confirmed")) and bool(mode),
         "company_id": _text(raw.get("company_id")).upper(),
         "sub_agent_id": _text(raw.get("sub_agent_id")).upper(),
+        # TT_ENTRUSTED_SUB — legal importer company, resolved from
+        # ``authority_companies``.  It is a SEPARATE identity from
+        # ``sub_agent_id`` (the contract partner in ``authority_agents``).
+        # Historical lots saved before this field existed read back as "" and
+        # must stay unresolved instead of reinterpreting the agent id.
+        "importer_company_id": _text(raw.get("importer_company_id")).upper(),
     }
 
 
@@ -108,18 +114,23 @@ def validate_flow_write(
     agents: Mapping[str, Any] | None = None,
     company_id: str = "",
     sub_agent_id: str = "",
+    importer_company_id: str = "",
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Validate ONE explicit operator choice and return the canonical block.
 
     The legal importer is never guessed.  CUSTOMER_SELF requires a customer
     identity already linked to the lot.  TT_ENTRUSTED_DIRECT requires one
     explicit/uniquely resolvable Trường Thành authority company.
-    TT_ENTRUSTED_SUB requires an explicit authority-agent id.
+    TT_ENTRUSTED_SUB keeps the authority-agent contract partner in
+    ``sub_agent_id`` and requires a DIFFERENT legal importer resolved from the
+    ``authority_companies`` master (``importer_company_id``).  An agent id is
+    never reinterpreted as a company id.
     """
 
     mode = _text(mode).upper()
     company_id = _text(company_id).upper()
     sub_agent_id = _text(sub_agent_id).upper()
+    importer_company_id = _text(importer_company_id).upper()
     errors: list[str] = []
 
     if mode not in FLOW_MODES:
@@ -131,6 +142,8 @@ def validate_flow_write(
             errors.append("Lô chưa gắn mã khách hàng; chưa xác định được pháp nhân đứng nhập khẩu.")
         if sub_agent_id:
             errors.append("Khách tự đứng tên nhập khẩu thì không được gắn đơn vị nhận ủy thác tiếp.")
+        if importer_company_id:
+            errors.append("Khách tự đứng tên nhập khẩu thì không có pháp nhân đứng nhập khẩu hộ.")
         if errors:
             return None, errors
         return {
@@ -155,6 +168,8 @@ def validate_flow_write(
             errors.append("Chưa chọn đúng pháp nhân Trường Thành sẽ đứng tên nhập khẩu.")
         if sub_agent_id:
             errors.append("Lô Trường Thành trực tiếp nhập khẩu thì không được gắn đơn vị nhận ủy thác tiếp.")
+        if importer_company_id:
+            errors.append("Lô Trường Thành trực tiếp nhập khẩu thì không có pháp nhân đứng nhập khẩu hộ.")
         if errors:
             return None, errors
         return {
@@ -180,7 +195,20 @@ def validate_flow_write(
 
     agent = _entity_by_id(agents, sub_agent_id, "agent_id", "id")
     if agent is None:
-        errors.append("Chọn đơn vị đứng nhập khẩu hộ (ví dụ Phú Anh) từ danh mục đối tác.")
+        errors.append(
+            "Chọn đối tác hợp đồng nhận ủy thác (ví dụ Phú Anh) từ danh mục đối tác; "
+            "đại lý không phải pháp nhân đứng nhập khẩu."
+        )
+
+    # The legal importer is an independent, explicit choice from the COMPANY
+    # master.  It is never derived from the agent id, the contract or a name.
+    importer_company = _entity_by_id(companies, importer_company_id, "company_id", "id")
+    if not importer_company_id:
+        errors.append("Chọn pháp nhân thực tế đứng tên nhập khẩu hộ từ danh mục pháp nhân.")
+    elif importer_company is None:
+        errors.append("Không tìm thấy pháp nhân đứng tên nhập khẩu hộ trong danh mục pháp nhân.")
+    elif company_id and importer_company_id == company_id:
+        errors.append("Pháp nhân đứng tên nhập khẩu hộ phải khác pháp nhân Trường Thành ký hợp đồng.")
     if errors:
         return None, errors
     return {
@@ -188,6 +216,7 @@ def validate_flow_write(
         "confirmed": True,
         "company_id": company_id,
         "sub_agent_id": sub_agent_id,
+        "importer_company_id": importer_company_id,
     }, []
 
 
@@ -225,11 +254,23 @@ def project_commercial_flow(
         if importer is None:
             missing.append("Không tìm thấy pháp nhân Trường Thành đã chọn.")
     elif mode == FLOW_TT_ENTRUSTED_SUB:
-        importer_id = flow["sub_agent_id"]
-        importer_kind = "AGENT"
-        importer = _entity_by_id(agents, importer_id, "agent_id", "id")
-        if importer is None:
-            missing.append("Không tìm thấy đối tác đứng nhập khẩu hộ đã chọn.")
+        # The legal importer comes ONLY from the selected authority company.
+        # ``sub_agent_id`` stays the contract partner and is never promoted to
+        # a legal identity.  A missing/invalid/stale company stays UNKNOWN.
+        candidate_id = flow["importer_company_id"]
+        if not candidate_id:
+            missing.append("Chưa chọn pháp nhân thực tế đứng tên nhập khẩu hộ từ danh mục pháp nhân.")
+        elif candidate_id == flow["company_id"]:
+            missing.append(
+                "Pháp nhân đứng tên nhập khẩu hộ phải khác pháp nhân Trường Thành ký hợp đồng."
+            )
+        else:
+            importer = _entity_by_id(companies, candidate_id, "company_id", "id")
+            if importer is None:
+                missing.append("Không tìm thấy pháp nhân đứng tên nhập khẩu hộ trong danh mục pháp nhân.")
+            else:
+                importer_kind = "COMPANY"
+                importer_id = candidate_id
 
     importer = importer or {}
     importer_name = _text(
@@ -267,6 +308,7 @@ def project_commercial_flow(
         "companyId": flow["company_id"],
         "subAgentId": flow["sub_agent_id"],
         "subAgentName": sub_agent_name,
+        "importerCompanyId": importer_id if mode == FLOW_TT_ENTRUSTED_SUB else "",
         "legalImporterKind": importer_kind,
         "legalImporterId": importer_id,
         "legalImporterName": importer_name,

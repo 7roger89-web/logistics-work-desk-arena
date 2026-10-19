@@ -40,13 +40,47 @@ def test_customer_self_requires_linked_customer_identity():
     assert "mã khách hàng" in errors[0].lower()
 
 
-def test_sub_entrust_requires_real_agent_master():
+FIXTURE_COMPANIES = {
+    "TTL": {
+        "company_id": "TTL",
+        "legal_name": "CÔNG TY TNHH TRƯỜNG THÀNH (FIXTURE)",
+        "tax_or_legal_code": "0109988776",
+    },
+    "IMP-A": {
+        "company_id": "IMP-A",
+        "legal_name": "CÔNG TY TNHH ĐỐI TÁC NHẬP KHẨU HỘ A (FIXTURE)",
+        "tax_or_legal_code": "0317000001",
+    },
+}
+
+FIXTURE_AGENTS = {
+    "CONTRACT-B": {
+        "agent_id": "CONTRACT-B",
+        "legal_name": "CÔNG TY TNHH ĐẠI LÝ HỢP ĐỒNG B (FIXTURE)",
+        "legal_code": "0317000002",
+    },
+}
+
+
+def test_sub_entrust_requires_contract_agent_and_company_importer():
     document, errors = validate_flow_write(
         shipment=_shipment(),
         mode=FLOW_TT_ENTRUSTED_SUB,
-        companies={"TTL": {"company_id": "TTL"}},
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+        sub_agent_id="CONTRACT-B",
+    )
+    assert document is None
+    assert any("pháp nhân thực tế đứng tên nhập khẩu" in error for error in errors)
+
+    document, errors = validate_flow_write(
+        shipment=_shipment(),
+        mode=FLOW_TT_ENTRUSTED_SUB,
+        companies=FIXTURE_COMPANIES,
         agents={},
-        sub_agent_id="PA",
+        company_id="TTL",
+        sub_agent_id="CONTRACT-B",
+        importer_company_id="IMP-A",
     )
     assert document is None
     assert errors
@@ -54,23 +88,62 @@ def test_sub_entrust_requires_real_agent_master():
     document, errors = validate_flow_write(
         shipment=_shipment(),
         mode=FLOW_TT_ENTRUSTED_SUB,
-        companies={"TTL": {"company_id": "TTL"}},
-        agents={
-            "PA": {
-                "agent_id": "PA",
-                "legal_name": "Công ty Phú Anh",
-                "legal_code": "0101234567",
-            }
-        },
-        sub_agent_id="PA",
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+        company_id="TTL",
+        sub_agent_id="CONTRACT-B",
+        importer_company_id="IMP-A",
     )
     assert errors == []
     assert document == {
         "mode": FLOW_TT_ENTRUSTED_SUB,
         "confirmed": True,
         "company_id": "TTL",
-        "sub_agent_id": "PA",
+        "sub_agent_id": "CONTRACT-B",
+        "importer_company_id": "IMP-A",
     }
+
+
+def test_sub_entrust_never_accepts_the_agent_id_as_the_importer_company():
+    document, errors = validate_flow_write(
+        shipment=_shipment(),
+        mode=FLOW_TT_ENTRUSTED_SUB,
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+        company_id="TTL",
+        sub_agent_id="CONTRACT-B",
+        importer_company_id="CONTRACT-B",
+    )
+    assert document is None
+    assert any("Không tìm thấy pháp nhân" in error for error in errors)
+
+
+def test_sub_entrust_rejects_the_signing_company_as_the_importer():
+    document, errors = validate_flow_write(
+        shipment=_shipment(),
+        mode=FLOW_TT_ENTRUSTED_SUB,
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+        company_id="TTL",
+        sub_agent_id="CONTRACT-B",
+        importer_company_id="TTL",
+    )
+    assert document is None
+    assert any("phải khác pháp nhân Trường Thành" in error for error in errors)
+
+
+def test_sub_entrust_rejects_unknown_importer_company():
+    document, errors = validate_flow_write(
+        shipment=_shipment(),
+        mode=FLOW_TT_ENTRUSTED_SUB,
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+        company_id="TTL",
+        sub_agent_id="CONTRACT-B",
+        importer_company_id="DELETED-COMPANY",
+    )
+    assert document is None
+    assert any("Không tìm thấy pháp nhân" in error for error in errors)
 
 
 def test_direct_entrust_may_use_single_authority_company_without_guessing_many():
@@ -99,28 +172,153 @@ def test_direct_entrust_may_use_single_authority_company_without_guessing_many()
     assert errors
 
 
-def test_project_flow_resolves_sub_agent_as_legal_importer():
+def test_project_flow_resolves_sub_company_importer_not_the_contract_agent():
     projected = project_commercial_flow(
         _shipment(
             flow={
                 "mode": FLOW_TT_ENTRUSTED_SUB,
                 "confirmed": True,
-                "sub_agent_id": "PA",
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "IMP-A",
             }
         ),
-        agents={
-            "PA": {
-                "agent_id": "PA",
-                "legal_name": "Công ty Phú Anh",
-                # Agent authority masters spell MST ``legal_code``.
-                "legal_code": "0101234567",
-            }
-        },
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
     )
     assert projected["ready"] is True
-    assert projected["legalImporterKind"] == "AGENT"
-    assert projected["legalImporterName"] == "Công ty Phú Anh"
-    assert projected["legalImporterTaxCode"] == "0101234567"
+    assert projected["legalImporterKind"] == "COMPANY"
+    assert projected["legalImporterId"] == "IMP-A"
+    assert projected["importerCompanyId"] == "IMP-A"
+    assert projected["legalImporterName"] == FIXTURE_COMPANIES["IMP-A"]["legal_name"]
+    assert projected["legalImporterTaxCode"] == "0317000001"
+    # The contract relation is untouched and clearly separate from the importer.
+    assert projected["subAgentId"] == "CONTRACT-B"
+    assert projected["subAgentName"] == FIXTURE_AGENTS["CONTRACT-B"]["legal_name"]
+
+
+def test_project_flow_legacy_sub_without_company_link_stays_unknown():
+    projected = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+            }
+        ),
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+    )
+    assert projected["ready"] is False
+    assert projected["legalImporterKind"] == ""
+    assert projected["legalImporterId"] == ""
+    assert projected["importerCompanyId"] == ""
+    assert projected["legalImporterName"] == ""
+    assert projected["legalImporterTaxCode"] == ""
+    assert any("pháp nhân thực tế đứng tên nhập khẩu" in item for item in projected["missing"])
+    # Historical data remains visible for reconciliation but is never
+    # promoted into a legal identity.
+    assert projected["subAgentName"] == FIXTURE_AGENTS["CONTRACT-B"]["legal_name"]
+
+
+def test_project_flow_fails_closed_for_stale_company_and_signing_company_importer():
+    stale = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "DELETED-COMPANY",
+            }
+        ),
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+    )
+    assert stale["ready"] is False
+    assert stale["legalImporterId"] == ""
+    assert stale["legalImporterName"] == ""
+
+    same_as_signing = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "TTL",
+            }
+        ),
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+    )
+    assert same_as_signing["ready"] is False
+    assert same_as_signing["legalImporterId"] == ""
+    assert any("phải khác pháp nhân Trường Thành" in item for item in same_as_signing["missing"])
+
+
+def test_gnt_gate_compares_the_real_company_importer_tax_code():
+    projected = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "IMP-A",
+            }
+        ),
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+    )
+    assert gnt_flow_gate(projected, "0317000001")["allowed"] is True
+    mismatch = gnt_flow_gate(projected, FIXTURE_AGENTS["CONTRACT-B"]["legal_code"])
+    assert mismatch["allowed"] is False
+    assert mismatch["gate"] == "GNT_TAXPAYER_MISMATCH"
+
+
+def test_importer_change_does_not_move_the_contract_partner_match():
+    flow = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "IMP-A",
+            }
+        ),
+        companies=FIXTURE_COMPANIES,
+        agents=FIXTURE_AGENTS,
+    )
+    contracts = {
+        "C-1": {"id": "C-1", "contract_no": "FIX-01/2026", "company_id": "TTL", "agent_id": "CONTRACT-B"},
+    }
+    before = match_sub_purchase_contract(flow, contracts)
+    other_importer = project_commercial_flow(
+        _shipment(
+            flow={
+                "mode": FLOW_TT_ENTRUSTED_SUB,
+                "confirmed": True,
+                "company_id": "TTL",
+                "sub_agent_id": "CONTRACT-B",
+                "importer_company_id": "IMP-C",
+            }
+        ),
+        companies={**FIXTURE_COMPANIES, "IMP-C": {
+            "company_id": "IMP-C",
+            "legal_name": "CÔNG TY TNHH ĐỐI TÁC NHẬP KHẨU HỘ C (FIXTURE)",
+            "tax_or_legal_code": "0317000003",
+        }},
+        agents=FIXTURE_AGENTS,
+    )
+    after = match_sub_purchase_contract(other_importer, contracts)
+    assert before == after
+    assert after["status"] == "LINKED"
+    assert after["id"] == "C-1"
+    assert other_importer["legalImporterId"] == "IMP-C"
+    assert other_importer["subAgentId"] == "CONTRACT-B"
 
 
 def test_customer_self_makes_truong_thanh_pxk_not_applicable():

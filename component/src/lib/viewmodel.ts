@@ -870,6 +870,8 @@ export interface CommercialFlow {
   companyId: string;
   subAgentId: string;
   subAgentName: string;
+  /** TT_ENTRUSTED_SUB only — legal importer from `authority_companies`. */
+  importerCompanyId: string;
   legalImporterKind: string;
   legalImporterId: string;
   legalImporterName: string;
