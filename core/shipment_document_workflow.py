@@ -733,6 +733,7 @@ ENTRUSTMENT_FIELDS: dict[str, str] = {
     "warehouse_handover_doc_no": "handover_doc_no",
 }
 _ENTRUSTMENT_READY_FIELDS = ("ready_at", "ready_ref")
+_ENTRUSTMENT_TIME_FIELDS = ("ready_at", "handover_at")
 _ENTRUSTMENT_HANDOVER_FIELDS = ("handover_at", "handover_from", "handover_to", "handover_doc_no")
 _ENTRUSTMENT_MAX_TEXT = {"ready_ref": 200, "handover_doc_no": 120}
 
@@ -771,22 +772,74 @@ def entrustment_parties(flow: Mapping[str, Any]) -> list[dict[str, str]]:
     return rows
 
 
+#: Accepted evidence-time shapes. A value is parsed AS A WHOLE — never sliced —
+#: so ``2026-10-10NOT-A-TIME`` is refused instead of silently passing as a date.
+#: Timezone designators are deliberately NOT accepted: the two facts are local
+#: warehouse moments and converting zones would invent information.
+_EVIDENCE_TIME_FORMATS: tuple[tuple[str, bool], ...] = (
+    ("%Y-%m-%dT%H:%M", True),
+    ("%Y-%m-%d %H:%M", True),
+    ("%d/%m/%Y %H:%M", True),
+    ("%Y-%m-%dT%H:%M:%S", True),
+    ("%Y-%m-%d %H:%M:%S", True),
+    ("%d/%m/%Y %H:%M:%S", True),
+    ("%Y-%m-%d", False),
+    ("%d/%m/%Y", False),
+)
+
+
+def _parse_evidence_time(value: Any) -> tuple[bool, datetime] | None:
+    """Parse ONE evidence timestamp; ``(has_time, moment)`` or None.
+
+    ``has_time`` is the PRECISION of the input: a legacy pure date carries no
+    invented hour, and a date+time keeps its hours and minutes.
+    """
+    raw = _text(value)
+    if not raw:
+        return None
+    for fmt, has_time in _EVIDENCE_TIME_FORMATS:
+        try:
+            return has_time, datetime.strptime(raw, fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def _normalize_evidence_time(value: Any) -> str:
+    """Canonicalise an evidence timestamp without dropping or inventing time."""
     raw = _text(value)
     if not raw:
         return ""
-    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(raw[:10], fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            continue
-    try:
-        parsed = datetime.fromisoformat(raw)
-    except ValueError as exc:
+    parsed = _parse_evidence_time(raw)
+    if parsed is None:
         raise ValueError(
-            "Mốc thời gian phải là YYYY-MM-DD, YYYY-MM-DDTHH:mm hoặc DD/MM/YYYY."
-        ) from exc
-    return parsed.isoformat(timespec="minutes") if "T" in raw else parsed.date().isoformat()
+            "Mốc thời gian phải là YYYY-MM-DD, YYYY-MM-DDTHH:mm, "
+            "DD/MM/YYYY hoặc DD/MM/YYYY HH:mm (không nhận múi giờ)."
+        )
+    has_time, moment = parsed
+    return moment.isoformat(sep="T", timespec="minutes" if moment.second == 0 else "seconds") if has_time else moment.date().isoformat()
+
+
+def _evidence_time_inversion(later_raw: Any, earlier_raw: Any) -> str:
+    """Return ``"time"``/``"day"`` when later precedes earlier, else ``""``.
+
+    The comparison uses the SAME precision on both sides. A pure date and a
+    date+time are not ordered against each other: doing so would infer an hour
+    nobody recorded (and a zone nobody stated).
+    """
+    later = _parse_evidence_time(later_raw)
+    earlier = _parse_evidence_time(earlier_raw)
+    if later is None or earlier is None or later[0] != earlier[0]:
+        return ""
+    if later[1] < earlier[1]:
+        return "time" if later[0] else "day"
+    return ""
+
+
+_EVIDENCE_INVERSION_REASON = {
+    "day": "Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng.",
+    "time": "Thời điểm bàn giao không thể trước giờ xác nhận ủy thác sẵn sàng.",
+}
 
 
 def _party_label(rows: list[dict[str, str]], identifier: str) -> str:
@@ -843,12 +896,18 @@ def project_entrustment_stages(
         )
     if not ready_at:
         ready_missing.append("Chưa ghi nhận ngày xác nhận đủ điều kiện thực hiện ủy thác.")
+    elif _parse_evidence_time(ready_at) is None:
+        # A value the current writer would refuse is NOT evidence — legacy rows
+        # may hold raw text because the normalizer used to be bypassed.
+        ready_missing.append("Ngày xác nhận đã lưu không đúng định dạng; ghi lại mốc hợp lệ.")
     if not ready_ref:
         ready_missing.append("Chưa ghi nhận căn cứ xác nhận (hợp đồng / biên bản phạm vi ủy thác).")
 
     handover_missing: list[str] = []
     if not handover_at:
         handover_missing.append("Chưa ghi nhận thời điểm bàn giao thực tế tại kho.")
+    elif _parse_evidence_time(handover_at) is None:
+        handover_missing.append("Thời điểm bàn giao đã lưu không đúng định dạng; ghi lại mốc hợp lệ.")
     if not handover_from:
         handover_missing.append("Chưa xác định bên giao của lần bàn giao.")
     if not handover_to:
@@ -859,10 +918,20 @@ def project_entrustment_stages(
         handover_missing.append("Bên giao/bên nhận không thuộc chuỗi ủy thác của lô.")
     if not handover_doc_no:
         handover_missing.append("Chưa có số biên bản giao nhận.")
-    if ready_at and handover_at and handover_at[:10] < ready_at[:10]:
-        handover_missing.append("Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng.")
+    inversion = _evidence_time_inversion(handover_at, ready_at)
+    if inversion:
+        handover_missing.append(_EVIDENCE_INVERSION_REASON[inversion])
 
     ready_done = not ready_missing
+    # P0-A: the handover is the SECOND stage. Recorded handover evidence never
+    # outruns its prerequisite — if the entrustment is not ready (missing ready
+    # facts, lost legal importer, contract no longer exactly LINKED), a stored
+    # handover stays NOT done and the node states why. Historical evidence is
+    # preserved untouched; only the completion claim fails closed.
+    if not ready_done:
+        handover_missing.append(
+            "Chưa hoàn thành công đoạn ủy thác sẵn sàng; bàn giao chỉ được xác nhận sau khi công đoạn trước đủ điều kiện."
+        )
     handover_done = not handover_missing
     ready_evidence = " · ".join(
         item
@@ -937,26 +1006,39 @@ def validate_entrustment_evidence_write(
     merged = dict(existing)
     for key, value in fields.items():
         stored_key = ENTRUSTMENT_FIELDS[str(key)]
-        if stored_key in _ENTRUSTMENT_READY_FIELDS or stored_key in {"handover_from", "handover_to"}:
-            normalized = _text(value).upper() if stored_key in {"handover_from", "handover_to"} else _text(value)
-        elif stored_key in {"ready_at", "handover_at"}:
+        # Time fields MUST be parsed whole. They used to be caught by the
+        # ready-text branch below, so a garbage or hour-bearing timestamp was
+        # stored verbatim and the normalizer never ran.
+        if stored_key in _ENTRUSTMENT_TIME_FIELDS:
             normalized = _normalize_evidence_time(value)
+        elif stored_key in {"handover_from", "handover_to"}:
+            normalized = _text(value).upper()
         else:
             normalized = _text(value)
         if existing.get(stored_key) and not normalized:
             return None, [f"Không được xóa bằng chứng đã ghi ({stored_key})."]
         merged[stored_key] = normalized
 
+    contract_status = _text(_mapping(contract).get("status")).upper()
+    ready_complete = False
     if any(merged.get(key) for key in _ENTRUSTMENT_READY_FIELDS):
-        contract_status = _text(_mapping(contract).get("status")).upper()
         if contract_status != "LINKED":
             return None, ["Chưa có hợp đồng liên kết đúng hai bên; chưa thể xác nhận ủy thác sẵn sàng."]
         if not merged.get("ready_at") or not merged.get("ready_ref"):
             return None, ["Cần đủ ngày xác nhận và căn cứ xác nhận ủy thác."]
         if len(merged["ready_ref"]) > _ENTRUSTMENT_MAX_TEXT["ready_ref"]:
             return None, [f"Căn cứ xác nhận dài quá {_ENTRUSTMENT_MAX_TEXT['ready_ref']} ký tự."]
+        ready_complete = True
 
     if any(merged.get(key) for key in _ENTRUSTMENT_HANDOVER_FIELDS):
+        # P0-A: a handover can never be recorded ahead of its prerequisite. This
+        # also covers a replay of an old payload: the prerequisite is re-checked
+        # against the CURRENT contract/importer state, never trusted from before.
+        if not ready_complete:
+            return None, [
+                "Chưa hoàn thành công đoạn ủy thác sẵn sàng "
+                "(cần hợp đồng liên kết, ngày xác nhận và căn cứ); chưa thể ghi bàn giao."
+            ]
         party_ids = {row["id"] for row in entrustment_parties(flow)}
         missing = [key for key in _ENTRUSTMENT_HANDOVER_FIELDS if not merged.get(key)]
         if missing:
@@ -967,7 +1049,8 @@ def validate_entrustment_evidence_write(
             return None, ["Bên giao/bên nhận phải thuộc chuỗi ủy thác của lô."]
         if len(merged["handover_doc_no"]) > _ENTRUSTMENT_MAX_TEXT["handover_doc_no"]:
             return None, [f"Số biên bản giao nhận dài quá {_ENTRUSTMENT_MAX_TEXT['handover_doc_no']} ký tự."]
-        if merged.get("ready_at") and merged["handover_at"][:10] < merged["ready_at"][:10]:
-            return None, ["Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng."]
+        inversion = _evidence_time_inversion(merged["handover_at"], merged.get("ready_at"))
+        if inversion:
+            return None, [_EVIDENCE_INVERSION_REASON[inversion]]
 
     return merged, []

@@ -558,3 +558,218 @@ console.log(JSON.stringify({
     assert "Còn thiếu để xác nhận" in out["missing"]
     assert "bàn giao" in out["missing"].lower()
     assert out["selfReady"] is False and out["selfHandover"] is False
+
+
+# P0-A — a stored handover can never outrun its prerequisite ------------------
+def test_p0a_writer_refuses_full_handover_without_ready_evidence(staging, event_seq):
+    """TASK 2.1 — no ready_at/ready_ref: the four handover fields are refused."""
+    _confirm_sub(event_seq)
+    before = vm.read_shipment(SHIPMENT)
+    version_before = int(before.get("version") or 0)
+
+    outcome = _evidence(event_seq, _handover_fields(), request_id="FIX-ENT-P0A-1")
+    assert outcome["ok"] is False
+    assert outcome["gate"] == "ENTRUSTMENT_EVIDENCE_REFUSED"
+    assert "ủy thác sẵn sàng" in outcome["error"]
+
+    after = vm.read_shipment(SHIPMENT)
+    assert int(after.get("version") or 0) == version_before
+    assert stored_entrustment_evidence(after) == {
+        "ready_at": "", "ready_ref": "",
+        "handover_at": "", "handover_from": "", "handover_to": "", "handover_doc_no": "",
+    }
+
+
+def test_p0a_projection_handover_not_done_without_ready_evidence():
+    """TASK 2.2 — legacy/planted evidence: projection fails closed, keeps data."""
+    evidence = {**{ENTRUSTMENT_FIELDS["warehouse_handover_at"]: "2026-10-12",
+                   ENTRUSTMENT_FIELDS["warehouse_handover_from"]: "FIX-TT",
+                   ENTRUSTMENT_FIELDS["warehouse_handover_to"]: "FIX-IMP-A",
+                   ENTRUSTMENT_FIELDS["warehouse_handover_doc_no"]: "BBGN-199-01"}}
+    flow = {
+        "mode": "TT_ENTRUSTED_SUB", "confirmed": True, "ready": True, "missing": [],
+        "companyId": "FIX-TT", "companyName": "FIX TT",
+        "subAgentId": "FIX-CONTRACT-B", "subAgentName": "FIX B",
+        "importerCompanyId": "FIX-IMP-A", "legalImporterName": "FIX A",
+    }
+    stages = project_entrustment_stages(
+        flow, {"status": "LINKED", "id": "FIX-CONTRACT-199", "contractNo": "FIX-CONTRACT-199"}, evidence,
+    )
+    assert stages["ready"]["done"] is False
+    assert stages["handover"]["done"] is False
+    assert any("ủy thác sẵn sàng" in item for item in stages["handover"]["missing"])
+    # The recorded evidence is preserved and still readable.
+    assert stages["values"]["warehouse_handover_doc_no"] == "BBGN-199-01"
+
+
+def test_p0a_lost_legal_importer_fails_closed_and_keeps_history(staging, event_seq):
+    """TASK 2.3 — importer removed from the master after a valid save."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-P0A-READY")["ok"]
+    assert _evidence(event_seq, _handover_fields(), request_id="FIX-P0A-HAND")["ok"]
+    assert _node(_shipment_row(vm.build_view_model()), ENTRUSTMENT_HANDOVER_ID)["completed"] is True
+
+    database.get_db()["authority_companies"].delete_one({"company_id": "FIX-IMP-A"})
+    row = _shipment_row(vm.build_view_model())
+    stages = row["entrustmentStages"]
+    assert stages["ready"]["done"] is False
+    assert stages["handover"]["done"] is False
+    assert any("pháp nhân" in item for item in stages["ready"]["missing"])
+    assert any("ủy thác sẵn sàng" in item for item in stages["handover"]["missing"])
+
+    handover = _node(row, ENTRUSTMENT_HANDOVER_ID)
+    assert handover["completed"] is False
+    assert handover["state"] != "COMPLETED"
+    # Historical evidence survives: the read-back panel still shows what was recorded.
+    assert handover["factValues"]["warehouse_handover_doc_no"] == "BBGN-199-01"
+    assert stored_entrustment_evidence(vm.read_shipment(SHIPMENT))["handover_at"] == "2026-10-12"
+
+
+def test_p0a_contract_leaving_linked_or_becoming_ambiguous_fails_closed(staging, event_seq):
+    """TASK 2.4 — completion fails closed when the contract stops being LINKED."""
+    db = database.get_db()
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-P0A-R2")["ok"]
+    assert _evidence(event_seq, _handover_fields(), request_id="FIX-P0A-H2")["ok"]
+
+    # (a) the contract no longer matches the two parties -> MISSING
+    db["contracts"].update_one({"id": "FIX-CONTRACT-199"}, {"$set": {"agent_id": "FIX-OTHER"}})
+    stages = _shipment_row(vm.build_view_model())["entrustmentStages"]
+    assert stages["ready"]["done"] is False
+    assert stages["handover"]["done"] is False
+    assert any("hợp đồng liên kết" in item for item in stages["ready"]["missing"])
+
+    # (b) two contracts match the same pair -> AMBIGUOUS (never auto-picked)
+    db["contracts"].update_one({"id": "FIX-CONTRACT-199"}, {"$set": {"agent_id": "FIX-CONTRACT-B"}})
+    db["contracts"].insert_one(copy.deepcopy({
+        **_fixture_contract("FIX-CONTRACT-199-B"),
+    }))
+    row = _shipment_row(vm.build_view_model())
+    stages = row["entrustmentStages"]
+    assert stages["ready"]["done"] is False
+    assert stages["handover"]["done"] is False
+    assert any("cùng khớp hai bên" in item for item in stages["ready"]["missing"])
+    assert _node(row, ENTRUSTMENT_HANDOVER_ID)["completed"] is False
+    assert stored_entrustment_evidence(vm.read_shipment(SHIPMENT))["ready_ref"].startswith("HDNT-199")
+
+
+# P0-B — timestamps keep their hours/minutes and are validated as a whole ------
+def test_p0b_same_day_earlier_time_is_refused(staging, event_seq):
+    """TASK 2.5 — 18:00 ready, 09:00 handover, same day: REFUSED."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": "2026-10-10T18:00"},
+                     request_id="FIX-P0B-R1")["ok"]
+    before = vm.read_shipment(SHIPMENT)
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-10T09:00"},
+                        request_id="FIX-P0B-H1")
+    assert outcome["ok"] is False
+    assert outcome["gate"] == "ENTRUSTMENT_EVIDENCE_REFUSED"
+    assert "trước giờ xác nhận" in outcome["error"]
+    after = vm.read_shipment(SHIPMENT)
+    assert int(after.get("version") or 0) == int(before.get("version") or 0)
+    assert stored_entrustment_evidence(after)["handover_at"] == ""
+
+
+def test_p0b_later_time_is_accepted_and_readback_keeps_hhmm(staging, event_seq):
+    """TASK 2.6 — 18:00 ready, 19:00 handover: ACCEPTED, HH:mm preserved."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": "2026-10-10T18:00"},
+                     request_id="FIX-P0B-R2")["ok"]
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-10T19:00"},
+                        request_id="FIX-P0B-H2")
+    assert outcome["ok"], outcome.get("error")
+    persisted = outcome["persisted"]["entrustmentEvidence"]
+    assert persisted["ready_at"] == "2026-10-10T18:00"
+    assert persisted["handover_at"] == "2026-10-10T19:00"
+    stages = outcome["readback"]["entrustmentStages"]
+    assert stages["ready"]["done"] is True and stages["handover"]["done"] is True
+    assert "18:00" in stages["ready"]["evidence"] and "19:00" in stages["handover"]["evidence"]
+
+    node = _node(_shipment_row(vm.build_view_model()), ENTRUSTMENT_HANDOVER_ID)
+    assert node["factValues"]["warehouse_handover_at"] == "2026-10-10T19:00"
+
+
+def test_p0b_trailing_garbage_is_refused_not_truncated(staging, event_seq):
+    """TASK 2.7 — '2026-10-10NOT-A-TIME' must not pass as a date."""
+    _confirm_sub(event_seq)
+    before = vm.read_shipment(SHIPMENT)
+    outcome = _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": "2026-10-10NOT-A-TIME"},
+                        request_id="FIX-P0B-G1")
+    assert outcome["ok"] is False
+    assert "Mốc thời gian" in outcome["error"]
+    after = vm.read_shipment(SHIPMENT)
+    assert int(after.get("version") or 0) == int(before.get("version") or 0)
+    assert stored_entrustment_evidence(after)["ready_at"] == ""
+
+
+def test_p0b_date_only_legacy_contract_is_explicit_and_invents_no_hour(staging, event_seq):
+    """TASK 2.8 — pure dates stay pure; mixed precision never invents an order."""
+    from core.shipment_document_workflow import _normalize_evidence_time
+
+    _confirm_sub(event_seq)
+    assert _normalize_evidence_time("2026-10-10") == "2026-10-10"
+    assert _normalize_evidence_time("10/10/2026") == "2026-10-10"
+
+    # Same-day mixed precision: the order is NOT inferred, so it is accepted
+    # exactly as recorded (no invented hour on either side).
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-P0B-D1")["ok"]
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-10T09:00"},
+                        request_id="FIX-P0B-D2")
+    assert outcome["ok"], outcome.get("error")
+    persisted = outcome["persisted"]["entrustmentEvidence"]
+    assert persisted["ready_at"] == "2026-10-10"
+    assert persisted["handover_at"] == "2026-10-10T09:00"
+
+    # Same precision keeps exact ordering: a pure date before the ready date fails.
+    fresh = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-09"},
+                      request_id="FIX-P0B-D3")
+    assert fresh["ok"] is False
+    assert "trước ngày xác nhận" in fresh["error"]
+
+
+def test_p0a_linked_never_becomes_signed_or_effective_evidence(staging, event_seq):
+    """LINKED is a precondition only — recording ready never upgrades the contract."""
+    db = database.get_db()
+    _confirm_sub(event_seq)
+    contract_before = copy.deepcopy(db["contracts"].find_one({"id": "FIX-CONTRACT-199"}, {"_id": 0}))
+
+    # LINKED alone (no ready facts) is not completion.
+    row = _shipment_row(vm.build_view_model())
+    assert _node(row, ENTRUSTMENT_READY_ID)["completed"] is False
+    assert row["entrustmentStages"]["contractNo"] == "FIX-CONTRACT-199"
+
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-P0A-LINKED")["ok"]
+    contract_after = db["contracts"].find_one({"id": "FIX-CONTRACT-199"}, {"_id": 0})
+    assert copy.deepcopy(contract_after) == contract_before
+    assert contract_after["status"] == "active"
+    stages = _shipment_row(vm.build_view_model())["entrustmentStages"]
+    assert stages["ready"]["done"] is True
+    assert stages["handover"]["done"] is False
+    # The rendered evidence still names the contract; no fabricated signature claim.
+    assert "FIX-CONTRACT-199" in stages["ready"]["evidence"]
+    assert not any(word in stages["ready"]["evidence"].lower() for word in ("đã ký", "hiệu lực", "signed", "effective"))
+
+
+def test_p0b_garbage_already_stored_cannot_complete_the_handover(staging, event_seq):
+    """A legacy row written before the parser fix must not stay DONE."""
+    _confirm_sub(event_seq)
+    db = database.get_db()
+    document = db["shipments"].find_one({"id": SHIPMENT})
+    document["data"]["0.0"]["entrustment_evidence"] = {
+        "ready_at": "2026-10-10", "ready_ref": "HDNT-199/2026",
+        "handover_at": "2026-10-10NOT-A-TIME", "handover_from": "FIX-TT",
+        "handover_to": "FIX-IMP-A", "handover_doc_no": "BBGN-199-01",
+    }
+    db["shipments"].replace_one({"id": SHIPMENT}, document)
+
+    row = _shipment_row(vm.build_view_model())
+    stages = row["entrustmentStages"]
+    assert stages["ready"]["done"] is True
+    assert stages["handover"]["done"] is False
+    assert any("không đúng định dạng" in item for item in stages["handover"]["missing"])
+    assert _node(row, ENTRUSTMENT_HANDOVER_ID)["completed"] is False
+    # The operator can repair it with a valid value through the same writer.
+    fixed = _evidence(event_seq, {"warehouse_handover_at": "2026-10-12"},
+                      request_id="FIX-P0B-REPAIR")
+    assert fixed["ok"], fixed.get("error")
+    assert _node(_shipment_row(vm.build_view_model()), ENTRUSTMENT_HANDOVER_ID)["completed"] is True
