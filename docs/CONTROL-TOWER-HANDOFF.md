@@ -39,7 +39,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - **Lộ trình**:
   - (0) 3 bug node truth — **XONG, semantics cập nhật bởi tích hợp T1–T5** (`61f0714` → `07dc8f8`): booking `done=booking_status=='CONFIRMED'` (chuỗi T1, `BOOKING_STATES` — bỏ biến thể `'ACCEPTED'` + bỏ điều kiện có số); on-board `done=bool(on_board_at)` (bỏ điều kiện ATD). Riêng bug si-vgm/LCL: giữ semantics batch 2 (dưới) — chuỗi T1–T5 tự có nhánh LCL SI-only.
   - (1) diệt false-done — **một phần XONG**: `d1340a5` (JourneyBubble docs, ô nhập fact, CẦN LÀM ra mặt tiền) + batch 2 `162036f` (GNT ≠ TAX_PAID, importer, LCL SI-only) + guard factFields LCL `53ccddc` (node SI-only của LCL giữ ô `si_status`/`si_cutoff`, chỉ bỏ ô `vgm_*` — guard `continue` cũ bỏ trắng form khiến node không bao giờ xong). Kiểm tiếp các surface khác nếu có biểu thức false-done.
-  - (2) backport #200/#204/#208 vào #210 — **#204 (chuỗi T1–T5) ĐÃ tích hợp vào nhánh phiên** (`07dc8f8`); #200 (AIR_DOCUMENTS) + #208 (routing/stage scope) **CHƯA** (prompt phiên này loại trừ). Gợi ý thứ tự 1 dòng: **#200 trước #208** (stage AIR phải tồn tại trước khi routing gate theo stage scope), cả hai backport vào #210 trước khi tích hợp vào main.
+  - (2) backport #200/#204/#208 vào #210 — **#204 (chuỗi T1–T5) ĐÃ tích hợp** (`07dc8f8`); **#200 (AIR_DOCUMENTS) ĐÃ backport** (xem commit `fix(air-documents)` phiên này — `persisted_facts` thêm `mawb`/`hawb`/`flightNo`, `AIR_DOCUMENTS` yêu cầu AWB+flight, test âm/dương 13 ca PASS); #208 (routing/stage scope) **CHƯA**.
   - (3) commercial-flow + legal parties + 2 stage `entrustment-ready`/`tt-warehouse-handover` (CHỈ TT_ENTRUSTED_SUB) — **CHƯA**.
   - (4) nội dung công đoạn SEA — **ĐÃ TẠO SOURCE + TEST, CHƯA NGHIỆM THU**: 12 ID (11 vị trí FCL/LCL), gate `mode=SEA`, bản FCL/LCL riêng, unowned chỉ theo dõi, thông quan nhập boolean rõ ràng. UI dùng lại `node.guidance`; cần chạy pytest/QA trước khi gọi XONG.
   - (5) E2E + UAT + merge — **CHƯA**.
@@ -69,6 +69,22 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Danh sách pháp nhân thật trong `authority_companies` (tên + vai trò)
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-19 — Sửa AIR_DOCUMENTS báo hoàn thành sai (backport #200)
+
+- **Commit SHA**: `c6339d8` (code + test + handoff) trên nhánh session `arena/9b459b3f-logistics-work-desk-arena` (fast-forward từ checkpoint PR #211 `bf85c6f4969d4cb50201d8018333eb5b7565a0b0`).
+- **Đã làm**:
+  1. **TASK 0 / Preflight**: xác nhận HEAD PR #211 tại `bf85c6f` (khớp EXPECTED_PR_HEAD). Session branch `arena/9b459b3f` đã fast-forward lên đúng checkpoint. Đọc PR #200 tại `d0a1b556` (nguồn `ct/logi-app-renewal-01-t0-air-truth`) để xác định hunk cần port. SHA skills khớp.
+  2. **TASK 1 — Sửa code** (`core/shipment_execution_profile.py`):
+     - **`persisted_facts` (dòng ~674-676)**: thêm projection `mawb`/`hawb`/`flightNo` từ `operational["main_leg"]` (nguồn `compatibility_facts` → `transport_legs_for_read`), đọc đúng từ leg AIR cấu trúc và legacy scalar.
+     - **`main_documents` (dòng ~976-978)**: mở rộng điều kiện thêm `mawb`/`hawb`/`flightNo` để AIR fact cũng kích hoạt giai đoạn `MAIN_CARRIAGE`.
+     - **`AIR_DOCUMENTS` owned (dòng ~1010-1022)**: thay logic sai (`done=bool(mbl/hbl/carrier)`, đảo ngược) bằng list-missing đúng: thiếu MAWB/HAWB → báo "MAWB/HAWB", thiếu flight → báo "số chuyến bay"; `done=not missing`.
+     - **`AIR_DOCUMENTS` not-owned (dòng ~1024-1030)**: thay `done=True` hardcode bằng `observed = bool(mawb or hawb) and bool(flightNo)` — chỉ đủ AWB + flight mới ghi nhận hoàn thành; không sinh việc cho Trường Thành.
+  3. **TASK 2 — Test** (`tests/test_logi_goal199_air_documents.py`): 13 ca PASS — (a) carrier+MBL/HBL không AWB/flight → `done=False`; (b) AWB thiếu flight → False; (c) flight thiếu AWB → False; (d) MAWB+flight → True; (e) HAWB+flight → True; (f) structured transport leg → đọc đúng; (g) legacy scalar `data.1.2` → đọc đúng; (h) ngoài scope thiếu bằng chứng → False, không sinh task; (i) ngoài scope đủ bằng chứng → chỉ ghi nhận; (j) không sinh SEA stage cho AIR; (k) legacy thiếu flight → incomplete. **Không cherry-pick/nguyên nhánh #200.**
+  4. **TASK 3 — Regression**: full suite cùng điều kiện môi trường: **NEW=0, GONE=0** (170 failed / 1162 passed so với 170/1149 baseline — +13 từ test mới). Không sửa SEA/LCL/ROAD/RAIL, không đụng frontend/dist, không đổi writer/schema.
+- **Không làm (theo prompt)**: #208 routing/stage scope (gói tiếp theo); rebuild frontend (không đụng source FE); merge main; deploy.
+- **Còn lại**: Control Tower nghiệm thu commit, đồng bộ PR #211 (fast-forward head `arena/a3117943-logistics-work-desk-arena`); sau đó giao gói #208.
+- **Cần Owner**: xem MỤC 3 ĐANG CHỜ + MỤC 5.
 
 ### 2026-10-19 — Recovery cuối: sửa receipt SHA-256 + tách runtime jsdom test có skip minh bạch
 

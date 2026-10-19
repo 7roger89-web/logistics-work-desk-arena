@@ -669,6 +669,11 @@ def persisted_facts(shipment: Mapping[str, Any], *,
         "mbl": _text(operational.get("mbl")),
         "hbl": _text(operational.get("hbl")),
         "vessel": _text(operational.get("vessel")),
+        # AIR: mode-specific identity must come from the real main transport leg,
+        # not the legacy sea MBL/HBL compatibility slots.
+        "mawb": _text((operational.get("main_leg") or {}).get("mawb")),
+        "hawb": _text((operational.get("main_leg") or {}).get("hawb")),
+        "flightNo": _text((operational.get("main_leg") or {}).get("flight_no")),
         "etd": _text(operational.get("etd")) or _text(transport.get("etd")),
         "pol": _text(operational.get("origin")) or _text(transport.get("pol")),
         "pod": _text(operational.get("destination")) or _text(transport.get("pod")),
@@ -969,7 +974,8 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
 
     # --- main carriage: scope OR mode/load-model requirement OR facts ------
     main_documents = bool(facts.get("bookingNo") or facts.get("carrier") or facts.get("mbl")
-                          or facts.get("hbl") or facts.get("vessel"))
+                          or facts.get("hbl") or facts.get("vessel") or facts.get("mawb")
+                          or facts.get("hawb") or facts.get("flightNo"))
     if in_scope(SCOPE_MAIN_CARRIAGE):
         stages.append(_stage(
             "MAIN_CARRIAGE", "Chặng chính", REASON_SERVICE_SCOPE,
@@ -1003,15 +1009,25 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
 
     if mode == MODE_AIR and (owns_main or main_documents):
         if owns_main:
-            missing = bool(facts.get("mbl") or facts.get("hbl") or facts.get("carrier"))
+            # Carrier name or sea MBL/HBL alone never proves air documentation.
+            # An owned air-carriage task needs both an AWB and its flight.
+            missing = [label for label, present in (
+                ("MAWB/HAWB", bool(facts.get("mawb") or facts.get("hawb"))),
+                ("số chuyến bay", bool(facts.get("flightNo"))),
+            ) if not present]
             stages.append(_stage(
-                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason, done=missing,
+                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason,
+                done=not missing,
                 detail="Hàng đi hàng không: MAWB/HAWB và chuyến bay là chứng từ của chặng chính.",
-                prompt="" if missing else "Ghi nhận MAWB/HAWB và chuyến bay."))
+                prompt=("Còn thiếu: " + ", ".join(missing)) if missing else ""))
         else:
+            # Outside our service scope means NO owned task, not factual proof
+            # that the counterparty has actually issued a waybill or flight.
+            observed = bool(facts.get("mawb") or facts.get("hawb")) and bool(facts.get("flightNo"))
             stages.append(_stage(
-                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason, done=True,
-                detail="Chặng bay do bên bán thu xếp; lô chỉ ghi nhận lại chứng từ."))
+                "AIR_DOCUMENTS", "Chứng từ hàng không", mode_docs_reason, done=observed,
+                detail="Chặng bay ngoài phạm vi Trường Thành thu xếp; chỉ ghi nhận MAWB/HAWB và chuyến bay khi có dữ liệu thực tế.",
+                prompt=""))
 
     if mode == MODE_RAIL and (owns_main or main_documents):
         rail_known = bool(facts.get("carrier") or facts.get("mbl"))
