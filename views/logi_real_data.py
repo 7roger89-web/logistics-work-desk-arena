@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Mapping, Sequence
 
+from core.customs_truth import customs_clearance_confirmed
 from core.database import _UNSET_DB
 
 from views.logi_route import shipment_path
@@ -162,7 +163,7 @@ def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
         return "Đã giao", "green"
     if status == "cancel":
         return "Đã hủy", "gray"
-    if customs.get("customs_status") is True:
+    if customs_clearance_confirmed(customs.get("customs_status")):
         return "Chờ giao", "blue"
     # A registered declaration, or goods already arrived at the border, both
     # mean the shipment is waiting on customs — derived from real facts only.
@@ -206,7 +207,7 @@ def document_checklist(
     rows = [
         {"name": "Số tờ khai nhập khẩu", "ok": bool(tk),
          "note": tk or "Chưa đăng ký tờ khai"},
-        {"name": "Đã thông quan", "ok": customs.get("customs_status") is True,
+        {"name": "Đã thông quan", "ok": customs_clearance_confirmed(customs.get("customs_status")),
          "note": text(customs.get("phan_luong")) or ("Chờ kết quả phân luồng" if tk else "Chờ số tờ khai")},
         {"name": "Xe giao VN + tài xế", "ok": bool(delivery_plate),
          "note": delivery_plate or "Chưa đặt xe giao"},
@@ -1699,7 +1700,7 @@ def shipment_projection(
             "tax": num(customs.get("import_duty_amount")),
             "vat": num(customs.get("import_vat_amount")),
             "inspection": text(customs.get("phan_luong")),
-            "customsStatus": customs.get("customs_status") is True,
+            "customsStatus": customs_clearance_confirmed(customs.get("customs_status")),
             "license": "",
             "gnt": gnt_view,
             "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")) or _ddmmyyyy(operational.get("eta")),
@@ -2268,7 +2269,7 @@ def tracking_projection(shipment: Mapping[str, Any]) -> dict[str, Any]:
         milestones.append({"time": _declaration_date(customs), "title": "Đăng ký tờ khai nhập khẩu",
                            "desc": f"TK {text(customs.get('tk_no'))} · luồng {text(customs.get('phan_luong')) or 'chờ phân luồng'}",
                            "done": True, "tone": "blue"})
-    if customs.get("customs_status") is True:
+    if customs_clearance_confirmed(customs.get("customs_status")):
         milestones.append({"time": _ddmmyyyy(customs.get("clearance_date")), "title": "Đã thông quan",
                            "desc": "", "done": True, "tone": "green"})
     if text(delivery.get("delivery_date")):

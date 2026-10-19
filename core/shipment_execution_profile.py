@@ -63,6 +63,8 @@ from __future__ import annotations
 import re
 from typing import Any, Iterable, Mapping, Sequence
 
+from core.customs_truth import customs_clearance_confirmed
+
 # ---------------------------------------------------------------------------
 # Incoterms versions
 # ---------------------------------------------------------------------------
@@ -1058,9 +1060,9 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
         declared = bool(facts.get("customsDeclarationNo"))
         stages.append(_stage(
             "IMPORT_CUSTOMS", "Khai báo hải quan nhập", REASON_SERVICE_SCOPE,
-            done=declared or (facts.get("customsStatus") is True),
+            done=declared or (customs_clearance_confirmed(facts.get("customsStatus"))),
             detail="Phạm vi Trường Thành gồm khai báo hải quan nhập.",
-            prompt="" if (declared or facts.get("customsStatus") is True) else "Bổ sung số tờ khai nhập khẩu."))
+            prompt="" if (declared or customs_clearance_confirmed(facts.get("customsStatus"))) else "Bổ sung số tờ khai nhập khẩu."))
 
     delivery_fact = bool(facts.get("delivered") or facts.get("deliveryLocation"))
     if in_scope(SCOPE_DESTINATION_TRUCKING) or in_scope(SCOPE_FINAL_DELIVERY):

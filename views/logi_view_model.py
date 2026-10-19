@@ -1461,15 +1461,15 @@ def _coerce(key: str, value: Any) -> Any:
             return value
         if value is None:
             return False
-        if isinstance(value, int) and value in (0, 1):
-            return bool(value)
+        if type(value) is int and value == 0:
+            return False
         if isinstance(value, str):
-            raw_bool = value.strip().lower()
+            raw_bool = value.strip()
             if raw_bool in ("", "false", "0"):
                 return False
-            if raw_bool in ("true", "1"):
+            if raw_bool == "true":
                 return True
-        raise ValueError("Trạng thái thông quan chỉ nhận xác nhận true/false rõ ràng.")
+        raise ValueError("Trạng thái thông quan chỉ nhận true/false; không nhận '1' hoặc giá trị khác.")
     if value is None:
         return None
     raw = str(value).strip()

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from core.customs_truth import customs_clearance_confirmed
 from core.shipment_journey import build_journey
 from core.stage_guidance import STAGE_GUIDANCE, guidance_for_node
 
@@ -110,7 +111,7 @@ def test_guidance_is_copy_and_unknown_id_keeps_legacy_payload():
     assert b["done_when"] == STAGE_GUIDANCE["booking"]["done_when"]
 
 
-@pytest.mark.parametrize("raw", [None, False, 0, 1, "", "false", "True", "REGISTERED", "SUBMITTED"])
+@pytest.mark.parametrize("raw", [None, False, 0, 1, "1", "", "false", "True", "REGISTERED", "SUBMITTED"])
 def test_customs_import_not_completed_without_canonical_boolean_true(raw):
     node = _build(customs_status=raw)["customs-import"]
     assert node["completed"] is False, raw
@@ -130,9 +131,9 @@ def test_existing_writer_rejects_free_text_customs_status_without_marking_done()
     from views import logi_view_model as vm
     for raw in (False, "false", "0", "", None, 0):
         assert vm._coerce("customs_status", raw) is False
-    for raw in (True, "true", "1", 1):
+    for raw in (True, "true"):
         assert vm._coerce("customs_status", raw) is True
-    for raw in ("REGISTERED", "SUBMITTED", "PENDING", "Đã gửi"):
+    for raw in ("1", 1, "True", "REGISTERED", "SUBMITTED", "PENDING", "Đã gửi"):
         with pytest.raises(ValueError):
             vm._coerce("customs_status", raw)
 
@@ -140,7 +141,7 @@ def test_existing_writer_rejects_free_text_customs_status_without_marking_done()
 def test_legacy_customs_strings_do_not_turn_other_screens_green():
     # The summary badge, checklist and Journey must agree on clearance truth.
     from views import logi_real_data as rd
-    for raw in ("false", "REGISTERED", "SUBMITTED"):
+    for raw in ("false", "1", "", None, "True", "REGISTERED", "SUBMITTED"):
         shipment = {"id": "LEGACY-CUSTOMS", "data": {
             "1.2": {}, "2.4": {"tk_no": "123456789012", "customs_status": raw},
             "2.6": {}, "2.7": {},
@@ -158,3 +159,39 @@ def test_legacy_customs_strings_do_not_turn_other_screens_green():
     row = next(r for r in rd.document_checklist(confirmed)
                if r["name"] == "Đã thông quan")
     assert row["ok"] is True
+
+
+@pytest.mark.parametrize("raw, expected", [
+    (True, True), ("true", True), ("false", False), ("1", False),
+    ("", False), (None, False), (False, False), (1, False),
+    ("True", False), ("REGISTERED", False),
+])
+def test_clearance_truth_contract_on_legacy_inputs(raw, expected):
+    assert customs_clearance_confirmed(raw) is expected
+    assert _build(customs_status=raw)["customs-import"]["completed"] is expected
+
+
+def test_legacy_customs_string_true_preserves_completed_screens_and_timeline():
+    from views import logi_real_data as rd
+    for raw in (True, "true"):
+        shipment = {"id": "LEGACY-CLEARANCE-TRUE", "data": {
+            "1.2": {}, "2.4": {"tk_no": "123456789012", "customs_status": raw},
+            "2.6": {}, "2.7": {},
+        }}
+        assert rd.operational_stage(shipment)[0] == "Chờ giao"
+        row = next(r for r in rd.document_checklist(shipment)
+                   if r["name"] == "Đã thông quan")
+        assert row["ok"] is True
+        assert any(m["title"] == "Đã thông quan"
+                   for m in rd.tracking_projection(shipment)["milestones"])
+
+
+def test_false_legacy_values_never_emit_customs_clearance_timeline_milestone():
+    from views import logi_real_data as rd
+    for raw in ("false", "1", "", None):
+        shipment = {"id": "LEGACY-CLEARANCE-FALSE", "data": {
+            "1.2": {}, "2.4": {"tk_no": "123456789012", "customs_status": raw},
+            "2.6": {}, "2.7": {},
+        }}
+        assert all(m["title"] != "Đã thông quan"
+                   for m in rd.tracking_projection(shipment)["milestones"])

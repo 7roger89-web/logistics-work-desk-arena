@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping
 
+from core.customs_truth import customs_clearance_confirmed
 from core.stage_guidance import guidance_for_node
 
 SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no',
@@ -335,7 +336,7 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
     if 'IMPORT_CUSTOMS' in codes:
         # The canonical form/writer stores an explicit boolean clearance flag.
         # Legacy strings ('false', 'REGISTERED') are not proof of clearance.
-        cleared_import = customs.get('customs_status') is True
+        cleared_import = customs_clearance_confirmed(customs.get('customs_status'))
         add('customs-import', 'CUSTOMS IMPORT' if is_sea else 'Hải quan nhập', 'IMPORT_CUSTOMS', 'nhap',
             done=cleared_import, evidence=customs.get('clearance_date') if cleared_import else customs.get('tk_no'),
             categories=('customs',), owned='IMPORT_CUSTOMS' in scope)
