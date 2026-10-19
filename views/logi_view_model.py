@@ -1238,6 +1238,9 @@ PHASE_B_EVENTS = {
     # through the SAME dispatcher/RBAC/attachment/docgen-revision seams the
     # PXK, GNT and FORM_07 events already use. No second document store.
     "uploaded_template_generate",
+    # Bước (3B) — evidence of the two SUB-only stages. ONE bounded writer
+    # into the existing shipment document; completion stays derived.
+    "entrustment_evidence_save",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -2383,11 +2386,26 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         # metadata write landed instead of echoing what the browser sent.
         "attachments": (lambda: _attachment_records(sid, db=db)) if sid else (lambda: None),
     })
+    # Bước (3B) — the readback must see the SAME linked-contract set as the
+    # render path, otherwise a just-recorded entrustment evidence could read
+    # back as "no linked contract".  Derived from the contracts already loaded
+    # above: no extra query, no second truth.
+    contracts_loaded = loaded["contracts"] or {}
+    linked_contracts: dict[str, dict[str, Any]] = {}
+    if sid:
+        upper_sid = sid.upper()
+        for cid, row in contracts_loaded.items():
+            if not isinstance(row, Mapping):
+                continue
+            ids = [str(x).upper() for x in (row.get("shipment_ids") or [])]
+            if upper_sid in ids or str(row.get("shipment_id") or "").upper() == upper_sid:
+                linked_contracts[cid] = row
     return rd.shipment_projection(
         shipment,
         work_module_templates=load_work_module_templates(db=db),
         customers=loaded["customers"] or {},
-        contracts=loaded["contracts"] or {},
+        contracts=contracts_loaded,
+        linked_contracts={sid.upper(): linked_contracts} if sid else None,
         quotes=loaded["quotes"] or {},
         dashboard=view,
         history=loaded["history"],
@@ -3669,6 +3687,140 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         audit=_audit_trail(sid),
     )
 
+
+
+def _handle_entrustment_evidence_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Bước (3B) — record the evidence of the TWO approved SUB stages.
+
+    The write owns exactly one block: ``data.0.0.entrustment_evidence``.
+    It never marks a stage done on its own: completion is re-derived by
+    ``core.shipment_document_workflow.project_entrustment_stages`` on the fresh
+    read, from the recorded values only.  Customs, D/O, PXK, attachments,
+    partner selection and another leg's DELIVERY are not accepted as handover
+    evidence because they are not part of this payload at all.
+    """
+
+    from core.auth import can_operate_business
+    from core.database import (
+        get_last_db_error,
+        load_authority_agents,
+        load_authority_companies,
+        load_contracts,
+        load_contracts_for_shipment,
+        save_shipment_atomic,
+    )
+    from core.logic import apply_financial_snapshot
+    from core.shipment_document_workflow import (
+        ENTRUSTMENT_EVIDENCE_BLOCK,
+        project_commercial_flow,
+        resolve_sub_purchase_contract,
+        stored_entrustment_evidence,
+        validate_entrustment_evidence_write,
+    )
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result(
+            "entrustment_evidence_save",
+            sid,
+            ok,
+            error,
+            requestId=request_id,
+            **extra,
+        )
+
+    if not sid or not request_id:
+        return _res(False, "Thiếu shipmentId hoặc requestId.")
+    # Commercial evidence of an entrustment is a commercial write: Sale and
+    # Support both hold it; accounting/operations/viewer cannot record it.
+    if not can_operate_business("commercial_write"):
+        return _res(False, "RBAC: không có quyền commercial_write.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _res(False, f"Không tìm thấy lô {sid}.")
+
+    rejected = [key for key in payload if key not in {"shipmentId", "requestId", "expectedVersion", "fields"}]
+    fields = payload.get("fields")
+    if not isinstance(fields, Mapping) or not fields:
+        return _res(False, "Thiếu fields bằng chứng để lưu.", rejected=rejected)
+
+    expected_version = payload.get("expectedVersion")
+    if expected_version is not None:
+        try:
+            stale = int(expected_version) != int(shipment.get("version") or 0)
+        except (TypeError, ValueError):
+            return _res(False, "expectedVersion không hợp lệ.", rejected=rejected)
+        if stale:
+            return _res(
+                False,
+                "Dữ liệu lô đã thay đổi; tải lại trước khi lưu bằng chứng.",
+                gate="STALE_VERSION",
+                rejected=rejected,
+            )
+
+    companies = load_authority_companies() or {}
+    agents = load_authority_agents() or {}
+    flow = project_commercial_flow(shipment, companies=companies, agents=agents)
+    linked = load_contracts_for_shipment(sid) or {}
+    contract = resolve_sub_purchase_contract(
+        shipment=shipment,
+        flow=flow,
+        contracts=load_contracts() or {},
+        # The helper takes the projection's grouped shape {SID: {contract_id: row}}.
+        linked_contracts={sid.upper(): linked} if linked else {},
+    )
+    merged, errors = validate_entrustment_evidence_write(
+        shipment=shipment,
+        flow=flow,
+        contract=contract,
+        fields=fields,
+    )
+    if errors or merged is None:
+        return _res(
+            False,
+            errors[0] if errors else "Bằng chứng ủy thác/bàn giao không hợp lệ.",
+            gate="ENTRUSTMENT_EVIDENCE_REFUSED",
+            issues=errors,
+            rejected=rejected,
+        )
+
+    head = shipment.setdefault("data", {}).setdefault("0.0", {})
+    previous = stored_entrustment_evidence(shipment)
+    if factual_equal(previous, merged):
+        return _res(
+            True,
+            "Không có thay đổi để lưu.",
+            noop=True,
+            rejected=rejected,
+            persisted={"entrustmentEvidence": dict(previous)},
+        )
+
+    head[ENTRUSTMENT_EVIDENCE_BLOCK] = merged
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(
+        shipment,
+        expected_version=shipment.get("version"),
+        actor=_actor(),
+    ):
+        return _res(False, get_last_db_error() or "Không lưu được bằng chứng ủy thác/bàn giao.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_head = ((fresh.get("data") or {}).get("0.0") or {})
+    readback = _projection_for(fresh)
+    return _res(
+        True,
+        readback=readback,
+        rejected=rejected,
+        version=int(fresh.get("version") or 0),
+        persisted={
+            "entrustmentEvidence": dict(fresh_head.get(ENTRUSTMENT_EVIDENCE_BLOCK) or {}),
+            "entrustmentStages": (readback or {}).get("entrustmentStages") or {},
+        },
+        audit=_audit_trail(sid),
+    )
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
     """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""
@@ -5915,6 +6067,7 @@ _HANDLERS = {
     "work_module_step_complete": _handle_work_module_step_complete,
     "shipment_profile_save": _handle_shipment_profile_save,
     "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
+    "entrustment_evidence_save": _handle_entrustment_evidence_save,
     "shipment_document_selection_save": _handle_shipment_document_selection_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,

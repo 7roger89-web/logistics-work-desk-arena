@@ -113,6 +113,27 @@ STAGE_GUIDANCE: dict[str, dict[str, str]] = {
         "needs": "Điều kiện giao hàng, xe/đầu nhận và chứng từ bàn giao thực tế.",
         "done_when": "Mốc giao xong khi đã giao thật; POD/trả rỗng theo dõi riêng.",
         "impact": "Có POD trước khi ghi giao thực tế phải kiểm tra sai lệch."
+    },
+    # Bước (3B) — chỉ xuất hiện ở luồng TT_ENTRUSTED_SUB. Hợp đồng LINKED
+    # không phải hợp đồng đã ký/hiệu lực; thông quan, D/O, PXK, tệp tải lên
+    # và giao hàng của chặng khác đều KHÔNG phải bằng chứng bàn giao kho.
+    "entrustment-ready": {
+        "why": "Chọn pháp nhân nhập khẩu và có hợp đồng liên kết chưa chứng minh đủ điều kiện thực hiện.",
+        "what_to_do": "Đối chiếu hợp đồng/phạm vi ủy thác rồi ghi ngày và căn cứ tại tab Công việc của công đoạn.",
+        "who": "Support phụ trách lô ghi nhận sau khi kiểm tra hồ sơ; Sale đọc lại kết quả.",
+        "when": "Trước khi bắt đầu thực hiện lô theo hình thức ủy thác tiếp.",
+        "needs": "Hợp đồng/hiệu lực, pháp nhân đứng nhập khẩu và phạm vi ủy thác đã xác nhận.",
+        "done_when": "Có ngày xác nhận và căn cứ xác nhận được lưu; chỉ hợp đồng LINKED là chưa đủ.",
+        "impact": "Chưa xác nhận thì lô chưa được coi là đủ điều kiện thực hiện theo ủy thác."
+    },
+    "tt-warehouse-handover": {
+        "why": "Thông quan, D/O, PXK, tệp hay giao hàng chặng khác không chứng minh đã bàn giao tại kho.",
+        "what_to_do": "Ghi thời điểm, bên giao, bên nhận thực tế và số biên bản giao nhận tại tab Công việc.",
+        "who": "Support ghi nhận theo biên bản thực tế; Sale đối chiếu chứng từ trước khi đọc lại.",
+        "when": "Khi hàng được bàn giao thực tế tại kho, theo biên bản hai bên đã ký.",
+        "needs": "Biên bản giao nhận, thời điểm thực tế và đúng hai bên giao/nhận của chuỗi ủy thác.",
+        "done_when": "Đủ thời điểm, hai bên khác nhau và số biên bản; thiếu một mục vẫn UNKNOWN.",
+        "impact": "Không suy bàn giao từ tên công đoạn hay từ mốc giao hàng của chặng khác."
     }
 }
 

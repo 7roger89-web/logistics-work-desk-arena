@@ -37,6 +37,10 @@ export type LogiEventName =
   // dispatcher → shipment_edit RBAC → the existing atomic shipment writer →
   // audit → fresh readback (same contract as shipment_profile_save).
   | "shipment_commercial_flow_save"
+  // Bước (3B) — evidence for the TWO SUB-only stages (entrustment-ready,
+  // tt-warehouse-handover). ONE bounded writer into the existing shipment
+  // document; the backend re-derives completion from the recorded values.
+  | "entrustment_evidence_save"
   // Shipment-local picker preferences: stable catalog IDs only, persisted on
   // the existing shipment truth with the ordinary version/audit/readback path.
   | "shipment_document_selection_save"
@@ -193,6 +197,7 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_sea_facts_save",
   "shipment_profile_save",
   "shipment_commercial_flow_save",
+  "entrustment_evidence_save",
   "shipment_document_selection_save",
   "work_module_template_save",
   "work_module_attach",

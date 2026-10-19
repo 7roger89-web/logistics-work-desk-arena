@@ -934,6 +934,12 @@ export interface JourneyNode {
   moduleSteps?: { id: string; label: string; completed: boolean }[];
   /** LOGI-199 T1 — evidence facts this node owns, declared by the backend projection. */
   factFields?: JourneyFactField[];
+  /** Bước (3B) — stored values of the facts above (readback, never a local cache). */
+  factValues?: Record<string, string>;
+  /** Bước (3B) — which writer this node's fact panel belongs to. */
+  factSource?: 'entrustment_evidence';
+  /** Bước (3B) — evidence the backend still considers missing for this node. */
+  missingEvidence?: string[];
 }
 
 export interface JourneyFactField { key: string; label: string; kind: 'status' | 'text' | 'datetime' | 'number'; options?: { value: string; label: string }[]; secondary?: boolean }

@@ -50,8 +50,13 @@ def _build(mode: str = "SEA", load: str = "FCL", *, owned: bool = True,
     )["nodes"]}
 
 
-def test_catalog_contains_12_real_sea_node_ids_and_seven_short_fields():
-    assert set(STAGE_GUIDANCE) == SEA_FCL_IDS | {"cfs-receipt"}
+def test_catalog_contains_real_node_ids_and_seven_short_fields():
+    # Bước (3B): the catalog now also carries the TWO SUB-only stages, approved
+    # for TT_ENTRUSTED_SUB only.  They must obey the same 7-field/120-char
+    # contract as every transport node.
+    assert set(STAGE_GUIDANCE) == SEA_FCL_IDS | {
+        "cfs-receipt", "entrustment-ready", "tt-warehouse-handover",
+    }
     for node_id, row in STAGE_GUIDANCE.items():
         assert set(row) == FIELDS, node_id
         assert all(isinstance(v, str) and v.strip() and len(v) <= 120 for v in row.values()), node_id

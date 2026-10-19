@@ -14,6 +14,7 @@ missing payment classification is never converted to a plausible default.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Mapping
 
 FLOW_CUSTOMER_SELF = "CUSTOMER_SELF"
@@ -105,6 +106,30 @@ def stored_flow(shipment: Mapping[str, Any]) -> dict[str, Any]:
         "importer_company_id": _text(raw.get("importer_company_id")).upper(),
     }
 
+
+
+def resolve_sub_purchase_contract(
+    *,
+    shipment: Mapping[str, Any],
+    flow: Mapping[str, Any],
+    contracts: Mapping[str, Any] | None,
+    linked_contracts: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Resolve the ONE candidate contract set, for the projection AND the writer.
+
+    Same no-guess rule as ``pxk_projection``: the shipment's own contract id
+    wins; otherwise only the linked contracts are considered.  A contract being
+    LINKED never means signed/valid — it stays a precondition, not evidence.
+    """
+    sid = _text(shipment.get("id")).upper()
+    contract_id = _text(shipment.get("contract_id"))
+    candidate: dict[str, Any] = {}
+    if linked_contracts is not None:
+        linked = _mapping(linked_contracts).get(sid) if sid else None
+        candidate.update(_mapping(linked))
+    if contract_id and isinstance(_mapping(contracts).get(contract_id), Mapping):
+        candidate.setdefault(contract_id, _mapping(contracts)[contract_id])
+    return match_sub_purchase_contract(flow, candidate)
 
 def validate_flow_write(
     *,
@@ -300,12 +325,21 @@ def project_commercial_flow(
         (sub_agent or {}).get("legal_name")
         or (sub_agent or {}).get("name")
     )
+    # The signing company is a distinct party of the same chain; its name is
+    # needed to label an EXPLICIT handover party choice (never to infer it).
+    signing_company = _entity_by_id(companies, flow["company_id"], "company_id", "id")
+    signing_company_name = _text(
+        (signing_company or {}).get("legal_name")
+        or (signing_company or {}).get("name")
+        or (signing_company or {}).get("company_name")
+    )
 
     return {
         "mode": mode,
         "modeLabel": FLOW_LABELS.get(mode, "Chưa xác nhận hình thức nhập khẩu"),
         "confirmed": bool(flow["confirmed"]),
         "companyId": flow["company_id"],
+        "companyName": signing_company_name,
         "subAgentId": flow["sub_agent_id"],
         "subAgentName": sub_agent_name,
         "importerCompanyId": importer_id if mode == FLOW_TT_ENTRUSTED_SUB else "",
@@ -664,3 +698,276 @@ def _workflow_result(steps: list[dict[str, Any]]) -> dict[str, Any]:
             "notApplicable": len(steps) - len(applicable),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# TT_ENTRUSTED_SUB — two approved operational stages
+# ---------------------------------------------------------------------------
+#
+# The Owner approved exactly two extra stages for the sub-entrustment flow:
+#   * ``entrustment-ready``      — the lot is ready to be performed under the
+#                                  sub-entrustment, with a recorded basis;
+#   * ``tt-warehouse-handover``  — goods were actually handed over at the
+#                                  warehouse by the recorded giver to the
+#                                  recorded receiver.
+#
+# Selecting the legal importer, having a LINKED contract, uploading a file,
+# declaring/clearing customs, having a D/O, creating a PXK, choosing a partner
+# or completing DELIVERY of another leg are NOT evidence for either stage.
+#
+# Both facts live in ONE small block inside the EXISTING shipment document:
+# ``data["0.0"]["entrustment_evidence"]``.  No collection, no workflow engine.
+
+ENTRUSTMENT_EVIDENCE_BLOCK = "entrustment_evidence"
+ENTRUSTMENT_READY_NODE = "entrustment-ready"
+ENTRUSTMENT_HANDOVER_NODE = "tt-warehouse-handover"
+ENTRUSTMENT_NODE_IDS = (ENTRUSTMENT_READY_NODE, ENTRUSTMENT_HANDOVER_NODE)
+
+#: UI/writer field name -> stored key inside the evidence block.
+ENTRUSTMENT_FIELDS: dict[str, str] = {
+    "entrustment_ready_at": "ready_at",
+    "entrustment_ready_ref": "ready_ref",
+    "warehouse_handover_at": "handover_at",
+    "warehouse_handover_from": "handover_from",
+    "warehouse_handover_to": "handover_to",
+    "warehouse_handover_doc_no": "handover_doc_no",
+}
+_ENTRUSTMENT_READY_FIELDS = ("ready_at", "ready_ref")
+_ENTRUSTMENT_HANDOVER_FIELDS = ("handover_at", "handover_from", "handover_to", "handover_doc_no")
+_ENTRUSTMENT_MAX_TEXT = {"ready_ref": 200, "handover_doc_no": 120}
+
+
+def stored_entrustment_evidence(shipment: Mapping[str, Any]) -> dict[str, str]:
+    """Read the bounded evidence block without inventing defaults."""
+    raw = _mapping(_section(shipment, "0.0").get(ENTRUSTMENT_EVIDENCE_BLOCK))
+    return {
+        "ready_at": _text(raw.get("ready_at")),
+        "ready_ref": _text(raw.get("ready_ref")),
+        "handover_at": _text(raw.get("handover_at")),
+        "handover_from": _text(raw.get("handover_from")).upper(),
+        "handover_to": _text(raw.get("handover_to")).upper(),
+        "handover_doc_no": _text(raw.get("handover_doc_no")),
+    }
+
+
+def entrustment_parties(flow: Mapping[str, Any]) -> list[dict[str, str]]:
+    """The three legal parties of a SUB chain, as explicit choices only.
+
+    Order: signing company, contract partner, legal importer.  Duplicate ids
+    collapse; an absent id is never replaced by a guess.
+    """
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for id_key, name_key in (
+        ("companyId", "companyName"),
+        ("subAgentId", "subAgentName"),
+        ("importerCompanyId", "legalImporterName"),
+    ):
+        identifier = _text(flow.get(id_key)).upper()
+        if not identifier or identifier in seen:
+            continue
+        seen.add(identifier)
+        rows.append({"id": identifier, "label": _text(flow.get(name_key)) or identifier})
+    return rows
+
+
+def _normalize_evidence_time(value: Any) -> str:
+    raw = _text(value)
+    if not raw:
+        return ""
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw[:10], fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise ValueError(
+            "Mốc thời gian phải là YYYY-MM-DD, YYYY-MM-DDTHH:mm hoặc DD/MM/YYYY."
+        ) from exc
+    return parsed.isoformat(timespec="minutes") if "T" in raw else parsed.date().isoformat()
+
+
+def _party_label(rows: list[dict[str, str]], identifier: str) -> str:
+    for row in rows:
+        if row["id"] == identifier:
+            return row["label"]
+    return identifier
+
+
+def project_entrustment_stages(
+    flow: Mapping[str, Any],
+    contract: Mapping[str, Any] | None,
+    evidence: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Derive the TWO SUB-only stage truths from recorded evidence.
+
+    ``done`` is NEVER derived from the flow alone, the contract status alone,
+    an attachment, customs, PXK or another leg's DELIVERY.  It requires the
+    explicit evidence fact, and the handover requires BOTH actual parties.
+    """
+    mode = _text(flow.get("mode")).upper()
+    if mode != FLOW_TT_ENTRUSTED_SUB:
+        return {"applicable": False, "parties": [], "ready": {}, "handover": {}}
+
+    parties = entrustment_parties(flow)
+    party_ids = {row["id"] for row in parties}
+    contract = _mapping(contract)
+    contract_status = _text(contract.get("status")).upper()
+    contract_no = _text(contract.get("contractNo")) or _text(contract.get("id"))
+    evidence = _mapping(evidence)
+    ready_at = _text(evidence.get("ready_at"))
+    ready_ref = _text(evidence.get("ready_ref"))
+    handover_at = _text(evidence.get("handover_at"))
+    handover_from = _text(evidence.get("handover_from")).upper()
+    handover_to = _text(evidence.get("handover_to")).upper()
+    handover_doc_no = _text(evidence.get("handover_doc_no"))
+
+    ready_missing: list[str] = []
+    if not bool(flow.get("confirmed")):
+        ready_missing.append("Chưa xác nhận hình thức nhập khẩu.")
+    elif not bool(flow.get("ready")):
+        detail = "; ".join(str(item) for item in (flow.get("missing") or []) if str(item).strip())
+        ready_missing.append(
+            "Thiếu hồ sơ pháp nhân đứng nhập khẩu" + (f": {detail}" if detail else ".")
+        )
+    if contract_status == "AMBIGUOUS":
+        count = len(contract.get("matches") or [])
+        ready_missing.append(
+            f"Có {count} hợp đồng cùng khớp hai bên; phải chọn đúng một hợp đồng, không tự đoán."
+        )
+    elif contract_status != "LINKED":
+        ready_missing.append(
+            "Chưa có hợp đồng liên kết khớp đúng Trường Thành ↔ đơn vị đứng nhập khẩu hộ."
+        )
+    if not ready_at:
+        ready_missing.append("Chưa ghi nhận ngày xác nhận đủ điều kiện thực hiện ủy thác.")
+    if not ready_ref:
+        ready_missing.append("Chưa ghi nhận căn cứ xác nhận (hợp đồng / biên bản phạm vi ủy thác).")
+
+    handover_missing: list[str] = []
+    if not handover_at:
+        handover_missing.append("Chưa ghi nhận thời điểm bàn giao thực tế tại kho.")
+    if not handover_from:
+        handover_missing.append("Chưa xác định bên giao của lần bàn giao.")
+    if not handover_to:
+        handover_missing.append("Chưa xác định bên nhận của lần bàn giao.")
+    if handover_from and handover_to and handover_from == handover_to:
+        handover_missing.append("Bên giao và bên nhận phải khác nhau.")
+    if any(pid and pid not in party_ids for pid in (handover_from, handover_to)):
+        handover_missing.append("Bên giao/bên nhận không thuộc chuỗi ủy thác của lô.")
+    if not handover_doc_no:
+        handover_missing.append("Chưa có số biên bản giao nhận.")
+    if ready_at and handover_at and handover_at[:10] < ready_at[:10]:
+        handover_missing.append("Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng.")
+
+    ready_done = not ready_missing
+    handover_done = not handover_missing
+    ready_evidence = " · ".join(
+        item
+        for item in (
+            f"Pháp nhân nhập khẩu: {_text(flow.get('legalImporterName'))}" if flow.get("legalImporterName") else "",
+            f"Hợp đồng: {contract_no}" if contract_status == "LINKED" and contract_no else "",
+            f"Xác nhận: {ready_at}" if ready_at else "",
+            f"Căn cứ: {ready_ref}" if ready_ref else "",
+        )
+        if item
+    )
+    handover_evidence = " · ".join(
+        item
+        for item in (
+            f"Bàn giao: {handover_at}" if handover_at else "",
+            f"{_party_label(parties, handover_from)} → {_party_label(parties, handover_to)}"
+            if handover_from and handover_to and handover_from != handover_to
+            else "",
+            f"Biên bản: {handover_doc_no}" if handover_doc_no else "",
+        )
+        if item
+    )
+    return {
+        "applicable": True,
+        "parties": parties,
+        "contractNo": contract_no if contract_status == "LINKED" else "",
+        # UI field name -> stored value, so the panel never invents its own read.
+        "values": {key: _text(evidence.get(stored)) for key, stored in ENTRUSTMENT_FIELDS.items()},
+        "ready": {
+            "done": ready_done,
+            "evidence": ready_evidence,
+            "missing": ready_missing,
+        },
+        "handover": {
+            "done": handover_done,
+            "evidence": handover_evidence,
+            "missing": handover_missing,
+        },
+    }
+
+
+def validate_entrustment_evidence_write(
+    *,
+    shipment: Mapping[str, Any],
+    flow: Mapping[str, Any],
+    contract: Mapping[str, Any] | None,
+    fields: Mapping[str, Any],
+) -> tuple[dict[str, str] | None, list[str]]:
+    """Validate ONE explicit evidence write for the two SUB stages.
+
+    Fail-closed rules:
+    * only the SUB flow, already confirmed with a resolved legal importer;
+    * the contract must be exactly LINKED before readiness can be recorded;
+    * a recorded value is never silently blanked by a later write;
+    * a handover needs the time, TWO DIFFERENT parties of this chain, and the
+      handover document number — a partial record is refused.
+    """
+    mode = _text(flow.get("mode")).upper()
+    if mode != FLOW_TT_ENTRUSTED_SUB:
+        return None, ["Hai công đoạn này chỉ áp dụng cho luồng ủy thác tiếp."]
+    if not bool(flow.get("confirmed")) or not bool(flow.get("ready")):
+        return None, [
+            "Phải xác nhận đúng hình thức nhập khẩu và đủ hồ sơ pháp nhân đứng nhập khẩu trước khi ghi bằng chứng."
+        ]
+    if not fields:
+        return None, ["Chưa có trường bằng chứng nào để lưu."]
+    unknown = [str(key) for key in fields if str(key) not in ENTRUSTMENT_FIELDS]
+    if unknown:
+        return None, [f"Trường không thuộc bằng chứng ủy thác/bàn giao: {', '.join(sorted(unknown))}."]
+
+    existing = stored_entrustment_evidence(shipment)
+    merged = dict(existing)
+    for key, value in fields.items():
+        stored_key = ENTRUSTMENT_FIELDS[str(key)]
+        if stored_key in _ENTRUSTMENT_READY_FIELDS or stored_key in {"handover_from", "handover_to"}:
+            normalized = _text(value).upper() if stored_key in {"handover_from", "handover_to"} else _text(value)
+        elif stored_key in {"ready_at", "handover_at"}:
+            normalized = _normalize_evidence_time(value)
+        else:
+            normalized = _text(value)
+        if existing.get(stored_key) and not normalized:
+            return None, [f"Không được xóa bằng chứng đã ghi ({stored_key})."]
+        merged[stored_key] = normalized
+
+    if any(merged.get(key) for key in _ENTRUSTMENT_READY_FIELDS):
+        contract_status = _text(_mapping(contract).get("status")).upper()
+        if contract_status != "LINKED":
+            return None, ["Chưa có hợp đồng liên kết đúng hai bên; chưa thể xác nhận ủy thác sẵn sàng."]
+        if not merged.get("ready_at") or not merged.get("ready_ref"):
+            return None, ["Cần đủ ngày xác nhận và căn cứ xác nhận ủy thác."]
+        if len(merged["ready_ref"]) > _ENTRUSTMENT_MAX_TEXT["ready_ref"]:
+            return None, [f"Căn cứ xác nhận dài quá {_ENTRUSTMENT_MAX_TEXT['ready_ref']} ký tự."]
+
+    if any(merged.get(key) for key in _ENTRUSTMENT_HANDOVER_FIELDS):
+        party_ids = {row["id"] for row in entrustment_parties(flow)}
+        missing = [key for key in _ENTRUSTMENT_HANDOVER_FIELDS if not merged.get(key)]
+        if missing:
+            return None, ["Bàn giao cần đủ thời điểm, bên giao, bên nhận và số biên bản giao nhận."]
+        if merged["handover_from"] == merged["handover_to"]:
+            return None, ["Bên giao và bên nhận phải khác nhau."]
+        if any(merged[key] not in party_ids for key in ("handover_from", "handover_to")):
+            return None, ["Bên giao/bên nhận phải thuộc chuỗi ủy thác của lô."]
+        if len(merged["handover_doc_no"]) > _ENTRUSTMENT_MAX_TEXT["handover_doc_no"]:
+            return None, [f"Số biên bản giao nhận dài quá {_ENTRUSTMENT_MAX_TEXT['handover_doc_no']} ký tự."]
+        if merged.get("ready_at") and merged["handover_at"][:10] < merged["ready_at"][:10]:
+            return None, ["Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng."]
+
+    return merged, []

@@ -53,7 +53,14 @@ def _fact_field(key: str, label: str) -> dict[str, Any]:
     if key in _NUMBER_FACTS:
         return {'key': key, 'label': label, 'kind': 'number'}
     return {'key': key, 'label': label, 'kind': 'text' if key in _TEXT_FACTS else 'datetime'}
-JOURNEY_STAGE_IDS = frozenset({'cfs-receipt', 'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE'})
+# Bước (3B) — the ONLY two extra stages approved for TT_ENTRUSTED_SUB.
+# They are real journey vocabulary (finance attribution + module anchors),
+# but they are only ever EMITTED for that one commercial flow.
+ENTRUSTMENT_READY_ID = 'entrustment-ready'
+ENTRUSTMENT_HANDOVER_ID = 'tt-warehouse-handover'
+ENTRUSTMENT_STAGE_IDS = (ENTRUSTMENT_READY_ID, ENTRUSTMENT_HANDOVER_ID)
+JOURNEY_STAGE_IDS = frozenset({'cfs-receipt', 'booking', 'pickup', 'customs-export', 'si-vgm', 'gate-in', 'etd', 'on-board', 'transit', 'arrival', 'customs-import', 'delivery', 'ORIGIN_HANDOFF', 'CROSS_BORDER', 'MAIN_CARRIAGE', 'SEA_DOCUMENTS', 'AIR_DOCUMENTS', 'RAIL_CARRIAGE', 'SEA_EQUIPMENT', 'SEA_CONSOLIDATION', 'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE',
+                             'entrustment-ready', 'tt-warehouse-handover'})
 
 
 def normalize_sea_facts(fields: Mapping[str, Any]) -> dict[str, str]:
@@ -103,7 +110,8 @@ def normalize_mode_facts(fields: Mapping[str, Any], mode: str) -> dict[str, str]
 def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                   operational: Mapping[str, Any], primary: Mapping[str, Any],
                   dashboard: Mapping[str, Any], attachments: list[dict],
-                  work_modules: Mapping[str, Any] | None = None) -> dict[str, Any]:
+                  work_modules: Mapping[str, Any] | None = None,
+                  entrustment_stages: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Base journey, plus (Issue #162) any attached Work Module instances.
 
     ``work_modules`` carries the already-loaded ``templates`` + this shipment's
@@ -146,7 +154,7 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                       # association — attribution is fail-closed AFTER all nodes
                       # exist (unique-owner check below), never inline here.
                       'documentIds': []})
-        if mode == 'SEA':
+        if mode == 'SEA' or id in ENTRUSTMENT_STAGE_IDS:
             guidance = guidance_for_node(
                 id, load_model=str(profile.get('loadModel') or ''),
                 owned=bool(owned), completed=bool(done),
@@ -402,6 +410,48 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         branch = []
         previous = n['id']
     for edge in edges: by_id[edge['to']]['dependencies'].append(edge['from'])
+
+    # ------------------------------------------------------------------
+    # Bước (3B) — exactly TWO extra stages, ONLY for TT_ENTRUSTED_SUB.
+    # They are appended AFTER the base chain and deliberately get NO journey
+    # edge: nothing in the repository records where the handover happens in
+    # the transport chain, so drawing an edge (or moving the CURRENT marker)
+    # would invent a direction. Completion is proven by the recorded
+    # evidence block alone — never by the flow, contract status, an upload,
+    # customs, D/O, PXK, partner selection or another leg's DELIVERY.
+    # ------------------------------------------------------------------
+    entrustment = entrustment_stages if isinstance(entrustment_stages, Mapping) else {}
+    if entrustment.get('applicable'):
+        parties = [row for row in (entrustment.get('parties') or []) if isinstance(row, Mapping)]
+        party_options = [
+            {'value': str(row.get('id') or ''), 'label': str(row.get('label') or '')}
+            for row in parties if str(row.get('id') or '')
+        ]
+        values = dict(entrustment.get('values') or {})
+        ready = dict(entrustment.get('ready') or {})
+        handover = dict(entrustment.get('handover') or {})
+        ready_fields = [
+            {'key': 'entrustment_ready_at', 'label': 'Ngày xác nhận đủ điều kiện thực hiện', 'kind': 'datetime'},
+            {'key': 'entrustment_ready_ref', 'label': 'Căn cứ xác nhận (số hợp đồng / biên bản phạm vi ủy thác)', 'kind': 'text'},
+        ]
+        handover_fields = [
+            {'key': 'warehouse_handover_at', 'label': 'Thời điểm bàn giao thực tế', 'kind': 'datetime'},
+            {'key': 'warehouse_handover_from', 'label': 'Bên giao (ghi nhận thực tế)', 'kind': 'status', 'options': party_options},
+            {'key': 'warehouse_handover_to', 'label': 'Bên nhận (ghi nhận thực tế)', 'kind': 'status', 'options': party_options},
+            {'key': 'warehouse_handover_doc_no', 'label': 'Số biên bản giao nhận', 'kind': 'text'},
+        ]
+        for node_id, label, node_fields, block in (
+            (ENTRUSTMENT_READY_ID, 'Nhận ủy thác — đủ điều kiện thực hiện', ready_fields, ready),
+            (ENTRUSTMENT_HANDOVER_ID, 'Bàn giao hàng tại kho', handover_fields, handover),
+        ):
+            add(node_id, label, node_id.upper().replace('-', '_'), 'nhap',
+                done=bool(block.get('done')), evidence=str(block.get('evidence') or ''),
+                owned=True)
+            nodes[-1]['factFields'] = node_fields
+            nodes[-1]['factValues'] = {key: str(values.get(key) or '') for key in values}
+            nodes[-1]['factSource'] = 'entrustment_evidence'
+            nodes[-1]['missingEvidence'] = [str(item) for item in (block.get('missing') or [])]
+            by_id[node_id] = nodes[-1]
     # The same final action can expose a granular missing-fact blocker. Do not
     # turn every future UNKNOWN into an independent task/alert.
     if 'stage=si-vgm' in str(primary.get('route') or '') and 'si-vgm' in by_id:

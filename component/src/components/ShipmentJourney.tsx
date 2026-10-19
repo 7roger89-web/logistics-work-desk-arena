@@ -25,7 +25,8 @@ export const JOURNEY_REGION_NODE_IDS: Record<'origin' | 'main' | 'import' | 'del
     'ROAD_TRUCK_PROFILE', 'ROAD_CONSOLIDATION', 'INSURANCE_EVIDENCE',
     'uplift', 'air-transit', 'air-arrival', 'road-border',
   ],
-  import: ['customs-import'],
+  // Bước (3B) — the two SUB-only stages group with the import side of the lot.
+  import: ['customs-import', 'entrustment-ready', 'tt-warehouse-handover'],
   delivery: ['delivery'],
 } as const;
 
@@ -836,6 +837,61 @@ export function WorkModuleStepPanel({ shipment: s, node }: { shipment: Shipment;
       className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : done ? 'Đã xác nhận từ backend' : 'Ghi nhận hoàn thành bước'}</button>
     {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
     {(error || (outcome && !outcome.ok)) && <p role="alert" className="text-sm text-red-700">{error || outcome?.error}</p>}
+  </section>;
+}
+
+// Bước (3B) — evidence panel for the TWO approved TT_ENTRUSTED_SUB stages.
+// It is deliberately a sibling of SeaExportFacts (same requestId/expectedVersion
+// + fresh-readback contract) instead of a second workflow engine: the backend
+// declares the fields, validates the write and re-derives completion.
+export function EntrustmentEvidenceFacts({ shipment: s, stageId }: { shipment: Shipment; stageId: string }) {
+  const { dispatch } = useStore();
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(''); const [error, setError] = useState('');
+  const [expectedVersion] = useState(s.version ?? 0);
+  const access = vm?.userAccess?.currentUser;
+  const canEdit = Boolean(access?.wildcard || access?.permissions.includes('commercial_write'));
+  const node = s.journey?.nodes.find(n => n.id === stageId);
+  const outcome = vm?.lastWrites?.find(w => w.event === 'entrustment_evidence_save' && w.requestId === pending);
+  const loading = Boolean(pending && !outcome);
+  const saved = Boolean(outcome?.ok);
+  const fields = node?.factFields ?? [];
+  const values = node?.factValues ?? {};
+  const TITLES: Record<string, string> = {
+    'entrustment-ready': 'Ủy thác — xác nhận đủ điều kiện thực hiện',
+    'tt-warehouse-handover': 'Bàn giao tại kho — biên bản và hai bên',
+  };
+  const save = () => {
+    if (!Object.keys(draft).length) { setError('Chưa thay đổi trường nào.'); return; }
+    const requestId = `ENT-${crypto.randomUUID()}`;
+    setError(''); setPending(requestId);
+    if (!dispatch('entrustment_evidence_save', { shipmentId: s.id, fields: draft, requestId, expectedVersion })) {
+      setPending(''); setError('Chưa kết nối backend.');
+    }
+  };
+  const renderField = (f: typeof fields[number]) => <Field key={f.key} label={f.label}>
+    {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? values[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
+      <option value="">Chưa xác định — không tự đoán</option>
+      {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select> :
+      <input aria-label={f.label} type="text" placeholder={f.kind === 'text' ? f.label : 'YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm'} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? values[f.key] ?? ''} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))} />}
+  </Field>;
+  const primary = fields.filter(f => !f.secondary), extra = fields.filter(f => f.secondary);
+  return <section className="rounded-2xl border bg-white p-4 space-y-3" data-testid="entrustment-evidence">
+    <h3 className="font-extrabold text-[#0f2a4a]">{TITLES[stageId] ?? 'Bằng chứng ủy thác / bàn giao'}</h3>
+    <p className="text-sm text-slate-500">Chỉ ghi bằng chứng thực tế. Tệp đã tải lên, thông quan, D/O, PXK, chọn đối tác hay giao hàng của chặng khác không tự xác nhận công đoạn này.</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{primary.map(renderField)}</div>
+    {extra.length > 0 && <details className="rounded-lg border border-slate-200 p-3" data-testid="fact-fields-secondary"><summary className="cursor-pointer text-sm font-bold text-slate-600">Chi tiết phụ ({extra.length})</summary><div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">{extra.map(renderField)}</div></details>}
+    {(node?.missingEvidence?.length ?? 0) > 0 && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="entrustment-missing">
+      <p className="font-bold text-amber-900">Còn thiếu để xác nhận</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-amber-950">{node!.missingEvidence!.map((row, index) => <li key={index}>{row}</li>)}</ul>
+    </div>}
+    <button type="button" data-testid="entrustment-evidence-save" disabled={!canEdit || loading || !node?.owned || saved} onClick={save} className="touch-target rounded-lg bg-[#0f2a4a] px-4 py-2 font-bold text-white disabled:opacity-50">{loading ? 'Đang chờ đọc lại…' : saved ? 'Đã xác nhận từ backend' : 'Lưu bằng chứng'}</button>
+    {!canEdit && <p className="text-sm text-slate-500">Tài khoản hiện tại chỉ đọc thông tin này.</p>}
+    {!node?.owned && <p className="text-sm text-slate-500">Công đoạn ngoài phạm vi Trường Thành nhận làm — chỉ theo dõi, không ghi.</p>}
+    {(error || outcome?.error) && <p role="alert" className="text-sm text-red-700">{error || outcome?.error}</p>}
+    {outcome?.ok && Boolean(outcome?.noop) && <p className="text-sm text-slate-500">Không có thay đổi để lưu.</p>}
   </section>;
 }
 

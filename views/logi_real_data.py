@@ -1468,8 +1468,10 @@ def shipment_projection(
     # collection and no duplicate finance/document truth.
     from core.shipment_document_workflow import (  # noqa: PLC0415
         build_document_workflow,
-        match_sub_purchase_contract,
         project_commercial_flow,
+        project_entrustment_stages,
+        resolve_sub_purchase_contract,
+        stored_entrustment_evidence,
     )
     from core.shipment_document_catalog import (  # noqa: PLC0415
         effective_catalog,
@@ -1522,12 +1524,19 @@ def shipment_projection(
             )
         )
     )
-    candidate_contracts: dict[str, Any] = {}
-    if linked_contracts is not None:
-        candidate_contracts.update(linked_contracts.get(sid.upper()) or {})
-    if contract_id and isinstance(contracts.get(contract_id), Mapping):
-        candidate_contracts.setdefault(contract_id, contracts[contract_id])
-    sub_purchase_contract = match_sub_purchase_contract(commercial_flow, candidate_contracts)
+    sub_purchase_contract = resolve_sub_purchase_contract(
+        shipment=shipment,
+        flow=commercial_flow,
+        contracts=contracts,
+        linked_contracts=linked_contracts,
+    )
+    # Bước (3B) — exactly two extra SUB stages. Their truth is the recorded
+    # evidence block only; the contract match is a precondition, not a proof.
+    entrustment_stages = project_entrustment_stages(
+        commercial_flow,
+        sub_purchase_contract,
+        stored_entrustment_evidence(shipment),
+    )
 
     document_workflow = build_document_workflow(
         flow=commercial_flow,
@@ -1560,7 +1569,8 @@ def shipment_projection(
         }
     journey = build_journey(shipment, profile=execution_profile, operational=operational,
                             primary=primary_action, dashboard=view, attachments=attachment_view,
-                            work_modules=work_modules)
+                            work_modules=work_modules,
+                            entrustment_stages=entrustment_stages)
 
     return {
         "id": sid,
@@ -1605,6 +1615,7 @@ def shipment_projection(
         "missingDocs": missing,
         "docs": document_checklist(shipment, execution_profile=execution_profile),
         "commercialFlow": commercial_flow,
+        "entrustmentStages": entrustment_stages,
         "documentWorkflow": document_workflow,
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of the
         # lot: bounded metadata read back from the canonical

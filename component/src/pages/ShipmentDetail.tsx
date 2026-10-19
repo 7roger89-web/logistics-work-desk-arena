@@ -9,7 +9,7 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
+import ShipmentJourney, { EntrustmentEvidenceFacts, SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import AttentionNow from "../components/AttentionNow";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
 import type {
@@ -1425,7 +1425,9 @@ export default function ShipmentDetail() {
            Boolean(workspaceNode.factFields?.length)))}
         stageContent={<>
       {workspaceNode && workspaceWork === "info" && !moduleStepNode && Boolean(workspaceNode.factFields?.length) &&
-        <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
+        (workspaceNode.factSource === 'entrustment_evidence'
+          ? <EntrustmentEvidenceFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />
+          : <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />)}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
         </>}
