@@ -973,9 +973,14 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
             done=True, detail="Phạm vi Trường Thành gồm điều phối qua biên giới/chuyển tải."))
 
     # --- main carriage: scope OR mode/load-model requirement OR facts ------
-    main_documents = bool(facts.get("bookingNo") or facts.get("carrier") or facts.get("mbl")
-                          or facts.get("hbl") or facts.get("vessel") or facts.get("mawb")
-                          or facts.get("hawb") or facts.get("flightNo"))
+    # SEA-compatible facts (booking/carrier/MBL/HBL/vessel) are mode-agnostic.
+    # AIR-specific facts (MAWB/HAWB/flightNo) only count when the shipment mode is AIR,
+    # to prevent stray AIR data from triggering SEA_DOCUMENTS false-done.
+    main_documents = bool(
+        facts.get("bookingNo") or facts.get("carrier") or facts.get("mbl")
+        or facts.get("hbl") or facts.get("vessel")
+        or (mode == MODE_AIR and (facts.get("mawb") or facts.get("hawb") or facts.get("flightNo")))
+    )
     if in_scope(SCOPE_MAIN_CARRIAGE):
         stages.append(_stage(
             "MAIN_CARRIAGE", "Chặng chính", REASON_SERVICE_SCOPE,

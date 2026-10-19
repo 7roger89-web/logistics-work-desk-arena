@@ -182,3 +182,143 @@ def test_legacy_air_shipment_missing_flight_means_incomplete():
     stage = _air_stage(shipment)
     assert stage["done"] is False
     assert "số chuyến bay" in stage["missing"]
+
+
+# ---------------------------------------------------------------------------
+# Cross-mode regression: AIR facts must NOT trigger SEA false-done
+# ---------------------------------------------------------------------------
+
+def _sea_shipment(transport, *, owned=False):
+    """Build a Sea shipment with the given transport facts."""
+    profile = {
+        "incoterm_version": "2020",
+        "incoterm_named_place": "Hai Phong port",
+        "load_model": "FCL",
+        "service_scope": ["MAIN_CARRIAGE"] if owned else [],
+        "service_scope_confirmed": True,
+        "cargo_insurance": {"status": "UNKNOWN"},
+    }
+    return {
+        "data": {
+            "0.0": {"mode": "Sea", "incoterm": "FOB", "execution_profile": profile},
+            "1.2": transport,
+        }
+    }
+
+
+def test_sea_unowned_with_stray_air_facts_does_not_complete_sea_documents():
+    """Regression: a Sea shipment with stray mawb/flight_no must NOT get
+    SEA_DOCUMENTS.done=True from AIR facts alone.
+
+    The legacy_transport_legs reader projects mawb/hawb/flight_no for every
+    mode (including Sea), so a legacy Sea shipment could carry these scalar
+    fields. They must not influence the SEA_DOCUMENTS stage.
+    """
+    shipment = _sea_shipment({
+        "mawb": "180-STRAY-AIRWAY-BILL",
+        "flight_no": "VN999",
+        "pol": "Hai Phong",
+        "pod": "Los Angeles",
+    })
+    facts = ep.persisted_facts(shipment)
+    # The AIR facts ARE projected (legacy reader is mode-agnostic for scalar fields)
+    assert facts["mawb"] == "180-STRAY-AIRWAY-BILL"
+    assert facts["flightNo"] == "VN999"
+    # But SEA facts are empty
+    assert facts["carrier"] == ""
+    assert facts["mbl"] == ""
+    assert facts["hbl"] == ""
+    assert facts["bookingNo"] == ""
+    assert facts["vessel"] == ""
+
+    profile = ep.build_execution_profile(shipment)
+    stage_codes = [s["code"] for s in profile["stages"]]
+
+    # SEA_DOCUMENTS must NOT appear (no sea facts at all, not owned)
+    assert "SEA_DOCUMENTS" not in stage_codes, (
+        "SEA_DOCUMENTS must not appear for a Sea shipment without sea facts, "
+        "even if stray AIR facts exist"
+    )
+    # MAIN_CARRIAGE should also NOT appear just because of AIR facts
+    # (unless it was in scope, which it isn't here)
+    assert "MAIN_CARRIAGE" not in stage_codes, (
+        "MAIN_CARRIAGE must not appear just because of stray AIR facts on a Sea shipment"
+    )
+
+
+def test_sea_unowned_with_carrier_and_stray_air_facts_keeps_existing_readonly_behavior():
+    """Pre-existing behavior: SEA not-owned with carrier → SEA_DOCUMENTS appears
+    as read-only done=True. Stray AIR facts don't change this — the stage is
+    triggered by the carrier (SEA fact), not by AIR facts. This verifies no
+    regression in the pre-existing SEA read-only observation semantics."""
+    shipment = _sea_shipment({
+        "carrier": "Maersk",
+        "mawb": "180-STRAY",
+        "flight_no": "VN888",
+        "pol": "Hai Phong",
+        "pod": "Rotterdam",
+    })
+    profile = ep.build_execution_profile(shipment)
+    stage_codes = [s["code"] for s in profile["stages"]]
+    # SEA_DOCUMENTS appears because carrier is a SEA fact (not AIR)
+    assert "SEA_DOCUMENTS" in stage_codes
+    sea_stage = next(s for s in profile["stages"] if s["code"] == "SEA_DOCUMENTS")
+    # Pre-existing behavior: not-owned + any main doc evidence → done as read-only
+    assert sea_stage["done"] is True
+    assert sea_stage["reason"] == ep.REASON_PERSISTED_FACT_DEPENDENCY
+
+
+def test_air_unowned_with_awb_and_flight_completes_correctly():
+    """AIR unowned with AWB + flight but no sea facts must still show
+    AIR_DOCUMENTS.done=True."""
+    shipment = {
+        "data": {
+            "0.0": {"mode": "Air", "incoterm": "CPT", "execution_profile": {
+                "incoterm_version": "2020",
+                "incoterm_named_place": "Noi Bai",
+                "load_model": "DIRECT",
+                "service_scope": [],
+                "service_scope_confirmed": True,
+                "cargo_insurance": {"status": "UNKNOWN"},
+            }},
+            "1.2": {
+                "mawb": "180-55554444",
+                "flight_no": "VN567",
+                "pol": "HAN",
+                "pod": "NRT",
+            },
+        }
+    }
+    profile = ep.build_execution_profile(shipment)
+    stage_codes = [s["code"] for s in profile["stages"]]
+    assert "AIR_DOCUMENTS" in stage_codes
+    air_stage = next(s for s in profile["stages"] if s["code"] == "AIR_DOCUMENTS")
+    assert air_stage["done"] is True
+    assert air_stage["reason"] == ep.REASON_PERSISTED_FACT_DEPENDENCY
+    # No SEA stages
+    assert "SEA_DOCUMENTS" not in stage_codes
+
+
+def test_air_unowned_with_only_mawb_no_flight_is_incomplete():
+    """AIR unowned with AWB but no flight → AIR_DOCUMENTS.done=False."""
+    shipment = {
+        "data": {
+            "0.0": {"mode": "Air", "incoterm": "CPT", "execution_profile": {
+                "incoterm_version": "2020",
+                "incoterm_named_place": "Noi Bai",
+                "load_model": "DIRECT",
+                "service_scope": [],
+                "service_scope_confirmed": True,
+                "cargo_insurance": {"status": "UNKNOWN"},
+            }},
+            "1.2": {
+                "mawb": "180-33332222",
+                "flight_no": "",
+                "pol": "HAN",
+                "pod": "NRT",
+            },
+        }
+    }
+    profile = ep.build_execution_profile(shipment)
+    air_stage = next(s for s in profile["stages"] if s["code"] == "AIR_DOCUMENTS")
+    assert air_stage["done"] is False
