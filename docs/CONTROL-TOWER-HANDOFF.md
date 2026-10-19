@@ -27,6 +27,8 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
+- **QA guidance SEA (2026-10-19, base `aba8dcc`)**: **QA_PASS=NO / INCOMPLETE_BY_ENVIRONMENT**; đã xác nhận GitHub session + PR #211 cùng `aba8dcca4230ec33fc46b546bb41c4a24b46c32d` trước sửa. Diff phát hiện reader bỏ sót legacy `"true"`, dashboard/checkbox legacy dùng truthiness, writer chấp nhận `"1"` sai contract. Code fix candidate `29bfecd7f431b111dd7b4d35d3ba4675c3b02f6f`; thêm test âm/dương. **Chưa có checkout/test runner, chưa chạy suite so `6f9d156`, typecheck/build và browser nên không nghiệm thu.**
+
 - **Nhánh/PR**: `arena/a3117943-logistics-work-desk-arena` → PR **#211** OPEN/MERGEABLE, base `ct/logi199-journey-main-integration-20261017` (PR #210 OPEN, HEAD `408b980`). Chưa merge, chưa deploy, không backport.
   - **2026-10-18 — tích hợp chuỗi T1–T5**: phiên này làm trên nhánh session `arena/441d2013-logistics-work-desk-arena` (cùng cây với `a3117943` @ `6f9d156` — session rule cấm switch/push nhánh khác): merge `07dc8f8` (2 cha: `6f9d156` + chuỗi `c53437e`) + dist `1b1cc13`. Title/body PR #211 đã cập nhật theo diff thật. **Đã fast-forward PR head an toàn ngày 2026-10-19 tới `35b8cfb` (2 nhánh identical); tiếp tục áp dụng luật đồng bộ sau mỗi phiên ở MỤC 2.**
 - **Batch 2 (false-done đợt 2) — TỪNG MẤT TÍCH, ĐÃ PHỤC HỒI**: `f51710b` bị push mồ côi vào nhánh `arena/da9aa3db-logistics-work-desk-arena` (không vào nhánh/PR nào). Đã tìm lại được (còn nguyên trên GitHub) và cherry-pick vào nhánh này — commit **`162036f`** (6 thay đổi: tách GNT khỏi TAX_PAID, `taxPaid` projection, writer chặn `vgm_*` khi LCL, importer `legalImporterName`, journey LCL chỉ SI, + docs/tests). Test đợt 1 khớp semantics mới: **`8a9d4f1`**. Giải conflict: LCL giữ node `si-vgm` SI-only — **Owner đã chốt 2026-10-19: batch 2 ĐÚNG** (xem MỤC 2), không còn chờ xác nhận.
@@ -48,6 +50,8 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
 
+- **QA commit `a811580` + `aba8dcc` (2026-10-19)** — **SOURCE_DIFF_VERIFIED, QA_PASS=NO**. GitHub GET: PR #211 head và nhánh session cùng `aba8dcc` trước sửa, branch không merge; tạo code fix candidate `29bfecd7f431b111dd7b4d35d3ba4675c3b02f6f` và đọc lại từng hunk: helper `core/customs_truth.py` chỉ `True` hoặc `"true"` xác nhận; các reader Journey/VM/checklist/tracking/dashboard dùng chung helper; Streamlit checkbox ép giá trị cũ về boolean trước khi hiển thị; writer chặn `"1"`/giá trị lạ và báo lỗi. `tests/test_journey_stage_guidance.py` thêm ca dương/âm, tracking và kiểm legacy. **Chưa chạy test nào trong phiên QA này**: lệnh CI chuẩn `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` NOT_RUN; so baseline `6f9d156` worktree riêng NOT_RUN (`NEW=UNKNOWN, GONE=UNKNOWN`); không có local checkout, không xác minh worktree sạch; trạng thái `component/node_modules` của checkout không xác định; `npm ci`/`npm run typecheck`/`npm run build`/browser/saving checkbox NOT_RUN. Dữ liệu production KHÔNG truy cập/sửa. Các kết quả test/build cũ ở MỤC 3 không phải chứng cứ cho commit QA này. Giữ PR #211 OPEN, **KHÔNG merge main/deploy**.
+
 - **Guidance SEA 12 node ID** (2026-10-19): data thuần `core/stage_guidance.py`, gắn chỉ `mode=SEA`, test dương/âm `tests/test_journey_stage_guidance.py`; import customs dùng `customs_status is True` và writer chặn giá trị chuỗi sai. **TEST_NOT_RUN trong phiên GitHub-only; KHÔNG ghi pytest/CI/visual PASS.** Frontend source/dist không đổi vì payload từ backend.
 
 - Đợt 1 (`61f0714`): `tests/test_journey_node_done_facts.py` — 13 test âm+dương cho 3 bug (cây main-based 1905→1918 passed, 31 failure cũ giữ nguyên).
@@ -61,6 +65,15 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Danh sách pháp nhân thật trong `authority_companies` (tên + vai trò)
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-19 — QA guidance SEA và customs legacy, kết quả INCOMPLETE
+
+- **Commit sửa sau base `aba8dcc`**: `29bfecd7f431b111dd7b4d35d3ba4675c3b02f6f` (8 file source/test). Commit handoff tiếp nối ghi chính mục này; không merge/deploy, không update main.
+- **Task0 / chỗ thực sự sai**: hai ref (session `arena/441d2013-logistics-work-desk-arena`, PR #211 `arena/a3117943-logistics-work-desk-arena`) cùng `aba8dcc`. Gate guidance `mode=SEA` đúng; 12 ID chia SEA FCL/LCL, 4 ID chung `pickup`, `customs-export`, `customs-import`, `delivery` đã có test AIR/ROAD không rò guidance. Lỗi tìm thấy: `"true"` bị bỏ hoàn thành ở nhiều reader, `"false"` thành done ở dashboard truthiness, checkbox Streamlit truyền giá trị legacy sai kiểu, writer cho `"1"` thành True.
+- **Sửa giới hạn**: helper boolean thuần, áp dụng ở 4 reader/2 legacy UI + writer; thêm test cho `True`, `"true"`, `"false"`, `"1"`, `""`, `None`, tracker. Không thêm feature, không sửa FE/dist.
+- **Bằng chứng và kết quả**: GitHub commit diff đọc lại (8 file, không có file khác) — **STATIC_REVIEW_COMPLETE**. **PYTEST_NOT_RUN, BASELINE_NOT_RUN, TYPECHECK_NOT_RUN, BUILD_NOT_RUN, REAL_UI_NOT_RUN** do host không có checkout/repo runner/browser. `QA_PASS=NO`, `NEW/GONE=UNKNOWN`, writer và checkbox CHƯA xác nhận lưu thật; production untouched. Không được nâng static/source+test mới thành QA_PASS.
+- **PR #211 head sync**: bắt buộc sau QA cập nhật session branch và PR-head bằng fast-forward CAS expected SHA; kiểm 2 ref bằng GitHub trước khi báo. Luật sync tại MỤC 2 giữ nguyên.
+- **Cần Owner**: Không cần quyết định kỹ thuật mới; cần 1 executor có checkout + test runner + Chromium để hoàn tất Task1–4 trên đúng final HEAD, rồi mới xét QA_PASS. KHÔNG xin phép merge/deploy.
 
 ### 2026-10-19 — bổ sung guidance SEA + chặn chuỗi thông quan giả (sau PR head sync)
 
