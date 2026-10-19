@@ -13577,7 +13577,7 @@ var Os = {
 	}
 };
 function ks(e) {
-	return e.sourceType === "WORK_MODULE" ? "Mở quy trình" : e.sourceType === "TASK" ? "Mở việc" : "Mở xử lý";
+	return e.sourceType === "WORK_MODULE" ? "Mở quy trình" : e.sourceType === "TASK" ? "Mở lô" : "Mở xử lý";
 }
 function As({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có việc cần xử lý theo dữ liệu hiện có.", compact: r = !1 }) {
 	if (r) {
@@ -13625,7 +13625,7 @@ function As({ items: e, title: t = "Cần xử lý", emptyText: n = "Chưa có v
 								children: t.action
 							}),
 							t.reason && /* @__PURE__ */ (0, U.jsx)("p", {
-								className: "truncate text-[12.5px] text-red-600",
+								className: q("text-[12.5px] text-red-600", t.sourceType === "TASK" || t.unknown ? "break-words" : "truncate"),
 								children: t.reason
 							})
 						]
