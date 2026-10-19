@@ -820,25 +820,48 @@ def _normalize_evidence_time(value: Any) -> str:
     return moment.isoformat(sep="T", timespec="minutes" if moment.second == 0 else "seconds") if has_time else moment.date().isoformat()
 
 
-def _evidence_time_inversion(later_raw: Any, earlier_raw: Any) -> str:
-    """Return ``"time"``/``"day"`` when later precedes earlier, else ``""``.
+def _evidence_time_order(later_raw: Any, earlier_raw: Any) -> str:
+    """Judge whether ``later`` may follow ``earlier``; return a problem code.
 
-    The comparison uses the SAME precision on both sides. A pure date and a
-    date+time are not ordered against each other: doing so would infer an hour
-    nobody recorded (and a zone nobody stated).
+    Codes: ``"day"``/``"time"`` = proved inversion at that precision;
+    ``"unproven"`` = same calendar day but one side has no hour, so the order
+    cannot be established; ``""`` = no problem proved.
+
+    The DAY is always derivable from a valid date, so it is compared FIRST and
+    regardless of whether either side carries a time — dropping that check was
+    a false-DONE hole (a handover dated before the ready date but carrying an
+    hour used to pass as "incomparable"). Hours are only compared when BOTH
+    sides recorded one; an hour is never invented, and mixed precision on the
+    same day stays explicitly unproven instead of being assumed either way.
     """
     later = _parse_evidence_time(later_raw)
     earlier = _parse_evidence_time(earlier_raw)
-    if later is None or earlier is None or later[0] != earlier[0]:
+    if later is None or earlier is None:
         return ""
-    if later[1] < earlier[1]:
-        return "time" if later[0] else "day"
-    return ""
+    later_has_time, later_moment = later
+    earlier_has_time, earlier_moment = earlier
+    # 1+2: the calendar day is determinate for every valid input.
+    if later_moment.date() < earlier_moment.date():
+        return "day"
+    if later_moment.date() > earlier_moment.date():
+        return ""
+    # 3+5: same day. Both date+time -> exact order; both pure dates -> the
+    # legacy day-based contract holds (equal day is not an inversion).
+    if later_has_time and earlier_has_time:
+        return "time" if later_moment < earlier_moment else ""
+    if not later_has_time and not earlier_has_time:
+        return ""
+    # 4: same day, exactly one side has an hour. Order NOT proven.
+    return "unproven"
 
 
-_EVIDENCE_INVERSION_REASON = {
+_EVIDENCE_TIME_ORDER_REASON = {
     "day": "Thời điểm bàn giao không thể trước ngày xác nhận ủy thác sẵn sàng.",
     "time": "Thời điểm bàn giao không thể trước giờ xác nhận ủy thác sẵn sàng.",
+    "unproven": (
+        "Cùng ngày nhưng thiếu giờ ở một mốc nên chưa chứng minh được bàn giao diễn ra "
+        "sau khi ủy thác sẵn sàng; ghi đủ giờ cho cả hai mốc."
+    ),
 }
 
 
@@ -918,9 +941,9 @@ def project_entrustment_stages(
         handover_missing.append("Bên giao/bên nhận không thuộc chuỗi ủy thác của lô.")
     if not handover_doc_no:
         handover_missing.append("Chưa có số biên bản giao nhận.")
-    inversion = _evidence_time_inversion(handover_at, ready_at)
-    if inversion:
-        handover_missing.append(_EVIDENCE_INVERSION_REASON[inversion])
+    order_problem = _evidence_time_order(handover_at, ready_at)
+    if order_problem:
+        handover_missing.append(_EVIDENCE_TIME_ORDER_REASON[order_problem])
 
     ready_done = not ready_missing
     # P0-A: the handover is the SECOND stage. Recorded handover evidence never
@@ -1049,8 +1072,8 @@ def validate_entrustment_evidence_write(
             return None, ["Bên giao/bên nhận phải thuộc chuỗi ủy thác của lô."]
         if len(merged["handover_doc_no"]) > _ENTRUSTMENT_MAX_TEXT["handover_doc_no"]:
             return None, [f"Số biên bản giao nhận dài quá {_ENTRUSTMENT_MAX_TEXT['handover_doc_no']} ký tự."]
-        inversion = _evidence_time_inversion(merged["handover_at"], merged.get("ready_at"))
-        if inversion:
-            return None, [_EVIDENCE_INVERSION_REASON[inversion]]
+        order_problem = _evidence_time_order(merged["handover_at"], merged.get("ready_at"))
+        if order_problem:
+            return None, [_EVIDENCE_TIME_ORDER_REASON[order_problem]]
 
     return merged, []

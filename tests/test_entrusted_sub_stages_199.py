@@ -703,22 +703,29 @@ def test_p0b_trailing_garbage_is_refused_not_truncated(staging, event_seq):
 
 
 def test_p0b_date_only_legacy_contract_is_explicit_and_invents_no_hour(staging, event_seq):
-    """TASK 2.8 — pure dates stay pure; mixed precision never invents an order."""
+    """TASK 2.8 (superseded assertion) — pure dates stay pure.
+
+    UPDATED 2026-10-19: this test used to accept a same-day MIXED-precision
+    handover (ready date-only, handover date+time). That assertion pinned the
+    cross-precision false-DONE found by Control Tower, so it is now inverted:
+    the order is unprovable and the write is refused. The date-only/date-only
+    legacy contract is kept exactly as before (asserted here and below).
+    """
     from core.shipment_document_workflow import _normalize_evidence_time
 
     _confirm_sub(event_seq)
     assert _normalize_evidence_time("2026-10-10") == "2026-10-10"
     assert _normalize_evidence_time("10/10/2026") == "2026-10-10"
 
-    # Same-day mixed precision: the order is NOT inferred, so it is accepted
-    # exactly as recorded (no invented hour on either side).
+    # Same-day mixed precision: order NOT provable -> refused, nothing stored.
     assert _evidence(event_seq, _ready_fields(), request_id="FIX-P0B-D1")["ok"]
-    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-10T09:00"},
-                        request_id="FIX-P0B-D2")
-    assert outcome["ok"], outcome.get("error")
-    persisted = outcome["persisted"]["entrustmentEvidence"]
-    assert persisted["ready_at"] == "2026-10-10"
-    assert persisted["handover_at"] == "2026-10-10T09:00"
+    before = vm.read_shipment(SHIPMENT)
+    mixed = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-10T09:00"},
+                      request_id="FIX-P0B-D2")
+    assert mixed["ok"] is False
+    assert mixed["gate"] == "ENTRUSTMENT_EVIDENCE_REFUSED"
+    assert "chưa chứng minh được" in mixed["error"]
+    assert int(vm.read_shipment(SHIPMENT).get("version") or 0) == int(before.get("version") or 0)
 
     # Same precision keeps exact ordering: a pure date before the ready date fails.
     fresh = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-09"},
@@ -773,3 +780,133 @@ def test_p0b_garbage_already_stored_cannot_complete_the_handover(staging, event_
                       request_id="FIX-P0B-REPAIR")
     assert fixed["ok"], fixed.get("error")
     assert _node(_shipment_row(vm.build_view_model()), ENTRUSTMENT_HANDOVER_ID)["completed"] is True
+
+
+# Cross-precision ordering — the DAY is always determinate -------------------
+def test_cross_precision_day_inversion_is_refused_regardless_of_hours(staging, event_seq):
+    """TASK 2 (a,b) — a handover dated before the ready day always fails."""
+    _confirm_sub(event_seq)
+    # (a) ready date-only, handover previous day WITH a time
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-XP-R1")["ok"]
+    before = vm.read_shipment(SHIPMENT)
+    earlier_with_time = _evidence(
+        event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-09T09:00"},
+        request_id="FIX-XP-H1",
+    )
+    assert earlier_with_time["ok"] is False
+    assert earlier_with_time["gate"] == "ENTRUSTMENT_EVIDENCE_REFUSED"
+    assert "trước ngày xác nhận" in earlier_with_time["error"]
+    assert int(vm.read_shipment(SHIPMENT).get("version") or 0) == int(before.get("version") or 0)
+    assert stored_entrustment_evidence(vm.read_shipment(SHIPMENT))["handover_at"] == ""
+
+
+def test_cross_precision_ready_datetime_vs_handover_day_before_is_refused(staging, event_seq):
+    """TASK 2 (b) — ready with 18:00, handover the PREVIOUS day (date-only)."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": "2026-10-10T18:00"},
+                     request_id="FIX-XP-R2")["ok"]
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-09"},
+                        request_id="FIX-XP-H2")
+    assert outcome["ok"] is False
+    assert "trước ngày xác nhận" in outcome["error"]
+    assert stored_entrustment_evidence(vm.read_shipment(SHIPMENT))["handover_at"] == ""
+
+
+def test_cross_precision_later_day_is_accepted_without_reading_clocks(staging, event_seq):
+    """TASK 2 (c) — a later DAY is ordered, so mixed precision is harmless."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-XP-R3")["ok"]
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": "2026-10-11T09:00"},
+                        request_id="FIX-XP-H3")
+    assert outcome["ok"], outcome.get("error")
+    stages = outcome["readback"]["entrustmentStages"]
+    assert stages["handover"]["done"] is True
+    assert outcome["persisted"]["entrustmentEvidence"]["handover_at"] == "2026-10-11T09:00"
+
+
+@pytest.mark.parametrize("ready,handover,label", [
+    ("2026-10-10T18:00", "2026-10-10", "ready has hour, handover date-only"),
+    ("2026-10-10", "2026-10-10T09:00", "ready date-only, handover has hour"),
+])
+def test_same_day_mixed_precision_is_unproven_and_never_done(staging, event_seq, ready, handover, label):
+    """TASK 2 (d,e) — same day but one side lacks an hour: order unprovable."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": ready},
+                     request_id=f"FIX-XP-R-{label}")["ok"]
+    before = vm.read_shipment(SHIPMENT)
+    outcome = _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": handover},
+                        request_id=f"FIX-XP-H-{label}")
+    assert outcome["ok"] is False, label
+    assert outcome["gate"] == "ENTRUSTMENT_EVIDENCE_REFUSED"
+    assert "chưa chứng minh được" in outcome["error"]
+    after = vm.read_shipment(SHIPMENT)
+    assert int(after.get("version") or 0) == int(before.get("version") or 0)
+    assert stored_entrustment_evidence(after)["handover_at"] == ""
+
+
+def test_same_day_mixed_precision_already_stored_is_not_done_but_kept(staging, event_seq):
+    """Projector side of (d,e): legacy evidence stays, completion fails closed."""
+    _confirm_sub(event_seq)
+    db = database.get_db()
+    document = db["shipments"].find_one({"id": SHIPMENT})
+    document["data"]["0.0"]["entrustment_evidence"] = {
+        "ready_at": "2026-10-10T18:00", "ready_ref": "HDNT-199/2026",
+        "handover_at": "2026-10-10", "handover_from": "FIX-TT",
+        "handover_to": "FIX-IMP-A", "handover_doc_no": "BBGN-199-01",
+    }
+    db["shipments"].replace_one({"id": SHIPMENT}, document)
+
+    row = _shipment_row(vm.build_view_model())
+    stages = row["entrustmentStages"]
+    assert stages["ready"]["done"] is True
+    assert stages["handover"]["done"] is False
+    assert any("chưa chứng minh được" in item for item in stages["handover"]["missing"])
+    handover_node = _node(row, ENTRUSTMENT_HANDOVER_ID)
+    assert handover_node["completed"] is False
+    # Evidence preserved verbatim, and repairable by supplying the missing hour.
+    assert stages["values"]["warehouse_handover_at"] == "2026-10-10"
+    assert stored_entrustment_evidence(vm.read_shipment(SHIPMENT))["handover_doc_no"] == "BBGN-199-01"
+    repaired = _evidence(event_seq, {"warehouse_handover_at": "2026-10-10T19:00"},
+                         request_id="FIX-XP-REPAIR")
+    assert repaired["ok"], repaired.get("error")
+    assert _node(_shipment_row(vm.build_view_model()), ENTRUSTMENT_HANDOVER_ID)["completed"] is True
+
+
+def test_both_date_only_same_day_keeps_the_legacy_contract(staging, event_seq):
+    """TASK 2 (f) — date-only/date-only is the legacy contract: equal day is fine."""
+    _confirm_sub(event_seq)
+    assert _evidence(event_seq, _ready_fields(), request_id="FIX-XP-R6")["ok"]
+    outcome = _evidence(event_seq, _handover_fields(), request_id="FIX-XP-H6")
+    assert outcome["ok"], outcome.get("error")
+    persisted = outcome["persisted"]["entrustmentEvidence"]
+    assert persisted["ready_at"] == "2026-10-10"
+    assert persisted["handover_at"] == "2026-10-12"
+    assert outcome["readback"]["entrustmentStages"]["handover"]["done"] is True
+
+
+def test_both_datetimes_same_day_use_the_exact_time(staging, event_seq):
+    """TASK 2 (g) — both sides carry an hour: compare to the minute."""
+    def fresh_case(suffix, handover_time):
+        logi_sandbox.reset_backend()
+        assert logi_sandbox.ensure_backend() == logi_sandbox.SANDBOX_TRANSPORT
+        import streamlit as st
+        st.session_state["current_user"] = dict(logi_sandbox.STAGING_ACTOR)
+        db = database.get_db()
+        db["authority_companies"].insert_many([copy.deepcopy(FIXTT), copy.deepcopy(FIX_IMPORTER_A)])
+        db["authority_agents"].insert_one(copy.deepcopy(FIX_CONTRACT_B))
+        db["contracts"].insert_one(copy.deepcopy(_fixture_contract()))
+        _dispatch(event_seq, "shipment_commercial_flow_save",
+                  _flow_payload(SHIPMENT, f"FIX-XP-FLOW-{suffix}"))
+        assert _evidence(event_seq, {**_ready_fields(), "entrustment_ready_at": "2026-10-10T18:00"},
+                         request_id=f"FIX-XP-R7-{suffix}")["ok"]
+        return _evidence(event_seq, {**_handover_fields(), "warehouse_handover_at": handover_time},
+                         request_id=f"FIX-XP-H7-{suffix}")
+
+    later = fresh_case("LATER", "2026-10-10T19:00")
+    assert later["ok"], later.get("error")
+    assert later["persisted"]["entrustmentEvidence"]["handover_at"] == "2026-10-10T19:00"
+    assert later["readback"]["entrustmentStages"]["handover"]["done"] is True
+
+    earlier = fresh_case("EARLIER", "2026-10-10T17:59")
+    assert earlier["ok"] is False
+    assert "trước giờ xác nhận" in earlier["error"]
