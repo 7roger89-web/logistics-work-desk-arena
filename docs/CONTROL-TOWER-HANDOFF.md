@@ -66,7 +66,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 - **Checkpoint trước sửa**: PR #211 head và session đều ở `35b8cfba16dad1b4c5d6e585009db9723a922b49` (đã đối chiếu GitHub).
 - **Source**: 12 guidance ID, 7 trường hiện có trong WorkModuleGuidance; lọc SEA (không rò AIR/ROAD/RAIL), lựa SI FCL/LCL, ngữ cảnh owned/completed không giao việc sai. Customs: cờ thông quan nhập boolean thật, tránh `bool("false")`; writer kiểm đầu vào, trả lỗi thay vì tự ghi True từ chữ. Test âm/dương mới, không xoá test cũ.
-- **Bằng chứng có**: GitHub blobs/commit và static diff (đọc lại PR khi sync). **Chưa có**: chạy pytest, baseline NEW=∅/GONE=∅, browser và xác nhận nghiệp vụ trên app; không đổi bundle/dist (source FE không đổi).
+- **Bằng chứng có**: GitHub blobs/commit và static diff (đọc lại PR khi sync). **Chưa có**: chạy pytest, baseline NEW=∅/GONE=∅, browser và xác nhận nghiệp vụ trên app; không đổi bundle/dist (source FE không đổi). Các reader `views/logi_real_data.py` (badge/checklist/VM/timeline) và `core/shipment_execution_profile.py` cũng đã siết kiểm boolean, tránh Journey đỏ nhưng bảng tổng hợp xanh vì chuỗi legacy.
 - **Còn lại**: executor có test runner chạy focused + baseline cùng môi trường, kiểm source→backend→UI thật và độc lập review trước khi nói BUSINESS PASS. Giữ PR mở, không merge main hoặc deploy.
 - **Nhắc việc định kỳ trong handoff**: sau mỗi phiên Arena, fast-forward `arena/a3117943-logistics-work-desk-arena` := nhánh session khi là hậu duệ, CAS/expected_sha; không force, kiểm diff PR.
 

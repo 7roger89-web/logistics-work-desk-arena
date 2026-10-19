@@ -1058,9 +1058,9 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
         declared = bool(facts.get("customsDeclarationNo"))
         stages.append(_stage(
             "IMPORT_CUSTOMS", "Khai báo hải quan nhập", REASON_SERVICE_SCOPE,
-            done=declared or bool(facts.get("customsStatus")),
+            done=declared or (facts.get("customsStatus") is True),
             detail="Phạm vi Trường Thành gồm khai báo hải quan nhập.",
-            prompt="" if (declared or facts.get("customsStatus")) else "Bổ sung số tờ khai nhập khẩu."))
+            prompt="" if (declared or facts.get("customsStatus") is True) else "Bổ sung số tờ khai nhập khẩu."))
 
     delivery_fact = bool(facts.get("delivered") or facts.get("deliveryLocation"))
     if in_scope(SCOPE_DESTINATION_TRUCKING) or in_scope(SCOPE_FINAL_DELIVERY):

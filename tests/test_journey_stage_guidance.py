@@ -135,3 +135,26 @@ def test_existing_writer_rejects_free_text_customs_status_without_marking_done()
     for raw in ("REGISTERED", "SUBMITTED", "PENDING", "Đã gửi"):
         with pytest.raises(ValueError):
             vm._coerce("customs_status", raw)
+
+
+def test_legacy_customs_strings_do_not_turn_other_screens_green():
+    # The summary badge, checklist and Journey must agree on clearance truth.
+    from views import logi_real_data as rd
+    for raw in ("false", "REGISTERED", "SUBMITTED"):
+        shipment = {"id": "LEGACY-CUSTOMS", "data": {
+            "1.2": {}, "2.4": {"tk_no": "123456789012", "customs_status": raw},
+            "2.6": {}, "2.7": {},
+        }}
+        assert rd.operational_stage(shipment)[0] == "Chờ thông quan"
+        row = next(r for r in rd.document_checklist(shipment)
+                   if r["name"] == "Đã thông quan")
+        assert row["ok"] is False
+
+    confirmed = {"id": "CONFIRMED-CUSTOMS", "data": {
+        "1.2": {}, "2.4": {"tk_no": "123456789012", "customs_status": True},
+        "2.6": {}, "2.7": {},
+    }}
+    assert rd.operational_stage(confirmed)[0] == "Chờ giao"
+    row = next(r for r in rd.document_checklist(confirmed)
+               if r["name"] == "Đã thông quan")
+    assert row["ok"] is True
