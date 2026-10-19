@@ -1455,7 +1455,21 @@ def _coerce(key: str, value: Any) -> Any:
     for these fields a blank means UNKNOWN.
     """
     if key in _BOOL_FIELDS:
-        return bool(value)
+        # customs_status is the explicit "Đã thông quan" checkbox, not
+        # a free-text status. bool("false") / bool("REGISTERED") would be True.
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, int) and value in (0, 1):
+            return bool(value)
+        if isinstance(value, str):
+            raw_bool = value.strip().lower()
+            if raw_bool in ("", "false", "0"):
+                return False
+            if raw_bool in ("true", "1"):
+                return True
+        raise ValueError("Trạng thái thông quan chỉ nhận xác nhận true/false rõ ràng.")
     if value is None:
         return None
     raw = str(value).strip()
@@ -2833,7 +2847,10 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         if path is None:
             rejected.append(str(key))
             continue
-        applied[str(key)] = _coerce(str(key), value)
+        try:
+            applied[str(key)] = _coerce(str(key), value)
+        except ValueError as exc:
+            return _result("shipment_field_save", sid, False, str(exc), rejected=[str(key)])
         _set_path(shipment, path, applied[str(key)])
 
     if not applied:

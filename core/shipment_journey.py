@@ -8,6 +8,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping
 
+from core.stage_guidance import guidance_for_node
+
 SEA_FACT_FIELDS = frozenset({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff', 'gate_in_at', 'export_declaration_no',
                              # LOGI-199 T1 — SEA FCL lifecycle evidence. Each is its OWN fact:
                              # a booking request is not a confirmation, a declaration is not
@@ -143,6 +145,13 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
                       # association — attribution is fail-closed AFTER all nodes
                       # exist (unique-owner check below), never inline here.
                       'documentIds': []})
+        if mode == 'SEA':
+            guidance = guidance_for_node(
+                id, load_model=str(profile.get('loadModel') or ''),
+                owned=bool(owned), completed=bool(done),
+            )
+            if guidance is not None:
+                nodes[-1]['guidance'] = guidance
 
     is_sea = profile.get('mode') == 'SEA'
     if is_sea and {'MAIN_CARRIAGE', 'SEA_DOCUMENTS'} & codes:
@@ -324,8 +333,11 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         for node_id, label, family, kwargs in chain_after:
             add(node_id, label, family, 'van-tai', **kwargs)
     if 'IMPORT_CUSTOMS' in codes:
+        # The canonical form/writer stores an explicit boolean clearance flag.
+        # Legacy strings ('false', 'REGISTERED') are not proof of clearance.
+        cleared_import = customs.get('customs_status') is True
         add('customs-import', 'CUSTOMS IMPORT' if is_sea else 'Hải quan nhập', 'IMPORT_CUSTOMS', 'nhap',
-            done=bool(customs.get('customs_status')), evidence=customs.get('clearance_date') if customs.get('customs_status') else customs.get('tk_no'),
+            done=cleared_import, evidence=customs.get('clearance_date') if cleared_import else customs.get('tk_no'),
             categories=('customs',), owned='IMPORT_CUSTOMS' in scope)
     if 'DELIVERY' in codes:
         delivered = bool(delivery.get('is_delivered'))

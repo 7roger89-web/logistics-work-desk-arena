@@ -18,6 +18,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Support/Sale dùng cho MỌI luồng → Luồng B KHÔNG được hoãn
 - Journey là lớp trình bày từ facts, không phải kho trạng thái
 - Merge main = deploy production. Không đụng app `tienthanhlog`.
+- **PR #211 head sync — VIỆC CỐ ĐỊNH sau mỗi phiên Arena**: kiểm ancestry rồi fast-forward `arena/a3117943-logistics-work-desk-arena` lên head nhánh session, kèm expected SHA. Nếu divergent: DỪNG, không force-push; kiểm lại diff PR và handoff. GitHub Edit chỉ đổi base, không đổi head; không merge/deploy.
 - **Batch 2 semantics (LCL si-vgm) — CHỐT ĐÚNG (Owner, 2026-10-19)**: LCL CÓ node
   `si-vgm` SI-only (label 'SI', done theo `si_status=='ACCEPTED'`, không VGM).
   Rule đợt 1 "LCL không có node si-vgm" là SAI và đã bỏ.
@@ -27,14 +28,14 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
 - **Nhánh/PR**: `arena/a3117943-logistics-work-desk-arena` → PR **#211** OPEN/MERGEABLE, base `ct/logi199-journey-main-integration-20261017` (PR #210 OPEN, HEAD `408b980`). Chưa merge, chưa deploy, không backport.
-  - **2026-10-18 — tích hợp chuỗi T1–T5**: phiên này làm trên nhánh session `arena/441d2013-logistics-work-desk-arena` (cùng cây với `a3117943` @ `6f9d156` — session rule cấm switch/push nhánh khác): merge `07dc8f8` (2 cha: `6f9d156` + chuỗi `c53437e`) + dist `1b1cc13`. Title/body PR #211 đã cập nhật theo diff thật. **PR head vẫn là `arena/a3117943`** → commit tích hợp chưa hiện trên diff #211; Control Tower retarget head (hoặc fast-forward `a3117943 := 441d2013`) khi duyệt — Arena không push nhánh khác.
+  - **2026-10-18 — tích hợp chuỗi T1–T5**: phiên này làm trên nhánh session `arena/441d2013-logistics-work-desk-arena` (cùng cây với `a3117943` @ `6f9d156` — session rule cấm switch/push nhánh khác): merge `07dc8f8` (2 cha: `6f9d156` + chuỗi `c53437e`) + dist `1b1cc13`. Title/body PR #211 đã cập nhật theo diff thật. **Đã fast-forward PR head an toàn ngày 2026-10-19 tới `35b8cfb` (2 nhánh identical); tiếp tục áp dụng luật đồng bộ sau mỗi phiên ở MỤC 2.**
 - **Batch 2 (false-done đợt 2) — TỪNG MẤT TÍCH, ĐÃ PHỤC HỒI**: `f51710b` bị push mồ côi vào nhánh `arena/da9aa3db-logistics-work-desk-arena` (không vào nhánh/PR nào). Đã tìm lại được (còn nguyên trên GitHub) và cherry-pick vào nhánh này — commit **`162036f`** (6 thay đổi: tách GNT khỏi TAX_PAID, `taxPaid` projection, writer chặn `vgm_*` khi LCL, importer `legalImporterName`, journey LCL chỉ SI, + docs/tests). Test đợt 1 khớp semantics mới: **`8a9d4f1`**. Giải conflict: LCL giữ node `si-vgm` SI-only — **Owner đã chốt 2026-10-19: batch 2 ĐÚNG** (xem MỤC 2), không còn chờ xác nhận.
 - **Lộ trình**:
   - (0) 3 bug node truth — **XONG, semantics cập nhật bởi tích hợp T1–T5** (`61f0714` → `07dc8f8`): booking `done=booking_status=='CONFIRMED'` (chuỗi T1, `BOOKING_STATES` — bỏ biến thể `'ACCEPTED'` + bỏ điều kiện có số); on-board `done=bool(on_board_at)` (bỏ điều kiện ATD). Riêng bug si-vgm/LCL: giữ semantics batch 2 (dưới) — chuỗi T1–T5 tự có nhánh LCL SI-only.
   - (1) diệt false-done — **một phần XONG**: `d1340a5` (JourneyBubble docs, ô nhập fact, CẦN LÀM ra mặt tiền) + batch 2 `162036f` (GNT ≠ TAX_PAID, importer, LCL SI-only) + guard factFields LCL `53ccddc` (node SI-only của LCL giữ ô `si_status`/`si_cutoff`, chỉ bỏ ô `vgm_*` — guard `continue` cũ bỏ trắng form khiến node không bao giờ xong). Kiểm tiếp các surface khác nếu có biểu thức false-done.
   - (2) backport #200/#204/#208 vào #210 — **#204 (chuỗi T1–T5) ĐÃ tích hợp vào nhánh phiên** (`07dc8f8`); #200 (AIR_DOCUMENTS) + #208 (routing/stage scope) **CHƯA** (prompt phiên này loại trừ). Gợi ý thứ tự 1 dòng: **#200 trước #208** (stage AIR phải tồn tại trước khi routing gate theo stage scope), cả hai backport vào #210 trước khi tích hợp vào main.
   - (3) commercial-flow + legal parties + 2 stage `entrustment-ready`/`tt-warehouse-handover` (CHỈ TT_ENTRUSTED_SUB) — **CHƯA**.
-  - (4) nội dung công đoạn (guidance) — **CHƯA** (UI đã nhận `n.guidance`; hiện trống nên hiển thị "Chưa có hướng dẫn cho công đoạn này").
+  - (4) nội dung công đoạn SEA — **ĐÃ TẠO SOURCE + TEST, CHƯA NGHIỆM THU**: 12 ID (11 vị trí FCL/LCL), gate `mode=SEA`, bản FCL/LCL riêng, unowned chỉ theo dõi, thông quan nhập boolean rõ ràng. UI dùng lại `node.guidance`; cần chạy pytest/QA trước khi gọi XONG.
   - (5) E2E + UAT + merge — **CHƯA**.
 - **Sự thật kỹ thuật**: facts `booking_status`, `on_board_at` ghi được qua writer `shipment_sea_facts_save` + ô nhập metadata-driven. **Bundle đã build lại từ source HEAD** (`b512822` — typecheck sạch, scan 0 executable, marker parity source↔dist) — màn hình giờ ĐÃ phản ánh các fix. **CI main**: `.github/workflows/ci.yml` (`0b0fe85`) — push/PR vào main, pytest so baseline (đỏ = hồi quy); workflow vào main khi Owner merge tích hợp (Arena KHÔNG merge). **AGENTS.md** đã có 9 mục luật (4 charter `be3a96b` + 5 luật vận hành phiên `d57fab4`: bằng chứng trước kết luận, TASK 0, TASK CUỐI, xoay phiên, bài học tích lũy), **README.md** đã có (`77febe5`). Suite tích hợp (đo 2026-10-19, sau `53ccddc`): **41 failed / 1940 passed / 44 skipped** — 41 = 31 failure main-baseline + 10 xung đột test-main × code-#210 (188 x4/186/190 x4, `test_visual_shipment_workspace::test_same_attachment...`); suite flaky ±1 skip/fail theo môi trường (record cũ 40/45 không tái hiện được tại cùng HEAD).
 - **Tích hợp chuỗi T1–T5 (`07dc8f8` + dist `1b1cc13`, 2026-10-18)**: nguồn `origin/ct/logi199-t5-app-identity@c53437e` (11 commit, merge-base `5c6642a`), 7 conflict resolve theo luật — `core/shipment_journey.py` lấy bản chuỗi (`fields=`/`_fact_field`, chuỗi AIR `core/shipment_journey.py:258-266`, ROAD `:301-320`, LCL CFS `:219`, `AIR_FACT_FIELDS/ROAD_FACT_FIELDS` `:26-30`, popup ≤5 primary trong `add()` `:127-133`) **+ documentIds theo category #210 giữ nguyên** (`:366-377`, `add()` không attribute trực tiếp `:142-145`); scope gate mọi fact mới `views/logi_view_model.py:2956-3003`; ShipmentDetail giữ ô nhập/`hasStageContent` nhưng gate `Boolean(node.factFields?.length)` (`ShipmentDetail.tsx:1385-1389`, hết list id hard-code); JourneyMap/ShipmentJourney/JourneyBubble/QuickPanel **giữ bản nhánh phiên** (auto-merge hoặc resolve-rule); `index.css:1` import Google Fonts (Be Vietnam Pro + IBM Plex Mono) + palette nhánh phiên, `.journey-demo` hết Inter (`:103`). Journey giờ có node **AIR/ROAD/LCL/CFS** (pin bởi `tests/test_logi199_t2_t4_mode_truth.py` — xanh). Re-pin ngữ nghĩa cũ ở 6 test file (booking CONFIRMED, on-board standalone, fields= sets, air form, unowned owned-gate, mount factFields) — không xoá test nào. **Suite CI-flag (2026-10-18): 40 failed / 1989 passed / 45 skipped khi chưa có `component/node_modules` (lane DOM 188 skip) — tập failure GIỐNG ĐÚNG baseline `6f9d156` đo cùng điều kiện (NEW=∅ GONE=∅); sau `npm ci` của TASK 2 lane DOM `test_zero_node_render_keeps_the_cockpit_in_a_dom` kích hoạt → 41/1989/44 = đúng baseline 41 đã ghi (họ "188 x4"); lane này đã CHỨNG MINH fail y hệt tại baseline `6f9d156` khi symlink jsdom (cùng assertion "cockpit shell must exist") → KHÔNG phải hồi quy do merge. CI gate ≤41: PASS ở cả hai trạng thái.**; typecheck `tsc --noEmit` sạch, `scan_process.py` 0 executable, marker parity source↔dist (node mới đủ, chuỗi cũ biến mất).
@@ -43,9 +44,11 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 - ~~scope-guard 2 fact `booking_status`/`on_board_at` trong `views/logi_view_model.py`~~ — **ĐÃ CÓ từ chuỗi T1–T5** (`views/logi_view_model.py:2979`, gate `MAIN_CARRIAGE`), Owner không còn phải duyệt việc "đụng file"; nếu muốn gỡ thì Owner nói riêng.
 - **Owner quyết định** hướng xử lý 10 failure xung đột test-main × code-#210 (mục riêng hay bỏ qua) — xem số liệu Suite ở trên (sau tích hợp còn 40, gồm 188×3/186/190×4 + main-baseline).
-- **Owner**: các mục MỤC 5 (danh sách pháp nhân `authority_companies`; nội dung hướng dẫn công đoạn).
+- **Owner**: chỉ còn danh sách pháp nhân `authority_companies` ở MỤC 5; phần guidance có bản source/test, chờ chạy kiểm thử.
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
+
+- **Guidance SEA 12 node ID** (2026-10-19): data thuần `core/stage_guidance.py`, gắn chỉ `mode=SEA`, test dương/âm `tests/test_journey_stage_guidance.py`; import customs dùng `customs_status is True` và writer chặn giá trị chuỗi sai. **TEST_NOT_RUN trong phiên GitHub-only; KHÔNG ghi pytest/CI/visual PASS.** Frontend source/dist không đổi vì payload từ backend.
 
 - Đợt 1 (`61f0714`): `tests/test_journey_node_done_facts.py` — 13 test âm+dương cho 3 bug (cây main-based 1905→1918 passed, 31 failure cũ giữ nguyên).
 - Đợt 2 (`d1340a5`): `tests/test_journey_ui_truth.py` — 6 test (docs badge âm+dương; ô nhập + flow ghi→đọc lại qua **writer thật** `shipment_sea_facts_save`; CẦN LÀM source-contract). `tests/test_journey_stage_fact_fields_199.py` hồi xanh (2) theo hành vi Owner xác nhận.
@@ -56,9 +59,16 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 ## MỤC 5 — CẦN OWNER
 
 - Danh sách pháp nhân thật trong `authority_companies` (tên + vai trò)
-- Nội dung hướng dẫn công đoạn (Owner sửa từ bản nháp)
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-19 — bổ sung guidance SEA + chặn chuỗi thông quan giả (sau PR head sync)
+
+- **Checkpoint trước sửa**: PR #211 head và session đều ở `35b8cfba16dad1b4c5d6e585009db9723a922b49` (đã đối chiếu GitHub).
+- **Source**: 12 guidance ID, 7 trường hiện có trong WorkModuleGuidance; lọc SEA (không rò AIR/ROAD/RAIL), lựa SI FCL/LCL, ngữ cảnh owned/completed không giao việc sai. Customs: cờ thông quan nhập boolean thật, tránh `bool("false")`; writer kiểm đầu vào, trả lỗi thay vì tự ghi True từ chữ. Test âm/dương mới, không xoá test cũ.
+- **Bằng chứng có**: GitHub blobs/commit và static diff (đọc lại PR khi sync). **Chưa có**: chạy pytest, baseline NEW=∅/GONE=∅, browser và xác nhận nghiệp vụ trên app; không đổi bundle/dist (source FE không đổi).
+- **Còn lại**: executor có test runner chạy focused + baseline cùng môi trường, kiểm source→backend→UI thật và độc lập review trước khi nói BUSINESS PASS. Giữ PR mở, không merge main hoặc deploy.
+- **Nhắc việc định kỳ trong handoff**: sau mỗi phiên Arena, fast-forward `arena/a3117943-logistics-work-desk-arena` := nhánh session khi là hậu duệ, CAS/expected_sha; không force, kiểm diff PR.
 
 ### 2026-10-18 — tích hợp chuỗi sự thật T1–T5 (PR #204) vào nhánh phiên
 
