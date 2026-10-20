@@ -51,9 +51,11 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ## MỤC 3 — TRẠNG THÁI
 
+- 2026-10-20 LOGI-211-MODECOPY-EVIDENCE-QA @ a366bee: evidence packet/ảnh/log đã công khai tại comment PR; Sale desktop 4/4 + Support mobile 4/4 PROVEN, 0 business write; focused 107 PASS; full 63 failed/2047 passed/23 skipped/5 errors, parity NOT_MEASURED; OWNER_UAT=INCOMPLETE, không merge/deploy.
+
 - **CURRENT — 2026-10-20, PR #211 mode-copy fix (`afbc18d`)**: đã đóng reproduction ở [comment 6281985539](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6281985539). Browser smoke **8/8 PASS** trên bundle mới: AIR/ROAD/SEA FCL/LCL × 1440×900/390×844; AIR/ROAD không còn “hãng tàu”/“trả rỗng”, SEA giữ nguyên câu cũ, fields không đổi, **0 business write**. Focused **107 PASS**; typecheck/build/scan **0 executable hits**. Full suite cùng môi trường Windows: baseline **61 failed / 2048 passed / 23 skipped / 5 errors**, bản sửa **60 / 2050 / 23 / 5**; raw **NEW=∅, GONE=1** do test quote-note so `calculated_at` lệch một giây, chạy lại riêng **PASS cả hai cây**. Không gọi full suite xanh hoặc raw GONE=∅. Chỉ nghiệm thu lát sửa câu chữ; **OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES**. Chi tiết/bằng chứng ở mục mới nhất MỤC 6; các milestone phía dưới giữ nguyên như lịch sử.
 
-- **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; **FULL_SUITE=NOT_RUN, BASELINE_PARITY=NOT_MEASURED**, không có QA độc lập cho docs trong phiên viết. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
+- **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; **FULL_SUITE=NOT_RUN, BASELINE_PARITY=NOT_MEASURED**, không có QA độc lập cho docs trong phiên viết. Phạm vi rõ: `FULL_SUITE=NOT_RUN`/`BASELINE_PARITY=NOT_MEASURED` ở dòng này chỉ nói đúng **phiên connector GitHub viết docs** (phiên đó KHÔNG chạy test); các số suite ở MỤC 6 thuộc các phiên CÓ chạy pytest (phiên Arena `arena/5b67d6ed`, phiên Codex/Windows, phiên QA độc lập) — khác phiên, khác phạm vi, hai mục không đá nhau. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
@@ -136,6 +138,14 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
   trường hợp nào cả hai chiều đều hợp lệ. Chưa chốt thì không có auto-DONE, không suy chiều.
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-20 — QA độc lập lát mode-copy (evidence packet, `LOGI-211-MODECOPY-EVIDENCE-QA`)
+
+- QA độc lập (phiên KHÁC phiên sửa) đã chạy: kết quả đầy đủ ở dòng MỤC 3 (`LOGI-211-MODECOPY-EVIDENCE-QA` @ `a366bee`); evidence packet/ảnh/log đã công khai tại comment PR; Sale desktop 4/4 + Support mobile 4/4 PROVEN, 0 business write; focused 107 PASS; full 63 failed/2047 passed/23 skipped/5 errors, parity NOT_MEASURED; OWNER_UAT=INCOMPLETE, không merge/deploy.
+- Sale mobile + Support desktop NOT_RUN — lượt độc lập chỉ đo Sale desktop + Support mobile.
+- 2 DOM test (guidance/mode-copy) fail trong full suite nhưng PASS focused (chạy lại nguyên file guidance: 37 passed) → NOT_DIAGNOSED; không kết luận flaky hay hồi quy mới.
+- SỰ CỐ: ZIP thô chứa AGENTROUTER_API_KEY từng được upload (link đã bỏ khỏi draft, file attachment vẫn còn) → KEY_ROTATION=OWNER_PENDING; Owner thu hồi/đổi khóa, phiên QA không tự đổi credential.
+- Ghi nhận (a)/(b) của phiên QA (handoff MỤC 3 :56 đá MỤC 6 :154; guide §7 trỏ "bảng T1–T6" không tồn tại) đã được xử lý ở phiên docs này.
 
 ### 2026-10-20 — Neo ba nguồn thủy tổ + phục hồi guide Arena (docs-only, GitHub connector)
 

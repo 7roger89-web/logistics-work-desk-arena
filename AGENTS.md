@@ -356,7 +356,7 @@ Một prompt chỉ nên chứa MỘT loại việc. Việc khác loại thì tá
 Mỗi lần một phiên làm sai và được Control Tower chỉ ra, thêm MỘT DÒNG luật vào mục này.
 Giữ mỗi dòng thật ngắn. Nếu dài quá thì chuyển sang `docs/LESSONS.md` và để link.
 
-- (rỗng — các phiên sau điền)
+- Khi publish log/ZIP từ pytest, traceback subprocess có thể dump credential môi trường → phải quét/redact trước khi upload.
 
 ## Definition of Done tối thiểu cho task đụng UI
 
