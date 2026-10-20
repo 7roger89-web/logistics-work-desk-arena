@@ -50,7 +50,7 @@ Luật: (a) mọi con số phải kèm NGÀY ĐO + SHA nguồn, thiếu ngày �
 
 | Chuỗi cũ | Đúng hiện nay | Vì sao còn |
 |---|---|---|
-| head trong body = 5988ae1 (một nhịp cũ) | 365ad6d | body đã PATCH 2026-10-20 |
+| head trong body PR (mọi SHA cụ thể) | head thật — luôn đo api.github.com | body PATCH mỗi phiên, trễ 1 nhịp so với commit docs |
 | [LỊCH SỬ @8aba473] BROWSER QA FAIL / repair task UI copy (body PR; chuỗi cũ `FIX=NOT_STARTED` không còn trong body) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body đã PATCH 2026-10-20 (gắn `[LỊCH SỬ]` @8aba473 + `FIX=DONE @afbc18d`) |
 | "còn 40 failure" (MỤC 3 ĐANG CHỜ) | 37 failed (đo 2026-10-20) | 40 là số 2026-10-19 |
 | BASELINE_FAILED='41' (ci.yml) | 37 cho nhánh tích hợp; 31 cho main | gắn ngày 2026-10-19 |
@@ -257,6 +257,7 @@ Giữ mỗi dòng thật ngắn. Nếu dài quá thì để chi tiết ở playb
 - Bằng chứng chỉ nằm ở ổ đĩa máy trạm thì Control Tower coi như KHÔNG CÓ — phải đưa lên comment PR hoặc `docs/`.
 - Prompt giao việc thiếu `P2P_LAW_PREFLIGHT`/`OE_GATE` → executor lệch chuẩn, mất cả phiên làm lại.
 - Hướng dẫn stale (số test cũ, baseline chuỗi cũ) làm người đọc sau hiểu sai trạng thái — phát hiện là sửa ngay.
+- **Đồng bộ head PR là việc của phiên Arena (2026-10-20)**: base commit LUÔN từ head PR (không từ main); push nhánh session; rồi PATCH ref arena/a3117943-... qua API force=false — PATCH ref KHÔNG phải "push nhánh khác"; nếu 403 mới báo FF_BLOCKED.
 - Mode của lô KHÔNG đọc từ `s.mode` (có thể là chặng đầu, vd Truck); Journey dùng `executionProfile.mode` — đối chiếu trước khi kết luận câu chữ.
 
 Chi tiết + bối cảnh: docs/CONTROL-TOWER-PLAYBOOK.md §9. Mỗi dòng ở đây phải ngắn.

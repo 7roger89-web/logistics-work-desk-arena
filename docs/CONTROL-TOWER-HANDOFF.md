@@ -9,6 +9,7 @@ Bàn giao ca cho Control Tower. Mọi task có thay đổi file PHẢI cập nh�
 3. **NEXT_ACTION:** Owner UAT đúng dữ liệu thật theo 2 gate **MỤC 5**; packet dán được ngay = `### NEXT_ACTION` + `### NEXT_PACKET` trong **MỤC 3**.
 4. **VERIFY/FF:** `gh api repos/7roger89-web/logistics-work-desk-arena/compare/<EXACT_BASE_HEAD>...<commit docs>` phải `status=ahead, ahead_by=1, behind_by=0`; rồi FF `gh api -X PATCH repos/7roger89-web/logistics-work-desk-arena/git/refs/heads/arena/a3117943-logistics-work-desk-arena -f sha=<commit docs> -F force=false`.
 5. **CẤM (6):** (1) sửa code Python/React + `component/dist`; (2) `.p2p/portable/*` + mọi block `<!-- BEGIN P2P -->`; (3) merge main / deploy; (4) force-push / PR mới / push nhánh khác; (5) `tienthanhlog` / production write; (6) mine SHA-1 để ép trùng.
+6. **OUTPUT:** cuối phiên in ra 2 phần — (a) đang ở đâu / việc kế tiếp / còn thiếu / lệch so với thực tế; (b) 1 khối PACKET dán được cho Arena.
 
 ## ĐỌC TRƯỚC (cho chat Control Tower mới)
 
@@ -49,7 +50,7 @@ Luật: (a) mọi con số phải kèm NGÀY ĐO + SHA nguồn, thiếu ngày �
 
 | Chuỗi cũ | Đúng hiện nay | Vì sao còn |
 |---|---|---|
-| head trong body = 5988ae1 (một nhịp cũ) | 365ad6d | body đã PATCH 2026-10-20 |
+| head trong body PR (mọi SHA cụ thể) | head thật — luôn đo api.github.com | body PATCH mỗi phiên, trễ 1 nhịp so với commit docs |
 | [LỊCH SỬ @8aba473] BROWSER QA FAIL / repair task UI copy (body PR; chuỗi cũ `FIX=NOT_STARTED` không còn trong body) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body đã PATCH 2026-10-20 (gắn `[LỊCH SỬ]` @8aba473 + `FIX=DONE @afbc18d`) |
 | "còn 40 failure" (MỤC 3 ĐANG CHỜ) | 37 failed (đo 2026-10-20) | 40 là số 2026-10-19 |
 | BASELINE_FAILED='41' (ci.yml) | 37 cho nhánh tích hợp; 31 cho main | gắn ngày 2026-10-19 |
@@ -75,6 +76,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - Merge main = deploy production. Không đụng app `tienthanhlog`.
 - **PR #211 head sync — VIỆC CỐ ĐỊNH sau mỗi phiên Arena**: kiểm ancestry rồi fast-forward `arena/a3117943-logistics-work-desk-arena` lên head nhánh session, kèm expected SHA. Nếu divergent: DỪNG, không force-push; kiểm lại diff PR và handoff. GitHub Edit chỉ đổi base, không đổi head; không merge/deploy.
 - **`EXACT_BASE_HEAD` / `HEAD_AT_WRITE` là self-reference (2026-10-20)**: MỌI commit docs sau đều tự làm chuỗi ghi trong file lệch lại so với `head.sha` mới — ai nhận packet hoặc chạy fast-forward BẮT BUỘC re-đo `api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211`, KHÔNG coi giá trị ghi trong packet/bảng là hằng số và KHÔNG mine SHA-1 để ép trùng.
+- **Đồng bộ head PR là việc của phiên Arena (2026-10-20)**: base commit LUÔN từ head PR (không từ main); push nhánh session; rồi PATCH ref arena/a3117943-... qua API force=false — PATCH ref KHÔNG phải "push nhánh khác"; nếu 403 mới báo FF_BLOCKED.
 - **Batch 2 semantics (LCL si-vgm) — CHỐT ĐÚNG (Owner, 2026-10-19)**: LCL CÓ node
   `si-vgm` SI-only (label 'SI', done theo `si_status=='ACCEPTED'`, không VGM).
   Rule đợt 1 "LCL không có node si-vgm" là SAI và đã bỏ.
@@ -107,7 +109,7 @@ Assurance của lát mode-copy đã đóng (CURRENT). Việc quyết định cò
 LOGI — chụp pixel app thật cho 3 ca assurance còn thiếu của lát mode-copy PR #211 (đọc/đo, không sửa code)
 GỬI CHO: Codex desktop (Windows) — có checkout thật + Chromium
 CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên KHÁC phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
-EXACT_BASE_HEAD=<head PR #211 sau FF của phiên LOGI-211-STATE-HYGIENE-4 = commit docs của chính phiên đó (self-reference) — PHẢI re-đo https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; mốc lịch sử: ngay TRƯỚC commit docs này head = 365ad6d>
+EXACT_BASE_HEAD=<head PR #211 sau FF của phiên LOGI-211-STATE-HYGIENE-4 = commit docs của chính phiên đó (self-reference) — head thật = dòng `HEAD HIỆN TẠI` trong body PR #211, hoặc đo api.github.com; mọi SHA trong file là mốc lịch sử — PHẢI re-đo https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; mốc lịch sử: ngay TRƯỚC commit docs này head = 365ad6d>
 TASK_AUTHORITY=Control Tower + comment #6285586667 (acceptance gốc) + comment LOGI-211-MODECOPY-ASSURANCE-CLOSURE 2026-10-20 (kết quả harness cần đối chiếu pixel)
 KHÔNG push code, KHÔNG sửa source (task đọc/đo); bằng chứng chỉ đính qua comment PR #211
 P2P_LAW_PREFLIGHT theo AGENTS.md (đọc AGENTS.md → portable law; báo P2P_LAW_SOURCE + LAW_CHECK kèm SOURCE_SHA256; EXPERIENCE_CHECK; LEARNING_RECONCILIATION cuối task) · OE_GATE: "Không bị over engineering chứ?" + SIMPLER_PATH/MATERIAL_PROGRESS/NECESSITY/CORE_BEFORE_SUPPORT/SMALLER_VERIFIABLE_SLICE + OE_VERDICT + 1 lý do
@@ -120,6 +122,8 @@ DỪNG KHI: 3 ca có verdict rõ + bằng chứng ở comment PR.
 ```
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
+
+- **Opener + stale-handoff pass 5 — OPENER README + đóng luật quyền nhánh (2026-10-20, `LOGI-211-OPENER-BRANCH-LAW`, docs-only, 3 file `README.md` + `docs/CONTROL-TOWER-HANDOFF.md` + `AGENTS.md`)** — `EXACT_BASE_HEAD` đo `api.github.com` TRƯỚC khi làm = `e926edac5cb6bbe6ecacfcdf82916db03d17b46a` (khớp packet, `state=open, merged=false`); commit docs = `HEAD_AT_WRITE` + 1 commit, head PR #211 sau FF (SHA công bố ở receipt `HANDOFF_UPDATE` tại comment PR #211 — luật self-reference MỤC 2, không mine SHA-1); phạm vi: `README.md` chèn block `## OPENER — DÁN VÀO CHAT MỚI` (5 dòng nguyên văn, đầu file) · handoff: COLD START mục 6 `OUTPUT` · MỤC 2 +1 luật đồng bộ head PR · dòng `STALE_KNOWN` "head trong body" → dạng bền không SHA (byte-identical với `AGENTS.md`) · NEXT_PACKET `EXACT_BASE_HEAD` thêm con trỏ "head thật = dòng `HEAD HIỆN TẠI` trong body PR #211" · `AGENTS.md` +1 dòng "Bài học tích lũy" · dòng MỤC 4 này + 1 entry MỤC 6; `pytest/tsc/build/browser=NOT_RUN` (ghi 2026-10-20 @`e926eda` — docs-only).
 
 - **State hygiene pass 4 — COLD START + head-sync PR #211 (2026-10-20, `LOGI-211-STATE-HYGIENE-4`, docs-only, 1 file `docs/CONTROL-TOWER-HANDOFF.md`)** — `EXACT_BASE_HEAD` đo `api.github.com` trước khi làm = `365ad6d432b5deec421234336f2c0747138605fc` (khớp packet); commit docs = `HEAD_AT_WRITE` + 1 commit, head PR #211 sau FF (SHA công bố ở receipt `HANDOFF_UPDATE` tại comment PR #211 — luật self-reference MỤC 2, không mine SHA-1); phạm vi: chèn block `## COLD START` ≤12 dòng · MỤC 3 CURRENT `HEAD_AT_WRITE` · MỤC 3 NEXT_PACKET `EXACT_BASE_HEAD` · dòng MỤC 4 này + 1 entry MỤC 6; `pytest/tsc/build=NOT_RUN` (ghi 2026-10-20 @`365ad6d` — docs-only).
 
@@ -144,6 +148,13 @@ DỪNG KHI: 3 ca có verdict rõ + bằng chứng ở comment PR.
 ## MỤC 6 — NHẬT KÝ PHIÊN
 **[LỊCH SỬ] Toàn bộ MỤC 6 là nhật ký lịch sử — mọi con số/trạng thái dưới đây chỉ đúng tại thời điểm viết (theo NGÀY + SHA trong từng entry); trạng thái sống ở MỤC 3, thứ tự tin ở §NGUỒN SỰ THẬT & THỨ TỰ TIN.**
 Lịch sử cũ đã chuyển nguyên văn sang docs/CONTROL-TOWER-ARCHIVE.md; archive không phải luật hay trạng thái sống.
+
+### 2026-10-20 — LOGI-211-OPENER-BRANCH-LAW (OPENER README + đóng luật quyền nhánh, docs-only)
+
+- **Commit SHA**: commit docs của chính entry này — SHA tự-tham-chiếu, công bố trong receipt `HANDOFF_UPDATE` ở comment PR #211; base = head PR `e926edac5cb6bbe6ecacfcdf82916db03d17b46a` (đo `api.github.com/.../pulls/211` TRƯỚC khi làm: `state=open, merged=false`, `head.sha` khớp `EXACT_BASE_HEAD`; nhánh session tạo TRỰC TIẾP từ head PR bằng `git reset --hard <EXACT_BASE_HEAD>` sau khi fetch `refs/pull/211/head`, kiểm `git merge-base --is-ancestor` = PASS ⇒ FF được, không force).
+- **Đã làm — 3 file docs**: (a) `README.md` chèn `## OPENER — DÁN VÀO CHAT MỚI` + đúng 5 dòng nguyên văn ở ĐẦU file; (b) `docs/CONTROL-TOWER-HANDOFF.md` 5 sửa nhỏ: COLD START mục 6 `OUTPUT`, MỤC 2 +1 luật "Đồng bộ head PR là việc của phiên Arena" (base từ head PR không từ main; push nhánh session; PATCH ref `arena/a3117943-...` `force=false` KHÔNG phải "push nhánh khác"; 403 mới báo `FF_BLOCKED`), dòng `STALE_KNOWN` "head trong body" → dạng bền không chứa SHA, NEXT_PACKET `EXACT_BASE_HEAD` + con trỏ "head thật = dòng `HEAD HIỆN TẠI` trong body PR #211", dòng MỤC 4 + entry này; (c) `AGENTS.md` sync NGUYÊN VĂN dòng `STALE_KNOWN` (byte-identical với handoff) + 1 dòng cùng nội dung luật MỤC 2 vào "Bài học tích lũy", ngoài mọi block `<!-- BEGIN P2P -->`.
+- **Kiểm chứng**: `api.github.com` TRƯỚC/SAU, `compare <EXACT_BASE_HEAD>...<commit docs>` `status=ahead, ahead_by=1, behind_by=0`, output lệnh FF `force=false`, `pulls/211` sau FF `state=open, merged=false, head.sha=<commit docs>`, diff nguyên văn 3 file, `BYTE_PARITY` dòng `STALE_KNOWN` giữa 2 file = EQUAL, `SECRET_SCAN=CLEAN` — đính ở comment PR #211. `pytest/tsc/build/browser=NOT_RUN` (ghi 2026-10-20 @`e926eda` — docs-only). Không đụng: MỤC 1, MỤC 5, code Python/React, `component/dist`, mọi block `<!-- BEGIN P2P -->`, `.p2p/portable/*`, `tienthanhlog`, merge main, deploy, PR mới, force-push.
+- **Còn lại / Cần Owner**: `OWNER_UAT=INCOMPLETE`; 2 gate MỤC 5 giữ nguyên; việc kế tiếp = NEXT_ACTION/NEXT_PACKET ở MỤC 3.
 
 ### 2026-10-20 — LOGI-211-STATE-HYGIENE-4 (COLD START + head-sync PR #211, docs-only)
 
