@@ -11,6 +11,7 @@ Bàn làm việc logistics cho Support/Sale/Operations: một app Streamlit + co
 ## Trạng thái hiện tại
 
 Trỏ thẳng tới `docs/CONTROL-TOWER-HANDOFF.md` — đó là nguồn sự thật duy nhất cho "đang ở đâu, còn gì, cần Owner quyết gì". Không chép lại vào đây để tránh hai nguồn lệch nhau.
+Thứ tự tin khi hai nguồn mâu thuẫn: api.github.com/pulls/211 (state/head.sha/merged — MÁY ĐO) → handoff MỤC 3 → comment PR mới nhất → MỤC 4 → body PR → MỤC 6/archive — chi tiết + bảng STALE_KNOWN ở §"NGUỒN SỰ THẬT & THỨ TỰ TIN" trong `AGENTS.md` và `docs/CONTROL-TOWER-HANDOFF.md`.
 
 ## Cách làm việc
 

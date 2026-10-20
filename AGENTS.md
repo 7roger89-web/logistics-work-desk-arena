@@ -36,6 +36,28 @@ If that profile cannot be read, apply this minimum capsule:
 
 Xem mục “Mandatory prompt serialization contract” trong managed P2P block bên dưới; không lặp thân luật top-level.
 
+## NGUỒN SỰ THẬT & THỨ TỰ TIN (đọc trước khi tin bất kỳ số nào)
+Khi hai nguồn mâu thuẫn, tin theo đúng thứ tự này, dừng ở nguồn đầu tiên có dữ liệu:
+1. api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 → state, head.sha, merged (MÁY ĐO — tin nhất)
+2. docs/CONTROL-TOWER-HANDOFF.md MỤC 3 (TRẠNG THÁI SỐNG — chỉ file này giữ trạng thái)
+3. Comment PR mới nhất (BẰNG CHỨNG, có timestamp)
+4. MỤC 4 (bằng chứng, phải có nhãn ngày)
+5. Body PR (KHAI BÁO — thường cũ, không tin nếu chưa đối chiếu)
+6. MỤC 6 + docs/CONTROL-TOWER-ARCHIVE.md (LỊCH SỬ — số chỉ đúng tại thời điểm viết)
+Luật: (a) mọi con số phải kèm NGÀY ĐO + SHA nguồn, thiếu ngày ⇒ đo lại; (b) file ngoài MỤC 3 chỉ TRỎ tới trạng thái, không chép lại; (c) PASS/FAIL/DONE phải kèm phạm vi + ngày + SHA; (d) link theo nhánh = trạng thái, link theo SHA = bằng chứng; (e) head.sha trong tài liệu khác api.github.com ⇒ tin API và ghi lại.
+
+**STALE_KNOWN — chuỗi đã biết là cũ, ĐỪNG TIN** (ghi 2026-10-20, HEAD_AT_WRITE=`5988ae1`; chính bảng này là nhãn lịch sử cho các chuỗi bên trong):
+
+| Chuỗi cũ | Đúng hiện nay | Vì sao còn |
+|---|---|---|
+| head = 8aba473 (body PR) | 5988ae1 | body chưa PATCH được (403) |
+| BROWSER_QA=FAIL · FIX=NOT_STARTED (body PR) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body chưa cập nhật |
+| "còn 40 failure" (MỤC 3 ĐANG CHỜ) | 37 failed (đo 2026-10-20) | 40 là số 2026-10-19 |
+| BASELINE_FAILED='41' (ci.yml) | 37 cho nhánh tích hợp; 31 cho main | gắn ngày 2026-10-19 |
+| FULL_SUITE=NOT_RUN (dòng docs-only) | đã đo 37/2110/44 | ghi trước khi đo |
+| guide §7 → "bảng T1–T6 ở playbook §0.2" | §0.2 chưa có bảng đó | con trỏ sai |
+| 61/2048 · 63/2047 · 37/2089 · 37/2100 · 37/2108 | 37/2110/44 | lịch sử MỤC 6 |
+
 ## Baseline hiện tại
 
 - **Trạng thái sống của dự án nằm ở `docs/CONTROL-TOWER-HANDOFF.md`** — đọc TRƯỚC khi làm bất cứ việc gì; file được cập nhật cuối mỗi task và là sự thật mới nhất về đang ở đâu / còn gì / cần Owner gì.
@@ -54,8 +76,8 @@ Xem mục “Mandatory prompt serialization contract” trong managed P2P block 
 
 ## Testing
 
-- Full suite (lệnh CI): `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` → số thật gần nhất: **37 failed / 2110 passed / 44 skipped / 0 errors** (đo 2026-10-20 tại SHA `8f4d15ff581c1fa3daf12626ae5d02d7b734d649`, pytest 9.1.1 + node 22 + `npm --prefix component ci`; cùng ngày tại `8aba473` là 37 / 2109 / 44 / 0, bản ghi 2026-10-19 là 37 / ~2100 / 44 / 2 — chênh trong biên flaky ±1 và khác phiên bản pytest). Kỳ vọng cũ "200 passed, 28 skipped" là của chuỗi LOG-C15 đã kết thúc — không còn đúng, đừng dùng.
-- Cách đọc đúng: tập failure = **31 lỗi có sẵn trên main** + **6 xung đột test-main × code-#210 còn lại** (tên đã biết: `test_journey_super_goal_186`, họ `test_journey_visual_fidelity_190` ×4, `test_visual_shipment_workspace::test_same_attachment_id_...`; 4 ca `test_journey_fresh_parity_188` đã sửa nên còn 37 thay vì 41). **ĐỎ = hồi quy so với baseline**, không phải "phải 0 lỗi": so tập FAILED/ERROR với baseline cùng môi trường — chấp nhận khi `NEW=∅` và `GONE=∅`.
+- Full suite (lệnh CI): `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` → số thật gần nhất: **37 failed / 2110 passed / 44 skipped / 0 errors** (đo 2026-10-20 tại SHA `8f4d15ff581c1fa3daf12626ae5d02d7b734d649` & `a4c49a0e90694bee48da175980f875eda02f489d`, pytest 9.1.1 + node 22–24 + `npm --prefix component ci`; mốc lịch sử 2026-10-20 trước `@afbc18d` tại `8aba473` là 37 / 2109 / 44 / 0, bản ghi lịch sử 2026-10-19 là 37 / ~2100 / 44 / 2 — chênh trong biên flaky ±1 và khác phiên bản pytest). Kỳ vọng cũ "200 passed, 28 skipped" là của chuỗi LOG-C15 đã kết thúc — không còn đúng, đừng dùng.
+- Cách đọc đúng: tập failure = **31 lỗi có sẵn trên main** + **6 xung đột test-main × code-#210 còn lại** (tên đã biết: `test_journey_super_goal_186`, họ `test_journey_visual_fidelity_190` ×4, `test_visual_shipment_workspace::test_same_attachment_id_...`; 4 ca `test_journey_fresh_parity_188` đã sửa ở `c5e904d` nên còn 37 thay vì 41 — 41 là số đo 2026-10-19, đã cũ, xem bảng STALE_KNOWN). **ĐỎ = hồi quy so với baseline**, không phải "phải 0 lỗi": so tập FAILED/ERROR với baseline cùng môi trường — chấp nhận khi `NEW=∅` và `GONE=∅`.
 - Baseline đã mã hoá trong `.github/workflows/ci.yml` (`BASELINE_FAILED` kèm phân rã thành phần trong comment) — CI đỏ khi vượt baseline đó.
 - Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
 - Số flaky ±1 skip/fail theo môi trường; vượt 1 test thì re-run xác nhận trước khi gọi hồi quy.

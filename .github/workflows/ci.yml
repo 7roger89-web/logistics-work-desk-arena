@@ -7,9 +7,9 @@
 # BASELINE FAILURE ĐÃ GHI NHẬN (không phải hồi quy):
 #   * main chưa tích hợp LOGI-199 (#210):        31 failed
 #     (danh sách: tests/test_* theo main @ 51422c94)
-#   * tích hợp journey #210 + #211 (đo 2026-10-19): 41 failed
-#     = 31 cái trên + 10 xung đột test-main x code-#210
-#     (test_journey_fresh_parity_188 x4, test_journey_super_goal_186,
+#   * tích hợp journey #210 + #211 (đo 2026-10-20 @5988ae1; siết lại khi 4 ca 188 đã sửa ở c5e904d): 37 failed
+#     = 31 cái trên + 6 xung đột test-main x code-#210 còn lại
+#     (test_journey_super_goal_186,
 #      test_journey_visual_fidelity_190 x4,
 #      test_visual_shipment_workspace::test_same_attachment_id_...)
 #   * Suite có flaky ±1 (skip/fail đổi theo môi trường). Vượt 1 test thì
@@ -53,7 +53,7 @@ jobs:
 
       - name: Run test suite against the documented baseline
         env:
-          BASELINE_FAILED: '41'
+          BASELINE_FAILED: '37' # đo 2026-10-20 @5988ae1; siết lại khi 4 ca 188 đã sửa ở c5e904d (main chưa tích hợp = 31)
         run: |
           set +e
           python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py 2>&1 | tee pytest-output.txt

@@ -66,6 +66,6 @@ Nghiệm thu cần nhìn giao diện (browser); merge/deploy; quyết định ng
 
 ## 7. Phân biệt tài liệu và gói bàn giao
 
-NEXT_PACKET ở handoff là **prompt công việc của dự án**, không phải schema P2P. `docs/CONTROL-TOWER-HANDOFF.md` của LOGI là STATE, khác với `docs/p2p-development/CONTROL-TOWER-SESSION-HANDOFF.md` của thủy tổ (hợp đồng điều hành). Nếu muốn nâng quy tắc dự án lên P2P, phải qua `RULE_ASSIMILATION_GATE_V1` ở thủy tổ, không sửa bản portable trong LOGI. Xem 6 ranh giới P2P ở docs/CONTROL-TOWER-PLAYBOOK.md §0.2.
+NEXT_PACKET ở handoff là **prompt công việc của dự án**, không phải schema P2P. `docs/CONTROL-TOWER-HANDOFF.md` của LOGI là STATE, khác với `docs/p2p-development/CONTROL-TOWER-SESSION-HANDOFF.md` của thủy tổ (hợp đồng điều hành). Nếu muốn nâng quy tắc dự án lên P2P, phải qua `RULE_ASSIMILATION_GATE_V1` ở thủy tổ, không sửa bản portable trong LOGI. Xem 6 ranh giới P2P ở docs/CONTROL-TOWER-PLAYBOOK.md §0.2 — đó là 6 GẠCH ĐẦU DÒNG mục "QUAN HỆ VỚI LUẬT P2P"; §0.2 KHÔNG có "bảng T1–T6" nào, đừng tìm bảng ở đó (con trỏ cũ sai, đã sửa 2026-10-20).
 
 NGUỒN=U1 §1 và §4 | U3 §"Return contract" và §"Three-layer lifecycle".

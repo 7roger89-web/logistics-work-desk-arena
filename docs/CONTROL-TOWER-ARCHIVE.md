@@ -1,6 +1,7 @@
 # CONTROL-TOWER-ARCHIVE — Logistics Work Desk
+**[ARCHIVE] — TOÀN BỘ FILE NÀY LÀ LỊCH SỬ: mọi con số/trạng thái/PASS/FAIL/NOT_RUN dưới đây chỉ đúng tại thời điểm viết (theo NGÀY + SHA trong từng entry); không dùng làm trạng thái sống.**
 Archive lịch sử; KHÔNG phải luật hay trạng thái sống.
-Trạng thái hiện hành: docs/CONTROL-TOWER-HANDOFF.md MỤC 3.
+Trạng thái hiện hành: docs/CONTROL-TOWER-HANDOFF.md MỤC 3. Thứ tự tin: §"NGUỒN SỰ THẬT & THỨ TỰ TIN" trong docs/CONTROL-TOWER-HANDOFF.md + AGENTS.md.
 Nguồn nguyên văn: handoff MỤC 3 (lịch sử), MỤC 4 (bằng chứng cũ sau 3 mục trên cùng), MỤC 6 (journal đến 2026-10-19).
 
 - **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; FULL_SUITE=MEASURED trong phiên docs (xem MỤC 6 cùng ngày: baseline 8f4d15f 37/2110/44/0 vs code-final 37/2110/44/0, NEW=∅ GONE=∅); BASELINE_PARITY=MEASURED inline; KHÔNG có QA độc lập cho docs. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
