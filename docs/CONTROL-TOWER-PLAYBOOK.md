@@ -22,13 +22,17 @@ Bạn là Control Tower dự án Logistics Work Desk. Đọc theo đúng thứ t
 2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
 3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
 4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/ARENA-OPERATING-GUIDE.md
-5. Head PR + comment mới nhất qua api.github.com (xem §6)
+5. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-EXPERIENCE-CAPSULE.json (kinh nghiệm ACTIVE — non-authoritative, 4KB)
+6. Bài học đã trả giá: docs/CONTROL-TOWER-PLAYBOOK.md §9 + AGENTS.md §"Bài học tích lũy" — đọc TRƯỚC khi viết prompt giao việc
+Kiểm tra head PR + comment mới nhất qua api.github.com (xem §6).
 Sau đó báo ngắn: đang ở đâu, NEXT_ACTION, rồi hỏi Owner phiên này làm gì. Không tự code.
 ```
 
-Ghi chú: 4 link `refs/pull/211/head` trỏ trạng thái sống của PR #211, không phụ thuộc tên nhánh. Nếu link 404 thì dùng `head.ref` theo fallback dưới đây; đừng đọc `main` thay cho PR đang mở.
+Link neo theo PR #211 thường là bản mới nhất; raw.githubusercontent có thể bị CDN trả bản CŨ (đã gặp ca này với AGENTS.md ngày 2026-10-20) — khi cần chắc, đối chiếu head.sha qua api.github.com rồi đọc theo SHA đó.
 
-link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy head.ref rồi thay chuỗi refs/pull/211/head bằng tên nhánh đó; sau khi merge main thì đổi 4 link sang .../main/...; link theo SHA dùng cho bằng chứng
+Năm link raw `refs/pull/211/head` trỏ theo trạng thái PR #211, không phụ thuộc tên nhánh. Nếu link 404 thì dùng `head.ref` theo fallback dưới đây; đừng đọc `main` thay cho PR đang mở.
+
+link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy head.ref rồi thay chuỗi refs/pull/211/head bằng tên nhánh đó; sau khi merge main thì đổi 5 link sang .../main/...; link theo SHA dùng cho bằng chứng
 
 ## §0.2 — QUAN HỆ VỚI LUẬT P2P
 
@@ -67,6 +71,8 @@ NGUỒN=U3 §"Beginner workflow" | U2 §2–4 | AGENTS.md Owner Gate.
 ## §2 — COLD START
 
 NGUỒN=U1 §2A preflight + RULE 05/16 | AGENTS.md TASK 0.
+Link neo theo PR #211 thường là bản mới nhất; raw.githubusercontent có thể bị CDN trả bản CŨ (đã gặp ca này với AGENTS.md ngày 2026-10-20) — khi cần chắc, đối chiếu head.sha qua api.github.com rồi đọc theo SHA đó.
+Notebook portable 139KB — đủ dùng cho Control Tower là §2A + các RULE được trỏ tới trong playbook §0.2; phần còn lại tra khi cần, đừng đọc hết mặc định.
 
 
 - **Thứ tự đọc bắt buộc** (đúng như §0): AGENTS.md → portable law → playbook → handoff
@@ -188,7 +194,7 @@ NGUỒN=U1 RULE 04/05/16 | U2 §8 | U3 §"Three-layer lifecycle".
 
 ## §9 — BÀI HỌC ĐÃ TRẢ GIÁ
 
-NGUỒN=docs/CONTROL-TOWER-HANDOFF.md MỤC 6 (LOGI-only evidence); not a new P2P law.
+NGUỒN=docs/CONTROL-TOWER-HANDOFF.md MỤC 6 (LOGI-only evidence) + docs/CONTROL-TOWER-ARCHIVE.md; not a new P2P law.
 
 
 - Commit mồ côi: `f51710b` bị push vào nhánh không ai theo dõi (`arena/da9aa3db-...`) →

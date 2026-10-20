@@ -4,15 +4,19 @@ Bàn giao ca cho Control Tower. Mọi task có thay đổi file PHẢI cập nh�
 
 ## ĐỌC TRƯỚC (cho chat Control Tower mới)
 
-Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo. Link neo theo PR #211 nên luôn là bản mới nhất và không phụ thuộc tên nhánh:
+Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo. Link neo theo PR #211 thường là bản mới nhất; raw.githubusercontent có thể bị CDN trả bản CŨ (đã gặp ca này với AGENTS.md ngày 2026-10-20) — khi cần chắc, đối chiếu head.sha qua api.github.com rồi đọc theo SHA đó.
 1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/AGENTS.md
 2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
 3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
 4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/ARENA-OPERATING-GUIDE.md
+5. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-EXPERIENCE-CAPSULE.json (kinh nghiệm ACTIVE — non-authoritative, 4KB)
+6. Bài học đã trả giá: docs/CONTROL-TOWER-PLAYBOOK.md §9 + AGENTS.md §"Bài học tích lũy" — đọc TRƯỚC khi viết prompt giao việc
+
+Notebook portable 139KB — đủ dùng cho Control Tower là §2A + các RULE được trỏ tới trong playbook §0.2; phần còn lại tra khi cần, đừng đọc hết mặc định.
 
 File này là TRẠNG THÁI, không phải luật. Luật ở AGENTS.md + notebook portable — đọc luật trước khi phân tích thật (notebook §2A).
 
-Link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy `head.ref` rồi thay chuỗi `refs/pull/211/head` bằng tên nhánh đó — không đoán. Sau khi PR #211 merge vào main thì đổi 4 link sang `.../main/...`. Link theo SHA dùng cho bằng chứng, không dùng cho trạng thái sống.
+Link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy `head.ref` rồi thay chuỗi `refs/pull/211/head` bằng tên nhánh đó — không đoán. Sau khi PR #211 merge vào main thì đổi 5 link sang `.../main/...`. Link theo SHA dùng cho bằng chứng, không dùng cho trạng thái sống.
 
 Luật cứng:
 - Bạn ĐỌC được, KHÔNG ghi được (không push, không chạy test, không browser). Muốn ghi thì giao cho Arena/Codex/ChatGPT-connector.
@@ -53,7 +57,8 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 - **CURRENT — 2026-10-20 (sau QA độc lập)**: lát mode-copy `afbc18d` đã được QA ĐỘC LẬP nghiệm thu tại [comment 6285586667](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6285586667) — **VERDICT=PROVEN** cho đúng 4 tiêu chí acceptance (Sale desktop 4/4, Support mobile 4/4, 0 business write); bằng chứng 18 ảnh + 2 ZIP ở comment. QA tự khai phần CHƯA đo: Sale mobile, Support desktop, màn đăng nhập, `BASELINE_PARITY`. Lịch sử repro: FAIL @ `8aba473` (comment #6281985539) → fix `afbc18d` → browser smoke 8/8 desktop+mobile. Focused 107 PASS. **SỰ CỐ KHOÁ**: ZIP thô đầu tiên chứa `AGENTROUTER_API_KEY`; đã gỡ link và thay bằng ZIP redacted nhưng attachment GitHub gốc không xoá được → **coi như khoá đã lộ, CHỜ Owner rotate**. `OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES`.
 
-- **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; **FULL_SUITE=NOT_RUN, BASELINE_PARITY=NOT_MEASURED**, không có QA độc lập cho docs trong phiên viết. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
+- **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; FULL_SUITE=MEASURED trong phiên docs (xem MỤC 6 cùng ngày: baseline 8f4d15f 37/2110/44/0 vs code-final 37/2110/44/0, NEW=∅ GONE=∅); BASELINE_PARITY=MEASURED inline; KHÔNG có QA độc lập cho docs. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
+Lưu ý đọc số: bộ 37/2110 (môi trường phiên docs, pytest 9.1.1) KHÁC bộ 61/2048 (môi trường Windows/Codex, --continue-on-collection-errors + 16 subtests) — KHÔNG so chéo.
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
@@ -102,7 +107,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 LOGI — đóng khoảng trống assurance của lát mode-copy PR #211 (đọc/đo, không sửa code)
 GỬI CHO: Codex desktop (Windows) — có checkout thật + Chromium
 CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên KHÁC phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
-EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu api.github.com /repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán>
+EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán>
 TASK_AUTHORITY=Control Tower + comment #6285586667 (QA đã PROVEN lát mode-copy, tự khai 3 khoảng trống) + handoff MỤC 3
 KHÔNG push code, KHÔNG sửa source (task đọc/đo); bằng chứng chỉ đính qua comment PR #211
 P2P_LAW_PREFLIGHT theo AGENTS.md (đọc AGENTS.md → portable law; báo P2P_LAW_SOURCE + LAW_CHECK kèm SOURCE_SHA256; EXPERIENCE_CHECK; LEARNING_RECONCILIATION cuối task) · OE_GATE: "Không bị over engineering chứ?" + SIMPLER_PATH/MATERIAL_PROGRESS/NECESSITY/CORE_BEFORE_SUPPORT/SMALLER_VERIFIABLE_SLICE + OE_VERDICT + 1 lý do
