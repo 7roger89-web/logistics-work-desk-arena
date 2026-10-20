@@ -51,7 +51,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ## MỤC 3 — TRẠNG THÁI
 
-- **CURRENT — 2026-10-20, PR #211 mode-copy fix (`afbc18d`)**: đã đóng reproduction ở [comment 6281985539](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6281985539). Browser smoke **8/8 PASS** trên bundle mới: AIR/ROAD/SEA FCL/LCL × 1440×900/390×844; AIR/ROAD không còn “hãng tàu”/“trả rỗng”, SEA giữ nguyên câu cũ, fields không đổi, **0 business write**. Focused **107 PASS**; typecheck/build/scan **0 executable hits**. Full suite cùng môi trường Windows: baseline **61 failed / 2048 passed / 23 skipped / 5 errors**, bản sửa **60 / 2050 / 23 / 5**; raw **NEW=∅, GONE=1** do test quote-note so `calculated_at` lệch một giây, chạy lại riêng **PASS cả hai cây**. Không gọi full suite xanh hoặc raw GONE=∅. Chỉ nghiệm thu lát sửa câu chữ; **OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES**. Chi tiết/bằng chứng ở mục mới nhất MỤC 6; các milestone phía dưới giữ nguyên như lịch sử.
+- **CURRENT — 2026-10-20 (sau QA độc lập)**: lát mode-copy `afbc18d` đã được QA ĐỘC LẬP nghiệm thu tại [comment 6285586667](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6285586667) — **VERDICT=PROVEN** cho đúng 4 tiêu chí acceptance (Sale desktop 4/4, Support mobile 4/4, 0 business write); bằng chứng 18 ảnh + 2 ZIP ở comment. QA tự khai phần CHƯA đo: Sale mobile, Support desktop, màn đăng nhập, `BASELINE_PARITY`. Lịch sử repro: FAIL @ `8aba473` (comment #6281985539) → fix `afbc18d` → browser smoke 8/8 desktop+mobile. Focused 107 PASS. **SỰ CỐ KHOÁ**: ZIP thô đầu tiên chứa `AGENTROUTER_API_KEY`; đã gỡ link và thay bằng ZIP redacted nhưng attachment GitHub gốc không xoá được → **coi như khoá đã lộ, CHỜ Owner rotate**. `OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES`.
 
 - **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; **FULL_SUITE=NOT_RUN, BASELINE_PARITY=NOT_MEASURED**, không có QA độc lập cho docs trong phiên viết. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
 
@@ -94,26 +94,31 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ### NEXT_ACTION
 
-Public-hoá bằng chứng browser smoke 8/8 của lát mode-copy (`afbc18d`, hiện chỉ ở file local `D:/logi-pr211-current/.tmp/logi211-mode-copy/` — Control Tower chưa đọc được) lên comment PR #211; rồi QA độc lập lát mode-copy trên bundle của ĐÚNG commit hiện hành với tối thiểu 1 ca vai trò Sale + 1 ca vai trò Support (smoke đầu chưa ghi vai trò — DoD trong AGENTS.md). Sau đó mới tới Owner UAT đúng dữ liệu thật (MỤC 5). Packet dán-ngay:
+Đóng các khoảng trống assurance mà QA độc lập đã tự khai cho lát mode-copy (`BASELINE_PARITY` chưa đo trong đúng môi trường QA; 2 test DOM fail ở full suite nhưng PASS khi chạy riêng — chưa chẩn đoán; 3 khoảng trống vai trò browser: Sale mobile, Support desktop, màn đăng nhập). Sau đó mới tới Owner UAT đúng dữ liệu thật (MỤC 5). Packet dán-ngay:
 
 ### NEXT_PACKET (dán được ngay)
 
 ```text
-LOGI — public-hoá bằng chứng browser smoke + QA độc lập lát mode-copy PR #211 (đọc/đo, không sửa)
-GỬI CHO: executor có checkout + Chromium (Codex/Windows — máy đang giữ evidence packet)
-CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên khác phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
-EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu api.github.com /repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; lần ghi packet này là 8f4d15ff581c1fa3daf12626ae5d02d7b734d649>
-TASK_AUTHORITY=Control Tower 2026-10-20 + comment #6281985539 + handoff MỤC 3 · KHÔNG push, KHÔNG sửa code (task đọc/đo); file bằng chứng chỉ đính qua comment PR
+LOGI — đóng khoảng trống assurance của lát mode-copy PR #211 (đọc/đo, không sửa code)
+GỬI CHO: Codex desktop (Windows) — có checkout thật + Chromium
+CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên KHÁC phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
+EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu api.github.com /repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán>
+TASK_AUTHORITY=Control Tower + comment #6285586667 (QA đã PROVEN lát mode-copy, tự khai 3 khoảng trống) + handoff MỤC 3
+KHÔNG push code, KHÔNG sửa source (task đọc/đo); bằng chứng chỉ đính qua comment PR #211
 P2P_LAW_PREFLIGHT theo AGENTS.md (đọc AGENTS.md → portable law; báo P2P_LAW_SOURCE + LAW_CHECK kèm SOURCE_SHA256; EXPERIENCE_CHECK; LEARNING_RECONCILIATION cuối task) · OE_GATE: "Không bị over engineering chứ?" + SIMPLER_PATH/MATERIAL_PROGRESS/NECESSITY/CORE_BEFORE_SUPPORT/SMALLER_VERIFIABLE_SLICE + OE_VERDICT + 1 lý do
 REQUIRED_SKILLS=scope-reality-check (path + SHA256 thật lấy từ .p2p/portable/P2P-SKILL-PROJECTION.json; trả 1 p2p-skill-consumption-receipt/1)
-VIỆC 1 — public-hoá bằng chứng đã có: evidence packet lát mode-copy hiện chỉ ở D:/logi-pr211-current/.tmp/logi211-mode-copy/ (REPORT.md, browser-final/, full-suite-comparison.json, skill-consumption-receipt.json). Đăng lên comment PR #211: REPORT tóm tắt + ảnh 1440×900 và 390×844 đủ 4 fixture (FIX-AIR/FIX-ROAD/FIX-FCL/FIX-LCL, màn Công việc của công đoạn Giao hàng) + console/versions/audit (0 business write). Không commit evidence vào source tree.
-VIỆC 2 — QA độc lập trên bundle của ĐÚNG commit đang kiểm: chạy lại smoke Giao hàng → MỞ CÔNG ĐOẠN → Công việc với TỐI THIỂU 1 ca đúng vai trò Sale và 1 ca đúng vai trò Support; khẳng định: AIR/ROAD không còn câu "hãng tàu"/"trả rỗng"; SEA FCL/LCL giữ nguyên heading cũ; fields không đổi; 0 business write (versions + audit before=after). Acceptance = đúng các tiêu chí này, không tự viết lại, không tin self-report của phiên sửa.
-BẰNG CHỨNG BẮT BUỘC: VERDICT=PROVEN|INCOMPLETE|FAILED + mọi bằng chứng ở comment PR (nơi Control Tower đọc được), không chỉ ổ đĩa local. UI claim phải kèm ảnh thật từ bundle đang ship ở đúng commit.
-CẤM: sửa code, merge main, deploy, force-push, PR mới, đụng app tienthanhlog, production write, mở rộng scope.
-HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWER-HANDOFF.md mục 3/4 (task chỉ-đọc có nghiệm thu — theo DoD trong AGENTS.md). DỪNG KHI: evidence đã ở comment PR + verdict vai trò Sale/Support rõ ràng.
+VIỆC 1 — đo BASELINE_PARITY trong ĐÚNG môi trường này: chạy full suite tại EXACT_BASE_HEAD và tại commit ngay trước fix mode-copy, cùng Python/Node/deps/`npm --prefix component ci`. So TẬP FAILED/ERROR → NEW=∅ / GONE=∅. Con số tuyệt đối không quan trọng, tập hợp mới quan trọng. Ghi rõ phiên bản pytest/node.
+VIỆC 2 — chẩn đoán 2 test DOM fail khi chạy full suite nhưng PASS khi chạy riêng: nêu tên test + nguyên nhân CÓ BẰNG CHỨNG (thứ tự test / state dùng chung / thiếu node_modules / jsdom). Nếu flaky thì chứng minh bằng re-run, không đoán.
+VIỆC 3 — đóng 3 khoảng trống vai trò browser của lát mode-copy: (a) Sale mobile 390×844, (b) Support desktop 1440×900, (c) màn đăng nhập. Cùng 4 fixture FIX-AIR/FIX-ROAD/FIX-FCL/FIX-LCL và ĐÚNG acceptance của comment #6285586667 (AIR/ROAD không còn "hãng tàu"/"trả rỗng"; SEA FCL/LCL giữ nguyên; fields không đổi; 0 business write = versions+audit before=after).
+BẰNG CHỨNG BẮT BUỘC: VERDICT=PROVEN|INCOMPLETE|FAILED riêng cho TỪNG việc + ảnh/console/versions/audit ở comment PR (nơi Control Tower đọc được), không chỉ ổ đĩa local.
+CẤM: sửa code, merge main, deploy, force-push, PR mới, đụng tienthanhlog, production write, mở scope.
+HANDOFF_UPDATE=yes: ghi 1 dòng kết quả vào docs/CONTROL-TOWER-HANDOFF.md MỤC 3/4 + để lại NEXT_ACTION/NEXT_PACKET mới.
+DỪNG KHI: 3 việc có verdict rõ + bằng chứng ở comment PR.
 ```
 
 ## MỤC 4 — BẰNG CHỨNG & KIỂM CHỨNG
+
+- **QA độc lập lát mode-copy (2026-10-20, Codex/Windows, Chromium thật)** — **VERDICT=PROVEN** cho 4 tiêu chí acceptance tại `afbc18d`; bằng chứng ở comment #6285586667. QA khai rõ `NOT_RUN`: Sale mobile, Support desktop, màn đăng nhập, `BASELINE_PARITY`. **Sự cố khoá**: `AGENTROUTER_API_KEY` từng nằm trong ZIP thô đính lên comment; attachment gốc còn nguyên trên GitHub → chờ Owner rotate.
 
 - **Browser QA lát mode-copy (2026-10-20, đường Windows/Codex, Chromium thật)** — **FAIL @ `8aba473` rồi PASS sau fix**: repro 4/4 desktop/mobile ở comment PR #6281985539 (editor facts công đoạn Giao hàng của FIX-AIR/FIX-ROAD hiện heading SEA `Đầu nhận — D/O, POD, trả rỗng` + "hãng tàu"; fields đã đúng theo mode) → fix `afbc18d` (copy theo mode: 2 dòng production + DOM test + rebuild dist cùng commit), browser smoke **8/8 PASS** (FIX-AIR/FIX-ROAD/FIX-FCL/FIX-LCL × 1440×900/390×844, 0 business write), focused **107 PASS**, full suite Windows NEW=∅ (1 GONE flaky, recheck PASS) — chi tiết MỤC 6 "2026-10-20 — PR #211: sửa đúng mode cho câu chữ editor công đoạn". **Hạn chế còn lại**: evidence packet (REPORT/ảnh/DOM/suite comparison) hiện chỉ ở `D:/logi-pr211-current/.tmp/logi211-mode-copy/` nên Control Tower CHƯA đọc được (xem NEXT_ACTION ở MỤC 3); smoke chưa ghi vai trò Sale/Support; `OWNER_UAT=INCOMPLETE`.
 - **QA commit `a811580` + `aba8dcc` (2026-10-19)** — **SOURCE_DIFF_VERIFIED, QA_PASS=NO**. GitHub GET: PR #211 head và nhánh session cùng `aba8dcc` trước sửa, branch không merge; tạo code fix candidate `29bfecd7f431b111dd7b4d35d3ba4675c3b02f6f` và đọc lại từng hunk: helper `core/customs_truth.py` chỉ `True` hoặc `"true"` xác nhận; các reader Journey/VM/checklist/tracking/dashboard dùng chung helper; Streamlit checkbox ép giá trị cũ về boolean trước khi hiển thị; writer chặn `"1"`/giá trị lạ và báo lỗi. `tests/test_journey_stage_guidance.py` thêm ca dương/âm, tracking và kiểm legacy. **Chưa chạy test nào trong phiên QA này**: lệnh CI chuẩn `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` NOT_RUN; so baseline `6f9d156` worktree riêng NOT_RUN (`NEW=UNKNOWN, GONE=UNKNOWN`); không có local checkout, không xác minh worktree sạch; trạng thái `component/node_modules` của checkout không xác định; `npm ci`/`npm run typecheck`/`npm run build`/browser/saving checkbox NOT_RUN. Dữ liệu production KHÔNG truy cập/sửa. Các kết quả test/build cũ ở MỤC 3 không phải chứng cứ cho commit QA này. Giữ PR #211 OPEN, **KHÔNG merge main/deploy**.
@@ -128,6 +133,7 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
 
 ## MỤC 5 — CẦN OWNER
 
+- **Owner: thu hồi + cấp lại `AGENTROUTER_API_KEY`** (đã lộ qua attachment ZIP công khai trên repo public), cập nhật env/secrets, chạy lại smoke, quét lịch sử git tìm khoá.
 - Danh sách pháp nhân thật trong `authority_companies` (tên + vai trò)
 - **Bước (3B) — chiều bàn giao kho**: repo KHÔNG định nghĩa bên nào là bên giao / bên nhận
   cho từng trường hợp thật, nên UI chỉ cho CHỌN trong 3 pháp nhân của chuỗi ủy thác và
