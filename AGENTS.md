@@ -44,9 +44,9 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Baseline hiện tại
 
-- **Branch verified:** `log-c15-user-identity-rbac` @ `e518cae` (LOG-C13 + LOG-C14 + LOG-C15, đã kiểm chứng).
-- Lineage: `main` ← `log-c13-contract-commercial-handoff` ← `log-c14-e2e-release-readiness` ← `log-c15-user-identity-rbac`.
-- Merge strategy được khuyến nghị: 1 PR cumulative (C13+C14+C15) vào `main`, xem `docs/LOG_C15_HANDOFF.md` mục 37.
+- **Trạng thái sống của dự án nằm ở `docs/CONTROL-TOWER-HANDOFF.md`** — đọc TRƯỚC khi làm bất cứ việc gì; file được cập nhật cuối mỗi task và là sự thật mới nhất về đang ở đâu / còn gì / cần Owner gì.
+- **Công việc hiện tại:** chuỗi LOGI-199 trên PR **#211** — head `arena/a3117943-logistics-work-desk-arena`, base `ct/logi199-journey-main-integration-20261017`.
+- Chuỗi LOG-C13/C14/C15 (`log-c15-user-identity-rbac` @ `e518cae`) là **lịch sử** — ngữ cảnh xem `docs/LOG_C15_HANDOFF.md`; KHÔNG dùng làm baseline cho công việc hiện tại.
 - KHÔNG deploy production; KHÔNG merge main cho đến khi Owner xác nhận.
 
 ## Quy ước quan trọng
@@ -60,8 +60,11 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Testing
 
-- Full suite: `python -m pytest tests -q` → kỳ vọng 200 passed, 28 skipped (pure tests).
+- Full suite (lệnh CI): `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` → số thật gần nhất: **37 failed / 2110 passed / 44 skipped / 0 errors** (đo 2026-10-20 tại SHA `8f4d15ff581c1fa3daf12626ae5d02d7b734d649`, pytest 9.1.1 + node 22 + `npm --prefix component ci`; cùng ngày tại `8aba473` là 37 / 2109 / 44 / 0, bản ghi 2026-10-19 là 37 / ~2100 / 44 / 2 — chênh trong biên flaky ±1 và khác phiên bản pytest). Kỳ vọng cũ "200 passed, 28 skipped" là của chuỗi LOG-C15 đã kết thúc — không còn đúng, đừng dùng.
+- Cách đọc đúng: tập failure = **31 lỗi có sẵn trên main** + **6 xung đột test-main × code-#210 còn lại** (tên đã biết: `test_journey_super_goal_186`, họ `test_journey_visual_fidelity_190` ×4, `test_visual_shipment_workspace::test_same_attachment_id_...`; 4 ca `test_journey_fresh_parity_188` đã sửa nên còn 37 thay vì 41). **ĐỎ = hồi quy so với baseline**, không phải "phải 0 lỗi": so tập FAILED/ERROR với baseline cùng môi trường — chấp nhận khi `NEW=∅` và `GONE=∅`.
+- Baseline đã mã hoá trong `.github/workflows/ci.yml` (`BASELINE_FAILED` kèm phân rã thành phần trong comment) — CI đỏ khi vượt baseline đó.
 - Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
+- Số flaky ±1 skip/fail theo môi trường; vượt 1 test thì re-run xác nhận trước khi gọi hồi quy.
 - Auth/RBAC: `tests/test_logc15_auth_rbac.py` (pure, mock streamlit).
 - DB users: `scripts/logc15_db_users_test.py` + runner — chạy trên DB test riêng, tự dọn.
 
@@ -354,6 +357,15 @@ Mỗi lần một phiên làm sai và được Control Tower chỉ ra, thêm M�
 Giữ mỗi dòng thật ngắn. Nếu dài quá thì chuyển sang `docs/LESSONS.md` và để link.
 
 - (rỗng — các phiên sau điền)
+
+## Definition of Done tối thiểu cho task đụng UI
+
+1. Đổi source React ⇒ BẮT BUỘC rebuild `component/dist` trong CÙNG commit + kiểm marker parity source↔dist; bundle ship phải khớp source của đúng commit đó.
+2. Browser/visual QA phải chạy trên bundle của ĐÚNG commit được kiểm, và phải có ít nhất 1 ca đúng vai trò Sale và 1 ca Support (không chỉ admin).
+3. Bằng chứng QA/browser phải nằm ở nơi Control Tower đọc được (comment PR hoặc file trong `docs/`), không chỉ ổ đĩa máy trạm.
+4. Task CHỈ ĐỌC mà có kết quả nghiệm thu (QA/browser/audit) thì Control Tower phải ghi 1 dòng vào `docs/CONTROL-TOWER-HANDOFF.md` mục 3/4 (hoặc ghi rõ lý do không).
+
+Cách vận hành Control Tower + mẫu prompt + thang failover: `docs/CONTROL-TOWER-PLAYBOOK.md`.
 
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack
