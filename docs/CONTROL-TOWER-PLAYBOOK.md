@@ -13,17 +13,19 @@ Khối dán NGUYÊN VĂN cho một chat Control Tower mới:
 
 ```text
 Bạn là Control Tower dự án Logistics Work Desk. Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo:
-1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/AGENTS.md
-2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
-3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-PLAYBOOK.md
-4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-HANDOFF.md
+1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/AGENTS.md
+2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
+3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
+4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-HANDOFF.md
 5. Head PR + comment mới nhất qua api.github.com (xem §6)
 Sau đó báo ngắn: đang ở đâu, NEXT_ACTION, rồi hỏi Owner phiên này làm gì. Không tự code.
 ```
 
-Ghi chú: đọc trên NHÁNH ĐANG LÀM, không đọc bản `main` (bản `main` thiếu luật
-handoff/charter). Nhánh đang làm hiện tại: `arena/a3117943-logistics-work-desk-arena`
-(nhánh head PR #211). Nếu nhánh đổi trong tương lai, cập nhật đúng 4 link trên.
+Ghi chú: đọc trên **bản neo PR** (`refs/pull/211/head`), không đọc bản `main` (bản `main`
+thiếu luật handoff/charter). **Link 404** → mở
+`https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211` lấy `head.ref`
+rồi thay chuỗi `refs/pull/211/head` bằng tên nhánh đó (không đoán tên nhánh); sau khi merge
+`main` thì đổi 4 link sang `.../main/...`; link theo SHA dùng cho bằng chứng.
 
 ## §1 — LÀN VÀ NĂNG LỰC
 
@@ -84,17 +86,11 @@ Thiếu bất kỳ field nào ⇒ prompt chưa đủ chặt — viết lại TR�
 
 ## §5 — KHAI THÁC ARENA TỐI ĐA
 
-- Chỉ giao việc có test deterministic. Không đặt acceptance cần browser.
-- Một phiên một mục tiêu; nhồi đủ yêu cầu ngay prompt đầu; micro-fix dùng "keep working".
-- Bắt buộc RED-before/GREEN-after; full suite so baseline cùng môi trường (`NEW=∅/GONE=∅`);
-  không chạy được thì ghi `NOT_RUN`, cấm gọi PASS.
-- Arena báo tên nhánh + SHA; Control Tower kiểm ancestry rồi mới cho fast-forward; Arena
-  không merge.
-- Sau mỗi phiên Arena: kiểm nhánh mồ côi (đã từng mất 1 commit vì push vào nhánh không
-  ai biết — xem §9).
-- Canary đầu phiên cho việc medium/high risk; Arena không tự chấm điểm.
-- Cấm: đụng main, force-push, PR mới, đụng app `tienthanhlog`, production write, mở rộng
-  scope, đổi schema ngoài phạm vi.
+- Chỉ giao việc có test deterministic.
+- Không đặt acceptance cần browser.
+- Kiểm nhánh mồ côi sau mỗi phiên (đã từng mất 1 commit vì push vào nhánh không ai biết — xem §9).
+
+Chi tiết đầy đủ: `docs/ARENA-OPERATING-GUIDE.md`.
 
 ## §6 — ĐƯỜNG ĐỌC RẺ CHO CONTROL TOWER (api.github.com)
 
@@ -108,6 +104,11 @@ Thiếu bất kỳ field nào ⇒ prompt chưa đủ chặt — viết lại TR�
   → head ref thật khi cần đối chiếu nhanh trước fast-forward.
 - `GET /repos/7roger89-web/logistics-work-desk-arena/contents/docs/CONTROL-TOWER-HANDOFF.md?ref=<nhánh đang làm>`
   → đọc handoff qua API khi không mở trang PR.
+- `GET /repos/7roger89-web/logistics-work-desk-arena/compare/{sha_cu}...{sha_moi}` →
+  `status` (`ahead`/`behind`/`diverged`/`identical`), `ahead_by`, `behind_by`,
+  `total_commits` — kiểm ancestry/divergent TRƯỚC khi cho fast-forward head PR.
+- `GET /repos/7roger89-web/logistics-work-desk-arena/branches?per_page=100` → danh sách
+  nhánh + `commit.sha` — tìm nhánh mồ côi / nhánh session chưa vào PR sau mỗi phiên.
 
 Luật: mở trang PR đầy đủ (web UI) tối đa 1 lần/phiên; handoff mục 3 giữ gọn trong 1 màn
 hình (chi tiết dài đẩy xuống mục 6).

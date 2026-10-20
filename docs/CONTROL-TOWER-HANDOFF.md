@@ -2,6 +2,31 @@
 
 Bàn giao ca cho Control Tower. Mọi task có thay đổi file PHẢI cập nhật file này trước khi báo cáo hoàn tất — quy tắc đứng tại `AGENTS.md` mục `## Control Tower handoff — bắt buộc mọi task`.
 
+## ĐỌC TRƯỚC (cho chat Control Tower mới)
+
+### a. Bốn link neo PR #211
+
+Đọc trên `refs/pull/211/head` — luôn trỏ đúng head hiện tại của PR, không phải bản `main`:
+
+1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/AGENTS.md
+2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
+3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
+4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/ARENA-OPERATING-GUIDE.md
+
+Link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy `head.ref` rồi thay chuỗi `refs/pull/211/head` bằng tên nhánh đó; sau khi merge main thì đổi 4 link sang `.../main/...`; link theo SHA dùng cho bằng chứng.
+
+### b. Năm luật cứng
+
+1. Bạn **ĐỌC được, KHÔNG ghi được** — mọi ghi repo đi qua executor hoặc GitHub Edit có kiểm chứng.
+2. **Không khảo sát lại repo** — kế hoạch, quyết định, trạng thái đã nằm trong handoff này.
+3. **Số trong tài liệu là "khai báo"** — muốn dùng thì phải đo lại trong phiên hiện tại.
+4. **Người viết ≠ người QA** — không ai tự nghiệm thu việc mình làm.
+5. **Cuối phiên PHẢI để lại `NEXT_ACTION` + `NEXT_PACKET` ở MỤC 3** — sắp hết quota thì viết packet trước.
+
+### c. Đọc tiếp ở đâu
+
+Chi tiết cách vận hành ở `docs/CONTROL-TOWER-PLAYBOOK.md`; luật giao việc cho Arena ở `docs/ARENA-OPERATING-GUIDE.md`.
+
 ## MỤC 1 — MỤC ĐÍCH DỰ ÁN
 
 Journey map-first để Support/Sale nhìn biết lô đang ở công đoạn nào và công đoạn đó còn phải
@@ -30,7 +55,9 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ## MỤC 3 — TRẠNG THÁI
 
-- **CURRENT — 2026-10-20, PR #211 mode-copy fix (`afbc18d`)**: đã đóng reproduction ở [comment 6281985539](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6281985539). Browser smoke **8/8 PASS** trên bundle mới: AIR/ROAD/SEA FCL/LCL × 1440×900/390×844; AIR/ROAD không còn “hãng tàu”/“trả rỗng”, SEA giữ nguyên câu cũ, fields không đổi, **0 business write**. Focused **107 PASS**; typecheck/build/scan **0 executable hits**. Full suite cùng môi trường Windows: baseline **61 failed / 2048 passed / 23 skipped / 5 errors**, bản sửa **60 / 2050 / 23 / 5**; raw **NEW=∅, GONE=1** do test quote-note so `calculated_at` lệch một giây, chạy lại riêng **PASS cả hai cây**. Không gọi full suite xanh hoặc raw GONE=∅. Chỉ nghiệm thu lát sửa câu chữ; **OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES**. Chi tiết/bằng chứng ở mục mới nhất MỤC 6; các milestone phía dưới giữ nguyên như lịch sử.
+- **CURRENT — 2026-10-20, docs-only: mục ĐỌC TRƯỚC + `docs/ARENA-OPERATING-GUIDE.md` + playbook §0/§5/§6**: đầu file này có mục `## ĐỌC TRƯỚC (cho chat Control Tower mới)` (4 link neo `refs/pull/211/head` + dòng fallback 404 + 5 luật cứng); file mới `docs/ARENA-OPERATING-GUIDE.md` gom toàn bộ luật khai thác Arena (deterministic-only, một phiên một mục tiêu, RED/GREEN, `NEW=∅/GONE=∅`, báo nhánh + SHA, kiểm nhánh mồ côi, canary, danh sách cấm, khối bằng chứng, checklist cuối phiên) và ghi rõ **không phải luật thứ hai**; `docs/CONTROL-TOWER-PLAYBOOK.md` §5 rút còn 3 gạch + trỏ guide, §0 đổi sang 4 link neo PR + fallback, §6 thêm `compare` + `branches?per_page=100`. Không đổi code Python/React, `component/dist`, CI; `BROWSER_NOT_VERIFIED` (docs-only). **`OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES`.** Chi tiết/bằng chứng ở mục mới nhất MỤC 6.
+
+- **Trước đó (code lane) — 2026-10-20, PR #211 mode-copy fix (`afbc18d`)**: đã đóng reproduction ở [comment 6281985539](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6281985539). Browser smoke **8/8 PASS** trên bundle mới: AIR/ROAD/SEA FCL/LCL × 1440×900/390×844; AIR/ROAD không còn “hãng tàu”/“trả rỗng”, SEA giữ nguyên câu cũ, fields không đổi, **0 business write**. Focused **107 PASS**; typecheck/build/scan **0 executable hits**. Full suite cùng môi trường Windows: baseline **61 failed / 2048 passed / 23 skipped / 5 errors**, bản sửa **60 / 2050 / 23 / 5**; raw **NEW=∅, GONE=1** do test quote-note so `calculated_at` lệch một giây, chạy lại riêng **PASS cả hai cây**. Không gọi full suite xanh hoặc raw GONE=∅. Chỉ nghiệm thu lát sửa câu chữ; **OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES**. Chi tiết/bằng chứng ở mục mới nhất MỤC 6; các milestone phía dưới giữ nguyên như lịch sử.
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
@@ -68,6 +95,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 - ~~scope-guard 2 fact `booking_status`/`on_board_at` trong `views/logi_view_model.py`~~ — **ĐÃ CÓ từ chuỗi T1–T5** (`views/logi_view_model.py:2979`, gate `MAIN_CARRIAGE`), Owner không còn phải duyệt việc "đụng file"; nếu muốn gỡ thì Owner nói riêng.
 - **Owner quyết định** hướng xử lý 10 failure xung đột test-main × code-#210 (mục riêng hay bỏ qua) — xem số liệu Suite ở trên (sau tích hợp còn 40, gồm 188×3/186/190×4 + main-baseline).
 - **Owner**: giữ gate pháp nhân thật và chiều bàn giao tại MỤC 5. Guidance/mode-copy có focused tests 107 PASS và browser slice 8/8; việc còn lại là Owner UAT đúng dữ liệu thật, không phải yêu cầu chạy lại code (3B).
+- **PR #211 head sync đang chờ (2026-10-20)**: commit docs của phiên này (mục ĐỌC TRƯỚC + `docs/ARENA-OPERATING-GUIDE.md` + playbook §0/§5/§6) nằm trên **nhánh session**, chưa vào nhánh head `arena/a3117943-logistics-work-desk-arena` (head thật lúc viết: `8f4d15f`). Cần Control Tower kiểm ancestry rồi **fast-forward FF-only** theo luật MỤC 2; xong thì 4 link neo `refs/pull/211/head` trong mục ĐỌC TRƯỚC mới đọc được (hiện link #3/#4 còn 404 vì 2 file chỉ tồn tại từ `89e4062`).
 
 ### NEXT_ACTION
 
@@ -113,6 +141,14 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
   trường hợp nào cả hai chiều đều hợp lệ. Chưa chốt thì không có auto-DONE, không suy chiều.
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-20 — ĐỌC TRƯỚC cho chat Control Tower + `docs/ARENA-OPERATING-GUIDE.md` (docs-only)
+
+- **Phạm vi — đúng 3 sửa + 1 file mới, toàn bộ là markdown**: (1) `docs/CONTROL-TOWER-HANDOFF.md` thêm `## ĐỌC TRƯỚC (cho chat Control Tower mới)` ngay TRƯỚC `## MỤC 1`, đúng 3 phần: **(a)** 4 link neo `refs/pull/211/head` nguyên văn + dòng fallback (404 → lấy `head.ref` từ API PR rồi thay chuỗi `refs/pull/211/head`; sau merge main đổi `.../main/...`; link theo SHA dùng cho bằng chứng); **(b)** 5 luật cứng — đọc được/không ghi được, không khảo sát lại repo, số trong tài liệu là "khai báo" phải đo lại, người viết ≠ người QA, cuối phiên phải để `NEXT_ACTION` + `NEXT_PACKET` ở MỤC 3 (sắp hết quota thì viết packet trước); **(c)** 1 dòng trỏ `docs/CONTROL-TOWER-PLAYBOOK.md` + `docs/ARENA-OPERATING-GUIDE.md`. (2) `docs/ARENA-OPERATING-GUIDE.md` (**mới**) — mở đầu ghi rõ "hướng dẫn vận hành Arena cho dự án này; không phải luật thứ hai"; §1 làn Arena (không Chromium → `BROWSER_NOT_VERIFIED`; không merge/deploy/force-push/push nhánh khác/PR mới/main/`tienthanhlog`/production), §2 mười luật giao việc, §3 khối bằng chứng bắt buộc, §4 bốn dấu hiệu Control Tower phải dừng, §5 bài học đã trả giá, §6 checklist cuối phiên. (3) `docs/CONTROL-TOWER-PLAYBOOK.md`: §5 rút còn đúng 3 gạch (việc có test deterministic / không acceptance cần browser / kiểm nhánh mồ côi) + 1 dòng "Chi tiết đầy đủ: `docs/ARENA-OPERATING-GUIDE.md`"; §0 thay 4 link nhánh bằng 4 link neo PR + dòng fallback; §6 thêm `GET /repos/.../compare/{sha_cu}...{sha_moi}` và `GET /repos/.../branches?per_page=100`.
+- **Nội dung chuyển chỗ, không xoá luật**: 4 gạch rút khỏi playbook §5 (một phiên một mục tiêu + "keep working"; RED-before/GREEN-after + `NEW=∅/GONE=∅` + `NOT_RUN`; báo nhánh + SHA, Arena không merge; canary đầu phiên + không tự chấm điểm) và danh sách CẤM nằm nguyên trong guide §2.
+- **Bất biến**: không code Python/React, không `component/dist`, không `.p2p/portable/*`, không block `<!-- BEGIN P2P -->`, không merge main, không deploy, không force-push, không PR mới. MỤC 1/2/4/5 giữ nguyên; entry MỤC 6 của làn Codex ngay dưới giữ nguyên nội dung — chỉ đổi nhãn dòng đầu MỤC 3 của làn code từ "CURRENT" thành "Trước đó (code lane)" cho khớp sự thật mới.
+- **Kiểm chứng**: `git diff --stat` = 2 file sửa + 1 file mới, tất cả `.md`. Link neo: `GET /repos/.../git/ref/pull/211/head` → 200, `8f4d15ff581c1fa3daf12626ae5d02d7b734d649`; raw `refs/pull/211/head/AGENTS.md` = 200 (đã đọc thật), `.../.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` = 200 (đã đọc thật); `.../docs/CONTROL-TOWER-PLAYBOOK.md` và `.../docs/ARENA-OPERATING-GUIDE.md` = **404 tại head `8f4d15f`** vì hai file chỉ tồn tại từ `89e4062` — chỉ thành 200 SAU khi fast-forward head PR (xem MỤC 3 ĐANG CHỜ). Full suite `pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py`, cùng môi trường sandbox (python 3.11.2, pytest 9.1.1, node 22.22.3, **không** có `component/node_modules` nên 4 test DOM tự skip): baseline @ `89e4062` **37 failed / 2106 passed / 48 skipped / 10 subtests**; docs-final lần 1 **38 / 2105 / 48 / 10** — 1 ca lạ `test_gnt_and_docgen_reality_check::test_gnt_revision_comes_from_durable_docgen_metadata_after_session_clear` (chạy riêng 2 lần đều **PASS**); lần 2 **37 / 2106 / 48 / 10**, `comm` trên tập FAILED/ERROR → **NEW=∅ GONE=∅**. So với 44 skip của phiên trước: sandbox này thiếu jsdom nên 4 test DOM skip thêm (2110 − 4 = 2106 pass) — đúng thiết kế, không phải hồi quy.
+- **Còn lại / Cần Owner**: fast-forward **FF-only** `arena/a3117943-logistics-work-desk-arena` lên commit docs này để 4 link neo PR thật sự đọc được (session rule của Arena không cho push nhánh khác — lệnh + SHA ở báo cáo task); `OWNER_UAT=INCOMPLETE`; 2 gate MỤC 5 giữ nguyên.
 
 ### 2026-10-20 — Playbook Control Tower + sửa 3 chỗ hướng dẫn stale (docs-only)
 
