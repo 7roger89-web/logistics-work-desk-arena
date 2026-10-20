@@ -27,6 +27,11 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
   bắt buộc, luật khai thác Arena, đường đọc rẻ `api.github.com`, thang failover 5 tầng,
   bất biến liên tục, bài học đã trả giá. Hồ sơ vận hành, KHÔNG phải luật thứ hai
   (luật gốc: `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`).
+- **Opener chuẩn v2 ở PLAYBOOK §0; skill capsule §0.1 (2026-10-20)**: chat Control Tower
+  mới dán nguyên §0 — 4 raw link trên nhánh `arena/a3117943-...` + 2 URL `api.github.com`
+  (head PR + comment mới nhất), luật "đọc được, KHÔNG ghi được", nghĩa vụ cuối phiên để
+  lại NEXT_ACTION + NEXT_PACKET, và cách ra lệnh cho Arena theo từng chat. §0.1 là capsule
+  `scope-reality-check` dùng ngay (path + SHA256 thật, không thay luật).
 
 ## MỤC 3 — TRẠNG THÁI
 
@@ -71,7 +76,9 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ### NEXT_ACTION
 
-Public-hoá bằng chứng browser smoke 8/8 của lát mode-copy (`afbc18d`, hiện chỉ ở file local `D:/logi-pr211-current/.tmp/logi211-mode-copy/` — Control Tower chưa đọc được) lên comment PR #211; rồi QA độc lập lát mode-copy trên bundle của ĐÚNG commit hiện hành với tối thiểu 1 ca vai trò Sale + 1 ca vai trò Support (smoke đầu chưa ghi vai trò — DoD trong AGENTS.md). Sau đó mới tới Owner UAT đúng dữ liệu thật (MỤC 5). Packet dán-ngay:
+**Trước tiên — đồng bộ head PR #211**: đọc lại head thật bằng `api.github.com` (mục 6), kiểm `compare/8f4d15f...<SHA playbook v2>` phải là `ahead` — commit playbook v2 là hậu duệ trực tiếp của `8f4d15f` — rồi fast-forward `arena/a3117943-logistics-work-desk-arena` lên đúng SHA đó; FF-only, KHÔNG force, `diverged` thì DỪNG và kiểm lại diff PR + handoff. Việc này đưa opener v2 + §0.1 lên đúng các raw link của §0.
+
+Sau đó: Public-hoá bằng chứng browser smoke 8/8 của lát mode-copy (`afbc18d`, hiện chỉ ở file local `D:/logi-pr211-current/.tmp/logi211-mode-copy/` — Control Tower chưa đọc được) lên comment PR #211; rồi QA độc lập lát mode-copy trên bundle của ĐÚNG commit hiện hành với tối thiểu 1 ca vai trò Sale + 1 ca vai trò Support (smoke đầu chưa ghi vai trò — DoD trong AGENTS.md). Sau đó mới tới Owner UAT đúng dữ liệu thật (MỤC 5). Packet dán-ngay:
 
 ### NEXT_PACKET (dán được ngay)
 
@@ -79,7 +86,7 @@ Public-hoá bằng chứng browser smoke 8/8 của lát mode-copy (`afbc18d`, hi
 LOGI — public-hoá bằng chứng browser smoke + QA độc lập lát mode-copy PR #211 (đọc/đo, không sửa)
 GỬI CHO: executor có checkout + Chromium (Codex/Windows — máy đang giữ evidence packet)
 CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên khác phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
-EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu api.github.com /repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; lần ghi packet này là 8f4d15ff581c1fa3daf12626ae5d02d7b734d649>
+EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu api.github.com /repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; lần ghi packet này là 8f4d15ff581c1fa3daf12626ae5d02d7b734d649; sau fast-forward playbook v2 ở NEXT_ACTION thì đọc lại API và dùng head mới>
 TASK_AUTHORITY=Control Tower 2026-10-20 + comment #6281985539 + handoff MỤC 3 · KHÔNG push, KHÔNG sửa code (task đọc/đo); file bằng chứng chỉ đính qua comment PR
 P2P_LAW_PREFLIGHT theo AGENTS.md (đọc AGENTS.md → portable law; báo P2P_LAW_SOURCE + LAW_CHECK kèm SOURCE_SHA256; EXPERIENCE_CHECK; LEARNING_RECONCILIATION cuối task) · OE_GATE: "Không bị over engineering chứ?" + SIMPLER_PATH/MATERIAL_PROGRESS/NECESSITY/CORE_BEFORE_SUPPORT/SMALLER_VERIFIABLE_SLICE + OE_VERDICT + 1 lý do
 REQUIRED_SKILLS=scope-reality-check (path + SHA256 thật lấy từ .p2p/portable/P2P-SKILL-PROJECTION.json; trả 1 p2p-skill-consumption-receipt/1)
@@ -113,6 +120,14 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
   trường hợp nào cả hai chiều đều hợp lệ. Chưa chốt thì không có auto-DONE, không suy chiều.
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-20 — Playbook v2: opener tự đủ + skill capsule + luật vận hành Arena theo chat (docs-only)
+
+- **Authority / base / commit**: task Control Tower 2026-10-20. Vào phiên tại `89e4062` (= head thật của nhánh playbook `arena/5b67d6ed-...`, là **con trực tiếp** của head PR #211 `8f4d15f`); head PR thật đọc qua API lúc mở phiên = `8f4d15ff581c1fa3daf12626ae5d02d7b734d649`, **KHÔNG phải** `89e4062` như prompt ghi → đã fetch, dùng head thật, ghi lại SHA. Commit docs trên nhánh session `arena/cee7f2f5-logistics-work-desk-arena`; SHA cuối nằm trong báo cáo task. Không merge main, không deploy, không PR mới, không production write.
+- **Đúng 3 sửa trong `docs/CONTROL-TOWER-PLAYBOOK.md`**: (1) §0 thay opener bằng v2 **dán nguyên văn** — giữ 4 raw link trỏ nhánh `arena/a3117943-...`, thêm link 5 = `api.github.com` pulls/211 (`head.sha`, `base.ref`, `mergeable`, `state`) + comments mới nhất; thêm luật "bạn ĐỌC được, KHÔNG ghi được", nghĩa vụ cuối phiên `NEXT_ACTION` + `NEXT_PACKET`, mục SKILL dùng ngay và CÁCH RA LỆNH CHO ARENA theo từng chat. (2) §0.1 mới — capsule `scope-reality-check` 9 gạch (7 operating contract + compression test + reconstruction), kèm path + SHA256 thật + dòng "file skill KHÔNG thay luật". (3) §5 +4 gạch **VẬN HÀNH THEO CHAT** (mỗi chat = 1 nhánh/mục tiêu; mất chat chỉ an toàn khi đã commit + push + báo nhánh + SHA; prompt luôn đòi báo TÊN NHÁNH + SHA; kiểm nhánh mồ côi) và §6 +2 endpoint (`compare/{sha_cu}...{sha_moi}` trước fast-forward, `diverged` ⇒ DỪNG không force; `branches?per_page=100` bắt nhánh mồ côi).
+- **Kiểm chứng**: SHA256 `.agents/skills/scope-reality-check/SKILL.md` = `e2b894509e4c8987d5d509edb98a06ee85ad98ebae088b88edde6efe40bd7688`, khớp 100% `.p2p/portable/P2P-SKILL-PROJECTION.json`. Opener §0 so khớp nguyên văn với khối Owner giao (`VERBATIM_MATCH=True`, 35 dòng, đúng 4 raw link nhánh `arena/a3117943` + 2 URL API). Diff chỉ 2 file markdown (playbook + handoff), 0 file code/`component/dist`/`.p2p`. Probe sống link 5: `issues/211/comments` trả comment cũ→mới bất kể `direction=desc` (4 comment, `6281985539` nằm cuối) — §0 giữ **nguyên văn** theo lệnh Owner; người đọc lấy phần tử cuối và tăng `per_page` khi PR có >5 comment. Full suite `NOT_RUN` — docs-only, không đổi executable/source/test nên không có decision value; baseline 37/2110/44/0 tại `8f4d15f` là số **khai báo** từ entry trước, phiên này không đo lại và không gọi PASS.
+- **FF head PR**: `arena/a3117943-...` đang ở `8f4d15f`; commit này là hậu duệ trực tiếp của `8f4d15f` nên FF hợp lệ — kiểm `compare` trước khi push. Arena chỉ push nhánh session theo session rule → Control Tower/Owner chạy FF-only theo MỤC 2; nếu `diverged` thì DỪNG, không force.
+- **Preflight / skill / OE / learning**: `P2P_LAW_SOURCE=LOCAL_PORTABLE`; portable body SHA `11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b` (hash phần thân sau block header; full-file `75d4d1d5...de1e` khác là đúng thiết kế), `AGENTS.md` `1e556d37...8341`; `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE` (`shared-exp-b2611df4c9393f0017f07dcb`). Required `scope-reality-check` đọc đủ `SKILL.md` và khớp hash projection. "Không bị over engineering chứ?" → `SIMPLER_PATH=NO, MATERIAL_PROGRESS=YES, NECESSITY=YES, CORE_BEFORE_SUPPORT=YES, SMALLER_VERIFIABLE_SLICE=NO`, `OE_VERDICT=DO_IT`: 2 file docs, không thêm cơ chế/registry/daemon, tái dùng playbook + handoff sẵn có. `LEARNING_RECONCILIATION=NONE`: routine docs progress; bài học head-PR-lệch-expected đã được mã hoá ngay trong playbook §0/§6, không tạo memory mới.
 
 ### 2026-10-20 — Playbook Control Tower + sửa 3 chỗ hướng dẫn stale (docs-only)
 

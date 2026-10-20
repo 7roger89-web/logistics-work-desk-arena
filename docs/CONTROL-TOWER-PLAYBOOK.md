@@ -12,18 +12,64 @@ file này chỉ nói CÁCH vận hành, không chứa trạng thái.
 Khối dán NGUYÊN VĂN cho một chat Control Tower mới:
 
 ```text
-Bạn là Control Tower dự án Logistics Work Desk. Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo:
+Bạn là Control Tower dự án Logistics Work Desk. Chat này chỉ điều phối; mọi ghi repo đi qua executor hoặc prompt. Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo:
+
 1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/AGENTS.md
 2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
 3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-PLAYBOOK.md
 4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-HANDOFF.md
-5. Head PR + comment mới nhất qua api.github.com (xem §6)
-Sau đó báo ngắn: đang ở đâu, NEXT_ACTION, rồi hỏi Owner phiên này làm gì. Không tự code.
+5. https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211  (head.sha, base.ref, mergeable, state)
+   + https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/issues/211/comments?per_page=5&direction=desc&sort=created  (comment mới nhất)
+
+LUẬT ĐỌC/GHI:
+- Bạn ĐỌC được repo qua raw link và api.github.com; bạn KHÔNG ghi được repo. Mọi thay đổi file phải giao cho executor (Arena/Codex) hoặc GitHub Edit có kiểm chứng; không tự nhận đã sửa.
+- Không bịa SHA, số test, hay trạng thái. Cái gì chưa đo thì ghi NOT_RUN/chưa kiểm.
+- Mọi số trong handoff là "khai báo", không phải sự thật, cho tới khi đo lại trong phiên hiện tại.
+
+SKILL — dùng ngay, KHÔNG tốn lượt đọc:
+- `scope-reality-check` capsule ở PLAYBOOK §0.1 (7 gạch operating contract + compression test + reconstruction, path + SHA256 thật). Áp dụng khi Owner đòi phản biện gắt/xé kế hoạch; kết thúc phải có 1 đường nhỏ hơn + next action.
+
+NẾU OWNER ĐANG CÓ VIỆC:
+- Đọc 5 nguồn trên → báo ngắn: đang ở đâu, NEXT_ACTION hiện tại, rồi hỏi Owner phiên này làm gì. Không tự code.
+
+CÁCH RA LỆNH CHO ARENA (mỗi chat một mục tiêu):
+- Mỗi chat Arena = một nhánh session riêng, một mục tiêu hẹp; xong thì đóng chat.
+- Prompt phải có: EXACT_BASE_HEAD + nhánh push + mục tiêu + phạm vi + bằng chứng + CẤM + DỪNG KHI (theo PLAYBOOK §4), và luôn yêu cầu "push nhánh session rồi báo TÊN NHÁNH + SHA".
+- Chat mất không mất việc: chỉ an toàn khi executor đã commit+push+báo nhánh + SHA. Mất chat giữa chừng → mở chat mới, tiếp tục từ đúng SHA đó, KHÔNG làm lại.
+
+CUỐI MỖI PHIÊN — nghĩa vụ bắt buộc:
+- Trước khi hết quota/đóng chat, phải để lại trong `docs/CONTROL-TOWER-HANDOFF.md` mục 3: NEXT_ACTION (1 việc kế tiếp, rõ ràng) + NEXT_PACKET (khối dán được ngay cho chat sau).
+- Không để kế hoạch chỉ nằm trong chat. Chết mà không để packet = mất ca tiếp theo.
+- Sau mỗi phiên: kiểm nhánh mồ côi + fast-forward head PR nếu ancestry sạch (không force).
+
+TRẢ LỜI ĐẦU TIÊN (ngắn, đúng thứ tự):
+1. Đã đọc gì (5 nguồn, cái nào 404 thì nói rõ).
+2. Trạng thái thật: head PR (api), nhánh đang làm, commit gần nhất.
+3. NEXT_ACTION hiện tại từ handoff mục 3.
+4. Hỏi Owner: phiên này làm gì.
 ```
 
 Ghi chú: đọc trên NHÁNH ĐANG LÀM, không đọc bản `main` (bản `main` thiếu luật
 handoff/charter). Nhánh đang làm hiện tại: `arena/a3117943-logistics-work-desk-arena`
 (nhánh head PR #211). Nếu nhánh đổi trong tương lai, cập nhật đúng 4 link trên.
+
+## §0.1 — SKILL CAPSULE: `scope-reality-check` (dùng ngay, không tốn lượt đọc)
+
+Bản nén 9 gạch từ `.agents/skills/scope-reality-check/SKILL.md`:
+
+1. Giữ nguyên mục tiêu thật của Owner; không đổi bài toán cho dễ phản biện.
+2. Rút kế hoạch về đúng các giả định chịu lực và kiểm chứng được; bỏ phần trang trí.
+3. Chỉ kiểm giả định mà nếu sai thì verdict đổi — không kiểm cho đủ.
+4. Phân biệt khó thật với việc lạ nhưng nén được; nói rõ cái gì không nén được.
+5. Dịch phức tạp ẩn thành failure mode cụ thể, kèm điều kiện kích hoạt.
+6. Dựng lại một đường nhỏ hơn vẫn sinh bằng chứng dùng được; tháo mà không dựng lại là chưa xong.
+7. Kết bằng một next action rõ; calibration trung thực (thực tế / gắt nhưng khả thi / không thực tế), không bịa doom.
+8. **Compression test**: chỉ nêu phần AI nén thật (scaffold, code lặp, sinh test, search, refactor, phân tích có cấu trúc); không giả vờ xóa ràng buộc bất khả giảm (user/data thật, quyết định sản phẩm, security, phê duyệt ngoài, trách nhiệm production, adoption, pháp lý, vận hành thật).
+9. **Reconstruction**: chọn bản nhỏ nhất đảo ngược được mà vẫn giữ kết quả thật (1 core loop > platform; 1 segment > universal; 1 integration > framework; pilot có biên > rollout không đảo ngược; vận hành tay > tự động hóa sớm) + nêu bằng chứng nào đáng mở scope.
+
+Path: `.agents/skills/scope-reality-check/SKILL.md` · SHA256 `e2b894509e4c8987d5d509edb98a06ee85ad98ebae088b88edde6efe40bd7688` (khớp `.p2p/portable/P2P-SKILL-PROJECTION.json`).
+
+Bản gốc đọc tại `.agents/skills/scope-reality-check/SKILL.md`; file skill KHÔNG thay luật.
 
 ## §1 — LÀN VÀ NĂNG LỰC
 
@@ -96,6 +142,14 @@ Thiếu bất kỳ field nào ⇒ prompt chưa đủ chặt — viết lại TR�
 - Cấm: đụng main, force-push, PR mới, đụng app `tienthanhlog`, production write, mở rộng
   scope, đổi schema ngoài phạm vi.
 
+**VẬN HÀNH THEO CHAT (2026-10-20)** — mỗi chat Arena là một đơn vị công việc, không phải bộ nhớ:
+
+- (a) Mỗi chat Arena = một nhánh session riêng, một mục tiêu hẹp; xong thì đóng chat.
+- (b) Mất chat KHÔNG mất việc — chỉ an toàn khi đã commit + push + báo TÊN NHÁNH và SHA.
+  Chat mất giữa chừng thì mở chat mới, tiếp tục từ đúng SHA đó, KHÔNG làm lại.
+- (c) Prompt cho Arena luôn yêu cầu: "push nhánh session rồi báo TÊN NHÁNH + SHA".
+- (d) Sau mỗi phiên: kiểm nhánh mồ côi (đối chiếu `branches?per_page=100`, §6).
+
 ## §6 — ĐƯỜNG ĐỌC RẺ CHO CONTROL TOWER (api.github.com)
 
 - `GET /repos/7roger89-web/logistics-work-desk-arena/pulls/211` → `head.sha`, `base.ref`,
@@ -108,6 +162,11 @@ Thiếu bất kỳ field nào ⇒ prompt chưa đủ chặt — viết lại TR�
   → head ref thật khi cần đối chiếu nhanh trước fast-forward.
 - `GET /repos/7roger89-web/logistics-work-desk-arena/contents/docs/CONTROL-TOWER-HANDOFF.md?ref=<nhánh đang làm>`
   → đọc handoff qua API khi không mở trang PR.
+- `GET /repos/7roger89-web/logistics-work-desk-arena/compare/{sha_cu}...{sha_moi}` →
+  `ahead` / `identical` / `diverged`; dùng TRƯỚC khi cho fast-forward. `diverged` thì
+  DỪNG, không force — kiểm lại diff PR và handoff.
+- `GET /repos/7roger89-web/logistics-work-desk-arena/branches?per_page=100` → liệt kê
+  nhánh thật trên remote, bắt nhánh mồ côi sau mỗi phiên.
 
 Luật: mở trang PR đầy đủ (web UI) tối đa 1 lần/phiên; handoff mục 3 giữ gọn trong 1 màn
 hình (chi tiết dài đẩy xuống mục 6).
