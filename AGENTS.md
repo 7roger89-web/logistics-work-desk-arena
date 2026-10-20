@@ -236,8 +236,10 @@ Giữ mỗi dòng thật ngắn. Nếu dài quá thì để chi tiết ở playb
 - Prompt giao việc thiếu `P2P_LAW_PREFLIGHT`/`OE_GATE` → executor lệch chuẩn, mất cả phiên làm lại.
 - Hướng dẫn stale (số test cũ, baseline chuỗi cũ) làm người đọc sau hiểu sai trạng thái — phát hiện là sửa ngay.
 - Mode của lô KHÔNG đọc từ `s.mode` (có thể là chặng đầu, vd Truck); Journey dùng `executionProfile.mode` — đối chiếu trước khi kết luận câu chữ.
+
 Chi tiết + bối cảnh: docs/CONTROL-TOWER-PLAYBOOK.md §9. Mỗi dòng ở đây phải ngắn.
 - Mọi LEARNING_RECONCILIATION=CANDIDATE phải hạ xuống đây đúng 1 dòng trước khi kết phiên — không để mắc trong nhật ký.
+- Trước khi đính log/ZIP lên PR công khai: quét secret và redaction TRƯỚC, vì attachment GitHub không xoá được về sau.
 
 ## Definition of Done tối thiểu cho task đụng UI
 

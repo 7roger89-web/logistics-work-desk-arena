@@ -76,7 +76,7 @@ MỤC 3 chỉ giữ CURRENT + ĐANG CHỜ + NEXT_ACTION/NEXT_PACKET; lịch sử
 LOGI — đóng khoảng trống assurance của lát mode-copy PR #211 (đọc/đo, không sửa code)
 GỬI CHO: Codex desktop (Windows) — có checkout thật + Chromium
 CHAT_MODE=NEW_CHAT · ROLE=QA độc lập (phiên KHÁC phiên đã sửa) · PROJECT=LOGISTICS-WORK-DESK · REPO=7roger89-web/logistics-work-desk-arena · PR=#211
-EXACT_BASE_HEAD=a366beeaebf9f0c4dbf011de42c13a94d93aeaab
+EXACT_BASE_HEAD=<head PR hiện tại — đối chiếu https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 trước khi làm, không đoán; lần ghi packet này là a366beeaebf9f0c4dbf011de42c13a94d93aeaab>
 TASK_AUTHORITY=Control Tower + comment #6285586667 (QA đã PROVEN lát mode-copy, tự khai 3 khoảng trống) + handoff MỤC 3
 KHÔNG push code, KHÔNG sửa source (task đọc/đo); bằng chứng chỉ đính qua comment PR #211
 P2P_LAW_PREFLIGHT theo AGENTS.md (đọc AGENTS.md → portable law; báo P2P_LAW_SOURCE + LAW_CHECK kèm SOURCE_SHA256; EXPERIENCE_CHECK; LEARNING_RECONCILIATION cuối task) · OE_GATE: "Không bị over engineering chứ?" + SIMPLER_PATH/MATERIAL_PROGRESS/NECESSITY/CORE_BEFORE_SUPPORT/SMALLER_VERIFIABLE_SLICE + OE_VERDICT + 1 lý do
