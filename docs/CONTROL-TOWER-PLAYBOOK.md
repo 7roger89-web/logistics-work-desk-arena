@@ -14,12 +14,13 @@ Khối dán NGUYÊN VĂN cho một chat Control Tower mới:
 ```text
 Bạn là Control Tower dự án Logistics Work Desk. Chat này chỉ điều phối; mọi ghi repo đi qua executor hoặc prompt. Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo:
 
-1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/AGENTS.md
-2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
-3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-PLAYBOOK.md
-4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/arena/a3117943-logistics-work-desk-arena/docs/CONTROL-TOWER-HANDOFF.md
+1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/AGENTS.md
+2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
+3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
+4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-HANDOFF.md
 5. https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211  (head.sha, base.ref, mergeable, state)
    + https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/issues/211/comments?per_page=5&direction=desc&sort=created  (comment mới nhất)
+FALLBACK: link nào 404 → lấy `head.ref` từ https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 rồi thay `refs/pull/211/head` bằng `refs/heads/<head.ref>` và đọc lại; KHÔNG đoán nhánh.
 
 LUẬT ĐỌC/GHI:
 - Bạn ĐỌC được repo qua raw link và api.github.com; bạn KHÔNG ghi được repo. Mọi thay đổi file phải giao cho executor (Arena/Codex) hoặc GitHub Edit có kiểm chứng; không tự nhận đã sửa.
@@ -49,9 +50,11 @@ TRẢ LỜI ĐẦU TIÊN (ngắn, đúng thứ tự):
 4. Hỏi Owner: phiên này làm gì.
 ```
 
-Ghi chú: đọc trên NHÁNH ĐANG LÀM, không đọc bản `main` (bản `main` thiếu luật
-handoff/charter). Nhánh đang làm hiện tại: `arena/a3117943-logistics-work-desk-arena`
-(nhánh head PR #211). Nếu nhánh đổi trong tương lai, cập nhật đúng 4 link trên.
+Ghi chú: 4 link trên neo vào `refs/pull/211/head` — luôn trỏ đúng head PR #211,
+không phải một nhánh cố định. **`main` đang thiếu luật** (handoff/playbook 404 trên `main`)
+nên phải trỏ nhánh/PR; sau khi merge `main` thì đổi sang `main`; link theo SHA dùng cho
+bằng chứng (ví dụ `.../<sha>/docs/CONTROL-TOWER-PLAYBOOK.md`). Nếu link 3 trả 404: head PR
+chưa có playbook → Control Tower FF head trước (handoff MỤC 2) rồi đọc lại; không tự đoán nhánh.
 
 ## §0.1 — SKILL CAPSULE: `scope-reality-check` (dùng ngay, không tốn lượt đọc)
 

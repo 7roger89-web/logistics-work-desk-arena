@@ -28,10 +28,11 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
   bất biến liên tục, bài học đã trả giá. Hồ sơ vận hành, KHÔNG phải luật thứ hai
   (luật gốc: `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`).
 - **Opener chuẩn v2 ở PLAYBOOK §0; skill capsule §0.1 (2026-10-20)**: chat Control Tower
-  mới dán nguyên §0 — 4 raw link trên nhánh `arena/a3117943-...` + 2 URL `api.github.com`
-  (head PR + comment mới nhất), luật "đọc được, KHÔNG ghi được", nghĩa vụ cuối phiên để
-  lại NEXT_ACTION + NEXT_PACKET, và cách ra lệnh cho Arena theo từng chat. §0.1 là capsule
-  `scope-reality-check` dùng ngay (path + SHA256 thật, không thay luật).
+  mới dán nguyên §0 — 4 raw link neo `refs/pull/211/head` (fallback: 404 → lấy `head.ref`
+  từ `pulls/211` rồi thay vào) + 2 URL `api.github.com` (head PR + comment mới nhất), luật
+  "đọc được, KHÔNG ghi được", nghĩa vụ cuối phiên để lại NEXT_ACTION + NEXT_PACKET, và cách
+  ra lệnh cho Arena theo từng chat. §0.1 là capsule `scope-reality-check` dùng ngay
+  (path + SHA256 thật, không thay luật).
 
 ## MỤC 3 — TRẠNG THÁI
 
@@ -76,7 +77,7 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 
 ### NEXT_ACTION
 
-**Trước tiên — đồng bộ head PR #211**: đọc lại head thật bằng `api.github.com` (mục 6), kiểm `compare/8f4d15f...<SHA playbook v2>` phải là `ahead` — commit playbook v2 là hậu duệ của `8f4d15f` (qua commit `89e4062`) — rồi fast-forward `arena/a3117943-logistics-work-desk-arena` lên đúng SHA đó; FF-only, KHÔNG force, `diverged` thì DỪNG và kiểm lại diff PR + handoff. Việc này đưa opener v2 + §0.1 lên đúng các raw link của §0.
+**Trước tiên — đồng bộ head PR #211**: đọc lại head thật bằng `api.github.com` (mục 6), kiểm `compare/8f4d15f...<SHA playbook v2>` phải là `ahead` — commit playbook v2 là hậu duệ của `8f4d15f` (qua commit `89e4062`) — rồi fast-forward `arena/a3117943-logistics-work-desk-arena` lên đúng SHA đó; FF-only, KHÔNG force, `diverged` thì DỪNG và kiểm lại diff PR + handoff. Việc này đưa opener v2 + §0.1 lên đúng các raw link `refs/pull/211/head` của §0 (link 3 playbook hiện 404 trên PR ref cho tới khi FF xong).
 
 Sau đó: Public-hoá bằng chứng browser smoke 8/8 của lát mode-copy (`afbc18d`, hiện chỉ ở file local `D:/logi-pr211-current/.tmp/logi211-mode-copy/` — Control Tower chưa đọc được) lên comment PR #211; rồi QA độc lập lát mode-copy trên bundle của ĐÚNG commit hiện hành với tối thiểu 1 ca vai trò Sale + 1 ca vai trò Support (smoke đầu chưa ghi vai trò — DoD trong AGENTS.md). Sau đó mới tới Owner UAT đúng dữ liệu thật (MỤC 5). Packet dán-ngay:
 
@@ -120,6 +121,14 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
   trường hợp nào cả hai chiều đều hợp lệ. Chưa chốt thì không có auto-DONE, không suy chiều.
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-20 — Opener §0: link neo `refs/pull/211/head` + fallback; xác nhận §6 đủ 2 endpoint (docs-only)
+
+- **Authority / base / commit**: nối tiếp task Control Tower 2026-10-20; vào phiên tại `2a61d1c` (= head nhánh session, hậu duệ của `89e4062`); head PR #211 vẫn `8f4d15f` lúc làm. Commit docs trên nhánh session `arena/cee7f2f5-...`; SHA cuối ở báo cáo task. Không merge/deploy/PR mới.
+- **§0 — link theo nhánh → link neo PR**: 4 raw link đổi sang `https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/<path>` (AGENTS, portable law, playbook, handoff), giữ nguyên link 5 = 2 URL `api.github.com`. Thêm 1 dòng `FALLBACK: 404 → lấy head.ref từ pulls/211, thay bằng refs/heads/<head.ref>, không đoán nhánh`. Ghi chú §0 nêu rõ: **`main` đang thiếu luật** (handoff/playbook 404 trên main) nên phải trỏ nhánh/PR; sau merge main thì đổi sang main; link theo SHA dùng cho bằng chứng.
+- **§6 — 2 endpoint**: đã có sẵn từ commit trước, kiểm lại đúng nội dung — `compare/{sha_cu}...{sha_moi}` (ahead/identical/diverged, dùng TRƯỚC fast-forward, diverged ⇒ DỪNG không force) và `branches?per_page=100` (bắt nhánh mồ côi). Không sửa thêm.
+- **Kiểm chứng**: `refs/pull/211/head` resolve = `8f4d15f`; `contents?ref=refs/pull/211/head` đọc được AGENTS/law/handoff (playbook 404 **cho tới khi FF head** — đã ghi rõ trong ghi chú §0 và NEXT_ACTION). Opener 36 dòng (thêm dòng FALLBACK), fence cân, 4 link neo PR + 2 URL API. Diff chỉ 2 file markdown. Full suite `NOT_RUN` (docs-only, không đổi executable/source/test).
+- **Preflight / OE / learning**: `P2P_LAW_SOURCE=LOCAL_PORTABLE`, `LAW_CHECK=PASS` (`SOURCE_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b`, AGENTS `1e556d37...8341`), `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE` (`shared-exp-b2611df4c9393f0017f07dcb`), `scope-reality-check` đọc + khớp `e2b89450...7688`. "Không bị over engineering chứ?" → `SIMPLER_PATH=NO, MATERIAL_PROGRESS=YES, NECESSITY=YES, CORE_BEFORE_SUPPORT=YES, SMALLER_VERIFIABLE_SLICE=NO`, `OE_VERDICT=DO_IT`: 1 file sửa + handoff, không thêm cơ chế. `LEARNING_RECONCILIATION=NONE`.
 
 ### 2026-10-20 — Playbook v2: opener tự đủ + skill capsule + luật vận hành Arena theo chat (docs-only)
 
