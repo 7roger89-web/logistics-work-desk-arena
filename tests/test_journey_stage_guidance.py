@@ -298,3 +298,113 @@ def test_false_legacy_values_never_emit_customs_clearance_timeline_milestone():
         }}
         assert all(m["title"] != "Đã thông quan"
                    for m in rd.tracking_projection(shipment)["milestones"])
+
+
+def test_delivery_editor_dom_copy_matches_mode_and_preserves_sea_variants():
+    """PR211 browser repro: shared delivery editor must not teach SEA for AIR/ROAD.
+
+    Render the shipped bundle with backend-declared fields. A Truck pickup can
+    make the legacy shipment.mode Truck even when executionProfile.mode is
+    SEA/AIR; Journey copy must follow that canonical execution profile.
+    Preserve SEA FCL/LCL copy, field labels and navigation without business writes.
+    """
+    import json
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    node = shutil.which("node")
+    if not node or not (root / "component/node_modules/jsdom").exists():
+        pytest.skip("node + component/node_modules/jsdom required for delivery editor DOM render")
+    cases = [
+        {"name": name, "mode": mode, "profileMode": backend,
+         "nodes": list(_build(backend, load).values())}
+        for name, mode, backend, load in (
+            ("fcl", "Truck", "SEA", "FCL"),
+            ("lcl", "Truck", "SEA", "LCL"),
+            ("air", "Truck", "AIR", ""),
+            ("road", "Truck", "ROAD", ""),
+        )
+    ]
+    script = r"""
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+const require = createRequire(path.resolve("component/package.json"));
+const { JSDOM } = require("jsdom");
+const base = JSON.parse(readFileSync("tests/component/fixtures/view_model_journey_fresh_188.json", "utf8")).before;
+const dom = new JSDOM('<!doctype html><body><div id="host"></div>', { url: "http://localhost:9502", pretendToBeVisual: true });
+globalThis.window = dom.window; globalThis.document = dom.window.document;
+Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator, configurable: true });
+for (const k of ["HTMLElement", "HTMLInputElement", "HTMLSelectElement", "HTMLTextAreaElement", "Event", "MouseEvent", "Node", "MutationObserver", "getComputedStyle"]) globalThis[k] = dom.window[k];
+dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+const mount = (await import(pathToFileURL(path.resolve("component/dist/logi-shell.js")))).default;
+const tick = () => new Promise(r => setTimeout(r, 50));
+const waitFor = async fn => {
+  const end = Date.now() + 5000;
+  while (Date.now() < end) { const value = fn(); if (value) return value; await tick(); }
+  throw new Error("Delivery DOM state did not mount");
+};
+const byId = id => document.querySelector(`[data-testid="${id}"]`);
+const text = el => el.textContent.replace(/\s+/g, " ").trim();
+const click = async el => { el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); await tick(); };
+const results = [], businessTriggers = [];
+for (const [index, sample] of JSON.parse(process.env.DELIVERY_CASES).entries()) {
+  const vm = structuredClone(base);
+  const shipment = vm.shipments.find(s => s.id === "SEA-188");
+  shipment.mode = sample.mode;
+  shipment.executionProfile.mode = sample.profileMode;
+  shipment.version = 100 + index; // remount the editor between independent mode cases
+  shipment.journey.nodes = sample.nodes;
+  mount({ name: "logi_shell", data: vm, parentElement: document.getElementById("host"),
+    setTriggerValue: (event) => { if (/save|confirm|delete|payment/.test(event)) businessTriggers.push(event); } });
+  if (index === 0) {
+    await click(await waitFor(() => [...document.querySelectorAll("a")].find(a => text(a) === "Lô Hàng")));
+    await click(await waitFor(() => byId("shipment-period-tat-ca")));
+    await click(await waitFor(() => [...document.querySelectorAll("main a")].find(a => text(a) === "SEA-188")));
+    await click(await waitFor(() => byId("journey-node-delivery")));
+    const bubble = await waitFor(() => byId("journey-bubble"));
+    await click(bubble.querySelector('button[data-testid^="journey-bubble-task-"]'));
+  }
+  const labels = sample.nodes.find(n => n.id === "delivery").factFields.map(f => f.label);
+  const form = await waitFor(() => {
+    const f = byId("sea-export-facts");
+    if (!f) return null;
+    const actual = [...f.querySelectorAll("input,select")].map(e => e.getAttribute("aria-label"));
+    return JSON.stringify(actual) === JSON.stringify(labels) ? f : null;
+  });
+  await tick();
+  results.push({ name: sample.name, title: text(form.querySelector("h3")),
+    description: text(form.querySelector("p")),
+    labels: [...form.querySelectorAll("input,select")].map(e => e.getAttribute("aria-label")) });
+}
+console.log(JSON.stringify({ results, businessTriggers }));
+"""
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", script], cwd=root,
+        env=dict(os.environ, DELIVERY_CASES=json.dumps(cases)),
+        capture_output=True, encoding="utf-8", check=True, timeout=60,
+    )
+    rendered = json.loads(result.stdout.strip().splitlines()[-1])
+    by_case = {row["name"]: row for row in rendered["results"]}
+    sea_description = (
+        "Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. "
+        "Chỉ ghi trạng thái có bằng chứng."
+    )
+    for name in ("fcl", "lcl"):
+        assert by_case[name]["title"] == "Đầu nhận — D/O, POD, trả rỗng"
+        assert by_case[name]["description"] == sea_description
+    for name, expected in (
+        ("air", ["Lệnh giao hàng sân bay (D/O)", "POD đã nhận"]),
+        ("road", ["Số biên bản giao nhận", "POD đã nhận"]),
+    ):
+        row = by_case[name]
+        assert "trả rỗng" not in row["title"], row
+        assert "hãng tàu" not in row["description"], row
+        assert row["labels"] == expected
+    assert by_case["fcl"]["labels"] == ["D/O / EDO đã phát hành", "POD đã nhận", "Trả container rỗng"]
+    assert by_case["lcl"]["labels"] == ["Tách hàng tại CFS đích", "D/O / EDO đã phát hành", "POD đã nhận"]
+    assert rendered["businessTriggers"] == []

@@ -911,7 +911,7 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   // node (scope/load-model aware); the panel never invents its own field list.
   const fields = node?.factFields ?? [];
   const siOnly = stageId === 'si-vgm' && (node?.label === 'SI' || (fields.length > 0 && !fields.some(f => f.key.startsWith('vgm_'))));
-  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': siOnly ? 'SI — ghi nhận bằng chứng' : 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
+  const TITLES: Record<string, string> = { booking: 'Booking — xác nhận của hãng tàu', 'customs-export': 'Hải quan xuất — tờ khai và thông quan', 'gate-in': 'Container — cấp rỗng, đóng hàng, EIR, gate-in', 'on-board': 'Xếp hàng lên tàu — bằng chứng on-board', delivery: (s.executionProfile?.mode || s.mode || '').toUpperCase() === 'AIR' ? 'Giao hàng sân bay — D/O, POD' : ['ROAD', 'TRUCK'].includes((s.executionProfile?.mode || s.mode || '').toUpperCase()) ? 'Giao hàng — biên bản giao nhận, POD' : 'Đầu nhận — D/O, POD, trả rỗng', 'si-vgm': siOnly ? 'SI — ghi nhận bằng chứng' : 'SI / VGM — ghi nhận bằng chứng', 'cfs-receipt': 'CFS — nhận hàng và ghép container', 'air-acceptance': 'Kho hàng không — nhận, cân, soi chiếu', uplift: 'Uplift — xác nhận hàng đã bay', 'road-ltl': 'Hàng lẻ — nhận và ghép xe', 'road-border': 'Cửa khẩu — mốc qua biên giới' };
   const save = () => {
     if (!Object.keys(draft).length) { setError('Chưa thay đổi trường nào.'); return; }
     const requestId = `SEA-${crypto.randomUUID()}`;
@@ -922,7 +922,7 @@ export function SeaExportFacts({ shipment: s, stageId }: { shipment: Shipment; s
   };
   return <section className="rounded-2xl border bg-white p-4 space-y-3" data-testid="sea-export-facts">
     <h3 className="font-extrabold text-[#0f2a4a]">{TITLES[stageId] ?? 'Ghi nhận bằng chứng'}</h3>
-    <p className="text-sm text-slate-500">Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.</p>
+    <p className="text-sm text-slate-500">{['AIR', 'ROAD', 'TRUCK'].includes((s.executionProfile?.mode || s.mode || '').toUpperCase()) ? 'Tệp đã tải lên không tự xác nhận bên vận chuyển đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.' : 'Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng.'}</p>
     {(() => { const renderField = (f: typeof fields[number]) => <Field key={f.key} label={f.label}>
       {f.kind === 'status' ? <select aria-label={f.label} disabled={!canEdit || loading || !node?.owned} className={inputCls()} value={draft[f.key] ?? s.journey?.seaFacts[f.key] ?? 'UNKNOWN'} onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value }))}>
         {(f.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> :

@@ -21318,13 +21318,13 @@ function cu({ shipment: e, stageId: t }) {
 	});
 }
 function lu({ shipment: e, stageId: t }) {
-	let { dispatch: n } = Gn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)({}), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u] = (0, _.useState)(e.version ?? 0), d = r?.userAccess?.currentUser, f = !!(d?.wildcard || d?.permissions.includes("shipment_edit")), p = e.journey?.nodes.find((e) => e.id === t), m = r?.lastWrites?.find((e) => e.event === "shipment_sea_facts_save" && e.requestId === o), h = !(!o || m), g = !!m?.ok, v = p?.factFields ?? [], y = {
+	let { dispatch: n } = Gn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)({}), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u] = (0, _.useState)(e.version ?? 0), d = r?.userAccess?.currentUser, f = !!(d?.wildcard || d?.permissions.includes("shipment_edit")), p = e.journey?.nodes.find((e) => e.id === t), m = r?.lastWrites?.find((e) => e.event === "shipment_sea_facts_save" && e.requestId === o), h = !(!o || m), g = !!m?.ok, v = p?.factFields ?? [], y = t === "si-vgm" && (p?.label === "SI" || v.length > 0 && !v.some((e) => e.key.startsWith("vgm_"))), b = {
 		booking: "Booking — xác nhận của hãng tàu",
 		"customs-export": "Hải quan xuất — tờ khai và thông quan",
 		"gate-in": "Container — cấp rỗng, đóng hàng, EIR, gate-in",
 		"on-board": "Xếp hàng lên tàu — bằng chứng on-board",
-		delivery: "Đầu nhận — D/O, POD, trả rỗng",
-		"si-vgm": t === "si-vgm" && (p?.label === "SI" || v.length > 0 && !v.some((e) => e.key.startsWith("vgm_"))) ? "SI — ghi nhận bằng chứng" : "SI / VGM — ghi nhận bằng chứng",
+		delivery: (e.executionProfile?.mode || e.mode || "").toUpperCase() === "AIR" ? "Giao hàng sân bay — D/O, POD" : ["ROAD", "TRUCK"].includes((e.executionProfile?.mode || e.mode || "").toUpperCase()) ? "Giao hàng — biên bản giao nhận, POD" : "Đầu nhận — D/O, POD, trả rỗng",
+		"si-vgm": y ? "SI — ghi nhận bằng chứng" : "SI / VGM — ghi nhận bằng chứng",
 		"cfs-receipt": "CFS — nhận hàng và ghép container",
 		"air-acceptance": "Kho hàng không — nhận, cân, soi chiếu",
 		uplift: "Uplift — xác nhận hàng đã bay",
@@ -21337,11 +21337,15 @@ function lu({ shipment: e, stageId: t }) {
 		children: [
 			/* @__PURE__ */ (0, U.jsx)("h3", {
 				className: "font-extrabold text-[#0f2a4a]",
-				children: y[t] ?? "Ghi nhận bằng chứng"
+				children: b[t] ?? "Ghi nhận bằng chứng"
 			}),
 			/* @__PURE__ */ (0, U.jsx)("p", {
 				className: "text-sm text-slate-500",
-				children: "Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng."
+				children: [
+					"AIR",
+					"ROAD",
+					"TRUCK"
+				].includes((e.executionProfile?.mode || e.mode || "").toUpperCase()) ? "Tệp đã tải lên không tự xác nhận bên vận chuyển đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng." : "Tệp đã tải lên không tự xác nhận hãng tàu đã nhận hoặc chấp nhận. Chỉ ghi trạng thái có bằng chứng."
 			}),
 			(() => {
 				let t = (t) => /* @__PURE__ */ (0, U.jsx)(Z, {
