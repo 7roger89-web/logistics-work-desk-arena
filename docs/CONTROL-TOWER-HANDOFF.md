@@ -2,6 +2,27 @@
 
 Bàn giao ca cho Control Tower. Mọi task có thay đổi file PHẢI cập nhật file này trước khi báo cáo hoàn tất — quy tắc đứng tại `AGENTS.md` mục `## Control Tower handoff — bắt buộc mọi task`.
 
+## ĐỌC TRƯỚC (cho chat Control Tower mới)
+
+Đọc theo đúng thứ tự này, KHÔNG khảo sát lại repo. Link neo theo PR #211 nên luôn là bản mới nhất và không phụ thuộc tên nhánh:
+1. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/AGENTS.md
+2. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md
+3. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/CONTROL-TOWER-PLAYBOOK.md
+4. https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/refs/pull/211/head/docs/ARENA-OPERATING-GUIDE.md
+
+File này là TRẠNG THÁI, không phải luật. Luật ở AGENTS.md + notebook portable — đọc luật trước khi phân tích thật (notebook §2A).
+
+Link 404 → mở https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 lấy `head.ref` rồi thay chuỗi `refs/pull/211/head` bằng tên nhánh đó — không đoán. Sau khi PR #211 merge vào main thì đổi 4 link sang `.../main/...`. Link theo SHA dùng cho bằng chứng, không dùng cho trạng thái sống.
+
+Luật cứng:
+- Bạn ĐỌC được, KHÔNG ghi được (không push, không chạy test, không browser). Muốn ghi thì giao cho Arena/Codex/ChatGPT-connector.
+- Không khảo sát lại repo từ đầu. Không tự code.
+- Mọi con số trong tài liệu là "khai báo" — phải đo lại mới tin.
+- Người viết ≠ người nghiệm thu: QA phải là phiên KHÁC.
+- Cuối phiên PHẢI để lại MỤC 3: NEXT_ACTION + NEXT_PACKET dán được ngay. Sắp hết quota thì viết packet TRƯỚC, đọc thêm sau.
+
+Chi tiết cách vận hành: docs/CONTROL-TOWER-PLAYBOOK.md. Luật giao việc cho Arena: docs/ARENA-OPERATING-GUIDE.md. Trạng thái sống: file này, MỤC 3.
+
 ## MỤC 1 — MỤC ĐÍCH DỰ ÁN
 
 Journey map-first để Support/Sale nhìn biết lô đang ở công đoạn nào và công đoạn đó còn phải
@@ -31,6 +52,8 @@ làm gì. Owner là Sale, giao việc cho Support trên app, dùng hằng ngày 
 ## MỤC 3 — TRẠNG THÁI
 
 - **CURRENT — 2026-10-20, PR #211 mode-copy fix (`afbc18d`)**: đã đóng reproduction ở [comment 6281985539](https://github.com/7roger89-web/logistics-work-desk-arena/pull/211#issuecomment-6281985539). Browser smoke **8/8 PASS** trên bundle mới: AIR/ROAD/SEA FCL/LCL × 1440×900/390×844; AIR/ROAD không còn “hãng tàu”/“trả rỗng”, SEA giữ nguyên câu cũ, fields không đổi, **0 business write**. Focused **107 PASS**; typecheck/build/scan **0 executable hits**. Full suite cùng môi trường Windows: baseline **61 failed / 2048 passed / 23 skipped / 5 errors**, bản sửa **60 / 2050 / 23 / 5**; raw **NEW=∅, GONE=1** do test quote-note so `calculated_at` lệch một giây, chạy lại riêng **PASS cả hai cây**. Không gọi full suite xanh hoặc raw GONE=∅. Chỉ nghiệm thu lát sửa câu chữ; **OWNER_UAT=INCOMPLETE, NO_MAIN_MERGE=YES, NO_DEPLOY=YES**. Chi tiết/bằng chứng ở mục mới nhất MỤC 6; các milestone phía dưới giữ nguyên như lịch sử.
+
+- **DOCS-ONLY — Control Tower U1/U2/U3 (2026-10-20):** PR #211 đã fast-forward có kiểm ancestry từ `8f4d15f` lên `89e4062` (không force). Guide Arena từ nhánh `arena/b153ecaf@706f785` được tích hợp ở mức **nội dung**, không kéo commit divergent; playbook hiện có được mở rộng với U1/U2/U3 và 6 ranh giới P2P. SHA-256 ba nguồn canonical tại `main` khớp snapshot thủy tổ pin `db9d3979`. Chỉ đổi Markdown; **FULL_SUITE=NOT_RUN, BASELINE_PARITY=NOT_MEASURED**, không có QA độc lập cho docs trong phiên viết. NEXT_ACTION nghiệp vụ bên dưới không đổi, `OWNER_UAT=INCOMPLETE`.
 
 *(cập nhật cho khớp sự thật — mỗi task)*
 
@@ -113,6 +136,14 @@ HANDOFF_UPDATE=yes: Control Tower ghi 1 dòng kết quả vào docs/CONTROL-TOWE
   trường hợp nào cả hai chiều đều hợp lệ. Chưa chốt thì không có auto-DONE, không suy chiều.
 
 ## MỤC 6 — NHẬT KÝ PHIÊN
+
+### 2026-10-20 — Neo ba nguồn thủy tổ + phục hồi guide Arena (docs-only, GitHub connector)
+
+- **Đồng bộ head**: PR #211 `arena/a3117943-logistics-work-desk-arena` đã fast-forward `8f4d15ff` → `89e40625` (compare ahead 1, behind 0; expected SHA match; `force=false`). Không merge main, không deploy.
+- **Giữ lại tài sản đã làm**: nhánh Arena `arena/b153ecaf@706f785` phân kỳ với PR (không thể FF); lấy **nội dung** `docs/ARENA-OPERATING-GUIDE.md` và phần cập nhật `docs/CONTROL-TOWER-PLAYBOOK.md` để tích hợp, không chuyển cả commit main-based đè lên lịch sử PR. Guide đã ghi `580b34f`; playbook đã ghi `826f232`.
+- **Neo nguồn U1/U2/U3**: thủy tổ `7roger89-web/P2P-upgrade-github-1` @ `db9d3979`; U1 SHA-256 `11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b`, U2 `9315f603ab80dc45e46fc6c2dabb98e7f5e0a212108ff3504fd8515f4bb900c3`, U3 `d5e45cea2e75ac0b9c10110423165c2f42b0f40436b3267a55ef08db9de9c443`. Đã đọc và tính lại từ GitHub, cả ba khớp bản `main` tại thời điểm kiểm. Link pin là provenance; Arena đọc LOCAL_PORTABLE, không bị giao việc cross-repo.
+- **Phạm vi/kiểm chứng**: chỉ `docs/CONTROL-TOWER-HANDOFF.md`, `docs/CONTROL-TOWER-PLAYBOOK.md`, `docs/ARENA-OPERATING-GUIDE.md`. MỤC 1/2/5 và NEXT_ACTION/NEXT_PACKET nghiệp vụ cũ giữ nguyên. Static contract/source-link checks có, **pytest/full-suite=NOT_RUN; NEW/GONE=UNKNOWN** (GitHub connector không chạy test). Không ghi `.p2p/portable/*`, block P2P managed, code, `component/dist`, `tienthanhlog`, production.
+- **Còn lại**: QA độc lập phần docs/provenance nếu cần; NEXT_ACTION chính vẫn là public bằng chứng browser và QA vai trò Sale/Support trước Owner UAT tại MỤC 3; Owner Gate MỤC 5 chưa thay đổi.
 
 ### 2026-10-20 — Playbook Control Tower + sửa 3 chỗ hướng dẫn stale (docs-only)
 
