@@ -46,12 +46,12 @@ Khi hai nguồn mâu thuẫn, tin theo đúng thứ tự này, dừng ở nguồ
 6. MỤC 6 + docs/CONTROL-TOWER-ARCHIVE.md (LỊCH SỬ — số chỉ đúng tại thời điểm viết)
 Luật: (a) mọi con số phải kèm NGÀY ĐO + SHA nguồn, thiếu ngày ⇒ đo lại; (b) file ngoài MỤC 3 chỉ TRỎ tới trạng thái, không chép lại; (c) PASS/FAIL/DONE phải kèm phạm vi + ngày + SHA; (d) link theo nhánh = trạng thái, link theo SHA = bằng chứng; (e) head.sha trong tài liệu khác api.github.com ⇒ tin API và ghi lại.
 
-**STALE_KNOWN — chuỗi đã biết là cũ, ĐỪNG TIN** (ghi 2026-10-20, HEAD_AT_WRITE=`5988ae1`; chính bảng này là nhãn lịch sử cho các chuỗi bên trong):
+**STALE_KNOWN — chuỗi đã biết là cũ, ĐỪNG TIN** (ghi 2026-10-20, HEAD_AT_WRITE=`365ad6d`; chính bảng này là nhãn lịch sử cho các chuỗi bên trong):
 
 | Chuỗi cũ | Đúng hiện nay | Vì sao còn |
 |---|---|---|
-| head = 8aba473 (body PR) | 5988ae1 | body chưa PATCH được (403) |
-| BROWSER_QA=FAIL · FIX=NOT_STARTED (body PR) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body chưa cập nhật |
+| head trong body = 5988ae1 (một nhịp cũ) | 365ad6d | body đã PATCH 2026-10-20 |
+| [LỊCH SỬ @8aba473] BROWSER QA FAIL / repair task UI copy (body PR; chuỗi cũ `FIX=NOT_STARTED` không còn trong body) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body đã PATCH 2026-10-20 (gắn `[LỊCH SỬ]` @8aba473 + `FIX=DONE @afbc18d`) |
 | "còn 40 failure" (MỤC 3 ĐANG CHỜ) | 37 failed (đo 2026-10-20) | 40 là số 2026-10-19 |
 | BASELINE_FAILED='41' (ci.yml) | 37 cho nhánh tích hợp; 31 cho main | gắn ngày 2026-10-19 |
 | FULL_SUITE=NOT_RUN (dòng docs-only) | đã đo 37/2110/44 | ghi trước khi đo |
