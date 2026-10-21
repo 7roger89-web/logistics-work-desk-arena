@@ -260,6 +260,8 @@ Giữ mỗi dòng thật ngắn. Nếu dài quá thì để chi tiết ở playb
 - **Đồng bộ head PR là việc của phiên Arena (2026-10-20)**: base commit LUÔN từ head PR (không từ main); push nhánh session; rồi PATCH ref arena/a3117943-... qua API force=false — PATCH ref KHÔNG phải "push nhánh khác"; nếu 403 mới báo FF_BLOCKED.
 - Mode của lô KHÔNG đọc từ `s.mode` (có thể là chặng đầu, vd Truck); Journey dùng `executionProfile.mode` — đối chiếu trước khi kết luận câu chữ.
 - Gọi nhiều edit song song trên CÙNG 1 file có thể làm mất edit lặng lẽ (phiên W1 2026-10-21 suýt ship NameError) — sửa tuần tự từng file và `git diff` kiểm lại trước khi chạy test.
+- **Handover kèm SHA + PR phải chứng minh ancestry (2026-10-21)**: `git cat-file -e <sha>` chỉ chứng minh object tồn tại; dùng `git merge-base --is-ancestor <sha> <head>` (hoặc compare ahead/behind) trước khi ghi "nằm trong PR".
+- **Nghi receipt sai hash ⇒ đọc định nghĩa nguồn trước (2026-10-21)**: xác minh `SOURCE_CONTENT_SHA256` trong header projection (không so với hash file portable) trước khi kết luận FAILED — tránh "sửa" một receipt đúng.
 
 Chi tiết + bối cảnh: docs/CONTROL-TOWER-PLAYBOOK.md §9. Mỗi dòng ở đây phải ngắn.
 - Mọi LEARNING_RECONCILIATION=CANDIDATE phải hạ xuống đây đúng 1 dòng trước khi kết phiên — không để mắc trong nhật ký.
