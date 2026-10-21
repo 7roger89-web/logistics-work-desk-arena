@@ -428,10 +428,14 @@ def test_existing_transport_nodes_keep_their_completion_and_edges():
 
 
 def test_evidence_field_map_is_bounded_and_matches_the_stored_keys():
+    # LOGI-211-HANDOVER-LABEL-MST (Owner D2): the bounded map deliberately
+    # gains exactly the 2 stage-local display-name fields — nothing else.
     assert set(ENTRUSTMENT_FIELDS) == {
         "entrustment_ready_at", "entrustment_ready_ref",
         "warehouse_handover_at", "warehouse_handover_from",
-        "warehouse_handover_to", "warehouse_handover_doc_no",
+        "warehouse_handover_from_label",
+        "warehouse_handover_to", "warehouse_handover_to_label",
+        "warehouse_handover_doc_no",
     }
 
 
@@ -512,7 +516,8 @@ const readyPanel = await waitFor(() => byId("entrustment-evidence"));
 const readyLabels = [...readyPanel.querySelectorAll("select, input")].map(e => e.getAttribute("aria-label")).filter(Boolean);
 const readyMissing = byId("entrustment-missing") ? text(byId("entrustment-missing")) : "";
 // Re-mount and open the HANDOVER node: incomplete by design, so it must list
-// exactly what is missing and expose the four bounded fields.
+// exactly what is missing and expose the bounded fields (4 primary handover
+// fields + 2 folded secondary display-name fields, LOGI-211 D2).
 mount({ name: "logi_shell", data: subVm, parentElement: document.getElementById("host"), setTriggerValue: () => {} });
 await tick(250);
 await openShipment();
@@ -551,9 +556,13 @@ console.log(JSON.stringify({
     assert "BÀN GIAO HÀNG TẠI KHO" in out["handoverBubbleText"].upper()
     assert out["readyLabels"] == ["Ngày xác nhận đủ điều kiện thực hiện", "Căn cứ xác nhận (số hợp đồng / biên bản phạm vi ủy thác)"]
     assert out["readyMissing"] == ""
+    # LOGI-211-HANDOVER-LABEL-MST (Owner D2): +2 secondary display-name
+    # fields, rendered folded after the 4 primary handover fields.
     assert out["fieldLabels"] == [
         "Thời điểm bàn giao thực tế", "Bên giao (ghi nhận thực tế)",
         "Bên nhận (ghi nhận thực tế)", "Số biên bản giao nhận",
+        "Tên hiển thị bên giao (nếu tên danh mục chưa đúng)",
+        "Tên hiển thị bên nhận (nếu tên danh mục chưa đúng)",
     ]
     assert "Còn thiếu để xác nhận" in out["missing"]
     assert "bàn giao" in out["missing"].lower()
@@ -576,7 +585,8 @@ def test_p0a_writer_refuses_full_handover_without_ready_evidence(staging, event_
     assert int(after.get("version") or 0) == version_before
     assert stored_entrustment_evidence(after) == {
         "ready_at": "", "ready_ref": "",
-        "handover_at": "", "handover_from": "", "handover_to": "", "handover_doc_no": "",
+        "handover_at": "", "handover_from": "", "handover_from_label": "",
+        "handover_to": "", "handover_to_label": "", "handover_doc_no": "",
     }
 
 

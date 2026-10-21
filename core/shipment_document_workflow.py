@@ -86,6 +86,23 @@ def _entity_by_id(
     return None
 
 
+def _entity_tax_code(entity: Mapping[str, Any] | None) -> str:
+    """MST of one resolved master row, across the repo's real spellings.
+
+    The COMPANY authority master stores it as ``tax_or_legal_code``, the
+    AGENT master as ``legal_code``, customers as ``tax_code`` — read the
+    resolved row's own field instead of assuming one shared key.  An absent
+    MST stays blank; it is never invented.
+    """
+    row = entity or {}
+    return _text(
+        row.get("legal_code")
+        or row.get("tax_or_legal_code")
+        or row.get("tax_code")
+        or row.get("mst")
+    )
+
+
 def stored_flow(shipment: Mapping[str, Any]) -> dict[str, Any]:
     """Return the persisted commercial-flow block without inventing defaults."""
     head = _section(shipment, "0.0")
@@ -309,12 +326,7 @@ def project_commercial_flow(
     # the AGENT master as ``legal_code``, customers as ``tax_code``.  Read the
     # real field of the resolved importer instead of assuming one shared key,
     # or TT_ENTRUSTED_DIRECT would never resolve an MST from live master data.
-    importer_tax_code = _text(
-        importer.get("legal_code")
-        or importer.get("tax_or_legal_code")
-        or importer.get("tax_code")
-        or importer.get("mst")
-    )
+    importer_tax_code = _entity_tax_code(importer)
     if flow["confirmed"] and not importer_name:
         missing.append("Thiếu tên pháp lý của đơn vị đứng nhập khẩu.")
     if flow["confirmed"] and not importer_tax_code:
@@ -325,6 +337,10 @@ def project_commercial_flow(
         (sub_agent or {}).get("legal_name")
         or (sub_agent or {}).get("name")
     )
+    # Same MST resolution as the legal importer above: group companies can
+    # share ONE legal name, so the handover party choices (entrustment_parties)
+    # need each party's own MST to stay distinguishable.  Absent stays blank.
+    sub_agent_tax_code = _entity_tax_code(sub_agent)
     # The signing company is a distinct party of the same chain; its name is
     # needed to label an EXPLICIT handover party choice (never to infer it).
     signing_company = _entity_by_id(companies, flow["company_id"], "company_id", "id")
@@ -333,6 +349,7 @@ def project_commercial_flow(
         or (signing_company or {}).get("name")
         or (signing_company or {}).get("company_name")
     )
+    signing_company_tax_code = _entity_tax_code(signing_company)
 
     return {
         "mode": mode,
@@ -340,8 +357,10 @@ def project_commercial_flow(
         "confirmed": bool(flow["confirmed"]),
         "companyId": flow["company_id"],
         "companyName": signing_company_name,
+        "companyTaxCode": signing_company_tax_code,
         "subAgentId": flow["sub_agent_id"],
         "subAgentName": sub_agent_name,
+        "subAgentTaxCode": sub_agent_tax_code,
         "importerCompanyId": importer_id if mode == FLOW_TT_ENTRUSTED_SUB else "",
         "legalImporterKind": importer_kind,
         "legalImporterId": importer_id,
@@ -729,13 +748,27 @@ ENTRUSTMENT_FIELDS: dict[str, str] = {
     "entrustment_ready_ref": "ready_ref",
     "warehouse_handover_at": "handover_at",
     "warehouse_handover_from": "handover_from",
+    "warehouse_handover_from_label": "handover_from_label",
     "warehouse_handover_to": "handover_to",
+    "warehouse_handover_to_label": "handover_to_label",
     "warehouse_handover_doc_no": "handover_doc_no",
 }
 _ENTRUSTMENT_READY_FIELDS = ("ready_at", "ready_ref")
 _ENTRUSTMENT_TIME_FIELDS = ("ready_at", "handover_at")
 _ENTRUSTMENT_HANDOVER_FIELDS = ("handover_at", "handover_from", "handover_to", "handover_doc_no")
-_ENTRUSTMENT_MAX_TEXT = {"ready_ref": 200, "handover_doc_no": 120}
+#: Optional stage-local display names for the two handover sides.  They live
+#: ONLY in this evidence block — master data (authority_companies/agents) is
+#: never rewritten — and blank means "show the master party label".  They are
+#: deliberately NOT members of ``_ENTRUSTMENT_HANDOVER_FIELDS``: a display
+#: correction is not handover evidence, must never be REQUIRED for a
+#: handover, and recording one alone must not read as a started handover.
+_ENTRUSTMENT_HANDOVER_LABEL_FIELDS = ("handover_from_label", "handover_to_label")
+_ENTRUSTMENT_MAX_TEXT = {
+    "ready_ref": 200,
+    "handover_doc_no": 120,
+    "handover_from_label": 200,
+    "handover_to_label": 200,
+}
 
 
 def stored_entrustment_evidence(shipment: Mapping[str, Any]) -> dict[str, str]:
@@ -746,7 +779,9 @@ def stored_entrustment_evidence(shipment: Mapping[str, Any]) -> dict[str, str]:
         "ready_ref": _text(raw.get("ready_ref")),
         "handover_at": _text(raw.get("handover_at")),
         "handover_from": _text(raw.get("handover_from")).upper(),
+        "handover_from_label": _text(raw.get("handover_from_label")),
         "handover_to": _text(raw.get("handover_to")).upper(),
+        "handover_to_label": _text(raw.get("handover_to_label")),
         "handover_doc_no": _text(raw.get("handover_doc_no")),
     }
 
@@ -756,19 +791,29 @@ def entrustment_parties(flow: Mapping[str, Any]) -> list[dict[str, str]]:
 
     Order: signing company, contract partner, legal importer.  Duplicate ids
     collapse; an absent id is never replaced by a guess.
+
+    Labels carry the party's MST (when its master row resolved one) and its
+    role in the chain: group companies can share ONE legal name, so a bare
+    name does not identify a handover party.  A missing MST is omitted from
+    the label, never invented.
     """
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
-    for id_key, name_key in (
-        ("companyId", "companyName"),
-        ("subAgentId", "subAgentName"),
-        ("importerCompanyId", "legalImporterName"),
+    for id_key, name_key, tax_key, role_label in (
+        ("companyId", "companyName", "companyTaxCode", "bên ký ủy thác"),
+        ("subAgentId", "subAgentName", "subAgentTaxCode", "đối tác hợp đồng"),
+        ("importerCompanyId", "legalImporterName", "legalImporterTaxCode", "đứng tên nhập khẩu"),
     ):
         identifier = _text(flow.get(id_key)).upper()
         if not identifier or identifier in seen:
             continue
         seen.add(identifier)
-        rows.append({"id": identifier, "label": _text(flow.get(name_key)) or identifier})
+        label = _text(flow.get(name_key)) or identifier
+        tax_code = _text(flow.get(tax_key))
+        if tax_code:
+            label += f" · MST {tax_code}"
+        label += f" · {role_label}"
+        rows.append({"id": identifier, "label": label})
     return rows
 
 
@@ -898,6 +943,11 @@ def project_entrustment_stages(
     handover_at = _text(evidence.get("handover_at"))
     handover_from = _text(evidence.get("handover_from")).upper()
     handover_to = _text(evidence.get("handover_to")).upper()
+    # Stage-local display names (Owner correction at the handover stage);
+    # blank falls back to the master party label below.  They never take
+    # part in any done/missing derivation.
+    handover_from_label = _text(evidence.get("handover_from_label"))
+    handover_to_label = _text(evidence.get("handover_to_label"))
     handover_doc_no = _text(evidence.get("handover_doc_no"))
 
     ready_missing: list[str] = []
@@ -970,7 +1020,7 @@ def project_entrustment_stages(
         item
         for item in (
             f"Bàn giao: {handover_at}" if handover_at else "",
-            f"{_party_label(parties, handover_from)} → {_party_label(parties, handover_to)}"
+            f"{handover_from_label or _party_label(parties, handover_from)} → {handover_to_label or _party_label(parties, handover_to)}"
             if handover_from and handover_to and handover_from != handover_to
             else "",
             f"Biên bản: {handover_doc_no}" if handover_doc_no else "",
@@ -1041,6 +1091,12 @@ def validate_entrustment_evidence_write(
         if existing.get(stored_key) and not normalized:
             return None, [f"Không được xóa bằng chứng đã ghi ({stored_key})."]
         merged[stored_key] = normalized
+
+    # Display names are optional, but when recorded they stay bounded like
+    # every other text fact of this block.
+    for label_key in _ENTRUSTMENT_HANDOVER_LABEL_FIELDS:
+        if len(merged.get(label_key, "")) > _ENTRUSTMENT_MAX_TEXT[label_key]:
+            return None, [f"Tên hiển thị bàn giao dài quá {_ENTRUSTMENT_MAX_TEXT[label_key]} ký tự."]
 
     contract_status = _text(_mapping(contract).get("status")).upper()
     ready_complete = False

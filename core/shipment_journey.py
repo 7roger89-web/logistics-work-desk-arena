@@ -437,7 +437,9 @@ def build_journey(shipment: Mapping[str, Any], *, profile: Mapping[str, Any],
         handover_fields = [
             {'key': 'warehouse_handover_at', 'label': 'Thời điểm bàn giao thực tế', 'kind': 'datetime'},
             {'key': 'warehouse_handover_from', 'label': 'Bên giao (ghi nhận thực tế)', 'kind': 'status', 'options': party_options},
+            {'key': 'warehouse_handover_from_label', 'label': 'Tên hiển thị bên giao (nếu tên danh mục chưa đúng)', 'kind': 'text', 'secondary': True},
             {'key': 'warehouse_handover_to', 'label': 'Bên nhận (ghi nhận thực tế)', 'kind': 'status', 'options': party_options},
+            {'key': 'warehouse_handover_to_label', 'label': 'Tên hiển thị bên nhận (nếu tên danh mục chưa đúng)', 'kind': 'text', 'secondary': True},
             {'key': 'warehouse_handover_doc_no', 'label': 'Số biên bản giao nhận', 'kind': 'text'},
         ]
         for node_id, label, node_fields, block in (
