@@ -19,6 +19,9 @@ Pins (RED trước fix → GREEN sau fix):
   (`tax_or_legal_code` → `legal_code` → `tax_code` → `mst`) và strip TỪNG giá
   trị: legal form / chuỗi khoảng trắng KHÔNG được che MST thật; không có MST
   nào thì trả "" (không bịa).
+* (v) TUỲ CHỌN — cùng lớp lỗi trên 3 chuỗi tên hiển thị (`importer_name` /
+  `sub_agent_name` / `signing_company_name`): `legal_name` toàn khoảng trắng
+  KHÔNG được che `name` thật của master row.
 """
 
 from __future__ import annotations
