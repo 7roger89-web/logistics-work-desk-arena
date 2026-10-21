@@ -224,6 +224,20 @@ For a clear long-running task on a host that supports native `/goal`, use native
 
 This serialization requirement applies to NEW_CHAT and SAME_CHAT execution prompts, including Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. It does not require repeating the whole law body in every prompt.
 
+## Kết thúc mỗi reply (lane executor — Next Prompt Panel)
+
+Khối này chỉ định dạng phần CUỐI của mỗi reply trong lane executor (Arena, Codex, Manus…). Nó không thêm bằng chứng, không thay receipt P2P, không đổi luật handoff; khi trùng, luật trong managed block và `docs/CONTROL-TOWER-HANDOFF.md` MỤC 3 thắng.
+
+- **Recap — phải có head ĐO ĐƯỢC:** 1–2 dòng nêu `TASK_ID` + việc đã xong/chưa xong + `HEAD` đo trong chính lượt đó từ `api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211` (`state`, `head.sha`, `merged`) kèm NGÀY ĐO. Không chép head từ body PR, handoff, comment cũ hay trí nhớ phiên. Đo không được ⇒ ghi `HEAD=UNMEASURED` + lý do, KHÔNG điền số cũ.
+- **ĐÚNG 1 gợi ý — và nó là CON TRỎ:** `suggestions` có đúng một phần tử, dạng con trỏ tới `docs/CONTROL-TOWER-HANDOFF.md` MỤC 3 → `### NEXT_PACKET (dán được ngay)`. Không dán nội dung packet vào reply, không tự soạn packet hay gợi ý thứ hai, không thêm phương án "nếu Owner muốn…"; packet đã dùng rồi thì trỏ đúng packet còn hiệu lực trong MỤC 3.
+- **Shape máy đọc:** `exclusiveGroups: []` và `allowedCombinations: []` — không nhóm lựa chọn loại trừ nhau, không tổ hợp nhiều gợi ý; panel chỉ có đúng 1 gợi ý.
+
+```json
+{"recap": {"head": "<sha đo api.github.com>", "measured_at": "<YYYY-MM-DD>", "state": "open|closed|merged"},
+ "suggestions": ["NEXT_PACKET → docs/CONTROL-TOWER-HANDOFF.md MỤC 3"],
+ "exclusiveGroups": [],
+ "allowedCombinations": []}
+```
 
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack
