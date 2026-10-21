@@ -268,7 +268,9 @@ def test_real_export_path_carries_authority_customer_notes_and_date(staging, eve
     text = _flat(ws)
 
     # --- C: company authority read from the REAL field names -----------------
-    assert ws["A1"].value == "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH"
+    # Legal name thật do Owner cấp 2026-10-21 (staging authority_companies);
+    # A1 phải đọc đúng master, không phải hằng số của view.
+    assert ws["A1"].value == "CÔNG TY TRƯỜNG THÀNH LOGISTICS"
     assert ws["A2"].value == "Số 12, Đường Láng Hạ, Ba Đình, Hà Nội"   # legal_address
     assert ws["A3"].value == "info@truongthanh.vn"
     assert "Nguyễn Thị Thu Hằng" in str(ws["B7"].value)                # legal_representative

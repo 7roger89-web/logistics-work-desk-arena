@@ -132,7 +132,20 @@ def test_c2b_unknown_stays_unknown_before_any_ledger_record(staging):
     assert position["payable"] is None and position["paid"] is None and position["remaining"] is None
     view = _partner_view()
     assert view["payable"] is None and view["paid"] is None and view["remaining"] is None
-    assert view["suggested"] is True and view["partnerId"] == PARTNER
+    # Staging authority_agents now carries TWO records: the Trường Thành
+    # role-2 partner AND the historical Phú Anh one. The single-partner
+    # suggestion is a convenience for a ONE-record catalog only, so with >1
+    # catalog partner the projection must not pick one for the operator
+    # (never invent a partner).
+    assert view["suggested"] is False
+    assert view["partnerId"] is None and view["partnerName"] is None
+    # The suggestion branch itself is unchanged: with exactly ONE catalog
+    # partner it still offers that partner, clearly marked as suggested.
+    single = rd._partner_projection(
+        SHIPMENT, agents={PARTNER: {"agent_id": PARTNER, "legal_name": PARTNER_NAME}}
+    )
+    assert single["suggested"] is True and single["partnerId"] == PARTNER
+    assert single["partnerName"] == PARTNER_NAME
 
 
 # ---------------------------------------------------------------------------

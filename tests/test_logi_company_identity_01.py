@@ -17,7 +17,8 @@ Hard guards encoded here:
     verbatim — the display brand is never substituted for a legal_name and
     no statutory fact (tax code, address, representative, bank) is fabricated;
   * the staging legal master (authority_companies seed) keeps carrying the
-    Trường Thành company record untouched.
+    Trường Thành company records: ONE legal person, one record per role, same
+    legal name + same MST.
 """
 
 from __future__ import annotations
@@ -34,7 +35,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 OWNER_DISPLAY_COMPANY_NAME = "Trường Thành Logistics"
-STAGING_LEGAL_NAME = "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH"
+STAGING_LEGAL_NAME = "CÔNG TY TRƯỜNG THÀNH LOGISTICS"
+# Owner cấp dữ liệu thật 2026-10-21 ("Mst 0105937262, công ty trường thành
+# logistics. Cả 3 tên đều như thế") ⇒ staging giữ MỘT pháp nhân ở 3 vai trò,
+# mỗi vai trò một record + một id riêng, cùng tên + cùng MST.
+STAGING_TAX_CODE = "0105937262"
+STAGING_COMPANY_IDS = ("TT-COMPANY", "TT-COMPANY-IMPORT")
 
 
 # ---------------------------------------------------------------------------
@@ -197,22 +203,27 @@ def test_staging_authority_master_keeps_company_legal_record_intact():
     from views import logi_staging_seed
 
     companies = logi_staging_seed.AUTHORITY_COMPANIES
-    assert len(companies) == 1
-    company = companies[0]
-    assert company["legal_name"] == STAGING_LEGAL_NAME
-    # Statutory facts stay present and untouched by this task (no fabrication,
-    # no display-brand substitution inside the legal master).
-    for field in (
-        "tax_or_legal_code",
-        "legal_address",
-        "legal_representative",
-        "bank_account_holder",
-        "bank_account_number",
-        "bank_name",
-    ):
-        assert str(company.get(field) or "").strip(), f"legal master missing {field}"
-    # The display brand is not a legal master record.
-    assert company["legal_name"] != OWNER_DISPLAY_COMPANY_NAME
+    # 3 vai trò của MỘT pháp nhân: 2 vai trò resolve từ COMPANY master (ký hợp
+    # đồng ủy thác + đứng tên nhập khẩu), id PHẢI khác nhau; vai trò 3 resolve
+    # từ AGENT master (pin ở test_logi211_handover_labels.py).
+    assert len(companies) == 2
+    assert tuple(company.get("id") for company in companies) == STAGING_COMPANY_IDS
+    for company in companies:
+        assert company["legal_name"] == STAGING_LEGAL_NAME
+        assert company["tax_or_legal_code"] == STAGING_TAX_CODE
+        # Statutory facts stay present and untouched by this task (no
+        # fabrication, no display-brand substitution inside the legal master).
+        for field in (
+            "tax_or_legal_code",
+            "legal_address",
+            "legal_representative",
+            "bank_account_holder",
+            "bank_account_number",
+            "bank_name",
+        ):
+            assert str(company.get(field) or "").strip(), f"legal master missing {field}"
+        # The display brand is not a legal master record.
+        assert company["legal_name"] != OWNER_DISPLAY_COMPANY_NAME
 
 
 def test_phu_anh_is_an_agent_master_record_not_the_company():

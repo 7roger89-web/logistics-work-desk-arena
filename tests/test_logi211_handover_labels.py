@@ -482,3 +482,201 @@ def test_whitespace_legal_name_does_not_mask_the_real_master_name():
     assert labels["TT-SIGN"].startswith("TT-SIGN REAL · "), labels["TT-SIGN"]
     assert labels["TT-CTR"].startswith("TT-CTR REAL · MST 0100000002 · "), labels["TT-CTR"]
     assert labels["TT-IMP"].startswith("TT-IMP REAL · MST 0100000003 · "), labels["TT-IMP"]
+
+
+# ---------------------------------------------------------------------------
+# (vi) W4 — seed danh tính THẬT: 3 vai trò của MỘT pháp nhân Trường Thành
+# ---------------------------------------------------------------------------
+# Owner cấp dữ liệu thật 2026-10-21 (nguyên văn: "Mst 0105937262, công ty trường
+# thành logistics. Cả 3 tên đều như thế"). Ca này KHÁC ca W1 ở đúng chỗ khó
+# nhất: W1 mới có TRÙNG TÊN + KHÁC MST (MST còn là thứ phân biệt); ở đây TÊN và
+# MST TRÙNG NHAU hoàn toàn, nên thứ duy nhất còn phân biệt 3 lựa chọn bên
+# giao/bên nhận là NHÃN VAI TRÒ.
+# Pin chạy trên seed THẬT của ``views/logi_staging_seed.py`` (không phải fixture
+# tự dựng), đúng đường: master → project_commercial_flow → entrustment_parties
+# → 2 select của node bàn giao → writer.
+
+OWNER_LEGAL_NAME = "CÔNG TY TRƯỜNG THÀNH LOGISTICS"
+OWNER_TAX_CODE = "0105937262"
+# Vai trò 1 — ký hợp đồng ủy thác (id cũ, giữ để không phá tham chiếu sẵn có).
+SIGNING_ID = "TT-COMPANY"
+# Vai trò 2 — đối tác hợp đồng, resolve từ authority_agents (AGENT master).
+SUB_AGENT_ID = "AGT-TRUONGTHANH"
+# Vai trò 3 — đứng tên nhập khẩu; id PHẢI khác vai trò 1 (điều kiện của writer).
+IMPORTER_ID = "TT-COMPANY-IMPORT"
+ROLE_OF = {
+    SIGNING_ID: "bên ký ủy thác",
+    SUB_AGENT_ID: "đối tác hợp đồng",
+    IMPORTER_ID: "đứng tên nhập khẩu",
+}
+SEED_IDS = [SIGNING_ID, SUB_AGENT_ID, IMPORTER_ID]
+
+_SEED_PROFILE = {
+    "mode": "ROAD", "loadModel": "FCL", "serviceScopeConfirmed": True,
+    "serviceScope": ["MAIN_CARRIAGE", "IMPORT_CUSTOMS", "DELIVERY"],
+    "stages": [
+        {"code": "MAIN_CARRIAGE", "label": "Chặng chính", "reason": "SERVICE_SCOPE"},
+        {"code": "IMPORT_CUSTOMS", "label": "Hải quan nhập", "reason": "SERVICE_SCOPE"},
+        {"code": "DELIVERY", "label": "Giao hàng", "reason": "SERVICE_SCOPE"},
+    ],
+}
+
+
+def _seed_masters() -> tuple[dict, dict]:
+    """Seed masters đọc đúng hình dạng loader DB trả về: ``{id: row}``."""
+    from views import logi_staging_seed as staging_seed
+
+    companies = {row["id"]: row for row in staging_seed.AUTHORITY_COMPANIES}
+    agents = {row["id"]: row for row in staging_seed.AUTHORITY_AGENTS}
+    return companies, agents
+
+
+def _seed_shipment() -> dict:
+    """Lô TT_ENTRUSTED_SUB chọn đúng 3 vai trò thật của seed."""
+    shipment = _shipment()
+    flow = shipment["data"]["0.0"]["commercial_flow"]
+    flow["company_id"] = SIGNING_ID
+    flow["sub_agent_id"] = SUB_AGENT_ID
+    flow["importer_company_id"] = IMPORTER_ID
+    return shipment
+
+
+def _seed_flow(companies: dict | None = None, agents: dict | None = None) -> dict:
+    seed_companies, seed_agents = _seed_masters()
+    return project_commercial_flow(
+        _seed_shipment(),
+        companies=seed_companies if companies is None else companies,
+        agents=seed_agents if agents is None else agents,
+    )
+
+
+def _handover_fields(flow: dict, shipment: dict | None = None) -> dict:
+    """2 select bên giao/bên nhận trên node bàn giao, qua journey THẬT."""
+    stages = project_entrustment_stages(flow, LINKED, {})
+    journey = build_journey(
+        _seed_shipment() if shipment is None else shipment,
+        profile=_SEED_PROFILE,
+        operational={"main_leg": {}, "pickup_leg": {}},
+        primary={}, dashboard={}, attachments=[], entrustment_stages=stages,
+    )
+    node = next(n for n in journey["nodes"] if n["id"] == ENTRUSTMENT_HANDOVER_ID)
+    return {f["key"]: f for f in node["factFields"]}
+
+
+def test_staging_seed_has_three_role_ids_for_one_legal_person():
+    companies, agents = _seed_masters()
+    assert {SIGNING_ID, IMPORTER_ID} <= set(companies), sorted(companies)
+    assert SUB_AGENT_ID in agents, sorted(agents)
+    # CÙNG một pháp nhân ⇒ cùng tên thật, cùng MST thật, mỗi master ghi đúng
+    # spelling của nó (COMPANY: tax_or_legal_code, AGENT: legal_code).
+    assert companies[SIGNING_ID]["legal_name"] == OWNER_LEGAL_NAME
+    assert companies[IMPORTER_ID]["legal_name"] == OWNER_LEGAL_NAME
+    assert companies[SIGNING_ID]["tax_or_legal_code"] == OWNER_TAX_CODE
+    assert companies[IMPORTER_ID]["tax_or_legal_code"] == OWNER_TAX_CODE
+    assert agents[SUB_AGENT_ID]["legal_name"] == OWNER_LEGAL_NAME
+    assert agents[SUB_AGENT_ID]["legal_code"] == OWNER_TAX_CODE
+    # 3 id KHÁC nhau từng đôi một — điều kiện để writer nhận 2 phía khác nhau.
+    assert len(set(SEED_IDS)) == 3
+    # Record Phú Anh lịch sử KHÔNG bị đổi tên thành Trường Thành (không phải 1
+    # trong 3 vai trò của chuỗi ủy thác) — giữ để không phá partner/payable cũ.
+    assert "AGT-PHUANH" in agents
+
+
+def test_staging_seed_source_carries_the_owner_identity_in_every_role_record():
+    from pathlib import Path
+
+    source = Path("views/logi_staging_seed.py").read_text(encoding="utf-8")
+    # 3 record = 3 lần ghi MST thật + 3 lần ghi tên thật (đếm theo dòng).
+    assert source.count(OWNER_TAX_CODE) >= 3, source.count(OWNER_TAX_CODE)
+    assert source.count(OWNER_LEGAL_NAME) >= 3, source.count(OWNER_LEGAL_NAME)
+    # Danh tính staging cũ đã bị thay hoàn toàn, không còn nằm lại trong seed.
+    assert "0100987654" not in source
+    assert "GIAO NHẬN QUỐC TẾ" not in source
+
+
+def test_same_name_and_same_tax_code_are_separated_only_by_role():
+    flow = _seed_flow()
+    assert flow["ready"] is True, flow["missing"]
+    parties = entrustment_parties(flow)
+    assert [row["id"] for row in parties] == SEED_IDS
+    labels = [row["label"] for row in parties]
+    assert len(set(labels)) == 3, labels
+    # Trùng tên + trùng MST: label chỉ khác nhau ở ĐUÔI VAI TRÒ, đúng từng bên.
+    for row in parties:
+        assert row["label"] == (
+            f"{OWNER_LEGAL_NAME} · MST {OWNER_TAX_CODE} · {ROLE_OF[row['id']]}"
+        ), row["label"]
+    assert {label.rsplit(" · ", 1)[0] for label in labels} == {
+        f"{OWNER_LEGAL_NAME} · MST {OWNER_TAX_CODE}"
+    }, labels
+
+
+def test_both_staging_handover_selects_offer_three_role_options_with_same_shape():
+    flow = _seed_flow()
+    fields = _handover_fields(flow)
+    for key in ("warehouse_handover_from", "warehouse_handover_to"):
+        field = fields[key]
+        assert field["kind"] == "status", field
+        options = field["options"]
+        # Shape {value,label} giữ nguyên — không thêm/bớt key nào.
+        assert all(set(option) == {"value", "label"} for option in options), options
+        assert [option["value"] for option in options] == SEED_IDS
+        assert len({option["label"] for option in options}) == 3, options
+        for option in options:
+            assert f"MST {OWNER_TAX_CODE}" in option["label"], option
+            assert option["label"].endswith(ROLE_OF[option["value"]]), option
+    # 2 field tên hiển thị vẫn là secondary (không thêm field primary nào).
+    for key in ("warehouse_handover_from_label", "warehouse_handover_to_label"):
+        assert fields[key]["kind"] == "text", fields.get(key)
+        assert fields[key]["secondary"] is True, fields.get(key)
+
+
+def test_handover_between_two_roles_of_one_legal_person_is_accepted_once():
+    shipment, flow = _seed_shipment(), _seed_flow()
+    assert _write(shipment, flow, READY_FIELDS)[0] is not None
+    # Bên giao = vai trò 1, bên nhận = vai trò 3: cùng tên + cùng MST, chỉ khác
+    # vai trò ⇒ bàn giao vẫn hợp lệ và dòng bằng chứng phân biệt được 2 bên.
+    merged, errors = _write(shipment, flow, {
+        "warehouse_handover_at": "2026-10-12",
+        "warehouse_handover_from": SIGNING_ID,
+        "warehouse_handover_to": IMPORTER_ID,
+        "warehouse_handover_doc_no": "BBGN-211-W4",
+    })
+    assert merged is not None, errors
+    stages = project_entrustment_stages(flow, LINKED, stored_entrustment_evidence(shipment))
+    assert stages["handover"]["done"] is True, stages["handover"]["missing"]
+    evidence = stages["handover"]["evidence"]
+    assert ROLE_OF[SIGNING_ID] in evidence, evidence
+    assert ROLE_OF[IMPORTER_ID] in evidence, evidence
+    # Vai trò khác KHÔNG phải giấy phép chọn cùng một id cho cả 2 phía.
+    same_side, same_errors = _write(shipment, flow, {"warehouse_handover_to": SIGNING_ID})
+    assert same_side is None and any("khác nhau" in e for e in same_errors), same_errors
+
+
+def test_missing_tax_code_on_a_role_drops_only_the_mst_segment():
+    # Thiếu MST ở vai trò 1 (bên giao) + vai trò 2: bỏ đúng đoạn MST, KHÔNG
+    # bịa số; vai trò 3 (bên nhận) vẫn giữ MST nên flow vẫn đủ điều kiện ready.
+    companies, agents = _seed_masters()
+    signer = {key: value for key, value in companies[SIGNING_ID].items() if key != "tax_or_legal_code"}
+    sub_agent = {key: value for key, value in agents[SUB_AGENT_ID].items() if key != "legal_code"}
+    companies[SIGNING_ID] = signer
+    agents[SUB_AGENT_ID] = sub_agent
+    flow = _seed_flow(companies, agents)
+    assert flow["ready"] is True, flow["missing"]
+    by_id = {row["id"]: row["label"] for row in entrustment_parties(flow)}
+    assert by_id[SIGNING_ID] == f"{OWNER_LEGAL_NAME} · {ROLE_OF[SIGNING_ID]}", by_id
+    assert by_id[SUB_AGENT_ID] == f"{OWNER_LEGAL_NAME} · {ROLE_OF[SUB_AGENT_ID]}", by_id
+    assert by_id[IMPORTER_ID] == (
+        f"{OWNER_LEGAL_NAME} · MST {OWNER_TAX_CODE} · {ROLE_OF[IMPORTER_ID]}"
+    ), by_id
+    # Vẫn 3 lựa chọn phân biệt được, và 2 select vẫn đủ 3 giá trị: ca này chọn
+    # bên giao = vai trò 1 (thiếu MST) → bên nhận = vai trò 3 (có MST).
+    assert len(set(by_id.values())) == 3
+    fields = _handover_fields(flow)
+    for key in ("warehouse_handover_from", "warehouse_handover_to"):
+        assert [option["value"] for option in fields[key]["options"]] == SEED_IDS
+    signer_option = next(
+        option for option in fields["warehouse_handover_from"]["options"]
+        if option["value"] == SIGNING_ID
+    )
+    assert "MST" not in signer_option["label"], signer_option

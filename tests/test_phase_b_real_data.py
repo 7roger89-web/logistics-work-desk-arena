@@ -361,7 +361,11 @@ def _make_pxk_ready_shipment(event_seq) -> str:
         "shipmentId": sid,
         "requestId": f"REQ-FLOW-{sid}",
         "mode": "TT_ENTRUSTED_DIRECT",
-        "companyId": "",
+        # Staging authority_companies carries ONE legal person in two role
+        # records (signing + legal importer), so the writer's single-record
+        # auto-fill no longer applies: the caller picks the signing role
+        # explicitly. validate_flow_write itself is unchanged.
+        "companyId": "TT-COMPANY",
         "subAgentId": "",
     })
     assert flow["ok"], flow["error"]
@@ -517,7 +521,9 @@ def test_pxk_requires_linked_source_contract(staging, event_seq):
         "shipmentId": "LO-0295",
         "requestId": "REQ-FLOW-0295",
         "mode": "TT_ENTRUSTED_DIRECT",
-        "companyId": "",
+        # Same explicit signing-role choice as the helper above (2 role records
+        # for one legal person ⇒ no single-record auto-fill).
+        "companyId": "TT-COMPANY",
         "subAgentId": "",
     })
     assert flow["ok"], flow["error"]
