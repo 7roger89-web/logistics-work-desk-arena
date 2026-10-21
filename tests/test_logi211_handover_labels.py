@@ -15,6 +15,10 @@ Pins (RED trước fix → GREEN sau fix):
   cũ của phía đó bị bỏ (dòng bằng chứng rơi về nhãn master của bên MỚI); gửi
   kèm tên mới ⇒ giữ tên mới; không đổi phía ⇒ giữ nguyên tên cũ; phía không
   đổi vẫn chịu luật "không xoá trắng bằng chứng đã ghi".
+* (iv) F-2 — `_entity_tax_code` phải đọc theo thứ tự COMPANY-trước
+  (`tax_or_legal_code` → `legal_code` → `tax_code` → `mst`) và strip TỪNG giá
+  trị: legal form / chuỗi khoảng trắng KHÔNG được che MST thật; không có MST
+  nào thì trả "" (không bịa).
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from __future__ import annotations
 from core.shipment_document_workflow import (
     FLOW_TT_ENTRUSTED_SUB,
     ENTRUSTMENT_EVIDENCE_BLOCK,
+    _entity_tax_code,
     entrustment_parties,
     project_commercial_flow,
     project_entrustment_stages,
@@ -382,3 +387,95 @@ def test_changing_receiver_side_without_label_drops_its_stale_label():
     assert TO_LABEL not in evidence, evidence
     assert "MST 0100000002" in evidence and "đối tác hợp đồng" in evidence, evidence
     assert FROM_LABEL in evidence, evidence
+
+
+# (iv) F-2 — MST đọc ĐÚNG field của pháp nhân, không bị key khác che -----------
+# Nguyên nhân gốc: `_entity_tax_code` đọc `legal_code` TRƯỚC `tax_or_legal_code`
+# và chỉ strip ở kết quả cuối của chuỗi `or` — nên một `legal_code` giữ vai trò
+# "spelling" (legal form) hoặc một giá trị toàn khoảng trắng che mất MST thật.
+# 3 pháp nhân Trường Thành CÙNG TÊN nên MST là thứ duy nhất phân biệt được.
+
+# COMPANY master có CẢ `legal_code` (legal form, không phải MST) lẫn
+# `tax_or_legal_code` (MST thật) — đúng hình dạng master thật của repo.
+COMPANIES_WITH_LEGAL_FORM = {
+    "TT-SIGN": {**COMPANIES["TT-SIGN"], "legal_code": "LEGAL-FORM"},
+    "TT-IMP": {**COMPANIES["TT-IMP"], "legal_code": "LEGAL-FORM"},
+}
+
+
+def test_company_tax_code_wins_over_legal_code_spelling():
+    # (1) Hình dạng thật của COMPANY master: `tax_or_legal_code` là MST,
+    # `legal_code` là legal form ⇒ MST thật phải thắng.
+    assert _entity_tax_code(
+        {"tax_or_legal_code": "0100123456", "legal_code": "LEGAL-FORM"}
+    ) == "0100123456"
+    # Đường thật: label 2 select bên giao/bên nhận phải mang ĐÚNG MST của pháp
+    # nhân được chọn (3 pháp nhân trùng tên, khác MST) — không phải legal form.
+    by_id = {
+        row["id"]: row["label"]
+        for row in entrustment_parties(_flow(COMPANIES_WITH_LEGAL_FORM, AGENTS))
+    }
+    assert "MST 0100000001" in by_id["TT-SIGN"], by_id["TT-SIGN"]
+    assert "MST 0100000003" in by_id["TT-IMP"], by_id["TT-IMP"]
+    assert "LEGAL-FORM" not in "".join(by_id.values()), by_id
+    assert len(set(by_id.values())) == 3, by_id
+
+
+def test_blank_spelling_value_does_not_mask_the_real_tax_code():
+    # (2) Giá trị toàn khoảng trắng KHÔNG được che MST thật đứng sau nó.
+    assert _entity_tax_code({"legal_code": "   ", "tax_code": "0100999888"}) == "0100999888"
+    assert _entity_tax_code(
+        {"legal_code": " ", "tax_or_legal_code": " 0100123456 ", "mst": "9999999999"}
+    ) == "0100123456"
+    # Cùng luật cho hàng master trắng ở field đứng trước: MST của bên nhập khẩu
+    # vẫn phải resolve đúng, không rơi về rỗng.
+    companies = {
+        **COMPANIES_WITH_LEGAL_FORM,
+        "TT-IMP": {**COMPANIES_WITH_LEGAL_FORM["TT-IMP"], "legal_code": "   "},
+    }
+    by_id = {row["id"]: row["label"] for row in entrustment_parties(_flow(companies, AGENTS))}
+    assert "MST 0100000003" in by_id["TT-IMP"], by_id["TT-IMP"]
+
+
+def test_no_tax_code_anywhere_stays_blank_and_is_never_invented():
+    # (3) Không có MST ở bất kỳ spelling nào ⇒ "", KHÔNG bịa số.
+    assert _entity_tax_code({}) == ""
+    assert _entity_tax_code(None) == ""
+    assert _entity_tax_code(
+        {"legal_code": "  ", "tax_or_legal_code": "\t", "tax_code": " ", "mst": "\n"}
+    ) == ""
+    # Master sạch kiểu "không có MST" cho cả 3 bên ⇒ nhãn bỏ đoạn MST, không bịa.
+    parties = entrustment_parties(_flow(COMPANIES_SIGNER_NO_MST, AGENTS_NO_MST))
+    signer = next(row["label"] for row in parties if row["id"] == "TT-SIGN")
+    assert "MST" not in signer, signer
+
+
+# (v) TUỲ CHỌN — CÙNG LỚP LỖI trên 3 chuỗi tên hiển thị ------------------------
+# 3 chuỗi `importer_name` / `sub_agent_name` / `signing_company_name` cũng dùng
+# `or` trên RAW value ⇒ `legal_name="  "` (không rỗng nhưng toàn khoảng trắng)
+# che `name` thật ⇒ nhãn bên giao/bên nhận mất TÊN, chỉ còn mã + vai trò. Hạng
+# mục TUỲ CHỌN của task F-2; RED chứng minh được nên sửa cùng lớp lỗi.
+
+def test_whitespace_legal_name_does_not_mask_the_real_master_name():
+    companies = {
+        "TT-SIGN": {"company_id": "TT-SIGN", "legal_name": "   ", "name": "TT-SIGN REAL"},
+        "TT-IMP": {
+            "company_id": "TT-IMP",
+            "legal_name": "\t",
+            "company_name": "TT-IMP REAL",
+            "tax_or_legal_code": "0100000003",
+        },
+    }
+    agents = {
+        "TT-CTR": {"agent_id": "TT-CTR", "legal_name": " ", "name": "TT-CTR REAL",
+                   "legal_code": "0100000002"},
+    }
+    flow = project_commercial_flow(_shipment(), companies=companies, agents=agents)
+    assert flow["companyName"] == "TT-SIGN REAL", flow["companyName"]
+    assert flow["subAgentName"] == "TT-CTR REAL", flow["subAgentName"]
+    assert flow["legalImporterName"] == "TT-IMP REAL", flow["legalImporterName"]
+    # Nhãn 2 select vì thế mang đúng TÊN THẬT + MST + vai trò, không chỉ mã.
+    labels = {row["id"]: row["label"] for row in entrustment_parties(flow)}
+    assert labels["TT-SIGN"].startswith("TT-SIGN REAL · "), labels["TT-SIGN"]
+    assert labels["TT-CTR"].startswith("TT-CTR REAL · MST 0100000002 · "), labels["TT-CTR"]
+    assert labels["TT-IMP"].startswith("TT-IMP REAL · MST 0100000003 · "), labels["TT-IMP"]

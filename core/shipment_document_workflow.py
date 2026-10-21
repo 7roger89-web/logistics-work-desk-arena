@@ -89,18 +89,39 @@ def _entity_by_id(
 def _entity_tax_code(entity: Mapping[str, Any] | None) -> str:
     """MST of one resolved master row, across the repo's real spellings.
 
-    The COMPANY authority master stores it as ``tax_or_legal_code``, the
-    AGENT master as ``legal_code``, customers as ``tax_code`` — read the
-    resolved row's own field instead of assuming one shared key.  An absent
-    MST stays blank; it is never invented.
+    ``tax_or_legal_code`` (COMPANY authority master) is read FIRST: the
+    consumers of this helper — signing company, legal importer, handover
+    parties — are COMPANY rows, so their own field is the truth.  An AGENT
+    row has no ``tax_or_legal_code`` and falls through to ``legal_code``,
+    which stays in the chain as the AGENT-master spelling (customers keep
+    ``tax_code``).  Reading ``legal_code`` first let a legal-form value win
+    over the real tax code of a company master that carries both.
+
+    Values are stripped ONE BY ONE before choosing, so a blank or
+    whitespace-only spelling can no longer mask the real MST behind it.
+    An absent MST stays blank; it is never invented.
     """
     row = entity or {}
-    return _text(
-        row.get("legal_code")
-        or row.get("tax_or_legal_code")
-        or row.get("tax_code")
-        or row.get("mst")
-    )
+    for key in ("tax_or_legal_code", "legal_code", "tax_code", "mst"):
+        value = _text(row.get(key))
+        if value:
+            return value
+    return ""
+
+
+def _entity_display_name(entity: Mapping[str, Any] | None, *keys: str) -> str:
+    """First non-blank name spelling of a resolved master row.
+
+    Same reason as :func:`_entity_tax_code`: the values are stripped ONE BY
+    ONE, so a whitespace-only ``legal_name`` cannot mask the real ``name``
+    behind it and empty the party label.
+    """
+    row = entity or {}
+    for key in keys:
+        value = _text(row.get(key))
+        if value:
+            return value
+    return ""
 
 
 def stored_flow(shipment: Mapping[str, Any]) -> dict[str, Any]:
@@ -315,10 +336,8 @@ def project_commercial_flow(
                 importer_id = candidate_id
 
     importer = importer or {}
-    importer_name = _text(
-        importer.get("legal_name")
-        or importer.get("name")
-        or importer.get("company_name")
+    importer_name = _entity_display_name(
+        importer, "legal_name", "name", "company_name"
     )
     # Repo truth: each master spells MST differently — the COMPANY authority
     # master stores it as ``tax_or_legal_code`` (views/contracts.py,
@@ -333,10 +352,7 @@ def project_commercial_flow(
         missing.append("Thiếu mã số thuế của đơn vị đứng nhập khẩu.")
 
     sub_agent = _entity_by_id(agents, flow["sub_agent_id"], "agent_id", "id")
-    sub_agent_name = _text(
-        (sub_agent or {}).get("legal_name")
-        or (sub_agent or {}).get("name")
-    )
+    sub_agent_name = _entity_display_name(sub_agent, "legal_name", "name")
     # Same MST resolution as the legal importer above: group companies can
     # share ONE legal name, so the handover party choices (entrustment_parties)
     # need each party's own MST to stay distinguishable.  Absent stays blank.
@@ -344,10 +360,8 @@ def project_commercial_flow(
     # The signing company is a distinct party of the same chain; its name is
     # needed to label an EXPLICIT handover party choice (never to infer it).
     signing_company = _entity_by_id(companies, flow["company_id"], "company_id", "id")
-    signing_company_name = _text(
-        (signing_company or {}).get("legal_name")
-        or (signing_company or {}).get("name")
-        or (signing_company or {}).get("company_name")
+    signing_company_name = _entity_display_name(
+        signing_company, "legal_name", "name", "company_name"
     )
     signing_company_tax_code = _entity_tax_code(signing_company)
 
