@@ -263,6 +263,8 @@ Giữ mỗi dòng thật ngắn. Nếu dài quá thì để chi tiết ở playb
 Chi tiết + bối cảnh: docs/CONTROL-TOWER-PLAYBOOK.md §9. Mỗi dòng ở đây phải ngắn.
 - Mọi LEARNING_RECONCILIATION=CANDIDATE phải hạ xuống đây đúng 1 dòng trước khi kết phiên — không để mắc trong nhật ký.
 - Trước khi đính log/ZIP lên PR công khai: quét secret và redaction TRƯỚC, vì attachment GitHub không xoá được về sau.
+- Receipt bắt buộc phải nằm trong COMMENT công khai trên PR, không chỉ trong chat; `OE_VERDICT` phải đúng enum DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED; số đo độ dài section phải nêu ranh giới trích xuất.
+
 
 ## Definition of Done tối thiểu cho task đụng UI
 
