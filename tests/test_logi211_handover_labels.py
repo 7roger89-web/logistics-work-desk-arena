@@ -10,6 +10,11 @@ Pins (RED trước fix → GREEN sau fix):
   ⇒ rơi về nhãn từ master.
 * Validation chiều bàn giao KHÔNG đổi: cùng bên / ngoài chuỗi vẫn bị từ chối;
   ghi mỗi tên hiển thị không tự hoàn thành bàn giao.
+* (iii) F-1 — tên hiển thị BÁM THEO PHÍA: đổi `handover_from`/`handover_to`
+  trong một lượt ghi mà lượt đó không gửi kèm tên hiển thị của phía đó ⇒ tên
+  cũ của phía đó bị bỏ (dòng bằng chứng rơi về nhãn master của bên MỚI); gửi
+  kèm tên mới ⇒ giữ tên mới; không đổi phía ⇒ giữ nguyên tên cũ; phía không
+  đổi vẫn chịu luật "không xoá trắng bằng chứng đã ghi".
 """
 
 from __future__ import annotations
@@ -264,3 +269,116 @@ def test_overlong_display_label_is_refused():
         {**HANDOVER_FIELDS, "warehouse_handover_from_label": "X" * 201},
     )
     assert merged is None and any("dài quá" in e for e in errors), errors
+
+
+# (iii) F-1 — tên hiển thị BÁM THEO PHÍA -----------------------------------------
+#
+# QA độc lập #6307025423 (F-1) tái hiện: ghi tên "Kho Bắc Ninh" cho bên giao
+# TT-SIGN, rồi đổi bên giao sang TT-CTR ⇒ dòng bằng chứng vẫn hiện tên cũ cho
+# pháp nhân MỚI.  Tên hiển thị là chữ của MỘT phía; đổi phía mà không kèm tên
+# mới thì tên cũ không còn thuộc về ai ⇒ bị bỏ, dòng bằng chứng rơi về nhãn
+# master của bên mới (tên + MST + vai trò).
+
+FROM_LABEL = "Trường Thành kho Bắc Ninh"
+TO_LABEL = "Trường Thành chi nhánh Hải Phòng"
+
+
+def _with_labels() -> tuple[dict, dict]:
+    """Shipment đã có ready + handover đủ 4 fact + 2 tên hiển thị."""
+    shipment, flow = _shipment(), _flow()
+    assert _write(shipment, flow, READY_FIELDS)[0] is not None
+    merged, errors = _write(shipment, flow, {
+        **HANDOVER_FIELDS,
+        "warehouse_handover_from_label": FROM_LABEL,
+        "warehouse_handover_to_label": TO_LABEL,
+    })
+    assert merged is not None, errors
+    return shipment, flow
+
+
+def test_changing_side_without_label_drops_stale_label_and_falls_back_to_master():
+    shipment, flow = _with_labels()
+    # Đổi bên giao TT-SIGN -> TT-CTR, KHÔNG gửi kèm tên hiển thị bên giao.
+    merged, errors = _write(shipment, flow, {"warehouse_handover_from": "TT-CTR"})
+    assert merged is not None, errors
+    stored = stored_entrustment_evidence(shipment)
+    assert stored["handover_from"] == "TT-CTR"
+    # Tên cũ của phía đã đổi bị bỏ; phía KHÔNG đổi giữ nguyên tên của nó.
+    assert stored["handover_from_label"] == "", stored
+    assert stored["handover_to_label"] == TO_LABEL, stored
+    stages = project_entrustment_stages(flow, LINKED, stored)
+    evidence = stages["handover"]["evidence"]
+    # Dòng bằng chứng dùng nhãn master của bên MỚI, không dính tên của bên cũ.
+    assert FROM_LABEL not in evidence, evidence
+    assert "MST 0100000002" in evidence and "đối tác hợp đồng" in evidence, evidence
+    assert TO_LABEL in evidence, evidence
+    # Bỏ tên hiển thị KHÔNG phải xoá bằng chứng: handover vẫn đủ và vẫn done.
+    assert stages["handover"]["done"] is True, stages["handover"]["missing"]
+    assert stored["handover_at"] == HANDOVER_FIELDS["warehouse_handover_at"]
+    assert stored["handover_doc_no"] == HANDOVER_FIELDS["warehouse_handover_doc_no"]
+
+
+def test_changing_side_with_new_label_keeps_the_new_name():
+    shipment, flow = _with_labels()
+    merged, errors = _write(shipment, flow, {
+        "warehouse_handover_from": "TT-CTR",
+        "warehouse_handover_from_label": "Trường Thành — đối tác nhận ủy thác",
+    })
+    assert merged is not None, errors
+    stored = stored_entrustment_evidence(shipment)
+    assert stored["handover_from"] == "TT-CTR"
+    assert stored["handover_from_label"] == "Trường Thành — đối tác nhận ủy thác"
+    assert stored["handover_to_label"] == TO_LABEL
+    stages = project_entrustment_stages(flow, LINKED, stored)
+    assert "Trường Thành — đối tác nhận ủy thác" in stages["handover"]["evidence"]
+    assert FROM_LABEL not in stages["handover"]["evidence"]
+
+
+def test_unchanged_side_keeps_its_recorded_label():
+    shipment, flow = _with_labels()
+    # Ghi lại đúng phía cũ (không đổi bên) + sửa fact khác ⇒ tên cũ giữ nguyên.
+    merged, errors = _write(shipment, flow, {
+        "warehouse_handover_from": "TT-SIGN",
+        "warehouse_handover_to": "TT-IMP",
+        "warehouse_handover_doc_no": "BBGN-211-02",
+    })
+    assert merged is not None, errors
+    stored = stored_entrustment_evidence(shipment)
+    assert stored["handover_from_label"] == FROM_LABEL
+    assert stored["handover_to_label"] == TO_LABEL
+    assert stored["handover_doc_no"] == "BBGN-211-02"
+    stages = project_entrustment_stages(flow, LINKED, stored)
+    assert FROM_LABEL in stages["handover"]["evidence"]
+    assert TO_LABEL in stages["handover"]["evidence"]
+
+
+def test_unchanged_side_still_refuses_blanking_a_recorded_label():
+    shipment, flow = _with_labels()
+    # Phía KHÔNG đổi + caller gửi rỗng ⇒ luật "không xoá bằng chứng đã ghi"
+    # vẫn áp (đường bỏ tên chỉ dành cho lần ghi ĐỔI BÊN).
+    merged, errors = _write(shipment, flow, {
+        "warehouse_handover_from": "TT-SIGN",
+        "warehouse_handover_from_label": "",
+    })
+    assert merged is None and any(
+        "Không được xóa bằng chứng đã ghi (handover_from_label)" in e for e in errors
+    ), errors
+    # Và block đã lưu không bị đụng.
+    stored = stored_entrustment_evidence(shipment)
+    assert stored["handover_from_label"] == FROM_LABEL
+
+
+def test_changing_receiver_side_without_label_drops_its_stale_label():
+    # Cùng luật cho phía BÊN NHẬN (không chỉ bên giao).
+    shipment, flow = _with_labels()
+    merged, errors = _write(shipment, flow, {"warehouse_handover_to": "TT-CTR"})
+    assert merged is not None, errors
+    stored = stored_entrustment_evidence(shipment)
+    assert stored["handover_to"] == "TT-CTR"
+    assert stored["handover_to_label"] == "", stored
+    assert stored["handover_from_label"] == FROM_LABEL, stored
+    stages = project_entrustment_stages(flow, LINKED, stored)
+    evidence = stages["handover"]["evidence"]
+    assert TO_LABEL not in evidence, evidence
+    assert "MST 0100000002" in evidence and "đối tác hợp đồng" in evidence, evidence
+    assert FROM_LABEL in evidence, evidence

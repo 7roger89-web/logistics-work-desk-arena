@@ -1077,6 +1077,7 @@ def validate_entrustment_evidence_write(
 
     existing = stored_entrustment_evidence(shipment)
     merged = dict(existing)
+    written_keys = {ENTRUSTMENT_FIELDS[str(key)] for key in fields}
     for key, value in fields.items():
         stored_key = ENTRUSTMENT_FIELDS[str(key)]
         # Time fields MUST be parsed whole. They used to be caught by the
@@ -1091,6 +1092,28 @@ def validate_entrustment_evidence_write(
         if existing.get(stored_key) and not normalized:
             return None, [f"Không được xóa bằng chứng đã ghi ({stored_key})."]
         merged[stored_key] = normalized
+
+    # F-1 — the display name BELONGS TO ONE SIDE.  A display name is written
+    # for the party chosen on that side; when this same write changes the side
+    # (``handover_from``/``handover_to`` differs from what is stored) and does
+    # NOT carry the matching display name, the old name no longer belongs to
+    # anybody and is dropped, so the evidence line falls back to the master
+    # label of the NEW party instead of showing the previous party's name.
+    # Sending the new name in the same write keeps it; an unchanged side keeps
+    # its recorded name untouched.
+    #
+    # This is a WRITER-SIDE drop of a stale pointer, NOT a hole in the
+    # "never blank recorded evidence" rule above: that rule still refuses a
+    # blank write for an UNCHANGED side (the caller would be erasing a fact),
+    # while here the stored name is provably about a party that is no longer on
+    # that side, and the drop is the documented way back to the master label.
+    for side_key in ("handover_from", "handover_to"):
+        if merged[side_key] == existing[side_key]:
+            continue
+        label_key = f"{side_key}_label"
+        if label_key in written_keys:
+            continue
+        merged[label_key] = ""
 
     # Display names are optional, but when recorded they stay bounded like
     # every other text fact of this block.
