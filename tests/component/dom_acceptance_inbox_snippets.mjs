@@ -75,6 +75,22 @@ window.HTMLElement.prototype.scrollIntoView = () => {};
 window.scrollTo = () => {};
 window.URL.createObjectURL = () => "blob:mock-url";
 window.URL.revokeObjectURL = () => {};
+globalThis.FileReader = window.FileReader = class {
+  constructor() {
+    this.result = "";
+    this.onload = null;
+    this.onerror = null;
+  }
+  readAsDataURL(blob) {
+    const name = String(blob && blob.name || "file.bin");
+    const mime = String(blob && blob.type || "application/octet-stream");
+    const payload = Buffer.from(`synthetic:${name}`).toString("base64");
+    this.result = `data:${mime};base64,${payload}`;
+    queueMicrotask(() => {
+      if (typeof this.onload === "function") this.onload();
+    });
+  }
+};
 window.matchMedia = window.matchMedia || (() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }));
 
 const tick = (ms = 60) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -186,6 +202,82 @@ console.log("STEP 3 — Thêm sheet opens composer first");
   if (closeBtn) closeBtn.click();
   await tick();
   ok("composer is first in Thêm and dispatches one create event");
+}
+
+async function openComposerFromHeader() {
+  const header = $("header")[0];
+  await click("Thêm", "button", header);
+  const first = $("[data-testid='quick-add-inbox']")[0];
+  assert.ok(first, "Ghi chú nhanh missing");
+  first.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  assert.ok($("[data-testid='inbox-composer']")[0], "composer missing");
+}
+
+function jpegFile() {
+  const bytes = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]);
+  return new window.File([bytes], "anh-dan.jpg", { type: "image/jpeg", lastModified: Date.now() });
+}
+
+function pdfFile() {
+  const bytes = new TextEncoder().encode("%PDF-1.4\nsynthetic-inbox-pdf\n%%EOF");
+  return new window.File([bytes], "scan.pdf", { type: "application/pdf", lastModified: Date.now() });
+}
+
+function dispatchPaste(zone, file) {
+  const event = new window.Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", {
+    configurable: true,
+    value: {
+      items: [{ kind: "file", type: file.type, getAsFile: () => file }],
+      files: [file],
+    },
+  });
+  zone.dispatchEvent(event);
+}
+
+console.log("STEP 3b — JPEG Ctrl+V file-only submit");
+{
+  await remount(DATA);
+  triggers.length = 0;
+  await openComposerFromHeader();
+  const zone = $("[data-testid='inbox-composer-paste']")[0];
+  zone.focus();
+  dispatchPaste(zone, jpegFile());
+  await tick();
+  assert.ok(bodyText().includes("anh-dan.jpg"), "pasted JPEG name missing from file list");
+  const save = $("[data-testid='inbox-composer-save']")[0];
+  save.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(400);
+  const create = [...triggers].reverse().find((row) => row.event === "inbox_snippet_create");
+  assert.ok(create, "file-only create was not dispatched");
+  assert.equal(create.value.payload.rawText, "");
+  assert.ok(Array.isArray(create.value.payload.files) && create.value.payload.files.length === 1, "JPEG file missing from payload");
+  assert.equal(create.value.payload.files[0].fileName, "anh-dan.jpg");
+  assert.ok(create.value.payload.files[0].base64, "JPEG base64 missing");
+  ok("JPEG paste file-only submit dispatches bytes without text");
+}
+
+console.log("STEP 3c — PDF picker file-only submit");
+{
+  await remount(DATA);
+  triggers.length = 0;
+  await openComposerFromHeader();
+  const input = $("[data-testid='inbox-composer-file']")[0];
+  const file = pdfFile();
+  Object.defineProperty(input, "files", { configurable: true, value: [file] });
+  input.dispatchEvent(new window.Event("change", { bubbles: true }));
+  await tick();
+  assert.ok(bodyText().includes("scan.pdf"), "picked PDF name missing from file list");
+  const save = $("[data-testid='inbox-composer-save']")[0];
+  save.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(400);
+  const create = [...triggers].reverse().find((row) => row.event === "inbox_snippet_create");
+  assert.ok(create, "PDF picker create was not dispatched");
+  assert.equal(create.value.payload.rawText, "");
+  assert.equal(create.value.payload.files[0].fileName, "scan.pdf");
+  assert.ok(create.value.payload.files[0].base64, "PDF base64 missing");
+  ok("PDF picker file-only submit dispatches bytes without text");
 }
 
 console.log("STEP 4 — inbox list, search, filter, link");

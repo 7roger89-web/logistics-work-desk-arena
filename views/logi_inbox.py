@@ -156,22 +156,21 @@ def snippet_projection(
     }
 
 
-def _group_linked(
-    rows: list[Mapping[str, Any]],
+def _project_linked_map(
+    grouped: Mapping[str, list[Mapping[str, Any]]] | None,
     *,
     download: Mapping[str, Any] | None,
-) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]]]:
-    by_contract: dict[str, list[dict[str, Any]]] = {}
-    by_shipment: dict[str, list[dict[str, Any]]] = {}
-    for row in rows:
-        projected = snippet_projection(row, download=download)
-        if projected is None:
-            continue
-        for cid in projected["contractIds"]:
-            by_contract.setdefault(cid, []).append(projected)
-        for sid in projected["shipmentIds"]:
-            by_shipment.setdefault(sid, []).append(projected)
-    return by_contract, by_shipment
+) -> dict[str, list[dict[str, Any]]]:
+    out: dict[str, list[dict[str, Any]]] = {}
+    for key, rows in (grouped or {}).items():
+        projected = [
+            item
+            for item in (snippet_projection(row, download=download) for row in rows)
+            if item
+        ]
+        if projected:
+            out[str(key)] = projected
+    return out
 
 
 def inbox_projection(
@@ -230,7 +229,7 @@ def inbox_projection(
         ) if row
     ]
     try:
-        linked_rows = load_inbox_snippets_linked_to(
+        linked_maps = load_inbox_snippets_linked_to(
             contract_ids=contract_ids or [],
             shipment_ids=shipment_ids or [],
             db=db,
@@ -239,8 +238,9 @@ def inbox_projection(
             shipment_ids=shipment_ids or [],
         )
     except Exception:  # noqa: BLE001
-        linked_rows = []
-    by_contract, by_shipment = _group_linked(linked_rows, download=download)
+        linked_maps = {"by_contract": {}, "by_shipment": {}}
+    by_contract = _project_linked_map((linked_maps or {}).get("by_contract"), download=download)
+    by_shipment = _project_linked_map((linked_maps or {}).get("by_shipment"), download=download)
     return {
         "canRead": True,
         "canWrite": True,
@@ -348,8 +348,16 @@ def _persist_prepared_files(
     *,
     uploaded_by: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
-    """Store bytes then metadata. Partial failure does not roll back the note."""
-    from core.database import append_inbox_attachment
+    """Store bytes then metadata. Partial failure does not roll back the note.
+
+    Compensation deletes the just-written bytes only when metadata absence is
+    proven. A committed-but-unproven readback keeps both sides.
+    """
+    from core.database import (
+        ATTACHMENT_PROBE_ABSENT_PROVEN,
+        append_inbox_attachment,
+        probe_inbox_attachment_identity,
+    )
     from core.inbox_attachments import compensate_stored_bytes, store_inbox_bytes
 
     failed: list[dict[str, Any]] = []
@@ -375,28 +383,44 @@ def _persist_prepared_files(
             continue
         record = dict(outcome.get("record") or {})
         saved = append_inbox_attachment(snippet_id, record)
-        if not saved.get("ok"):
-            deleted = compensate_stored_bytes(
-                client=outcome.get("client"),
-                storage_file_id=_text(record.get("storage_file_id")),
-            )
-            if not deleted:
-                orphan_risk = True
+        if saved.get("ok"):
+            if saved.get("duplicate"):
+                compensate_stored_bytes(
+                    client=outcome.get("client"),
+                    storage_file_id=_text(record.get("storage_file_id")),
+                )
+            stored.append(dict(saved.get("record") or record))
+            continue
+        probe_state = _text(saved.get("probe_state"))
+        if not probe_state:
+            probe_state, _durable = probe_inbox_attachment_identity(snippet_id, record)
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
             failed.append(
                 {
                     "fileName": item["file_name"],
-                    "error": _text(saved.get("error")) or "Không ghi được metadata tệp.",
-                    "code": "METADATA_WRITE_FAILED",
-                    "orphanRisk": not deleted,
+                    "error": _text(saved.get("error"))
+                    or "Chưa xác minh được metadata; giữ nguyên tệp, không xoá bù.",
+                    "code": _text(saved.get("code")) or "METADATA_READBACK_UNPROVEN",
+                    "orphanRisk": False,
+                    "compensationAttempted": False,
                 }
             )
             continue
-        if saved.get("duplicate"):
-            compensate_stored_bytes(
-                client=outcome.get("client"),
-                storage_file_id=_text(record.get("storage_file_id")),
-            )
-        stored.append(dict(saved.get("record") or record))
+        deleted = compensate_stored_bytes(
+            client=outcome.get("client"),
+            storage_file_id=_text(record.get("storage_file_id")),
+        )
+        if not deleted:
+            orphan_risk = True
+        failed.append(
+            {
+                "fileName": item["file_name"],
+                "error": _text(saved.get("error")) or "Không ghi được metadata tệp.",
+                "code": _text(saved.get("code")) or "METADATA_WRITE_FAILED",
+                "orphanRisk": not deleted,
+                "compensationAttempted": True,
+            }
+        )
     return stored, failed, orphan_risk
 
 

@@ -13145,7 +13145,7 @@ function Us({ onCancel: e, onSaved: t, onPendingChange: n }) {
 					type: "button",
 					"data-testid": "inbox-composer-save-next",
 					disabled: !!x,
-					onClick: () => void R(!0),
+					onClick: () => void R(!0, !!(M && y.length)),
 					className: "btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-[#0f2a4a] text-[#0f2a4a] font-bold text-[15.5px] px-5 min-h-[48px] disabled:opacity-50",
 					children: x && D ? "Đang lưu…" : "Lưu & ghi tiếp"
 				})]

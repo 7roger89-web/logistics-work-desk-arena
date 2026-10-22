@@ -1928,6 +1928,7 @@ INBOX_MAX_SOURCE_REF = 200
 INBOX_MAX_REQUEST_ID = 120
 INBOX_MAX_BATCH = 50
 INBOX_PAGE_SIZE = 50
+INBOX_LINKED_PER_TARGET = 50
 INBOX_MAX_QUERY = 120
 INBOX_MAX_ATTACHMENTS = 8
 INBOX_LINK_FIELDS = {
@@ -2044,6 +2045,8 @@ def _inbox_find_filter(*, query: str = "", link_filter: str = "all", before: str
                     {"title": {"$regex": escaped, "$options": "i"}},
                     {"source_ref": {"$regex": escaped, "$options": "i"}},
                     {"source": {"$regex": escaped, "$options": "i"}},
+                    {"attachments.original_name": {"$regex": escaped, "$options": "i"}},
+                    {"attachments.stored_name": {"$regex": escaped, "$options": "i"}},
                     {"contract_ids": needle},
                     {"shipment_ids": needle},
                 ]
@@ -2170,34 +2173,29 @@ def query_inbox_snippets(
     }
 
 
-def load_inbox_snippets_linked_to(
+def load_inbox_snippets_for_target(
     *,
-    contract_ids: list[str] | None = None,
-    shipment_ids: list[str] | None = None,
+    field: str,
+    target_id: str,
     db: Any = _UNSET_DB,
-    limit: int = 200,
+    limit: int = INBOX_LINKED_PER_TARGET,
 ) -> list[dict[str, Any]]:
-    """Notes already related to current contracts/shipments, independent of the page."""
+    """Newest-first notes linked to ONE contract or shipment. Other lots cannot hide it."""
     db = get_db() if db is _UNSET_DB else db
     if db is None:
         return []
-    contracts = [str(item).strip() for item in (contract_ids or []) if str(item).strip()]
-    shipments = [str(item).strip() for item in (shipment_ids or []) if str(item).strip()]
-    if not contracts and not shipments:
+    column = str(field or "").strip()
+    target = str(target_id or "").strip()
+    if column not in {"contract_ids", "shipment_ids"} or not target:
         return []
-    or_clauses: list[dict[str, Any]] = []
-    if contracts:
-        or_clauses.append({"contract_ids": {"$in": contracts}})
-    if shipments:
-        or_clauses.append({"shipment_ids": {"$in": shipments}})
-    cap = max(1, min(int(limit or 200), 200))
+    cap = max(1, min(int(limit or INBOX_LINKED_PER_TARGET), INBOX_LINKED_PER_TARGET))
     try:
         cursor = db.quick_notes.find(
             {
                 "kind": INBOX_SNIPPET_KIND,
                 "id": {"$ne": TEAM_NOTE_ID},
                 "is_deleted": {"$ne": True},
-                "$or": or_clauses,
+                column: target,
             },
             {"_id": 0},
         ).sort("created_at", -1).limit(cap)
@@ -2209,6 +2207,33 @@ def load_inbox_snippets_linked_to(
         if isinstance(row, Mapping) and str(row.get("id") or "") != TEAM_NOTE_ID:
             out.append(dict(row))
     return out
+
+
+def load_inbox_snippets_linked_to(
+    *,
+    contract_ids: list[str] | None = None,
+    shipment_ids: list[str] | None = None,
+    db: Any = _UNSET_DB,
+    limit: int = INBOX_LINKED_PER_TARGET,
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Per-target linked notes. A busy lot's newest 200 cannot hide an older target."""
+    db = get_db() if db is _UNSET_DB else db
+    empty: dict[str, dict[str, list[dict[str, Any]]]] = {"by_contract": {}, "by_shipment": {}}
+    if db is None:
+        return empty
+    contracts = [str(item).strip() for item in (contract_ids or []) if str(item).strip()]
+    shipments = [str(item).strip() for item in (shipment_ids or []) if str(item).strip()]
+    by_contract: dict[str, list[dict[str, Any]]] = {}
+    by_shipment: dict[str, list[dict[str, Any]]] = {}
+    for cid in contracts:
+        rows = load_inbox_snippets_for_target(field="contract_ids", target_id=cid, db=db, limit=limit)
+        if rows:
+            by_contract[cid] = rows
+    for sid in shipments:
+        rows = load_inbox_snippets_for_target(field="shipment_ids", target_id=sid, db=db, limit=limit)
+        if rows:
+            by_shipment[sid] = rows
+    return {"by_contract": by_contract, "by_shipment": by_shipment}
 
 
 def load_inbox_snippet(snippet_id: str, *, db: Any = _UNSET_DB) -> dict[str, Any] | None:
@@ -2374,6 +2399,14 @@ def _inbox_relation_selector(snippet_id: str) -> dict[str, Any]:
     }
 
 
+def _inbox_request_recorded(doc: Mapping[str, Any] | None, request_id: str) -> bool:
+    rid = str(request_id or "").strip()
+    if not rid:
+        return False
+    seen = [str(x) for x in ((doc or {}).get("relation_request_ids") or []) if str(x).strip()]
+    return rid in seen
+
+
 def _inbox_apply_link_side(
     db: Any,
     *,
@@ -2383,9 +2416,8 @@ def _inbox_apply_link_side(
     other_id: str,
     actor: Mapping[str, str],
     now: Any,
-    request_id: str,
 ) -> None:
-    add_to_set: dict[str, Any] = {"relation_request_ids": request_id}
+    """Change the relationship only. Request identity is recorded after BOTH sides succeed."""
     update: dict[str, Any] = {
         "$set": {
             "updated_at": now,
@@ -2395,11 +2427,30 @@ def _inbox_apply_link_side(
         },
     }
     if act == "link":
-        add_to_set[field] = other_id
+        update["$addToSet"] = {field: other_id}
     else:
         update["$pull"] = {field: other_id}
-    update["$addToSet"] = add_to_set
     db.quick_notes.update_one(_inbox_relation_selector(snippet_id), update)
+
+
+def _inbox_record_relation_request(
+    db: Any,
+    *,
+    snippet_id: str,
+    request_id: str,
+    actor: Mapping[str, str],
+    now: Any,
+) -> None:
+    db.quick_notes.update_one(
+        _inbox_relation_selector(snippet_id),
+        {
+            "$addToSet": {"relation_request_ids": request_id},
+            "$set": {
+                "updated_at": now,
+                "updated_by": actor["username"],
+            },
+        },
+    )
 
 
 def _inbox_reverse_link_side(
@@ -2412,7 +2463,7 @@ def _inbox_reverse_link_side(
     actor: Mapping[str, str],
     now: Any,
 ) -> None:
-    """Undo a just-applied side. Does not touch relation_request_ids."""
+    """Undo a just-applied side. Request ids are only stored after a completed pair."""
     reverse = "$pull" if act == "link" else "$addToSet"
     db.quick_notes.update_one(
         _inbox_relation_selector(snippet_id),
@@ -2527,8 +2578,10 @@ def relate_inbox_snippets(
         if before is None:
             _set_last_error(f"Không tìm thấy mẩu tin {sid}.")
             return {"ok": False, "duplicate": False, "error": f"Không tìm thấy mẩu tin {sid}."}
-        seen_requests = [str(x) for x in (before.get("relation_request_ids") or []) if str(x).strip()]
-        if rid in seen_requests:
+        peer_before = load_inbox_snippet(target, db=db) if kind == "snippet" else None
+        source_done = _inbox_request_recorded(before, rid)
+        peer_done = _inbox_request_recorded(peer_before, rid) if kind == "snippet" else source_done
+        if source_done and peer_done:
             snippets.append(before)
             continue
         current_links = [str(x) for x in (before.get(field) or []) if str(x).strip()]
@@ -2536,7 +2589,6 @@ def relate_inbox_snippets(
         will_change = (act == "link" and not already) or (act == "unlink" and already)
         if will_change:
             all_duplicate = False
-        peer_before = load_inbox_snippet(target, db=db) if kind == "snippet" else None
         try:
             _inbox_apply_link_side(
                 db,
@@ -2546,7 +2598,6 @@ def relate_inbox_snippets(
                 other_id=target,
                 actor=actor,
                 now=now,
-                request_id=rid,
             )
             if kind == "snippet":
                 try:
@@ -2558,7 +2609,6 @@ def relate_inbox_snippets(
                         other_id=sid,
                         actor=actor,
                         now=now,
-                        request_id=rid,
                     )
                 except PyMongoError:
                     _inbox_reverse_link_side(
@@ -2591,6 +2641,18 @@ def relate_inbox_snippets(
                     pass
                 _set_last_error("Không ghép được hai phía mẩu tin.")
                 return {"ok": False, "duplicate": False, "error": "Không ghép được hai phía mẩu tin."}
+        try:
+            _inbox_record_relation_request(
+                db, snippet_id=sid, request_id=rid, actor=actor, now=now,
+            )
+            if kind == "snippet":
+                _inbox_record_relation_request(
+                    db, snippet_id=target, request_id=rid, actor=actor, now=now,
+                )
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return {"ok": False, "duplicate": False, "error": str(exc)}
+        after = load_inbox_snippet(sid, db=db) or after
         _audit(
             db,
             "inbox_snippet",
@@ -2622,6 +2684,80 @@ def relate_inbox_snippets(
     }
 
 
+def probe_inbox_attachment_identity(
+    snippet_id: str,
+    document: Mapping[str, Any],
+) -> tuple[str, dict[str, Any] | None]:
+    """Tri-state exact-id probe for a note-owned file after an uncertain metadata write.
+
+    Only a successful query whose snippet exists and whose attachments array
+    lacks this id is ``ABSENT_PROVEN``. A matching row is ``FOUND_MATCHING``.
+    Unavailable, failed, or identity-mismatched lookups are ``UNPROVEN``.
+    """
+    identifier = str(snippet_id or "").strip()
+    attachment_id = str((document or {}).get("id") or "").strip()
+    if not identifier or not attachment_id:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        db = get_db()
+    except Exception:  # noqa: BLE001 - database availability is unproven
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if db is None:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        row = db.quick_notes.find_one(
+            {
+                "id": identifier,
+                "kind": INBOX_SNIPPET_KIND,
+                "is_deleted": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "attachments": 1},
+        )
+    except Exception:  # noqa: BLE001 - lookup proof is unavailable
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if row is None:
+        return ATTACHMENT_PROBE_ABSENT_PROVEN, None
+    found = next(
+        (
+            item
+            for item in (row.get("attachments") or [])
+            if isinstance(item, Mapping) and str(item.get("id") or "") == attachment_id
+        ),
+        None,
+    )
+    if found is None:
+        return ATTACHMENT_PROBE_ABSENT_PROVEN, None
+    if all(
+        str(found.get(field) or "") == str(document.get(field) or "")
+        for field in _ATTACHMENT_PROBE_FIELDS
+    ):
+        return ATTACHMENT_PROBE_FOUND_MATCHING, dict(found)
+    return ATTACHMENT_PROBE_UNPROVEN, dict(found)
+
+
+def _inbox_unproven_metadata_result(
+    *,
+    probe_state: str,
+    durable: Mapping[str, Any] | None,
+    error: str,
+) -> dict[str, Any]:
+    matching = probe_state == ATTACHMENT_PROBE_FOUND_MATCHING
+    _set_last_error(error)
+    return {
+        "ok": False,
+        "duplicate": False,
+        "error": error,
+        "code": "METADATA_READBACK_UNPROVEN",
+        "probe_state": probe_state,
+        "metadata_committed": matching,
+        "readback_proven": False,
+        "compensation_attempted": False,
+        "compensated": False,
+        "orphan_risk": False,
+        "record": dict(durable) if durable else None,
+    }
+
+
 def append_inbox_attachment(snippet_id: str, record: Mapping[str, Any]) -> dict[str, Any]:
     """Push ONE attachment metadata row onto the note. Bytes are already stored."""
     if not _require_business_permission(
@@ -2648,7 +2784,7 @@ def append_inbox_attachment(snippet_id: str, record: Mapping[str, Any]) -> dict[
     existing_rows = [item for item in (before.get("attachments") or []) if isinstance(item, Mapping)]
     if len(existing_rows) >= INBOX_MAX_ATTACHMENTS:
         _set_last_error(f"Mỗi mẩu tin tối đa {INBOX_MAX_ATTACHMENTS} tệp.")
-        return {"ok": False, "error": f"Mỗi mẩu tin tối đa {INBOX_MAX_ATTACHMENTS} tệp."}
+        return {"ok": False, "error": f"Mỗi mẩu tin tối đa {INBOX_MAX_ATTACHMENTS} tệp.", "probe_state": ATTACHMENT_PROBE_ABSENT_PROVEN}
     digest = str(row.get("sha256") or "").strip()
     if digest:
         for item in existing_rows:
@@ -2670,19 +2806,53 @@ def append_inbox_attachment(snippet_id: str, record: Mapping[str, Any]) -> dict[
             },
         )
     except PyMongoError as exc:
+        probe_state, durable = probe_inbox_attachment_identity(identifier, row)
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return _inbox_unproven_metadata_result(
+                probe_state=probe_state,
+                durable=durable,
+                error=(
+                    "Bước ghi metadata không hoàn tất rõ ràng; giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+            )
         _set_last_error(str(exc))
-        return {"ok": False, "error": str(exc)}
-    after = load_inbox_snippet(identifier, db=db)
-    if after is None:
-        _set_last_error("Đã ghi tệp nhưng đọc lại không thấy mẩu tin.")
-        return {"ok": False, "error": "Đã ghi tệp nhưng đọc lại không thấy mẩu tin."}
+        return {
+            "ok": False,
+            "error": str(exc),
+            "code": "METADATA_WRITE_FAILED",
+            "probe_state": probe_state,
+        }
+    after: dict[str, Any] | None
+    try:
+        after = load_inbox_snippet(identifier, db=db)
+    except Exception:  # noqa: BLE001 - readback proof is unavailable
+        after = None
     found = next(
-        (item for item in (after.get("attachments") or []) if isinstance(item, Mapping) and str(item.get("id") or "") == attachment_id),
+        (
+            item
+            for item in ((after or {}).get("attachments") or [])
+            if isinstance(item, Mapping) and str(item.get("id") or "") == attachment_id
+        ),
         None,
     )
     if found is None:
+        probe_state, durable = probe_inbox_attachment_identity(identifier, row)
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return _inbox_unproven_metadata_result(
+                probe_state=probe_state,
+                durable=durable,
+                error=(
+                    "Đã ghi metadata nhưng chưa xác minh được readback mới; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+            )
         _set_last_error("Không xác minh được metadata tệp trên mẩu tin.")
-        return {"ok": False, "error": "Không xác minh được metadata tệp trên mẩu tin."}
+        return {
+            "ok": False,
+            "error": "Không xác minh được metadata tệp trên mẩu tin.",
+            "code": "METADATA_WRITE_FAILED",
+            "probe_state": probe_state,
+        }
     _audit(
         db,
         "inbox_snippet",

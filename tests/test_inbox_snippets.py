@@ -400,6 +400,22 @@ def test_snippet_peer_failure_does_not_leave_one_sided_link(staging, monkeypatch
     right_row = load_inbox_snippet(right["id"])
     assert right["id"] not in (left_row.get("linked_snippet_ids") or [])
     assert left["id"] not in (right_row.get("linked_snippet_ids") or [])
+    assert "REQ-PEER-LINK" not in (left_row.get("relation_request_ids") or [])
+    assert "REQ-PEER-LINK" not in (right_row.get("relation_request_ids") or [])
+    monkeypatch.setattr(db.quick_notes, "update_one", real)
+    retry = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="link",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-PEER-LINK",
+    )
+    assert retry["ok"], retry
+    assert not retry.get("duplicate")
+    left_row = load_inbox_snippet(left["id"])
+    right_row = load_inbox_snippet(right["id"])
+    assert right["id"] in (left_row.get("linked_snippet_ids") or [])
+    assert left["id"] in (right_row.get("linked_snippet_ids") or [])
 
 
 def test_viewer_cannot_read_inbox_projection(staging):
@@ -676,6 +692,132 @@ def test_drive_stub_uses_inbox_year_month_and_does_not_move_on_link(staging, mon
     assert stored["attachments"][0]["storage_backend"] == "drive_shared"
 
 
+def test_metadata_readback_unproven_preserves_bytes(staging, monkeypatch):
+    import core.database as database
+    from core.database import (
+        ATTACHMENT_PROBE_FOUND_MATCHING,
+        create_inbox_snippet,
+        get_db,
+        probe_inbox_attachment_identity,
+    )
+    from views.logi_inbox import _persist_prepared_files
+
+    created = create_inbox_snippet(raw_text="H-TEST keep-bytes", request_id="REQ-KEEP-BYTES")
+    assert created["ok"], created
+    snippet_id = created["snippet"]["id"]
+    jpeg = _jpeg_bytes()
+    before_files = _gridfs_count()
+    real_load = database.load_inbox_snippet
+
+    def blinded(snippet_id, *, db=None, **kwargs):
+        row = real_load(snippet_id, db=db, **kwargs) if db is not None else real_load(snippet_id, **kwargs)
+        if row and row.get("attachments"):
+            clone = dict(row)
+            clone["attachments"] = []
+            return clone
+        return row
+
+    monkeypatch.setattr(database, "load_inbox_snippet", blinded)
+    stored, failed, orphan_risk = _persist_prepared_files(
+        snippet_id,
+        [{
+            "file_name": "keep.jpg",
+            "mime": "image/jpeg",
+            "data": jpeg,
+            "size": len(jpeg),
+            "digest": "unused",
+            "sig": "keep.jpg",
+        }],
+        uploaded_by="staging.support",
+    )
+    assert stored == []
+    assert failed
+    assert failed[0]["code"] == "METADATA_READBACK_UNPROVEN"
+    assert failed[0].get("compensationAttempted") is False
+    assert orphan_risk is False
+    assert _gridfs_count() == before_files + 1
+    doc = get_db().quick_notes.find_one({"id": snippet_id}, {"_id": 0, "attachments": 1})
+    attachments = [item for item in (doc or {}).get("attachments") or [] if isinstance(item, dict)]
+    assert len(attachments) == 1
+    probe, durable = probe_inbox_attachment_identity(snippet_id, attachments[0])
+    assert probe == ATTACHMENT_PROBE_FOUND_MATCHING
+    assert durable and durable.get("storage_file_id")
+
+
+def test_older_linked_note_survives_201_notes_on_another_lot(staging):
+    from core.database import load_inbox_snippet, load_inbox_snippets_for_target
+
+    _ensure_shipments()
+    session = {"seq": 0}
+    older = _create(session, 1, "REQ-OLD-LOT", "H-TEST older lot evidence SYN-OLD-LOT")
+    assert older["ok"]
+    link_old = _dispatch(session, 2, "inbox_snippet_link", {
+        "requestId": "REQ-OLD-LOT-LINK",
+        "snippetIds": [older["id"]],
+        "action": "link",
+        "targetType": "shipment",
+        "targetId": "LO-TEST-1",
+    })
+    assert link_old["ok"], link_old
+    seq = 2
+    for index in range(201):
+        seq += 1
+        row = _create(session, seq, f"REQ-NEW-LOT-{index}", f"H-TEST newer lot filler {index:03d}")
+        assert row["ok"], row
+        seq += 1
+        linked = _dispatch(session, seq, "inbox_snippet_link", {
+            "requestId": f"REQ-NEW-LOT-LINK-{index}",
+            "snippetIds": [row["id"]],
+            "action": "link",
+            "targetType": "shipment",
+            "targetId": "LO-TEST-2",
+        })
+        assert linked["ok"], linked
+    rows = load_inbox_snippets_for_target(field="shipment_ids", target_id="LO-TEST-1")
+    assert any(item["id"] == older["id"] for item in rows)
+    inbox = vm.build_view_model()["inbox"]
+    on_old = inbox.get("byShipmentId", {}).get("LO-TEST-1") or []
+    assert any(item["id"] == older["id"] for item in on_old)
+    stored = load_inbox_snippet(older["id"])
+    assert stored["shipment_ids"] == ["LO-TEST-1"]
+
+
+def test_search_finds_file_only_note_by_filename_beyond_page(staging):
+    from core.database import get_db
+
+    jpeg = _jpeg_bytes()
+    session = {"seq": 0}
+    created = _dispatch(session, 1, "inbox_snippet_create", {
+        "requestId": "REQ-BOC-FILE",
+        "rawText": "",
+        "files": [_file_payload("BOC-0910.jpg", "image/jpeg", jpeg)],
+    })
+    assert created["ok"], created
+    get_db().quick_notes.update_one(
+        {"id": created["id"]},
+        {"$set": {"created_at": "2020-01-01T00:00:00"}},
+    )
+    for index in range(50):
+        out = _create(session, 10 + index, f"REQ-BOC-FILL-{index}", f"H-TEST filename filler {index:02d}")
+        assert out["ok"], out
+    model = vm.build_view_model()["inbox"]
+    assert all(
+        not any((att.get("name") or "") == "BOC-0910.jpg" for att in (row.get("attachments") or []))
+        for row in model["snippets"]
+    )
+    search = _dispatch(session, 80, "inbox_snippet_search", {
+        "requestId": "REQ-SEARCH-BOC",
+        "query": "BOC-0910.jpg",
+        "filter": "all",
+    })
+    assert search["ok"], search
+    found = vm.build_view_model()["inbox"]
+    assert any(
+        any((att.get("name") or "") == "BOC-0910.jpg" for att in (row.get("attachments") or []))
+        for row in found["snippets"]
+    )
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required for the shell DOM lane")
 def test_dom_acceptance_inbox_desktop_and_mobile():
     root = Path(__file__).resolve().parents[1]
@@ -693,4 +835,4 @@ def test_dom_acceptance_inbox_desktop_and_mobile():
         sys.stdout.write(result.stdout)
         sys.stderr.write(result.stderr)
     assert result.returncode == 0, "inbox DOM acceptance failed"
-    assert "6 checks passed" in result.stdout
+    assert "8 checks passed" in result.stdout

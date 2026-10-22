@@ -365,7 +365,7 @@ export default function InboxComposer({
           type="button"
           data-testid="inbox-composer-save-next"
           disabled={Boolean(pending)}
-          onClick={() => void save(true)}
+          onClick={() => void save(true, Boolean(snippetId && files.length))}
           className="btn-press touch-target inline-flex items-center justify-center rounded-xl border-2 border-[#0f2a4a] text-[#0f2a4a] font-bold text-[15.5px] px-5 min-h-[48px] disabled:opacity-50"
         >
           {pending && keepOpen ? "Đang lưu…" : "Lưu & ghi tiếp"}
