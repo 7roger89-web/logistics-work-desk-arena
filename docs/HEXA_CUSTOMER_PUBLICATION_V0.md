@@ -106,7 +106,13 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
   - `core/shipment_journey.py` (`build_journey`) + `core/shipment_execution_profile.py` (`build_execution_profile`) + `core/shipment_operations.py` (`compatibility_facts`, `transport_legs_for_read`): dựng khung các chặng hành trình (`pickup` → `road-ltl` → `road-border` → `customs-import` → `delivery`).
   - `core/hexa_customer_publication.py` (`build_customer_publication`, `authorize_document_download`): lọc fail-closed theo `principal["customer_id"]` của phiên server và manifest `PUBLISHED` do nhân sự TT duyệt.
 - **Endpoint & Cấu trúc hiển thị (`GET /api/hexa/v0/dashboard`)**:
-  - **Tổng quan (`summary`)**: `active_tracking` (Đang theo dõi), `arriving_soon` (Sắp giao — đã qua cửa khẩu hoặc có ETA kho đã xác minh), `customer_action_needed` (Cần khách xử lý), `total_published`.
+  - **Tổng quan (`summary`) — Chốt tính đúng nghiệp vụ (`HEXA-DASHBOARD-V1-TRUTH-CLOSURE`)**:
+    - `active_tracking` (**Đang theo dõi**): số lô đã công bố chưa hoàn tất giao hàng.
+    - `verified_warehouse_eta_count` / `arriving_soon` (**Có ETA kho đã xác minh**, `arriving_soon_label="Có ETA kho đã xác minh"`): **chỉ đếm lô có `verified_warehouse_eta` đã được TT xác minh và công bố**; tuyệt đối không tự suy từ chặng cửa khẩu (`road-border`) hay trạng thái Journey. Lô `ROAD-LG-001` có mốc cửa khẩu nhưng thiếu ETA kho đã xác minh phải có giá trị `0`.
+    - `customer_action_needed` (**Cần khách xử lý**, `customer_action_status_label="Chưa có yêu cầu được xác nhận"` khi bằng `0`): **không suy diễn từ việc có chứng từ hay báo giá**; chỉ đếm khi tồn tại yêu cầu khách xử lý thật sự có `status="OPEN"`, `verified=True`, `responsible_party` (người/bên chịu trách nhiệm) và `action_text` (nội dung hành động). Không tạo yêu cầu giả trong V1.
+    - `total_published`: tổng số lô đang được công bố của khách hàng hiện tại.
+  - **An toàn hiển thị DOM (`HEXA-DASHBOARD-V1-TRUTH-CLOSURE`)**:
+    - Toàn bộ dữ liệu động trên giao diện (`cargo_summary`, `route_summary`, `next_step`, `contact_point`, `shipment_id`, `verified_stage_label`, `verified_stage_title`, `last_updated_label`, `verified_warehouse_eta_label`, các node của `journey`, `timeline`, `documents`, `quote`) đều được dựng bằng `document.createElement` và gán qua `.textContent` (`0` lần sử dụng `.innerHTML` trong `core/hexa_trial_portal.py`), đảm bảo mọi chuỗi dạng HTML/script chỉ hiển thị như văn bản thuần.
   - **Mỗi lô đã công bố (`shipments[*]`)**:
     - `shipment_id`, `transport_mode`, `cargo_summary`, `route_summary`
     - `verified_stage_id`, `verified_stage_label`, `verified_stage_title` (chặng/vị trí được xác minh gần nhất)

@@ -999,12 +999,12 @@ def test_dashboard_v1_default_deny_publish_journey_and_revoke_lifecycle(
     )
     assert st_dash_0 == 200
     dash_0 = json.loads(raw_dash_0.decode("utf-8"))
-    assert dash_0["summary"] == {
-        "active_tracking": 0,
-        "arriving_soon": 0,
-        "customer_action_needed": 0,
-        "total_published": 0,
-    }
+    assert dash_0["summary"]["active_tracking"] == 0
+    assert dash_0["summary"]["verified_warehouse_eta_count"] == 0
+    assert dash_0["summary"]["arriving_soon"] == 0
+    assert dash_0["summary"]["customer_action_needed"] == 0
+    assert dash_0["summary"]["customer_action_status_label"] == "Chưa có yêu cầu được xác nhận"
+    assert dash_0["summary"]["total_published"] == 0
     assert dash_0["shipments"] == []
 
     # 3. TT logs in and publishes ROAD-LG-001 (with pickup + border events, PL v2, and quote)
@@ -1045,12 +1045,15 @@ def test_dashboard_v1_default_deny_publish_journey_and_revoke_lifecycle(
     dash_1_text = raw_dash_1.decode("utf-8")
     dash_1 = json.loads(dash_1_text)
 
-    assert dash_1["summary"] == {
-        "active_tracking": 1,
-        "arriving_soon": 1,
-        "customer_action_needed": 1,
-        "total_published": 1,
-    }
+    # ROAD-LG-001 is at border without verified warehouse ETA, and has no confirmed open customer action:
+    # - verified_warehouse_eta_count / arriving_soon MUST be 0 (not inferred from border stage)
+    # - customer_action_needed MUST be 0 (not inferred from having published docs/quote)
+    assert dash_1["summary"]["active_tracking"] == 1
+    assert dash_1["summary"]["verified_warehouse_eta_count"] == 0
+    assert dash_1["summary"]["arriving_soon"] == 0
+    assert dash_1["summary"]["customer_action_needed"] == 0
+    assert dash_1["summary"]["customer_action_status_label"] == "Chưa có yêu cầu được xác nhận"
+    assert dash_1["summary"]["total_published"] == 1
     assert len(dash_1["shipments"]) == 1
     row = dash_1["shipments"][0]
     assert row["shipment_id"] == SHIPMENT_A_ID
@@ -1063,6 +1066,8 @@ def test_dashboard_v1_default_deny_publish_journey_and_revoke_lifecycle(
     assert row["verified_warehouse_eta"] is None
     assert row["verified_warehouse_eta_label"] == "Chưa xác minh"
     assert row["is_complete"] is False
+    assert row["needs_customer_action"] is False
+    assert row["customer_action"] is None
     assert row["next_step"]
     assert row["contact_point"]
     assert "2026-10-25" not in dash_1_text
@@ -1222,12 +1227,17 @@ def test_dashboard_v1_multi_tenant_reuse_across_three_customers_without_hardcodi
         session_token=tokens["C"],
     )
     assert st_c_dash1 == 200
-    c_row_1 = json.loads(raw_c_dash1.decode("utf-8"))["shipments"][0]
+    c_dash_1 = json.loads(raw_c_dash1.decode("utf-8"))
+    assert c_dash_1["summary"]["verified_warehouse_eta_count"] == 0
+    assert c_dash_1["summary"]["arriving_soon"] == 0
+    assert c_dash_1["summary"]["customer_action_needed"] == 0
+    c_row_1 = c_dash_1["shipments"][0]
     assert c_row_1["shipment_id"] == "ROAD-AP-003"
     assert c_row_1["verified_stage_id"] == "pickup"
     assert c_row_1["verified_warehouse_eta"] is None
     assert c_row_1["verified_warehouse_eta_label"] == "Chưa xác minh"
     assert c_row_1["is_complete"] is False
+    assert c_row_1["needs_customer_action"] is False
 
     # Now TT publishes EVT-AP-02-CUSTOMS@v1 (which has TT-verified warehouse ETA 2026-10-23)
     st_pub_c2, _, _ = _http_request(
@@ -1253,12 +1263,15 @@ def test_dashboard_v1_multi_tenant_reuse_across_three_customers_without_hardcodi
     )
     assert st_c_dash2 == 200
     c_dash_2 = json.loads(raw_c_dash2.decode("utf-8"))
+    assert c_dash_2["summary"]["verified_warehouse_eta_count"] == 1
     assert c_dash_2["summary"]["arriving_soon"] == 1
+    assert c_dash_2["summary"]["customer_action_needed"] == 0
     c_row_2 = c_dash_2["shipments"][0]
     assert c_row_2["verified_stage_id"] == "customs-import"
     assert c_row_2["verified_warehouse_eta"] == "2026-10-23"
     assert "2026-10-23" in c_row_2["verified_warehouse_eta_label"]
     assert c_row_2["is_complete"] is False
+    assert c_row_2["needs_customer_action"] is False
 
     # Customer C can download own published PDF DOC-AP-PL@v1
     st_c_dl, _, c_pdf = _http_request(
@@ -1269,5 +1282,311 @@ def test_dashboard_v1_multi_tenant_reuse_across_three_customers_without_hardcodi
     assert st_c_dl == 200
     assert c_pdf.startswith(b"%PDF-1.4")
     assert b"AN PHAT PACKING LIST v1" in c_pdf
+
+
+def test_dashboard_v1_kpi_truth_and_safe_dom_rendering_against_html_script_injection(
+    trial_server,
+) -> None:
+    """HEXA-DASHBOARD-V1-TRUTH-CLOSURE:
+    1. 'Cần khách xử lý' is NOT inferred from having published docs/quote; only counts open, verified customer action requirements with responsible_party and action_text.
+    2. 'Có ETA kho đã xác minh' is NOT inferred from border stage; only counts shipments with TT-verified & published warehouse ETA.
+    3. Client DOM rendering uses textContent/safe DOM creation so HTML/script in shipment fields is rendered strictly as plain text, never parsed as HTML/script.
+    """
+    from core import database as core_db
+
+    base_url, _env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
+
+    st_lg_login, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg_login == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+
+    # 1. ROAD-LG-001 has published docs (PL v2, PI v1), published quote (Q-LG-ROAD-001 v3),
+    # and border stage (EVT-LG-02-BORDER v2), but NO verified warehouse ETA and NO customer action item.
+    st_d1, _, raw_d1 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_d1 == 200
+    d1 = json.loads(raw_d1.decode("utf-8"))
+    assert d1["summary"]["active_tracking"] == 1
+    assert d1["summary"]["arriving_soon"] == 0
+    assert d1["summary"]["customer_action_needed"] == 0
+    assert d1["summary"]["verified_warehouse_eta_count"] == 0
+    assert d1["summary"]["arriving_soon_label"] == "Có ETA kho đã xác minh"
+    assert d1["summary"]["customer_action_status_label"] == "Chưa có yêu cầu được xác nhận"
+    row_1 = d1["shipments"][0]
+    assert row_1["verified_stage_id"] == "road-border"
+    assert row_1["verified_warehouse_eta"] is None
+    assert row_1["needs_customer_action"] is False
+    assert row_1["customer_action"] is None
+
+    # 2. Unverified or closed or incomplete customer_actions on the link must NOT increment customer_action_needed
+    db = core_db.get_db()
+    assert db is not None
+    db["hexa_trial_shipment_links"].update_one(
+        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+        {
+            "$set": {
+                "customer_actions": [
+                    {
+                        "id": "ACT-UNVERIFIED",
+                        "status": "OPEN",
+                        "verified": False,
+                        "responsible_party": "Khách hàng Lục Giác",
+                        "action_text": "Yêu cầu chưa xác nhận không được tính",
+                    },
+                    {
+                        "id": "ACT-CLOSED",
+                        "status": "CLOSED",
+                        "verified": True,
+                        "responsible_party": "Khách hàng Lục Giác",
+                        "action_text": "Yêu cầu đã đóng không được tính",
+                    },
+                    {
+                        "id": "ACT-MISSING-PARTY",
+                        "status": "OPEN",
+                        "verified": True,
+                        "responsible_party": "",
+                        "action_text": "Thiếu người chịu trách nhiệm không được tính",
+                    },
+                ]
+            }
+        },
+    )
+    st_d2, _, raw_d2 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_d2 == 200
+    d2 = json.loads(raw_d2.decode("utf-8"))
+    assert d2["summary"]["customer_action_needed"] == 0
+    assert d2["shipments"][0]["needs_customer_action"] is False
+
+    # 3. Only when a real, open, verified customer action requirement with responsible_party & action_text exists:
+    db["hexa_trial_shipment_links"].update_one(
+        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+        {
+            "$set": {
+                "customer_actions": [
+                    {
+                        "id": "ACT-LG-01",
+                        "status": "OPEN",
+                        "verified": True,
+                        "responsible_party": "Bộ phận XNK Lục Giác",
+                        "action_text": "Xác nhận thông tin người nhận hàng tại kho Hà Nội",
+                    }
+                ]
+            }
+        },
+    )
+    st_d3, _, raw_d3 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_d3 == 200
+    d3 = json.loads(raw_d3.decode("utf-8"))
+    assert d3["summary"]["customer_action_needed"] == 1
+    assert d3["shipments"][0]["needs_customer_action"] is True
+    assert d3["shipments"][0]["customer_action"] == {
+        "id": "ACT-LG-01",
+        "status": "OPEN",
+        "responsible_party": "Bộ phận XNK Lục Giác",
+        "action_text": "Xác nhận thông tin người nhận hàng tại kho Hà Nội",
+    }
+
+    # Restore clean V1 state (no fake customer actions)
+    db["hexa_trial_shipment_links"].update_one(
+        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+        {"$unset": {"customer_actions": ""}},
+    )
+
+
+def test_dashboard_v1_safe_dom_rendering_blocks_html_script_execution_in_shipment_fields(
+    trial_server,
+) -> None:
+    """HEXA-DASHBOARD-V1-TRUTH-CLOSURE (Việc 3):
+    Verify client DOM rendering uses textContent/safe DOM creation (not innerHTML interpolation)
+    for cargo_summary, route_summary, next_step, contact_point, shipment_id, verified_stage_label,
+    verified_stage_title, and Journey/timeline/document titles so HTML/script payloads are rendered
+    strictly as plain text and never parsed/executed as HTML.
+    """
+    import subprocess
+    from core import database as core_db
+
+    base_url, _env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
+
+    st_html, _, raw_html = _http_request(base_url, "/")
+    assert st_html == 200
+    html_text = raw_html.decode("utf-8")
+    assert "Có ETA kho đã xác minh" in html_text
+    assert "Chưa có yêu cầu được xác nhận" in html_text
+
+    forbidden_innerhtml_interpolations = [
+        "${row.cargo_summary}",
+        "${row.route_summary}",
+        "${row.next_step}",
+        "${row.contact_point}",
+        "${row.shipment_id}",
+        "${row.verified_stage_label}",
+        "${row.verified_stage_title}",
+        "${n.label}",
+        "${n.evidence}",
+        "${ev.title}",
+        "${doc.title}",
+    ]
+    for pattern in forbidden_innerhtml_interpolations:
+        assert pattern not in html_text, f"Unsafe HTML interpolation found in template: {pattern}"
+
+    # Inject HTML/script payloads into shipment link & event title and verify via API + Node DOM execution
+    # that they are treated strictly as textContent and never assigned to innerHTML.
+    xss_payload = '<img src=x onerror="globalThis.__xss_fired=1"><script>globalThis.__xss_fired=1</script>'
+    db = core_db.get_db()
+    assert db is not None
+    db["hexa_trial_shipment_links"].update_one(
+        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+        {
+            "$set": {
+                "cargo_summary": f"18 kiện gỗ {xss_payload}",
+                "route_summary": f"Foshan -> Hà Nội {xss_payload}",
+            }
+        },
+    )
+
+    st_lg_login, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg_login == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+
+    st_dash, _, raw_dash = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_dash == 200
+    dash_json = raw_dash.decode("utf-8")
+
+    # Execute the actual client JS rendering functions from the served HTML inside a Node VM DOM spy
+    # that throws if any dynamic shipment string containing `<script>` or `<img` is ever passed to `.innerHTML`.
+    node_check_script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.env.HTML_PATH, 'utf8');
+const dashData = JSON.parse(fs.readFileSync(process.env.DASH_PATH, 'utf8'));
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch) {
+  console.error('NO_SCRIPT_TAG');
+  process.exit(2);
+}
+let innerHtmlViolations = [];
+function makeEl(tag) {
+  let _inner = '';
+  let _text = '';
+  const el = {
+    tagName: (tag || 'div').toUpperCase(),
+    style: {},
+    dataset: {},
+    className: '',
+    value: '',
+    children: [],
+    classList: { toggle() {}, add() {}, remove() {} },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener(ev, fn) { this['on' + ev] = fn; },
+    setAttribute(k, v) { this[k] = v; },
+    get textContent() {
+      if (this.children.length > 0) {
+        return _text + this.children.map(c => c.textContent).join(' ');
+      }
+      return _text;
+    },
+    set textContent(v) {
+      _text = String(v ?? '');
+      this.children = [];
+    },
+    get innerHTML() { return _inner; },
+    set innerHTML(v) {
+      const s = String(v ?? '');
+      if (s.includes('<script') || s.includes('onerror=') || s.includes('<img')) {
+        innerHtmlViolations.push(s);
+      }
+      _inner = s;
+      if (s === '') { this.children = []; _text = ''; }
+    }
+  };
+  return el;
+}
+const elements = {};
+const document = {
+  getElementById(id) {
+    if (!elements[id]) elements[id] = makeEl('div');
+    return elements[id];
+  },
+  createElement(tag) { return makeEl(tag); },
+  querySelectorAll() { return []; },
+  body: makeEl('body')
+};
+const window = { addEventListener() {} };
+const sandbox = {
+  document,
+  window,
+  Intl,
+  encodeURIComponent,
+  JSON,
+  String,
+  Array,
+  Object,
+  console,
+  fetch: async (url) => {
+    if (url === '/api/hexa/v0/dashboard') {
+      return { ok: true, status: 200, json: async () => dashData };
+    }
+    const row = dashData.shipments[0];
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema: 'hexa-customer-publication/v0',
+        reference: row.shipment_id,
+        transport_mode: row.transport_mode,
+        timeline: row.timeline.map(e => ({ ...e, title: e.title + ' <script>evil()</script>' })),
+        documents: row.documents.map(d => ({ ...d, title: d.title + ' <img src=x onerror=evil()>' })),
+        quote: row.quote
+      })
+    };
+  }
+};
+vm.createContext(sandbox);
+vm.runInContext(scriptMatch[1], sandbox);
+(async () => {
+  await sandbox.loadCustomerDashboard();
+  await sandbox.loadShipment(dashData.shipments[0].shipment_id);
+  if (innerHtmlViolations.length > 0) {
+    console.error('UNSAFE_INNERHTML:', JSON.stringify(innerHtmlViolations));
+    process.exit(1);
+  }
+  const tbodyText = elements['dash-shipments-tbody'].textContent;
+  if (!tbodyText.includes('<script>globalThis.__xss_fired=1</script>')) {
+    console.error('TEXTCONTENT_MISSING_LITERAL:', tbodyText);
+    process.exit(1);
+  }
+  console.log('SAFE_DOM_RENDER_OK');
+})();
+"""
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".html", delete=False) as fh_html, \
+         tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json", delete=False) as fh_json:
+        fh_html.write(html_text)
+        fh_json.write(dash_json)
+        html_path = fh_html.name
+        json_path = fh_json.name
+
+    proc = subprocess.run(
+        ["node", "-e", node_check_script],
+        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HTML_PATH": html_path, "DASH_PATH": json_path},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"Node DOM safety check failed: {proc.stdout} {proc.stderr}"
+    assert "SAFE_DOM_RENDER_OK" in proc.stdout
+
+
 
 

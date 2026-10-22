@@ -2095,18 +2095,39 @@ class HexaTrialEnvironment:
             is_complete = "delivery" in events_by_stage
             docs = list(pub_payload.get("documents") or [])
             quote = pub_payload.get("quote")
-            needs_customer_action = bool((docs or quote) and not is_complete)
+
+            # Việc 1: Only count needs_customer_action=True when an explicit, verified, OPEN customer action
+            # requirement exists with both responsible_party and action_text. Never infer from docs/quote!
+            customer_action: dict[str, str] | None = None
+            raw_actions = link.get("customer_actions")
+            if not is_complete and isinstance(raw_actions, list):
+                for item in raw_actions:
+                    if not isinstance(item, Mapping):
+                        continue
+                    act_status = str(item.get("status") or "").strip().upper()
+                    act_verified = item.get("verified") is True
+                    act_party = str(item.get("responsible_party") or "").strip()
+                    act_text = str(item.get("action_text") or "").strip()
+                    if act_status == "OPEN" and act_verified and act_party and act_text:
+                        customer_action = {
+                            "id": str(item.get("id") or ""),
+                            "status": "OPEN",
+                            "responsible_party": act_party,
+                            "action_text": act_text,
+                        }
+                        break
+            needs_customer_action = customer_action is not None
 
             if is_complete:
                 next_step = "Đã giao hàng (xác minh hoàn tất)"
+            elif customer_action is not None:
+                next_step = f"Cần khách xử lý ({customer_action['responsible_party']}): {customer_action['action_text']}"
             elif verified_warehouse_eta:
-                next_step = f"Chuẩn bị kho nhận hàng (ETA đã xác minh: {verified_warehouse_eta}) & kiểm tra chứng từ"
-            elif docs or quote:
-                next_step = "Kiểm tra chứng từ / báo giá đã công bố & theo dõi thông quan"
+                next_step = f"Theo dõi lịch giao kho đã xác minh ({verified_warehouse_eta}) — Chưa có yêu cầu được xác nhận"
             elif timeline:
-                next_step = "Đang vận chuyển — chờ Trường Thành công bố chứng từ tiếp theo"
+                next_step = "Đang vận chuyển theo hành trình — Chưa có yêu cầu được xác nhận"
             else:
-                next_step = "Chờ Trường Thành cập nhật mốc xác minh tiếp theo"
+                next_step = "Chờ Trường Thành cập nhật mốc xác minh tiếp theo — Chưa có yêu cầu được xác nhận"
 
             contact_point = str(dash_view.get("owner") or "CSKH Trường Thành")
 
@@ -2129,6 +2150,7 @@ class HexaTrialEnvironment:
                     ),
                     "is_complete": is_complete,
                     "needs_customer_action": needs_customer_action,
+                    "customer_action": customer_action,
                     "next_step": next_step,
                     "contact_point": contact_point,
                     "journey": {
@@ -2148,15 +2170,14 @@ class HexaTrialEnvironment:
 
         rows.sort(key=lambda r: (str(r.get("last_updated_at") or ""), r["shipment_id"]), reverse=True)
         active_tracking = sum(1 for r in rows if not r["is_complete"])
-        arriving_soon = sum(
+        # Việc 2: Only count shipments with a TT-verified and published warehouse ETA.
+        # Never infer from border/customs stage!
+        verified_warehouse_eta_count = sum(
             1
             for r in rows
-            if not r["is_complete"]
-            and (
-                r["verified_warehouse_eta"] is not None
-                or r["verified_stage_id"] in {"road-border", "customs-import", "arrival"}
-            )
+            if not r["is_complete"] and r["verified_warehouse_eta"] is not None
         )
+        arriving_soon = verified_warehouse_eta_count
         customer_action_needed = sum(1 for r in rows if r["needs_customer_action"])
 
         self._record_audit(
@@ -2172,8 +2193,15 @@ class HexaTrialEnvironment:
             "customer_name": str(cust_doc.get("name") or cust_id),
             "summary": {
                 "active_tracking": active_tracking,
+                "verified_warehouse_eta_count": verified_warehouse_eta_count,
                 "arriving_soon": arriving_soon,
+                "arriving_soon_label": "Có ETA kho đã xác minh",
                 "customer_action_needed": customer_action_needed,
+                "customer_action_status_label": (
+                    f"{customer_action_needed} yêu cầu đang mở"
+                    if customer_action_needed > 0
+                    else "Chưa có yêu cầu được xác nhận"
+                ),
                 "total_published": len(rows),
             },
             "shipments": rows,
@@ -2872,12 +2900,14 @@ def render_trial_portal_html() -> str:
             <div class="kpi-val" id="dash-count-tracking">0</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Sắp giao (Đã qua cửa khẩu / Có ETA xác minh)</div>
+            <div class="kpi-label">Có ETA kho đã xác minh</div>
             <div class="kpi-val" id="dash-count-arriving">0</div>
+            <div class="muted" style="font-size: 12px; margin-top: 2px;">Chỉ đếm lô có ETA kho được TT xác minh &amp; công bố</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Cần khách xử lý (Đối chiếu chứng từ / Chuẩn bị nhận)</div>
+            <div class="kpi-label">Cần khách xử lý</div>
             <div class="kpi-val" id="dash-count-action">0</div>
+            <div class="muted" id="dash-action-status-note" style="font-size: 12px; margin-top: 2px;">Chưa có yêu cầu được xác nhận</div>
           </div>
         </div>
 
@@ -3058,10 +3088,22 @@ def render_trial_portal_html() -> str:
       await loadRequestedShipment();
     }
 
+    function renderEmptyTableRow(tbody, colSpan, message) {
+      tbody.textContent = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = colSpan;
+      td.className = 'muted';
+      td.textContent = message;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
     async function loadCustomerDashboard() {
       const res = await fetch('/api/hexa/v0/dashboard', { credentials: 'same-origin' });
       const statusBanner = document.getElementById('dashboard-status-banner');
       const tbody = document.getElementById('dash-shipments-tbody');
+      const actionNote = document.getElementById('dash-action-status-note');
       const body = await res.json().catch(() => ({}));
       currentDashboardShipments = {};
 
@@ -3071,54 +3113,112 @@ def render_trial_portal_html() -> str:
         document.getElementById('dash-count-tracking').textContent = '0';
         document.getElementById('dash-count-arriving').textContent = '0';
         document.getElementById('dash-count-action').textContent = '0';
-        tbody.innerHTML = '<tr><td colspan="8" class="muted">Chưa đăng nhập phiên khách hàng.</td></tr>';
+        if (actionNote) actionNote.textContent = 'Chưa có yêu cầu được xác nhận';
+        renderEmptyTableRow(tbody, 8, 'Chưa đăng nhập phiên khách hàng.');
         return;
       }
 
       const summary = body.summary || {};
+      const etaCount = summary.verified_warehouse_eta_count ?? summary.arriving_soon ?? 0;
+      const actionCount = summary.customer_action_needed ?? 0;
       document.getElementById('dash-count-tracking').textContent = String(summary.active_tracking ?? 0);
-      document.getElementById('dash-count-arriving').textContent = String(summary.arriving_soon ?? 0);
-      document.getElementById('dash-count-action').textContent = String(summary.customer_action_needed ?? 0);
+      document.getElementById('dash-count-arriving').textContent = String(etaCount);
+      document.getElementById('dash-count-action').textContent = String(actionCount);
+      if (actionNote) {
+        actionNote.textContent = String(summary.customer_action_status_label || (actionCount > 0 ? `${actionCount} yêu cầu đang mở` : 'Chưa có yêu cầu được xác nhận'));
+      }
 
       const shipments = body.shipments || [];
       if (shipments.length === 0) {
         statusBanner.className = 'banner-result banner-warn';
         statusBanner.textContent = `Khách hàng ${body.customer_name} (${body.customer_id}): Hiện chưa có lô hàng nào được Trường Thành duyệt công bố (Trạng thái mặc định: Chưa công bố / Đã thu hồi).`;
-        tbody.innerHTML = '<tr><td colspan="8" class="muted">Không có dữ liệu lô đã công bố. Khi nhân sự TT duyệt công bố lô hàng, lô sẽ xuất hiện tại đây.</td></tr>';
+        renderEmptyTableRow(tbody, 8, 'Không có dữ liệu lô đã công bố. Khi nhân sự TT duyệt công bố lô hàng, lô sẽ xuất hiện tại đây.');
         renderJourneyMap(null);
         return;
       }
 
       statusBanner.className = 'banner-result banner-ok';
       statusBanner.textContent = `Dashboard ${body.customer_name} (${body.customer_id}) — Đang hiển thị ${shipments.length} lô đã được Trường Thành công bố.`;
-      tbody.innerHTML = '';
+      tbody.textContent = '';
 
       shipments.forEach(row => {
-        currentDashboardShipments[row.shipment_id] = row;
+        const sid = String(row.shipment_id || '');
+        currentDashboardShipments[sid] = row;
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
-        tr.onclick = () => selectDashboardShipment(row.shipment_id);
-        const etaHtml = row.verified_warehouse_eta
-          ? `<span class="pill pill-ok">${row.verified_warehouse_eta_label}</span>`
-          : `<span class="pill pill-warn">${row.verified_warehouse_eta_label}</span>`;
-        tr.innerHTML = `
-          <td class="mono"><strong>${row.shipment_id}</strong><br/><span class="pill pill-ok">${row.transport_mode || 'ROAD'}</span></td>
-          <td>${row.cargo_summary}<br/><span class="muted">${row.route_summary}</span></td>
-          <td><strong>${row.verified_stage_label}</strong><br/><span class="muted">${row.verified_stage_title}</span></td>
-          <td class="mono">${row.last_updated_label}</td>
-          <td>${etaHtml}</td>
-          <td>${row.next_step}</td>
-          <td>${row.contact_point}</td>
-          <td>
-            <button onclick="event.stopPropagation(); selectDashboardShipment('${row.shipment_id}')">
-              Mở Hành trình &amp; Chứng từ
-            </button>
-          </td>
-        `;
+        tr.addEventListener('click', () => selectDashboardShipment(sid));
+
+        const tdCode = document.createElement('td');
+        tdCode.className = 'mono';
+        const strongSid = document.createElement('strong');
+        strongSid.textContent = sid;
+        const brCode = document.createElement('br');
+        const modePill = document.createElement('span');
+        modePill.className = 'pill pill-ok';
+        modePill.textContent = String(row.transport_mode || 'ROAD');
+        tdCode.appendChild(strongSid);
+        tdCode.appendChild(brCode);
+        tdCode.appendChild(modePill);
+
+        const tdCargo = document.createElement('td');
+        const spanCargo = document.createElement('span');
+        spanCargo.textContent = String(row.cargo_summary || '');
+        const brCargo = document.createElement('br');
+        const spanRoute = document.createElement('span');
+        spanRoute.className = 'muted';
+        spanRoute.textContent = String(row.route_summary || '');
+        tdCargo.appendChild(spanCargo);
+        tdCargo.appendChild(brCargo);
+        tdCargo.appendChild(spanRoute);
+
+        const tdStage = document.createElement('td');
+        const strongStage = document.createElement('strong');
+        strongStage.textContent = String(row.verified_stage_label || '');
+        const brStage = document.createElement('br');
+        const spanStageTitle = document.createElement('span');
+        spanStageTitle.className = 'muted';
+        spanStageTitle.textContent = String(row.verified_stage_title || '');
+        tdStage.appendChild(strongStage);
+        tdStage.appendChild(brStage);
+        tdStage.appendChild(spanStageTitle);
+
+        const tdUpdated = document.createElement('td');
+        tdUpdated.className = 'mono';
+        tdUpdated.textContent = String(row.last_updated_label || '');
+
+        const tdEta = document.createElement('td');
+        const etaPill = document.createElement('span');
+        etaPill.className = row.verified_warehouse_eta ? 'pill pill-ok' : 'pill pill-warn';
+        etaPill.textContent = String(row.verified_warehouse_eta_label || 'Chưa xác minh');
+        tdEta.appendChild(etaPill);
+
+        const tdNext = document.createElement('td');
+        tdNext.textContent = String(row.next_step || '');
+
+        const tdContact = document.createElement('td');
+        tdContact.textContent = String(row.contact_point || '');
+
+        const tdAction = document.createElement('td');
+        const btnOpen = document.createElement('button');
+        btnOpen.textContent = 'Mở Hành trình & Chứng từ';
+        btnOpen.addEventListener('click', (event) => {
+          event.stopPropagation();
+          selectDashboardShipment(sid);
+        });
+        tdAction.appendChild(btnOpen);
+
+        tr.appendChild(tdCode);
+        tr.appendChild(tdCargo);
+        tr.appendChild(tdStage);
+        tr.appendChild(tdUpdated);
+        tr.appendChild(tdEta);
+        tr.appendChild(tdNext);
+        tr.appendChild(tdContact);
+        tr.appendChild(tdAction);
         tbody.appendChild(tr);
       });
 
-      const firstSid = shipments[0].shipment_id;
+      const firstSid = String(shipments[0].shipment_id || '');
       document.getElementById('shipment-input').value = firstSid;
       renderJourneyMap(shipments[0].journey);
     }
@@ -3126,23 +3226,53 @@ def render_trial_portal_html() -> str:
     function renderJourneyMap(journey) {
       const container = document.getElementById('pub-journey-map');
       if (!container) return;
+      container.textContent = '';
       if (!journey || !Array.isArray(journey.nodes) || journey.nodes.length === 0) {
-        container.innerHTML = '<div class="journey-node"><div class="node-title">Chưa có hành trình công bố</div><div class="muted">Lô chưa được công bố hoặc đã bị thu hồi.</div></div>';
+        const emptyNode = document.createElement('div');
+        emptyNode.className = 'journey-node';
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'node-title';
+        titleDiv.textContent = 'Chưa có hành trình công bố';
+        const mutedDiv = document.createElement('div');
+        mutedDiv.className = 'muted';
+        mutedDiv.textContent = 'Lô chưa được công bố hoặc đã bị thu hồi.';
+        emptyNode.appendChild(titleDiv);
+        emptyNode.appendChild(mutedDiv);
+        container.appendChild(emptyNode);
         return;
       }
-      container.innerHTML = '';
       journey.nodes.forEach((n, idx) => {
         const div = document.createElement('div');
         div.className = 'journey-node' + (n.current ? ' current' : (n.completed ? ' done' : ''));
-        const badge = n.current
-          ? '<span class="pill pill-ok">● Vị trí xác minh gần nhất</span>'
-          : (n.completed ? '<span class="pill pill-ok">✓ Đã xác minh</span>' : '<span class="pill pill-warn">○ Chưa xác minh</span>');
-        div.innerHTML = `
-          <div class="node-title">${idx + 1}. ${n.label}</div>
-          <div style="margin-bottom:6px;">${badge}</div>
-          <div class="muted">${n.evidence || ''}</div>
-          ${n.occurred_at ? `<div class="mono muted" style="margin-top:4px;">${n.occurred_at}</div>` : ''}
-        `;
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'node-title';
+        titleDiv.textContent = `${idx + 1}. ${String(n.label || '')}`;
+
+        const badgeWrap = document.createElement('div');
+        badgeWrap.style.marginBottom = '6px';
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = (n.current || n.completed) ? 'pill pill-ok' : 'pill pill-warn';
+        badgeSpan.textContent = n.current
+          ? '● Vị trí xác minh gần nhất'
+          : (n.completed ? '✓ Đã xác minh' : '○ Chưa xác minh');
+        badgeWrap.appendChild(badgeSpan);
+
+        const evDiv = document.createElement('div');
+        evDiv.className = 'muted';
+        evDiv.textContent = String(n.evidence || '');
+
+        div.appendChild(titleDiv);
+        div.appendChild(badgeWrap);
+        div.appendChild(evDiv);
+
+        if (n.occurred_at) {
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'mono muted';
+          timeDiv.style.marginTop = '4px';
+          timeDiv.textContent = String(n.occurred_at);
+          div.appendChild(timeDiv);
+        }
         container.appendChild(div);
       });
     }
@@ -3239,67 +3369,144 @@ def render_trial_portal_html() -> str:
       const approvedQuote = pub.quote || null;
 
       const evTbody = document.getElementById('tt-events-tbody');
-      evTbody.innerHTML = '';
+      evTbody.textContent = '';
       (body.candidate_events || []).forEach(ev => {
         const checked = approvedEvents[ev.id] === ev.version && pub.state === 'PUBLISHED';
         const tr = document.createElement('tr');
+        const tdCheck = document.createElement('td');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
         if (ev.eligible_for_customer) {
-          tr.innerHTML = `
-            <td><input type="checkbox" class="tt-ev-check" data-id="${ev.id}" data-version="${ev.version}" ${checked ? 'checked' : ''} /></td>
-            <td class="mono">${ev.id}@${ev.version}</td>
-            <td>${ev.public_title}</td>
-            <td><span class="pill pill-ok">Đã xác minh (${ev.verified_at})</span></td>
-          `;
+          chk.className = 'tt-ev-check';
+          chk.dataset.id = String(ev.id || '');
+          chk.dataset.version = String(ev.version || '');
+          chk.checked = Boolean(checked);
         } else {
-          tr.innerHTML = `
-            <td><input type="checkbox" disabled /></td>
-            <td class="mono">${ev.id}@${ev.version}</td>
-            <td class="muted">${ev.public_title}</td>
-            <td><span class="pill pill-deny">Khóa tự động (Chưa xác minh / Nội bộ TT)</span></td>
-          `;
+          chk.disabled = true;
         }
+        tdCheck.appendChild(chk);
+
+        const tdCode = document.createElement('td');
+        tdCode.className = 'mono';
+        tdCode.textContent = `${ev.id}@${ev.version}`;
+
+        const tdTitle = document.createElement('td');
+        if (!ev.eligible_for_customer) tdTitle.className = 'muted';
+        tdTitle.textContent = String(ev.public_title || '');
+
+        const tdVerify = document.createElement('td');
+        const pill = document.createElement('span');
+        if (ev.eligible_for_customer) {
+          pill.className = 'pill pill-ok';
+          pill.textContent = `Đã xác minh (${ev.verified_at})`;
+        } else {
+          pill.className = 'pill pill-deny';
+          pill.textContent = 'Khóa tự động (Chưa xác minh / Nội bộ TT)';
+        }
+        tdVerify.appendChild(pill);
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdCode);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdVerify);
         evTbody.appendChild(tr);
       });
 
       const docTbody = document.getElementById('tt-docs-tbody');
-      docTbody.innerHTML = '';
+      docTbody.textContent = '';
       (body.candidate_documents || []).forEach(doc => {
         const isCurrentApproved = approvedDocs[doc.id] === doc.version && pub.state === 'PUBLISHED';
         const tr = document.createElement('tr');
+        const tdCheck = document.createElement('td');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
         if (doc.eligible_for_customer) {
-          tr.innerHTML = `
-            <td><input type="checkbox" class="tt-doc-check" data-id="${doc.id}" data-version="${doc.version}" ${isCurrentApproved ? 'checked' : ''} /></td>
-            <td class="mono">${doc.id}@${doc.version}</td>
-            <td class="mono"><span class="pill pill-ok">${doc.kind}</span></td>
-            <td>${doc.public_title} <span class="muted mono">(${doc.file_name})</span></td>
-            <td>
-              ${isCurrentApproved
-                ? `<button class="btn-danger" style="padding:4px 8px;font-size:12px;" onclick="submitTtRevokeDoc('${doc.id}')">Thu hồi chứng từ ${doc.id}</button>`
-                : '<span class="muted">Đủ điều kiện công bố</span>'}
-            </td>
-          `;
+          chk.className = 'tt-doc-check';
+          chk.dataset.id = String(doc.id || '');
+          chk.dataset.version = String(doc.version || '');
+          chk.checked = Boolean(isCurrentApproved);
         } else {
-          tr.innerHTML = `
-            <td><input type="checkbox" disabled /></td>
-            <td class="mono">${doc.id}@${doc.version}</td>
-            <td class="mono"><span class="pill pill-deny">${doc.kind}</span></td>
-            <td class="muted">${doc.public_title}</td>
-            <td><span class="pill pill-deny">Khóa tự động (Chứng từ nội bộ TT)</span></td>
-          `;
+          chk.disabled = true;
         }
+        tdCheck.appendChild(chk);
+
+        const tdCode = document.createElement('td');
+        tdCode.className = 'mono';
+        tdCode.textContent = `${doc.id}@${doc.version}`;
+
+        const tdKind = document.createElement('td');
+        tdKind.className = 'mono';
+        const kindPill = document.createElement('span');
+        kindPill.className = doc.eligible_for_customer ? 'pill pill-ok' : 'pill pill-deny';
+        kindPill.textContent = String(doc.kind || '');
+        tdKind.appendChild(kindPill);
+
+        const tdTitle = document.createElement('td');
+        if (doc.eligible_for_customer) {
+          const spanTitle = document.createElement('span');
+          spanTitle.textContent = String(doc.public_title || '') + ' ';
+          const spanFile = document.createElement('span');
+          spanFile.className = 'muted mono';
+          spanFile.textContent = `(${doc.file_name})`;
+          tdTitle.appendChild(spanTitle);
+          tdTitle.appendChild(spanFile);
+        } else {
+          tdTitle.className = 'muted';
+          tdTitle.textContent = String(doc.public_title || '');
+        }
+
+        const tdCtrl = document.createElement('td');
+        if (doc.eligible_for_customer) {
+          if (isCurrentApproved) {
+            const btnRev = document.createElement('button');
+            btnRev.className = 'btn-danger';
+            btnRev.style.padding = '4px 8px';
+            btnRev.style.fontSize = '12px';
+            btnRev.textContent = `Thu hồi chứng từ ${doc.id}`;
+            btnRev.addEventListener('click', () => submitTtRevokeDoc(String(doc.id || '')));
+            tdCtrl.appendChild(btnRev);
+          } else {
+            const spanOk = document.createElement('span');
+            spanOk.className = 'muted';
+            spanOk.textContent = 'Đủ điều kiện công bố';
+            tdCtrl.appendChild(spanOk);
+          }
+        } else {
+          const lockPill = document.createElement('span');
+          lockPill.className = 'pill pill-deny';
+          lockPill.textContent = 'Khóa tự động (Chứng từ nội bộ TT)';
+          tdCtrl.appendChild(lockPill);
+        }
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdCode);
+        tr.appendChild(tdKind);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdCtrl);
         docTbody.appendChild(tr);
       });
 
       const qBox = document.getElementById('tt-quote-box');
+      qBox.textContent = '';
       const q = body.candidate_quote;
       if (q && q.id) {
         const qChecked = approvedQuote && approvedQuote.id === q.id && String(approvedQuote.version) === String(q.version) && pub.state === 'PUBLISHED';
-        qBox.innerHTML = `
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-            <input type="checkbox" id="tt-quote-check" data-id="${q.id}" data-version="${q.version}" ${qChecked ? 'checked' : ''} />
-            <span>Chia sẻ báo giá bán <strong class="mono">${q.id}@v${q.version}</strong> (Trạng thái: <span class="mono">${q.status}</span>) — Tổng giá bán: <strong>${formatVnd(q.selling_total_vnd)}</strong> (Tự động ẩn giá vốn &amp; biên lợi nhuận nội bộ)</span>
-          </label>
-        `;
+        const lbl = document.createElement('label');
+        lbl.style.display = 'flex';
+        lbl.style.alignItems = 'center';
+        lbl.style.gap = '8px';
+        lbl.style.cursor = 'pointer';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = 'tt-quote-check';
+        chk.dataset.id = String(q.id || '');
+        chk.dataset.version = String(q.version || '');
+        chk.checked = Boolean(qChecked);
+        const spanDesc = document.createElement('span');
+        spanDesc.textContent = `Chia sẻ báo giá bán ${q.id}@v${q.version} (Trạng thái: ${q.status}) — Tổng giá bán: ${formatVnd(q.selling_total_vnd)} (Tự động ẩn giá vốn & biên lợi nhuận nội bộ)`;
+        lbl.appendChild(chk);
+        lbl.appendChild(spanDesc);
+        qBox.appendChild(lbl);
       } else {
         qBox.textContent = 'Không có báo giá bán đủ điều kiện.';
       }
@@ -3307,8 +3514,12 @@ def render_trial_portal_html() -> str:
 
     function renderTtPublicationAudit(pub) {
       const stateEl = document.getElementById('tt-pub-state');
+      stateEl.textContent = '';
       const isPub = pub.state === 'PUBLISHED';
-      stateEl.innerHTML = `<span class="pill ${isPub ? 'pill-ok' : 'pill-deny'}">${pub.state || 'UNPUBLISHED'}</span>`;
+      const statePill = document.createElement('span');
+      statePill.className = `pill ${isPub ? 'pill-ok' : 'pill-deny'}`;
+      statePill.textContent = String(pub.state || 'UNPUBLISHED');
+      stateEl.appendChild(statePill);
       document.getElementById('tt-pub-approved').textContent =
         pub.approved_by ? `${pub.approved_by} lúc ${pub.approved_at}` : '(Chưa có)';
       document.getElementById('tt-pub-revoked').textContent =
@@ -3431,42 +3642,84 @@ def render_trial_portal_html() -> str:
       document.getElementById('pub-schema').textContent = body.schema || '-';
       document.getElementById('pub-reference').textContent = body.reference || '-';
       document.getElementById('pub-mode').textContent = body.transport_mode || '-';
+      const quoteEl = document.getElementById('pub-quote');
+      quoteEl.textContent = '';
       if (body.quote) {
-        document.getElementById('pub-quote').innerHTML =
-          `<strong>${formatVnd(body.quote.selling_total_vnd)}</strong> <span class="mono">(Mã: ${body.quote.id} · v${body.quote.version} · Trạng thái: ${body.quote.status})</span>`;
+        const strongVnd = document.createElement('strong');
+        strongVnd.textContent = formatVnd(body.quote.selling_total_vnd);
+        const spanMeta = document.createElement('span');
+        spanMeta.className = 'mono';
+        spanMeta.textContent = ` (Mã: ${body.quote.id} · v${body.quote.version} · Trạng thái: ${body.quote.status})`;
+        quoteEl.appendChild(strongVnd);
+        quoteEl.appendChild(spanMeta);
       } else {
-        document.getElementById('pub-quote').textContent = 'Chưa có báo giá công bố';
+        quoteEl.textContent = 'Chưa có báo giá công bố';
       }
 
       const tlBody = document.getElementById('pub-timeline-body');
-      tlBody.innerHTML = '';
+      tlBody.textContent = '';
       (body.timeline || []).forEach(ev => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="mono">${ev.id}</td>
-          <td class="mono">${ev.stage}</td>
-          <td>${ev.title}</td>
-          <td class="mono">${ev.occurred_at}</td>
-          <td class="mono">${ev.version}</td>
-        `;
+        const tdId = document.createElement('td');
+        tdId.className = 'mono';
+        tdId.textContent = String(ev.id || '');
+
+        const tdStage = document.createElement('td');
+        tdStage.className = 'mono';
+        tdStage.textContent = String(ev.stage || '');
+
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = String(ev.title || '');
+
+        const tdTime = document.createElement('td');
+        tdTime.className = 'mono';
+        tdTime.textContent = String(ev.occurred_at || '');
+
+        const tdVer = document.createElement('td');
+        tdVer.className = 'mono';
+        tdVer.textContent = String(ev.version || '');
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdStage);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdTime);
+        tr.appendChild(tdVer);
         tlBody.appendChild(tr);
       });
 
       const docsBody = document.getElementById('pub-docs-body');
-      docsBody.innerHTML = '';
+      docsBody.textContent = '';
       (body.documents || []).forEach(doc => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="mono">${doc.id}</td>
-          <td class="mono"><span class="pill pill-ok">${doc.kind}</span></td>
-          <td>${doc.title}</td>
-          <td class="mono">${doc.version}</td>
-          <td>
-            <button onclick="triggerDownload('${body.reference}', '${doc.id}', '${doc.version}')">
-              ⬇ Tải ${doc.id} (${doc.version})
-            </button>
-          </td>
-        `;
+        const tdId = document.createElement('td');
+        tdId.className = 'mono';
+        tdId.textContent = String(doc.id || '');
+
+        const tdKind = document.createElement('td');
+        tdKind.className = 'mono';
+        const kindPill = document.createElement('span');
+        kindPill.className = 'pill pill-ok';
+        kindPill.textContent = String(doc.kind || '');
+        tdKind.appendChild(kindPill);
+
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = String(doc.title || '');
+
+        const tdVer = document.createElement('td');
+        tdVer.className = 'mono';
+        tdVer.textContent = String(doc.version || '');
+
+        const tdDl = document.createElement('td');
+        const btnDl = document.createElement('button');
+        btnDl.textContent = `⬇ Tải ${doc.id} (${doc.version})`;
+        btnDl.addEventListener('click', () => triggerDownload(String(body.reference || ''), String(doc.id || ''), String(doc.version || '')));
+        tdDl.appendChild(btnDl);
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdKind);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdVer);
+        tr.appendChild(tdDl);
         docsBody.appendChild(tr);
       });
     }
