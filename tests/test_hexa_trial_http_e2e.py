@@ -19,6 +19,7 @@ from core import shipment_attachments as core_att
 from core.hexa_trial_portal import (
     CUSTOMER_A_ID,
     CUSTOMER_B_ID,
+    INTERNAL_QA_HEADER,
     QUOTE_A_ID,
     QUOTE_B_ID,
     SCHEMA_GAP_REPORT,
@@ -62,6 +63,13 @@ def _http_request(
         return exc.code, dict(exc.headers.items()), exc.read()
 
 
+def _server_issued_token(env: HexaTrialEnvironment, role_key: str, legacy_fallback: str) -> str:
+    getter = getattr(env, "get_trial_session_token", None)
+    if callable(getter):
+        return str(getter(role_key))
+    return legacy_fallback
+
+
 @pytest.fixture()
 def trial_server():
     env = HexaTrialEnvironment()
@@ -81,7 +89,7 @@ def trial_server():
 
 def test_ac1_tt_internal_store_holds_cost_supplier_and_shared_truck_data(trial_server) -> None:
     """AC #1: TT holds internal data including cost price and supplier info on the shared truck."""
-    base_url, _env = trial_server
+    base_url, env = trial_server
     db = core_db.get_db()
     assert db is not None
 
@@ -103,24 +111,28 @@ def test_ac1_tt_internal_store_holds_cost_supplier_and_shared_truck_data(trial_s
     assert calc_a["selling_price_total_vnd"] == 57240000.0
     assert SENTINEL_TT_PRIVATE_SUPPLIER in quote_a["factory_lots"][0]["factory_name"]
 
-    # Inspector endpoint confirms TT internal data is present on the server side
-    status, _hdrs, raw = _http_request(base_url, "/api/hexa/v0/trial-inspector")
-    assert status == 200
-    inspector = json.loads(raw.decode("utf-8"))
+    # Internal Python snapshot (server-side only, never exposed on customer HTTP) holds TT truth
+    inspector = env.build_trial_inspector_snapshot()
     assert inspector["tt_internal_only_data"]["cost_before_tax_vnd"] == 42000000.0
     assert inspector["tt_internal_only_data"]["selling_total_vnd"] == 57240000.0
+
+    # Customer HTTP path MUST NOT serve the internal inspector to unauthenticated callers
+    status, _hdrs, raw = _http_request(base_url, "/api/hexa/v0/trial-inspector")
+    assert status == 403
+    assert json.loads(raw.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
 
 
 def test_ac2_and_ac4_lg_receives_only_published_progress_pinned_docs_sent_quote_and_no_unverified_eta(
     trial_server,
 ) -> None:
     """AC #2 & AC #4: LG receives only shared progress, pinned doc versions, sent selling quote, and zero unverified ETA."""
-    base_url, _env = trial_server
+    base_url, env = trial_server
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
 
     status, _hdrs, raw = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
-        session_token="sess-customer-lg",
+        session_token=token_a,
     )
     assert status == 200
     text = raw.decode("utf-8")
@@ -182,7 +194,10 @@ def test_ac3_cross_customer_isolation_on_same_truck_even_when_guessing_urls_or_l
     trial_server,
 ) -> None:
     """AC #3: Customer A cannot view/download Customer B's info, even when guessing URLs or shipment codes (and vice versa)."""
-    base_url, _env = trial_server
+    base_url, env = trial_server
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
+    token_b = _server_issued_token(env, "customer_b", "sess-customer-md")
+    token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
 
     # 1. Customer A (Lục Giác) guesses Customer B's shipment code ROAD-MD-002
     for path in (
@@ -193,7 +208,7 @@ def test_ac3_cross_customer_isolation_on_same_truck_even_when_guessing_urls_or_l
         status, _hdrs, raw = _http_request(
             base_url,
             path,
-            session_token="sess-customer-lg",
+            session_token=token_a,
             headers={"X-Customer-Id": CUSTOMER_B_ID},
         )
         assert status == 403
@@ -204,7 +219,7 @@ def test_ac3_cross_customer_isolation_on_same_truck_even_when_guessing_urls_or_l
     status_b_own, _hdrs, raw_b_own = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/{SHIPMENT_B_ID}",
-        session_token="sess-customer-md",
+        session_token=token_b,
     )
     assert status_b_own == 200
     payload_b = json.loads(raw_b_own.decode("utf-8"))
@@ -220,13 +235,13 @@ def test_ac3_cross_customer_isolation_on_same_truck_even_when_guessing_urls_or_l
     status_b_guess_a, _hdrs, raw_b_guess_a = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
-        session_token="sess-customer-md",
+        session_token=token_b,
     )
     assert status_b_guess_a == 403
     assert json.loads(raw_b_guess_a.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
 
     # 3. Internal viewer role (has finance_view) and anonymous callers are denied
-    for bad_session in ("sess-internal-viewer", "sess-anonymous", "forged-token"):
+    for bad_session in (token_viewer, None, "forged-token"):
         status_bad, _hdrs, raw_bad = _http_request(
             base_url,
             f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
@@ -242,6 +257,9 @@ def test_ac5_document_download_enforces_server_permission_before_reading_gridfs_
 ) -> None:
     """AC #5: Document download checks permission on server BEFORE reading file bytes from GridFS."""
     base_url, env = trial_server
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
+    token_b = _server_issued_token(env, "customer_b", "sess-customer-md")
+    token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
 
     real_fetch = core_att.fetch_attachment_bytes
     fetch_calls: list[tuple[Any, Any]] = []
@@ -255,23 +273,23 @@ def test_ac5_document_download_enforces_server_permission_before_reading_gridfs_
     # All unauthorized / wrong-version / internal-doc / cross-customer download attempts MUST fail BEFORE fetch_attachment_bytes
     denied_paths = [
         # Stale version v1 of DOC-LG-PL when only v2 is published in manifest
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v1"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v1"),
         # Unapproved version v3
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v3"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v3"),
         # Missing version query parameter
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download"),
         # Internal TT cost sheet on the same shipment
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-COST/download?version=v1"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-COST/download?version=v1"),
         # Customer B's document on the shared trip pool under ROAD-LG-001
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-MD-PL/download?version=v1"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-MD-PL/download?version=v1"),
         # Customer A guessing Customer B's shipment URL & document URL
-        ("sess-customer-lg", f"/api/hexa/v0/shipments/{SHIPMENT_B_ID}/documents/DOC-MD-PL/download?version=v1"),
+        (token_a, f"/api/hexa/v0/shipments/{SHIPMENT_B_ID}/documents/DOC-MD-PL/download?version=v1"),
         # Customer B guessing Customer A's approved document URL
-        ("sess-customer-md", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
+        (token_b, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
         # Internal viewer role attempting download
-        ("sess-internal-viewer", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
+        (token_viewer, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
         # Anonymous attempting download
-        ("sess-anonymous", f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
+        (None, f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"),
     ]
 
     for token, path in denied_paths:
@@ -288,7 +306,7 @@ def test_ac5_document_download_enforces_server_permission_before_reading_gridfs_
     status_ok, hdrs_ok, pdf_bytes = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2",
-        session_token="sess-customer-lg",
+        session_token=token_a,
     )
     assert status_ok == 200
     assert pdf_bytes.startswith(b"%PDF-1.4")
@@ -301,27 +319,16 @@ def test_ac5_document_download_enforces_server_permission_before_reading_gridfs_
 def test_ac6_and_ac7_trial_portal_ui_and_schema_gap_report_are_served_over_http(
     trial_server,
 ) -> None:
-    """AC #6 & AC #7: Runnable HTTP trial UI and explicit schema gap report are served."""
+    """AC #6 & AC #7: Runnable HTTP customer portal UI is served without leaking internal TT data or auto-issuing sessions."""
     base_url, _env = trial_server
 
     status_ui, hdrs_ui, html_bytes = _http_request(base_url, "/")
     assert status_ui == 200
     assert "text/html" in hdrs_ui.get("Content-Type", "")
+    # Anonymous GET / must NOT automatically grant a customer session cookie
+    assert "Set-Cookie" not in hdrs_ui
     html = html_bytes.decode("utf-8")
-    assert "HEXA V0 — Kết nối dữ liệu thử nghiệm Trường Thành (TT) → Lục Giác (LG)" in html
-    assert "TRIP-ROAD-2026-01" in html
-
-    # Switch session via HTTP POST /api/hexa/v0/session
-    status_sess, hdrs_sess, sess_bytes = _http_request(
-        base_url,
-        "/api/hexa/v0/session",
-        method="POST",
-        json_body={"session_token": "sess-customer-md"},
-    )
-    assert status_sess == 200
-    assert "sess-customer-md" in hdrs_sess.get("Set-Cookie", "")
-    sess_payload = json.loads(sess_bytes.decode("utf-8"))
-    assert sess_payload["principal"]["customer_id"] == CUSTOMER_B_ID
+    assert "HEXA V0" in html
 
     # Verify schema gap report completeness (AC #7)
     assert len(SCHEMA_GAP_REPORT) == 6
@@ -332,3 +339,155 @@ def test_ac6_and_ac7_trial_portal_ui_and_schema_gap_report_are_served_over_http(
     assert "Tiến độ chia sẻ cho khách & trạng thái xác minh ETA (events)" in surfaces
     assert "Chứng từ đính kèm & kiểm quyền tải theo phiên bản (documents)" in surfaces
     assert "Báo giá bán đã gửi (quote)" in surfaces
+
+
+def test_security_inspector_and_customer_ui_do_not_leak_tt_internal_or_other_customer_data(
+    trial_server,
+) -> None:
+    """Repair #1: Customer A, Customer B, viewer, and anonymous callers CANNOT call inspector or customer UI/API to read TT cost, margin, supplier, or the other customer's data."""
+    base_url, env = trial_server
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
+    token_b = _server_issued_token(env, "customer_b", "sess-customer-md")
+    token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
+
+    forbidden_leaks = (
+        "42000000",
+        "11000000",
+        "29000000",
+        "Foshan Hexa",
+        "Việt Trung An Bình",
+        "tt_internal_only_data",
+        "cost_before_tax_vnd",
+        "estimated_margin_vnd",
+        "other_customer_on_same_truck",
+        *TRIAL_SENTINELS,
+    )
+
+    for caller_token in (None, token_a, token_b, token_viewer, "sess-customer-lg", "sess-customer-md"):
+        for path in ("/api/hexa/v0/trial-inspector", "/internal/qa/inspector"):
+            status, _hdrs, raw = _http_request(base_url, path, session_token=caller_token)
+            body_text = raw.decode("utf-8")
+            assert status == 403, f"Expected 403 on {path} for caller={caller_token}, got {status}: {body_text}"
+            assert json.loads(body_text) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+            for secret in forbidden_leaks:
+                assert secret not in body_text
+
+    # Customer HTML page (GET / and GET /hexa) must not embed TT internal inspector calls or TT internal secrets
+    for ui_path in ("/", "/hexa"):
+        status_ui, _hdrs_ui, raw_ui = _http_request(base_url, ui_path, session_token=token_a)
+        assert status_ui == 200
+        ui_text = raw_ui.decode("utf-8")
+        assert "/api/hexa/v0/trial-inspector" not in ui_text
+        for secret in forbidden_leaks:
+            assert secret not in ui_text
+
+
+def test_security_http_client_cannot_self_switch_session_or_use_sample_tokens(
+    trial_server,
+) -> None:
+    """Repair #2: HTTP clients cannot impersonate another customer via sample tokens, GET /api/hexa/v0/session token listing, or POST /api/hexa/v0/session."""
+    base_url, env = trial_server
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
+
+    # 1. Predictable sample tokens must be rejected by the server on all shipment & download endpoints
+    for sample_token in (
+        "sess-customer-lg",
+        "sess-customer-md",
+        "sess-internal-viewer",
+        "sess-anonymous",
+        CUSTOMER_A_ID,
+        CUSTOMER_B_ID,
+    ):
+        for ship_id in (SHIPMENT_A_ID, SHIPMENT_B_ID):
+            status_ship, _hdrs, raw_ship = _http_request(
+                base_url,
+                f"/api/hexa/v0/shipments/{ship_id}",
+                session_token=sample_token,
+            )
+            assert status_ship == 403, f"Sample token {sample_token} must be rejected on {ship_id}"
+            assert json.loads(raw_ship.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+    # 2. GET /api/hexa/v0/session must NOT expose available_sessions or any session token strings
+    status_sess, _hdrs_sess, raw_sess = _http_request(
+        base_url,
+        "/api/hexa/v0/session",
+        session_token=token_a,
+    )
+    assert status_sess == 200
+    sess_info = json.loads(raw_sess.decode("utf-8"))
+    assert "available_sessions" not in sess_info
+    assert "active_session_token" not in sess_info
+    assert sess_info["principal"]["customer_id"] == CUSTOMER_A_ID
+
+    # 3. POST /api/hexa/v0/session (self-service session switching) must be rejected on the customer path
+    for payload in (
+        {"session_token": "sess-customer-md"},
+        {"role": "customer_b"},
+        {"customer_id": CUSTOMER_B_ID},
+    ):
+        status_post, hdrs_post, raw_post = _http_request(
+            base_url,
+            "/api/hexa/v0/session",
+            method="POST",
+            session_token=token_a,
+            json_body=payload,
+        )
+        assert status_post == 403
+        assert "Set-Cookie" not in hdrs_post
+        assert json.loads(raw_post.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+    # 4. On the default customer server (internal_qa_mode=False), even /internal/qa/session is disabled
+    status_qa_off, hdrs_qa_off, raw_qa_off = _http_request(
+        base_url,
+        "/internal/qa/session",
+        method="POST",
+        session_token=token_a,
+        headers={INTERNAL_QA_HEADER: env.internal_qa_key},
+        json_body={"role": "customer_b"},
+    )
+    assert status_qa_off == 403
+    assert "Set-Cookie" not in hdrs_qa_off
+    assert json.loads(raw_qa_off.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+    # 5. Even when an isolated internal QA server is explicitly started (internal_qa_mode=True),
+    #    customers without the server-only X-Hexa-Internal-QA-Key are still denied on /internal/qa/*
+    #    and on /api/hexa/v0/session.
+    qa_server = create_trial_http_server(host="127.0.0.1", port=0, env=env, internal_qa_mode=True)
+    qa_host, qa_port = qa_server.server_address[:2]
+    qa_url = f"http://{qa_host}:{qa_port}"
+    qa_thread = threading.Thread(target=qa_server.serve_forever, daemon=True)
+    qa_thread.start()
+    try:
+        status_no_key, hdrs_no_key, _ = _http_request(
+            qa_url,
+            "/internal/qa/session",
+            method="POST",
+            session_token=token_a,
+            json_body={"role": "customer_b"},
+        )
+        assert status_no_key == 403
+        assert "Set-Cookie" not in hdrs_no_key
+
+        status_cust_inspector, _, _ = _http_request(
+            qa_url,
+            "/api/hexa/v0/trial-inspector",
+            session_token=token_a,
+            headers={INTERNAL_QA_HEADER: env.internal_qa_key},
+        )
+        assert status_cust_inspector == 403
+
+        # Internal QA harness WITH server-only key can switch role on isolated /internal/qa/session
+        status_with_key, hdrs_with_key, raw_with_key = _http_request(
+            qa_url,
+            "/internal/qa/session",
+            method="POST",
+            headers={INTERNAL_QA_HEADER: env.internal_qa_key},
+            json_body={"role": "customer_b"},
+        )
+        assert status_with_key == 200
+        assert TRIAL_COOKIE_NAME in hdrs_with_key.get("Set-Cookie", "")
+        assert json.loads(raw_with_key.decode("utf-8"))["principal"]["customer_id"] == CUSTOMER_B_ID
+    finally:
+        qa_server.shutdown()
+        qa_server.server_close()
+        qa_thread.join(timeout=5)

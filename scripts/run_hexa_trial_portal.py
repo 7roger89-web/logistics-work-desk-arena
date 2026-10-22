@@ -10,20 +10,34 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.hexa_trial_portal import create_trial_http_server  # noqa: E402
+from core.hexa_trial_portal import (  # noqa: E402
+    create_trial_http_server,
+    get_trial_environment,
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="HEXA V0 TT -> LG Trial Portal HTTP Server")
     parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8787, help="Bind port (default: 8787)")
+    parser.add_argument(
+        "--internal-qa-mode",
+        action="store_true",
+        help="Enable isolated /internal/qa/* endpoints (still requires server-only X-Hexa-Internal-QA-Key)",
+    )
     args = parser.parse_args()
 
-    server = create_trial_http_server(host=args.host, port=args.port)
+    env = get_trial_environment()
+    server = create_trial_http_server(
+        host=args.host,
+        port=args.port,
+        env=env,
+        internal_qa_mode=bool(args.internal_qa_mode),
+    )
     bound_host, bound_port = server.server_address[:2]
     print(
         f"HEXA_TRIAL_PORTAL_READY http://{bound_host}:{bound_port}/ "
-        "(isolated SANDBOX_STAGING: mongomock + GridFS)",
+        f"(isolated SANDBOX_STAGING: mongomock + GridFS, internal_qa_mode={bool(args.internal_qa_mode)})",
         flush=True,
     )
     try:

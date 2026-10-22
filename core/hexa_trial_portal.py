@@ -5,16 +5,31 @@ Reuses ``core.hexa_customer_publication`` (``build_customer_publication``,
 ``core.shipment_attachments`` (``upload_attachment``, ``fetch_attachment_bytes``),
 ``core.database`` and ``views.logi_sandbox`` (isolated ``mongomock`` + GridFS).
 
+Security boundaries enforced on the HTTP trial portal:
+- TT internal inspection data (cost, margin, supplier, unverified ETA, other
+  customers on the shared truck) is strictly separated from the customer UI/API.
+  Customer A, Customer B, internal ``viewer`` and anonymous callers are denied
+  (``HTTP 403 CUSTOMER_RESOURCE_UNAVAILABLE``) on any inspector endpoint.
+- HTTP clients cannot self-switch customer sessions or authenticate using
+  predictable sample tokens (``sess-customer-lg``, ``sess-customer-md``, etc.).
+  Session tokens are random per-boot opaque secrets issued server-side.
+- Optional role switching for QA is disabled by default on the customer server
+  (``internal_qa_mode=False``) and, even when enabled for an isolated internal
+  QA harness, lives off the customer path under ``/internal/qa/*`` gated by a
+  server-only ``X-Hexa-Internal-QA-Key``.
+
 Nothing in this module connects to production MongoDB, modifies PR #211 files,
 or grants live customer access.
 """
 from __future__ import annotations
 
 import copy
+import hmac
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import secrets
 from typing import Any, Mapping
 from urllib.parse import parse_qs, urlparse
 
@@ -26,6 +41,21 @@ from core.hexa_customer_publication import (
 )
 
 TRIAL_COOKIE_NAME = "hexa_trial_session"
+INTERNAL_QA_HEADER = "X-Hexa-Internal-QA-Key"
+
+# Static/sample token names that must NEVER be accepted as valid HTTP session tokens.
+FORBIDDEN_SAMPLE_TOKENS: frozenset[str] = frozenset(
+    {
+        "sess-customer-lg",
+        "sess-customer-md",
+        "sess-internal-viewer",
+        "sess-anonymous",
+        "customer_a",
+        "customer_b",
+        "internal_viewer",
+        "anonymous",
+    }
+)
 
 # Sentinels used to prove zero internal / cross-tenant leakage over HTTP.
 SENTINEL_TT_INTERNAL_COST = "TT_INTERNAL_COST_42000000"
@@ -66,7 +96,7 @@ SCHEMA_GAP_REPORT: tuple[dict[str, Any], ...] = (
             "principal.kind == 'customer' (core/users.py chỉ có role nội bộ; role 'viewer' có quyền finance_view nên cấm dùng cho khách)",
             "principal.customer_id (ràng buộc tài khoản đăng nhập với đúng mã khách hàng từ session phía server)",
         ],
-        "trial_handling": "Bảng phiên thử nghiệm phía server (hexa_trial_sessions) ánh xạ token phiên sang {authenticated, kind, customer_id}; tuyệt đối không đọc customer_id từ query/header/body của client.",
+        "trial_handling": "Bảng phiên thử nghiệm phía server ánh xạ token ngẫu nhiên (opaque secret do server cấp) sang {authenticated, kind, customer_id}; cấm token mẫu và không cho phép client tự đổi phiên trên đường khách.",
     },
     {
         "surface": "Bản duyệt công bố của TT (publication manifest)",
@@ -185,6 +215,8 @@ class HexaTrialEnvironment:
         self.denied_before_storage_reads: int = 0
         self.audit_trail: list[dict[str, Any]] = []
         self.sessions: dict[str, dict[str, Any]] = {}
+        self._role_tokens: dict[str, str] = {}
+        self.internal_qa_key: str = ""
         self._seeded: bool = False
 
     def ensure_seeded(self, *, force_reset: bool = False) -> None:
@@ -220,10 +252,24 @@ class HexaTrialEnvironment:
         self.denied_before_storage_reads = 0
         self.audit_trail = []
 
-        # 1. Server-side session table (opaque session tokens; client cannot forge customer_id).
+        # 1. Server-side session table keyed ONLY by random per-boot opaque tokens.
+        #    Predictable sample tokens ("sess-customer-lg", "sess-customer-md", etc.)
+        #    are never registered and are explicitly rejected.
+        token_customer_a = f"hx_live_{secrets.token_urlsafe(24)}"
+        token_customer_b = f"hx_live_{secrets.token_urlsafe(24)}"
+        token_internal_viewer = f"hx_live_{secrets.token_urlsafe(24)}"
+        self.internal_qa_key = f"hx_internal_qa_{secrets.token_urlsafe(24)}"
+
+        self._role_tokens = {
+            "customer_a": token_customer_a,
+            CUSTOMER_A_ID: token_customer_a,
+            "customer_b": token_customer_b,
+            CUSTOMER_B_ID: token_customer_b,
+            "internal_viewer": token_internal_viewer,
+        }
         self.sessions = {
-            "sess-customer-lg": {
-                "token": "sess-customer-lg",
+            token_customer_a: {
+                "role_key": "customer_a",
                 "label": "Khách A — Công ty TNHH Lục Giác (HEXA)",
                 "principal": {
                     "authenticated": True,
@@ -233,9 +279,9 @@ class HexaTrialEnvironment:
                 },
                 "default_shipment_id": SHIPMENT_A_ID,
             },
-            "sess-customer-md": {
-                "token": "sess-customer-md",
-                "label": "Khách B — Công ty CP Minh Đức (cùng chuyến xe)",
+            token_customer_b: {
+                "role_key": "customer_b",
+                "label": "Khách B — Công ty CP Minh Đức",
                 "principal": {
                     "authenticated": True,
                     "kind": "customer",
@@ -244,25 +290,14 @@ class HexaTrialEnvironment:
                 },
                 "default_shipment_id": SHIPMENT_B_ID,
             },
-            "sess-internal-viewer": {
-                "token": "sess-internal-viewer",
+            token_internal_viewer: {
+                "role_key": "internal_viewer",
                 "label": "Nội bộ TT — Role viewer (có finance_view, CẤM làm cổng khách)",
                 "principal": {
                     "authenticated": True,
                     "kind": "viewer",
                     "customer_id": CUSTOMER_A_ID,
                     "display_name": "Internal Viewer (finance_view)",
-                },
-                "default_shipment_id": SHIPMENT_A_ID,
-            },
-            "sess-anonymous": {
-                "token": "sess-anonymous",
-                "label": "Ẩn danh — Chưa đăng nhập",
-                "principal": {
-                    "authenticated": False,
-                    "kind": "customer",
-                    "customer_id": "",
-                    "display_name": "Khách ẩn danh",
                 },
                 "default_shipment_id": SHIPMENT_A_ID,
             },
@@ -870,18 +905,64 @@ class HexaTrialEnvironment:
             raise RuntimeError(f"Không tải lên được chứng từ thử nghiệm {file_name}: {outcome}")
         return dict(outcome["record"])
 
+    def get_trial_session_token(self, role_or_customer: str) -> str:
+        """Server-side helper for internal test/QA harnesses to obtain an opaque session token.
+
+        Not exposed on any customer HTTP endpoint.
+        """
+        self.ensure_seeded()
+        key = str(role_or_customer or "").strip()
+        if key not in self._role_tokens:
+            raise KeyError(f"Unknown trial role/customer key: {key}")
+        return self._role_tokens[key]
+
+    def verify_internal_qa_key(self, candidate_key: str | None) -> bool:
+        """Constant-time check for the server-only internal QA key."""
+        self.ensure_seeded()
+        provided = str(candidate_key or "").strip()
+        if not provided or not self.internal_qa_key:
+            return False
+        return hmac.compare_digest(provided, self.internal_qa_key)
+
     def resolve_principal(self, session_token: str | None) -> dict[str, Any]:
         """Resolve caller principal strictly from the server-owned session store.
 
-        Any unknown/empty token returns an unauthenticated principal. Query
-        parameters or client headers carrying ``customer_id`` are NEVER read.
+        Any unknown, empty, or predictable sample token returns an
+        unauthenticated principal. Query parameters or client headers carrying
+        ``customer_id`` are NEVER read.
         """
         self.ensure_seeded()
         token = str(session_token or "").strip()
+        if not token or token in FORBIDDEN_SAMPLE_TOKENS:
+            return {"authenticated": False, "kind": "customer", "customer_id": ""}
         entry = self.sessions.get(token)
         if not entry:
             return {"authenticated": False, "kind": "customer", "customer_id": ""}
         return copy.deepcopy(entry["principal"])
+
+    def resolve_session_summary(self, session_token: str | None) -> dict[str, Any]:
+        """Return safe caller-scoped session metadata without exposing any session tokens."""
+        self.ensure_seeded()
+        token = str(session_token or "").strip()
+        if not token or token in FORBIDDEN_SAMPLE_TOKENS or token not in self.sessions:
+            return {
+                "authenticated": False,
+                "label": "Ẩn danh — Chưa đăng nhập",
+                "principal": {
+                    "authenticated": False,
+                    "kind": "customer",
+                    "customer_id": "",
+                    "display_name": "Khách ẩn danh",
+                },
+                "default_shipment_id": "",
+            }
+        entry = self.sessions[token]
+        return {
+            "authenticated": bool(entry["principal"].get("authenticated")),
+            "label": entry["label"],
+            "principal": copy.deepcopy(entry["principal"]),
+            "default_shipment_id": entry["default_shipment_id"],
+        }
 
     def _load_adapted_shipment(self, db: Any, shipment_id: str) -> dict[str, Any]:
         sid = str(shipment_id or "").strip()
@@ -932,7 +1013,6 @@ class HexaTrialEnvironment:
             or {}
         )
         events = list(db["hexa_trial_events"].find({"shipment_id": sid}, {"_id": 0}))
-        # Only documents whose underlying attachment is still AVAILABLE in shipment_attachments
         raw_docs = list(db["hexa_trial_documents"].find({"shipment_id": sid}, {"_id": 0}))
         documents: list[dict[str, Any]] = []
         for doc in raw_docs:
@@ -956,7 +1036,6 @@ class HexaTrialEnvironment:
             )
             self._record_audit(
                 action="READ_PUBLICATION",
-                session_token=session_token,
                 principal=principal,
                 shipment_id=sid,
                 allowed=True,
@@ -966,7 +1045,6 @@ class HexaTrialEnvironment:
         except PublicationDenied:
             self._record_audit(
                 action="READ_PUBLICATION",
-                session_token=session_token,
                 principal=principal,
                 shipment_id=sid,
                 allowed=False,
@@ -1046,7 +1124,6 @@ class HexaTrialEnvironment:
             self.denied_before_storage_reads += 1
             self._record_audit(
                 action="DOWNLOAD_DOCUMENT",
-                session_token=session_token,
                 principal=principal,
                 shipment_id=sid,
                 allowed=False,
@@ -1073,7 +1150,6 @@ class HexaTrialEnvironment:
         data = bytes(fetched["data"])
         self._record_audit(
             action="DOWNLOAD_DOCUMENT",
-            session_token=session_token,
             principal=principal,
             shipment_id=sid,
             allowed=True,
@@ -1088,7 +1164,7 @@ class HexaTrialEnvironment:
         }
 
     def build_trial_inspector_snapshot(self) -> dict[str, Any]:
-        """Return TT internal truth vs published manifest state for the trial UI."""
+        """Server-internal TT truth snapshot (NEVER served on the customer HTTP surface)."""
         from core import database as core_db
 
         self.ensure_seeded()
@@ -1155,7 +1231,6 @@ class HexaTrialEnvironment:
         self,
         *,
         action: str,
-        session_token: str | None,
         principal: Mapping[str, Any],
         shipment_id: str,
         allowed: bool,
@@ -1164,7 +1239,6 @@ class HexaTrialEnvironment:
         self.audit_trail.append(
             {
                 "action": action,
-                "session": str(session_token or "anonymous"),
                 "principal_kind": str(principal.get("kind") or ""),
                 "customer_id": str(principal.get("customer_id") or ""),
                 "shipment_id": shipment_id,
@@ -1196,13 +1270,18 @@ def _extract_session_token(headers: Mapping[str, str]) -> str:
 
 
 def render_trial_portal_html() -> str:
-    """Self-contained interactive HEXA V0 trial portal HTML (uses relative URLs only)."""
+    """Customer-only HEXA V0 portal HTML.
+
+    Contains ZERO TT internal cost, margin, supplier, unverified ETA, or other
+    customer's information, and provides NO self-service session switcher on
+    the customer surface.
+    """
     return """<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HEXA V0 — Cổng dữ liệu thử nghiệm Trường Thành → Lục Giác</title>
+  <title>HEXA V0 — Cổng thông tin lô hàng khách hàng</title>
   <style>
     :root {
       --bg: #f4f6f9;
@@ -1216,8 +1295,6 @@ def render_trial_portal_html() -> str:
       --ok-bg: #e6f4ea;
       --deny: #b3261e;
       --deny-bg: #fce8e6;
-      --warn: #b06000;
-      --warn-bg: #fef7e0;
       --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
@@ -1241,20 +1318,13 @@ def render_trial_portal_html() -> str:
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      max-width: 1360px;
+      max-width: 1080px;
       margin: 0 auto;
     }
     header h1 {
       font-size: 18px;
       margin: 0;
       font-weight: 700;
-    }
-    header .badge-bar {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      font-family: var(--mono);
     }
     .pill {
       padding: 4px 10px;
@@ -1263,20 +1333,13 @@ def render_trial_portal_html() -> str:
       font-size: 12px;
       display: inline-block;
     }
-    .pill-sandbox { background: #ffd166; color: #1d2d44; }
     .pill-ok { background: var(--ok-bg); color: var(--ok); }
     .pill-deny { background: var(--deny-bg); color: var(--deny); }
-    .pill-warn { background: var(--warn-bg); color: var(--warn); }
     main {
-      max-width: 1360px;
+      max-width: 1080px;
       margin: 20px auto;
       padding: 0 20px 48px;
       display: grid;
-      gap: 20px;
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
       gap: 20px;
     }
     .card {
@@ -1307,39 +1370,29 @@ def render_trial_portal_html() -> str:
       flex-wrap: wrap;
       gap: 8px;
       margin-top: 10px;
+      align-items: center;
+    }
+    input[type="text"] {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 13px;
     }
     button {
       cursor: pointer;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: var(--text);
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: #fff;
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
-      transition: all 0.15s ease;
     }
-    button:hover { border-color: var(--primary); background: var(--primary-soft); }
-    button.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    button.btn-primary {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    button.btn-primary:hover { background: #0b3960; }
-    button.btn-danger {
-      background: #fff5f5;
-      color: var(--deny);
-      border-color: #f1b0b7;
-    }
-    button.btn-danger:hover { background: var(--deny-bg); }
+    button:hover { background: #0b3960; }
     .kv-list {
       display: grid;
-      grid-template-columns: 170px 1fr;
+      grid-template-columns: 190px 1fr;
       gap: 6px 12px;
       font-size: 13px;
       margin: 8px 0;
@@ -1368,7 +1421,7 @@ def render_trial_portal_html() -> str:
       font-family: var(--mono);
       font-size: 12px;
       margin: 8px 0 0;
-      max-height: 300px;
+      max-height: 280px;
     }
     .banner-result {
       padding: 10px 14px;
@@ -1385,166 +1438,78 @@ def render_trial_portal_html() -> str:
   <header>
     <div class="top-row">
       <div>
-        <h1>HEXA V0 — Kết nối dữ liệu thử nghiệm Trường Thành (TT) → Lục Giác (LG)</h1>
+        <h1>HEXA V0 — Cổng thông tin lô hàng được công bố cho khách hàng</h1>
         <div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">
-          Chuyến xe ghép ROAD: <span class="mono">TRIP-ROAD-2026-01</span> · Biển số: <span class="mono">29H-886.68</span> · 2 khách hàng cùng chuyến (Lục Giác &amp; Minh Đức)
+          Chỉ hiển thị tiến độ đã xác minh, chứng từ đúng phiên bản đã duyệt và tổng báo giá bán đã gửi của đúng phiên khách hàng.
         </div>
       </div>
-      <div class="badge-bar">
-        <span class="pill pill-sandbox">SANDBOX_STAGING · MONGOMOCK + GRIDFS</span>
-        <span class="pill pill-sandbox">NO_PRODUCTION_DB · NO_LIVE_CUSTOMER_ACCESS</span>
-      </div>
+      <span id="active-session-pill" class="pill pill-deny">Đang kiểm tra phiên...</span>
     </div>
   </header>
 
   <main>
-    <!-- Phiên đăng nhập thử nghiệm phía server -->
-    <section class="card" id="session-card">
+    <section class="card">
       <h2>
-        <span>1. Phiên xác thực phía Server (Server-Owned Session) &amp; Chọn mã lô cần đọc</span>
-        <span id="active-session-pill" class="pill pill-ok">Đang tải phiên...</span>
+        <span>Tra cứu lô hàng theo phiên đã xác thực</span>
+        <span class="mono" id="http-status-badge">HTTP --</span>
       </h2>
-      <p class="muted" style="margin: 0 0 8px;">
-        Server giải mã danh tính khách hàng từ cookie phiên <span class="mono">hexa_trial_session</span> trên máy chủ. Mọi tham số <span class="mono">?customer_id=...</span> hoặc header do client tự gửi đều bị bỏ qua.
-      </p>
-      <div class="btn-row" id="session-buttons">
-        <button data-session="sess-customer-lg" onclick="switchSession('sess-customer-lg', 'ROAD-LG-001')">
-          Phiên Khách A: Lục Giác (CUST-LUCGIAC)
-        </button>
-        <button data-session="sess-customer-md" onclick="switchSession('sess-customer-md', 'ROAD-MD-002')">
-          Phiên Khách B: Minh Đức (CUST-MINHDUC — cùng xe)
-        </button>
-        <button data-session="sess-internal-viewer" class="btn-danger" onclick="switchSession('sess-internal-viewer', 'ROAD-LG-001')">
-          Phiên Nội bộ: role=viewer (có finance_view → phải bị chặn)
-        </button>
-        <button data-session="sess-anonymous" class="btn-danger" onclick="switchSession('sess-anonymous', 'ROAD-LG-001')">
-          Phiên Ẩn danh (chưa đăng nhập → phải bị chặn)
-        </button>
-      </div>
-      <div class="btn-row" style="margin-top: 12px; align-items: center;">
-        <span class="muted" style="font-weight: 600;">Đọc mã lô qua HTTP <span class="mono">GET /api/hexa/v0/shipments/&lt;id&gt;</span>:</span>
-        <button class="btn-primary" onclick="loadShipment('ROAD-LG-001')">Xem lô ROAD-LG-001 (Lục Giác)</button>
-        <button onclick="loadShipment('ROAD-MD-002')">Thử mở lô ROAD-MD-002 (Minh Đức — Khách B cùng xe)</button>
-        <button class="btn-danger" onclick="loadShipment('ROAD-MD-002?customer_id=CUST-MINHDUC')">
-          Giả mạo URL ?customer_id=CUST-MINHDUC để đọc ROAD-MD-002
-        </button>
+      <div class="btn-row">
+        <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
+        <input id="shipment-input" type="text" value="ROAD-LG-001" />
+        <button onclick="loadRequestedShipment()">Tải thông tin lô</button>
       </div>
     </section>
 
-    <div class="grid-2">
-      <!-- Giao diện HEXA V0 nhận dữ liệu từ HTTP Server -->
-      <section class="card" id="hexa-portal-card">
-        <h2>
-          <span>2. Giao diện khách hàng HEXA V0 (Dữ liệu thực tế trả về từ Server)</span>
-          <span class="mono" id="http-status-badge">HTTP --</span>
-        </h2>
-        <div id="portal-status-banner" class="banner-result banner-ok">Đang tải...</div>
-
-        <div id="portal-content">
-          <dl class="kv-list">
-            <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
-            <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
-            <dt>Phương thức vận tải:</dt><dd class="mono" id="pub-mode">-</dd>
-            <dt>Tổng báo giá BÁN đã gửi:</dt><dd id="pub-quote">-</dd>
-            <dt>ETA chưa xác minh:</dt><dd><span class="pill pill-ok">ĐÃ ẨN (Không xuất hiện trong payload)</span></dd>
-            <dt>Giá vốn &amp; Nhà cung cấp:</dt><dd><span class="pill pill-ok">ĐÃ ẨN (Không xuất hiện trong payload)</span></dd>
-          </dl>
-
-          <h3>Tiến độ đã được TT xác minh &amp; duyệt công bố (Timeline)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Mã mốc</th>
-                <th>Công đoạn</th>
-                <th>Nội dung công bố</th>
-                <th>Thời điểm xảy ra</th>
-                <th>Phiên bản</th>
-              </tr>
-            </thead>
-            <tbody id="pub-timeline-body"></tbody>
-          </table>
-
-          <h3>Chứng từ đúng phiên bản đã duyệt (Kiểm quyền phía Server trước khi đọc GridFS)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Mã chứng từ</th>
-                <th>Loại</th>
-                <th>Tên công bố</th>
-                <th>Phiên bản duyệt</th>
-                <th>Tải file (Server-checked)</th>
-              </tr>
-            </thead>
-            <tbody id="pub-docs-body"></tbody>
-          </table>
-        </div>
-
-        <h3>JSON nguyên bản từ <span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span></h3>
-        <pre id="raw-publication-json">{}</pre>
-      </section>
-
-      <!-- Đối chiếu dữ liệu nội bộ Trường Thành & Bộ kiểm thử nghiệm thu -->
-      <section class="card">
-        <h2>
-          <span>3. Đối chiếu nội bộ Trường Thành (TT) &amp; Kiểm chứng chặn truy cập trái phép</span>
-          <span class="pill pill-warn" id="gridfs-counter-pill">GridFS reads: 0 | Chặn trước khi đọc: 0</span>
-        </h2>
-        <p class="muted" style="margin-top: 0;">
-          Dữ liệu dưới đây tồn tại trong DB nội bộ của Trường Thành trên chuyến xe ghép <span class="mono">TRIP-ROAD-2026-01</span> nhưng bị bộ lọc <span class="mono">core/hexa_customer_publication.py</span> chặn hoàn toàn khi công bố sang Lục Giác:
-        </p>
-        <div id="tt-internal-summary"></div>
-
-        <h3>Bộ nút kiểm thử trực tiếp 7 yêu cầu nghiệm thu (Chạy HTTP thật)</h3>
-        <div class="btn-row">
-          <button class="btn-primary" onclick="runAllAcceptanceChecks()">
-            ▶ Chạy tự động toàn bộ 7 kịch bản HTTP &amp; Tải chứng từ
-          </button>
-          <button class="btn-danger" onclick="triggerDownload('ROAD-LG-001', 'DOC-LG-PL', 'v1')">
-            Thử tải bản cũ DOC-LG-PL (v1)
-          </button>
-          <button class="btn-danger" onclick="triggerDownload('ROAD-LG-001', 'DOC-LG-COST', 'v1')">
-            Thử tải bảng giá vốn nội bộ DOC-LG-COST
-          </button>
-          <button class="btn-danger" onclick="triggerDownload('ROAD-LG-001', 'DOC-MD-PL', 'v1')">
-            Thử tải chứng từ Khách B (DOC-MD-PL) trên cùng chuyến xe
-          </button>
-          <button class="btn-danger" onclick="triggerDownload('ROAD-MD-002', 'DOC-MD-PL', 'v1')">
-            Đoán mã lô ROAD-MD-002 để tải DOC-MD-PL
-          </button>
-        </div>
-        <div id="download-test-banner" style="margin-top: 10px;"></div>
-        <pre id="acceptance-log">Nhấn "Chạy tự động toàn bộ 7 kịch bản HTTP &amp; Tải chứng từ" để xem bằng chứng HTTP trực tiếp...</pre>
-      </section>
-    </div>
-
-    <!-- Yêu cầu nghiệm thu #7: Các trường dữ liệu thiếu trong nguồn hiện tại -->
-    <section class="card">
+    <section class="card" id="hexa-portal-card">
       <h2>
-        <span>4. Báo cáo chính xác các trường bắt buộc còn thiếu ở schema nội bộ hiện tại (Yêu cầu nghiệm thu #7)</span>
-        <span class="pill pill-warn">KHÔNG GIẢ ĐỊNH / KHÔNG CHẾ DỮ LIỆU THẬT</span>
+        <span>Thông tin công bố từ Trường Thành (HEXA Customer Publication V0)</span>
       </h2>
-      <p class="muted" style="margin-top: 0;">
-        Bảng dưới đây liệt kê chính xác từng trường mà <span class="mono">core/hexa_customer_publication.py</span> bắt buộc phải có so với schema hiện hữu trong repo (<span class="mono">core/users.py</span>, <span class="mono">core/database.py</span>, <span class="mono">core/shipment_attachments.py</span>, <span class="mono">core/shipment_journey.py</span>, <span class="mono">core/quotations.py</span>):
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Bề mặt dữ liệu</th>
-            <th>Nguồn hiện tại trong Repo</th>
-            <th>Trường đã có</th>
-            <th>Trường bắt buộc còn thiếu</th>
-            <th>Cách xử lý trong môi trường thử cô lập</th>
-          </tr>
-        </thead>
-        <tbody id="schema-gap-body"></tbody>
-      </table>
+      <div id="portal-status-banner" class="banner-result banner-deny">Chưa tải dữ liệu lô hàng.</div>
+
+      <div id="portal-content">
+        <dl class="kv-list">
+          <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
+          <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
+          <dt>Phương thức vận tải:</dt><dd class="mono" id="pub-mode">-</dd>
+          <dt>Tổng báo giá BÁN đã gửi:</dt><dd id="pub-quote">-</dd>
+        </dl>
+
+        <h3>Tiến độ đã xác minh &amp; công bố (Timeline)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Mã mốc</th>
+              <th>Công đoạn</th>
+              <th>Nội dung công bố</th>
+              <th>Thời điểm xảy ra</th>
+              <th>Phiên bản</th>
+            </tr>
+          </thead>
+          <tbody id="pub-timeline-body"></tbody>
+        </table>
+
+        <h3>Chứng từ được phép tải (Kiểm quyền phía Server trước khi đọc file)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Mã chứng từ</th>
+              <th>Loại</th>
+              <th>Tên công bố</th>
+              <th>Phiên bản</th>
+              <th>Tải file</th>
+            </tr>
+          </thead>
+          <tbody id="pub-docs-body"></tbody>
+        </table>
+      </div>
+
+      <div id="download-status-banner" style="margin-top: 12px;"></div>
+      <h3>Payload công bố (<span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span>)</h3>
+      <pre id="raw-publication-json">{}</pre>
     </section>
   </main>
 
   <script>
-    let currentSessionToken = 'sess-customer-lg';
-    let currentShipmentId = 'ROAD-LG-001';
-
     function formatVnd(val) {
       if (val === null || val === undefined) return 'Chưa xác định (null)';
       return new Intl.NumberFormat('vi-VN').format(val) + ' VND';
@@ -1553,34 +1518,23 @@ def render_trial_portal_html() -> str:
     async function refreshSessionState() {
       const res = await fetch('/api/hexa/v0/session', { credentials: 'same-origin' });
       const data = await res.json();
-      currentSessionToken = data.active_session_token || 'sess-anonymous';
       const p = data.principal || {};
       const pill = document.getElementById('active-session-pill');
-      pill.textContent = `Phiên: ${data.label || currentSessionToken} | kind=${p.kind || '-'} | customer_id=${p.customer_id || '(trống)'}`;
+      pill.textContent = `${data.label || 'Ẩn danh'} | customer_id=${p.customer_id || '(chưa xác thực)'}`;
       pill.className = 'pill ' + (p.authenticated && p.kind === 'customer' ? 'pill-ok' : 'pill-deny');
-
-      document.querySelectorAll('#session-buttons button').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-session') === currentSessionToken);
-      });
+      if (data.default_shipment_id) {
+        document.getElementById('shipment-input').value = data.default_shipment_id;
+      }
     }
 
-    async function switchSession(sessionToken, defaultShipment) {
-      await fetch('/api/hexa/v0/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ session_token: sessionToken })
-      });
-      await refreshSessionState();
-      if (defaultShipment) {
-        await loadShipment(defaultShipment);
-      }
-      await loadInspector();
+    async function loadRequestedShipment() {
+      const sid = (document.getElementById('shipment-input').value || '').trim();
+      if (!sid) return;
+      await loadShipment(sid);
     }
 
     async function loadShipment(shipmentPath) {
-      currentShipmentId = shipmentPath.split('?')[0];
-      const url = `/api/hexa/v0/shipments/${shipmentPath}`;
+      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentPath)}`;
       document.getElementById('raw-json-url').textContent = url;
       const res = await fetch(url, { credentials: 'same-origin' });
       const body = await res.json();
@@ -1596,9 +1550,8 @@ def render_trial_portal_html() -> str:
 
       if (!res.ok) {
         banner.className = 'banner-result banner-deny';
-        banner.textContent = `TRUY CẬP BỊ TỪ CHỐI (HTTP ${res.status}): ${body.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'} — Không lộ sự tồn tại hay dữ liệu của lô khác.`;
+        banner.textContent = `TRUY CẬP BỊ TỪ CHỐI (HTTP ${res.status}): ${body.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'}`;
         content.style.opacity = '0.45';
-        await loadInspector();
         return;
       }
 
@@ -1640,122 +1593,33 @@ def render_trial_portal_html() -> str:
           <td>${doc.title}</td>
           <td class="mono">${doc.version}</td>
           <td>
-            <button class="btn-primary" onclick="triggerDownload('${body.reference}', '${doc.id}', '${doc.version}')">
+            <button onclick="triggerDownload('${body.reference}', '${doc.id}', '${doc.version}')">
               ⬇ Tải ${doc.id} (${doc.version})
             </button>
           </td>
         `;
         docsBody.appendChild(tr);
       });
-
-      await loadInspector();
     }
 
     async function triggerDownload(shipmentId, docId, version) {
       const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}`;
       const res = await fetch(url, { credentials: 'same-origin' });
-      const banner = document.getElementById('download-test-banner');
+      const banner = document.getElementById('download-status-banner');
       if (res.ok) {
         const blob = await res.blob();
-        const textPreview = await blob.text();
         banner.className = 'banner-result banner-ok';
-        banner.textContent = `TẢI CHỨNG TỪ THÀNH CÔNG (HTTP ${res.status}): ${docId}@${version} (${blob.size} bytes PDF từ GridFS). Header PDF: ${textPreview.slice(0, 28)}...`;
+        banner.textContent = `TẢI CHỨNG TỪ THÀNH CÔNG (HTTP ${res.status}): ${docId}@${version} (${blob.size} bytes PDF).`;
       } else {
         const err = await res.json().catch(() => ({}));
         banner.className = 'banner-result banner-deny';
-        banner.textContent = `CHẶN TẢI CHỨNG TỪ PHÍA SERVER TRƯỚC KHI ĐỌC FILE (HTTP ${res.status}): ${docId}@${version} trên ${shipmentId} → ${err.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'}`;
+        banner.textContent = `TỪ CHỐI TẢI CHỨNG TỪ (HTTP ${res.status}): ${err.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'}`;
       }
-      await loadInspector();
-    }
-
-    async function loadInspector() {
-      const res = await fetch('/api/hexa/v0/trial-inspector', { credentials: 'same-origin' });
-      const info = await res.json();
-      const metrics = info.storage_guard_metrics || {};
-      document.getElementById('gridfs-counter-pill').textContent =
-        `GridFS byte reads: ${metrics.gridfs_storage_read_attempts || 0} | Chặn trước khi đọc file: ${metrics.denied_before_storage_read_count || 0}`;
-
-      const tt = info.tt_internal_only_data || {};
-      const other = tt.other_customer_on_same_truck || {};
-      document.getElementById('tt-internal-summary').innerHTML = `
-        <dl class="kv-list">
-          <dt>Nhà cung cấp (TT nội bộ):</dt><dd>${tt.supplier || '-'}</dd>
-          <dt>Nhà xe hợp đồng (TT):</dt><dd>${tt.carrier_vendor || '-'}</dd>
-          <dt>Giá vốn nội bộ TT:</dt><dd class="mono">${formatVnd(tt.cost_before_tax_vnd)}</dd>
-          <dt>Lợi nhuận gộp dự kiến:</dt><dd class="mono">${formatVnd(tt.estimated_margin_vnd)}</dd>
-          <dt>Giá bán đã gửi khách A:</dt><dd class="mono">${formatVnd(tt.selling_total_vnd)}</dd>
-          <dt>ETA chưa xác minh:</dt><dd style="color: var(--deny); font-weight: 600;">${tt.unverified_eta || '-'}</dd>
-          <dt>Khách B cùng xe:</dt><dd>${other.customer_id} · Lô <span class="mono">${other.shipment_id}</span> · Giá bán <span class="mono">${formatVnd(other.selling_total_vnd)}</span></dd>
-        </dl>
-      `;
-
-      const gapBody = document.getElementById('schema-gap-body');
-      gapBody.innerHTML = '';
-      (info.schema_gaps || []).forEach(gap => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${gap.surface}</strong></td>
-          <td class="mono">${gap.current_source}</td>
-          <td class="mono">${(gap.existing_fields || []).join(', ') || '(chưa có)'}</td>
-          <td><ul style="margin: 0; padding-left: 16px;">${(gap.missing_required_fields || []).map(x => `<li>${x}</li>`).join('')}</ul></td>
-          <td>${gap.trial_handling}</td>
-        `;
-        gapBody.appendChild(tr);
-      });
-    }
-
-    async function runAllAcceptanceChecks() {
-      const logEl = document.getElementById('acceptance-log');
-      const lines = [];
-      const log = (msg) => { lines.push(msg); logEl.textContent = lines.join('\\n'); };
-
-      log('=== BẮT ĐẦU KIỂM CHỨNG HỆ THỐNG HTTP TT → LG (7 YÊU CẦU NGHIỆM THU) ===');
-
-      // Ensure Customer A session
-      await switchSession('sess-customer-lg', 'ROAD-LG-001');
-
-      // 1 & 2 & 4: Read ROAD-LG-001 as Customer A
-      const r1 = await fetch('/api/hexa/v0/shipments/ROAD-LG-001', { credentials: 'same-origin' });
-      const b1 = await r1.json();
-      const raw1 = JSON.stringify(b1);
-      const hasLeak = ['TT_INTERNAL_COST_42000000', 'TT_PRIVATE_SUPPLIER_FOSHAN_8899', 'TT_INTERNAL_MARGIN_11000000', 'TT_UNVERIFIED_ETA_2026-10-25', 'FOREIGN_CUSTOMER_MINHDUC_9911'].some(s => raw1.includes(s));
-      log(`[1,2,4] GET /api/hexa/v0/shipments/ROAD-LG-001 (Khách A = Lục Giác) -> HTTP ${r1.status}`);
-      log(`        timeline=${b1.timeline.map(x => x.id + '@' + x.version).join(', ')} | docs=${b1.documents.map(x => x.id + '@' + x.version).join(', ')}`);
-      log(`        quote.selling_total_vnd=${b1.quote && b1.quote.selling_total_vnd} | Rò rỉ giá vốn/NCC/ETA chưa xác minh/Khách B = ${hasLeak ? 'CÓ (FAIL)' : 'KHÔNG (PASS)'}`);
-
-      // 3a: Customer A guesses Customer B shipment ROAD-MD-002
-      const r2 = await fetch('/api/hexa/v0/shipments/ROAD-MD-002', { credentials: 'same-origin' });
-      const b2 = await r2.json();
-      log(`[3a]    GET /api/hexa/v0/shipments/ROAD-MD-002 (Khách A đoán mã lô Khách B) -> HTTP ${r2.status} (${b2.error})`);
-
-      // 3b: Customer A spoofs ?customer_id=CUST-MINHDUC
-      const r3 = await fetch('/api/hexa/v0/shipments/ROAD-MD-002?customer_id=CUST-MINHDUC', { credentials: 'same-origin' });
-      const b3 = await r3.json();
-      log(`[3b]    GET /api/hexa/v0/shipments/ROAD-MD-002?customer_id=CUST-MINHDUC (Giả mạo query) -> HTTP ${r3.status} (${b3.error})`);
-
-      // 5a: Authorized download DOC-LG-PL v2
-      const beforeOk = await (await fetch('/api/hexa/v0/trial-inspector')).json();
-      const r4 = await fetch('/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-LG-PL/download?version=v2', { credentials: 'same-origin' });
-      const bytes4 = await r4.arrayBuffer();
-      const afterOk = await (await fetch('/api/hexa/v0/trial-inspector')).json();
-      log(`[5a]    GET .../ROAD-LG-001/documents/DOC-LG-PL/download?version=v2 (Đúng quyền + đúng version) -> HTTP ${r4.status}, bytes=${bytes4.byteLength}, GridFS reads: ${beforeOk.storage_guard_metrics.gridfs_storage_read_attempts} -> ${afterOk.storage_guard_metrics.gridfs_storage_read_attempts} (PASS)`);
-
-      // 5b: Denied downloads (stale version v1, internal cost doc, foreign customer's doc on same truck)
-      const beforeDeny = afterOk.storage_guard_metrics.gridfs_storage_read_attempts;
-      const r5 = await fetch('/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-LG-PL/download?version=v1', { credentials: 'same-origin' });
-      const r6 = await fetch('/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-LG-COST/download?version=v1', { credentials: 'same-origin' });
-      const r7 = await fetch('/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-MD-PL/download?version=v1', { credentials: 'same-origin' });
-      const r8 = await fetch('/api/hexa/v0/shipments/ROAD-MD-002/documents/DOC-MD-PL/download?version=v1', { credentials: 'same-origin' });
-      const afterDeny = await (await fetch('/api/hexa/v0/trial-inspector')).json();
-      log(`[5b]    Chặn tải chứng từ trái phép (v1 cũ: HTTP ${r5.status}, COST nội bộ: HTTP ${r6.status}, DOC Khách B cùng xe: HTTP ${r7.status}, DOC lô Khách B: HTTP ${r8.status})`);
-      log(`        GridFS reads trước/sau 4 lần từ chối: ${beforeDeny} -> ${afterDeny.storage_guard_metrics.gridfs_storage_read_attempts} (0 lần đọc file khi chưa qua kiểm quyền -> PASS)`);
-
-      await loadInspector();
-      log('=== HOÀN TẤT KIỂM CHỨNG: TẤT CẢ 7 RÀO CHẮN AN TOÀN ĐỀU PASS ===');
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      await switchSession('sess-customer-lg', 'ROAD-LG-001');
+      await refreshSessionState();
+      await loadRequestedShipment();
     });
   </script>
 </body>
@@ -1766,11 +1630,17 @@ def render_trial_portal_html() -> str:
 class HexaTrialRequestHandler(BaseHTTPRequestHandler):
     """HTTP handler for the isolated HEXA V0 trial server.
 
-    Accepts any Host/Origin header so Arena live preview proxy URLs
-    (``https://{port}-{sandboxId}.e2b.app``) work out of the box.
+    By default ``internal_qa_mode`` is ``False``:
+    - Customer UI (``/``, ``/hexa``) never auto-mints customer cookies and
+      never embeds internal TT data.
+    - ``/api/hexa/v0/trial-inspector`` and ``POST /api/hexa/v0/session`` are
+      rejected with ``HTTP 403 CUSTOMER_RESOURCE_UNAVAILABLE``.
+    - ``/internal/qa/*`` is disabled unless ``internal_qa_mode=True`` AND the
+      caller supplies the server-generated ``X-Hexa-Internal-QA-Key`` header.
     """
 
     env: HexaTrialEnvironment = _DEFAULT_ENV
+    internal_qa_mode: bool = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         return
@@ -1796,22 +1666,27 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def _send_html(self, status: int, html: str, *, set_cookie_token: str | None = None) -> None:
+    def _send_html(self, status: int, html: str) -> None:
         raw = html.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
-        if set_cookie_token is not None:
-            self.send_header(
-                "Set-Cookie",
-                f"{TRIAL_COOKIE_NAME}={set_cookie_token}; Path=/; HttpOnly; SameSite=Lax",
-            )
         self.end_headers()
         self.wfile.write(raw)
 
     def _current_token(self) -> str:
         return _extract_session_token(self.headers)
+
+    def _is_authorized_internal_qa(self) -> bool:
+        if not self.internal_qa_mode:
+            return False
+        qa_key = (
+            self.headers.get(INTERNAL_QA_HEADER)
+            or self.headers.get(INTERNAL_QA_HEADER.lower())
+            or ""
+        )
+        return self.env.verify_internal_qa_key(qa_key)
 
     def do_GET(self) -> None:  # noqa: N802
         self.env.ensure_seeded()
@@ -1820,13 +1695,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         if path in {"/", "/hexa"}:
-            token = self._current_token()
-            default_cookie = None if token in self.env.sessions else "sess-customer-lg"
-            self._send_html(
-                HTTPStatus.OK,
-                render_trial_portal_html(),
-                set_cookie_token=default_cookie,
-            )
+            self._send_html(HTTPStatus.OK, render_trial_portal_html())
             return
 
         if path == "/api/hexa/v0/health":
@@ -1841,28 +1710,28 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/hexa/v0/session":
-            token = self._current_token() or "sess-anonymous"
-            entry = self.env.sessions.get(token) or self.env.sessions["sess-anonymous"]
             self._send_json(
                 HTTPStatus.OK,
-                {
-                    "active_session_token": entry["token"],
-                    "label": entry["label"],
-                    "principal": entry["principal"],
-                    "default_shipment_id": entry["default_shipment_id"],
-                    "available_sessions": [
-                        {
-                            "token": k,
-                            "label": v["label"],
-                            "default_shipment_id": v["default_shipment_id"],
-                        }
-                        for k, v in self.env.sessions.items()
-                    ],
-                },
+                self.env.resolve_session_summary(self._current_token()),
             )
             return
 
+        # Customer API NEVER exposes TT internal inspector data.
         if path == "/api/hexa/v0/trial-inspector":
+            self._send_json(
+                HTTPStatus.FORBIDDEN,
+                {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"},
+            )
+            return
+
+        # Isolated internal QA inspector (disabled by default; requires server-only X-Hexa-Internal-QA-Key).
+        if path == "/internal/qa/inspector":
+            if not self._is_authorized_internal_qa():
+                self._send_json(
+                    HTTPStatus.FORBIDDEN,
+                    {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"},
+                )
+                return
             self._send_json(HTTPStatus.OK, self.env.build_trial_inspector_snapshot())
             return
 
@@ -1921,33 +1790,52 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.env.ensure_seeded()
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
-        if path != "/api/hexa/v0/session":
-            self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+
+        # Customer path NEVER allows self-service session switching.
+        if path == "/api/hexa/v0/session":
+            self._send_json(
+                HTTPStatus.FORBIDDEN,
+                {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"},
+            )
             return
 
-        length = int(self.headers.get("Content-Length") or 0)
-        raw_body = self.rfile.read(length) if length > 0 else b"{}"
-        try:
-            body = json.loads(raw_body.decode("utf-8"))
-        except Exception:  # noqa: BLE001
-            body = {}
-        requested_token = str((body or {}).get("session_token") or "").strip()
-        if requested_token not in self.env.sessions:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "INVALID_TRIAL_SESSION"})
+        # Isolated internal QA session switcher (only when internal_qa_mode=True + valid X-Hexa-Internal-QA-Key).
+        if path == "/internal/qa/session":
+            if not self._is_authorized_internal_qa():
+                self._send_json(
+                    HTTPStatus.FORBIDDEN,
+                    {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"},
+                )
+                return
+
+            length = int(self.headers.get("Content-Length") or 0)
+            raw_body = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                body = json.loads(raw_body.decode("utf-8"))
+            except Exception:  # noqa: BLE001
+                body = {}
+            role_key = str((body or {}).get("role") or "").strip()
+            if role_key == "anonymous":
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.env.resolve_session_summary(""),
+                    set_cookie_token="",
+                )
+                return
+            try:
+                issued_token = self.env.get_trial_session_token(role_key)
+            except KeyError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "INVALID_TRIAL_ROLE"})
+                return
+
+            self._send_json(
+                HTTPStatus.OK,
+                self.env.resolve_session_summary(issued_token),
+                set_cookie_token=issued_token,
+            )
             return
 
-        entry = self.env.sessions[requested_token]
-        self._send_json(
-            HTTPStatus.OK,
-            {
-                "ok": True,
-                "active_session_token": entry["token"],
-                "label": entry["label"],
-                "principal": entry["principal"],
-                "default_shipment_id": entry["default_shipment_id"],
-            },
-            set_cookie_token=entry["token"],
-        )
+        self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
 
 
 def create_trial_http_server(
@@ -1955,8 +1843,12 @@ def create_trial_http_server(
     port: int = 8787,
     *,
     env: HexaTrialEnvironment | None = None,
+    internal_qa_mode: bool = False,
 ) -> ThreadingHTTPServer:
-    """Create a ThreadingHTTPServer bound to ``(host, port)`` for the HEXA trial."""
+    """Create a ThreadingHTTPServer bound to ``(host, port)`` for the HEXA trial.
+
+    ``internal_qa_mode`` defaults to ``False`` (strict customer boundary).
+    """
     active_env = env or get_trial_environment()
     active_env.ensure_seeded()
 
@@ -1964,4 +1856,5 @@ def create_trial_http_server(
         pass
 
     _BoundHandler.env = active_env
+    _BoundHandler.internal_qa_mode = bool(internal_qa_mode)
     return ThreadingHTTPServer((host, port), _BoundHandler)
