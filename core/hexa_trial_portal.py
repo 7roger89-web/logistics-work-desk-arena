@@ -844,47 +844,11 @@ class HexaTrialEnvironment:
             ]
         )
 
+        # Default-deny initial state: neither Lục Giác nor Minh Đức has a PUBLISHED
+        # manifest on boot. There are no pre-populated approved_by/approved_at fields
+        # and zero shared events, documents, or quotes until an authorized TT staff
+        # member explicitly approves and publishes them.
         db["hexa_trial_publications"].delete_many({})
-        db["hexa_trial_publications"].insert_many(
-            [
-                {
-                    "shipment_id": SHIPMENT_A_ID,
-                    "customer_id": CUSTOMER_A_ID,
-                    "state": "PUBLISHED",
-                    "approved_by": "tt.ops.truongthanh",
-                    "approved_at": "2026-10-22T09:00:00Z",
-                    "event_versions": {
-                        "EVT-LG-01-PICKUP": "v1",
-                        "EVT-LG-02-BORDER": "v2",
-                    },
-                    "document_versions": {
-                        "DOC-LG-PL": "v2",
-                        "DOC-LG-PI": "v1",
-                    },
-                    "quote": {
-                        "id": QUOTE_A_ID,
-                        "version": str(quote_a["version"]),
-                    },
-                },
-                {
-                    "shipment_id": SHIPMENT_B_ID,
-                    "customer_id": CUSTOMER_B_ID,
-                    "state": "PUBLISHED",
-                    "approved_by": "tt.ops.truongthanh",
-                    "approved_at": "2026-10-22T09:05:00Z",
-                    "event_versions": {
-                        "EVT-MD-01-PICKUP": "v1",
-                    },
-                    "document_versions": {
-                        "DOC-MD-PL": "v1",
-                    },
-                    "quote": {
-                        "id": QUOTE_B_ID,
-                        "version": str(quote_b["version"]),
-                    },
-                },
-            ]
-        )
 
         self._seeded = True
 
@@ -2315,6 +2279,7 @@ def render_trial_portal_html() -> str:
           <div id="tt-quote-box" class="helper-box" style="font-size: 13px; color: var(--text);"></div>
 
           <div class="btn-row" style="margin-top: 16px;">
+            <button class="btn-secondary" onclick="selectAllEligibleTtItems()">☑ Tích chọn nhanh mục đủ điều kiện</button>
             <button onclick="submitTtPublish()">2. Công bố cho khách (Theo các mục đã tích chọn)</button>
             <button class="btn-danger" onclick="submitTtRevokeAll()">3. Thu hồi toàn bộ công bố lô này</button>
             <button class="btn-secondary" onclick="switchScreen('customer')">→ Sang Màn hình Khách hàng kiểm tra</button>
@@ -2568,7 +2533,7 @@ def render_trial_portal_html() -> str:
       const evTbody = document.getElementById('tt-events-tbody');
       evTbody.innerHTML = '';
       (body.candidate_events || []).forEach(ev => {
-        const checked = approvedEvents[ev.id] === ev.version;
+        const checked = approvedEvents[ev.id] === ev.version && pub.state === 'PUBLISHED';
         const tr = document.createElement('tr');
         if (ev.eligible_for_customer) {
           tr.innerHTML = `
@@ -2645,6 +2610,14 @@ def render_trial_portal_html() -> str:
       const qStr = pub.quote ? `${pub.quote.id}@v${pub.quote.version}` : 'Không có';
       document.getElementById('tt-pub-items').textContent = `Tiến độ: [${evStr}] | Chứng từ: [${docStr}] | Báo giá: [${qStr}]`;
       document.getElementById('tt-pub-history-json').textContent = JSON.stringify(pub, null, 2);
+    }
+
+    function selectAllEligibleTtItems() {
+      document.querySelectorAll('.tt-ev-check, .tt-doc-check').forEach(el => {
+        if (!el.disabled) el.checked = true;
+      });
+      const qEl = document.getElementById('tt-quote-check');
+      if (qEl && !qEl.disabled) qEl.checked = true;
     }
 
     async function submitTtPublish() {

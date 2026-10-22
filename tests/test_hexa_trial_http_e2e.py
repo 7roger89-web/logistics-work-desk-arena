@@ -127,6 +127,7 @@ def test_ac2_and_ac4_lg_receives_only_published_progress_pinned_docs_sent_quote_
 ) -> None:
     """AC #2 & AC #4: LG receives only shared progress, pinned doc versions, sent selling quote, and zero unverified ETA."""
     base_url, env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
     token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
 
     status, _hdrs, raw = _http_request(
@@ -195,6 +196,7 @@ def test_ac3_cross_customer_isolation_on_same_truck_even_when_guessing_urls_or_l
 ) -> None:
     """AC #3: Customer A cannot view/download Customer B's info, even when guessing URLs or shipment codes (and vice versa)."""
     base_url, env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
     token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
     token_b = _server_issued_token(env, "customer_b", "sess-customer-md")
     token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
@@ -257,6 +259,7 @@ def test_ac5_document_download_enforces_server_permission_before_reading_gridfs_
 ) -> None:
     """AC #5: Document download checks permission on server BEFORE reading file bytes from GridFS."""
     base_url, env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
     token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
     token_b = _server_issued_token(env, "customer_b", "sess-customer-md")
     token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
@@ -502,11 +505,145 @@ def _extract_cookie_value(headers: dict[str, str], cookie_name: str) -> str:
     return ""
 
 
+def _tt_login_and_publish_standard_fixtures(base_url: str) -> str:
+    """Test-only helper: authenticate as TT staff over HTTP and publish baseline items for tests that require PUBLISHED state."""
+    st_login, hdrs_login, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_login == 200
+    tt_token = _extract_cookie_value(hdrs_login, "hexa_trial_tt_session")
+    assert tt_token
+
+    st_pub_a, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {
+                "EVT-LG-01-PICKUP": "v1",
+                "EVT-LG-02-BORDER": "v2",
+            },
+            "document_versions": {
+                "DOC-LG-PL": "v2",
+                "DOC-LG-PI": "v1",
+            },
+            "quote": {"id": QUOTE_A_ID, "version": "3"},
+        },
+    )
+    assert st_pub_a == 200
+
+    st_pub_b, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_B_ID}/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {"EVT-MD-01-PICKUP": "v1"},
+            "document_versions": {"DOC-MD-PL": "v1"},
+            "quote": {"id": QUOTE_B_ID, "version": "3"},
+        },
+    )
+    assert st_pub_b == 200
+    return tt_token
+
+
+def test_v1_fresh_sandbox_starts_default_deny_unpublished_with_zero_approved_metadata(
+    trial_server,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Default-deny closure: a fresh trial environment starts UNPUBLISHED for both customers with no fake approved_by/approved_at and zero shared items."""
+    base_url, env = trial_server
+    db = core_db.get_db()
+    assert db is not None
+
+    real_fetch = core_att.fetch_attachment_bytes
+    fetch_calls: list[tuple[Any, Any]] = []
+
+    def _spy_fetch(record_or_id: Any, *, shipment_id: Any = None) -> dict[str, Any]:
+        fetch_calls.append((record_or_id, shipment_id))
+        return real_fetch(record_or_id, shipment_id=shipment_id)
+
+    monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+
+    # 1. Verify raw DB state on fresh boot: no PUBLISHED manifest, no fake approved_by/approved_at
+    for sid, cid in ((SHIPMENT_A_ID, CUSTOMER_A_ID), (SHIPMENT_B_ID, CUSTOMER_B_ID)):
+        pub_doc = db["hexa_trial_publications"].find_one({"shipment_id": sid, "customer_id": cid}, {"_id": 0})
+        if pub_doc is not None:
+            assert pub_doc.get("state") == "UNPUBLISHED"
+            assert not pub_doc.get("approved_by")
+            assert not pub_doc.get("approved_at")
+            assert not pub_doc.get("event_versions")
+            assert not pub_doc.get("document_versions")
+            assert pub_doc.get("quote") is None
+
+    # 2. TT Staff inspects both shipments on fresh boot -> state is UNPUBLISHED, no fake approval metadata
+    st_tt_login, hdrs_tt_login, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt_login == 200
+    tt_token = _extract_cookie_value(hdrs_tt_login, "hexa_trial_tt_session")
+    for sid in (SHIPMENT_A_ID, SHIPMENT_B_ID):
+        st_inspect, _, raw_inspect = _http_request(
+            base_url,
+            f"/api/hexa/v0/tt/shipments/{sid}",
+            session_token=tt_token,
+        )
+        assert st_inspect == 200
+        pub_view = json.loads(raw_inspect.decode("utf-8"))["publication"]
+        assert pub_view["state"] == "UNPUBLISHED"
+        assert pub_view["approved_by"] == ""
+        assert pub_view["approved_at"] == ""
+        assert pub_view["event_versions"] == {}
+        assert pub_view["document_versions"] == {}
+        assert pub_view["quote"] is None
+
+    # 3. Both Lục Giác and Minh Đức log in BEFORE TT approves -> HTTP 403 on view and download, 0 GridFS bytes read
+    for username, passcode, own_sid, own_doc, own_ver in (
+        ("lucgiac.trial", "LG-Trial-2026!", SHIPMENT_A_ID, "DOC-LG-PL", "v2"),
+        ("minhduc.trial", "MD-Trial-2026!", SHIPMENT_B_ID, "DOC-MD-PL", "v1"),
+    ):
+        st_login, hdrs_login, _ = _http_request(
+            base_url,
+            "/api/hexa/v0/auth/login",
+            method="POST",
+            json_body={"username": username, "passcode": passcode},
+        )
+        assert st_login == 200
+        cust_token = _extract_cookie_value(hdrs_login, TRIAL_COOKIE_NAME)
+        assert cust_token
+
+        st_view, _, raw_view = _http_request(
+            base_url,
+            f"/api/hexa/v0/shipments/{own_sid}",
+            session_token=cust_token,
+        )
+        assert st_view == 403
+        assert json.loads(raw_view.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+        st_dl, _, raw_dl = _http_request(
+            base_url,
+            f"/api/hexa/v0/shipments/{own_sid}/documents/{own_doc}/download?version={own_ver}",
+            session_token=cust_token,
+        )
+        assert st_dl == 403
+        assert json.loads(raw_dl.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+    assert len(fetch_calls) == 0
+    assert env.storage_read_attempts == 0
+
+
 def test_v1_end_to_end_tt_approve_lg_login_view_download_and_revoke_flow(
     trial_server,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """AC1, AC2, AC3, AC4, AC5: Complete loop from unpublished -> TT selective approve -> LG login, view & download -> TT revoke document."""
+    """AC1, AC2, AC3, AC4, AC5: Complete loop starting from fresh UNPUBLISHED sandbox -> LG denied -> TT selective approve -> LG login, view & download -> TT revoke document."""
     base_url, env = trial_server
 
     real_fetch = core_att.fetch_attachment_bytes
@@ -518,22 +655,7 @@ def test_v1_end_to_end_tt_approve_lg_login_view_download_and_revoke_flow(
 
     monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
 
-    # 1. TT Staff logs in with trial TT staff account
-    status_tt_login, hdrs_tt_login, raw_tt_login = _http_request(
-        base_url,
-        "/api/hexa/v0/tt/auth/login",
-        method="POST",
-        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
-    )
-    assert status_tt_login == 200
-    tt_session_info = json.loads(raw_tt_login.decode("utf-8"))
-    assert tt_session_info["authenticated"] is True
-    assert tt_session_info["principal"]["kind"] == "tt_staff"
-    assert tt_session_info["principal"]["username"] == "tt.ops.truongthanh"
-    tt_token = _extract_cookie_value(hdrs_tt_login, "hexa_trial_tt_session")
-    assert tt_token and tt_token not in ("tt.ops.truongthanh", "sess-internal-viewer")
-
-    # 2. Customer Lục Giác logs in via customer login endpoint (server-bound customer_id)
+    # 1. Customer Lục Giác logs in on a brand-new sandbox BEFORE TT approves anything
     status_lg_login, hdrs_lg_login, raw_lg_login = _http_request(
         base_url,
         "/api/hexa/v0/auth/login",
@@ -553,20 +675,7 @@ def test_v1_end_to_end_tt_approve_lg_login_view_download_and_revoke_flow(
     lg_token = _extract_cookie_value(hdrs_lg_login, TRIAL_COOKIE_NAME)
     assert lg_token and lg_token not in ("sess-customer-lg", CUSTOMER_A_ID)
 
-    # 3. AC1 (Chưa công bố): TT revokes/clears publication first -> LG cannot view or download anything
-    status_revoke_all, _hdrs_rev, raw_revoke_all = _http_request(
-        base_url,
-        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/revoke",
-        method="POST",
-        session_token=tt_token,
-        json_body={},
-    )
-    assert status_revoke_all == 200
-    revoked_manifest = json.loads(raw_revoke_all.decode("utf-8"))["publication"]
-    assert revoked_manifest["state"] == "REVOKED"
-    assert revoked_manifest["revoked_by"] == "tt.ops.truongthanh"
-    assert revoked_manifest["revoked_at"]
-
+    # 2. AC1 (Default-deny before TT approval): LG cannot view or download anything; 0 GridFS bytes read
     status_unpub_view, _hdrs, raw_unpub_view = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
@@ -582,6 +691,21 @@ def test_v1_end_to_end_tt_approve_lg_login_view_download_and_revoke_flow(
     )
     assert status_unpub_dl == 403
     assert len(fetch_calls) == 0
+
+    # 3. TT Staff logs in with trial TT staff account
+    status_tt_login, hdrs_tt_login, raw_tt_login = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert status_tt_login == 200
+    tt_session_info = json.loads(raw_tt_login.decode("utf-8"))
+    assert tt_session_info["authenticated"] is True
+    assert tt_session_info["principal"]["kind"] == "tt_staff"
+    assert tt_session_info["principal"]["username"] == "tt.ops.truongthanh"
+    tt_token = _extract_cookie_value(hdrs_tt_login, "hexa_trial_tt_session")
+    assert tt_token and tt_token not in ("tt.ops.truongthanh", "sess-internal-viewer")
 
     # 4. AC2, AC4, AC5: TT inspects internal shipment and approves ONLY:
     #    EVT-LG-01-PICKUP@v1, DOC-LG-PL@v2, and quote Q-LG-ROAD-001@v3
@@ -730,6 +854,7 @@ def test_v1_minh_duc_separate_login_and_strict_cross_tenant_and_role_boundaries(
         return real_fetch(record_or_id, shipment_id=shipment_id)
 
     monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+    _tt_login_and_publish_standard_fixtures(base_url)
 
     # 1. Minh Đức logs in with separate trial customer account
     status_md_login, hdrs_md_login, raw_md_login = _http_request(

@@ -93,5 +93,11 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
 - **3. Hai màn hình rõ ràng cho Owner trên Live Preview (`GET /`, `GET /hexa`)**:
   - **Màn hình 1 — Nội bộ Trường Thành**: Đăng nhập TT → Chọn mục chia sẻ → Công bố cho khách → Thu hồi chứng từ / Thu hồi toàn bộ.
   - **Màn hình 2 — Cổng Khách hàng (Lục Giác / Minh Đức)**: Đăng nhập tài khoản khách riêng → Xem hành trình & báo giá bán → Tải chứng từ PDF đúng phiên bản (`DOC-LG-PL@v2`).
+- **4. Chốt trạng thái công bố mặc định `UNPUBLISHED` / Default-Deny (`HEXA-TT-LG-V1-DEFAULT-DENY-CLOSURE`)**:
+  - Khi khởi tạo môi trường thử nghiệm mới (`ensure_seeded`), cả Lục Giác (`ROAD-LG-001`) và Minh Đức (`ROAD-MD-002`) đều ở trạng thái chưa công bố (`hexa_trial_publications` rỗng / `UNPUBLISHED`), không có `approved_by` / `approved_at` giả trước khi nhân sự TT có thẩm quyền thao tác duyệt thực tế, và không có mốc tiến độ, chứng từ hay báo giá nào được chia sẻ sẵn.
+  - Trước khi TT duyệt công bố, khách hàng đăng nhập gọi xem lô hoặc tải chứng từ đều bị chặn `HTTP 403 CUSTOMER_RESOURCE_UNAVAILABLE` với `0` lần đọc byte từ GridFS.
+  - Các bài kiểm thử cần dữ liệu ở trạng thái `PUBLISHED` phải thiết lập bước đăng nhập TT + duyệt công bố tường minh trong fixture/test setup (tổng cộng `29 passed`: 19 unit tests + 10 HTTP E2E tests).
+  - Các thông tin đăng nhập thử nghiệm (`tt.ops.truongthanh`, `lucgiac.trial`, `minhduc.trial`) chỉ phục vụ `SANDBOX_STAGING`, tuyệt đối không chuyển nguyên tài khoản/mật khẩu demo sang hệ thống thật.
+
 
 
