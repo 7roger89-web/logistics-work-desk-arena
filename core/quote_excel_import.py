@@ -86,8 +86,9 @@ HEADER_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
                             "包装尺寸", "外箱尺寸")),
     ("dimensions", ("kich thuoc", "kt san pham", "kich thuoc san pham", "product size",
                     "size", "dimension", "specification", "规格", "尺寸", "产品尺寸")),
-    ("model", ("model", "ma san pham", "ma hang", "ma sp", "item number", "item no",
-               "item code", "型号", "产品型号", "款号")),
+    ("code", ("ma", "ma hang", "ma san pham", "ma sp", "product code", "item code",
+              "sku", "code")),
+    ("model", ("model", "item number", "item no", "型号", "产品型号", "款号")),
     ("description", ("ten hang", "ten san pham", "hang hoa", "san pham", "mo ta",
                      "description", "desc", "product name", "item name", "品名", "产品名称",
                      "名称", "中文品名")),
@@ -114,7 +115,7 @@ HEADER_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("total", ("total",)),
 )
 SHORT_ASCII_TOKENS = {"sl", "qty", "pcs", "nw", "n.w", "gw", "g.w", "cbm", "note",
-                      "dai", "l", "w", "h", "pc", "ref", "total"}
+                      "dai", "l", "w", "h", "pc", "ref", "total", "ma"}
 
 DISCLOSURES = (
     ("payment", "Thanh toán 80% trước khi giao hàng."),
@@ -290,7 +291,7 @@ def _detect_table(sheet, rows: int, columns: int) -> dict[str, Any] | None:
             continue
         # A goods table needs an identity/description column, or — as in the
         # Owner's furniture quote — an explicit product-size + unit-price pair.
-        if not ({"model", "description", "material"} & found.keys()) and not (
+        if not ({"code", "model", "description", "material"} & found.keys()) and not (
                 {"dimensions", "unit_price"} <= found.keys()):
             continue
         row_text = " ".join(folded(cell.value) for cell in row if cell.value is not None)
@@ -370,6 +371,21 @@ def _repeated_header(sheet, row: int, columns: Mapping[str, int]) -> bool:
 
 
 
+_CODE_SHAPE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/\-]*\Z")
+
+
+def _looks_like_code(text: str) -> bool:
+    """Does this cell read as a CODE rather than a product name?
+
+    Evidence only, never a decision on its own: a single token without spaces
+    (ASCII letters/digits plus . _ / -) is code-shaped, while a name with spaces
+    or diacritics (``ghế``) is not. When a second column is ALSO code-shaped the
+    importer keeps both and asks for review instead of picking one as a name.
+    """
+    value = (text or "").strip()
+    return bool(value) and " " not in value and bool(_CODE_SHAPE.match(value))
+
+
 def _read_rows(sheet, val_sheet, table: Mapping[str, Any]) -> tuple[list[dict], list[dict], list[tuple[str, int, str]], list[dict]]:
     """Goods rows + review-only packing evidence + unknowns + linking keys."""
     columns = table["columns"]
@@ -385,14 +401,41 @@ def _read_rows(sheet, val_sheet, table: Mapping[str, Any]) -> tuple[list[dict], 
         column = columns.get(key)
         return val_sheet.cell(row, column).value if column else None
 
-    identity_keys = [key for key in ("model", "description", "material") if key in columns]
+    identity_keys = [key for key in ("code", "model", "description", "material") if key in columns]
+    has_code_column = "code" in columns
+    code_header = _text(val_sheet.cell(int(table["header_row"]), columns["code"]).value) if has_code_column else ""
+    name_header = _text(val_sheet.cell(
+        int(table["header_row"]),
+        columns.get("description") or columns.get("model") or 1).value) if has_code_column else ""
     axes = table.get("dimension_axis_columns") or {}
     for row in range(start, stop + 1):
         if _repeated_header(val_sheet, row, columns):
             continue
+        code = _text(value(row, "code"))
         model = _text(value(row, "model"))
         description = _text(value(row, "description"))
         material = _text(value(row, "material"))
+        # The source's own code column is the identity; the other column is the
+        # NAME. Two rows that share a name but carry different codes stay two
+        # products because nothing here deduplicates by name.
+        identity_ambiguous = False
+        name_column_text = ""
+        if has_code_column:
+            name_column_text = description or model
+            if code:
+                if name_column_text and name_column_text != code:
+                    if _looks_like_code(name_column_text):
+                        # Both columns are code-shaped: no basis to call either a
+                        # product name, so keep both and ask for review.
+                        identity_ambiguous = True
+                        unknowns.append(("identity_needs_review", row,
+                                         "Hai cột cùng giống mã hàng: giữ cả hai trong dữ liệu rà soát, "
+                                         "không tự chọn một cột làm tên hàng."))
+                    else:
+                        description = name_column_text
+                model = code
+                if identity_ambiguous:
+                    description = ""
         if folded(val_sheet.cell(row, 1).value).startswith(TOTAL_ROW_WORDS):
             continue
         dimensions = _dimensions(value(row, "dimensions")) if map_dimensions else (None, None, None)
@@ -449,6 +492,17 @@ def _read_rows(sheet, val_sheet, table: Mapping[str, Any]) -> tuple[list[dict], 
             number = {"cartons": cartons, "net_weight": net, "gross_weight": gross, "cbm": volume}[key]
             if number is not None:
                 extra[label] = number
+        if has_code_column:
+            # Column-level provenance for the identity: which header held the code,
+            # which held the name, and both texts when the pair was ambiguous.
+            if code:
+                extra["code"] = code
+            if code_header:
+                extra["code_header"] = code_header
+            if name_header:
+                extra["name_header"] = name_header
+            if identity_ambiguous:
+                extra["name_column_text"] = name_column_text
         if extra:
             evidence.append({"ref": f"{sheet.title}!{row}", "source_sheet": sheet.title,
                              "source_row": row, **extra})
@@ -748,6 +802,10 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
 
     for code, row, text in primary["unknowns"]:
         note_unknown(code, sheet_name, row, text)
+    if any(code == "identity_needs_review" for code, _row, _text in primary["unknowns"]):
+        warnings.append({"id": "pi-identity-ambiguous",
+                         "text": "Bảng có cột mã hàng và một cột khác cũng giống mã: giữ NGUYÊN cả hai trong dữ liệu "
+                                 "rà soát và đánh dấu cần kiểm tra, không tự chọn một cột làm tên hàng."})
     missing_price = [g for g in goods if g["unit_price"] is None]
     if missing_price:
         warnings.append({"id": "unit-price-missing",

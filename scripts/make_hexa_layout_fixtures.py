@@ -652,6 +652,77 @@ def build_proforma_invoice_real_headers() -> bytes:
     return output.getvalue()
 
 
+# --------- B3: the REAL PI identity layout (code column + name column) ------
+# Workbook `PL1(1).xlsx`, sheet `PI (2)`, header row 7:
+#   B `Mã` (5 distinct codes) · C `Model 型号` (product NAMES) · E `Size尺寸(MM)`
+#   F `Qt.数量` · G `Unit Price 单价 (CNY)` · H `Amount 金额 (CNY)`
+# Two rows carry the SAME name (`ghế`) with DIFFERENT codes: the code column is
+# the identity, and collapsing the two rows by name would lose a product.
+PI_IDENTITY_SHEET = "PI (2)"
+PI_IDENTITY_MONEY_SHEET = "File tiền hàng"
+PI_IDENTITY_HEADER_ROW = 7
+PI_IDENTITY_HEADERS = {
+    "A": "STT",
+    "B": "Mã",
+    "C": "Model 型号",
+    "E": "Size尺寸(MM)",
+    "F": "Qt.数量",
+    "G": "Unit Price 单价 (CNY)",
+    "H": "Amount 金额 (CNY)",
+}
+# (code, name, size, qty, unit price CNY) — rows 8..12
+PI_IDENTITY_ROWS = (
+    ("GH-001", "ghế", "450x450x900", 10, 120.0),
+    ("GH-002", "ghế", "460x460x880", 6, 135.0),
+    ("BN-100", "bàn", "1200x600x750", 4, 260.0),
+    ("TU-200", "tủ", "800x400x1800", 2, 480.0),
+    ("KE-300", "kệ", "900x350x1200", 3, 210.0),
+)
+
+
+def build_proforma_invoice_pi_identity() -> bytes:
+    """File B as it really is: a `Mã` code column beside a `Model 型号` name column."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = PI_IDENTITY_SHEET
+    ws["A1"] = BANNER
+    ws["A1"].font = WARN_FONT
+    ws["A2"] = "PROFORMA INVOICE"
+    for column, title in PI_IDENTITY_HEADERS.items():
+        cell = ws[f"{column}{PI_IDENTITY_HEADER_ROW}"]
+        cell.value = title
+        cell.font = Font(name="Arial", size=10, bold=True)
+        cell.fill = HEAD_FILL
+    for offset, (code, name, size, qty, price) in enumerate(PI_IDENTITY_ROWS):
+        excel_row = PI_IDENTITY_HEADER_ROW + 1 + offset
+        ws[f"A{excel_row}"] = offset + 1
+        ws[f"B{excel_row}"] = code
+        ws[f"C{excel_row}"] = name
+        ws[f"E{excel_row}"] = size
+        ws[f"F{excel_row}"] = qty
+        ws[f"G{excel_row}"] = price
+        # Amount is a formula with no cached value: it must stay UNKNOWN.
+        ws[f"H{excel_row}"] = f"=F{excel_row}*G{excel_row}"
+    ws.column_dimensions["C"].width = 28
+
+    money = wb.create_sheet(PI_IDENTITY_MONEY_SHEET)
+    money["A1"] = "BẢNG TÍNH TIỀN HÀNG — NỘI BỘ, KHÔNG GỬI KHÁCH"
+    money["A1"].font = WARN_FONT
+    for column, title in {"A": "Mã", "B": "Qt.数量",
+                          "C": "Unit Price 单价 (CNY)", "D": "Amount 金额 (CNY)"}.items():
+        money[f"{column}3"] = title
+    for offset, (code, _name, _size, qty, price) in enumerate(PI_IDENTITY_ROWS):
+        excel_row = 4 + offset
+        money[f"A{excel_row}"] = code
+        money[f"B{excel_row}"] = qty
+        money[f"C{excel_row}"] = price
+        money[f"D{excel_row}"] = f"=B{excel_row}*C{excel_row}"
+    money["A10"], money["B10"] = "Giá vốn nội bộ", SENTINEL
+    output = io.BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+
 FIXTURES = {
     "packing-list-257col-SYNTHETIC.xlsx": build_packing_list_with_images,
     "proforma-invoice-SYNTHETIC.xlsx": build_proforma_invoice,
@@ -659,6 +730,7 @@ FIXTURES = {
     "multilevel-packing-REAL-LAYOUT-SYNTHETIC.xlsx": build_multilevel_packing_real_layout,
     "packing-list-REAL-HEADERS-SYNTHETIC.xlsx": build_packing_list_real_headers,
     "proforma-invoice-REAL-HEADERS-SYNTHETIC.xlsx": build_proforma_invoice_real_headers,
+    "proforma-invoice-PI-IDENTITY-SYNTHETIC.xlsx": build_proforma_invoice_pi_identity,
 }
 
 if __name__ == "__main__":

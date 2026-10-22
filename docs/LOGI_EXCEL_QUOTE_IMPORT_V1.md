@@ -177,6 +177,33 @@ link, `NEEDS_REVIEW`; a level code matching no goods line ⇒ `level-link-unmatc
 kept as evidence and never turned into a new goods row; no link at all ⇒
 `level-link-needs-review` plus one `level_link_missing` unknown per goods row.
 
+### A code column beside a name column (PI identity)
+
+`TASK_ID=HEXA-EXCEL-IMPORT-V0-PI-IDENTITY-FIX`. The Owner's `PL1(1).xlsx`, sheet
+`PI (2)` at header row 7, carries **both** `B Mã` (five distinct product codes) and
+`C Model 型号` (the product NAMES), then `E Size尺寸(MM)`, `F Qt.数量`,
+`G Unit Price 单价 (CNY)`, `H Amount 金额 (CNY)`. Two of the five rows share one
+name (`ghế`) with different codes.
+
+`Mã` used to be an unmapped header, so the parser read the NAME as the model and
+dropped every source code; `description` stayed empty and the two `ghế` products
+were indistinguishable in the review table.
+
+Rules now applied, by header evidence only (no file name, customer or code is
+hardcoded):
+
+| Source shape | Result |
+|---|---|
+| a `code` column (`Mã`, `Mã hàng`, `product code`, `item code`, `SKU`, `code`) plus a name/model column | `goods.model` = the CODE, `goods.description` = the NAME of the other column |
+| only a code-shaped column (`Mã` alone) | `goods.model` = the code, `description` stays empty |
+| two columns that are BOTH code-shaped | both texts kept in review evidence (`code`, `name_column_text`), row flagged `identity_needs_review` + warning `pi-identity-ambiguous`; nothing is chosen as a name |
+| `Model 型号` with no code column (as in the other PI layout) | unchanged: the model column keeps its text |
+
+`source_sheet`, `source_row`, `code_header` and `name_header` are recorded as
+column-level provenance so an operator can see which header the identity came
+from. Rows are never merged by name: two products that share a name remain two
+goods lines with their own code, quantity and source row.
+
 ### Three layout families and how they are handled
 
 | Family | Evidence used | Result |
@@ -198,8 +225,11 @@ kept as evidence and never turned into a new goods row; no link at all ⇒
 - `RED` (v1, before the first checkpoint's change): `tests/test_hexa_excel_import_layouts_v1.py` → 14 failed / 1 passed.
 - `RED` (v2 reproof on the real layout, parser before the header repair): **6 failed / 106 passed** in the focused set. The whole workbook was labelled `PACKING_LIST`, `托盘明细（2托）` was not recognised as a level at all, `卫浴` was read as an extra goods list (`UNCLASSIFIED_TABLE`), the carton W/D/H breakdown was reported as a product size, and `Item number` was not read as a model code.
 - `RED` (LINK repair, parser of `451e4e8` against the real-data fixture): **5 failed / 13 passed**. Only **2 of 10** pallet allocation lines survived (the 8 lines with a blank `A` were dropped), **0** reference codes were read (`contract` / `REF NO` were unmapped columns), therefore **0** links, and the source `TOTAL` line / repeated group headers were not excluded by rule.
-- `GREEN` (after both repairs): **34 passed** in the two HEXA files (the link-repair suite included); focused 6-file set **115 passed**.
+- `GREEN` (after the header and link repairs): **34 passed** in the two HEXA files (the link-repair suite included); focused 6-file set **115 passed**.
+- `RED` (PI identity, parser of `d23f010` against the real-structure PI fixture): **6 failed / 4 passed** — **0/5** source codes survived, all five names sat in `model`, `description` empty, and the money sheet was not even recognised as a table (its only identity column was the unmapped `Mã`).
 - Whole suite, same environment and same command, EXPECTED_HEAD `451e4e8` parser vs repaired parser with the SAME test files (excluding the pre-existing collection error in `test_partner_reconciliation_desk_write_oracle.py`, which imports a `ROUTES` symbol absent at this base): **639 → 634** failed/error test ids. `NEW=∅`; `GONE` = exactly the 5 link-repair tests. The remaining failures/errors are pre-existing sandbox/Streamlit-runtime issues, not caused by this change.
+- `GREEN` (after the PI identity fix): **10/10** in `tests/test_hexa_excel_import_pi_identity_v3.py`, **44 passed** across the three HEXA files, focused 7-file set **125 passed**. Whole suite on the same test files: parser of `d23f010` **640** → repaired **634** failed/error ids, `NEW=∅`, `GONE` = exactly the 6 identity tests.
+- PI identity acceptance (SYNTHETIC values): **5/5** codes kept in `model`, **5/5** names kept in `description`, the two `ghế` rows stay separate (rows 8 and 9, qty 10 and 6), uncached `Amount` formulas stay UNKNOWN (`formula-gap`, no invented total), `File tiền hàng` is `INTERNAL_CALC` and is neither summed a second time (5 rows / qty 25) nor exported.
 - Acceptance numbers on the real-data fixture (SYNTHETIC values): pallet **10/10** allocation lines kept, **10/10** `contract` codes read and matched to the summary sheet, pallet context `PLT-01` ×7 / `PLT-02` ×3 with no bleed across the repeated header, carton **36/36** lines linked by `REF NO`, goods table still **10 rows / qty 83** (the pallet `PC`/`Total` counts are kept apart and never added), `shipment.cbm` / `shipment.weight_kg` stay `None`.
 - `IMPORT_STATUS=PROVEN_SYNTHETIC`; `REAL_WORKBOOK_TEST=NOT_RUN_IN_ARENA`. The Owner's three original workbooks are **not** in this repository and were **not** uploaded; only the described structures, header wording and data shape are reproduced synthetically.
 
@@ -211,6 +241,8 @@ kept as evidence and never turned into a new goods row; no link at all ⇒
 - Level ↔ goods links without an exact, unique reference code (`level_link_missing` / `level-link-ambiguous` / `level-link-unmatched`) — `NEEDS_REVIEW`, never guessed.
 - `shipment.cbm` / `shipment.weight_kg`: contradictory or level-only measurements are deliberately left empty instead of being summed.
 - Pallet `contract` / `House type` / `Room number` / `Project name` / `PC` / `Total`: kept as level evidence only; `PC` and `Total` are **not** the quantity being sold and are not added to it.
+- PI identity when two columns are both code-shaped (`identity_needs_review` / `pi-identity-ambiguous`) — both texts kept for review, no name is guessed.
+- The `Amount` column itself is never recomputed or summed; it is source evidence only.
 
 ### Owner gates respected
 
@@ -223,6 +255,7 @@ kept as evidence and never turned into a new goods row; no link at all ⇒
 python scripts/make_hexa_layout_fixtures.py .tmp/hexa-fixtures
 python -m pytest -q tests/test_hexa_excel_import_layouts_v1.py \
   tests/test_hexa_excel_import_real_headers_v2.py \
+  tests/test_hexa_excel_import_pi_identity_v3.py \
   tests/test_excel_quote_import_v1.py tests/test_quote_workbook_view_v1.py \
   tests/test_excel_fidelity_repair_v1.py tests/test_excel_text_edit_v1.py
 ```
