@@ -55,35 +55,18 @@ function LoadMoreButton({ testId, onClick }: { testId: string; onClick: () => vo
   );
 }
 
+const handledInboxDownloads: Record<string, number> = {};
+
 function useInboxDownload() {
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const handled = useRef<Record<string, number>>({});
   useEffect(() => {
     const pending = vm?.inbox?.download;
-    if (pending?.downloadAvailable && pending.downloadBase64 && pending.attachmentId) {
-      const seq = pending.downloadSeq ?? 0;
-      if (handled.current[pending.attachmentId] !== seq) {
-        handled.current[pending.attachmentId] = seq;
-        downloadBinaryFile(pending.name, pending.downloadBase64, pending.mime || "application/octet-stream");
-      }
-    }
-    const groups = [
-      vm?.inbox?.snippets ?? [],
-      ...Object.values(vm?.inbox?.byContractId ?? {}),
-      ...Object.values(vm?.inbox?.byShipmentId ?? {}),
-    ];
-    for (const list of groups) {
-      for (const row of list) {
-        for (const item of row.attachments ?? []) {
-          if (!item.downloadAvailable || !item.downloadBase64) continue;
-          const seq = item.downloadSeq ?? 0;
-          if (handled.current[item.id] === seq) continue;
-          handled.current[item.id] = seq;
-          downloadBinaryFile(item.name, item.downloadBase64, item.mime || "application/octet-stream");
-        }
-      }
-    }
-  }, [vm?.inbox]);
+    if (!pending?.downloadAvailable || !pending.downloadBase64 || !pending.attachmentId) return;
+    const seq = pending.downloadSeq ?? 0;
+    if (handledInboxDownloads[pending.attachmentId] === seq) return;
+    handledInboxDownloads[pending.attachmentId] = seq;
+    downloadBinaryFile(pending.name, pending.downloadBase64, pending.mime || "application/octet-stream");
+  }, [vm?.inbox?.download]);
 }
 
 function AttachmentList({

@@ -1134,6 +1134,75 @@ def test_download_after_load_more_keeps_prior_page_bytes(staging):
     assert PDF_BYTES not in [base64.b64decode(item) for item in on_page if item]
 
 
+def _payload_has_b64(model: dict, raw: str) -> bool:
+    import json
+
+    return raw in json.dumps(model, default=str)
+
+
+def test_download_bytes_are_one_shot_and_absent_after_rerender(staging):
+    session = {"seq": 0}
+    created = _dispatch(session, 1, "inbox_snippet_create", {
+        "requestId": "REQ-ONCE-FILE",
+        "rawText": "",
+        "files": [_file_payload("once.pdf", "application/pdf", PDF_BYTES)],
+    })
+    assert created["ok"], created
+    file_id = created["id"]
+    attachment_id = created["readback"]["attachments"][0]["id"]
+    down = _dispatch(session, 2, "inbox_snippet_download", {
+        "requestId": "REQ-ONCE-GET",
+        "snippetId": file_id,
+        "attachmentId": attachment_id,
+    })
+    assert down["ok"], down
+    raw = _b64(PDF_BYTES)
+    first = vm.build_view_model()
+    pending = (first.get("inbox") or {}).get("download") or {}
+    assert pending.get("downloadBase64") == raw
+    assert pending.get("downloadSeq")
+    # Simulate Inbox → Contract → Shipment rerenders without a new click.
+    second = vm.build_view_model()
+    third = vm.build_view_model()
+    assert not _payload_has_b64(second, raw)
+    assert not _payload_has_b64(third, raw)
+    assert not ((second.get("inbox") or {}).get("download") or {}).get("downloadBase64")
+    assert not ((third.get("inbox") or {}).get("download") or {}).get("downloadBase64")
+
+
+def test_intentional_second_download_still_delivers_new_seq(staging):
+    session = {"seq": 0}
+    created = _dispatch(session, 1, "inbox_snippet_create", {
+        "requestId": "REQ-AGAIN-FILE",
+        "rawText": "",
+        "files": [_file_payload("again.pdf", "application/pdf", PDF_BYTES)],
+    })
+    assert created["ok"], created
+    file_id = created["id"]
+    attachment_id = created["readback"]["attachments"][0]["id"]
+    first_click = _dispatch(session, 2, "inbox_snippet_download", {
+        "requestId": "REQ-AGAIN-1",
+        "snippetId": file_id,
+        "attachmentId": attachment_id,
+    })
+    assert first_click["ok"], first_click
+    delivered = vm.build_view_model()["inbox"].get("download") or {}
+    first_seq = int(delivered.get("downloadSeq") or 0)
+    assert first_seq >= 1
+    assert vm.build_view_model()["inbox"].get("download") in (None, {})
+    second_click = _dispatch(session, 3, "inbox_snippet_download", {
+        "requestId": "REQ-AGAIN-2",
+        "snippetId": file_id,
+        "attachmentId": attachment_id,
+    })
+    assert second_click["ok"], second_click
+    again = vm.build_view_model()["inbox"].get("download") or {}
+    assert again.get("downloadBase64") == _b64(PDF_BYTES)
+    assert int(again.get("downloadSeq") or 0) > first_seq
+    stale = vm.build_view_model()
+    assert not _payload_has_b64(stale, _b64(PDF_BYTES))
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required for the shell DOM lane")
 def test_dom_acceptance_inbox_desktop_and_mobile():
     root = Path(__file__).resolve().parents[1]

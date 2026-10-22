@@ -128,6 +128,16 @@ def _project_session_download(download: Mapping[str, Any] | None) -> dict[str, A
     }
 
 
+def _take_session_download() -> dict[str, Any] | None:
+    """Project bytes once, then drop them so later ordinary VM payloads stay small."""
+    download = _download_state()
+    projected = _project_session_download(download)
+    if projected:
+        leftover = {key: value for key, value in download.items() if key != "base64"}
+        _set_session(INBOX_DOWNLOAD_KEY, leftover)
+    return projected
+
+
 def _can_access_inbox() -> bool:
     from core.auth import can_operate_business
 
@@ -217,7 +227,6 @@ def inbox_projection(
         return empty
 
     state = _query_state()
-    download = _download_state()
     try:
         kwargs = {
             "query": state["query"],
@@ -242,7 +251,7 @@ def inbox_projection(
         }
     snippets = [
         row for row in (
-            snippet_projection(item, download=download) for item in (page.get("rows") or [])
+            snippet_projection(item) for item in (page.get("rows") or [])
         ) if row
     ]
     by_contract: dict[str, list[dict[str, Any]]] = {}
@@ -269,7 +278,7 @@ def inbox_projection(
         "targetId": target_id,
         "byContractId": by_contract,
         "byShipmentId": by_shipment,
-        "download": _project_session_download(download),
+        "download": _take_session_download(),
     }
 
 
