@@ -102,11 +102,17 @@ def open_workbook(data: bytes):
     """(workbook with formulas, workbook with cached values). Read-only."""
     from openpyxl import load_workbook
 
+    from core.quote_excel_import import MAX_SHEET_COLUMNS, MAX_SHEET_ROWS, MAX_SHEETS
+
     _zip_guard(data)
     workbook = load_workbook(io.BytesIO(data), data_only=False, keep_links=False)
     values = load_workbook(io.BytesIO(data), data_only=True, keep_links=False)
-    if len(workbook.worksheets) > 8 or any(s.max_row > 2500 or s.max_column > 40 for s in workbook):
-        raise ValueError("V1 chỉ xem được workbook nhỏ (≤8 sheet, 2500 dòng, 40 cột).")
+    # Same HARD ceilings as the importer. The old 40-column limit refused a real
+    # packing list that declares 257 columns because of stray formatting; the
+    # rendered page is still bounded by ``MAX_COLS`` below, but the file opens.
+    if len(workbook.worksheets) > MAX_SHEETS or any(
+            s.max_row > MAX_SHEET_ROWS or s.max_column > MAX_SHEET_COLUMNS for s in workbook.worksheets):
+        raise ValueError("V1 chỉ xem được workbook trong giới hạn an toàn (≤8 sheet, 2500 dòng, 2000 cột).")
     return workbook, values
 
 
@@ -380,19 +386,27 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
     all", not "this caller may read the sheets we happened to call internal".
     Callers must pass ``can_operate_business("commercial_write")``.
     """
+    from core.quote_excel_import import used_bounds
+
     workbook, values = open_workbook(data)
     classification = classify_sheets(workbook, proposal)
     if sheet_name not in workbook.sheetnames:
         raise ValueError("Sheet không tồn tại trong workbook gốc.")
     sheet = workbook[sheet_name]
     sheet_class = classification.get(sheet_name, SHEET_UNCLASSIFIED)
+    # Report the USED region, and keep the declared rectangle beside it: the real
+    # packing list declares 257 columns for 13 rows, so "257 cột" would describe
+    # formatting, not content.
+    used_rows, used_columns = used_bounds(sheet)
     base = {
         "sheet": sheet_name,
         "sheet_index": workbook.sheetnames.index(sheet_name) + 1,
         "classification": sheet_class,
         "sheet_state": str(getattr(sheet, "sheet_state", "visible")),
-        "row_count": int(sheet.max_row or 0),
-        "column_count": int(sheet.max_column or 0),
+        "row_count": used_rows,
+        "column_count": used_columns,
+        "declared_row_count": int(sheet.max_row or 0),
+        "declared_column_count": int(sheet.max_column or 0),
         "read_only": True,
     }
     # RAW SOURCE CELLS REQUIRE THE BUSINESS GRANT — on EVERY sheet, INCLUDING the
@@ -416,8 +430,8 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
     value_sheet = values[sheet_name]
     cells: list[dict[str, Any]] = []
     truncated = False
-    for row in sheet.iter_rows(min_row=1, max_row=min(sheet.max_row or 1, row_limit),
-                               max_col=min(sheet.max_column or 1, col_limit)):
+    for row in sheet.iter_rows(min_row=1, max_row=min(used_rows or 1, row_limit),
+                               max_col=min(used_columns or 1, col_limit)):
         for cell in row:
             if len(cells) >= MAX_CELLS:
                 truncated = True
@@ -455,17 +469,22 @@ def sheet_page(data: bytes, sheet_name: str, *, proposal: Mapping[str, Any] | No
 
 def overview(data: bytes, proposal: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Sheet tabs in the file's real order, with per-sheet fidelity facts."""
+    from core.quote_excel_import import used_bounds
+
     workbook, _ = open_workbook(data)
     classification = classify_sheets(workbook, proposal)
     sheets = []
     for index, sheet in enumerate(workbook.worksheets, 1):
+        used_rows, used_columns = used_bounds(sheet)
         sheets.append({
             "name": sheet.title,
             "index": index,
             "classification": classification.get(sheet.title, SHEET_UNCLASSIFIED),
             "state": str(getattr(sheet, "sheet_state", "visible")),
-            "row_count": int(sheet.max_row or 0),
-            "column_count": int(sheet.max_column or 0),
+            "row_count": used_rows,
+            "column_count": used_columns,
+            "declared_row_count": int(sheet.max_row or 0),
+            "declared_column_count": int(sheet.max_column or 0),
             "merged_count": len(list(sheet.merged_cells.ranges)),
             "not_rendered": _not_rendered(sheet, workbook),
         })

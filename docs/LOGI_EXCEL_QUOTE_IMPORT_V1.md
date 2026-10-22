@@ -118,3 +118,68 @@ node tests/component/browser_excel_quote_import_v1.mjs http://127.0.0.1:9501
 ```
 
 Stop port 9501 afterwards. No production connection, `/goal` substitute, second dispatcher, framework, server or price engine is required.
+
+---
+
+## HEXA SIDECAR — PL/PI import for three real workbook layouts
+
+`TASK_ID=HEXA-EXCEL-IMPORT-V0` · `BRANCH=arena/5e0c51d4-logistics-work-desk-arena` ·
+`EXACT_BASE_HEAD=83162293036414dcafa01072b93eece8733b8688` · `CHAT_MODE=NEW_CHAT`.
+
+**This is a HEXA SIDECAR checkpoint only.** It does not change `NEXT_ACTION`, the
+Owner UAT status of PR #211, or anything PR #211 contains.
+
+### Handoff path deviation (preflight finding)
+
+`docs/CONTROL-TOWER-HANDOFF.md` is **absent at `EXACT_BASE_HEAD`** (it is a later main
+artefact: the local baseline is `51422c94`, 97 commits behind the task's base SHA).
+Creating it from this stale branch would fabricate a Control Tower handoff, so the
+checkpoint is recorded here, in the import document that owns this surface, and
+reported as `HANDOFF_UPDATE=YES | PATH=docs/LOGI_EXCEL_QUOTE_IMPORT_V1.md`.
+
+### What changed and what did not
+
+| Surface | Change |
+|---|---|
+| `core/quote_excel_import.py` | Header-evidence table detection (no file-name or fixed-column matching), per-sheet used data region, layout + level roles, review/unknown evidence, hard ceilings relaxed from 40 declared columns to a 2000-column ceiling with a total-cell budget. |
+| `core/quote_workbook_view.py` | Uses the same hard ceilings, reports the USED region (`column_count`) beside the declared one (`declared_column_count`), renders only used columns. Read-only, grant-gated source cells unchanged. |
+| `tests/test_hexa_excel_import_layouts_v1.py`, `scripts/make_hexa_layout_fixtures.py` | SYNTHETIC fixtures + acceptance tests (new files). |
+| React/CSS, `core/quotations.py`, `core/quote_customer_text.py`, customer snapshot allowlist | **Unchanged.** The existing goods table already accepts rows without a price (`None`, never 0). |
+
+### Three layout families and how they are handled
+
+| Family | Evidence used | Result |
+|---|---|---|
+| A — packing list with photos, table at row 7, 13 rows, 257 declared columns, no price | header row of bilingual column labels; used region ends at column T | goods rows with `source_sheet`/`source_row`; `unit_price = None` + `unit_price_missing`; product size kept as review evidence, never as package dims; no CBM invented |
+| B — proforma invoice `PI (2)` + duplicate money sheet `File tiền hàng` | priced goods header on the PI sheet; the money sheet is classified `INTERNAL_CALC` | one goods table only (no double count), `money-sheet-not-imported`; fees/tax on the money sheet never enter the goods or the customer quotation |
+| C — `总清单` → `托盘明细（2托）` → `卫浴` → hidden `打托指令` | list/detail/level roles from columns + names; hidden sheets never a goods source | one goods list; levels recorded with row counts and model links; `level-not-summed`; unlinkable model → `level_link_missing` (CHỜ TT KIỂM TRA) |
+
+### Standing protection (unchanged by this work)
+
+- Hidden sheets and cost/money sheets are never the goods source; their rows are not read into the proposal.
+- `customer_quote_snapshot` keeps its explicit allowlist; `review` evidence is **not** published.
+- A fake `TT_INTERNAL_SENTINEL` in the fixtures (money sheet and hidden sheet) is asserted absent from the snapshot JSON and from the exported customer XLSX (values and package XML).
+- Raw source cells still require `commercial_write` on every sheet, customer sheet included; the viewer writes nothing.
+- Sheet names only influence which table is *proposed*; publication still requires the operator's reviewed goods.
+
+### Evidence and status
+
+- `RED` (before the change): `tests/test_hexa_excel_import_layouts_v1.py` → 14 failed / 1 passed; the old parser refused all three fixtures (`40 cột` guard on 257 declared columns, then "Không tìm thấy bảng Lục Giác").
+- `GREEN`: 16/16 in the new file; `tests/test_excel_quote_import_v1.py` + `test_quote_workbook_view_v1.py` + `test_excel_fidelity_repair_v1.py` + `test_excel_text_edit_v1.py` + new file = **97 passed** (baseline 81 passed).
+- Whole suite (same environment, same command, excluding the pre-existing collection error in `test_partner_reconciliation_desk_write_oracle.py`): baseline **70 failed / 1322 passed / 45 skipped / 544 errors** → after **70 failed / 1337 passed / 45 skipped / 544 errors**. `NEW=0`, `GONE=0`; the +15 are the new tests. The 70 failures / 544 errors are pre-existing environment/Streamlit-runtime failures on this branch, not caused by this change.
+- `IMPORT_STATUS=PROVEN_SYNTHETIC`; `REAL_WORKBOOK_TEST=NOT_RUN_IN_ARENA`. The Owner's three original workbooks are **not** in this repository and were **not** uploaded; only the described structures are reproduced synthetically.
+- Verdict is limited to the challenged behaviour: header-evidence parsing, single-table selection, unknown prices, level separation, wide-sheet bounds, and the customer-export boundary.
+
+### Owner gates respected
+
+`NO_MAIN_MERGE` · `NO_PR211_UPDATE` · `NO_NEW_PR` · `NO_DEPLOY` · `NO_PRODUCTION_DB` ·
+`NO_CUSTOMER_PORTAL` · `NO_DEEPL_INTEGRATION` · `NO_COST_HISTORY_NEW_MODULE` · `NO_FORCE_PUSH`.
+
+### Reproduce
+
+```bash
+python scripts/make_hexa_layout_fixtures.py .tmp/hexa-fixtures
+python -m pytest -q tests/test_hexa_excel_import_layouts_v1.py \
+  tests/test_excel_quote_import_v1.py tests/test_quote_workbook_view_v1.py \
+  tests/test_excel_fidelity_repair_v1.py tests/test_excel_text_edit_v1.py
+```
