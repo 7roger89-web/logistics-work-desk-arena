@@ -182,7 +182,11 @@ export type LogiEventName =
   | "cost_rate_status_set"
   | "cost_catalog_save"
   // LOGI_FREIGHTOS_MARKET_BENCHMARK_CANARY_01 — read-only marketplace estimate.
-  | "cost_market_benchmark_fetch";
+  | "cost_market_benchmark_fetch"
+  // Issue #212 — Bể thông tin / ghi nhanh. Capture is independent of
+  // contracts; linking never books a payment.
+  | "inbox_snippet_create"
+  | "inbox_snippet_link";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -261,6 +265,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "cost_rate_status_set",
   "cost_catalog_save",
   "cost_market_benchmark_fetch",
+  "inbox_snippet_create",
+  "inbox_snippet_link",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

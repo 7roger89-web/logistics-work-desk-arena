@@ -53,6 +53,7 @@ from views import user_access as logi_user_access
 from views import user_management as logi_user_management
 from views import notebooklm_registry as logi_notebooklm
 from views import logi_docgen_upload as logi_templates
+from views import logi_inbox
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -1068,6 +1069,10 @@ def build_view_model() -> dict:
             field_paths=FIELD_PATHS,
             notes=sources["knowledgeNotes"],
         ),
+        # Issue #212 — Bể thông tin / ghi nhanh. Independent snippets from the
+        # existing quick_notes collection (id=team_note is excluded). Linking
+        # never books a payment.
+        "inbox": logi_inbox.inbox_projection(db=db, user=user),
         # Issue #162 — Work Module Library. `templates` is the only attachable
         # set (newest ACTIVE version per template); `all` is the small authoring
         # view (every stored version with its status). Both are read-only
@@ -1318,7 +1323,7 @@ ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
               | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS
-              | DOCGEN_TEMPLATE_EVENTS)
+              | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -6141,6 +6146,9 @@ def dispatch(
     # Phase C1 path (business contracts slice) — shares the same seq counter so
     # a replayed trigger value can never double-write across phase sets.
     outcomes.extend(logi_c1.consume_c1_triggers(session, result))
+
+    # Issue #212 — inbox capture/link shares the same seq counter.
+    outcomes.extend(logi_inbox.consume_inbox_triggers(session, result))
 
     # Phase B + C1 material write outcomes: whatever the backend answered
     # (success, duplicate, RBAC, validation) must reach the component.

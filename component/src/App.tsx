@@ -35,6 +35,7 @@ import Reconciliation from "./pages/Reconciliation";
 import CeoReport from "./pages/CeoReport";
 import OperationsControlTower from "./pages/OperationsControlTower";
 import Notebook from "./pages/Notebook";
+import Inbox from "./pages/Inbox";
 import UserAccess from "./pages/UserAccess";
 import IntlPaymentTool from "./pages/IntlPaymentTool";
 import NotFound from "./pages/NotFound";
@@ -103,6 +104,8 @@ export default function App() {
                 existing knowledge_base reader (no longer a placeholder; no CMS,
                 no authoring event, no search backend). */}
             <Route path="/so-tay" element={<Notebook />} />
+            {/* Issue #212 — Bể thông tin / ghi nhanh. Capture first, link later. */}
+            <Route path="/be-thong-tin" element={<Inbox />} />
             {/* LOGI_INTL_PAYMENT_STANDALONE_TOOL_01 — stateless international
                 payment calculator (CÔNG CỤ). No contract, no write event, no
                 persistence; it left the contract detail tabs. */}

@@ -2487,6 +2487,38 @@ export interface ViewModel {
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
+  /** Issue #212 — Bể thông tin / ghi nhanh. Unverified source snippets. */
+  inbox?: InboxSlice;
+}
+
+export interface InboxSnippet {
+  id: string;
+  rawText: string;
+  source: string;
+  title: string;
+  sourceRef: string;
+  occurredAt: string;
+  createdAt: string;
+  createdBy: string;
+  requestId: string;
+  contractIds: string[];
+  linkedSnippetIds: string[];
+  linked: boolean;
+  unverified: boolean;
+  /** Always null — a snippet is not a booked amount. */
+  amount: MaybeNum;
+  currency: string;
+  fxRate: MaybeNum;
+  unknownLabel?: string;
+}
+
+export interface InboxSlice {
+  canWrite: boolean;
+  unverified: boolean;
+  snippets: InboxSnippet[];
+  count: number;
+  linkedCount: number;
+  unlinkedCount: number;
 }
 
 // ----------------------------------------------------------------------------
@@ -2508,6 +2540,18 @@ export function applyViewModel(next: ViewModel): void {
   }
   for (const contract of next.contracts ?? []) {
     if (!Array.isArray((contract as unknown as Record<string, unknown>).intlSnapshots)) (contract as unknown as Record<string, unknown>).intlSnapshots = [];
+  }
+  if (!next.inbox) {
+    next.inbox = {
+      canWrite: false,
+      unverified: true,
+      snippets: [],
+      count: 0,
+      linkedCount: 0,
+      unlinkedCount: 0,
+    };
+  } else if (!Array.isArray(next.inbox.snippets)) {
+    next.inbox.snippets = [];
   }
   const prev = current;
   current = next;

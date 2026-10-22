@@ -2,10 +2,11 @@ import { contractPath } from "../lib/contractRoute";
 import { shipmentPath } from "../lib/shipmentRoute";
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight } from "lucide-react";
+import { Bell, Menu, X, Search, Plus, FileText, Package, Calculator, Wallet, Truck, ChevronRight, StickyNote } from "lucide-react";
 import { NAV, ROLE_LABEL, SHIPMENTS, CONTRACTS, CUSTOMERS, QUOTES } from "../lib/data";
 import type { Role } from "../lib/data";
 import { ICONS, SheetDialog } from "./ui";
+import InboxComposer from "./InboxComposer";
 import { useStore } from "../lib/store";
 import { cx, matchLoose } from "../lib/format";
 
@@ -35,6 +36,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const loc = useLocation();
   const [roleMenu, setRoleMenu] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerPending, setComposerPending] = useState(false);
+
+  const closeQuickAdd = () => {
+    if (composerPending) return;
+    setQuickAddOpen(false);
+    setComposerOpen(false);
+  };
 
   // LOGI_INTERNAL_UX_SIMPLIFY_01 — the global match is diacritic-insensitive
   // and undefined-safe (same helper as the customer desk), so toneless typing
@@ -350,12 +359,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ===== QUICK ADD SHEET ===== */}
       {quickAddOpen && (
-        <SheetDialog id="quick-add-sheet" testId="quick-add-sheet" labelledBy="quick-add-title" width={520} onClose={() => setQuickAddOpen(false)}>
+        <SheetDialog id="quick-add-sheet" testId="quick-add-sheet" labelledBy="quick-add-title" width={520} pending={composerPending} onClose={closeQuickAdd}>
           <div className="no-print">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
-            <div className="flex items-center justify-between mb-1"><p id="quick-add-title" className="font-extrabold text-[18px] text-[#0f2a4a]">Thêm mới nhanh</p><button onClick={() => setQuickAddOpen(false)} aria-label="Đóng thêm mới nhanh" className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
-            <p className="text-[13.5px] text-slate-500 mb-4">Chọn việc muốn làm — mỗi nút dẫn thẳng tới màn hình nhập liệu.</p>
+            <div className="flex items-center justify-between mb-1"><p id="quick-add-title" className="font-extrabold text-[18px] text-[#0f2a4a]">{composerOpen ? "Ghi chú nhanh" : "Thêm mới nhanh"}</p><button onClick={closeQuickAdd} aria-label="Đóng thêm mới nhanh" className="touch-target w-11 h-11 grid place-items-center rounded-xl hover:bg-slate-100"><X size={20} /></button></div>
+            {composerOpen ? (
+              <InboxComposer
+                onCancel={() => setComposerOpen(false)}
+                onPendingChange={setComposerPending}
+                onSaved={(keep) => {
+                  toast("Đã lưu mẩu tin", "Nội dung gốc được giữ. Ghép hợp đồng sau trong Bể thông tin.", "green");
+                  if (!keep) {
+                    setComposerPending(false);
+                    setQuickAddOpen(false);
+                    setComposerOpen(false);
+                  }
+                }}
+              />
+            ) : (
+              <>
+            <p className="text-[13.5px] text-slate-500 mb-4">Chọn việc muốn làm — ghi nhanh trước, hoặc mở màn hình nhập liệu.</p>
             <div className="grid gap-2.5">
+              <button data-testid="quick-add-inbox" onClick={() => setComposerOpen(true)} className="touch-target flex items-center gap-3 rounded-2xl border-2 border-slate-100 hover:border-[#1e5aa8] p-3.5 text-left lift bg-white">
+                <span className="w-11 h-11 rounded-xl grid place-items-center shrink-0 bg-amber-50 text-amber-800"><StickyNote size={21} /></span>
+                <span className="flex-1"><span className="font-bold text-[15px] text-[#0f2a4a] flex items-center gap-2">Ghi chú nhanh</span><span className="block text-[13px] text-slate-500">Dán Zalo / WeChat / ngân hàng — chưa cần hợp đồng</span></span>
+                <ChevronRight size={19} className="text-slate-300" />
+              </button>
               {[
                 { label: "Tạo lô hàng mới", desc: "Từ báo giá đã chốt hoặc nhập tay", to: "/tao-lo-moi", icon: Package, bg: "bg-blue-50 text-blue-700" },
                 { label: "Tạo hợp đồng mới", desc: "HDMB / HDNT + phụ lục", to: "/hop-dong/moi", icon: FileText, bg: "bg-emerald-50 text-emerald-700" },
@@ -370,6 +399,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
             </div>
+              </>
+            )}
           </div>
         </SheetDialog>
       )}
