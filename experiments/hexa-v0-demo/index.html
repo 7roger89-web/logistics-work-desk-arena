@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HEXA V0 — Hội thoại lô hàng (DEMO — DỮ LIỆU GIẢ LẬP)</title>
+<!--
+  Logistics Work Desk × Lục Giác / Hexa — HEXA-SHIPMENT-CONVERSATIONS-V0
+  Prototype UI/UX độc lập. Tự chứa hoàn toàn: không CDN, không API, không lưu trữ.
+  Mọi thao tác chỉ nằm trong bộ nhớ trang; tải lại trang hoặc bấm "Đặt lại demo" để về trạng thái ban đầu.
+  Đổi vai trò chỉ mô phỏng giao diện — KHÔNG phải phân quyền thật.
+  Thuật ngữ tái sử dụng từ app hiện có: dải "CẦN XỬ LÝ" (AttentionNow), tông trạng thái
+  PROBLEM/CURRENT/WAITING/COMPLETED/UPCOMING (JourneyMap/JourneyBubble), mô hình tải FCL/LTL
+  và "lựa chọn LTL không phải bằng chứng đã nhận hàng" (core/shipment_execution_profile.py),
+  "có số tờ khai ≠ đã thông quan" (core/customs_truth.py), màu navy/Be Vietnam Pro (component/src/index.css).
+-->
+<style>
+:root{
+  --navy:#10263c;--navy2:#123a5e;--navy3:#154c79;--blue:#1d6fa8;--bluebg:#dcebfa;--bluebg2:#eef5fc;
+  --bg:#edf1f5;--panel:#fff;--line:#d3dce6;--line2:#e6ecf2;--muted:#5b6875;--muted2:#6b7f93;
+  --red:#a8281b;--redbg:#f6dfdb;--redline:#e0a197;
+  --amber:#8a5209;--amberbg:#fbebd3;--amberline:#e8be7b;
+  --green:#22614a;--greenbg:#dcede4;--greenline:#96c7af;
+  --req:#9a3412;--reqbg:#fff4ea;--reqline:#f0a46b;
+  --violet:#5b3f8c;--violetbg:#efe9f8;
+  --radius:12px;
+  --font:'Be Vietnam Pro','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',Consolas,'Cascadia Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);color:var(--navy);background:var(--bg);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #2f80c8;outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.mono{font-family:var(--mono)}
+
+/* ---------- Header ---------- */
+.top{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--navy);color:#fff;min-height:54px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:30px;height:30px;flex:none}
+.brand b{font-size:15px;letter-spacing:.01em;white-space:nowrap}
+.brand small{display:block;color:#9ccaf0;font-size:11.5px;white-space:nowrap}
+.demo-badge{display:inline-flex;align-items:center;gap:6px;border:2px solid #ffb4a8;color:#fff;background:#8e2f22;border-radius:8px;padding:3px 9px;font-weight:800;font-size:12px;letter-spacing:.03em;white-space:nowrap}
+.top-spacer{flex:1}
+.clock{font-family:var(--mono);font-size:12px;color:#cfe3f5;white-space:nowrap}
+.clock b{color:#fff}
+.seg{display:inline-flex;background:#0a1b2c;border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:#cfe3f5;padding:6px 12px;border-radius:8px;font-weight:700;font-size:13px;min-height:36px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--navy)}
+.btn-reset{border:1px solid #5d7c99;background:transparent;color:#fff;border-radius:8px;padding:6px 11px;font-weight:700;font-size:13px;min-height:36px}
+.btn-reset:hover{background:#1c3955}
+.role-note{width:100%;font-size:11.5px;color:#a9c2d9;margin-top:-2px}
+
+/* ---------- App grid ---------- */
+.app{display:grid;grid-template-columns:320px minmax(0,1fr) 352px;height:calc(100vh - 76px);min-height:520px}
+.app.profile-collapsed{grid-template-columns:320px minmax(0,1fr) 0}
+.app.profile-collapsed .profile{display:none}
+
+/* ---------- Left list ---------- */
+.list{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.list-head{padding:12px 12px 8px;border-bottom:1px solid var(--line2)}
+.search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 10px}
+.search input{border:0;background:transparent;flex:1;min-height:38px;outline:none}
+.search:focus-within{outline:3px solid #2f80c8;outline-offset:1px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.filters button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600;min-height:32px;color:var(--muted)}
+.filters button[aria-pressed="true"]{background:var(--navy2);border-color:var(--navy2);color:#fff}
+.filters .cnt{font-family:var(--mono);font-size:11px;margin-left:3px;opacity:.85}
+.sort-note{font-size:11.5px;color:var(--muted2);margin-top:7px}
+.rows{overflow:auto;flex:1;padding:6px}
+.row{display:block;width:100%;text-align:left;border:1px solid transparent;background:#fff;border-radius:10px;padding:10px 10px 9px;margin-bottom:4px;position:relative}
+.row:hover{background:#f5f8fb}
+.row[aria-current="true"]{background:var(--bluebg2);border-color:#9fc6ea}
+.row-top{display:flex;align-items:baseline;gap:8px}
+.row-id{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--navy2)}
+.row-time{margin-left:auto;font-size:11.5px;color:var(--muted2);white-space:nowrap}
+.row-cargo{font-weight:600;font-size:13.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-type{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-status{font-size:12.5px;margin-top:4px}
+.row-actor{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:5px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);background:#f6f8fa;color:var(--navy3)}
+.row-actor.me{background:var(--reqbg);border-color:var(--reqline);color:var(--req)}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.flag{font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 6px;border:1px solid}
+.flag.red{background:var(--redbg);border-color:var(--redline);color:var(--red)}
+.flag.amber{background:var(--amberbg);border-color:var(--amberline);color:var(--amber)}
+.flag.blue{background:var(--bluebg);border-color:#8ec0e8;color:var(--navy3)}
+.prio{font-size:11px;color:var(--muted2);margin-top:4px}
+.empty{padding:18px 12px;color:var(--muted);font-size:13px;text-align:center}
+
+/* ---------- Center ---------- */
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:#f4f7fa}
+.chat-head{display:flex;align-items:center;gap:10px;padding:9px 14px;background:#fff;border-bottom:1px solid var(--line)}
+.chat-head .t{min-width:0}
+.chat-head h1{font-size:16px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-head h1 .mono{color:var(--navy2)}
+.chat-head .sub{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-weight:700;font-size:12.5px;min-height:36px;white-space:nowrap;color:var(--navy3)}
+.iconbtn:hover{background:#f1f5f9}
+.back-btn{display:none}
+.head-actions{margin-left:auto;display:flex;gap:6px}
+
+.pinned{display:grid;grid-template-columns:1.15fr 1fr 1.25fr;gap:0;background:#fff;border-bottom:2px solid var(--line);}
+.pin{padding:9px 14px;border-right:1px solid var(--line2);min-width:0}
+.pin:last-child{border-right:0}
+.pin-k{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted2);text-transform:uppercase;display:flex;align-items:center;gap:4px 6px;flex-wrap:wrap}
+.pin-k .lbl{white-space:nowrap}
+.pin-v{font-size:15px;font-weight:800;margin-top:1px}
+.pin-s{font-size:12px;color:var(--muted);margin-top:1px}
+.pin-next{background:#fbfcfd}
+.pin-next.mine{background:var(--reqbg)}
+.pin-next .btn{margin-top:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;letter-spacing:.03em;border-radius:6px;padding:1px 6px;border:1px solid;white-space:nowrap;vertical-align:1px}
+.chip.unv{background:var(--amberbg);border-color:var(--amberline);color:var(--amber);border-style:dashed}
+.chip.ver{background:var(--bluebg);border-color:#8ec0e8;color:var(--navy3)}
+.chip.conf{background:var(--greenbg);border-color:var(--greenline);color:var(--green)}
+.chip.req{background:var(--reqbg);border-color:var(--reqline);color:var(--req)}
+.chip.old{background:#eef1f4;border-color:#c8d3df;color:#5b6875;text-decoration:line-through}
+.chip.int{background:var(--violetbg);border-color:#c3b2e0;color:var(--violet)}
+.chip.red{background:var(--redbg);border-color:var(--redline);color:var(--red)}
+.chip.plain{background:#f3f6f9;border-color:#d5dee8;color:var(--muted)}
+
+.stream{flex:1;overflow:auto;padding:14px 18px 18px;min-height:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 12px;font-size:11.5px;color:var(--muted)}
+.ev{margin:10px 0;display:flex;flex-direction:column}
+.ev.left{align-items:flex-start}
+.ev.right{align-items:flex-end}
+.ev.center{align-items:center}
+.who{font-size:11.5px;color:var(--muted2);margin:0 4px 3px}
+.who b{color:var(--navy3);font-weight:700}
+.bubble{max-width:min(560px,78%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;white-space:pre-wrap;word-wrap:break-word}
+.ev.right .bubble{background:var(--bluebg);border-color:#b9d6f2}
+.kind{font-size:10.5px;font-weight:800;letter-spacing:.05em;color:var(--muted2);text-transform:uppercase;margin-bottom:2px}
+.card{width:min(620px,92%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 14px;position:relative}
+.card .ttl{font-weight:800;font-size:14px;margin:4px 0 2px}
+.card .meta{font-size:12px;color:var(--muted);margin-top:4px}
+.card .meta b{color:var(--navy3)}
+.card .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.card.unv{border:2px dashed var(--amberline);background:#fffaf2}
+.card.ver{border-left:5px solid var(--blue)}
+.card.req{border:2px solid var(--reqline);background:var(--reqbg)}
+.card.req.done{border-style:solid;border-color:var(--line);background:#fff}
+.card.conf{border:1px solid var(--greenline);border-left:5px solid #2e7d32;background:#f4faf6}
+.card.doc{display:flex;gap:10px;align-items:center;width:min(440px,86%)}
+.card.int{outline:2px dashed #c3b2e0;outline-offset:2px}
+.doc-ico{width:38px;height:46px;flex:none;border-radius:6px;background:#eef3f8;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--navy3)}
+.photo{width:min(320px,80%);border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#fff}
+.photo figcaption{font-size:12px;color:var(--muted);padding:6px 10px}
+.milestone{display:inline-flex;align-items:center;gap:8px;background:#e3e9ef;border:1px solid #cdd7e1;border-radius:999px;padding:4px 12px;font-size:12px;color:#334a60;max-width:92%;text-align:center}
+.milestone b{font-weight:800}
+.sharenote{background:#fff;border:1px dashed #8ea5ba;border-radius:10px;padding:6px 12px;font-size:12.5px;color:#334a60;max-width:92%;text-align:center}
+.status-line{font-size:12.5px;font-weight:700;margin-top:6px;padding:5px 8px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+.status-line.wait{color:var(--req)}
+.status-line.ok{color:var(--green)}
+.cmp{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-top:6px}
+.cmp dt{color:var(--muted)}
+.cmp dd{margin:0;font-weight:700}
+
+.btn{border:1px solid var(--navy2);background:var(--navy2);color:#fff;border-radius:8px;padding:6px 12px;font-weight:700;font-size:13px;min-height:36px}
+.btn:hover{background:var(--navy3)}
+.btn.ghost{background:#fff;color:var(--navy2)}
+.btn.ghost:hover{background:#f1f5f9}
+.btn.warn{background:#b45309;border-color:#b45309}
+.btn.ok{background:#2e7d32;border-color:#2e7d32}
+.btn.link{border:0;background:transparent;color:var(--blue);padding:2px 0;min-height:0;text-decoration:underline;font-weight:600}
+
+.composer{display:flex;gap:8px;align-items:center;padding:9px 14px;background:#fff;border-top:1px solid var(--line);flex-wrap:wrap}
+.composer input[type=text]{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:0 12px;min-height:40px}
+.composer label{font-size:12.5px;color:var(--violet);display:flex;align-items:center;gap:5px;font-weight:600}
+.composer .hint{width:100%;font-size:11px;color:var(--muted2)}
+
+/* ---------- Right profile ---------- */
+.profile{background:#fff;border-left:1px solid var(--line);overflow:auto;min-height:0}
+.p-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:#fff;z-index:1}
+.p-head h2{font-size:14px;margin:0}
+.p-sec{padding:11px 14px;border-bottom:1px solid var(--line2)}
+.p-sec h3{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);margin:0 0 6px;display:flex;align-items:center;gap:6px}
+.kv{display:grid;grid-template-columns:118px 1fr;gap:4px 8px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;min-width:0}
+.fact{border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin-bottom:6px}
+.fact-k{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px;align-items:center}
+.fact-v{font-weight:800;font-size:14.5px}
+.fact-s{font-size:11.5px;color:var(--muted)}
+.fact.risk{border-color:var(--amberline);background:#fffaf2}
+.fact.final{border-color:var(--greenline);background:#f4faf6}
+.cut{display:grid;grid-template-columns:62px 1fr auto;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin-bottom:5px;font-size:12.5px}
+.cut.hot{border:2px solid var(--redline);background:#fdf3f1}
+.cut.warm{border-color:var(--amberline);background:#fffaf2}
+.cut.done{background:#f4faf6;border-color:var(--greenline)}
+.cut b.k{font-family:var(--mono);font-size:12px}
+.tasks{list-style:none;margin:0;padding:0}
+.tasks li{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line2)}
+.tasks li:last-child{border-bottom:0}
+.who-tag{font-size:10.5px;font-weight:800;border-radius:5px;padding:1px 5px;border:1px solid var(--line);white-space:nowrap;margin-top:2px}
+.who-tag.TT{background:var(--bluebg);border-color:#8ec0e8;color:var(--navy3)}
+.who-tag.LG{background:var(--reqbg);border-color:var(--reqline);color:var(--req)}
+.docrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;background:#fff;padding:7px 9px;margin-bottom:5px;font-size:13px}
+.docrow:hover{background:#f5f8fb}
+.docrow[disabled]{cursor:default;opacity:.8;background:#f8fafc}
+.internal{border:2px dashed #c3b2e0;border-radius:10px;padding:8px 10px;background:#faf7fe}
+
+/* ---------- Modal & drawer ---------- */
+.overlay{position:fixed;inset:0;background:rgba(16,38,60,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal{background:#fff;border-radius:14px;width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 24px 60px -20px rgba(16,38,60,.5)}
+.modal.wide{width:min(760px,100%)}
+.m-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:#fff}
+.m-head h2{font-size:16px;margin:0;flex:1}
+.m-body{padding:12px 16px}
+.m-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--line2);position:sticky;bottom:0;background:#fff;flex-wrap:wrap}
+.field{display:block;margin-bottom:10px}
+.field>span{display:block;font-size:12.5px;font-weight:700;margin-bottom:3px}
+.field input[type=text],.field input[type=datetime-local],.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-height:38px;background:#fff}
+.field textarea{min-height:64px;resize:vertical}
+.field small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.radio{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px}
+.radio input{margin-top:3px}
+.notice{border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:10px;border:1px solid}
+.notice.info{background:var(--bluebg2);border-color:#b9d6f2;color:var(--navy3)}
+.notice.warn{background:var(--amberbg);border-color:var(--amberline);color:var(--amber)}
+.err{color:var(--red);font-weight:700;font-size:12.5px;min-height:18px}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t th,table.t td{border-bottom:1px solid var(--line2);padding:6px;text-align:left;vertical-align:top}
+table.t th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted2)}
+tr.changed td{background:#fff7e6}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:12.5px;min-height:34px}
+.tabs button[aria-pressed="true"]{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+.paper{border:1px solid var(--line);border-radius:10px;padding:12px;position:relative;background:#fff}
+.paper.superseded::after{content:'ĐÃ THAY THẾ — KHÔNG DÙNG';position:absolute;right:10px;top:10px;font-weight:800;font-size:11px;color:#8e2f22;border:2px solid #e0a197;border-radius:6px;padding:2px 6px;background:#fff}
+.paper.current::after{content:'BẢN HIỆN HÀNH';position:absolute;right:10px;top:10px;font-weight:800;font-size:11px;color:var(--green);border:2px solid var(--greenline);border-radius:6px;padding:2px 6px;background:#fff}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;z-index:60;max-width:92vw;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)}
+.drawer-backdrop{display:none}
+.m-only{display:none}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1180px){
+  .app{grid-template-columns:290px minmax(0,1fr) 320px}
+  .app.profile-collapsed{grid-template-columns:290px minmax(0,1fr) 0}
+}
+@media (max-width:860px){
+  .top{gap:8px;padding:7px 10px}
+  .brand small,.clock .lbl{display:none}
+  .role-note{display:none}
+  .seg button{padding:5px 9px;font-size:12.5px}
+  .app,.app.profile-collapsed{grid-template-columns:1fr;height:calc(100vh - 92px)}
+  .app[data-mview="list"] .chat{display:none}
+  .app[data-mview="chat"] .list{display:none}
+  .back-btn{display:inline-block}
+  .profile,.app.profile-collapsed .profile{display:block;position:fixed;top:0;right:0;bottom:0;width:min(92vw,400px);z-index:40;transform:translateX(105%);transition:transform .18s ease;box-shadow:-10px 0 30px -10px rgba(0,0,0,.35)}
+  .app.drawer-open .profile{transform:none}
+  .app.drawer-open .drawer-backdrop{display:block;position:fixed;inset:0;background:rgba(16,38,60,.4);z-index:39}
+  .pinned{grid-template-columns:1fr 1fr}
+  .pin{padding:7px 10px}
+  .pin-next{grid-column:1 / -1;border-top:1px solid var(--line2)}
+  .pin-v{font-size:14px}
+  .stream{padding:10px}
+  .bubble{max-width:88%}
+  .card{width:100%}
+  .chat-head{padding:7px 10px}
+  .chat-head h1{font-size:15px}
+  .head-actions .iconbtn.hist{display:none}
+  .legend{display:none}
+  .d-only{display:none}.m-only{display:inline}
+  .brand b .full{display:none}
+  .demo-badge{font-size:11px;padding:2px 7px}
+  .top .top-spacer{display:none}
+  .clock{font-size:11px}
+  .btn-reset{padding:4px 10px;min-height:36px;min-width:40px}
+  .btn-reset .rlabel{display:none}
+  .seg button{padding:5px 8px}
+  .brand-mark{width:24px;height:24px}
+  .app,.app.profile-collapsed{height:calc(100vh - 92px)}
+  .pin-s{font-size:11.5px}
+  .pin[data-testid=pin-trust] .pin-s{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .composer{padding:7px 10px}
+  .composer .hint{display:none}
+  .composer label .long{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#1d6fa8" stroke="#9ccaf0" stroke-width="2"/><path d="M10 16h12M16 10v12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <div><b><span class="full">Logistics Work Desk · </span>HEXA V0</b><small>Trường Thành ↔ Lục Giác — mỗi lô là một hội thoại công việc</small></div>
+  </div>
+  <span class="demo-badge" data-testid="demo-badge" role="note">⚠ DEMO — DỮ LIỆU GIẢ LẬP</span>
+  <span class="top-spacer"></span>
+  <span class="clock" data-testid="demo-clock"><span class="lbl">Giờ demo: </span><b id="clock"></b> <span class="lbl">(UTC+7)</span></span>
+  <div class="seg" role="group" aria-label="Đổi góc nhìn (mô phỏng)">
+    <button type="button" id="role-LG" data-role="LG" aria-pressed="false">Lục Giác</button>
+    <button type="button" id="role-TT" data-role="TT" aria-pressed="true">Trường Thành</button>
+  </div>
+  <button type="button" class="btn-reset" id="reset" data-testid="reset" aria-label="Đặt lại demo">↺<span class="rlabel"> Đặt lại demo</span></button>
+  <div class="role-note">Đổi vai trò chỉ mô phỏng giao diện, không chứng minh phân quyền thật. Không gửi Zalo/email, không gọi API, không lưu dữ liệu.</div>
+</header>
+
+<main class="app" id="app" data-mview="list">
+  <aside class="list" aria-label="Danh sách lô hàng">
+    <div class="list-head">
+      <label class="search"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="#5b6875" stroke-width="2"/><path d="M11 11l4 4" stroke="#5b6875" stroke-width="2" stroke-linecap="round"/></svg><span class="sr-only">Tìm mã lô hoặc tên hàng</span>
+        <input id="q" type="search" placeholder="Tìm mã lô, tên hàng…" autocomplete="off" data-testid="search">
+      </label>
+      <div class="filters" id="filters" role="group" aria-label="Lọc lô"></div>
+      <div class="sort-note">Sắp xếp theo mức khẩn (cutoff, việc chờ bạn quyết định, nguy cơ trễ) — không theo tin nhắn mới nhất.</div>
+    </div>
+    <div class="rows" id="rows" role="list"></div>
+  </aside>
+
+  <section class="chat" aria-label="Hội thoại lô hàng" id="chat"></section>
+
+  <aside class="profile" id="profile" aria-label="Hồ sơ lô hàng"></aside>
+  <div class="drawer-backdrop" id="backdrop"></div>
+</main>
+
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* ==========================================================================
+   Helpers
+   ========================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// All times are stored as naive ICT (UTC+7) strings "YYYY-MM-DDTHH:mm".
+const ms = s => { const [d, t] = s.split('T'); const [y, m, dd] = d.split('-').map(Number); const [h, mi] = (t || '00:00').split(':').map(Number); return Date.UTC(y, m - 1, dd, h, mi); };
+const pad = n => String(n).padStart(2, '0');
+const fromMs = v => { const d = new Date(v); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+const addMin = (s, m) => fromMs(ms(s) + m * 60000);
+const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const fmt = s => { if (!s) return '—'; const d = new Date(ms(s)); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} ${DOW[d.getUTCDay()]} ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`; };
+const fmtFull = s => { if (!s) return '—'; const d = new Date(ms(s)); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`; };
+const fmtShort = s => { const d = new Date(ms(s)); return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+const hoursLeft = (s, now) => (ms(s) - ms(now)) / 3600000;
+const durText = h => { const a = Math.abs(h); if (a < 1) return `${Math.round(a * 60)} phút`; if (a < 48) return `${Math.round(a)} giờ`; return `${Math.round(a / 24)} ngày`; };
+const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+const clone = o => JSON.parse(JSON.stringify(o));
+const PARTY = { TT: 'Trường Thành', LG: 'Lục Giác', EXT: 'Bên ngoài', SYS: 'Hệ thống' };
+
+/* ==========================================================================
+   Seed data — DEMO, fictional. Same source events for both views.
+   ========================================================================== */
+function seed() {
+  const A = {
+    id: 'HX-LTL-01', cargo: 'Linh kiện nhôm định hình — 6 pallet', mode: 'ROAD',
+    typeLabel: 'EXW · Đường bộ · LTL (hàng ghép xe)',
+    route: 'Nhà máy Quảng Châu (CN) → kho ghép Bằng Tường → CK Hữu Nghị → Kho Lục Giác, Bắc Ninh',
+    phase: 'TRANSIT', owner: 'Thu Hà — Support TT', sale: 'Minh — Sale TT',
+    lgContact: 'Chị Lan — Kho Lục Giác',
+    nextUpdateDue: '2026-10-24T08:00',
+    flow: 0, signal: null, lgAnswer: null, final: null,
+    opStatus: 'Đã nhập kho ghép Bằng Tường — chờ xếp xe ghép',
+    location: [
+      { v: 1, value: 'Kho ghép Bằng Tường (CN) — đã nhập kho 6 pallet, chờ xếp xe ghép', status: 'VERIFIED', source: 'Phiếu nhập kho ghép DEMO-BT-7781 (ảnh chụp)', by: 'Thu Hà (TT)', at: '2026-10-22T15:40', vis: 'ALL' }
+    ],
+    facts: {
+      requested: [{ v: 1, value: '2026-10-26T16:00', status: 'REQUESTED', source: 'Yêu cầu của Lục Giác khi đặt dịch vụ (đơn DEMO-PO-5521)', by: 'Chị Lan (LG)', at: '2026-10-18T10:00', vis: 'ALL' }],
+      eta: [{ v: 1, value: '2026-10-26T14:30', status: 'VERIFIED', source: 'Kế hoạch xe ghép tuần 43 do kho ghép gửi', by: 'Thu Hà (TT)', at: '2026-10-22T16:00', vis: 'ALL' }],
+      confirmed: [{ v: 1, value: '2026-10-26T16:00', status: 'CONFIRMED', source: 'TT xác nhận theo kế hoạch xe ghép; Lục Giác đồng ý trong hội thoại', by: 'Thu Hà (TT) · Chị Lan (LG)', at: '2026-10-22T16:30', vis: 'ALL' }]
+    },
+    docs: [
+      { id: 'pl', name: 'Packing List', code: 'PL', versions: [
+        { v: 1, at: '2026-10-20T09:00', by: 'Nhà máy (qua TT)', note: 'Theo khai báo của nhà máy', rows: [['Số kiện', '6 pallet'], ['Trọng lượng cả bì', '1.820 kg'], ['Thể tích', '3,2 m³'], ['Ghi chú', 'Số liệu nhà máy khai']] },
+        { v: 2, at: '2026-10-22T15:50', by: 'Thu Hà (TT)', note: 'Sửa trọng lượng theo cân thực tế tại kho ghép', rows: [['Số kiện', '6 pallet'], ['Trọng lượng cả bì', '1.865 kg'], ['Thể tích', '3,2 m³'], ['Ghi chú', 'Cân thực tế tại kho ghép 22/10']] }
+      ] },
+      { id: 'photo', name: 'Ảnh hàng tại kho ghép', code: 'IMG', versions: [{ v: 1, at: '2026-10-22T15:45', by: 'Thu Hà (TT)', note: 'Ảnh mẫu (vẽ minh hoạ)', photo: true }] },
+      { id: 'pod', name: 'POD — biên bản giao hàng', code: 'POD', versions: [], emptyNote: 'Chưa có — chỉ phát sinh sau khi giao tại kho Lục Giác' }
+    ],
+    commercial: {
+      quoteRef: 'BG-DEMO-1018 v2 · đã chốt 18/10/2026',
+      scope: 'Lấy hàng tại nhà máy (EXW) → kho ghép → xe ghép → thông quan → giao kho Lục Giác',
+      customerItems: ['Chưa có khoản phát sinh. Nếu đổi lịch làm phát sinh phí lưu kho, TT báo và chờ Lục Giác đồng ý trước khi tính.'],
+      internal: { cost: 'Giá vốn xe ghép: 7.150.000 đ (DEMO)', margin: 'Biên lợi nhuận dự kiến: 18% (DEMO)', note: 'Ghi chú nội bộ: nhà xe ghép tuần 43 đang kín tải' }
+    },
+    requests: {},
+    events: [
+      { id: 'a1', t: 'milestone', at: '2026-10-18T09:30', vis: 'ALL', text: 'Lô được tạo · EXW Quảng Châu · đường bộ hàng ghép (LTL)' },
+      { id: 'a2', t: 'chat', at: '2026-10-18T10:00', vis: 'ALL', who: { name: 'Chị Lan', party: 'LG' }, text: 'Bên em cần hàng về kho trước 16:00 ngày 26/10 vì ca nhận hàng kết thúc lúc 17:00 ạ.' },
+      { id: 'a3', t: 'chat', at: '2026-10-18T10:12', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, text: 'TT đã ghi nhận yêu cầu 16:00 ngày 26/10. Bên em sẽ xác nhận lịch khi có kế hoạch xe ghép.' },
+      { id: 'a4', t: 'milestone', at: '2026-10-22T15:40', vis: 'ALL', text: 'Hàng đã nhập kho ghép Bằng Tường — 6 pallet', src: 'Phiếu nhập kho ghép DEMO-BT-7781' },
+      { id: 'a5', t: 'photo', at: '2026-10-22T15:45', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, text: 'Ảnh 6 pallet tại kho ghép (ảnh minh hoạ)' },
+      { id: 'a6', t: 'doc', at: '2026-10-22T15:50', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, doc: 'pl', v: 2, text: 'Packing List v2 — sửa trọng lượng theo cân thực tế (thay v1)' },
+      { id: 'a7', t: 'confirmed', at: '2026-10-22T16:30', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: 'Lịch giao đã xác nhận: 16:00 T2 26/10', text: 'Theo kế hoạch xe ghép tuần 43 (ETA 14:30). Lục Giác đã đồng ý.', fact: 'confirmed', v: 1 },
+      { id: 'a8', t: 'chat', at: '2026-10-23T08:15', vis: 'ALL', who: { name: 'Chị Lan', party: 'LG' }, text: 'OK anh chị, bên em xếp 4 người bốc xếp lúc 16:00 nhé.' },
+      { id: 'a9', t: 'chat', at: '2026-10-23T17:20', vis: 'TT', who: { name: 'Minh', party: 'TT' }, text: 'Nội bộ: nhà xe ghép tuần 43 báo đang kín tải, Hà để ý giúp anh lịch xuất kho ghép.' }
+    ]
+  };
+
+  const B = {
+    id: 'HX-FCL-02', cargo: 'Máy ép nhựa thủy lực — 1×40HC', mode: 'SEA',
+    typeLabel: 'EXW · Đường biển · FCL 1×40HC',
+    route: 'Nhà máy Ninh Ba (CN) → cảng Ninh Ba → cảng Hải Phòng → Kho Lục Giác',
+    phase: 'PRE_DEPARTURE', owner: 'Thu Hà — Support TT', sale: 'Minh — Sale TT', lgContact: 'Anh Tuấn — Mua hàng Lục Giác',
+    nextUpdateDue: '2026-10-24T15:00',
+    opStatus: 'Booking đã xác nhận · đã lấy container rỗng · chờ đóng hàng tại nhà máy',
+    booking: { status: 'CONFIRMED', no: 'DEMO-BK-NGB-0417', vessel: 'DEMO STAR V.043S', at: '2026-10-21T14:00', source: 'Booking Confirmation v2 từ đại lý Ninh Ba (email 21/10)' },
+    cutoffs: [
+      { k: 'SI', label: 'Hạn nộp SI', at: '2026-10-24T17:00', origin: '18:00 24/10 (UTC+8, Ninh Ba)', done: false, state: 'SI draft v2 chờ Lục Giác xác nhận' },
+      { k: 'VGM', label: 'Hạn nộp VGM', at: '2026-10-25T11:00', origin: '12:00 25/10 (UTC+8, Ninh Ba)', done: false, state: 'Chưa có — nhà máy cân sau khi đóng hàng' },
+      { k: 'CY', label: 'Hạn hạ bãi CY', at: '2026-10-25T16:00', origin: '17:00 25/10 (UTC+8, Ninh Ba)', done: false, state: 'Container rỗng đã lấy 23/10, chưa hạ bãi' }
+    ],
+    etd: { value: '2026-10-26T19:00', origin: '20:00 26/10 (UTC+8)', note: 'Theo booking v2 (v1: 25/10)' },
+    atd: null,
+    customs: { declarationNo: null, cleared: false },
+    release: { status: 'PENDING' },
+    siState: 'OPEN', siRound: 1,
+    location: [{ v: 1, value: 'Container rỗng 40HC đã lấy tại depot Ninh Ba; hàng còn ở nhà máy', status: 'VERIFIED', source: 'Phiếu EIR từ đại lý Ninh Ba (ảnh chụp)', by: 'Thu Hà (TT)', at: '2026-10-23T08:30', vis: 'ALL' }],
+    facts: {
+      requested: [{ v: 1, value: '2026-11-03T09:00', status: 'REQUESTED', source: 'Yêu cầu Lục Giác (đơn DEMO-PO-5530)', by: 'Anh Tuấn (LG)', at: '2026-10-19T09:00', vis: 'ALL' }],
+      eta: [{ v: 1, value: '2026-11-01T08:00', status: 'VERIFIED', source: 'Lịch tàu theo booking v2 (ETA Hải Phòng)', by: 'Thu Hà (TT)', at: '2026-10-21T14:10', vis: 'ALL' }],
+      confirmed: []
+    },
+    docs: [
+      { id: 'bk', name: 'Booking Confirmation', code: 'BKG', versions: [
+        { v: 1, at: '2026-10-20T11:00', by: 'Đại lý Ninh Ba', note: 'Bản đầu', rows: [['Tàu / chuyến', 'DEMO STAR V.043S'], ['ETD', '20:00 25/10 (UTC+8)'], ['Hạn SI', '18:00 23/10 (UTC+8)'], ['Hạn VGM', '12:00 24/10 (UTC+8)'], ['Hạn CY', '17:00 24/10 (UTC+8)']] },
+        { v: 2, at: '2026-10-21T14:00', by: 'Đại lý Ninh Ba', note: 'Hãng tàu lùi lịch 1 ngày', rows: [['Tàu / chuyến', 'DEMO STAR V.043S'], ['ETD', '20:00 26/10 (UTC+8)'], ['Hạn SI', '18:00 24/10 (UTC+8)'], ['Hạn VGM', '12:00 25/10 (UTC+8)'], ['Hạn CY', '17:00 25/10 (UTC+8)']] }
+      ] },
+      { id: 'si', name: 'SI draft', code: 'SI', versions: [
+        { v: 1, at: '2026-10-23T10:00', by: 'Thu Hà (TT)', note: 'Bản nháp đầu', rows: [['Người nhận (consignee)', 'CÔNG TY LỤC GIÁC (DEMO)'], ['Mô tả hàng', 'Máy ép nhựa'], ['Mã HS', '8477.10'], ['Số kiện', '1 kiện / 1×40HC']] },
+        { v: 2, at: '2026-10-24T08:20', by: 'Thu Hà (TT)', note: 'Bổ sung mô tả theo hợp đồng', rows: [['Người nhận (consignee)', 'CÔNG TY LỤC GIÁC (DEMO)'], ['Mô tả hàng', 'Máy ép nhựa thủy lực, model DEMO-HX280'], ['Mã HS', '8477.10'], ['Số kiện', '1 kiện / 1×40HC']] }
+      ] },
+      { id: 'tt', name: 'Chứng từ chuyển tiền hàng (LG → nhà máy)', code: 'PAY', versions: [{ v: 1, at: '2026-10-23T16:10', by: 'Anh Tuấn (LG)', note: 'Bản chụp — chỉ để tham chiếu', rows: [['Bên chuyển', 'Lục Giác'], ['Bên nhận', 'Nhà máy (người bán)'], ['Nội dung', 'Thanh toán tiền hàng theo hợp đồng DEMO-SC-77'], ['Lưu ý', 'Không phải khoản Trường Thành thu; chưa chứng minh nhà máy đã nhận tiền hoặc cho xuất']] }] },
+      { id: 'pod', name: 'POD — biên bản giao hàng', code: 'POD', versions: [], emptyNote: 'Chưa có — chỉ phát sinh sau khi giao' }
+    ],
+    commercial: {
+      quoteRef: 'BG-DEMO-1019 · đã chốt 19/10/2026',
+      scope: 'Cước biển FCL + phí local + vận chuyển nội địa từ nhà máy (EXW) đến kho Lục Giác',
+      customerItems: ['Đề nghị thanh toán cước biển: chưa phát hành (DEMO)', 'Tiền hàng Lục Giác trả nhà máy: không thuộc khoản TT thu'],
+      internal: { cost: 'Giá vốn cước biển: 1.150 USD/40HC (DEMO)', margin: 'Biên lợi nhuận dự kiến: 12% (DEMO)', note: 'Ghi chú nội bộ: hãng tàu có thể thu phí sửa SI nếu nộp sau cutoff' }
+    },
+    requests: {
+      si: { id: 'si', kind: 'B_SI', status: 'OPEN', ask: 'Nhờ Lục Giác xác nhận SI draft v2 (người nhận, mô tả hàng, mã HS) trước 15:00 hôm nay để TT kịp nộp trước hạn SI 17:00 (giờ VN).', due: '2026-10-24T15:00', from: 'TT', to: 'LG', answer: null }
+    },
+    events: [
+      { id: 'b1', t: 'milestone', at: '2026-10-19T09:00', vis: 'ALL', text: 'Lô được tạo · EXW Ninh Ba · đường biển FCL 1×40HC' },
+      { id: 'b2', t: 'doc', at: '2026-10-20T11:00', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, doc: 'bk', v: 1, text: 'Booking Confirmation v1 — ETD 25/10' },
+      { id: 'b3', t: 'confirmed', at: '2026-10-21T14:00', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: 'Booking đã xác nhận — bản v2', text: 'Hãng tàu lùi ETD 25/10 → 26/10. Các hạn SI / VGM / CY cập nhật theo booking v2.', src: 'Booking Confirmation v2 từ đại lý Ninh Ba (email 21/10)', docRef: 'bk' },
+      { id: 'b4', t: 'milestone', at: '2026-10-23T08:30', vis: 'ALL', text: 'Đã lấy container rỗng 40HC tại depot Ninh Ba', src: 'Phiếu EIR (đại lý gửi)' },
+      { id: 'b5', t: 'chat', at: '2026-10-23T16:10', vis: 'ALL', who: { name: 'Anh Tuấn', party: 'LG' }, text: 'Bên em đã chuyển tiền hàng cho nhà máy, gửi anh chị bản chứng từ chuyển tiền để tiện theo dõi.' },
+      { id: 'b6', t: 'doc', at: '2026-10-23T16:11', vis: 'ALL', who: { name: 'Anh Tuấn', party: 'LG' }, doc: 'tt', v: 1, text: 'Chứng từ chuyển tiền hàng LG → nhà máy (bản chụp)' },
+      { id: 'b7', t: 'unverified', at: '2026-10-23T16:30', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: 'Nhà máy CHƯA xác nhận cho xuất hàng', text: 'Lục Giác đã gửi chứng từ chuyển tiền, nhưng nhà máy chưa báo đã nhận tiền / cho đóng hàng. Đây là tiền hàng giữa Lục Giác và nhà máy — không phải khoản Trường Thành đã thu.', release: true },
+      { id: 'b8', t: 'doc', at: '2026-10-24T08:20', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, doc: 'si', v: 2, text: 'SI draft v2 — bổ sung mô tả hàng theo hợp đồng' },
+      { id: 'b9', t: 'request', at: '2026-10-24T08:30', vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, req: 'si' }
+    ]
+  };
+
+  return { now: '2026-10-24T09:00', role: 'TT', selected: 'HX-LTL-01', filter: 'all', q: '', mview: 'list', profileOpen: true, drawer: false, ships: { [A.id]: A, [B.id]: B }, seq: 100 };
+}
+
+let S = seed();
+const nid = () => 'e' + (++S.seq);
+
+/* ==========================================================================
+   Derived view-model (pure functions of S + role)
+   ========================================================================== */
+const visible = (item, role) => role === 'TT' || item.vis === 'ALL';
+const latest = (arr, role) => { const xs = (arr || []).filter(x => visible(x, role)); return xs[xs.length - 1] || null; };
+
+function tasks(sh) {
+  const T = [];
+  if (sh.id === 'HX-LTL-01') {
+    const f = sh.flow;
+    if (f === 0) T.push({ actor: 'TT', text: 'Cập nhật tình hình xe ghép (quá hạn cập nhật từ 08:00)', due: sh.nextUpdateDue, action: 'a_inbound', vis: 'TT' });
+    if (f === 1) T.push({ actor: 'TT', text: 'Xác minh tin "có thể chậm" với kho ghép / nhà xe', due: '2026-10-24T10:30', action: 'a_verify', vis: 'TT' });
+    if (f === 2) T.push({ actor: 'TT', text: 'Đưa ETA đã xác minh vào bản xem của Lục Giác', due: '2026-10-24T11:00', action: 'a_share', vis: 'TT' });
+    if (f === 3) {
+      T.push({ actor: 'LG', text: 'Phản hồi giờ nhận hàng mới (đồng ý hoặc đề xuất khung khác)', due: sh.requests.sched.due, action: 'a_reply', vis: 'ALL' });
+      T.push({ actor: 'TT', text: 'Chờ Lục Giác phản hồi — giữ chỗ nhà xe cho 2 phương án', due: sh.requests.sched.due, vis: 'TT' });
+    }
+    if (f === 4) T.push({ actor: 'TT', text: 'Xác nhận nhà xe theo giờ Lục Giác chọn rồi chốt lịch giao', due: '2026-10-24T15:00', action: 'a_close', vis: 'ALL' });
+    if (f === 5) {
+      T.push({ actor: 'TT', text: 'Cập nhật khi xe rời kho ghép (ngoài phạm vi demo)', due: sh.nextUpdateDue, vis: 'ALL' });
+      T.push({ actor: 'LG', text: `Chuẩn bị nhân công nhận 6 pallet lúc ${fmt(sh.final.value)} (không cần phản hồi)`, due: sh.final.value, vis: 'ALL' });
+    }
+  } else {
+    if (sh.siState === 'OPEN') T.push({ actor: 'LG', text: `Xác nhận SI draft v${sh.docs[1].versions.length} trước 15:00`, due: sh.requests.si.due, action: 'b_si_reply', vis: 'ALL' });
+    if (sh.siState === 'OK') T.push({ actor: 'TT', text: 'Nộp SI cho hãng tàu trước hạn 17:00 (giờ VN)', due: '2026-10-24T17:00', action: 'b_si_submit', vis: 'ALL' });
+    if (sh.siState === 'FIX') T.push({ actor: 'TT', text: 'Sửa SI draft theo góp ý của Lục Giác và gửi lại', due: '2026-10-24T14:30', action: 'b_si_revise', vis: 'ALL' });
+    if (sh.release.status === 'PENDING') T.push({ actor: 'TT', text: 'Hỏi nhà máy xác nhận đã nhận tiền / cho đóng hàng', due: '2026-10-24T15:00', action: 'b_release', vis: 'ALL' });
+    T.push({ actor: 'TT', text: 'Nhận VGM từ nhà máy sau khi đóng hàng (ngoài phạm vi demo)', due: '2026-10-25T10:00', vis: 'ALL' });
+  }
+  return T.sort((a, b) => ms(a.due) - ms(b.due));
+}
+
+function cutoffAlerts(sh) {
+  if (sh.mode !== 'SEA') return [];
+  return sh.cutoffs.filter(c => !c.done).map(c => ({ ...c, h: hoursLeft(c.at, S.now) })).filter(c => c.h < 36).sort((a, b) => a.h - b.h);
+}
+
+function riskFlags(sh, role) {
+  const F = [];
+  cutoffAlerts(sh).forEach(c => F.push({ cls: c.h < 12 ? 'red' : 'amber', text: c.h < 0 ? `◷ ${c.label} đã quá ${durText(c.h)}` : `◷ ${c.label} còn ${durText(c.h)}` }));
+  if (sh.id === 'HX-LTL-01') {
+    if (role === 'TT') {
+      if (sh.flow === 0 && hoursLeft(sh.nextUpdateDue, S.now) < 0) F.push({ cls: 'amber', text: `◷ Quá hạn cập nhật ${durText(hoursLeft(sh.nextUpdateDue, S.now))}` });
+      if (sh.flow === 1) F.push({ cls: 'amber', text: '⚠ Tin chậm CHƯA xác minh' });
+      if (sh.flow === 2) F.push({ cls: 'red', text: '⚠ Nguy cơ trễ — chưa báo Lục Giác' });
+    }
+    if (sh.flow === 3) F.push({ cls: 'red', text: '⚠ Lịch cũ không đạt — đang đổi' });
+    if (sh.flow === 4) F.push({ cls: 'amber', text: '◷ Chờ TT chốt xe' });
+  } else if (sh.release.status === 'PENDING') {
+    F.push({ cls: 'amber', text: '◷ Nhà máy chưa xác nhận cho xuất' });
+  }
+  return F;
+}
+
+function priority(sh, role) {
+  let score = 0; const why = [];
+  const cut = cutoffAlerts(sh)[0];
+  if (cut && cut.h < 12) { score += 100; why.push(`${cut.k} cutoff < 12 giờ`); }
+  else if (cut) { score += 40; why.push(`${cut.k} cutoff < 36 giờ`); }
+  const mine = tasks(sh).filter(t => t.actor === role && t.action && visible(t, role));
+  if (mine.length) { score += 50; why.push(role === 'LG' ? 'cần bạn quyết định' : 'TT cần hành động'); }
+  if (sh.id === 'HX-LTL-01' && ((role === 'TT' && sh.flow >= 1 && sh.flow <= 4) || (role === 'LG' && (sh.flow === 3 || sh.flow === 4)))) { score += 30; why.push('nguy cơ trễ lịch giao'); }
+  if (role === 'TT' && sh.id === 'HX-LTL-01' && sh.flow === 0 && hoursLeft(sh.nextUpdateDue, S.now) < 0) { score += 20; why.push('quá hạn cập nhật'); }
+  return { score, why };
+}
+
+function lastActivity(sh, role) { const ev = sh.events.filter(e => visible(e, role)); return ev.length ? ev[ev.length - 1].at : '2026-01-01T00:00'; }
+
+function phaseOf(sh) { return sh.phase; }
+function deliverySoon(sh) { const c = latest(sh.facts.confirmed, S.role); return sh.phase === 'TRANSIT' && c && hoursLeft(c.value, S.now) < 96 && hoursLeft(c.value, S.now) > -24; }
+const FILTERS = [
+  { id: 'all', label: 'Tất cả', fn: () => true },
+  { id: 'action', label: 'Cần xử lý', fn: (sh, r) => tasks(sh).some(t => t.actor === r && t.action && visible(t, r)) || cutoffAlerts(sh).some(c => c.h < 24) },
+  { id: 'transit', label: 'Đang vận chuyển', fn: sh => phaseOf(sh) === 'TRANSIT' },
+  { id: 'soon', label: 'Sắp giao', fn: sh => deliverySoon(sh) },
+  { id: 'done', label: 'Đã giao', fn: sh => phaseOf(sh) === 'DELIVERED' }
+];
+
+function shortStatus(sh, role) {
+  if (sh.id === 'HX-LTL-01') {
+    const c = latest(sh.facts.confirmed, role);
+    if (sh.flow === 5) return `✓ Lịch giao đã chốt: ${fmt(c.value)}`;
+    if (sh.flow === 4) return `LG đề nghị ${fmt(sh.lgAnswer.value)} — chờ TT chốt`;
+    if (sh.flow === 3) return `Đổi lịch: đề xuất ${fmt(latest(sh.facts.eta, role).value)} — chờ LG`;
+    if (sh.flow === 2 && role === 'TT') return `ETA mới ${fmt(latest(sh.facts.eta, 'TT').value)} (đã xác minh, chưa chia sẻ)`;
+    return `Ở kho ghép · lịch đã xác nhận ${fmt(c.value)}`;
+  }
+  return `Booking đã xác nhận · ETD dự kiến ${fmtShort(sh.etd.value)} · chưa khởi hành`;
+}
+
+/* ==========================================================================
+   Render — list
+   ========================================================================== */
+function orderedShips(role) {
+  return Object.values(S.ships).map(sh => ({ sh, p: priority(sh, role), last: lastActivity(sh, role) }))
+    .sort((a, b) => b.p.score - a.p.score || ms(b.last) - ms(a.last));
+}
+
+function renderFilters() {
+  const r = S.role;
+  $('#filters').innerHTML = FILTERS.map(f => {
+    const n = Object.values(S.ships).filter(sh => f.fn(sh, r)).length;
+    return `<button type="button" data-filter="${f.id}" aria-pressed="${S.filter === f.id}">${esc(f.label)}<span class="cnt">${n}</span></button>`;
+  }).join('');
+}
+
+function renderList() {
+  const r = S.role, q = norm(S.q.trim());
+  const f = FILTERS.find(x => x.id === S.filter);
+  const items = orderedShips(r).filter(({ sh }) => f.fn(sh, r)).filter(({ sh }) => !q || norm(sh.id + ' ' + sh.cargo + ' ' + sh.typeLabel).includes(q));
+  if (!items.length) {
+    const why = S.filter === 'done' && !q ? 'Chưa có lô đã giao trong dữ liệu demo.' : 'Không có lô khớp bộ lọc / từ khoá.';
+    $('#rows').innerHTML = `<div class="empty" data-testid="list-empty">${why}</div>`;
+    return;
+  }
+  $('#rows').innerHTML = items.map(({ sh, p, last }) => {
+    const ts = tasks(sh).filter(t => visible(t, r));
+    const myT = ts.find(t => t.actor === r && t.action);
+    const otherT = ts.find(t => t.actor !== r && t.action);
+    const first = myT || otherT || ts[0];
+    const mine = first && first.actor === r;
+    const actor = first ? (mine ? `Cần: Bạn — ${first.text}` : `Đang chờ: ${PARTY[first.actor]} — ${first.text}`) : 'Không có việc mở';
+    const waitLine = myT && otherT ? `<div class="row-actor">◷ Đang chờ: ${esc(PARTY[otherT.actor])} — ${esc(otherT.text)}</div>` : '';
+    const flags = riskFlags(sh, r);
+    return `<button type="button" class="row" role="listitem" data-ship="${sh.id}" data-testid="row-${sh.id}" aria-current="${S.selected === sh.id}">
+      <div class="row-top"><span class="row-id">${esc(sh.id)}</span><span class="row-time" title="Hoạt động gần nhất">${fmtShort(last)}</span></div>
+      <div class="row-cargo">${esc(sh.cargo)}</div>
+      <div class="row-type">${esc(sh.typeLabel)}</div>
+      <div class="row-status">${esc(shortStatus(sh, r))}</div>
+      <div class="row-actor ${mine ? 'me' : ''}">${mine ? '!' : '◷'} ${esc(actor)}</div>
+      ${waitLine}
+      ${flags.length ? `<div class="flags">${flags.map(x => `<span class="flag ${x.cls}">${esc(x.text)}</span>`).join('')}</div>` : ''}
+      ${p.why.length ? `<div class="prio">Ưu tiên vì: ${esc(p.why.join(' · '))}</div>` : ''}
+    </button>`;
+  }).join('');
+}
+
+/* ==========================================================================
+   Render — center (pinned strip + stream + composer)
+   ========================================================================== */
+function pinnedSchedule(sh, r) {
+  const conf = latest(sh.facts.confirmed, r);
+  if (sh.mode === 'SEA') {
+    const cut = cutoffAlerts(sh)[0];
+    const next = sh.cutoffs.find(c => !c.done);
+    return {
+      k: 'Hạn gần nhất (theo booking)',
+      v: next ? `${next.label}: ${fmt(next.at)}` : 'Đã qua các hạn SI/VGM/CY',
+      s: next ? `${next.origin} · ${cut ? (cut.h < 0 ? 'ĐÃ QUÁ' : 'còn ' + durText(cut.h)) : ''}` : '',
+      chip: cut && cut.h < 12 ? '<span class="chip red">KHẨN</span>' : cut ? '<span class="chip unv">SẮP ĐẾN</span>' : ''
+    };
+  }
+  if (sh.flow === 5) return { k: 'Lịch giao đã chốt', v: fmt(conf.value), s: `Thay lịch cũ ${fmt(sh.facts.confirmed[0].value)} · chốt ${fmtShort(conf.at)}`, chip: '<span class="chip conf">■ ĐÃ CHỐT</span>' };
+  const base = { k: 'Lịch giao đã xác nhận', v: fmt(conf.value), chip: '<span class="chip conf">■ ĐÃ XÁC NHẬN</span>' };
+  if (r === 'TT' && sh.flow === 1) return { ...base, s: 'Có tin có thể chậm — CHƯA xác minh, lịch này vẫn là cam kết hiện tại', chip: '<span class="chip unv">⚠ CÓ TIN CHƯA XÁC MINH</span>' };
+  if (r === 'TT' && sh.flow === 2) return { ...base, s: `Không còn khả thi theo xác minh ${fmtShort(latest(sh.facts.eta, 'TT').at)} — chưa báo Lục Giác`, chip: '<span class="chip red">⚠ KHÔNG ĐẠT</span>' };
+  if (sh.flow === 3) return { ...base, s: `Đang đổi — đề xuất ${fmt(latest(sh.facts.eta, r).value)}, chờ Lục Giác phản hồi`, chip: '<span class="chip req">ĐANG ĐỔI</span>' };
+  if (sh.flow === 4) return { ...base, s: `Lục Giác đề nghị ${fmt(sh.lgAnswer.value)} — CHƯA chốt, TT chưa bố trí xe`, chip: '<span class="chip req">CHỜ TT CHỐT</span>' };
+  return { ...base, s: `Xác nhận ${fmtShort(conf.at)} · ${conf.by}` };
+}
+
+function pinnedTrust(sh, r) {
+  if (sh.mode === 'SEA') {
+    const rel = sh.release.status === 'PENDING';
+    return { v: `Booking v2 đã xác nhận`, s: `Nguồn: đại lý Ninh Ba · ${fmtShort(sh.booking.at)}${rel ? ' · Nhà máy CHƯA xác nhận cho xuất' : ' · Nhà máy đã xác nhận cho xuất'}`, chip: rel ? '<span class="chip unv">⚠ CÒN ĐIỂM CHƯA XÁC NHẬN</span>' : '<span class="chip ver">✓ ĐÃ XÁC MINH</span>' };
+  }
+  const loc = latest(sh.location, r), eta = latest(sh.facts.eta, r);
+  if (r === 'TT' && sh.flow === 1) return { v: 'Tin kho ghép: có thể chậm', s: `Chưa có ETA mới · nguồn chưa kiểm chứng · nhận ${fmtShort(sh.signal.at)}`, chip: '<span class="chip unv">⚠ CHƯA XÁC MINH</span>' };
+  return { v: `ETA ${fmt(eta.value)}`, s: `${loc.value.split(' — ')[0]} · xác minh ${fmtShort(eta.at)} · ${eta.source}`, chip: '<span class="chip ver">✓ ĐÃ XÁC MINH</span>' };
+}
+
+const ACTION_LABEL = {
+  a_inbound: '▶ Mô phỏng: kho ghép báo có thể chậm', a_verify: 'Xác minh với nguồn…', a_share: 'Đưa vào bản xem Lục Giác…', a_reply: 'Phản hồi giờ nhận…', a_close: 'Chốt phương án giao…',
+  b_si_reply: 'Phản hồi SI draft…', b_si_submit: 'Ghi nhận đã nộp SI…', b_si_revise: 'Sửa & gửi lại SI draft…', b_release: 'Ghi nhận nhà máy cho xuất…'
+};
+
+function pinnedNext(sh, r) {
+  const ts = tasks(sh).filter(t => visible(t, r));
+  const mine = ts.find(t => t.actor === r && t.action) || ts.find(t => t.actor === r);
+  if (mine) return { mine: true, k: 'Việc của bạn tiếp theo', v: mine.text, s: `Hạn: ${fmt(mine.due)}`, action: mine.action };
+  const other = ts[0];
+  if (other) return { mine: false, k: `Đang chờ ${PARTY[other.actor]}`, v: other.text, s: `Hạn: ${fmt(other.due)} · bạn chưa cần làm gì`, action: null };
+  return { mine: false, k: 'Việc tiếp theo', v: 'Không có việc mở', s: '' };
+}
+
+function eventSide(e, r) {
+  if (['milestone', 'share'].includes(e.t)) return 'center';
+  if (!e.who) return 'center';
+  return e.who.party === r ? 'right' : 'left';
+}
+
+function whoLine(e, r) {
+  if (!e.who) return '';
+  const p = e.who.party;
+  const tag = p === r ? 'Bạn' : PARTY[p];
+  return `<div class="who"><b>${esc(e.who.name)}</b> · ${esc(tag)}${e.who.via ? ' · ' + esc(e.who.via) : ''} · ${fmtShort(e.at)}${e.vis === 'TT' ? ' · <span class="chip int">◈ Nội bộ TT — Lục Giác không thấy</span>' : ''}</div>`;
+}
+
+function photoSvg() {
+  return `<svg viewBox="0 0 320 170" role="img" aria-label="Minh hoạ 6 pallet trong kho"><rect width="320" height="170" fill="#e9eef3"/><rect y="128" width="320" height="42" fill="#cfd8e1"/>
+  ${[0, 1, 2].map(i => `<g transform="translate(${28 + i * 92},58)"><rect width="78" height="62" rx="3" fill="#c79a5b" stroke="#8a6431"/><path d="M0 20h78M0 41h78M26 0v62M52 0v62" stroke="#a27a43"/><rect y="62" width="78" height="8" fill="#7a5a2e"/></g>`).join('')}
+  ${[0, 1, 2].map(i => `<g transform="translate(${40 + i * 92},12)" opacity=".85"><rect width="58" height="44" rx="3" fill="#d8b47c" stroke="#8a6431"/><path d="M0 22h58M29 0v44" stroke="#a27a43"/></g>`).join('')}
+  <text x="10" y="160" font-family="Consolas,monospace" font-size="11" fill="#334a60">DEMO-BT-7781 · 6 PLT · ẢNH MINH HOẠ</text></svg>`;
+}
+
+function renderEvent(e, sh, r) {
+  const side = eventSide(e, r);
+  const intCls = e.vis === 'TT' ? ' int' : '';
+  if (e.t === 'milestone') return `<div class="ev center" data-kind="milestone"><span class="milestone">◆ <b>MỐC</b> ${esc(e.text)} · ${fmtShort(e.at)}${e.src ? ` · nguồn: ${esc(e.src)}` : ''}</span></div>`;
+  if (e.t === 'share') return `<div class="ev center" data-kind="share"><div class="sharenote">${e.vis === 'TT' ? '<span class="chip int">◈ Nội bộ TT</span> ' : ''}${esc(e.text)} · ${fmtShort(e.at)}</div></div>`;
+  if (e.t === 'chat') return `<div class="ev ${side}" data-kind="chat">${whoLine(e, r)}<div class="bubble${intCls}"><div class="kind">Tin nhắn</div>${esc(e.text)}</div></div>`;
+  if (e.t === 'photo') return `<div class="ev ${side}" data-kind="photo">${whoLine(e, r)}<figure class="photo" style="margin:0">${photoSvg()}<figcaption>${esc(e.text)} · <button type="button" class="btn link" data-doc="photo">Xem trong hồ sơ</button></figcaption></figure></div>`;
+  if (e.t === 'doc') {
+    const d = sh.docs.find(x => x.id === e.doc); const cur = d.versions.length;
+    const st = e.v === cur ? '<span class="chip conf">HIỆN HÀNH</span>' : '<span class="chip old">ĐÃ THAY</span>';
+    return `<div class="ev ${side}" data-kind="doc">${whoLine(e, r)}<div class="card doc"><div class="doc-ico">${esc(d.code)}</div><div style="min-width:0;flex:1"><div class="kind">Chứng từ mẫu</div><div style="font-weight:700">${esc(d.name)} · v${e.v} ${st}</div><div class="meta">${esc(e.text)}</div></div><button type="button" class="btn ghost" data-doc="${d.id}" data-v="${e.v}">Xem</button></div></div>`;
+  }
+  if (e.t === 'unverified') {
+    const released = e.release && sh.release.status === 'CONFIRMED';
+    return `<div class="ev ${side}" data-kind="unverified">${whoLine(e, r)}<div class="card unv${intCls}">
+      <span class="chip unv">⚠ CHƯA XÁC MINH · không phải cam kết</span>${released ? ' <span class="chip ver">→ đã xác minh sau đó, xem bên dưới</span>' : ''}
+      <div class="ttl">${esc(e.title)}</div><div>${esc(e.text)}</div>
+      ${e.from ? `<div class="meta">Nguồn: <b>${esc(e.from)}</b> · TT chỉ ghi nhận, chưa kiểm chứng</div>` : ''}
+      ${e.flowGate === 1 && sh.flow === 1 && r === 'TT' ? `<div class="acts"><button type="button" class="btn" data-action="a_verify">Xác minh với nguồn…</button></div>` : ''}
+    </div></div>`;
+  }
+  if (e.t === 'verified') {
+    return `<div class="ev ${side}" data-kind="verified">${whoLine(e, r)}<div class="card ver${intCls}">
+      <span class="chip ver">✓ ĐÃ XÁC MINH</span>${e.vis === 'TT' ? ' <span class="chip plain">Chưa chia sẻ cho Lục Giác</span>' : ''}
+      <div class="ttl">${esc(e.title)}</div><div>${esc(e.text)}</div>
+      <div class="meta">Nguồn: <b>${esc(e.src)}</b> · Người xác minh: <b>${esc(e.by)}</b> · lúc ${fmtShort(e.verifiedAt)}${e.nextDue ? ` · Hạn cập nhật tiếp: <b>${fmt(e.nextDue)}</b>` : ''}</div>
+      <div class="acts"><button type="button" class="btn ghost" data-source="${e.fact || ''}" data-ev="${e.id}">Xem nguồn & lịch sử</button>${e.flowGate === 2 && sh.flow === 2 && r === 'TT' ? '<button type="button" class="btn" data-action="a_share">Đưa vào bản xem Lục Giác…</button>' : ''}</div>
+    </div></div>`;
+  }
+  if (e.t === 'confirmed') {
+    return `<div class="ev ${side}" data-kind="confirmed">${whoLine(e, r)}<div class="card conf${intCls}">
+      <span class="chip conf">■ KẾT QUẢ ĐÃ XÁC NHẬN</span>
+      <div class="ttl">${esc(e.title)}</div><div>${esc(e.text)}</div>
+      ${e.meta ? `<div class="meta">${e.meta}</div>` : ''}
+      <div class="acts">${e.fact ? `<button type="button" class="btn ghost" data-source="${e.fact}" data-ev="${e.id}">Xem nguồn & lịch sử</button>` : ''}${e.docRef ? `<button type="button" class="btn ghost" data-doc="${e.docRef}">So sánh bản cũ/mới</button>` : ''}${e.src && !e.fact ? `<button type="button" class="btn ghost" data-source="" data-ev="${e.id}">Xem nguồn</button>` : ''}</div>
+    </div></div>`;
+  }
+  if (e.t === 'request') return renderRequest(e, sh, r, side);
+  return '';
+}
+
+function renderRequest(e, sh, r, side) {
+  const q = sh.requests[e.req];
+  const open = q.status === 'OPEN';
+  let status = '', acts = '';
+  if (q.kind === 'A_SCHEDULE') {
+    if (open) { status = `<div class="status-line wait">◷ Chờ Lục Giác phản hồi — hạn ${fmt(q.due)}</div>`; if (r === 'LG') acts = `<button type="button" class="btn warn" data-action="a_reply">Phản hồi giờ nhận…</button>`; }
+    else if (q.status === 'ANSWERED') { status = `<div class="status-line wait">Lục Giác đã phản hồi (${esc(q.answer.label)}) — CHƯA chốt: TT chưa xác nhận xe</div>`; if (r === 'TT') acts = `<button type="button" class="btn" data-action="a_close">Chốt phương án giao…</button>`; }
+    else status = `<div class="status-line ok">■ Đã chốt: ${fmt(sh.final.value)} — xem kết quả bên dưới</div>`;
+  } else {
+    const st = sh.siState;
+    if (st === 'OPEN') { status = `<div class="status-line wait">◷ Chờ Lục Giác xác nhận — hạn ${fmt(q.due)} · Hạn SI 17:00 (giờ VN)</div>`; if (r === 'LG') acts = `<button type="button" class="btn warn" data-action="b_si_reply">Phản hồi SI draft…</button>`; }
+    else if (st === 'OK') { status = `<div class="status-line wait">Lục Giác xác nhận SI đúng — TT chưa nộp cho hãng tàu</div>`; if (r === 'TT') acts = `<button type="button" class="btn" data-action="b_si_submit">Ghi nhận đã nộp SI…</button>`; }
+    else if (st === 'FIX') { status = `<div class="status-line wait">Lục Giác yêu cầu sửa: "${esc(q.answer.note)}" — TT cần sửa & gửi lại</div>`; if (r === 'TT') acts = `<button type="button" class="btn" data-action="b_si_revise">Sửa & gửi lại SI draft…</button>`; }
+    else status = `<div class="status-line ok">■ Đã nộp SI — xem kết quả bên dưới</div>`;
+  }
+  const to = q.to === r ? 'Bạn' : PARTY[q.to];
+  return `<div class="ev ${side}" data-kind="request" data-req="${q.id}" data-req-status="${q.status}">${whoLine(e, r)}<div class="card req ${open ? '' : 'done'}">
+    <span class="chip req">! YÊU CẦU CẦN PHẢN HỒI — ${esc(to)}</span>${!open ? ' <span class="chip plain">đã có phản hồi</span>' : ''}
+    <div class="ttl">${esc(q.title || 'Yêu cầu xác nhận')}</div><div>${esc(q.ask)}</div>
+    ${q.cmp ? `<dl class="cmp">${q.cmp.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    ${status}${acts ? `<div class="acts">${acts}</div>` : ''}
+  </div></div>`;
+}
+
+function renderChat() {
+  const r = S.role, sh = S.ships[S.selected];
+  if (!sh) { $('#chat').innerHTML = '<div class="empty">Chọn một lô ở cột trái.</div>'; return; }
+  const ps = pinnedSchedule(sh, r), pt = pinnedTrust(sh, r), pn = pinnedNext(sh, r);
+  const evs = sh.events.filter(e => visible(e, r));
+  const prevScroll = $('#stream') ? $('#stream').scrollTop : null;
+  const sameShip = $('#chat').dataset.ship === sh.id && $('#chat').dataset.role === r;
+  const prevCount = Number($('#chat').dataset.count || 0);
+  $('#chat').dataset.ship = sh.id; $('#chat').dataset.role = r; $('#chat').dataset.count = evs.length;
+  $('#chat').innerHTML = `
+  <div class="chat-head">
+    <button type="button" class="iconbtn back-btn" id="back" aria-label="Quay lại danh sách lô">‹ Lô hàng</button>
+    <div class="t"><h1><span class="mono">${esc(sh.id)}</span> · ${esc(sh.cargo)}</h1><div class="sub">${esc(sh.typeLabel)} · ${esc(sh.route)}</div></div>
+    <div class="head-actions">
+      <button type="button" class="iconbtn hist" data-history="1">Lịch sử cập nhật</button>
+      <button type="button" class="iconbtn" id="toggle-profile" aria-expanded="${S.profileOpen}" aria-controls="profile"><span class="d-only">${S.profileOpen ? 'Ẩn hồ sơ ▸' : '◂ Hồ sơ lô'}</span><span class="m-only">Hồ sơ lô ▸</span></button>
+    </div>
+  </div>
+  <div class="pinned" data-testid="pinned" aria-label="Thông tin ghim">
+    <div class="pin" data-testid="pin-schedule"><div class="pin-k"><span class="lbl">${esc(ps.k)}</span>${ps.chip}</div><div class="pin-v">${esc(ps.v)}</div><div class="pin-s">${esc(ps.s)}</div></div>
+    <div class="pin" data-testid="pin-trust"><div class="pin-k"><span class="lbl">Độ tin cậy</span>${pt.chip}</div><div class="pin-v">${esc(pt.v)}</div><div class="pin-s">${esc(pt.s)}</div></div>
+    <div class="pin pin-next ${pn.mine ? 'mine' : ''}" data-testid="pin-next"><div class="pin-k">${pn.mine ? '! ' : '◷ '}${esc(pn.k)}</div><div class="pin-v" style="font-size:14px">${esc(pn.v)}</div><div class="pin-s">${esc(pn.s)}</div>${pn.action ? `<button type="button" class="btn ${pn.action === 'a_inbound' ? 'ghost' : ''}" data-action="${pn.action}" data-testid="next-action">${esc(ACTION_LABEL[pn.action])}</button>` : ''}</div>
+  </div>
+  <div class="stream" id="stream" tabindex="0" aria-label="Luồng hội thoại và sự kiện">
+    <div class="legend" aria-label="Chú giải"><span class="chip plain">Tin nhắn</span><span class="chip unv">⚠ Chưa xác minh</span><span class="chip ver">✓ Đã xác minh</span><span class="chip req">! Cần phản hồi</span><span class="chip conf">■ Kết quả đã xác nhận</span>${r === 'TT' ? '<span class="chip int">◈ Nội bộ TT</span>' : ''}</div>
+    ${r === 'LG' ? '<div class="ev center"><div class="sharenote">Bạn đang xem phần Trường Thành đã chia sẻ cho Lục Giác. Thông tin nội bộ và tin chưa xác minh của TT không hiển thị ở đây.</div></div>' : ''}
+    ${evs.map(e => renderEvent(e, sh, r)).join('')}
+  </div>
+  <form class="composer" id="composer" autocomplete="off">
+    <label class="sr-only" for="msg">Nhập tin nhắn</label>
+    <input type="text" id="msg" placeholder="Nhắn trong hội thoại lô ${esc(sh.id)}…" maxlength="400">
+    ${r === 'TT' ? '<label><input type="checkbox" id="internal"> ◈ <span class="long">Chỉ </span>nội bộ TT</label>' : ''}
+    <button type="submit" class="btn">Gửi</button>
+    <div class="hint">Tin nhắn thường chỉ là trao đổi — không thay đổi lịch, ETA hay trạng thái lô. Chỉ lưu trong trang demo.</div>
+  </form>`;
+  const st = $('#stream');
+  if (sameShip && prevScroll != null && evs.length === prevCount) st.scrollTop = prevScroll; else st.scrollTop = st.scrollHeight;
+}
+
+/* ==========================================================================
+   Render — right profile
+   ========================================================================== */
+function factBlock(sh, key, label, r) {
+  const arr = (sh.facts[key] || []).filter(x => visible(x, r));
+  const cur = arr[arr.length - 1];
+  const statusChip = v => ({ REQUESTED: '<span class="chip plain">YÊU CẦU</span>', VERIFIED: '<span class="chip ver">✓ ĐÃ XÁC MINH</span>', CONFIRMED: '<span class="chip conf">■ ĐÃ XÁC NHẬN</span>', FINAL: '<span class="chip conf">■ ĐÃ CHỐT</span>' }[v.status] || '');
+  let extra = '', cls = '';
+  if (key === 'eta' && r === 'TT' && sh.flow === 1) { extra = `<div class="fact-s"><span class="chip unv">⚠ CHƯA XÁC MINH</span> Tin kho ghép: "${esc(sh.signal.text)}" — chưa có ETA mới</div>`; cls = 'risk'; }
+  if (key === 'confirmed' && sh.id === 'HX-LTL-01' && sh.flow >= 2 && sh.flow <= 4 && (r === 'TT' || sh.flow >= 3)) { extra = `<div class="fact-s"><span class="chip req">ĐANG ĐỔI</span> ${sh.flow === 4 ? `LG đề nghị ${esc(fmt(sh.lgAnswer.value))} — chưa chốt` : 'lịch này không còn khả thi'}</div>`; cls = 'risk'; }
+  if (key === 'confirmed' && sh.flow === 5) cls = 'final';
+  if (!cur) return `<div class="fact" data-fact="${key}"><div class="fact-k">${esc(label)}</div><div class="fact-v">Chưa có</div><div class="fact-s">${key === 'confirmed' ? 'Sẽ xác nhận khi hàng gần đến' : ''}</div></div>`;
+  return `<div class="fact ${cls}" data-fact="${key}"><div class="fact-k"><span>${esc(label)} · v${cur.v}</span>${statusChip(cur)}</div>
+    <div class="fact-v">${esc(fmt(cur.value))}</div>
+    <div class="fact-s">${esc(cur.source)} · ${esc(cur.by)} · ${fmtShort(cur.at)}${cur.vis === 'TT' ? ' · <span class="chip int">◈ chưa chia sẻ</span>' : ''}</div>${extra}
+    <button type="button" class="btn link" data-source="${key}">Nguồn & lịch sử (${arr.length} phiên bản)</button></div>`;
+}
+
+function renderProfile() {
+  const r = S.role, sh = S.ships[S.selected];
+  if (!sh) { $('#profile').innerHTML = ''; return; }
+  const loc = latest(sh.location, r);
+  const ts = tasks(sh).filter(t => visible(t, r));
+  const nextDue = sh.nextUpdateDue;
+  const sea = sh.mode === 'SEA';
+  let html = `<div class="p-head"><h2>Hồ sơ lô · <span class="mono">${esc(sh.id)}</span></h2><span style="flex:1"></span><button type="button" class="iconbtn" id="close-profile" aria-label="Đóng hồ sơ">✕</button></div>
+  <div class="p-sec"><h3>Trạng thái vận hành</h3><div style="font-weight:700">${esc(sh.opStatus)}</div><div class="fact-s" style="margin-top:3px">${esc(sh.typeLabel)}</div></div>
+  <div class="p-sec"><h3>Địa điểm · xác minh gần nhất</h3><div style="font-weight:600">${esc(loc.value)}</div><div class="fact-s">Nguồn: ${esc(loc.source)} · ${esc(loc.by)} · ${fmtShort(loc.at)}${loc.vis === 'TT' ? ' · <span class="chip int">◈ chưa chia sẻ</span>' : ''}</div><button type="button" class="btn link" data-source="location">Lịch sử vị trí (${sh.location.filter(x => visible(x, r)).length})</button></div>
+  <div class="p-sec" data-testid="three-facts"><h3>Lịch giao — 3 dữ kiện tách riêng</h3>
+    ${factBlock(sh, 'requested', 'Lịch khách yêu cầu', r)}
+    ${factBlock(sh, 'eta', sea ? 'ETA về Hải Phòng (dự kiến)' : 'ETA về kho Lục Giác (dự kiến)', r)}
+    ${factBlock(sh, 'confirmed', 'Lịch giao hai bên đã xác nhận', r)}
+  </div>`;
+  if (sea) {
+    html += `<div class="p-sec" data-testid="sea-block"><h3>Booking & hạn chót (cutoff) <span class="chip plain">DỮ LIỆU GIẢ LẬP</span></h3>
+      <dl class="kv"><dt>Booking</dt><dd>${sh.booking.status === 'CONFIRMED' ? '<span class="chip conf">■ ĐÃ XÁC NHẬN</span>' : '<span class="chip unv">CHƯA XÁC NHẬN</span>'} <span class="mono">${esc(sh.booking.no)}</span></dd><dt>Tàu / chuyến</dt><dd>${esc(sh.booking.vessel)}</dd></dl>
+      <div style="margin-top:8px">${sh.cutoffs.map(c => { const h = hoursLeft(c.at, S.now); const cls = c.done ? 'done' : h < 12 ? 'hot' : h < 36 ? 'warm' : ''; return `<div class="cut ${cls}" data-cutoff="${c.k}"><b class="k">${c.k}</b><div><div style="font-weight:700">${esc(c.label)}: ${fmt(c.at)} <span class="fact-s">giờ VN</span></div><div class="fact-s">${esc(c.origin)} · ${esc(c.state)}</div></div><span class="chip ${c.done ? 'conf' : h < 12 ? 'red' : h < 36 ? 'unv' : 'plain'}">${c.done ? '✓ XONG' : h < 0 ? 'ĐÃ QUÁ' : 'còn ' + durText(h)}</span></div>`; }).join('')}</div>
+      <dl class="kv" style="margin-top:8px"><dt>ETD dự kiến</dt><dd>${fmt(sh.etd.value)} <span class="fact-s">(${esc(sh.etd.origin)} · ${esc(sh.etd.note)})</span></dd>
+      <dt>ATD thực tế</dt><dd>${sh.atd ? fmt(sh.atd) : '<span class="chip plain">CHƯA CÓ</span> tàu chưa khởi hành — không lấy ETD thay ATD'}</dd>
+      <dt>Số tờ khai NK</dt><dd>${sh.customs.declarationNo ? esc(sh.customs.declarationNo) : 'Chưa có (đăng ký khi hàng về Hải Phòng)'}</dd>
+      <dt>Thông quan NK</dt><dd>${sh.customs.cleared ? '<span class="chip conf">ĐÃ THÔNG QUAN</span>' : '<span class="chip plain">CHƯA THÔNG QUAN</span>'} <span class="fact-s">Có số tờ khai ≠ đã thông quan</span></dd>
+      <dt>Tiền hàng LG → NM</dt><dd>${sh.release.status === 'PENDING' ? '<span class="chip unv">⚠ NM CHƯA XÁC NHẬN CHO XUẤT</span>' : `<span class="chip ver">✓ NM ĐÃ XÁC NHẬN</span> <span class="fact-s">${esc(sh.release.src)} · ${fmtShort(sh.release.at)}</span>`} <span class="fact-s">Không phải khoản TT thu</span></dd></dl>
+    </div>`;
+  }
+  html += `<div class="p-sec"><h3>Phụ trách & cập nhật</h3><dl class="kv"><dt>TT phụ trách</dt><dd>${esc(sh.owner)}</dd><dt>Sale TT</dt><dd>${esc(sh.sale)}</dd><dt>Đầu mối LG</dt><dd>${esc(sh.lgContact)}</dd><dt>Hạn TT cập nhật</dt><dd>${fmt(nextDue)}${r === 'TT' && hoursLeft(nextDue, S.now) < 0 ? ' <span class="chip red">QUÁ HẠN</span>' : ''}</dd></dl></div>
+  <div class="p-sec" data-testid="open-tasks"><h3>Việc còn mở (${ts.length})</h3>${ts.length ? `<ul class="tasks">${ts.map(t => `<li><span class="who-tag ${t.actor}">${t.actor === r ? 'BẠN' : t.actor}</span><div style="flex:1">${esc(t.text)}<div class="fact-s">Hạn ${fmt(t.due)}${t.vis === 'TT' ? ' · <span class="chip int">◈ nội bộ</span>' : ''}</div></div></li>`).join('')}</ul>` : '<div class="fact-s">Không có việc mở.</div>'}</div>
+  <div class="p-sec"><h3>Chứng từ (phiên bản hiện hành)</h3>${sh.docs.map(d => { const n = d.versions.length; return n ? `<button type="button" class="docrow" data-doc="${d.id}"><span class="doc-ico" style="width:30px;height:36px">${esc(d.code)}</span><span style="flex:1;min-width:0"><b>${esc(d.name)}</b><span class="fact-s" style="display:block">v${n} hiện hành${n > 1 ? ` · ${n - 1} bản cũ đã thay` : ''} · ${fmtShort(d.versions[n - 1].at)}</span></span><span aria-hidden="true">›</span></button>` : `<button type="button" class="docrow" disabled><span class="doc-ico" style="width:30px;height:36px">${esc(d.code)}</span><span style="flex:1"><b>${esc(d.name)}</b><span class="fact-s" style="display:block">${esc(d.emptyNote)}</span></span></button>`; }).join('')}</div>
+  <div class="p-sec" data-testid="commercial"><h3>Thương mại (tham chiếu)</h3><dl class="kv"><dt>Giá đã chốt</dt><dd>${esc(sh.commercial.quoteRef)}</dd><dt>Phạm vi</dt><dd style="font-weight:500">${esc(sh.commercial.scope)}</dd><dt>Khoản cần xử lý</dt><dd style="font-weight:500">${sh.commercial.customerItems.map(esc).join('<br>')}</dd></dl>`;
+  if (r === 'TT') html += `<div class="internal" style="margin-top:8px" data-testid="internal-commercial"><span class="chip int">◈ NỘI BỘ TT — không hiển thị cho Lục Giác</span><div style="margin-top:4px;font-size:13px">${esc(sh.commercial.internal.cost)}<br>${esc(sh.commercial.internal.margin)}<br>${esc(sh.commercial.internal.note)}</div></div>`;
+  html += `</div><div class="p-sec"><button type="button" class="btn ghost" data-history="1" style="width:100%">Mở toàn bộ lịch sử cập nhật</button></div>`;
+  $('#profile').innerHTML = html;
+}
+
+/* ==========================================================================
+   Render — root
+   ========================================================================== */
+function render() {
+  $('#clock').textContent = fmtFull(S.now);
+  ['LG', 'TT'].forEach(x => $('#role-' + x).setAttribute('aria-pressed', String(S.role === x)));
+  const app = $('#app');
+  app.dataset.mview = S.mview;
+  app.dataset.role = S.role;
+  app.classList.toggle('profile-collapsed', !S.profileOpen);
+  app.classList.toggle('drawer-open', S.drawer);
+  if ($('#q').value !== S.q) $('#q').value = S.q;
+  renderFilters(); renderList(); renderChat(); renderProfile();
+}
+
+/* ==========================================================================
+   Modal / toast
+   ========================================================================== */
+let lastFocus = null;
+function openModal({ title, body, submit, onSubmit, wide, cancel = 'Huỷ' }) {
+  lastFocus = document.activeElement;
+  $('#modal-root').innerHTML = `<div class="overlay" id="overlay"><div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <form id="m-form" novalidate><div class="m-head"><h2 id="m-title">${esc(title)}</h2><button type="button" class="iconbtn" data-close="1" aria-label="Đóng">✕</button></div>
+    <div class="m-body">${body}<div class="err" id="m-err" role="alert"></div></div>
+    <div class="m-foot"><button type="button" class="btn ghost" data-close="1">${esc(submit ? cancel : 'Đóng')}</button>${submit ? `<button type="submit" class="btn" data-testid="modal-submit">${esc(submit)}</button>` : ''}</div></form></div></div>`;
+  const form = $('#m-form');
+  form.addEventListener('submit', ev => {
+    ev.preventDefault();
+    if (!onSubmit) return closeModal();
+    const fd = Object.fromEntries(new FormData(form).entries());
+    form.querySelectorAll('input[type=checkbox]').forEach(c => { fd[c.name] = c.checked; });
+    const err = onSubmit(fd, form);
+    if (err) { $('#m-err').textContent = err; return; }
+    closeModal();
+  });
+  $('#overlay').addEventListener('click', ev => { if (ev.target.id === 'overlay' || ev.target.closest('[data-close]')) closeModal(); });
+  const first = form.querySelector('.m-body input:not([type=hidden]), .m-body select, .m-body textarea, .m-body button') || form.querySelector('[data-close]');
+  first && first.focus();
+}
+function closeModal() { $('#modal-root').innerHTML = ''; if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; $('#toast-root').innerHTML = ''; $('#toast-root').appendChild(el); setTimeout(() => el.remove(), 3600); }
+const field = (label, name, value, type = 'text', hint = '') => `<label class="field"><span>${esc(label)}</span>${type === 'textarea' ? `<textarea name="${name}">${esc(value)}</textarea>` : `<input type="${type}" name="${name}" value="${esc(value)}">`}${hint ? `<small>${esc(hint)}</small>` : ''}</label>`;
+const advance = t => { if (ms(t) > ms(S.now)) S.now = t; };
+
+/* ==========================================================================
+   Actions — Lô A (HX-LTL-01) five-step schedule change chain
+   ========================================================================== */
+const ACTIONS = {
+  a_inbound() {
+    const sh = S.ships['HX-LTL-01']; if (sh.flow !== 0 || S.role !== 'TT') return;
+    advance('2026-10-24T09:05');
+    sh.signal = { text: 'Xe ghép có thể xuất kho chậm khoảng 1 ngày, chưa chắc giờ', at: S.now, from: 'Điều độ kho ghép Bằng Tường (nhắn WeChat cho TT)' };
+    sh.events.push({ id: nid(), t: 'unverified', at: S.now, vis: 'TT', who: { name: 'Điều độ kho ghép', party: 'EXT', via: 'Thu Hà ghi nhận' }, title: 'Kho ghép báo: xe có thể xuất kho chậm', text: sh.signal.text + '. Lịch giao 16:00 26/10 có nguy cơ không đạt.', from: sh.signal.from, flowGate: 1 });
+    sh.flow = 1; sh.nextUpdateDue = '2026-10-24T10:30';
+    toast('Đã ghi nhận tin bên ngoài — CHƯA xác minh, chưa đổi lịch, Lục Giác chưa thấy.');
+    render();
+  },
+  a_verify() {
+    const sh = S.ships['HX-LTL-01']; if (sh.flow !== 1 || S.role !== 'TT') return;
+    openModal({
+      title: 'Xác minh tin chậm với nguồn cụ thể', submit: 'Lưu kết quả xác minh',
+      body: `<div class="notice info">Lưu kết quả xác minh nội bộ TT. Chưa chia sẻ cho Lục Giác và chưa đổi lịch đã xác nhận.</div>
+        <label class="field"><span>Nguồn xác minh</span><select name="src"><option>Điều độ kho ghép Bằng Tường — Mr. Lý (gọi điện)</option><option>Nhà xe ghép tuyến Bằng Tường – Bắc Ninh (gọi điện)</option><option>Đại lý tại Bằng Tường (email)</option></select></label>
+        ${field('Thời điểm xác minh', 'at', '2026-10-24T10:20', 'datetime-local')}
+        ${field('ETA mới về kho Lục Giác', 'eta', '2026-10-27T10:00', 'datetime-local', 'Giờ Việt Nam (UTC+7)')}
+        ${field('Lý do / chi tiết', 'note', 'Xe ghép tuần 43 đủ tải muộn; xuất kho ghép 06:00 26/10 thay vì 18:00 25/10.')}
+        ${field('Hạn cập nhật tiếp theo', 'next', '2026-10-24T17:00', 'datetime-local')}`,
+      onSubmit(fd) {
+        if (!fd.eta || !fd.at) return 'Cần nhập thời điểm xác minh và ETA mới.';
+        if (ms(fd.eta) <= ms(fd.at)) return 'ETA mới phải sau thời điểm xác minh.';
+        advance(fd.at);
+        const v = sh.facts.eta.length + 1;
+        sh.facts.eta.push({ v, value: fd.eta, status: 'VERIFIED', source: fd.src, by: 'Thu Hà (TT)', at: fd.at, vis: 'TT', note: fd.note });
+        sh.location.push({ v: sh.location.length + 1, value: 'Kho ghép Bằng Tường (CN) — xe ghép dự kiến xuất kho 06:00 26/10', status: 'VERIFIED', source: fd.src, by: 'Thu Hà (TT)', at: fd.at, vis: 'TT' });
+        sh.events.push({ id: nid(), t: 'verified', at: fd.at, vis: 'TT', who: { name: 'Thu Hà', party: 'TT' }, title: `ETA mới đã xác minh: ${fmt(fd.eta)}`, text: fd.note, src: fd.src, by: 'Thu Hà (TT)', verifiedAt: fd.at, nextDue: fd.next, fact: 'eta', flowGate: 2 });
+        sh.flow = 2; sh.nextUpdateDue = fd.next || sh.nextUpdateDue;
+        sh.opStatus = 'Ở kho ghép — xe ghép xuất muộn (đã xác minh)';
+        toast('Đã xác minh. Lục Giác CHƯA nhận được gì — bước tiếp: đưa vào bản xem Lục Giác.');
+        render();
+      }
+    });
+  },
+  a_share() {
+    const sh = S.ships['HX-LTL-01']; if (sh.flow !== 2 || S.role !== 'TT') return;
+    const eta = latest(sh.facts.eta, 'TT');
+    openModal({
+      title: 'Đưa bản cập nhật vào góc xem của Lục Giác', submit: 'Đưa vào bản xem (demo)',
+      body: `<div class="notice warn">Chỉ đưa vào bản xem demo trong trang này. <b>KHÔNG gửi Zalo, email hay thông báo thật.</b></div>
+        <dl class="cmp" style="margin-bottom:10px"><dt>Lịch đã xác nhận</dt><dd>${fmt(sh.facts.confirmed[0].value)}</dd><dt>ETA đã xác minh</dt><dd>${fmt(eta.value)}</dd><dt>Nguồn</dt><dd style="font-weight:500">${esc(eta.source)} · ${fmtShort(eta.at)}</dd></dl>
+        ${field('Nội dung gửi Lục Giác', 'msg', `Kho ghép xác nhận xe xuất muộn. Hàng dự kiến về kho Lục Giác ${fmt(eta.value)} (thay vì 16:00 26/10). Nhờ chị xác nhận nhận được giờ này hoặc đề xuất khung khác.`, 'textarea')}
+        ${field('Hạn Lục Giác phản hồi', 'due', '2026-10-24T14:00', 'datetime-local')}`,
+      onSubmit(fd) {
+        if (!fd.msg.trim()) return 'Cần nội dung cho Lục Giác.';
+        advance('2026-10-24T10:35');
+        sh.facts.eta.forEach(x => { x.vis = 'ALL'; });
+        sh.location.forEach(x => { x.vis = 'ALL'; });
+        sh.events.forEach(e => { if (e.t === 'verified' && e.fact === 'eta') e.vis = 'ALL'; });
+        sh.requests.sched = { id: 'sched', kind: 'A_SCHEDULE', status: 'OPEN', title: 'Xác nhận giờ nhận hàng mới', ask: fd.msg.trim(), due: fd.due || '2026-10-24T14:00', from: 'TT', to: 'LG', answer: null,
+          cmp: [['Lịch cũ (đã xác nhận)', fmt(sh.facts.confirmed[0].value)], ['ETA mới (đã xác minh)', fmt(eta.value)], ['Nguồn', eta.source]] };
+        sh.events.push({ id: nid(), t: 'share', at: S.now, vis: 'ALL', text: 'TT đã đưa bản cập nhật vào góc xem demo của Lục Giác — chưa gửi Zalo/email thật' });
+        sh.events.push({ id: nid(), t: 'request', at: S.now, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, req: 'sched' });
+        sh.flow = 3; sh.nextUpdateDue = sh.requests.sched.due;
+        toast('Đã đưa vào bản xem Lục Giác (demo). Không có Zalo/email nào được gửi.');
+        render();
+      }
+    });
+  },
+  a_reply() {
+    const sh = S.ships['HX-LTL-01']; if (sh.flow !== 3 || S.role !== 'LG') return;
+    const eta = latest(sh.facts.eta, 'LG');
+    openModal({
+      title: 'Phản hồi giờ nhận hàng', submit: 'Gửi phản hồi',
+      body: `<div class="notice info">Phản hồi của bạn <b>chưa phải lịch đã chốt</b>. Trường Thành sẽ xác nhận nhà xe rồi mới chốt.</div>
+        <label class="radio"><input type="radio" name="opt" value="agree" checked><span><b>Đồng ý nhận ${fmt(eta.value)}</b><br><small>Theo ETA Trường Thành đã xác minh</small></span></label>
+        <label class="radio"><input type="radio" name="opt" value="other"><span style="flex:1"><b>Đề xuất khung giờ khác</b>
+          <input type="datetime-local" name="alt" value="2026-10-27T14:00" style="display:block;margin-top:5px;width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px" aria-label="Khung giờ đề xuất"></span></label>
+        ${field('Ghi chú cho kho / nhân công', 'note', 'Sáng 27/10 kho kín lịch, nhận được từ 14:00; cần 4 người bốc xếp.')}`,
+      onSubmit(fd) {
+        const agree = fd.opt === 'agree';
+        if (!agree && !fd.alt) return 'Chọn khung giờ đề xuất.';
+        if (!agree && ms(fd.alt) < ms(eta.value)) return `Khung đề xuất sớm hơn ETA đã xác minh (${fmt(eta.value)}) — chọn giờ muộn hơn.`;
+        advance('2026-10-24T11:10');
+        const value = agree ? eta.value : fd.alt;
+        sh.lgAnswer = { value, agree, note: fd.note, at: S.now, label: agree ? `đồng ý ${fmt(value)}` : `đề xuất ${fmt(value)}` };
+        Object.assign(sh.requests.sched, { status: 'ANSWERED', answer: sh.lgAnswer });
+        sh.events.push({ id: nid(), t: 'chat', at: S.now, vis: 'ALL', who: { name: 'Chị Lan', party: 'LG' }, text: (agree ? `Bên em đồng ý nhận ${fmt(value)}.` : `Bên em đề xuất nhận ${fmt(value)}.`) + (fd.note ? ' ' + fd.note : '') });
+        sh.flow = 4;
+        toast('Đã gửi phản hồi (demo). Lịch CHƯA chốt — chờ Trường Thành xác nhận xe.');
+        render();
+      }
+    });
+  },
+  a_close() {
+    const sh = S.ships['HX-LTL-01']; if (sh.flow !== 4 || S.role !== 'TT') return;
+    const eta = latest(sh.facts.eta, 'TT');
+    openModal({
+      title: 'Chốt phương án giao', submit: 'Chốt lịch giao',
+      body: `<dl class="cmp" style="margin-bottom:10px"><dt>Lịch cũ</dt><dd>${fmt(sh.facts.confirmed[0].value)} (giữ trong lịch sử)</dd><dt>ETA đã xác minh</dt><dd>${fmt(eta.value)}</dd><dt>Lục Giác phản hồi</dt><dd>${esc(sh.lgAnswer.label)}</dd></dl>
+        ${field('Lịch giao chốt', 'value', sh.lgAnswer.value, 'datetime-local')}
+        ${field('Xe / nhà xe', 'truck', 'Nhà xe DEMO Hưng Phát — biển số 29C-000.00 (giả lập)')}
+        ${field('Nguồn xác nhận nhà xe', 'src', 'Gọi điều độ nhà xe lúc 11:35 — đồng ý giờ giao')}
+        ${field('Người thực hiện', 'by', 'Thu Hà (Support TT)')}
+        ${field('Việc tiếp theo', 'nextTask', 'Cập nhật khi xe rời kho ghép')}
+        ${field('Hạn việc tiếp theo', 'next', '2026-10-26T08:00', 'datetime-local')}
+        <label class="radio"><input type="checkbox" name="carrierOk"><span>Đã xác nhận với nhà xe (bắt buộc trước khi chốt)</span></label>`,
+      onSubmit(fd) {
+        if (!fd.carrierOk) return 'Chưa xác nhận với nhà xe — không thể chốt. Phản hồi của Lục Giác không đồng nghĩa đã có xe.';
+        if (!fd.value) return 'Cần lịch giao chốt.';
+        if (ms(fd.value) < ms(eta.value)) return `Lịch chốt sớm hơn ETA đã xác minh (${fmt(eta.value)}).`;
+        advance('2026-10-24T11:40');
+        const v = sh.facts.confirmed.length + 1;
+        sh.facts.confirmed.push({ v, value: fd.value, status: 'FINAL', source: `${fd.src}; Lục Giác ${sh.lgAnswer.label} lúc ${fmtShort(sh.lgAnswer.at)}`, by: fd.by, at: S.now, vis: 'ALL' });
+        sh.final = { value: fd.value, truck: fd.truck, by: fd.by, at: S.now };
+        sh.requests.sched.status = 'CLOSED';
+        sh.events.push({ id: nid(), t: 'confirmed', at: S.now, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: `Lịch giao đã chốt: ${fmt(fd.value)}`, text: `Thay lịch cũ ${fmt(sh.facts.confirmed[0].value)}. Xe: ${fd.truck}.`, meta: `Người thực hiện: <b>${esc(fd.by)}</b> · Việc tiếp theo: <b>${esc(fd.nextTask)}</b> (hạn ${fmt(fd.next)})`, fact: 'confirmed', v });
+        sh.flow = 5; sh.nextUpdateDue = fd.next; sh.opStatus = 'Ở kho ghép — lịch giao mới đã chốt, chờ xe xuất kho';
+        toast('Đã chốt lịch giao. Lịch cũ vẫn giữ trong lịch sử phiên bản.');
+        render();
+      }
+    });
+  },
+
+  /* ---------- Lô B (HX-FCL-02) small branch ---------- */
+  b_si_reply() {
+    const sh = S.ships['HX-FCL-02']; if (sh.siState !== 'OPEN' || S.role !== 'LG') return;
+    openModal({
+      title: 'Phản hồi SI draft', submit: 'Gửi phản hồi',
+      body: `<div class="notice info">Hạn SI theo booking: 18:00 24/10 giờ Ninh Ba (UTC+8) = 17:00 giờ VN. Phản hồi chưa có nghĩa SI đã được nộp.</div>
+        <label class="radio"><input type="radio" name="opt" value="ok" checked><span><b>Thông tin SI đúng</b></span></label>
+        <label class="radio"><input type="radio" name="opt" value="fix"><span><b>Cần sửa</b></span></label>
+        ${field('Ghi chú (bắt buộc nếu cần sửa)', 'note', '')}
+        <button type="button" class="btn link" data-doc="si">Xem SI draft hiện hành</button>`,
+      onSubmit(fd) {
+        if (fd.opt === 'fix' && !fd.note.trim()) return 'Ghi rõ nội dung cần sửa.';
+        advance(addMin(S.now, 20));
+        const q = sh.requests.si; q.status = 'ANSWERED'; q.answer = { ok: fd.opt === 'ok', note: fd.note.trim(), at: S.now };
+        sh.siState = fd.opt === 'ok' ? 'OK' : 'FIX';
+        sh.events.push({ id: nid(), t: 'chat', at: S.now, vis: 'ALL', who: { name: 'Anh Tuấn', party: 'LG' }, text: fd.opt === 'ok' ? `SI draft v${sh.docs[1].versions.length} đúng, anh chị nộp giúp em.` : `SI cần sửa: ${fd.note.trim()}` });
+        render();
+      }
+    });
+  },
+  b_si_revise() {
+    const sh = S.ships['HX-FCL-02']; if (sh.siState !== 'FIX' || S.role !== 'TT') return;
+    advance(addMin(S.now, 15));
+    const d = sh.docs[1]; const prev = d.versions[d.versions.length - 1];
+    const v = { v: prev.v + 1, at: S.now, by: 'Thu Hà (TT)', note: 'Sửa theo góp ý Lục Giác: ' + sh.requests.si.answer.note, rows: prev.rows.map(r => r[0] === 'Mô tả hàng' ? [r[0], r[1] + ' (đã sửa theo LG)'] : r) };
+    d.versions.push(v);
+    sh.events.push({ id: nid(), t: 'doc', at: S.now, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, doc: 'si', v: v.v, text: `SI draft v${v.v} — ${v.note}` });
+    sh.requests.si.status = 'OPEN'; sh.requests.si.answer = null; sh.requests.si.ask = `Nhờ Lục Giác xác nhận lại SI draft v${v.v} trước 15:00 để kịp hạn SI 17:00 (giờ VN).`;
+    sh.siState = 'OPEN'; sh.cutoffs[0].state = `SI draft v${v.v} chờ Lục Giác xác nhận`;
+    sh.events.push({ id: nid(), t: 'request', at: S.now, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, req: 'si' });
+    toast(`Đã tạo SI draft v${v.v}; bản cũ giữ trong lịch sử.`);
+    render();
+  },
+  b_si_submit() {
+    const sh = S.ships['HX-FCL-02']; if (sh.siState !== 'OK' || S.role !== 'TT') return;
+    openModal({
+      title: 'Ghi nhận đã nộp SI', submit: 'Ghi nhận',
+      body: `<div class="notice info">Chỉ ghi nhận trong demo — không kết nối hệ thống hãng tàu.</div>${field('Kênh / nguồn', 'src', 'Nộp qua đại lý Ninh Ba — email xác nhận nhận SI')}${field('Thời điểm nộp', 'at', addMin(S.now, 10), 'datetime-local')}`,
+      onSubmit(fd) {
+        if (!fd.src.trim() || !fd.at) return 'Cần nguồn và thời điểm.';
+        if (ms(fd.at) > ms(sh.cutoffs[0].at)) return 'Thời điểm nộp sau hạn SI — kiểm tra lại.';
+        advance(fd.at);
+        sh.siState = 'SUBMITTED'; sh.requests.si.status = 'CLOSED';
+        Object.assign(sh.cutoffs[0], { done: true, state: `Đã nộp ${fmtShort(fd.at)} · ${fd.src}` });
+        sh.events.push({ id: nid(), t: 'confirmed', at: fd.at, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: `Đã nộp SI v${sh.docs[1].versions.length} trước hạn`, text: 'Lục Giác đã xác nhận nội dung; TT đã nộp cho hãng tàu qua đại lý.', src: fd.src, meta: `Nguồn: <b>${esc(fd.src)}</b> · ${fmtShort(fd.at)}` });
+        render();
+      }
+    });
+  },
+  b_release() {
+    const sh = S.ships['HX-FCL-02']; if (sh.release.status !== 'PENDING' || S.role !== 'TT') return;
+    openModal({
+      title: 'Ghi nhận nhà máy xác nhận cho xuất', submit: 'Lưu xác nhận',
+      body: `<div class="notice warn">Đây là xác nhận của nhà máy về tiền hàng Lục Giác đã trả. <b>Không phải khoản Trường Thành thu.</b></div>${field('Nguồn xác nhận', 'src', 'Email nhà máy (Ms. Chen) xác nhận đã nhận tiền, cho đóng hàng')}${field('Thời điểm', 'at', addMin(S.now, 10), 'datetime-local')}`,
+      onSubmit(fd) {
+        if (!fd.src.trim() || !fd.at) return 'Cần nguồn và thời điểm.';
+        advance(fd.at);
+        sh.release = { status: 'CONFIRMED', src: fd.src, at: fd.at };
+        sh.events.push({ id: nid(), t: 'verified', at: fd.at, vis: 'ALL', who: { name: 'Thu Hà', party: 'TT' }, title: 'Nhà máy đã xác nhận cho xuất hàng', text: 'Nhà máy xác nhận đã nhận tiền hàng từ Lục Giác và cho đóng hàng. Khoản này không phải tiền Trường Thành thu.', src: fd.src, by: 'Thu Hà (TT)', verifiedAt: fd.at });
+        render();
+      }
+    });
+  }
+};
+
+/* ==========================================================================
+   Source / history / document viewers
+   ========================================================================== */
+const STATUS_TXT = { REQUESTED: 'Yêu cầu', VERIFIED: 'Đã xác minh', CONFIRMED: 'Đã xác nhận', FINAL: 'Đã chốt' };
+function versionTable(arr, r, isTime = true) {
+  const xs = arr.filter(x => visible(x, r));
+  if (!xs.length) return '<div class="fact-s">Chưa có phiên bản.</div>';
+  return `<table class="t"><thead><tr><th>Bản</th><th>Giá trị</th><th>Trạng thái</th><th>Nguồn · người · lúc</th></tr></thead><tbody>${xs.map((x, i) => `<tr><td>v${x.v}${i < xs.length - 1 ? ' <span class="chip old">đã thay</span>' : ' <span class="chip conf">hiện hành</span>'}</td><td><b>${esc(isTime ? fmt(x.value) : x.value)}</b>${x.note ? `<div class="fact-s">${esc(x.note)}</div>` : ''}</td><td>${esc(STATUS_TXT[x.status] || x.status)}${x.vis === 'TT' ? ' <span class="chip int">◈ chưa chia sẻ</span>' : ''}</td><td>${esc(x.source)}<div class="fact-s">${esc(x.by)} · ${fmtShort(x.at)}</div></td></tr>`).join('')}</tbody></table>`;
+}
+const FACT_LABEL = { requested: 'Lịch khách yêu cầu', eta: 'ETA dự kiến', confirmed: 'Lịch giao hai bên đã xác nhận', location: 'Vị trí / địa điểm' };
+function openSource(key, evId) {
+  const sh = S.ships[S.selected], r = S.role;
+  const ev = evId ? sh.events.find(e => e.id === evId) : null;
+  let body = '';
+  if (ev) body += `<div class="notice info"><b>${esc(ev.title || ev.text)}</b><br>Nguồn: ${esc(ev.src || '—')}${ev.by ? ` · Người xác minh: ${esc(ev.by)}` : ''} · ${fmtFull(ev.verifiedAt || ev.at)}${ev.nextDue ? `<br>Hạn cập nhật tiếp theo: ${fmtFull(ev.nextDue)}` : ''}</div>`;
+  if (key === 'location') body += versionTable(sh.location, r, false);
+  else if (key) body += versionTable(sh.facts[key], r);
+  if (key === 'eta' && r === 'TT' && sh.signal) body += `<div class="notice warn" style="margin-top:10px">Tin chưa xác minh (không phải phiên bản ETA): "${esc(sh.signal.text)}" — ${esc(sh.signal.from)} · ${fmtShort(sh.signal.at)}</div>`;
+  openModal({ title: key ? `Nguồn & lịch sử — ${FACT_LABEL[key]}` : 'Nguồn thông tin', body: body || '<div class="fact-s">Không có dữ liệu.</div>', wide: true });
+}
+function openHistory() {
+  const sh = S.ships[S.selected], r = S.role;
+  const sea = sh.mode === 'SEA';
+  const TL = { chat: 'Tin nhắn', unverified: 'Chưa xác minh', verified: 'Đã xác minh', request: 'Yêu cầu', confirmed: 'Kết quả đã xác nhận', milestone: 'Mốc', doc: 'Chứng từ', photo: 'Ảnh', share: 'Chia sẻ (demo)' };
+  const evs = sh.events.filter(e => visible(e, r)).slice().reverse();
+  openModal({
+    title: `Lịch sử cập nhật — ${sh.id}`, wide: true,
+    body: `<h3 style="font-size:13px;margin:0 0 6px">Lịch khách yêu cầu</h3>${versionTable(sh.facts.requested, r)}
+      <h3 style="font-size:13px;margin:12px 0 6px">${sea ? 'ETA về Hải Phòng' : 'ETA về kho Lục Giác'}</h3>${versionTable(sh.facts.eta, r)}
+      <h3 style="font-size:13px;margin:12px 0 6px">Lịch giao hai bên đã xác nhận</h3>${versionTable(sh.facts.confirmed, r)}
+      <h3 style="font-size:13px;margin:12px 0 6px">Nhật ký sự kiện (mới nhất trước)</h3>
+      <table class="t"><thead><tr><th>Lúc</th><th>Loại</th><th>Nội dung</th><th>Ai</th></tr></thead><tbody>${evs.map(e => { const q = e.req ? sh.requests[e.req] : null; return `<tr><td>${fmtShort(e.at)}</td><td>${esc(TL[e.t])}${e.vis === 'TT' ? ' <span class="chip int">◈</span>' : ''}</td><td>${esc(e.title || e.text || (q && q.ask) || '')}</td><td>${esc(e.who ? e.who.name : 'Hệ thống')}</td></tr>`; }).join('')}</tbody></table>`
+  });
+}
+function openDoc(id, v) {
+  const sh = S.ships[S.selected];
+  const d = sh.docs.find(x => x.id === id); if (!d || !d.versions.length) return;
+  const n = d.versions.length; let cur = Number(v) || n;
+  const draw = () => {
+    const ver = d.versions[cur - 1], prev = cur > 1 ? d.versions[cur - 2] : null;
+    const tabs = d.versions.map(x => `<button type="button" data-ver="${x.v}" aria-pressed="${x.v === cur}">v${x.v}${x.v === n ? ' · hiện hành' : ' · đã thay'}</button>`).join('');
+    let content;
+    if (ver.photo) content = photoSvg();
+    else content = `<table class="t"><thead><tr><th>Trường</th><th>v${ver.v}</th>${prev ? `<th>So với v${prev.v}</th>` : ''}</tr></thead><tbody>${ver.rows.map((row, i) => { const old = prev && prev.rows[i] ? prev.rows[i][1] : null; const ch = prev && old !== row[1]; return `<tr class="${ch ? 'changed' : ''}"><td>${esc(row[0])}</td><td><b>${esc(row[1])}</b>${ch ? ' <span class="chip unv">ĐỔI</span>' : ''}</td>${prev ? `<td>${ch ? esc(old) : '<span class="fact-s">giống</span>'}</td>` : ''}</tr>`; }).join('')}</tbody></table>`;
+    $('#doc-view').innerHTML = `<div class="tabs" role="group" aria-label="Phiên bản">${tabs}</div>
+      <div class="paper ${cur === n ? 'current' : 'superseded'}" data-testid="doc-paper"><div style="font-weight:800;margin-bottom:4px">${esc(d.name)} — v${ver.v}</div><div class="fact-s" style="margin-bottom:8px">${esc(ver.note)} · ${esc(ver.by)} · ${fmtShort(ver.at)}</div>${content}</div>
+      <div class="fact-s" style="margin-top:8px">Chứng từ mẫu — dữ liệu giả lập. ${n > 1 ? 'Dòng tô vàng là thay đổi so với bản liền trước.' : ''}</div>`;
+    $('#doc-view').querySelectorAll('[data-ver]').forEach(b => b.addEventListener('click', () => { cur = Number(b.dataset.ver); draw(); }));
+  };
+  openModal({ title: `Chứng từ — ${d.name}`, body: '<div id="doc-view"></div>', wide: true });
+  draw();
+}
+
+/* ==========================================================================
+   Events wiring
+   ========================================================================== */
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('button, [data-ship]'); if (!t) return;
+  if (t.dataset.role) { S.role = t.dataset.role; render(); toast(S.role === 'LG' ? 'Đang xem góc nhìn Lục Giác (mô phỏng).' : 'Đang xem góc nhìn Trường Thành (mô phỏng).'); return; }
+  if (t.id === 'reset') { const keepRole = S.role; S = seed(); S.role = keepRole; closeModal(); $('#chat').dataset.count = 0; render(); toast('Đã đặt lại dữ liệu demo về trạng thái ban đầu.'); return; }
+  if (t.dataset.ship) { S.selected = t.dataset.ship; S.mview = 'chat'; S.drawer = false; render(); return; }
+  if (t.dataset.filter) { S.filter = t.dataset.filter; render(); return; }
+  if (t.dataset.action) { if (t.closest('.overlay')) closeModal(); const fn = ACTIONS[t.dataset.action]; fn && fn(); return; }
+  if (t.dataset.doc !== undefined && t.dataset.doc) { if (t.closest('.overlay')) closeModal(); openDoc(t.dataset.doc, t.dataset.v); return; }
+  if (t.dataset.source !== undefined) { openSource(t.dataset.source || null, t.dataset.ev || null); return; }
+  if (t.dataset.history) { openHistory(); return; }
+  if (t.id === 'back') { S.mview = 'list'; S.drawer = false; render(); return; }
+  if (t.id === 'toggle-profile') {
+    if (window.matchMedia('(max-width:860px)').matches) { S.drawer = true; render(); $('#close-profile') && $('#close-profile').focus(); }
+    else { S.profileOpen = !S.profileOpen; render(); }
+    return;
+  }
+  if (t.id === 'close-profile') { if (window.matchMedia('(max-width:860px)').matches) S.drawer = false; else S.profileOpen = false; render(); return; }
+});
+$('#backdrop').addEventListener('click', () => { S.drawer = false; render(); });
+document.addEventListener('submit', ev => {
+  if (ev.target.id !== 'composer') return;
+  ev.preventDefault();
+  const txt = $('#msg').value.trim(); if (!txt) return;
+  const sh = S.ships[S.selected];
+  const internal = S.role === 'TT' && $('#internal') && $('#internal').checked;
+  advance(addMin(S.now, 2));
+  sh.events.push({ id: nid(), t: 'chat', at: S.now, vis: internal ? 'TT' : 'ALL', who: S.role === 'TT' ? { name: 'Thu Hà', party: 'TT' } : { name: sh.id === 'HX-FCL-02' ? 'Anh Tuấn' : 'Chị Lan', party: 'LG' }, text: txt });
+  render();
+  $('#msg') && $('#msg').focus();
+});
+$('#q').addEventListener('input', e => { S.q = e.target.value; renderList(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('#overlay')) closeModal();
+  else if (S.drawer) { S.drawer = false; render(); }
+});
+render();
+</script>
+</body>
+</html>
