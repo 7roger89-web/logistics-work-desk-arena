@@ -37,3 +37,40 @@ No original supplier workbook, margin, internal cost, cost history, raw GridFS I
 This is NOT an HTTP, GridFS, RBAC, browser, real-account or production test. No TT approval UI or manifest persistence implemented. The current internal schema is not asserted to have all these metadata fields; a separate trusted adapter is needed to resolve/store them before a real portal can consume this projection.
 
 NEXT: pilot with two test customers and one shared-load shipment. Implement the smallest trusted adapter + nonproduction authenticated read-only GET and exact download authorization; test guessing a foreign shipment ID, wrong tenant, stale document version, and an unpublished TT ETA. Require Owner approval before live customer access.
+
+## Trial Pilot — Shared-Truck ROAD Connection (TT → Lục Giác, Isolated Sandbox)
+
+- **Modules**:
+  - `core/hexa_trial_portal.py`: Isolated trial adapter + server-side session table + HTTP endpoints + self-contained HEXA V0 trial portal UI over `SANDBOX_STAGING` (`mongomock` + `mongomock.gridfs`), reusing `core/hexa_customer_publication.py`, `core/quotations.py`, `core/shipment_attachments.py` (`upload_attachment`, `fetch_attachment_bytes`), and `core/database.py`.
+  - `scripts/run_hexa_trial_portal.py`: Standalone trial HTTP server runner (`0.0.0.0:8787`).
+  - `tests/test_hexa_trial_http_e2e.py`: End-to-end TCP HTTP + GridFS integration test suite (5 system tests on top of the 19 unit tests in `tests/test_hexa_customer_publication_v0.py`).
+- **Simulated Shared-Truck Scenario (`TRIP-ROAD-2026-01`, xe `29H-886.68`)**:
+  - **Khách A (Lục Giác — `CUST-LUCGIAC`, lô `ROAD-LG-001`)**:
+    - Dữ liệu nội bộ TT giữ lại: giá vốn `42.000.000 VND`, lợi nhuận dự kiến `11.000.000 VND`, nhà cung cấp `Foshan Hexa Furniture Factory`, nhà xe `Nhà xe Việt Trung An Bình`, chứng từ giá vốn `DOC-LG-COST` (`kind=COST`), chứng từ cũ `DOC-LG-PL` (`v1`), và ETA chưa xác minh `2026-10-25`.
+    - Dữ liệu công bố sang Lục Giác: 2 mốc tiến độ đã xác minh (`EVT-LG-02-BORDER@v2`, `EVT-LG-01-PICKUP@v1`), 2 chứng từ đúng phiên bản (`DOC-LG-PL@v2`, `DOC-LG-PI@v1`), và tổng báo giá bán đã gửi (`Q-LG-ROAD-001` `v3`, `status=SENT`, `selling_total_vnd=57240000.0`).
+  - **Khách B cùng chuyến xe (Minh Đức — `CUST-MINHDUC`, lô `ROAD-MD-002`)**:
+    - Có chứng từ riêng (`DOC-MD-PL@v1`) và báo giá riêng (`Q-MD-ROAD-002` `v3`, `selling_total_vnd=38880000.0`) trên cùng chuyến xe `29H-886.68`.
+    - Mọi nỗ lực của Khách A đoán URL/mã lô của Khách B (`/api/hexa/v0/shipments/ROAD-MD-002`, `/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-MD-PL/download?version=v1`, hoặc giả mạo `?customer_id=CUST-MINHDUC` / header `X-Customer-Id`) đều bị chặn `HTTP 403 CUSTOMER_RESOURCE_UNAVAILABLE` với `0` lần đọc GridFS.
+
+## Exact Missing Fields in Current Internal Schema (Acceptance Criterion #7)
+
+Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các trường bắt buộc sau của `core/hexa_customer_publication.py` (không được giả định hoặc chế vào DB thật):
+
+1. **Danh tính phiên khách hàng (`principal`) — `core/users.py` & `core/auth.py`**:
+   - Đã có: `user_id`, `username`, `role` (`admin` | `sale` | `support` | `viewer`), `active`.
+   - **Thiếu**: `principal.kind == "customer"` và `principal.customer_id` gắn từ phiên xác thực phía server (lưu ý: `role="viewer"` nội bộ có quyền `finance_view`, tuyệt đối không dùng cho khách).
+2. **Manifest duyệt công bố của TT (`publication`) — `core/database.py`**:
+   - **Thiếu toàn bộ collection manifest công bố**: `state="PUBLISHED"`, `customer_id`, `shipment_id`, `approved_by`, `approved_at`, `event_versions: {event_id: version}`, `document_versions: {document_id: version}`, `quote: {id, version}`.
+3. **Lô hàng ghép xe ROAD (`shipment`) — `core/database.py` & `views/logi_staging_seed.py`**:
+   - Đã có: `id`, `customer_id` (1 khách/lô), `data["0.0"]["mode"]` (`"Truck"`), `data["1.2"]["eta"]`.
+   - **Thiếu**: `transport_mode` chuẩn hoá ở top-level (`"ROAD"`), `quote_id` ở top-level trên bản ghi `shipments`, và khóa gom chuyến xe ghép (`trip_id`) tách khỏi `shipment_id` từng khách.
+4. **Mốc tiến độ & xác minh ETA (`events`) — `core/shipment_journey.py`**:
+   - Đã có: các node hiển thị suy diễn trực tiếp từ `data["1.2"]`, `data["2.4"]`, `data["2.7"]`.
+   - **Thiếu**: `id` sự kiện công bố ổn định, `version`, `customer_id`, `verified` (`bool`), `verified_at` (ISO timestamp), `visibility` (`"CUSTOMER"` vs `"TT"`), `public_title`, `occurred_at`.
+5. **Chứng từ đính kèm (`documents`) — `core/shipment_attachments.py` & `core/database.py`**:
+   - Đã có: `id` (`ATT-...`), `shipment_id`, `storage_backend`, `storage_file_id`, `original_name`, `mime`, `category`, `status="AVAILABLE"`.
+   - **Thiếu**: `customer_id`, `version` phát hành (`v1`, `v2`), `kind` thuộc `ALLOWED_DOCUMENT_KINDS` (`PL`, `PI`, `BOOKING`, `SI`, `BL`, `AWB`, `POD`, `CUSTOMS`, `CUSTOMER_INVOICE`, `CUSTOMER_CONTRACT`, `PAYMENT_REQUEST`), `visibility` (`"CUSTOMER"` vs `"TT"`), `verified` (`bool`), `public_title`.
+6. **Báo giá (`quote`) — `core/quotations.py`**:
+   - Đã có đầy đủ `id`, `version`, `customer_id`, `status` (`SENT`/`ACCEPTED`), `calculation.selling_price_total_vnd` (và `estimated_cost_vnd`, `estimated_margin_vnd` nội bộ).
+   - **Thiếu**: trường liên kết `shipment.quote_id` trên lô hàng để đối chiếu 1-1 với `publication.quote.id`.
+

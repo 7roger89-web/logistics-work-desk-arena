@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Run the isolated HEXA V0 Trial Portal HTTP server (bound to 0.0.0.0:8787 by default)."""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.hexa_trial_portal import create_trial_http_server  # noqa: E402
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="HEXA V0 TT -> LG Trial Portal HTTP Server")
+    parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8787, help="Bind port (default: 8787)")
+    args = parser.parse_args()
+
+    server = create_trial_http_server(host=args.host, port=args.port)
+    bound_host, bound_port = server.server_address[:2]
+    print(
+        f"HEXA_TRIAL_PORTAL_READY http://{bound_host}:{bound_port}/ "
+        "(isolated SANDBOX_STAGING: mongomock + GridFS)",
+        flush=True,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()
