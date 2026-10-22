@@ -960,26 +960,23 @@ def test_view_model_does_not_n_plus_one_inbox_linked_loads(staging, monkeypatch)
 
 
 def test_incomplete_second_marker_then_unlink_replay_does_not_relink(staging, monkeypatch):
-    from core.database import get_db, load_inbox_snippet, relate_inbox_snippets
+    import core.database as database
+    from core.database import load_inbox_snippet, relate_inbox_snippets
     from pymongo.errors import PyMongoError
 
     session = {"seq": 0}
     left = _create(session, 1, "REQ-MARK-A", "H-TEST marker A")
     right = _create(session, 2, "REQ-MARK-B", "H-TEST marker B")
-    db = get_db()
-    real = db.quick_notes.update_one
+    real = database._inbox_record_relation_request
     markers = {"n": 0}
 
     def flaky(*args, **kwargs):
-        update = args[1] if len(args) > 1 else kwargs.get("update")
-        add = (update or {}).get("$addToSet") or {}
-        if "relation_request_ids" in add:
-            markers["n"] += 1
-            if markers["n"] == 2:
-                raise PyMongoError("synthetic second marker fail")
+        markers["n"] += 1
+        if markers["n"] == 2:
+            raise PyMongoError("synthetic second marker fail")
         return real(*args, **kwargs)
 
-    monkeypatch.setattr(db.quick_notes, "update_one", flaky)
+    monkeypatch.setattr(database, "_inbox_record_relation_request", flaky)
     out = relate_inbox_snippets(
         snippet_ids=[left["id"]],
         action="link",
@@ -993,8 +990,7 @@ def test_incomplete_second_marker_then_unlink_replay_does_not_relink(staging, mo
     assert right["id"] in (left_row.get("linked_snippet_ids") or [])
     assert left["id"] in (right_row.get("linked_snippet_ids") or [])
     assert "REQ-MARK-LINK" in (left_row.get("relation_request_ids") or [])
-    assert "REQ-MARK-LINK" not in (right_row.get("relation_request_ids") or [])
-    monkeypatch.setattr(db.quick_notes, "update_one", real)
+    monkeypatch.setattr(database, "_inbox_record_relation_request", real)
     unlink = relate_inbox_snippets(
         snippet_ids=[left["id"]],
         action="unlink",
@@ -1015,6 +1011,127 @@ def test_incomplete_second_marker_then_unlink_replay_does_not_relink(staging, mo
     right_row = load_inbox_snippet(right["id"])
     assert right["id"] not in (left_row.get("linked_snippet_ids") or [])
     assert left["id"] not in (right_row.get("linked_snippet_ids") or [])
+
+
+def test_first_marker_write_fail_then_unlink_replay_does_not_relink(staging, monkeypatch):
+    import core.database as database
+    from core.database import load_inbox_snippet, relate_inbox_snippets
+    from pymongo.errors import PyMongoError
+
+    session = {"seq": 0}
+    left = _create(session, 1, "REQ-FIRST-A", "H-TEST first-marker A")
+    right = _create(session, 2, "REQ-FIRST-B", "H-TEST first-marker B")
+    real = database._inbox_record_relation_request
+    markers = {"n": 0}
+
+    def flaky(*args, **kwargs):
+        markers["n"] += 1
+        if markers["n"] == 1:
+            raise PyMongoError("synthetic first marker fail")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(database, "_inbox_record_relation_request", flaky)
+    out = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="link",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-FIRST-LINK",
+    )
+    assert not out["ok"]
+    left_row = load_inbox_snippet(left["id"])
+    right_row = load_inbox_snippet(right["id"])
+    assert right["id"] in (left_row.get("linked_snippet_ids") or [])
+    assert left["id"] in (right_row.get("linked_snippet_ids") or [])
+    # Identity was consumed with the mutation, even though the dedicated
+    # first marker write threw — replay must not look like a fresh request.
+    assert "REQ-FIRST-LINK" in (left_row.get("relation_request_ids") or []) or (
+        "REQ-FIRST-LINK" in (right_row.get("relation_request_ids") or [])
+    )
+    monkeypatch.setattr(database, "_inbox_record_relation_request", real)
+    unlink = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="unlink",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-FIRST-UNLINK",
+    )
+    assert unlink["ok"], unlink
+    replay = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="link",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-FIRST-LINK",
+    )
+    assert replay["ok"], replay
+    left_row = load_inbox_snippet(left["id"])
+    right_row = load_inbox_snippet(right["id"])
+    assert right["id"] not in (left_row.get("linked_snippet_ids") or [])
+    assert left["id"] not in (right_row.get("linked_snippet_ids") or [])
+
+
+def test_download_after_load_more_keeps_prior_page_bytes(staging):
+    import base64
+    import hashlib
+
+    from core.database import load_inbox_snippet
+
+    session = {"seq": 0}
+    ids = []
+    for index in range(50):
+        row = _create(session, index + 1, f"REQ-PAGE-DL-{index}", f"H-TEST page-dl {index:02d}")
+        assert row["ok"], row
+        ids.append(row["id"])
+    created = _dispatch(session, 60, "inbox_snippet_create", {
+        "requestId": "REQ-PAGE-DL-FILE",
+        "rawText": "",
+        "files": [_file_payload("prior-page.pdf", "application/pdf", PDF_BYTES)],
+    })
+    assert created["ok"], created
+    file_id = created["id"]
+    attachment_id = created["readback"]["attachments"][0]["id"]
+    ids.append(file_id)
+    _backdate_created(ids)
+    stored = load_inbox_snippet(file_id)
+    durable = next(item for item in stored["attachments"] if item["id"] == attachment_id)
+    page1 = vm.build_view_model()["inbox"]
+    assert file_id in {row["id"] for row in page1["snippets"]}
+    before = page1["snippets"][-1]["createdAt"]
+    _dispatch(session, 61, "inbox_snippet_search", {
+        "requestId": "REQ-PAGE-DL-MORE",
+        "query": "",
+        "filter": "all",
+        "before": before,
+    })
+    page2 = vm.build_view_model()["inbox"]
+    assert file_id not in {row["id"] for row in page2["snippets"]}
+    down = _dispatch(session, 62, "inbox_snippet_download", {
+        "requestId": "REQ-PAGE-DL-GET",
+        "snippetId": file_id,
+        "attachmentId": attachment_id,
+    })
+    assert down["ok"], down
+    after = vm.build_view_model()["inbox"]
+    assert file_id not in {row["id"] for row in after["snippets"]}
+    pending = after.get("download") or {}
+    assert pending.get("attachmentId") == attachment_id
+    assert pending.get("snippetId") == file_id
+    assert pending.get("name") == "prior-page.pdf"
+    raw = pending.get("downloadBase64") or ""
+    assert raw
+    blob = str(pending)
+    assert "storage_file_id" not in blob
+    assert "sha256" not in blob.lower()
+    got = base64.b64decode(raw)
+    assert got == PDF_BYTES
+    assert hashlib.sha256(got).hexdigest() == durable["sha256"]
+    on_page = [
+        item.get("downloadBase64") or ""
+        for row in after["snippets"]
+        for item in (row.get("attachments") or [])
+    ]
+    assert PDF_BYTES not in [base64.b64decode(item) for item in on_page if item]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required for the shell DOM lane")

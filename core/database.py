@@ -2468,8 +2468,13 @@ def _inbox_apply_link_side(
     other_id: str,
     actor: Mapping[str, str],
     now: Any,
+    request_id: str = "",
 ) -> None:
-    """Change the relationship only. Request identity is recorded after BOTH sides succeed."""
+    """Mutate the relationship and consume request identity in the SAME update.
+
+    A later dedicated marker write is a no-op if this already recorded the id.
+    Failure of that later write must not make the request look fresh.
+    """
     update: dict[str, Any] = {
         "$set": {
             "updated_at": now,
@@ -2478,10 +2483,17 @@ def _inbox_apply_link_side(
             "updated_by_role": actor.get("role", ""),
         },
     }
+    add_to_set: dict[str, Any] = {}
+    rid = str(request_id or "").strip()
+    if rid:
+        add_to_set["relation_request_ids"] = rid
     if act == "link":
-        update["$addToSet"] = {field: other_id}
+        add_to_set[field] = other_id
+        update["$addToSet"] = add_to_set
     else:
         update["$pull"] = {field: other_id}
+        if add_to_set:
+            update["$addToSet"] = add_to_set
     db.quick_notes.update_one(_inbox_relation_selector(snippet_id), update)
 
 
@@ -2514,19 +2526,26 @@ def _inbox_reverse_link_side(
     other_id: str,
     actor: Mapping[str, str],
     now: Any,
+    request_id: str = "",
 ) -> None:
-    """Undo a just-applied side. Request ids are only stored after a completed pair."""
-    reverse = "$pull" if act == "link" else "$addToSet"
-    db.quick_notes.update_one(
-        _inbox_relation_selector(snippet_id),
-        {
-            reverse: {field: other_id},
-            "$set": {
-                "updated_at": now,
-                "updated_by": actor["username"],
-            },
+    """Undo a just-applied side, including that side's request identity."""
+    rid = str(request_id or "").strip()
+    header = {
+        "$set": {
+            "updated_at": now,
+            "updated_by": actor["username"],
         },
-    )
+    }
+    if act == "link":
+        pull: dict[str, Any] = {field: other_id}
+        if rid:
+            pull["relation_request_ids"] = rid
+        header["$pull"] = pull
+    else:
+        header["$addToSet"] = {field: other_id}
+        if rid:
+            header["$pull"] = {"relation_request_ids": rid}
+    db.quick_notes.update_one(_inbox_relation_selector(snippet_id), header)
 
 
 def relate_inbox_snippets(
@@ -2541,8 +2560,9 @@ def relate_inbox_snippets(
 
     Original raw_text is never rewritten. Relating is not a payment booking.
     Unlink updates the relationship only — files are not moved, copied, or deleted.
-    A request_id is applied at most once, so replaying an older link cannot
-    resurrect a newer unlink.
+    A request_id is consumed in the same write as the relationship change.
+    If that id is present on any involved snippet, replay never re-applies
+    the pair — it only fills a missing marker. A newer unlink therefore stays.
     """
     if not _require_business_permission(
         INBOX_WRITE_PERMISSION, "Bạn không có quyền ghép thông tin."
@@ -2633,12 +2653,8 @@ def relate_inbox_snippets(
         peer_before = load_inbox_snippet(target, db=db) if kind == "snippet" else None
         source_done = _inbox_request_recorded(before, rid)
         peer_done = _inbox_request_recorded(peer_before, rid) if kind == "snippet" else source_done
-        if source_done and peer_done:
-            snippets.append(before)
-            continue
-        if source_done or (kind == "snippet" and peer_done):
-            # Incomplete request identity: finish missing markers only.
-            # Re-applying the relationship would resurrect a newer unlink.
+        if source_done or peer_done:
+            # Consumed request: never re-apply. Only complete missing markers.
             try:
                 if not source_done:
                     _inbox_record_relation_request(
@@ -2667,6 +2683,7 @@ def relate_inbox_snippets(
                 other_id=target,
                 actor=actor,
                 now=now,
+                request_id=rid,
             )
             if kind == "snippet":
                 try:
@@ -2678,10 +2695,12 @@ def relate_inbox_snippets(
                         other_id=sid,
                         actor=actor,
                         now=now,
+                        request_id=rid,
                     )
                 except PyMongoError:
                     _inbox_reverse_link_side(
-                        db, snippet_id=sid, field=field, act=act, other_id=target, actor=actor, now=now,
+                        db, snippet_id=sid, field=field, act=act, other_id=target,
+                        actor=actor, now=now, request_id=rid,
                     )
                     raise
         except PyMongoError as exc:
@@ -2701,10 +2720,12 @@ def relate_inbox_snippets(
             if not (source_ok and peer_ok):
                 try:
                     _inbox_reverse_link_side(
-                        db, snippet_id=sid, field=field, act=act, other_id=target, actor=actor, now=now,
+                        db, snippet_id=sid, field=field, act=act, other_id=target,
+                        actor=actor, now=now, request_id=rid,
                     )
                     _inbox_reverse_link_side(
-                        db, snippet_id=target, field="linked_snippet_ids", act=act, other_id=sid, actor=actor, now=now,
+                        db, snippet_id=target, field="linked_snippet_ids", act=act, other_id=sid,
+                        actor=actor, now=now, request_id=rid,
                     )
                 except PyMongoError:
                     pass

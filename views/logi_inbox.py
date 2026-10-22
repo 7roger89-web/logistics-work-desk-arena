@@ -104,6 +104,30 @@ def _download_state() -> dict[str, Any]:
     return _session_map(INBOX_DOWNLOAD_KEY)
 
 
+def _project_session_download(download: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Authorized download bytes live in session, independent of the search page."""
+    if not isinstance(download, Mapping):
+        return None
+    snippet_id = _text(download.get("snippetId"))
+    attachment_id = _text(download.get("attachmentId"))
+    raw = _text(download.get("base64"))
+    if not snippet_id or not attachment_id or not raw:
+        return None
+    try:
+        seq = int(download.get("seq") or 0)
+    except (TypeError, ValueError):
+        seq = 0
+    return {
+        "snippetId": snippet_id,
+        "attachmentId": attachment_id,
+        "name": _text(download.get("fileName")),
+        "mime": _text(download.get("mime")) or "application/octet-stream",
+        "downloadAvailable": True,
+        "downloadBase64": raw,
+        "downloadSeq": seq,
+    }
+
+
 def _can_access_inbox() -> bool:
     from core.auth import can_operate_business
 
@@ -187,6 +211,7 @@ def inbox_projection(
         "targetId": "",
         "byContractId": {},
         "byShipmentId": {},
+        "download": None,
     }
     if not can_access:
         return empty
@@ -244,6 +269,7 @@ def inbox_projection(
         "targetId": target_id,
         "byContractId": by_contract,
         "byShipmentId": by_shipment,
+        "download": _project_session_download(download),
     }
 
 

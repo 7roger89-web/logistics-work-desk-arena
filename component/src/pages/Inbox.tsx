@@ -59,6 +59,14 @@ function useInboxDownload() {
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const handled = useRef<Record<string, number>>({});
   useEffect(() => {
+    const pending = vm?.inbox?.download;
+    if (pending?.downloadAvailable && pending.downloadBase64 && pending.attachmentId) {
+      const seq = pending.downloadSeq ?? 0;
+      if (handled.current[pending.attachmentId] !== seq) {
+        handled.current[pending.attachmentId] = seq;
+        downloadBinaryFile(pending.name, pending.downloadBase64, pending.mime || "application/octet-stream");
+      }
+    }
     const groups = [
       vm?.inbox?.snippets ?? [],
       ...Object.values(vm?.inbox?.byContractId ?? {}),

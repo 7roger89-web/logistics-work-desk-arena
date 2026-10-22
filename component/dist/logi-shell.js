@@ -18647,12 +18647,17 @@ function zl({ testId: e, onClick: t }) {
 function Bl() {
 	let e = (0, _.useSyncExternalStore)(C, S, S), t = (0, _.useRef)({});
 	(0, _.useEffect)(() => {
-		let n = [
+		let n = e?.inbox?.download;
+		if (n?.downloadAvailable && n.downloadBase64 && n.attachmentId) {
+			let e = n.downloadSeq ?? 0;
+			t.current[n.attachmentId] !== e && (t.current[n.attachmentId] = e, cs(n.name, n.downloadBase64, n.mime || "application/octet-stream"));
+		}
+		let r = [
 			e?.inbox?.snippets ?? [],
 			...Object.values(e?.inbox?.byContractId ?? {}),
 			...Object.values(e?.inbox?.byShipmentId ?? {})
 		];
-		for (let e of n) for (let n of e) for (let e of n.attachments ?? []) {
+		for (let e of r) for (let n of e) for (let e of n.attachments ?? []) {
 			if (!e.downloadAvailable || !e.downloadBase64) continue;
 			let n = e.downloadSeq ?? 0;
 			t.current[e.id] !== n && (t.current[e.id] = n, cs(e.name, e.downloadBase64, e.mime || "application/octet-stream"));

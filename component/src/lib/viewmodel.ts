@@ -2527,6 +2527,16 @@ export interface InboxSnippet {
   unknownLabel?: string;
 }
 
+export interface InboxDownload {
+  snippetId: string;
+  attachmentId: string;
+  name: string;
+  mime: string;
+  downloadAvailable: boolean;
+  downloadBase64?: string;
+  downloadSeq?: number;
+}
+
 export interface InboxSlice {
   canRead: boolean;
   canWrite: boolean;
@@ -2543,6 +2553,7 @@ export interface InboxSlice {
   targetId?: string;
   byContractId?: Record<string, InboxSnippet[]>;
   byShipmentId?: Record<string, InboxSnippet[]>;
+  download?: InboxDownload | null;
 }
 
 // ----------------------------------------------------------------------------
