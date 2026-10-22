@@ -21,22 +21,26 @@ const FIX = JSON.parse(
 );
 
 const SNIPPETS = [
-  { id: "isnp-usd-1", rawText: "H-TEST USD remittance 1 — SYN-USD-001", source: "bank", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T09:00:00", createdBy: "staging.support", requestId: "REQ-usd-1", contractIds: ["HDMB-0306"], linkedSnippetIds: ["isnp-cny-1"], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
-  { id: "isnp-cny-1", rawText: "H-TEST China received 1 — SYN-CNY-IN-001", source: "bank", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:50:00", createdBy: "staging.support", requestId: "REQ-cny-1", contractIds: ["HDMB-0306"], linkedSnippetIds: ["isnp-usd-1"], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
-  { id: "isnp-rmb-1", rawText: "H-TEST factory RMB payout 1 — SYN-RMB-001", source: "wechat", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:40:00", createdBy: "staging.support", requestId: "REQ-rmb-1", contractIds: ["HDMB-0306"], linkedSnippetIds: [], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
-  { id: "isnp-misc", rawText: "Lunch order SYN-MISC — weather chat, independent snippet", source: "zalo", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:30:00", createdBy: "staging.support", requestId: "REQ-misc", contractIds: [], linkedSnippetIds: [], linked: false, unverified: true, amount: null, currency: "", fxRate: null },
+  { id: "isnp-usd-1", rawText: "H-TEST USD remittance 1 — SYN-USD-001", source: "bank", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T09:00:00", createdBy: "staging.support", requestId: "REQ-usd-1", contractIds: ["HDMB-0306"], shipmentIds: [], linkedSnippetIds: ["isnp-cny-1"], attachments: [], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
+  { id: "isnp-cny-1", rawText: "H-TEST China received 1 — SYN-CNY-IN-001", source: "bank", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:50:00", createdBy: "staging.support", requestId: "REQ-cny-1", contractIds: ["HDMB-0306"], shipmentIds: [], linkedSnippetIds: ["isnp-usd-1"], attachments: [], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
+  { id: "isnp-rmb-1", rawText: "H-TEST factory RMB payout 1 — SYN-RMB-001", source: "wechat", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:40:00", createdBy: "staging.support", requestId: "REQ-rmb-1", contractIds: ["HDMB-0306"], shipmentIds: [], linkedSnippetIds: [], attachments: [], linked: true, unverified: true, amount: null, currency: "", fxRate: null },
+  { id: "isnp-misc", rawText: "Lunch order SYN-MISC — weather chat, independent snippet", source: "zalo", title: "", sourceRef: "", occurredAt: "", createdAt: "2026-10-22T08:30:00", createdBy: "staging.support", requestId: "REQ-misc", contractIds: [], shipmentIds: [], linkedSnippetIds: [], attachments: [], linked: false, unverified: true, amount: null, currency: "", fxRate: null },
 ];
 
 function withInbox(base, extra = {}) {
   return {
     ...base,
     inbox: {
+      canRead: true,
       canWrite: true,
       unverified: true,
       snippets: SNIPPETS,
       count: SNIPPETS.length,
       linkedCount: 3,
       unlinkedCount: 1,
+      hasMore: false,
+      byContractId: { "HDMB-0306": SNIPPETS.filter((row) => row.contractIds.includes("HDMB-0306")) },
+      byShipmentId: {},
       ...extra,
     },
   };
@@ -165,6 +169,8 @@ console.log("STEP 3 — Thêm sheet opens composer first");
   await tick();
   assert.ok($("[data-testid='inbox-composer']")[0], "composer missing");
   assert.ok($("[data-testid='inbox-composer-text']")[0], "required textarea missing");
+  assert.ok($("[data-testid='inbox-composer-paste']")[0], "JPEG/PNG paste zone missing");
+  assert.ok($("[data-testid='inbox-composer-file']")[0], "file picker missing");
   assert.ok($("[data-testid='inbox-composer-save-next']")[0], "Lưu & ghi tiếp missing");
   const save = $("[data-testid='inbox-composer-save']")[0];
   assert.ok(save);

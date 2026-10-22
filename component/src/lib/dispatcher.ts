@@ -186,7 +186,10 @@ export type LogiEventName =
   // Issue #212 — Bể thông tin / ghi nhanh. Capture is independent of
   // contracts; linking never books a payment.
   | "inbox_snippet_create"
-  | "inbox_snippet_link";
+  | "inbox_snippet_link"
+  | "inbox_snippet_attach"
+  | "inbox_snippet_download"
+  | "inbox_snippet_search";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -267,6 +270,9 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "cost_market_benchmark_fetch",
   "inbox_snippet_create",
   "inbox_snippet_link",
+  "inbox_snippet_attach",
+  "inbox_snippet_download",
+  "inbox_snippet_search",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

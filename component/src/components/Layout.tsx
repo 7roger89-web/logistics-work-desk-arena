@@ -382,7 +382,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="grid gap-2.5">
               <button data-testid="quick-add-inbox" onClick={() => setComposerOpen(true)} className="touch-target flex items-center gap-3 rounded-2xl border-2 border-slate-100 hover:border-[#1e5aa8] p-3.5 text-left lift bg-white">
                 <span className="w-11 h-11 rounded-xl grid place-items-center shrink-0 bg-amber-50 text-amber-800"><StickyNote size={21} /></span>
-                <span className="flex-1"><span className="font-bold text-[15px] text-[#0f2a4a] flex items-center gap-2">Ghi chú nhanh</span><span className="block text-[13px] text-slate-500">Dán Zalo / WeChat / ngân hàng — chưa cần hợp đồng</span></span>
+                <span className="flex-1"><span className="font-bold text-[15px] text-[#0f2a4a] flex items-center gap-2">Ghi chú nhanh</span><span className="block text-[13px] text-slate-500">Dán chữ hoặc ảnh/tệp — chưa cần hợp đồng</span></span>
                 <ChevronRight size={19} className="text-slate-300" />
               </button>
               {[

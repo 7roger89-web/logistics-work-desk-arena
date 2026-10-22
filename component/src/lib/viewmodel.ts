@@ -2491,6 +2491,19 @@ export interface ViewModel {
   inbox?: InboxSlice;
 }
 
+export interface InboxAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  originalSize: number;
+  storedSize: number;
+  sizeLabel: string;
+  uploadedAt: string;
+  downloadAvailable?: boolean;
+  downloadBase64?: string;
+  downloadSeq?: number;
+}
+
 export interface InboxSnippet {
   id: string;
   rawText: string;
@@ -2502,7 +2515,9 @@ export interface InboxSnippet {
   createdBy: string;
   requestId: string;
   contractIds: string[];
+  shipmentIds: string[];
   linkedSnippetIds: string[];
+  attachments: InboxAttachment[];
   linked: boolean;
   unverified: boolean;
   /** Always null — a snippet is not a booked amount. */
@@ -2513,12 +2528,18 @@ export interface InboxSnippet {
 }
 
 export interface InboxSlice {
+  canRead: boolean;
   canWrite: boolean;
   unverified: boolean;
   snippets: InboxSnippet[];
   count: number;
   linkedCount: number;
   unlinkedCount: number;
+  hasMore?: boolean;
+  query?: string;
+  filter?: string;
+  byContractId?: Record<string, InboxSnippet[]>;
+  byShipmentId?: Record<string, InboxSnippet[]>;
 }
 
 // ----------------------------------------------------------------------------
@@ -2543,15 +2564,27 @@ export function applyViewModel(next: ViewModel): void {
   }
   if (!next.inbox) {
     next.inbox = {
+      canRead: false,
       canWrite: false,
       unverified: true,
       snippets: [],
       count: 0,
       linkedCount: 0,
       unlinkedCount: 0,
+      byContractId: {},
+      byShipmentId: {},
     };
-  } else if (!Array.isArray(next.inbox.snippets)) {
-    next.inbox.snippets = [];
+  } else {
+    if (!Array.isArray(next.inbox.snippets)) next.inbox.snippets = [];
+    if (typeof next.inbox.canRead !== "boolean") next.inbox.canRead = next.inbox.canWrite;
+    for (const row of next.inbox.snippets) {
+      if (!Array.isArray(row.shipmentIds)) row.shipmentIds = [];
+      if (!Array.isArray(row.attachments)) row.attachments = [];
+      if (!Array.isArray(row.contractIds)) row.contractIds = [];
+      if (!Array.isArray(row.linkedSnippetIds)) row.linkedSnippetIds = [];
+    }
+    if (!next.inbox.byContractId) next.inbox.byContractId = {};
+    if (!next.inbox.byShipmentId) next.inbox.byShipmentId = {};
   }
   const prev = current;
   current = next;
