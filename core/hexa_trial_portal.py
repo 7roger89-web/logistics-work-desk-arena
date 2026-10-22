@@ -24,13 +24,14 @@ or grants live customer access.
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
 import hmac
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import secrets
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qs, urlparse
 
 from core.hexa_customer_publication import (
@@ -41,7 +42,18 @@ from core.hexa_customer_publication import (
 )
 
 TRIAL_COOKIE_NAME = "hexa_trial_session"
+TRIAL_TT_COOKIE_NAME = "hexa_trial_tt_session"
 INTERNAL_QA_HEADER = "X-Hexa-Internal-QA-Key"
+
+TT_STAFF_TRIAL_USERNAME = "tt.ops.truongthanh"
+TT_STAFF_TRIAL_PASSCODE = "TT-Trial-2026!"
+TT_VIEWER_TRIAL_USERNAME = "tt.viewer"
+TT_VIEWER_TRIAL_PASSCODE = "Viewer-Trial-2026!"
+
+CUSTOMER_A_TRIAL_USERNAME = "lucgiac.trial"
+CUSTOMER_A_TRIAL_PASSCODE = "LG-Trial-2026!"
+CUSTOMER_B_TRIAL_USERNAME = "minhduc.trial"
+CUSTOMER_B_TRIAL_PASSCODE = "MD-Trial-2026!"
 
 # Static/sample token names that must NEVER be accepted as valid HTTP session tokens.
 FORBIDDEN_SAMPLE_TOKENS: frozenset[str] = frozenset(
@@ -54,6 +66,10 @@ FORBIDDEN_SAMPLE_TOKENS: frozenset[str] = frozenset(
         "customer_b",
         "internal_viewer",
         "anonymous",
+        TT_STAFF_TRIAL_USERNAME,
+        TT_VIEWER_TRIAL_USERNAME,
+        CUSTOMER_A_TRIAL_USERNAME,
+        CUSTOMER_B_TRIAL_USERNAME,
     }
 )
 
@@ -303,7 +319,10 @@ class HexaTrialEnvironment:
             },
         }
 
-        # 2. Seed the two customers sharing the ROAD trip.
+        # 2. Seed the two customers sharing the ROAD trip + trial accounts (PBKDF2-SHA256 via core.auth).
+        from core import auth as core_auth
+        from core import users as core_users
+
         for cust_doc in (
             {
                 "id": CUSTOMER_A_ID,
@@ -319,6 +338,60 @@ class HexaTrialEnvironment:
             },
         ):
             db["customers"].replace_one({"id": cust_doc["id"]}, cust_doc, upsert=True)
+
+        # Seed TT internal staff accounts in db["users"] (reusing core.users & core.auth PBKDF2-SHA256)
+        tt_staff_doc = core_users.build_user_document(
+            TT_STAFF_TRIAL_USERNAME,
+            TT_STAFF_TRIAL_PASSCODE,
+            "Điều vận Trường Thành (TT Ops)",
+            "support",
+            active=True,
+            created_by="system",
+        )
+        tt_viewer_doc = {
+            "user_id": "tt_viewer_01",
+            "username": TT_VIEWER_TRIAL_USERNAME,
+            "display_name": "Internal Viewer (finance_view)",
+            "email": "",
+            "role": "viewer",
+            "active": True,
+            "password_hash": core_auth.hash_password(TT_VIEWER_TRIAL_PASSCODE, iterations=120000),
+            "created_by": "system",
+        }
+        db["users"].replace_one({"username": TT_STAFF_TRIAL_USERNAME}, tt_staff_doc, upsert=True)
+        db["users"].replace_one({"username": TT_VIEWER_TRIAL_USERNAME}, tt_viewer_doc, upsert=True)
+
+        # Seed trial customer login accounts in db["hexa_trial_customer_accounts"]
+        # Each account binds 1 username -> 1 server-enforced customer_id (never client-chosen).
+        db["hexa_trial_customer_accounts"].delete_many({})
+        db["hexa_trial_customer_accounts"].insert_many(
+            [
+                {
+                    "account_id": "cust_acct_lucgiac",
+                    "username": CUSTOMER_A_TRIAL_USERNAME,
+                    "password_hash": core_auth.hash_password(CUSTOMER_A_TRIAL_PASSCODE, iterations=120000),
+                    "kind": "customer",
+                    "customer_id": CUSTOMER_A_ID,
+                    "role_key": "customer_a",
+                    "label": "Khách A — Công ty TNHH Lục Giác (HEXA)",
+                    "display_name": "Lục Giác (Khách A)",
+                    "default_shipment_id": SHIPMENT_A_ID,
+                    "active": True,
+                },
+                {
+                    "account_id": "cust_acct_minhduc",
+                    "username": CUSTOMER_B_TRIAL_USERNAME,
+                    "password_hash": core_auth.hash_password(CUSTOMER_B_TRIAL_PASSCODE, iterations=120000),
+                    "kind": "customer",
+                    "customer_id": CUSTOMER_B_ID,
+                    "role_key": "customer_b",
+                    "label": "Khách B — Công ty CP Minh Đức",
+                    "display_name": "Minh Đức (Khách B)",
+                    "default_shipment_id": SHIPMENT_B_ID,
+                    "active": True,
+                },
+            ]
+        )
 
         # 3. Build and persist canonical quotes through core.quotations (real calculation engine).
         quote_a = self._build_trial_quote(
@@ -941,7 +1014,7 @@ class HexaTrialEnvironment:
         return copy.deepcopy(entry["principal"])
 
     def resolve_session_summary(self, session_token: str | None) -> dict[str, Any]:
-        """Return safe caller-scoped session metadata without exposing any session tokens."""
+        """Return safe caller-scoped customer session metadata without exposing any session tokens."""
         self.ensure_seeded()
         token = str(session_token or "").strip()
         if not token or token in FORBIDDEN_SAMPLE_TOKENS or token not in self.sessions:
@@ -957,12 +1030,639 @@ class HexaTrialEnvironment:
                 "default_shipment_id": "",
             }
         entry = self.sessions[token]
+        if entry["principal"].get("kind") == "tt_staff":
+            return {
+                "authenticated": False,
+                "label": "Ẩn danh — Chưa đăng nhập khách hàng",
+                "principal": {
+                    "authenticated": False,
+                    "kind": "customer",
+                    "customer_id": "",
+                    "display_name": "Khách ẩn danh",
+                },
+                "default_shipment_id": "",
+            }
         return {
             "authenticated": bool(entry["principal"].get("authenticated")),
             "label": entry["label"],
             "principal": copy.deepcopy(entry["principal"]),
             "default_shipment_id": entry["default_shipment_id"],
         }
+
+    def resolve_tt_session_summary(self, session_token: str | None) -> dict[str, Any]:
+        """Return safe TT staff session metadata without exposing any session tokens."""
+        self.ensure_seeded()
+        token = str(session_token or "").strip()
+        if not token or token in FORBIDDEN_SAMPLE_TOKENS or token not in self.sessions:
+            return {
+                "authenticated": False,
+                "label": "Chưa đăng nhập nhân sự Trường Thành",
+                "principal": {
+                    "authenticated": False,
+                    "kind": "tt_staff",
+                    "username": "",
+                    "role": "",
+                    "display_name": "Chưa xác thực",
+                },
+                "default_shipment_id": SHIPMENT_A_ID,
+            }
+        entry = self.sessions[token]
+        principal = entry["principal"]
+        if principal.get("kind") != "tt_staff" or not principal.get("authenticated"):
+            return {
+                "authenticated": False,
+                "label": "Chưa đăng nhập nhân sự Trường Thành",
+                "principal": {
+                    "authenticated": False,
+                    "kind": "tt_staff",
+                    "username": "",
+                    "role": "",
+                    "display_name": "Chưa xác thực",
+                },
+                "default_shipment_id": SHIPMENT_A_ID,
+            }
+        return {
+            "authenticated": True,
+            "label": entry["label"],
+            "principal": copy.deepcopy(principal),
+            "default_shipment_id": entry["default_shipment_id"],
+        }
+
+    def authenticate_customer_login(
+        self,
+        *,
+        username: str,
+        passcode: str,
+    ) -> tuple[str, dict[str, Any]]:
+        """Authenticate a trial customer account and bind exactly 1 customer_id to an opaque server session.
+
+        Logistics internal accounts (including ``viewer``) and invalid credentials
+        are rejected with ``PublicationDenied``. Any client-supplied ``customer_id``
+        is ignored by the caller.
+        """
+        from core import auth as core_auth
+        from core import database as core_db
+
+        self.ensure_seeded()
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        norm_user = str(username or "").strip().lower()
+        raw_pass = str(passcode or "")
+        if not norm_user or not raw_pass:
+            self._record_audit(
+                action="CUSTOMER_LOGIN",
+                principal={"kind": "customer", "customer_id": ""},
+                shipment_id="",
+                allowed=False,
+                detail="missing credentials",
+            )
+            raise PublicationDenied()
+
+        account = db["hexa_trial_customer_accounts"].find_one({"username": norm_user}, {"_id": 0})
+        if (
+            not account
+            or not account.get("active", False)
+            or account.get("kind") != "customer"
+            or not str(account.get("customer_id") or "").strip()
+            or not core_auth.verify_password(raw_pass, str(account.get("password_hash") or ""))
+        ):
+            self._record_audit(
+                action="CUSTOMER_LOGIN",
+                principal={"kind": "customer", "customer_id": ""},
+                shipment_id="",
+                allowed=False,
+                detail=f"denied login for username={norm_user}",
+            )
+            raise PublicationDenied()
+
+        bound_customer_id = str(account["customer_id"]).strip()
+        issued_token = f"hx_cust_{secrets.token_urlsafe(24)}"
+        self.sessions[issued_token] = {
+            "role_key": str(account.get("role_key") or "customer"),
+            "label": str(account.get("label") or account.get("display_name") or bound_customer_id),
+            "principal": {
+                "authenticated": True,
+                "kind": "customer",
+                "customer_id": bound_customer_id,
+                "username": norm_user,
+                "display_name": str(account.get("display_name") or norm_user),
+            },
+            "default_shipment_id": str(account.get("default_shipment_id") or ""),
+        }
+        summary = self.resolve_session_summary(issued_token)
+        self._record_audit(
+            action="CUSTOMER_LOGIN",
+            principal=summary["principal"],
+            shipment_id=summary["default_shipment_id"],
+            allowed=True,
+            detail=f"username={norm_user} bound to customer_id={bound_customer_id}",
+        )
+        return issued_token, summary
+
+    def authenticate_tt_staff_login(
+        self,
+        *,
+        username: str,
+        passcode: str,
+    ) -> tuple[str, dict[str, Any]]:
+        """Authenticate an authorized TT staff member (requires ``operations_write`` in ``core.auth``).
+
+        Customers and ``viewer`` role accounts are rejected with ``PublicationDenied``.
+        """
+        from core import auth as core_auth
+        from core import database as core_db
+        from core import users as core_users
+
+        self.ensure_seeded()
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        norm_user = str(username or "").strip().lower()
+        raw_pass = str(passcode or "")
+        if not norm_user or not raw_pass:
+            self._record_audit(
+                action="TT_STAFF_LOGIN",
+                principal={"kind": "tt_staff", "customer_id": ""},
+                shipment_id="",
+                allowed=False,
+                detail="missing credentials",
+            )
+            raise PublicationDenied()
+
+        user_doc = db["users"].find_one({"username": norm_user}, {"_id": 0})
+        authed = core_users.authenticate(user_doc or {}, raw_pass) if user_doc else None
+        role = str((authed or {}).get("role") or "").strip().lower()
+        perms = core_auth._role_permissions(role) if authed else set()
+        if not authed or ("*" not in perms and "operations_write" not in perms):
+            self._record_audit(
+                action="TT_STAFF_LOGIN",
+                principal={"kind": "tt_staff", "customer_id": ""},
+                shipment_id="",
+                allowed=False,
+                detail=f"denied TT login for username={norm_user} role={role or 'none'}",
+            )
+            raise PublicationDenied()
+
+        issued_token = f"hx_tt_{secrets.token_urlsafe(24)}"
+        self.sessions[issued_token] = {
+            "role_key": "tt_staff",
+            "label": f"Nội bộ TT — {authed['display_name']} ({authed['username']})",
+            "principal": {
+                "authenticated": True,
+                "kind": "tt_staff",
+                "user_id": str(authed["user_id"]),
+                "username": str(authed["username"]),
+                "role": role,
+                "display_name": str(authed["display_name"]),
+                "customer_id": "",
+            },
+            "default_shipment_id": SHIPMENT_A_ID,
+        }
+        summary = self.resolve_tt_session_summary(issued_token)
+        self._record_audit(
+            action="TT_STAFF_LOGIN",
+            principal=summary["principal"],
+            shipment_id=SHIPMENT_A_ID,
+            allowed=True,
+            detail=f"username={norm_user} role={role}",
+        )
+        return issued_token, summary
+
+    def logout_session(self, session_token: str | None) -> None:
+        """Invalidate a dynamically minted login session token."""
+        self.ensure_seeded()
+        token = str(session_token or "").strip()
+        if token and token not in self._role_tokens.values():
+            self.sessions.pop(token, None)
+
+    def _require_authorized_tt_staff(self, session_token: str | None) -> dict[str, Any]:
+        """Verify caller holds an authenticated TT staff session with ``operations_write``."""
+        from core import auth as core_auth
+
+        self.ensure_seeded()
+        token = str(session_token or "").strip()
+        if not token or token in FORBIDDEN_SAMPLE_TOKENS or token not in self.sessions:
+            raise PublicationDenied()
+        principal = self.sessions[token]["principal"]
+        role = str(principal.get("role") or "").strip().lower()
+        perms = core_auth._role_permissions(role)
+        if not (
+            principal.get("authenticated") is True
+            and principal.get("kind") == "tt_staff"
+            and str(principal.get("username") or "").strip()
+            and ("*" in perms or "operations_write" in perms)
+        ):
+            raise PublicationDenied()
+        return copy.deepcopy(principal)
+
+    def inspect_shipment_for_tt_staff(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+    ) -> dict[str, Any]:
+        """Return internal shipment file + candidate items + publication manifest for authorized TT staff."""
+        from core import database as core_db
+
+        self.ensure_seeded()
+        try:
+            principal = self._require_authorized_tt_staff(session_token)
+        except PublicationDenied:
+            self._record_audit(
+                action="TT_INSPECT_SHIPMENT",
+                principal=self.resolve_principal(session_token),
+                shipment_id=str(shipment_id or ""),
+                allowed=False,
+                detail="unauthorized caller on TT shipment desk",
+            )
+            raise
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        sid = str(shipment_id or "").strip()
+        shipment = self._load_adapted_shipment(db, sid)
+        if not shipment:
+            raise PublicationDenied()
+
+        cust_id = shipment["customer_id"]
+        cust_doc = db["customers"].find_one({"id": cust_id}, {"_id": 0}) or {}
+        link = db["hexa_trial_shipment_links"].find_one({"shipment_id": sid}, {"_id": 0}) or {}
+        quote_id = shipment["quote_id"]
+        quote = db["quotes"].find_one({"id": quote_id}, {"_id": 0}) if quote_id else None
+        calc = (quote or {}).get("calculation") or {}
+
+        raw_events = list(
+            db["hexa_trial_events"].find(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+        )
+        candidate_events = [
+            {
+                "id": str(ev.get("id") or ""),
+                "version": str(ev.get("version") or ""),
+                "stage_id": str(ev.get("stage_id") or ""),
+                "public_title": str(ev.get("public_title") or ""),
+                "occurred_at": str(ev.get("occurred_at") or ""),
+                "verified": bool(ev.get("verified")),
+                "verified_at": str(ev.get("verified_at") or ""),
+                "visibility": str(ev.get("visibility") or ""),
+                "eligible_for_customer": bool(
+                    ev.get("verified") is True
+                    and str(ev.get("verified_at") or "").strip()
+                    and ev.get("visibility") == "CUSTOMER"
+                ),
+            }
+            for ev in raw_events
+        ]
+
+        raw_docs = list(
+            db["hexa_trial_documents"].find(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+        )
+        candidate_documents = [
+            {
+                "id": str(doc.get("id") or ""),
+                "version": str(doc.get("version") or ""),
+                "kind": str(doc.get("kind") or ""),
+                "public_title": str(doc.get("public_title") or ""),
+                "file_name": str(doc.get("file_name") or ""),
+                "verified": bool(doc.get("verified")),
+                "visibility": str(doc.get("visibility") or ""),
+                "eligible_for_customer": bool(
+                    doc.get("verified") is True
+                    and doc.get("visibility") == "CUSTOMER"
+                    and doc.get("status") == "AVAILABLE"
+                ),
+            }
+            for doc in raw_docs
+        ]
+
+        publication = (
+            db["hexa_trial_publications"].find_one(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+            or {
+                "shipment_id": sid,
+                "customer_id": cust_id,
+                "state": "UNPUBLISHED",
+                "approved_by": "",
+                "approved_at": "",
+                "revoked_by": "",
+                "revoked_at": "",
+                "event_versions": {},
+                "document_versions": {},
+                "quote": None,
+                "history": [],
+            }
+        )
+
+        return {
+            "shipment": {
+                "shipment_id": sid,
+                "customer_id": cust_id,
+                "customer_name": str(cust_doc.get("name") or cust_id),
+                "transport_mode": shipment["transport_mode"],
+                "trip_id": str(link.get("trip_id") or SHARED_TRIP_ID),
+                "shared_truck_plate": str(link.get("shared_truck_plate") or SHARED_TRUCK_PLATE),
+                "internal_status": shipment["status"],
+                "unverified_eta_note": "ETA dự kiến 2026-10-25 (Tài xế báo miệng, TT chưa xác minh — hệ thống khóa chia sẻ)",
+                "internal_cost_summary_vnd": calc.get("estimated_cost_vnd"),
+                "internal_margin_summary_vnd": calc.get("estimated_margin_vnd"),
+                "selling_total_vnd": calc.get("selling_price_total_vnd"),
+            },
+            "candidate_events": candidate_events,
+            "candidate_documents": candidate_documents,
+            "candidate_quote": (
+                {
+                    "id": str(quote.get("id") or ""),
+                    "version": str(quote.get("version") or ""),
+                    "status": str(quote.get("status") or ""),
+                    "selling_total_vnd": calc.get("selling_price_total_vnd"),
+                }
+                if quote
+                else None
+            ),
+            "publication": publication,
+            "actor": principal["username"],
+        }
+
+    def publish_shipment_for_customer(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+        event_versions: Mapping[str, Any] | None = None,
+        document_versions: Mapping[str, Any] | None = None,
+        quote: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Approve & publish selected verified milestones, document versions, and selling quote."""
+        from core import database as core_db
+
+        self.ensure_seeded()
+        try:
+            principal = self._require_authorized_tt_staff(session_token)
+        except PublicationDenied:
+            self._record_audit(
+                action="PUBLISH_SHIPMENT",
+                principal=self.resolve_principal(session_token),
+                shipment_id=str(shipment_id or ""),
+                allowed=False,
+                detail="unauthorized caller attempted publish",
+            )
+            raise
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        sid = str(shipment_id or "").strip()
+        shipment = self._load_adapted_shipment(db, sid)
+        if not shipment:
+            raise PublicationDenied()
+        cust_id = shipment["customer_id"]
+
+        clean_events: dict[str, str] = {}
+        if isinstance(event_versions, Mapping):
+            for raw_ev_id, raw_ver in event_versions.items():
+                ev_id = str(raw_ev_id or "").strip()
+                ev_ver = str(raw_ver or "").strip()
+                if not ev_id or not ev_ver:
+                    continue
+                ev_row = db["hexa_trial_events"].find_one(
+                    {
+                        "shipment_id": sid,
+                        "customer_id": cust_id,
+                        "id": ev_id,
+                        "version": ev_ver,
+                        "verified": True,
+                        "visibility": "CUSTOMER",
+                    },
+                    {"_id": 0},
+                )
+                if ev_row and str(ev_row.get("verified_at") or "").strip():
+                    clean_events[ev_id] = ev_ver
+
+        clean_docs: dict[str, str] = {}
+        if isinstance(document_versions, Mapping):
+            for raw_doc_id, raw_ver in document_versions.items():
+                doc_id = str(raw_doc_id or "").strip()
+                doc_ver = str(raw_ver or "").strip()
+                if not doc_id or not doc_ver:
+                    continue
+                doc_row = db["hexa_trial_documents"].find_one(
+                    {
+                        "shipment_id": sid,
+                        "customer_id": cust_id,
+                        "id": doc_id,
+                        "version": doc_ver,
+                        "verified": True,
+                        "visibility": "CUSTOMER",
+                        "status": "AVAILABLE",
+                    },
+                    {"_id": 0},
+                )
+                if doc_row:
+                    clean_docs[doc_id] = doc_ver
+
+        clean_quote: dict[str, str] | None = None
+        if isinstance(quote, Mapping):
+            req_q_id = str(quote.get("id") or "").strip()
+            req_q_ver = str(quote.get("version") or "").strip()
+            if req_q_id and req_q_ver and req_q_id == shipment["quote_id"]:
+                q_row = db["quotes"].find_one(
+                    {"id": req_q_id, "customer_id": cust_id},
+                    {"_id": 0},
+                )
+                if q_row and str(q_row.get("version") or "").strip() == req_q_ver:
+                    clean_quote = {"id": req_q_id, "version": req_q_ver}
+
+        existing = (
+            db["hexa_trial_publications"].find_one(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+            or {}
+        )
+        history = list(existing.get("history") or [])
+        approver = str(principal["username"])
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        history.append(
+            {
+                "action": "PUBLISHED",
+                "actor": approver,
+                "role": str(principal.get("role") or ""),
+                "at": now_iso,
+                "event_versions": dict(clean_events),
+                "document_versions": dict(clean_docs),
+                "quote": dict(clean_quote) if clean_quote else None,
+            }
+        )
+        pub_doc = {
+            "shipment_id": sid,
+            "customer_id": cust_id,
+            "state": "PUBLISHED",
+            "approved_by": approver,
+            "approved_at": now_iso,
+            "revoked_by": str(existing.get("revoked_by") or ""),
+            "revoked_at": str(existing.get("revoked_at") or ""),
+            "event_versions": clean_events,
+            "document_versions": clean_docs,
+            "quote": clean_quote,
+            "history": history[-25:],
+        }
+        db["hexa_trial_publications"].replace_one(
+            {"shipment_id": sid, "customer_id": cust_id},
+            pub_doc,
+            upsert=True,
+        )
+        self._record_audit(
+            action="PUBLISH_SHIPMENT",
+            principal=principal,
+            shipment_id=sid,
+            allowed=True,
+            detail=(
+                f"approved_by={approver} events={list(clean_events.keys())} "
+                f"docs={list(clean_docs.keys())} quote={clean_quote}"
+            ),
+        )
+        return {"ok": True, "publication": pub_doc}
+
+    def revoke_shipment_publication(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+        document_ids: Sequence[str] | None = None,
+        event_ids: Sequence[str] | None = None,
+        revoke_quote: bool = False,
+    ) -> dict[str, Any]:
+        """Revoke either specific published documents/events/quote or the entire shipment publication."""
+        from core import database as core_db
+
+        self.ensure_seeded()
+        try:
+            principal = self._require_authorized_tt_staff(session_token)
+        except PublicationDenied:
+            self._record_audit(
+                action="REVOKE_PUBLICATION",
+                principal=self.resolve_principal(session_token),
+                shipment_id=str(shipment_id or ""),
+                allowed=False,
+                detail="unauthorized caller attempted revoke",
+            )
+            raise
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        sid = str(shipment_id or "").strip()
+        shipment = self._load_adapted_shipment(db, sid)
+        if not shipment:
+            raise PublicationDenied()
+        cust_id = shipment["customer_id"]
+
+        existing = (
+            db["hexa_trial_publications"].find_one(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+            or {}
+        )
+        history = list(existing.get("history") or [])
+        actor = str(principal["username"])
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        doc_list = [str(x).strip() for x in (document_ids or []) if str(x).strip()]
+        ev_list = [str(x).strip() for x in (event_ids or []) if str(x).strip()]
+        is_partial = bool(doc_list or ev_list or revoke_quote)
+
+        if is_partial and existing.get("state") == "PUBLISHED":
+            cur_events = dict(existing.get("event_versions") or {})
+            cur_docs = dict(existing.get("document_versions") or {})
+            cur_quote = copy.deepcopy(existing.get("quote"))
+            for d_id in doc_list:
+                cur_docs.pop(d_id, None)
+            for e_id in ev_list:
+                cur_events.pop(e_id, None)
+            if revoke_quote:
+                cur_quote = None
+            next_state = "PUBLISHED" if (cur_events or cur_docs or cur_quote) else "REVOKED"
+            history.append(
+                {
+                    "action": "REVOKED_ITEMS",
+                    "actor": actor,
+                    "role": str(principal.get("role") or ""),
+                    "at": now_iso,
+                    "revoked_documents": doc_list,
+                    "revoked_events": ev_list,
+                    "revoked_quote": bool(revoke_quote),
+                    "event_versions": dict(cur_events),
+                    "document_versions": dict(cur_docs),
+                    "quote": copy.deepcopy(cur_quote),
+                }
+            )
+            pub_doc = {
+                "shipment_id": sid,
+                "customer_id": cust_id,
+                "state": next_state,
+                "approved_by": str(existing.get("approved_by") or actor),
+                "approved_at": str(existing.get("approved_at") or now_iso),
+                "revoked_by": actor,
+                "revoked_at": now_iso,
+                "event_versions": cur_events,
+                "document_versions": cur_docs,
+                "quote": cur_quote,
+                "history": history[-25:],
+            }
+        else:
+            history.append(
+                {
+                    "action": "REVOKED_ALL",
+                    "actor": actor,
+                    "role": str(principal.get("role") or ""),
+                    "at": now_iso,
+                    "event_versions": {},
+                    "document_versions": {},
+                    "quote": None,
+                }
+            )
+            pub_doc = {
+                "shipment_id": sid,
+                "customer_id": cust_id,
+                "state": "REVOKED",
+                "approved_by": str(existing.get("approved_by") or ""),
+                "approved_at": str(existing.get("approved_at") or ""),
+                "revoked_by": actor,
+                "revoked_at": now_iso,
+                "event_versions": {},
+                "document_versions": {},
+                "quote": None,
+                "history": history[-25:],
+            }
+
+        db["hexa_trial_publications"].replace_one(
+            {"shipment_id": sid, "customer_id": cust_id},
+            pub_doc,
+            upsert=True,
+        )
+        self._record_audit(
+            action="REVOKE_PUBLICATION",
+            principal=principal,
+            shipment_id=sid,
+            allowed=True,
+            detail=f"revoked_by={actor} state={pub_doc['state']} docs={doc_list or 'ALL'}",
+        )
+        return {"ok": True, "publication": pub_doc}
 
     def _load_adapted_shipment(self, db: Any, shipment_id: str) -> dict[str, Any]:
         sid = str(shipment_id or "").strip()
@@ -1269,19 +1969,34 @@ def _extract_session_token(headers: Mapping[str, str]) -> str:
     return ""
 
 
+def _extract_tt_session_token(headers: Mapping[str, str]) -> str:
+    auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
+    if auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
+    if raw_cookie:
+        cookie = SimpleCookie()
+        cookie.load(raw_cookie)
+        if TRIAL_TT_COOKIE_NAME in cookie and cookie[TRIAL_TT_COOKIE_NAME].value.strip():
+            return cookie[TRIAL_TT_COOKIE_NAME].value.strip()
+        if TRIAL_COOKIE_NAME in cookie:
+            return cookie[TRIAL_COOKIE_NAME].value.strip()
+    return ""
+
+
 def render_trial_portal_html() -> str:
-    """Customer-only HEXA V0 portal HTML.
+    """Two-screen HEXA V0 trial portal HTML (Trường Thành Publish Desk & Customer Portal).
 
     Contains ZERO TT internal cost, margin, supplier, unverified ETA, or other
-    customer's information, and provides NO self-service session switcher on
-    the customer surface.
+    customer's information in static HTML, and provides NO self-service session
+    switcher on the customer surface.
     """
     return """<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HEXA V0 — Cổng thông tin lô hàng khách hàng</title>
+  <title>HEXA V0 — Luồng TT Duyệt Công Bố → Khách Hàng Đăng Nhập Xem Lô</title>
   <style>
     :root {
       --bg: #f4f6f9;
@@ -1295,6 +2010,8 @@ def render_trial_portal_html() -> str:
       --ok-bg: #e6f4ea;
       --deny: #b3261e;
       --deny-bg: #fce8e6;
+      --warn: #8a5300;
+      --warn-bg: #fef7e0;
       --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
@@ -1318,13 +2035,48 @@ def render_trial_portal_html() -> str:
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      max-width: 1080px;
+      max-width: 1120px;
       margin: 0 auto;
     }
     header h1 {
       font-size: 18px;
       margin: 0;
       font-weight: 700;
+    }
+    .screen-tabs {
+      max-width: 1120px;
+      margin: 16px auto 0;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .screen-tab-btn {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .screen-tab-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .screen-tab-btn .tab-title {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .screen-tab-btn .tab-sub {
+      display: block;
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-weight: 500;
     }
     .pill {
       padding: 4px 10px;
@@ -1335,13 +2087,16 @@ def render_trial_portal_html() -> str:
     }
     .pill-ok { background: var(--ok-bg); color: var(--ok); }
     .pill-deny { background: var(--deny-bg); color: var(--deny); }
+    .pill-warn { background: var(--warn-bg); color: var(--warn); }
     main {
-      max-width: 1080px;
-      margin: 20px auto;
+      max-width: 1120px;
+      margin: 16px auto;
       padding: 0 20px 48px;
       display: grid;
       gap: 20px;
     }
+    .screen-pane { display: grid; gap: 18px; }
+    .screen-pane.hidden { display: none; }
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -1357,6 +2112,7 @@ def render_trial_portal_html() -> str:
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .card h3 {
       margin: 14px 0 8px;
@@ -1368,11 +2124,11 @@ def render_trial_portal_html() -> str:
     .btn-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       margin-top: 10px;
       align-items: center;
     }
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       padding: 7px 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -1384,15 +2140,27 @@ def render_trial_portal_html() -> str:
       border: 1px solid var(--primary);
       background: var(--primary);
       color: #fff;
-      padding: 8px 12px;
+      padding: 8px 13px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
     }
     button:hover { background: #0b3960; }
+    button.btn-secondary {
+      background: #fff;
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    button.btn-secondary:hover { background: var(--primary-soft); }
+    button.btn-danger {
+      background: var(--deny);
+      border-color: var(--deny);
+      color: #fff;
+    }
+    button.btn-danger:hover { background: #8c1d17; }
     .kv-list {
       display: grid;
-      grid-template-columns: 190px 1fr;
+      grid-template-columns: 210px 1fr;
       gap: 6px 12px;
       font-size: 13px;
       margin: 8px 0;
@@ -1432,87 +2200,243 @@ def render_trial_portal_html() -> str:
     }
     .banner-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #a8dab5; }
     .banner-deny { background: var(--deny-bg); color: var(--deny); border: 1px solid #f6aea9; }
+    .banner-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #f5d68e; }
+    .helper-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="top-row">
       <div>
-        <h1>HEXA V0 — Cổng thông tin lô hàng được công bố cho khách hàng</h1>
+        <h1>HEXA V0 — Luồng Trường Thành Duyệt Công Bố → Khách Hàng Đăng Nhập Xem Lô</h1>
         <div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">
-          Chỉ hiển thị tiến độ đã xác minh, chứng từ đúng phiên bản đã duyệt và tổng báo giá bán đã gửi của đúng phiên khách hàng.
+          Môi trường thử nghiệm cô lập (SANDBOX_STAGING) · Chỉ hiển thị đúng tiến độ đã xác minh, chứng từ đúng phiên bản và báo giá bán đã duyệt.
         </div>
       </div>
-      <span id="active-session-pill" class="pill pill-deny">Đang kiểm tra phiên...</span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <span id="tt-session-pill" class="pill pill-warn">TT: Chưa đăng nhập</span>
+        <span id="active-session-pill" class="pill pill-deny">Khách: Chưa đăng nhập</span>
+      </div>
     </div>
   </header>
 
+  <nav class="screen-tabs" aria-label="Chuyển màn hình nghiệp vụ">
+    <button id="tab-btn-customer" class="screen-tab-btn active" onclick="switchScreen('customer')">
+      <span class="tab-title">Màn hình 2 — Cổng Khách Hàng (Lục Giác / Minh Đức)</span>
+      <span class="tab-sub">Bước khách hàng: Đăng nhập → Xem hành trình → Tải chứng từ đã duyệt</span>
+    </button>
+    <button id="tab-btn-tt" class="screen-tab-btn" onclick="switchScreen('tt')">
+      <span class="tab-title">Màn hình 1 — Nội bộ Trường Thành (Duyệt Công Bố)</span>
+      <span class="tab-sub">Bước nhân sự TT: Mở lô ROAD-LG-001 → Chọn mục chia sẻ → Công bố / Thu hồi</span>
+    </button>
+  </nav>
+
   <main>
-    <section class="card">
-      <h2>
-        <span>Tra cứu lô hàng theo phiên đã xác thực</span>
-        <span class="mono" id="http-status-badge">HTTP --</span>
-      </h2>
-      <div class="btn-row">
-        <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
-        <input id="shipment-input" type="text" value="ROAD-LG-001" />
-        <button onclick="loadRequestedShipment()">Tải thông tin lô</button>
-      </div>
-    </section>
+    <!-- ==================== SCREEN 1: TRƯỜNG THÀNH STAFF ==================== -->
+    <div id="screen-tt" class="screen-pane hidden">
+      <section class="card">
+        <h2>
+          <span>Bước 1 (Trường Thành) — Đăng nhập nhân sự điều vận / chứng từ</span>
+          <span id="tt-login-badge" class="pill pill-warn">Chưa xác thực TT</span>
+        </h2>
+        <div class="btn-row">
+          <label for="tt-username" class="muted">Tài khoản TT:</label>
+          <input id="tt-username" type="text" value="tt.ops.truongthanh" />
+          <label for="tt-passcode" class="muted">Mã xác thực:</label>
+          <input id="tt-passcode" type="password" value="TT-Trial-2026!" />
+          <button onclick="loginTtStaff()">1. Đăng nhập Trường Thành</button>
+          <button class="btn-secondary" onclick="logoutTtStaff()">Đăng xuất TT</button>
+        </div>
+        <div class="helper-box">
+          Tài khoản nhân sự TT có quyền duyệt công bố trong môi trường thử nghiệm:
+          <span class="mono">tt.ops.truongthanh</span> / <span class="mono">TT-Trial-2026!</span>
+          (Tài khoản <span class="mono">tt.viewer</span> hoặc tài khoản khách hàng sẽ bị từ chối quyền duyệt).
+        </div>
+        <div id="tt-auth-banner" style="margin-top: 10px;"></div>
+      </section>
 
-    <section class="card" id="hexa-portal-card">
-      <h2>
-        <span>Thông tin công bố từ Trường Thành (HEXA Customer Publication V0)</span>
-      </h2>
-      <div id="portal-status-banner" class="banner-result banner-deny">Chưa tải dữ liệu lô hàng.</div>
+      <section class="card">
+        <h2>
+          <span>Bước 2 &amp; 3 (Trường Thành) — Chọn mục chia sẻ → Duyệt công bố → Thu hồi</span>
+          <div class="btn-row" style="margin-top: 0;">
+            <label for="tt-shipment-input" class="muted">Mã lô:</label>
+            <input id="tt-shipment-input" type="text" value="ROAD-LG-001" style="width: 140px;" />
+            <button class="btn-secondary" onclick="loadTtShipmentDesk()">Mở hồ sơ lô</button>
+          </div>
+        </h2>
 
-      <div id="portal-content">
-        <dl class="kv-list">
-          <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
-          <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
-          <dt>Phương thức vận tải:</dt><dd class="mono" id="pub-mode">-</dd>
-          <dt>Tổng báo giá BÁN đã gửi:</dt><dd id="pub-quote">-</dd>
-        </dl>
+        <div id="tt-desk-status" class="banner-result banner-warn">
+          Hãy bấm "1. Đăng nhập Trường Thành" ở trên để mở hồ sơ nội bộ lô ROAD-LG-001 và duyệt công bố cho khách Lục Giác.
+        </div>
 
-        <h3>Tiến độ đã xác minh &amp; công bố (Timeline)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Mã mốc</th>
-              <th>Công đoạn</th>
-              <th>Nội dung công bố</th>
-              <th>Thời điểm xảy ra</th>
-              <th>Phiên bản</th>
-            </tr>
-          </thead>
-          <tbody id="pub-timeline-body"></tbody>
-        </table>
+        <div id="tt-desk-body" style="display: none;">
+          <dl class="kv-list">
+            <dt>Lô hàng / Khách hàng:</dt><dd id="tt-ship-summary">-</dd>
+            <dt>Chuyến xe ghép:</dt><dd class="mono" id="tt-trip-summary">-</dd>
+            <dt>Dữ liệu giữ lại nội bộ TT:</dt><dd id="tt-internal-holdback">-</dd>
+          </dl>
 
-        <h3>Chứng từ được phép tải (Kiểm quyền phía Server trước khi đọc file)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Mã chứng từ</th>
-              <th>Loại</th>
-              <th>Tên công bố</th>
-              <th>Phiên bản</th>
-              <th>Tải file</th>
-            </tr>
-          </thead>
-          <tbody id="pub-docs-body"></tbody>
-        </table>
-      </div>
+          <h3>1. Chọn Mốc tiến độ đã xác minh để chia sẻ cho khách</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 70px;">Chọn</th>
+                <th>Mã mốc &amp; Phiên bản</th>
+                <th>Nội dung tiến độ</th>
+                <th>Trạng thái xác minh</th>
+              </tr>
+            </thead>
+            <tbody id="tt-events-tbody"></tbody>
+          </table>
 
-      <div id="download-status-banner" style="margin-top: 12px;"></div>
-      <h3>Payload công bố (<span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span>)</h3>
-      <pre id="raw-publication-json">{}</pre>
-    </section>
+          <h3>2. Chọn Chứng từ &amp; Phiên bản cụ thể để cho phép khách tải</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 70px;">Chọn</th>
+                <th>Mã chứng từ &amp; Phiên bản</th>
+                <th>Loại</th>
+                <th>Tên chứng từ</th>
+                <th>Kiểm soát &amp; Thu hồi nhanh</th>
+              </tr>
+            </thead>
+            <tbody id="tt-docs-tbody"></tbody>
+          </table>
+
+          <h3>3. Chọn Phiên bản Báo giá BÁN muốn công bố</h3>
+          <div id="tt-quote-box" class="helper-box" style="font-size: 13px; color: var(--text);"></div>
+
+          <div class="btn-row" style="margin-top: 16px;">
+            <button onclick="submitTtPublish()">2. Công bố cho khách (Theo các mục đã tích chọn)</button>
+            <button class="btn-danger" onclick="submitTtRevokeAll()">3. Thu hồi toàn bộ công bố lô này</button>
+            <button class="btn-secondary" onclick="switchScreen('customer')">→ Sang Màn hình Khách hàng kiểm tra</button>
+          </div>
+
+          <h3>Bản ghi kiểm toán công bố tại Server (Ai duyệt · Lúc nào · Mục/Phiên bản nào)</h3>
+          <dl class="kv-list">
+            <dt>Trạng thái công bố:</dt><dd id="tt-pub-state">-</dd>
+            <dt>Người duyệt gần nhất:</dt><dd class="mono" id="tt-pub-approved">-</dd>
+            <dt>Người thu hồi gần nhất:</dt><dd class="mono" id="tt-pub-revoked">-</dd>
+            <dt>Mục &amp; phiên bản hiệu lực:</dt><dd class="mono" id="tt-pub-items">-</dd>
+          </dl>
+          <pre id="tt-pub-history-json">{}</pre>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== SCREEN 2: CUSTOMER PORTAL ==================== -->
+    <div id="screen-customer" class="screen-pane">
+      <section class="card">
+        <h2>
+          <span>Bước 1 (Khách hàng) — Đăng nhập tài khoản khách thử nghiệm riêng</span>
+          <span class="mono" id="http-status-badge">HTTP --</span>
+        </h2>
+        <div class="btn-row">
+          <label for="cust-username" class="muted">Tài khoản khách:</label>
+          <input id="cust-username" type="text" value="lucgiac.trial" />
+          <label for="cust-passcode" class="muted">Mật khẩu:</label>
+          <input id="cust-passcode" type="password" value="LG-Trial-2026!" />
+          <button onclick="loginCustomer()">1. Đăng nhập Khách hàng</button>
+          <button class="btn-secondary" onclick="logoutCustomer()">Đăng xuất</button>
+          <button class="btn-secondary" onclick="switchScreen('tt')">⇄ Mở Màn hình Trường Thành (Duyệt/Thu hồi)</button>
+        </div>
+        <div class="helper-box">
+          <strong>Tài khoản khách thử nghiệm (Mỗi tài khoản gắn cố định 1 mã khách hàng tại Server):</strong><br/>
+          • Khách A (Lục Giác — lô <span class="mono">ROAD-LG-001</span>): Tài khoản <span class="mono">lucgiac.trial</span> | Mật khẩu <span class="mono">LG-Trial-2026!</span><br/>
+          • Khách B (Minh Đức — đi ghép cùng xe, lô <span class="mono">ROAD-MD-002</span>): Tài khoản <span class="mono">minhduc.trial</span> | Mật khẩu <span class="mono">MD-Trial-2026!</span>
+        </div>
+        <div id="cust-auth-banner" style="margin-top: 10px;"></div>
+      </section>
+
+      <section class="card">
+        <h2>
+          <span>Bước 2 (Khách hàng) — Tra cứu lô hàng theo phiên đã xác thực</span>
+        </h2>
+        <div class="btn-row">
+          <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
+          <input id="shipment-input" type="text" value="ROAD-LG-001" />
+          <button onclick="loadRequestedShipment()">2. Xem hành trình &amp; công bố</button>
+        </div>
+      </section>
+
+      <section class="card" id="hexa-portal-card">
+        <h2>
+          <span>Bước 3 (Khách hàng) — Thông tin công bố từ Trường Thành &amp; Tải chứng từ</span>
+        </h2>
+        <div id="portal-status-banner" class="banner-result banner-deny">Chưa tải dữ liệu lô hàng.</div>
+
+        <div id="portal-content">
+          <dl class="kv-list">
+            <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
+            <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
+            <dt>Phương thức vận tải:</dt><dd class="mono" id="pub-mode">-</dd>
+            <dt>Tổng báo giá BÁN đã gửi:</dt><dd id="pub-quote">-</dd>
+          </dl>
+
+          <h3>Tiến độ đã xác minh &amp; công bố (Timeline)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Mã mốc</th>
+                <th>Công đoạn</th>
+                <th>Nội dung công bố</th>
+                <th>Thời điểm xảy ra</th>
+                <th>Phiên bản</th>
+              </tr>
+            </thead>
+            <tbody id="pub-timeline-body"></tbody>
+          </table>
+
+          <h3>Chứng từ được phép tải (Kiểm quyền phía Server trước khi đọc file)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Mã chứng từ</th>
+                <th>Loại</th>
+                <th>Tên công bố</th>
+                <th>Phiên bản</th>
+                <th>Tải file</th>
+              </tr>
+            </thead>
+            <tbody id="pub-docs-body"></tbody>
+          </table>
+        </div>
+
+        <div id="download-status-banner" style="margin-top: 12px;"></div>
+        <h3>Payload công bố (<span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span>)</h3>
+        <pre id="raw-publication-json">{}</pre>
+      </section>
+    </div>
   </main>
 
   <script>
+    let currentTtDeskData = null;
+
     function formatVnd(val) {
       if (val === null || val === undefined) return 'Chưa xác định (null)';
       return new Intl.NumberFormat('vi-VN').format(val) + ' VND';
+    }
+
+    function switchScreen(which) {
+      const isTt = which === 'tt';
+      document.getElementById('screen-tt').classList.toggle('hidden', !isTt);
+      document.getElementById('screen-customer').classList.toggle('hidden', isTt);
+      document.getElementById('tab-btn-tt').classList.toggle('active', isTt);
+      document.getElementById('tab-btn-customer').classList.toggle('active', !isTt);
+      if (isTt) {
+        refreshTtSessionState();
+      } else {
+        refreshSessionState();
+        loadRequestedShipment();
+      }
     }
 
     async function refreshSessionState() {
@@ -1524,6 +2448,270 @@ def render_trial_portal_html() -> str:
       pill.className = 'pill ' + (p.authenticated && p.kind === 'customer' ? 'pill-ok' : 'pill-deny');
       if (data.default_shipment_id) {
         document.getElementById('shipment-input').value = data.default_shipment_id;
+      }
+    }
+
+    async function loginCustomer() {
+      const username = (document.getElementById('cust-username').value || '').trim();
+      const passcode = document.getElementById('cust-passcode').value || '';
+      const banner = document.getElementById('cust-auth-banner');
+      const res = await fetch('/api/hexa/v0/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passcode }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        banner.className = 'banner-result banner-deny';
+        banner.textContent = `ĐĂNG NHẬP KHÁCH BỊ TỪ CHỐI (HTTP ${res.status}): Sai thông tin hoặc tài khoản không phải khách hàng.`;
+        await refreshSessionState();
+        return;
+      }
+      banner.className = 'banner-result banner-ok';
+      banner.textContent = `ĐĂNG NHẬP THÀNH CÔNG: ${body.label} (customer_id=${(body.principal || {}).customer_id})`;
+      await refreshSessionState();
+      await loadRequestedShipment();
+    }
+
+    async function logoutCustomer() {
+      await fetch('/api/hexa/v0/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      const banner = document.getElementById('cust-auth-banner');
+      banner.className = 'banner-result banner-warn';
+      banner.textContent = 'Đã đăng xuất phiên khách hàng.';
+      await refreshSessionState();
+      await loadRequestedShipment();
+    }
+
+    async function refreshTtSessionState() {
+      const res = await fetch('/api/hexa/v0/tt/session', { credentials: 'same-origin' });
+      const data = await res.json();
+      const p = data.principal || {};
+      const pill = document.getElementById('tt-session-pill');
+      const badge = document.getElementById('tt-login-badge');
+      if (data.authenticated && p.kind === 'tt_staff') {
+        pill.textContent = `TT: ${p.username} (${p.role})`;
+        pill.className = 'pill pill-ok';
+        badge.textContent = `Đã xác thực: ${p.display_name} (${p.username})`;
+        badge.className = 'pill pill-ok';
+        await loadTtShipmentDesk();
+      } else {
+        pill.textContent = 'TT: Chưa đăng nhập';
+        pill.className = 'pill pill-warn';
+        badge.textContent = 'Chưa xác thực TT';
+        badge.className = 'pill pill-warn';
+      }
+    }
+
+    async function loginTtStaff() {
+      const username = (document.getElementById('tt-username').value || '').trim();
+      const passcode = document.getElementById('tt-passcode').value || '';
+      const banner = document.getElementById('tt-auth-banner');
+      const res = await fetch('/api/hexa/v0/tt/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passcode }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        banner.className = 'banner-result banner-deny';
+        banner.textContent = `ĐĂNG NHẬP TT BỊ TỪ CHỐI (HTTP ${res.status}): Tài khoản không có quyền duyệt công bố.`;
+        return;
+      }
+      banner.className = 'banner-result banner-ok';
+      banner.textContent = `ĐĂNG NHẬP NHÂN SỰ TT THÀNH CÔNG: ${body.label}`;
+      await refreshTtSessionState();
+    }
+
+    async function logoutTtStaff() {
+      await fetch('/api/hexa/v0/tt/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      document.getElementById('tt-desk-body').style.display = 'none';
+      const status = document.getElementById('tt-desk-status');
+      status.className = 'banner-result banner-warn';
+      status.textContent = 'Đã đăng xuất nhân sự Trường Thành.';
+      await refreshTtSessionState();
+    }
+
+    async function loadTtShipmentDesk() {
+      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`, { credentials: 'same-origin' });
+      const status = document.getElementById('tt-desk-status');
+      const deskBody = document.getElementById('tt-desk-body');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        deskBody.style.display = 'none';
+        status.className = 'banner-result banner-deny';
+        status.textContent = `KHÔNG MỞ ĐƯỢC HỒ SƠ NỘI BỘ (HTTP ${res.status}): Cần đăng nhập nhân sự TT có quyền duyệt công bố.`;
+        return;
+      }
+      currentTtDeskData = body;
+      deskBody.style.display = 'block';
+      const s = body.shipment || {};
+      status.className = 'banner-result banner-ok';
+      status.textContent = `Đang mở hồ sơ nội bộ lô ${s.shipment_id} — Khách hàng: ${s.customer_name} (${s.customer_id})`;
+      document.getElementById('tt-ship-summary').textContent = `${s.shipment_id} · ${s.customer_name} (${s.customer_id}) · Phương thức: ${s.transport_mode}`;
+      document.getElementById('tt-trip-summary').textContent = `${s.trip_id} · Biển số: ${s.shared_truck_plate}`;
+      document.getElementById('tt-internal-holdback').textContent =
+        `Giá vốn: ${formatVnd(s.internal_cost_summary_vnd)} | Lợi nhuận dự kiến: ${formatVnd(s.internal_margin_summary_vnd)} | ${s.unverified_eta_note}`;
+
+      renderTtSelectionTables(body);
+      renderTtPublicationAudit(body.publication || {});
+    }
+
+    function renderTtSelectionTables(body) {
+      const pub = body.publication || {};
+      const approvedEvents = pub.event_versions || {};
+      const approvedDocs = pub.document_versions || {};
+      const approvedQuote = pub.quote || null;
+
+      const evTbody = document.getElementById('tt-events-tbody');
+      evTbody.innerHTML = '';
+      (body.candidate_events || []).forEach(ev => {
+        const checked = approvedEvents[ev.id] === ev.version;
+        const tr = document.createElement('tr');
+        if (ev.eligible_for_customer) {
+          tr.innerHTML = `
+            <td><input type="checkbox" class="tt-ev-check" data-id="${ev.id}" data-version="${ev.version}" ${checked ? 'checked' : ''} /></td>
+            <td class="mono">${ev.id}@${ev.version}</td>
+            <td>${ev.public_title}</td>
+            <td><span class="pill pill-ok">Đã xác minh (${ev.verified_at})</span></td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td><input type="checkbox" disabled /></td>
+            <td class="mono">${ev.id}@${ev.version}</td>
+            <td class="muted">${ev.public_title}</td>
+            <td><span class="pill pill-deny">Khóa tự động (Chưa xác minh / Nội bộ TT)</span></td>
+          `;
+        }
+        evTbody.appendChild(tr);
+      });
+
+      const docTbody = document.getElementById('tt-docs-tbody');
+      docTbody.innerHTML = '';
+      (body.candidate_documents || []).forEach(doc => {
+        const isCurrentApproved = approvedDocs[doc.id] === doc.version && pub.state === 'PUBLISHED';
+        const tr = document.createElement('tr');
+        if (doc.eligible_for_customer) {
+          tr.innerHTML = `
+            <td><input type="checkbox" class="tt-doc-check" data-id="${doc.id}" data-version="${doc.version}" ${isCurrentApproved ? 'checked' : ''} /></td>
+            <td class="mono">${doc.id}@${doc.version}</td>
+            <td class="mono"><span class="pill pill-ok">${doc.kind}</span></td>
+            <td>${doc.public_title} <span class="muted mono">(${doc.file_name})</span></td>
+            <td>
+              ${isCurrentApproved
+                ? `<button class="btn-danger" style="padding:4px 8px;font-size:12px;" onclick="submitTtRevokeDoc('${doc.id}')">Thu hồi chứng từ ${doc.id}</button>`
+                : '<span class="muted">Đủ điều kiện công bố</span>'}
+            </td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td><input type="checkbox" disabled /></td>
+            <td class="mono">${doc.id}@${doc.version}</td>
+            <td class="mono"><span class="pill pill-deny">${doc.kind}</span></td>
+            <td class="muted">${doc.public_title}</td>
+            <td><span class="pill pill-deny">Khóa tự động (Chứng từ nội bộ TT)</span></td>
+          `;
+        }
+        docTbody.appendChild(tr);
+      });
+
+      const qBox = document.getElementById('tt-quote-box');
+      const q = body.candidate_quote;
+      if (q && q.id) {
+        const qChecked = approvedQuote && approvedQuote.id === q.id && String(approvedQuote.version) === String(q.version) && pub.state === 'PUBLISHED';
+        qBox.innerHTML = `
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="tt-quote-check" data-id="${q.id}" data-version="${q.version}" ${qChecked ? 'checked' : ''} />
+            <span>Chia sẻ báo giá bán <strong class="mono">${q.id}@v${q.version}</strong> (Trạng thái: <span class="mono">${q.status}</span>) — Tổng giá bán: <strong>${formatVnd(q.selling_total_vnd)}</strong> (Tự động ẩn giá vốn &amp; biên lợi nhuận nội bộ)</span>
+          </label>
+        `;
+      } else {
+        qBox.textContent = 'Không có báo giá bán đủ điều kiện.';
+      }
+    }
+
+    function renderTtPublicationAudit(pub) {
+      const stateEl = document.getElementById('tt-pub-state');
+      const isPub = pub.state === 'PUBLISHED';
+      stateEl.innerHTML = `<span class="pill ${isPub ? 'pill-ok' : 'pill-deny'}">${pub.state || 'UNPUBLISHED'}</span>`;
+      document.getElementById('tt-pub-approved').textContent =
+        pub.approved_by ? `${pub.approved_by} lúc ${pub.approved_at}` : '(Chưa có)';
+      document.getElementById('tt-pub-revoked').textContent =
+        pub.revoked_by ? `${pub.revoked_by} lúc ${pub.revoked_at}` : '(Chưa thu hồi)';
+      const evStr = Object.entries(pub.event_versions || {}).map(([k, v]) => `${k}@${v}`).join(', ') || 'Không có';
+      const docStr = Object.entries(pub.document_versions || {}).map(([k, v]) => `${k}@${v}`).join(', ') || 'Không có';
+      const qStr = pub.quote ? `${pub.quote.id}@v${pub.quote.version}` : 'Không có';
+      document.getElementById('tt-pub-items').textContent = `Tiến độ: [${evStr}] | Chứng từ: [${docStr}] | Báo giá: [${qStr}]`;
+      document.getElementById('tt-pub-history-json').textContent = JSON.stringify(pub, null, 2);
+    }
+
+    async function submitTtPublish() {
+      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
+      const event_versions = {};
+      document.querySelectorAll('.tt-ev-check:checked').forEach(el => {
+        event_versions[el.dataset.id] = el.dataset.version;
+      });
+      const document_versions = {};
+      document.querySelectorAll('.tt-doc-check:checked').forEach(el => {
+        document_versions[el.dataset.id] = el.dataset.version;
+      });
+      let quote = null;
+      const qEl = document.getElementById('tt-quote-check');
+      if (qEl && qEl.checked) {
+        quote = { id: qEl.dataset.id, version: qEl.dataset.version };
+      }
+
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_versions, document_versions, quote }),
+      });
+      const status = document.getElementById('tt-desk-status');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        status.className = 'banner-result banner-deny';
+        status.textContent = `DUYỆT CÔNG BỐ THẤT BẠI (HTTP ${res.status})`;
+        return;
+      }
+      status.className = 'banner-result banner-ok';
+      status.textContent = `ĐÃ DUYỆT CÔNG BỐ CHO KHÁCH (${sid}) — Người duyệt: ${body.publication.approved_by} lúc ${body.publication.approved_at}`;
+      await loadTtShipmentDesk();
+    }
+
+    async function submitTtRevokeDoc(docId) {
+      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_ids: [docId] }),
+      });
+      const status = document.getElementById('tt-desk-status');
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        status.className = 'banner-result banner-warn';
+        status.textContent = `ĐÃ THU HỒI CHỨNG TỪ ${docId} — Khách hàng không thể tải chứng từ này nữa kể cả dùng link cũ.`;
+        await loadTtShipmentDesk();
+      }
+    }
+
+    async function submitTtRevokeAll() {
+      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const status = document.getElementById('tt-desk-status');
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        status.className = 'banner-result banner-warn';
+        status.textContent = `ĐÃ THU HỒI TOÀN BỘ CÔNG BỐ LÔ ${sid} — Người thu hồi: ${body.publication.revoked_by} lúc ${body.publication.revoked_at}`;
+        await loadTtShipmentDesk();
       }
     }
 
@@ -1550,7 +2738,7 @@ def render_trial_portal_html() -> str:
 
       if (!res.ok) {
         banner.className = 'banner-result banner-deny';
-        banner.textContent = `TRUY CẬP BỊ TỪ CHỐI (HTTP ${res.status}): ${body.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'}`;
+        banner.textContent = `TRUY CẬP BỊ TỪ CHỐI (HTTP ${res.status}): ${body.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'} (Chưa đăng nhập khách, lô chưa công bố, hoặc không thuộc quyền xem của bạn)`;
         content.style.opacity = '0.45';
         return;
       }
@@ -1610,6 +2798,14 @@ def render_trial_portal_html() -> str:
         const blob = await res.blob();
         banner.className = 'banner-result banner-ok';
         banner.textContent = `TẢI CHỨNG TỪ THÀNH CÔNG (HTTP ${res.status}): ${docId}@${version} (${blob.size} bytes PDF).`;
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = `${docId}-${version}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(dlUrl);
       } else {
         const err = await res.json().catch(() => ({}));
         banner.className = 'banner-result banner-deny';
@@ -1619,6 +2815,7 @@ def render_trial_portal_html() -> str:
 
     window.addEventListener('DOMContentLoaded', async () => {
       await refreshSessionState();
+      await refreshTtSessionState();
       await loadRequestedShipment();
     });
   </script>
@@ -1651,6 +2848,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         payload: Mapping[str, Any],
         *,
         set_cookie_token: str | None = None,
+        cookie_name: str = TRIAL_COOKIE_NAME,
     ) -> None:
         raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status)
@@ -1661,7 +2859,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         if set_cookie_token is not None:
             self.send_header(
                 "Set-Cookie",
-                f"{TRIAL_COOKIE_NAME}={set_cookie_token}; Path=/; HttpOnly; SameSite=Lax",
+                f"{cookie_name}={set_cookie_token}; Path=/; HttpOnly; SameSite=Lax",
             )
         self.end_headers()
         self.wfile.write(raw)
@@ -1677,6 +2875,18 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
 
     def _current_token(self) -> str:
         return _extract_session_token(self.headers)
+
+    def _current_tt_token(self) -> str:
+        return _extract_tt_session_token(self.headers)
+
+    def _read_json_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length") or 0)
+        raw_body = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            parsed = json.loads(raw_body.decode("utf-8"))
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:  # noqa: BLE001
+            return {}
 
     def _is_authorized_internal_qa(self) -> bool:
         if not self.internal_qa_mode:
@@ -1716,6 +2926,13 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/api/hexa/v0/tt/session":
+            self._send_json(
+                HTTPStatus.OK,
+                self.env.resolve_tt_session_summary(self._current_tt_token()),
+            )
+            return
+
         # Customer API NEVER exposes TT internal inspector data.
         if path == "/api/hexa/v0/trial-inspector":
             self._send_json(
@@ -1735,8 +2952,22 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, self.env.build_trial_inspector_snapshot())
             return
 
-        # Route: GET /api/hexa/v0/shipments/<shipment_id>
         parts = [p for p in path.split("/") if p]
+
+        # Route: GET /api/hexa/v0/tt/shipments/<shipment_id> (Authorized TT staff only)
+        if len(parts) == 6 and parts[:5] == ["api", "hexa", "v0", "tt", "shipments"]:
+            shipment_id = parts[5]
+            try:
+                payload = self.env.inspect_shipment_for_tt_staff(
+                    session_token=self._current_tt_token(),
+                    shipment_id=shipment_id,
+                )
+                self._send_json(HTTPStatus.OK, payload)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        # Route: GET /api/hexa/v0/shipments/<shipment_id>
         if len(parts) == 5 and parts[:4] == ["api", "hexa", "v0", "shipments"]:
             shipment_id = parts[4]
             try:
@@ -1790,6 +3021,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.env.ensure_seeded()
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
+        parts = [p for p in path.split("/") if p]
 
         # Customer path NEVER allows self-service session switching.
         if path == "/api/hexa/v0/session":
@@ -1797,6 +3029,111 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.FORBIDDEN,
                 {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"},
             )
+            return
+
+        # Server-verified Customer trial login (binds 1 customer_id on server; ignores client customer_id)
+        if path == "/api/hexa/v0/auth/login":
+            body = self._read_json_body()
+            username = str(body.get("username") or "").strip()
+            passcode = str(body.get("passcode") or body.get("access_code") or "")
+            try:
+                issued_token, summary = self.env.authenticate_customer_login(
+                    username=username,
+                    passcode=passcode,
+                )
+                self._send_json(
+                    HTTPStatus.OK,
+                    summary,
+                    set_cookie_token=issued_token,
+                    cookie_name=TRIAL_COOKIE_NAME,
+                )
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        if path == "/api/hexa/v0/auth/logout":
+            self.env.logout_session(self._current_token())
+            self._send_json(
+                HTTPStatus.OK,
+                self.env.resolve_session_summary(""),
+                set_cookie_token="",
+                cookie_name=TRIAL_COOKIE_NAME,
+            )
+            return
+
+        # Server-verified TT Staff trial login (requires operations_write permission)
+        if path == "/api/hexa/v0/tt/auth/login":
+            body = self._read_json_body()
+            username = str(body.get("username") or "").strip()
+            passcode = str(body.get("passcode") or body.get("access_code") or "")
+            try:
+                issued_token, summary = self.env.authenticate_tt_staff_login(
+                    username=username,
+                    passcode=passcode,
+                )
+                self._send_json(
+                    HTTPStatus.OK,
+                    summary,
+                    set_cookie_token=issued_token,
+                    cookie_name=TRIAL_TT_COOKIE_NAME,
+                )
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        if path == "/api/hexa/v0/tt/auth/logout":
+            self.env.logout_session(self._current_tt_token())
+            self._send_json(
+                HTTPStatus.OK,
+                self.env.resolve_tt_session_summary(""),
+                set_cookie_token="",
+                cookie_name=TRIAL_TT_COOKIE_NAME,
+            )
+            return
+
+        # Route: POST /api/hexa/v0/tt/shipments/<shipment_id>/publish
+        if (
+            len(parts) == 7
+            and parts[:5] == ["api", "hexa", "v0", "tt", "shipments"]
+            and parts[6] == "publish"
+        ):
+            shipment_id = parts[5]
+            body = self._read_json_body()
+            try:
+                result = self.env.publish_shipment_for_customer(
+                    session_token=self._current_tt_token(),
+                    shipment_id=shipment_id,
+                    event_versions=body.get("event_versions") if isinstance(body.get("event_versions"), Mapping) else {},
+                    document_versions=body.get("document_versions") if isinstance(body.get("document_versions"), Mapping) else {},
+                    quote=body.get("quote") if isinstance(body.get("quote"), Mapping) else None,
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        # Route: POST /api/hexa/v0/tt/shipments/<shipment_id>/revoke
+        if (
+            len(parts) == 7
+            and parts[:5] == ["api", "hexa", "v0", "tt", "shipments"]
+            and parts[6] == "revoke"
+        ):
+            shipment_id = parts[5]
+            body = self._read_json_body()
+            doc_ids = body.get("document_ids") if isinstance(body.get("document_ids"), list) else None
+            ev_ids = body.get("event_ids") if isinstance(body.get("event_ids"), list) else None
+            rev_quote = bool(body.get("revoke_quote", False))
+            try:
+                result = self.env.revoke_shipment_publication(
+                    session_token=self._current_tt_token(),
+                    shipment_id=shipment_id,
+                    document_ids=doc_ids,
+                    event_ids=ev_ids,
+                    revoke_quote=rev_quote,
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
             return
 
         # Isolated internal QA session switcher (only when internal_qa_mode=True + valid X-Hexa-Internal-QA-Key).
@@ -1808,12 +3145,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
 
-            length = int(self.headers.get("Content-Length") or 0)
-            raw_body = self.rfile.read(length) if length > 0 else b"{}"
-            try:
-                body = json.loads(raw_body.decode("utf-8"))
-            except Exception:  # noqa: BLE001
-                body = {}
+            body = self._read_json_body()
             role_key = str((body or {}).get("role") or "").strip()
             if role_key == "anonymous":
                 self._send_json(

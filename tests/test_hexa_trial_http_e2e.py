@@ -491,3 +491,344 @@ def test_security_http_client_cannot_self_switch_session_or_use_sample_tokens(
         qa_server.shutdown()
         qa_server.server_close()
         qa_thread.join(timeout=5)
+
+
+def _extract_cookie_value(headers: dict[str, str], cookie_name: str) -> str:
+    raw_set_cookie = headers.get("Set-Cookie") or headers.get("set-cookie") or ""
+    for part in raw_set_cookie.split(";"):
+        part = part.strip()
+        if part.startswith(f"{cookie_name}="):
+            return part.split("=", 1)[1].strip()
+    return ""
+
+
+def test_v1_end_to_end_tt_approve_lg_login_view_download_and_revoke_flow(
+    trial_server,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC1, AC2, AC3, AC4, AC5: Complete loop from unpublished -> TT selective approve -> LG login, view & download -> TT revoke document."""
+    base_url, env = trial_server
+
+    real_fetch = core_att.fetch_attachment_bytes
+    fetch_calls: list[tuple[Any, Any]] = []
+
+    def _spy_fetch(record_or_id: Any, *, shipment_id: Any = None) -> dict[str, Any]:
+        fetch_calls.append((record_or_id, shipment_id))
+        return real_fetch(record_or_id, shipment_id=shipment_id)
+
+    monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+
+    # 1. TT Staff logs in with trial TT staff account
+    status_tt_login, hdrs_tt_login, raw_tt_login = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert status_tt_login == 200
+    tt_session_info = json.loads(raw_tt_login.decode("utf-8"))
+    assert tt_session_info["authenticated"] is True
+    assert tt_session_info["principal"]["kind"] == "tt_staff"
+    assert tt_session_info["principal"]["username"] == "tt.ops.truongthanh"
+    tt_token = _extract_cookie_value(hdrs_tt_login, "hexa_trial_tt_session")
+    assert tt_token and tt_token not in ("tt.ops.truongthanh", "sess-internal-viewer")
+
+    # 2. Customer Lục Giác logs in via customer login endpoint (server-bound customer_id)
+    status_lg_login, hdrs_lg_login, raw_lg_login = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={
+            "username": "lucgiac.trial",
+            "passcode": "LG-Trial-2026!",
+            # Tampered customer_id in login body must be ignored by server
+            "customer_id": CUSTOMER_B_ID,
+        },
+    )
+    assert status_lg_login == 200
+    lg_session_info = json.loads(raw_lg_login.decode("utf-8"))
+    assert lg_session_info["authenticated"] is True
+    assert lg_session_info["principal"]["kind"] == "customer"
+    assert lg_session_info["principal"]["customer_id"] == CUSTOMER_A_ID
+    lg_token = _extract_cookie_value(hdrs_lg_login, TRIAL_COOKIE_NAME)
+    assert lg_token and lg_token not in ("sess-customer-lg", CUSTOMER_A_ID)
+
+    # 3. AC1 (Chưa công bố): TT revokes/clears publication first -> LG cannot view or download anything
+    status_revoke_all, _hdrs_rev, raw_revoke_all = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/revoke",
+        method="POST",
+        session_token=tt_token,
+        json_body={},
+    )
+    assert status_revoke_all == 200
+    revoked_manifest = json.loads(raw_revoke_all.decode("utf-8"))["publication"]
+    assert revoked_manifest["state"] == "REVOKED"
+    assert revoked_manifest["revoked_by"] == "tt.ops.truongthanh"
+    assert revoked_manifest["revoked_at"]
+
+    status_unpub_view, _hdrs, raw_unpub_view = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
+        session_token=lg_token,
+    )
+    assert status_unpub_view == 403
+    assert json.loads(raw_unpub_view.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+
+    status_unpub_dl, _hdrs, _raw = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2",
+        session_token=lg_token,
+    )
+    assert status_unpub_dl == 403
+    assert len(fetch_calls) == 0
+
+    # 4. AC2, AC4, AC5: TT inspects internal shipment and approves ONLY:
+    #    EVT-LG-01-PICKUP@v1, DOC-LG-PL@v2, and quote Q-LG-ROAD-001@v3
+    status_tt_view, _hdrs, raw_tt_view = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}",
+        session_token=tt_token,
+    )
+    assert status_tt_view == 200
+    tt_desk_data = json.loads(raw_tt_view.decode("utf-8"))
+    assert tt_desk_data["shipment"]["shipment_id"] == SHIPMENT_A_ID
+    assert tt_desk_data["shipment"]["customer_id"] == CUSTOMER_A_ID
+
+    status_pub, _hdrs, raw_pub = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {
+                "EVT-LG-01-PICKUP": "v1",
+                # Unverified ETA, internal ETA, and Minh Đức's event must be blocked by server
+                "EVT-LG-03-ETA-UNVERIFIED": "v1",
+                "EVT-LG-04-ETA-INTERNAL": "v1",
+                "EVT-MD-02-SHARED-TRUCK": "v1",
+            },
+            "document_versions": {
+                "DOC-LG-PL": "v2",
+                # Internal cost sheet and Minh Đức's document must be blocked by server
+                "DOC-LG-COST": "v1",
+                "DOC-MD-PL": "v1",
+            },
+            "quote": {"id": QUOTE_A_ID, "version": "3"},
+        },
+    )
+    assert status_pub == 200
+    pub_manifest = json.loads(raw_pub.decode("utf-8"))["publication"]
+    assert pub_manifest["state"] == "PUBLISHED"
+    assert pub_manifest["approved_by"] == "tt.ops.truongthanh"
+    assert pub_manifest["approved_at"]
+    assert pub_manifest["event_versions"] == {"EVT-LG-01-PICKUP": "v1"}
+    assert pub_manifest["document_versions"] == {"DOC-LG-PL": "v2"}
+    assert pub_manifest["quote"] == {"id": QUOTE_A_ID, "version": "3"}
+
+    # LG views the shipment and sees ONLY the approved items (no EVT-LG-02-BORDER, no DOC-LG-PI, no ETA, no internal cost)
+    status_lg_view, _hdrs, raw_lg_view = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}",
+        session_token=lg_token,
+    )
+    assert status_lg_view == 200
+    lg_text = raw_lg_view.decode("utf-8")
+    lg_payload = json.loads(lg_text)
+    assert lg_payload == {
+        "schema": "hexa-customer-publication/v0",
+        "reference": SHIPMENT_A_ID,
+        "transport_mode": "ROAD",
+        "timeline": [
+            {
+                "id": "EVT-LG-01-PICKUP",
+                "version": "v1",
+                "stage": "pickup",
+                "title": "Đã nhận 18 kiện hàng Lục Giác tại kho Bằng Tường và xếp lên xe 29H-886.68",
+                "occurred_at": "2026-10-20T08:30:00Z",
+            },
+        ],
+        "documents": [
+            {
+                "id": "DOC-LG-PL",
+                "version": "v2",
+                "kind": "PL",
+                "title": "Packing List Lục Giác (Bản v2 đã duyệt)",
+            },
+        ],
+        "quote": {
+            "id": QUOTE_A_ID,
+            "version": "3",
+            "status": "SENT",
+            "selling_total_vnd": 57240000.0,
+        },
+    }
+    assert "EVT-LG-02-BORDER" not in lg_text
+    assert "DOC-LG-PI" not in lg_text
+    assert "2026-10-25" not in lg_text
+    for sentinel in TRIAL_SENTINELS:
+        assert sentinel not in lg_text
+
+    # Unapproved document DOC-LG-PI@v1 cannot be downloaded (0 GridFS reads)
+    status_unapproved_doc, _hdrs, _raw = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PI/download?version=v1",
+        session_token=lg_token,
+    )
+    assert status_unapproved_doc == 403
+    assert len(fetch_calls) == 0
+
+    # Approved document DOC-LG-PL@v2 CAN be downloaded by LG
+    dl_url = f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2"
+    status_dl_ok, _hdrs_dl_ok, pdf_bytes = _http_request(
+        base_url,
+        dl_url,
+        session_token=lg_token,
+    )
+    assert status_dl_ok == 200
+    assert pdf_bytes.startswith(b"%PDF-1.4")
+    assert b"HEXA PACKING LIST v2" in pdf_bytes
+    assert len(fetch_calls) == 1
+
+    # 5. AC3: TT revokes document DOC-LG-PL -> LG cannot download it anymore even using the exact old URL
+    status_revoke_doc, _hdrs, raw_revoke_doc = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/revoke",
+        method="POST",
+        session_token=tt_token,
+        json_body={"document_ids": ["DOC-LG-PL"]},
+    )
+    assert status_revoke_doc == 200
+    after_doc_revoke = json.loads(raw_revoke_doc.decode("utf-8"))["publication"]
+    assert after_doc_revoke["document_versions"] == {}
+    assert after_doc_revoke["revoked_by"] == "tt.ops.truongthanh"
+    assert after_doc_revoke["revoked_at"]
+
+    status_dl_after_revoke, _hdrs, raw_dl_after_revoke = _http_request(
+        base_url,
+        dl_url,
+        session_token=lg_token,
+    )
+    assert status_dl_after_revoke == 403
+    assert json.loads(raw_dl_after_revoke.decode("utf-8")) == {"error": "CUSTOMER_RESOURCE_UNAVAILABLE"}
+    # Zero additional GridFS reads after revocation!
+    assert len(fetch_calls) == 1
+
+
+def test_v1_minh_duc_separate_login_and_strict_cross_tenant_and_role_boundaries(
+    trial_server,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC6, AC7, AC8: Minh Đức separate login, Logistics viewer rejection, and TT publish/revoke authorization boundary."""
+    base_url, env = trial_server
+
+    real_fetch = core_att.fetch_attachment_bytes
+    fetch_calls: list[tuple[Any, Any]] = []
+
+    def _spy_fetch(record_or_id: Any, *, shipment_id: Any = None) -> dict[str, Any]:
+        fetch_calls.append((record_or_id, shipment_id))
+        return real_fetch(record_or_id, shipment_id=shipment_id)
+
+    monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+
+    # 1. Minh Đức logs in with separate trial customer account
+    status_md_login, hdrs_md_login, raw_md_login = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={
+            "username": "minhduc.trial",
+            "passcode": "MD-Trial-2026!",
+            "customer_id": CUSTOMER_A_ID,  # Attempted tampering ignored
+        },
+    )
+    assert status_md_login == 200
+    md_info = json.loads(raw_md_login.decode("utf-8"))
+    assert md_info["principal"]["customer_id"] == CUSTOMER_B_ID
+    md_token = _extract_cookie_value(hdrs_md_login, TRIAL_COOKIE_NAME)
+    assert md_token
+
+    # Minh Đức can view own shipment ROAD-MD-002
+    status_md_own, _hdrs, raw_md_own = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_B_ID}",
+        session_token=md_token,
+    )
+    assert status_md_own == 200
+    assert json.loads(raw_md_own.decode("utf-8"))["reference"] == SHIPMENT_B_ID
+
+    # Minh Đức CANNOT view Lục Giác's shipment or download Lục Giác's document (0 GridFS bytes read)
+    status_md_lg, _hdrs, _raw = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}?customer_id={CUSTOMER_A_ID}",
+        session_token=md_token,
+        headers={"X-Customer-Id": CUSTOMER_A_ID},
+    )
+    assert status_md_lg == 403
+    status_md_lg_dl, _hdrs, _raw = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2",
+        session_token=md_token,
+    )
+    assert status_md_lg_dl == 403
+    assert len(fetch_calls) == 0
+
+    # 2. AC7: Logistics 'viewer' account and wrong passwords CANNOT log into customer portal or TT publish desk
+    for bad_login_path in ("/api/hexa/v0/auth/login", "/api/hexa/v0/tt/auth/login"):
+        for bad_creds in (
+            {"username": "tt.viewer", "passcode": "Viewer-Trial-2026!"},
+            {"username": "lucgiac.trial", "passcode": "wrong-passcode"},
+            {"username": "unknown.user", "passcode": "TT-Trial-2026!"},
+        ):
+            st_bad, hdrs_bad, _ = _http_request(
+                base_url,
+                bad_login_path,
+                method="POST",
+                json_body=bad_creds,
+            )
+            assert st_bad == 403
+            assert "Set-Cookie" not in hdrs_bad
+
+    # Customer credentials CANNOT log into TT staff publish desk
+    st_cust_on_tt, hdrs_cust_on_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_cust_on_tt == 403
+    assert "Set-Cookie" not in hdrs_cust_on_tt
+
+    # 3. AC8: Customers, Logistics viewer, anonymous, and sample tokens CANNOT call TT publish/revoke/inspect endpoints
+    token_a = _server_issued_token(env, "customer_a", "sess-customer-lg")
+    token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
+    for unauthorized_token in (None, token_a, md_token, token_viewer, "sess-customer-lg", "tt.ops.truongthanh"):
+        st_get_tt, _, _ = _http_request(
+            base_url,
+            f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}",
+            session_token=unauthorized_token,
+        )
+        assert st_get_tt == 403
+
+        st_pub_tt, _, _ = _http_request(
+            base_url,
+            f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/publish",
+            method="POST",
+            session_token=unauthorized_token,
+            json_body={
+                "event_versions": {"EVT-LG-01-PICKUP": "v1"},
+                "document_versions": {"DOC-LG-PL": "v2"},
+                "quote": {"id": QUOTE_A_ID, "version": "3"},
+            },
+        )
+        assert st_pub_tt == 403
+
+        st_rev_tt, _, _ = _http_request(
+            base_url,
+            f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/revoke",
+            method="POST",
+            session_token=unauthorized_token,
+            json_body={},
+        )
+        assert st_rev_tt == 403
+

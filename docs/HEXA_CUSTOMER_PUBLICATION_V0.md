@@ -78,3 +78,20 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
    - Đã có đầy đủ `id`, `version`, `customer_id`, `status` (`SENT`/`ACCEPTED`), `calculation.selling_price_total_vnd` (và `estimated_cost_vnd`, `estimated_margin_vnd` nội bộ).
    - **Thiếu**: trường liên kết `shipment.quote_id` trên lô hàng để đối chiếu 1-1 với `publication.quote.id`.
 
+## End-to-End Trial Loop V1 — TT Approve/Revoke → Customer Login & Download (`HEXA-TT-LG-APPROVE-LOGIN-V1`)
+
+- **Phạm vi**: Hoàn thiện 1 vòng nghiệp vụ khép kín trong môi trường thử nghiệm `SANDBOX_STAGING` (`mongomock` + `GridFS`; dữ liệu lưu trong tiến trình thử nghiệm, không tuyên bố bền vững qua khởi động lại tiến trình và không kết nối DB production).
+- **1. Nhân sự Trường Thành duyệt & thu hồi công bố (`/api/hexa/v0/tt/*`)**:
+  - Xác thực qua `POST /api/hexa/v0/tt/auth/login` bằng tài khoản nội bộ thử nghiệm `tt.ops.truongthanh` (kiểm tra băm PBKDF2-SHA256 qua `core.users.authenticate` / `core.auth.verify_password` và bắt buộc có quyền `operations_write` trong `core.auth.ROLE_PERMISSIONS`). Tài khoản `viewer` (`tt.viewer`) và tài khoản khách hàng đều bị từ chối `HTTP 403`.
+  - Mở hồ sơ nội bộ lô `ROAD-LG-001` (`GET /api/hexa/v0/tt/shipments/ROAD-LG-001`), tích chọn các mốc tiến độ đã xác minh (`event_versions`), chứng từ kèm phiên bản (`document_versions`) và phiên bản báo giá bán (`quote`), rồi bấm **Công bố cho khách** (`POST /api/hexa/v0/tt/shipments/ROAD-LG-001/publish`).
+  - Có thể thu hồi từng chứng từ/mục hoặc thu hồi toàn bộ công bố bất kỳ lúc nào (`POST /api/hexa/v0/tt/shipments/ROAD-LG-001/revoke`); hệ thống lưu vết kiểm toán tại `hexa_trial_publications` (`approved_by`, `approved_at`, `revoked_by`, `revoked_at`, `event_versions`, `document_versions`, `quote`, `history`).
+- **2. Khách hàng Lục Giác & Minh Đức đăng nhập tài khoản thử nghiệm riêng (`/api/hexa/v0/auth/*`)**:
+  - Đăng nhập qua `POST /api/hexa/v0/auth/login` kiểm tra PBKDF2-SHA256 trên server (`db["hexa_trial_customer_accounts"]`):
+    - Khách A (Lục Giác): tài khoản `lucgiac.trial` → gắn cứng `customer_id="CUST-LUCGIAC"` vào phiên ngẫu nhiên phía server (`hexa_trial_session`).
+    - Khách B (Minh Đức, đi ghép cùng xe): tài khoản `minhduc.trial` → gắn cứng `customer_id="CUST-MINHDUC"` vào phiên ngẫu nhiên phía server.
+  - Mọi `customer_id` do client gửi kèm đều bị bỏ qua; tài khoản `viewer` của Logistics và mật khẩu sai đều bị chặn `HTTP 403`.
+- **3. Hai màn hình rõ ràng cho Owner trên Live Preview (`GET /`, `GET /hexa`)**:
+  - **Màn hình 1 — Nội bộ Trường Thành**: Đăng nhập TT → Chọn mục chia sẻ → Công bố cho khách → Thu hồi chứng từ / Thu hồi toàn bộ.
+  - **Màn hình 2 — Cổng Khách hàng (Lục Giác / Minh Đức)**: Đăng nhập tài khoản khách riêng → Xem hành trình & báo giá bán → Tải chứng từ PDF đúng phiên bản (`DOC-LG-PL@v2`).
+
+
