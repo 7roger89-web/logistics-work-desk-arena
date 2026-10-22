@@ -341,6 +341,10 @@ export default function Inbox() {
       setError("Chọn mẩu tin và đích ghép.");
       return;
     }
+    if (targetType === "snippet" && ids.length > 1) {
+      setError("Chỉ ghép một mẩu tin với một mẩu khác trong một thao tác.");
+      return;
+    }
     lock.current = true;
     const requestId = newRequestId();
     setError("");

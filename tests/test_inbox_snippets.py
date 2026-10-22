@@ -418,6 +418,54 @@ def test_snippet_peer_failure_does_not_leave_one_sided_link(staging, monkeypatch
     assert left["id"] in (right_row.get("linked_snippet_ids") or [])
 
 
+def test_multi_snippets_to_one_snippet_is_refused_without_partial_write(staging):
+    """Regression: A+B -> C with one request_id must not report success
+    while only A is linked. V1 refuses multi-source snippet targets
+    before any write; many-to-contract remains allowed."""
+    from core.database import load_inbox_snippet
+
+    session = {"seq": 0}
+    a = _create(session, 1, "REQ-MULTI-A", "H-TEST multi A")
+    b = _create(session, 2, "REQ-MULTI-B", "H-TEST multi B")
+    c = _create(session, 3, "REQ-MULTI-C", "H-TEST multi C")
+    assert a["ok"] and b["ok"] and c["ok"]
+    out = _dispatch(session, 4, "inbox_snippet_link", {
+        "requestId": "REQ-MULTI-LINK",
+        "snippetIds": [a["id"], b["id"]],
+        "action": "link",
+        "targetType": "snippet",
+        "targetId": c["id"],
+    })
+    assert not out["ok"], out
+    assert "một mẩu tin" in (out.get("error") or "")
+    for row_id in (a["id"], b["id"], c["id"]):
+        row = load_inbox_snippet(row_id)
+        assert not (row.get("linked_snippet_ids") or []), row
+        assert "REQ-MULTI-LINK" not in (row.get("relation_request_ids") or [])
+    # Single snippet -> snippet still works in one operation.
+    single = _dispatch(session, 5, "inbox_snippet_link", {
+        "requestId": "REQ-MULTI-SINGLE",
+        "snippetIds": [a["id"]],
+        "action": "link",
+        "targetType": "snippet",
+        "targetId": c["id"],
+    })
+    assert single["ok"], single
+    assert c["id"] in (load_inbox_snippet(a["id"]).get("linked_snippet_ids") or [])
+    assert a["id"] in (load_inbox_snippet(c["id"]).get("linked_snippet_ids") or [])
+    # Many snippets -> one contract is still allowed.
+    multi = _dispatch(session, 6, "inbox_snippet_link", {
+        "requestId": "REQ-MULTI-CONTRACT",
+        "snippetIds": [a["id"], b["id"]],
+        "action": "link",
+        "targetType": "contract",
+        "targetId": CONTRACT_ID,
+    })
+    assert multi["ok"], multi
+    assert CONTRACT_ID in (load_inbox_snippet(a["id"]).get("contract_ids") or [])
+    assert CONTRACT_ID in (load_inbox_snippet(b["id"]).get("contract_ids") or [])
+
+
 def test_viewer_cannot_read_inbox_projection(staging):
     session = {"seq": 0}
     created = _create(session, 1, "REQ-SECRET", "H-TEST secret snippet")

@@ -2599,6 +2599,14 @@ def relate_inbox_snippets(
     if not ids:
         _set_last_error("Chưa chọn mẩu tin.")
         return {"ok": False, "duplicate": False, "error": "Chưa chọn mẩu tin."}
+    if kind == "snippet" and len(ids) > 1:
+        # V1: one snippet-to-snippet relation per operation. A shared
+        # request_id is consumed on the target by the first pair, so a
+        # multi-source call would silently skip the rest while reporting
+        # success. Refuse before any write; no partial link is stored.
+        # Many snippets may still link to one contract or one shipment.
+        _set_last_error("Chỉ ghép một mẩu tin với một mẩu khác trong một thao tác.")
+        return {"ok": False, "duplicate": False, "error": "Chỉ ghép một mẩu tin với một mẩu khác trong một thao tác."}
     if kind == "snippet" and target in seen:
         _set_last_error("Không ghép một mẩu với chính nó.")
         return {"ok": False, "duplicate": False, "error": "Không ghép một mẩu với chính nó."}
