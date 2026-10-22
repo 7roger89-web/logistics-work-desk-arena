@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>HEXA × Trường Thành — Demo V0 phối hợp EXW</title>
+  <style>
+    :root {
+      --paper: #f4f1e9;
+      --paper-deep: #ebe6da;
+      --surface: #fffefd;
+      --ink: #172b3d;
+      --muted: #5b6875;
+      --navy: #123a5e;
+      --blue: #1d6fa8;
+      --blue-soft: #dcebfa;
+      --line: #d6dee7;
+      --green: #22614a;
+      --green-soft: #dcede4;
+      --amber: #8a5209;
+      --amber-soft: #fbebd3;
+      --red: #8e2f22;
+      --red-soft: #f6dfdb;
+      --shadow: 0 8px 24px rgba(18, 58, 94, .07);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(120, 146, 170, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 146, 170, .055) 1px, transparent 1px),
+        var(--paper);
+      background-size: 52px 52px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    button, textarea, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline: 3px solid #e09b32;
+      outline-offset: 3px;
+    }
+    button:disabled { cursor: not-allowed; opacity: .58; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+      position: fixed; top: 8px; left: 8px; z-index: 100; transform: translateY(-150%);
+      padding: 10px 14px; border-radius: 8px; background: var(--navy); color: white;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .shell { width: min(1320px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar { padding: 22px 0 12px; }
+    .topbar-grid { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+    .brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+    .brand-mark {
+      display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto;
+      border-radius: 12px; background: var(--navy); color: white; font-weight: 800; letter-spacing: -.04em;
+    }
+    .eyebrow { margin: 0 0 3px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 3px; color: var(--navy); font-size: clamp(20px, 2.2vw, 28px); line-height: 1.22; }
+    h2 { margin-bottom: 5px; color: var(--navy); font-size: 18px; line-height: 1.3; }
+    h3 { margin-bottom: 5px; color: var(--navy); font-size: 15px; }
+    .subtle { color: var(--muted); }
+    .small { font-size: 12.5px; }
+    .mono { font-family: Consolas, "Courier New", monospace; letter-spacing: -.02em; }
+    .demo-label {
+      display: inline-flex; align-items: center; gap: 6px; width: fit-content;
+      padding: 4px 8px; border: 1px solid #d19a49; border-radius: 7px;
+      background: var(--amber-soft); color: var(--amber); font-size: 12px; font-weight: 800;
+    }
+    .header-controls { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+    .role-switch { display: flex; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+    .role-button {
+      min-height: 44px; padding: 8px 15px; border: 0; border-radius: 9px;
+      background: transparent; color: var(--muted); font-weight: 800;
+    }
+    .role-button[aria-pressed="true"] { background: var(--navy); color: white; }
+    .button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      min-height: 44px; padding: 9px 14px; border: 1px solid var(--navy); border-radius: 9px;
+      background: var(--navy); color: white; font-weight: 800; text-decoration: none;
+    }
+    .button:hover { background: #0c2d4a; }
+    .button.secondary { border-color: var(--line); background: var(--surface); color: var(--navy); }
+    .button.secondary:hover { border-color: var(--blue); background: var(--blue-soft); }
+    .button.warning { border-color: #b44c3c; background: #a83e2f; }
+    .button.text { min-height: 40px; padding: 6px 8px; border-color: transparent; background: transparent; color: var(--blue); }
+    .button.text:hover { background: var(--blue-soft); }
+    .prototype-note { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; }
+    main { padding-bottom: 34px; }
+    .shipment-bar {
+      display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+      padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255, 254, 253, .94); box-shadow: var(--shadow);
+    }
+    .shipment-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 5px; }
+    .shipment-title h2 { margin: 0; }
+    .scenario-tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+    .scenario-tab {
+      min-height: 42px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+      background: white; color: var(--muted); font-weight: 750;
+    }
+    .scenario-tab[aria-pressed="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--navy); }
+    .state-stepper { margin: 14px 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .state-button {
+      width: 100%; min-height: 54px; padding: 9px 10px; text-align: left;
+      border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted);
+    }
+    .state-button strong { display: block; color: inherit; font-size: 13px; }
+    .state-button span { display: block; margin-top: 2px; font-size: 12px; }
+    .state-button[aria-current="step"] { border: 2px solid var(--blue); background: var(--blue-soft); color: var(--navy); }
+    .state-button.visited { border-color: #96c7af; background: var(--green-soft); color: var(--green); }
+    .panel {
+      min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--surface); box-shadow: 0 3px 12px rgba(18, 58, 94, .035);
+    }
+    .panel + .panel { margin-top: 14px; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .panel-head p { margin-bottom: 0; }
+    .urgent {
+      margin: 14px 0; padding: 17px 18px; border: 2px solid #c65b4b; border-radius: var(--radius);
+      background: #fff9f6; box-shadow: var(--shadow);
+    }
+    .urgent-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+    .urgent h2 { color: var(--red); }
+    .urgent p:last-child { margin-bottom: 0; }
+    .urgent-meta { display: flex; gap: 7px 16px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(285px, .8fr); gap: 14px; align-items: start; }
+    .stack > * + * { margin-top: 14px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px; width: fit-content;
+      padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px;
+      background: #edf1f5; color: var(--muted); font-size: 12px; font-weight: 800; white-space: nowrap;
+    }
+    .badge.problem { border-color: #e0a197; background: var(--red-soft); color: var(--red); }
+    .badge.current { border-color: #8ec0e8; background: var(--blue-soft); color: #154c79; }
+    .badge.waiting { border-color: #e8be7b; background: var(--amber-soft); color: var(--amber); }
+    .badge.complete { border-color: #96c7af; background: var(--green-soft); color: var(--green); }
+    .badge.neutral { border-color: #c8d3df; background: #e7ecf2; color: #5b6875; }
+    .journey-scroll { overflow-x: auto; padding: 3px 2px 9px; scrollbar-width: thin; }
+    .journey { display: flex; gap: 9px; min-width: max-content; }
+    .journey-node {
+      position: relative; flex: 0 0 154px; min-height: 124px; padding: 11px;
+      border: 1px solid var(--line); border-radius: 11px; background: #fafbfc;
+    }
+    .journey-node:not(:last-child)::after {
+      content: "→"; position: absolute; right: -11px; top: 44px; z-index: 2;
+      width: 13px; color: #8292a2; background: var(--surface); text-align: center; font-weight: 800;
+    }
+    .journey-node.problem { border: 2px solid #c65b4b; background: #fff7f4; }
+    .journey-node.current { border: 2px solid var(--blue); background: #f5faff; }
+    .journey-node.complete { border-color: #96c7af; background: #f5fbf7; }
+    .journey-node.waiting { border-style: dashed; background: #fffaf1; }
+    .journey-index { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .journey-name { min-height: 38px; margin: 4px 0 7px; color: var(--navy); font-size: 13px; font-weight: 850; line-height: 1.3; }
+    .journey-evidence { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .time-grid { display: grid; gap: 9px; }
+    .time-card { padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fafbfc; }
+    .time-card.requested { border-left: 4px solid var(--navy); }
+    .time-card.eta { border-left: 4px solid #d19a49; }
+    .time-card.committed { border-left: 4px solid #5a9c7b; }
+    .time-label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .035em; }
+    .time-value { display: block; margin-top: 3px; color: var(--navy); font-size: 15px; font-weight: 850; }
+    .time-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .fact-list { margin: 0; display: grid; gap: 9px; }
+    .fact-row { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(0, 1.3fr); gap: 10px; padding-bottom: 8px; border-bottom: 1px solid #e8edf1; }
+    .fact-row:last-child { padding-bottom: 0; border-bottom: 0; }
+    .fact-row dt { color: var(--muted); font-size: 12.5px; font-weight: 700; }
+    .fact-row dd { margin: 0; color: var(--ink); font-weight: 650; overflow-wrap: anywhere; }
+    .task-list { display: grid; gap: 9px; }
+    .task {
+      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+      padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: white;
+    }
+    .task.problem { border-left: 4px solid #c65b4b; }
+    .task p { margin-bottom: 4px; }
+    .task-meta { display: flex; gap: 4px 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+    .notice { padding: 11px 12px; border: 1px solid #e8be7b; border-radius: 10px; background: #fffaf1; color: #6f4a18; }
+    .notice.info { border-color: #b8cfe3; background: #f3f8fc; color: #284d6c; }
+    .notice.neutral { border-color: var(--line); background: #f7f8f9; color: var(--muted); }
+    .notice p:last-child { margin-bottom: 0; }
+    .cards-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .mini-card { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fafbfc; }
+    .mini-card p:last-child { margin-bottom: 0; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .data-table th, .data-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .data-table th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+    .data-table td { color: var(--ink); }
+    .table-scroll { overflow-x: auto; }
+    .reference-line {
+      margin-top: 14px; padding: 13px 15px; border: 1px solid #b8cfe3; border-radius: 11px;
+      background: #f3f8fc; color: #284d6c;
+    }
+    .reference-line p { margin-bottom: 4px; }
+    .reference-line p:last-child { margin-bottom: 0; }
+    .page-foot { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+    dialog {
+      width: min(760px, calc(100% - 32px)); max-height: 88vh; padding: 0;
+      border: 1px solid var(--line); border-radius: 15px; background: var(--surface); color: var(--ink);
+      box-shadow: 0 28px 80px rgba(9, 35, 57, .28);
+    }
+    dialog::backdrop { background: rgba(12, 35, 54, .55); }
+    .dialog-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; padding: 17px 18px 12px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; }
+    .dialog-body { padding: 16px 18px; overflow-y: auto; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; flex-wrap: wrap; padding: 12px 18px 17px; border-top: 1px solid var(--line); }
+    .close-button { min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--navy); font-weight: 800; }
+    .copy-box { width: 100%; min-height: 100px; padding: 10px; resize: vertical; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fafbfc; }
+    .audit-intro { margin-bottom: 13px; }
+    .audit-events { min-width: 720px; }
+    .footer {
+      padding: 18px 0 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px;
+    }
+    .footer p { margin-bottom: 5px; }
+    @media (max-width: 900px) {
+      .topbar-grid { grid-template-columns: 1fr; }
+      .header-controls { justify-content: flex-start; }
+      .workspace { grid-template-columns: 1fr; }
+      .side-stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .side-stack > * + * { margin-top: 0; }
+    }
+    @media (max-width: 640px) {
+      body { font-size: 14px; }
+      .shell { width: calc(100% - 24px); }
+      .topbar { padding-top: 14px; }
+      .brand-mark { width: 40px; height: 40px; }
+      .header-controls, .role-switch { width: 100%; }
+      .role-button { flex: 1; padding-inline: 9px; }
+      .header-controls > .button { flex: 1; }
+      .shipment-bar { padding: 14px; flex-direction: column; }
+      .shipment-bar > .button { width: 100%; }
+      .scenario-tabs { display: grid; grid-template-columns: 1fr; width: 100%; }
+      .scenario-tab { text-align: left; }
+      .state-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .state-button { min-height: 62px; }
+      .urgent { padding: 15px; }
+      .urgent-grid { grid-template-columns: 1fr; gap: 12px; }
+      .urgent .button { width: 100%; }
+      .panel { padding: 14px; }
+      .panel-head { flex-direction: column; }
+      .side-stack { display: block; }
+      .side-stack > * + * { margin-top: 14px; }
+      .cards-2 { grid-template-columns: 1fr; }
+      .task { grid-template-columns: 1fr; }
+      .task .button { width: 100%; }
+      .fact-row { grid-template-columns: 1fr; gap: 2px; }
+      .journey-node { flex-basis: 146px; }
+      dialog { width: calc(100% - 20px); max-height: 92vh; }
+      .dialog-head, .dialog-body, .dialog-actions { padding-left: 14px; padding-right: 14px; }
+      .dialog-actions .button { flex: 1 1 160px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Bỏ qua điều hướng, tới nội dung chính</a>
+  <header class="topbar">
+    <div class="shell topbar-grid">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">HX</div>
+        <div>
+          <p class="eyebrow">Logistics Work Desk · HEXA V0</p>
+          <h1>HEXA × Trường Thành</h1>
+          <span class="demo-label">DEMO / KHÔNG PHẢI LÔ THẬT</span>
+        </div>
+      </div>
+      <div>
+        <div class="header-controls">
+          <div class="role-switch" role="group" aria-label="Đổi góc nhìn trên cùng hồ sơ demo">
+            <button type="button" class="role-button" id="role-lg" data-action="set-role" data-role="lg" aria-pressed="true">LG · Lục Giác</button>
+            <button type="button" class="role-button" id="role-tt" data-action="set-role" data-role="tt" aria-pressed="false">TT · Trường Thành</button>
+          </div>
+          <button type="button" class="button secondary" data-action="reset">↺ Reset demo</button>
+        </div>
+        <p class="prototype-note">Hai góc nhìn · một hồ sơ sự kiện · không đăng nhập hoặc phân quyền thật</p>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="shell" tabindex="-1">
+    <noscript><p class="notice">Demo cần JavaScript nội tại trong chính tệp này; không cần server hoặc kết nối mạng.</p></noscript>
+    <p id="boot-message" class="notice info">Đang mở dữ liệu demo nội tại…</p>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <p><strong>Phạm vi thử nghiệm:</strong> HTML độc lập, dữ liệu giả lập; không phải tính năng đã tích hợp vào Journey production.</p>
+      <p>Đổi TT ↔ LG chỉ để đối chiếu cách diễn giải cùng dữ kiện, <strong>không phải bằng chứng bảo mật đa khách hàng</strong>. Các tên vai trò là mô phỏng, không phải phân công nhân sự chính thức.</p>
+    </div>
+  </footer>
+
+  <dialog id="demo-dialog" aria-labelledby="dialog-title">
+    <div id="dialog-content"></div>
+  </dialog>
+  <div id="live-region" class="sr-only" aria-live="polite"></div>
+
+  <script>
+  /* DEMO_LOGIC_START */
+  const UNKNOWN = 'Chưa xác nhận';
+  const TZ = '(GMT+7)';
+  const ROLE_IDS = ['lg', 'tt'];
+  const DEMO_DATA = {
+    ltl: {
+      id: 'HX-LTL-01',
+      profile: 'EXW · Đường bộ · LTL hàng ghép',
+      customer: 'Lục Giác (dữ liệu mẫu)',
+      snapshot: '23/10/2026 · dữ liệu giả lập',
+      initial: {
+        requested: `26/10/2026 16:00 ${TZ}`,
+        plannedEta: `26/10/2026 11:00 ${TZ}`,
+        committed: `26/10/2026 14:00–15:00 ${TZ}`
+      },
+      states: [
+        {
+          id: 'unverified', version: 'LTL-v1', label: 'Tin chưa xác minh', short: 'Kho ghép báo nguy cơ',
+          responsible: 'TT · Điều phối (vai trò demo)', nextUpdate: `23/10/2026 11:00 ${TZ}`,
+          requested: `26/10/2026 16:00 ${TZ}`,
+          eta: UNKNOWN,
+          etaNote: 'Tin “có thể sáng 27/10” chỉ là dữ kiện chưa xác minh; chưa phải ETA mới.',
+          committed: `26/10/2026 14:00–15:00 ${TZ}`,
+          committedNote: 'Lịch đã cam kết trước; đang có rủi ro và chưa có cam kết thay thế.',
+          impact: 'Có nguy cơ đổi chuyến. Chưa đổi lịch kho hoặc nhân công từ một nguồn chưa xác minh.',
+          lgTitle: 'Chưa cần chọn lịch mới — TT đang kiểm tra nguy cơ đổi chuyến',
+          lgDetail: 'Lục Giác được cảnh báo sớm; chưa nhận ETA mới dưới dạng cam kết.',
+          lgButton: 'Xem dữ kiện đang kiểm tra',
+          ttTitle: 'Xác minh với kho ghép trước khi báo ETA mới',
+          ttDetail: 'Tin Zalo lúc 09:42 nói “có thể sáng 27/10”; cần xác minh chuyến, giờ đến và nguồn.',
+          ttButton: 'Mở popup xác minh',
+          unverified: 'Kho ghép · tin Zalo 23/10 09:42 (demo) · “có thể sáng 27/10” · CHƯA XÁC MINH',
+          lastCustomerUpdate: `23/10/2026 09:50 ${TZ} · đã cảnh báo “đang kiểm tra”, chưa báo ETA mới`,
+          customerRequest: 'Chưa yêu cầu Lục Giác chọn khung giờ mới.',
+          response: 'Chưa yêu cầu phản hồi khung giờ.',
+          vehicle: UNKNOWN,
+          delivery: UNKNOWN
+        },
+        {
+          id: 'verified', version: 'LTL-v2', label: 'ETA đã xác minh', short: 'Có nguồn và ảnh hưởng',
+          responsible: 'LG · Mua hàng/kho (vai trò demo)', nextUpdate: `23/10/2026 11:30 ${TZ}`,
+          requested: `26/10/2026 16:00 ${TZ}`,
+          eta: `27/10/2026 09:30 ${TZ}`,
+          etaNote: 'Kho ghép xác nhận lại qua điện thoại lúc 23/10 10:20; đây là giờ dự kiến, chưa phải cam kết giao.',
+          committed: UNKNOWN,
+          committedNote: 'ETA mới không tự trở thành cam kết. Lịch cũ được giữ trong nhật ký.',
+          impact: 'ETA mới trễ 17 giờ 30 phút so với giờ khách yêu cầu. Cần LG xác nhận khung giờ kho và bố trí nhân công.',
+          lgTitle: 'Phản hồi khung giờ kho có thể nhận hàng',
+          lgDetail: 'ETA đã xác minh là 27/10 09:30; lịch khách yêu cầu vẫn là 26/10 16:00.',
+          lgButton: 'Phản hồi khung giờ kho',
+          ttTitle: 'Xin LG xác nhận khung giờ kho trước khi điều phối phương án cuối',
+          ttDetail: 'Đã có nguồn ETA; chưa có cam kết giao mới và chưa thể coi xe đã được điều phối.',
+          ttButton: 'Mở popup yêu cầu phản hồi',
+          unverified: '',
+          lastCustomerUpdate: `23/10/2026 10:25 ${TZ} · đã báo ETA dự kiến và ảnh hưởng; chưa báo cam kết mới`,
+          customerRequest: 'LG được yêu cầu phản hồi khung giờ kho có thể nhận trước 23/10 11:15 (GMT+7).',
+          response: 'Đang chờ LG phản hồi khung giờ kho.',
+          vehicle: UNKNOWN,
+          delivery: UNKNOWN
+        },
+        {
+          id: 'responded', version: 'LTL-v3', label: 'LG đã phản hồi', short: 'Chưa tự điều phối xe',
+          responsible: 'TT · Điều phối (vai trò demo)', nextUpdate: `23/10/2026 12:00 ${TZ}`,
+          requested: `26/10/2026 16:00 ${TZ}`,
+          eta: `27/10/2026 09:30 ${TZ}`,
+          etaNote: 'ETA đã xác minh vẫn giữ nguyên; phản hồi kho chưa làm thay đổi ETA.',
+          committed: UNKNOWN,
+          committedNote: 'Chưa có phương án cuối; khung giờ LG phản hồi chưa phải xe đã được điều phối.',
+          impact: 'Kho có thể nhận 27/10 10:30–11:30. TT phải xác nhận xe và phương án cuối trước khi LG đổi lịch nhân công.',
+          lgTitle: 'Phản hồi đã được ghi nhận — chờ TT xác nhận phương án cuối',
+          lgDetail: 'Khung giờ kho không tự biến thành xe đã được điều phối hoặc lịch giao đã cam kết.',
+          lgButton: 'Xem phản hồi đã ghi nhận',
+          ttTitle: 'Điều phối xe và xác nhận phương án cuối',
+          ttDetail: 'LG đã phản hồi 27/10 10:30–11:30; công việc TT chưa hoàn tất.',
+          ttButton: 'Mở popup phương án cuối',
+          unverified: '',
+          lastCustomerUpdate: `23/10/2026 10:40 ${TZ} · đã báo nhận phản hồi kho; phương án xe vẫn đang điều phối`,
+          customerRequest: 'Không yêu cầu thêm phản hồi; TT đang xử lý phương án cuối.',
+          response: `Đã ghi nhận: kho nhận 27/10/2026 10:30–11:30 ${TZ} · chưa tự điều phối xe`,
+          vehicle: UNKNOWN,
+          delivery: UNKNOWN
+        },
+        {
+          id: 'confirmed', version: 'LTL-v4', label: 'Phương án đã chốt', short: 'Lịch mới có nguồn',
+          responsible: 'TT · Điều phối (vai trò demo)', nextUpdate: `23/10/2026 15:00 ${TZ}`,
+          requested: `26/10/2026 16:00 ${TZ}`,
+          eta: `27/10/2026 10:30 ${TZ}`,
+          etaNote: 'Phương án cuối cập nhật ETA theo xe và khung kho đã xác nhận; ETA 09:30 trước đó vẫn nằm trong nhật ký.',
+          committed: `27/10/2026 10:30–11:30 ${TZ}`,
+          committedNote: 'TT đã xác nhận xe ghép và khung kho. Đây là lịch cam kết demo, chưa phải bằng chứng đã giao.',
+          impact: 'Lịch mới trễ 18 giờ 30 phút so với giờ khách yêu cầu. Kho chuẩn bị nhận trong khung 10:30–11:30; chưa ghi nhận giao hàng.',
+          lgTitle: 'Lịch kho mới đã rõ — chuẩn bị nhận 27/10 10:30–11:30',
+          lgDetail: 'Hai bên thấy cùng lịch cam kết mới; lịch yêu cầu và các ETA trước vẫn được giữ trong nhật ký.',
+          lgButton: 'Xem lịch đã xác nhận',
+          ttTitle: 'Phương án cuối đã xác nhận — tiếp tục theo dõi giao hàng',
+          ttDetail: 'Xe ghép 29C-DEMO và khung kho đã có xác nhận; chưa ghi nhận đã giao hoặc hoàn tất lô.',
+          ttButton: 'Xem phương án đã chốt',
+          unverified: '',
+          lastCustomerUpdate: `23/10/2026 11:00 ${TZ} · đã gửi lịch cam kết mới theo bản ghi demo`,
+          customerRequest: 'Không còn yêu cầu phản hồi khung giờ; tiếp tục cập nhật khi có sự kiện giao thực tế.',
+          response: `LG đã xác nhận khung 27/10/2026 10:30–11:30 ${TZ}`,
+          vehicle: 'Xe ghép 29C-DEMO · đã điều phối trong dữ liệu mẫu',
+          delivery: UNKNOWN
+        }
+      ],
+      events: [
+        { step: -1, version: 'LTL-v0', at: `22/10/2026 16:10 ${TZ}`, event: 'LG yêu cầu hàng tại kho 26/10 16:00; TT ghi nhận ETA kế hoạch 26/10 11:00 và khung cam kết 14:00–15:00.', source: 'Yêu cầu mua hàng + bản ghi kế hoạch demo', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: `— → 26/10/2026 11:00 ${TZ} (kế hoạch)` },
+        { step: 0, version: 'LTL-v1', at: `23/10/2026 09:42 ${TZ}`, event: 'Kho ghép báo nguy cơ đổi chuyến; TT chỉ cảnh báo khách đang kiểm tra.', source: 'Kho ghép · tin Zalo (demo)', verifiedBy: 'Chưa xác minh', etaChange: `26/10/2026 11:00 ${TZ} → ${UNKNOWN}` },
+        { step: 1, version: 'LTL-v2', at: `23/10/2026 10:20 ${TZ}`, event: 'TT xác minh ETA mới; chưa biến ETA thành cam kết.', source: 'Kho ghép · xác nhận lại qua điện thoại (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: `${UNKNOWN} → 27/10/2026 09:30 ${TZ} (dự kiến)` },
+        { step: 2, version: 'LTL-v3', at: `23/10/2026 10:36 ${TZ}`, event: 'LG phản hồi khung giờ kho; TT ghi nhận nhưng chưa hoàn tất điều phối.', source: 'LG · phản hồi kho (demo)', verifiedBy: 'TT · ghi nhận phản hồi (vai trò demo)', etaChange: 'Không đổi ETA · chưa có cam kết mới' },
+        { step: 3, version: 'LTL-v4', at: `23/10/2026 10:52 ${TZ}`, event: 'TT xác nhận xe ghép và phương án cuối với khung kho.', source: 'TT điều phối + xác nhận kho LG (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: `27/10/2026 09:30 ${TZ} → 27/10/2026 10:30 ${TZ}; cam kết 10:30–11:30` }
+      ],
+      internalOnly: 'TT-INNER-756 · ghi chú điều phối nội bộ, không hiển thị cho LG',
+      document: { file: 'packing-list-DEMO.pdf', status: 'Tệp đã ghi nhận', accepted: UNKNOWN },
+      payment: { proofAt: `22/10/2026 15:40 ${TZ}`, factoryRelease: UNKNOWN, ttReceipt: UNKNOWN },
+      approvedCost: 'Phí xếp dỡ dự phòng đã duyệt: 750.000 VND (số liệu demo)'
+    },
+    fcl: {
+      id: 'HX-FCL-02', version: 'FCL-v1', profile: 'EXW · Đường biển · FCL nguyên container',
+      customer: 'Lục Giác (dữ liệu mẫu)', snapshot: `28/10/2026 15:30 ${TZ} · dữ liệu giả lập`,
+      responsible: 'TT · Điều phối (vai trò demo)', nextUpdate: `29/10/2026 09:00 ${TZ}`,
+      requested: `29/10/2026 15:00 ${TZ}`,
+      booking: { number: 'BK-DEMO-02', status: 'CONFIRMED', confirmedAt: `21/10/2026 14:00 ${TZ}`, source: 'Hãng tàu · xác nhận booking (demo)' },
+      pickupAt: `22/10/2026 16:00 ${TZ}`,
+      si: { cutoff: `23/10/2026 12:00 ${TZ}`, status: 'ACCEPTED', submittedAt: `23/10/2026 08:20 ${TZ}`, acceptedAt: `23/10/2026 09:05 ${TZ}`, source: 'Hãng tàu · SI acceptance (demo)' },
+      vgm: { cutoff: `23/10/2026 15:00 ${TZ}`, status: 'ACCEPTED', acceptedAt: `23/10/2026 10:10 ${TZ}`, source: 'Cảng · VGM acceptance (demo)' },
+      cyCutoff: `24/10/2026 10:00 ${TZ}`,
+      gateInAt: `24/10/2026 09:12 ${TZ}`,
+      etdPlanned: `25/10/2026 20:00 ${TZ}`,
+      atdActual: `25/10/2026 22:05 ${TZ}`,
+      onBoardAt: `25/10/2026 22:20 ${TZ}`,
+      arrivalAt: `28/10/2026 07:40 ${TZ}`,
+      customsClearanceAt: `28/10/2026 11:20 ${TZ}`,
+      deliveredPackages: 4, totalPackages: 8,
+      fullDelivery: UNKNOWN,
+      lastCustomerUpdate: `28/10/2026 15:20 ${TZ} · đã báo giao 4/8 kiện, phần còn lại chưa giao`,
+      customerRequest: 'LG được yêu cầu xác nhận khung nhận 4 kiện còn lại trước 29/10 09:00 (GMT+7).',
+      internalOnly: 'TT-INNER-FCL-02 · ghi chú nội bộ, không hiển thị cho LG',
+      events: [
+        { version: 'FCL-v1', at: `21/10/2026 14:00 ${TZ}`, event: 'Booking được hãng tàu xác nhận.', source: 'Hãng tàu · booking confirmation (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: 'ETD kế hoạch 25/10 20:00; chưa suy ra ATD' },
+        { version: 'FCL-v2', at: `23/10/2026 08:20 ${TZ}`, event: 'SI đã gửi hãng tàu.', source: 'Bản ghi gửi SI (demo)', verifiedBy: 'TT · Chứng từ (vai trò demo)', etaChange: 'Không đổi lịch' },
+        { version: 'FCL-v3', at: `23/10/2026 09:05 ${TZ}`, event: 'SI được hãng tàu chấp nhận; đây là sự kiện khác “đã gửi”.', source: 'Hãng tàu · SI acceptance (demo)', verifiedBy: 'TT · Chứng từ (vai trò demo)', etaChange: 'Không đổi lịch' },
+        { version: 'FCL-v4', at: `25/10/2026 22:05 ${TZ}`, event: 'ATD thực tế được ghi nhận độc lập với ETD kế hoạch.', source: 'Hãng tàu · actual departure (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: 'ETD 25/10 20:00 → ATD 25/10 22:05' },
+        { version: 'FCL-v5', at: `28/10/2026 07:40 ${TZ}`, event: 'Hàng tới cảng đích.', source: 'Cảng đích · arrival notice (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: 'ATA thực tế 28/10 07:40' },
+        { version: 'FCL-v6', at: `28/10/2026 11:20 ${TZ}`, event: 'Thông quan nhập khẩu; không suy từ sự kiện hàng tới cảng.', source: 'Bản ghi hải quan (demo)', verifiedBy: 'TT · Hải quan (vai trò demo)', etaChange: 'Không đổi lịch' },
+        { version: 'FCL-v7', at: `28/10/2026 15:00 ${TZ}`, event: 'Giao 4/8 kiện; chưa hoàn tất toàn bộ lô.', source: 'Biên bản giao một phần (demo)', verifiedBy: 'TT · Điều phối (vai trò demo)', etaChange: 'Phần còn lại: Chưa xác nhận' }
+      ]
+    }
+  };
+
+  function initialState() { return { role: 'lg', shipment: 'ltl', step: 0, copyCount: 0 }; }
+  const INITIAL_STATE = initialState();
+
+  function reduceState(current, action) {
+    const next = { ...current };
+    switch (action.type) {
+      case 'SET_ROLE':
+        if (ROLE_IDS.includes(action.role)) next.role = action.role;
+        return next;
+      case 'SET_SHIPMENT':
+        if (action.shipment === 'ltl' || action.shipment === 'fcl') next.shipment = action.shipment;
+        return next;
+      case 'SET_STEP':
+        if (next.shipment === 'ltl' && Number.isInteger(action.step) && action.step >= 0 && action.step <= 3) next.step = action.step;
+        return next;
+      case 'VERIFY_ETA':
+        if (next.shipment === 'ltl' && next.role === 'tt' && next.step === 0) next.step = 1;
+        return next;
+      case 'SUBMIT_WINDOW':
+        if (next.shipment === 'ltl' && next.role === 'lg' && next.step === 1) next.step = 2;
+        return next;
+      case 'CONFIRM_PLAN':
+        if (next.shipment === 'ltl' && next.role === 'tt' && next.step === 2) next.step = 3;
+        return next;
+      case 'COPY_CUSTOMER_UPDATE':
+        next.copyCount += 1;
+        return next;
+      case 'RESET':
+        return initialState();
+      default:
+        return next;
+    }
+  }
+
+  function e(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+  function known(value) { return String(value ?? '').trim() || UNKNOWN; }
+  function ltlState(view, data = DEMO_DATA) { return data.ltl.states[view.step]; }
+  function timeFactsFor(view, data = DEMO_DATA) {
+    const s = ltlState(view, data);
+    return { requested: s.requested, eta: s.eta, committed: s.committed };
+  }
+  function auditEventsFor(view, data = DEMO_DATA) {
+    if (view.shipment === 'fcl') return data.fcl.events;
+    return data.ltl.events.filter(event => event.step <= view.step);
+  }
+  function statusBadge(status) {
+    const map = {
+      PROBLEM: ['problem', '! Cần xử lý'], CURRENT: ['current', '◐ Đang xử lý'],
+      WAITING: ['waiting', '◷ Chờ thông tin'], COMPLETED: ['complete', '✓ Có bằng chứng'],
+      UPCOMING: ['neutral', '· Chưa bắt đầu']
+    };
+    const item = map[status] || map.UPCOMING;
+    return `<span class="badge ${item[0]}">${item[1]}</span>`;
+  }
+  function journeyHtml(nodes, label) {
+    return `<section class="panel" id="journey-panel" aria-labelledby="journey-title">
+      <div class="panel-head"><div><p class="eyebrow">Journey rút gọn · cùng dữ kiện sự kiện</p><h2 id="journey-title">${e(label)}</h2></div><span class="demo-label">DEMO</span></div>
+      <div class="journey-scroll" tabindex="0" aria-label="Danh sách công đoạn, có thể cuộn ngang"><div class="journey">
+        ${nodes.map((node, index) => `<article class="journey-node ${node.status.toLowerCase()}" data-node="${e(node.id)}" data-status="${e(node.status)}">
+          <span class="journey-index">${String(index + 1).padStart(2, '0')}</span>
+          <div class="journey-name">${e(node.label)}</div>
+          ${statusBadge(node.status)}
+          <p class="journey-evidence">${e(node.evidence)}</p>
+        </article>`).join('')}
+      </div></div>
+    </section>`;
+  }
+  function ltlJourney(view, data = DEMO_DATA) {
+    const s = ltlState(view, data);
+    const riskStatus = view.step === 0 ? 'PROBLEM' : 'CURRENT';
+    return [
+      { id: 'pickup', label: 'Lấy hàng', status: 'COMPLETED', evidence: `22/10/2026 15:20 ${TZ} · bản ghi lấy hàng demo` },
+      { id: 'road-ltl', label: 'NHẬN & GHÉP HÀNG (LTL)', status: riskStatus, evidence: view.step === 0 ? 'Nguy cơ đổi chuyến · chưa xác minh' : view.step === 3 ? 'Xe đã điều phối · chưa ghi nhận giao' : 'Đang phối hợp lịch theo dữ kiện đã xác minh' },
+      { id: 'road-border', label: 'QUA CỬA KHẨU', status: 'UPCOMING', evidence: `Mốc qua cửa khẩu: ${UNKNOWN}` },
+      { id: 'delivery', label: 'Giao hàng', status: view.step === 3 ? 'WAITING' : 'UPCOMING', evidence: `Đã giao: ${s.delivery}` }
+    ];
+  }
+  function fclJourney(data = DEMO_DATA) {
+    const f = data.fcl;
+    const siAccepted = f.si.status === 'ACCEPTED' && Boolean(f.si.acceptedAt);
+    const vgmAccepted = f.vgm.status === 'ACCEPTED' && Boolean(f.vgm.acceptedAt);
+    const partial = f.deliveredPackages > 0 && f.deliveredPackages < f.totalPackages;
+    return [
+      { id: 'booking', label: 'BOOKING', status: f.booking.status === 'CONFIRMED' ? 'COMPLETED' : 'WAITING', evidence: `${f.booking.number} · ${known(f.booking.confirmedAt)}` },
+      { id: 'pickup', label: 'PICKUP', status: f.pickupAt ? 'COMPLETED' : 'UPCOMING', evidence: known(f.pickupAt) },
+      { id: 'si-vgm', label: 'SI / VGM', status: siAccepted && vgmAccepted ? 'COMPLETED' : 'CURRENT', evidence: `SI gửi: ${known(f.si.submittedAt)} · SI chấp nhận: ${known(f.si.acceptedAt)} · VGM: ${known(f.vgm.acceptedAt)}` },
+      { id: 'gate-in', label: 'GATE-IN / CY', status: f.gateInAt ? 'COMPLETED' : 'WAITING', evidence: `Gate-in: ${known(f.gateInAt)} · CY cutoff: ${f.cyCutoff}` },
+      { id: 'etd', label: 'ETD / ATD', status: f.atdActual ? 'COMPLETED' : 'UPCOMING', evidence: `ETD kế hoạch: ${f.etdPlanned} · ATD thực tế: ${known(f.atdActual)}` },
+      { id: 'on-board', label: 'ON BOARD / ATD', status: f.onBoardAt ? 'COMPLETED' : 'UPCOMING', evidence: `On-board: ${known(f.onBoardAt)} · không suy từ ETD` },
+      { id: 'arrival', label: 'ARRIVAL', status: f.arrivalAt ? 'COMPLETED' : 'UPCOMING', evidence: `Hàng tới cảng: ${known(f.arrivalAt)}` },
+      { id: 'customs-import', label: 'CUSTOMS IMPORT', status: f.customsClearanceAt ? 'COMPLETED' : 'UPCOMING', evidence: `Đã thông quan: ${known(f.customsClearanceAt)}` },
+      { id: 'delivery', label: 'DELIVERY', status: partial ? 'CURRENT' : f.fullDelivery && f.fullDelivery !== UNKNOWN ? 'COMPLETED' : 'UPCOMING', evidence: `${f.deliveredPackages}/${f.totalPackages} kiện · Hoàn tất toàn lô: ${known(f.fullDelivery)}` }
+    ];
+  }
+  function renderScenarioHeader(view) {
+    const d = DEMO_DATA[view.shipment];
+    const roleName = view.role === 'lg' ? 'Lục Giác' : 'Trường Thành';
+    return `<section class="shipment-bar" aria-labelledby="shipment-heading">
+      <div>
+        <div class="shipment-title"><h2 id="shipment-heading"><span class="mono">${e(d.id)}</span> · ${e(roleName)}</h2><span class="demo-label">DEMO / KHÔNG PHẢI LÔ THẬT</span></div>
+        <p class="subtle" style="margin-bottom:0">${e(d.profile)} · ${e(d.customer)} · ${e(d.snapshot)}</p>
+        <div class="scenario-tabs" role="group" aria-label="Chọn hồ sơ lô demo">
+          <button type="button" class="scenario-tab" data-action="set-shipment" data-shipment="ltl" aria-pressed="${view.shipment === 'ltl'}">Kịch bản chính · HX-LTL-01 · EXW hàng ghép đường bộ</button>
+          <button type="button" class="scenario-tab" data-action="set-shipment" data-shipment="fcl" aria-pressed="${view.shipment === 'fcl'}">Kịch bản phụ · HX-FCL-02 · EXW đường biển FCL</button>
+        </div>
+      </div>
+      <button type="button" class="button secondary" data-action="open-audit">Vì sao hiển thị như vậy?</button>
+    </section>`;
+  }
+  function renderStateStepper(view) {
+    if (view.shipment !== 'ltl') return '';
+    return `<nav aria-label="Bốn mốc mô phỏng EXW LTL"><ol class="state-stepper">
+      ${DEMO_DATA.ltl.states.map((s, index) => `<li><button type="button" class="state-button ${index < view.step ? 'visited' : ''}" data-action="set-step" data-step="${index}" aria-current="${index === view.step ? 'step' : 'false'}"><strong>${index + 1} · ${e(s.label)}</strong><span>${e(s.short)}</span></button></li>`).join('')}
+    </ol></nav>`;
+  }
+  function renderTimes(view) {
+    const s = ltlState(view);
+    return `<section class="panel" id="time-facts" aria-labelledby="time-title">
+      <div class="panel-head"><div><p class="eyebrow">Ba dữ kiện không trộn nhau</p><h2 id="time-title">Lịch và giờ</h2></div></div>
+      <div class="time-grid">
+        <div class="time-card requested"><span class="time-label">Lịch khách yêu cầu</span><span class="time-value" id="time-requested">${e(s.requested)}</span><span class="time-note">Nhu cầu ban đầu của LG; không bị ghi đè khi ETA đổi.</span></div>
+        <div class="time-card eta"><span class="time-label">Giờ dự kiến · ETA</span><span class="time-value" id="time-eta">${e(s.eta)}</span><span class="time-note">${e(s.etaNote)}</span></div>
+        <div class="time-card committed"><span class="time-label">Giờ đã cam kết</span><span class="time-value" id="time-committed">${e(s.committed)}</span><span class="time-note">${e(s.committedNote)}</span></div>
+      </div>
+    </section>`;
+  }
+  function renderLtlUrgent(view) {
+    const s = ltlState(view);
+    const isLg = view.role === 'lg';
+    return `<section class="urgent" id="urgent-action" aria-labelledby="urgent-title" data-testid="urgent-action">
+      <div class="urgent-grid"><div>
+        <p class="eyebrow">${isLg ? '1 · Tôi cần phản hồi gì?' : 'Việc cần xử lý trước'}</p>
+        <h2 id="urgent-title">${e(isLg ? s.lgTitle : s.ttTitle)}</h2>
+        <p>${e(isLg ? s.lgDetail : s.ttDetail)}</p>
+        <div class="urgent-meta"><span>Phụ trách: <strong>${e(s.responsible)}</strong></span><span>Cập nhật tiếp theo: <strong>${e(s.nextUpdate)}</strong></span></div>
+      </div><button type="button" class="button ${view.step === 0 ? 'warning' : ''}" data-action="open-active-dialog">${e(isLg ? s.lgButton : s.ttButton)} →</button></div>
+    </section>`;
+  }
+  function renderArrivals(view) {
+    const s = ltlState(view);
+    return `<section class="panel" aria-labelledby="arrival-title"><div class="panel-head"><div><p class="eyebrow">2 · Những lô nào sắp về kho?</p><h2 id="arrival-title">Hai hồ sơ demo của Lục Giác</h2></div></div>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Lô demo</th><th>Giờ dự kiến</th><th>Giờ đã cam kết</th></tr></thead><tbody>
+        <tr><td><strong class="mono">HX-LTL-01</strong><br><span class="subtle">EXW · LTL đường bộ</span></td><td>${e(s.eta)}</td><td>${e(s.committed)}</td></tr>
+        <tr><td><strong class="mono">HX-FCL-02</strong><br><span class="subtle">EXW · FCL đường biển</span></td><td>Đã tới cảng ${e(DEMO_DATA.fcl.arrivalAt)}</td><td>${e(DEMO_DATA.fcl.fullDelivery)} · còn 4/8 kiện</td></tr>
+      </tbody></table></div>
+    </section>`;
+  }
+  function renderPaymentReference() {
+    const p = DEMO_DATA.ltl.payment;
+    return `<aside class="reference-line" id="payment-reference" aria-label="Dòng tham khảo tiền hàng EXW">
+      <p><strong>Dòng tham khảo · tiền hàng không phải trạng thái xuất hàng</strong></p>
+      <p>LG đã gửi bằng chứng thanh toán tiền hàng lúc ${e(p.proofAt)}; <strong>không đồng nghĩa nhà máy đã xác nhận cho xuất</strong> (${e(p.factoryRelease)}).</p>
+      <p>Tiền hàng LG trả cho nhà máy <strong>không phải tiền TT đã thu</strong> (${e(p.ttReceipt)}).</p>
+    </aside>`;
+  }
+  function renderLgLtl(view) {
+    const s = ltlState(view);
+    return `${renderArrivals(view)}
+      <section class="panel" aria-labelledby="impact-title"><div class="panel-head"><div><p class="eyebrow">3 · Lịch kho và nhân công</p><h2 id="impact-title">Thay đổi cần chú ý</h2></div>${statusBadge(view.step === 0 ? 'PROBLEM' : view.step === 3 ? 'CURRENT' : 'WAITING')}</div><p style="margin-bottom:0">${e(s.impact)}</p></section>
+      <section class="panel" aria-labelledby="docs-title"><div class="panel-head"><div><p class="eyebrow">4 · Hồ sơ, thanh toán, chi phí đã duyệt</p><h2 id="docs-title">Điểm cần chú ý</h2></div></div>
+        <div class="cards-2">
+          <article class="mini-card"><h3>Hồ sơ hàng</h3><p><strong>${e(DEMO_DATA.ltl.document.file)}</strong></p><p class="small subtle">${e(DEMO_DATA.ltl.document.status)} · Chưa xác nhận chứng từ được chấp nhận.</p><button type="button" class="button text" data-action="open-dialog" data-dialog="document">Xem trạng thái tệp →</button></article>
+          <article class="mini-card"><h3>Chi phí đã duyệt</h3><p>${e(DEMO_DATA.ltl.approvedCost)}</p><p class="small subtle">Chỉ hiện khoản LG cần biết; không có tài liệu nội bộ TT trong góc nhìn này.</p></article>
+        </div>
+      </section>${renderPaymentReference()}`;
+  }
+  function renderTtLtl(view) {
+    const s = ltlState(view);
+    return `<section class="panel" id="tt-queue" aria-labelledby="queue-title"><div class="panel-head"><div><p class="eyebrow">1 · Việc đang chặn và sắp hạn</p><h2 id="queue-title">Hàng đợi điều phối</h2></div>${statusBadge(view.step === 0 ? 'PROBLEM' : view.step === 3 ? 'CURRENT' : 'WAITING')}</div>
+        <div class="task-list">
+          <article class="task ${view.step === 0 ? 'problem' : ''}"><div><p><strong>${e(s.ttTitle)}</strong></p><div class="task-meta"><span>Phụ trách: ${e(s.responsible)}</span><span>Hạn cập nhật: ${e(s.nextUpdate)}</span><span>Xe: ${e(s.vehicle)}</span></div></div><button type="button" class="button secondary" data-action="open-active-dialog">Mở đúng việc →</button></article>
+          <article class="task"><div><p><strong>Cập nhật khách từ dữ kiện đã có</strong></p><div class="task-meta"><span>${e(s.lastCustomerUpdate)}</span></div></div><button type="button" class="button secondary" data-action="open-dialog" data-dialog="customer-update">Mở nội dung cập nhật →</button></article>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="unverified-title"><div class="panel-head"><div><p class="eyebrow">2 · Tin mới nhận</p><h2 id="unverified-title">Chưa xác minh</h2></div></div>
+        ${s.unverified ? `<div class="notice"><strong>Nguồn chưa xác minh</strong><p>${e(s.unverified)}</p><p class="small">Không được dùng tin này như ETA cam kết.</p></div>` : `<div class="notice info"><p>Không còn tin mới chưa xác minh trong hồ sơ demo này. Nguồn cũ vẫn truy lại ở “Vì sao hiển thị như vậy?”.</p></div>`}
+      </section>
+      <section class="panel" aria-labelledby="request-title"><div class="panel-head"><div><p class="eyebrow">4 · Khách đang được yêu cầu phản hồi</p><h2 id="request-title">Trạng thái phản hồi</h2></div></div>
+        <dl class="fact-list"><div class="fact-row"><dt>Yêu cầu tới LG</dt><dd>${e(s.customerRequest)}</dd></div><div class="fact-row"><dt>Phản hồi / ghi nhận</dt><dd>${e(s.response)}</dd></div></dl>
+      </section>
+      <section class="panel" aria-labelledby="internal-title"><div class="panel-head"><div><p class="eyebrow">Chỉ góc nhìn TT</p><h2 id="internal-title">Ghi chú nội bộ</h2></div></div><p class="small subtle" style="margin-bottom:0">${e(DEMO_DATA.ltl.internalOnly)}</p></section>
+      ${renderPaymentReference()}`;
+  }
+  function renderLtlAside(view) {
+    const s = ltlState(view);
+    const isTt = view.role === 'tt';
+    return `<section class="panel" aria-labelledby="update-title"><div class="panel-head"><div><p class="eyebrow">${isTt ? '3 · Nhịp cập nhật khách' : 'Nguồn và trách nhiệm'}</p><h2 id="update-title">${isTt ? 'Lần cập nhật và hạn kế tiếp' : 'Điều đã rõ / chưa rõ'}</h2></div></div>
+      <dl class="fact-list">
+        <div class="fact-row"><dt>Cập nhật gần nhất</dt><dd>${e(s.lastCustomerUpdate)}</dd></div>
+        <div class="fact-row"><dt>Cập nhật tiếp theo</dt><dd>${e(s.nextUpdate)}</dd></div>
+        <div class="fact-row"><dt>Phụ trách việc hiện tại</dt><dd>${e(s.responsible)}</dd></div>
+        <div class="fact-row"><dt>Đã giao / hoàn tất</dt><dd>${e(s.delivery)}</dd></div>
+      </dl>
+      ${isTt ? `<button type="button" class="button text" data-action="open-dialog" data-dialog="customer-update">Xem nội dung cập nhật · không tự gửi →</button>` : `<p class="small subtle" style="margin:10px 0 0">Chưa có dữ kiện thì hiện “${UNKNOWN}”, không tự điền ngày giờ.</p>`}
+    </section>`;
+  }
+  function renderFclDeadlines() {
+    const f = DEMO_DATA.fcl;
+    return `<section class="panel" aria-labelledby="deadline-title"><div class="panel-head"><div><p class="eyebrow">Mốc có múi giờ riêng</p><h2 id="deadline-title">Hạn chứng từ và chặng tàu</h2></div></div>
+      <div class="time-grid">
+        <div class="time-card requested"><span class="time-label">SI cutoff</span><span class="time-value">${e(f.si.cutoff)}</span><span class="time-note">Hạn gửi SI, không phải mốc được chấp nhận.</span></div>
+        <div class="time-card eta"><span class="time-label">VGM cutoff</span><span class="time-value">${e(f.vgm.cutoff)}</span><span class="time-note">Tách riêng khỏi SI cutoff.</span></div>
+        <div class="time-card committed"><span class="time-label">CY cutoff</span><span class="time-value">${e(f.cyCutoff)}</span><span class="time-note">Hạn cảng, không phải ETD.</span></div>
+        <div class="time-card"><span class="time-label">ETD kế hoạch / ATD thực tế</span><span class="time-value">${e(f.etdPlanned)}</span><span class="time-note">ATD: ${e(known(f.atdActual))} · hai nguồn dữ kiện riêng.</span></div>
+      </div>
+    </section>`;
+  }
+  function renderFclUrgent(view) {
+    const isLg = view.role === 'lg';
+    return `<section class="urgent" id="urgent-action" data-testid="urgent-action"><div class="urgent-grid"><div>
+      <p class="eyebrow">${isLg ? 'Việc cần theo dõi' : 'Việc đang chặn và sắp hạn'}</p>
+      <h2 id="urgent-title">${isLg ? 'Còn 4/8 kiện chưa giao — chưa hoàn tất toàn lô' : 'Xác nhận khung giao 4 kiện còn lại với LG'}</h2>
+      <p>${isLg ? 'Hàng đã tới cảng và đã thông quan là hai sự kiện riêng; giao một phần cũng là sự kiện riêng.' : 'Đã giao 4/8 kiện. Không đánh dấu DELIVERY hoàn thành cho tới khi có xác nhận toàn bộ.'}</p>
+      <div class="urgent-meta"><span>Phụ trách: <strong>${e(DEMO_DATA.fcl.responsible)}</strong></span><span>Cập nhật tiếp theo: <strong>${e(DEMO_DATA.fcl.nextUpdate)}</strong></span></div>
+    </div><button type="button" class="button warning" data-action="open-active-dialog">Mở việc giao phần còn lại →</button></div></section>`;
+  }
+  function renderFclFacts() {
+    const f = DEMO_DATA.fcl;
+    return `<section class="panel" aria-labelledby="fcl-facts-title"><div class="panel-head"><div><p class="eyebrow">Dữ kiện tách biệt, không suy diễn</p><h2 id="fcl-facts-title">Booking · chứng từ · cảng · hải quan · giao hàng</h2></div></div>
+      <dl class="fact-list">
+        <div class="fact-row"><dt>Booking</dt><dd>${e(f.booking.number)} · hãng tàu xác nhận ${e(f.booking.confirmedAt)}</dd></div>
+        <div class="fact-row"><dt>SI</dt><dd>Đã gửi ${e(f.si.submittedAt)} · <strong>Được chấp nhận: ${e(known(f.si.acceptedAt))}</strong> · hạn ${e(f.si.cutoff)}</dd></div>
+        <div class="fact-row"><dt>VGM</dt><dd>Được chấp nhận ${e(known(f.vgm.acceptedAt))} · hạn ${e(f.vgm.cutoff)}</dd></div>
+        <div class="fact-row"><dt>CY / gate-in</dt><dd>CY cutoff ${e(f.cyCutoff)} · gate-in thực tế ${e(known(f.gateInAt))}</dd></div>
+        <div class="fact-row"><dt>ETD / ATD / on-board</dt><dd>ETD kế hoạch ${e(f.etdPlanned)} · ATD thực tế ${e(known(f.atdActual))} · on-board ${e(known(f.onBoardAt))}</dd></div>
+        <div class="fact-row"><dt>Tới cảng / thông quan</dt><dd>Hàng tới cảng ${e(known(f.arrivalAt))} · <strong>Đã thông quan: ${e(known(f.customsClearanceAt))}</strong></dd></div>
+        <div class="fact-row"><dt>Giao một phần</dt><dd>${f.deliveredPackages}/${f.totalPackages} kiện · <strong>Hoàn tất toàn lô: ${e(known(f.fullDelivery))}</strong></dd></div>
+      </dl>
+    </section>`;
+  }
+  function renderFclRoleWork(view) {
+    const f = DEMO_DATA.fcl;
+    if (view.role === 'lg') {
+      return `<section class="panel" aria-labelledby="fcl-lg-title"><div class="panel-head"><div><p class="eyebrow">Phản hồi và lịch kho</p><h2 id="fcl-lg-title">Việc của Lục Giác</h2></div></div><dl class="fact-list"><div class="fact-row"><dt>Đang được yêu cầu</dt><dd>${e(f.customerRequest)}</dd></div><div class="fact-row"><dt>Lịch khách yêu cầu</dt><dd>${e(f.requested)}</dd></div><div class="fact-row"><dt>Giao toàn bộ</dt><dd>${e(f.fullDelivery)}</dd></div></dl></section>`;
+    }
+    return `<section class="panel" aria-labelledby="fcl-tt-title"><div class="panel-head"><div><p class="eyebrow">Hàng đợi điều phối</p><h2 id="fcl-tt-title">Việc Trường Thành</h2></div></div>
+      <div class="task-list"><article class="task problem"><div><p><strong>Xác nhận khung giao 4 kiện còn lại</strong></p><div class="task-meta"><span>Phụ trách: ${e(f.responsible)}</span><span>Hạn: ${e(f.nextUpdate)}</span></div></div><button type="button" class="button secondary" data-action="open-active-dialog">Mở đúng việc →</button></article>
+      <article class="task"><div><p><strong>Cập nhật khách, không tự gửi từ bản sao</strong></p><div class="task-meta"><span>${e(f.lastCustomerUpdate)}</span></div></div><button type="button" class="button secondary" data-action="open-dialog" data-dialog="customer-update">Mở nội dung cập nhật →</button></article></div>
+      <div class="notice info" style="margin-top:12px"><p><strong>Tin chưa xác minh:</strong> Không có trong snapshot FCL này. “Đã gửi SI” và “SI được chấp nhận” vẫn là hai sự kiện có nguồn riêng.</p></div>
+      <p class="small subtle" style="margin:12px 0 0">${e(f.internalOnly)}</p>
+    </section>`;
+  }
+  function renderFclAside(view) {
+    const f = DEMO_DATA.fcl;
+    return `<section class="panel" aria-labelledby="fcl-update-title"><div class="panel-head"><div><p class="eyebrow">Nhịp cập nhật</p><h2 id="fcl-update-title">Nguồn và trách nhiệm</h2></div></div><dl class="fact-list"><div class="fact-row"><dt>Cập nhật gần nhất</dt><dd>${e(f.lastCustomerUpdate)}</dd></div><div class="fact-row"><dt>Cập nhật tiếp theo</dt><dd>${e(f.nextUpdate)}</dd></div><div class="fact-row"><dt>Phụ trách</dt><dd>${e(f.responsible)}</dd></div><div class="fact-row"><dt>Phản hồi LG</dt><dd>${e(f.customerRequest)}</dd></div></dl></section>`;
+  }
+  function renderView(view) {
+    const ltl = view.shipment === 'ltl';
+    return `${renderScenarioHeader(view)}${ltl ? renderLtlUrgent(view) : renderFclUrgent(view)}${renderStateStepper(view)}
+      <div class="workspace">
+        <div class="stack">${ltl ? journeyHtml(ltlJourney(view), 'Hành trình EXW hàng ghép đường bộ') : journeyHtml(fclJourney(), 'Hành trình EXW đường biển FCL')}${ltl ? (view.role === 'lg' ? renderLgLtl(view) : renderTtLtl(view)) : renderFclFacts() + renderFclRoleWork(view)}</div>
+        <aside class="stack side-stack">${ltl ? renderTimes(view) : renderFclDeadlines()}${ltl ? renderLtlAside(view) : renderFclAside(view)}</aside>
+      </div>
+      <p class="page-foot">Nguồn dữ liệu: bản ghi giả lập nội tại · phiên bản ${e(ltl ? ltlState(view).version : DEMO_DATA.fcl.version)} · Không gọi API, không lưu thao tác sau khi tải lại.</p>`;
+  }
+
+  function dialogFor(kind, view) {
+    const close = `<button type="button" class="button secondary" data-action="close-dialog">Đóng</button>`;
+    const make = (title, intro, fields, primary = null, extra = '') => ({ title, html: `<div class="dialog-head"><div><p class="eyebrow">Popup mô phỏng · không ghi production</p><h2 id="dialog-title">${e(title)}</h2></div><button type="button" class="close-button" data-action="close-dialog" aria-label="Đóng popup">×</button></div><div class="dialog-body"><p class="subtle">${e(intro)}</p><dl class="fact-list">${fields.map(([label, value]) => `<div class="fact-row"><dt>${e(label)}</dt><dd>${e(value)}</dd></div>`).join('')}</dl>${extra}</div><div class="dialog-actions">${close}${primary ? `<button type="button" class="button" data-action="dialog-command" data-command="${e(primary.command)}">${e(primary.label)}</button>` : ''}</div>`, fields });
+    if (kind === 'audit') {
+      const events = auditEventsFor(view);
+      const eventRows = events.map(ev => `<tr><td><strong>${e(ev.version)}</strong><br>${e(ev.at)}</td><td>${e(ev.event)}<br><span class="subtle">Nguồn: ${e(ev.source)}</span></td><td>${e(ev.verifiedBy)}</td><td>${e(ev.etaChange)}</td></tr>`).join('');
+      return { title: 'Vì sao hiển thị như vậy?', html: `<div class="dialog-head"><div><p class="eyebrow">Truy vết nguồn · phiên bản · thay đổi</p><h2 id="dialog-title">Vì sao hiển thị như vậy?</h2></div><button type="button" class="close-button" data-action="close-dialog" aria-label="Đóng popup">×</button></div><div class="dialog-body"><div class="notice info audit-intro"><p><strong>Lịch khách yêu cầu ≠ ETA ≠ giờ cam kết.</strong> Tệp đính kèm không tự trở thành chứng từ được chấp nhận; sao chép không phải đã gửi; phản hồi của khách không tự hoàn tất công việc TT.</p></div><div class="table-scroll"><table class="data-table audit-events"><thead><tr><th>Phiên bản / mốc</th><th>Sự kiện / nguồn</th><th>Xác minh bởi</th><th>Thay đổi ETA / lịch</th></tr></thead><tbody>${eventRows}</tbody></table></div><p class="small subtle" style="margin:12px 0 0">Chỉ hiện sự kiện đã xảy ra tới mốc demo đang chọn. Lịch cũ không bị xóa khi chốt lịch mới.</p></div><div class="dialog-actions">${close}</div>`, fields: [] };
+    }
+    if (kind === 'customer-update') {
+      const fcl = view.shipment === 'fcl';
+      const s = fcl ? DEMO_DATA.fcl : ltlState(view);
+      const message = fcl ? 'HX-FCL-02: đã giao 4/8 kiện; phần còn lại chưa giao. Xin xác nhận khung nhận 4 kiện còn lại.' : view.step === 0 ? 'HX-LTL-01: kho ghép báo nguy cơ đổi chuyến; TT đang xác minh. Chưa có ETA mới được xác nhận.' : view.step === 1 ? 'HX-LTL-01: ETA dự kiến đã xác minh là 27/10 09:30 (GMT+7), chưa phải cam kết giao. Xin phản hồi khung giờ kho có thể nhận.' : view.step === 2 ? 'HX-LTL-01: đã ghi nhận khung kho 27/10 10:30–11:30 (GMT+7). TT đang điều phối xe; chưa có cam kết mới.' : 'HX-LTL-01: TT xác nhận lịch giao 27/10 10:30–11:30 (GMT+7). Chưa ghi nhận đã giao.';
+      const extra = `<label for="customer-message" class="small" style="display:block;margin:14px 0 5px;font-weight:800">Nội dung mô phỏng</label><textarea id="customer-message" class="copy-box" readonly>${e(message)}</textarea><div class="notice neutral" style="margin-top:10px"><p class="small" style="margin:0"><strong>Sao chép ≠ đã gửi email/Zalo.</strong> Không có nút gửi trong demo. Cập nhật gần nhất vẫn giữ nguyên sau khi sao chép.</p><p id="copy-status" class="small" aria-live="polite" style="margin:5px 0 0"></p></div>`;
+      return { title: 'Nội dung cập nhật khách', html: `<div class="dialog-head"><div><p class="eyebrow">Không tích hợp thông báo</p><h2 id="dialog-title">Nội dung cập nhật khách</h2></div><button type="button" class="close-button" data-action="close-dialog" aria-label="Đóng popup">×</button></div><div class="dialog-body"><dl class="fact-list"><div class="fact-row"><dt>Cập nhật gần nhất</dt><dd>${e(s.lastCustomerUpdate)}</dd></div><div class="fact-row"><dt>Hạn cập nhật kế tiếp</dt><dd>${e(s.nextUpdate)}</dd></div></dl>${extra}</div><div class="dialog-actions">${close}<button type="button" class="button secondary" data-action="copy-customer">Sao chép nội dung · chưa gửi</button></div>`, fields: [] };
+    }
+    if (kind === 'document') {
+      const d = DEMO_DATA.ltl.document;
+      return make('Trạng thái tệp hồ sơ', 'Tệp được ghi nhận không tự trở thành chứng từ đã được chấp nhận.', [['Tệp', d.file], ['Ghi nhận', d.status], ['Được chấp nhận', d.accepted]]);
+    }
+    if (view.shipment === 'fcl') {
+      return make('Giao 4 kiện còn lại', 'Popup chỉ mô phỏng dữ kiện; không thêm trạng thái giao hàng mới.', [['Đã giao', `${DEMO_DATA.fcl.deliveredPackages}/${DEMO_DATA.fcl.totalPackages} kiện`], ['Hoàn tất toàn lô', DEMO_DATA.fcl.fullDelivery], ['LG cần phản hồi', DEMO_DATA.fcl.customerRequest], ['Cập nhật tiếp theo', DEMO_DATA.fcl.nextUpdate]]);
+    }
+    const s = ltlState(view);
+    if (view.role === 'tt' && view.step === 0) {
+      return make('Xác minh tin kho ghép', 'Chỉ chuyển sang mốc 2 với dữ kiện mẫu đã được xác minh; không gửi cam kết tự động.', [['Nguồn', 'Kho ghép · xác nhận lại qua điện thoại (demo)'], ['ETA xác minh', `27/10/2026 09:30 ${TZ}`], ['Xác minh bởi', 'TT · Điều phối (vai trò demo)'], ['Mốc xác minh', `23/10/2026 10:20 ${TZ}`]], { command: 'VERIFY_ETA', label: 'Ghi nhận xác minh · mô phỏng' });
+    }
+    if (view.role === 'tt' && view.step === 1) {
+      return make('Yêu cầu LG phản hồi khung giờ', 'Nút dưới chỉ đổi sang góc nhìn LG để diễn tiếp; không gửi email/Zalo.', [['ETA đã xác minh', s.eta], ['Lịch khách yêu cầu', s.requested], ['Hạn phản hồi', `23/10/2026 11:15 ${TZ}`]], { command: 'SWITCH_TO_LG', label: 'Mở góc nhìn LG · không gửi tin' });
+    }
+    if (view.role === 'lg' && view.step === 1) {
+      return make('LG phản hồi khung giờ kho', 'Ghi nhận phản hồi mẫu; phản hồi không tự điều phối xe.', [['Khung kho có thể nhận', `27/10/2026 10:30–11:30 ${TZ}`], ['Xác nhận nhân công', 'Kho có thể tiếp nhận trong khung này (demo)'], ['Phản hồi bởi', 'LG · Mua hàng/kho (vai trò demo)']], { command: 'SUBMIT_WINDOW', label: 'Ghi nhận phản hồi · mô phỏng' });
+    }
+    if (view.role === 'tt' && view.step === 2) {
+      return make('TT xác nhận phương án cuối', 'Xác nhận cả xe và khung kho; lịch cũ vẫn được giữ trong nhật ký.', [['Khung kho LG', `27/10/2026 10:30–11:30 ${TZ}`], ['Phương án xe', 'Xe ghép 29C-DEMO (dữ liệu mẫu)'], ['Lịch cam kết mới', `27/10/2026 10:30–11:30 ${TZ}`], ['Xác nhận bởi', 'TT · Điều phối (vai trò demo)']], { command: 'CONFIRM_PLAN', label: 'Xác nhận phương án cuối · mô phỏng' });
+    }
+    return make(view.step === 3 ? 'Lịch và phương án đã xác nhận' : 'Dữ kiện phối hợp hiện tại', 'Không có hành động ghi bổ sung ở mốc này.', [['Lịch khách yêu cầu', s.requested], ['Giờ dự kiến', s.eta], ['Giờ đã cam kết', s.committed], ['Đã giao / hoàn tất', s.delivery]]);
+  }
+  /* DEMO_LOGIC_END */
+
+  /* DEMO_RUNTIME_START */
+  if (typeof document !== 'undefined') {
+    let viewState = initialState();
+    const main = document.getElementById('main');
+    const dialog = document.getElementById('demo-dialog');
+    const dialogContent = document.getElementById('dialog-content');
+    const liveRegion = document.getElementById('live-region');
+
+    function announce(message) { liveRegion.textContent = message; }
+    function render() {
+      main.innerHTML = renderView(viewState);
+      document.getElementById('role-lg').setAttribute('aria-pressed', String(viewState.role === 'lg'));
+      document.getElementById('role-tt').setAttribute('aria-pressed', String(viewState.role === 'tt'));
+      document.title = `HEXA × Trường Thành — ${viewState.role === 'lg' ? 'LG' : 'TT'} · ${viewState.shipment === 'ltl' ? `T${viewState.step + 1}` : 'FCL'} · DEMO`;
+    }
+    function openDialog(kind) {
+      const content = dialogFor(kind, viewState);
+      dialogContent.innerHTML = content.html;
+      if (!dialog.open) dialog.showModal();
+    }
+    function closeDialog() { if (dialog.open) dialog.close(); }
+    async function copyCustomerMessage() {
+      const textarea = document.getElementById('customer-message');
+      const status = document.getElementById('copy-status');
+      if (!textarea || !status) return;
+      let copied = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(textarea.value);
+          copied = true;
+        } else {
+          textarea.focus(); textarea.select();
+          copied = document.execCommand('copy');
+        }
+      } catch (_) { copied = false; }
+      viewState = reduceState(viewState, { type: 'COPY_CUSTOMER_UPDATE' });
+      status.textContent = copied ? 'Đã sao chép trong demo — CHƯA GỬI email/Zalo; lịch sử cập nhật không đổi.' : 'Không sao chép được — vẫn CHƯA GỬI; lịch sử cập nhật không đổi.';
+      announce(status.textContent);
+    }
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-action]');
+      if (!button) return;
+      const action = button.dataset.action;
+      if (action === 'set-role') {
+        viewState = reduceState(viewState, { type: 'SET_ROLE', role: button.dataset.role });
+        render(); announce(`Đã đổi góc nhìn, giữ nguyên hồ sơ và mốc ${viewState.step + 1}.`);
+      } else if (action === 'set-shipment') {
+        viewState = reduceState(viewState, { type: 'SET_SHIPMENT', shipment: button.dataset.shipment });
+        closeDialog(); render(); announce('Đã đổi hồ sơ demo.');
+      } else if (action === 'set-step') {
+        viewState = reduceState(viewState, { type: 'SET_STEP', step: Number(button.dataset.step) });
+        render(); announce(`Đang xem mốc ${viewState.step + 1} của 4.`);
+      } else if (action === 'reset') {
+        viewState = reduceState(viewState, { type: 'RESET' });
+        closeDialog(); render(); announce('Demo đã trở về trạng thái đầu.');
+      } else if (action === 'open-active-dialog') {
+        openDialog('active');
+      } else if (action === 'open-dialog') {
+        openDialog(button.dataset.dialog);
+      } else if (action === 'open-audit') {
+        openDialog('audit');
+      } else if (action === 'close-dialog') {
+        closeDialog();
+      } else if (action === 'copy-customer') {
+        copyCustomerMessage();
+      } else if (action === 'dialog-command') {
+        const command = button.dataset.command;
+        if (command === 'SWITCH_TO_LG') {
+          viewState = reduceState(viewState, { type: 'SET_ROLE', role: 'lg' });
+        } else {
+          viewState = reduceState(viewState, { type: command });
+        }
+        closeDialog(); render(); announce('Đã ghi nhận hành động mô phỏng; không có ghi dữ liệu production.');
+      }
+    });
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) {
+        const rect = dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
+      }
+    });
+    render();
+  }
+  /* DEMO_RUNTIME_END */
+  </script>
+</body>
+</html>
