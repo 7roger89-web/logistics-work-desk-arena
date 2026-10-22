@@ -118,3 +118,98 @@ node tests/component/browser_excel_quote_import_v1.mjs http://127.0.0.1:9501
 ```
 
 Stop port 9501 afterwards. No production connection, `/goal` substitute, second dispatcher, framework, server or price engine is required.
+
+---
+
+## HEXA SIDECAR — PL/PI import for three real workbook layouts
+
+`TASK_ID=HEXA-EXCEL-IMPORT-V0-REAL-LAYOUT-REPAIR` ·
+`BRANCH=arena/df8f04ad-logistics-work-desk-arena` ·
+`EXACT_BASE_HEAD=83162293036414dcafa01072b93eece8733b8688` · `CHAT_MODE=NEW_CHAT`.
+
+**This is a HEXA SIDECAR checkpoint only.** It is independent of PR #211: it does
+not change `NEXT_ACTION`, the Owner UAT status of PR #211, or anything PR #211
+contains.
+
+### Base and handoff (corrected)
+
+The first HEXA checkpoint (`ac400977`) was built on `51422c94`, which is 97 commits
+behind the task's `EXACT_BASE_HEAD`. Its claim that
+`docs/CONTROL-TOWER-HANDOFF.md` is **absent** was an artefact of that wrong base and
+is retracted: at `83162293` the Control Tower handoff **exists** and is the handoff
+surface for this repository. This checkpoint therefore sits on `83162293` (session
+branch fast-forwarded, no force-push, no rebase) and the handoff was updated there —
+`HANDOFF_UPDATE=YES | PATH=docs/CONTROL-TOWER-HANDOFF.md | SECTION=HEXA SIDECAR`.
+
+### What changed and what did not
+
+| Surface | Change |
+|---|---|
+| `core/quote_excel_import.py` | Header-evidence table detection (no file-name or fixed-column matching), per-sheet used data region, layout + GOODS/PALLET/CARTON level roles, review/unknown evidence, hard ceilings relaxed from 40 declared columns to a 2000-column ceiling with a total-cell budget. Header labels are additionally read after dropping an ASCII unit suffix (`NW(KG)`, `VOL(CBM)`, `Size(mm x mm x mm)`). |
+| `core/quote_workbook_view.py` | Uses the same hard ceilings, reports the USED region (`column_count`) beside the declared one (`declared_column_count`), renders only used columns. Read-only, grant-gated source cells unchanged. |
+| `tests/test_hexa_excel_import_layouts_v1.py`, `scripts/make_hexa_layout_fixtures.py` | SYNTHETIC fixtures + acceptance tests (new files), plus the real-header fixtures A/B and the real multi-level layout C used by the v2 tests. |
+| `tests/test_hexa_excel_import_real_headers_v2.py` | New acceptance suite over the REAL header wording/row positions of files A, B and C (new file). |
+| React/CSS, `core/quotations.py`, `core/quote_customer_text.py`, customer snapshot allowlist | **Unchanged.** The existing goods table already accepts rows without a price (`None`, never 0). |
+
+### Three levels of a multi-level packing workbook
+
+Only three levels exist, and they are never interchangeable:
+
+| Level | Recognised by | What it may do |
+|---|---|---|
+| `GOODS` | a goods-table header (identity/description + qty/cartons, price optional) | becomes the single customer goods list |
+| `PALLET` | an explicit pallet header (`The pallet number`, `Pallet size`, …) with no qty/price of its own | recorded for review with its row count; never becomes a goods list, never adds qty/CBM/weight |
+| `CARTON` | either three explicit `L/W/H` columns or ONE size column plus a `W`/`D`/`H` axis row directly under the header, together with weight/volume evidence | recorded for review with its carton size and numbers; never becomes a goods list, never adds to the shipment totals |
+
+A level is linked to the goods list **only** when the same unambiguous product code
+appears on both. Otherwise the workbook is reported as `NEEDS_REVIEW`
+(`level-link-needs-review` warning plus one `level_link_missing` unknown per goods
+row) and nothing is guessed.
+
+### Three layout families and how they are handled
+
+| Family | Evidence used | Result |
+|---|---|---|
+| A — packing list with photos, table at row 7, 257 declared columns, no price | header row of bilingual column labels (`Item number`, `Product name`, `Size`, `Quantity`, `CTN`, `NW`, `GW`, `CBM`); used region ends at column T | goods rows with `source_sheet`/`source_row`; `unit_price = None` + `unit_price_missing`; product size kept as review evidence, never as package dims; no CBM invented |
+| B — proforma invoice `PI (2)` + duplicate money sheet `File tiền hàng` | priced goods header on the PI sheet (`Model 型号`, `Size尺寸(MM)`, `Qt.数量`, `Unit Price 单价 (CNY)`, `Amount 金额 (CNY)`); the money sheet is classified `INTERNAL_CALC` | one goods table only (no double count), `money-sheet-not-imported`; fees/tax/cost on the money sheet never enter the goods or the customer quotation |
+| C — `总清单` (header row 3, goods rows 7–16) → `托盘明细（2托）` (header row 1, repeated at row 9) → `卫浴` (header row 2, repeated per group, `W`/`D`/`H` axis row at 3) → hidden `打托指令` | GOODS/PALLET/CARTON roles from header evidence; hidden sheets never read | one goods list from `总清单` only; pallet and carton recorded as separate levels with their own row counts; `level-not-summed`; no link key ⇒ `NEEDS_REVIEW` |
+
+### Standing protection (unchanged by this work)
+
+- Hidden sheets and cost/money sheets are never the goods source; their rows are not read into the proposal.
+- `customer_quote_snapshot` keeps its explicit allowlist; `review` evidence is **not** published.
+- A fake `TT_INTERNAL_SENTINEL` in the fixtures (money sheet and hidden sheet) is asserted absent from the snapshot JSON and from the exported customer XLSX (values and package XML), and the pallet/carton sheet names never appear in the exported package.
+- Raw source cells still require `commercial_write` on every sheet, customer sheet included; the viewer writes nothing.
+- Sheet names only influence which table is *proposed*; publication still requires the operator's reviewed goods.
+
+### Evidence and status
+
+- `RED` (v1, before the first checkpoint's change): `tests/test_hexa_excel_import_layouts_v1.py` → 14 failed / 1 passed.
+- `RED` (v2 reproof on the real layout, parser before THIS repair): `tests/test_hexa_excel_import_real_headers_v2.py` → **6 failed / 106 passed** in the focused set. The whole workbook was labelled `PACKING_LIST`, `托盘明细（2托）` was not recognised as a level at all, `卫浴` was read as an extra goods list (`UNCLASSIFIED_TABLE`), the carton W/D/H breakdown was reported as a product size, and `Item number` was not read as a model code.
+- `GREEN` (after this repair): **15/15** v2 + **16/16** v1 = **31 passed**; focused set (`test_excel_quote_import_v1`, `test_quote_workbook_view_v1`, `test_excel_fidelity_repair_v1`, `test_excel_text_edit_v1`, both HEXA files) = **112 passed**.
+- Whole suite, same environment and same command, on base `83162293` (excluding the pre-existing collection error in `test_partner_reconciliation_desk_write_oracle.py`, which imports a `ROUTES` symbol absent at this base): before the repair **640 failed/error test ids**, after **634**. `NEW=∅`; `GONE` = exactly the 6 new HEXA tests. The remaining failures/errors are pre-existing sandbox/Streamlit-runtime issues, not caused by this change.
+- `IMPORT_STATUS=PROVEN_SYNTHETIC`; `REAL_WORKBOOK_TEST=NOT_RUN_IN_ARENA`. The Owner's three original workbooks are **not** in this repository and were **not** uploaded; only the described structures and header wording are reproduced synthetically.
+
+### Fields that stay UNKNOWN
+
+- `unit_price` for every packing-list / multi-level source (`unit_price_missing`) — never 0.
+- `qty` when the source has no quantity column (`qty_missing`).
+- Formula cells without a cached value (`formula_no_cache` / `formula-gap`) — never recomputed.
+- Level ↔ goods links without a shared product code (`level_link_missing`, `NEEDS_REVIEW`).
+- `shipment.cbm` / `shipment.weight_kg`: contradictory or level-only measurements are deliberately left empty instead of being summed.
+- Pallet sheet fields that this repair does not read (`contract`, `House type`, `Room number`, `Project name`, `PC`, `Total`) — recorded as unread, not guessed.
+
+### Owner gates respected
+
+`NO_MAIN_MERGE` · `NO_PR211_UPDATE` · `NO_NEW_PR` · `NO_DEPLOY` · `NO_PRODUCTION_DB` ·
+`NO_CUSTOMER_PORTAL` · `NO_DEEPL_INTEGRATION` · `NO_COST_HISTORY_NEW_MODULE` · `NO_FORCE_PUSH`.
+
+### Reproduce
+
+```bash
+python scripts/make_hexa_layout_fixtures.py .tmp/hexa-fixtures
+python -m pytest -q tests/test_hexa_excel_import_layouts_v1.py \
+  tests/test_hexa_excel_import_real_headers_v2.py \
+  tests/test_excel_quote_import_v1.py tests/test_quote_workbook_view_v1.py \
+  tests/test_excel_fidelity_repair_v1.py tests/test_excel_text_edit_v1.py
+```
