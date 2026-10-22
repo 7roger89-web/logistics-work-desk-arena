@@ -18,7 +18,7 @@ import re
 import threading
 from contextlib import contextmanager
 from functools import lru_cache
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Iterable, Iterator, Mapping
 from uuid import uuid4
@@ -2029,7 +2029,28 @@ def _inbox_is_linked(doc: Mapping[str, Any] | None) -> bool:
     )
 
 
-def _inbox_find_filter(*, query: str = "", link_filter: str = "all", before: str = "") -> dict[str, Any]:
+def _inbox_created_before_value(stamp: str) -> Any:
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    iso = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(iso)
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _inbox_find_filter(
+    *,
+    query: str = "",
+    link_filter: str = "all",
+    before: str = "",
+    target_type: str = "",
+    target_id: str = "",
+) -> dict[str, Any]:
     clauses: list[dict[str, Any]] = [
         {"kind": INBOX_SNIPPET_KIND},
         {"id": {"$ne": TEAM_NOTE_ID}},
@@ -2080,9 +2101,14 @@ def _inbox_find_filter(*, query: str = "", link_filter: str = "all", before: str
                 ]
             }
         )
-    stamp = str(before or "").strip()
-    if stamp:
-        clauses.append({"created_at": {"$lt": stamp}})
+    kind_t = str(target_type or "").strip().lower()
+    tid = str(target_id or "").strip()
+    field = INBOX_LINK_FIELDS.get(kind_t, "")
+    if tid and field:
+        clauses.append({field: tid})
+    parsed_before = _inbox_created_before_value(before)
+    if parsed_before is not None:
+        clauses.append({"created_at": {"$lt": parsed_before}})
     return {"$and": clauses} if len(clauses) > 1 else clauses[0]
 
 
@@ -2124,31 +2150,54 @@ def query_inbox_snippets(
     query: str = "",
     link_filter: str = "all",
     before: str = "",
+    target_type: str = "",
+    target_id: str = "",
     limit: int = INBOX_PAGE_SIZE,
 ) -> dict[str, Any]:
     """Bounded server search. Matching is not capped at 500 hidden rows."""
+    filt = str(link_filter or "all").strip().lower()
+    if filt not in {"all", "linked", "unlinked"}:
+        filt = "all"
+    needle = str(query or "").strip()[:INBOX_MAX_QUERY]
+    kind_t = str(target_type or "").strip().lower()
+    if kind_t not in INBOX_LINK_FIELDS:
+        kind_t = ""
+    tid = str(target_id or "").strip() if kind_t else ""
+    stamp = str(before or "").strip()
     empty = {
         "rows": [],
         "count": 0,
         "linked_count": 0,
         "unlinked_count": 0,
         "has_more": False,
-        "query": str(query or "").strip()[:INBOX_MAX_QUERY],
-        "filter": str(link_filter or "all").strip().lower() or "all",
+        "query": needle,
+        "filter": filt,
+        "before": stamp,
+        "target_type": kind_t,
+        "target_id": tid,
     }
     db = get_db() if db is _UNSET_DB else db
     if db is None:
         return empty
     page = max(1, min(int(limit or INBOX_PAGE_SIZE), INBOX_PAGE_SIZE))
-    filt = str(link_filter or "all").strip().lower()
-    if filt not in {"all", "linked", "unlinked"}:
-        filt = "all"
-    needle = str(query or "").strip()[:INBOX_MAX_QUERY]
-    match = _inbox_find_filter(query=needle, link_filter=filt, before=before)
-    linked_match = _inbox_find_filter(query=needle, link_filter="linked")
-    unlinked_match = _inbox_find_filter(query=needle, link_filter="unlinked")
+    count_match = _inbox_find_filter(
+        query=needle, link_filter=filt, target_type=kind_t, target_id=tid,
+    )
+    match = _inbox_find_filter(
+        query=needle,
+        link_filter=filt,
+        before=stamp,
+        target_type=kind_t,
+        target_id=tid,
+    )
+    linked_match = _inbox_find_filter(
+        query=needle, link_filter="linked", target_type=kind_t, target_id=tid,
+    )
+    unlinked_match = _inbox_find_filter(
+        query=needle, link_filter="unlinked", target_type=kind_t, target_id=tid,
+    )
     try:
-        total = int(db.quick_notes.count_documents(match))
+        total = int(db.quick_notes.count_documents(count_match))
         linked_count = int(db.quick_notes.count_documents(linked_match))
         unlinked_count = int(db.quick_notes.count_documents(unlinked_match))
         cursor = db.quick_notes.find(match, {"_id": 0}).sort("created_at", -1).limit(page + 1)
@@ -2170,6 +2219,9 @@ def query_inbox_snippets(
         "has_more": has_more,
         "query": needle,
         "filter": filt,
+        "before": stamp,
+        "target_type": kind_t,
+        "target_id": tid,
     }
 
 
@@ -2583,6 +2635,23 @@ def relate_inbox_snippets(
         peer_done = _inbox_request_recorded(peer_before, rid) if kind == "snippet" else source_done
         if source_done and peer_done:
             snippets.append(before)
+            continue
+        if source_done or (kind == "snippet" and peer_done):
+            # Incomplete request identity: finish missing markers only.
+            # Re-applying the relationship would resurrect a newer unlink.
+            try:
+                if not source_done:
+                    _inbox_record_relation_request(
+                        db, snippet_id=sid, request_id=rid, actor=actor, now=now,
+                    )
+                if kind == "snippet" and not peer_done:
+                    _inbox_record_relation_request(
+                        db, snippet_id=target, request_id=rid, actor=actor, now=now,
+                    )
+            except PyMongoError as exc:
+                _set_last_error(str(exc))
+                return {"ok": False, "duplicate": False, "error": str(exc)}
+            snippets.append(load_inbox_snippet(sid, db=db) or before)
             continue
         current_links = [str(x) for x in (before.get(field) or []) if str(x).strip()]
         already = target in current_links

@@ -2538,6 +2538,9 @@ export interface InboxSlice {
   hasMore?: boolean;
   query?: string;
   filter?: string;
+  before?: string;
+  targetType?: string;
+  targetId?: string;
   byContractId?: Record<string, InboxSnippet[]>;
   byShipmentId?: Record<string, InboxSnippet[]>;
 }

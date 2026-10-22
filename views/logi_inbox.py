@@ -88,10 +88,15 @@ def _query_state() -> dict[str, str]:
     filt = _text(state.get("filter")).lower()
     if filt not in {"all", "linked", "unlinked"}:
         filt = "all"
+    target_type = _text(state.get("targetType")).lower()
+    if target_type not in {"contract", "shipment", "snippet"}:
+        target_type = ""
     return {
         "query": _text(state.get("query")),
         "filter": filt,
         "before": _text(state.get("before")),
+        "targetType": target_type,
+        "targetId": _text(state.get("targetId")) if target_type else "",
     }
 
 
@@ -156,31 +161,14 @@ def snippet_projection(
     }
 
 
-def _project_linked_map(
-    grouped: Mapping[str, list[Mapping[str, Any]]] | None,
-    *,
-    download: Mapping[str, Any] | None,
-) -> dict[str, list[dict[str, Any]]]:
-    out: dict[str, list[dict[str, Any]]] = {}
-    for key, rows in (grouped or {}).items():
-        projected = [
-            item
-            for item in (snippet_projection(row, download=download) for row in rows)
-            if item
-        ]
-        if projected:
-            out[str(key)] = projected
-    return out
-
-
 def inbox_projection(
     *,
     db: Any = None,
     user: Mapping[str, Any] | None = None,  # noqa: ARG001 — display reserved
-    contract_ids: list[str] | None = None,
-    shipment_ids: list[str] | None = None,
+    contract_ids: list[str] | None = None,  # noqa: ARG001 — unused; never N+1 hydrate
+    shipment_ids: list[str] | None = None,  # noqa: ARG001 — unused; never N+1 hydrate
 ) -> dict[str, Any]:
-    from core.database import load_inbox_snippets_linked_to, query_inbox_snippets
+    from core.database import query_inbox_snippets
 
     can_access = _can_access_inbox()
     empty = {
@@ -194,6 +182,9 @@ def inbox_projection(
         "hasMore": False,
         "query": "",
         "filter": "all",
+        "before": "",
+        "targetType": "",
+        "targetId": "",
         "byContractId": {},
         "byShipmentId": {},
     }
@@ -203,16 +194,14 @@ def inbox_projection(
     state = _query_state()
     download = _download_state()
     try:
-        page = query_inbox_snippets(
-            db=db,
-            query=state["query"],
-            link_filter=state["filter"],
-            before=state["before"],
-        ) if db is not None else query_inbox_snippets(
-            query=state["query"],
-            link_filter=state["filter"],
-            before=state["before"],
-        )
+        kwargs = {
+            "query": state["query"],
+            "link_filter": state["filter"],
+            "before": state["before"],
+            "target_type": state["targetType"],
+            "target_id": state["targetId"],
+        }
+        page = query_inbox_snippets(db=db, **kwargs) if db is not None else query_inbox_snippets(**kwargs)
     except Exception:  # noqa: BLE001 - a missing inbox must not blank the desk
         page = {
             "rows": [],
@@ -222,25 +211,23 @@ def inbox_projection(
             "has_more": False,
             "query": state["query"],
             "filter": state["filter"],
+            "before": state["before"],
+            "target_type": state["targetType"],
+            "target_id": state["targetId"],
         }
     snippets = [
         row for row in (
             snippet_projection(item, download=download) for item in (page.get("rows") or [])
         ) if row
     ]
-    try:
-        linked_maps = load_inbox_snippets_linked_to(
-            contract_ids=contract_ids or [],
-            shipment_ids=shipment_ids or [],
-            db=db,
-        ) if db is not None else load_inbox_snippets_linked_to(
-            contract_ids=contract_ids or [],
-            shipment_ids=shipment_ids or [],
-        )
-    except Exception:  # noqa: BLE001
-        linked_maps = {"by_contract": {}, "by_shipment": {}}
-    by_contract = _project_linked_map((linked_maps or {}).get("by_contract"), download=download)
-    by_shipment = _project_linked_map((linked_maps or {}).get("by_shipment"), download=download)
+    by_contract: dict[str, list[dict[str, Any]]] = {}
+    by_shipment: dict[str, list[dict[str, Any]]] = {}
+    target_type = _text(page.get("target_type")) or state["targetType"]
+    target_id = _text(page.get("target_id")) or state["targetId"]
+    if target_type == "contract" and target_id and snippets:
+        by_contract[target_id] = snippets
+    elif target_type == "shipment" and target_id and snippets:
+        by_shipment[target_id] = snippets
     return {
         "canRead": True,
         "canWrite": True,
@@ -252,6 +239,9 @@ def inbox_projection(
         "hasMore": bool(page.get("has_more")),
         "query": _text(page.get("query")),
         "filter": _text(page.get("filter")) or "all",
+        "before": _text(page.get("before")),
+        "targetType": target_type,
+        "targetId": target_id,
         "byContractId": by_contract,
         "byShipmentId": by_shipment,
     }
@@ -609,10 +599,15 @@ def _handle_search(payload: Mapping[str, Any]) -> dict[str, Any]:
     filt = _text(payload.get("filter")).lower() or "all"
     if filt not in {"all", "linked", "unlinked"}:
         filt = "all"
+    target_type = _text(payload.get("targetType")).lower()
+    if target_type not in {"contract", "shipment", "snippet"}:
+        target_type = ""
     state = {
         "query": _text(payload.get("query"))[:120],
         "filter": filt,
         "before": _text(payload.get("before")),
+        "targetType": target_type,
+        "targetId": _text(payload.get("targetId")) if target_type else "",
     }
     _set_session(INBOX_QUERY_KEY, state)
     return _res(True, readback=state, unverified=True)

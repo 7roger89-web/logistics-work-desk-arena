@@ -1072,12 +1072,7 @@ def build_view_model() -> dict:
         # Issue #212 — Bể thông tin / ghi nhanh. Independent snippets from the
         # existing quick_notes collection (id=team_note is excluded). Linking
         # never books a payment.
-        "inbox": logi_inbox.inbox_projection(
-            db=db,
-            user=user,
-            contract_ids=[rd.text(row.get("id")) for row in (c1.get("contracts") or [])],
-            shipment_ids=[rd.text(row.get("id")) for row in rows],
-        ),
+        "inbox": logi_inbox.inbox_projection(db=db, user=user),
         # Issue #162 — Work Module Library. `templates` is the only attachable
         # set (newest ACTIVE version per template); `all` is the small authoring
         # view (every stored version with its status). Both are read-only

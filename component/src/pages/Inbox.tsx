@@ -15,6 +15,8 @@ const SOURCE_LABEL: Record<string, string> = {
   other: "Khác",
 };
 
+const EMPTY_SNIPPETS: InboxSnippet[] = [];
+
 function newRequestId(prefix = "INBOX-LINK"): string {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
@@ -30,6 +32,27 @@ function snippetTitle(row: InboxSnippet): string {
   if (line) return line.length > 80 ? `${line.slice(0, 80)}…` : line;
   const fileName = row.attachments?.[0]?.name;
   return fileName || row.id;
+}
+
+function mergeInboxPages(prev: InboxSnippet[], page: InboxSnippet[]): InboxSnippet[] {
+  if (!page.length) return prev;
+  if (!prev.length) return page;
+  const seen = new Set(prev.map((row) => row.id));
+  const extra = page.filter((row) => !seen.has(row.id));
+  return extra.length ? [...prev, ...extra] : prev;
+}
+
+function LoadMoreButton({ testId, onClick }: { testId: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      className="touch-target w-full rounded-xl border-2 border-slate-200 bg-white min-h-[48px] font-bold text-[#0f2a4a]"
+    >
+      Xem thêm
+    </button>
+  );
 }
 
 function useInboxDownload() {
@@ -99,8 +122,46 @@ function AttachmentList({
 export function ContractLinkedSnippets({ contractId }: { contractId: string }) {
   useInboxDownload();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const fromMap = vm?.inbox?.byContractId?.[contractId];
-  const rows = fromMap ?? (vm?.inbox?.snippets ?? []).filter((row) => (row.contractIds ?? []).includes(contractId));
+  const page = vm?.inbox?.byContractId?.[contractId] ?? EMPTY_SNIPPETS;
+  const [rows, setRows] = useState<InboxSnippet[]>(page);
+  const scope = useRef(contractId);
+
+  useEffect(() => {
+    dispatchLogiEvent("inbox_snippet_search", {
+      requestId: newRequestId("INBOX-Q"),
+      query: "",
+      filter: "all",
+      targetType: "contract",
+      targetId: contractId,
+    });
+  }, [contractId]);
+
+  useEffect(() => {
+    if (scope.current !== contractId) {
+      scope.current = contractId;
+      setRows(page);
+      return;
+    }
+    if (vm?.inbox?.before) {
+      setRows((prev) => mergeInboxPages(prev, page));
+      return;
+    }
+    setRows(page);
+  }, [page, vm?.inbox?.before, contractId]);
+
+  const loadMore = () => {
+    const oldest = rows[rows.length - 1]?.createdAt;
+    if (!oldest) return;
+    dispatchLogiEvent("inbox_snippet_search", {
+      requestId: newRequestId("INBOX-Q"),
+      query: "",
+      filter: "all",
+      before: oldest,
+      targetType: "contract",
+      targetId: contractId,
+    });
+  };
+
   return (
     <section data-testid="contract-linked-inbox" className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
       <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a]">Thông tin đã ghép</h3>
@@ -121,6 +182,11 @@ export function ContractLinkedSnippets({ contractId }: { contractId: string }) {
           ))}
         </div>
       )}
+      {vm?.inbox?.hasMore && vm?.inbox?.targetType === "contract" && vm?.inbox?.targetId === contractId ? (
+        <div className="mt-3">
+          <LoadMoreButton testId="contract-inbox-load-more" onClick={loadMore} />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -128,8 +194,46 @@ export function ContractLinkedSnippets({ contractId }: { contractId: string }) {
 export function ShipmentInboxSnippets({ shipmentId }: { shipmentId: string }) {
   useInboxDownload();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const fromMap = vm?.inbox?.byShipmentId?.[shipmentId];
-  const rows = fromMap ?? (vm?.inbox?.snippets ?? []).filter((row) => (row.shipmentIds ?? []).includes(shipmentId));
+  const page = vm?.inbox?.byShipmentId?.[shipmentId] ?? EMPTY_SNIPPETS;
+  const [rows, setRows] = useState<InboxSnippet[]>(page);
+  const scope = useRef(shipmentId);
+
+  useEffect(() => {
+    dispatchLogiEvent("inbox_snippet_search", {
+      requestId: newRequestId("INBOX-Q"),
+      query: "",
+      filter: "all",
+      targetType: "shipment",
+      targetId: shipmentId,
+    });
+  }, [shipmentId]);
+
+  useEffect(() => {
+    if (scope.current !== shipmentId) {
+      scope.current = shipmentId;
+      setRows(page);
+      return;
+    }
+    if (vm?.inbox?.before) {
+      setRows((prev) => mergeInboxPages(prev, page));
+      return;
+    }
+    setRows(page);
+  }, [page, vm?.inbox?.before, shipmentId]);
+
+  const loadMore = () => {
+    const oldest = rows[rows.length - 1]?.createdAt;
+    if (!oldest) return;
+    dispatchLogiEvent("inbox_snippet_search", {
+      requestId: newRequestId("INBOX-Q"),
+      query: "",
+      filter: "all",
+      before: oldest,
+      targetType: "shipment",
+      targetId: shipmentId,
+    });
+  };
+
   return (
     <section data-testid="shipment-inbox-snippets" className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 md:p-5">
       <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a]">Thông tin từ Bể</h3>
@@ -150,6 +254,11 @@ export function ShipmentInboxSnippets({ shipmentId }: { shipmentId: string }) {
           ))}
         </div>
       )}
+      {vm?.inbox?.hasMore && vm?.inbox?.targetType === "shipment" && vm?.inbox?.targetId === shipmentId ? (
+        <div className="mt-3">
+          <LoadMoreButton testId="shipment-inbox-load-more" onClick={loadMore} />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -157,7 +266,7 @@ export function ShipmentInboxSnippets({ shipmentId }: { shipmentId: string }) {
 export default function Inbox() {
   useInboxDownload();
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
-  const snippets = vm?.inbox?.snippets ?? [];
+  const snippets = vm?.inbox?.snippets ?? EMPTY_SNIPPETS;
   const contracts = vm?.contracts ?? [];
   const shipments = vm?.shipments ?? [];
   const canRead = vm?.inbox?.canRead !== false;
@@ -169,7 +278,10 @@ export default function Inbox() {
   const [targetId, setTargetId] = useState("");
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState<InboxSnippet[]>(snippets);
   const lock = useRef(false);
+  const scopeKey = `${query}|${filter}`;
+  const lastScope = useRef(scopeKey);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -182,8 +294,21 @@ export default function Inbox() {
     return () => window.clearTimeout(timer);
   }, [query, filter]);
 
+  useEffect(() => {
+    if (lastScope.current !== scopeKey) {
+      lastScope.current = scopeKey;
+      setLoaded(snippets);
+      return;
+    }
+    if (vm?.inbox?.before) {
+      setLoaded((prev) => mergeInboxPages(prev, snippets));
+      return;
+    }
+    setLoaded(snippets);
+  }, [snippets, vm?.inbox?.before, scopeKey]);
+
   const visible = useMemo(() => {
-    return snippets.filter((row) => {
+    return loaded.filter((row) => {
       if (filter === "linked" && !row.linked) return false;
       if (filter === "unlinked" && row.linked) return false;
       if (!query.trim()) return true;
@@ -201,7 +326,18 @@ export default function Inbox() {
         query
       );
     });
-  }, [snippets, filter, query]);
+  }, [loaded, filter, query]);
+
+  const loadMore = () => {
+    const oldest = loaded[loaded.length - 1]?.createdAt;
+    if (!oldest) return;
+    dispatchLogiEvent("inbox_snippet_search", {
+      requestId: newRequestId("INBOX-Q"),
+      query,
+      filter,
+      before: oldest,
+    });
+  };
 
   const toggle = (id: string) => {
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
@@ -315,8 +451,8 @@ export default function Inbox() {
         <Link to="/" className="text-[13.5px] font-semibold text-slate-500">Về tổng quan</Link>
       </div>
 
-      {vm?.inbox?.hasMore ? (
-        <p className="text-[13px] text-slate-500">Còn mẩu tin cũ hơn. Dùng ô tìm để gọi đúng mẩu, không cuộn hết 500 dòng.</p>
+      {vm?.inbox?.hasMore && !vm?.inbox?.targetType ? (
+        <LoadMoreButton testId="inbox-load-more" onClick={loadMore} />
       ) : null}
 
       {visible.length === 0 ? (

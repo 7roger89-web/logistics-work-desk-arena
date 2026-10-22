@@ -507,11 +507,26 @@ def test_jpeg_pdf_multi_link_same_file_id_and_unlink_keeps_bytes(staging):
     assert CONTRACT_ID in linked["contract_ids"]
     assert [row["storage_file_id"] for row in linked["attachments"]] == file_ids
 
+    _dispatch(session, 30, "inbox_snippet_search", {
+        "requestId": "REQ-VIEW-LO1",
+        "query": "",
+        "filter": "all",
+        "targetType": "shipment",
+        "targetId": "LO-TEST-1",
+    })
     inbox = vm.build_view_model()["inbox"]
     assert snippet_id in {row["id"] for row in inbox.get("byShipmentId", {}).get("LO-TEST-1", [])}
+    _dispatch(session, 31, "inbox_snippet_search", {
+        "requestId": "REQ-VIEW-HD",
+        "query": "",
+        "filter": "all",
+        "targetType": "contract",
+        "targetId": CONTRACT_ID,
+    })
+    inbox = vm.build_view_model()["inbox"]
     assert snippet_id in {row["id"] for row in inbox.get("byContractId", {}).get(CONTRACT_ID, [])}
 
-    unlink = _dispatch(session, 4, "inbox_snippet_link", {
+    unlink = _dispatch(session, 32, "inbox_snippet_link", {
         "requestId": "REQ-UNLINK-LO1",
         "snippetIds": [snippet_id],
         "action": "unlink",
@@ -524,7 +539,7 @@ def test_jpeg_pdf_multi_link_same_file_id_and_unlink_keeps_bytes(staging):
     assert [row["storage_file_id"] for row in after_unlink["attachments"]] == file_ids
     assert _gridfs_count() == before_files + 2
 
-    relink = _dispatch(session, 5, "inbox_snippet_link", {
+    relink = _dispatch(session, 33, "inbox_snippet_link", {
         "requestId": "REQ-LINK-LO2",
         "snippetIds": [snippet_id],
         "action": "link",
@@ -537,14 +552,14 @@ def test_jpeg_pdf_multi_link_same_file_id_and_unlink_keeps_bytes(staging):
     assert [row["storage_file_id"] for row in after_lo2["attachments"]] == file_ids
     assert _gridfs_count() == before_files + 2
 
-    download = _dispatch(session, 6, "inbox_snippet_download", {
+    download = _dispatch(session, 34, "inbox_snippet_download", {
         "requestId": "REQ-DOWN-1",
         "snippetId": snippet_id,
         "attachmentId": after_lo2["attachments"][1]["id"],
         "shipmentId": "LO-TEST-2",
     })
     assert download["ok"], download
-    mismatch = _dispatch(session, 7, "inbox_snippet_download", {
+    mismatch = _dispatch(session, 35, "inbox_snippet_download", {
         "requestId": "REQ-DOWN-BAD",
         "snippetId": snippet_id,
         "attachmentId": after_lo2["attachments"][1]["id"],
@@ -775,9 +790,18 @@ def test_older_linked_note_survives_201_notes_on_another_lot(staging):
         assert linked["ok"], linked
     rows = load_inbox_snippets_for_target(field="shipment_ids", target_id="LO-TEST-1")
     assert any(item["id"] == older["id"] for item in rows)
+    seq += 1
+    _dispatch(session, seq, "inbox_snippet_search", {
+        "requestId": "REQ-VIEW-OLD-LOT",
+        "query": "",
+        "filter": "all",
+        "targetType": "shipment",
+        "targetId": "LO-TEST-1",
+    })
     inbox = vm.build_view_model()["inbox"]
     on_old = inbox.get("byShipmentId", {}).get("LO-TEST-1") or []
     assert any(item["id"] == older["id"] for item in on_old)
+    assert any(item["id"] == older["id"] for item in inbox.get("snippets") or [])
     stored = load_inbox_snippet(older["id"])
     assert stored["shipment_ids"] == ["LO-TEST-1"]
 
@@ -816,6 +840,181 @@ def test_search_finds_file_only_note_by_filename_beyond_page(staging):
         any((att.get("name") or "") == "BOC-0910.jpg" for att in (row.get("attachments") or []))
         for row in found["snippets"]
     )
+
+
+def _backdate_created(snippet_ids: list[str]) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from core.database import get_db
+
+    db = get_db()
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    for index, sid in enumerate(snippet_ids):
+        db.quick_notes.update_one(
+            {"id": sid},
+            {"$set": {"created_at": base + timedelta(seconds=index)}},
+        )
+
+
+def test_fifty_first_note_on_same_lot_is_pageable(staging):
+    _ensure_shipments()
+    session = {"seq": 0}
+    ids = []
+    seq = 0
+    for index in range(51):
+        seq += 1
+        row = _create(session, seq, f"REQ-SAME-LOT-{index}", f"H-TEST same-lot note {index:02d}")
+        assert row["ok"], row
+        ids.append(row["id"])
+        seq += 1
+        linked = _dispatch(session, seq, "inbox_snippet_link", {
+            "requestId": f"REQ-SAME-LOT-LINK-{index}",
+            "snippetIds": [row["id"]],
+            "action": "link",
+            "targetType": "shipment",
+            "targetId": "LO-TEST-1",
+        })
+        assert linked["ok"], linked
+    _backdate_created(ids)
+    oldest_id = ids[0]
+    seq += 1
+    _dispatch(session, seq, "inbox_snippet_search", {
+        "requestId": "REQ-SAME-LOT-PAGE1",
+        "query": "",
+        "filter": "all",
+        "targetType": "shipment",
+        "targetId": "LO-TEST-1",
+    })
+    page1 = vm.build_view_model()["inbox"]
+    assert page1["hasMore"] is True
+    assert len(page1["snippets"]) == 50
+    assert oldest_id not in {row["id"] for row in page1["snippets"]}
+    before = page1["snippets"][-1]["createdAt"]
+    seq += 1
+    _dispatch(session, seq, "inbox_snippet_search", {
+        "requestId": "REQ-SAME-LOT-PAGE2",
+        "query": "",
+        "filter": "all",
+        "before": before,
+        "targetType": "shipment",
+        "targetId": "LO-TEST-1",
+    })
+    page2 = vm.build_view_model()["inbox"]
+    assert any(row["id"] == oldest_id for row in page2["snippets"])
+    assert any(row["id"] == oldest_id for row in page2.get("byShipmentId", {}).get("LO-TEST-1", []))
+
+
+def test_unlinked_notes_page_by_time_without_keyword(staging):
+    session = {"seq": 0}
+    ids = []
+    for index in range(51):
+        row = _create(session, index + 1, f"REQ-UNLINKED-PAGE-{index}", f"H-TEST unlinked page {index:02d}")
+        assert row["ok"], row
+        ids.append(row["id"])
+    _backdate_created(ids)
+    oldest_id = ids[0]
+    page1 = vm.build_view_model()["inbox"]
+    assert page1["hasMore"] is True
+    assert len(page1["snippets"]) == 50
+    assert oldest_id not in {row["id"] for row in page1["snippets"]}
+    before = page1["snippets"][-1]["createdAt"]
+    _dispatch(session, 80, "inbox_snippet_search", {
+        "requestId": "REQ-UNLINKED-PAGE2",
+        "query": "",
+        "filter": "all",
+        "before": before,
+    })
+    page2 = vm.build_view_model()["inbox"]
+    assert any(row["id"] == oldest_id for row in page2["snippets"])
+
+
+def test_view_model_does_not_n_plus_one_inbox_linked_loads(staging, monkeypatch):
+    from core.database import get_db
+
+    _ensure_shipments()
+    db = get_db()
+    for index in range(40):
+        sid = f"LO-N1-{index:02d}"
+        if db.shipments.find_one({"id": sid}) is None:
+            db.shipments.insert_one({"id": sid, "is_deleted": False, "customer": "SYN nplusone"})
+    session = {"seq": 0}
+    created = _create(session, 1, "REQ-N1", "H-TEST nplusone note")
+    assert created["ok"]
+    counts = {"find": 0, "find_one": 0}
+    real_find = db.quick_notes.find
+    real_one = db.quick_notes.find_one
+
+    def wrapped_find(*args, **kwargs):
+        counts["find"] += 1
+        return real_find(*args, **kwargs)
+
+    def wrapped_one(*args, **kwargs):
+        counts["find_one"] += 1
+        return real_one(*args, **kwargs)
+
+    monkeypatch.setattr(db.quick_notes, "find", wrapped_find)
+    monkeypatch.setattr(db.quick_notes, "find_one", wrapped_one)
+    vm.build_view_model()
+    assert counts["find"] <= 2
+    assert counts["find_one"] <= 8
+
+
+def test_incomplete_second_marker_then_unlink_replay_does_not_relink(staging, monkeypatch):
+    from core.database import get_db, load_inbox_snippet, relate_inbox_snippets
+    from pymongo.errors import PyMongoError
+
+    session = {"seq": 0}
+    left = _create(session, 1, "REQ-MARK-A", "H-TEST marker A")
+    right = _create(session, 2, "REQ-MARK-B", "H-TEST marker B")
+    db = get_db()
+    real = db.quick_notes.update_one
+    markers = {"n": 0}
+
+    def flaky(*args, **kwargs):
+        update = args[1] if len(args) > 1 else kwargs.get("update")
+        add = (update or {}).get("$addToSet") or {}
+        if "relation_request_ids" in add:
+            markers["n"] += 1
+            if markers["n"] == 2:
+                raise PyMongoError("synthetic second marker fail")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(db.quick_notes, "update_one", flaky)
+    out = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="link",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-MARK-LINK",
+    )
+    assert not out["ok"]
+    left_row = load_inbox_snippet(left["id"])
+    right_row = load_inbox_snippet(right["id"])
+    assert right["id"] in (left_row.get("linked_snippet_ids") or [])
+    assert left["id"] in (right_row.get("linked_snippet_ids") or [])
+    assert "REQ-MARK-LINK" in (left_row.get("relation_request_ids") or [])
+    assert "REQ-MARK-LINK" not in (right_row.get("relation_request_ids") or [])
+    monkeypatch.setattr(db.quick_notes, "update_one", real)
+    unlink = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="unlink",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-MARK-UNLINK",
+    )
+    assert unlink["ok"], unlink
+    replay = relate_inbox_snippets(
+        snippet_ids=[left["id"]],
+        action="link",
+        target_type="snippet",
+        target_id=right["id"],
+        request_id="REQ-MARK-LINK",
+    )
+    assert replay["ok"], replay
+    left_row = load_inbox_snippet(left["id"])
+    right_row = load_inbox_snippet(right["id"])
+    assert right["id"] not in (left_row.get("linked_snippet_ids") or [])
+    assert left["id"] not in (right_row.get("linked_snippet_ids") or [])
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is required for the shell DOM lane")
