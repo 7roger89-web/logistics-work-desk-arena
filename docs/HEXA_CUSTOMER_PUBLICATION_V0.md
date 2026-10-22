@@ -99,5 +99,31 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
   - Các bài kiểm thử cần dữ liệu ở trạng thái `PUBLISHED` phải thiết lập bước đăng nhập TT + duyệt công bố tường minh trong fixture/test setup (tổng cộng `29 passed`: 19 unit tests + 10 HTTP E2E tests).
   - Các thông tin đăng nhập thử nghiệm (`tt.ops.truongthanh`, `lucgiac.trial`, `minhduc.trial`) chỉ phục vụ `SANDBOX_STAGING`, tuyệt đối không chuyển nguyên tài khoản/mật khẩu demo sang hệ thống thật.
 
+## Customer Dashboard V1 — Map/Journey-First Dùng Chung Nền Tảng Logistics (`HEXA-CUSTOMER-DASHBOARD-V1`)
+
+- **Tái sử dụng trực tiếp core hiện có (không copy source, không hardcode tên khách)**:
+  - `core/shipment_dashboard.py` (`build_shipment_dashboard_view`): giải quyết đầu mối phụ trách (`owner` / `sale_owner`) và trạng thái lô.
+  - `core/shipment_journey.py` (`build_journey`) + `core/shipment_execution_profile.py` (`build_execution_profile`) + `core/shipment_operations.py` (`compatibility_facts`, `transport_legs_for_read`): dựng khung các chặng hành trình (`pickup` → `road-ltl` → `road-border` → `customs-import` → `delivery`).
+  - `core/hexa_customer_publication.py` (`build_customer_publication`, `authorize_document_download`): lọc fail-closed theo `principal["customer_id"]` của phiên server và manifest `PUBLISHED` do nhân sự TT duyệt.
+- **Endpoint & Cấu trúc hiển thị (`GET /api/hexa/v0/dashboard`)**:
+  - **Tổng quan (`summary`)**: `active_tracking` (Đang theo dõi), `arriving_soon` (Sắp giao — đã qua cửa khẩu hoặc có ETA kho đã xác minh), `customer_action_needed` (Cần khách xử lý), `total_published`.
+  - **Mỗi lô đã công bố (`shipments[*]`)**:
+    - `shipment_id`, `transport_mode`, `cargo_summary`, `route_summary`
+    - `verified_stage_id`, `verified_stage_label`, `verified_stage_title` (chặng/vị trí được xác minh gần nhất)
+    - `last_updated_at`, `last_updated_label` (thời điểm cập nhật xác minh)
+    - `verified_warehouse_eta`, `verified_warehouse_eta_label` (chỉ hiện khi có mốc ETA kho được TT xác minh & duyệt công bố; khi thiếu xác minh như `ROAD-LG-001` thì giữ `None` / `"Chưa xác minh"`, tuyệt đối không lộ ETA nội bộ chưa xác minh `2026-10-25`)
+    - `is_complete` (không mặc định hoàn thành khi chưa có sự kiện `delivery` đã xác minh & công bố)
+    - `next_step` (việc tiếp theo) & `contact_point` (đầu mối CSKH/Sale TT)
+    - `journey` (bản đồ các chặng Journey-first chỉ đánh dấu hoàn thành các chặng có sự kiện đã xác minh trong `timeline`), `documents` (đúng phiên bản được TT công bố), và `quote` (tổng giá bán đã gửi).
+- **Chứng minh tái sử dụng cho 3 khách hàng thử nghiệm mà không sửa/copy source**:
+  1. **Khách A (`CUST-LUCGIAC` — `lucgiac.trial`)**: lô `ROAD-LG-001` (đi ghép xe `29H-886.68`).
+  2. **Khách B (`CUST-MINHDUC` — `minhduc.trial`)**: lô `ROAD-MD-002` (đi ghép cùng xe `29H-886.68` với Khách A).
+  3. **Khách C (`CUST-ANPHAT` — `anphat.trial`)**: lô `ROAD-AP-003` (chuyến `15H-339.12`, kiểm chứng trường hợp có mốc `EVT-AP-02-CUSTOMS@v1` kèm `verified_warehouse_eta="2026-10-23"`).
+- **Giới hạn môi trường thử nghiệm & những gì chưa sẵn sàng vận hành thực tế**:
+  - Dữ liệu của 3 khách (`Lục Giác`, `Minh Đức`, `An Phát`) và nhân sự TT (`tt.ops.truongthanh`) là dữ liệu giả lập trong `SANDBOX_STAGING`.
+  - Toàn bộ trạng thái lưu trong RAM (`mongomock` + `GridFS`); khởi động lại tiến trình sẽ quay về mặc định `UNPUBLISHED`.
+  - Chưa nối MongoDB Atlas production, chưa tạo collection manifest/account khách trên DB thật, và `BROWSER_QA=NOT_RUN / BLOCKED` trong sandbox Arena (không có Chromium).
+
+
 
 

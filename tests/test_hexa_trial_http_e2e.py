@@ -33,6 +33,7 @@ from core.hexa_trial_portal import (
     SHIPMENT_B_ID,
     TRIAL_COOKIE_NAME,
     TRIAL_SENTINELS,
+    TRIAL_TT_COOKIE_NAME,
     HexaTrialEnvironment,
     create_trial_http_server,
 )
@@ -956,4 +957,317 @@ def test_v1_minh_duc_separate_login_and_strict_cross_tenant_and_role_boundaries(
             json_body={},
         )
         assert st_rev_tt == 403
+
+
+def test_dashboard_v1_default_deny_publish_journey_and_revoke_lifecycle(
+    trial_server,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Dashboard V1 AC1, AC2, AC4: Default-deny empty dashboard -> TT publish -> dashboard summary, row fields, Journey map & unverified ETA guard -> TT revoke clears dashboard & blocks download."""
+    base_url, env = trial_server
+
+    real_fetch = core_att.fetch_attachment_bytes
+    fetch_calls: list[tuple[Any, Any]] = []
+
+    def _spy_fetch(record_or_id: Any, *, shipment_id: Any = None) -> dict[str, Any]:
+        fetch_calls.append((record_or_id, shipment_id))
+        return real_fetch(record_or_id, shipment_id=shipment_id)
+
+    monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+
+    # 1. Anonymous and viewer cannot read customer dashboard
+    st_anon, _, _ = _http_request(base_url, "/api/hexa/v0/dashboard")
+    assert st_anon == 403
+    token_viewer = _server_issued_token(env, "internal_viewer", "sess-internal-viewer")
+    st_viewer, _, _ = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=token_viewer)
+    assert st_viewer == 403
+
+    # 2. Customer Lục Giác logs in BEFORE TT publishes -> dashboard is empty (default-deny)
+    st_lg_login, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg_login == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+
+    st_dash_0, _, raw_dash_0 = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        session_token=lg_token,
+    )
+    assert st_dash_0 == 200
+    dash_0 = json.loads(raw_dash_0.decode("utf-8"))
+    assert dash_0["summary"] == {
+        "active_tracking": 0,
+        "arriving_soon": 0,
+        "customer_action_needed": 0,
+        "total_published": 0,
+    }
+    assert dash_0["shipments"] == []
+
+    # 3. TT logs in and publishes ROAD-LG-001 (with pickup + border events, PL v2, and quote)
+    st_tt_login, hdrs_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt_login == 200
+    tt_token = _extract_cookie_value(hdrs_tt, TRIAL_TT_COOKIE_NAME)
+
+    st_pub, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {
+                "EVT-LG-01-PICKUP": "v1",
+                "EVT-LG-02-BORDER": "v2",
+            },
+            "document_versions": {
+                "DOC-LG-PL": "v2",
+            },
+            "quote": {"id": QUOTE_A_ID, "version": "3"},
+        },
+    )
+    assert st_pub == 200
+
+    # 4. Customer Lục Giác reloads dashboard -> sees published shipment + Journey + documents
+    st_dash_1, _, raw_dash_1 = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        session_token=lg_token,
+    )
+    assert st_dash_1 == 200
+    dash_1_text = raw_dash_1.decode("utf-8")
+    dash_1 = json.loads(dash_1_text)
+
+    assert dash_1["summary"] == {
+        "active_tracking": 1,
+        "arriving_soon": 1,
+        "customer_action_needed": 1,
+        "total_published": 1,
+    }
+    assert len(dash_1["shipments"]) == 1
+    row = dash_1["shipments"][0]
+    assert row["shipment_id"] == SHIPMENT_A_ID
+    assert row["transport_mode"] == "ROAD"
+    assert "18 kiện" in row["cargo_summary"]
+    assert row["verified_stage_id"] == "road-border"
+    assert "Hữu Nghị" in row["verified_stage_title"]
+    assert row["last_updated_at"] == "2026-10-21T14:15:00Z"
+    # AC4: Unverified internal ETA (2026-10-25) MUST NOT be exposed as verified warehouse ETA, and shipment is NOT completed by default
+    assert row["verified_warehouse_eta"] is None
+    assert row["verified_warehouse_eta_label"] == "Chưa xác minh"
+    assert row["is_complete"] is False
+    assert row["next_step"]
+    assert row["contact_point"]
+    assert "2026-10-25" not in dash_1_text
+    for sentinel in TRIAL_SENTINELS:
+        assert sentinel not in dash_1_text
+
+    # Journey nodes reuse core/shipment_journey.py structure filtered strictly by published verified events
+    journey_nodes = {n["id"]: n for n in row["journey"]["nodes"]}
+    assert journey_nodes["pickup"]["completed"] is True
+    assert journey_nodes["road-border"]["completed"] is True
+    assert journey_nodes["road-border"]["current"] is True
+    assert journey_nodes["customs-import"]["completed"] is False
+    assert journey_nodes["delivery"]["completed"] is False
+
+    # Clicking shipment opens Journey & exact published document version (DOC-LG-PL@v2)
+    assert row["documents"] == [
+        {
+            "id": "DOC-LG-PL",
+            "version": "v2",
+            "kind": "PL",
+            "title": "Packing List Lục Giác (Bản v2 đã duyệt)",
+        }
+    ]
+    st_dl, _, pdf_bytes = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2",
+        session_token=lg_token,
+    )
+    assert st_dl == 200
+    assert pdf_bytes.startswith(b"%PDF-1.4")
+    assert len(fetch_calls) == 1
+
+    # 5. AC2: TT revokes publication -> shipment disappears from dashboard and document download is blocked
+    st_rev, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/revoke",
+        method="POST",
+        session_token=tt_token,
+        json_body={},
+    )
+    assert st_rev == 200
+
+    st_dash_2, _, raw_dash_2 = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        session_token=lg_token,
+    )
+    assert st_dash_2 == 200
+    dash_2 = json.loads(raw_dash_2.decode("utf-8"))
+    assert dash_2["summary"]["total_published"] == 0
+    assert dash_2["shipments"] == []
+
+    st_dl_revoked, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/{SHIPMENT_A_ID}/documents/DOC-LG-PL/download?version=v2",
+        session_token=lg_token,
+    )
+    assert st_dl_revoked == 403
+    assert len(fetch_calls) == 1
+
+
+def test_dashboard_v1_multi_tenant_reuse_across_three_customers_without_hardcoding(
+    trial_server,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Dashboard V1 AC1, AC3, AC4: Reusable dashboard pipeline across 3 trial customers (Lục Giác, Minh Đức, An Phát) with strict cross-customer isolation and verified ETA gate."""
+    base_url, _env = trial_server
+
+    real_fetch = core_att.fetch_attachment_bytes
+    fetch_calls: list[tuple[Any, Any]] = []
+
+    def _spy_fetch(record_or_id: Any, *, shipment_id: Any = None) -> dict[str, Any]:
+        fetch_calls.append((record_or_id, shipment_id))
+        return real_fetch(record_or_id, shipment_id=shipment_id)
+
+    monkeypatch.setattr(core_att, "fetch_attachment_bytes", _spy_fetch)
+
+    # TT logs in and publishes shipments for all 3 trial customers:
+    # - Customer A (Lục Giác): ROAD-LG-001
+    # - Customer B (Minh Đức, shared truck with A): ROAD-MD-002
+    # - Customer C (An Phát, 3rd customer): ROAD-AP-003 (first with only pickup event, then with verified ETA customs event)
+    st_tt, hdrs_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt == 200
+    tt_token = _extract_cookie_value(hdrs_tt, TRIAL_TT_COOKIE_NAME)
+
+    _tt_login_and_publish_standard_fixtures(base_url)
+
+    # Publish Customer C (ROAD-AP-003) initially with ONLY pickup event (no verified warehouse ETA yet)
+    st_pub_c1, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-AP-003/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {"EVT-AP-01-PICKUP": "v1"},
+            "document_versions": {"DOC-AP-PL": "v1"},
+            "quote": {"id": "Q-AP-ROAD-003", "version": "3"},
+        },
+    )
+    assert st_pub_c1 == 200
+
+    # Login all 3 customers
+    tokens: dict[str, str] = {}
+    for key, creds, expected_cust_id in (
+        ("A", {"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"}, CUSTOMER_A_ID),
+        ("B", {"username": "minhduc.trial", "passcode": "MD-Trial-2026!"}, CUSTOMER_B_ID),
+        ("C", {"username": "anphat.trial", "passcode": "AP-Trial-2026!"}, "CUST-ANPHAT"),
+    ):
+        st_login, hdrs_login, raw_login = _http_request(
+            base_url,
+            "/api/hexa/v0/auth/login",
+            method="POST",
+            json_body=creds,
+        )
+        assert st_login == 200
+        info = json.loads(raw_login.decode("utf-8"))
+        assert info["principal"]["customer_id"] == expected_cust_id
+        tokens[key] = _extract_cookie_value(hdrs_login, TRIAL_COOKIE_NAME)
+
+    # Verify each customer's dashboard contains ONLY their own published shipment, even if tampering query/header
+    expected_map = {
+        "A": (SHIPMENT_A_ID, CUSTOMER_A_ID, [SHIPMENT_B_ID, "ROAD-AP-003"], ["DOC-MD-PL", "DOC-AP-PL"]),
+        "B": (SHIPMENT_B_ID, CUSTOMER_B_ID, [SHIPMENT_A_ID, "ROAD-AP-003"], ["DOC-LG-PL", "DOC-AP-PL"]),
+        "C": ("ROAD-AP-003", "CUST-ANPHAT", [SHIPMENT_A_ID, SHIPMENT_B_ID], ["DOC-LG-PL", "DOC-MD-PL"]),
+    }
+    for key, (own_sid, _own_cid, foreign_sids, foreign_docs) in expected_map.items():
+        st_d, _, raw_d = _http_request(
+            base_url,
+            f"/api/hexa/v0/dashboard?customer_id={CUSTOMER_A_ID}",
+            session_token=tokens[key],
+            headers={"X-Customer-Id": CUSTOMER_A_ID},
+        )
+        assert st_d == 200
+        d_payload = json.loads(raw_d.decode("utf-8"))
+        assert [s["shipment_id"] for s in d_payload["shipments"]] == [own_sid]
+        d_text = raw_d.decode("utf-8")
+        for f_sid in foreign_sids:
+            assert f_sid not in d_text
+            st_f, _, _ = _http_request(
+                base_url,
+                f"/api/hexa/v0/shipments/{f_sid}",
+                session_token=tokens[key],
+            )
+            assert st_f == 403
+        for f_doc in foreign_docs:
+            assert f_doc not in d_text
+
+    # Customer C (An Phát): with only EVT-AP-01-PICKUP published, verified_warehouse_eta is None
+    st_c_dash1, _, raw_c_dash1 = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        session_token=tokens["C"],
+    )
+    assert st_c_dash1 == 200
+    c_row_1 = json.loads(raw_c_dash1.decode("utf-8"))["shipments"][0]
+    assert c_row_1["shipment_id"] == "ROAD-AP-003"
+    assert c_row_1["verified_stage_id"] == "pickup"
+    assert c_row_1["verified_warehouse_eta"] is None
+    assert c_row_1["verified_warehouse_eta_label"] == "Chưa xác minh"
+    assert c_row_1["is_complete"] is False
+
+    # Now TT publishes EVT-AP-02-CUSTOMS@v1 (which has TT-verified warehouse ETA 2026-10-23)
+    st_pub_c2, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-AP-003/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {
+                "EVT-AP-01-PICKUP": "v1",
+                "EVT-AP-02-CUSTOMS": "v1",
+            },
+            "document_versions": {"DOC-AP-PL": "v1"},
+            "quote": {"id": "Q-AP-ROAD-003", "version": "3"},
+        },
+    )
+    assert st_pub_c2 == 200
+
+    st_c_dash2, _, raw_c_dash2 = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        session_token=tokens["C"],
+    )
+    assert st_c_dash2 == 200
+    c_dash_2 = json.loads(raw_c_dash2.decode("utf-8"))
+    assert c_dash_2["summary"]["arriving_soon"] == 1
+    c_row_2 = c_dash_2["shipments"][0]
+    assert c_row_2["verified_stage_id"] == "customs-import"
+    assert c_row_2["verified_warehouse_eta"] == "2026-10-23"
+    assert "2026-10-23" in c_row_2["verified_warehouse_eta_label"]
+    assert c_row_2["is_complete"] is False
+
+    # Customer C can download own published PDF DOC-AP-PL@v1
+    st_c_dl, _, c_pdf = _http_request(
+        base_url,
+        "/api/hexa/v0/shipments/ROAD-AP-003/documents/DOC-AP-PL/download?version=v1",
+        session_token=tokens["C"],
+    )
+    assert st_c_dl == 200
+    assert c_pdf.startswith(b"%PDF-1.4")
+    assert b"AN PHAT PACKING LIST v1" in c_pdf
+
 

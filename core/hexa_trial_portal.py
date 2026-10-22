@@ -54,22 +54,27 @@ CUSTOMER_A_TRIAL_USERNAME = "lucgiac.trial"
 CUSTOMER_A_TRIAL_PASSCODE = "LG-Trial-2026!"
 CUSTOMER_B_TRIAL_USERNAME = "minhduc.trial"
 CUSTOMER_B_TRIAL_PASSCODE = "MD-Trial-2026!"
+CUSTOMER_C_TRIAL_USERNAME = "anphat.trial"
+CUSTOMER_C_TRIAL_PASSCODE = "AP-Trial-2026!"
 
 # Static/sample token names that must NEVER be accepted as valid HTTP session tokens.
 FORBIDDEN_SAMPLE_TOKENS: frozenset[str] = frozenset(
     {
         "sess-customer-lg",
         "sess-customer-md",
+        "sess-customer-ap",
         "sess-internal-viewer",
         "sess-anonymous",
         "customer_a",
         "customer_b",
+        "customer_c",
         "internal_viewer",
         "anonymous",
         TT_STAFF_TRIAL_USERNAME,
         TT_VIEWER_TRIAL_USERNAME,
         CUSTOMER_A_TRIAL_USERNAME,
         CUSTOMER_B_TRIAL_USERNAME,
+        CUSTOMER_C_TRIAL_USERNAME,
     }
 )
 
@@ -79,6 +84,7 @@ SENTINEL_TT_PRIVATE_SUPPLIER = "TT_PRIVATE_SUPPLIER_FOSHAN_8899"
 SENTINEL_TT_MARGIN = "TT_INTERNAL_MARGIN_11000000"
 SENTINEL_TT_UNVERIFIED_ETA = "TT_UNVERIFIED_ETA_2026-10-25"
 SENTINEL_FOREIGN_CUSTOMER_B = "FOREIGN_CUSTOMER_MINHDUC_9911"
+SENTINEL_FOREIGN_CUSTOMER_C = "FOREIGN_CUSTOMER_ANPHAT_7733"
 
 TRIAL_SENTINELS: tuple[str, ...] = (
     SENTINEL_TT_INTERNAL_COST,
@@ -86,6 +92,7 @@ TRIAL_SENTINELS: tuple[str, ...] = (
     SENTINEL_TT_MARGIN,
     SENTINEL_TT_UNVERIFIED_ETA,
     SENTINEL_FOREIGN_CUSTOMER_B,
+    SENTINEL_FOREIGN_CUSTOMER_C,
 )
 
 SHARED_TRIP_ID = "TRIP-ROAD-2026-01"
@@ -93,12 +100,15 @@ SHARED_TRUCK_PLATE = "29H-886.68 / 粤Z·6689港"
 
 CUSTOMER_A_ID = "CUST-LUCGIAC"
 CUSTOMER_B_ID = "CUST-MINHDUC"
+CUSTOMER_C_ID = "CUST-ANPHAT"
 
 SHIPMENT_A_ID = "ROAD-LG-001"
 SHIPMENT_B_ID = "ROAD-MD-002"
+SHIPMENT_C_ID = "ROAD-AP-003"
 
 QUOTE_A_ID = "Q-LG-ROAD-001"
 QUOTE_B_ID = "Q-MD-ROAD-002"
+QUOTE_C_ID = "Q-AP-ROAD-003"
 
 # Exact schema gap report required by Acceptance Criterion #7:
 # "Nếu nguồn dữ liệu hiện tại thiếu trường bắt buộc, chỉ ra chính xác trường nào;
@@ -273,6 +283,7 @@ class HexaTrialEnvironment:
         #    are never registered and are explicitly rejected.
         token_customer_a = f"hx_live_{secrets.token_urlsafe(24)}"
         token_customer_b = f"hx_live_{secrets.token_urlsafe(24)}"
+        token_customer_c = f"hx_live_{secrets.token_urlsafe(24)}"
         token_internal_viewer = f"hx_live_{secrets.token_urlsafe(24)}"
         self.internal_qa_key = f"hx_internal_qa_{secrets.token_urlsafe(24)}"
 
@@ -281,6 +292,8 @@ class HexaTrialEnvironment:
             CUSTOMER_A_ID: token_customer_a,
             "customer_b": token_customer_b,
             CUSTOMER_B_ID: token_customer_b,
+            "customer_c": token_customer_c,
+            CUSTOMER_C_ID: token_customer_c,
             "internal_viewer": token_internal_viewer,
         }
         self.sessions = {
@@ -306,6 +319,17 @@ class HexaTrialEnvironment:
                 },
                 "default_shipment_id": SHIPMENT_B_ID,
             },
+            token_customer_c: {
+                "role_key": "customer_c",
+                "label": "Khách C — Công ty TNHH Thiết bị An Phát",
+                "principal": {
+                    "authenticated": True,
+                    "kind": "customer",
+                    "customer_id": CUSTOMER_C_ID,
+                    "display_name": "An Phát (Khách C)",
+                },
+                "default_shipment_id": SHIPMENT_C_ID,
+            },
             token_internal_viewer: {
                 "role_key": "internal_viewer",
                 "label": "Nội bộ TT — Role viewer (có finance_view, CẤM làm cổng khách)",
@@ -319,7 +343,7 @@ class HexaTrialEnvironment:
             },
         }
 
-        # 2. Seed the two customers sharing the ROAD trip + trial accounts (PBKDF2-SHA256 via core.auth).
+        # 2. Seed the three trial customers + trial accounts (PBKDF2-SHA256 via core.auth).
         from core import auth as core_auth
         from core import users as core_users
 
@@ -335,6 +359,12 @@ class HexaTrialEnvironment:
                 "name": "Công ty CP Minh Đức",
                 "tax_code": "0102345678",
                 "address": "KCN Yên Phong, Bắc Ninh",
+            },
+            {
+                "id": CUSTOMER_C_ID,
+                "name": "Công ty TNHH Thiết bị An Phát",
+                "tax_code": "0201998877",
+                "address": "KCN Đình Vũ, Hải Phòng",
             },
         ):
             db["customers"].replace_one({"id": cust_doc["id"]}, cust_doc, upsert=True)
@@ -388,6 +418,18 @@ class HexaTrialEnvironment:
                     "label": "Khách B — Công ty CP Minh Đức",
                     "display_name": "Minh Đức (Khách B)",
                     "default_shipment_id": SHIPMENT_B_ID,
+                    "active": True,
+                },
+                {
+                    "account_id": "cust_acct_anphat",
+                    "username": CUSTOMER_C_TRIAL_USERNAME,
+                    "password_hash": core_auth.hash_password(CUSTOMER_C_TRIAL_PASSCODE, iterations=120000),
+                    "kind": "customer",
+                    "customer_id": CUSTOMER_C_ID,
+                    "role_key": "customer_c",
+                    "label": "Khách C — Công ty TNHH Thiết bị An Phát",
+                    "display_name": "An Phát (Khách C)",
+                    "default_shipment_id": SHIPMENT_C_ID,
                     "active": True,
                 },
             ]
@@ -450,10 +492,33 @@ class HexaTrialEnvironment:
             ],
             target_status="SENT",
         )
+        quote_c = self._build_trial_quote(
+            core_quotes,
+            quote_id=QUOTE_C_ID,
+            quote_no="QT-20261022-AP03",
+            customer_id=CUSTOMER_C_ID,
+            customer_name="Công ty TNHH Thiết bị An Phát",
+            factory_name=f"Fangchenggang Electric Equipment Co. [{SENTINEL_FOREIGN_CUSTOMER_C}]",
+            pickup_address="Fangchenggang, Guangxi",
+            lines=[
+                {
+                    "code": "ROAD-LTL-DH-HP",
+                    "service_name": "Cước đường bộ Đông Hưng → Móng Cái → Hải Phòng",
+                    "unit": "Lô",
+                    "qty": 1,
+                    "currency": "VND",
+                    "cost_unit": 24000000,
+                    "sell_unit": 31000000,
+                    "tax_pct": 8,
+                },
+            ],
+            target_status="SENT",
+        )
         db["quotes"].replace_one({"id": QUOTE_A_ID}, quote_a, upsert=True)
         db["quotes"].replace_one({"id": QUOTE_B_ID}, quote_b, upsert=True)
+        db["quotes"].replace_one({"id": QUOTE_C_ID}, quote_c, upsert=True)
 
-        # 4. Build and persist canonical shipments sharing the same ROAD truck via save_shipment_atomic.
+        # 4. Build and persist canonical shipments via save_shipment_atomic.
         shipment_a = logi_staging_seed._shipment(
             sid=SHIPMENT_A_ID,
             customer="Công ty TNHH Lục Giác (HEXA)",
@@ -514,6 +579,8 @@ class HexaTrialEnvironment:
                 ),
             ],
         )
+        shipment_a["sale_owner"] = "Minh Tú (CSKH & Sale Trường Thành)"
+
         shipment_b = logi_staging_seed._shipment(
             sid=SHIPMENT_B_ID,
             customer="Công ty CP Minh Đức",
@@ -554,8 +621,76 @@ class HexaTrialEnvironment:
                 ),
             ],
         )
+        shipment_b["sale_owner"] = "Hoàng Lan (CSKH & Sale Trường Thành)"
 
-        for ship_doc in (shipment_a, shipment_b):
+        shipment_c = logi_staging_seed._shipment(
+            sid=SHIPMENT_C_ID,
+            customer="Công ty TNHH Thiết bị An Phát",
+            customer_id=CUSTOMER_C_ID,
+            contract_id="HDMB-AP-2026",
+            status="pending",
+            created="2026-10-19",
+            mode="Truck",
+            incoterm="DAP",
+            transport={
+                "booking_no": "TRIP-ROAD-2026-02",
+                "carrier": "Nhà xe Đông Bắc Logistics",
+                "etd": "2026-10-19",
+                "eta": "2026-10-23",
+                "pol": "Đông Hưng (Quảng Tây)",
+                "pod": "Móng Cái → KCN Đình Vũ, Hải Phòng",
+                "container_no": "15H-339.12",
+                "qty_pkg": f"12 pallet / 3.100 kg ({SENTINEL_FOREIGN_CUSTOMER_C})",
+                "road_facts": {
+                    "ltl_received_at": "2026-10-19T09:30",
+                    "ltl_package_count": "12",
+                    "ltl_weight_kg": "3100",
+                    "ltl_consolidated_at": "2026-10-19T14:00",
+                    "border_crossed_at": "2026-10-20T16:30",
+                },
+            },
+            customs={"tk_no": "106688773311", "customs_status": True, "phan_luong": "Xanh"},
+            arrival={"arrival_date": "2026-10-23", "free_time": 5},
+            delivery={
+                "truck_no": "15H-339.12",
+                "seal_no": "SEAL-ROAD-339",
+                "delivery_date": "",
+                "addr": "Kho An Phát — KCN Đình Vũ, Hải Phòng",
+                "is_delivered": False,
+            },
+            details=[
+                logi_staging_seed._line(
+                    "Cước đường bộ Đông Hưng → Hải Phòng",
+                    "ROAD-LTL-DH-HP",
+                    1,
+                    31000000,
+                    24000000,
+                    8,
+                    note=SENTINEL_FOREIGN_CUSTOMER_C,
+                ),
+            ],
+        )
+        shipment_c["sale_owner"] = "Quốc Khánh (CSKH & Sale Trường Thành)"
+
+        for ship_doc, named_place in (
+            (shipment_a, "Hà Nội"),
+            (shipment_b, "Bắc Ninh"),
+            (shipment_c, "Hải Phòng"),
+        ):
+            ship_doc.setdefault("data", {}).setdefault("0.0", {})["execution_profile"] = {
+                "incoterm_version": "2020",
+                "incoterm_named_place": named_place,
+                "load_model": "LTL",
+                "service_scope": [
+                    "ORIGIN_PICKUP",
+                    "CROSS_BORDER_COORDINATION",
+                    "MAIN_CARRIAGE",
+                    "IMPORT_CUSTOMS",
+                    "FINAL_DELIVERY",
+                ],
+                "service_scope_confirmed": True,
+                "cargo_insurance": {"status": "UNKNOWN"},
+            }
             existing = db["shipments"].find_one({"id": ship_doc["id"]})
             if existing is None:
                 ok = core_db.save_shipment_atomic(copy.deepcopy(ship_doc), actor="staging.support")
@@ -623,6 +758,19 @@ class HexaTrialEnvironment:
                 "Customer: Cong ty CP Minh Duc",
             ],
         )
+        att_ap_pl_v1 = self._upload_trial_pdf(
+            core_att,
+            shipment_id=SHIPMENT_C_ID,
+            file_name="Packing-List-An-Phat-v1.pdf",
+            category="transport",
+            title="AN PHAT PACKING LIST v1 (APPROVED FOR AN PHAT)",
+            lines=[
+                f"Shipment: {SHIPMENT_C_ID}",
+                "Customer: Cong ty TNHH Thiet bi An Phat",
+                "Version: v1 (TT verified and published)",
+                "Cargo: 12 pallets / 3,100 kg",
+            ],
+        )
 
         # 6. Populate trial adapter collections (explicitly bridging the schema gaps documented in SCHEMA_GAP_REPORT).
         db["hexa_trial_shipment_links"].delete_many({})
@@ -635,6 +783,8 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": SHARED_TRUCK_PLATE,
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_A_ID,
+                    "cargo_summary": "Nội thất văn phòng — 18 kiện / 4.200 kg",
+                    "route_summary": "Bằng Tường (Quảng Tây) → Hữu Nghị → Cầu Giấy, Hà Nội",
                     "internal_cost_vnd": 42000000,
                     "internal_margin_vnd": 11000000,
                     "internal_supplier": f"Foshan Hexa Furniture Factory ({SENTINEL_TT_PRIVATE_SUPPLIER})",
@@ -648,11 +798,28 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": SHARED_TRUCK_PLATE,
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_B_ID,
+                    "cargo_summary": "Linh kiện cơ khí — 22 kiện / 5.800 kg",
+                    "route_summary": "Bằng Tường (Quảng Tây) → Hữu Nghị → KCN Yên Phong, Bắc Ninh",
                     "internal_cost_vnd": 29000000,
                     "internal_margin_vnd": 7000000,
                     "internal_supplier": f"Guangxi Dongxing Metal Co. ({SENTINEL_FOREIGN_CUSTOMER_B})",
                     "internal_carrier_vendor": "Nhà xe Việt Trung An Bình",
                     "unverified_eta": "2026-10-25",
+                },
+                {
+                    "shipment_id": SHIPMENT_C_ID,
+                    "customer_id": CUSTOMER_C_ID,
+                    "trip_id": "TRIP-ROAD-2026-02",
+                    "shared_truck_plate": "15H-339.12",
+                    "transport_mode": "ROAD",
+                    "quote_id": QUOTE_C_ID,
+                    "cargo_summary": "Thiết bị điện công nghiệp — 12 pallet / 3.100 kg",
+                    "route_summary": "Đông Hưng (Quảng Tây) → Móng Cái → KCN Đình Vũ, Hải Phòng",
+                    "internal_cost_vnd": 24000000,
+                    "internal_margin_vnd": 7000000,
+                    "internal_supplier": f"Fangchenggang Electric Equipment Co. ({SENTINEL_FOREIGN_CUSTOMER_C})",
+                    "internal_carrier_vendor": "Nhà xe Đông Bắc Logistics",
+                    "unverified_eta": "2026-10-23",
                 },
             ]
         )
@@ -742,6 +909,35 @@ class HexaTrialEnvironment:
                     "verified": True,
                     "verified_at": "2026-10-20T09:30:00Z",
                     "visibility": "CUSTOMER",
+                    "private_notes": "",
+                },
+                {
+                    "id": "EVT-AP-01-PICKUP",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_C_ID,
+                    "shipment_id": SHIPMENT_C_ID,
+                    "trip_id": "TRIP-ROAD-2026-02",
+                    "stage_id": "pickup",
+                    "public_title": "Đã nhận 12 pallet thiết bị điện An Phát tại kho Đông Hưng (xe 15H-339.12)",
+                    "occurred_at": "2026-10-19T09:30:00Z",
+                    "verified": True,
+                    "verified_at": "2026-10-19T10:30:00Z",
+                    "visibility": "CUSTOMER",
+                    "private_notes": "",
+                },
+                {
+                    "id": "EVT-AP-02-CUSTOMS",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_C_ID,
+                    "shipment_id": SHIPMENT_C_ID,
+                    "trip_id": "TRIP-ROAD-2026-02",
+                    "stage_id": "customs-import",
+                    "public_title": "Đã thông quan nhập khẩu tại Móng Cái — xác nhận lịch giao kho Đình Vũ ngày 2026-10-23",
+                    "occurred_at": "2026-10-21T11:00:00Z",
+                    "verified": True,
+                    "verified_at": "2026-10-21T11:30:00Z",
+                    "visibility": "CUSTOMER",
+                    "verified_warehouse_eta": "2026-10-23",
                     "private_notes": "",
                 },
             ]
@@ -840,6 +1036,21 @@ class HexaTrialEnvironment:
                     "file_name": "Packing-List-Minh-Duc-v1.pdf",
                     "attachment_id": att_md_pl_v1["id"],
                     "attachment_shipment_id": SHIPMENT_B_ID,
+                },
+                {
+                    "id": "DOC-AP-PL",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_C_ID,
+                    "shipment_id": SHIPMENT_C_ID,
+                    "trip_id": "TRIP-ROAD-2026-02",
+                    "kind": "PL",
+                    "status": "AVAILABLE",
+                    "visibility": "CUSTOMER",
+                    "verified": True,
+                    "public_title": "Packing List An Phát (Bản v1 đã duyệt)",
+                    "file_name": "Packing-List-An-Phat-v1.pdf",
+                    "attachment_id": att_ap_pl_v1["id"],
+                    "attachment_shipment_id": SHIPMENT_C_ID,
                 },
             ]
         )
@@ -1716,6 +1927,258 @@ class HexaTrialEnvironment:
             )
             raise
 
+    def build_customer_dashboard(
+        self,
+        *,
+        session_token: str | None,
+    ) -> dict[str, Any]:
+        """Build the reusable Map/Journey-first Customer Dashboard V1 for any authenticated customer.
+
+        Reuses:
+        - ``core.hexa_customer_publication.build_customer_publication`` (via ``read_customer_publication``)
+        - ``core.shipment_dashboard.build_shipment_dashboard_view``
+        - ``core.shipment_journey.build_journey``
+        - ``core.shipment_execution_profile.build_execution_profile``
+        - ``core.shipment_operations.compatibility_facts`` & ``transport_legs_for_read``
+
+        Enforces:
+        - Zero customer-name hardcoding: queries shipments purely by server-resolved ``principal['customer_id']``.
+        - Default-deny / Revocation: unpublished or revoked shipments are skipped (never shown).
+        - Truth guard: never defaults a shipment to completed and never exposes unverified ETA,
+          internal cost, margin, supplier, or other customers' data.
+        """
+        from core import database as core_db
+        from core.shipment_dashboard import build_shipment_dashboard_view
+        from core.shipment_execution_profile import build_execution_profile
+        from core.shipment_journey import build_journey
+        from core.shipment_operations import compatibility_facts, transport_legs_for_read
+
+        self.ensure_seeded()
+        principal = self.resolve_principal(session_token)
+        cust_id = str(principal.get("customer_id") or "").strip()
+        if not (
+            principal.get("authenticated") is True
+            and principal.get("kind") == "customer"
+            and cust_id
+        ):
+            self._record_audit(
+                action="READ_DASHBOARD",
+                principal=principal,
+                shipment_id="*",
+                allowed=False,
+                detail="CUSTOMER_RESOURCE_UNAVAILABLE",
+            )
+            raise PublicationDenied()
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        cust_doc = db["customers"].find_one({"id": cust_id}, {"_id": 0}) or {}
+        candidate_shipments = list(
+            db["shipments"].find(
+                {"customer_id": cust_id, "is_deleted": {"$ne": True}},
+                {"_id": 0},
+            )
+        )
+
+        rows: list[dict[str, Any]] = []
+        for raw_ship in candidate_shipments:
+            sid = str(raw_ship.get("id") or raw_ship.get("shipment_id") or "").strip()
+            if not sid:
+                continue
+            try:
+                pub_payload = self.read_customer_publication(
+                    session_token=session_token,
+                    shipment_id=sid,
+                )
+            except PublicationDenied:
+                continue
+
+            link = (
+                db["hexa_trial_shipment_links"].find_one(
+                    {"shipment_id": sid, "customer_id": cust_id},
+                    {"_id": 0},
+                )
+                or {}
+            )
+            dash_view = build_shipment_dashboard_view(raw_ship)
+            legs, _ = transport_legs_for_read(raw_ship)
+            exec_profile = build_execution_profile(raw_ship, legs=legs)
+            operational = compatibility_facts(raw_ship)
+            internal_journey = build_journey(
+                raw_ship,
+                profile=exec_profile,
+                operational=operational,
+                primary={"text": "", "detail": "", "route": "", "priority": "NORMAL"},
+                dashboard=dash_view,
+                attachments=[],
+            )
+
+            timeline = list(pub_payload.get("timeline") or [])
+            latest_event = timeline[0] if timeline else None
+            verified_stage_id = str(latest_event.get("stage") or "") if latest_event else None
+            verified_stage_title = (
+                str(latest_event.get("title") or "")
+                if latest_event
+                else "Chưa có mốc tiến độ được xác minh"
+            )
+            last_updated_at = str(latest_event.get("occurred_at") or "") if latest_event else None
+
+            # Map published timeline events by stage_id so Journey nodes reflect ONLY verified & published facts
+            events_by_stage: dict[str, dict[str, Any]] = {}
+            for ev in reversed(timeline):
+                st_key = str(ev.get("stage") or "").strip()
+                if st_key:
+                    events_by_stage[st_key] = ev
+
+            # Check if any published verified event carries a TT-verified warehouse ETA
+            verified_warehouse_eta: str | None = None
+            for ev in timeline:
+                ev_id = str(ev.get("id") or "").strip()
+                ev_ver = str(ev.get("version") or "").strip()
+                if not ev_id or not ev_ver:
+                    continue
+                ev_doc = db["hexa_trial_events"].find_one(
+                    {
+                        "shipment_id": sid,
+                        "customer_id": cust_id,
+                        "id": ev_id,
+                        "version": ev_ver,
+                        "verified": True,
+                        "visibility": "CUSTOMER",
+                    },
+                    {"_id": 0},
+                )
+                if ev_doc and str(ev_doc.get("verified_warehouse_eta") or "").strip():
+                    verified_warehouse_eta = str(ev_doc["verified_warehouse_eta"]).strip()
+                    break
+
+            customer_nodes: list[dict[str, Any]] = []
+            verified_stage_label = "Chưa xác minh"
+            for raw_node in internal_journey.get("nodes") or []:
+                n_id = str(raw_node.get("id") or "")
+                if n_id == "MAIN_CARRIAGE":
+                    continue
+                n_label = str(raw_node.get("label") or n_id)
+                matched_ev = events_by_stage.get(n_id)
+                if matched_ev is None and n_id == "road-ltl" and "pickup" in events_by_stage:
+                    matched_ev = events_by_stage["pickup"]
+                is_done = matched_ev is not None
+                is_current = bool(verified_stage_id and n_id == verified_stage_id)
+                if is_current:
+                    verified_stage_label = n_label
+                customer_nodes.append(
+                    {
+                        "id": n_id,
+                        "label": n_label,
+                        "completed": is_done,
+                        "current": is_current,
+                        "state": (
+                            "CURRENT"
+                            if is_current
+                            else ("VERIFIED_DONE" if is_done else "PENDING_VERIFICATION")
+                        ),
+                        "evidence": (
+                            str(matched_ev.get("title") or "")
+                            if matched_ev
+                            else "Chưa có mốc xác minh được công bố"
+                        ),
+                        "occurred_at": str(matched_ev.get("occurred_at") or "") if matched_ev else "",
+                    }
+                )
+
+            if verified_stage_id and verified_stage_label == "Chưa xác minh":
+                verified_stage_label = verified_stage_id
+
+            # Never default a shipment to completed unless a verified 'delivery' event was explicitly published
+            is_complete = "delivery" in events_by_stage
+            docs = list(pub_payload.get("documents") or [])
+            quote = pub_payload.get("quote")
+            needs_customer_action = bool((docs or quote) and not is_complete)
+
+            if is_complete:
+                next_step = "Đã giao hàng (xác minh hoàn tất)"
+            elif verified_warehouse_eta:
+                next_step = f"Chuẩn bị kho nhận hàng (ETA đã xác minh: {verified_warehouse_eta}) & kiểm tra chứng từ"
+            elif docs or quote:
+                next_step = "Kiểm tra chứng từ / báo giá đã công bố & theo dõi thông quan"
+            elif timeline:
+                next_step = "Đang vận chuyển — chờ Trường Thành công bố chứng từ tiếp theo"
+            else:
+                next_step = "Chờ Trường Thành cập nhật mốc xác minh tiếp theo"
+
+            contact_point = str(dash_view.get("owner") or "CSKH Trường Thành")
+
+            rows.append(
+                {
+                    "shipment_id": sid,
+                    "transport_mode": pub_payload.get("transport_mode"),
+                    "route_summary": str(link.get("route_summary") or "Đang cập nhật tuyến"),
+                    "cargo_summary": str(link.get("cargo_summary") or "Hàng hóa theo Packing List công bố"),
+                    "verified_stage_id": verified_stage_id,
+                    "verified_stage_label": verified_stage_label,
+                    "verified_stage_title": verified_stage_title,
+                    "last_updated_at": last_updated_at,
+                    "last_updated_label": last_updated_at or "Chưa có mốc xác minh",
+                    "verified_warehouse_eta": verified_warehouse_eta,
+                    "verified_warehouse_eta_label": (
+                        f"{verified_warehouse_eta} (Đã xác minh)"
+                        if verified_warehouse_eta
+                        else "Chưa xác minh"
+                    ),
+                    "is_complete": is_complete,
+                    "needs_customer_action": needs_customer_action,
+                    "next_step": next_step,
+                    "contact_point": contact_point,
+                    "journey": {
+                        "current_stage_id": verified_stage_id or "",
+                        "nodes": customer_nodes,
+                        "position_note": (
+                            verified_stage_title
+                            if verified_stage_id
+                            else "Chưa có mốc thực tế được xác minh công bố."
+                        ),
+                    },
+                    "timeline": timeline,
+                    "documents": docs,
+                    "quote": quote,
+                }
+            )
+
+        rows.sort(key=lambda r: (str(r.get("last_updated_at") or ""), r["shipment_id"]), reverse=True)
+        active_tracking = sum(1 for r in rows if not r["is_complete"])
+        arriving_soon = sum(
+            1
+            for r in rows
+            if not r["is_complete"]
+            and (
+                r["verified_warehouse_eta"] is not None
+                or r["verified_stage_id"] in {"road-border", "customs-import", "arrival"}
+            )
+        )
+        customer_action_needed = sum(1 for r in rows if r["needs_customer_action"])
+
+        self._record_audit(
+            action="READ_DASHBOARD",
+            principal=principal,
+            shipment_id="*",
+            allowed=True,
+            detail=f"published_shipments={len(rows)}",
+        )
+        return {
+            "schema": "hexa-customer-dashboard/v1",
+            "customer_id": cust_id,
+            "customer_name": str(cust_doc.get("name") or cust_id),
+            "summary": {
+                "active_tracking": active_tracking,
+                "arriving_soon": arriving_soon,
+                "customer_action_needed": customer_action_needed,
+                "total_published": len(rows),
+            },
+            "shipments": rows,
+        }
+
     def download_customer_document(
         self,
         *,
@@ -2174,13 +2637,72 @@ def render_trial_portal_html() -> str:
       font-size: 12.5px;
       color: var(--muted);
     }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 10px 0 14px;
+    }
+    .kpi-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .kpi-card .kpi-label {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .kpi-card .kpi-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 4px;
+      font-family: var(--mono);
+    }
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .journey-map-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+      gap: 10px;
+      margin: 10px 0 16px;
+    }
+    .journey-node {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      font-size: 12.5px;
+    }
+    .journey-node.done {
+      border-color: #a8dab5;
+      background: var(--ok-bg);
+    }
+    .journey-node.current {
+      border: 2px solid var(--primary);
+      background: var(--primary-soft);
+    }
+    .journey-node .node-title {
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    @media (max-width: 768px) {
+      .screen-tabs { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .kv-list { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="top-row">
       <div>
-        <h1>HEXA V0 — Luồng Trường Thành Duyệt Công Bố → Khách Hàng Đăng Nhập Xem Lô</h1>
+        <h1>HEXA V1 — Dashboard Khách Hàng Dùng Chung Nền Tảng Logistics (Map / Journey-First)</h1>
         <div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">
           Môi trường thử nghiệm cô lập (SANDBOX_STAGING) · Chỉ hiển thị đúng tiến độ đã xác minh, chứng từ đúng phiên bản và báo giá bán đã duyệt.
         </div>
@@ -2194,12 +2716,12 @@ def render_trial_portal_html() -> str:
 
   <nav class="screen-tabs" aria-label="Chuyển màn hình nghiệp vụ">
     <button id="tab-btn-customer" class="screen-tab-btn active" onclick="switchScreen('customer')">
-      <span class="tab-title">Màn hình 2 — Cổng Khách Hàng (Lục Giác / Minh Đức)</span>
-      <span class="tab-sub">Bước khách hàng: Đăng nhập → Xem hành trình → Tải chứng từ đã duyệt</span>
+      <span class="tab-title">Màn hình 2 — Dashboard Khách Hàng V1 (Lục Giác / Minh Đức / An Phát)</span>
+      <span class="tab-sub">Bước khách hàng: Đăng nhập → Xem Dashboard tổng quan → Bấm lô mở Hành trình &amp; Chứng từ</span>
     </button>
     <button id="tab-btn-tt" class="screen-tab-btn" onclick="switchScreen('tt')">
       <span class="tab-title">Màn hình 1 — Nội bộ Trường Thành (Duyệt Công Bố)</span>
-      <span class="tab-sub">Bước nhân sự TT: Mở lô ROAD-LG-001 → Chọn mục chia sẻ → Công bố / Thu hồi</span>
+      <span class="tab-sub">Bước nhân sự TT: Mở lô (ROAD-LG-001 / ROAD-MD-002 / ROAD-AP-003) → Chọn mục → Công bố / Thu hồi</span>
     </button>
   </nav>
 
@@ -2234,11 +2756,14 @@ def render_trial_portal_html() -> str:
             <label for="tt-shipment-input" class="muted">Mã lô:</label>
             <input id="tt-shipment-input" type="text" value="ROAD-LG-001" style="width: 140px;" />
             <button class="btn-secondary" onclick="loadTtShipmentDesk()">Mở hồ sơ lô</button>
+            <button class="btn-secondary" onclick="pickTtShipment('ROAD-LG-001')">Lô ROAD-LG-001</button>
+            <button class="btn-secondary" onclick="pickTtShipment('ROAD-MD-002')">Lô ROAD-MD-002</button>
+            <button class="btn-secondary" onclick="pickTtShipment('ROAD-AP-003')">Lô ROAD-AP-003</button>
           </div>
         </h2>
 
         <div id="tt-desk-status" class="banner-result banner-warn">
-          Hãy bấm "1. Đăng nhập Trường Thành" ở trên để mở hồ sơ nội bộ lô ROAD-LG-001 và duyệt công bố cho khách Lục Giác.
+          Hãy bấm "1. Đăng nhập Trường Thành" ở trên để mở hồ sơ nội bộ lô và duyệt công bố cho khách hàng tương ứng.
         </div>
 
         <div id="tt-desk-body" style="display: none;">
@@ -2249,31 +2774,35 @@ def render_trial_portal_html() -> str:
           </dl>
 
           <h3>1. Chọn Mốc tiến độ đã xác minh để chia sẻ cho khách</h3>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 70px;">Chọn</th>
-                <th>Mã mốc &amp; Phiên bản</th>
-                <th>Nội dung tiến độ</th>
-                <th>Trạng thái xác minh</th>
-              </tr>
-            </thead>
-            <tbody id="tt-events-tbody"></tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Chọn</th>
+                  <th>Mã mốc &amp; Phiên bản</th>
+                  <th>Nội dung tiến độ</th>
+                  <th>Trạng thái xác minh</th>
+                </tr>
+              </thead>
+              <tbody id="tt-events-tbody"></tbody>
+            </table>
+          </div>
 
           <h3>2. Chọn Chứng từ &amp; Phiên bản cụ thể để cho phép khách tải</h3>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 70px;">Chọn</th>
-                <th>Mã chứng từ &amp; Phiên bản</th>
-                <th>Loại</th>
-                <th>Tên chứng từ</th>
-                <th>Kiểm soát &amp; Thu hồi nhanh</th>
-              </tr>
-            </thead>
-            <tbody id="tt-docs-tbody"></tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Chọn</th>
+                  <th>Mã chứng từ &amp; Phiên bản</th>
+                  <th>Loại</th>
+                  <th>Tên chứng từ</th>
+                  <th>Kiểm soát &amp; Thu hồi nhanh</th>
+                </tr>
+              </thead>
+              <tbody id="tt-docs-tbody"></tbody>
+            </table>
+          </div>
 
           <h3>3. Chọn Phiên bản Báo giá BÁN muốn công bố</h3>
           <div id="tt-quote-box" class="helper-box" style="font-size: 13px; color: var(--text);"></div>
@@ -2297,7 +2826,7 @@ def render_trial_portal_html() -> str:
       </section>
     </div>
 
-    <!-- ==================== SCREEN 2: CUSTOMER PORTAL ==================== -->
+    <!-- ==================== SCREEN 2: CUSTOMER DASHBOARD V1 ==================== -->
     <div id="screen-customer" class="screen-pane">
       <section class="card">
         <h2>
@@ -2313,32 +2842,85 @@ def render_trial_portal_html() -> str:
           <button class="btn-secondary" onclick="logoutCustomer()">Đăng xuất</button>
           <button class="btn-secondary" onclick="switchScreen('tt')">⇄ Mở Màn hình Trường Thành (Duyệt/Thu hồi)</button>
         </div>
+        <div class="btn-row" style="margin-top: 8px;">
+          <span class="muted">Điền nhanh tài khoản thử nghiệm:</span>
+          <button class="btn-secondary" onclick="fillCustomerCreds('lucgiac.trial', 'LG-Trial-2026!')">Khách A (lucgiac.trial)</button>
+          <button class="btn-secondary" onclick="fillCustomerCreds('minhduc.trial', 'MD-Trial-2026!')">Khách B (minhduc.trial)</button>
+          <button class="btn-secondary" onclick="fillCustomerCreds('anphat.trial', 'AP-Trial-2026!')">Khách C (anphat.trial)</button>
+        </div>
         <div class="helper-box">
-          <strong>Tài khoản khách thử nghiệm (Mỗi tài khoản gắn cố định 1 mã khách hàng tại Server):</strong><br/>
-          • Khách A (Lục Giác — lô <span class="mono">ROAD-LG-001</span>): Tài khoản <span class="mono">lucgiac.trial</span> | Mật khẩu <span class="mono">LG-Trial-2026!</span><br/>
-          • Khách B (Minh Đức — đi ghép cùng xe, lô <span class="mono">ROAD-MD-002</span>): Tài khoản <span class="mono">minhduc.trial</span> | Mật khẩu <span class="mono">MD-Trial-2026!</span>
+          <strong>3 Tài khoản khách thử nghiệm (Dùng chung 1 pipeline Dashboard, phân tách dữ liệu tại Server):</strong><br/>
+          • Khách A (Lục Giác — lô <span class="mono">ROAD-LG-001</span>, đi ghép xe): <span class="mono">lucgiac.trial</span> / <span class="mono">LG-Trial-2026!</span><br/>
+          • Khách B (Minh Đức — lô <span class="mono">ROAD-MD-002</span>, đi ghép cùng xe với A): <span class="mono">minhduc.trial</span> / <span class="mono">MD-Trial-2026!</span><br/>
+          • Khách C (An Phát — lô <span class="mono">ROAD-AP-003</span>, kiểm chứng tái sử dụng): <span class="mono">anphat.trial</span> / <span class="mono">AP-Trial-2026!</span>
         </div>
         <div id="cust-auth-banner" style="margin-top: 10px;"></div>
       </section>
 
-      <section class="card">
+      <section class="card" id="customer-dashboard-card">
         <h2>
-          <span>Bước 2 (Khách hàng) — Tra cứu lô hàng theo phiên đã xác thực</span>
+          <span>Bước 2 (Khách hàng) — Tổng quan Lô hàng đã được Trường Thành công bố</span>
+          <button class="btn-secondary" onclick="loadCustomerDashboard()">↻ Làm mới Dashboard</button>
         </h2>
-        <div class="btn-row">
-          <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
-          <input id="shipment-input" type="text" value="ROAD-LG-001" />
-          <button onclick="loadRequestedShipment()">2. Xem hành trình &amp; công bố</button>
+        <div id="dashboard-status-banner" class="banner-result banner-warn">
+          Hãy đăng nhập tài khoản khách hàng ở Bước 1 để tải Dashboard tổng quan các lô hàng đã được Trường Thành duyệt công bố.
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Đang theo dõi</div>
+            <div class="kpi-val" id="dash-count-tracking">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Sắp giao (Đã qua cửa khẩu / Có ETA xác minh)</div>
+            <div class="kpi-val" id="dash-count-arriving">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Cần khách xử lý (Đối chiếu chứng từ / Chuẩn bị nhận)</div>
+            <div class="kpi-val" id="dash-count-action">0</div>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Mã lô &amp; Phương thức</th>
+                <th>Hàng hóa</th>
+                <th>Chặng / Vị trí xác minh gần nhất</th>
+                <th>Thời điểm cập nhật</th>
+                <th>ETA kho (Chỉ hiện khi đã xác minh)</th>
+                <th>Việc tiếp theo</th>
+                <th>Đầu mối TT</th>
+                <th>Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody id="dash-shipments-tbody">
+              <tr>
+                <td colspan="8" class="muted">Chưa có lô hàng nào được công bố hiển thị.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
       <section class="card" id="hexa-portal-card">
         <h2>
-          <span>Bước 3 (Khách hàng) — Thông tin công bố từ Trường Thành &amp; Tải chứng từ</span>
+          <span>Bước 3 (Khách hàng) — Bản đồ Hành trình (Journey) &amp; Chứng từ đúng phiên bản của lô</span>
+          <div class="btn-row" style="margin-top: 0;">
+            <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
+            <input id="shipment-input" type="text" value="ROAD-LG-001" style="width: 140px;" />
+            <button onclick="loadRequestedShipment()">Xem hành trình &amp; công bố</button>
+          </div>
         </h2>
         <div id="portal-status-banner" class="banner-result banner-deny">Chưa tải dữ liệu lô hàng.</div>
 
         <div id="portal-content">
+          <h3>Bản đồ Hành trình Lô hàng (Map / Journey-First — Chỉ đánh dấu hoàn thành các chặng đã xác minh)</h3>
+          <div id="pub-journey-map" class="journey-map-bar">
+            <div class="journey-node"><div class="node-title">Chưa chọn lô đã công bố</div><div class="muted">Bấm vào lô ở bảng trên để mở sơ đồ hành trình.</div></div>
+          </div>
+
           <dl class="kv-list">
             <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
             <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
@@ -2347,43 +2929,57 @@ def render_trial_portal_html() -> str:
           </dl>
 
           <h3>Tiến độ đã xác minh &amp; công bố (Timeline)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Mã mốc</th>
-                <th>Công đoạn</th>
-                <th>Nội dung công bố</th>
-                <th>Thời điểm xảy ra</th>
-                <th>Phiên bản</th>
-              </tr>
-            </thead>
-            <tbody id="pub-timeline-body"></tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã mốc</th>
+                  <th>Công đoạn</th>
+                  <th>Nội dung công bố</th>
+                  <th>Thời điểm xảy ra</th>
+                  <th>Phiên bản</th>
+                </tr>
+              </thead>
+              <tbody id="pub-timeline-body"></tbody>
+            </table>
+          </div>
 
           <h3>Chứng từ được phép tải (Kiểm quyền phía Server trước khi đọc file)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Mã chứng từ</th>
-                <th>Loại</th>
-                <th>Tên công bố</th>
-                <th>Phiên bản</th>
-                <th>Tải file</th>
-              </tr>
-            </thead>
-            <tbody id="pub-docs-body"></tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã chứng từ</th>
+                  <th>Loại</th>
+                  <th>Tên công bố</th>
+                  <th>Phiên bản</th>
+                  <th>Tải file</th>
+                </tr>
+              </thead>
+              <tbody id="pub-docs-body"></tbody>
+            </table>
+          </div>
         </div>
 
         <div id="download-status-banner" style="margin-top: 12px;"></div>
         <h3>Payload công bố (<span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span>)</h3>
         <pre id="raw-publication-json">{}</pre>
       </section>
+
+      <section class="card" id="sandbox-operational-notice">
+        <h2>Lưu ý vận hành &amp; Giới hạn môi trường thử nghiệm (Owner Gate)</h2>
+        <div class="helper-box" style="margin-top: 0; color: var(--text);">
+          <strong>1. Dữ liệu giả lập (SANDBOX_STAGING):</strong> Ba tài khoản khách (<span class="mono">lucgiac.trial</span>, <span class="mono">minhduc.trial</span>, <span class="mono">anphat.trial</span>), nhân sự TT (<span class="mono">tt.ops.truongthanh</span>), các lô <span class="mono">ROAD-LG-001</span>, <span class="mono">ROAD-MD-002</span>, <span class="mono">ROAD-AP-003</span> và tệp PDF chỉ phục vụ kiểm thử trong sandbox; tuyệt đối không dùng tài khoản/mật khẩu demo cho hệ thống thật.<br/>
+          <strong>2. Giới hạn bộ nhớ trong tiến trình (In-Memory Persistence):</strong> Dữ liệu đang chạy trên <span class="mono">mongomock</span> + <span class="mono">GridFS</span> trong bộ nhớ RAM của tiến trình thử nghiệm; khi khởi động lại tiến trình, trạng thái quay về mặc định chưa công bố (<span class="mono">UNPUBLISHED</span>).<br/>
+          <strong>3. Chưa sẵn sàng vận hành thực tế (Production Readiness Gaps):</strong> Chưa kết nối MongoDB Atlas thật, chưa tạo collection manifest công bố và bảng tài khoản khách hàng riêng trên DB production, chưa qua kiểm thử trình duyệt thực tế (<span class="mono">BROWSER_QA</span>) trên máy có Chromium, và chưa cấp quyền truy cập cho khách hàng thật.
+        </div>
+      </section>
     </div>
   </main>
 
   <script>
     let currentTtDeskData = null;
+    let currentDashboardShipments = {};
 
     function formatVnd(val) {
       if (val === null || val === undefined) return 'Chưa xác định (null)';
@@ -2400,8 +2996,19 @@ def render_trial_portal_html() -> str:
         refreshTtSessionState();
       } else {
         refreshSessionState();
+        loadCustomerDashboard();
         loadRequestedShipment();
       }
+    }
+
+    function pickTtShipment(sid) {
+      document.getElementById('tt-shipment-input').value = sid;
+      loadTtShipmentDesk();
+    }
+
+    function fillCustomerCreds(username, passcode) {
+      document.getElementById('cust-username').value = username;
+      document.getElementById('cust-passcode').value = passcode;
     }
 
     async function refreshSessionState() {
@@ -2431,11 +3038,13 @@ def render_trial_portal_html() -> str:
         banner.className = 'banner-result banner-deny';
         banner.textContent = `ĐĂNG NHẬP KHÁCH BỊ TỪ CHỐI (HTTP ${res.status}): Sai thông tin hoặc tài khoản không phải khách hàng.`;
         await refreshSessionState();
+        await loadCustomerDashboard();
         return;
       }
       banner.className = 'banner-result banner-ok';
       banner.textContent = `ĐĂNG NHẬP THÀNH CÔNG: ${body.label} (customer_id=${(body.principal || {}).customer_id})`;
       await refreshSessionState();
+      await loadCustomerDashboard();
       await loadRequestedShipment();
     }
 
@@ -2445,7 +3054,106 @@ def render_trial_portal_html() -> str:
       banner.className = 'banner-result banner-warn';
       banner.textContent = 'Đã đăng xuất phiên khách hàng.';
       await refreshSessionState();
+      await loadCustomerDashboard();
       await loadRequestedShipment();
+    }
+
+    async function loadCustomerDashboard() {
+      const res = await fetch('/api/hexa/v0/dashboard', { credentials: 'same-origin' });
+      const statusBanner = document.getElementById('dashboard-status-banner');
+      const tbody = document.getElementById('dash-shipments-tbody');
+      const body = await res.json().catch(() => ({}));
+      currentDashboardShipments = {};
+
+      if (!res.ok) {
+        statusBanner.className = 'banner-result banner-deny';
+        statusBanner.textContent = `CHƯA XÁC THỰC KHÁCH HÀNG (HTTP ${res.status}): Hãy đăng nhập tài khoản khách ở Bước 1 để xem Dashboard.`;
+        document.getElementById('dash-count-tracking').textContent = '0';
+        document.getElementById('dash-count-arriving').textContent = '0';
+        document.getElementById('dash-count-action').textContent = '0';
+        tbody.innerHTML = '<tr><td colspan="8" class="muted">Chưa đăng nhập phiên khách hàng.</td></tr>';
+        return;
+      }
+
+      const summary = body.summary || {};
+      document.getElementById('dash-count-tracking').textContent = String(summary.active_tracking ?? 0);
+      document.getElementById('dash-count-arriving').textContent = String(summary.arriving_soon ?? 0);
+      document.getElementById('dash-count-action').textContent = String(summary.customer_action_needed ?? 0);
+
+      const shipments = body.shipments || [];
+      if (shipments.length === 0) {
+        statusBanner.className = 'banner-result banner-warn';
+        statusBanner.textContent = `Khách hàng ${body.customer_name} (${body.customer_id}): Hiện chưa có lô hàng nào được Trường Thành duyệt công bố (Trạng thái mặc định: Chưa công bố / Đã thu hồi).`;
+        tbody.innerHTML = '<tr><td colspan="8" class="muted">Không có dữ liệu lô đã công bố. Khi nhân sự TT duyệt công bố lô hàng, lô sẽ xuất hiện tại đây.</td></tr>';
+        renderJourneyMap(null);
+        return;
+      }
+
+      statusBanner.className = 'banner-result banner-ok';
+      statusBanner.textContent = `Dashboard ${body.customer_name} (${body.customer_id}) — Đang hiển thị ${shipments.length} lô đã được Trường Thành công bố.`;
+      tbody.innerHTML = '';
+
+      shipments.forEach(row => {
+        currentDashboardShipments[row.shipment_id] = row;
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => selectDashboardShipment(row.shipment_id);
+        const etaHtml = row.verified_warehouse_eta
+          ? `<span class="pill pill-ok">${row.verified_warehouse_eta_label}</span>`
+          : `<span class="pill pill-warn">${row.verified_warehouse_eta_label}</span>`;
+        tr.innerHTML = `
+          <td class="mono"><strong>${row.shipment_id}</strong><br/><span class="pill pill-ok">${row.transport_mode || 'ROAD'}</span></td>
+          <td>${row.cargo_summary}<br/><span class="muted">${row.route_summary}</span></td>
+          <td><strong>${row.verified_stage_label}</strong><br/><span class="muted">${row.verified_stage_title}</span></td>
+          <td class="mono">${row.last_updated_label}</td>
+          <td>${etaHtml}</td>
+          <td>${row.next_step}</td>
+          <td>${row.contact_point}</td>
+          <td>
+            <button onclick="event.stopPropagation(); selectDashboardShipment('${row.shipment_id}')">
+              Mở Hành trình &amp; Chứng từ
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const firstSid = shipments[0].shipment_id;
+      document.getElementById('shipment-input').value = firstSid;
+      renderJourneyMap(shipments[0].journey);
+    }
+
+    function renderJourneyMap(journey) {
+      const container = document.getElementById('pub-journey-map');
+      if (!container) return;
+      if (!journey || !Array.isArray(journey.nodes) || journey.nodes.length === 0) {
+        container.innerHTML = '<div class="journey-node"><div class="node-title">Chưa có hành trình công bố</div><div class="muted">Lô chưa được công bố hoặc đã bị thu hồi.</div></div>';
+        return;
+      }
+      container.innerHTML = '';
+      journey.nodes.forEach((n, idx) => {
+        const div = document.createElement('div');
+        div.className = 'journey-node' + (n.current ? ' current' : (n.completed ? ' done' : ''));
+        const badge = n.current
+          ? '<span class="pill pill-ok">● Vị trí xác minh gần nhất</span>'
+          : (n.completed ? '<span class="pill pill-ok">✓ Đã xác minh</span>' : '<span class="pill pill-warn">○ Chưa xác minh</span>');
+        div.innerHTML = `
+          <div class="node-title">${idx + 1}. ${n.label}</div>
+          <div style="margin-bottom:6px;">${badge}</div>
+          <div class="muted">${n.evidence || ''}</div>
+          ${n.occurred_at ? `<div class="mono muted" style="margin-top:4px;">${n.occurred_at}</div>` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function selectDashboardShipment(sid) {
+      document.getElementById('shipment-input').value = sid;
+      const row = currentDashboardShipments[sid];
+      if (row && row.journey) {
+        renderJourneyMap(row.journey);
+      }
+      await loadShipment(sid);
     }
 
     async function refreshTtSessionState() {
@@ -2789,6 +3497,7 @@ def render_trial_portal_html() -> str:
     window.addEventListener('DOMContentLoaded', async () => {
       await refreshSessionState();
       await refreshTtSessionState();
+      await loadCustomerDashboard();
       await loadRequestedShipment();
     });
   </script>
@@ -2904,6 +3613,16 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 self.env.resolve_tt_session_summary(self._current_tt_token()),
             )
+            return
+
+        if path == "/api/hexa/v0/dashboard":
+            try:
+                payload = self.env.build_customer_dashboard(
+                    session_token=self._current_token(),
+                )
+                self._send_json(HTTPStatus.OK, payload)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
             return
 
         # Customer API NEVER exposes TT internal inspector data.
